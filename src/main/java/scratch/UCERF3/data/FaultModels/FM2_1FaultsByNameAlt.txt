@@ -1,0 +1,12 @@
+Elsinore	237	296	402	299	102	103
+Garlock	48	341	49
+San Jacinto (SB to C)	119	289	401	293	292
+San Jacinto (CC to SM)	101	99	28
+San Andreas	26	27	67	56	57	32	285	300	287	286	301	282	283	284	295
+Hayward-Rodgers Creek	25	68	69
+Calaveras	4	5	55
+Little Salmon	17	16
+San Gregorio	29	12
+Puente Hills	240
+Compton	184
+Green Valley	3	1	71

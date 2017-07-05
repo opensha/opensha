@@ -1,0 +1,289 @@
+0	Calaveras;CC	0	Calaveras (Central) 2011 CFM
+1	Calaveras;CC+CS	0	Calaveras (Central) 2011 CFM	Calaveras (So) 2011 CFM
+2	Calaveras;CN	0	Calaveras (No) 2011 CFM
+3	Calaveras;CN+CC	0	Calaveras (No) 2011 CFM	Calaveras (Central) 2011 CFM
+4	Calaveras;CN+CC+CS	0	Calaveras (No) 2011 CFM	Calaveras (Central) 2011 CFM	Calaveras (So) 2011 CFM
+5	Calaveras;CS	0	Calaveras (So) 2011 CFM
+6	Elsinore;CM	0	Elsinore (Coyote Mountains)
+7	Elsinore;GI	0	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)
+8	Elsinore;GI+T	0	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev
+9	Elsinore;GI+T+J	0	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev	Elsinore (Julian)
+10	Elsinore;GI+T+J+CM	0	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev	Elsinore (Julian)	Elsinore (Coyote Mountains)
+11	Elsinore;J	0	Elsinore (Julian)
+12	Elsinore;J+CM	0	Elsinore (Julian)	Elsinore (Coyote Mountains)
+13	Elsinore;T	0	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev
+14	Elsinore;T+J	0	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev	Elsinore (Julian)
+15	Elsinore;T+J+CM	0	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev	Elsinore (Julian)	Elsinore (Coyote Mountains)
+16	Elsinore;W	0	Whittier alt 1
+17	Elsinore;W+GI	0	Whittier alt 1	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)
+18	Elsinore;W+GI+T	0	Whittier alt 1	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev
+19	Elsinore;W+GI+T+J	0	Whittier alt 1	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev	Elsinore (Julian)
+20	Elsinore;W+GI+T+J+CM	0	Whittier alt 1	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev	Elsinore (Julian)	Elsinore (Coyote Mountains)
+21	Garlock;GC	0	Garlock (Central)
+22	Garlock;GC+GW	0	Garlock (Central)	Garlock (West)
+23	Garlock;GE	0	Garlock (East)
+24	Garlock;GE+GC	0	Garlock (East)	Garlock (Central)
+25	Garlock;GE+GC+GW	0	Garlock (East)	Garlock (Central)	Garlock (West)
+26	Garlock;GW	0	Garlock (West)
+27	Hayward-Rodgers Creek;HN	0	Hayward (No) 2011 CFM
+28	Hayward-Rodgers Creek;HN+HS	0	Hayward (No) 2011 CFM	Hayward (So) 2011 CFM
+29	Hayward-Rodgers Creek;HS	0	Hayward (So) 2011 CFM
+30	Hayward-Rodgers Creek;RC	0	Rodgers Creek - Healdsburg 2011 CFM
+31	Hayward-Rodgers Creek;RC+HN	0	Rodgers Creek - Healdsburg 2011 CFM	Hayward (No) 2011 CFM
+32	Hayward-Rodgers Creek;RC+HN+HS	0	Rodgers Creek - Healdsburg 2011 CFM	Hayward (No) 2011 CFM	Hayward (So) 2011 CFM
+33	N. San Andreas;SAN	0	San Andreas (North Coast) 2011 CFM
+34	N. San Andreas;SAN+SAP	0	San Andreas (North Coast) 2011 CFM	San Andreas (Peninsula) 2011 CFM
+35	N. San Andreas;SAN+SAP+SAS	0	San Andreas (North Coast) 2011 CFM	San Andreas (Peninsula) 2011 CFM	San Andreas (Santa Cruz Mts) 2011 CFM
+36	N. San Andreas;SAO	0	San Andreas (Offshore) 2011 CFM
+37	N. San Andreas;SAO+SAN	0	San Andreas (Offshore) 2011 CFM	San Andreas (North Coast) 2011 CFM
+38	N. San Andreas;SAO+SAN+SAP	0	San Andreas (Offshore) 2011 CFM	San Andreas (North Coast) 2011 CFM	San Andreas (Peninsula) 2011 CFM
+39	N. San Andreas;SAO+SAN+SAP+SAS	0	San Andreas (Offshore) 2011 CFM	San Andreas (North Coast) 2011 CFM	San Andreas (Peninsula) 2011 CFM	San Andreas (Santa Cruz Mts) 2011 CFM
+40	N. San Andreas;SAP	0	San Andreas (Peninsula) 2011 CFM
+41	N. San Andreas;SAP+SAS	0	San Andreas (Peninsula) 2011 CFM	San Andreas (Santa Cruz Mts) 2011 CFM
+42	N. San Andreas;SAS	0	San Andreas (Santa Cruz Mts) 2011 CFM
+43	S. San Andreas;BB	0	San Andreas (Big Bend)
+44	S. San Andreas;BB+NM	0	San Andreas (Big Bend)	San Andreas (Mojave N)
+45	S. San Andreas;BB+NM+SM	0	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)
+46	S. San Andreas;BB+NM+SM+NSB	0	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)
+47	S. San Andreas;BB+NM+SM+NSB+SSB	0	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)
+48	S. San Andreas;BB+NM+SM+NSB+SSB+BG	0	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+49	S. San Andreas;BB+NM+SM+NSB+SSB+BG+CO	0	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+50	S. San Andreas;BG	0	San Andreas (San Gorgonio Pass-Garnet HIll)
+51	S. San Andreas;BG+CO	0	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+52	S. San Andreas;CC	0	San Andreas (Carrizo) rev
+53	S. San Andreas;CC+BB	0	San Andreas (Carrizo) rev	San Andreas (Big Bend)
+54	S. San Andreas;CC+BB+NM	0	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)
+55	S. San Andreas;CC+BB+NM+SM	0	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)
+56	S. San Andreas;CC+BB+NM+SM+NSB	0	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)
+57	S. San Andreas;CC+BB+NM+SM+NSB+SSB	0	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)
+58	S. San Andreas;CC+BB+NM+SM+NSB+SSB+BG	0	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+59	S. San Andreas;CC+BB+NM+SM+NSB+SSB+BG+CO	0	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+60	S. San Andreas;CH	0	San Andreas (Cholame) rev
+61	S. San Andreas;CH+CC	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev
+62	S. San Andreas;CH+CC+BB	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)
+63	S. San Andreas;CH+CC+BB+NM	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)
+64	S. San Andreas;CH+CC+BB+NM+SM	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)
+65	S. San Andreas;CH+CC+BB+NM+SM+NSB	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)
+66	S. San Andreas;CH+CC+BB+NM+SM+NSB+SSB	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)
+67	S. San Andreas;CH+CC+BB+NM+SM+NSB+SSB+BG	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+68	S. San Andreas;CH+CC+BB+NM+SM+NSB+SSB+BG+CO	0	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+69	S. San Andreas;CO	0	San Andreas (Coachella) rev
+70	S. San Andreas;NM	0	San Andreas (Mojave N)
+71	S. San Andreas;NM+SM	0	San Andreas (Mojave N)	San Andreas (Mojave S)
+72	S. San Andreas;NM+SM+NSB	0	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)
+73	S. San Andreas;NM+SM+NSB+SSB	0	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)
+74	S. San Andreas;NM+SM+NSB+SSB+BG	0	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+75	S. San Andreas;NM+SM+NSB+SSB+BG+CO	0	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+76	S. San Andreas;NSB	0	San Andreas (San Bernardino N)
+77	S. San Andreas;NSB+SSB	0	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)
+78	S. San Andreas;NSB+SSB+BG	0	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+79	S. San Andreas;NSB+SSB+BG+CO	0	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+80	S. San Andreas;PK	0	San Andreas (Parkfield)
+81	S. San Andreas;PK+CH	0	San Andreas (Parkfield)	San Andreas (Cholame) rev
+82	S. San Andreas;PK+CH+CC	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev
+83	S. San Andreas;PK+CH+CC+BB	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)
+84	S. San Andreas;PK+CH+CC+BB+NM	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)
+85	S. San Andreas;PK+CH+CC+BB+NM+SM	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)
+86	S. San Andreas;PK+CH+CC+BB+NM+SM+NSB	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)
+87	S. San Andreas;PK+CH+CC+BB+NM+SM+NSB+SSB	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)
+88	S. San Andreas;PK+CH+CC+BB+NM+SM+NSB+SSB+BG	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+89	S. San Andreas;PK+CH+CC+BB+NM+SM+NSB+SSB+BG+CO	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+90	S. San Andreas;SM	0	San Andreas (Mojave S)
+91	S. San Andreas;SM+NSB	0	San Andreas (Mojave S)	San Andreas (San Bernardino N)
+92	S. San Andreas;SM+NSB+SSB	0	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)
+93	S. San Andreas;SM+NSB+SSB+BG	0	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+94	S. San Andreas;SM+NSB+SSB+BG+CO	0	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+95	S. San Andreas;SSB	0	San Andreas (San Bernardino S)
+96	S. San Andreas;SSB+BG	0	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)
+97	S. San Andreas;SSB+BG+CO	0	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+98	San Jacinto;A	0	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev
+99	San Jacinto;A+C	0	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Clark) rev
+100	San Jacinto;A+CC	0	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)
+101	San Jacinto;A+CC+B	0	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)	San Jacinto (Borrego)
+102	San Jacinto;A+CC+B+SM	0	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)	San Jacinto (Borrego)	San Jacinto (Superstition Mtn)
+103	San Jacinto;B	0	San Jacinto (Borrego)
+104	San Jacinto;B+SM	0	San Jacinto (Borrego)	San Jacinto (Superstition Mtn)
+105	San Jacinto;C	0	San Jacinto (Clark) rev
+106	San Jacinto;CC	0	San Jacinto (Coyote Creek)
+107	San Jacinto;CC+B	0	San Jacinto (Coyote Creek)	San Jacinto (Borrego)
+108	San Jacinto;CC+B+SM	0	San Jacinto (Coyote Creek)	San Jacinto (Borrego)	San Jacinto (Superstition Mtn)
+109	San Jacinto;SBV	0	San Jacinto (San Bernardino)
+110	San Jacinto;SBV+SJV	0	San Jacinto (San Bernardino)	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)
+111	San Jacinto;SBV+SJV+A	0	San Jacinto (San Bernardino)	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev
+112	San Jacinto;SBV+SJV+A+C	0	San Jacinto (San Bernardino)	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Clark) rev
+113	San Jacinto;SBV+SJV+A+CC	0	San Jacinto (San Bernardino)	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)
+114	San Jacinto;SBV+SJV+A+CC+B	0	San Jacinto (San Bernardino)	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)	San Jacinto (Borrego)
+115	San Jacinto;SBV+SJV+A+CC+B+SM	0	San Jacinto (San Bernardino)	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)	San Jacinto (Borrego)	San Jacinto (Superstition Mtn)
+116	San Jacinto;SJV	0	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)
+117	San Jacinto;SJV+A	0	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev
+118	San Jacinto;SJV+A+C	0	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Clark) rev
+119	San Jacinto;SJV+A+CC	0	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)
+120	San Jacinto;SJV+A+CC+B	0	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)	San Jacinto (Borrego)
+121	San Jacinto;SJV+A+CC+B+SM	0	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Coyote Creek)	San Jacinto (Borrego)	San Jacinto (Superstition Mtn)
+122	San Jacinto;SM	0	San Jacinto (Superstition Mtn)
+123	Calaveras	0	Calaveras (No) 2011 CFM	Calaveras (Central) 2011 CFM	Calaveras (So) 2011 CFM
+124	Elsinore	0	Whittier alt 1	Elsinore (Glen Ivy) rev	Elsinore (Stepovers Combined)	Elsinore (Temecula) rev	Elsinore (Julian)	Elsinore (Coyote Mountains)
+125	Garlock	0	Garlock (East)	Garlock (Central)	Garlock (West)
+126	Hayward-Rodgers Creek	0	Rodgers Creek - Healdsburg 2011 CFM	Hayward (No) 2011 CFM	Hayward (So) 2011 CFM
+127	N. San Andreas	0	San Andreas (Offshore) 2011 CFM	San Andreas (North Coast) 2011 CFM	San Andreas (Peninsula) 2011 CFM	San Andreas (Santa Cruz Mts) 2011 CFM
+128	S. San Andreas	0	San Andreas (Parkfield)	San Andreas (Cholame) rev	San Andreas (Carrizo) rev	San Andreas (Big Bend)	San Andreas (Mojave N)	San Andreas (Mojave S)	San Andreas (San Bernardino N)	San Andreas (San Bernardino S)	San Andreas (San Gorgonio Pass-Garnet HIll)	San Andreas (Coachella) rev
+129	San Jacinto (CC to SM)	0	San Jacinto (Coyote Creek)	San Jacinto (Borrego)	San Jacinto (Superstition Mtn)
+130	San Jacinto (SB to C)	0	San Jacinto (San Bernardino)	San Jacinto (San Jacinto Valley) rev	San Jacinto (Stepovers Combined)	San Jacinto (Anza) rev	San Jacinto (Clark) rev
+131	Anacapa-Dume, alt 1	1	Anacapa-Dume alt 1
+132	Anacapa-Dume, alt 2	2	Anacapa-Dume alt 2
+133	Bartlett Springs	0	Bartlett Springs 2011 CFM
+134	Battle Creek	0	Battle Creek 2011 CFM
+135	Big Lagoon-Bald Mtn	0	Big Lagoon - Bald Mtn 2011 CFM
+136	Birch Creek	0	REMOVED
+137	Blackwater	0	Blackwater
+138	Burnt Mtn	0	Burnt Mtn
+139	Calico-Hidalgo	0	Calico-Hidalgo
+140	Casmalia (Orcutt Frontal)	0	Casmalia 2011 CFM
+141	Cedar Mtn-Mahogany Mtn	0	Cedar Mtn-Mahogany Mtn
+142	Channel Islands Thrust	0	Channel Islands Thrust
+143	Chino, alt 1	1	Chino alt 1
+144	Chino, alt 2	2	Chino alt 2
+145	Clamshell-Sawpit	0	Clamshell-Sawpit
+146	Cleghorn	0	Cleghorn
+147	Collayomi	0	Collayami 2011 CFM
+148	Coronado Bank	0	Coronado Bank alt1
+149	Cucamonga	0	Cucamonga
+150	Death Valley (Black Mtns Frontal)	0	Death Valley (Black Mtns Frontal)
+151	Death Valley (No)	0	Death Valley (No)
+152	Death Valley (No of Cucamongo)	0	Death Valley (Fish Lake Valley)
+153	Death Valley (So)	0	Death Valley (So)
+154	Death Valley Connected	0	Death Valley (Fish Lake Valley)	Death Valley (No)	Death Valley (Black Mtns Frontal)	Death Valley (So)
+155	Deep Springs	0	Deep Springs
+156	Earthquake Valley	0	Earthquake Valley
+157	Elmore Ranch	0	Elmore Ranch
+158	Elysian Park (Upper)	0	Elysian Park (Upper)
+159	Eureka Peak	0	Eureka Peak
+160	Fickle Hill	0	Fickle Hill (alt1)
+161	Fish Slough	0	Fish Slough 2011 CFM
+162	Gillem-Big Crack	0	Gillem - Big Crack 2011 CFM
+163	Gravel Hills-Harper Lk	0	Gravel Hills-Harper Lk
+164	Great Valley 1	0	Great Valley 01
+165	Great Valley 10	0	Great Valley 10 (Panoche)
+166	Great Valley 11	0	Great Valley 11
+167	Great Valley 12	0	Great Valley 12
+168	Great Valley 13 (Coalinga)	0	Great Valley 13 (Coalinga)
+169	Great Valley 14 (Kettleman Hills)	0	Great Valley 14 (Kettleman Hills)
+170	Great Valley 2	0	Great Valley 02
+171	Great Valley 3, Mysterious Ridge	0	Great Valley 03 Mysterious Ridge
+172	Great Valley 4a, Trout Creek	0	Great Valley 04a Trout Creek
+173	Great Valley 4b, Gordon Valley	0	Great Valley 04b Gordon Valley
+174	Great Valley 5, Pittsburg Kirby Hills	0	Great Valley 05 Pittsburg - Kirby Hills alt1
+175	Great Valley 7	0	Great Valley 07 (Orestimba)
+176	Great Valley 8	0	Great Valley 08 (Quinto)
+177	Great Valley 9	0	Great Valley 09 (Laguna Seca)
+178	Green Valley Connected	0	Concord 2011 CFM	Green Valley 2011 CFM
+179	Greenville Connected	0	Greenville (No) 2011 CFM	Greenville (So) 2011 CFM
+180	Hartley Springs	0	Hartley Springs 2011 CFM
+181	Hat Creek-McArthur-Mayfield	0	Hat Creek-McArthur-Mayfield
+182	Helendale-So Lockhart	0	Helendale-So Lockhart
+183	Hilton Creek	0	Hilton Creek 2011 CFM
+184	Hollywood	0	Hollywood
+185	Holser, alt 1	1	Holser alt 1
+186	Honey Lake	0	Honey Lake 2011 CFM
+187	Hosgri	0	Hosgri
+188	Hunter Mountain Connected	0	Hunter Mountain-Saline Valley	Panamint Valley
+189	Hunter Mountain-Saline Valley	0	Hunter Mountain-Saline Valley
+190	Hunting Creek-Berryessa	0	Hunting Creek - Berryessa 2011 CFM
+191	Imperial	0	Imperial
+192	Independence	0	Independence rev 2011
+193	Johnson Valley (No)	0	Johnson Valley (No) 2011 rev
+194	Laguna Salada	0	Laguna Salada
+195	Landers	0	Johnson Valley (No) 2011 rev	Kickapoo	Homestead Valley 2011	Emerson-Copper Mtn 2011	Camp Rock 2011
+196	Lenwood-Lockhart-Old Woman Springs	0	Lenwood-Lockhart-Old Woman Springs
+197	Likely	0	Likely 2011 CFM
+198	Lions Head	0	Lions Head 2011 CFM
+199	Little Lake	0	Little Lake
+200	Little Salmon (Offshore)	0	Little Salmon (Offshore)
+201	Little Salmon (Onshore)	0	Little Salmon (Onshore)
+202	Little Salmon Connected	0	Little Salmon (Onshore)	Little Salmon (Offshore)
+203	Los Alamos-West Baseline	0	Los Alamos 2011 CFM
+204	Los Osos	0	Los Osos 2011
+205	Maacama-Garberville	0	Maacama 2011 CFM
+206	Mad River	0	Mad River (alt1)
+207	Malibu Coast, alt 1	1	Malibu Coast alt 1
+208	Malibu Coast, alt 2	2	Malibu Coast alt 2
+209	McKinleyville	0	McKinleyville (alt1)
+210	Mission Ridge-Arroyo Parida-Santa Ana	0	Mission Ridge-Arroyo Parida-Santa Ana
+211	Mono Lake	0	Mono Lake 2011 CFM
+212	Monterey Bay-Tularcitos	0	Monterey Bay-Tularcitos
+213	Monte Vista-Shannon	0	Monte Vista - Shannon 2011 CFM
+214	Mount Diablo Thrust	0	Mount Diablo Thrust North CFM	Mount Diablo Thrust South
+215	Newport-Inglewood, alt 1	1	Newport-Inglewood alt 1
+216	Newport-Inglewood, alt 2	2	Newport-Inglewood alt 2
+217	Newport-Inglewood (Offshore)	0	Newport-Inglewood (Offshore)
+218	Newport Inglewood Connected alt 1	1	Rose Canyon	Newport-Inglewood (Offshore)	Newport-Inglewood alt 1
+219	Newport Inglewood Connected alt 2	2	Rose Canyon	Newport-Inglewood (Offshore)	Newport-Inglewood alt 2
+220	North Channel	2	North Channel
+221	North Frontal  (East)	0	North Frontal  (East)
+222	North Frontal  (West)	0	North Frontal  (West)
+223	Northridge	0	Northridge
+224	North Tahoe	0	North Tahoe 2011 CFM
+225	Oak Ridge (Offshore)	2	Oak Ridge (Offshore)
+226	Oak Ridge (Onshore)	0	Oak Ridge (Onshore)
+227	Oak Ridge Connected	2	Oak Ridge (Offshore) west extension	Oak Ridge (Offshore)	Oak Ridge (Onshore)
+228	Ortigalita	0	Ortigalita (North)	Ortigalita (South)
+229	Owens Valley	0	Owens Valley
+230	Owl Lake	0	Owl Lake
+231	Palos Verdes	0	Palos Verdes
+232	Palos Verdes Connected	0	Palos Verdes	Coronado Bank alt1
+233	Panamint Valley	0	Panamint Valley
+234	Pinto Mtn	0	Pinto Mtn
+235	Pisgah-Bullion Mtn-Mesquite Lk	0	Pisgah-Bullion Mtn-Mesquite Lk
+236	Pitas Point (Lower, West)	1	Pitas Point (Lower West)
+237	Pitas Point (Lower)-Montalvo	1	Pitas Point (Lower)-Montalvo
+238	Pitas Point (Upper)	2	Pitas Point (Upper)
+239	Pitas Point Connected	2	Pitas Point (Upper)	Ventura-Pitas Point
+240	Pleito	0	Pleito
+241	Point Reyes	0	Point Reyes 2011 CFM
+242	Puente Hills	1	Puente Hills
+243	Puente Hills (Coyote Hills)	2	Puente Hills (Coyote Hills)
+244	Puente Hills (LA)	2	Puente Hills (LA)
+245	Puente Hills (Santa Fe Springs)	2	Puente Hills (Santa Fe Springs)
+246	Quien Sabe	0	Quien Sabe 2011 CFM
+247	Raymond	0	Raymond
+248	Red Mountain	0	Red Mountain
+249	Rinconada	0	Rinconada 2011 CFM
+250	Robinson Creek	0	Robinson Creek
+251	Rose Canyon	0	Rose Canyon
+252	Round Valley	0	Round Valley
+253	San Andreas (Creeping Segment)	0	San Andreas (Creeping Section) 2011 CFM
+254	San Cayetano	0	San Cayetano
+255	San Gabriel	0	San Gabriel
+256	San Gregorio Connected	0	San Gregorio (South) 2011 CFM	San Gregorio (North) 2011 CFM
+257	San Joaquin Hills	0	San Joaquin Hills
+258	San Jose	0	San Jose
+259	San Juan	0	San Juan
+260	San Luis Range (So Margin)	0	San Luis Range 2011 CFM
+261	Santa Cruz Island	0	Santa Cruz Island
+262	Santa Monica, alt 1	1	Santa Monica alt 1
+263	Santa Monica, alt 2	2	Santa Monica alt 2
+264	Santa Monica Connected alt 1	1	Anacapa-Dume alt 1	Santa Monica alt 1
+265	Santa Monica Connected alt 2	2	Anacapa-Dume alt 2	Santa Monica alt 2
+266	Santa Rosa Island	0	Santa Rosa Island
+267	Santa Susana, alt 1	1	Santa Susana alt 1
+268	Santa Ynez (East)	0	Santa Ynez (East)
+269	Santa Ynez (West)	0	Santa Ynez (West)
+270	Santa Ynez Connected	0	Santa Ynez (West)	Santa Ynez (East)
+271	Sierra Madre	0	Sierra Madre
+272	Sierra Madre (San Fernando)	0	Sierra Madre (San Fernando)
+273	Sierra Madre Connected	0	Sierra Madre (San Fernando)	Sierra Madre
+274	Simi-Santa Rosa	0	Simi-Santa Rosa
+275	So Emerson-Copper Mtn	0	Emerson-Copper Mtn 2011
+276	So Sierra Nevada	0	So Sierra Nevada
+277	Superstition Hills	0	Superstition Hills
+278	Surprise Valley	0	Surprise Valley 2011 CFM
+279	Table Bluff	0	Table Bluff
+280	Tank Canyon	0	Tank Canyon
+281	Trinidad	0	Trinidad (alt1)
+282	Ventura-Pitas Point	0	Ventura-Pitas Point
+283	Verdugo	0	Verdugo
+284	West Napa	0	West Napa 2011 CFM
+285	West Tahoe	0	West Tahoe
+286	White Mountains	0	White Mountains
+287	White Wolf	0	White Wolf
+288	Zayante-Vergeles	0	Zayante-Vergeles 2011 CFM

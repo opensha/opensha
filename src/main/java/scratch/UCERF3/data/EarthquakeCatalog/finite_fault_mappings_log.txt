@@ -1,0 +1,1868 @@
+34.00000, -118.00000, 99.00000, mag=6.0
+37.20000, -122.00000, 99.00000, mag=5.5
+36.87000, -121.57000, 99.00000, mag=5.5
+32.90000, -117.80000, 99.00000, mag=6.3
+34.20000, -118.10000, 99.00000, mag=5.5
+32.80000, -117.10000, 99.00000, mag=5.5
+34.40000, -119.70000, 99.00000, mag=5.5
+37.80000, -122.60000, 99.00000, mag=5.5
+34.37000, -117.65000, 99.00000, mag=7.5
+34.20000, -119.80000, 99.00000, mag=7.1
+34.55000, -119.85000, 99.00000, mag=6.3
+37.10000, -122.30000, 99.00000, mag=5.5
+37.75000, -122.50000, 99.00000, mag=5.5
+34.00000, -119.00000, 99.00000, mag=6.0
+35.35000, -120.65000, 99.00000, mag=6.0
+36.90000, -121.50000, 99.00000, mag=6.4
+37.30000, -122.15000, 99.00000, mag=7.4
+36.85000, -121.50000, 99.00000, mag=6.5
+36.82500, -121.50000, 99.00000, mag=6.0
+36.80000, -121.45000, 99.00000, mag=5.8
+32.20670, -116.25900, 31.83000, mag=4.75
+37.10000, -117.20000, 33.00000, mag=4.0
+40.60000, -125.30000, 33.00000, mag=4.3
+42.10000, -121.80000, 25.00000, mag=4.0
+37.00000, -116.30000, 33.00000, mag=4.1
+41.20000, -124.50000, 27.00000, mag=4.4
+40.30000, -123.80000, 33.00000, mag=4.3
+42.10000, -125.00000, 33.00000, mag=4.0
+42.50000, -124.80000, 33.00000, mag=4.3
+37.20000, -116.50000, 33.00000, mag=4.0
+37.30000, -116.30000, 33.00000, mag=4.2
+42.26200, -119.81000, 33.00000, mag=4.4
+42.25600, -119.76800, 33.00000, mag=4.1
+42.19800, -119.81200, 33.00000, mag=4.4
+42.09100, -119.78000, 33.00000, mag=4.1
+42.31500, -119.78600, 25.00000, mag=4.0
+42.31800, -119.75500, 33.00000, mag=4.1
+42.28800, -119.82000, 34.00000, mag=4.0
+42.20500, -119.84700, 33.00000, mag=4.3
+42.29700, -119.90000, 33.00000, mag=4.2
+42.24400, -119.90600, 33.00000, mag=4.4
+42.25100, -119.91000, 33.00000, mag=4.0
+42.29100, -119.83200, 33.00000, mag=4.0
+42.10300, -119.88700, 33.00000, mag=4.3
+42.19300, -119.82400, 33.00000, mag=4.3
+42.28700, -119.83900, 33.00000, mag=4.2
+40.01900, -124.26200, 33.00000, mag=4.2
+40.21000, -119.64900, 33.00000, mag=4.1
+35.04530, -121.36300, 45.76000, mag=4.04
+40.51500, -125.22400, 33.00000, mag=4.3
+33.40150, -116.63800, 30.87000, mag=4.19
+40.93000, -125.02200, 33.00000, mag=4.0
+40.58000, -124.65000, 30.00000, mag=4.8
+34.39880, -118.47400, 24.40000, mag=4.7
+40.25000, -124.96000, 33.00000, mag=4.5
+40.39000, -125.65000, 33.00000, mag=4.1
+40.43070, -124.87600, 43.04000, mag=4.1
+32.70830, -115.39200, 24.30000, mag=4.5
+40.33000, -124.41000, 33.96000, mag=4.5
+35.00700, -119.09700, 24.05000, mag=4.56
+40.51750, -124.34600, 24.41000, mag=4.0
+40.95000, -119.11300, 33.00000, mag=4.2
+40.33300, -125.25700, 33.00000, mag=4.4
+40.20000, -124.39000, 33.00000, mag=4.0
+40.31280, -124.50800, 27.25000, mag=4.0
+32.66700, -117.95500, 30.55000, mag=4.29
+40.82330, -124.73600, 29.53000, mag=4.2
+40.41480, -124.53500, 26.23000, mag=4.0
+40.43350, -124.81700, 28.56000, mag=4.1
+40.28000, -123.69000, 29.76000, mag=4.3
+40.44000, -124.85000, 29.72000, mag=4.6
+40.37000, -124.27000, 25.45000, mag=4.6
+40.46130, -125.22700, 56.85000, mag=4.3
+40.48350, -125.15800, 55.12000, mag=4.2
+37.56130, -118.67400, 26.53000, mag=4.0
+40.54000, -126.54000, 44.96000, mag=4.2
+40.76230, -125.05200, 44.13000, mag=4.7
+40.28000, -124.56000, 25.73000, mag=4.2
+40.46320, -124.64600, 26.63000, mag=4.5
+40.42000, -124.51000, 25.56000, mag=4.0
+38.84700, -118.83200, 27.00000, mag=4.1
+41.39820, -123.80500, 42.45000, mag=4.76
+40.60250, -124.43900, 26.23000, mag=4.0
+40.33000, -124.72000, 25.66000, mag=4.3
+40.33000, -124.75000, 27.38000, mag=4.3
+40.33180, -124.55700, 28.25000, mag=4.74
+40.32920, -124.55100, 27.92000, mag=4.0
+40.69450, -124.76200, 59.15000, mag=4.06
+41.42420, -123.54800, 40.12000, mag=4.0
+37.44080, -118.18900, 44.05000, mag=4.49
+34.38000, -119.03800, 24.85000, mag=4.07
+35.29700, -119.34600, 24.39000, mag=4.41
+39.48850, -123.36200, 59.16000, mag=4.67
+39.34630, -123.53500, 82.76000, mag=5.16
+37.71150, -118.47300, 78.97000, mag=4.02
+40.03020, -123.76700, 38.13000, mag=4.11
+40.39120, -124.55400, 26.14000, mag=4.2
+41.39670, -123.80500, 26.78000, mag=4.0
+40.08870, -122.76600, 43.18000, mag=4.34
+36.15750, -120.71400, 28.16000, mag=4.77
+40.36070, -124.59000, 28.50000, mag=4.0
+40.47400, -124.27900, 24.62000, mag=4.1
+41.47520, -124.15500, 24.36000, mag=4.3
+41.17120, -123.76500, 36.02000, mag=4.9
+40.27270, -124.39600, 25.02000, mag=4.1
+40.38300, -124.56700, 27.24000, mag=4.7
+40.74430, -124.98500, 35.77000, mag=4.3
+41.77950, -124.66100, 28.92000, mag=4.3
+40.57370, -123.37400, 34.92000, mag=4.43
+40.27470, -124.39900, 24.16000, mag=4.18
+40.20520, -123.11700, 38.12000, mag=4.02
+40.18400, -123.17200, 35.48000, mag=4.1
+40.90520, -123.37200, 26.16000, mag=4.0
+41.58570, -120.59400, 46.04000, mag=4.15
+40.83630, -123.55500, 25.97000, mag=4.2
+40.62320, -122.40800, 24.21000, mag=5.37
+40.61270, -122.39900, 24.52000, mag=4.39
+40.61680, -122.40000, 24.24000, mag=4.19
+40.46600, -124.46000, 28.80000, mag=4.1
+40.29300, -125.19700, 40.52000, mag=4.42
+40.60220, -124.45000, 29.46000, mag=4.6
+40.58820, -124.07500, 27.59000, mag=4.3
+40.32380, -124.58400, 24.29000, mag=4.3
+39.20580, -120.03000, 27.78000, mag=4.5
+40.73880, -123.81500, 29.44000, mag=4.3
+40.69650, -123.86700, 28.42000, mag=4.42
+40.48170, -124.30900, 27.34000, mag=4.2
+40.57670, -124.47200, 26.81000, mag=4.1
+40.83580, -123.49700, 29.13000, mag=5.36
+42.54050, -123.89600, 38.95000, mag=4.1
+40.27730, -123.86800, 30.74000, mag=4.12
+40.65200, -124.69200, 29.33000, mag=6.51
+40.46270, -124.84900, 24.07000, mag=4.05
+32.25570, -115.26100, 33.54000, mag=4.19
+32.28230, -115.37900, 28.51000, mag=4.07
+32.20180, -115.30700, 32.22000, mag=4.21
+32.27820, -115.32000, 28.71000, mag=4.61
+40.40380, -125.36300, 24.73000, mag=4.54
+32.10480, -115.17500, 26.73000, mag=4.03
+Processing 3360174
+Found 12 unique depths
+Surface size: 12 x 15. Spacing: 0.9912693940437741
+Match: 1946/03/15 05:49: M6.3
+***********************************
+Processing 30228270
+Found 9 unique depths
+Surface size: 9 x 41. Spacing: 1.0067534932115667
+Match: 2004/09/28 10:15: M5.97
+***********************************
+Processing 195412211956
+Found 18 unique depths
+Surface size: 18 x 15. Spacing: 1.0223814142382572
+No exact match. Min delta: 29287. Date: 1954/12/21 11:56 Est Mag: 6.3903436860928595
+	Candidate: 1954/12/21 11:56: M6.5 (Time delta=29287, Mag delta: 0.10965631390714048)
+Match: 1954/12/21 11:56: M6.5
+***********************************
+Processing 195906231435
+Found 12 unique depths
+Surface size: 12 x 11. Spacing: 1.00437648033959
+No exact match. Min delta: 296. Date: 1959/06/23 07:35 Est Mag: 6.025185753577851
+	Candidate: 1959/06/23 07:35: M6.1 (Time delta=296, Mag delta: 0.0748142464221484)
+Match: 1959/06/23 07:35: M6.1
+***********************************
+Processing 21323712
+Found 11 unique depths
+Surface size: 11 x 34. Spacing: 0.9960733322851797
+Match: 2003/12/22 11:15: M6.55
+***********************************
+Processing 21086915
+Found 7 unique depths
+Surface size: 7 x 12. Spacing: 1.0032887415882015
+Match: 2000/03/16 07:19: M5.86
+***********************************
+Processing 3347678
+Found 29 unique depths
+Surface size: 29 x 17. Spacing: 1.006385253685561
+Match: 1971/02/09 06:00: M6.6
+***********************************
+Processing 71338066
+Found 27 unique depths
+Failed to create evenly gridded, doing arbitrary: Gridding columns mismatch. Expected 10 got 8, r=3, d=13.055
+Match: 2010/01/09 16:27: M6.51
+***********************************
+Processing 187203261406
+Found 13 unique depths
+Surface size: 13 x 25. Spacing: 1.006928276614927
+No exact match. Min delta: 99170. Date: 1872/03/26 06:06 Est Mag: 6.4831271295177
+	Candidate: 1872/03/26 06:07: M6.8 (Time delta=99170, Mag delta: 0.3168728704822996)
+	Candidate: 1872/03/26 02:31: M7.6 (Time delta=12860830, Mag delta: 1.1168728704822994)
+	Matching to rupture by mag: 1872/03/26 06:07: M6.8
+Match: 1872/03/26 06:07: M6.8
+***********************************
+Processing 14607652
+Found 49 unique depths
+Failed to create evenly gridded, doing arbitrary: Gridding columns mismatch. Expected 83 got 62, r=1, d=0.6
+Match: 2010/04/04 15:40: M7.19
+***********************************
+Processing 731691
+Found 7 unique depths
+Surface size: 7 x 11. Spacing: 0.9906700925708559
+Match: 1987/10/01 07:42: M5.89
+***********************************
+Processing 3031111
+Found 16 unique depths
+Surface size: 16 x 73. Spacing: 1.0028263549610668
+Match: 1992/06/28 04:57: M7.28
+***********************************
+Processing 3359741
+Found 13 unique depths
+Surface size: 13 x 16. Spacing: 0.9922791168106551
+Match: 1933/03/10 17:54: M6.4
+***********************************
+Processing 17204
+Found 13 unique depths
+Surface size: 13 x 28. Spacing: 1.00805904860432
+Match: 1984/04/24 13:15: M6.15
+***********************************
+Processing 10085763
+Found 9 unique depths
+Surface size: 9 x 16. Spacing: 1.0018138584650471
+Match: 1986/07/21 07:42: M6.22
+***********************************
+Processing 269151
+Found 29 unique depths
+Surface size: 29 x 21. Spacing: 1.0055671637294845
+Match: 1992/04/25 11:06: M7.15
+***********************************
+Processing 187204111900
+Found 13 unique depths
+Surface size: 13 x 16. Spacing: 0.9953206578264645
+No exact match. Min delta: 99171. Date: 1872/04/11 11:00 Est Mag: 6.231198540946199
+	Candidate: 1872/04/11 11:01: M6.8 (Time delta=99171, Mag delta: 0.5688014590538009)
+	Matching to rupture by mag: 1872/04/11 11:01: M6.8
+Match: 1872/04/11 11:01: M6.8
+***********************************
+Processing 3319401
+Found 37 unique depths
+Failed to create evenly gridded, doing arbitrary: Gridding columns mismatch. Expected 36 got 31, r=7, d=6.0
+Match: 1952/07/21 04:52: M7.5
+***********************************
+Processing 187203261030
+Found 13 unique depths
+Surface size: 13 x 103. Spacing: 0.9964470360539424
+No exact match. Min delta: 99170. Date: 1872/03/26 02:30 Est Mag: 7.308871178655152
+	Candidate: 1872/03/26 02:31: M7.6 (Time delta=99170, Mag delta: 0.29112882134484774)
+Match: 1872/03/26 02:31: M7.6
+***********************************
+Processing 191511210013
+Found 13 unique depths
+Surface size: 13 x 25. Spacing: 0.9996296534926383
+No exact match. Min delta: 42196. Date: 1915/11/20 16:13 Est Mag: 6.474701941152219
+	Candidate: 1915/11/20 16:13: M6.6 (Time delta=42196, Mag delta: 0.12529805884778078)
+Match: 1915/11/20 16:13: M6.6
+***********************************
+Processing 3144585
+Found 25 unique depths
+Surface size: 25 x 19. Spacing: 0.9988052403978133
+Match: 1994/01/17 04:30: M6.65
+***********************************
+Processing 185701091624
+Found 13 unique depths
+Surface size: 13 x 370. Spacing: 0.9972486510610384
+No exact match. Min delta: 99160. Date: 1857/01/09 08:24 Est Mag: 7.880605292507019
+	Candidate: 1857/01/09 08:25: M7.9 (Time delta=99160, Mag delta: 0.019394707492981667)
+Match: 1857/01/09 08:25: M7.9
+***********************************
+Processing 188504120405
+Found 12 unique depths
+Surface size: 12 x 21. Spacing: 1.0068564324569813
+No exact match. Min delta: 99179. Date: 1885/04/11 20:05 Est Mag: 6.328357778758074
+	Candidate: 1885/04/11 20:06: M6.5 (Time delta=99179, Mag delta: 0.1716422212419264)
+Match: 1885/04/11 20:06: M6.5
+***********************************
+Processing 3352060
+Found 14 unique depths
+Surface size: 14 x 51. Spacing: 1.000391318858839
+Match: 1979/10/15 16:16: M6.51
+***********************************
+Processing 1056775
+Found 18 unique depths
+Failed to create evenly gridded, doing arbitrary: Gridding columns mismatch. Expected 9 got 35, r=1, d=1.0
+Match: 1980/11/08 02:27: M7.3
+***********************************
+Processing 9108652
+Found 33 unique depths
+Failed to create evenly gridded, doing arbitrary: Gridding columns mismatch. Expected 58 got 22, r=1, d=0.975
+Match: 1999/10/16 02:46: M7.12
+***********************************
+Processing 1091100
+Found 12 unique depths
+Surface size: 12 x 17. Spacing: 1.001302118651525
+Match: 1983/05/02 16:42: M6.3
+***********************************
+Processing 27615
+Found 12 unique depths
+Surface size: 12 x 31. Spacing: 0.9988396061168096
+Match: 1984/09/09 20:14: M6.6
+***********************************
+Processing 181212081599
+Found 13 unique depths
+Surface size: 13 x 146. Spacing: 0.9943080499658599
+No exact match. Min delta: 99154. Date: 1812/12/08 08:39 Est Mag: 7.505310987393386
+	Candidate: 1812/12/08 08:40: M7.5 (Time delta=99154, Mag delta: 0.005310987393386313)
+Match: 1812/12/08 08:40: M7.5
+***********************************
+Processing 3031425
+Found 13 unique depths
+Surface size: 13 x 15. Spacing: 1.0247480495885986
+Match: 1992/06/28 08:05: M6.49
+***********************************
+Processing 192711041350
+Found 14 unique depths
+Surface size: 14 x 327. Spacing: 2.1371362845776676
+No exact match. Min delta: 53203. Date: 1927/11/04 05:50 Est Mag: 8.37823315546213
+	Candidate: 1927/11/04 05:50: M7.1 (Time delta=53203, Mag delta: 1.2782331554621305)
+	Matching to rupture by mag: 1927/11/04 05:50: M7.1
+Match: 1927/11/04 05:50: M7.1
+***********************************
+Processing 189204191050
+Found 17 unique depths
+Surface size: 17 x 18. Spacing: 0.9940074245460864
+No exact match. Min delta: 99183. Date: 1892/04/19 02:50 Est Mag: 6.435071327537216
+	Candidate: 1892/04/19 02:51: M6.6 (Time delta=99183, Mag delta: 0.16492867246278387)
+Match: 1892/04/19 02:51: M6.6
+***********************************
+Processing 9860350
+Found 13 unique depths
+Surface size: 13 x 20. Spacing: 1.0083221398134399
+Match: 1948/12/04 16:43: M6.0
+***********************************
+Processing 52348
+Found 3 unique depths
+Surface size: 3 x 23. Spacing: 0.9952059118504413
+Match: 1985/08/04 05:01: M6.08
+***********************************
+Processing 3364162
+Found 7 unique depths
+Surface size: 7 x 16. Spacing: 1.0038844958556512
+Match: 1937/03/25 08:49: M6.0
+***********************************
+Processing 216859
+Found 19 unique depths
+Surface size: 19 x 41. Spacing: 0.9978247325993294
+Match: 1989/10/17 17:04: M6.89
+***********************************
+Processing 191804212232
+Found 13 unique depths
+Surface size: 13 x 38. Spacing: 1.0060942512460709
+No exact match. Min delta: 25198. Date: 1918/04/21 15:32 Est Mag: 6.732824575353706
+	Candidate: 1918/04/21 15:32: M6.8 (Time delta=25198, Mag delta: 0.06717542464629389)
+Match: 1918/04/21 15:32: M6.8
+***********************************
+Processing 195211220746
+Found 15 unique depths
+Surface size: 15 x 11. Spacing: 1.0042137967285165
+No exact match. Min delta: 37283. Date: 1952/11/21 23:46 Est Mag: 6.129780403238069
+	Candidate: 1952/11/21 23:46: M6.0 (Time delta=37283, Mag delta: 0.12978040323806894)
+Match: 1952/11/21 23:46: M6.0
+***********************************
+Processing 134894
+Found 11 unique depths
+Surface size: 11 x 21. Spacing: 1.0009573605410844
+Match: 1987/11/23 17:54: M6.04
+***********************************
+Processing 3366099
+Found 13 unique depths
+Surface size: 13 x 22. Spacing: 0.9761688636478144
+Match: 1942/10/21 09:22: M6.6
+***********************************
+Processing 189912251225
+Found 13 unique depths
+Surface size: 13 x 28. Spacing: 1.0053202140738864
+No exact match. Min delta: 99187. Date: 1899/12/25 04:25 Est Mag: 6.549480330547656
+	Candidate: 1899/12/25 04:26: M6.7 (Time delta=99187, Mag delta: 0.1505196694523443)
+Match: 1899/12/25 04:26: M6.7
+***********************************
+Processing 3362656
+Found 13 unique depths
+Surface size: 13 x 70. Spacing: 1.0026545464503482
+Match: 1934/12/31 10:45: M6.42
+***********************************
+Processing 193406080447
+Found 13 unique depths
+Surface size: 13 x 26. Spacing: 0.9971734485050489
+No exact match. Min delta: 221. Date: 1934/06/07 20:47 Est Mag: 6.495491424610553
+	Candidate: 1934/06/07 20:47: M6.0 (Time delta=221, Mag delta: 0.4954914246105533)
+Match: 1934/06/07 20:47: M6.0
+***********************************
+Processing 228027
+Found 8 unique depths
+Surface size: 8 x 11. Spacing: 0.9936453244050014
+Match: 1991/08/17 12:29: M6.12
+***********************************
+Processing 181212211999
+Found 28 unique depths
+Surface size: 28 x 56. Spacing: 0.9917479483692829
+No exact match. Min delta: 99154. Date: 1812/12/21 12:39 Est Mag: 7.41532479986677
+	Candidate: 1812/12/21 12:40: M7.1 (Time delta=99154, Mag delta: 0.31532479986677053)
+Match: 1812/12/21 12:40: M7.1
+***********************************
+Processing 10083966
+Found 7 unique depths
+Surface size: 7 x 12. Spacing: 1.0031413583798943
+Match: 1987/07/31 16:56: M5.98
+***********************************
+Processing 186810211553
+Found 13 unique depths
+Surface size: 13 x 36. Spacing: 1.0003514995823541
+No exact match. Min delta: 99167. Date: 1868/10/21 07:53 Est Mag: 6.694016410710739
+	Candidate: 1868/10/21 07:54: M7.0 (Time delta=99167, Mag delta: 0.3059835892892613)
+Match: 1868/10/21 07:54: M7.0
+***********************************
+Processing 514869
+Found 8 unique depths
+Surface size: 8 x 11. Spacing: 1.0072942298732286
+Match: 1981/04/26 05:09: M5.9
+***********************************
+Processing 628016
+Found 13 unique depths
+Surface size: 13 x 21. Spacing: 1.0016531627873309
+Match: 1987/11/24 05:15: M6.5
+***********************************
+Processing 3019681
+Found 12 unique depths
+Surface size: 12 x 9. Spacing: 0.9976252158155194
+Match: 1992/04/22 21:50: M6.15
+***********************************
+Processing 3299653
+Found 11 unique depths
+Surface size: 11 x 16. Spacing: 0.9997785056164719
+Match: 1954/03/19 01:54: M6.4
+***********************************
+Processing 196606280426
+Found 13 unique depths
+Surface size: 13 x 26. Spacing: 0.9971734485050489
+No exact match. Min delta: 13304. Date: 1966/06/27 21:26 Est Mag: 6.495491424610553
+	Candidate: 1966/06/27 21:26: M6.0 (Time delta=13304, Mag delta: 0.4954914246105533)
+Match: 1966/06/27 21:26: M6.0
+***********************************
+Processing 192506291442
+Found 12 unique depths
+Surface size: 12 x 25. Spacing: 1.0080551050731976
+No exact match. Min delta: 16201. Date: 1925/06/29 06:42 Est Mag: 6.43403706523427
+	Candidate: 1925/06/29 06:42: M6.8 (Time delta=16201, Mag delta: 0.3659629347657294)
+Match: 1925/06/29 06:42: M6.8
+***********************************
+Processing 700917
+Found 14 unique depths
+Surface size: 14 x 21. Spacing: 1.0017097256531062
+Match: 1986/07/08 02:20: M6.02
+***********************************
+Processing 183806999999
+Found 13 unique depths
+Surface size: 13 x 131. Spacing: 1.0020943933970974
+No exact match. Min delta: 99156. Date: 1838/09/10 20:39 Est Mag: 7.455875690585463
+	Candidate: 1838/09/10 20:40: M7.4 (Time delta=99156, Mag delta: 0.055875690585462934)
+Match: 1838/09/10 20:40: M7.4
+***********************************
+Processing 3365279
+Found 14 unique depths
+Surface size: 14 x 64. Spacing: 1.0007464505375263
+Match: 1940/05/18 20:36: M6.9
+***********************************
+Processing 1053045
+Found 7 unique depths
+Surface size: 7 x 11. Spacing: 0.9951404035228197
+Match: 1980/05/25 09:49: M6.0
+***********************************
+Processing 3329122
+Found 13 unique depths
+Surface size: 13 x 31. Spacing: 1.006298666073139
+Match: 1968/04/08 18:28: M6.6
+***********************************
+Processing 199305172320
+Found 15 unique depths
+Surface size: 15 x 16. Spacing: 1.0084408274994527
+No exact match. Min delta: 50622. Date: 1993/05/17 16:20 Est Mag: 6.3095201349442185
+	Candidate: 1993/05/17 16:20: M6.11 (Time delta=50622, Mag delta: 0.19952013494421816)
+Match: 1993/05/17 16:20: M6.11
+***********************************
+Processing 1053043
+Found 11 unique depths
+Surface size: 11 x 16. Spacing: 1.001123762486287
+Match: 1980/05/25 09:33: M6.2
+***********************************
+Processing 189205281115
+Found 13 unique depths
+Surface size: 13 x 25. Spacing: 1.002819230536219
+No exact match. Min delta: 99184. Date: 1892/05/28 03:15 Est Mag: 6.478391381503343
+	Candidate: 1892/05/28 03:16: M6.5 (Time delta=99184, Mag delta: 0.021608618496657073)
+Match: 1892/05/28 03:16: M6.5
+***********************************
+Processing 9730174
+Found 11 unique depths
+Surface size: 11 x 31. Spacing: 1.000100130330396
+Match: 1980/06/08 20:28: M6.33
+***********************************
+Processing 268078
+Found 6 unique depths
+Surface size: 6 x 11. Spacing: 1.0003811458417653
+Match: 1992/04/26 04:18: M6.6
+***********************************
+Processing 185211292000
+Found 13 unique depths
+Surface size: 13 x 25. Spacing: 1.0035623447201591
+No exact match. Min delta: 99157. Date: 1852/11/29 12:00 Est Mag: 6.479249269334522
+	Candidate: 1852/11/29 12:01: M6.5 (Time delta=99157, Mag delta: 0.020750730665477946)
+Match: 1852/11/29 12:01: M6.5
+***********************************
+Processing 189002091206
+Found 13 unique depths
+Surface size: 13 x 18. Spacing: 1.0186978959424453
+No exact match. Min delta: 99182. Date: 1890/02/09 04:06 Est Mag: 6.305720985727621
+	Candidate: 1890/02/09 04:07: M6.8 (Time delta=99182, Mag delta: 0.4942790142723785)
+Match: 1890/02/09 04:07: M6.8
+***********************************
+Processing 190604181312
+Found 13 unique depths
+Surface size: 13 x 463. Spacing: 0.994575057072013
+No exact match. Min delta: 21189. Date: 1906/04/18 05:12 Est Mag: 7.960214509854761
+	Candidate: 1906/04/18 05:12: M7.8 (Time delta=21189, Mag delta: 0.16021450985476093)
+Match: 1906/04/18 05:12: M7.8
+***********************************
+Processing 189202240720
+Found 13 unique depths
+Surface size: 13 x 42. Spacing: 0.9882872353327639
+No exact match. Min delta: 99183. Date: 1892/02/23 23:20 Est Mag: 6.771586619670998
+	Candidate: 1892/02/23 23:21: M7.3 (Time delta=99183, Mag delta: 0.5284133803290016)
+	Matching to rupture by mag: 1892/02/23 23:21: M7.3
+Match: 1892/02/23 23:21: M7.3
+***********************************
+Processing 3358945
+Found 9 unique depths
+Surface size: 9 x 11. Spacing: 1.0044957138148232
+Match: 1947/04/10 07:58: M6.5
+***********************************
+Processing 268031
+Found 7 unique depths
+Surface size: 7 x 13. Spacing: 0.9995771238176108
+Match: 1992/04/26 24:41: M6.45
+***********************************
+Loaded 69 finite rups
+**********************************
+Loading cadidate for 1812/12/08 08:40: M7.5. Len=144.17466724504968. Center: 34.53938, -118.11301, 6.00000
+Found 92 candidates (479 filtered due to parents)
+Checking distance of 633/1898 surf pts
+Match 0. Mean=3.2657394. Sq Mean=25.651949. Median=5.2161136. Range=[0.0785638 12.261561]. Mag=7.491832518272417. Len=138.98861799294002. Center: 34.54421, -118.12189, 6.76364. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 1. Mean=3.2815037. Sq Mean=25.655241. Median=5.1914706. Range=[0.0785638 12.261561]. Mag=7.5096402082343765. Len=144.87775098998196. Center: 34.53131, -118.09105, 6.74783. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 2. Mean=3.3180823. Sq Mean=25.812794. Median=5.1819277. Range=[0.0785638 12.111481]. Mag=7.534854640639189. Len=152.25362015478098. Center: 34.54501, -118.13026, 6.78918. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 3. Mean=3.3050487. Sq Mean=25.82007. Median=5.192908. Range=[0.0785638 12.22151]. Mag=7.518083334338326. Len=146.36448715773903. Center: 34.55780, -118.16114, 6.80591. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 4. Mean=3.3946648. Sq Mean=26.454296. Median=5.192189. Range=[0.0785638 12.261561]. Mag=7.52672466830614. Len=150.7668839870249. Center: 34.51824, -118.06057, 6.73333. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Took 3 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1811
+Adding 4 sects that match date but were excluded: San Andreas (San Bernardino N), Subsection 2,San Andreas (San Bernardino N), Subsection 3,San Andreas (San Bernardino N), Subsection 4,San Andreas (San Bernardino N), Subsection 5
+**********************************
+**********************************
+Loading cadidate for 1812/12/08 08:40: M7.5. Len=144.17466724504968. Center: 34.53938, -118.11301, 6.00000
+Found 92 candidates (609 filtered due to parents)
+Checking distance of 633/1898 surf pts
+Match 0. Mean=3.2657394. Sq Mean=25.651949. Median=5.2161136. Range=[0.0785638 12.261561]. Mag=7.491832518272414. Len=138.98861799294002. Center: 34.54421, -118.12189, 6.76364. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 1. Mean=3.2815037. Sq Mean=25.655241. Median=5.1914706. Range=[0.0785638 12.261561]. Mag=7.509640208234377. Len=144.87775098998196. Center: 34.53131, -118.09105, 6.74783. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 2. Mean=3.3180823. Sq Mean=25.812794. Median=5.1819277. Range=[0.0785638 12.111481]. Mag=7.53485464063919. Len=152.25362015478098. Center: 34.54501, -118.13026, 6.78918. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 3. Mean=3.3050487. Sq Mean=25.82007. Median=5.192908. Range=[0.0785638 12.22151]. Mag=7.518083334338326. Len=146.36448715773903. Center: 34.55780, -118.16114, 6.80591. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Match 4. Mean=3.3946648. Sq Mean=26.454296. Median=5.192189. Range=[0.0785638 12.261561]. Mag=7.52672466830614. Len=150.7668839870249. Center: 34.51824, -118.06057, 6.73333. Parents: San Andreas (San Bernardino N); San Andreas (Mojave S); San Andreas (Mojave N)
+Took 2 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1811
+Adding 4 sects that match date but were excluded: San Andreas (San Bernardino N), Subsection 2,San Andreas (San Bernardino N), Subsection 3,San Andreas (San Bernardino N), Subsection 4,San Andreas (San Bernardino N), Subsection 5
+**********************************
+**********************************
+Loading cadidate for 1812/12/21 12:40: M7.1. Len=54.54613716031056. Center: 34.19500, -119.86746, 6.00000
+Found 0 candidates (1067 filtered due to parents)
+Checking distance of 523/1568 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1812/12/21 12:40: M7.1. Len=54.54613716031056. Center: 34.19500, -119.86746, 6.00000
+Found 0 candidates (1112 filtered due to parents)
+Checking distance of 523/1568 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1838/09/10 20:40: M7.4. Len=130.27227114162267. Center: 37.24501, -122.04397, 6.00000
+Found 95 candidates (3424 filtered due to parents)
+Checking distance of 568/1703 surf pts
+Match 0. Mean=2.2672496. Sq Mean=14.2013035. Median=2.3190005. Range=[0.0074809752 12.114542]. Mag=7.469377283586505. Len=130.33239759970525. Center: 37.24961, -122.06082, 7.05695. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 1. Mean=2.2667649. Sq Mean=14.329965. Median=2.3478527. Range=[0.0074809752 12.87708]. Mag=7.448137709395284. Len=124.1026759202099. Center: 37.22837, -122.03896, 7.08445. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 2. Mean=2.326192. Sq Mean=14.493873. Median=2.3189645. Range=[0.0074809752 12.114542]. Mag=7.49054237236888. Len=137.27936478042466. Center: 37.22998, -122.03646, 7.14428. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 3. Mean=2.3293922. Sq Mean=14.638462. Median=2.3368695. Range=[0.0074809752 12.87708]. Mag=7.470340933677967. Len=131.0496431009293. Center: 37.20881, -122.01448, 7.17460. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 4. Mean=2.370336. Sq Mean=14.877081. Median=2.3190367. Range=[0.0074809752 12.114542]. Mag=7.489599558634326. Len=136.56211927920072. Center: 37.27098, -122.08257, 7.03192. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Took 6 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1905
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1838/09/10 20:40: M7.4. Len=130.27227114162267. Center: 37.24501, -122.04397, 6.00000
+Found 95 candidates (4195 filtered due to parents)
+Checking distance of 568/1703 surf pts
+Match 0. Mean=2.2588935. Sq Mean=14.18763. Median=2.3142946. Range=[0.0074809752 12.114542]. Mag=7.470530812913484. Len=130.33239759970525. Center: 37.24964, -122.06078, 7.03199. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 1. Mean=2.2580185. Sq Mean=14.315834. Median=2.3258862. Range=[0.0074809752 12.87708]. Mag=7.449350122927494. Len=124.1026759202099. Center: 37.22840, -122.03892, 7.05826. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 2. Mean=2.3172665. Sq Mean=14.477849. Median=2.3142946. Range=[0.0074809752 12.114542]. Mag=7.492417835272764. Len=137.27936478042466. Center: 37.23003, -122.03640, 7.10359. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 3. Mean=2.3200676. Sq Mean=14.621888. Median=2.324288. Range=[0.0074809752 12.87708]. Mag=7.4723076190956705. Len=131.0496431009293. Center: 37.20887, -122.01442, 7.13199. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Match 4. Mean=2.3623326. Sq Mean=14.86382. Median=2.3142946. Range=[0.0074809752 12.114542]. Mag=7.490699520333867. Len=136.56211927920072. Center: 37.27101, -122.08254, 7.00808. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM
+Took 6 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1905
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1852/11/29 12:01: M6.5. Len=24.08549627328382. Center: 32.50002, -114.99995, 6.00000
+Found 46 candidates (0 filtered due to parents)
+Checking distance of 325/325 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1852/11/29 12:01: M6.5. Len=24.08549627328382. Center: 32.50002, -114.99995, 6.00000
+Found 46 candidates (0 filtered due to parents)
+Checking distance of 325/325 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1857/01/09 08:25: M7.9. Len=367.9847522415232. Center: 34.92442, -118.96332, 6.00000
+Found 15 candidates (685 filtered due to parents)
+Checking distance of 535/4810 surf pts
+Match 0. Mean=3.8435836. Sq Mean=45.618347. Median=4.233301. Range=[0.0525143 37.048416]. Mag=7.860465212426474. Len=333.3319555673089. Center: 34.97867, -119.11738, 7.00249. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 1. Mean=3.844325. Sq Mean=45.649986. Median=4.2447896. Range=[0.0525143 37.048416]. Mag=7.859668618635864. Len=328.7746604102418. Center: 34.97265, -119.10871, 6.98908. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 2. Mean=3.861209. Sq Mean=45.707787. Median=4.233301. Range=[0.0525143 37.048416]. Mag=7.860996270605997. Len=337.88925072437456. Center: 34.98482, -119.12615, 7.01756. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 3. Mean=3.8654232. Sq Mean=45.94694. Median=4.400602. Range=[0.0525143 37.048416]. Mag=7.858604808330429. Len=324.2173652531753. Center: 34.96675, -119.10013, 6.97737. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 4. Mean=3.9063148. Sq Mean=46.09425. Median=4.234759. Range=[0.0525143 37.048416]. Mag=7.861263860451039. Len=342.4465458814405. Center: 34.99108, -119.13502, 7.03426. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 1856
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1857/01/09 08:25: M7.9. Len=367.9847522415232. Center: 34.92442, -118.96332, 6.00000
+Found 15 candidates (685 filtered due to parents)
+Checking distance of 535/4810 surf pts
+Match 0. Mean=3.8435836. Sq Mean=45.618347. Median=4.233301. Range=[0.0525143 37.048416]. Mag=7.860465212426473. Len=333.3319555673089. Center: 34.97867, -119.11738, 7.00249. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 1. Mean=3.844325. Sq Mean=45.649986. Median=4.2447896. Range=[0.0525143 37.048416]. Mag=7.859668618635863. Len=328.7746604102418. Center: 34.97265, -119.10871, 6.98908. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 2. Mean=3.861209. Sq Mean=45.707787. Median=4.233301. Range=[0.0525143 37.048416]. Mag=7.860996270605998. Len=337.88925072437456. Center: 34.98482, -119.12615, 7.01756. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 3. Mean=3.8654232. Sq Mean=45.94694. Median=4.400602. Range=[0.0525143 37.048416]. Mag=7.858604808330428. Len=324.2173652531753. Center: 34.96675, -119.10013, 6.97737. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Match 4. Mean=3.9063148. Sq Mean=46.09425. Median=4.234759. Range=[0.0525143 37.048416]. Mag=7.86126386045104. Len=342.4465458814405. Center: 34.99108, -119.13502, 7.03426. Parents: San Andreas (Parkfield); San Andreas (Cholame) rev; San Andreas (Carrizo) rev; San Andreas (Big Bend); San Andreas (Mojave N); San Andreas (Mojave S)
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 1856
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1868/10/21 07:54: M7.0. Len=35.01230248538239. Center: 37.63331, -122.05081, 6.00000
+Found 79 candidates (841 filtered due to parents)
+Checking distance of 468/468 surf pts
+Match 0. Mean=2.058301. Sq Mean=5.0240335. Median=2.6058135. Range=[0.66831154 4.1314034]. Mag=6.753043734272022. Len=40.780422928258425. Center: 37.64395, -122.02597, 8.25794. Parents: Hayward (So) 2011 CFM
+Match 1. Mean=2.0860887. Sq Mean=5.1353793. Median=2.697053. Range=[0.99384284 4.9000545]. Mag=6.663572158761528. Len=33.98368577354804. Center: 37.66892, -122.04810, 8.24133. Parents: Hayward (So) 2011 CFM
+Match 2. Mean=2.0608473. Sq Mean=5.217816. Median=2.6551495. Range=[0.66831154 5.668272]. Mag=6.6577497923602. Len=33.98368577354957. Center: 37.61916, -122.00349, 8.30153. Parents: Hayward (So) 2011 CFM
+Match 3. Mean=2.0706213. Sq Mean=5.239042. Median=2.7729213. Range=[0.99384284 5.668272]. Mag=6.546856698193446. Len=27.18694861883918. Center: 37.64417, -122.02553, 8.29166. Parents: Hayward (So) 2011 CFM
+Match 4. Mean=2.430411. Sq Mean=8.577604. Median=2.6081133. Range=[0.66831154 10.064661]. Mag=6.845427061808234. Len=47.57716008296831. Center: 37.61916, -122.00364, 8.08324. Parents: Hayward (So) 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1867
+Adding 2 sects that match date but were excluded: Hayward (So) 2011 CFM, Subsection 0,Hayward (So) 2011 CFM, Subsection 1
+**********************************
+**********************************
+Loading cadidate for 1868/10/21 07:54: M7.0. Len=35.01230248538239. Center: 37.63331, -122.05081, 6.00000
+Found 79 candidates (1003 filtered due to parents)
+Checking distance of 468/468 surf pts
+Match 0. Mean=2.058301. Sq Mean=5.0240335. Median=2.6058135. Range=[0.66831154 4.1314034]. Mag=6.753043734272021. Len=40.780422928258425. Center: 37.64395, -122.02597, 8.25794. Parents: Hayward (So) 2011 CFM
+Match 1. Mean=2.0860887. Sq Mean=5.1353793. Median=2.697053. Range=[0.99384284 4.9000545]. Mag=6.663572158761529. Len=33.98368577354804. Center: 37.66892, -122.04810, 8.24133. Parents: Hayward (So) 2011 CFM
+Match 2. Mean=2.0608473. Sq Mean=5.217816. Median=2.6551495. Range=[0.66831154 5.668272]. Mag=6.657749792360199. Len=33.98368577354957. Center: 37.61916, -122.00349, 8.30153. Parents: Hayward (So) 2011 CFM
+Match 3. Mean=2.0706213. Sq Mean=5.239042. Median=2.7729213. Range=[0.99384284 5.668272]. Mag=6.546856698193447. Len=27.18694861883918. Center: 37.64417, -122.02553, 8.29166. Parents: Hayward (So) 2011 CFM
+Match 4. Mean=2.430411. Sq Mean=8.577604. Median=2.6081133. Range=[0.66831154 10.064661]. Mag=6.845427061808235. Len=47.57716008296831. Center: 37.61916, -122.00364, 8.08324. Parents: Hayward (So) 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1867
+Adding 2 sects that match date but were excluded: Hayward (So) 2011 CFM, Subsection 0,Hayward (So) 2011 CFM, Subsection 1
+**********************************
+**********************************
+Loading cadidate for 1872/03/26 02:31: M7.6. Len=101.63759767750211. Center: 36.74024, -118.12892, 6.00000
+Found 45 candidates (116 filtered due to parents)
+Checking distance of 670/1339 surf pts
+Match 0. Mean=3.226883. Sq Mean=19.70116. Median=4.6658406. Range=[0.37183595 10.920427]. Mag=7.295593258555275. Len=101.84366143331764. Center: 36.74696, -118.12139, 7.42500. Parents: Owens Valley
+Match 1. Mean=3.2645528. Sq Mean=19.987244. Median=4.732916. Range=[0.39920384 11.8032]. Mag=7.26195862411104. Len=95.47843259373546. Center: 36.71990, -118.10991, 7.42500. Parents: Owens Valley
+Match 2. Mean=3.2551491. Sq Mean=20.25012. Median=4.7849555. Range=[0.37183595 12.78849]. Mag=7.2619586241110445. Len=95.47843259373599. Center: 36.77438, -118.13128, 7.42500. Parents: Owens Valley
+Match 3. Mean=3.3254256. Sq Mean=20.448496. Median=4.653962. Range=[0.37183595 10.920427]. Mag=7.327188141071551. Len=108.20889027289945. Center: 36.77402, -118.13291, 7.42500. Parents: Owens Valley
+Match 4. Mean=3.2918022. Sq Mean=20.533035. Median=4.821727. Range=[0.39920384 12.78849]. Mag=7.226002578468551. Len=89.1132037541538. Center: 36.74734, -118.11969, 7.42500. Parents: Owens Valley
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1871
+Adding 1 sects that match date but were excluded: Owens Valley, Subsection 16
+**********************************
+**********************************
+Loading cadidate for 1872/03/26 02:31: M7.6. Len=101.63759767750211. Center: 36.74024, -118.12892, 6.00000
+Found 45 candidates (116 filtered due to parents)
+Checking distance of 670/1339 surf pts
+Match 0. Mean=3.226883. Sq Mean=19.70116. Median=4.6658406. Range=[0.37183595 10.920427]. Mag=7.295593258555274. Len=101.84366143331764. Center: 36.74696, -118.12139, 7.42500. Parents: Owens Valley
+Match 1. Mean=3.2645528. Sq Mean=19.987244. Median=4.732916. Range=[0.39920384 11.8032]. Mag=7.26195862411104. Len=95.47843259373546. Center: 36.71990, -118.10991, 7.42500. Parents: Owens Valley
+Match 2. Mean=3.2551491. Sq Mean=20.25012. Median=4.7849555. Range=[0.37183595 12.78849]. Mag=7.261958624111044. Len=95.47843259373599. Center: 36.77438, -118.13128, 7.42500. Parents: Owens Valley
+Match 3. Mean=3.3254256. Sq Mean=20.448496. Median=4.653962. Range=[0.37183595 10.920427]. Mag=7.32718814107155. Len=108.20889027289945. Center: 36.77402, -118.13291, 7.42500. Parents: Owens Valley
+Match 4. Mean=3.2918022. Sq Mean=20.533035. Median=4.821727. Range=[0.39920384 12.78849]. Mag=7.226002578468553. Len=89.1132037541538. Center: 36.74734, -118.11969, 7.42500. Parents: Owens Valley
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1871
+Adding 1 sects that match date but were excluded: Owens Valley, Subsection 16
+**********************************
+**********************************
+Loading cadidate for 1872/03/26 06:07: M6.8. Len=24.16627863875825. Center: 36.90001, -118.19996, 6.00000
+Found 85 candidates (42 filtered due to parents)
+Checking distance of 325/325 surf pts
+Match 0. Mean=3.9816594. Sq Mean=22.373507. Median=4.9032826. Range=[2.2524712 10.771662]. Mag=6.589087865427427. Len=25.460915358330386. Center: 36.90998, -118.18631, 7.42500. Parents: Owens Valley
+Match 1. Mean=4.055238. Sq Mean=23.28804. Median=5.0372195. Range=[2.2524712 11.782628]. Mag=6.447489880860727. Len=19.095686518747687. Center: 36.88306, -118.17416, 7.42500. Parents: Owens Valley
+Match 2. Mean=4.1308208. Sq Mean=24.219381. Median=5.555799. Range=[2.2524712 12.366496]. Mag=6.447489880860722. Len=19.095686518747453. Center: 36.93677, -118.19887, 7.42500. Parents: Owens Valley
+Match 3. Mean=4.2078896. Sq Mean=24.283194. Median=4.9027576. Range=[2.2524712 10.771662]. Mag=6.6989197950498225. Len=31.826144197913358. Center: 36.88334, -118.17328, 7.42500. Parents: Owens Valley
+Match 4. Mean=4.191212. Sq Mean=25.06968. Median=5.804942. Range=[2.2524712 12.366496]. Mag=6.2574188377517075. Len=12.730457679164754. Center: 36.90979, -118.18692, 7.42500. Parents: Owens Valley
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1871
+Adding 13 sects that match date but were excluded: Owens Valley, Subsection 0,Owens Valley, Subsection 1,Owens Valley, Subsection 2,Owens Valley, Subsection 3,Owens Valley, Subsection 4,Owens Valley, Subsection 5,Owens Valley, Subsection 6,Owens Valley, Subsection 7,Owens Valley, Subsection 8,Owens Valley, Subsection 13,Owens Valley, Subsection 14,Owens Valley, Subsection 15,Owens Valley, Subsection 16
+Throwing out match as this is likely a smaller aftershock. Mag Delta: 7.327188141071551 - 6.8 = 0.5271881410715515
+**********************************
+**********************************
+Loading cadidate for 1872/03/26 06:07: M6.8. Len=24.16627863875825. Center: 36.90001, -118.19996, 6.00000
+Found 85 candidates (42 filtered due to parents)
+Checking distance of 325/325 surf pts
+Match 0. Mean=3.9816594. Sq Mean=22.373507. Median=4.9032826. Range=[2.2524712 10.771662]. Mag=6.589087865427428. Len=25.460915358330386. Center: 36.90998, -118.18631, 7.42500. Parents: Owens Valley
+Match 1. Mean=4.055238. Sq Mean=23.28804. Median=5.0372195. Range=[2.2524712 11.782628]. Mag=6.447489880860727. Len=19.095686518747687. Center: 36.88306, -118.17416, 7.42500. Parents: Owens Valley
+Match 2. Mean=4.1308208. Sq Mean=24.219381. Median=5.555799. Range=[2.2524712 12.366496]. Mag=6.447489880860722. Len=19.095686518747453. Center: 36.93677, -118.19887, 7.42500. Parents: Owens Valley
+Match 3. Mean=4.2078896. Sq Mean=24.283194. Median=4.9027576. Range=[2.2524712 10.771662]. Mag=6.698919795049821. Len=31.826144197913358. Center: 36.88334, -118.17328, 7.42500. Parents: Owens Valley
+Match 4. Mean=4.191212. Sq Mean=25.06968. Median=5.804942. Range=[2.2524712 12.366496]. Mag=6.257418837751708. Len=12.730457679164754. Center: 36.90979, -118.18692, 7.42500. Parents: Owens Valley
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1871
+Adding 13 sects that match date but were excluded: Owens Valley, Subsection 0,Owens Valley, Subsection 1,Owens Valley, Subsection 2,Owens Valley, Subsection 3,Owens Valley, Subsection 4,Owens Valley, Subsection 5,Owens Valley, Subsection 6,Owens Valley, Subsection 7,Owens Valley, Subsection 8,Owens Valley, Subsection 13,Owens Valley, Subsection 14,Owens Valley, Subsection 15,Owens Valley, Subsection 16
+Throwing out match as this is likely a smaller aftershock. Mag Delta: 7.32718814107155 - 6.8 = 0.5271881410715498
+**********************************
+**********************************
+Loading cadidate for 1872/04/11 11:01: M6.8. Len=14.929809867396967. Center: 37.30433, -118.31466, 6.00000
+Found 82 candidates (83 filtered due to parents)
+Checking distance of 208/208 surf pts
+Match 0. Mean=4.434135. Sq Mean=27.2846. Median=5.906541. Range=[1.90592 12.228484]. Mag=6.2261872334878845. Len=12.302767270572447. Center: 37.33652, -118.29197, 7.15000. Parents: White Mountains
+Match 1. Mean=4.615846. Sq Mean=28.00471. Median=5.4190164. Range=[1.90592 11.542813]. Mag=6.4164648479008175. Len=18.454150905857613. Center: 37.30998, -118.28231, 7.15000. Parents: White Mountains
+Match 2. Mean=4.929135. Sq Mean=30.360102. Median=5.663423. Range=[2.2364702 11.699512]. Mag=6.22618723348786. Len=12.302767270571714. Center: 37.28338, -118.27299, 7.15000. Parents: White Mountains
+Match 3. Mean=4.893011. Sq Mean=30.873009. Median=5.3987117. Range=[1.90592 11.542813]. Mag=6.558062832467532. Len=24.605534541144344. Center: 37.33684, -118.29043, 7.15000. Parents: White Mountains
+Match 4. Mean=4.8882127. Sq Mean=31.668823. Median=5.885534. Range=[1.90592 12.228484]. Mag=6.416464847900861. Len=18.45415090585918. Center: 37.36348, -118.29957, 7.15000. Parents: White Mountains
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1872/04/11 11:01: M6.8. Len=14.929809867396967. Center: 37.30433, -118.31466, 6.00000
+Found 82 candidates (83 filtered due to parents)
+Checking distance of 208/208 surf pts
+Match 0. Mean=4.434135. Sq Mean=27.2846. Median=5.906541. Range=[1.90592 12.228484]. Mag=6.2261872334878845. Len=12.302767270572447. Center: 37.33652, -118.29197, 7.15000. Parents: White Mountains
+Match 1. Mean=4.615846. Sq Mean=28.00471. Median=5.4190164. Range=[1.90592 11.542813]. Mag=6.416464847900817. Len=18.454150905857613. Center: 37.30998, -118.28231, 7.15000. Parents: White Mountains
+Match 2. Mean=4.929135. Sq Mean=30.360102. Median=5.663423. Range=[2.2364702 11.699512]. Mag=6.22618723348786. Len=12.302767270571714. Center: 37.28338, -118.27299, 7.15000. Parents: White Mountains
+Match 3. Mean=4.893011. Sq Mean=30.873009. Median=5.3987117. Range=[1.90592 11.542813]. Mag=6.55806283246753. Len=24.605534541144344. Center: 37.33684, -118.29043, 7.15000. Parents: White Mountains
+Match 4. Mean=4.8882127. Sq Mean=31.668823. Median=5.885534. Range=[1.90592 12.228484]. Mag=6.416464847900861. Len=18.45415090585918. Center: 37.36348, -118.29957, 7.15000. Parents: White Mountains
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1885/04/11 20:06: M6.5. Len=20.137128649139626. Center: 36.18790, -120.81350, 8.00000
+Found 0 candidates (120 filtered due to parents)
+Checking distance of 252/252 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1885/04/11 20:06: M6.5. Len=20.137128649139626. Center: 36.18790, -120.81350, 8.00000
+Found 0 candidates (120 filtered due to parents)
+Checking distance of 252/252 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1890/02/09 04:07: M6.8. Len=17.31786423102157. Center: 33.45440, -116.36228, 6.00000
+Found 4 candidates (77 filtered due to parents)
+Checking distance of 234/234 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1890/02/09 04:07: M6.8. Len=17.31786423102157. Center: 33.45440, -116.36228, 6.00000
+Found 4 candidates (77 filtered due to parents)
+Checking distance of 234/234 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1892/02/23 23:21: M7.3. Len=40.519776648643315. Center: 32.54997, -115.62997, 6.00000
+Found 105 candidates (7 filtered due to parents)
+Checking distance of 546/546 surf pts
+Match 0. Mean=6.85132. Sq Mean=51.141296. Median=7.393243. Range=[4.0507746 14.320609]. Mag=6.296593024926996. Len=33.18053321882476. Center: 32.48153, -115.64271, 9.97500. Parents: Laguna Salada
+Match 1. Mean=6.93669. Sq Mean=51.33268. Median=7.397916. Range=[4.0507746 11.3277645]. Mag=6.455399815788803. Len=46.45274650635395. Center: 32.48043, -115.64344, 9.97500. Parents: Laguna Salada
+Match 2. Mean=6.866107. Sq Mean=51.443237. Median=7.3926706. Range=[4.0507746 14.320609]. Mag=6.383164837401407. Len=39.816639862589916. Center: 32.46113, -115.61693, 9.97500. Parents: Laguna Salada
+Match 3. Mean=6.9621463. Sq Mean=51.62538. Median=7.4070067. Range=[4.0507746 11.3277645]. Mag=6.382042478917674. Len=39.816639862588794. Center: 32.50065, -115.66934, 9.97500. Parents: Laguna Salada
+Match 4. Mean=6.989995. Sq Mean=51.754723. Median=7.4264736. Range=[4.0507746 11.3277645]. Mag=6.517431512443711. Len=53.088853150119064. Center: 32.50135, -115.66727, 9.97500. Parents: Laguna Salada
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Thu Dec 31 00:00:00 PST 1891
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1892/02/23 23:21: M7.3. Len=40.519776648643315. Center: 32.54997, -115.62997, 6.00000
+Found 105 candidates (7 filtered due to parents)
+Checking distance of 546/546 surf pts
+Match 0. Mean=6.85132. Sq Mean=51.141296. Median=7.393243. Range=[4.0507746 14.320609]. Mag=6.296593024926994. Len=33.18053321882476. Center: 32.48153, -115.64271, 9.97500. Parents: Laguna Salada
+Match 1. Mean=6.937167. Sq Mean=51.34756. Median=7.397916. Range=[4.0507746 11.473981]. Mag=6.4553998157888. Len=46.45274650635395. Center: 32.48043, -115.64344, 9.99909. Parents: Laguna Salada
+Match 2. Mean=6.866107. Sq Mean=51.443237. Median=7.3926706. Range=[4.0507746 14.320609]. Mag=6.383164837401407. Len=39.816639862589916. Center: 32.46113, -115.61693, 9.97500. Parents: Laguna Salada
+Match 3. Mean=6.9625425. Sq Mean=51.638805. Median=7.4070067. Range=[4.0507746 11.473981]. Mag=6.382042478917673. Len=39.816639862588794. Center: 32.50065, -115.66934, 10.00311. Parents: Laguna Salada
+Match 4. Mean=6.991318. Sq Mean=51.78631. Median=7.4264736. Range=[4.0507746 11.459657]. Mag=6.517431512443714. Len=53.088853150119064. Center: 32.50135, -115.66727, 10.03765. Parents: Laguna Salada
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Thu Dec 31 00:00:00 PST 1891
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1892/04/19 02:51: M6.6. Len=16.89812621728347. Center: 38.41409, -122.08161, 8.00000
+Found 0 candidates (147 filtered due to parents)
+Checking distance of 306/306 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1892/04/19 02:51: M6.6. Len=16.89812621728347. Center: 38.41409, -122.08161, 8.00000
+Found 0 candidates (191 filtered due to parents)
+Checking distance of 306/306 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1892/05/28 03:16: M6.5. Len=24.067661532869252. Center: 33.20002, -116.19994, 6.00000
+Found 15 candidates (83 filtered due to parents)
+Checking distance of 325/325 surf pts
+Match 0. Mean=3.7591517. Sq Mean=28.941666. Median=6.1740565. Range=[0.3257688 15.833514]. Mag=6.327154818814254. Len=17.13023069483. Center: 33.15871, -116.14137, 7.57579. Parents: San Jacinto (Borrego)
+Match 1. Mean=3.6533818. Sq Mean=29.460508. Median=6.589305. Range=[0.3257688 15.833514]. Mag=6.187367712296912. Len=11.420153796552597. Center: 33.17306, -116.15936, 7.22359. Parents: San Jacinto (Borrego)
+Match 2. Mean=4.4809165. Sq Mean=35.19381. Median=6.164951. Range=[0.3257688 15.833514]. Mag=6.392429656137793. Len=22.840307593107607. Center: 33.14281, -116.12200, 8.04784. Parents: San Jacinto (Borrego)
+Match 3. Mean=5.4618535. Sq Mean=49.55312. Median=6.1961184. Range=[0.3257688 15.833514]. Mag=6.43987597674331. Len=28.55038449138334. Center: 33.12517, -116.10346, 8.40520. Parents: San Jacinto (Borrego)
+Match 4. Mean=4.9294. Sq Mean=50.415234. Median=8.05754. Range=[0.58623755 19.606968]. Mag=6.111181190512317. Len=11.420153796553961. Center: 33.14023, -116.11884, 7.94111. Parents: San Jacinto (Borrego)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1967
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1892/05/28 03:16: M6.5. Len=24.067661532869252. Center: 33.20002, -116.19994, 6.00000
+Found 15 candidates (83 filtered due to parents)
+Checking distance of 325/325 surf pts
+Match 0. Mean=3.8263624. Sq Mean=29.639233. Median=6.3113036. Range=[0.3257688 15.833514]. Mag=6.333924330677909. Len=17.13023069483. Center: 33.15871, -116.14137, 7.45869. Parents: San Jacinto (Borrego)
+Match 1. Mean=3.685215. Sq Mean=29.776997. Median=6.589305. Range=[0.3257688 15.833514]. Mag=6.191753343102106. Len=11.420153796552597. Center: 33.17306, -116.15936, 7.18538. Parents: San Jacinto (Borrego)
+Match 2. Mean=4.5416627. Sq Mean=35.83075. Median=6.2891235. Range=[0.3257688 15.833514]. Mag=6.411883539857673. Len=22.840307593107607. Center: 33.14281, -116.12200, 7.88565. Parents: San Jacinto (Borrego)
+Match 3. Mean=5.522151. Sq Mean=50.2114. Median=6.334304. Range=[0.3257688 15.833514]. Mag=6.470634056851686. Len=28.55038449138334. Center: 33.12517, -116.10346, 8.22789. Parents: San Jacinto (Borrego)
+Match 4. Mean=5.014567. Sq Mean=51.45308. Median=8.137059. Range=[0.62617946 19.685972]. Mag=6.1202221768078955. Len=11.420153796553961. Center: 33.14023, -116.11884, 7.75708. Parents: San Jacinto (Borrego)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1967
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1899/12/25 04:26: M6.7. Len=27.143645779994934. Center: 33.73034, -116.88015, 6.00000
+Found 13 candidates (44 filtered due to parents)
+Checking distance of 364/364 surf pts
+Match 0. Mean=4.2288957. Sq Mean=32.246315. Median=6.8749633. Range=[1.3070986 15.64892]. Mag=6.467001439111864. Len=15.394959655037393. Center: 33.69665, -116.84621, 8.65200. Parents: San Jacinto (Anza) rev
+Match 1. Mean=4.6379275. Sq Mean=35.2024. Median=6.827291. Range=[1.3070986 15.64892]. Mag=6.659863247434501. Len=23.09243948255517. Center: 33.67606, -116.81278, 8.65200. Parents: San Jacinto (Anza) rev
+Match 2. Mean=5.688076. Sq Mean=49.50523. Median=6.834377. Range=[1.3070986 15.64892]. Mag=6.801547537910232. Len=30.789919310072726. Center: 33.65535, -116.77947, 8.65200. Parents: San Jacinto (Anza) rev
+Match 3. Mean=6.264339. Sq Mean=67.59551. Median=9.640425. Range=[1.3070986 21.59328]. Mag=6.46745155558865. Len=15.394959655036757. Center: 33.65567, -116.77918, 8.65200. Parents: San Jacinto (Anza) rev
+Match 4. Mean=7.0820947. Sq Mean=80.15648. Median=6.9084644. Range=[1.3070986 22.088293]. Mag=6.915912140237687. Len=38.48739913759047. Center: 33.63460, -116.74621, 8.65200. Parents: San Jacinto (Anza) rev
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1917
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1899/12/25 04:26: M6.7. Len=27.143645779994934. Center: 33.73034, -116.88015, 6.00000
+Found 13 candidates (44 filtered due to parents)
+Checking distance of 364/364 surf pts
+Match 0. Mean=4.2288957. Sq Mean=32.246315. Median=6.8749633. Range=[1.3070986 15.64892]. Mag=6.467001439111864. Len=15.394959655037393. Center: 33.69665, -116.84621, 8.65200. Parents: San Jacinto (Anza) rev
+Match 1. Mean=4.6379275. Sq Mean=35.2024. Median=6.827291. Range=[1.3070986 15.64892]. Mag=6.659863247434501. Len=23.09243948255517. Center: 33.67606, -116.81278, 8.65200. Parents: San Jacinto (Anza) rev
+Match 2. Mean=5.688076. Sq Mean=49.50523. Median=6.834377. Range=[1.3070986 15.64892]. Mag=6.801547537910231. Len=30.789919310072726. Center: 33.65535, -116.77947, 8.65200. Parents: San Jacinto (Anza) rev
+Match 3. Mean=6.264339. Sq Mean=67.59551. Median=9.640425. Range=[1.3070986 21.59328]. Mag=6.46745155558865. Len=15.394959655036757. Center: 33.65567, -116.77918, 8.65200. Parents: San Jacinto (Anza) rev
+Match 4. Mean=7.0820947. Sq Mean=80.15648. Median=6.9084644. Range=[1.3070986 22.088293]. Mag=6.915912140237687. Len=38.48739913759047. Center: 33.63460, -116.74621, 8.65200. Parents: San Jacinto (Anza) rev
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1917
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1906/04/18 05:12: M7.8. Len=459.49367636727. Center: 38.47089, -123.09280, 6.00000
+Found 47 candidates (2447 filtered due to parents)
+Checking distance of 502/6019 surf pts
+Match 0. Mean=3.1621368. Sq Mean=21.59953. Median=2.5262258. Range=[0.0184635 12.098945]. Mag=7.938773726448774. Len=456.7422398465984. Center: 38.40557, -123.05575, 6.12439. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 1. Mean=3.1746116. Sq Mean=21.668743. Median=2.5255463. Range=[0.0184635 12.098945]. Mag=7.94582693881701. Len=463.6892070273178. Center: 38.38468, -123.03560, 6.16210. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 2. Mean=3.1742175. Sq Mean=21.76901. Median=2.5274367. Range=[0.0184635 12.098945]. Mag=7.934485492186701. Len=451.29232087652673. Center: 38.38759, -123.04305, 6.12514. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 3. Mean=3.186832. Sq Mean=21.83902. Median=2.5271711. Range=[0.0184635 12.098945]. Mag=7.941611512943964. Len=458.23928805724614. Center: 38.36673, -123.02286, 6.16321. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 4. Mean=3.1938899. Sq Mean=21.884813. Median=2.5465913. Range=[0.0184635 12.098945]. Mag=7.931599527048582. Len=449.79527266588025. Center: 38.42646, -123.07567, 6.08566. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Took 6 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1905
+Adding 1 sects that match date but were excluded: San Andreas (Santa Cruz Mts) 2011 CFM, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 1906/04/18 05:12: M7.8. Len=459.49367636727. Center: 38.47089, -123.09280, 6.00000
+Found 47 candidates (2744 filtered due to parents)
+Checking distance of 502/6019 surf pts
+Match 0. Mean=3.160267. Sq Mean=21.596514. Median=2.5262258. Range=[0.0184635 12.098945]. Mag=7.939135859012787. Len=456.7422398465984. Center: 38.40558, -123.05574, 6.11734. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 1. Mean=3.1725256. Sq Mean=21.665037. Median=2.5255463. Range=[0.0184635 12.098945]. Mag=7.946435191786522. Len=463.6892070273178. Center: 38.38469, -123.03558, 6.15023. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 2. Mean=3.1723244. Sq Mean=21.765966. Median=2.5274367. Range=[0.0184635 12.098945]. Mag=7.9348515325236635. Len=451.29232087652673. Center: 38.38759, -123.04304, 6.11802. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 3. Mean=3.1847203. Sq Mean=21.83528. Median=2.5271711. Range=[0.0184635 12.098945]. Mag=7.942226225426719. Len=458.23928805724614. Center: 38.36674, -123.02284, 6.15122. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Match 4. Mean=3.1924045. Sq Mean=21.883455. Median=2.5545578. Range=[0.0184635 12.098945]. Mag=7.931707344812955. Len=449.79527266588025. Center: 38.42646, -123.07567, 6.08357. Parents: San Andreas (Santa Cruz Mts) 2011 CFM; San Andreas (Peninsula) 2011 CFM; San Andreas (North Coast) 2011 CFM; San Andreas (Offshore) 2011 CFM
+Took 6 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1905
+Adding 1 sects that match date but were excluded: San Andreas (Santa Cruz Mts) 2011 CFM, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 1915/11/20 16:13: M6.6. Len=23.99111168382332. Center: 32.00002, -114.99995, 6.00000
+Found 6 candidates (2 filtered due to parents)
+Checking distance of 325/325 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1915/11/20 16:13: M6.6. Len=23.99111168382332. Center: 32.00002, -114.99995, 6.00000
+Found 6 candidates (2 filtered due to parents)
+Checking distance of 325/325 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1918/04/21 15:32: M6.8. Len=37.225487296104625. Center: 33.80882, -117.00091, 6.00000
+Found 4 candidates (135 filtered due to parents)
+Checking distance of 494/494 surf pts
+Match 0. Mean=8.626138. Sq Mean=152.0786. Median=13.101634. Range=[0.56617683 31.923794]. Mag=6.467001439111864. Len=15.394959655037393. Center: 33.69665, -116.84621, 8.65200. Parents: San Jacinto (Anza) rev
+Match 1. Mean=10.212937. Sq Mean=175.48564. Median=13.088626. Range=[0.56617683 31.923794]. Mag=6.659863247434501. Len=23.09243948255517. Center: 33.67606, -116.81278, 8.65200. Parents: San Jacinto (Anza) rev
+Match 2. Mean=11.967899. Sq Mean=217.7689. Median=13.115273. Range=[0.56617683 31.923794]. Mag=6.801547537910232. Len=30.789919310072726. Center: 33.65535, -116.77947, 8.65200. Parents: San Jacinto (Anza) rev
+Match 3. Mean=14.397711. Sq Mean=308.10562. Median=19.976873. Range=[0.717572 39.04985]. Mag=6.46745155558865. Len=15.394959655036757. Center: 33.65567, -116.77918, 8.65200. Parents: San Jacinto (Anza) rev
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1917
+Adding 2 sects that match date but were excluded: San Jacinto (Anza) rev, Subsection 2,San Jacinto (Anza) rev, Subsection 3
+**********************************
+**********************************
+Loading cadidate for 1918/04/21 15:32: M6.8. Len=37.225487296104625. Center: 33.80882, -117.00091, 6.00000
+Found 4 candidates (135 filtered due to parents)
+Checking distance of 494/494 surf pts
+Match 0. Mean=8.626138. Sq Mean=152.0786. Median=13.101634. Range=[0.56617683 31.923794]. Mag=6.467001439111864. Len=15.394959655037393. Center: 33.69665, -116.84621, 8.65200. Parents: San Jacinto (Anza) rev
+Match 1. Mean=10.212937. Sq Mean=175.48564. Median=13.088626. Range=[0.56617683 31.923794]. Mag=6.659863247434501. Len=23.09243948255517. Center: 33.67606, -116.81278, 8.65200. Parents: San Jacinto (Anza) rev
+Match 2. Mean=11.967899. Sq Mean=217.7689. Median=13.115273. Range=[0.56617683 31.923794]. Mag=6.801547537910231. Len=30.789919310072726. Center: 33.65535, -116.77947, 8.65200. Parents: San Jacinto (Anza) rev
+Match 3. Mean=14.397711. Sq Mean=308.10562. Median=19.976873. Range=[0.717572 39.04985]. Mag=6.46745155558865. Len=15.394959655036757. Center: 33.65567, -116.77918, 8.65200. Parents: San Jacinto (Anza) rev
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1917
+Adding 2 sects that match date but were excluded: San Jacinto (Anza) rev, Subsection 2,San Jacinto (Anza) rev, Subsection 3
+**********************************
+**********************************
+Loading cadidate for 1925/06/29 06:42: M6.8. Len=24.19332252175674. Center: 34.30004, -119.79998, 6.00000
+Found 0 candidates (530 filtered due to parents)
+Checking distance of 300/300 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1925/06/29 06:42: M6.8. Len=24.19332252175674. Center: 34.30004, -119.79998, 6.00000
+Found 0 candidates (975 filtered due to parents)
+Checking distance of 300/300 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1927/11/04 05:50: M7.1. Len=696.7064287723197. Center: 34.35000, -120.91486, 6.00000
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 509/4578 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1927/11/04 05:50: M7.1. Len=696.7064287723197. Center: 34.35000, -120.91486, 6.00000
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 509/4578 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1933/03/10 17:54: M6.4. Len=14.884186752159826. Center: 33.69945, -118.04030, 6.00000
+Found 29 candidates (153 filtered due to parents)
+Checking distance of 208/208 surf pts
+Match 0. Mean=1.5604163. Sq Mean=2.6733246. Median=1.7817065. Range=[0.40586752 2.8483944]. Mag=6.360830325635795. Len=14.528923684473964. Center: 33.70807, -118.03913, 8.25000. Parents: Newport-Inglewood alt 1
+Match 1. Mean=1.9561868. Sq Mean=5.28623. Median=1.7830127. Range=[0.40586752 6.360114]. Mag=6.552417083654037. Len=21.79338552671074. Center: 33.68537, -118.01144, 8.25000. Parents: Newport-Inglewood alt 1
+Match 2. Mean=2.0530224. Sq Mean=6.5301495. Median=1.7830127. Range=[0.40586752 7.5517645]. Mag=6.552417083654033. Len=21.79338552671064. Center: 33.73020, -118.06757, 8.25000. Parents: Newport-Inglewood alt 1
+Match 3. Mean=2.2266986. Sq Mean=7.5256224. Median=1.7830127. Range=[0.40586752 7.5517645]. Mag=6.694015068220727. Len=29.057847368947417. Center: 33.70764, -118.03970, 8.25000. Parents: Newport-Inglewood alt 1
+Match 4. Mean=2.743231. Sq Mean=10.645975. Median=2.1957748. Range=[0.40586752 7.222346]. Mag=6.360830325635797. Len=14.52892368447403. Center: 33.66317, -117.98323, 8.25000. Parents: Newport-Inglewood alt 1
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sat Dec 31 00:00:00 PST 1932
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1933/03/10 17:54: M6.4. Len=14.884186752159826. Center: 33.69945, -118.04030, 6.00000
+Found 29 candidates (151 filtered due to parents)
+Checking distance of 208/208 surf pts
+Match 0. Mean=3.3090856. Sq Mean=19.077625. Median=4.5932436. Range=[1.0262164 10.635313]. Mag=6.365826971456205. Len=14.608614659867166. Center: 33.70017, -118.03228, 8.30500. Parents: Newport-Inglewood alt 2
+Match 1. Mean=3.693841. Sq Mean=21.796486. Median=4.5887613. Range=[1.0262164 10.635313]. Mag=6.557380998889446. Len=21.912921989800772. Center: 33.72265, -118.06072, 8.30500. Parents: Newport-Inglewood alt 2
+Match 2. Mean=3.8125818. Sq Mean=22.915857. Median=4.5887613. Range=[1.0262164 10.635313]. Mag=6.557380998889415. Len=21.912921989799298. Center: 33.67728, -118.00470, 8.30500. Parents: Newport-Inglewood alt 2
+Match 3. Mean=3.9752743. Sq Mean=23.995445. Median=4.5699205. Range=[1.0262164 10.635313]. Mag=6.698978983456116. Len=29.217229319732905. Center: 33.69986, -118.03292, 8.30500. Parents: Newport-Inglewood alt 2
+Match 4. Mean=4.1783276. Sq Mean=26.954905. Median=5.628188. Range=[1.0262164 12.63438]. Mag=6.365826971456196. Len=14.608614659866824. Center: 33.74476, -118.08937, 8.30500. Parents: Newport-Inglewood alt 2
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sat Dec 31 00:00:00 PST 1932
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1934/06/07 20:47: M6.0. Len=24.92933621262622. Center: 35.87143, -120.40643, 6.00000
+Found 28 candidates (144 filtered due to parents)
+Checking distance of 338/338 surf pts
+Match 0. Mean=2.5511677. Sq Mean=9.487226. Median=3.4519331. Range=[0.9425719 8.188918]. Mag=5.950917196597572. Len=22.786475785331394. Center: 35.86171, -120.41399, 8.52424. Parents: San Andreas (Parkfield)
+Match 1. Mean=2.6122696. Sq Mean=9.769345. Median=3.4061992. Range=[0.9425719 8.188918]. Mag=5.990578545682511. Len=27.343770942396876. Center: 35.87737, -120.43030, 8.67000. Parents: San Andreas (Parkfield)
+Match 2. Mean=2.629119. Sq Mean=9.91884. Median=3.4028018. Range=[0.8930759 8.188918]. Mag=6.0663078950047495. Len=27.34377094239732. Center: 35.84001, -120.39145, 8.32249. Parents: San Andreas (Parkfield)
+Match 3. Mean=2.6666145. Sq Mean=10.073437. Median=3.3413296. Range=[0.8930759 8.188918]. Mag=6.098611861862958. Len=31.901066099462806. Center: 35.85543, -120.40750, 8.46600. Parents: San Andreas (Parkfield)
+Match 4. Mean=2.716474. Sq Mean=10.748868. Median=3.7843416. Range=[1.022986 8.188918]. Mag=5.8144874038638. Len=18.229180628265006. Center: 35.87738, -120.43028, 8.67000. Parents: San Andreas (Parkfield)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 2003
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1934/06/07 20:47: M6.0. Len=24.92933621262622. Center: 35.87143, -120.40643, 6.00000
+Found 28 candidates (144 filtered due to parents)
+Checking distance of 338/338 surf pts
+Match 0. Mean=2.5511677. Sq Mean=9.487226. Median=3.4519331. Range=[0.9425719 8.188918]. Mag=5.950917196597571. Len=22.786475785331394. Center: 35.86171, -120.41399, 8.52424. Parents: San Andreas (Parkfield)
+Match 1. Mean=2.6122696. Sq Mean=9.769345. Median=3.4061992. Range=[0.9425719 8.188918]. Mag=5.990578545682512. Len=27.343770942396876. Center: 35.87737, -120.43030, 8.67000. Parents: San Andreas (Parkfield)
+Match 2. Mean=2.629119. Sq Mean=9.91884. Median=3.4028018. Range=[0.8930759 8.188918]. Mag=6.06630789500475. Len=27.34377094239732. Center: 35.84001, -120.39145, 8.32249. Parents: San Andreas (Parkfield)
+Match 3. Mean=2.6666145. Sq Mean=10.073437. Median=3.3413296. Range=[0.8930759 8.188918]. Mag=6.098611861862959. Len=31.901066099462806. Center: 35.85543, -120.40750, 8.46600. Parents: San Andreas (Parkfield)
+Match 4. Mean=2.716474. Sq Mean=10.748868. Median=3.7843416. Range=[1.022986 8.188918]. Mag=5.814487403863799. Len=18.229180628265006. Center: 35.87738, -120.43028, 8.67000. Parents: San Andreas (Parkfield)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 2003
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1934/12/31 10:45: M6.42. Len=69.18316370507402. Center: 32.52965, -115.49733, 6.00000
+Found 41 candidates (138 filtered due to parents)
+Checking distance of 910/910 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1934/12/31 10:45: M6.42. Len=69.18316370507402. Center: 32.52965, -115.49733, 6.00000
+Found 41 candidates (145 filtered due to parents)
+Checking distance of 910/910 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1937/03/25 08:49: M6.0. Len=15.058267437834768. Center: 33.50494, -116.48035, 3.00000
+Found 0 candidates (70 filtered due to parents)
+Checking distance of 112/112 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1937/03/25 08:49: M6.0. Len=15.058267437834768. Center: 33.50494, -116.48035, 3.00000
+Found 0 candidates (70 filtered due to parents)
+Checking distance of 112/112 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1940/05/18 20:36: M6.9. Len=63.04702638386416. Center: 32.69326, -115.36241, 6.40000
+Found 55 candidates (87 filtered due to parents)
+Checking distance of 896/896 surf pts
+Match 0. Mean=1.1111714. Sq Mean=1.6520994. Median=1.4276825. Range=[0.20089005 3.3606265]. Mag=6.961023366730354. Len=62.36909376028207. Center: 32.69816, -115.36206, 6.05000. Parents: Imperial
+Match 1. Mean=1.1228713. Sq Mean=1.8891318. Median=1.4317917. Range=[0.20089005 5.596324]. Mag=6.91546278850415. Len=57.17166928026153. Center: 32.67912, -115.34617, 6.05000. Parents: Imperial
+Match 2. Mean=1.2150922. Sq Mean=2.321143. Median=1.5224901. Range=[0.20089005 6.382706]. Mag=6.915723807697204. Len=57.171669280258456. Center: 32.71681, -115.37876, 6.05000. Parents: Imperial
+Match 3. Mean=1.2226114. Sq Mean=2.547703. Median=1.5310595. Range=[0.20089005 6.382706]. Mag=6.8669684082439115. Len=51.974244800237926. Center: 32.69773, -115.36295, 6.05000. Parents: Imperial
+Match 4. Mean=1.3980297. Sq Mean=4.6664367. Median=1.5310595. Range=[0.20089005 10.533641]. Mag=6.866695963935862. Len=51.97424480023846. Center: 32.66044, -115.32948, 6.05000. Parents: Imperial
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1939
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1940/05/18 20:36: M6.9. Len=63.04702638386416. Center: 32.69326, -115.36241, 6.40000
+Found 55 candidates (97 filtered due to parents)
+Checking distance of 896/896 surf pts
+Match 0. Mean=1.1111714. Sq Mean=1.6520994. Median=1.4276825. Range=[0.20089005 3.3606265]. Mag=6.942608367696257. Len=62.36909376028206. Center: 32.69816, -115.36206, 6.05000. Parents: Imperial
+Match 1. Mean=1.1228713. Sq Mean=1.8891318. Median=1.4317917. Range=[0.20089005 5.596324]. Mag=6.89752963413048. Len=57.17166928026153. Center: 32.67912, -115.34617, 6.05000. Parents: Imperial
+Match 2. Mean=1.2150922. Sq Mean=2.321143. Median=1.5224901. Range=[0.20089005 6.382706]. Mag=6.897790653323534. Len=57.171669280258456. Center: 32.71681, -115.37876, 6.05000. Parents: Imperial
+Match 3. Mean=1.2226114. Sq Mean=2.547703. Median=1.5310595. Range=[0.20089005 6.382706]. Mag=6.849576458523561. Len=51.97424480023793. Center: 32.69773, -115.36295, 6.05000. Parents: Imperial
+Match 4. Mean=1.3980297. Sq Mean=4.6664367. Median=1.5310595. Range=[0.20089005 10.533641]. Mag=6.8493040142155115. Len=51.97424480023846. Center: 32.66044, -115.32948, 6.05000. Parents: Imperial
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1939
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1942/10/21 09:22: M6.6. Len=20.499546136604103. Center: 33.05573, -116.01779, 6.00000
+Found 35 candidates (72 filtered due to parents)
+Checking distance of 286/286 surf pts
+Match 0. Mean=2.0751467. Sq Mean=7.2865744. Median=2.9918787. Range=[0.20219831 7.02533]. Mag=6.104726530990676. Len=22.840307593108843. Center: 33.06509, -116.03292, 9.54789. Parents: San Jacinto (Borrego)
+Match 1. Mean=2.170691. Sq Mean=8.098327. Median=3.3600976. Range=[0.4951565 7.1105313]. Mag=5.8019949836873845. Len=17.13023069483144. Center: 33.04664, -116.01277, 9.89219. Parents: San Jacinto (Borrego)
+Match 2. Mean=2.3539655. Sq Mean=9.944268. Median=3.5476959. Range=[0.20219831 9.528989]. Mag=6.022471484053637. Len=17.130230694830747. Center: 33.08260, -116.05377, 9.45553. Parents: San Jacinto (Borrego)
+Match 3. Mean=2.421738. Sq Mean=10.646253. Median=4.0308185. Range=[0.4951565 9.528989]. Mag=5.648368943637964. Len=11.420153796553343. Center: 33.06369, -116.03397, 9.92579. Parents: San Jacinto (Borrego)
+Match 4. Mean=2.5436943. Sq Mean=10.804287. Median=2.9934433. Range=[0.20219831 8.366198]. Mag=6.320864177099562. Len=28.5503844913854. Center: 33.08759, -116.05918, 9.03859. Parents: San Jacinto (Borrego)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1967
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1942/10/21 09:22: M6.6. Len=20.499546136604103. Center: 33.05573, -116.01779, 6.00000
+Found 35 candidates (72 filtered due to parents)
+Checking distance of 286/286 surf pts
+Match 0. Mean=2.0987709. Sq Mean=7.4918275. Median=2.950092. Range=[0.2739309 6.8754935]. Mag=6.182231364010813. Len=22.840307593108843. Center: 33.06509, -116.03292, 9.32217. Parents: San Jacinto (Borrego)
+Match 1. Mean=2.1622796. Sq Mean=8.055874. Median=3.474803. Range=[0.2739309 6.8754935]. Mag=5.944181916975292. Len=17.13023069483144. Center: 33.04664, -116.01277, 9.70040. Parents: San Jacinto (Borrego)
+Match 2. Mean=2.351951. Sq Mean=9.884133. Median=3.5685837. Range=[0.2739309 9.168489]. Mag=6.085333828496465. Len=17.130230694830747. Center: 33.08260, -116.05377, 9.15456. Parents: San Jacinto (Borrego)
+Match 3. Mean=2.3826659. Sq Mean=10.336726. Median=3.9207876. Range=[0.2739309 9.168489]. Mag=5.781997036437359. Len=11.420153796553343. Center: 33.06369, -116.03397, 9.63810. Parents: San Jacinto (Borrego)
+Match 4. Mean=2.5684357. Sq Mean=11.01867. Median=2.97353. Range=[0.2739309 8.36903]. Mag=6.373918181222361. Len=28.5503844913854. Center: 33.08759, -116.05918, 8.85020. Parents: San Jacinto (Borrego)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1967
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1946/03/15 05:49: M6.3. Len=13.877771516612837. Center: 35.75012, -118.05741, 9.00000
+Found 0 candidates (150 filtered due to parents)
+Checking distance of 180/180 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1946/03/15 05:49: M6.3. Len=13.877771516612837. Center: 35.75012, -118.05741, 9.00000
+Found 0 candidates (150 filtered due to parents)
+Checking distance of 180/180 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1947/04/10 07:58: M6.5. Len=10.04495713814823. Center: 34.97424, -116.56300, 4.00000
+Found 2 candidates (175 filtered due to parents)
+Checking distance of 99/99 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1947/04/10 07:58: M6.5. Len=10.04495713814823. Center: 34.97424, -116.56300, 4.00000
+Found 2 candidates (175 filtered due to parents)
+Checking distance of 99/99 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1948/12/04 16:43: M6.0. Len=19.158120656455356. Center: 33.93342, -116.46104, 6.00000
+Found 6 candidates (196 filtered due to parents)
+Checking distance of 260/260 surf pts
+Match 0. Mean=7.3006005. Sq Mean=63.5797. Median=5.4732094. Range=[0.8261862 13.166773]. Mag=6.408416561544447. Len=14.086547988115809. Center: 33.99443, -116.43767, 8.74500. Parents: Burnt Mtn
+Match 1. Mean=8.461458. Sq Mean=91.446884. Median=5.532638. Range=[0.8261862 18.46764]. Mag=6.59007695733203. Len=21.129821982174544. Center: 34.02541, -116.44229, 8.74500. Parents: Burnt Mtn
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1948/12/04 16:43: M6.0. Len=19.158120656455356. Center: 33.93342, -116.46104, 6.00000
+Found 6 candidates (196 filtered due to parents)
+Checking distance of 260/260 surf pts
+Match 0. Mean=7.3006005. Sq Mean=63.5797. Median=5.4732094. Range=[0.8261862 13.166773]. Mag=6.408416561544448. Len=14.086547988115809. Center: 33.99443, -116.43767, 8.74500. Parents: Burnt Mtn
+Match 1. Mean=8.461458. Sq Mean=91.446884. Median=5.532638. Range=[0.8261862 18.46764]. Mag=6.590076957332028. Len=21.129821982174544. Center: 34.02541, -116.44229, 8.74500. Parents: Burnt Mtn
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1952/07/21 04:52: M7.5. Len=65.00976043788468. Center: 35.11164, -118.84029, 12.25514
+Found 26 candidates (50 filtered due to parents)
+Checking distance of 609/1217 surf pts
+Match 0. Mean=3.313745. Sq Mean=19.727234. Median=2.7117245. Range=[0.26447392 16.419361]. Mag=7.033032745124108. Len=56.359282422135884. Center: 35.16484, -118.74648, 8.03000. Parents: White Wolf
+Match 1. Mean=3.411775. Sq Mean=20.468138. Median=2.8765404. Range=[0.26447392 16.419361]. Mag=6.963442065037383. Len=49.314372119369224. Center: 35.14583, -118.77697, 8.03000. Parents: White Wolf
+Match 2. Mean=3.4830759. Sq Mean=21.25679. Median=2.7125416. Range=[0.26447392 16.419361]. Mag=7.094416075237769. Len=63.40419272490348. Center: 35.18490, -118.71706, 8.03000. Parents: White Wolf
+Match 3. Mean=3.7399988. Sq Mean=24.530548. Median=3.2642546. Range=[0.26447392 16.419361]. Mag=6.8831055206925225. Len=42.26946181660222. Center: 35.12774, -118.80832, 8.03000. Parents: White Wolf
+Match 4. Mean=3.8687963. Sq Mean=33.464638. Median=2.9397008. Range=[0.26447392 21.650694]. Mag=6.963442065037384. Len=49.314372119369345. Center: 35.18389, -118.71584, 8.03000. Parents: White Wolf
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1951
+Adding 1 sects that match date but were excluded: White Wolf, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 1952/07/21 04:52: M7.5. Len=65.00976043788468. Center: 35.11164, -118.84029, 12.25514
+Found 26 candidates (50 filtered due to parents)
+Checking distance of 609/1217 surf pts
+Match 0. Mean=3.313745. Sq Mean=19.727234. Median=2.7117245. Range=[0.26447392 16.419361]. Mag=7.033032745124109. Len=56.359282422135884. Center: 35.16484, -118.74648, 8.03000. Parents: White Wolf
+Match 1. Mean=3.411775. Sq Mean=20.468138. Median=2.8765404. Range=[0.26447392 16.419361]. Mag=6.963442065037382. Len=49.314372119369224. Center: 35.14583, -118.77697, 8.03000. Parents: White Wolf
+Match 2. Mean=3.4830759. Sq Mean=21.25679. Median=2.7125416. Range=[0.26447392 16.419361]. Mag=7.0944160752377705. Len=63.40419272490348. Center: 35.18490, -118.71706, 8.03000. Parents: White Wolf
+Match 3. Mean=3.7399988. Sq Mean=24.530548. Median=3.2642546. Range=[0.26447392 16.419361]. Mag=6.883105520692523. Len=42.26946181660222. Center: 35.12774, -118.80832, 8.03000. Parents: White Wolf
+Match 4. Mean=3.8687963. Sq Mean=33.464638. Median=2.9397008. Range=[0.26447392 21.650694]. Mag=6.963442065037383. Len=49.314372119369345. Center: 35.18389, -118.71584, 8.03000. Parents: White Wolf
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1951
+Adding 1 sects that match date but were excluded: White Wolf, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 1952/11/21 23:46: M6.0. Len=10.042137967285164. Center: 35.76834, -121.14500, 6.00000
+Found 49 candidates (241 filtered due to parents)
+Checking distance of 165/165 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1952/11/21 23:46: M6.0. Len=10.042137967285164. Center: 35.76834, -121.14500, 6.00000
+Found 49 candidates (241 filtered due to parents)
+Checking distance of 165/165 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1954/03/19 01:54: M6.4. Len=14.996677584247077. Center: 33.25225, -116.11431, 5.00000
+Found 15 candidates (55 filtered due to parents)
+Checking distance of 176/176 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1954/03/19 01:54: M6.4. Len=14.996677584247077. Center: 33.25225, -116.11431, 5.00000
+Found 15 candidates (55 filtered due to parents)
+Checking distance of 176/176 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1954/12/21 11:56: M6.5. Len=14.313339799335601. Center: 40.93334, -123.78334, 6.00000
+Found 0 candidates (109 filtered due to parents)
+Checking distance of 270/270 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1954/12/21 11:56: M6.5. Len=14.313339799335601. Center: 40.93334, -123.78334, 6.00000
+Found 0 candidates (41 filtered due to parents)
+Checking distance of 270/270 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1959/06/23 07:35: M6.1. Len=10.0437648033959. Center: 38.90709, -118.90392, 5.00000
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 132/132 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1959/06/23 07:35: M6.1. Len=10.0437648033959. Center: 38.90709, -118.90392, 5.00000
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 132/132 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1966/06/27 21:26: M6.0. Len=24.92933621262622. Center: 35.87143, -120.40643, 6.00000
+Found 28 candidates (144 filtered due to parents)
+Checking distance of 338/338 surf pts
+Match 0. Mean=2.5511677. Sq Mean=9.487226. Median=3.4519331. Range=[0.9425719 8.188918]. Mag=5.950917196597572. Len=22.786475785331394. Center: 35.86171, -120.41399, 8.52424. Parents: San Andreas (Parkfield)
+Match 1. Mean=2.6122696. Sq Mean=9.769345. Median=3.4061992. Range=[0.9425719 8.188918]. Mag=5.990578545682511. Len=27.343770942396876. Center: 35.87737, -120.43030, 8.67000. Parents: San Andreas (Parkfield)
+Match 2. Mean=2.629119. Sq Mean=9.91884. Median=3.4028018. Range=[0.8930759 8.188918]. Mag=6.0663078950047495. Len=27.34377094239732. Center: 35.84001, -120.39145, 8.32249. Parents: San Andreas (Parkfield)
+Match 3. Mean=2.6666145. Sq Mean=10.073437. Median=3.3413296. Range=[0.8930759 8.188918]. Mag=6.098611861862958. Len=31.901066099462806. Center: 35.85543, -120.40750, 8.46600. Parents: San Andreas (Parkfield)
+Match 4. Mean=2.716474. Sq Mean=10.748868. Median=3.7843416. Range=[1.022986 8.188918]. Mag=5.8144874038638. Len=18.229180628265006. Center: 35.87738, -120.43028, 8.67000. Parents: San Andreas (Parkfield)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 2003
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1966/06/27 21:26: M6.0. Len=24.92933621262622. Center: 35.87143, -120.40643, 6.00000
+Found 28 candidates (144 filtered due to parents)
+Checking distance of 338/338 surf pts
+Match 0. Mean=2.5511677. Sq Mean=9.487226. Median=3.4519331. Range=[0.9425719 8.188918]. Mag=5.950917196597571. Len=22.786475785331394. Center: 35.86171, -120.41399, 8.52424. Parents: San Andreas (Parkfield)
+Match 1. Mean=2.6122696. Sq Mean=9.769345. Median=3.4061992. Range=[0.9425719 8.188918]. Mag=5.990578545682512. Len=27.343770942396876. Center: 35.87737, -120.43030, 8.67000. Parents: San Andreas (Parkfield)
+Match 2. Mean=2.629119. Sq Mean=9.91884. Median=3.4028018. Range=[0.8930759 8.188918]. Mag=6.06630789500475. Len=27.34377094239732. Center: 35.84001, -120.39145, 8.32249. Parents: San Andreas (Parkfield)
+Match 3. Mean=2.6666145. Sq Mean=10.073437. Median=3.3413296. Range=[0.8930759 8.188918]. Mag=6.098611861862959. Len=31.901066099462806. Center: 35.85543, -120.40750, 8.46600. Parents: San Andreas (Parkfield)
+Match 4. Mean=2.716474. Sq Mean=10.748868. Median=3.7843416. Range=[1.022986 8.188918]. Mag=5.814487403863799. Len=18.229180628265006. Center: 35.87738, -120.43028, 8.67000. Parents: San Andreas (Parkfield)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 2003
+Not adding any more as rupture is masked in last event data
+**********************************
+**********************************
+Loading cadidate for 1968/04/08 18:28: M6.6. Len=30.18895998219417. Center: 33.11442, -116.06635, 5.85000
+Found 28 candidates (85 filtered due to parents)
+Checking distance of 403/403 surf pts
+Match 0. Mean=2.715237. Sq Mean=11.483651. Median=3.3730829. Range=[0.64476436 11.058727]. Mag=6.481821545002987. Len=34.26046138966144. Center: 33.10828, -116.08350, 8.61817. Parents: San Jacinto (Borrego)
+Match 1. Mean=2.7809603. Sq Mean=11.773159. Median=3.5532746. Range=[0.64476436 11.058727]. Mag=6.320864177099562. Len=28.5503844913854. Center: 33.08759, -116.05918, 9.03859. Parents: San Jacinto (Borrego)
+Match 2. Mean=2.7332232. Sq Mean=11.884492. Median=3.662285. Range=[0.64476436 11.058727]. Mag=6.43987597674331. Len=28.55038449138334. Center: 33.12517, -116.10346, 8.40520. Parents: San Jacinto (Borrego)
+Match 3. Mean=2.7942586. Sq Mean=12.159536. Median=3.7506893. Range=[0.64476436 11.058727]. Mag=6.266148608125764. Len=22.840307593107305. Center: 33.10490, -116.07967, 8.85711. Parents: San Jacinto (Borrego)
+Match 4. Mean=2.9190354. Sq Mean=15.167285. Median=4.1811447. Range=[0.64476436 11.058727]. Mag=6.392429656137793. Len=22.840307593107607. Center: 33.14281, -116.12200, 8.04784. Parents: San Jacinto (Borrego)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1967
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1968/04/08 18:28: M6.6. Len=30.18895998219417. Center: 33.11442, -116.06635, 5.85000
+Found 28 candidates (85 filtered due to parents)
+Checking distance of 403/403 surf pts
+Match 0. Mean=2.7289052. Sq Mean=11.968106. Median=3.4199324. Range=[0.60976505 11.194106]. Mag=6.522326721511186. Len=34.26046138966144. Center: 33.10828, -116.08350, 8.46746. Parents: San Jacinto (Borrego)
+Match 1. Mean=2.7282481. Sq Mean=12.218126. Median=3.581766. Range=[0.60976505 11.194106]. Mag=6.470634056851686. Len=28.55038449138334. Center: 33.12517, -116.10346, 8.22789. Parents: San Jacinto (Borrego)
+Match 2. Mean=2.788804. Sq Mean=12.245856. Median=3.5444677. Range=[0.60976505 11.194106]. Mag=6.373918181222361. Len=28.5503844913854. Center: 33.08759, -116.05918, 8.85020. Parents: San Jacinto (Borrego)
+Match 3. Mean=2.7807336. Sq Mean=12.472952. Median=3.702036. Range=[0.60976505 11.194106]. Mag=6.305791922276441. Len=22.840307593107305. Center: 33.10490, -116.07967, 8.62524. Parents: San Jacinto (Borrego)
+Match 4. Mean=2.9304218. Sq Mean=15.648597. Median=4.3471637. Range=[0.60976505 11.194106]. Mag=6.411883539857673. Len=22.840307593107607. Center: 33.14281, -116.12200, 7.88565. Parents: San Jacinto (Borrego)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1967
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1971/02/09 06:00: M6.6. Len=16.102164058968977. Center: 34.38478, -118.39656, 7.22428
+Found 13 candidates (299 filtered due to parents)
+Checking distance of 493/493 surf pts
+Match 0. Mean=2.7270923. Sq Mean=8.946993. Median=3.035363. Range=[1.2414466 8.087612]. Mag=6.573465803832578. Len=19.35381620083653. Center: 34.35048, -118.39006, 7.15000. Parents: Sierra Madre (San Fernando)
+Match 1. Mean=2.7604184. Sq Mean=9.770831. Median=3.2043583. Range=[1.2414466 8.940582]. Mag=6.3973746620138465. Len=12.902544133890446. Center: 34.34752, -118.35894, 7.15000. Parents: Sierra Madre (San Fernando)
+Match 2. Mean=2.8390253. Sq Mean=9.866522. Median=3.409011. Range=[1.2414466 8.087612]. Mag=6.397374662013903. Len=12.902544133892027. Center: 34.35497, -118.42184, 7.15000. Parents: Sierra Madre (San Fernando)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Thu Dec 31 00:00:00 PST 1970
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1971/02/09 06:00: M6.6. Len=16.102164058968977. Center: 34.38478, -118.39656, 7.22428
+Found 13 candidates (526 filtered due to parents)
+Checking distance of 493/493 surf pts
+Match 0. Mean=2.7270923. Sq Mean=8.946993. Median=3.035363. Range=[1.2414466 8.087612]. Mag=6.57346580383258. Len=19.35381620083653. Center: 34.35048, -118.39006, 7.15000. Parents: Sierra Madre (San Fernando)
+Match 1. Mean=2.7604184. Sq Mean=9.770831. Median=3.2043583. Range=[1.2414466 8.940582]. Mag=6.397374662013848. Len=12.902544133890446. Center: 34.34752, -118.35894, 7.15000. Parents: Sierra Madre (San Fernando)
+Match 2. Mean=2.8390253. Sq Mean=9.866522. Median=3.409011. Range=[1.2414466 8.087612]. Mag=6.397374662013903. Len=12.902544133892027. Center: 34.35497, -118.42184, 7.15000. Parents: Sierra Madre (San Fernando)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Thu Dec 31 00:00:00 PST 1970
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1979/10/15 16:16: M6.51. Len=50.019565942941945. Center: 32.73494, -115.39712, 6.40000
+Found 66 candidates (85 filtered due to parents)
+Checking distance of 714/714 surf pts
+Match 0. Mean=1.0215144. Sq Mean=1.5228952. Median=1.3770877. Range=[0.15341654 3.2054217]. Mag=6.867239352815229. Len=51.97424480023529. Center: 32.73547, -115.39545, 6.05000. Parents: Imperial
+Match 1. Mean=1.015313. Sq Mean=1.6583571. Median=1.398148. Range=[0.15341654 4.814386]. Mag=6.8149617474187165. Len=46.77682032021475. Center: 32.71634, -115.37974, 6.05000. Parents: Imperial
+Match 2. Mean=1.0739641. Sq Mean=1.8223875. Median=1.4435027. Range=[0.15341654 4.7357345]. Mag=6.815262491337746. Len=46.776820320211. Center: 32.75413, -115.41212, 6.05000. Parents: Imperial
+Match 3. Mean=1.0606008. Sq Mean=1.9422514. Median=1.4686098. Range=[0.15341654 4.814386]. Mag=6.757032391970872. Len=41.579395840190465. Center: 32.73495, -115.39653, 6.05000. Parents: Imperial
+Match 4. Mean=1.1604035. Sq Mean=2.2933235. Median=1.3817928. Range=[0.15341654 6.1826973]. Mag=6.915723807697204. Len=57.171669280258456. Center: 32.71681, -115.37876, 6.05000. Parents: Imperial
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1978
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1979/10/15 16:16: M6.51. Len=50.019565942941945. Center: 32.73494, -115.39712, 6.40000
+Found 66 candidates (94 filtered due to parents)
+Checking distance of 714/714 surf pts
+Match 0. Mean=1.0215144. Sq Mean=1.5228952. Median=1.3770877. Range=[0.15341654 3.2054217]. Mag=6.849847403094879. Len=51.97424480023528. Center: 32.73547, -115.39545, 6.05000. Parents: Imperial
+Match 1. Mean=1.015313. Sq Mean=1.6583571. Median=1.398148. Range=[0.15341654 4.814386]. Mag=6.797569797698365. Len=46.77682032021475. Center: 32.71634, -115.37974, 6.05000. Parents: Imperial
+Match 2. Mean=1.0739641. Sq Mean=1.8223875. Median=1.4435027. Range=[0.15341654 4.7357345]. Mag=6.797870541617394. Len=46.776820320210994. Center: 32.75413, -115.41212, 6.05000. Parents: Imperial
+Match 3. Mean=1.0606008. Sq Mean=1.9422514. Median=1.4686098. Range=[0.15341654 4.814386]. Mag=6.739640442250524. Len=41.579395840190465. Center: 32.73495, -115.39653, 6.05000. Parents: Imperial
+Match 4. Mean=1.1604035. Sq Mean=2.2933235. Median=1.3817928. Range=[0.15341654 6.1826973]. Mag=6.897790653323534. Len=57.171669280258456. Center: 32.71681, -115.37876, 6.05000. Parents: Imperial
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Sun Dec 31 00:00:00 PST 1978
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1980/05/25 09:33: M6.2. Len=15.016856437294305. Center: 37.61507, -118.88091, 5.15000
+Found 6 candidates (23 filtered due to parents)
+Checking distance of 176/176 surf pts
+Match 0. Mean=5.2161274. Sq Mean=38.13851. Median=6.703077. Range=[0.92573327 13.226538]. Mag=6.491840851110983. Len=15.261323591812307. Center: 37.71287, -118.82883, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 1. Mean=5.909311. Sq Mean=44.99826. Median=6.705399. Range=[0.92573327 13.226538]. Mag=6.671654607720592. Len=22.891985387718414. Center: 37.68688, -118.80127, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 2. Mean=6.2685475. Sq Mean=48.744473. Median=6.779666. Range=[0.92573327 13.226538]. Mag=6.491840851110983. Len=15.261323591812292. Center: 37.66098, -118.77325, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 3. Mean=6.7042875. Sq Mean=57.005104. Median=6.779666. Range=[0.92573327 13.226538]. Mag=6.813252592287293. Len=30.522647183624915. Center: 37.65830, -118.77909, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 4. Mean=7.2087708. Sq Mean=63.50486. Median=6.8921976. Range=[0.92573327 13.226538]. Mag=6.6716546077206. Len=22.891985387718794. Center: 37.63151, -118.75302, 8.14000. Parents: Hilton Creek 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1979
+Adding 1 sects that match date but were excluded: Hilton Creek 2011 CFM, Subsection 1
+**********************************
+**********************************
+Loading cadidate for 1980/05/25 09:33: M6.2. Len=15.016856437294305. Center: 37.61507, -118.88091, 5.15000
+Found 6 candidates (23 filtered due to parents)
+Checking distance of 176/176 surf pts
+Match 0. Mean=5.2161274. Sq Mean=38.13851. Median=6.703077. Range=[0.92573327 13.226538]. Mag=6.491840851110985. Len=15.261323591812307. Center: 37.71287, -118.82883, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 1. Mean=5.909311. Sq Mean=44.99826. Median=6.705399. Range=[0.92573327 13.226538]. Mag=6.6716546077205905. Len=22.891985387718414. Center: 37.68688, -118.80127, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 2. Mean=6.2685475. Sq Mean=48.744473. Median=6.779666. Range=[0.92573327 13.226538]. Mag=6.491840851110985. Len=15.261323591812292. Center: 37.66098, -118.77325, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 3. Mean=6.7042875. Sq Mean=57.005104. Median=6.779666. Range=[0.92573327 13.226538]. Mag=6.813252592287292. Len=30.522647183624915. Center: 37.65830, -118.77909, 8.14000. Parents: Hilton Creek 2011 CFM
+Match 4. Mean=7.2087708. Sq Mean=63.50486. Median=6.8921976. Range=[0.92573327 13.226538]. Mag=6.671654607720601. Len=22.891985387718794. Center: 37.63151, -118.75302, 8.14000. Parents: Hilton Creek 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Mon Dec 31 00:00:00 PST 1979
+Adding 1 sects that match date but were excluded: Hilton Creek 2011 CFM, Subsection 1
+**********************************
+**********************************
+Loading cadidate for 1980/05/25 09:49: M6.0. Len=9.951404035228197. Center: 37.62800, -118.91565, 12.00000
+Found 6 candidates (19 filtered due to parents)
+Checking distance of 77/77 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1980/05/25 09:49: M6.0. Len=9.951404035228197. Center: 37.62800, -118.91565, 12.00000
+Found 6 candidates (19 filtered due to parents)
+Checking distance of 77/77 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1980/06/08 20:28: M6.33. Len=30.003003909911882. Center: 32.21870, -115.11165, 9.00000
+Found 0 candidates (65 filtered due to parents)
+Checking distance of 341/341 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1980/06/08 20:28: M6.33. Len=30.003003909911882. Center: 32.21870, -115.11165, 9.00000
+Found 0 candidates (65 filtered due to parents)
+Checking distance of 341/341 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1980/11/08 02:27: M7.3. Len=99.64707132054443. Center: 40.92408, -124.89440, 7.44269
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 759/759 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1980/11/08 02:27: M7.3. Len=99.64707132054443. Center: 40.92408, -124.89440, 7.44269
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 759/759 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1981/04/26 05:09: M5.9. Len=10.072942298732286. Center: 33.09640, -115.62965, 5.50000
+Found 30 candidates (99 filtered due to parents)
+Checking distance of 88/88 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1981/04/26 05:09: M5.9. Len=10.072942298732286. Center: 33.09640, -115.62965, 5.50000
+Found 30 candidates (94 filtered due to parents)
+Checking distance of 88/88 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1983/05/02 16:42: M6.3. Len=16.0208338984244. Center: 36.20872, -120.32395, 6.15000
+Found 3 candidates (24 filtered due to parents)
+Checking distance of 204/204 surf pts
+Match 0. Mean=6.117501. Sq Mean=38.50702. Median=5.5034404. Range=[4.1660366 8.703833]. Mag=6.71789905838536. Len=21.05352156400584. Center: 36.20818, -120.37723, 12.45500. Parents: Great Valley 13 (Coalinga)
+Match 1. Mean=6.414209. Sq Mean=43.666897. Median=5.5145593. Range=[4.1660366 11.708549]. Mag=6.911233332665746. Len=31.580282346008342. Center: 36.17406, -120.33650, 12.45500. Parents: Great Valley 13 (Coalinga)
+Match 2. Mean=6.5876412. Sq Mean=46.303566. Median=5.632504. Range=[4.1660366 11.708549]. Mag=6.7178990583853455. Len=21.05352156400526. Center: 36.13992, -120.29579, 12.45500. Parents: Great Valley 13 (Coalinga)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Fri Dec 31 00:00:00 PST 1982
+Adding 1 sects that match date but were excluded: Great Valley 13 (Coalinga), Subsection 2
+**********************************
+**********************************
+Loading cadidate for 1983/05/02 16:42: M6.3. Len=16.0208338984244. Center: 36.20872, -120.32395, 6.15000
+Found 3 candidates (24 filtered due to parents)
+Checking distance of 204/204 surf pts
+Match 0. Mean=6.117501. Sq Mean=38.50702. Median=5.5034404. Range=[4.1660366 8.703833]. Mag=6.717899058385359. Len=21.05352156400584. Center: 36.20818, -120.37723, 12.45500. Parents: Great Valley 13 (Coalinga)
+Match 1. Mean=6.414209. Sq Mean=43.666897. Median=5.5145593. Range=[4.1660366 11.708549]. Mag=6.911233332665747. Len=31.580282346008342. Center: 36.17406, -120.33650, 12.45500. Parents: Great Valley 13 (Coalinga)
+Match 2. Mean=6.5876412. Sq Mean=46.303566. Median=5.632504. Range=[4.1660366 11.708549]. Mag=6.717899058385347. Len=21.05352156400526. Center: 36.13992, -120.29579, 12.45500. Parents: Great Valley 13 (Coalinga)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Fri Dec 31 00:00:00 PST 1982
+Adding 1 sects that match date but were excluded: Great Valley 13 (Coalinga), Subsection 2
+**********************************
+**********************************
+Loading cadidate for 1984/04/24 13:15: M6.15. Len=27.21759431231664. Center: 37.20659, -121.61712, 6.25000
+Found 70 candidates (642 filtered due to parents)
+Checking distance of 364/364 surf pts
+Match 0. Mean=1.5191901. Sq Mean=3.2992463. Median=1.871004. Range=[0.46550187 6.7338386]. Mag=6.239501915437692. Len=26.107247240455784. Center: 37.21166, -121.60709, 7.91047. Parents: Calaveras (Central) 2011 CFM
+Match 1. Mean=1.490784. Sq Mean=3.5472596. Median=1.8887624. Range=[0.46550187 6.7338386]. Mag=6.193980284516096. Len=20.885797792364304. Center: 37.22506, -121.61957, 7.55030. Parents: Calaveras (Central) 2011 CFM
+Match 2. Mean=1.5813686. Sq Mean=3.5482197. Median=1.8243983. Range=[0.46550187 6.7338386]. Mag=6.375345923807901. Len=31.328696688547474. Center: 37.23185, -121.62164, 7.63068. Parents: Calaveras (Central) 2011 CFM
+Match 3. Mean=1.5910832. Sq Mean=3.9208293. Median=1.8467119. Range=[0.46550187 6.7338386]. Mag=6.339564907837657. Len=26.107247240455997. Center: 37.24527, -121.63356, 7.30524. Parents: Calaveras (Central) 2011 CFM
+Match 4. Mean=1.7226259. Sq Mean=4.3534117. Median=1.8712058. Range=[0.46550187 6.7338386]. Mag=6.274201796646425. Len=31.328696688546728. Center: 37.19637, -121.59446, 8.22791. Parents: Calaveras (Central) 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Sat Dec 31 00:00:00 PST 1983
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1984/04/24 13:15: M6.15. Len=27.21759431231664. Center: 37.20659, -121.61712, 6.25000
+Found 70 candidates (665 filtered due to parents)
+Checking distance of 364/364 surf pts
+Match 0. Mean=1.5191901. Sq Mean=3.2992463. Median=1.871004. Range=[0.46550187 6.7338386]. Mag=6.243213663099034. Len=26.107247240455784. Center: 37.21166, -121.60709, 7.91047. Parents: Calaveras (Central) 2011 CFM
+Match 1. Mean=1.490784. Sq Mean=3.5472596. Median=1.8887624. Range=[0.46550187 6.7338386]. Mag=6.197127110514857. Len=20.885797792364304. Center: 37.22506, -121.61957, 7.55030. Parents: Calaveras (Central) 2011 CFM
+Match 2. Mean=1.5813686. Sq Mean=3.5482197. Median=1.8243983. Range=[0.46550187 6.7338386]. Mag=6.378109249099315. Len=31.328696688547474. Center: 37.23185, -121.62164, 7.63068. Parents: Calaveras (Central) 2011 CFM
+Match 3. Mean=1.5910832. Sq Mean=3.9208293. Median=1.8467119. Range=[0.46550187 6.7338386]. Mag=6.341870291411721. Len=26.107247240455997. Center: 37.24527, -121.63356, 7.30524. Parents: Calaveras (Central) 2011 CFM
+Match 4. Mean=1.7226259. Sq Mean=4.3534117. Median=1.8712058. Range=[0.46550187 6.7338386]. Mag=6.277760851232699. Len=31.328696688546728. Center: 37.19637, -121.59446, 8.22791. Parents: Calaveras (Central) 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Sat Dec 31 00:00:00 PST 1983
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 1984/09/09 20:14: M6.6. Len=29.965188183504285. Center: 40.46495, -126.84757, 5.02450
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 372/372 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1984/09/09 20:14: M6.6. Len=29.965188183504285. Center: 40.46495, -126.84757, 5.02450
+Found 0 candidates (0 filtered due to parents)
+Checking distance of 372/372 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1985/08/04 05:01: M6.08. Len=21.89453006070971. Center: 36.06565, -120.07933, 9.25000
+Found 0 candidates (9 filtered due to parents)
+Checking distance of 69/69 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1985/08/04 05:01: M6.08. Len=21.89453006070971. Center: 36.06565, -120.07933, 9.25000
+Found 0 candidates (9 filtered due to parents)
+Checking distance of 69/69 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1986/07/08 02:20: M6.02. Len=20.034194513062126. Center: 33.98312, -116.62581, 8.80000
+Found 6 candidates (186 filtered due to parents)
+Checking distance of 294/294 surf pts
+Match 0. Mean=15.118517. Sq Mean=245.06306. Median=15.879464. Range=[4.311763 28.177666]. Mag=6.408416561544447. Len=14.086547988115809. Center: 33.99443, -116.43767, 8.74500. Parents: Burnt Mtn
+Match 1. Mean=15.753048. Sq Mean=265.77557. Median=15.888198. Range=[4.311763 28.177666]. Mag=6.59007695733203. Len=21.129821982174544. Center: 34.02541, -116.44229, 8.74500. Parents: Burnt Mtn
+Match 2. Mean=16.377842. Sq Mean=284.72897. Median=16.248262. Range=[4.311763 28.177666]. Mag=6.408416561544469. Len=14.086547988116482. Center: 34.05651, -116.44683, 8.74500. Parents: Burnt Mtn
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1986/07/08 02:20: M6.02. Len=20.034194513062126. Center: 33.98312, -116.62581, 8.80000
+Found 6 candidates (186 filtered due to parents)
+Checking distance of 294/294 surf pts
+Match 0. Mean=15.118517. Sq Mean=245.06306. Median=15.879464. Range=[4.311763 28.177666]. Mag=6.408416561544448. Len=14.086547988115809. Center: 33.99443, -116.43767, 8.74500. Parents: Burnt Mtn
+Match 1. Mean=15.753048. Sq Mean=265.77557. Median=15.888198. Range=[4.311763 28.177666]. Mag=6.590076957332028. Len=21.129821982174544. Center: 34.02541, -116.44229, 8.74500. Parents: Burnt Mtn
+Match 2. Mean=16.377842. Sq Mean=284.72897. Median=16.248262. Range=[4.311763 28.177666]. Mag=6.408416561544469. Len=14.086547988116482. Center: 34.05651, -116.44683, 8.74500. Parents: Burnt Mtn
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 2 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1986/07/21 07:42: M6.22. Len=15.027207876975707. Center: 37.55673, -118.43110, 7.30000
+Found 82 candidates (81 filtered due to parents)
+Checking distance of 144/144 surf pts
+Match 0. Mean=7.4928646. Sq Mean=65.89016. Median=9.749285. Range=[4.074004 15.699273]. Mag=6.226187233487833. Len=12.30276727057096. Center: 37.55377, -118.34302, 7.15000. Parents: White Mountains
+Match 1. Mean=7.675413. Sq Mean=68.38222. Median=9.621087. Range=[4.074004 15.699273]. Mag=6.416464847900785. Len=18.454150905856412. Center: 37.52647, -118.33763, 7.15000. Parents: White Mountains
+Match 2. Mean=7.978464. Sq Mean=72.236824. Median=9.565117. Range=[4.074004 15.699273]. Mag=6.416464847900821. Len=18.454150905857684. Center: 37.58102, -118.34888, 7.15000. Parents: White Mountains
+Match 3. Mean=7.99179. Sq Mean=72.47443. Median=9.546881. Range=[4.074004 15.699273]. Mag=6.558062832467506. Len=24.605534541143133. Center: 37.55373, -118.34338, 7.15000. Parents: White Mountains
+Match 4. Mean=7.923929. Sq Mean=75.808464. Median=10.531543. Range=[4.074004 17.463291]. Mag=6.226187233487812. Len=12.302767270570438. Center: 37.49922, -118.33184, 7.15000. Parents: White Mountains
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1985
+Adding 1 sects that match date but were excluded: White Mountains, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 1986/07/21 07:42: M6.22. Len=15.027207876975707. Center: 37.55673, -118.43110, 7.30000
+Found 82 candidates (81 filtered due to parents)
+Checking distance of 144/144 surf pts
+Match 0. Mean=7.4928646. Sq Mean=65.89016. Median=9.749285. Range=[4.074004 15.699273]. Mag=6.226187233487832. Len=12.30276727057096. Center: 37.55377, -118.34302, 7.15000. Parents: White Mountains
+Match 1. Mean=7.675413. Sq Mean=68.38222. Median=9.621087. Range=[4.074004 15.699273]. Mag=6.416464847900787. Len=18.454150905856412. Center: 37.52647, -118.33763, 7.15000. Parents: White Mountains
+Match 2. Mean=7.978464. Sq Mean=72.236824. Median=9.565117. Range=[4.074004 15.699273]. Mag=6.416464847900819. Len=18.454150905857684. Center: 37.58102, -118.34888, 7.15000. Parents: White Mountains
+Match 3. Mean=7.99179. Sq Mean=72.47443. Median=9.546881. Range=[4.074004 15.699273]. Mag=6.558062832467507. Len=24.605534541143133. Center: 37.55373, -118.34338, 7.15000. Parents: White Mountains
+Match 4. Mean=7.923929. Sq Mean=75.808464. Median=10.531543. Range=[4.074004 17.463291]. Mag=6.226187233487813. Len=12.302767270570438. Center: 37.49922, -118.33184, 7.15000. Parents: White Mountains
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1985
+Adding 1 sects that match date but were excluded: White Mountains, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 1987/07/31 16:56: M5.98. Len=11.034554942178836. Center: 40.38846, -124.42315, 19.72600
+Found 0 candidates (215 filtered due to parents)
+Checking distance of 84/84 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1987/07/31 16:56: M5.98. Len=11.034554942178836. Center: 40.38846, -124.42315, 19.72600
+Found 0 candidates (215 filtered due to parents)
+Checking distance of 84/84 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1987/10/01 07:42: M5.89. Len=9.90670092570856. Center: 34.07088, -118.07612, 16.00000
+Found 0 candidates (396 filtered due to parents)
+Checking distance of 77/77 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1987/10/01 07:42: M5.89. Len=9.90670092570856. Center: 34.07088, -118.07612, 16.00000
+Found 0 candidates (446 filtered due to parents)
+Checking distance of 77/77 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1987/11/23 17:54: M6.04. Len=20.01914721082169. Center: 33.15047, -115.72570, 5.00000
+Found 29 candidates (129 filtered due to parents)
+Checking distance of 231/231 surf pts
+Match 0. Mean=2.7049825. Sq Mean=14.061658. Median=3.975309. Range=[0.6883524 9.198911]. Mag=6.3902177461397605. Len=19.344257792183328. Center: 33.16396, -115.72199, 6.27000. Parents: Elmore Ranch
+Match 1. Mean=2.7185297. Sq Mean=14.394017. Median=4.1182404. Range=[0.6883524 9.670497]. Mag=6.248619761573081. Len=14.508193344137982. Center: 33.14721, -115.73856, 6.27000. Parents: Elmore Ranch
+Match 2. Mean=2.8133507. Sq Mean=14.516805. Median=3.9701576. Range=[0.6883524 9.198911]. Mag=6.500049675762166. Len=24.180322240229835. Center: 33.14721, -115.73854, 6.27000. Parents: Elmore Ranch
+Match 3. Mean=2.862323. Sq Mean=14.980363. Median=4.1098456. Range=[0.6883524 9.670497]. Mag=6.390217746139792. Len=19.344257792184486. Center: 33.13046, -115.75511, 6.27000. Parents: Elmore Ranch
+Match 4. Mean=2.9631999. Sq Mean=16.541563. Median=4.926526. Range=[0.7916042 11.031482]. Mag=6.248619761573058. Len=14.50819334413723. Center: 33.18071, -115.70543, 6.27000. Parents: Elmore Ranch
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 4 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1987/11/23 17:54: M6.04. Len=20.01914721082169. Center: 33.15047, -115.72570, 5.00000
+Found 29 candidates (118 filtered due to parents)
+Checking distance of 231/231 surf pts
+Match 0. Mean=2.7049825. Sq Mean=14.061658. Median=3.975309. Range=[0.6883524 9.198911]. Mag=6.390217746139761. Len=19.344257792183328. Center: 33.16396, -115.72199, 6.27000. Parents: Elmore Ranch
+Match 1. Mean=2.7185297. Sq Mean=14.394017. Median=4.1182404. Range=[0.6883524 9.670497]. Mag=6.248619761573083. Len=14.508193344137982. Center: 33.14721, -115.73856, 6.27000. Parents: Elmore Ranch
+Match 2. Mean=2.8133507. Sq Mean=14.516805. Median=3.9701576. Range=[0.6883524 9.198911]. Mag=6.500049675762166. Len=24.180322240229835. Center: 33.14721, -115.73854, 6.27000. Parents: Elmore Ranch
+Match 3. Mean=2.862323. Sq Mean=14.980363. Median=4.1098456. Range=[0.6883524 9.670497]. Mag=6.390217746139792. Len=19.344257792184486. Center: 33.13046, -115.75511, 6.27000. Parents: Elmore Ranch
+Match 4. Mean=2.9631999. Sq Mean=16.541563. Median=4.926526. Range=[0.7916042 11.031482]. Mag=6.248619761573056. Len=14.50819334413723. Center: 33.18071, -115.70543, 6.27000. Parents: Elmore Ranch
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 4 sects without data (or with earlier date). Date: Wed Dec 31 15:59:59 PST 1969
+Not adding any more as rupture is masked in last event data
+Too few subsections, skipping
+**********************************
+**********************************
+Loading cadidate for 1987/11/24 05:15: M6.5. Len=20.03306325574662. Center: 32.97900, -115.76280, 6.00000
+Found 30 candidates (119 filtered due to parents)
+Checking distance of 273/273 surf pts
+Match 0. Mean=2.229623. Sq Mean=10.231749. Median=3.0833373. Range=[0.17564645 10.094867]. Mag=6.202150545895437. Len=18.103682605188858. Center: 32.97390, -115.76125, 8.05503. Parents: Superstition Hills
+Match 1. Mean=2.411763. Sq Mean=11.031545. Median=3.044209. Range=[0.17564645 10.094867]. Mag=6.4279249601737956. Len=24.138243473584797. Center: 32.98871, -115.79070, 7.55359. Parents: Superstition Hills
+Match 2. Mean=2.3571124. Sq Mean=12.043747. Median=3.88809. Range=[0.17564645 10.094867]. Mag=6.0570372054177195. Len=12.069121736792914. Center: 32.99076, -115.78397, 7.86218. Parents: Superstition Hills
+Match 3. Mean=2.5819192. Sq Mean=12.265684. Median=2.9187908. Range=[0.17564645 10.094867]. Mag=6.384740526848644. Len=24.138243473584968. Center: 32.95163, -115.73321, 7.82819. Parents: Superstition Hills
+Match 4. Mean=2.648861. Sq Mean=12.45461. Median=2.9077709. Range=[0.17564645 10.094867]. Mag=6.547136643601216. Len=30.172804341980907. Center: 32.96810, -115.76235, 7.48859. Parents: Superstition Hills
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 1986
+Adding 3 sects that match date but were excluded: Superstition Hills, Subsection 0,Superstition Hills, Subsection 4,Superstition Hills, Subsection 5
+**********************************
+**********************************
+Loading cadidate for 1987/11/24 05:15: M6.5. Len=20.03306325574662. Center: 32.97900, -115.76280, 6.00000
+Found 30 candidates (106 filtered due to parents)
+Checking distance of 273/273 surf pts
+Match 0. Mean=2.229623. Sq Mean=10.231749. Median=3.0833373. Range=[0.17564645 10.094867]. Mag=6.194980460772085. Len=18.103682605188858. Center: 32.97390, -115.76125, 8.05503. Parents: Superstition Hills
+Match 1. Mean=2.411763. Sq Mean=11.031545. Median=3.044209. Range=[0.17564645 10.094867]. Mag=6.422767014070574. Len=24.138243473584797. Center: 32.98871, -115.79070, 7.55359. Parents: Superstition Hills
+Match 2. Mean=2.3571124. Sq Mean=12.043747. Median=3.88809. Range=[0.17564645 10.094867]. Mag=6.051456262471132. Len=12.069121736792914. Center: 32.99076, -115.78397, 7.86218. Parents: Superstition Hills
+Match 3. Mean=2.5819192. Sq Mean=12.265684. Median=2.9187908. Range=[0.17564645 10.094867]. Mag=6.378546790635489. Len=24.138243473584968. Center: 32.95163, -115.73321, 7.82819. Parents: Superstition Hills
+Match 4. Mean=2.648861. Sq Mean=12.45461. Median=2.9077709. Range=[0.17564645 10.094867]. Mag=6.542323252252324. Len=30.172804341980907. Center: 32.96810, -115.76235, 7.48859. Parents: Superstition Hills
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 1986
+Adding 3 sects that match date but were excluded: Superstition Hills, Subsection 0,Superstition Hills, Subsection 4,Superstition Hills, Subsection 5
+**********************************
+**********************************
+Loading cadidate for 1989/10/17 17:04: M6.89. Len=39.91298930397318. Center: 37.05459, -121.86975, 12.30000
+Found 32 candidates (1080 filtered due to parents)
+Checking distance of 779/779 surf pts
+Match 0. Mean=3.1596262. Sq Mean=11.6795025. Median=1.9761252. Range=[0.13277075 7.191752]. Mag=6.839333707759854. Len=34.73483590359555. Center: 37.06516, -121.86314, 7.51714. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 1. Mean=3.1977913. Sq Mean=12.111284. Median=1.9629872. Range=[0.13277075 7.191752]. Mag=6.931495845479749. Len=41.68180308431464. Center: 37.04762, -121.83964, 7.54581. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 2. Mean=3.5328736. Sq Mean=15.285778. Median=2.2724938. Range=[0.279687 11.393924]. Mag=6.729219825345025. Len=27.7878687228758. Center: 37.04520, -121.83316, 7.52143. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 3. Mean=3.5829575. Sq Mean=15.829736. Median=2.205406. Range=[0.279687 11.393924]. Mag=6.836328857222702. Len=34.73483590359489. Center: 37.02733, -121.80976, 7.55536. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 4. Mean=3.5712132. Sq Mean=15.972278. Median=2.1679723. Range=[0.13277075 11.929163]. Mag=6.730627976943604. Len=27.787868722877146. Center: 37.08550, -121.89250, 7.50000. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sat Dec 31 00:00:00 PST 1988
+Adding 2 sects that match date but were excluded: San Andreas (Santa Cruz Mts) 2011 CFM, Subsection 5,San Andreas (Santa Cruz Mts) 2011 CFM, Subsection 6
+**********************************
+**********************************
+Loading cadidate for 1989/10/17 17:04: M6.89. Len=39.91298930397318. Center: 37.05459, -121.86975, 12.30000
+Found 32 candidates (1268 filtered due to parents)
+Checking distance of 779/779 surf pts
+Match 0. Mean=3.1596262. Sq Mean=11.6795025. Median=1.9761252. Range=[0.13277075 7.191752]. Mag=6.839333707759852. Len=34.73483590359555. Center: 37.06516, -121.86314, 7.51714. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 1. Mean=3.1977913. Sq Mean=12.111284. Median=1.9629872. Range=[0.13277075 7.191752]. Mag=6.931495845479749. Len=41.68180308431464. Center: 37.04762, -121.83964, 7.54581. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 2. Mean=3.5328736. Sq Mean=15.285778. Median=2.2724938. Range=[0.279687 11.393924]. Mag=6.729219825345025. Len=27.7878687228758. Center: 37.04520, -121.83316, 7.52143. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 3. Mean=3.5829575. Sq Mean=15.829736. Median=2.205406. Range=[0.279687 11.393924]. Mag=6.836328857222703. Len=34.73483590359489. Center: 37.02733, -121.80976, 7.55536. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Match 4. Mean=3.5712132. Sq Mean=15.972278. Median=2.1679723. Range=[0.13277075 11.929163]. Mag=6.730627976943605. Len=27.787868722877146. Center: 37.08550, -121.89250, 7.50000. Parents: San Andreas (Santa Cruz Mts) 2011 CFM
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Sat Dec 31 00:00:00 PST 1988
+Adding 2 sects that match date but were excluded: San Andreas (Santa Cruz Mts) 2011 CFM, Subsection 5,San Andreas (Santa Cruz Mts) 2011 CFM, Subsection 6
+**********************************
+**********************************
+Loading cadidate for 1991/08/17 12:29: M6.12. Len=9.936453244050014. Center: 40.29575, -124.33488, 7.96350
+Found 0 candidates (246 filtered due to parents)
+Checking distance of 88/88 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1991/08/17 12:29: M6.12. Len=9.936453244050014. Center: 40.29575, -124.33488, 7.96350
+Found 0 candidates (246 filtered due to parents)
+Checking distance of 88/88 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/04/22 21:50: M6.15. Len=7.9810017265241555. Center: 33.98922, -116.32970, 10.25000
+Found 13 candidates (160 filtered due to parents)
+Checking distance of 108/108 surf pts
+Match 0. Mean=6.646492. Sq Mean=55.242863. Median=8.518727. Range=[3.5947 14.241454]. Mag=6.297870771801753. Len=12.57588298991016. Center: 34.01622, -116.35128, 8.25000. Parents: Eureka Peak
+Match 1. Mean=7.5150266. Sq Mean=68.050735. Median=8.566412. Range=[3.5947 14.241454]. Mag=6.481133071805368. Len=18.863824484865443. Center: 34.04294, -116.36131, 8.25000. Parents: Eureka Peak
+Match 2. Mean=8.528221. Sq Mean=83.924965. Median=9.692128. Range=[3.5947 15.892224]. Mag=6.297870771801749. Len=12.575882989910067. Center: 34.07002, -116.36951, 8.25000. Parents: Eureka Peak
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1991
+Adding 1 sects that match date but were excluded: Eureka Peak, Subsection 2
+**********************************
+**********************************
+Loading cadidate for 1992/04/22 21:50: M6.15. Len=7.9810017265241555. Center: 33.98922, -116.32970, 10.25000
+Found 13 candidates (160 filtered due to parents)
+Checking distance of 108/108 surf pts
+Match 0. Mean=6.646492. Sq Mean=55.242863. Median=8.518727. Range=[3.5947 14.241454]. Mag=6.297870771801752. Len=12.57588298991016. Center: 34.01622, -116.35128, 8.25000. Parents: Eureka Peak
+Match 1. Mean=7.5150266. Sq Mean=68.050735. Median=8.566412. Range=[3.5947 14.241454]. Mag=6.4811330718053695. Len=18.863824484865443. Center: 34.04294, -116.36131, 8.25000. Parents: Eureka Peak
+Match 2. Mean=8.528221. Sq Mean=83.924965. Median=9.692128. Range=[3.5947 15.892224]. Mag=6.297870771801749. Len=12.575882989910067. Center: 34.07002, -116.36951, 8.25000. Parents: Eureka Peak
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 1 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1991
+Adding 1 sects that match date but were excluded: Eureka Peak, Subsection 2
+**********************************
+**********************************
+Loading cadidate for 1992/04/25 11:06: M7.15. Len=20.11134327458969. Center: 40.33119, -124.28015, 8.60000
+Found 0 candidates (292 filtered due to parents)
+Checking distance of 609/609 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/04/25 11:06: M7.15. Len=20.11134327458969. Center: 40.33119, -124.28015, 8.60000
+Found 0 candidates (292 filtered due to parents)
+Checking distance of 609/609 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/04/26 24:41: M6.45. Len=11.99492548581133. Center: 40.39186, -124.52345, 20.17057
+Found 0 candidates (197 filtered due to parents)
+Checking distance of 91/91 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/04/26 24:41: M6.45. Len=11.99492548581133. Center: 40.39186, -124.52345, 20.17057
+Found 0 candidates (197 filtered due to parents)
+Checking distance of 91/91 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/04/26 04:18: M6.6. Len=10.003811458417653. Center: 40.35163, -124.51363, 20.12000
+Found 0 candidates (201 filtered due to parents)
+Checking distance of 66/66 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/04/26 04:18: M6.6. Len=10.003811458417653. Center: 40.35163, -124.51363, 20.12000
+Found 0 candidates (201 filtered due to parents)
+Checking distance of 66/66 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/06/28 04:57: M7.28. Len=72.20349755719681. Center: 34.44533, -116.53169, 7.50000
+Found 213 candidates (181 filtered due to parents)
+Checking distance of 584/1168 surf pts
+Match 0. Mean=3.4813912. Sq Mean=26.712795. Median=4.699365. Range=[0.42280754 12.68518]. Mag=7.259015962130594. Len=86.17795198095622. Center: 34.45530, -116.53674, 8.38527. Parents: Camp Rock 2011; Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 1. Mean=3.60042. Sq Mean=28.3838. Median=5.8292575. Range=[0.42280754 15.2226925]. Mag=7.15986575959518. Len=71.10212486447006. Center: 34.41340, -116.50482, 8.40081. Parents: Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 2. Mean=3.6915753. Sq Mean=28.601482. Median=4.705745. Range=[0.42280754 12.68518]. Mag=7.302311170682326. Len=93.71586553919919. Center: 34.47671, -116.55591, 8.37925. Parents: Camp Rock 2011; Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 3. Mean=3.6410358. Sq Mean=28.862705. Median=6.3581448. Range=[0.42280754 15.620847]. Mag=7.210515367488126. Len=78.75037107547932. Center: 34.47786, -116.54596, 8.35353. Parents: Camp Rock 2011; Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 4. Mean=3.7595031. Sq Mean=30.532192. Median=6.4971147. Range=[0.42280754 15.620847]. Mag=7.100604454439516. Len=63.67454395899317. Center: 34.43630, -116.51259, 8.36393. Parents: Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1991
+Adding 4 sects that match date but were excluded: Camp Rock 2011, Subsection 0,Emerson-Copper Mtn 2011, Subsection 6,Emerson-Copper Mtn 2011, Subsection 7,Homestead Valley 2011, Subsection 2
+Rupture doesn't exist, trying subsets
+Found match by removing: Emerson-Copper Mtn 2011, Subsection 6,Emerson-Copper Mtn 2011, Subsection 7,Homestead Valley 2011, Subsection 2,Camp Rock 2011, Subsection 0
+**********************************
+**********************************
+Loading cadidate for 1992/06/28 04:57: M7.28. Len=72.20349755719681. Center: 34.44533, -116.53169, 7.50000
+Found 213 candidates (181 filtered due to parents)
+Checking distance of 584/1168 surf pts
+Match 0. Mean=3.4813912. Sq Mean=26.712795. Median=4.699365. Range=[0.42280754 12.68518]. Mag=7.259015962130594. Len=86.17795198095622. Center: 34.45530, -116.53674, 8.38527. Parents: Camp Rock 2011; Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 1. Mean=3.60042. Sq Mean=28.3838. Median=5.8292575. Range=[0.42280754 15.2226925]. Mag=7.159865759595179. Len=71.10212486447006. Center: 34.41340, -116.50482, 8.40081. Parents: Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 2. Mean=3.6915753. Sq Mean=28.601482. Median=4.705745. Range=[0.42280754 12.68518]. Mag=7.302311170682325. Len=93.71586553919919. Center: 34.47671, -116.55591, 8.37925. Parents: Camp Rock 2011; Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 3. Mean=3.6410358. Sq Mean=28.862705. Median=6.3581448. Range=[0.42280754 15.620847]. Mag=7.210515367488127. Len=78.75037107547932. Center: 34.47786, -116.54596, 8.35353. Parents: Camp Rock 2011; Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Match 4. Mean=3.7595031. Sq Mean=30.532192. Median=6.4971147. Range=[0.42280754 15.620847]. Mag=7.100604454439514. Len=63.67454395899317. Center: 34.43630, -116.51259, 8.36393. Parents: Emerson-Copper Mtn 2011; Homestead Valley 2011; Kickapoo; Johnson Valley (No) 2011 rev
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 1991
+Adding 4 sects that match date but were excluded: Camp Rock 2011, Subsection 0,Emerson-Copper Mtn 2011, Subsection 6,Emerson-Copper Mtn 2011, Subsection 7,Homestead Valley 2011, Subsection 2
+Rupture doesn't exist, trying subsets
+Found match by removing: Homestead Valley 2011, Subsection 2,Emerson-Copper Mtn 2011, Subsection 6,Emerson-Copper Mtn 2011, Subsection 7,Camp Rock 2011, Subsection 0
+**********************************
+**********************************
+Loading cadidate for 1992/06/28 08:05: M6.49. Len=14.34647269424038. Center: 34.20001, -116.80002, 6.00000
+Found 0 candidates (171 filtered due to parents)
+Checking distance of 195/195 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1992/06/28 08:05: M6.49. Len=14.34647269424038. Center: 34.20001, -116.80002, 6.00000
+Found 0 candidates (171 filtered due to parents)
+Checking distance of 195/195 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1993/05/17 16:20: M6.11. Len=15.126612412491792. Center: 37.10508, -117.79938, 6.00000
+Found 0 candidates (68 filtered due to parents)
+Checking distance of 240/240 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1993/05/17 16:20: M6.11. Len=15.126612412491792. Center: 37.10508, -117.79938, 6.00000
+Found 0 candidates (68 filtered due to parents)
+Checking distance of 240/240 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 1994/01/17 04:30: M6.65. Len=17.97849432716064. Center: 34.27405, -118.56780, 12.70000
+Found 10 candidates (475 filtered due to parents)
+Checking distance of 475/475 surf pts
+Match 0. Mean=2.5944927. Sq Mean=8.202305. Median=2.5287666. Range=[0.28059807 8.451543]. Mag=6.543730892293782. Len=20.019992866196116. Center: 34.30183, -118.57475, 12.57000. Parents: Northridge
+Match 1. Mean=2.620175. Sq Mean=8.2738. Median=2.806827. Range=[0.28059807 8.451543]. Mag=6.362150153977214. Len=13.346661910797794. Center: 34.28872, -118.54272, 12.57000. Parents: Northridge
+Match 2. Mean=2.829479. Sq Mean=9.750684. Median=2.536892. Range=[0.28059807 8.451543]. Mag=6.685328876860468. Len=26.69332382159422. Center: 34.29140, -118.54109, 12.57000. Parents: Northridge
+Match 3. Mean=2.9584277. Sq Mean=10.528209. Median=2.8242943. Range=[0.28059807 8.451543]. Mag=6.543730892293778. Len=20.019992866195892. Center: 34.27918, -118.50852, 12.57000. Parents: Northridge
+Match 4. Mean=2.891148. Sq Mean=11.747336. Median=2.8516042. Range=[0.28059807 9.642023]. Mag=6.362150153977211. Len=13.346661910797692. Center: 34.31295, -118.60783, 12.57000. Parents: Northridge
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Fri Dec 31 00:00:00 PST 1993
+Adding 2 sects that match date but were excluded: Northridge, Subsection 0,Northridge, Subsection 4
+**********************************
+**********************************
+Loading cadidate for 1994/01/17 04:30: M6.65. Len=17.97849432716064. Center: 34.27405, -118.56780, 12.70000
+Found 10 candidates (739 filtered due to parents)
+Checking distance of 475/475 surf pts
+Match 0. Mean=2.5944927. Sq Mean=8.202305. Median=2.5287666. Range=[0.28059807 8.451543]. Mag=6.543730892293784. Len=20.019992866196116. Center: 34.30183, -118.57475, 12.57000. Parents: Northridge
+Match 1. Mean=2.620175. Sq Mean=8.2738. Median=2.806827. Range=[0.28059807 8.451543]. Mag=6.362150153977213. Len=13.346661910797794. Center: 34.28872, -118.54272, 12.57000. Parents: Northridge
+Match 2. Mean=2.829479. Sq Mean=9.750684. Median=2.536892. Range=[0.28059807 8.451543]. Mag=6.685328876860468. Len=26.69332382159422. Center: 34.29140, -118.54109, 12.57000. Parents: Northridge
+Match 3. Mean=2.9584277. Sq Mean=10.528209. Median=2.8242943. Range=[0.28059807 8.451543]. Mag=6.543730892293777. Len=20.019992866195892. Center: 34.27918, -118.50852, 12.57000. Parents: Northridge
+Match 4. Mean=2.891148. Sq Mean=11.747336. Median=2.8516042. Range=[0.28059807 9.642023]. Mag=6.362150153977211. Len=13.346661910797692. Center: 34.31295, -118.60783, 12.57000. Parents: Northridge
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Fri Dec 31 00:00:00 PST 1993
+Adding 2 sects that match date but were excluded: Northridge, Subsection 0,Northridge, Subsection 4
+**********************************
+**********************************
+Loading cadidate for 1999/10/16 02:46: M7.12. Len=44.999508474096395. Center: 34.59028, -116.27829, 7.89429
+Found 102 candidates (315 filtered due to parents)
+Checking distance of 949/949 surf pts
+Match 0. Mean=4.341724. Sq Mean=39.34007. Median=6.966438. Range=[0.4693355 16.236122]. Mag=6.910595404509598. Len=47.337757465371276. Center: 34.53491, -116.27418, 7.67643. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 1. Mean=4.4353085. Sq Mean=40.091534. Median=7.075654. Range=[0.52776223 16.236122]. Mag=6.838878489423233. Len=40.857020663243304. Center: 34.55805, -116.28938, 7.75500. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 2. Mean=4.520554. Sq Mean=40.586304. Median=6.9648376. Range=[0.4693355 16.236122]. Mag=6.974367251810851. Len=53.81849426749867. Center: 34.51111, -116.25880, 7.61750. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 3. Mean=4.5590053. Sq Mean=42.76719. Median=7.8328166. Range=[0.4693355 17.395676]. Mag=6.826270478045836. Len=40.36387070062514. Center: 34.50984, -116.25900, 7.61750. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 4. Mean=4.659495. Sq Mean=43.53642. Median=7.8638463. Range=[0.52776223 17.395676]. Mag=6.744138035638783. Len=33.88313389849717. Center: 34.53260, -116.27420, 7.70000. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Thu Dec 31 00:00:00 PST 1998
+Adding 2 sects that match date but were excluded: Pisgah-Bullion Mtn-Mesquite Lk, Subsection 4,Pisgah-Bullion Mtn-Mesquite Lk, Subsection 8
+Rupture doesn't exist, trying subsets
+Found match by removing: Pisgah-Bullion Mtn-Mesquite Lk, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 1999/10/16 02:46: M7.12. Len=44.999508474096395. Center: 34.59028, -116.27829, 7.89429
+Found 102 candidates (315 filtered due to parents)
+Checking distance of 949/949 surf pts
+Match 0. Mean=4.341724. Sq Mean=39.34007. Median=6.966438. Range=[0.4693355 16.236122]. Mag=6.910595404509597. Len=47.337757465371276. Center: 34.53491, -116.27418, 7.67643. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 1. Mean=4.4353085. Sq Mean=40.091534. Median=7.075654. Range=[0.52776223 16.236122]. Mag=6.838878489423231. Len=40.857020663243304. Center: 34.55805, -116.28938, 7.75500. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 2. Mean=4.520554. Sq Mean=40.586304. Median=6.9648376. Range=[0.4693355 16.236122]. Mag=6.974367251810853. Len=53.81849426749867. Center: 34.51111, -116.25880, 7.61750. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 3. Mean=4.5590053. Sq Mean=42.76719. Median=7.8328166. Range=[0.4693355 17.395676]. Mag=6.826270478045836. Len=40.36387070062514. Center: 34.50984, -116.25900, 7.61750. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Match 4. Mean=4.659495. Sq Mean=43.53642. Median=7.8638463. Range=[0.52776223 17.395676]. Mag=6.744138035638785. Len=33.88313389849717. Center: 34.53260, -116.27420, 7.70000. Parents: Pisgah-Bullion Mtn-Mesquite Lk; Hector Mine
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Thu Dec 31 00:00:00 PST 1998
+Adding 2 sects that match date but were excluded: Pisgah-Bullion Mtn-Mesquite Lk, Subsection 4,Pisgah-Bullion Mtn-Mesquite Lk, Subsection 8
+Rupture doesn't exist, trying subsets
+Found match by removing: Pisgah-Bullion Mtn-Mesquite Lk, Subsection 8
+**********************************
+**********************************
+Loading cadidate for 2000/03/16 07:19: M5.86. Len=11.036176157470216. Center: 40.38897, -125.27628, 6.76514
+Found 0 candidates (132 filtered due to parents)
+Checking distance of 84/84 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 2000/03/16 07:19: M5.86. Len=11.036176157470216. Center: 40.38897, -125.27628, 6.76514
+Found 0 candidates (132 filtered due to parents)
+Checking distance of 84/84 surf pts
+Took 0 seconds to find match
+**********************************
+Loading cadidate for 2003/12/22 11:15: M6.55. Len=32.87041996541093. Center: 35.63009, -120.93954, 6.00000
+Found 157 candidates (398 filtered due to parents)
+Checking distance of 374/374 surf pts
+Match 0. Mean=3.1546955. Sq Mean=13.72766. Median=3.0111425. Range=[0.37700823 11.494092]. Mag=6.3824105760589385. Len=24.37219135571955. Center: 35.61982, -121.00104, 3.85000. Parents: Oceanic - West Huasna
+Match 1. Mean=3.2732236. Sq Mean=13.97528. Median=3.0274796. Range=[0.37700823 10.604767]. Mag=6.458284006047461. Len=28.434223248339148. Center: 35.60951, -120.98332, 3.85000. Parents: Oceanic - West Huasna
+Match 2. Mean=3.3150675. Sq Mean=14.317127. Median=3.0274796. Range=[0.37700823 10.604767]. Mag=6.524008560625603. Len=32.49625514095749. Center: 35.61799, -121.00291, 3.85000. Parents: Oceanic - West Huasna
+Match 3. Mean=3.232015. Sq Mean=14.348429. Median=3.0111425. Range=[0.37700823 11.494092]. Mag=6.458284006047439. Len=28.434223248337887. Center: 35.62805, -121.02090, 3.85000. Parents: Oceanic - West Huasna
+Match 4. Mean=3.2987986. Sq Mean=14.512875. Median=3.377423. Range=[0.40650943 11.494092]. Mag=6.292671355380126. Len=20.310159463099538. Center: 35.61126, -120.98146, 3.85000. Parents: Oceanic - West Huasna
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 2002
+Adding 1 sects that match date but were excluded: Oceanic - West Huasna, Subsection 21
+**********************************
+**********************************
+Loading cadidate for 2003/12/22 11:15: M6.55. Len=32.87041996541093. Center: 35.63009, -120.93954, 6.00000
+Found 157 candidates (406 filtered due to parents)
+Checking distance of 374/374 surf pts
+Match 0. Mean=3.1546955. Sq Mean=13.72766. Median=3.0111425. Range=[0.37700823 11.494092]. Mag=6.382410576058937. Len=24.37219135571955. Center: 35.61982, -121.00104, 3.85000. Parents: Oceanic - West Huasna
+Match 1. Mean=3.2732236. Sq Mean=13.97528. Median=3.0274796. Range=[0.37700823 10.604767]. Mag=6.45828400604746. Len=28.434223248339144. Center: 35.60951, -120.98332, 3.85000. Parents: Oceanic - West Huasna
+Match 2. Mean=3.3150675. Sq Mean=14.317127. Median=3.0274796. Range=[0.37700823 10.604767]. Mag=6.524008560625604. Len=32.49625514095748. Center: 35.61799, -121.00291, 3.85000. Parents: Oceanic - West Huasna
+Match 3. Mean=3.232015. Sq Mean=14.348429. Median=3.0111425. Range=[0.37700823 11.494092]. Mag=6.458284006047441. Len=28.434223248337883. Center: 35.62805, -121.02090, 3.85000. Parents: Oceanic - West Huasna
+Match 4. Mean=3.2987986. Sq Mean=14.512875. Median=3.377423. Range=[0.40650943 11.494092]. Mag=6.292671355380129. Len=20.310159463099538. Center: 35.61126, -120.98146, 3.85000. Parents: Oceanic - West Huasna
+Took 1 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Tue Dec 31 00:00:00 PST 2002
+Adding 1 sects that match date but were excluded: Oceanic - West Huasna, Subsection 21
+**********************************
+**********************************
+Loading cadidate for 2004/09/28 10:15: M5.97. Len=40.27013972846267. Center: 35.88710, -120.43446, 6.50000
+Found 28 candidates (173 filtered due to parents)
+Checking distance of 369/369 surf pts
+Match 0. Mean=1.698599. Sq Mean=5.2409945. Median=2.4938405. Range=[0.34932423 7.3176994]. Mag=6.11955983256644. Len=36.45836125652881. Center: 35.87091, -120.42363, 8.61000. Parents: San Andreas (Parkfield)
+Match 1. Mean=1.7989447. Sq Mean=5.910199. Median=2.62186. Range=[0.34932423 7.3176994]. Mag=6.014059625898933. Len=31.901066099462884. Center: 35.89303, -120.44662, 8.81571. Parents: San Andreas (Parkfield)
+Match 2. Mean=1.8522708. Sq Mean=6.81195. Median=2.6451023. Range=[0.34932423 9.640916]. Mag=6.098611861862958. Len=31.901066099462806. Center: 35.85543, -120.40750, 8.46600. Parents: San Andreas (Parkfield)
+Match 3. Mean=1.9510303. Sq Mean=7.4793506. Median=2.9120798. Range=[0.34932423 9.640916]. Mag=5.990578545682511. Len=27.343770942396876. Center: 35.87737, -120.43030, 8.67000. Parents: San Andreas (Parkfield)
+Match 4. Mean=2.146121. Sq Mean=9.533291. Median=3.0146403. Range=[0.3688432 10.709671]. Mag=5.898795459878722. Len=27.3437709423965. Center: 35.90870, -120.46292, 8.96146. Parents: San Andreas (Parkfield)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 2003
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 2004/09/28 10:15: M5.97. Len=40.27013972846267. Center: 35.88710, -120.43446, 6.50000
+Found 28 candidates (173 filtered due to parents)
+Checking distance of 369/369 surf pts
+Match 0. Mean=1.698599. Sq Mean=5.2409945. Median=2.4938405. Range=[0.34932423 7.3176994]. Mag=6.11955983256644. Len=36.45836125652881. Center: 35.87091, -120.42363, 8.61000. Parents: San Andreas (Parkfield)
+Match 1. Mean=1.7989447. Sq Mean=5.910199. Median=2.62186. Range=[0.34932423 7.3176994]. Mag=6.014059625898932. Len=31.901066099462884. Center: 35.89303, -120.44662, 8.81571. Parents: San Andreas (Parkfield)
+Match 2. Mean=1.8522708. Sq Mean=6.81195. Median=2.6451023. Range=[0.34932423 9.640916]. Mag=6.098611861862959. Len=31.901066099462806. Center: 35.85543, -120.40750, 8.46600. Parents: San Andreas (Parkfield)
+Match 3. Mean=1.9510303. Sq Mean=7.4793506. Median=2.9120798. Range=[0.34932423 9.640916]. Mag=5.990578545682512. Len=27.343770942396876. Center: 35.87737, -120.43030, 8.67000. Parents: San Andreas (Parkfield)
+Match 4. Mean=2.146121. Sq Mean=9.533291. Median=3.0146403. Range=[0.3688432 10.709671]. Mag=5.898795459878723. Len=27.3437709423965. Center: 35.90870, -120.46292, 8.96146. Parents: San Andreas (Parkfield)
+Took 0 seconds to find match
+Adjusting to match date of last event data exactly
+Removing 0 sects without data (or with earlier date). Date: Wed Dec 31 00:00:00 PST 2003
+Adding 0 sects that match date but were excluded: 
+**********************************
+**********************************
+Loading cadidate for 2010/01/09 16:27: M6.51. Len=50.4673302127225. Center: 40.62660, -124.71895, 20.66181
+No viable parents for M6.51 at Sat Jan 09 16:27:39 PST 2010
+**********************************
+Loading cadidate for 2010/01/09 16:27: M6.51. Len=50.4673302127225. Center: 40.62660, -124.71895, 20.66181
+No viable parents for M6.51 at Sat Jan 09 16:27:39 PST 2010
+**********************************
+Loading cadidate for 2010/04/04 15:40: M7.19. Len=124.99976491554219. Center: 32.20186, -115.25840, 7.23916
+No viable parents for M7.19 at Sun Apr 04 15:40:41 PDT 2010
+**********************************
+Loading cadidate for 2010/04/04 15:40: M7.19. Len=124.99976491554219. Center: 32.20186, -115.25840, 7.23916
+No viable parents for M7.19 at Sun Apr 04 15:40:41 PDT 2010

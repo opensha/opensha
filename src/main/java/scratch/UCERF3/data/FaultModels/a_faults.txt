@@ -1,0 +1,49 @@
+#ID	Name
+4	Calaveras (No)
+5	Calaveras (Central)
+25	Rodgers Creek
+26	San Andreas (Offshore)
+27	San Andreas (North Coast)
+28	San Jacinto (Superstition Mtn)
+32	San Andreas (Parkfield)
+48	Garlock (East)
+49	Garlock (West)
+55	Calaveras (So)
+56	San Andreas (Santa Cruz Mtn)
+67	San Andreas (Peninsula)
+68	Hayward (No)
+69	Hayward (So)
+99	San Jacinto (Borrego)
+101	San Jacinto (Coyote Creek)
+102	Elsinore (Julian)
+103	Elsinore (Coyote Mountain)
+119	San Jacinto (San Bernardino)
+236	Whittier alt 1
+237	Whittier, alt 2
+282	San Andreas (San Bernardino N)
+283	San Andreas (San Bernardino S)
+284	San Andreas (San Gorgonio Pass-Garnet HIll)
+285	San Andreas (Cholame) rev
+286	San Andreas (Mojave N)
+287	San Andreas (Big Bend)
+289	San Jacinto (San Jacinto Valley) rev
+292	San Jacinto (Clark) rev
+293	San Jacinto (Anza) rev
+295	San Andreas (Coachella) rev
+296	Elsinore (Glen Ivy) rev
+299	Elsinore (Temecula) rev
+300	San Andreas (Carrizo) rev
+301	San Andreas (Mojave S)
+341	Garlock (Central)
+401	San Jacinto (Stepovers Combined)
+402	Elsinore (Stepovers Combined)
+601	Calaveras (No) 2011 CFM
+602	Calaveras (Central) 2011 CFM
+603	Calaveras (So) 2011 CFM
+638	Hayward (So) 2011 CFM
+639	Hayward (No) 2011 CFM
+651	Rodgers Creek - Healdsburg 2011 CFM
+653	San Andreas (Offshore) 2011 CFM
+654	San Andreas (North Coast) 2011 CFM
+655	San Andreas (Peninsula) 2011 CFM
+657	San Andreas (Santa Cruz Mts) 2011 CFM
