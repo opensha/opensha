@@ -38,12 +38,12 @@ dependencies {
 	 *	"Runtime" dependencies are exported downstream to users
 	 */
 	// repository based dependencies
-	runtime 'net.sourceforge.parallelcolt:parallelcolt:0.10.1'
-	runtime 'org.apache.poi:poi:3.16'
+	compile 'net.sourceforge.parallelcolt:parallelcolt:0.10.1'
+	compile 'org.apache.poi:poi:3.16'
 	 
     // jars. TODO move to repo?
-    runtime files('lib/ojdbc5.jar')
-    runtime files('lib/sdoapi.jar')
+    compile files('lib/ojdbc5.jar')
+    compile files('lib/sdoapi.jar')
     
     compile project(':opensha-commons')
 

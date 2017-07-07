@@ -17,16 +17,16 @@ import org.opensha.commons.data.Named;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ServerPrefs;
-//import org.opensha.nshmp2.imr.NSHMP08_CEUS;
-//import org.opensha.nshmp2.imr.NSHMP08_WUS;
-//import org.opensha.nshmp2.imr.impl.AB2006_140_AttenRel;
-//import org.opensha.nshmp2.imr.impl.AB2006_200_AttenRel;
-//import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
-//import org.opensha.nshmp2.imr.impl.FrankelEtAl_1996_AttenRel;
-//import org.opensha.nshmp2.imr.impl.SilvaEtAl_2002_AttenRel;
-//import org.opensha.nshmp2.imr.impl.SomervilleEtAl_2001_AttenRel;
-//import org.opensha.nshmp2.imr.impl.TP2005_AttenRel;
-//import org.opensha.nshmp2.imr.impl.ToroEtAl_1997_AttenRel;
+import org.opensha.nshmp2.imr.NSHMP08_CEUS;
+import org.opensha.nshmp2.imr.NSHMP08_WUS;
+import org.opensha.nshmp2.imr.impl.AB2006_140_AttenRel;
+import org.opensha.nshmp2.imr.impl.AB2006_200_AttenRel;
+import org.opensha.nshmp2.imr.impl.Campbell_2003_AttenRel;
+import org.opensha.nshmp2.imr.impl.FrankelEtAl_1996_AttenRel;
+import org.opensha.nshmp2.imr.impl.SilvaEtAl_2002_AttenRel;
+import org.opensha.nshmp2.imr.impl.SomervilleEtAl_2001_AttenRel;
+import org.opensha.nshmp2.imr.impl.TP2005_AttenRel;
+import org.opensha.nshmp2.imr.impl.ToroEtAl_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.AS_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.AS_2005_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.AS_2008_AttenRel;
@@ -184,39 +184,39 @@ public enum AttenRelRef implements Named {
 	/** Average of 3 NGA's used in the 20008 NSHMP */
 	NSHMP_2008(NSHMP_2008_CA.class, NSHMP_2008_CA.NAME, NSHMP_2008_CA.SHORT_NAME, DEVELOPMENT),
 
-//	/** Multiple weighted attenuation relationships used in 20008 CEUS NSHMP */
-//	NSHMP_2008_CEUS(NSHMP08_CEUS.class, NSHMP08_CEUS.NAME, NSHMP08_CEUS.SHORT_NAME, ERROR), // TODO set to error, see ticket #435
-//
-//	/** Atkinson and Booore (2006) with 140bar stress drop. For NSHMP CEUS. */
-//	AB_2006_140(AB2006_140_AttenRel.class, AB2006_140_AttenRel.NAME,
-//			AB2006_140_AttenRel.SHORT_NAME, DEVELOPMENT),
-//
-//	/** Atkinson and Booore (2006) with 140bar stress drop. For NSHMP CEUS. */
-//	AB_2006_200(AB2006_200_AttenRel.class, AB2006_200_AttenRel.NAME,
-//			AB2006_200_AttenRel.SHORT_NAME, DEVELOPMENT),
-//
-//	/** Campbell CEUS (2003). For NSHMP CEUS. */
-//	CAMPBELL_2003(Campbell_2003_AttenRel.class, Campbell_2003_AttenRel.NAME,
-//			Campbell_2003_AttenRel.SHORT_NAME, DEVELOPMENT),
-//
-//	/** Frankel et al. (1996). For NSHMP CEUS. */
-//	FEA_1996(FrankelEtAl_1996_AttenRel.class, FrankelEtAl_1996_AttenRel.NAME,
-//			FrankelEtAl_1996_AttenRel.SHORT_NAME, ERROR), // TODO set to error because of ticket #366
-//
-//	/** Somerville et al. (2001). For NSHMP CEUS. */
-//	SOMERVILLE_2001(SomervilleEtAl_2001_AttenRel.class,
-//			SomervilleEtAl_2001_AttenRel.NAME, SomervilleEtAl_2001_AttenRel.SHORT_NAME, DEVELOPMENT),
-//
-//	/** Silva et al. (2002). For NSHMP CEUS. */
-//	SILVA_2002(SilvaEtAl_2002_AttenRel.class, SilvaEtAl_2002_AttenRel.NAME,
-//			SilvaEtAl_2002_AttenRel.SHORT_NAME, DEVELOPMENT),
-//
-//	/** Toro et al. (1997). For NSHMP CEUS. */
-//	TORO_1997(ToroEtAl_1997_AttenRel.class, ToroEtAl_1997_AttenRel.NAME,
-//			ToroEtAl_1997_AttenRel.SHORT_NAME, DEVELOPMENT),
-//
-//	/** Tavakoli and Pezeshk (2005). For NSHMP CEUS. */
-//	TP_2005(TP2005_AttenRel.class, TP2005_AttenRel.NAME, TP2005_AttenRel.SHORT_NAME, DEVELOPMENT),
+	/** Multiple weighted attenuation relationships used in 20008 CEUS NSHMP */
+	NSHMP_2008_CEUS(NSHMP08_CEUS.class, NSHMP08_CEUS.NAME, NSHMP08_CEUS.SHORT_NAME, ERROR), // TODO set to error, see ticket #435
+
+	/** Atkinson and Booore (2006) with 140bar stress drop. For NSHMP CEUS. */
+	AB_2006_140(AB2006_140_AttenRel.class, AB2006_140_AttenRel.NAME,
+			AB2006_140_AttenRel.SHORT_NAME, DEVELOPMENT),
+
+	/** Atkinson and Booore (2006) with 140bar stress drop. For NSHMP CEUS. */
+	AB_2006_200(AB2006_200_AttenRel.class, AB2006_200_AttenRel.NAME,
+			AB2006_200_AttenRel.SHORT_NAME, DEVELOPMENT),
+
+	/** Campbell CEUS (2003). For NSHMP CEUS. */
+	CAMPBELL_2003(Campbell_2003_AttenRel.class, Campbell_2003_AttenRel.NAME,
+			Campbell_2003_AttenRel.SHORT_NAME, DEVELOPMENT),
+
+	/** Frankel et al. (1996). For NSHMP CEUS. */
+	FEA_1996(FrankelEtAl_1996_AttenRel.class, FrankelEtAl_1996_AttenRel.NAME,
+			FrankelEtAl_1996_AttenRel.SHORT_NAME, ERROR), // TODO set to error because of ticket #366
+
+	/** Somerville et al. (2001). For NSHMP CEUS. */
+	SOMERVILLE_2001(SomervilleEtAl_2001_AttenRel.class,
+			SomervilleEtAl_2001_AttenRel.NAME, SomervilleEtAl_2001_AttenRel.SHORT_NAME, DEVELOPMENT),
+
+	/** Silva et al. (2002). For NSHMP CEUS. */
+	SILVA_2002(SilvaEtAl_2002_AttenRel.class, SilvaEtAl_2002_AttenRel.NAME,
+			SilvaEtAl_2002_AttenRel.SHORT_NAME, DEVELOPMENT),
+
+	/** Toro et al. (1997). For NSHMP CEUS. */
+	TORO_1997(ToroEtAl_1997_AttenRel.class, ToroEtAl_1997_AttenRel.NAME,
+			ToroEtAl_1997_AttenRel.SHORT_NAME, DEVELOPMENT),
+
+	/** Tavakoli and Pezeshk (2005). For NSHMP CEUS. */
+	TP_2005(TP2005_AttenRel.class, TP2005_AttenRel.NAME, TP2005_AttenRel.SHORT_NAME, DEVELOPMENT),
 
 	// EXPERIMENTAL
 	
