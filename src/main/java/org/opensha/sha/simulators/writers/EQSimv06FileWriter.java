@@ -17,7 +17,7 @@ import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.simulators.RectangularElement;
 import org.opensha.sha.simulators.SimulatorElement;
 import org.opensha.sha.simulators.Vertex;
-import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
+import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.collect.Lists;
 
@@ -144,7 +144,7 @@ public class EQSimv06FileWriter {
 				// Rectangle Record:  204 ID vertex_1 vertex_2 vertex_3 vertex_4 rake slip_rate aseis_factor strike dip perfect_flag comment_text
 				efw.write("204 "+elem.getID()+" "+vert[0].getID()+" "+vert[1].getID()+" "+vert[2].getID()+" "+
 						vert[3].getID()+" "+(float)focalMech.getRake()+" "
-						+(float)(elem.getSlipRate()/General_EQSIM_Tools.SECONDS_PER_YEAR)+" "+
+						+(float)(elem.getSlipRate()/SimulatorUtils.SECONDS_PER_YEAR)+" "+
 						(float)elem.getAseisFactor()+" "+(float)focalMech.getStrike()+" "+(float)focalMech.getDip()
 						+" "+elem.getPerfectInt()+"\n");
 			}

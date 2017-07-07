@@ -59,7 +59,8 @@ public class BaylessSomerville2013DirectivityModifierTest {
 	
 	private TestCase test;
 	
-	@Parameters(name="{0}")
+//	@Parameters(name="{0}")
+	@Parameters
 	public static Collection<TestCase[]> data() {
 		// parameterized test that will automatically do each enum
 		List<TestCase[]> data = Lists.newArrayList();

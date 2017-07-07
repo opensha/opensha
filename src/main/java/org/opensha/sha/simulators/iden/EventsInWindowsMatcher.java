@@ -6,7 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.opensha.sha.simulators.SimulatorEvent;
-import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
+import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -50,7 +50,7 @@ public class EventsInWindowsMatcher {
 		
 		if (randomizeEventTimes) {
 			double startTime = events.get(0).getTime();
-			double simDuration = General_EQSIM_Tools.getSimulationDuration(events);
+			double simDuration = SimulatorUtils.getSimulationDuration(events);
 			
 			ArrayList<SimulatorEvent> randomizedEvents = new ArrayList<SimulatorEvent>();
 			
@@ -72,9 +72,9 @@ public class EventsInWindowsMatcher {
 			return Lists.newArrayList();
 		}
 		
-		double duration = windowDurationYears * General_EQSIM_Tools.SECONDS_PER_YEAR;
+		double duration = windowDurationYears * SimulatorUtils.SECONDS_PER_YEAR;
 		
-		double minDuration = minWindowDurationYears * General_EQSIM_Tools.SECONDS_PER_YEAR;
+		double minDuration = minWindowDurationYears * SimulatorUtils.SECONDS_PER_YEAR;
 		
 		// [start, end] in seconds
 		timeWindows = Lists.newArrayList();
@@ -111,7 +111,7 @@ public class EventsInWindowsMatcher {
 			prev = window;
 		}
 		
-		totalWindowDurationYears = windowDurationSum / General_EQSIM_Tools.SECONDS_PER_YEAR;
+		totalWindowDurationYears = windowDurationSum / SimulatorUtils.SECONDS_PER_YEAR;
 		double rate = 1d / totalWindowDurationYears;
 		
 		System.out.println("Got "+matches.size()+" matches in "+timeWindows.size()+" windows ("

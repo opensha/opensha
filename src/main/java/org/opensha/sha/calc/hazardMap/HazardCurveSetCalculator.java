@@ -17,7 +17,6 @@ import org.opensha.sha.calc.hazardMap.components.CalculationSettings;
 import org.opensha.sha.calc.hazardMap.components.CurveMetadata;
 import org.opensha.sha.calc.hazardMap.components.CurveResultsArchiver;
 import org.opensha.sha.earthquake.ERF;
-import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.TRTUtils;
@@ -146,11 +145,13 @@ public class HazardCurveSetCalculator {
 				System.err.println("Error calculating hazard curve. Metadata below.");
 				System.err.println("Site: "+site);
 				System.err.println("ERF: "+erf.getName());
-				try {
-					System.err.println("IMR: "+IMR_MultiGuiBean.getIMRMetadataHTML(imrMap).replaceAll("<br>", "\n"));
-				} catch (Exception e1) {
-					System.err.println("IMR: "+imrMap.values().iterator().next().getName());
-				}
+				for (TectonicRegionType type : imrMap.keySet())
+					System.err.println(type.name()+" => IMR: "+imrMap.get(type).getName());
+//				try {
+//					System.err.println("IMR: "+IMR_MultiGuiBean.getIMRMetadataHTML(imrMap).replaceAll("<br>", "\n"));
+//				} catch (Exception e1) {
+//					System.err.println("IMR: "+imrMap.values().iterator().next().getName());
+//				}
 				System.err.println("Function: "+calcFunction);
 				ExceptionUtils.throwAsRuntimeException(e);
 			}

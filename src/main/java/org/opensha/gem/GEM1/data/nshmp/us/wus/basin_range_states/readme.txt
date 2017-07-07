@@ -1,1 +1,0 @@
-This folder contains fault source model for the Basin and Range states: Arizona, Montana, Idaho, Colorado, Texas, New Mexico.

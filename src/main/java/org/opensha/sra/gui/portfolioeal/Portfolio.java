@@ -74,7 +74,7 @@ public class Portfolio {
 	 */
 	public double calculatePortfolioEAL( ScalarIMR imr, double maxSourceDistance,
 										 Site site, BaseERF erf,
-										 PortfolioEALCalculatorController controller ) {
+										 CalculationExceptionHandler controller ) {
 		String toWrite = "";
 		try {
 			BufferedWriter out = null;

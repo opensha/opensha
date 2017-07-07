@@ -1,14 +1,12 @@
+CORE NOTES:
+* deleted all GEM
+
 CORE TODO:
 
-* remove apps
 * remove GEM
-* STEP relies on dev
-* remove commons
-* move RSQSimUtils to UCERF3
-* move HAZUS UCERF3 related stuff: UCERF3HazusJobWriter, UCERF3HazusJobWriterYear2NGA
-* move ERF/AttenRel Ref objects to apps
-* move General_EQSIM_Tools to UCERF3
-* restore any nshmp[2]
+* resolve path forward for ERF/AttenRel Ref objects? current AttenRelRel in core, ERF_Ref in apps
+* restore any nshmp[2] needed
 	* including IMRs in AttenRelRef that point to nshmp2
-* move estimate parameters to core?
-* move FaultSystemSolutionERF to core
+* move FaultSystemSolutionERF to core. TRICKY
+* resurrect simulator UCERF3 section ID iden
+* mag freq dist app is in core because the MFD parameter uses the actual app, not just editors. Now launcher in apps, window in core

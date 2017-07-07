@@ -34,6 +34,7 @@ import java.util.StringTokenizer;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.region.SitesInGriddedRegion;
+import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
@@ -141,7 +142,7 @@ public class STEP_DataSetGeneratorTest implements ParameterChangeWarningListener
         //adding the clone of the site parameters to the list
         Parameter tempParam = (Parameter)((Parameter)it.next()).clone();
         //getting the Site Param Value corresponding to the Will Site Class "DE" for the seleted IMR  from the SiteTranslator
-        siteTrans.setParameterValue(tempParam,siteTrans.WILLS_DE,Double.NaN);
+        siteTrans.setParameterValue(tempParam,WillsMap2000.WILLS_DE,Double.NaN);
         defaultSiteParams.add(tempParam);
       }
       sites.setDefaultSiteParams(defaultSiteParams);

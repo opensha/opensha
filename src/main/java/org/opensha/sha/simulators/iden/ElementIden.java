@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.opensha.sha.simulators.SimulatorEvent;
-import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;

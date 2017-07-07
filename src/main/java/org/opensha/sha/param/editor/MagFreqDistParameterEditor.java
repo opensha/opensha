@@ -51,7 +51,7 @@ import org.opensha.sha.magdist.SingleMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.magdist.TaperedGR_MagFreqDist;
 import org.opensha.sha.magdist.YC_1985_CharMagFreqDist;
-import org.opensha.sha.magdist.gui.MagFreqDistApp;
+import org.opensha.sha.magdist.gui.MagFreqDistAppWindow;
 import org.opensha.sha.param.MagFreqDistParameter;
 
 /**
@@ -89,7 +89,7 @@ public class MagFreqDistParameterEditor
   private ParameterList parameterList;
 
   //shows the parameters in a window
-  private MagFreqDistApp magDistPanel;
+  private MagFreqDistAppWindow magDistPanel;
 
   /**
    * ParameterListEditor for holding parameters
@@ -150,7 +150,7 @@ public class MagFreqDistParameterEditor
   public void actionPerformed(ActionEvent ae) {
     magDistParamsChange = true;
     magDistParam.setSummedDistPlotted(false);
-    magDistPanel = new MagFreqDistApp();
+    magDistPanel = new MagFreqDistAppWindow();
     magDistPanel.setMagDistEditor(this);
     //magDistPanel.pack();
     magDistPanel.setVisible(true);

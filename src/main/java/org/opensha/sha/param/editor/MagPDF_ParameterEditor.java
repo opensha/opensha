@@ -46,7 +46,7 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.magdist.YC_1985_CharMagFreqDist;
-import org.opensha.sha.magdist.gui.MagFreqDistApp;
+import org.opensha.sha.magdist.gui.MagFreqDistAppWindow;
 import org.opensha.sha.param.MagFreqDistParameter;
 import org.opensha.sha.param.MagPDF_Parameter;
 
@@ -93,7 +93,7 @@ public class MagPDF_ParameterEditor
   public static final String MAG_DIST_TITLE = new String("Mag PDF Params");
 
   //shows the parameters in a window
-  private MagFreqDistApp magDistPanel;
+  private MagFreqDistAppWindow magDistPanel;
 
   /**
    * Constructor
@@ -138,7 +138,7 @@ public class MagPDF_ParameterEditor
    */
   public void actionPerformed(ActionEvent ae) {
 
-    magDistPanel = new MagFreqDistApp();
+    magDistPanel = new MagFreqDistAppWindow();
     magDistPanel.setMagDistEditor(this);
     //magDistPanel.pack();
     magDistPanel.setVisible(true);

@@ -38,7 +38,7 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sra.gui.portfolioeal.Asset;
 import org.opensha.sra.gui.portfolioeal.CalculationExceptionHandler;
 import org.opensha.sra.gui.portfolioeal.Portfolio;
-import org.opensha.sra.gui.portfolioeal.PortfolioEALCalculatorController;
+import org.opensha.sra.vulnerability.VulnerabilityFetcher;
 
 import com.google.common.base.Preconditions;
 
@@ -97,7 +97,7 @@ public class MPJ_EAL_Calc extends MPJTaskCalculator implements CalculationExcept
 		if (cmd.hasOption("vuln-file")) {
 			File vulnFile = new File(cmd.getOptionValue("vuln-file"));
 			System.out.println("trying to load vulnerabilities from: "+vulnFile.getAbsolutePath());
-			PortfolioEALCalculatorController.getVulnerabilities(vulnFile);
+			VulnerabilityFetcher.getVulnerabilities(vulnFile);
 			System.out.println("DONE loading vulns.");
 		}
 		

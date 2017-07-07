@@ -63,7 +63,8 @@ extends HttpServlet implements ParameterChangeWarningListener {
 
 	public final static String SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "ScenarioShakeMapCalcServlet";
 	//path on the server where all the object will be stored
-	private final static String FILE_PATH = GriddedRegionServlet.FILE_PATH;
+//	private final static String FILE_PATH = GriddedRegionServlet.FILE_PATH;
+	protected final static String FILE_PATH="/scratch/opensha/MapCalculationSavedObjects/";
 	private final static String XYZ_DATA_DIR = "xyzDataObject/";
 
 	/**

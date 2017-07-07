@@ -1,7 +1,7 @@
 package org.opensha.sha.simulators.iden;
 
 import org.opensha.sha.simulators.SimulatorEvent;
-import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
+import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 public class EventTimeIdentifier extends AbstractRuptureIdentifier {
 	
@@ -14,8 +14,8 @@ public class EventTimeIdentifier extends AbstractRuptureIdentifier {
 	 */
 	public EventTimeIdentifier(double minTime, double maxTime, boolean years) {
 		if (years) {
-			this.minTime = minTime*General_EQSIM_Tools.SECONDS_PER_YEAR;
-			this.maxTime = maxTime*General_EQSIM_Tools.SECONDS_PER_YEAR;
+			this.minTime = minTime*SimulatorUtils.SECONDS_PER_YEAR;
+			this.maxTime = maxTime*SimulatorUtils.SECONDS_PER_YEAR;
 		} else {
 			this.minTime = minTime;
 			this.maxTime = maxTime;
@@ -30,8 +30,8 @@ public class EventTimeIdentifier extends AbstractRuptureIdentifier {
 
 	@Override
 	public String getName() {
-		double startYears = minTime/General_EQSIM_Tools.SECONDS_PER_YEAR;
-		double endYears = minTime/General_EQSIM_Tools.SECONDS_PER_YEAR;
+		double startYears = minTime/SimulatorUtils.SECONDS_PER_YEAR;
+		double endYears = minTime/SimulatorUtils.SECONDS_PER_YEAR;
 		return "Time Window("+startYears+" yr to "+endYears+")";
 	}
 

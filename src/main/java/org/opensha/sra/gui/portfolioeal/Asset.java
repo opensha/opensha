@@ -27,8 +27,8 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.SiteTranslator;
 import org.opensha.sra.calc.EALCalculator;
-import org.opensha.sra.gui.portfolioeal.gui.PortfolioEALCalculatorView;
 import org.opensha.sra.vulnerability.Vulnerability;
+import org.opensha.sra.vulnerability.VulnerabilityFetcher;
 
 import com.google.common.base.Preconditions;
 
@@ -85,11 +85,12 @@ public class Asset implements Cloneable {
 	 * CheckBox is checked.
 	 */
 	private void startCalcProgressBar() {
-		if(PortfolioEALCalculatorView.isViewInitialized() && 
-				PortfolioEALCalculatorView.getView().getProgressBarChecked()) {
-			CalcProgressListener progressBar = new CalcProgressListener(this);
-			progressBar.start();
-		}
+		// TODO these apps are a nightmare
+//		if(PortfolioEALCalculatorView.isViewInitialized() && 
+//				PortfolioEALCalculatorView.getView().getProgressBarChecked()) {
+//			CalcProgressListener progressBar = new CalcProgressListener(this);
+//			progressBar.start();
+//		}
 	}
 
 	/**
@@ -143,8 +144,8 @@ public class Asset implements Cloneable {
 		} catch( Exception e ) {
 			e.printStackTrace();
 			JOptionPane.showMessageDialog(null, "Parameter type " + paramName + " in file not recognized!", "Error", JOptionPane.ERROR_MESSAGE );
-			if (PortfolioEALCalculatorView.isViewInitialized())
-				PortfolioEALCalculatorView.getView().setButtonsOnCancel();
+//			if (PortfolioEALCalculatorView.isViewInitialized())
+//				PortfolioEALCalculatorView.getView().setButtonsOnCancel();
 		}
 		return param;
 	}
@@ -189,7 +190,7 @@ public class Asset implements Cloneable {
 
 //		System.out.println("looking for vuln: '" + vulnName + "'");
 
-		return PortfolioEALCalculatorController.getVulnerabilities().get(vulnName);
+		return VulnerabilityFetcher.getVulnerabilities().get(vulnName);
 	}
 	
 	public String getVulnModelName() {

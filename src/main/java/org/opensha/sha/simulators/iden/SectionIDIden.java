@@ -8,15 +8,11 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.simulators.SimulatorEvent;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.SimulatorElement;
-import org.opensha.sha.simulators.utils.RSQSimUtils;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
-
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
 
 /**
  * This is a simple rupture identifier implementation - it defines a match as any rupture that includes
@@ -63,53 +59,53 @@ public class SectionIDIden extends AbstractRuptureIdentifier {
 		return new SectionIDIden("Elsinore", elems, parseNames(elems, "Coyote_Mt.", "Glen_Ivy", "Julian", "Temecula" ,"Whittier"));
 	}
 	
-	public static SectionIDIden getUCERF3_SAF(FaultModels fm, List<FaultSectionPrefData> subSects, List<SimulatorElement> elems) {
-		return getUCERF3_byFaultName("San Andreas", fm, subSects, elems);
-	}
-	
-	public static SectionIDIden getUCERF3_SanJacinto(FaultModels fm, List<FaultSectionPrefData> subSects,
-			List<SimulatorElement> elems) {
-		List<Integer> sectIDs = Lists.newArrayList();
-		sectIDs.addAll(getUCERF3_sectIDsForFault("San Jacinto (SB to C)", fm, subSects, elems));
-		sectIDs.addAll(getUCERF3_sectIDsForFault("San Jacinto (CC to SM)", fm, subSects, elems));
-		return new SectionIDIden("San Jacinto", elems, sectIDs);
-	}
-	
-	public static SectionIDIden getUCERF3_Garlock(FaultModels fm, List<FaultSectionPrefData> subSects,
-			List<SimulatorElement> elems) {
-		return getUCERF3_byFaultName("Garlock", fm, subSects, elems);
-	}
-	
-	public static SectionIDIden getUCERF3_Elsinore(FaultModels fm, List<FaultSectionPrefData> subSects,
-			List<SimulatorElement> elems) {
-		return getUCERF3_byFaultName("Elsinore", fm, subSects, elems);
-	}
-	
-	public static SectionIDIden getUCERF3_byFaultName(String name, FaultModels fm,
-			List<FaultSectionPrefData> subSects, List<SimulatorElement> elems) {
-		return new SectionIDIden(name, elems, getUCERF3_sectIDsForFault(name, fm, subSects, elems));
-	}
-	
-	private static List<Integer> getUCERF3_sectIDsForFault(String name, FaultModels fm,
-			List<FaultSectionPrefData> subSects, List<SimulatorElement> elems) {
-		Map<String, List<Integer>> map = fm.getNamedFaultsMapAlt();
-		if (!map.containsKey(name)) {
-			String options = Joiner.on("'\n\t'").join(map.keySet());
-			throw new IllegalStateException("No mappings for fault '"+name+"'. Options:\n\t'"+options+"'");
-		}
-		Preconditions.checkState(elems != null && !elems.isEmpty(), "No elements supplied");
-		HashSet<Integer> parentIDs = new HashSet<Integer>(map.get(name));
-		
-		int subSectOffset = RSQSimUtils.getSubSectIndexOffset(elems, subSects);
-		List<Integer> sectIDs = Lists.newArrayList();
-		for (FaultSectionPrefData subSect : subSects) {
-			if (parentIDs.contains(subSect.getParentSectionId())) {
-				sectIDs.add(subSect.getSectionId()+subSectOffset);
-			}
-		}
-		
-		return sectIDs;
-	}
+//	public static SectionIDIden getUCERF3_SAF(FaultModels fm, List<FaultSectionPrefData> subSects, List<SimulatorElement> elems) {
+//		return getUCERF3_byFaultName("San Andreas", fm, subSects, elems);
+//	}
+//	
+//	public static SectionIDIden getUCERF3_SanJacinto(FaultModels fm, List<FaultSectionPrefData> subSects,
+//			List<SimulatorElement> elems) {
+//		List<Integer> sectIDs = Lists.newArrayList();
+//		sectIDs.addAll(getUCERF3_sectIDsForFault("San Jacinto (SB to C)", fm, subSects, elems));
+//		sectIDs.addAll(getUCERF3_sectIDsForFault("San Jacinto (CC to SM)", fm, subSects, elems));
+//		return new SectionIDIden("San Jacinto", elems, sectIDs);
+//	}
+//	
+//	public static SectionIDIden getUCERF3_Garlock(FaultModels fm, List<FaultSectionPrefData> subSects,
+//			List<SimulatorElement> elems) {
+//		return getUCERF3_byFaultName("Garlock", fm, subSects, elems);
+//	}
+//	
+//	public static SectionIDIden getUCERF3_Elsinore(FaultModels fm, List<FaultSectionPrefData> subSects,
+//			List<SimulatorElement> elems) {
+//		return getUCERF3_byFaultName("Elsinore", fm, subSects, elems);
+//	}
+//	
+//	public static SectionIDIden getUCERF3_byFaultName(String name, FaultModels fm,
+//			List<FaultSectionPrefData> subSects, List<SimulatorElement> elems) {
+//		return new SectionIDIden(name, elems, getUCERF3_sectIDsForFault(name, fm, subSects, elems));
+//	}
+//	
+//	private static List<Integer> getUCERF3_sectIDsForFault(String name, FaultModels fm,
+//			List<FaultSectionPrefData> subSects, List<SimulatorElement> elems) {
+//		Map<String, List<Integer>> map = fm.getNamedFaultsMapAlt();
+//		if (!map.containsKey(name)) {
+//			String options = Joiner.on("'\n\t'").join(map.keySet());
+//			throw new IllegalStateException("No mappings for fault '"+name+"'. Options:\n\t'"+options+"'");
+//		}
+//		Preconditions.checkState(elems != null && !elems.isEmpty(), "No elements supplied");
+//		HashSet<Integer> parentIDs = new HashSet<Integer>(map.get(name));
+//		
+//		int subSectOffset = RSQSimUtils.getSubSectIndexOffset(elems, subSects);
+//		List<Integer> sectIDs = Lists.newArrayList();
+//		for (FaultSectionPrefData subSect : subSects) {
+//			if (parentIDs.contains(subSect.getParentSectionId())) {
+//				sectIDs.add(subSect.getSectionId()+subSectOffset);
+//			}
+//		}
+//		
+//		return sectIDs;
+//	}
 	
 	public SectionIDIden(String name, List<SimulatorElement> elems, int sectionID) {
 		this(name, elems, Lists.newArrayList(sectionID));
@@ -200,8 +196,8 @@ public class SectionIDIden extends AbstractRuptureIdentifier {
 	}
 	
 	public static void main(String[] args) {
-		getUCERF3_SanJacinto(FaultModels.FM3_1,
-				RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC), null);
+//		getUCERF3_SanJacinto(FaultModels.FM3_1,
+//				RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC), null);
 	}
 
 }

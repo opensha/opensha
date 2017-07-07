@@ -45,7 +45,8 @@ public class NGAW2_Tests {
 		}
 	}
 	
-    @Parameters(name = "{index}: {0} {2} {1}")
+//    @Parameters(name = "{index}: {0} {2} {1}")
+	@Parameters
     public static Collection<Object[]> data() throws IOException {
     	return loadResults(GMM_RESULTS);
     }

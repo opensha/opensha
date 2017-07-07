@@ -1,6 +1,7 @@
 package org.opensha.sha.imr.attenRelImpl;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -29,7 +30,6 @@ import org.opensha.commons.param.impl.WeightedListParameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
-import org.opensha.sha.gui.beans.IMT_NewGuiBean;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.DampingParam;
@@ -225,7 +225,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		
 		saPeriodParam = null;
 		saDampingParam = null;
-		ArrayList<Double> commonPeriods = null;
+		List<Double> commonPeriods = null;
 		
 		if (imrTempList.containsParameter(SA_Param.NAME) || imrTempList.containsParameter(SA_InterpolatedParam.NAME)) {
 			saDampingParam = new DampingParam();
@@ -233,7 +233,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		}
 		
 		if (imrTempList.containsParameter(SA_Param.NAME)) {
-			commonPeriods = IMT_NewGuiBean.getCommonPeriods(imrs);
+			commonPeriods = getCommonPeriods(imrs);
 			if (D) System.out.println(SHORT_NAME+": " + commonPeriods.size() + " common periods found!");
 			if (commonPeriods.size() == 0) {
 				System.err.println("WARNING: All IMRS have SA, but no common periods! Skipping SA.");
@@ -319,6 +319,39 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 				throw new RuntimeException(SHORT_NAME+" cannot yet handle param of type '" + name + "'");
 			}
 		}
+	}
+	
+	/**
+	 * Creates a list of periods common to all of the given IMRs
+	 * 
+	 * @param imrs
+	 * @return
+	 */
+	public static List<Double> getCommonPeriods(Collection<? extends ScalarIMR> imrs) {
+		ScalarIMR firstIMR = imrs.iterator().next();
+		firstIMR.setIntensityMeasure(SA_Param.NAME);
+		SA_Param saParam = (SA_Param)firstIMR.getIntensityMeasure();
+		PeriodParam periodParam = saParam.getPeriodParam();
+		List<Double> firstPeriods = periodParam.getAllowedDoubles();
+		
+		ArrayList<Double> commonPeriods = new ArrayList<>();
+		for (Double period : firstPeriods) {
+			boolean include = true;
+			for (ScalarIMR imr : imrs) {
+				imr.setIntensityMeasure(SA_Param.NAME);
+				saParam = (SA_Param)imr.getIntensityMeasure();
+				periodParam = saParam.getPeriodParam();
+				if (!periodParam.isAllowed(period)) {
+					include = false;
+					break;
+				}
+			}
+			
+			if (include)
+				commonPeriods.add(period);
+		}
+		
+		return commonPeriods;
 	}
 	
 	/**

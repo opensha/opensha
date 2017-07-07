@@ -53,6 +53,7 @@ import org.opensha.sha.simulators.iden.MagRangeRuptureIdentifier;
 import org.opensha.sha.simulators.iden.RegionIden;
 import org.opensha.sha.simulators.iden.RuptureIdentifier;
 import org.opensha.sha.simulators.iden.SectionIDIden;
+import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -123,7 +124,7 @@ public class RSQSimFileReader {
 					int numDownDip = -1;
 					
 					// convert to m/yr form m/s
-					slipRate = slipRate*General_EQSIM_Tools.SECONDS_PER_YEAR;
+					slipRate = slipRate*SimulatorUtils.SECONDS_PER_YEAR;
 					
 					double aseisFactor = 0d;
 					FocalMechanism focalMechanism = new FocalMechanism(Double.NaN, Double.NaN, rake); // TODO
@@ -204,7 +205,7 @@ public class RSQSimFileReader {
 					int numDownDip = -1;
 					
 					// convert to m/yr form m/s
-					slipRate = slipRate*General_EQSIM_Tools.SECONDS_PER_YEAR;
+					slipRate = slipRate*SimulatorUtils.SECONDS_PER_YEAR;
 					
 					double aseisFactor = 0d;
 					FocalMechanism focalMechanism = new FocalMechanism(Double.NaN, Double.NaN, rake); // TODO
@@ -320,7 +321,7 @@ public class RSQSimFileReader {
 		
 		List<RSQSimEvent> events = readEventsFile(eventsDir, elements, Lists.newArrayList(new MagRangeRuptureIdentifier(7d, 10d)));
 		System.out.println("Loaded "+events.size()+" events");
-		System.out.println("Duration: "+General_EQSIM_Tools.getSimulationDurationYears(events)+" years");
+		System.out.println("Duration: "+SimulatorUtils.getSimulationDurationYears(events)+" years");
 		
 //		SectionIDIden safIden = SectionIDIden.getUCERF3_SAF(FaultModels.FM3_1,
 //				RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC), elements);

@@ -27,7 +27,7 @@ import org.opensha.sha.simulators.RectangularElement;
 import org.opensha.sha.simulators.SimulatorElement;
 import org.opensha.sha.simulators.Vertex;
 import org.opensha.sha.simulators.iden.RuptureIdentifier;
-import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
+import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
 
@@ -176,7 +176,7 @@ public class EQSIMv06FileReader {
 						int vertex_4_ID = Integer.parseInt(tok.nextToken());
 						double rake = Double.parseDouble(tok.nextToken());
 						// convert to meters per year
-						double slip_rate = Double.parseDouble(tok.nextToken())*General_EQSIM_Tools.SECONDS_PER_YEAR;
+						double slip_rate = Double.parseDouble(tok.nextToken())*SimulatorUtils.SECONDS_PER_YEAR;
 						double aseis_factor = Double.parseDouble(tok.nextToken());
 						double strike = Double.parseDouble(tok.nextToken());
 						double dip = Double.parseDouble(tok.nextToken());

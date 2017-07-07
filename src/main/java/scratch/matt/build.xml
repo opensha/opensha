@@ -1,0 +1,111 @@
+<!--
+ calc EQ aftershocks using opensha lib
+ 
+ Baishan 20/3/2009
+-->
+<project name="EQ AfterShock" default="help">
+
+    <property name="app.name" value="geonet-after-shock"/>
+	<property name="dir.base" value="../.."/>   
+    <property name="dir.src" value="${dir.base}"/>   
+    <property name="dir.build" value="${dir.base}/build"/>
+    <property name="dir.classes" value="${dir.build}/classes"/>	
+	<property name="dir.lib" value="${dir.base}/lib"/>
+	<property name="dir.data" value="${dir.base}/data"/>  
+	
+    
+	<!-- Configure Mule classpath (mirrors wrapper.conf settings -->
+    <path id="classpath">
+        <fileset dir="${dir.lib}">
+            <include name="*.jar"/>
+        </fileset>
+    </path>
+	
+    <target name="clean"
+            description="Clean the output directory (start from scratch).">
+        <delete >
+    	<fileset dir="${dir.build}" >
+	            <include name="**/*"/>
+	        </fileset>
+    	</delete>
+    </target>
+	
+	<target name="help">
+	    <echo>
+	        base.dir: ${dir.base}
+	    	export  ANT_OPTS="-Xms512m -Xmx1g"
+	    	available targets:
+	    	package: make a jar file  
+	    	unit_test: unit test
+	    </echo>
+	</target>
+	
+
+    <target name="init">
+        <!-- Create the build directory if it doesn't exist -->
+    	 <mkdir dir="${dir.build}"/>
+        <mkdir dir="${dir.classes}"/>
+       
+    </target>
+
+	<!--<include name="org/**"/>-->
+    <target name="compile"
+            description="Compile the application.">
+
+        <javac srcdir="${dir.src}"
+               destdir="${dir.classes}"
+        	   encoding="ISO-8859-1"
+               debug="true"
+               source="1.5"
+               target="1.5">        	
+        	<include name="scratchJavaDevelopers/matt/**"/>
+        	
+            <classpath refid="classpath"/>
+        </javac>       
+        
+    	<copy todir="${dir.classes}">
+			<fileset dir="${dir.src}/" >
+	            <include name="data/"/>
+	        </fileset>
+    		<fileset dir="${dir.src}" includes="log4j.properties"/>
+		 </copy>
+    </target>
+
+   <target name="package"
+           depends="compile"
+           description="Package the application">
+		<delete file ="${dir.build}/${app.name}.jar"/>
+   	
+        <jar jarfile="${dir.build}/${app.name}.jar"
+             basedir="${dir.classes}">        	
+        	<exclude name="scratchJavaDevelopers/matt/tests/**"/>
+        </jar>   	
+   </target>
+	
+	<!-- <fileset dir="${dir.src}" includes="data/mattg_test/"/> -->	
+	<target name="unit_test" depends="compile" description="unit tests  ">	
+		<copy todir="${dir.classes}">
+			
+			<fileset dir="${dir.src}" includes="org/opensha/sha/earthquake/rupForecastImpl/step/AllCal96ModelDaily.txt"/>
+		 </copy>
+		
+		
+		<junit printsummary="true">
+			<formatter type="plain" usefile="false"/>
+			<test name = "scratchJavaDevelopers.matt.tests.AllTests"/>
+			<classpath>
+				<pathelement location="${dir.classes}"/>
+				<fileset dir="${dir.lib}">
+		            <include name="*.jar"/>
+		        </fileset>
+			</classpath>
+		</junit>
+        <!--data no longer needed -->		
+        <delete >
+			<fileset dir="." >
+	            <include name="data/"/>
+	        </fileset>
+		 </delete>		
+	</target> 
+	
+</project>

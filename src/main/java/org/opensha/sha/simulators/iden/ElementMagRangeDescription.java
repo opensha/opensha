@@ -1,15 +1,10 @@
 package org.opensha.sha.simulators.iden;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 
 import org.opensha.sha.simulators.SimulatorEvent;
-import org.opensha.sha.simulators.parsers.EQSIMv06FileReader;
-import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Ints;
 
@@ -123,43 +118,43 @@ public class ElementMagRangeDescription extends AbstractRuptureIdentifier {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File dir = new File("/home/kevin/Simulators");
-		File geomFile = new File(dir, "ALLCAL2_1-7-11_Geometry.dat");
-		File eventFile = new File(dir, "eqs.ALLCAL2_RSQSim_sigma0.5-5_b=0.015.barall");
-		
-		Preconditions.checkState(geomFile.exists());
-		Preconditions.checkState(eventFile.exists());
-		
-		General_EQSIM_Tools simTools = new General_EQSIM_Tools(geomFile);
-		List<? extends SimulatorEvent> events = EQSIMv06FileReader.readEventsFile(eventFile, simTools.getElementsList());
-		
-		ElementMagRangeDescription descr = new ElementMagRangeDescription(null, 1267, 7.2, 7.5);
-		
-		List<? extends SimulatorEvent> matches = descr.getMatches(events);
-		
-		System.out.println("Got "+matches.size()+" matches!");
-		HashSet<Integer> matchIDs = new HashSet<Integer>();
-		for (SimulatorEvent match : matches) {
-			matchIDs.add(match.getID());
-			System.out.println(match.getID()+". mag="+match.getMagnitude()+", years="+match.getTimeInYears());
-		}
-		
-		System.out.println("Quickly Triggered Events (1 day):");
-		double day = 24*60*60;
-		for (SimulatorEvent e : events) {
-			if (matchIDs.contains(e.getID()))
-				continue;
-			if (e.getMagnitude() < 6.5)
-				continue;
-			double time = e.getTime();
-			for (SimulatorEvent m : matches) {
-				double mtime = m.getTime();
-				if (time >= mtime && time <= (mtime + day)) {
-					System.out.println(e.getID()+". mag="+e.getMagnitude()+", years="+e.getTimeInYears());
-					break;
-				}
-			}
-		}
+//		File dir = new File("/home/kevin/Simulators");
+//		File geomFile = new File(dir, "ALLCAL2_1-7-11_Geometry.dat");
+//		File eventFile = new File(dir, "eqs.ALLCAL2_RSQSim_sigma0.5-5_b=0.015.barall");
+//		
+//		Preconditions.checkState(geomFile.exists());
+//		Preconditions.checkState(eventFile.exists());
+//		
+//		General_EQSIM_Tools simTools = new General_EQSIM_Tools(geomFile);
+//		List<? extends SimulatorEvent> events = EQSIMv06FileReader.readEventsFile(eventFile, simTools.getElementsList());
+//		
+//		ElementMagRangeDescription descr = new ElementMagRangeDescription(null, 1267, 7.2, 7.5);
+//		
+//		List<? extends SimulatorEvent> matches = descr.getMatches(events);
+//		
+//		System.out.println("Got "+matches.size()+" matches!");
+//		HashSet<Integer> matchIDs = new HashSet<Integer>();
+//		for (SimulatorEvent match : matches) {
+//			matchIDs.add(match.getID());
+//			System.out.println(match.getID()+". mag="+match.getMagnitude()+", years="+match.getTimeInYears());
+//		}
+//		
+//		System.out.println("Quickly Triggered Events (1 day):");
+//		double day = 24*60*60;
+//		for (SimulatorEvent e : events) {
+//			if (matchIDs.contains(e.getID()))
+//				continue;
+//			if (e.getMagnitude() < 6.5)
+//				continue;
+//			double time = e.getTime();
+//			for (SimulatorEvent m : matches) {
+//				double mtime = m.getTime();
+//				if (time >= mtime && time <= (mtime + day)) {
+//					System.out.println(e.getID()+". mag="+e.getMagnitude()+", years="+e.getTimeInYears());
+//					break;
+//				}
+//			}
+//		}
 	}
 
 	@Override

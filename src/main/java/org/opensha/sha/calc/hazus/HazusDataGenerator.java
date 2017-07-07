@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.ListIterator;
 
 import org.opensha.commons.data.region.SitesInGriddedRegion;
+import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
@@ -111,7 +112,7 @@ public class HazusDataGenerator implements ParameterChangeWarningListener{
       Parameter tempParam = (Parameter) ( (Parameter) it.next()).clone();
       //getting the Site Param Value corresponding to the default Wills site class selected by the user
       // for the seleted IMR  from the SiteTranslator
-      siteTrans.setParameterValue(tempParam, SiteTranslator.WILLS_DE, Double.NaN);
+      siteTrans.setParameterValue(tempParam, WillsMap2000.WILLS_DE, Double.NaN);
       defaultSiteParams.add(tempParam);
     }
     sites.setDefaultSiteParams(defaultSiteParams);

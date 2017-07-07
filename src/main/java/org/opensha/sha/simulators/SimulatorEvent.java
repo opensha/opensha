@@ -7,7 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.opensha.commons.geo.Location;
-import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
+import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -130,11 +130,9 @@ public class SimulatorEvent implements Comparable<SimulatorEvent>, Iterable<Even
 	 * This returns the time of the event in years
 	 * @return
 	 */
-	public double getTimeInYears() { return time/General_EQSIM_Tools.SECONDS_PER_YEAR;}
+	public double getTimeInYears() { return time/SimulatorUtils.SECONDS_PER_YEAR; }
 	
-
-	
-	public double getDuration() { return duration;}
+	public double getDuration() { return duration; }
 
 	
 	/**
