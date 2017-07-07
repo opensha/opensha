@@ -38,24 +38,24 @@ dependencies {
 	 *	"Runtime" dependencies are exported downstream to users
 	 */
 	// repository based dependencies
-    runtime 'com.google.guava:guava:21.0'
-    runtime 'org.jfree:jfreechart:1.0.19'
-    runtime 'dom4j:dom4j:1.6.1'
-    runtime 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
-    runtime 'com.lowagie:itext:2.1.7'
-    runtime 'gov.nist.math:jama:1.0.3'
-    runtime 'javax.servlet:javax.servlet-api:3.1.0'
-    runtime 'javax.mail:mail:1.4.7'
+    compile 'com.google.guava:guava:21.0'
+    compile 'org.jfree:jfreechart:1.0.19'
+    compile 'dom4j:dom4j:1.6.1'
+    compile 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
+    compile 'com.lowagie:itext:2.1.7'
+    compile 'gov.nist.math:jama:1.0.3'
+    compile 'javax.servlet:javax.servlet-api:3.1.0'
+    compile 'javax.mail:mail:1.4.7'
     // apache commons
-    runtime 'org.apache.commons:commons-lang3:3.6'
-    runtime 'commons-codec:commons-codec:1.10'
-    runtime 'commons-cli:commons-cli:1.4'
-    runtime 'commons-io:commons-io:2.5'
-    runtime 'org.apache.commons:commons-math3:3.6.1'
+    compile 'org.apache.commons:commons-lang3:3.6'
+    compile 'commons-codec:commons-codec:1.10'
+    compile 'commons-cli:commons-cli:1.4'
+    compile 'commons-io:commons-io:2.5'
+    compile 'org.apache.commons:commons-math3:3.6.1'
     // jars. TODO move to repo?
-    runtime files('lib/ncCore-4.0.jar')
-    runtime files('lib/mpj-0.38.jar') // MPJ API
-    runtime files('lib/f2jutil.jar') // used by NNLS code
+    compile files('lib/ncCore-4.0.jar')
+    compile files('lib/mpj-0.38.jar') // MPJ API
+    compile files('lib/f2jutil.jar') // used by NNLS code
 
     // Use JUnit test framework
     testCompile 'junit:junit:4.12'
