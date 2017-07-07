@@ -84,9 +84,6 @@ import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
-import scratch.ned.ETAS_ERF.testModels.TestModel1_FSS;
-import scratch.ned.ETAS_ERF.testModels.TestModel2_FSS;
-import scratch.ned.ETAS_ERF.testModels.TestModel3_FSS;
 
 
 /**

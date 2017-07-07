@@ -36,10 +36,6 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.analysis.DeformationModelsCalc;
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.utils.MFD_InversionConstraint;
 
 
 /**
