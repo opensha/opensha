@@ -1,4 +1,4 @@
-CORE todo:
+CORE TODO:
 
 * remove apps
 * remove GEM
@@ -8,4 +8,7 @@ CORE todo:
 * move HAZUS UCERF3 related stuff: UCERF3HazusJobWriter, UCERF3HazusJobWriterYear2NGA
 * move ERF/AttenRel Ref objects to apps
 * move General_EQSIM_Tools to UCERF3
-* restore any nshmp[2]?
+* restore any nshmp[2]
+	* including IMRs in AttenRelRef that point to nshmp2
+* move estimate parameters to core?
+* move FaultSystemSolutionERF to core

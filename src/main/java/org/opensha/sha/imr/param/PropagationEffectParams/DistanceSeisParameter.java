@@ -30,6 +30,7 @@ import org.opensha.commons.param.constraint.ParameterConstraint;
 import org.opensha.commons.param.constraint.impl.DoubleConstraint;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 /**
  * <b>Title:</b> DistanceSeisParameter<p>
@@ -69,7 +70,7 @@ public class DistanceSeisParameter extends AbstractDoublePropEffectParam {
 	private final static Double MAX = new Double(Double.MAX_VALUE);
 
 	/** set default seismogenic depth. actually hard-wired for now. */
-	public final static double SEIS_DEPTH = 3.0;
+	public final static double SEIS_DEPTH = GriddedSurfaceUtils.SEIS_DEPTH;
 
 
 	/**

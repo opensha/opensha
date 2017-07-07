@@ -28,6 +28,7 @@ import java.util.ListIterator;
 
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
+import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.impl.StringParameter;
@@ -88,38 +89,6 @@ implements java.io.Serializable {
 	
 	private final static boolean D = false;
 
-	public final static String WILLS_B = "B";
-	public final static String WILLS_BC = "BC";
-	public final static String WILLS_C = "C";
-	public final static String WILLS_CD = "CD";
-	public final static String WILLS_D = "D";
-	public final static String WILLS_DE = "DE";
-	public final static String WILLS_E = "E";
-	
-	public final static HashMap<String, Double> wills_vs30_map = new HashMap<String, Double>();
-	
-	static {
-		wills_vs30_map.put(WILLS_B,		1000d);
-		wills_vs30_map.put(WILLS_BC,	760d);
-		wills_vs30_map.put(WILLS_C,		560d);
-		wills_vs30_map.put(WILLS_CD,	360d);
-		wills_vs30_map.put(WILLS_D,		270d);
-		wills_vs30_map.put(WILLS_DE,	180d);
-		wills_vs30_map.put(WILLS_E,		Double.NaN);
-	}
-	
-	public static ArrayList<String> getSortedWillsValues() {
-		ArrayList<String> wills = new ArrayList<String>();
-		wills.add(WILLS_B);
-		wills.add(WILLS_BC);
-		wills.add(WILLS_C);
-		wills.add(WILLS_CD);
-		wills.add(WILLS_D);
-		wills.add(WILLS_DE);
-		wills.add(WILLS_E);
-		return wills;
-	}
-
 	public static SiteDataTypeParameterNameMap DATA_TYPE_PARAM_NAME_MAP = createMap();
 
 	
@@ -128,46 +97,6 @@ implements java.io.Serializable {
 	 */
 	public SiteTranslator() {
 		
-	}
-
-	
-	/**
-	 * Translates a Wills Site classification to a Vs30 value
-	 * <LI> <UL>
-	 * <LI> Vs30 = NA			if E
-	 * <LI> Vs30 = 180			if DE
-	 * <LI> Vs30 = 270			if D
-	 * <LI> Vs30 = 360			if CD
-	 * <LI> Vs30 = 560			if C
-	 * <LI> Vs30 = 760			if BC
-	 * <LI> Vs30 = 1000			if B
-	 * <LI> </UL>
-	 * 
-	 * @param wills
-	 * @return
-	 */
-	public static double getVS30FromWillsClass(String wills) {
-		if (wills_vs30_map.keySet().contains(wills))
-			return wills_vs30_map.get(wills);
-		else
-			return Double.NaN;
-	}
-	
-	/**
-	 * Returns a String representation of the Wills Class -> Vs30 translation table
-	 * 
-	 * @return
-	 */
-	public static String getWillsVs30TranslationString() {
-		String str = "";
-		
-		for (String wills : getSortedWillsValues()) {
-			if (str.length() > 0)
-				str += "\n";
-			str += wills + "\t=>\t" + wills_vs30_map.get(wills);
-		}
-		
-		return str;
 	}
 	
 	/**
@@ -445,7 +374,7 @@ implements java.io.Serializable {
 				}
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				// this is a Wills Site Class that needs to be translated
-				vsValue = getVS30FromWillsClass((String)data.getValue());
+				vsValue = WillsMap2000.getVS30FromWillsClass((String)data.getValue());
 				if (D) System.out.println("setSiteParamsForData: Got translated VS: " + vsValue
 						+ " from " + data.getValue());
 				if (isVS30ValueValid(vsValue)) {
@@ -480,7 +409,7 @@ implements java.io.Serializable {
 				vsValue = (Double)data.getValue();
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				// this is a Wills Site Class that needs to be translated
-				vsValue = getVS30FromWillsClass((String)data.getValue());
+				vsValue = WillsMap2000.getVS30FromWillsClass((String)data.getValue());
 			}
 			if (isVS30ValueValid(vsValue) && data.getDataMeasurementType() != null) {
 				if (data.getDataMeasurementType().equals(SiteData.TYPE_FLAG_MEASURED)) {
@@ -590,11 +519,11 @@ implements java.io.Serializable {
 				return true;
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
-				if (wc.equals(WILLS_DE) || wc.equals(WILLS_D) || wc.equals(WILLS_CD)) {
+				if (wc.equals(WillsMap2000.WILLS_DE) || wc.equals(WillsMap2000.WILLS_D) || wc.equals(WillsMap2000.WILLS_CD)) {
 					param.setValue(AS_1997_AttenRel.SITE_TYPE_SOIL);
 					return true;
 				}
-				else if (wc.equals(WILLS_C) || wc.equals(WILLS_BC) || wc.equals(WILLS_B)) {
+				else if (wc.equals(WillsMap2000.WILLS_C) || wc.equals(WillsMap2000.WILLS_BC) || wc.equals(WillsMap2000.WILLS_B)) {
 					param.setValue(AS_1997_AttenRel.SITE_TYPE_ROCK);
 					return true;
 				}
@@ -648,11 +577,11 @@ implements java.io.Serializable {
 				return true;
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
-				if (wc.equals(WILLS_DE) || wc.equals(WILLS_D) || wc.equals(WILLS_CD)) {
+				if (wc.equals(WillsMap2000.WILLS_DE) || wc.equals(WillsMap2000.WILLS_D) || wc.equals(WillsMap2000.WILLS_CD)) {
 					param.setValue(SadighEtAl_1997_AttenRel.SITE_TYPE_SOIL);
 					return true;
 				}
-				else if (wc.equals(WILLS_C) || wc.equals(WILLS_BC) || wc.equals(WILLS_B)) {
+				else if (wc.equals(WillsMap2000.WILLS_C) || wc.equals(WillsMap2000.WILLS_BC) || wc.equals(WillsMap2000.WILLS_B)) {
 					param.setValue(SadighEtAl_1997_AttenRel.SITE_TYPE_ROCK);
 					return true;
 				}
@@ -684,15 +613,15 @@ implements java.io.Serializable {
 		for (SiteDataValue<?> data : datas) {
 			if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
-				if (wc.equals(WILLS_DE) || wc.equals(WILLS_D) || wc.equals(WILLS_CD)) {
+				if (wc.equals(WillsMap2000.WILLS_DE) || wc.equals(WillsMap2000.WILLS_D) || wc.equals(WillsMap2000.WILLS_CD)) {
 					setValueIgnoreWarning(param, new Double(5.0));
 					return true;
 				}
-				else if (wc.equals(WILLS_C)) {
+				else if (wc.equals(WillsMap2000.WILLS_C)) {
 					setValueIgnoreWarning(param, new Double(1.0));
 					return true;
 				}
-				else if (wc.equals(WILLS_BC) || wc.equals(WILLS_B)) {
+				else if (wc.equals(WillsMap2000.WILLS_BC) || wc.equals(WillsMap2000.WILLS_B)) {
 					setValueIgnoreWarning(param, new Double(0.0));
 					return true;
 				}
@@ -752,15 +681,15 @@ implements java.io.Serializable {
 				}
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
-				if (wc.equals(WILLS_DE) || wc.equals(WILLS_D) || wc.equals(WILLS_CD)) {
+				if (wc.equals(WillsMap2000.WILLS_DE) || wc.equals(WillsMap2000.WILLS_D) || wc.equals(WillsMap2000.WILLS_CD)) {
 					param.setValue(Campbell_1997_AttenRel.SITE_TYPE_FIRM_SOIL);
 					return true;
 				}
-				else if (wc.equals(WILLS_C)) {
+				else if (wc.equals(WillsMap2000.WILLS_C)) {
 					param.setValue(Campbell_1997_AttenRel.SITE_TYPE_SOFT_ROCK);
 					return true;
 				}
-				else if (wc.equals(WILLS_BC) || wc.equals(WILLS_B)) {
+				else if (wc.equals(WillsMap2000.WILLS_BC) || wc.equals(WillsMap2000.WILLS_B)) {
 					param.setValue(Campbell_1997_AttenRel.SITE_TYPE_HARD_ROCK);
 					return true;
 				}
@@ -819,23 +748,23 @@ implements java.io.Serializable {
 				}
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
-				if (wc.equals(WILLS_DE) || wc.equals(WILLS_D)) {
+				if (wc.equals(WillsMap2000.WILLS_DE) || wc.equals(WillsMap2000.WILLS_D)) {
 					param.setValue(CB_2003_AttenRel.SITE_TYPE_FIRM_SOIL);
 					return true;
 				}
-				else if (wc.equals(WILLS_CD)) {
+				else if (wc.equals(WillsMap2000.WILLS_CD)) {
 					param.setValue(CB_2003_AttenRel.SITE_TYPE_VERY_FIRM_SOIL);
 					return true;
 				}
-				else if (wc.equals(WILLS_C)) {
+				else if (wc.equals(WillsMap2000.WILLS_C)) {
 					param.setValue(CB_2003_AttenRel.SITE_TYPE_SOFT_ROCK);
 					return true;
 				}
-				else if (wc.equals(WILLS_BC)) {
+				else if (wc.equals(WillsMap2000.WILLS_BC)) {
 					param.setValue(CB_2003_AttenRel.SITE_TYPE_NEHRP_BC);
 					return true;
 				}
-				else if (wc.equals(WILLS_B)) {
+				else if (wc.equals(WillsMap2000.WILLS_B)) {
 					param.setValue(CB_2003_AttenRel.SITE_TYPE_FIRM_ROCK);
 					return true;
 				}
@@ -903,7 +832,7 @@ implements java.io.Serializable {
 				return false;
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
-				if (wc.equals(WILLS_E))
+				if (wc.equals(WillsMap2000.WILLS_E))
 					param.setValue(new Boolean(true));
 				else
 					param.setValue(new Boolean(false));
@@ -938,7 +867,7 @@ implements java.io.Serializable {
 		// shorten name for convenience
 		String wc = willsClass;
 		
-		if (wills_vs30_map.keySet().contains(wc)) {
+		if (WillsMap2000.wills_vs30_map.keySet().contains(wc)) {
 			// it's a wills class
 			willsData = new SiteDataValue<String>(SiteData.TYPE_WILLS_CLASS, SiteData.TYPE_FLAG_MEASURED, wc);
 		} else {
@@ -970,91 +899,91 @@ implements java.io.Serializable {
 	 */
 	public void test(Parameter param) {
 		System.out.println(param.getName() + "  Parameter (basin depth = NaN):");
-		if (setParameterValue(param, WILLS_B, Double.NaN)) {
-			System.out.println("\t" + WILLS_B + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_B, Double.NaN)) {
+			System.out.println("\t" + WillsMap2000.WILLS_B + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_B + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_B + " --> " + "*** can't set ***");
 		}
-		if (setParameterValue(param, WILLS_BC, Double.NaN)) {
-			System.out.println("\t" + WILLS_BC + " --> " + param.getValue());
-		}
-		else {
-			System.out.println("\t" + WILLS_BC + " --> " + "*** can't set ***");
-		}
-		if (setParameterValue(param, WILLS_C, Double.NaN)) {
-			System.out.println("\t" + WILLS_C + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_BC, Double.NaN)) {
+			System.out.println("\t" + WillsMap2000.WILLS_BC + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_C + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_BC + " --> " + "*** can't set ***");
 		}
-		if (setParameterValue(param, WILLS_CD, Double.NaN)) {
-			System.out.println("\t" + WILLS_CD + " --> " + param.getValue());
-		}
-		else {
-			System.out.println("\t" + WILLS_CD + " --> " + "*** can't set ***");
-		}
-		if (setParameterValue(param, WILLS_D, Double.NaN)) {
-			System.out.println("\t" + WILLS_D + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_C, Double.NaN)) {
+			System.out.println("\t" + WillsMap2000.WILLS_C + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_D + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_C + " --> " + "*** can't set ***");
 		}
-		if (setParameterValue(param, WILLS_DE, Double.NaN)) {
-			System.out.println("\t" + WILLS_DE + " --> " + param.getValue());
-		}
-		else {
-			System.out.println("\t" + WILLS_DE + " --> " + "*** can't set ***");
-		}
-		if (setParameterValue(param, WILLS_E, Double.NaN)) {
-			System.out.println("\t" + WILLS_E + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_CD, Double.NaN)) {
+			System.out.println("\t" + WillsMap2000.WILLS_CD + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_E + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_CD + " --> " + "*** can't set ***");
+		}
+		if (setParameterValue(param, WillsMap2000.WILLS_D, Double.NaN)) {
+			System.out.println("\t" + WillsMap2000.WILLS_D + " --> " + param.getValue());
+		}
+		else {
+			System.out.println("\t" + WillsMap2000.WILLS_D + " --> " + "*** can't set ***");
+		}
+		if (setParameterValue(param, WillsMap2000.WILLS_DE, Double.NaN)) {
+			System.out.println("\t" + WillsMap2000.WILLS_DE + " --> " + param.getValue());
+		}
+		else {
+			System.out.println("\t" + WillsMap2000.WILLS_DE + " --> " + "*** can't set ***");
+		}
+		if (setParameterValue(param, WillsMap2000.WILLS_E, Double.NaN)) {
+			System.out.println("\t" + WillsMap2000.WILLS_E + " --> " + param.getValue());
+		}
+		else {
+			System.out.println("\t" + WillsMap2000.WILLS_E + " --> " + "*** can't set ***");
 		}
 
 		System.out.println(param.getName() + "  Parameter (basin depth = 1.0):");
-		if (setParameterValue(param, WILLS_B, 1.0)) {
-			System.out.println("\t" + WILLS_B + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_B, 1.0)) {
+			System.out.println("\t" + WillsMap2000.WILLS_B + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_B + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_B + " --> " + "*** can't set ***");
 		}
-		if (setParameterValue(param, WILLS_BC, 1.0)) {
-			System.out.println("\t" + WILLS_BC + " --> " + param.getValue());
-		}
-		else {
-			System.out.println("\t" + WILLS_BC + " --> " + "*** can't set ***");
-		}
-		if (setParameterValue(param, WILLS_C, 1.0)) {
-			System.out.println("\t" + WILLS_C + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_BC, 1.0)) {
+			System.out.println("\t" + WillsMap2000.WILLS_BC + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_C + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_BC + " --> " + "*** can't set ***");
 		}
-		if (setParameterValue(param, WILLS_CD, 1.0)) {
-			System.out.println("\t" + WILLS_CD + " --> " + param.getValue());
-		}
-		else {
-			System.out.println("\t" + WILLS_CD + " --> " + "*** can't set ***");
-		}
-		if (setParameterValue(param, WILLS_D, 1.0)) {
-			System.out.println("\t" + WILLS_D + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_C, 1.0)) {
+			System.out.println("\t" + WillsMap2000.WILLS_C + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_D + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_C + " --> " + "*** can't set ***");
 		}
-		if (setParameterValue(param, WILLS_DE, 1.0)) {
-			System.out.println("\t" + WILLS_DE + " --> " + param.getValue());
-		}
-		else {
-			System.out.println("\t" + WILLS_DE + " --> " + "*** can't set ***");
-		}
-		if (setParameterValue(param, WILLS_E, 1.0)) {
-			System.out.println("\t" + WILLS_E + " --> " + param.getValue());
+		if (setParameterValue(param, WillsMap2000.WILLS_CD, 1.0)) {
+			System.out.println("\t" + WillsMap2000.WILLS_CD + " --> " + param.getValue());
 		}
 		else {
-			System.out.println("\t" + WILLS_E + " --> " + "*** can't set ***");
+			System.out.println("\t" + WillsMap2000.WILLS_CD + " --> " + "*** can't set ***");
+		}
+		if (setParameterValue(param, WillsMap2000.WILLS_D, 1.0)) {
+			System.out.println("\t" + WillsMap2000.WILLS_D + " --> " + param.getValue());
+		}
+		else {
+			System.out.println("\t" + WillsMap2000.WILLS_D + " --> " + "*** can't set ***");
+		}
+		if (setParameterValue(param, WillsMap2000.WILLS_DE, 1.0)) {
+			System.out.println("\t" + WillsMap2000.WILLS_DE + " --> " + param.getValue());
+		}
+		else {
+			System.out.println("\t" + WillsMap2000.WILLS_DE + " --> " + "*** can't set ***");
+		}
+		if (setParameterValue(param, WillsMap2000.WILLS_E, 1.0)) {
+			System.out.println("\t" + WillsMap2000.WILLS_E + " --> " + param.getValue());
+		}
+		else {
+			System.out.println("\t" + WillsMap2000.WILLS_E + " --> " + "*** can't set ***");
 		}
 	}
 	
@@ -1167,7 +1096,7 @@ implements java.io.Serializable {
 				SiteData.TYPE_FLAG_INFERRED, "NA");
 		line = getTableValLine(params, val);
 		fw.write(line + "\n");
-		for (String wills : getSortedWillsValues()) {
+		for (String wills : WillsMap2000.getSortedWillsValues()) {
 			val = new SiteDataValue<String>(SiteData.TYPE_WILLS_CLASS,
 					SiteData.TYPE_FLAG_INFERRED, wills);
 			line = getTableValLine(params, val);
