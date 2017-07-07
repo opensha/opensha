@@ -1,0 +1,66 @@
+101 EQSim_Input_Geometry_2 4
+111 Example of a header for a simulator input geometry file, version 0.6.
+102 End_Metadata
+120 200 summary 11    Record 200: Fault system summary
+121 1 n_section 1    Field 1: Total number of fault sections in the file
+121 2 n_vertex 1    Field 2: Total number of vertices in the file
+121 3 n_triangle 1    Field 3: Total number of triangles in the file
+121 4 n_rectangle 1    Field 4: Total number of rectangles in the file
+121 5 lat_lo 2    Field 5: Lowest value of latitude (decimal degrees, positive north) or y (meters) in the file
+121 6 lat_hi 2    Field 6: Highest value of latitude (decimal degrees, positive north) or y (meters) in the file
+121 7 lon_lo 2    Field 7: Lowest value of longitude (decimal degrees, positive east) or x (meters) in the file
+121 8 lon_hi 2    Field 8: Highest value of longitude (decimal degrees, positive east) or x (meters) in the file
+121 9 depth_lo 2    Field 9: Lowest value of depth or z in the file (meters, negative underground)
+121 10 depth_hi 2    Field 10: Highest value of depth or z in the file (meters, negative underground)
+121 11 coord_sys 1    Field 11: Coordinate system (0 = spherical, 1 = rectangular)
+120 201 section 14    Record 201: Fault section information
+121 1 sid 1    Field 1: Section identification number (positive integer, may not be consecutive)
+121 2 name 3    Field 2: Section name
+121 3 n_vertex 1    Field 3: Total number of vertices in the section
+121 4 n_triangle 1    Field 4: Total number of triangles in the section
+121 5 n_rectangle 1    Field 5: Total number of rectangles in the section
+121 6 lat_lo 2    Field 6: Lowest value of latitude (decimal degrees, positive north) or y (meters) in the section
+121 7 lat_hi 2    Field 7: Highest value of latitude (decimal degrees, positive north) or y (meters) in the section
+121 8 lon_lo 2    Field 8: Lowest value of longitude (decimal degrees, positive east) or x (meters) in the section
+121 9 lon_hi 2    Field 9: Highest value of longitude (decimal degrees, positive east) or x (meters) in the section
+121 10 depth_lo 2    Field 10: Lowest value of depth or z in the section (meters, negative underground)
+121 11 depth_hi 2    Field 11: Highest value of depth or z in the section (meters, negative underground)
+121 12 das_lo 2    Field 12: Lowest value of distance-along-strike in the section (meters)
+121 13 das_hi 2    Field 13: Highest value of distance-along-strike in the section (meters)
+121 14 fault_id 1    Field 14: Fault identification number (positive integer)
+120 202 vertex 6    Record 202: Vertex
+121 1 index 1    Field 1: Vertex index number (consecutive integers, starting with 1)
+121 2 lat 2    Field 2: Latitude (decimal degrees, positive north) or y (meters)
+121 3 lon 2    Field 3: Longitude (decimal degrees, positive east) or x (meters)
+121 4 depth 2    Field 4: Depth or z (meters, negative underground)
+121 5 das 2    Field 5: Distance-along-strike (meters)
+121 6 trace_flag 1    Field 6: Trace flag (0 = not on trace, 1 = on trace but not initial or final, 2 = initial point on trace, 3 = final point on trace)
+120 203 triangle 9    Record 203: Triangle
+121 1 index 1    Field 1: Element index number (consecutive integers, starting with 1)
+121 2 vertex_1 1    Field 2: Vertex index number for corner #1 (counting counterclockwise as viewed from positive side of element)
+121 3 vertex_2 1    Field 3: Vertex index number for corner #2 (counting counterclockwise as viewed from positive side of element)
+121 4 vertex_3 1    Field 4: Vertex index number for corner #3 (counting counterclockwise as viewed from positive side of element)
+121 5 rake 2    Field 5: Rake angle (decimal degrees)
+121 6 slip_rate 2    Field 6: Element slip rate (meters/second)
+121 7 aseis_factor 2    Field 7: Element aseismicity factor
+121 8 strike 2    Field 8: Strike angle (decimal degrees)
+121 9 dip 2    Field 9: Dip angle (decimal degrees)
+120 204 rectangle 11    Record 204: Rectangle
+121 1 index 1    Field 1: Element index number (consecutive integers, starting with 1)
+121 2 vertex_1 1    Field 2: Vertex index number for corner #1 (counting counterclockwise as viewed from positive side of element)
+121 3 vertex_2 1    Field 3: Vertex index number for corner #2 (counting counterclockwise as viewed from positive side of element)
+121 4 vertex_3 1    Field 4: Vertex index number for corner #3 (counting counterclockwise as viewed from positive side of element)
+121 5 vertex_4 1    Field 5: Vertex index number for corner #4 (counting counterclockwise as viewed from positive side of element)
+121 6 rake 2    Field 6: Rake angle (decimal degrees)
+121 7 slip_rate 2    Field 7: Element slip rate (meters/second)
+121 8 aseis_factor 2    Field 8: Element aseismicity factor
+121 9 strike 2    Field 9: Strike angle (decimal degrees)
+121 10 dip 2    Field 10: Dip angle (decimal degrees)
+121 11 perfect_flag 1    Field 11: Perfect flag (0 = not perfect rectangle, 1 = perfect rectangle)
+103 End_Descriptor
+
+
+
+
+
+999 End

@@ -1,0 +1,22 @@
+101 EQSim_Input_Condition_2 2
+111 Example of a header for a simulator input condition file, version 0.6.
+102 End_Metadata
+120 200 summary 3    Record 200: Initial condition summary
+121 1 n_element 1    Field 1: Total number of elements in the file
+121 2 stress_flag 1    Field 2: 1 if initial stress (record 201) is included, 0 if not
+121 3 state_flag 1    Field 3: 1 if initial state (record 202) is included, 0 if not
+120 201 initial_stress 3    Record 201: Fault slip rate
+121 1 index 1    Field 1: Element index number (consecutive integers, starting with 1)
+121 2 shear_stress 2    Field 2: Element initial shear stress (Pascal)
+121 3 normal_stress 2    Field 3: Element initial normal stress (Pascal)
+120 202 initial_state 3    Record 202: Initial state
+121 1 index 1    Field 1: Element index number (consecutive integers, starting with 1)
+121 2 rs_theta 2    Field 2: Element initial state for rate-state law (seconds)
+121 3 rs_V 2    Field 3: Element initial slip rate for rate-state law (meters/second)
+103 End_Descriptor
+
+
+
+
+
+999 End

@@ -1,0 +1,47 @@
+0		!use hazgridXnga4. 
+-58.0 15.0 0.1     SAwest site grid 
+-85. -50. 0.1
+760. 2.
+1 115. 1. 1.
+1.0 0.0 0.0	weights to ss rev normal respectively not relevant for deep GMPEs
+1. 200.
+-58.0 16.0 0.2     EXTENDED source grid 
+-87. -32. 0.2
+0.9 5.0 7.5 .1 3.
+1 0 0 0
+../../data/nshmp/south_america/grid/agrd_z01to12_101d150.out
+1. 0
+/home/harmsen/CEUS/GR/meanrjb.bin
+4   4 spectral periods
+0. 0. 0. PGA
+SA.grid.100to150km.pga
+19
+ 0.005 .007 .0098 .0137 .0192 .0269 .0376 .0527 .0738 .103 .145 .203 .284 .397 .556 .778 1.09 1.52 2.13 
+3
+12 0.25 1000. 0.5 0  AB intraslab
+18 0.25 1000. 0.5 0  AB-global intraslab
+13 0.5 1000. .5 0 Geomatrix
+1.0 0. 0.  PSA
+SA.grid.100to150km.1hz
+20
+.0025 .00375 .00563 .00844 .0127 .0190 .0285 .0427 .0641 .0961 .144 .216 .324 .487 .730 1.09 1.64 2.46 3.69 5.54
+3
+12 0.25 1000. 0.5 0  AB intraslab
+18 0.25 1000. 0.5 0  AB-global intraslab
+13 0.5 1000. .5 0 Geomatrix
+0.2 0. 0.  PSA
+SA.grid.100to150km.5hz
+19
+.005 .0075 .0113 .0169 .0253 .0380 .0570 .0854 .128 .192 .288 .432 .649 .973 1.46 2.19 3.28 4.92 7.38            
+3
+12 0.25 1000. 0.5 0  AB intraslab
+18 0.25 1000. 0.5 0  AB-global intraslab
+13 0.5 1000. .5 0 Geomatrix
+0.3 0. 0. 0.3 s or 3.3 hz
+SA.grid.100to150km.3hz
+20
+0.0025 .005 .0075 .0113 .0169 .0253 .0380 .0570 .0854 .128 .192 .288 .432 .649 .973 1.46 2.19 3.28 4.92 7.38              
+3
+12 0.25 1000. 0.5 0  AB intraslab
+18 0.25 1000. 0.5 0  AB-global intraslab
+13 0.5 1000. .5 0 Geomatrix

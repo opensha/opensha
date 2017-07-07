@@ -1,0 +1,7 @@
+This directory contains the verification files for he Atkinson and Boore (2006) ground motion
+prediction equation. The files names "ab06_gm_vs_r_*" were part of a first set of verification 
+tables made available by Dave Boore on his website (http://www.daveboore.com). I found some 
+inconsistencies between the resukts provided by the AtkBoore_2006_AttenRel class and the values
+in the table. After an email interaction with Dave and Gail I got an updated version of the 
+verification tables allowing the verification for distinct values of stress drop and and Vs30.
+These tables are named "ab06_output_for_comparisons_*"   

@@ -1,0 +1,8 @@
+AREA SOURCE
+Row1 = Source code,source name 
+Row2 = avalue(N/yr>=M), a-value uncert, b-value, b-value sigma, Mmin, Mcutoff (ie max magnitude for Gutenberg-Richter truncation), number of mags, totCumRate
+Row3+ = min Lat, max Lat, min Lon, max Lon, grid spacing
+
+RYA1    Rogers-Yount-Anderson 
+4.44   0.3    1.095   0.07      5.00      6.60     17     0.092257
+35.8444   37.8444   -117.7122   -115.2122 0.1

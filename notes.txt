@@ -1,0 +1,11 @@
+CORE todo:
+
+* remove apps
+* remove GEM
+* STEP relies on dev
+* remove commons
+* move RSQSimUtils to UCERF3
+* move HAZUS UCERF3 related stuff: UCERF3HazusJobWriter, UCERF3HazusJobWriterYear2NGA
+* move ERF/AttenRel Ref objects to apps
+* move General_EQSIM_Tools to UCERF3
+* restore any nshmp[2]?

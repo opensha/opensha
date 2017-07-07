@@ -1,0 +1,42 @@
+0		!use grid-of-sites option (New file deep200 Mueller Aug 15 2007)
+0 22. 0.1   	 !SE asia deep200 gridded hazard. 
+94. 108. 0.1	 !for use with hazgridXnga2.f
+760. 1
+1 200. 1 1         !dtor fix at 200 km
+1 00 0
+1 250. 
+-17. 26. 0.10	!source region, sampled at 0.1 d increment in lat and long.
+088. 122. 0.10	!0.1 grid Mueller aug 15
+1.0 5.0 7.8 0.1 4.0	!default bvalue=1. Mag range 5 to 7.8, by 0.1
+1 0 0
+../../data/nshmp/south_east_asia/grid/201d250.a
+1. 0
+4       spectral periods
+0.2 0. 0.  0.2 sec SA
+SEAsia.deep200.5hz
+19
+.005 .0075 .0113 .0169 .0253 .0380 .0570 .0854 .128 .192 .288 .432 .649 .973 1.46 2.19 3.28 4.92 7.38              
+2
+13 0.5 1000. 0.25 0 	!geomatrix slab
+18 0.5 1000 0.5 0 !atkinson & boore slab, world data
+0.30 0. 0.    0.3 sec SA approx
+SEAsia.deep200.3hz
+20
+.0025 .00375 .00563 .00844 .0127 .0190 .0285 .0427 .0641 .0961 .144 .216 .324 .487 .730 1.09 1.64 2.46 3.69 5.54   
+2
+13 0.5 1000. 0.25 0 	!geomatrix slab
+18 0.5 1000 0.5 0 !atkinson & boore slab, world data
+0.0 0. 0.   PGA=0.0 sec SA
+SEAsia.deep200.pga
+19
+.005 .007 .0098 .0137 .0192 .0269 .0376 .0527 .0738 .103 .145 .203 .284 .397 .556 .778 1.09 1.52 2.13 
+2
+13 0.5 1000. 0.25 0 	!geomatrix slab
+18 0.5 1000 0.5 0 !atkinson & boore slab, world data
+1.0 0. 0.   1.0 sec SA
+SEAsia.deep200.1hz
+20
+.0025 .00375 .00563 .00844 .0127 .0190 .0285 .0427 .0641 .0961 .144 .216 .324 .487 .730 1.09 1.64 2.46 3.69 5.54   
+2
+13 0.5 1000. 0.25 0 	!geomatrix slab
+18 0.5 1000 0.5 0 !atkinson & boore slab, world data

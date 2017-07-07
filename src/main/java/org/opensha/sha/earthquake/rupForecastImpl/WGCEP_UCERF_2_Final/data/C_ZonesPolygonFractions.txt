@@ -1,0 +1,7 @@
+#FaultName, Index, RELM Region,North Region,San Francisco Region,Central Coast Region,Los Angeles Region,Mojave Region,Mid Region,Northeast Region,Rest of state
+Area 1,0,1.0,0.2919708,0.0,0.0,0.0,0.0,0.0,0.0,0.7080292
+Area 2,1,1.0,0.08264463,0.0,0.0,0.0,0.0,0.0,0.16253443,0.75482094
+Area 3,2,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.02173913,0.9782609
+Area 4,3,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+Mojave,4,1.0,0.0,0.0,0.0,0.0,0.78205127,0.0,0.0,0.21794872
+San Gregonio,5,1.0,0.0,0.0,0.0,0.36363637,0.6363636,0.0,0.0,0.0

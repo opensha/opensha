@@ -1,0 +1,59 @@
+# This file contains B fault connections. The line with "-" is the total connected fault's name. 
+# Subsequent lines after that list the fault segments, where each segment is composed of one or more sections
+# (separated by commas on that line).  Section IDs are used when reading this file, but names are also provided
+# for convenience after the colon on each line.
+# 
+#  Examples:
+# - Test Model
+# 2, 7, 51:section1 name; section2 name; section3 name
+# 3, 35, 1, 2:section4 name; section5 name; ...
+# The above is an example of segment model whose name is "Test Model" and it has 2 segments. 
+# Segment 1 has fault section Ids 2,7 and 15 
+# Segment 2 has fault sections 3, 35, 1 and 2
+# Note that for B-fault models there is no practical difference between segments and sections 
+# (but we keep it here for format consistency with files for A faults)
+#
+- Palos Verdes Connected
+109:Palos Verdes
+121:Coronado Bank
+- Newport Inglewood Connected alt 2
+123:Rose Canyon
+122:Newport-Inglewood (Offshore)
+234:Newport-Inglewood, alt 2
+ - Santa Monica Connected alt 2
+222:Anacapa-Dume, alt 2
+225:Santa Monica, alt 2
+- Oak Ridge Connected
+203:Oak Ridge (Offshore), west extension
+218:Oak Ridge (Offshore)
+116:Oak Ridge (Onshore)
+- Pitas Point Connected
+217:Pitas Point (Upper)
+117:Ventura-Pitas Point
+- Santa Ynez Connected
+77:Santa Ynez (West)
+79:Santa Ynez (East)
+- Sierra Madre Connected
+113:Sierra Madre (San Fernando)
+114:Sierra Madre
+- Death Valley Connected
+45:Death Valley (No of Cucamongo)
+46:Death Valley (No)
+245:Death Valley (Black Mtns Frontal)
+246:Death Valley (So)
+-Hunter Mountain Connected
+50:Hunter Mountain-Saline Valley
+244:Panamint Valley
+-Greenville Connected
+7:Greenville (So)
+6:Greenville (No)
+- Green Valley Connected
+3:Concord
+1:Green Valley (So)
+71:Green Valley (No)
+- Little Salmon Connected
+17:Little Salmon (Onshore)
+16:Little Salmon (Offshore)
+- San Gregorio Connected
+29:San Gregorio (So)
+12:San Gregorio (No)

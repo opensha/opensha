@@ -1,0 +1,45 @@
+101 EQSim_Output_Event_2 3
+111 Example of a header for a simulator output event file, version 0.6.
+102 End_Metadata
+120 200 event_summary 18    Record 200: Event summary
+121 1 event_id 1    Field 1: Event ID number (positive integers, in order, need not be consecutive)
+121 2 magnitude 2    Field 2: Event magnitude
+121 3 time 2    Field 3: Starting time of event (seconds)
+121 4 duration 2    Field 4: Duration of event (seconds)
+121 5 sid 1    Field 5: Fault section ID number (positive integer)
+121 6 depth_lo 2    Field 6: Lowest value of depth in the rupture (meters, negative underground)
+121 7 depth_hi 2    Field 7: Highest value of depth in the rupture (meters, negative underground)
+121 8 das_lo 2    Field 8: Lowest value of distance-along-strike in the rupture (meters)
+121 9 das_hi 2    Field 9: Highest value of distance-along-strike in the rupture (meters)
+121 10 hypo_depth 2    Field 10: Hypocenter depth (meters, negative underground)
+121 11 hypo_das 2    Field 11: Hypocenter distance-along-strike (meters)
+121 12 area 2    Field 12: Rupture area (square meters)
+121 13 mean_slip 2    Field 13: Average slip (meters)
+121 14 moment 2    Field 14: Seismic moment (Newton-meters)
+121 15 shear_before 2    Field 15: Shear stress before event (Pascal)
+121 16 shear_after 2    Field 16: Shear stress after event (Pascal)
+121 17 normal_before 2    Field 17: Normal stress before event (Pascal)
+121 18 normal_after 2    Field 18: Normal stress after event (Pascal)
+120 201 slip_map 13    Record 201: Slip map entry
+121 1 depth_lo 2    Field 1: Lowest value of depth (meters, negative underground)
+121 2 depth_hi 2    Field 2: Highest value of depth (meters, negative underground)
+121 3 das_lo 2    Field 3: Lowest value of distance-along-strike (meters)
+121 4 das_hi 2    Field 4: Highest value of distance-along-strike (meters)
+121 5 area 2    Field 5: Area (square meters)
+121 6 mean_slip 2    Field 6: Average slip (meters)
+121 7 moment 2    Field 7: Seismic moment (Newton-meters)
+121 8 shear_before 2    Field 8: Shear stress before event (Pascal)
+121 9 shear_after 2    Field 9: Shear stress after event (Pascal)
+121 10 normal_before 2    Field 10: Normal stress before event (Pascal)
+121 11 normal_after 2    Field 11: Normal stress after event (Pascal)
+121 12 element_id 1    Field 12: Element ID number (positive integer), or negative of element count (zero if no element info)
+121 13 rel_time 2    Field 13: Time when slip begins, relative to the start of the event (seconds)
+120 202 slip_element 1    Record 202: Slip element list entry
+121 1 element_id 1    Field 1: Element ID number (positive integer)
+103 End_Descriptor
+
+
+
+
+
+999 End

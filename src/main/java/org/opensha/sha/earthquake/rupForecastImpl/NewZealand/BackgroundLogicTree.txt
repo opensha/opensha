@@ -1,0 +1,11 @@
+This is the background source. The three rows of GR parameters are the 3 logic tree options, with the weights given at the end of each row. Assume that the parameters in each row are dependent, in that each row collectively represents one set of parameters that always occur together.
+
+AREA SOURCE
+Row1 = Source code,source name 
+Row2-5 = avalue, N/yr(M>=5), b-value, Mmin, Mcutoff, Weight
+
+RYA1    Rogers-Yount-Anderson 
+N/yr(M>=5)	B-value	Mmin  Mcutoff	Weight
+0.0923		1.095		5	6.6		0.6  
+0.0207		1.165		5	6.4		0.2
+0.4121		1.025		5	6.8		0.2	

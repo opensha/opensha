@@ -1,0 +1,24 @@
+101 EQSim_Input_Station_2 2
+111 Example of a header for a simulator input station file, version 0.6.
+102 End_Metadata
+120 200 summary 8    Record 200: Fault system summary
+121 1 n_station 1    Field 1: Total number of stations in the file
+121 2 lat_lo 2    Field 2: Lowest value of latitude (decimal degrees, positive north) or y (meters) in the file
+121 3 lat_hi 2    Field 3: Highest value of latitude (decimal degrees, positive north) or y (meters) in the file
+121 4 lon_lo 2    Field 4: Lowest value of longitude (decimal degrees, positive east) or x (meters) in the file
+121 5 lon_hi 2    Field 5: Highest value of longitude (decimal degrees, positive east) or x (meters) in the file
+121 6 depth_lo 2    Field 6: Lowest value of depth or z in the file (meters, negative underground)
+121 7 depth_hi 2    Field 7: Highest value of depth or z in the file (meters, negative underground)
+121 8 coord_sys 1    Field 8: Coordinate system (0 = spherical, 1 = rectangular)
+120 201 station 4    Record 201: Station
+121 1 index 1    Field 1: Station index number (consecutive integers, starting with 1)
+121 2 lat 2    Field 2: Latitude (decimal degrees, positive north) or y (meters)
+121 3 lon 2    Field 3: Longitude (decimal degrees, positive east) or x (meters)
+121 4 depth 2    Field 4: Depth or z (meters, negative underground)
+103 End_Descriptor
+
+
+
+
+
+999 End

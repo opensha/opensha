@@ -1,0 +1,55 @@
+# This file contains A-Fault Segment models. The line with "-" is the total connected fault's name. 
+# Subsequent lines after that list the fault segments, where each segment is composed of one or more sections
+# (separated by commas on that line).  Section IDs are used when reading this file, but names are also provided
+# for convenience after the colon on each line.
+# 
+#  Examples:
+# - Test Model
+# 2, 7, 51:section1 name; section2 name; section3 name
+# 3, 35, 1, 2:section4 name; section5 name; ...
+# The above is an example of segment model whose name is "Test Model" and it has 2 segments. 
+# Segment 1 has fault section Ids 2,7 and 15 
+# Segment 2 has fault sections 3, 35, 1 and 2
+#
+- Elsinore
+237:Whittier, alt 2
+296,297 :Elsinore (Glen Ivy) rev; Elsinore (Glen Ivy stepover)
+298,299 :Elsinore (Temecula stepover) rev; Elsinore (Temecula)
+102:Elsinore (Julian)
+103:Elsinore (Coyote Mountain)
+- Garlock
+48:Garlock (East)
+341:Garlock (Central)
+49:Garlock (West)
+- San Jacinto
+119:San Jacinto (San Bernardino)
+289,290:San Jacinto (San Jacinto Valley) rev; San Jacinto (San Jacinto Valley, stepover)
+291,293:San Jacinto (Anza, stepover); San Jacinto (Anza) rev 
+292:San Jacinto (Clark) rev
+101:San Jacinto (Coyote Creek)
+99:San Jacinto (Borrego)
+28:Superstition Mtn
+- N. San Andreas
+26:San Andreas (Offshore)
+27:San Andreas (North Coast)
+67:San Andreas (Peninsula)
+56:San Andreas (Santa Cruz Mtn)
+- S. San Andreas
+32:San Andreas (Parkfield)
+285:San Andreas (Cholame) rev
+300:San Andreas (Carrizo) rev
+287:San Andreas (Big Bend)
+286:San Andreas (Mojave N)
+301:San Andreas (Mojave S)
+282:San Andreas (San Bernardino N)
+283:San Andreas (San Bernardino S)
+284:San Andreas (San Gorgonio Pass-Garnet HIll)
+295:San Andreas (Coachella) rev
+- Hayward-Rodgers Creek
+25:Rodgers Creek
+68:Hayward (No)
+69:Hayward (So)
+- Calaveras
+4:Calaveras (No)
+5:Calaveras (Central)
+55:Calaveras (So)

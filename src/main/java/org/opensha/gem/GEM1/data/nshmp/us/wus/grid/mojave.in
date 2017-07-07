@@ -1,0 +1,48 @@
+0	!New for 2007. Fixed-strike, uniform source zone. Update region boundary Oct 2007
+24.6 50. .1     Mojave desert
+-125. -100. .1
+760. 2.
+2 1. 0.0 1.0 5. 1.0 0.0  2 depths
+1. 0.0 0.0 	!composition of sense of slip all ss in a shear zone. 
+1. 200.
+24.6 51. 0.1     extended source array 
+-126.5 -100. 0.1
+0.8 6.5 7.6 .1 3.
+2 0 0 0
+../../data/nshmp/us/wus/grid/mojave.agrid
+1. 0
+-47
+3    3 periods, if you think of pga as a period.
+0. 1. 0. PGA
+0.375 0.210 0.245
+0.230 0.225 0.23
+0.400 0.360 0.31
+NGA/Mojavepga.out
+19
+ .005 .007 .0098 .0137 .0192 .0269 .0376 .0527 .0738 .103 .145 .203 .284 .397 .556 .778 1.09 1.52 2.13 
+3
+21 0.3333 1000. 0.333 0 Boore Atkinson nga Apr 07
+23 0.3333 1000. 0.333 0 Chiou-Youngs 
+22 0.3333 1000. 0.334 0 Campbell Bozorgnia NGA Nov 07
+0.2 1. 0.  PSA
+0.375 0.210 0.245
+0.230 0.225 0.23
+0.400 0.360 0.31
+NGA/Mojave5hz.out
+19
+.005 .0075 0.0113 .0169 .0253 .0380 .0570 .0854 .128 .192 .288 .432 .649 .973 1.46 2.19 3.28 4.92 7.38
+3
+21 0.3333 1000. 0.333 0 Boore Atkinson nga 11-06
+23 0.3333 1000. 0.333 0 Chiou-Youngs 
+22 0.3333 1000. 0.334 0 Campbell Bozorgnia NGA Nov 07
+1.0 1. 0.  PSA
+0.375 0.210 0.245
+0.230 0.225 0.23
+0.400 0.360 0.31
+NGA/Mojave1hz.out
+20
+.0025 .00375 .00563 .00844 .0127 .0190 .0285 .0427 .0641 .0961 .144 .216 .324 .487 .730 1.09 1.64 2.46 3.69 5.54
+3
+21 0.3333 1000. 0.333 0 Boore et al nga
+23 0.3333 1000. 0.333 0 Chiou-Youngs 
+22 0.3333 1000. 0.334 0 Campbell Bozorgnia NGA Nov 06

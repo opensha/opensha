@@ -1,0 +1,47 @@
+The file Frankel96_CAL_all.txt represents all 3 of Frankel's original fault input files for California condensed into one file.  See the "PreviousVersions" directory/folder for details on how this was done.
+
+The elements of this file are as follows.
+
+For each fault source:
+
+	1st Line:
+
+		faultClass		(either "A" or "B")
+		faultingStyle	("SS", "R", or "N") 
+		faultName
+
+	2nd Line:
+
+		charMag
+		charRate
+
+	3rd Line:
+
+		dip			(may be negative!)
+		downDipWidth
+		depthToTop
+
+	4th Line:
+
+		numFaultTraceLocs
+
+	Last lines (total of numFaultTraceLocs lines):
+
+	lat[i], lon[i]		(fault-trace points)
+
+
+NOTES:  
+
+1) It would be better to list the actual rake rather than "SS", "R", and "N", but I didn't have time to hand edit whether "SS" was rake=0 or rake=180.
+
+2) It would be better (more physical; less model dependent) to list the momentRate rather than charRate.
+
+The California background seismicity-rates file (CAagrid.asc, which is self explanatory) was obtained from:
+
+	http://geohazards.cr.usgs.gov/eq/rategrid/CAagrid.asc
+
+Ned Field
+USGS
+March 12, 2003
+
+

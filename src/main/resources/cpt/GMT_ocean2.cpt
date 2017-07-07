@@ -1,0 +1,11 @@
+#	$Id: GMT_ocean.cpt,v 1.1 2001/09/23 23:11:20 pwessel Exp $
+#
+# Colortable for oceanic areas as used in Wessel maps
+# Designed by P. Wessel and F. Martinez, SOEST.
+# COLOR_MODEL = RGB
+-4000	250	255	255	-3000	211	250	211
+-3000	211	250	211	-2000	172	245	168
+-2000	172	245	168	-1000	86	197	184
+-1000	86	197	184	0	0	150	200
+F	255	255	255
+B	0	150	200

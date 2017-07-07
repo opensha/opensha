@@ -1,0 +1,29 @@
+101 EQSim_Input_Friction_2 1
+111 Example of a header for a simulator input friction file, version 0.4.
+102 End_Metadata
+120 200 summary 4    Record 200: Fault friction summary
+121 1 n_element 1    Field 1: Total number of elements in the file
+121 2 elastic_flag 1    Field 2: 1 if elastic parameters (record 201) are included, 0 if not
+121 3 strength_flag 1    Field 3: 1 if fault strength (record 202) is included, 0 if not
+121 4 rate_state_flag 1    Field 4: 1 if rate-state parameters (record 203) are included, 0 if not
+120 201 elastic_param 2    Record 201: Elastic parameters
+121 1 lame_lambda 2    Field 1: Lame modulus lambda (Pascal)
+121 2 lame_mu 2    Field 2: Lame modulus mu, also known as the shear modulus (Pascal)
+120 202 fault_strength 3    Record 202: Fault strength
+121 1 index 1    Field 1: Element index number (consecutive integers, starting with 1)
+121 2 static_strength 2    Field 2: Element static yield strength (Pascal)
+121 3 dynamic_strength 2    Field 3: Element dynamic sliding strength (Pascal)
+120 203 rate_state 6    Record 203: Rate-state parameters
+121 1 index 1    Field 1: Element index number (consecutive integers, starting with 1)
+121 2 A 2    Field 2: Element rate-state parameter A
+121 3 B 2    Field 3: Element rate-state parameter B
+121 4 L 2    Field 4: Element rate-state characteristic distance L (meters)
+121 5 f0 2    Field 5: Element rate-state friction coefficient f0
+121 6 V0 2    Field 6: Element rate-state reference velocity V0 (meters/second)
+103 End_Descriptor
+
+
+
+
+
+999 End

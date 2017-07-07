@@ -1,0 +1,76 @@
+// This is the configuration file of the command line calculator
+
+// FILE CONTAINING ERF LOGIC TREE STRUCTURE
+/Users/damianomonelli/Documents/Workspace/OpenSHA/src/org/opensha/gem/GEM1/data/command_line_input_files/ErfLogicTree.inp
+
+// FILE CONTAINING GMPE LOGIC TREE STRUCTURE
+/Users/damianomonelli/Documents/Workspace/OpenSHA/src/org/opensha/gem/GEM1/data/command_line_input_files/GmpeLogicTree.inp
+
+// OUTPUT DIRECTORY
+/Users/damianomonelli/Desktop/Test/
+
+// MINIMUM MAGNITUDE
+5.0
+
+// INVESTIGATION TIME
+50.0
+
+// MAXIMUM DISTANCE
+200.0
+
+// COMPONENT (Average Horizontal, Average Horizontal (GMRotI50), Random Horizontal, Greater of Two Horz., Vertical)
+Average Horizontal (GMRotI50)
+
+// INTENSITY MEASURE TYPE (PGA (g), PGD (cm), PGV (cm/s), SA (g))
+PGA
+
+// PERIOD (s) (0.0 for PGA, PGV, PGD)
+0.0
+
+// DAMPING (%) (0.0 for PGA, PGV, PGD)
+5.0 
+
+// INTENSITY MEASURE LEVELS (in the same units of the intensity measure type)
+0.005 0.007 0.098 0.0137 0.0192 0.0269 0.0376 0.0527 0.0738 0.103 0.145 0.203 0.284 0.397 0.556 0.778 1.09 1.52 2.13
+
+// GMPE TRUNCATION TYPE (None, 1 Sided, 2 Sided)
+2 Sided
+
+// TRUNCATION LEVEL (1,2,3,...)
+3
+
+// STANDARD DEVIATION TYPE (Total, Inter-Event, Intra-Event, None (zero), Total (Mag Dependent), Total (PGA Dependent), Intra-Event (Mag Dependent))
+Total
+
+// REFERENCE VS30 VALUE 
+760.0
+
+// INCLUDE AREA SOURCE (yes,no)
+yes
+
+// TREAT AREA SOURCE AS (Point Sources, Line Sources (random or given strike), Cross Hair Line Sources, 16 Spoked Line Sources)
+Point Sources
+
+// AREA SOURCE DISCRETIZATION (degrees)
+0.1
+
+// AREA SOURCE MAGNITUDE SCALING RELATIONSHIP (W&C 1994 Mag-Length Rel.)
+W&C 1994 Mag-Length Rel.
+
+// WIDTH OF MFD BIN
+0.1
+
+// NUMBER OF PROCESSORS
+1
+
+// RESULT TYPE (Hazard map) 
+Hazard map
+
+// PROBABILITY OF EXCEEDANCE
+0.1
+
+// REGION lat, lon of polygon vertices (in clock or counter-clock wise order) and grid spacing
+-78.0 0.0 -77.0 0.0 -77.0 1.0 -78.0 1.0 1.0
+
+// NUMBER OF HAZARD CURVE CALCULATIONS
+100

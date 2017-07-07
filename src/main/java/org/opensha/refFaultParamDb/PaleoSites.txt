@@ -1,0 +1,210 @@
+80-2	|	Airport Creek	|	San Simeon fault	|	Hall and others (1994)	|	-121.204	|	35.6509
+51-5	|	Alabama Gates	|	Owens Valley fault zone	|	Bacon and others (2001)	|	-118.093	|	36.6653
+1-2	|	Alder Creek	|	San Andreas fault zone	|	Baldwin (1996)	|	-123.688	|	38.998
+87-1	|	Alegria Canyon	|	Santa Ynez fault zone	|	Hart, 1978 (citing Envicom, 1978)	|	-120.271	|	34.4707
+125-3	|	Anza	|	San Jacinto fault zone	|	Rockwell, Loughman and Merifield (1990)	|	-116.667	|	33.5906
+1-14	|	Arano Flat	|	San Andreas fault zone	|	Fumal (1999)	|	-121.673	|	36.9418
+1-4	|	Archae Camp	|	San Andreas fault zone	|	Noller, et al (1996)	|	-123.231	|	38.5156
+98-2	|	Arroyo Simi	|	Simi-Santa Rosa fault zone	|	Hitchcock and others (1998)	|	-118.803	|	34.2789
+105-4	|	Bartholomaus Ranch	|	Sierra Madre fault zone	|	Fumal and others (1995)	|	-118.384	|	34.2856
+115-4	|	Batdorf	|	Johnson Valley fault zone	|	Murbach (1994);Rockwell and others (2000)	|	-116.456	|	34.3122
+59-2	|	Bean Hill	|	Zayante-Vergeles fault zone	|	Coppersmith (1979a)	|	-121.844	|	37.019
+126-2	|	Bee Canyon	|	Elsinore fault zone	|	Hannan and others (1979)	|	-117.723	|	33.8844
+32-3	|	Beebe Ranch	|	Rodgers Creek fault	|	Schwartz, et al (1992)	|	-122.541	|	38.2695
+1-22	|	Bidart fan	|	San Andreas fault zone	|	Grant and Sieh (1994)	|	-119.786	|	35.2332
+1-39	|	Biskra Palms	|	San Andreas fault zone	|	Keller and others (1982); van der Woerd and others (2001)	|	-116.243	|	33.7837
+1-6	|	Bodega Harbor	|	San Andreas fault zone	|	Knudsen, et al (2002)	|	-123.031	|	38.3136
+115-3	|	Bodick Road	|	Johnson Valley fault zone	|	Rockwell and others (1995);Rockwell and others (2000)	|	-116.451	|	34.3372
+1-9	|	Bolinas Lagoon	|	San Andreas fault zone	|	Knudsen, et al (2002)	|	-122.698	|	37.9339
+1-37	|	Burro Flat	|	San Andreas fault zone	|	Yule and others (2001)	|	-116.858	|	33.9988
+102-1	|	Camino-Palmero	|	Hollywood fault	|	Dolan, Stevens and Rockwell, 2000	|	-118.349	|	34.104
+114-1	|	Camp Rock graben	|	Camp Rock-Emerson fault zone	|	Rubin (unpublished data)	|	-116.69	|	34.6671
+69-1	|	Castac Lake	|	Garlock fault zone	|	LaViolette (1981)	|	-118.831	|	34.8427
+69-10	|	Cave Spring Wash	|	Garlock fault zone	|	McGill (1994c,d)	|	-116.437	|	35.5854
+1-16	|	Cholame Valley	|	San Andreas fault zone	|	Sims (1987)	|	-120.306	|	35.7552
+1-34	|	City Creek	|	San Andreas fault zone	|	McGill and others (1998)	|	-117.191	|	34.1373
+13-2	|	Clam Beach	|	Mad River fault zone	|	Carver (1992); Carver and others (1992); Clarke and Carver (1992)	|	-124.125	|	40.9322
+127-3	|	Coronado Bridge	|	Newport-Inglewood-Rose Canyon fault zone	|	Kennedy and Clarke (1997)	|	-117.162	|	32.6885
+1-25	|	Cuddy Valley	|	San Andreas fault zone	|	Davis and Duebendorfer (1982)	|	-119.036	|	34.8322
+79-2	|	Cuesta	|	Los Osos fault zone	|	Lettis and Hall (1994)	|	-120.715	|	35.2736
+1-5	|	Doda Ranch	|	San Andreas fault zone	|	Langridge and Prentice (2000)	|	-123.221	|	38.5047
+1-8	|	Dogtown	|	San Andreas fault zone	|	Hall, et al (1986); Wells and others (1999)	|	-122.712	|	37.9483
+351-2	|	Drainage Divide	|	Lavic Lake fault	|	Lindvall and others (2000)	|	-116.261	|	34.5357
+105-5	|	Dunsmore Canyon	|	Sierra Madre fault zone	|	Crook and others (1987)	|	-118.253	|	34.2473
+103-4	|	Eaton Wash	|	Raymond fault	|	Marin and others (2000)	|	-118.082	|	34.1304
+69-6	|	El Paso Peaks	|	Garlock fault zone	|	McGill and Rockwell (1998); Dawson and others (2003)	|	-117.68	|	35.4443
+79-3	|	Ellsworth	|	Los Osos fault zone	|	Lettis and Hall (1994)	|	-120.707	|	35.2686
+116-1	|	Fan	|	Homestead Valley fault zone	|	Hecker and others (1993)	|	-116.499	|	34.4537
+59-1	|	Fern Flat	|	Zayante-Vergeles fault zone	|	Coppersmith (1979a)	|	-121.87	|	37.0302
+1-42	|	Ferrum	|	San Andreas fault zone	|	Sieh and Williams (1990)	|	-115.86	|	33.4628
+1-11	|	Filoli	|	San Andreas fault zone	|	Clahan and others (1995)	|	-122.315	|	37.4722
+125-7	|	Fish Creek Basin	|	San Jacinto fault zone	|	Gurrola and Rockwell (1996)	|	-115.945	|	32.9983
+1-26	|	Frazier Mountain	|	San Andreas fault zone	|	Lindvall and others (2002)	|	-118.902	|	34.8122
+55-6	|	Fremont City Hall	|	Hayward fault zone	|	Borchardt and others (1992)	|	-121.969	|	37.5503
+38-1	|	Galindo Creek	|	Concord fault	|	Snyder, et al. (1995); Borchardt (1998)	|	-122.031	|	37.9661
+126-5	|	Glen Ivy Marsh	|	Elsinore fault zone	|	Rockwell, Millman and others (1986); Rockwell (1989)	|	-117.487	|	33.7669
+67-2	|	Goler Wash	|	Panamint Valley fault zone	|	Zhang and others (1990)	|	-117.167	|	35.8539
+1-12	|	Grizzly Flat	|	San Andreas fault zone	|	Schwartz and others (1997)	|	-121.791	|	37.0423
+125-2	|	Hog Lake	|	San Jacinto fault zone	|	Klinger and Rockwell (1989)	|	-116.709	|	33.6149
+115-5	|	Hondo	|	Johnson Valley fault zone	|	Lindvall and Rockwell (1993); Rockwell and others (1995); Rockwell and others (2000)	|	-116.436	|	34.2426
+127-1	|	Huntington	|	Newport-Inglewood-Rose Canyon fault zone	|	Grant and others (1997)	|	-118.023	|	33.6913
+125-6	|	Imler Road	|	San Jacinto fault zone	|	Hudnut and Sieh (1989)	|	-115.697	|	32.9276
+49-1	|	Indian Creek fan (T-2)	|	Fish Lake Valley fault zone	|	Sawyer (1990)	|	-118.175	|	37.776
+1-40	|	Indio	|	San Andreas fault zone	|	Sieh (1986); Sieh and Williams (1990)	|	-116.186	|	33.7413
+79-1	|	Ingley	|	Los Osos fault zone	|	Lettis and Hall (1994)	|	-120.715	|	35.2764
+105-6	|	JPL	|	Sierra Madre fault zone	|	Crook and others (1987)	|	-118.168	|	34.2022
+76-3	|	Kink Canyon	|	Pleito fault zone	|	Hall (1984)	|	-118.949	|	34.9312
+103-5	|	LA County Arboretum	|	Raymond fault	|	Weaver and Dolan (1997)	|	-118.057	|	34.1386
+126-12	|	Lake Henshaw	|	Elsinore fault zone	|	Thorup (1997)	|	-116.717	|	33.2027
+30-2	|	Laughlin Range	|	Maacama fault zone	|	Upp (1982); Upp (1989)	|	-123.307	|	39.3406
+53-1	|	Laughlin Road	|	Greenville fault zone	|	Sawyer and Unruh (2002)	|	-121.715	|	37.737
+54-2	|	Leyden Creek	|	Calaveras fault zone	|	Kelson and others (1996)	|	-121.833	|	37.5113
+15-1	|	Little Salmon Creek	|	Little Salmon fault zone	|	Carver and Burke (1988); Clarke and Carver (1992)	|	-124.188	|	40.6557
+1-27	|	Littlerock	|	San Andreas fault zone	|	Schwartz and Weldon (1987)	|	-117.957	|	34.487
+105-7	|	Loma Alta Park	|	Sierra Madre fault zone	|	Rubin, Lindvall and Rockwell (1998)	|	-118.158	|	34.2037
+51-7	|	Lone Pine Creek	|	Owens Valley fault zone	|	Lubetkin and Clark (1988)	|	-118.076	|	36.6085
+69-4	|	Lone Tree Canyon	|	Garlock fault zone	|	McGill (1994b, in prep.)	|	-118.087	|	35.2059
+22-1	|	Long Valley Creek	|	Honey Lake fault zone	|	Wills and Borchardt (1993)	|	-120.122	|	40.0529
+37-1	|	Lopes Ranch	|	Green Valley fault	|	Baldwin and Lienkaemper (1999)	|	-122.121	|	38.1314
+128-2	|	Los Angeles Harbor	|	Palos Verdes fault zone	|	McNeilan, Rockwell and Resnick (1996)	|	-118.254	|	33.7287
+1-30	|	Lost Lake	|	San Andreas fault zone	|	Weldon and Sieh (1985)	|	-117.463	|	34.2722
+1-17	|	LY4	|	San Andreas fault zone	|	Young and others (2002); Stone and others (2002)	|	-120.019	|	35.4692
+67-1	|	Manley Peak Canyon	|	Panamint Valley fault zone	|	Zhang and others (1990)	|	-117.185	|	35.9055
+49-2	|	Marble Creek (T-1)	|	Fish Lake Valley fault zone	|	Sawyer (1990); Reheis, et al (1995)	|	-118.157	|	37.747
+55-4	|	Masonic Home	|	Hayward fault zone	|	Lienkaemper and  Borchardt (1996)	|	-122.004	|	37.5961
+1-15	|	Melendy Ranch	|	San Andreas fault zone	|	Perkins and others (1989)	|	-121.176	|	36.5838
+115-1	|	Melville Gap	|	Johnson Valley fault zone	|	Hertzberg (1996)	|	-116.591	|	34.4375
+1-24	|	Mil Potrero (San Emigdio Creek)	|	San Andreas fault zone	|	Davis and Duebendorfer (1982)	|	-119.138	|	34.8551
+1-13	|	Mill Canyon	|	San Andreas fault zone	|	Fumal (1999)	|	-121.679	|	36.9466
+55-2	|	Mira Vista	|	Hayward fault zone	|	HFPG (1997)	|	-122.296	|	37.9307
+109-2	|	Mits	|	North Frontal thrust system	|	Spotila (2001)	|	-116.884	|	34.3634
+55-3	|	Montclair Park	|	Hayward fault zone	|	Lienkaemper and others (1995)	|	-122.21	|	37.8286
+60-1	|	Moss Beach	|	San Gregorio fault zone	|	Simpson and others (1997)	|	-122.512	|	37.5206
+126-8	|	Murrieta	|	Elsinore fault zone	|	Rockwell and Bergmann (in prep.); Bergmann and Rockwell (1993)	|	-117.193	|	33.5444
+126-9	|	Murrieta Creek	|	Elsinore fault zone	|	Bergmann & Rockwell (1989)	|	-117.176	|	33.5145
+126-11a	|	Mustard	|	Elsinore fault zone	|	Vaughan, Thorup and Rockwell (1999)	|	-117.042	|	33.4116
+219-1	|	no name	|	Cordelia fault zone	|	Kieffer, et al (1994)	|	-122.135	|	38.2235
+53-2	|	no name	|	Greenville fault zone	|	Hart and others (1980)	|	-121.708	|	37.7233
+53-3	|	no name	|	Greenville fault zone	|	Wright and others  (1982)	|	-121.649	|	37.665
+126-7	|	no name	|	Elsinore fault zone	|	Lamar and Swanson (1981)	|	-117.282	|	33.6117
+25-1	|	no name	|	Mohawk Valley fault zone	|	Sawyer and Page (1993)	|	-120.488	|	39.6629
+126-13	|	no name	|	Elsinore fault zone	|	Rockwell (1990); Rockwell and Pinault (1990)	|	-116.048	|	32.791
+126-14	|	no name	|	Elsinore fault zone	|	Mueller and Rockwell (1995)	|	-115.622	|	32.4521
+125-1	|	no name	|	San Jacinto fault zone	|	Wesnousky and others (1991)	|	-117.283	|	34.0586
+125-4	|	no name	|	San Jacinto fault zone	|	Pollard and Rockwell (1995)	|	-116.071	|	33.1131
+15-2	|	no name	|	Little Salmon fault zone	|	Woodward-Clyde Consultants (1980)	|	-124.086	|	40.5495
+48-1	|	no name	|	Fish Slough fault	|	Envicom (1976)	|	-118.377	|	37.3804
+35-1	|	no name	|	Hunting Creek-Berryessa fault system	|	SRK-WCC (1983)	|	-122.391	|	38.8531
+52-1	|	no name	|	Ortigalita fault zone	|	Anderson and others (1982)	|	-121.134	|	37.1076
+52-4	|	no name	|	Ortigalita fault zone	|	Anderson and others (1982)	|	-120.991	|	36.8747
+52-5	|	no name	|	Ortigalita fault zone	|	Anderson and others (1982)	|	-120.973	|	36.8563
+52-6	|	no name	|	Ortigalita fault zone	|	Anderson and others (1982)	|	-120.899	|	36.7661
+52-2	|	no name	|	Ortigalita fault zone	|	Anderson and others (1982)	|	-121.096	|	36.9921
+52-3	|	no name	|	Ortigalita fault zone	|	Anderson and others (1982)	|	-121.074	|	36.9758
+56-1	|	no name	|	Monte Vista-Shannon fault zone	|	Hitchcock and others (1994)	|	-122.063	|	37.3095
+30-3	|	no name	|	Maacama fault zone	|	Sickler, et al (1999)	|	-123.197	|	39.1944
+70-1	|	no name	|	Owl Lake fault	|	McGill (1998a)	|	-116.868	|	35.6088
+69-11	|	no name	|	Garlock fault zone	|	Stroud and McGill (1994c,d)	|	-116.297	|	35.5722
+31-1	|	no name	|	Healdsburg fault	|	Kleinfelder, Inc. (1996)	|	-122.865	|	38.6433
+31-2	|	no name	|	Healdsburg fault	|	Harlan Tait Associates (1996)	|	-122.86	|	38.6301
+41-1	|	no name	|	Mono Lake fault	|	McCalpin and Berry (1999)	|	-119.108	|	37.9436
+126-4	|	no name	|	Elsinore fault zone	|	Walls and Gath (2001)	|	-117.688	|	33.9502
+122-1a	|	no name	|	Pisgah-Bullion fault zone	|	Lindvall and others (2000)	|	-116.257	|	34.4842
+122-1b	|	no name	|	Pisgah-Bullion fault zone	|	Lindvall and others (2000)	|	-116.254	|	34.4808
+123-1	|	no name	|	Mesquite Lake fault	|	Madden and others (2001)	|	-116.07	|	34.2272
+132-1	|	no name (All American Canal)	|	Imperial fault	|	Sharp (1978)	|	-115.358	|	32.6756
+60-2	|	no name (Ano Nuevo?)	|	San Gregorio fault zone	|	Weber (1994)	|	-122.312	|	37.1214
+13-3	|	no name (Blue Lake)	|	Mad River fault zone	|	Carver and Burke (1988)	|	-124.013	|	40.8746
+108-1	|	no name (Cedar Springs Dam)	|	Cleghorn fault zone	|	California Department of Water Resources (1968)	|	-117.317	|	34.3032
+69-8	|	no name (Christmas Canyon)	|	Garlock fault zone	|	Roquemore and others (1982)	|	-117.365	|	35.5242
+1-33	|	no name (City Creek North Branch)	|	San Andreas fault zone	|	Sieh and others (1994)	|	-117.189	|	34.1473
+1-10	|	no name (Crystal Springs Reservoir area)	|	San Andreas fault zone	|	Hall (1984)	|	-122.393	|	37.5616
+105-9a	|	no name (Day Canyon)	|	Sierra Madre fault zone	|	Matti and others (1982); Morton and Matti (1987)	|	-117.546	|	34.1723
+105-9b	|	no name (East Etiwanda Canyon)	|	Sierra Madre fault zone	|	Matti and others (1982); Morton and Matti (1987)	|	-117.542	|	34.1692
+105-9c	|	no name (East Etiwanda Canyon)	|	Sierra Madre fault zone	|	Matti and others (1982); Morton and Matti (1987)	|	-117.528	|	34.1675
+55-7	|	no name (Evergreen Valley College)	|	Hayward fault zone	|	Fenton and others (1994)	|	-121.76	|	37.3015
+51-2	|	no name (Fish Springs)	|	Owens Valley fault zone	|	Zehfuss and others (2001)	|	-118.268	|	37.0739
+30-5	|	no name (Howell Creek)	|	Maacama fault zone	|	Bogar, et al (1996)	|	-123.154	|	39.1083
+51-1	|	no name (Keough Hot Springs)	|	Owens Valley fault zone	|	Envicom (1976)	|	-118.393	|	37.337
+69-5	|	no name (Koehn Lake)	|	Garlock fault zone	|	Burke (1979)	|	-117.851	|	35.3714
+29-1	|	no name (Lake Pillsbury)	|	Bartlett Springs fault system	|	Taylor and Swan (1986)	|	-122.96	|	39.4547
+115-2	|	no name (Lanom)	|	Johnson Valley fault zone	|	Murbach (1994)	|	-116.45	|	34.3493
+351-1a	|	no name (Lavic Lake Playa)	|	Lavic Lake fault	|	Rymer and others (2002)	|	-116.362	|	34.6768
+351-1b	|	no name (Lavic Lake Playa)	|	Lavic Lake fault	|	Rymer and others (2002)	|	-116.356	|	34.6654
+44-1	|	no name (McGee Creek)	|	Hilton Creek fault	|	Berry (1990)	|	-118.784	|	37.5612
+109-1	|	no name (Ocotillo Ridge)	|	North Frontal thrust system	|	Meisling (1984)	|	-117.18	|	34.4283
+58-1	|	no name (Pajaro River)	|	Sargent fault zone	|	Nolan and others (1994)	|	-121.536	|	36.922
+55-1	|	no name (Point Pinole)	|	Hayward fault zone	|	Borchardt (1995)	|	-122.359	|	37.9943
+51-4	|	no name (Shepherd Creek)	|	Owens Valley fault zone	|	Beanland and Clark (1994)	|	-118.118	|	36.7577
+30-4	|	no name (Talmadge)	|	Maacama fault zone	|	Galehouse,  et al (1992)	|	-123.164	|	39.1357
+51-3	|	no name (Tinemaha Reservoir)	|	Owens Valley fault zone	|	Lee and others (2001)	|	-118.221	|	36.9912
+132-2	|	no name (US-Mexico Border)	|	Imperial fault	|	Thomas and Rockwell (1996)	|	-115.357	|	32.6748
+1-32	|	no name (west of City Creek)	|	San Andreas fault zone	|	McGill and others (1999)	|	-117.208	|	34.1504
+69-3	|	Oak Creek Canyon	|	Garlock fault zone	|	LaViolette (1981)	|	-118.398	|	35.0354
+1-18	|	Oak Flat	|	San Andreas fault zone	|	Rust (1982)	|	-118.603	|	34.7255
+105-3	|	Oak Hill	|	Sierra Madre fault zone	|	Bonilla (1973)	|	-118.4	|	34.2969
+80-1	|	Oak Knoll Creek	|	San Simeon fault	|	Hall and others (1994)	|	-121.214	|	35.6621
+142-1	|	Old Ghost alluvial fan complex	|	Black Mountain fault zone	|	Machette, et al (1999)	|	-116.873	|	36.5051
+125-5	|	Old Kane Springs Road	|	San Jacinto fault zone	|	Clark, Grantz and Rubin (1972)	|	-116.053	|	33.0949
+126-1	|	Olinda Oil Field	|	Elsinore fault zone	|	Patterson and Rockwell (1993)	|	-117.844	|	33.9307
+1-28	|	Pallett Creek	|	San Andreas fault zone	|	Sieh (1978) ; Sieh (1986); Sieh and others (1989)	|	-117.886	|	34.4556
+1-20	|	Phelan Creek	|	San Andreas fault zone	|	Sims (1994)	|	-119.814	|	35.2592
+1-21	|	Phelan fan	|	San Andreas fault zone	|	Grant and Sieh (1993)	|	-119.807	|	35.2531
+1-31	|	Pitman Canyon	|	San Andreas fault zone	|	Seitz and Weldon (1994); Seitz and others (1997)	|	-117.433	|	34.2544
+114-2	|	Playa	|	Camp Rock-Emerson fault zone	|	Rubin and Sieh (1997)	|	-116.525	|	34.5115
+116-2	|	Playa	|	Homestead Valley fault zone	|	Hecker and others (1993)	|	-116.497	|	34.4494
+1-35	|	Plunge Creek	|	San Andreas fault zone	|	McGill and others (1998); McGill and others (2002)	|	-117.138	|	34.1159
+51-6	|	Quaker	|	Owens Valley fault zone	|	Bacon and others (2001)	|	-118.083	|	36.6396
+110-2	|	Rabbit Spring	|	Helendale-South Lockhart fault zone	|	Bryan (1995)	|	-116.967	|	34.4593
+87-2	|	Rancho San Marcos	|	Santa Ynez fault zone	|	Darrow and Sylvester (1984)	|	-119.863	|	34.5465
+126-11b	|	Sag	|	Elsinore fault zone	|	Vaughan, Thorup and Rockwell (1999)	|	-117.038	|	33.4017
+1-43	|	Salt Creek	|	San Andreas fault zone	|	Sieh and Williams (1990)	|	-115.841	|	33.4472
+105-8	|	San Dimas	|	Sierra Madre fault zone	|	Tucker and Dolan (1999)	|	-117.799	|	34.1291
+103-2	|	San Marino High School	|	Raymond fault	|	Crook and others (1987)	|	-118.097	|	34.1272
+54-3	|	San Ysidro Creek	|	Calaveras fault zone	|	Kelson and others (1998)	|	-121.492	|	37.0226
+1-3	|	Scaramella Ranch	|	San Andreas fault zone	|	Prentice (1989)	|	-123.676	|	38.9822
+13-1	|	School Road	|	Mad River fault zone	|	Carver and Burke (1988)	|	-124.113	|	40.9385
+127-2	|	SDG&E	|	Newport-Inglewood-Rose Canyon fault zone	|	Lindvall and Rockwell (1995)	|	-117.218	|	32.8107
+69-7	|	Searles Valley	|	Garlock fault zone	|	McGill (1992)	|	-117.385	|	35.5204
+32-1	|	Shilo Ranch	|	Rodgers Creek fault	|	Hart and Swan (p.c. 1998)	|	-122.761	|	38.5262
+103-1	|	Sierra Madre Boulevard	|	Raymond fault	|	Weaver and Dolan (1998)	|	-118.106	|	34.1251
+1-23	|	Smith Flat	|	San Andreas fault zone	|	Davis and Duebendorfer (1982)	|	-119.351	|	34.9108
+111-1	|	Soggy Lake playa	|	Lenwood-Lockhart fault zone	|	Padgett (1994)	|	-116.7	|	34.4568
+99-1	|	Solstice Canyon	|	Malibu Coast fault zone	|	Drumm (1992)	|	-118.752	|	34.0358
+69-9	|	Southern Searles Valley	|	Garlock fault zone	|	McGill and Sieh (1993)	|	-117.265	|	35.5459
+98-1	|	Springville	|	Simi-Santa Rosa fault zone	|	Gonzalez and Rockwell (1991)	|	-119.082	|	34.2237
+1-41	|	Stone Ring Gullies	|	San Andreas fault zone	|	Shifflett and others (2002)	|	-115.98	|	33.5701
+103-3	|	Sunnyslope Reservoir	|	Raymond fault	|	Crook and others (1987)	|	-118.086	|	34.1295
+105-2	|	Sylmar filtration plant	|	Sierra Madre fault zone	|	Spellman and others (1984)	|	-118.486	|	34.3054
+49-8	|	T-3	|	Fish Lake Valley fault zone	|	Sawyer (1991)	|	-117.866	|	37.4227
+49-7	|	T-4	|	Fish Lake Valley fault zone	|	Sawyer (1991)	|	-117.89	|	37.4532
+49-6	|	T93-1	|	Fish Lake Valley fault zone	|	Reheis, et al (1995)	|	-117.937	|	37.5056
+49-4	|	T93-2a	|	Fish Lake Valley fault zone	|	Reheis, et al (1995)	|	-118.005	|	37.5652
+49-3	|	T93-2b	|	Fish Lake Valley fault zone	|	Reheis, et al (1995)	|	-118.009	|	37.5694
+49-5	|	T93-3	|	Fish Lake Valley fault zone	|	Reheis, et al (1995)	|	-117.953	|	37.4876
+105-1	|	Tapo Canyon	|	Sierra Madre fault zone	|	Lung and Weick (1987)	|	-118.715	|	34.3558
+76-2	|	Tecuya Fan	|	Pleito fault zone	|	Hall (1984)	|	-118.957	|	34.9318
+126-10	|	Temecula	|	Elsinore fault zone	|	Rockwell and Bergmann (in prep.)	|	-117.114	|	33.476
+1-38	|	Thousand Palms Oasis	|	San Andreas fault zone	|	Fumal and others (2002b)	|	-116.308	|	33.8369
+116-3	|	Thrust	|	Homestead Valley fault zone	|	Lindvall and Rockwell (1994); Rockwell and others (2000)	|	-116.483	|	34.4242
+32-2	|	Triangle G	|	Rodgers Creek fault	|	Schwartz, et al (1992)	|	-122.545	|	38.2735
+55-5	|	Tule Pond	|	Hayward fault zone	|	Williams (1992)	|	-121.974	|	37.5585
+69-2	|	Twin Lakes	|	Garlock fault zone	|	LaViolette (1981)	|	-118.506	|	34.987
+30-1	|	Upp Creek	|	Maacama fault zone	|	Upp (1982); Upp (1989)	|	-123.366	|	39.4295
+1-1	|	Upper Landis Trench (ULT)	|	San Andreas fault zone	|	Prentice, et al (1999)	|	-124.06	|	40.0313
+1-7	|	Vedanta Wind Gap	|	San Andreas fault zone	|	Niemi and Hall (1992)	|	-122.787	|	38.0316
+101-1	|	Veterans Hospital	|	Santa Monica fault	|	Dolan, Sieh and Rockwell, 1995	|	-118.45	|	34.0485
+128-1	|	Vincent Thomas Bridge	|	Palos Verdes fault zone	|	Clarke and Kennedy (1998)	|	-118.272	|	33.7495
+1-19	|	Wallace Creek	|	San Andreas fault zone	|	Sieh and Jahns (1984)	|	-119.826	|	35.2713
+110-1	|	Waverly Road	|	Helendale-South Lockhart fault zone	|	Bryan (1995)	|	-116.999	|	34.4855
+54-1	|	Welch Creek	|	Calaveras fault zone	|	Simpson and others (1999)	|	-121.85	|	37.5343
+76-1	|	Western	|	Pleito fault zone	|	Hall (1984)	|	-118.966	|	34.9333
+142-2	|	Willow Creek scarp	|	Black Mountain fault zone	|	Klinger and Piety (2001)	|	-116.733	|	36.0738
+1-36	|	Wilson Creek	|	San Andreas fault zone	|	Harden and Matti (1989)	|	-116.994	|	34.0657
+54-4	|	Winfield Ranch	|	Calaveras fault zone	|	Sims (1991)	|	-121.313	|	36.741
+99-2	|	Winter Mesa	|	Malibu Coast fault zone	|	Rzonca and others (1991)	|	-118.698	|	34.0337
+1-29	|	Wrightwood	|	San Andreas fault zone	|	Fumal and others (1993); Fumal and others (2002a)	|	-117.667	|	34.3701
+126-3	|	Yorba Linda	|	Elsinore fault zone	|	Rockwell and others (1988)	|	-117.713	|	33.8815
+72-1	|	no name	|	Little Lake fault zone	|	Roquemore (1981)	|	-117.878	|	35.8937
+89-1	|	no name	|	San Gabriel fault	|	Cotton & Seward (1984)	|	-118.57	|	34.4424
+89-2	|	no name	|	San Gabriel fault	|	Weber (1988)	|	-118.512	|	34.4059

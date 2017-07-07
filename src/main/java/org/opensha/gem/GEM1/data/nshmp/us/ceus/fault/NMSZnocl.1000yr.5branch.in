@@ -1,0 +1,117 @@
+0	!nmsz 5 branch, central has wt 0.7, midwest and mideast wt 0.1, west and east 0.05
+24.6 50. .1    NMSZnocl.1000yr.5branch.in for use with hazFXnga7c. 5 branch; 1000yr
+-115. -65. .1		!without aleatory uncert on M (ale. not used oct 23 2007)
+760 1.
+5. 1000. 
+4
+0. 0. 0. PGA
+NMSZuncl.1000yr.5branch.pga
+19
+.005 .007 .0098 .0137 .0192 .0269 .0376 .0527 .0738 .103 .145 .203 .284 .397 .556 .778 1.09 1.52 2.13 
+8
+2  0.2 10000. 0.2 0 Toro Mw atten.
+6  0.1 10000. 0.1 0 FEA 
+4  0.1 10000. 0.1 0 AB06 140 bar stress drop
+21 0.1 10000. 0.1 0 AB06 200 bar stress drop
+7  0.2 10000. 0.2 0 Somerville Rifted, BC 
+10 0.1 10000. 0.1 0 Campbell hybrid, BC
+19 0.1 10000. 0.1 0 Tavakoli and Pezeshk, BC
+20 0.1 10000. 0.1 0 Silva
+2.0 0. 0.     1.0 sec SA
+NMSZuncl.1000yr.5branch.2s
+20
+.0001 .00175 .00563 .00844 .0127 .0190 .0285 .0427 .0641 .0961 .144 .216 .324 .487 .730 1.09 1.64 2 3 4
+7
+2  0.2 10000. 0.2 0 Toro Mw atten.
+6  0.1 10000. 0.1 0 FEA 
+4  0.3 10000. 0.1 0 AB06 140 bar stress drop
+21 0.1 10000. 0.1 0 AB06 200 bar stress drop
+10 0.1 10000. 0.1 0 Campbell hybrid, BC
+19 0.1 10000. 0.1 0 Tavakoli and Pezeshk, BC
+20 0.1 10000. 0.1 0 Silva
+1.0 0. 0.     1.0 sec SA
+NMSZuncl.1000yr.5branch.1hz
+20
+.0025 .00375 .00563 .00844 .0127 .0190 .0285 .0427 .0641 .0961 .144 .216 .324 .487 .730 1.09 1.64 2.46 3.69 5.54
+8
+2  0.2 10000. 0.2 0 Toro Mw atten.
+6  0.1 10000. 0.1 0 FEA 
+4  0.1 10000. 0.1 0 AB06 140 bar stress drop
+21 0.1 10000. 0.1 0 AB06 200 bar stress drop
+7  0.2 10000. 0.2 0 Somerville Rifted, BC 
+10 0.1 10000. 0.1 0 Campbell hybrid, BC
+19 0.1 10000. 0.1 0 Tavakoli and Pezeshk, BC
+20 0.1 10000. 0.1 0 Silva
+0.2 0. 0.   0.2 sec SA
+NMSZuncl.1000yr.5branch.5hz
+19
+.005 .0075 0.0113 .0169 .0253 .0380 .0570 .0854 .128 .192 .288 .432 .649 .973 1.46 2.19 3.28 4.92 7.38
+8
+2  0.2 10000. 0.2 0 Toro Mw atten.
+6  0.1 10000. 0.1 0 FEA 
+4  0.1 10000. 0.1 0 AB06 140 bar stress drop
+21 0.1 10000. 0.1 0 AB06 200 bar stress drop
+7  0.2 10000. 0.2 0 Somerville Rifted, BC 
+10 0.1 10000. 0.1 0 Campbell hybrid, BC
+19 0.1 10000. 0.1 0 Tavakoli and Pezeshk, BC
+20 0.1 10000. 0.1 0 Silva
+1. 1.
+1
+0
+1.
+0.0 1		!NMSZ source has no aleatory dM uncert
+1 1  4   New Madrid western fault; 0.05 wt
+7.7 1.0e-3 0.025
+7.5 1.0e-3 0.01
+8.0  1.0e-3 0.0075
+7.3 1.0e-3 0.0075
+89. 15. 10.
+4
+37.263 -89.323
+36.734 -89.886
+36.346 -89.830
+35.647 -90.719
+1 1  4   New Madrid mid-western fault; 0.1 weight
+7.7 1.0e-3 0.05
+7.5 1.0e-3 0.02
+8.0 1.0e-3 0.015
+7.3 1.0e-3 0.015
+89. 15. 10.
+4
+37.205 -89.1814
+36.704 -89.6991
+36.27 -89.6575
+35.54 -90.6725
+1 1  4   New Madrid eastern fault; 0.05 weight
+7.7 1.0e-3 0.025
+7.5 1.0e-3 0.01
+8.0 1.0e-3 0.0075
+7.3 1.0e-3 0.0075
+89. 15. 10.
+4
+36.960 -88.929
+36.639 -89.279
+36.135 -89.178
+35.260 -90.415
+1 1  4   New Madrid mid-eastern fault; 0.1 weight
+7.7 1.0e-3 0.05
+7.5 1.0e-3 0.02
+8.0 1.0e-3 0.015
+7.3 1.0e-3 0.015
+89. 15. 10.
+4
+37.07 -89.001
+36.667 -89.4625
+36.17 -89.344
+35.35 -90.51
+1 1 4    New Madrid central fault; 0.7 weight
+7.7  1.0e-3 0.35
+7.5  1.0e-3 0.14
+8.0  1.0e-3 0.105
+7.3  1.0e-3 0.105
+89. 15. 10.
+4
+37.150 -89.053
+36.686 -89.587
+36.205 -89.510
+35.449 -90.633
