@@ -37,7 +37,7 @@ dependencies {
 	/*
 	 *	"Runtime" dependencies are exported downstream to users
 	 */
-	 // repository based dependencies
+	// repository based dependencies
     runtime 'com.google.guava:guava:21.0'
     runtime 'org.jfree:jfreechart:1.0.19'
     runtime 'dom4j:dom4j:1.6.1'

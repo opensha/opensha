@@ -27,7 +27,6 @@ import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
-import org.opensha.sha.util.SiteTranslator;
 
 public class WillsMap2000TranslatedVs30 extends AbstractSiteData<Double> {
 	
@@ -64,7 +63,7 @@ public class WillsMap2000TranslatedVs30 extends AbstractSiteData<Double> {
 
 	public String getMetadata() {
 		String meta = map.getMetadata();
-		meta += "\n\nTranslated to Vs30 values with the following table:\n" + SiteTranslator.getWillsVs30TranslationString();
+		meta += "\n\nTranslated to Vs30 values with the following table:\n" + WillsMap2000.getWillsVs30TranslationString();
 		return null;
 	}
 
@@ -89,7 +88,7 @@ public class WillsMap2000TranslatedVs30 extends AbstractSiteData<Double> {
 	}
 	
 	private Double getValueFromWillsClass(String wills) {
-		Double val = SiteTranslator.getVS30FromWillsClass(wills);
+		Double val = WillsMap2000.getVS30FromWillsClass(wills);
 		
 		return certifyMinMaxVs30(val);
 	}

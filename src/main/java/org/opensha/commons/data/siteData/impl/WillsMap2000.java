@@ -21,6 +21,7 @@ package org.opensha.commons.data.siteData.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Set;
 
 import org.dom4j.Element;
@@ -32,7 +33,6 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.gui.servlets.siteEffect.WillsSiteClass;
-import org.opensha.sha.util.SiteTranslator;
 
 public class WillsMap2000 extends AbstractSiteData<String> {
 	
@@ -56,6 +56,77 @@ public class WillsMap2000 extends AbstractSiteData<String> {
 	public static final String SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/Wills2000";
 	
 	SiteDataServletAccessor<String> servlet = null;
+	
+	public final static String WILLS_B = "B";
+	public final static String WILLS_BC = "BC";
+	public final static String WILLS_C = "C";
+	public final static String WILLS_CD = "CD";
+	public final static String WILLS_D = "D";
+	public final static String WILLS_DE = "DE";
+	public final static String WILLS_E = "E";
+	
+	public final static HashMap<String, Double> wills_vs30_map = new HashMap<String, Double>();
+	
+	static {
+		wills_vs30_map.put(WILLS_B,		1000d);
+		wills_vs30_map.put(WILLS_BC,	760d);
+		wills_vs30_map.put(WILLS_C,		560d);
+		wills_vs30_map.put(WILLS_CD,	360d);
+		wills_vs30_map.put(WILLS_D,		270d);
+		wills_vs30_map.put(WILLS_DE,	180d);
+		wills_vs30_map.put(WILLS_E,		Double.NaN);
+	}
+	
+	public static ArrayList<String> getSortedWillsValues() {
+		ArrayList<String> wills = new ArrayList<String>();
+		wills.add(WILLS_B);
+		wills.add(WILLS_BC);
+		wills.add(WILLS_C);
+		wills.add(WILLS_CD);
+		wills.add(WILLS_D);
+		wills.add(WILLS_DE);
+		wills.add(WILLS_E);
+		return wills;
+	}
+	
+	/**
+	 * Translates a Wills Site classification to a Vs30 value
+	 * <LI> <UL>
+	 * <LI> Vs30 = NA			if E
+	 * <LI> Vs30 = 180			if DE
+	 * <LI> Vs30 = 270			if D
+	 * <LI> Vs30 = 360			if CD
+	 * <LI> Vs30 = 560			if C
+	 * <LI> Vs30 = 760			if BC
+	 * <LI> Vs30 = 1000			if B
+	 * <LI> </UL>
+	 * 
+	 * @param wills
+	 * @return
+	 */
+	public static double getVS30FromWillsClass(String wills) {
+		if (wills_vs30_map.keySet().contains(wills))
+			return wills_vs30_map.get(wills);
+		else
+			return Double.NaN;
+	}
+	
+	/**
+	 * Returns a String representation of the Wills Class -> Vs30 translation table
+	 * 
+	 * @return
+	 */
+	public static String getWillsVs30TranslationString() {
+		String str = "";
+		
+		for (String wills : getSortedWillsValues()) {
+			if (str.length() > 0)
+				str += "\n";
+			str += wills + "\t=>\t" + wills_vs30_map.get(wills);
+		}
+		
+		return str;
+	}
 	
 	public WillsMap2000() {
 		this(true);
@@ -145,7 +216,7 @@ public class WillsMap2000 extends AbstractSiteData<String> {
 	}
 
 	public boolean isValueValid(String val) {
-		Set<String> keys = SiteTranslator.wills_vs30_map.keySet();
+		Set<String> keys = wills_vs30_map.keySet();
 		return keys.contains(val);
 	}
 	

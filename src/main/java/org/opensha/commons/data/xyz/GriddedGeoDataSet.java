@@ -21,8 +21,6 @@ import org.opensha.commons.util.cpt.CPT;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
-import scratch.UCERF3.analysis.FaultBasedMapGen;
-
 /**
  * This is a Geohgraphic Dataset on a regular grid, as defined by a GriddedRegion. Points
  * not in the given GriddedRegion cannot be set.
@@ -257,15 +255,15 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 	}
 	
 	public static void main(String[] args) throws FileNotFoundException, IOException, GMT_MapException {
-		File file = new File("/home/kevin/workspace/scec_vdo_vtk/data/ShakeMapPlugin/Chino_Hills.txt");
-		GriddedGeoDataSet dataset = loadXYZFile(file, 1, 0, -1, 2);
-//		File file = new File("/tmp/grid.xyz");
+//		File file = new File("/home/kevin/workspace/scec_vdo_vtk/data/ShakeMapPlugin/Chino_Hills.txt");
 //		GriddedGeoDataSet dataset = loadXYZFile(file, 1, 0, -1, 2);
-		
-		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance().rescale(dataset.getMinZ(), dataset.getMaxZ());
-		GMT_Map map = FaultBasedMapGen.buildMap(
-				cpt, null, null, dataset, dataset.getRegion().getSpacing(), dataset.getRegion(), false, "Test");
-		FaultBasedMapGen.plotMap(null, null, true, map);
+////		File file = new File("/tmp/grid.xyz");
+////		GriddedGeoDataSet dataset = loadXYZFile(file, 1, 0, -1, 2);
+//		
+//		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance().rescale(dataset.getMinZ(), dataset.getMaxZ());
+//		GMT_Map map = FaultBasedMapGen.buildMap(
+//				cpt, null, null, dataset, dataset.getRegion().getSpacing(), dataset.getRegion(), false, "Test");
+//		FaultBasedMapGen.plotMap(null, null, true, map);
 	}
 
 }
