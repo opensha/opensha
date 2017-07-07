@@ -1,1 +1,4 @@
 /classes/
+/bin/
+/gradle/
+/.gradle/
