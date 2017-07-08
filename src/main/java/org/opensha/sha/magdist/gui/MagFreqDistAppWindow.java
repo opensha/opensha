@@ -364,7 +364,7 @@ extends JFrame implements ParameterChangeListener {
 	 * Initiates the Mag Param selection and adds that to the GUI.
 	 * User has the option of creating a MagFreqDist or MagPDF
 	 */
-	private void initMagParamEditor() {
+	void initMagParamEditor() {
 		ArrayList magParamTypes = new ArrayList();
 		magParamTypes.add(this.MAG_FREQ_DIST);
 		magParamTypes.add(this.MAG_PDF_PARAM);
@@ -398,7 +398,7 @@ extends JFrame implements ParameterChangeListener {
 	 * Relative Wts for the Dist. which has not decided yet.
 	 *
 	 */
-	private void createMagParam(){
+	void createMagParam(){
 
 		String magTypeSelected = (String)stParam.getValue();
 		if(magTypeSelected.equals(MAG_FREQ_DIST)){
