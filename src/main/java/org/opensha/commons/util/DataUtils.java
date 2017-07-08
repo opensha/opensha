@@ -944,5 +944,25 @@ public class DataUtils {
 			return (lower + upper) * 0.5;
 		}	
 	}
+	
+	public static List<Double> commaDoubleSplit(String str) {
+		ArrayList<Double> vals = new ArrayList<Double>();
+		
+		for (String val : commaSplit(str)) {
+			vals.add(Double.parseDouble(val));
+		}
+		
+		return vals;
+	}
+	
+	public static List<String> commaSplit(String str) {
+		str = str.trim();
+		ArrayList<String> vals = new ArrayList<String>();
+		for (String val : str.split(",")) {
+			val = val.trim();
+			vals.add(val);
+		}
+		return vals;
+	}
 
 }
