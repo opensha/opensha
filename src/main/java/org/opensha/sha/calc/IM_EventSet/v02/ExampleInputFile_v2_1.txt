@@ -1,0 +1,78 @@
+# This is an example input file for IM_EventSetCal program.
+#
+# All lines that start with "#" here are comments and are ignored by the code (and can be removed if you want); 
+# Choices below can be modified by uncommenting the "#";   
+# The order of non-comment lines is important!
+#
+#
+# First line defines which Earthquake Rupture Forecast (ERF) to use
+# choose one of the following three choices (and remove quotes):
+# "WGCEP (2007) UCERF2 - Single Branch"
+# "USGS/CGS 2002 Adj. Cal. ERF"
+# "WGCEP UCERF 1.0 (2005)"
+# 
+WGCEP (2007) UCERF2 - Single Branch
+#
+# Second line indicates how to handle background seismicity.  Options are "Include", "Exclude", and "Only Background".
+Exclude
+# Third line defines rupture offset for floating ruptures
+# (between 1 and 100 km; 5 km is generally best)
+5
+#
+# Fourth line specifies number N of Attenuation Relations
+3
+# One the next N lines, identify the N attenuation 
+# relationships from the following options
+# (first three are latest but not final NGAs):
+# (CHANGE THESE TO NAMES LISTED IN GUI)
+# "Boore & Atkinson (2006)"
+# "Chiou & Youngs (2006)"
+# "Campbell & Bozorgnia (2006)"
+# "Abrahamson & Silva (1997)"
+# "Boore, Joyner & Fumal (1997)"
+# "Campbell (1997) w/ erratum (2000) changes"
+# "Campbell and Bozorgnia (2003)"
+# "Field (2000)"
+# "Sadigh et al (1997)"
+# "SEA (Spudich et al., 1997)"
+# "ShakeMap (2003)"
+# "Choi & Stewart (2005)"
+# "Abrahamson (2000)"
+# "Baturay and Stewart (2003)"
+# "Bazzuro and Cornell (2004)"
+# "Goulet Et. Al. (2006)"
+# Click links at bottom of following link for some details:
+# http://www.opensha.org/documentation/glossary/AttenuationRelationship.html
+Boore & Atkinson (2006)
+Chiou & Youngs (2006)
+Campbell & Bozorgnia (2006)
+#
+# Next, first choose the number of Intensity Measure Types to consider 
+# in this calculation, and then specify those Intensity Measure Types.  
+#
+# Currently the following are supported: "PGA", "PGV", "SA", and "MMI".  
+#
+# If "SA" is chosen, then  give the period as well (e.g., "SA 1.0").
+# The code will throw and exception (show an error message) if the chosen 
+# intensity-measure type is not supported by the chosen attenuation 
+# relationship (the html documentation given above lists those that are supported)
+# 
+# Number of IMTs for which computation needs to be done
+2
+# Identify those IMT's:
+PGA
+SA 0.2
+# 
+# Next, give the number of sites and then the lat, lon, and  
+# Vs30 (m/sec) for each. If no Vs30 is given, then it will 
+# default to the Vs30 given by a digitized version of the 
+# Wills et al. (2000, BSSA, pages S187-S208). This latter
+# feature requires internet access.
+#
+# Specify the number of sites:
+3
+# Enter the Lat, Lon, and optionally Vs30 on a separate line for each:
+# e.g., "34.1 -118.1 760"  
+34.0543 -118.0821 270
+33.6567 -117.7051 270
+34.0852 -118.1421 360
