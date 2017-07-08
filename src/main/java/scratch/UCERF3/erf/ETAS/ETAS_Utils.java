@@ -1580,45 +1580,7 @@ public class ETAS_Utils {
 		
 	}
 
-	private static SimpleDateFormat cat_df = new SimpleDateFormat("yyyy MM dd HH mm ss");
-	
-//	public static void writeEQCatFile(File file, List<PrimaryAftershock> aftershocks) throws IOException {
-//		Date orig = new Date();
-//		GregorianCalendar cal = new GregorianCalendar();
-//		
-//		ArrayList<Date> dates = new ArrayList<Date>();
-//		ArrayList<String> lines = new ArrayList<String>();
-//		
-//		for (PrimaryAftershock eq : aftershocks) {
-//			cal.setTime(orig);
-//			cal.add(Calendar.SECOND, (int)(60d*eq.getOriginTime()+0.5));
-//			Date myDate = cal.getTime();
-//			
-//			int insertionPoint;
-//			for (insertionPoint=0; insertionPoint<dates.size(); insertionPoint++) {
-//				if (myDate.after(dates.get(insertionPoint)))
-//					break;
-//			}
-//			
-//			Location loc = eq.getHypocenterLocation();
-//			
-//			// id date/time lon lat depth mag
-//			String line = eq.getID()+" "+cat_df.format(myDate)+" "
-//			+loc.getLongitude()+" "+loc.getLatitude()+" "+loc.getDepth()+" "+eq.getMag();
-//			
-//			dates.add(insertionPoint, myDate);
-//			lines.add(insertionPoint, line);
-//		}
-//		
-//		Collections.reverse(lines);
-//		
-//		FileWriter fw = new FileWriter(file);
-//		
-//		for (String line : lines)
-//			fw.write(line+"\n");
-//		
-//		fw.close();
-//	}
+	public static final SimpleDateFormat cat_df = new SimpleDateFormat("yyyy MM dd HH mm ss");
 	
 	/**
 	 * This provides a rupture surface where there is no creep/aseismicity reduction
