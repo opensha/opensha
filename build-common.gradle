@@ -1,0 +1,64 @@
+/*
+ * Global build file used by this and all OpenSHA subprojects. Declares common fields/tasks
+ */
+apply plugin: 'java'
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+            exclude 'resources/'
+        }
+        resources {
+            srcDirs = ['src']
+            exclude '**/*.java'
+            exclude 'resources/data/ngaWest'
+            exclude 'resources/data/site/**/*.bin'
+            exclude 'resources/data/site/Wills2000'
+            exclude 'scratch/UCERF3/data/scratch'
+        }
+    }
+    test {
+        java {
+            srcDirs = ['test']
+        }
+    }
+}
+
+// In this section you declare where to find the dependencies of your project
+repositories {
+    // Use jcenter for resolving your dependencies.
+    // You can declare any Maven/Ivy/file repository here.
+    jcenter()
+}
+
+configurations {
+	compileAndResource {
+		description 'will be compiled, and included in all built jars'
+	}
+	
+	compile {
+		description 'compile classpath'
+		transitive = true
+		extendsFrom compileAndResource
+	}
+}
+
+task fatJar(type: Jar) {
+	manifest {
+//        attributes('Implementation-Title': 'Gradle Jar File Example',
+//        	'Implementation-Version': version,
+//        	'Main-Class': 'com.mkyong.DateUtils')
+    }
+    baseName = project.name + '-all'
+    from {
+    	configurations.compileAndResource.collect {
+    		it.isDirectory() ? it : zipTree(it).matching{
+    			exclude{
+    				it.path.contains('META-INF')
+    			}
+    		}
+    	}
+    }
+    with jar
+}
