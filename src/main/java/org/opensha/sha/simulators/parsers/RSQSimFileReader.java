@@ -302,7 +302,8 @@ public class RSQSimFileReader {
 //		File geomFile = new File(dir, "zfault_Deepen.in");
 		
 //		File dir = new File("/home/kevin/Simulators/UCERF3_interns/UCERF3sigmahigh");
-		File dir = new File("/home/kevin/Simulators/UCERF3_interns/combine340");
+//		File dir = new File("/home/kevin/Simulators/UCERF3_interns/combine340");
+		File dir = new File("/home/kevin/Simulators/catalogs/SWminAdefaultB");
 		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
 		
 		List<SimulatorElement> elements = readGeometryFile(geomFile, 11, 'S');
@@ -319,7 +320,8 @@ public class RSQSimFileReader {
 //		boolean bigEndian = isBigEndian(new File(eventsDir, "UCERF3_35kyrs.pList"), elements);
 //		listFileDebug(new File(eventsDir, "UCERF3_35kyrs.eList"), 100, bigEndian, true);
 		
-		List<RSQSimEvent> events = readEventsFile(eventsDir, elements, Lists.newArrayList(new MagRangeRuptureIdentifier(7d, 10d)));
+//		List<RSQSimEvent> events = readEventsFile(eventsDir, elements, Lists.newArrayList(new MagRangeRuptureIdentifier(7d, 10d)));
+		List<RSQSimEvent> events = readEventsFile(eventsDir, elements);
 		System.out.println("Loaded "+events.size()+" events");
 		System.out.println("Duration: "+SimulatorUtils.getSimulationDurationYears(events)+" years");
 		
