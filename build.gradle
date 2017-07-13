@@ -13,7 +13,8 @@ dependencies {
     // jars. TODO move to repo?
     compileAndResource files('lib/jpedal.jar')
     
-    compileAndResource project(':opensha-ucerf3')
+    compileOnly project(path: ':opensha-ucerf3', configuration: 'compileOnly')
+    compileAndResource project(path: ':opensha-ucerf3')
 
     // Use JUnit test framework
     testCompile 'junit:junit:4.12'
