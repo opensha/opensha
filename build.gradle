@@ -12,7 +12,8 @@ dependencies {
 	 
     // jars. TODO move to repo?
     
-    compileAndResource project(':opensha-core')
+    compileOnly project(path: ':opensha-core', configuration: 'compileOnly')
+    compileAndResource project(path: ':opensha-core')
 
     // Use JUnit test framework
     testCompile 'junit:junit:4.12'
