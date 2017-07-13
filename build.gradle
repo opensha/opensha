@@ -3,6 +3,7 @@
  */
 
 apply from: '../opensha-commons/build-common.gradle'
+//apply from: '../opensha-commons/build.gradle'
 
 dependencies {
 	/*
@@ -16,7 +17,8 @@ dependencies {
     compileAndResource files('lib/ojdbc5.jar')
     compileAndResource files('lib/sdoapi.jar')
     
-    compileAndResource project(':opensha-commons')
+    compileOnly project(path: ':opensha-commons', configuration: 'compileOnly')
+    compileAndResource project(path: ':opensha-commons')
 
     // Use JUnit test framework
     testCompile 'junit:junit:4.12'
