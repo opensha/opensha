@@ -7,15 +7,12 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.Site;
-import org.opensha.commons.hpc.mpj.taskDispatch.DispatcherThread;
-import org.opensha.commons.hpc.mpj.taskDispatch.MPJTaskCalculator;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.calc.hazardMap.HazardCurveSetCalculator;
 import org.opensha.sha.calc.hazardMap.ThreadedHazardCurveSetCalculator;
@@ -23,6 +20,8 @@ import org.opensha.sha.calc.hazardMap.components.BinaryCurveArchiver;
 import org.opensha.sha.calc.hazardMap.components.CalculationInputsXMLFile;
 
 import com.google.common.base.Preconditions;
+
+import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 public class MPJHazardCurveDriver extends MPJTaskCalculator {
 	
