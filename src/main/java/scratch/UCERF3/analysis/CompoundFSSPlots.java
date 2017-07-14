@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipException;
 
 import mpi.MPI;
+import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.Attribute;
@@ -59,7 +60,6 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.hpc.mpj.taskDispatch.MPJTaskCalculator;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.param.Parameter;

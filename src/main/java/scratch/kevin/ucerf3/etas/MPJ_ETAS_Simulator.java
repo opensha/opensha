@@ -16,7 +16,6 @@ import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.hpc.mpj.taskDispatch.MPJTaskCalculator;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
@@ -75,6 +74,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.google.common.primitives.Ints;
+
+import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	

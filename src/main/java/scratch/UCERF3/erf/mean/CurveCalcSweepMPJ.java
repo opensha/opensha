@@ -4,10 +4,10 @@ import java.io.File;
 import java.util.List;
 
 import mpi.MPI;
+import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
-import org.opensha.commons.hpc.mpj.taskDispatch.MPJTaskCalculator;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;

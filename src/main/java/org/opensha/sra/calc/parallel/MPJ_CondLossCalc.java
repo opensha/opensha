@@ -35,8 +35,6 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.hpc.mpj.taskDispatch.MPJTaskCalculator;
-import org.opensha.commons.hpc.mpj.taskDispatch.PostBatchHook;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.AbstractERF;
@@ -60,6 +58,8 @@ import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 
 import mpi.MPI;
+import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
+import net.kevinmilner.mpj.taskDispatch.PostBatchHook;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,8 @@ public class RSQSimUtils {
 
 		Map<IDPairing, Double> distsCache = Maps.newHashMap();
 
-		List<List<FaultSectionPrefData>> rupSectsListBundled = getSectionsForRupture(event, minElemSectID, subSects, distsCache);
+		List<List<FaultSectionPrefData>> rupSectsListBundled =
+				getSectionsForRupture(event, minElemSectID, subSects, distsCache, 0d, null);
 
 		List<FaultSectionPrefData> rupSects = Lists.newArrayList();
 		for (List<FaultSectionPrefData> sects : rupSectsListBundled)
@@ -106,15 +108,26 @@ public class RSQSimUtils {
 	}
 	
 	private static List<List<FaultSectionPrefData>> getSectionsForRupture(SimulatorEvent event, int minElemSectID,
-			List<FaultSectionPrefData> subSects, Map<IDPairing, Double> distsCache) {
-		HashSet<Integer> rupSectIDs = new HashSet<Integer>();
+			List<FaultSectionPrefData> subSects, Map<IDPairing, Double> distsCache,
+			double minFractForInclusion, Map<Integer, Double> subSectAreas) {
+//		HashSet<Integer> rupSectIDs = new HashSet<Integer>();
+		Map<Integer, Double> areaOnSectsMap = new HashMap<>();
 
-		for (SimulatorElement elem : event.getAllElements())
-			rupSectIDs.add(elem.getSectionID());
+		for (SimulatorElement elem : event.getAllElements()) {
+			Double prevArea = areaOnSectsMap.get(elem.getSectionID());
+			if (prevArea == null)
+				prevArea = 0d;
+			areaOnSectsMap.put(elem.getSectionID(), prevArea + elem.getArea());
+		}
 		
 		// bundle by parent section id
 		Map<Integer, List<FaultSectionPrefData>> rupSectsBundled = Maps.newHashMap();
-		for (int sectID : rupSectIDs) {
+		for (int sectID : areaOnSectsMap.keySet()) {
+			if (minFractForInclusion > 0) {
+				double fractOn = areaOnSectsMap.get(sectID) / subSectAreas.get(sectID);
+				if (fractOn < minFractForInclusion)
+					continue;
+			}
 			// convert to 0-based
 			sectID -= minElemSectID;
 			FaultSectionPrefData sect = subSects.get(sectID);
@@ -196,6 +209,17 @@ public class RSQSimUtils {
 		return sects;
 	}
 	
+	private static Map<Integer, Double> calcSubSectAreas(List<SimulatorElement> elements) {
+		Map<Integer, Double> subSectAreas = new HashMap<>();
+		for (SimulatorElement elem : elements) {
+			Double prevArea = subSectAreas.get(elem.getSectionID());
+			if (prevArea == null)
+				prevArea = 0d;
+			subSectAreas.put(elem.getSectionID(), prevArea + elem.getArea());
+		}
+		return subSectAreas;
+	}
+	
 	private static class RSQSimFaultSystemRupSet extends SlipEnabledRupSet {
 		
 		private final List<SimulatorElement> elements;
@@ -205,6 +229,11 @@ public class RSQSimUtils {
 		
 		private RSQSimFaultSystemRupSet(List<FaultSectionPrefData> subSects,
 				List<SimulatorElement> elements, List<RSQSimEvent> events) {
+			this(subSects, elements, events, 0d);
+		}
+		
+		private RSQSimFaultSystemRupSet(List<FaultSectionPrefData> subSects,
+				List<SimulatorElement> elements, List<RSQSimEvent> events, double minFractForInclusion) {
 			this.elements = elements;
 			this.events = events;
 			minElemSectID = getSubSectIndexOffset(elements, subSects);
@@ -217,6 +246,10 @@ public class RSQSimUtils {
 			List<List<Integer>> sectionForRups = Lists.newArrayList();
 
 			Map<IDPairing, Double> distsCache = Maps.newHashMap();
+			
+			Map<Integer, Double> subSectAreas = null;
+			if (minFractForInclusion > 0)
+				subSectAreas = calcSubSectAreas(elements);
 
 			System.out.print("Building ruptures...");
 			for (int i=0; i<events.size(); i++) {
@@ -225,7 +258,12 @@ public class RSQSimUtils {
 				rupAreas[i] = e.getArea();
 				rupLengths[i] = e.getLength();
 				
-				List<List<FaultSectionPrefData>> subSectsForFaults = getSectionsForRupture(e, minElemSectID, subSects, distsCache);
+				List<List<FaultSectionPrefData>> subSectsForFaults = getSectionsForRupture(
+						e, minElemSectID, subSects, distsCache, minFractForInclusion, subSectAreas);
+				if (subSectsForFaults.isEmpty())
+					// fallback to any that touch if empty
+					subSectsForFaults = getSectionsForRupture(
+							e, minElemSectID, subSects, distsCache, 0d, subSectAreas);
 
 				List<Double> rakes = Lists.newArrayList();
 				List<Integer> rupSectIndexes = Lists.newArrayList();
@@ -369,14 +407,19 @@ public class RSQSimUtils {
 		}
 		
 	}
-
+	
 	public static SlipEnabledSolution buildFaultSystemSolution(List<FaultSectionPrefData> subSects,
 			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag) {
+		return buildFaultSystemSolution(subSects, elements, events, minMag, 0d);
+	}
+
+	public static SlipEnabledSolution buildFaultSystemSolution(List<FaultSectionPrefData> subSects,
+			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag, double minFractForInclusion) {
 		
 		if (minMag > 0)
 			events = new MagRangeRuptureIdentifier(minMag, 10d).getMatches(events);
 		
-		RSQSimFaultSystemRupSet rupSet = new RSQSimFaultSystemRupSet(subSects, elements, events);
+		RSQSimFaultSystemRupSet rupSet = new RSQSimFaultSystemRupSet(subSects, elements, events, minFractForInclusion);
 		return new RSQSimFaultSystemSolution(rupSet);
 	}
 	

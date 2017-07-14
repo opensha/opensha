@@ -6,13 +6,13 @@ import java.util.Iterator;
 import java.util.List;
 
 import mpi.MPI;
+import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
-import org.opensha.commons.hpc.mpj.taskDispatch.MPJTaskCalculator;
 import org.opensha.commons.util.XMLUtils;
 
 import scratch.UCERF3.analysis.MPJDistributedCompoundFSSPlots;
