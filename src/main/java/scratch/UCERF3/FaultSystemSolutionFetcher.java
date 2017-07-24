@@ -98,11 +98,6 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	
 		return scaledAvg;
 	}
-
-	public static FaultSystemSolutionFetcher getRandomSample(
-			final FaultSystemSolutionFetcher fetch, int num) {
-		return getRandomSample(fetch, num, null);
-	}
 	
 	public static FaultSystemSolutionFetcher getRandomSample(
 			final FaultSystemSolutionFetcher fetch, int num, LogicTreeBranchNode<?>... branchNodes) {
