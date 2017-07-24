@@ -16,6 +16,7 @@ sourceSets {
             exclude 'resources/data/site/**/*.bin'
             exclude 'resources/data/site/Wills2000'
             exclude 'scratch/UCERF3/data/scratch'
+            exclude 'scratch/ned'
         }
     }
     test {
@@ -35,6 +36,7 @@ repositories {
 configurations {
 	compileAndResource {
 		description 'will be compiled, and included in all built jars'
+		transitive = true
 	}
 	
 	compile {
@@ -62,3 +64,7 @@ task fatJar(type: Jar) {
     }
     with jar
 }
+
+//task printConfig() {
+//	configurations.each { println it.name }
+//}

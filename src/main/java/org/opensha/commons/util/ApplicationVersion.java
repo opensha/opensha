@@ -118,29 +118,35 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 	public boolean isLessThan(ApplicationVersion other) {
 		return compareTo(other) < 0;
 	}
+	
+	private static final String[] possible_version_files = 
+			{	"ant/include/build.version",
+				"build.version",
+				"../opensha-commons/build.version"};
+	private static final String[] possible_version_resources = 
+		{	"/ant/include/build.version",
+			"/build.version"};
 
 	private static URL getVersionFile() throws FileNotFoundException {
 		URL url = null;
-		try {
-			String fileName = "ant/include/build.version";
-			url = new URL("file:"+fileName);
-			if (new File(fileName.replace('/', File.separatorChar)).exists()) {
-				return url;
-			} else
-				url = null;
-		} catch (Throwable t) {
-			t.printStackTrace();
+		for (String fileName : possible_version_files) {
+			try {
+				url = new URL("file:"+fileName);
+				if (new File(fileName.replace('/', File.separatorChar)).exists()) {
+					return url;
+				} else
+					url = null;
+			} catch (Throwable t) {
+				t.printStackTrace();
+			}
 		}
-		try {
-			url = ApplicationVersion.class.getResource("/ant/include/build.version");
-		} catch (Throwable t) {}
-		if (url != null)
-			return url;
-		try {
-			url = ApplicationVersion.class.getResource("/build.version");
-		} catch (Throwable t) {}
-		if (url != null)
-			return url;
+		for (String resource : possible_version_resources) {
+			try {
+				url = ApplicationVersion.class.getResource(resource);
+			} catch (Throwable t) {}
+			if (url != null)
+				return url;
+		}
 		throw new FileNotFoundException("Couldn't locate build version file!");
 	}
 	
