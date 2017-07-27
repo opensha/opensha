@@ -21,7 +21,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.DataUtils;
-import org.opensha.sha.earthquake.ERFTestSubset;
+import org.opensha.sha.earthquake.ERFSubset;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -60,7 +60,7 @@ public class MomentMatchingPortfolioLECTest {
 	@BeforeClass
 	public static void setUp() throws Exception {
 		if (smallERF) {
-			ERFTestSubset erf = new ERFTestSubset(new Frankel96_AdjustableEqkRupForecast());
+			ERFSubset erf = new ERFSubset(new Frankel96_AdjustableEqkRupForecast());
 			erf.updateForecast();
 			erf.includeSource(281);
 			erf.includeSource(22);

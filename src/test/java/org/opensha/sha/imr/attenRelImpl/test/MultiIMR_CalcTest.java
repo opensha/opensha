@@ -15,7 +15,7 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.hazardMap.AsciiCurveAverager;
 import org.opensha.sha.earthquake.ERF;
-import org.opensha.sha.earthquake.ERFTestSubset;
+import org.opensha.sha.earthquake.ERFSubset;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
@@ -57,7 +57,7 @@ public class MultiIMR_CalcTest {
 	public static void setUpBeforeClass() throws Exception {
 //		erf = new Frankel02_AdjustableEqkRupForecast();
 //		erf = new Frankel96_AdjustableEqkRupForecast();
-		ERFTestSubset myERF = new ERFTestSubset(new Frankel96_AdjustableEqkRupForecast());
+		ERFSubset myERF = new ERFSubset(new Frankel96_AdjustableEqkRupForecast());
 		myERF.updateForecast();
 		myERF.includeSource(0);
 		myERF.includeSource(1);

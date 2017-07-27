@@ -21,7 +21,7 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
-import org.opensha.sha.earthquake.ERFTestSubset;
+import org.opensha.sha.earthquake.ERFSubset;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
@@ -41,21 +41,21 @@ import org.opensha.sha.util.TectonicRegionType;
  */
 public class TestHazardCurveCalcTRTs implements ParameterChangeListener {
 	
-	private static HashMap<TectonicRegionType, ERFTestSubset> singleERFMaps;
+	private static HashMap<TectonicRegionType, ERFSubset> singleERFMaps;
 	private static Site site;
 	private static DiscretizedFunc func;
 	
 	@BeforeClass
 	public static void setUpBeforeClass() {
-		singleERFMaps = new HashMap<TectonicRegionType, ERFTestSubset>();
+		singleERFMaps = new HashMap<TectonicRegionType, ERFSubset>();
 		for (TectonicRegionType trt : TectonicRegionType.values()) {
-			ERFTestSubset erf = getSingleSourceERF(trt);
+			ERFSubset erf = getSingleSourceERF(trt);
 			singleERFMaps.put(trt, erf);
 		}
 	}
 	
-	private static ERFTestSubset getSingleSourceERF(TectonicRegionType trt) {
-		ERFTestSubset erf = new ERFTestSubset(new Frankel96_AdjustableEqkRupForecast());
+	private static ERFSubset getSingleSourceERF(TectonicRegionType trt) {
+		ERFSubset erf = new ERFSubset(new Frankel96_AdjustableEqkRupForecast());
 		
 		erf.updateForecast();
 		erf.includeSource(0);

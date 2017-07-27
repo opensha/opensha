@@ -12,7 +12,13 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.util.TectonicRegionType;
 
-public class ERFTestSubset implements ERF {
+/**
+ * Subset ERF which is a view of another ERF. Enable specific sources through includeSource(int) or includeAllExcept(int).
+ * Useful for testing or sensitivity analysis.
+ * @author kevin
+ *
+ */
+public class ERFSubset implements ERF {
 	
 	/**
 	 * 
@@ -23,13 +29,7 @@ public class ERFTestSubset implements ERF {
 	
 	private ERF baseERF;
 	
-	/** fields for nth rupture info */
-	protected int totNumRups=-1;
-	protected ArrayList<int[]> nthRupIndicesForSource;	// this gives the nth indices for a given source
-	protected int[] srcIndexForNthRup;
-	protected int[] rupIndexForNthRup;
-	
-	public ERFTestSubset(ERF baseERF) {
+	public ERFSubset(ERF baseERF) {
 		this.baseERF = baseERF;
 	}
 
