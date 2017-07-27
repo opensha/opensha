@@ -42,7 +42,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.primitives.Doubles;
 
-import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
+import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 	

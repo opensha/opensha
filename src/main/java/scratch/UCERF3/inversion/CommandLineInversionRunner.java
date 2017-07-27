@@ -83,7 +83,7 @@ import scratch.kevin.ucerf3.RupSetDownsampler;
 import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
-import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
+import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;

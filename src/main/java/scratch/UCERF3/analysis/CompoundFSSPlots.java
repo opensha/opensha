@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipException;
 
 import mpi.MPI;
-import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
+import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.Attribute;

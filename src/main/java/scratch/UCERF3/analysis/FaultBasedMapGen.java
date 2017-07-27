@@ -918,6 +918,8 @@ public class FaultBasedMapGen {
 				
 				Files.move(pngFile, new File(saveDir, prefix+".png"));
 				Files.move(pdfFile, new File(saveDir, prefix+".pdf"));
+				if (map.isGenerateKML())
+					Files.move(new File(tempDir, "map.kmz"), new File(saveDir, prefix+".kmz"));
 			}
 			
 			FileUtils.deleteRecursive(tempDir);
@@ -933,6 +935,11 @@ public class FaultBasedMapGen {
 				
 				File pdfFile = new File(saveDir, prefix+".pdf");
 				FileUtils.downloadURL(baseURL+"map.pdf", pdfFile);
+				
+				if (map.isGenerateKML()) {
+					File kmzFile = new File(saveDir, prefix+".kmz");
+					FileUtils.downloadURL(baseURL+"map.kmz", kmzFile);
+				}
 			}
 //			File zipFile = new File(downloadDir, "allFiles.zip");
 //			// construct zip URL

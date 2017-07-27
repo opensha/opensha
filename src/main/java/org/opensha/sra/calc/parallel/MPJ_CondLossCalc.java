@@ -58,8 +58,8 @@ import com.google.common.collect.Lists;
 import com.google.common.io.Files;
 
 import mpi.MPI;
-import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
-import net.kevinmilner.mpj.taskDispatch.PostBatchHook;
+import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import edu.usc.kmilner.mpj.taskDispatch.PostBatchHook;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 
