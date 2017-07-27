@@ -120,8 +120,8 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	// this is the path where general data (e.g., topography) are found:
 	public static String GMT_DATA_PATH = OPENSHA_GMT_DATA_PATH;
 	private static String SERVLET_URL = OPENSHA_SERVLET_URL;
-	private static String JAVA_PATH = OPENSHA_JAVA_PATH;
-	private static String JAVA_CLASSPATH = OPENSHA_CLASSPATH;
+	public static String JAVA_PATH = OPENSHA_JAVA_PATH;
+	public static String JAVA_CLASSPATH = OPENSHA_CLASSPATH;
 	
 	// paths to needed code
 	protected static String GMT_PATH = OPENSHA_GMT_PATH;

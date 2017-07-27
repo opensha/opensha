@@ -23,6 +23,10 @@ sourceSets {
         java {
             srcDirs = ['test']
         }
+        resources {
+            srcDirs = ['test']
+            exclude '**/*.java'
+        }
     }
 }
 
@@ -68,3 +72,18 @@ task fatJar(type: Jar) {
 //task printConfig() {
 //	configurations.each { println it.name }
 //}
+
+test {
+    filter {
+        //include specific method in any of the tests
+        includeTestsMatching "*Suite*"
+    }
+}
+
+task testOperational (type: Test) {
+    filter {
+        //include specific method in any of the tests
+        includeTestsMatching "*Operational*"
+    }
+}
+
