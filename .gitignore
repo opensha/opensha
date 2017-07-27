@@ -1,6 +1,5 @@
 .settings
 /classes/
 /bin/
-/gradle/
 /.gradle/
 /build/
