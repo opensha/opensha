@@ -21,7 +21,7 @@ import org.opensha.sha.calc.hazardMap.components.CalculationInputsXMLFile;
 
 import com.google.common.base.Preconditions;
 
-import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
+import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 public class MPJHazardCurveDriver extends MPJTaskCalculator {
 	

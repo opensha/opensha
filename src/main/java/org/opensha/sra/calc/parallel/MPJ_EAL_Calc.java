@@ -32,7 +32,7 @@ import org.opensha.sra.vulnerability.VulnerabilityFetcher;
 import com.google.common.base.Preconditions;
 
 import mpi.MPI;
-import net.kevinmilner.mpj.taskDispatch.MPJTaskCalculator;
+import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 public class MPJ_EAL_Calc extends MPJTaskCalculator implements CalculationExceptionHandler {
 	
