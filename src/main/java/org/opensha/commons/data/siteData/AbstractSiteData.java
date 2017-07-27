@@ -25,6 +25,8 @@ import java.util.Iterator;
 
 import org.opensha.commons.data.siteData.impl.CVM2BasinDepth;
 import org.opensha.commons.data.siteData.impl.CVM4BasinDepth;
+import org.opensha.commons.data.siteData.impl.CVM4i26BasinDepth;
+import org.opensha.commons.data.siteData.impl.CVMHBasinDepth;
 import org.opensha.commons.data.siteData.impl.USGSBayAreaBasinDepth;
 import org.opensha.commons.data.siteData.impl.WaldAllenGlobalVs30;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
@@ -296,6 +298,10 @@ public abstract class AbstractSiteData<Element> implements ServletEnabledSiteDat
 			provider = CVM2BasinDepth.fromXMLParams(paramsEl);
 		} else if (name.equals(CVM4BasinDepth.NAME)) {
 			provider = CVM4BasinDepth.fromXMLParams(paramsEl);
+		} else if (name.equals(CVM4i26BasinDepth.NAME)) {
+			provider = CVM4i26BasinDepth.fromXMLParams(paramsEl);
+//		} else if (name.equals(CVMHBasinDepth.NAME)) {
+//			provider = CVMHBasinDepth.fromXMLParams(paramsEl);
 		} else if (name.equals(WillsMap2000.NAME)) {
 			provider = WillsMap2000.fromXMLParams(paramsEl);
 		} else if (name.equals(WillsMap2006.NAME)) {

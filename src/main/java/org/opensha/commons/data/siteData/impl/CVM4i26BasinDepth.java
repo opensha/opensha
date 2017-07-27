@@ -113,8 +113,8 @@ public class CVM4i26BasinDepth extends AbstractBinarySiteDataLoader {
 	}
 	
 	public String getMetadata() {
-		return getDataType() + ", extracted from version 4 of the SCEC Community Velocity Model iteration 26" +
-				" (inversions by Po Chen and others). Extracted with UCVM 13.9.0 on November 26 2012 by David Gill";
+		return getDataType() + ", extracted from version 4 of the SCEC Community Velocity Model iteration 26-M01" +
+				" (inversions by Po Chen and others). Extracted with UCVM on July 26 2017 by Scott Callaghan";
 	}
 	
 	// TODO: what should we set this to?
@@ -143,27 +143,27 @@ public class CVM4i26BasinDepth extends AbstractBinarySiteDataLoader {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		CVM4i26BasinDepth local = new CVM4i26BasinDepth(SiteData.TYPE_DEPTH_TO_2_5, false);
-		
-		FileWriter fw = new FileWriter(new File("/tmp/cvm_grid_locs.txt"));
-		System.out.println("Expected Lat Bounds: "+local.calc.getMinLat()+"=>"+local.calc.getMaxLat());
-		System.out.println("Expected Lon Bounds: "+local.calc.getMinLon()+"=>"+local.calc.getMaxLon());
-		int cnt = 0;
-		for (long pos=0; pos<=MAX_FILE_POS; pos+=4) {
-			Double val = local.getValue(pos);
-//			if (val > DepthTo2pt5kmPerSecParam.MAX) {
-				cnt++;
-				long x = local.calc.calcFileX(pos);
-				long y = local.calc.calcFileY(pos);
-				Location loc = local.calc.getLocationForPoint(x, y);
-//				System.out.println(loc.getLatitude() + ", " + loc.getLongitude() + ": " + val);
-				fw.write((float)loc.getLatitude()+"\t"+(float)loc.getLongitude()+"\n");
-//			}
-		}
-		fw.close();
-		System.out.println("Num above: " + cnt);
-		
-		System.exit(0);
+//		CVM4i26BasinDepth local = new CVM4i26BasinDepth(SiteData.TYPE_DEPTH_TO_2_5, false);
+//		
+//		FileWriter fw = new FileWriter(new File("/tmp/cvm_grid_locs.txt"));
+//		System.out.println("Expected Lat Bounds: "+local.calc.getMinLat()+"=>"+local.calc.getMaxLat());
+//		System.out.println("Expected Lon Bounds: "+local.calc.getMinLon()+"=>"+local.calc.getMaxLon());
+//		int cnt = 0;
+//		for (long pos=0; pos<=MAX_FILE_POS; pos+=4) {
+//			Double val = local.getValue(pos);
+////			if (val > DepthTo2pt5kmPerSecParam.MAX) {
+//				cnt++;
+//				long x = local.calc.calcFileX(pos);
+//				long y = local.calc.calcFileY(pos);
+//				Location loc = local.calc.getLocationForPoint(x, y);
+////				System.out.println(loc.getLatitude() + ", " + loc.getLongitude() + ": " + val);
+//				fw.write((float)loc.getLatitude()+"\t"+(float)loc.getLongitude()+"\n");
+////			}
+//		}
+//		fw.close();
+//		System.out.println("Num above: " + cnt);
+//		
+//		System.exit(0);
 		
 		CVM4i26BasinDepth map = new CVM4i26BasinDepth(TYPE_DEPTH_TO_1_0);
 		
