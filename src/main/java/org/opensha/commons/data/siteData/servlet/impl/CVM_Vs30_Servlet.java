@@ -30,7 +30,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 public class CVM_Vs30_Servlet extends
 		AbstractSiteDataServlet<Double> {
 	
-	private static final File DIR = new File(ServerPrefUtils.SERVER_PREFS.getTomcatDir(),
+	private static final File DIR = new File(ServerPrefUtils.SERVER_PREFS.getTomcatCommonsDir(),
 										CVM_Vs30.DEFAULT_RESOURCE_DIR);
 	
 	public CVM_Vs30_Servlet() throws IOException {

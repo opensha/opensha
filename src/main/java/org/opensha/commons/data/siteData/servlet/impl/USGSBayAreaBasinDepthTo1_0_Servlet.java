@@ -30,7 +30,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 public class USGSBayAreaBasinDepthTo1_0_Servlet extends
 		AbstractSiteDataServlet<Double> {
 	
-	private static final String FILE = ServerPrefUtils.SERVER_PREFS.getTomcatDir().getAbsolutePath()
+	private static final String FILE = ServerPrefUtils.SERVER_PREFS.getTomcatCommonsDir().getAbsolutePath()
 										+File.separator+USGSBayAreaBasinDepth.DEPTH_1_0_FILE;
 	
 	public USGSBayAreaBasinDepthTo1_0_Servlet() throws IOException {

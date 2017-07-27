@@ -1,0 +1,1 @@
+Recieved via e-mail from Gregory Smoczyk on 2/19/2015. Data was an ARC GIS shapefile, which was converted to these CSV files with QGIS. Gives TsubL in seconds for various polygons covering the entire US.

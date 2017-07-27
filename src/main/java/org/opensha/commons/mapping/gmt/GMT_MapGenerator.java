@@ -113,7 +113,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	public static final String OPENSHA_SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "GMT_MapGeneratorServlet";
 	public static final String OPENSHA_JAVA_PATH = "/usr/bin/java";
 	public static final String OPENSHA_CLASSPATH = ServerPrefUtils.SERVER_PREFS.getTomcatDir().getAbsolutePath()
-			+File.separator+"classes";
+			+File.separator+"lib"+File.separator+"opensha-dev-all.jar";
 //	public static final String OPENSHA_NETCDF_LIB_PATH="/usr/local/netCDF/lib/";
 	public static final String OPENSHA_NETCDF_LIB_PATH=null; // libraries are in /usr/lib64/ so hopefully not needed
 

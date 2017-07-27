@@ -89,6 +89,22 @@ public enum ServerPrefs {
 	
 	/**
 	 * 
+	 * @return path to the WEB-INF/opensha-commons dir for this tomcat configuration
+	 */
+	public File getTomcatCommonsDir() {
+		return new File(tomcatDir, "opensha-commons");
+	}
+	
+	/**
+	 * 
+	 * @return path to the WEB-INF/opensha-core dir for this tomcat configuration
+	 */
+	public File getTomcatCoreDir() {
+		return new File(tomcatDir, "opensha-core");
+	}
+	
+	/**
+	 * 
 	 * @return path to the temporary storage (can be /scrach, /tmp, or similar)
 	 */
 	public File getTempDir() {

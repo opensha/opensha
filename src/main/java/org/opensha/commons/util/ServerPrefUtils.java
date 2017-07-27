@@ -49,7 +49,7 @@ public class ServerPrefUtils {
 	 * This is the path to the WEB-INF dir for development OpenSHA servlets
 	 */
 	static final File OPENSHA_TOMCAT_DEV_DIR =
-		new File(OPENSHA_TOMCAT_WEBAPPS_DIR+"/OpenSHA_dev/WEB-INF/");
+		new File(OPENSHA_TOMCAT_WEBAPPS_DIR+"/OpenSHA_master/WEB-INF/");
 	
 	/**
 	 * This is the URL to the production OpenSHA servlets.
@@ -61,7 +61,7 @@ public class ServerPrefUtils {
 	 * This is the URL to the development OpenSHA servlets
 	 */
 	static final String OPENSHA_SERVLET_DEV_URL =
-		"http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_dev/";
+		"http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
 	
 	/**
 	 * This is the preferences enum for OpenSHA...it should always be link to the production prefs

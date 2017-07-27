@@ -31,7 +31,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 public class CVM_CCAi6BasinDepthTo1_0_Servlet extends
 		AbstractSiteDataServlet<Double> {
 	
-	private static final File FILE = new File(ServerPrefUtils.SERVER_PREFS.getTomcatDir(),
+	private static final File FILE = new File(ServerPrefUtils.SERVER_PREFS.getTomcatCommonsDir(),
 			CVM_CCAi6BasinDepth.DEPTH_1_0_FILE);
 	
 	public CVM_CCAi6BasinDepthTo1_0_Servlet() throws IOException {
