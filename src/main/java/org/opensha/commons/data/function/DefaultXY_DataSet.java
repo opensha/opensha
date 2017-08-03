@@ -3,6 +3,7 @@ package org.opensha.commons.data.function;
 import static com.google.common.base.Preconditions.*;
 
 import java.awt.geom.Point2D;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -170,6 +171,11 @@ public class DefaultXY_DataSet extends AbstractXY_DataSet {
 
 	@Override
 	public Element toXMLMetadata(Element root, String elName) {
+		throw new RuntimeException("not supported");
+	}
+
+	@Override
+	public Element toXMLMetadata(Element root, String elName, NumberFormat format) {
 		throw new RuntimeException("not supported");
 	}
 	

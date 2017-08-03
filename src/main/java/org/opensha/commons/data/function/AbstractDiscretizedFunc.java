@@ -26,6 +26,7 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Scanner;
@@ -315,6 +316,10 @@ Named,java.io.Serializable{
 	
 	@Override
 	public Element toXMLMetadata(Element root, String elementName) {
+		return toXMLMetadata(root, elementName, null);
+	}
+	
+	public Element toXMLMetadata(Element root, String elementName, NumberFormat format) {
 		Element xml = root.addElement(elementName);
 		
 		xml.addAttribute("info", this.getInfo());
@@ -327,17 +332,23 @@ Named,java.io.Serializable{
 		xml.addAttribute("minX", this.getMinX() + "");
 		xml.addAttribute("maxX", this.getMaxX() + "");
 		if (this instanceof EvenlyDiscretizedFunc) {
-			xml.addAttribute("delta", ((EvenlyDiscretizedFunc)this).getDelta()+"");
+			xml.addAttribute("delta", valToStr(((EvenlyDiscretizedFunc)this).getDelta(), format));
 		}
 
 		Element points = xml.addElement(AbstractDiscretizedFunc.XML_METADATA_POINTS_NAME);
 		for (int i=0; i<this.size(); i++) {
 			Element point = points.addElement(AbstractDiscretizedFunc.XML_METADATA_POINT_NAME);
-			point.addAttribute("x", this.getX(i) + "");
-			point.addAttribute("y", this.getY(i) + "");
+			point.addAttribute("x", valToStr(this.getX(i), format));
+			point.addAttribute("y", valToStr(this.getY(i), format));
 		}
 
 		return root;
+	}
+	
+	private static String valToStr(double val, NumberFormat format) {
+		if (format == null)
+			return val+"";
+		return format.format(val);
 	}
 
 	public static AbstractDiscretizedFunc fromXMLMetadata(Element funcElem) {

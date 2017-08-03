@@ -2,6 +2,7 @@ package org.opensha.commons.data.function;
 
 import java.awt.geom.Point2D;
 import java.io.Serializable;
+import java.text.NumberFormat;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -212,5 +213,7 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 	public List<Double> yValues();
 	
 	public Element toXMLMetadata(Element root, String elName);
+	
+	public Element toXMLMetadata(Element root, String elName, NumberFormat format);
 	
 }
