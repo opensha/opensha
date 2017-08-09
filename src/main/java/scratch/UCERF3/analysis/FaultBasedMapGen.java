@@ -860,6 +860,8 @@ public class FaultBasedMapGen {
 
 		@Override
 		public int compareTo(TraceValue o) {
+			if (Double.isNaN(value) && Double.isNaN(o.value))
+				return 0;
 			if (Double.isNaN(value))
 				return -1;
 			if (Double.isNaN(o.value))
