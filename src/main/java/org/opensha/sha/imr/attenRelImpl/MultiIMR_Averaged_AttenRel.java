@@ -96,6 +96,10 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		initIndependentParamLists(); // Do this after the above
 	}
 	
+	protected List<? extends ScalarIMR> getIMRs() {
+		return imrs;
+	}
+	
 	public void setWeights(ArrayList<Double> newWeights) {
 		if (weights == null) {
 			weights = new WeightedList<ScalarIMR>();
@@ -176,7 +180,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 				Parameter imrParam = imr.getParameter(paramName);
 				trySetDefault(defaultVal, imrParam);
 				// link the master param to this imr's param
-				new ParamLinker(masterParam, imrParam);
+				linkParams(masterParam, imrParam);
 			}
 			siteParams.addParameter(masterParam);
 		}
@@ -551,26 +555,24 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 			for (Parameter<?> param : params) {
 				if (masterParam == param)
 					continue;
-				new ParamLinker(masterParam, param);
+				linkParams(masterParam, param);
 			}
 			otherParams.addParameter(masterParam);
 		}
 	}
 	
-	private void linkParams(Iterable<Parameter<?>> params) {
-		for (Parameter masterParam : params) {
-			masterParam.setValueAsDefault();
-			for (ScalarIMR imr : imrs) {
-				try {
-					Parameter imrParam = imr.getParameter(masterParam.getName());
-					trySetDefault(masterParam, imrParam);
-					// link them
-					new ParamLinker(masterParam, imrParam);
-				} catch (ParameterException e) {
-					// this imr doesn't have it
-					continue;
-				}
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static void linkParams(Parameter<?> masterParam, Parameter<?> childParam) {
+		Preconditions.checkState(masterParam.getClass().equals(childParam.getClass()), "Class mismatch!\n\tMaster: %s\n\tChild: %s",
+				masterParam.getClass(), childParam.getClass());
+		if (masterParam.getValue() instanceof ParameterList) {
+			ParameterList masterList = (ParameterList)masterParam.getValue();
+			ParameterList childList = (ParameterList)childParam.getValue();
+			for (Parameter<?> subMasterParam : masterList) {
+				linkParams(subMasterParam, childList.getParameter(subMasterParam.getName()));
 			}
+		} else {
+			new ParamLinker(masterParam, childParam);
 		}
 	}
 

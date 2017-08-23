@@ -303,8 +303,10 @@ public class RSQSimFileReader {
 		
 //		File dir = new File("/home/kevin/Simulators/UCERF3_interns/UCERF3sigmahigh");
 //		File dir = new File("/home/kevin/Simulators/UCERF3_interns/combine340");
-		File dir = new File("/home/kevin/Simulators/catalogs/SWminAdefaultB");
-		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
+//		File dir = new File("/home/kevin/Simulators/catalogs/SWminAdefaultB");
+//		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
+		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir2142");
+		File geomFile = new File(dir, "zfault_Deepen.in");
 		
 		List<SimulatorElement> elements = readGeometryFile(geomFile, 11, 'S');
 		System.out.println("Loaded "+elements.size()+" elements");
@@ -324,6 +326,14 @@ public class RSQSimFileReader {
 		List<RSQSimEvent> events = readEventsFile(eventsDir, elements);
 		System.out.println("Loaded "+events.size()+" events");
 		System.out.println("Duration: "+SimulatorUtils.getSimulationDurationYears(events)+" years");
+		for (double minMag : new double[] { 6d, 6.5d, 7d }) {
+			List<RSQSimEvent> subEvents = new MagRangeRuptureIdentifier(minMag, 10d).getMatches(events);
+			System.out.println(subEvents.size()+" events M>="+minMag);
+			MinMaxAveTracker ptsTrack = new MinMaxAveTracker();
+			for (RSQSimEvent e : subEvents)
+				ptsTrack.addValue(e.getNumElements());
+			System.out.println("Points: "+ptsTrack);
+		}
 		
 //		SectionIDIden safIden = SectionIDIden.getUCERF3_SAF(FaultModels.FM3_1,
 //				RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC), elements);

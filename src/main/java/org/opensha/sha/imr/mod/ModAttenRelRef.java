@@ -5,6 +5,7 @@ import java.lang.reflect.Constructor;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.imr.mod.impl.BaylessSomerville2013DirectivityModifier;
 import org.opensha.sha.imr.mod.impl.DemoSiteSpecificMod;
+import org.opensha.sha.imr.mod.impl.FixedStdDevMod;
 import org.opensha.sha.imr.mod.impl.SimpleScaleMod;
 import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.ErgodicFromRefIMRMod;
 import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.NonErgodicSiteResponseMod;
@@ -19,6 +20,7 @@ import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.NonErgodicSiteResponseMo
 public enum ModAttenRelRef {
 	
 	SIMPLE_SCALE(SimpleScaleMod.class, SimpleScaleMod.NAME, SimpleScaleMod.SHORT_NAME),
+	FIXED_STD_DEV(FixedStdDevMod.class, FixedStdDevMod.NAME, FixedStdDevMod.SHORT_NAME),
 	DEMO_SITE_SPECIFIC(DemoSiteSpecificMod.class, DemoSiteSpecificMod.NAME, DemoSiteSpecificMod.SHORT_NAME),
 	BAYLESS_SOMERVILLE_2013_DIRECTIVITY(BaylessSomerville2013DirectivityModifier.class,
 			BaylessSomerville2013DirectivityModifier.NAME, BaylessSomerville2013DirectivityModifier.SHORT_NAME),
