@@ -32,7 +32,7 @@ public class CVM_CCAi6BasinDepthTo2_5_Servlet extends
 		AbstractSiteDataServlet<Double> {
 	
 	private static final File FILE = new File(ServerPrefUtils.SERVER_PREFS.getTomcatCommonsDir(),
-			"opensha-commons"+File.separator+CVM_CCAi6BasinDepth.DEPTH_2_5_FILE);
+			CVM_CCAi6BasinDepth.DEPTH_2_5_FILE);
 	
 	public CVM_CCAi6BasinDepthTo2_5_Servlet() throws IOException {
 		super(new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_2_5, FILE, false));
