@@ -1,5 +1,6 @@
 /*
- * Global build file used by this and all OpenSHA subprojects. Declares common fields/tasks
+ * Global build file used by all OpenSHA subprojects.
+ * Declares common fields and tasks.
  */
 apply plugin: 'java'
 
@@ -32,59 +33,41 @@ sourceSets {
     }
 }
 
-// In this section you declare where to find the dependencies of your project
 repositories {
-    // Use jcenter for resolving your dependencies.
-    // You can declare any Maven/Ivy/file repository here.
     jcenter()
 }
 
 configurations {
-	compileAndResource {
-		description 'will be compiled, and included in all built jars'
-		transitive = true
-	}
-	
-	compile {
-		description 'compile classpath'
-		transitive = true
-		extendsFrom compileAndResource
-	}
+    compileAndResource {
+        description 'will be compiled, and included in all built jars'
+        transitive = true
+    }
+    
+    compile {
+        description 'compile classpath'
+        transitive = true
+        extendsFrom compileAndResource
+    }
 }
 
 task fatJar(type: Jar) {
-	manifest {
-//        attributes('Implementation-Title': 'Gradle Jar File Example',
-//        	'Implementation-Version': version,
-//        	'Main-Class': 'com.mkyong.DateUtils')
-    }
     baseName = project.name + '-all'
-    from {
-    	configurations.compileAndResource.collect {
-    		it.isDirectory() ? it : zipTree(it).matching{
-    			exclude{
-    				it.path.contains('META-INF')
-    			}
-    		}
-    	}
-    }
+    from { configurations.compileAndResource.collect {
+        it.isDirectory() ? it : zipTree(it).matching {
+            exclude { it.path.contains('META-INF') }
+        }
+    }}
     with jar
 }
 
-//task printConfig() {
-//	configurations.each { println it.name }
-//}
-
 test {
     filter {
-        //include specific method in any of the tests
         includeTestsMatching "*Suite*"
     }
 }
 
 task testOperational (type: Test) {
     filter {
-        //include specific method in any of the tests
         includeTestsMatching "*Operational*"
     }
 }
