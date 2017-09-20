@@ -15,16 +15,16 @@ OpenSHA is split into multiple projects with the following dependencies:
 
 All users will need to clone the top level commons project, as well as any additional projects of interest. For example, if you need ucerf3 code, you will need to check out ucerf3, core, and commons (ucerf3 depends on core, which in turn depends on commons). Many users will need all projects (except CyberShake).
 
-### Requirements ###
+### Requirements
 
 * Java 8 JDK: [Oracle](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or [OpenJDK](http://openjdk.java.net/install/)
 * [Git](https://git-scm.com/downloads)
     - Git is included in the macOS [developer tools](https://developer.apple.com/xcode/).
     - Windows users may want to consider [Git for Windows](https://git-for-windows.github.io), which includes a linux-like terminal (Git BASH) in which subsequent commands listed here will work.
  
-Other dependencies are managed with [Gradle](https://gradle.org/), which does not require a separate installation. Gradle is clever about finding Java, but some users may have to explicitely define a `JAVA_HOME` environment variable. 
+Other dependencies are managed with [Gradle](https://gradle.org/), which does not require a separate installation. Gradle is clever about finding Java, but some users may have to explicitly define a `JAVA_HOME` environment variable. 
 
-### Cloning in a terminal ###
+### Cloning in a terminal
 
 To clone all projects in a terminal (simplest and quickest for most users):
 
@@ -37,7 +37,7 @@ git clone https://github.com/opensha/opensha-apps.git
 git clone https://github.com/opensha/opensha-dev.git
 ```
 
-### Building in a terminal with Gradle ###
+### Building in a terminal with Gradle
 
 OpenSHA uses Gradle to handle the build process from dependency management to compilation. You should compile OpenSHA from your lowest level project, *opensha-dev* for the example above.
 
@@ -53,7 +53,7 @@ cd opensha-dev # or whichever project you are interested in
 ./gradlew fatJar
 ```
 
-### Developing & building OpenSHA with Eclipse ###
+### Developing & building OpenSHA with Eclipse
 
 Most active OpenSHA development is done through [Eclipse](https://eclipse.org). You will need the Eclipse IDE for Java Developers.
 
