@@ -1,25 +1,20 @@
 /*
- * Taks/definitions specific to opensha-core
+ * opensha-core dependencies
  */
 
 apply from: '../opensha-commons/build-common.gradle'
-//apply from: '../opensha-commons/build.gradle'
 
 dependencies {
-	/*
-	 *	"Runtime" dependencies are exported downstream to users
-	 */
-	// repository based dependencies
-	compileAndResource 'net.sourceforge.parallelcolt:parallelcolt:0.10.1'
-	compileAndResource 'org.apache.poi:poi:3.16'
+
+    compileAndResource 'net.sourceforge.parallelcolt:parallelcolt:0.10.1'
+    compileAndResource 'org.apache.poi:poi:3.16'
 	 
-    // jars. TODO move to repo?
+    /* no remote repo */
     compileAndResource files('lib/ojdbc5.jar')
     compileAndResource files('lib/sdoapi.jar')
     
     compileOnly project(path: ':opensha-commons', configuration: 'compileOnly')
     compileAndResource project(path: ':opensha-commons')
 
-    // Use JUnit test framework
     testCompile 'junit:junit:4.12'
 }
