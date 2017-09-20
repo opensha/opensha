@@ -1,14 +1,11 @@
 /*
- * Taks/definitions specific to opensha-commons
+ * opensha-commons dependencies
  */
 
 apply from: 'build-common.gradle'
 
 dependencies {
-	/*
-	 *	"Runtime" dependencies are exported downstream to users
-	 */
-	// repository based dependencies
+
     compileAndResource 'com.google.guava:guava:21.0'
     compileAndResource 'org.jfree:jfreechart:1.0.19'
     compileAndResource 'dom4j:dom4j:1.6.1'
@@ -17,18 +14,19 @@ dependencies {
     compileAndResource 'gov.nist.math:jama:1.0.3'
     compileAndResource 'javax.servlet:javax.servlet-api:3.1.0'
     compileOnly 'javax.mail:mail:1.4.7'
-    // apache commons
+    
+    /* apache commons */
     compileAndResource 'org.apache.commons:commons-lang3:3.6'
     compileAndResource 'commons-codec:commons-codec:1.10'
     compileAndResource 'commons-cli:commons-cli:1.4'
     compileAndResource 'commons-io:commons-io:2.5'
     compileAndResource 'org.apache.commons:commons-math3:3.6.1'
-    // jars. TODO move to repo?
+    
+    /* no remote repo */
     compileAndResource files('lib/ncCore-4.0.jar')
     compileOnly files('lib/mpj-0.38.jar') // MPJ API
     compileAndResource files('lib/f2jutil.jar') // used by NNLS code
     compileAndResource files('lib/mpj-task-calculator-1.0.jar') // MPJTaskCalculator
 
-    // Use JUnit test framework
     testCompile 'junit:junit:4.12'
 }

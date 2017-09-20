@@ -1,6 +1,9 @@
+.classpath
+.project
 .settings
-/classes/
-/bin/
-/.gradle/
-/build/
-.README.md.html
+.gradle
+bin
+build
+classes
+tmp
+Scratch*.java
