@@ -873,6 +873,13 @@ public class DataUtils {
 			tot += val;
 			num++;
 		}
+		
+		public void addFrom(MinMaxAveTracker o) {
+			min = Math.min(min, o.min);
+			max = Math.max(max, o.max);
+			tot += o.tot;
+			num += o.num;
+		}
 
 		/**
 		 * Returns the minimum value that has been added to this tracker, or positive infinity if
