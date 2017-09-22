@@ -1,21 +1,16 @@
 /*
- * Taks/definitions specific to opensha-apps
+ * opensha-apps dependencies
  */
 
 apply from: '../opensha-commons/build-common.gradle'
 
 dependencies {
-	/*
-	 *	"Runtime" dependencies are exported downstream to users
-	 */
-	// repository based dependencies
-	 
-    // jars. TODO move to repo?
+
+    /* no remote repo */
     compileAndResource files('lib/jpedal.jar')
     
     compileOnly project(path: ':opensha-ucerf3', configuration: 'compileOnly')
     compileAndResource project(path: ':opensha-ucerf3')
 
-    // Use JUnit test framework
     testCompile 'junit:junit:4.12'
 }
