@@ -107,7 +107,13 @@ public class RSQSimUtils {
 		return minElemSectID;
 	}
 	
-	private static List<List<FaultSectionPrefData>> getSectionsForRupture(SimulatorEvent event, int minElemSectID,
+	public static void populateFaultIDWithParentIDs(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
+		int offset = getSubSectIndexOffset(elements, subSects);
+		for (SimulatorElement elem : elements)
+			elem.setFaultID(subSects.get(elem.getSectionID()-offset).getParentSectionId());
+	}
+	
+	public static List<List<FaultSectionPrefData>> getSectionsForRupture(SimulatorEvent event, int minElemSectID,
 			List<FaultSectionPrefData> subSects, Map<IDPairing, Double> distsCache,
 			double minFractForInclusion, Map<Integer, Double> subSectAreas) {
 //		HashSet<Integer> rupSectIDs = new HashSet<Integer>();
