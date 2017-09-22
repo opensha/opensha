@@ -62,5 +62,15 @@ public class CumulativeAzimuthChangeFilter extends AbstractLaughTest {
 	public boolean isApplyJunctionsOnly() {
 		return false;
 	}
+	
+	@Override
+	public String getName() {
+		return "Cumulative Azimuth Filter";
+	}
+	
+	@Override
+	public String getShortName() {
+		return "CumAzimuth";
+	}
 
 }

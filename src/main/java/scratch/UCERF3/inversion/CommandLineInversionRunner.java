@@ -146,7 +146,8 @@ public class CommandLineInversionRunner {
 		RUP_FILTER_FILE("rupfilter", "rup-filter-file", "FilteredRups", true,
 				"ASCII file listing rupture indexes, one per line, to include in output solution"),
 		RUP_DOWNSAMPLE_DM("dwn", "rup-downsample-dm", "Downsample", true,
-				"Enable rup set downsampling with the given delta magnitude");
+				"Enable rup set downsampling with the given delta magnitude"),
+		AVE_SLIP_SCALE("aveslip", "ave-slip-scale", "AveSlipScale", true, "Average slip constraint scalar");
 
 		private String shortArg, argName, fileName, description;
 		private boolean hasOption;
@@ -377,10 +378,22 @@ public class CommandLineInversionRunner {
 			// load paleo probability of observance model
 			PaleoProbabilityModel paleoProbabilityModel =
 				InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+			
+			List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+			if (cmd.hasOption(InversionOptions.AVE_SLIP_SCALE.argName)) {
+				double scale = Double.parseDouble(cmd.getOptionValue(InversionOptions.AVE_SLIP_SCALE.argName));
+				System.out.println("Scaling ave slip by: "+scale);
+				List<AveSlipConstraint> newConstraints = new ArrayList<AveSlipConstraint>();
+				for (AveSlipConstraint constr : aveSlipConstraints)
+					newConstraints.add(new AveSlipConstraint(constr.getSubSectionIndex(), constr.getSubSectionName(),
+							scale*constr.getWeightedMean(), scale*constr.getUpperUncertaintyBound(),
+							scale*constr.getLowerUncertaintyBound(), constr.getSiteLocation()));
+				aveSlipConstraints = newConstraints;
+			}
 
 			// this class generates inversion inputs (A matrix and data vector)
 			InversionInputGenerator gen = new InversionInputGenerator(rupSet, config,
-					paleoRateConstraints, null, paleoProbabilityModel);
+					paleoRateConstraints, aveSlipConstraints, null, paleoProbabilityModel);
 
 			// flag for enabling A Priori constraint (not used by default) on zero rate ruptures
 			// which acts as a minimization constraint on those ruptures.
@@ -692,12 +705,7 @@ public class CommandLineInversionRunner {
 					}
 
 					// combined paleo plots, not really used anymore in favor of paleo fault based plots
-					List<AveSlipConstraint> aveSlipConstraints = null;
 					try {
-						if (config.getPaleoSlipConstraintWt() > 0d)
-							aveSlipConstraints = AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
-						else
-							aveSlipConstraints = null;
 						writePaleoPlots(paleoRateConstraints, aveSlipConstraints, sol, subDir, prefix);
 					} catch (Exception e) {
 						e.printStackTrace();

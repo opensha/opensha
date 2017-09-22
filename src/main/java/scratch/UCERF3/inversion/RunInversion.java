@@ -114,8 +114,16 @@ public class RunInversion {
 			System.exit(1);
 		}
 		
+		List<AveSlipConstraint> aveSlipConstraints = null;
+		try {
+			aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
 		// create the input generator
-		InversionInputGenerator gen = new InversionInputGenerator(rupSet, config, paleoRateConstraints,
+		InversionInputGenerator gen = new InversionInputGenerator(rupSet, config, paleoRateConstraints, aveSlipConstraints,
 				improbabilityConstraint, paleoProbabilityModel);
 		
 		// generate the inputs
@@ -218,20 +226,13 @@ public class RunInversion {
 		solution.plotSlipRates();
 		solution.plotPaleoObsAndPredPaleoEventRates(paleoRateConstraints, paleoProbabilityModel, rupSet);
 		solution.plotMFDs();
-		List<AveSlipConstraint> aveSlipConstraints;
-		try {
-			aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-			Map<String, List<Integer>> namedFaultsMap = rupSet.getFaultModel().getNamedFaultsMapAlt();
-			Map<String, PlotSpec[]> plotSpecs =
-					PaleoFitPlotter.getFaultSpecificPaleoPlotSpec(paleoRateConstraints, aveSlipConstraints, namedFaultsMap, solution);
-			// display SAF plots
-			PlotSpec plotSpec = plotSpecs.get("San Andreas")[2];
-			GraphWindow gw = new GraphWindow(plotSpec);
-			gw.getGraphWidget().getGraphPanel().setxAxisInverted(true);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		Map<String, List<Integer>> namedFaultsMap = rupSet.getFaultModel().getNamedFaultsMapAlt();
+		Map<String, PlotSpec[]> plotSpecs =
+				PaleoFitPlotter.getFaultSpecificPaleoPlotSpec(paleoRateConstraints, aveSlipConstraints, namedFaultsMap, solution);
+		// display SAF plots
+		PlotSpec plotSpec = plotSpecs.get("San Andreas")[2];
+		GraphWindow gw = new GraphWindow(plotSpec);
+		gw.getGraphWidget().getGraphPanel().setxAxisInverted(true);
 //		solution.plotMFDs(config.getMfdEqualityConstraints());
 //		solution.plotMFDs(config.getMfdInequalityConstraints());
 		long runTime = System.currentTimeMillis()-startTime;

@@ -77,10 +77,11 @@ public class LogicTreePBSWriter {
 	
 	public static ArrayList<File> getClasspath(File jarDir, File jobDir) {
 		ArrayList<File> jars = new ArrayList<File>();
-		jars.add(new File(jobDir, "OpenSHA_complete.jar"));
-		jars.add(new File(jarDir, "parallelcolt-0.9.4.jar"));
-		jars.add(new File(jarDir, "commons-cli-1.2.jar"));
-		jars.add(new File(jarDir, "csparsej.jar"));
+//		jars.add(new File(jobDir, "OpenSHA_complete.jar"));
+//		jars.add(new File(jarDir, "parallelcolt-0.9.4.jar"));
+//		jars.add(new File(jarDir, "commons-cli-1.2.jar"));
+//		jars.add(new File(jarDir, "csparsej.jar"));
+		jars.add(new File(jobDir, "opensha-dev-all.jar"));
 		return jars;
 	}
 
@@ -697,7 +698,8 @@ public class LogicTreePBSWriter {
 	public static void main(String[] args) throws IOException, DocumentException {
 //		String runName = "ucerf3p3-synthetic-tests";
 //		String runName = "biasi-downsample-tests";
-		String runName = "milner-downsample-tests";
+//		String runName = "milner-downsample-tests";
+		String runName = "ave-slip-scale-tests";
 		if (args.length > 1)
 			runName = args[1];
 //		int constrained_run_mins = 60;	// 1 hour
@@ -745,7 +747,7 @@ public class LogicTreePBSWriter {
 //		HashSet<String> ignores = loadIgnoresFromZip(new File("/home/kevin/OpenSHA/UCERF3/inversions/" +
 //				"2012_12_27-ucerf3p2_prod_runs_1/bins/2012_12_27-ucerf3p2_prod_runs_1_keeper_bins.zip"));
 
-		int numRuns = 200;
+		int numRuns = 100;
 		int runStart = 0;
 		boolean forcePlots = false;
 
@@ -980,9 +982,14 @@ public class LogicTreePBSWriter {
 //		variationBranches.add(buildVariationBranch(ops, toArray(new File(runSubDir, "DistilledStarts.txt").getAbsolutePath())));
 //		variationBranches.add(buildVariationBranch(ops, toArray(new File(runSubDir, "DistilledBoth.txt").getAbsolutePath())));
 		
+//		variationBranches = Lists.newArrayList();
+//		InversionOptions[] ops = { InversionOptions.RUP_DOWNSAMPLE_DM };
+//		variationBranches.add(buildVariationBranch(ops, toArray("0.1")));
+		
 		variationBranches = Lists.newArrayList();
-		InversionOptions[] ops = { InversionOptions.RUP_DOWNSAMPLE_DM };
-		variationBranches.add(buildVariationBranch(ops, toArray("0.1")));
+		InversionOptions[] ops = { InversionOptions.AVE_SLIP_SCALE, InversionOptions.AVE_SLIP_WT };
+		variationBranches.add(buildVariationBranch(ops, toArray("1.0", "1.2")));
+		variationBranches.add(buildVariationBranch(ops, toArray("1.2", "1.2")));
 		
 		List<InversionArg[]> saOptions = null;
 		

@@ -66,6 +66,7 @@ public class InversionInputGenerator {
 	private InversionFaultSystemRupSet rupSet;
 	private InversionConfiguration config;
 	private List<PaleoRateConstraint> paleoRateConstraints;
+	private List<AveSlipConstraint> aveSlipConstraints;
 	private double[] improbabilityConstraint;
 	private PaleoProbabilityModel paleoProbabilityModel;
 	
@@ -84,12 +85,14 @@ public class InversionInputGenerator {
 			InversionFaultSystemRupSet rupSet,
 			InversionConfiguration config,
 			List<PaleoRateConstraint> paleoRateConstraints,
+			List<AveSlipConstraint> aveSlipConstraints,
 			double[] improbabilityConstraint, // may become an object in the future
 			PaleoProbabilityModel paleoProbabilityModel) {
 		this.rupSet = rupSet;
 		this.config = config;
 		this.paleoRateConstraints = paleoRateConstraints;
 		this.improbabilityConstraint = improbabilityConstraint;
+		this.aveSlipConstraints = aveSlipConstraints;
 		this.paleoProbabilityModel = paleoProbabilityModel;
 	}
 	
@@ -192,14 +195,7 @@ public class InversionInputGenerator {
 			rangeNames.add("Paleo Event Rates");
 		}
 		
-		List<AveSlipConstraint> aveSlipConstraints = null;
 		if (config.getPaleoSlipConstraintWt() > 0.0) {
-			try {
-				aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-			} catch (IOException e) {
-				e.printStackTrace();
-				throw new RuntimeException("Error loading in paleo mean slip data");
-			}
 			int numPaleoSlipRows = aveSlipConstraints.size();
 			if(D) System.out.println("Number of paleo average slip constraints: "+numPaleoSlipRows);
 			numRows += numPaleoSlipRows;

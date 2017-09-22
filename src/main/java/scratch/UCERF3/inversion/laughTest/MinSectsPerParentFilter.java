@@ -51,6 +51,16 @@ public class MinSectsPerParentFilter {
 		public boolean isApplyJunctionsOnly() {
 			return false;
 		}
+		
+		@Override
+		public String getName() {
+			return "Min Sects Per Parent Continous Filter";
+		}
+		
+		@Override
+		public String getShortName() {
+			return "SectsPerParent";
+		}
 	}
 	
 	/**
@@ -136,6 +146,16 @@ public class MinSectsPerParentFilter {
 		@Override
 		public boolean isApplyJunctionsOnly() {
 			return true;
+		}
+		
+		@Override
+		public String getName() {
+			return "Min Sects Per Parent Cleanup Filter";
+		}
+		
+		@Override
+		public String getShortName() {
+			return "SectsPerParentBridge";
 		}
 	}
 

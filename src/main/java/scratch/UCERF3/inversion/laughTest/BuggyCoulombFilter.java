@@ -129,5 +129,15 @@ public class BuggyCoulombFilter extends AbstractLaughTest {
 		}
 		return false;
 	}
+	
+	@Override
+	public String getName() {
+		return "Buggy Coulomb Filter";
+	}
+	
+	@Override
+	public String getShortName() {
+		return "CoulombOld";
+	}
 
 }

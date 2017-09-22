@@ -159,4 +159,14 @@ public class AzimuthChangeFilter extends AbstractLaughTest {
 		this.totAzChangeAtJunctionsOnly = totAzChangeAtJunctionsOnly;
 	}
 
+	@Override
+	public String getName() {
+		return "Azimuth Change Filter";
+	}
+	
+	@Override
+	public String getShortName() {
+		return "Azimuth";
+	}
+
 }

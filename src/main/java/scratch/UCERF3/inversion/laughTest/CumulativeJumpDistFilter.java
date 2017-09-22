@@ -45,5 +45,15 @@ public class CumulativeJumpDistFilter extends AbstractLaughTest {
 	public boolean isApplyJunctionsOnly() {
 		return true;
 	}
+	
+	@Override
+	public String getName() {
+		return "Cumulative Jump Dist Filter";
+	}
+	
+	@Override
+	public String getShortName() {
+		return "CumJumpDist";
+	}
 
 }

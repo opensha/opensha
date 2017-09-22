@@ -58,5 +58,15 @@ public class CumulativeRakeChangeFilter extends AbstractLaughTest {
 	public boolean isApplyJunctionsOnly() {
 		return true;
 	}
+	
+	@Override
+	public String getName() {
+		return "Cumulative Rake Change Filter";
+	}
+	
+	@Override
+	public String getShortName() {
+		return "CumRake";
+	}
 
 }

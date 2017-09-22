@@ -24,6 +24,7 @@ public class CoulombFilter extends AbstractLaughTest {
 	
 	private CoulombRates rates;
 	private CoulombRatesTester tester;
+	private boolean missingAsFail = false;
 	
 	public CoulombFilter(CoulombRates rates, CoulombRatesTester tester) {
 		this.rates = rates;
@@ -51,6 +52,8 @@ public class CoulombFilter extends AbstractLaughTest {
 			for (int junctionIndex : junctionIndexes) {
 				// junctionIndex-1 here  because junctions point forwards, but pairings start one back
 				IDPairing pair = pairings.get(junctionIndex-1);
+				if (missingAsFail && rates.get(pair) == null)
+					return false;
 				forwardRates.add(rates.get(pair));
 				Preconditions.checkNotNull(rates.get(pair), "No coulomb for: "+pair);
 				Preconditions.checkNotNull(rates.get(pair.getReversed()), "No coulomb for: "+pair.getReversed());
@@ -58,6 +61,8 @@ public class CoulombFilter extends AbstractLaughTest {
 			}
 		} else {
 			for (IDPairing pair : pairings) {
+				if (missingAsFail && rates.get(pair) == null)
+					return false;
 				forwardRates.add(rates.get(pair));
 				backwardRates.add(0, rates.get(pair.getReversed()));
 			}
@@ -73,6 +78,20 @@ public class CoulombFilter extends AbstractLaughTest {
 	@Override
 	public boolean isApplyJunctionsOnly() {
 		return tester.isApplyBranchesOnly();
+	}
+	
+	@Override
+	public String getName() {
+		return "Coulomb Filter";
+	}
+	
+	@Override
+	public String getShortName() {
+		return "Coulomb";
+	}
+	
+	public void setMissingAsFail(boolean missingAsFail) {
+		this.missingAsFail = missingAsFail;
 	}
 
 }
