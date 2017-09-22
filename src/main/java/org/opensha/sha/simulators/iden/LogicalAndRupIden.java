@@ -44,4 +44,12 @@ public class LogicalAndRupIden extends AbstractRuptureIdentifier {
 		return rupIdens;
 	}
 
+	@Override
+	public boolean furtherMatchesPossible() {
+		for (RuptureIdentifier rupIden : rupIdens)
+			if (!rupIden.furtherMatchesPossible())
+				return false;
+		return true;
+	}
+
 }

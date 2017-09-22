@@ -4,20 +4,15 @@ import org.opensha.sha.simulators.SimulatorEvent;
 
 import com.google.common.base.Preconditions;
 
-/**
- * Rupture identifier that can be used on catalog loading to skip the first N years. Events
- * must be passed in order, as the first event seen is used as the catalog start time.
- * @author kevin
- *
- */
-public class SkipYearsLoadIden extends AbstractRuptureIdentifier {
-	
+public class CatalogLengthLoadIden extends AbstractRuptureIdentifier {
+
 	private double firstEventYears = Double.NaN;
-	private final double skipYears;
+	private final double lengthYears;
+	private boolean encounteredEnd = false;
 	
-	public SkipYearsLoadIden(double skipYears) {
-		Preconditions.checkArgument(skipYears > 0);
-		this.skipYears = skipYears;
+	public CatalogLengthLoadIden(double lengthYears) {
+		Preconditions.checkArgument(lengthYears > 0);
+		this.lengthYears = lengthYears;
 	}
 
 	@Override
@@ -31,12 +26,20 @@ public class SkipYearsLoadIden extends AbstractRuptureIdentifier {
 		Preconditions.checkState(years >= firstEventYears);
 		double diff = years - firstEventYears;
 		
-		return diff >= skipYears;
+		boolean match = diff <= lengthYears;
+		if (!match)
+			encounteredEnd = true;
+		return match;
 	}
 
 	@Override
 	public String getName() {
-		return "Skip Years Iden";
+		return "Total Length Iden";
+	}
+
+	@Override
+	public boolean furtherMatchesPossible() {
+		return !encounteredEnd;
 	}
 
 }

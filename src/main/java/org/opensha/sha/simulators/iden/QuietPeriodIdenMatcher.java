@@ -167,4 +167,9 @@ public class QuietPeriodIdenMatcher implements RuptureIdentifier {
 		return "Quiet Perdiod: "+quietYears+" years, iden="+matchIden.getName();
 	}
 
+	@Override
+	public boolean furtherMatchesPossible() {
+		return true;
+	}
+
 }

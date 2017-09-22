@@ -21,5 +21,9 @@ public abstract class AbstractRuptureIdentifier implements RuptureIdentifier {
 	public <E extends SimulatorEvent> List<E> getMatches(List<E> events) {
 		return getMatches(events, this);
 	}
+	
+	public boolean furtherMatchesPossible() {
+		return true;
+	}
 
 }

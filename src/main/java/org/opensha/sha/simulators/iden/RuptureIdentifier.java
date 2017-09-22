@@ -22,5 +22,11 @@ public interface RuptureIdentifier extends Named {
 	 * @return
 	 */
 	public <E extends SimulatorEvent> List<E> getMatches(List<E> events);
+	
+	/**
+	 * 
+	 * @return false if no further matches are possible. Useful to abort file loading
+	 */
+	public boolean furtherMatchesPossible();
 
 }

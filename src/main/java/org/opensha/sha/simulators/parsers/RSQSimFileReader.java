@@ -29,12 +29,15 @@ import java.util.StringTokenizer;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.eq.MagUtils;
+import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
+import org.opensha.commons.geo.PlaneUtils;
 import org.opensha.commons.geo.utm.UTM;
 import org.opensha.commons.geo.utm.WGS84;
 import org.opensha.commons.util.ExceptionUtils;
@@ -127,7 +130,8 @@ public class RSQSimFileReader {
 					slipRate = slipRate*SimulatorUtils.SECONDS_PER_YEAR;
 					
 					double aseisFactor = 0d;
-					FocalMechanism focalMechanism = new FocalMechanism(Double.NaN, Double.NaN, rake); // TODO
+					FocalMechanism focalMechanism = calcTriangularMech(new Vector3D(x1, y1, z1),
+							new Vector3D(x2, y2, z2), new Vector3D(x3, y3, z3), rake);
 					
 					SimulatorElement elem = new TriangularElement(elemID++, vertices, sectName, -1, sectNum,
 							numAlongStrike, numDownDip, slipRate, aseisFactor, focalMechanism);
@@ -208,7 +212,7 @@ public class RSQSimFileReader {
 					slipRate = slipRate*SimulatorUtils.SECONDS_PER_YEAR;
 					
 					double aseisFactor = 0d;
-					FocalMechanism focalMechanism = new FocalMechanism(Double.NaN, Double.NaN, rake); // TODO
+					FocalMechanism focalMechanism = new FocalMechanism(strike, dip, rake);
 					
 					boolean perfectRect = (float)l == (float)w;
 					
@@ -287,6 +291,62 @@ public class RSQSimFileReader {
 		}
 	}
 	
+//	private static FocalMechanism calcTriangularMech(Vertex[] vertices, double rake) {
+//		Location loc1 = vertices[0];
+//		Location loc2 = vertices[1];
+//		Location loc3 = vertices[2];
+//		double avgLat = (loc1.getLatitude() + loc2.getLatitude() + loc3.getLatitude()) / 3;
+//		double avgLon = (loc1.getLongitude() + loc2.getLongitude() + loc3.getLongitude()) / 3;
+//		Location avgLoc = new Location(avgLat, avgLon);
+//		double latDegPerKM = GeoTools.degreesLatPerKm(avgLoc);
+//		double lonDegPerKM = GeoTools.degreesLonPerKm(avgLoc);
+//		
+////		double[][] vertices = new double[][] {
+////			{ 0.0, 0.0, -loc1.getDepth() },
+////			{ deltaLonKM(loc1, loc2), deltaLatKM(loc1, loc2), -loc2.getDepth() },
+////			{ deltaLonKM(loc1, loc3), deltaLatKM(loc1, loc3), -loc3.getDepth() } };
+//		
+//		Vector3D c1 = new Vector3D(0d, 0d, -loc1.getDepth());
+//		Vector3D c2 = new Vector3D((loc2.getLongitude()-loc1.getLongitude())/lonDegPerKM,
+//				(loc2.getLatitude()-loc1.getLatitude())/latDegPerKM, -loc2.getDepth());
+//		Vector3D c3 = new Vector3D((loc3.getLongitude()-loc1.getLongitude())/lonDegPerKM,
+//				(loc3.getLatitude()-loc1.getLatitude())/latDegPerKM, -loc3.getDepth());
+//		
+////		Vector3D c1 = new Vector3D(vertices[0].getLongitude(), vertices[0].getLatitude(), -vertices[0].getDepth());
+////		Vector3D c2 = new Vector3D(vertices[1].getLongitude(), vertices[1].getLatitude(), -vertices[1].getDepth());
+////		Vector3D c3 = new Vector3D(vertices[2].getLongitude(), vertices[2].getLatitude(), -vertices[2].getDepth());
+//		
+//		return calcTriangularMech(c1, c2, c3, rake);
+//	}
+	
+	/**
+	 * Algorithm provided by Keith Richards-Dinger via e-mail 9/19/17. Alternative implementation exists in PlaneUtils,
+	 * but this matches his definition perfectly (and does calculation in UTM).
+	 * @param c1
+	 * @param c2
+	 * @param c3
+	 * @param rake
+	 * @return
+	 */
+	private static FocalMechanism calcTriangularMech(Vector3D c1, Vector3D c2, Vector3D c3, double rake) {
+		Vector3D dx1 = c2.subtract(c1);
+		Vector3D dx2 = c3.subtract(c1);
+		
+		Vector3D nu = Vector3D.crossProduct(dx1, dx2);
+		if (nu.getZ() < 0)
+			nu = nu.scalarMultiply(-1d);
+		double area = 0.5*Math.sqrt(nu.dotProduct(nu));
+		nu.scalarMultiply(1d/(2*area));
+		
+		double strike = -(180d/Math.PI)*Math.atan2(nu.getY(), nu.getX());
+		while (strike < 0)
+			strike += 360;
+		
+		double dip = 90d - (180d/Math.PI)*Math.atan2(nu.getZ(), Math.sqrt(nu.getX()*nu.getX() + nu.getY()*nu.getY()));
+		
+		return new FocalMechanism(strike, dip, rake);
+	}
+	
 	private static Location utmToLoc(int longZone, char latZone, double x, double y, double z) {
 		UTM utm = new UTM(longZone, latZone, x, y);
 		WGS84 wgs84 = new WGS84(utm);
@@ -303,15 +363,28 @@ public class RSQSimFileReader {
 		
 //		File dir = new File("/home/kevin/Simulators/UCERF3_interns/UCERF3sigmahigh");
 //		File dir = new File("/home/kevin/Simulators/UCERF3_interns/combine340");
-//		File dir = new File("/home/kevin/Simulators/catalogs/SWminAdefaultB");
-//		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
-		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir2142");
-		File geomFile = new File(dir, "zfault_Deepen.in");
+		File dir = new File("/home/kevin/Simulators/catalogs/SWminAdefaultB");
+		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
+//		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir2142");
+//		File geomFile = new File(dir, "zfault_Deepen.in");
 		
 		List<SimulatorElement> elements = readGeometryFile(geomFile, 11, 'S');
 		System.out.println("Loaded "+elements.size()+" elements");
 //		for (Location loc : elements.get(0).getVertices())
 //			System.out.println(loc);
+		MinMaxAveTracker strikeTrack = new MinMaxAveTracker();
+		MinMaxAveTracker dipTrack = new MinMaxAveTracker();
+		for (SimulatorElement e : elements) {
+			FocalMechanism mech = e.getFocalMechanism();
+			strikeTrack.addValue(mech.getStrike());
+			dipTrack.addValue(mech.getDip());
+			if (Math.random() < 0.001)
+				System.out.println(e.getID()+". "+e.getSectionName()+" Mech: s="+mech.getStrike()
+					+"\td="+mech.getDip()+"\tr="+mech.getRake());
+		}
+		System.out.println("Strikes: "+strikeTrack);
+		System.out.println("Dips: "+dipTrack);
+		System.exit(0);
 		
 //		File eventsDir = new File("/home/kevin/Simulators/UCERF3_qlistbig2");
 //		File eventsDir = new File("/home/kevin/Simulators/UCERF3_35kyrs");
@@ -553,6 +626,8 @@ public class RSQSimFileReader {
 		int curEventID = -1;
 		Map<Integer, RSQSimEventRecord> curRecordMap = Maps.newHashMap();
 		
+		Map<Integer, RSQSimEventRecord> patchToPrevRecordMap = Maps.newHashMap();
+		
 		HashSet<Integer> eventIDsLoaded = new HashSet<Integer>();
 		
 		int eventID, patchID;
@@ -592,11 +667,30 @@ public class RSQSimFileReader {
 							} else {
 								events.add(event);
 							}
+						} else {
+							// it wasn't at match, see if we can bail (e.g. if we're only loading the first x years)
+							boolean possible = false;
+							for (RuptureIdentifier iden : rupIdens) {
+								if (iden.furtherMatchesPossible()) {
+									possible = true;
+									break;
+								}
+							}
+							if (!possible) {
+								curRecordMap.clear();
+								break;
+							}
 						}
 					}
 					curRecordMap.clear();
 					curEventID = eventID;
 				}
+				
+				RSQSimEventRecord prevEventRecord = patchToPrevRecordMap.get(patchID);
+				if (prevEventRecord != null)
+					// tell the previous event that this is the next time this patch ruptured
+					// used for mapping transition information to specific events
+					prevEventRecord.setNextSlipTime(patchID, time);
 				
 				// EventRecord for this individual fault section in this event
 				RSQSimEventRecord event = curRecordMap.get(element.getSectionID());
@@ -615,6 +709,7 @@ public class RSQSimFileReader {
 					event.setTime(time);
 				}
 				event.setMoment(event.getMoment()+elementMoment);
+				patchToPrevRecordMap.put(patchID, event);
 			} catch (EOFException e) {
 				break;
 			}
