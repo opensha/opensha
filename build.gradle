@@ -6,10 +6,11 @@ apply from: '../opensha-commons/build-common.gradle'
 
 dependencies {
 
-    compileAndResource 'net.sourceforge.parallelcolt:parallelcolt:0.10.1'
     compileAndResource 'org.apache.poi:poi:3.16'
 	 
     /* no remote repo */
+    compileAndResource files('lib/parallelcolt-0.9.4.jar')
+    compileAndResource files('lib/csparsej.jar')
     compileAndResource files('lib/ojdbc5.jar')
     compileAndResource files('lib/sdoapi.jar')
     
