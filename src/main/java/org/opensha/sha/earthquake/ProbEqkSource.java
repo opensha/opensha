@@ -483,6 +483,29 @@ public abstract class ProbEqkSource implements EqkSource, Named, Iterable<ProbEq
 
 
 	/**
+	 * This draws a single rupture index based on relative rupture rates rather than
+	 * relative probabilities (e.g., to honor the Gutenberg-Richter distribution
+	 * if the probability approaches one or greater at lowest magnitudes).  The actual
+	 * duration does not matter here, so a value of 1.0 is applied.
+	 * The random number is supplied for reproducibility.
+	 * 
+	 * @param randDouble - a random value between 0 (inclusive) and 1 (exclusive)
+	 * @return
+	 */
+	public int drawSingleRandomEqkRuptureIndexFromRelativeRates(double randDouble) {
+		int numRup = getNumRuptures();
+		IntegerPDF_FunctionSampler rupSampler = new IntegerPDF_FunctionSampler(numRup);
+		for (int r=0; r< this.getNumRuptures(); r++) {
+			double rate = -Math.log(1.0 - getRupture(r).getProbability());
+			if(Double.isInfinite(rate))
+				throw new RuntimeException("Infinite rate error");
+			rupSampler.add((double)r, rate);
+		}
+		return rupSampler.getRandomInt(randDouble);
+	}
+
+
+	/**
 	 * This gets the TectonicRegionType for this source
 	 */
 	public TectonicRegionType getTectonicRegionType() {
