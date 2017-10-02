@@ -844,7 +844,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 			
 		int r=0;
 		if(src.getNumRuptures() > 1) {
-			r = src.drawSingleRandomEqkRuptureIndex(etas_utils.getRandomDouble());
+			r = src.drawSingleRandomEqkRuptureIndexFromRelativeRates(etas_utils.getRandomDouble());
 		}
 		int nthRup = erf.getIndexN_ForSrcAndRupIndices(randSrcIndex,r);
 		ProbEqkRupture erf_rup = src.getRupture(r);
@@ -1457,7 +1457,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
+				
 		ETAS_ParameterList etasParams = new ETAS_ParameterList();
 		etasParams.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
 		

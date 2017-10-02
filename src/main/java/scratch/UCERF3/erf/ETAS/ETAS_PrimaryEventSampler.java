@@ -4188,7 +4188,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			ProbEqkSource src = erf.getSource(randSrcIndex);
 			int r=0;
 			if(src.getNumRuptures() > 1) {
-				r = src.drawSingleRandomEqkRuptureIndex(etas_utils.getRandomDouble());
+				r = src.drawSingleRandomEqkRuptureIndexFromRelativeRates(etas_utils.getRandomDouble());
 			}
 			int nthRup = erf.getIndexN_ForSrcAndRupIndices(randSrcIndex,r);
 			ProbEqkRupture erf_rup = src.getRupture(r);
@@ -4268,7 +4268,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			
 			int r=0;
 			if(src.getNumRuptures() > 1) {
-				r = src.drawSingleRandomEqkRuptureIndex(etas_utils.getRandomDouble());
+				r = src.drawSingleRandomEqkRuptureIndexFromRelativeRates(etas_utils.getRandomDouble());
 			}
 			int nthRup = erf.getIndexN_ForSrcAndRupIndices(randSrcIndex,r);
 			ProbEqkRupture erf_rup = src.getRupture(r);
