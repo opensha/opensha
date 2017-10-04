@@ -15,7 +15,7 @@ import org.opensha.commons.util.cpt.CPT;
 public enum GMT_CPT_Files {
 	
 	BLUE_YELLOW_RED("BlueYellowRed.cpt"),
-	GMT_cool("GMT_cool.cpt"),
+	GMT_COOL("GMT_cool.cpt"),
 	MAX_SPECTRUM("MaxSpectrum.cpt"),
 	RELM("relm_color_map.cpt"),
 	SHAKEMAP("Shakemap.cpt"),
