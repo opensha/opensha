@@ -7,6 +7,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -122,6 +123,8 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	private boolean metadataOnly = false;
 	
 	private boolean griddedOnly = false;
+	
+	private Random r;
 
 	public MPJ_ETAS_Simulator(CommandLine cmd, File inputDir, File outputDir) throws IOException, DocumentException {
 		super(cmd);
@@ -360,6 +363,8 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 			for (int i=0; i<sols.length; i++)
 				ETAS_Simulator.correctGriddedSeismicityRatesInERF(sols[i], false, gridSeisCorrections);
 		}
+		
+		r = new Random(System.nanoTime() + (long)(rank*new Random().nextInt()));
 	}
 	
 	/**
@@ -613,7 +618,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 				if (randSeed > 0 && restartsMap.get(index) == null)
 					debug("Resuming old rand seed of "+randSeed+" for "+resultsDir.getName());
 				else
-					randSeed = System.currentTimeMillis();
+					randSeed = r.nextLong();
 
 				ETAS_ParameterList params = new ETAS_ParameterList();
 				params.setImposeGR(imposeGR);

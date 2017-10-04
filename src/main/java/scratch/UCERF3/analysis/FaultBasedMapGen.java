@@ -84,6 +84,7 @@ public class FaultBasedMapGen {
 	private static GMT_MapGenerator gmt;
 	
 	public static boolean LOCAL_MAPGEN = false;
+	public static boolean SAVE_ZIPS = false;
 	
 	private static CPT slipCPT = null;
 	public static CPT getSlipRateCPT() {
@@ -913,6 +914,13 @@ public class FaultBasedMapGen {
 			RunScript.runScript(command);
 			
 			if (saveDir != null) {
+				if (SAVE_ZIPS) {
+					FileUtils.createZipFile(tempDir.getAbsolutePath());
+					File zipFile = new File(tempDir, "allFiles.zip");
+					Preconditions.checkState(zipFile.exists(), "No ZIP file: %s", zipFile.getAbsolutePath());
+					Files.move(zipFile, new File(saveDir, prefix+".zip"));
+				}
+				
 				File pngFile = new File(tempDir, map.getPNGFileName());
 				Preconditions.checkState(pngFile.exists(), "No PNG file: %s", pngFile.getAbsolutePath());
 				File pdfFile = new File(tempDir, map.getPDFFileName());
@@ -941,6 +949,11 @@ public class FaultBasedMapGen {
 				if (map.isGenerateKML()) {
 					File kmzFile = new File(saveDir, prefix+".kmz");
 					FileUtils.downloadURL(baseURL+"map.kmz", kmzFile);
+				}
+				
+				if (SAVE_ZIPS) {
+					File zipFile = new File(saveDir, prefix+".zip");
+					FileUtils.downloadURL(baseURL+"allFiles.zip", zipFile);
 				}
 			}
 //			File zipFile = new File(downloadDir, "allFiles.zip");

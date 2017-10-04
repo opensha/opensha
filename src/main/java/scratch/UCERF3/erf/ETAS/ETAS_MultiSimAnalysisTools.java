@@ -1120,19 +1120,28 @@ public class ETAS_MultiSimAnalysisTools {
 	public static void plotSectRates(List<List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
 			double[] minMags, File outputDir, String titleAdd, String prefix)
 			throws IOException, GMT_MapException, RuntimeException {
-		plotSectRates(catalogs, duration, rupSet, minMags, outputDir, titleAdd, prefix, Long.MIN_VALUE);
+		plotSectRates(catalogs, duration, rupSet, minMags, outputDir, titleAdd, prefix, Long.MIN_VALUE, null, false);
 
 	}
 
 	public static void plotSectRates(List<List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
-			double[] minMags, File outputDir, String titleAdd, String prefix, long maxOT)
-			throws IOException, GMT_MapException, RuntimeException {
+			double[] minMags, File outputDir, String titleAdd, String prefix, long maxOT,
+			FaultSystemSolution refSol, boolean addRefForRatio) throws IOException, GMT_MapException, RuntimeException {
 		List<double[]> particRatesList = Lists.newArrayList();
 		for (int i = 0; i < minMags.length; i++)
 			particRatesList.add(new double[rupSet.getNumSections()]);
 		List<double[]> triggerRatesList = Lists.newArrayList();
 		for (int i = 0; i < minMags.length; i++)
 			triggerRatesList.add(new double[rupSet.getNumSections()]);
+		List<Map<Integer, Double>> parentParticRatesList = Lists.newArrayList();
+		List<FaultSectionPrefData> sects = rupSet.getFaultSectionDataList();
+		for (int i = 0; i < minMags.length; i++) {
+			HashMap<Integer, Double> parentMap = new HashMap<>();
+			for (FaultSectionPrefData sect : sects)
+				if (!parentMap.containsKey(sect.getParentSectionId()))
+					parentMap.put(sect.getParentSectionId(), 0d);
+			parentParticRatesList.add(parentMap);
+		}
 
 		Map<Integer, List<Location>> locsForSectsMap = Maps.newHashMap();
 
@@ -1173,11 +1182,16 @@ public class ETAS_MultiSimAnalysisTools {
 
 				Location hypocenter = rup.getHypocenterLocation();
 				Preconditions.checkNotNull(hypocenter);
+				
+				HashSet<Integer> parentIDs = new HashSet<>();
 
 				for (int sectIndex : rupSet.getSectionsIndicesForRup(rupIndex)) {
-					for (int i = 0; i < minMags.length; i++)
-						if (rup.getMag() >= minMags[i])
+					for (int i = 0; i < minMags.length; i++) {
+						if (rup.getMag() >= minMags[i]) {
 							particRatesList.get(i)[sectIndex] += fractionalRate;
+							parentIDs.add(sects.get(sectIndex).getParentSectionId());
+						}
+					}
 
 					// TODO This isn't quite right because more than one section
 					// polygon might contain the hypocenter;
@@ -1208,6 +1222,17 @@ public class ETAS_MultiSimAnalysisTools {
 					// closestSectIndex = sectIndex;
 					// }
 					// }
+				}
+				
+				for (Integer parentID : parentIDs) {
+					for (int i=0; i<minMags.length; i++) {
+						if (rup.getMag() >= minMags[i]) {
+							Map<Integer, Double> parentParticRates = parentParticRatesList.get(i);
+							Double parentRate = parentParticRates.get(parentID);
+							parentRate += fractionalRate;
+							parentParticRates.put(parentID, parentRate);
+						}
+					}
 				}
 
 				if (closestSectIndex < 0) {
@@ -1244,6 +1269,48 @@ public class ETAS_MultiSimAnalysisTools {
 					System.out.println("Ruptured " + closestSectIndex + ":\t" + ETAS_CatalogIO.getEventFileLine(rup));
 			}
 		}
+		
+		List<double[]> refParticRatesList = null;
+		List<Map<Integer, Double>> refParentParticRatesList = null;
+		if (refSol != null) {
+			Preconditions.checkState(refSol.getRupSet().getNumSections() == rupSet.getNumSections());
+			refParticRatesList = new ArrayList<>();
+			refParentParticRatesList = Lists.newArrayList();
+			for (int i = 0; i < minMags.length; i++) {
+				refParticRatesList.add(new double[rupSet.getNumSections()]);
+				HashMap<Integer, Double> parentMap = new HashMap<>();
+				for (FaultSectionPrefData sect : sects)
+					if (!parentMap.containsKey(sect.getParentSectionId()))
+						parentMap.put(sect.getParentSectionId(), 0d);
+				refParentParticRatesList.add(parentMap);
+			}
+			
+			if (maxOT > 0)
+				Preconditions.checkState(duration >= 0d);
+			FaultSystemRupSet refRupSet = refSol.getRupSet();
+			for (int r=0; r<refRupSet.getNumRuptures(); r++) {
+				double rate = refSol.getRateForRup(r);
+				if (maxOT > 0)
+					// otherwise it's annual and we don't need to adjust
+					rate *= duration;
+				double mag = refRupSet.getMagForRup(r);
+				List<Integer> parentIDs = refRupSet.getParentSectionsForRup(r);
+				for (int i=0; i<minMags.length; i++) {
+					if (mag >= minMags[i]) {
+						for (FaultSectionPrefData sect : refRupSet.getFaultSectionDataForRupture(r)) {
+							int sectIndex = sect.getSectionId();
+							refParticRatesList.get(i)[sectIndex] += rate;
+						}
+						for (Integer parentID : parentIDs) {
+							Map<Integer, Double> refParentParticRates = refParentParticRatesList.get(i);
+							Double parentRate = refParentParticRates.get(parentID);
+							parentRate += rate;
+							refParentParticRates.put(parentID, parentRate);
+						}
+					}
+				}
+			}
+		}
 
 		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
 		double maxRate = 0;
@@ -1265,6 +1332,18 @@ public class ETAS_MultiSimAnalysisTools {
 			cptMax++;
 		cpt = cpt.rescale(cptMin, cptMax);
 		cpt.setBelowMinColor(Color.LIGHT_GRAY);
+		
+		CPT logGainCPT = null;
+		if (refSol != null) {
+			logGainCPT = GMT_CPT_Files.UCERF3_ETAS_GAIN.instance().rescale(0d, 1d);
+			// from 0 to 1, we want to rescale the portion from 0.5 to 1
+			for (int i=logGainCPT.size(); --i>=0;)
+				if (logGainCPT.get(i).start <= 0.5f)
+					logGainCPT.remove(i);
+			logGainCPT = logGainCPT.rescale(0d, 4d);
+			logGainCPT.setBelowMinColor(logGainCPT.getMinColor());
+			logGainCPT.setNanColor(Color.LIGHT_GRAY);
+		}
 
 		List<LocationList> faults = Lists.newArrayList();
 		for (int sectIndex = 0; sectIndex < rupSet.getNumSections(); sectIndex++)
@@ -1285,6 +1364,24 @@ public class ETAS_MultiSimAnalysisTools {
 
 		particCSV.addLine(header);
 		triggerCSV.addLine(header);
+		
+		Map<String, Integer> parentNamesToIDs = new HashMap<>();
+		for (FaultSectionPrefData sect : sects)
+			parentNamesToIDs.put(sect.getParentSectionName(), sect.getParentSectionId());
+		List<String> parentNames = new ArrayList<>();
+		parentNames.addAll(parentNamesToIDs.keySet());
+		Collections.sort(parentNames);
+		List<String> parentHeader = Lists.newArrayList("Parent Section Name");
+		for (int i = 0; i < minMags.length; i++) {
+			if (minMags[i] > 1)
+				parentHeader.add("M≥" + (float) minMags[i]);
+			else
+				parentHeader.add("Total");
+			if (refSol != null)
+				parentHeader.add("Gain");
+		}
+		CSVFile<String> parentCSV = new CSVFile<>(true);
+		parentCSV.addLine(parentHeader);
 
 		if (titleAdd == null)
 			titleAdd = "";
@@ -1320,6 +1417,22 @@ public class ETAS_MultiSimAnalysisTools {
 
 			FaultBasedMapGen.makeFaultPlot(cpt, faults, FaultBasedMapGen.log10(triggerRates), region, outputDir,
 					prefix + "_trigger" + prefixAdd, false, false, triggerTitle);
+			
+			if (refSol != null) {
+				double[] ratios = new double[particRates.length];
+				double[] refParticRates = refParticRatesList.get(i);
+				for (int j=0; j<ratios.length; j++) {
+					if (addRefForRatio)
+						ratios[j] = (particRates[j] + refParticRates[j])/refParticRates[j];
+					else
+						ratios[j] = particRates[j]/refParticRates[j];
+					if (ratios[j] == 0 || !Double.isFinite(ratios[j]))
+						ratios[j] = Double.NaN;
+				}
+				
+				FaultBasedMapGen.makeFaultPlot(logGainCPT, faults, FaultBasedMapGen.log10(ratios), region, outputDir,
+						prefix + "_partic_gain" + prefixAdd, false, false, particTitle+" Gain");
+			}
 
 			for (int sectIndex = 0; sectIndex < rupSet.getNumSections(); sectIndex++) {
 				int row = sectIndex + 1;
@@ -1329,18 +1442,45 @@ public class ETAS_MultiSimAnalysisTools {
 					for (int m = 0; m < minMags.length; m++)
 						line.add("");
 					particCSV.addLine(line);
-					triggerCSV.addLine(Lists.newArrayList(line)); // need to
-																	// clone so
-																	// we don't
-																	// overwrite
-																	// values
+					triggerCSV.addLine(Lists.newArrayList(line)); // need to clone so we don't overwrite values
 				}
 				int col = i + 2;
 				particCSV.set(row, col, particRates[sectIndex] + "");
 				triggerCSV.set(row, col, triggerRates[sectIndex] + "");
 			}
+			for (int j=0; j<parentNames.size(); j++) {
+				String parentName = parentNames.get(j);
+				Integer parentID = parentNamesToIDs.get(parentName);
+				int row = j+1;
+				if (i == 0) {
+					List<String> line = Lists.newArrayList(parentName);
+					for (int m = 0; m < minMags.length; m++) {
+						line.add(""); // for value
+						if (refSol != null)
+							line.add(""); // for gain
+					}
+					parentCSV.addLine(line);
+				}
+				int col;
+				if (refSol == null)
+					col = i + 1;
+				else
+					col = i*2 + 1;
+				double parentVal = parentParticRatesList.get(i).get(parentID);
+				parentCSV.set(row, col, parentVal+"");
+				if (refSol != null) {
+					double refVal = refParentParticRatesList.get(i).get(parentID);
+					double gain;
+					if (addRefForRatio)
+						gain = (parentVal + refVal)/refVal;
+					else
+						gain = parentVal/refVal;
+					parentCSV.set(row, col+1, gain+"");
+				}
+			}
 		}
 		particCSV.writeToFile(new File(outputDir, prefix + "_partic.csv"));
+		parentCSV.writeToFile(new File(outputDir, prefix + "_parent_partic.csv"));
 		triggerCSV.writeToFile(new File(outputDir, prefix + "_trigger.csv"));
 	}
 
@@ -5541,9 +5681,9 @@ public class ETAS_MultiSimAnalysisTools {
 				System.out.println("Plotting Sub Sect Rates 1 Week");
 				double[] minMags = { 0, 6.7, 7.8 };
 				plotSectRates(childrenCatalogs, 0d, fss.getRupSet(), minMags, outputDir, "for All 1 Week",
-						"one_week_" + fullFileName, maxOT);
+						"one_week_" + fullFileName, maxOT, null, false);
 				plotSectRates(primaryCatalogs, 0d, fss.getRupSet(), minMags, outputDir, "for Primary 1 Wekk",
-						"one_week_" + subsetFileName, maxOT);
+						"one_week_" + subsetFileName, maxOT, null, false);
 			}
 
 			if (plotTemporalDecay && triggerParentID >= 0) {

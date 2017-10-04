@@ -21,6 +21,7 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.simulators.SimulatorEvent;
@@ -490,6 +491,28 @@ public class RSQSimUtils {
 		FaultBasedMapGen.plotSegmentation(sol, region, dir, prefix, false, 7, 10);
 		FaultBasedMapGen.plotSegmentation(sol, region, dir, prefix, false, 7.5, 10);
 		System.out.println("DONE");
+	}
+	
+	public static void cleanVertFocalMechs(List<SimulatorElement> elems, List<FaultSectionPrefData> subSects) {
+		int offset = getSubSectIndexOffset(elems, subSects);
+		
+		for (SimulatorElement elem : elems) {
+			FocalMechanism mech = elem.getFocalMechanism();
+			if (mech.getDip() == 90 && (mech.getRake() == -180 || mech.getRake() == 180 || mech.getRake() == 0)) {
+				FaultSectionPrefData sect = subSects.get(elem.getSectionID()-offset);
+				mech.setRake(sect.getAveRake());
+				double strike = mech.getStrike();
+				double sectStrike = sect.getFaultTrace().getAveStrike();
+				double strikeDelta = Math.abs(strike - sectStrike);
+				strikeDelta = Math.min(strikeDelta, Math.abs(360 + strike - sectStrike));
+				strikeDelta = Math.min(strikeDelta, Math.abs(strike - (sectStrike + 360)));
+				if (strikeDelta > 135)
+					strike += 180;
+				while (strike > 360)
+					strike -= 360;
+				mech.setStrike(strike);
+			}
+		}
 	}
 	
 	public static void main(String[] args) throws IOException, GMT_MapException, RuntimeException {
