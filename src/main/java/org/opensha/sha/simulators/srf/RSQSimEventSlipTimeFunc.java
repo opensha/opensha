@@ -145,6 +145,13 @@ public class RSQSimEventSlipTimeFunc {
 		return slipFunc.getInterpolatedY(time);
 	}
 	
+	public double getMaxCumulativeSlip() {
+		double max = 0d;
+		for (DiscretizedFunc func : slipFuncs.values())
+			max = Math.max(max, func.getMaxY());
+		return max;
+	}
+	
 	MinMaxAveTracker validateTotalSlip(RSQSimEvent event, double pDiffThreshold) {
 		int[] patchIDs = event.getAllElementIDs();
 		double[] slips = event.getAllElementSlips();

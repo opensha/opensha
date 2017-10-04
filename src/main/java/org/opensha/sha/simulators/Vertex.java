@@ -88,6 +88,10 @@ public class Vertex extends Location {
 	 * @return
 	 */
 	public double getDAS() {return das;}
+	
+	public void setDAS(double das) {
+		this.das = das;
+	}
 
 	/**
 	 * tells whether is on the fault trace  (0 means no; 1 means yes, but not

@@ -4,7 +4,9 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,12 +15,16 @@ import org.jfree.data.Range;
 import org.jfree.ui.TextAnchor;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.SimulatorElement;
@@ -26,6 +32,7 @@ import org.opensha.sha.simulators.SimulatorEvent;
 import org.opensha.sha.simulators.iden.EventIDsRupIden;
 import org.opensha.sha.simulators.iden.RuptureIdentifier;
 import org.opensha.sha.simulators.parsers.RSQSimFileReader;
+import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
 
@@ -34,6 +41,7 @@ public class RSQSimSRFGenerator {
 	public static enum SRFInterpolationMode {
 		NONE,
 		ADJ_VEL,
+		LIN_TAPER_VEL,
 		CONST_VEL_ADJ_LEN
 	}
 	
@@ -45,6 +53,39 @@ public class RSQSimSRFGenerator {
 		return srfs;
 	}
 	
+	private static class Taper {
+		private double upTaperStart, upTaperEnd, downTaperStart, downTaperEnd, vel;
+
+		public Taper(double upTaperStart, double upTaperEnd, double downTaperStart, double downTaperEnd, double vel) {
+			super();
+			this.upTaperStart = upTaperStart;
+			this.upTaperEnd = upTaperEnd;
+			Preconditions.checkState(upTaperEnd > upTaperStart);
+			this.downTaperStart = downTaperStart;
+			this.downTaperEnd = downTaperEnd;
+			Preconditions.checkState(downTaperEnd > downTaperStart);
+			Preconditions.checkState(downTaperStart > upTaperEnd);
+			this.vel = vel;
+		}
+		
+		public double getVel(double time) {
+			if (time < upTaperStart || time > downTaperEnd)
+				// outside of taper
+				return 0d;
+			if (time < upTaperEnd) {
+				// in the up taper
+				double fract = (time - upTaperStart)/(upTaperEnd - upTaperStart);
+				return fract*vel;
+			}
+			if (time > downTaperStart) {
+				// in the down taper
+				double fract = (time - downTaperStart)/(downTaperEnd - downTaperStart);
+				return (1d-fract)*vel;
+			}
+			return vel;
+		}
+	}
+	
 	public static SRF_PointData buildSRF(RSQSimEventSlipTimeFunc func, SimulatorElement patch, double dt, SRFInterpolationMode mode) {
 		// convert to relative function (only done if needed, and cached as necessary so fast)
 		func = func.asRelativeTimeFunc();
@@ -53,12 +94,34 @@ public class RSQSimSRFGenerator {
 		int patchID = patch.getID();
 		double tStart = func.getTimeOfFirstSlip(patchID);
 		double tEnd = func.getTimeOfLastSlip(patchID);
+		
+		List<Taper> tapers = null;
+		if (mode == SRFInterpolationMode.LIN_TAPER_VEL) {
+			tapers = new ArrayList<>();
+			for (RSQSimStateTime trans : func.getTransitions(patchID)) {
+				if (trans.getState() != RSQSimState.EARTHQUAKE_SLIP)
+					continue;
+				double s = trans.getStartTime();
+				double e = trans.getEndTime();
+				double d = e - s;
+				double taperLen = d*0.1;
+				double upTaperStart = s - 0.5*taperLen;
+				double upTaperEnd = s + 0.5*taperLen;
+				double downTaperStart = e - 0.5*taperLen;
+				double downTaperEnd = e + 0.5*taperLen;
+				tStart = Math.min(tStart, upTaperStart);
+				tEnd = Math.max(tEnd, downTaperEnd);
+				tapers.add(new Taper(upTaperStart, upTaperEnd, downTaperStart, downTaperEnd, func.getSlipVelocity()));
+			}
+		}
+		
 		FocalMechanism focal = patch.getFocalMechanism();
 		double totSlip = func.getCumulativeEventSlip(patchID, func.getEndTime());
 		int numSteps = (int)Math.ceil((tEnd - tStart)/dt);
 		double[] slipVels = new double[numSteps];
 		double constSlipPerStep = dt*func.getSlipVelocity();
 		double curTotSlip = 0;
+		
 		for (int i=0; i<numSteps; i++) {
 			double time = tStart + dt*i;
 			switch (mode) {
@@ -69,6 +132,10 @@ public class RSQSimSRFGenerator {
 				double slipStart = func.getCumulativeEventSlip(patchID, time);
 				double slipEnd = func.getCumulativeEventSlip(patchID, time+dt);
 				slipVels[i] = (slipEnd - slipStart)/dt;
+				break;
+			case LIN_TAPER_VEL:
+				for (Taper taper : tapers)
+					slipVels[i] += taper.getVel(time);
 				break;
 			case CONST_VEL_ADJ_LEN:
 				double targetSlip = func.getCumulativeEventSlip(patchID, time+dt);
@@ -145,6 +212,9 @@ public class RSQSimSRFGenerator {
 				break;
 			case ADJ_VEL:
 				c = Color.GREEN;
+				break;
+			case LIN_TAPER_VEL:
+				c = Color.CYAN;
 				break;
 			case CONST_VEL_ADJ_LEN:
 				c = Color.BLUE;
@@ -224,16 +294,21 @@ public class RSQSimSRFGenerator {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
-		File geomFile = new File(catalogDir, "zfault_Deepen.in");
-		File transFile = new File(catalogDir, "trans.rundir2194_long.out");
+//		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
+//		File geomFile = new File(catalogDir, "zfault_Deepen.in");
+//		File transFile = new File(catalogDir, "trans.rundir2194_long.out");
+//		
+////		int[] eventIDs = { 399681 };
+//		int[] eventIDs = { 136704, 145982 };
 		
-		// must be sorted!
-//		int[] eventIDs = { 399681 };
-		int[] eventIDs = { 136704, 145982 };
+		File catalogDir = new File("/data/kevin/simulators/catalogs/JG_UCERF3_millionElement");
+		File geomFile = new File(catalogDir, "UCERF3.D3.1.millionElements.flt");
+		File transFile = new File(catalogDir, "trans.UCERF3.D3.1.millionElements1.out");
 		
-		boolean plotIndividual = true;
-		int plotMod = 10;
+		int[] eventIDs = { 4099020 };
+		
+		boolean plotIndividual = false;
+		int plotMod = 50;
 		boolean writeSRF = true;
 		
 		double slipVel = 1d;
@@ -243,7 +318,11 @@ public class RSQSimSRFGenerator {
 		
 		System.out.println("Loading geometry...");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
-		System.out.println("Loaded "+elements.size()+" elements");
+		double meanArea = 0d;
+		for (SimulatorElement e : elements)
+			meanArea += e.getArea()/1000000d; // to km^2
+		meanArea /= elements.size();
+		System.out.println("Loaded "+elements.size()+" elements. Mean area: "+(float)meanArea+" km^2");
 		List<RuptureIdentifier> loadIdens = new ArrayList<>();
 //		RuptureIdentifier loadIden = new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
 //				new MagRangeRuptureIdentifier(minMag, maxMag),
@@ -258,6 +337,8 @@ public class RSQSimSRFGenerator {
 		
 		SRFInterpolationMode[] modes = SRFInterpolationMode.values();
 		double[] dts = { 0.1, 0.05 };
+//		SRFInterpolationMode[] modes = { SRFInterpolationMode.ADJ_VEL };
+//		double[] dts = { 0.05 };
 		double srfVersion = 1.0;
 		
 		int patchDigits = (elements.size()+"").length();
@@ -266,8 +347,10 @@ public class RSQSimSRFGenerator {
 			System.out.println("Event: "+event.getID()+", M"+(float)event.getMagnitude());
 			int eventID = event.getID();
 			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), slipVel);
+			String eventStr = "event_"+eventID;
+			
 			for (double dt : dts) {
-				File eventOutputDir = new File(outputDir, "event_"+eventID+"_"+(float)dt+"s");
+				File eventOutputDir = new File(outputDir, eventStr+"_"+(float)dt+"s");
 				System.out.println("dt="+dt+" => "+outputDir.getAbsolutePath());
 				Preconditions.checkState(eventOutputDir.exists() || eventOutputDir.mkdir());
 				

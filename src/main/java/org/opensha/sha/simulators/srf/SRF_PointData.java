@@ -238,7 +238,8 @@ public class SRF_PointData {
 	}
 	
 	private static final String sep = "\t";
-	private static final DecimalFormat writeDF = new DecimalFormat("0.######");
+	private static final DecimalFormat decimalDF = new DecimalFormat("0.######");
+	private static final DecimalFormat expDF = new DecimalFormat("0.00000E00");
 	
 	public static void writeSRF(File srfFile, List<SRF_PointData> points, double version) throws IOException {
 		FileWriter fw = new FileWriter(srfFile);
@@ -249,31 +250,44 @@ public class SRF_PointData {
 		fw.write("POINTS "+points.size()+"\n");
 		for (SRF_PointData point : points) {
 			StringBuilder str = new StringBuilder();
-			str.append(writeDF.format(point.loc.getLongitude())).append(sep);
-			str.append(writeDF.format(point.loc.getLatitude())).append(sep);
-			str.append(writeDF.format(point.loc.getDepth())).append(sep);
-			str.append(writeDF.format(point.focal.getStrike())).append(sep);
-			str.append(writeDF.format(point.focal.getDip())).append(sep);
-			str.append((float)(point.area*10000)).append(sep); // m^2 to cm^2
-			str.append(writeDF.format(point.tInit)).append(sep);
-			str.append(writeDF.format(point.dt)).append(sep);
+			str.append(decimalDF.format(point.loc.getLongitude())).append(sep);
+			str.append(decimalDF.format(point.loc.getLatitude())).append(sep);
+			str.append(expDF.format(point.loc.getDepth())).append(sep);
+			str.append(decimalDF.format(point.focal.getStrike())).append(sep);
+			str.append(decimalDF.format(point.focal.getDip())).append(sep);
+			str.append(expDF.format(point.area*10000)).append(sep); // m^2 to cm^2
+			str.append(decimalDF.format(point.tInit)).append(sep);
+			str.append(expDF.format(point.dt)).append(sep);
 			if (version > 1) {
 				str.append("-1").append(sep); // VS
 				str.append("-1").append(sep); // DEN
 			}
-			str.append(writeDF.format(point.focal.getRake())).append(sep);
-			str.append(writeDF.format(point.totSlip1*100d)).append(sep); // m to cm
+			str.append("\n");
+			str.append(decimalDF.format(point.focal.getRake())).append(sep);
+			str.append(decimalDF.format(point.totSlip1*100d)).append(sep); // m to cm
 			str.append(point.slipVels1.length).append(sep);
-			str.append(writeDF.format(point.totSlip2*100d)).append(sep); // m to cm
+			str.append(decimalDF.format(point.totSlip2*100d)).append(sep); // m to cm
 			str.append(point.slipVels2.length).append(sep);
-			str.append(writeDF.format(point.totSlip3*100d)).append(sep); // m to cm
+			str.append(decimalDF.format(point.totSlip3*100d)).append(sep); // m to cm
 			str.append(point.slipVels3.length);
-			for (double s : point.slipVels1)
-				str.append(sep).append(writeDF.format(s*100d)); // m to cm
-			for (double s : point.slipVels2)
-				str.append(sep).append(writeDF.format(s*100d)); // m to cm
-			for (double s : point.slipVels3)
-				str.append(sep).append(writeDF.format(s*100d)); // m to cm
+			double[] allSlips = new double[point.slipVels1.length + point.slipVels2.length + point.slipVels3.length];
+			if (point.slipVels1.length > 0)
+				System.arraycopy(point.slipVels1, 0, allSlips, 0, point.slipVels1.length);
+			if (point.slipVels2.length > 0)
+				System.arraycopy(point.slipVels2, 0, allSlips, point.slipVels1.length, point.slipVels2.length);
+			if (point.slipVels3.length > 0)
+				System.arraycopy(point.slipVels3, 0, allSlips, point.slipVels1.length+point.slipVels2.length, point.slipVels3.length);
+			for (int i=0; i<allSlips.length; i++) {
+				if (i % 6 == 0)
+					str.append("\n");
+				str.append(sep).append(expDF.format(allSlips[i]*100d));
+			}
+//			for (double s : point.slipVels1)
+//				str.append(sep).append(writeDF.format(s*100d)); // m to cm
+//			for (double s : point.slipVels2)
+//				str.append(sep).append(writeDF.format(s*100d)); // m to cm
+//			for (double s : point.slipVels3)
+//				str.append(sep).append(writeDF.format(s*100d)); // m to cm
 			str.append("\n");
 			fw.write(str.toString());
 		}
