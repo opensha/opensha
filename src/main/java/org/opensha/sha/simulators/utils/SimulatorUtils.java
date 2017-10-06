@@ -56,6 +56,7 @@ public class SimulatorUtils {
 		}
 		return totLen;
 	}
+	
 	private static double maxHorzDist(SimulatorElement e1, SimulatorElement e2) {
 		double maxDist = 0d;
 		for (Location p1 : e1.getVertices())
@@ -66,7 +67,7 @@ public class SimulatorUtils {
 	
 	public static void estimateVertexDAS(SimulatorEvent event) {
 		// find the 2 elements that are farthest from each other
-		
+
 		// start by finding the farthest pair of EventRecord's
 		EventRecord leftRec = null;
 		EventRecord rightRec = null;
@@ -89,7 +90,7 @@ public class SimulatorUtils {
 				}
 			}
 		}
-		
+
 		// now find the pair of elements on those records which are farthest
 		Location leftLoc = null;
 		Location rightLoc = null;
@@ -109,6 +110,10 @@ public class SimulatorUtils {
 			}
 		}
 		
+		estimateVertexDAS(event, leftLoc, rightLoc);
+	}
+	
+	public static void estimateVertexDAS(SimulatorEvent event, Location leftLoc, Location rightLoc) {
 		List<SimulatorElement> elems = event.getAllElements();
 		
 		// now try to make it conform with Aki & Richards
@@ -135,12 +140,18 @@ public class SimulatorUtils {
 			}
 		}
 		
+		double minDAS = Double.POSITIVE_INFINITY;
+		
 		for (SimulatorElement e : elems) {
 			for (Vertex v : e.getVertices()) {
 				double das = estimateDAS(leftLoc, rightLoc, v);
+				minDAS = Math.min(minDAS, das);
 				v.setDAS(das);
 			}
 		}
+		for (SimulatorElement e : elems)
+			for (Vertex v : e.getVertices())
+				v.setDAS(v.getDAS()-minDAS);
 	}
 	
 	public static double estimateDAS(Location firstLoc, Location lastLoc, Location loc) {
