@@ -1,21 +1,24 @@
 package org.opensha.sha.simulators.utils;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import org.dom4j.Document;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.exceptions.GMT_MapException;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationVector;
+import org.opensha.commons.geo.PlaneUtils;
 import org.opensha.commons.geo.Region;
-import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.XMLUtils;
@@ -24,10 +27,12 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.simulators.SimulatorEvent;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.SimulatorElement;
+import org.opensha.sha.simulators.SimulatorEvent;
+import org.opensha.sha.simulators.TriangularElement;
+import org.opensha.sha.simulators.Vertex;
 import org.opensha.sha.simulators.iden.EventTimeIdentifier;
 import org.opensha.sha.simulators.iden.LogicalAndRupIden;
 import org.opensha.sha.simulators.iden.MagRangeRuptureIdentifier;
@@ -36,6 +41,7 @@ import org.opensha.sha.simulators.parsers.RSQSimFileReader;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.LittleEndianDataOutputStream;
 
 import scratch.UCERF3.SlipEnabledRupSet;
 import scratch.UCERF3.SlipEnabledSolution;
@@ -55,7 +61,7 @@ import scratch.kevin.simulators.erf.SimulatorFaultSystemSolution;
 public class RSQSimUtils {
 
 	public static EqkRupture buildSubSectBasedRupture(SimulatorEvent event, List<FaultSectionPrefData> subSects,
-			List<SimulatorElement> elements) {
+			List<SimulatorElement> elements, double minFractForInclusion, Map<Integer, Double> subSectAreas) {
 		int minElemSectID = getSubSectIndexOffset(elements, subSects);
 		double mag = event.getMagnitude();
 
@@ -69,11 +75,18 @@ public class RSQSimUtils {
 		Map<IDPairing, Double> distsCache = Maps.newHashMap();
 
 		List<List<FaultSectionPrefData>> rupSectsListBundled =
-				getSectionsForRupture(event, minElemSectID, subSects, distsCache, 0d, null);
+				getSectionsForRupture(event, minElemSectID, subSects, distsCache, minFractForInclusion, subSectAreas);
+		if (minFractForInclusion > 0 && rupSectsListBundled.isEmpty()) {
+			// fallback to any that touch if empty
+			rupSectsListBundled = getSectionsForRupture(
+					event, minElemSectID, subSects, distsCache, 0d, subSectAreas);
+		}
 
 		List<FaultSectionPrefData> rupSects = Lists.newArrayList();
 		for (List<FaultSectionPrefData> sects : rupSectsListBundled)
 			rupSects.addAll(sects);
+		Preconditions.checkState(!rupSects.isEmpty(), "No mapped sections! ID=%s, M=%s, %s elems",
+				event.getID(), event.getMagnitude(), event.getAllElementIDs().length);
 
 		double gridSpacing = 1d;
 
@@ -216,7 +229,7 @@ public class RSQSimUtils {
 		return sects;
 	}
 	
-	private static Map<Integer, Double> calcSubSectAreas(List<SimulatorElement> elements) {
+	public static Map<Integer, Double> calcSubSectAreas(List<SimulatorElement> elements) {
 		Map<Integer, Double> subSectAreas = new HashMap<>();
 		for (SimulatorElement elem : elements) {
 			Double prevArea = subSectAreas.get(elem.getSectionID());
@@ -515,6 +528,94 @@ public class RSQSimUtils {
 		}
 	}
 	
+	public static void writeSTLFile(List<SimulatorElement> elements, File file) throws IOException {
+		double minLat = Double.POSITIVE_INFINITY;
+		double minLon = Double.POSITIVE_INFINITY;
+		double maxDepth = 0;
+		for (SimulatorElement e : elements) {
+			Preconditions.checkState(e instanceof TriangularElement, "STL only supports triangles");
+			for (Location loc : e.getVertices()) {
+				minLat = Math.min(minLat, loc.getLatitude());
+				minLon = Math.min(minLon, loc.getLongitude());
+				maxDepth = Math.max(maxDepth, loc.getDepth());
+			}
+		}
+		Location refLoc = new Location(minLat, minLon);
+//		double aveLat = 0;
+//		double aveLon = 0;
+//		for (SimulatorElement e : elements) {
+//			Preconditions.checkState(e instanceof TriangularElement, "STL only supports triangles");
+//			Location center = e.getCenterLocation();
+//			aveLat += center.getLatitude();
+//			aveLon += center.getLongitude();
+//		}
+//		aveLat /= elements.size();
+//		aveLon /= elements.size();
+//		Location refLoc = new Location(aveLat, aveLon);
+		
+		LittleEndianDataOutputStream out = new LittleEndianDataOutputStream(
+				new BufferedOutputStream(new FileOutputStream(file)));
+		
+		/*
+		 * Format:
+		 * UINT8[80]  Header
+		 * UINT32  Number of triangles
+		 * 
+		 * foreach triangle
+		 * 	REAL32[3]  Normal vector
+		 * 	REAL32[3]  Vertex 1
+		 * 	REAL32[3]  Vertex 2
+		 * 	REAL32[3]  Vertex 3
+		 * 	UINT16  Attribute byte count
+		 * end
+		 */
+		
+		// starts with 80 byte header that is ignored
+		out.write(new byte[80]);
+		
+		// number of triangles
+		out.writeInt(elements.size());
+		
+		for (SimulatorElement e : elements) {
+			double[][] vertices = new double[3][3];
+			Vertex[] eVerts = e.getVertices();
+			
+			for (int i=0; i<3; i++) {
+				LocationVector vector = LocationUtils.vector(refLoc, eVerts[i]);
+				double az = vector.getAzimuthRad();
+				double horzDist = vector.getHorzDistance();
+				double x = horzDist*Math.sin(az);
+				double y = horzDist*Math.cos(az);
+//				double z = -eVerts[i].getDepth() + maxDepth;
+				double z = -eVerts[i].getDepth();
+				
+				vertices[i][0] = x+0.01;
+				vertices[i][1] = y+0.01;
+				vertices[i][2] = z+0.01;
+				
+//				System.out.println(refLoc+" => "+eVerts[i]);
+//				System.out.println("\t"+x+"\t"+y+"\t"+z);
+				
+				Preconditions.checkState(x >= 0, "bad x=%s", x);
+				Preconditions.checkState(y >= 0, "bad y=%s", y);
+//				Preconditions.checkState(z >= 0, "bad z=%s", z);
+			}
+			
+			double[] normal = PlaneUtils.getNormalVector(vertices);
+			
+			for (double val : normal)
+				out.writeFloat((float)val);
+			for (double[] vert : vertices)
+				for (double val : vert)
+					out.writeFloat((float)val);
+			// " "attribute byte count" in the standard format, this should be
+			// zero because most software does not understand anything else."
+			out.writeShort(0);
+		}
+		
+		out.close();
+	}
+	
 	public static void main(String[] args) throws IOException, GMT_MapException, RuntimeException {
 //		File dir = new File("/home/kevin/Simulators/UCERF3_35kyrs");
 //		File geomFile = new File(dir, "UCERF3.1km.tri.flt");
@@ -522,10 +623,16 @@ public class RSQSimUtils {
 //		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
 //		File dir = new File("/home/kevin/Simulators/bruce/rundir1435");
 //		File geomFile = new File(dir, "zfault_Deepen.in");
-		File dir = new File("/home/kevin/Simulators/UCERF3_JG_supraSeisGeo2");
-		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
+//		File dir = new File("/home/kevin/Simulators/UCERF3_JG_supraSeisGeo2");
+//		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
+		File dir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
+		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
 		System.out.println("Loaded "+elements.size()+" elements");
+		
+		File stlFile = new File("/home/kevin/git/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
+		writeSTLFile(elements, stlFile);
+		System.exit(0);
 //		for (Location loc : elements.get(0).getVertices())
 //			System.out.println(loc);
 		File eventDir = dir;
