@@ -4,12 +4,23 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Stroke;
 import java.awt.geom.Point2D;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageTypeSpecifier;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.metadata.IIOMetadata;
+import javax.imageio.metadata.IIOMetadataNode;
+import javax.imageio.stream.FileImageOutputStream;
 
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYLineAnnotation;
@@ -23,21 +34,17 @@ import org.jfree.ui.RectangleEdge;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.simulators.RSQSimEvent;
@@ -295,7 +302,7 @@ public class RupturePlotGenerator {
 		
 		PlotPreferences prefs = gp.getPlotPrefs();
 		
-		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Slim (m)",
+		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Slip (m)",
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
 		double timeInc;
 		if (func.getEndTime() > 20)
@@ -333,6 +340,218 @@ public class RupturePlotGenerator {
 		gp.getChartPanel().setSize(width, height);
 		gp.saveAsPNG(file.getAbsolutePath()+".png");
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+	}
+	
+	public static void writeSlipAnimation(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputFile, double fps)
+			throws IOException {
+		writeSlipAnimation(event, func, outputFile, fps, null, null);
+	}
+	
+	private static final DecimalFormat timeDF = new DecimalFormat("0.0");
+	
+	public static void writeSlipAnimation(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputFile,
+			double fps, Location refLeftLoc, Location refRightLoc) throws IOException {
+		System.out.println("Estimating DAS");
+		if (refLeftLoc == null || refRightLoc == null)
+			SimulatorUtils.estimateVertexDAS(event);
+		else
+			SimulatorUtils.estimateVertexDAS(event, refLeftLoc, refRightLoc);
+		System.out.println("Done estimating DAS");
+		func = func.asRelativeTimeFunc();
+		
+		CPT slipCPT = GMT_CPT_Files.GMT_HOT.instance().reverse().rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
+		CPT velCPT = new CPT(0d, func.getSlipVelocity(), Color.BLUE, Color.RED);
+		
+		List<SimulatorElement> rupElems = event.getAllElements();
+		List<Double> emptyScalars = new ArrayList<>();
+		for (int i=0; i<rupElems.size(); i++)
+			emptyScalars.add(0d);
+		List<XYAnnotation> slipPolys = buildElementPolygons(
+				rupElems, emptyScalars, slipCPT, false, Color.BLACK, 0.1d);
+		List<XYAnnotation> velPolys = buildElementPolygons(
+				rupElems, emptyScalars, velCPT, false, Color.BLACK, 0.1d);
+		
+		XY_DataSet dummyData = new DefaultXY_DataSet(new double[] {0d}, new double[] {0d});
+		List<XY_DataSet> elems = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		elems.add(dummyData);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 0.01f, Color.WHITE));
+		
+		Iterator<ImageWriter> iter = ImageIO.getImageWritersBySuffix("gif");
+		Preconditions.checkArgument(iter.hasNext(), "No GIF image writers available!");
+		ImageWriter writer = iter.next();
+		
+		ImageWriteParam imageWriteParam = writer.getDefaultWriteParam();
+		ImageTypeSpecifier imageTypeSpecifier = ImageTypeSpecifier.createFromBufferedImageType(BufferedImage.TYPE_INT_RGB);
+
+		IIOMetadata imageMetaData = writer.getDefaultImageMetadata(imageTypeSpecifier, imageWriteParam);
+
+		String metaFormatName = imageMetaData.getNativeMetadataFormatName();
+
+		IIOMetadataNode root = (IIOMetadataNode)imageMetaData.getAsTree(metaFormatName);
+
+		IIOMetadataNode graphicsControlExtensionNode = getNode(root, "GraphicControlExtension");
+		
+		// in hundreths of a second
+		int delayTime = (int)(100d/fps);
+
+		graphicsControlExtensionNode.setAttribute("disposalMethod", "none");
+		graphicsControlExtensionNode.setAttribute("userInputFlag", "FALSE");
+		graphicsControlExtensionNode.setAttribute("transparentColorFlag", "FALSE");
+		graphicsControlExtensionNode.setAttribute("delayTime", delayTime+"");
+		graphicsControlExtensionNode.setAttribute("transparentColorIndex", "0");
+
+		IIOMetadataNode commentsNode = getNode(root, "CommentExtensions");
+		commentsNode.setAttribute("CommentExtension", "Created by SCEC-VDO");
+
+		IIOMetadataNode appEntensionsNode = getNode(root, "ApplicationExtensions");
+
+		IIOMetadataNode child = new IIOMetadataNode("ApplicationExtension");
+
+		child.setAttribute("applicationID", "NETSCAPE");
+		child.setAttribute("authenticationCode", "2.0");
+
+		int loop = 0;
+
+		child.setUserObject(new byte[]{ 0x1, (byte) (loop & 0xFF), (byte)((loop >> 8) & 0xFF)});
+		appEntensionsNode.appendChild(child);
+
+		imageMetaData.setFromTree(metaFormatName, root);
+
+		if (outputFile.exists())
+			Preconditions.checkState(outputFile.delete());
+		FileImageOutputStream output = new FileImageOutputStream(outputFile);
+		writer.setOutput(output);
+		writer.prepareWriteSequence(imageMetaData);
+		
+		double dt = 1/fps;
+		
+		double maxTime = Math.ceil(func.getEndTime()/dt)*dt;
+		String title = "Rupture Animation";
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setTickLabelFontSize(16);
+		gp.setAxisLabelFontSize(18);
+		gp.setPlotLabelFontSize(18);
+		gp.setBackgroundColor(Color.WHITE);
+		
+		PlotPreferences prefs = gp.getPlotPrefs();
+		
+		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
+				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
+//		PaintScaleLegend timeCPTbar = XYZGraphPanel.getLegendForCPT(velCPT, "SLip Velocity (m/s)",
+//				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 0.5, RectangleEdge.BOTTOM);
+		
+		double minDAS = Double.POSITIVE_INFINITY;
+		double maxDAS = Double.NEGATIVE_INFINITY;
+		double maxDepth = 0d;
+		for (SimulatorElement elem : rupElems) {
+			for (Vertex v : elem.getVertices()) {
+				minDAS = Math.min(minDAS, v.getDAS());
+				maxDAS = Math.max(maxDAS, v.getDAS());
+				maxDepth = Math.max(maxDepth, v.getDepth());
+			}
+		}
+		
+		Range xRange = new Range(Math.min(0, minDAS)-1, maxDAS+1);
+		Range yRange = new Range(-1, maxDepth+1);
+		List<Range> xRanges = new ArrayList<>();
+		List<Range> yRanges = new ArrayList<>();
+		xRanges.add(xRange);
+		yRanges.add(yRange);
+		yRanges.add(yRange);
+		
+		int totFrames = (int)Math.ceil(maxTime/dt);
+		System.out.println("Bulding animation with "+totFrames+" frames");
+		System.out.print("Frame:");
+		int frameIndex = 0;
+		for (double t=0; t<=maxTime; t+=dt) {
+			if (frameIndex % 40 == 0)
+				System.out.println();
+			else
+				System.out.print(" ");
+			System.out.print((frameIndex++));
+			List<PlotSpec> specs = new ArrayList<>();
+			
+			for (int i=0; i<rupElems.size(); i++) {
+				XYPolygonAnnotation slipPoly = (XYPolygonAnnotation)slipPolys.get(i);
+				XYPolygonAnnotation velPoly = (XYPolygonAnnotation)velPolys.get(i);
+				
+				int patchID = rupElems.get(i).getID();
+				double slip = func.getCumulativeEventSlip(patchID, t);
+				double vel = func.getVelocity(patchID, t);
+				
+				Color slipColor = slipCPT.getColor((float)slip);
+				Color velColor = velCPT.getColor((float)vel);
+				
+				slipPoly = new XYPolygonAnnotation(slipPoly.getPolygonCoordinates(), slipPoly.getOutlineStroke(),
+						slipPoly.getOutlinePaint(), slipColor);
+				slipPolys.set(i, slipPoly);
+				velPoly = new XYPolygonAnnotation(velPoly.getPolygonCoordinates(), velPoly.getOutlineStroke(),
+						velPoly.getOutlinePaint(), velColor);
+				velPolys.set(i, velPoly);
+			}
+			
+			String myTitle = title+" ("+timeDF.format(t)+"s)";
+			PlotSpec slipSpec = new PlotSpec(elems, chars, myTitle, "Distance Along Strike (km)", "Depth (km)");
+			slipSpec.setPlotAnnotations(slipPolys);
+			specs.add(slipSpec);
+			
+			PlotSpec velSpec = new PlotSpec(elems, chars, myTitle, "Distance Along Strike (km)", "Depth (km)");
+			velSpec.setPlotAnnotations(velPolys);
+			specs.add(velSpec);
+			
+			gp.setyAxisInverted(true);
+			gp.drawGraphPanel(specs, false, false, xRanges, yRanges);
+			gp.addSubtitle(slipCPTbar);
+//			gp.addSubtitle(timeCPTbar);
+			
+//			int bufferX = 113;
+//			int bufferY = 332;
+			int bufferX = 60;
+			int bufferY = 100;
+			
+			int height = 400;
+			double heightEach = (height - bufferY)/3d;
+//			System.out.println("Height each: "+heightEach);
+//			double targetWidth = heightEach*maxDepth/maxDAS;
+			double targetWidth = heightEach*maxDAS/maxDepth;
+//			System.out.println("Target Width: "+targetWidth);
+			int width = (int)(targetWidth) + bufferX;
+			
+			gp.getChartPanel().setSize(width, height);
+			BufferedImage img = gp.getBufferedImage(width, height);
+			
+			writer.writeToSequence(new IIOImage(img, null, imageMetaData), imageWriteParam);
+		}
+		System.out.println("\nDONE");
+		
+		writer.endWriteSequence();
+		output.close();
+	}
+	
+	/**
+	 * Returns an existing child node, or creates and returns a new child node (if 
+	 * the requested node does not exist).
+	 * 
+	 * @param rootNode the <tt>IIOMetadataNode</tt> to search for the child node.
+	 * @param nodeName the name of the child node.
+	 * 
+	 * @return the child node, if found or a new node created with the given name.
+	 */
+	private static IIOMetadataNode getNode(
+			IIOMetadataNode rootNode,
+			String nodeName) {
+		int nNodes = rootNode.getLength();
+		for (int i = 0; i < nNodes; i++) {
+			if (rootNode.item(i).getNodeName().compareToIgnoreCase(nodeName)
+					== 0) {
+				return((IIOMetadataNode) rootNode.item(i));
+			}
+		}
+		IIOMetadataNode node = new IIOMetadataNode(nodeName);
+		rootNode.appendChild(node);
+		return(node);
 	}
 	
 	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,

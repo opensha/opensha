@@ -84,7 +84,7 @@ public class RSQSimEventSlipTimeFunc {
 		return slipFuncs.get(patchID);
 	}
 	
-	double getSlipVelocity() {
+	public double getSlipVelocity() {
 		return slipVel;
 	}
 	
