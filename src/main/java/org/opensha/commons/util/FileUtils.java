@@ -243,6 +243,31 @@ public class FileUtils {
 		}catch(Exception e) { e.printStackTrace(); }
 		return null;
 	}
+	
+	public static void createZipFile(File zipFile, File dir, boolean topLevelChildren) throws IOException {
+		ArrayList<String> fileNames = new ArrayList<>();
+		if (topLevelChildren) {
+			for (File file : dir.listFiles())
+				populateZipFilePaths(fileNames, file, "");
+			createZipFile(zipFile.getAbsolutePath(), dir.getAbsolutePath(), fileNames);
+		} else {
+			populateZipFilePaths(fileNames, dir, "");
+			createZipFile(zipFile.getAbsolutePath(), dir.getParentFile().getAbsolutePath(), fileNames);
+		}
+	}
+	
+	private static void populateZipFilePaths(ArrayList<String> fileNames, File file, String path) {
+		if (file.isDirectory()) {
+			path += file.getName()+"/";
+			for (File sub : file.listFiles())
+				populateZipFilePaths(fileNames, sub, path);
+		} else {
+			if (path.isEmpty())
+				fileNames.add(file.getName());
+			else
+				fileNames.add(path+file.getName());
+		}
+	}
 
 	/**
 	 * This creates a zip file with the given name from a list of file names.

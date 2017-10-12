@@ -26,7 +26,7 @@ dependencies {
     compileAndResource files('lib/ncCore-4.0.jar')
     compileOnly files('lib/mpj-0.38.jar') // MPJ API
     compileAndResource files('lib/f2jutil.jar') // used by NNLS code
-    compileAndResource files('lib/mpj-task-calculator-1.0.jar') // MPJTaskCalculator
+    compileAndResource files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
 
     testCompile 'junit:junit:4.12'
 }

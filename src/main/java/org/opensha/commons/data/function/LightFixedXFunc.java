@@ -67,7 +67,6 @@ public class LightFixedXFunc extends AbstractDiscretizedFunc {
 
 	@Override
 	public DiscretizedFunc deepClone() {
-		double[] xVals = Arrays.copyOf(this.xVals, this.xVals.length);
 		double[] yVals = Arrays.copyOf(this.yVals, this.yVals.length);
 		return new LightFixedXFunc(xVals, yVals);
 	}

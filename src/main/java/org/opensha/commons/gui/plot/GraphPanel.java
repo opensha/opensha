@@ -25,6 +25,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
 import java.awt.print.PrinterException;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -1173,6 +1174,10 @@ public class GraphPanel extends JSplitPane {
 		int width = chartPanel.getWidth();
 		int height = chartPanel.getHeight();
 		this.saveAsPDF(fileName, width, height);
+	}
+	
+	public BufferedImage getBufferedImage(int width, int height) {
+		return chartPanel.getChart().createBufferedImage(width, height, null);
 	}
 
 	/**
