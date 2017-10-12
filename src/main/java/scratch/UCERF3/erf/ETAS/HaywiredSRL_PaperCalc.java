@@ -311,12 +311,15 @@ public class HaywiredSRL_PaperCalc {
 			double[] faultMinMags = { 0, 6.7, 7.8 };
 			List<List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogsBinary(faultM5File);
 			
+			CPT particCPT = CPT.loadFromFile(new File(faultParticDir, "faultPartRate.cpt"));
+			CPT particGainCPT = CPT.loadFromFile(new File(faultParticDir, "faultPartGain.cpt"));
+			
 			ETAS_MultiSimAnalysisTools.plotSectRates(catalogs, 7d/365.25, refSol.getRupSet(), faultMinMags,
-					faultParticDir, "1 Week", "week", otScenarioOneWeek, refSol, true);
+					faultParticDir, "1 Week", "week", otScenarioOneWeek, refSol, true, particCPT, particGainCPT);
 			ETAS_MultiSimAnalysisTools.plotSectRates(catalogs, 1d, refSol.getRupSet(), faultMinMags,
-					faultParticDir, "1 Year", "year", otScenarioOneYear, refSol, true);
+					faultParticDir, "1 Year", "year", otScenarioOneYear, refSol, true, particCPT, particGainCPT);
 			ETAS_MultiSimAnalysisTools.plotSectRates(catalogs, 10d, refSol.getRupSet(), faultMinMags,
-					faultParticDir, "10 Year", "ten_year", otScenarioTenYear, refSol, true);
+					faultParticDir, "10 Year", "ten_year", otScenarioTenYear, refSol, true, particCPT, particGainCPT);
 		}
 	}
 

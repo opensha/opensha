@@ -1120,13 +1120,15 @@ public class ETAS_MultiSimAnalysisTools {
 	public static void plotSectRates(List<List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
 			double[] minMags, File outputDir, String titleAdd, String prefix)
 			throws IOException, GMT_MapException, RuntimeException {
-		plotSectRates(catalogs, duration, rupSet, minMags, outputDir, titleAdd, prefix, Long.MIN_VALUE, null, false);
+		plotSectRates(catalogs, duration, rupSet, minMags, outputDir, titleAdd, prefix, Long.MIN_VALUE,
+				null, false, null, null);
 
 	}
 
 	public static void plotSectRates(List<List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
 			double[] minMags, File outputDir, String titleAdd, String prefix, long maxOT,
-			FaultSystemSolution refSol, boolean addRefForRatio) throws IOException, GMT_MapException, RuntimeException {
+			FaultSystemSolution refSol, boolean addRefForRatio, CPT cpt, CPT logGainCPT)
+					throws IOException, GMT_MapException, RuntimeException {
 		List<double[]> particRatesList = Lists.newArrayList();
 		for (int i = 0; i < minMags.length; i++)
 			particRatesList.add(new double[rupSet.getNumSections()]);
@@ -1312,29 +1314,30 @@ public class ETAS_MultiSimAnalysisTools {
 			}
 		}
 
-		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
-		double maxRate = 0;
-		for (double[] particRates : particRatesList)
-			maxRate = Math.max(maxRate, StatUtils.max(particRates));
-		double fractionalRate;
-		if (maxOT > 0) {
-			fractionalRate = 1d / catalogs.size();
-		} else {
-			if (maxDuration == 0d)
+		if (cpt == null) {
+			cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
+			double maxRate = 0;
+			for (double[] particRates : particRatesList)
+				maxRate = Math.max(maxRate, StatUtils.max(particRates));
+			double fractionalRate;
+			if (maxOT > 0) {
+				fractionalRate = 1d / catalogs.size();
+			} else {
+				if (maxDuration == 0d)
+					return;
+				fractionalRate = 1d / Math.max(1d, Math.round(catalogs.size() * maxDuration));
+			}
+			double cptMin = Math.log10(fractionalRate);
+			double cptMax = Math.ceil(Math.log10(maxRate));
+			if (!Doubles.isFinite(cptMin) || !Doubles.isFinite(cptMax))
 				return;
-			fractionalRate = 1d / Math.max(1d, Math.round(catalogs.size() * maxDuration));
+			while (cptMax <= cptMin)
+				cptMax++;
+			cpt = cpt.rescale(cptMin, cptMax);
+			cpt.setBelowMinColor(Color.LIGHT_GRAY);
 		}
-		double cptMin = Math.log10(fractionalRate);
-		double cptMax = Math.ceil(Math.log10(maxRate));
-		if (!Doubles.isFinite(cptMin) || !Doubles.isFinite(cptMax))
-			return;
-		while (cptMax <= cptMin)
-			cptMax++;
-		cpt = cpt.rescale(cptMin, cptMax);
-		cpt.setBelowMinColor(Color.LIGHT_GRAY);
 		
-		CPT logGainCPT = null;
-		if (refSol != null) {
+		if (refSol != null && logGainCPT == null) {
 			logGainCPT = GMT_CPT_Files.UCERF3_ETAS_GAIN.instance().rescale(0d, 1d);
 			// from 0 to 1, we want to rescale the portion from 0.5 to 1
 			for (int i=logGainCPT.size(); --i>=0;)
@@ -5681,9 +5684,9 @@ public class ETAS_MultiSimAnalysisTools {
 				System.out.println("Plotting Sub Sect Rates 1 Week");
 				double[] minMags = { 0, 6.7, 7.8 };
 				plotSectRates(childrenCatalogs, 0d, fss.getRupSet(), minMags, outputDir, "for All 1 Week",
-						"one_week_" + fullFileName, maxOT, null, false);
+						"one_week_" + fullFileName, maxOT, null, false, null, null);
 				plotSectRates(primaryCatalogs, 0d, fss.getRupSet(), minMags, outputDir, "for Primary 1 Wekk",
-						"one_week_" + subsetFileName, maxOT, null, false);
+						"one_week_" + subsetFileName, maxOT, null, false, null, null);
 			}
 
 			if (plotTemporalDecay && triggerParentID >= 0) {
