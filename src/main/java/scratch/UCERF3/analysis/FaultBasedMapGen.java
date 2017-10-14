@@ -921,13 +921,17 @@ public class FaultBasedMapGen {
 					Files.move(zipFile, new File(saveDir, prefix+".zip"));
 				}
 				
-				File pngFile = new File(tempDir, map.getPNGFileName());
-				Preconditions.checkState(pngFile.exists(), "No PNG file: %s", pngFile.getAbsolutePath());
-				File pdfFile = new File(tempDir, map.getPDFFileName());
-				Preconditions.checkState(pdfFile.exists(), "No PDF file: %s", pdfFile.getAbsolutePath());
+				if (map.getPNGFileName() != null) {
+					File pngFile = new File(tempDir, map.getPNGFileName());
+					Preconditions.checkState(pngFile.exists(), "No PNG file: %s", pngFile.getAbsolutePath());
+					Files.move(pngFile, new File(saveDir, prefix+".png"));
+				}
+				if (map.getPDFFileName() != null) {
+					File pdfFile = new File(tempDir, map.getPDFFileName());
+					Preconditions.checkState(pdfFile.exists(), "No PDF file: %s", pdfFile.getAbsolutePath());
+					Files.move(pdfFile, new File(saveDir, prefix+".pdf"));
+				}
 				
-				Files.move(pngFile, new File(saveDir, prefix+".png"));
-				Files.move(pdfFile, new File(saveDir, prefix+".pdf"));
 				if (map.isGenerateKML())
 					Files.move(new File(tempDir, "map.kmz"), new File(saveDir, prefix+".kmz"));
 			}
@@ -940,11 +944,15 @@ public class FaultBasedMapGen {
 			System.out.println(url);
 			baseURL = url.substring(0, url.lastIndexOf('/')+1);
 			if (saveDir != null) {
-				File pngFile = new File(saveDir, prefix+".png");
-				FileUtils.downloadURL(baseURL+"map.png", pngFile);
+				if (map.getPNGFileName() != null) {
+					File pngFile = new File(saveDir, prefix+".png");
+					FileUtils.downloadURL(baseURL+"map.png", pngFile);
+				}
 				
-				File pdfFile = new File(saveDir, prefix+".pdf");
-				FileUtils.downloadURL(baseURL+"map.pdf", pdfFile);
+				if (map.getPDFFileName() != null) {
+					File pdfFile = new File(saveDir, prefix+".pdf");
+					FileUtils.downloadURL(baseURL+"map.pdf", pdfFile);
+				}
 				
 				if (map.isGenerateKML()) {
 					File kmzFile = new File(saveDir, prefix+".kmz");

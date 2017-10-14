@@ -61,7 +61,8 @@ import scratch.kevin.simulators.erf.SimulatorFaultSystemSolution;
 public class RSQSimUtils {
 
 	public static EqkRupture buildSubSectBasedRupture(SimulatorEvent event, List<FaultSectionPrefData> subSects,
-			List<SimulatorElement> elements, double minFractForInclusion, Map<Integer, Double> subSectAreas) {
+			List<SimulatorElement> elements, double minFractForInclusion, Map<Integer, Double> subSectAreas,
+			Map<IDPairing, Double> distsCache) {
 		int minElemSectID = getSubSectIndexOffset(elements, subSects);
 		double mag = event.getMagnitude();
 
@@ -71,8 +72,6 @@ public class RSQSimUtils {
 		double rake = FaultUtils.getAngleAverage(rakes);
 		if (rake > 180)
 			rake -= 360;
-
-		Map<IDPairing, Double> distsCache = Maps.newHashMap();
 
 		List<List<FaultSectionPrefData>> rupSectsListBundled =
 				getSectionsForRupture(event, minElemSectID, subSects, distsCache, minFractForInclusion, subSectAreas);
@@ -167,6 +166,9 @@ public class RSQSimUtils {
 		
 		if (rupSectsListBundled.size() > 1)
 			rupSectsListBundled = SimulatorFaultSystemSolution.sortRupture(subSects, rupSectsListBundled, distsCache);
+		
+		if (minFractForInclusion > 0 && rupSectsBundled.isEmpty())
+			return getSectionsForRupture(event, minElemSectID, subSects, distsCache, 0d, null);
 		
 		return rupSectsListBundled;
 	}
