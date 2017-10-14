@@ -44,5 +44,10 @@ public class RSQSimStateTime {
 	public boolean containsTime(double time) {
 		return time >= startTime && time < endTime;
 	}
+	
+	@Override
+	public String toString() {
+		return "["+startTime+" => "+endTime+": "+state.name()+"]";
+	}
 
 }

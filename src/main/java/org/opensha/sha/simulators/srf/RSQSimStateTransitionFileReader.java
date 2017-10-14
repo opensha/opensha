@@ -335,6 +335,16 @@ public class RSQSimStateTransitionFileReader {
 		return indexMarkers[index];
 	}
 	
+	public synchronized double getFirstTransitionTime() throws IOException {
+		read(0, 1);
+		return curTimes[0];
+	}
+	
+	public double getLastTransitionTime() throws IOException {
+		read(numTransitions-1, 1);
+		return curTimes[0];
+	}
+	
 	private static DecimalFormat timeDF = new DecimalFormat("0.000");
 	public static void printTransitions(RSQSimEvent e, Map<Integer, List<RSQSimStateTime>> transitions) {
 		System.out.println("Transitions for event "+e.getID()+" (M"+(float)e.getMagnitude()+")"

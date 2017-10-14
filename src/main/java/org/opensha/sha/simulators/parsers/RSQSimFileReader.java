@@ -16,6 +16,7 @@ import java.io.RandomAccessFile;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,6 +31,7 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
+import org.apache.poi.util.LittleEndianByteArrayInputStream;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.eq.MagUtils;
@@ -949,6 +951,139 @@ public class RSQSimFileReader {
 			}
 		}
 		
+	}
+	
+	private static File findByExt(File dir, String ext) throws FileNotFoundException {
+		for (File file : dir.listFiles())
+			if (file.getName().endsWith(ext))
+				return file;
+		throw new FileNotFoundException("No files ending in '"+ext+"' found in "+dir.getAbsolutePath());
+	}
+	
+	public static int getNumEvents(File eListFile) throws IOException {
+		if (eListFile.isDirectory())
+			eListFile = findByExt(eListFile, ".eList");
+		RandomAccessFile raFile = new RandomAccessFile(eListFile, "r");
+		
+		byte[] recordBuffer = new byte[4];
+		IntBuffer littleRecord = ByteBuffer.wrap(recordBuffer).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
+		IntBuffer bigRecord = ByteBuffer.wrap(recordBuffer).order(ByteOrder.BIG_ENDIAN).asIntBuffer();
+		
+		// 4 byte ints
+		long len = raFile.length();
+		long numVals = len/recordBuffer.length;
+		
+		// start out assuming both true, will quickly find out which one is really true
+		boolean bigEndian = true;
+		boolean littleEndian = true;
+		
+		// detect endianness
+		long pos = 0;
+		int prevLittle = -1;
+		int prevBig = -1;
+		int checkLoops = 0;
+		while (bigEndian && littleEndian) {
+			raFile.seek(pos);
+			raFile.read(recordBuffer);
+			
+			int littleID = littleRecord.get(0);
+			int bigID = bigRecord.get(0);
+			
+			if (prevLittle != -1 && prevBig != -1) {
+				if (littleID < prevLittle)
+					littleEndian = false;
+				if (bigID < prevBig)
+					bigEndian = false;
+			}
+			prevLittle = littleID;
+			prevBig = bigID;
+			pos += recordBuffer.length;
+			checkLoops++;
+		}
+		
+		Preconditions.checkState(bigEndian || littleEndian);
+//		System.out.println("Little? "+littleEndian+". Big? "+bigEndian+" (took "+checkLoops+" reads)");
+		
+		raFile.seek(0);
+		raFile.read(recordBuffer);
+		int firstID;
+		if (littleEndian)
+			firstID = littleRecord.get(0);
+		else
+			firstID = bigRecord.get(0);
+		raFile.seek((numVals-1)*recordBuffer.length);
+		raFile.read(recordBuffer);
+		int lastID;
+		if (littleEndian)
+			lastID = littleRecord.get(0);
+		else
+			lastID = bigRecord.get(0);
+		
+		raFile.close();
+		return lastID - firstID;
+	}
+	
+	public static double getDurationYears(File tListFile) throws IOException {
+		if (tListFile.isDirectory())
+			tListFile = findByExt(tListFile, ".tList");
+		RandomAccessFile raFile = new RandomAccessFile(tListFile, "r");
+		
+		byte[] recordBuffer = new byte[8];
+		DoubleBuffer littleRecord = ByteBuffer.wrap(recordBuffer).order(ByteOrder.LITTLE_ENDIAN).asDoubleBuffer();
+		DoubleBuffer bigRecord = ByteBuffer.wrap(recordBuffer).order(ByteOrder.BIG_ENDIAN).asDoubleBuffer();
+		
+		// 8 byte doubles
+		long len = raFile.length();
+		long numVals = len/recordBuffer.length;
+		
+		// start out assuming both true, will quickly find out which one is really true
+		boolean bigEndian = true;
+		boolean littleEndian = true;
+		
+		// detect endianness
+		long pos = 0;
+		double prevLittle = Double.NaN;
+		double prevBig = Double.NaN;
+		int checkLoops = 0;
+		while (bigEndian && littleEndian) {
+			raFile.seek(pos);
+			raFile.read(recordBuffer);
+			
+			double littleTime = littleRecord.get(0);
+			double bigTime = bigRecord.get(0);
+			
+			if (!Double.isNaN(prevLittle) && !Double.isNaN(prevBig)) {
+				if (littleTime < prevLittle)
+					littleEndian = false;
+				if (bigTime < prevBig)
+					bigEndian = false;
+			}
+			prevLittle = littleTime;
+			prevBig = bigTime;
+			pos += recordBuffer.length;
+			checkLoops++;
+		}
+		
+		Preconditions.checkState(bigEndian || littleEndian);
+//		System.out.println("Little? "+littleEndian+". Big? "+bigEndian+" (took "+checkLoops+" reads)");
+		
+		raFile.seek(0);
+		raFile.read(recordBuffer);
+		double firstTime;
+		if (littleEndian)
+			firstTime = littleRecord.get(0);
+		else
+			firstTime = bigRecord.get(0);
+		raFile.seek((numVals-1)*recordBuffer.length);
+		raFile.read(recordBuffer);
+		double lastTime;
+		if (littleEndian)
+			lastTime = littleRecord.get(0);
+		else
+			lastTime = bigRecord.get(0);
+		
+		raFile.close();
+		return (lastTime - firstTime)/SimulatorUtils.SECONDS_PER_YEAR;
 	}
 
 }

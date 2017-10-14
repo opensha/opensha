@@ -556,7 +556,7 @@ public class RupturePlotGenerator {
 	
 	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix) throws IOException {
-		writeMapPlot(allElems, event, null, outputDir, prefix, null, null, null);
+		writeMapPlot(allElems, event, func, outputDir, prefix, null, null, null);
 	}
 	
 	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
