@@ -129,10 +129,11 @@ public class RupturePlotGenerator {
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
 			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
 		System.out.println("Estimating DAS");
+		Location[] refFrame;
 		if (rectangle == null)
-			SimulatorUtils.estimateVertexDAS(event);
+			refFrame = SimulatorUtils.estimateVertexDAS(event);
 		else
-			SimulatorUtils.estimateVertexDAS(event, rectangle[0], rectangle[1]);
+			refFrame = SimulatorUtils.estimateVertexDAS(event, rectangle[0], rectangle[1]);
 		System.out.println("Done estimating DAS");
 		func = func.asRelativeTimeFunc();
 		
@@ -183,29 +184,19 @@ public class RupturePlotGenerator {
 		firstPolys.add(hypoPoly);
 		lastPolys.add(hypoPoly);
 		
-		Location firstLoc = null;
-		Location lastLoc = null;
 		double minDAS = Double.POSITIVE_INFINITY;
 		double maxDAS = 0d;
 		double maxDepth = 0d;
 		for (SimulatorElement elem : rupElems) {
 			for (Vertex v : elem.getVertices()) {
 				double das = v.getDAS();
-				if (das < minDAS) {
+				if (das < minDAS)
 					minDAS = das;
-					firstLoc = v;
-				}
-				if (das > maxDAS) {
+				if (das > maxDAS)
 					maxDAS = das;
-					lastLoc = v;
-				}
 				if (v.getDepth() > maxDepth)
 					maxDepth = v.getDepth();
 			}
-		}
-		if (rectangle != null) {
-			firstLoc = rectangle[0];
-			lastLoc = rectangle[1];
 		}
 		System.out.println("Max DAS: "+maxDAS);
 		
@@ -213,7 +204,7 @@ public class RupturePlotGenerator {
 			Stroke rectStroke = new BasicStroke(3f);
 			double[][] rectPoints = new double[rectangle.length][2];
 			for (int i=0; i<rectangle.length; i++) {
-				rectPoints[i][0] = SimulatorUtils.estimateDAS(firstLoc, lastLoc, rectangle[i]);
+				rectPoints[i][0] = SimulatorUtils.estimateDAS(refFrame[0], refFrame[1], rectangle[i]);
 				rectPoints[i][1] = rectangle[i].getDepth();
 				minDAS = Math.min(minDAS, rectPoints[i][0]);
 				maxDAS = Math.max(maxDAS, rectPoints[i][0]);
@@ -233,7 +224,7 @@ public class RupturePlotGenerator {
 			}
 		}
 		if (rectHypo != null) {
-			double rectHypoDAS = SimulatorUtils.estimateDAS(firstLoc, lastLoc, rectHypo);
+			double rectHypoDAS = SimulatorUtils.estimateDAS(refFrame[0], refFrame[1], rectHypo);
 			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
 					star(rectHypoDAS, rectHypo.getDepth(), 1), hypoStroke, Color.WHITE, RECT_HYPO_COLOR);
 			slipPolys.add(rectHypoPoly);
@@ -257,7 +248,7 @@ public class RupturePlotGenerator {
 				outline.add(outline.get(0)); // close it
 				double[] dasVals = new double[outline.size()];
 				for (int i=0; i<outline.size(); i++)
-					dasVals[i] = SimulatorUtils.estimateDAS(firstLoc, lastLoc, outline.get(i));
+					dasVals[i] = SimulatorUtils.estimateDAS(refFrame[0], refFrame[1], outline.get(i));
 				
 				for (int i=1; i<dasVals.length; i++) {
 					XYLineAnnotation line = new XYLineAnnotation(dasVals[i-1], outline.get(i-1).getDepth(),

@@ -705,7 +705,7 @@ public class RSQSimFileReader {
 					event.setFirstPatchToSlip(patchID);
 				}
 				
-				event.addSlip(patchID, slip);
+				event.addSlip(patchID, slip, time);
 				if (time < event.getTime()) {
 					event.setFirstPatchToSlip(patchID);
 					event.setTime(time);

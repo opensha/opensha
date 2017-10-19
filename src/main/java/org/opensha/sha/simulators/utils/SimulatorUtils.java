@@ -65,7 +65,7 @@ public class SimulatorUtils {
 		return maxDist;
 	}
 	
-	public static void estimateVertexDAS(SimulatorEvent event) {
+	public static Location[] estimateVertexDAS(SimulatorEvent event) {
 		// find the 2 elements that are farthest from each other
 
 		// start by finding the farthest pair of EventRecord's
@@ -110,10 +110,10 @@ public class SimulatorUtils {
 			}
 		}
 		
-		estimateVertexDAS(event, leftLoc, rightLoc);
+		return estimateVertexDAS(event, leftLoc, rightLoc);
 	}
 	
-	public static void estimateVertexDAS(SimulatorEvent event, Location leftLoc, Location rightLoc) {
+	public static Location[] estimateVertexDAS(SimulatorEvent event, Location leftLoc, Location rightLoc) {
 		List<SimulatorElement> elems = event.getAllElements();
 		
 		// now try to make it conform with Aki & Richards
@@ -133,7 +133,7 @@ public class SimulatorUtils {
 			diff = Math.min(diff, Math.abs((curStrike+360) - targetStrike));
 			diff = Math.min(diff, Math.abs(curStrike - (targetStrike+360)));
 			if (diff > 90 && diff < 270) {
-				System.out.print("Swapping direction");
+				System.out.println("Swapping direction");
 				Location temp = leftLoc;
 				leftLoc = rightLoc;
 				rightLoc = temp;
@@ -152,6 +152,8 @@ public class SimulatorUtils {
 		for (SimulatorElement e : elems)
 			for (Vertex v : e.getVertices())
 				v.setDAS(v.getDAS()-minDAS);
+		
+		return new Location[] {leftLoc, rightLoc};
 	}
 	
 	public static double estimateDAS(Location firstLoc, Location lastLoc, Location loc) {

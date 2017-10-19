@@ -26,20 +26,36 @@ public abstract class EventRecord {
     private static final int element_array_padding = 10;
     double[] elementSlips = new double[0];
     int[] elementIDs = new int[0];
+    private double[] elementTimeFirstSlips = null;
     
     List<SimulatorElement> rectElementsList;	// this is all the elements, not just those used here
     
     public EventRecord(List<SimulatorElement> rectElementsList) {
     	this.rectElementsList=rectElementsList; 
     }
+    
+    public void addSlip(int id, double slip) {
+    	addSlip(id, slip, Double.NaN);
+    }
 	
-	public void addSlip(int id, double slip) {
+	public void addSlip(int id, double slip, double time) {
 		int ind = numElements;
 		numElements++;
 		elementSlips = Doubles.ensureCapacity(elementSlips, numElements, element_array_padding);
 		elementSlips[ind] = slip;
 		elementIDs = Ints.ensureCapacity(elementIDs, numElements, element_array_padding);
 		elementIDs[ind] = id;
+		if (Double.isNaN(time)) {
+			Preconditions.checkState(elementTimeFirstSlips == null,
+					"Some elementes have NaN time of first slip while others have real ones");
+		} else {
+			if (elementTimeFirstSlips == null) {
+				Preconditions.checkState(ind == 0);
+				elementTimeFirstSlips = new double[element_array_padding];
+			}
+			elementTimeFirstSlips = Doubles.ensureCapacity(elementTimeFirstSlips, numElements, element_array_padding);
+			elementTimeFirstSlips[ind] = time;
+		}
 	}
 	
 	public int getID() { return event_id;}
@@ -105,6 +121,19 @@ public abstract class EventRecord {
 			elementSlips = Arrays.copyOf(elementSlips, numElements);
 		}
 		return elementSlips;
+	}
+	
+	/**
+	 * @return array of element time of first slips (if supported), or null if not supported by this simulator
+	 */
+	public double[] getElementTimeFirstSlips() {
+		if (elementTimeFirstSlips == null)
+			return null;
+		if (elementTimeFirstSlips.length > numElements) {
+			// trim down the array;
+			elementTimeFirstSlips = Arrays.copyOf(elementTimeFirstSlips, numElements);
+		}
+		return elementTimeFirstSlips;
 	}
 	
 	public boolean hasElementSlipsAndIDs() {
