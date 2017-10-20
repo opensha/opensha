@@ -120,6 +120,10 @@ public class HazardDataSetLoader {
 			} catch (RuntimeException e) {
 //				System.err.println("WARNING: Probability value doesn't exist, setting IMT to NaN");
 				//return 0d;
+				if (level < func.getY(func.size()-1)) {
+					System.err.println("WARNING: Curve saturated at p="+(float)level+". Returning max IML");
+					return func.getMaxX();
+				}
 				return Double.NaN;
 			}
 		}
