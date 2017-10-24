@@ -1098,16 +1098,16 @@ public class ETAS_Simulator {
 		ETAS_EqkRupture scenarioRup = buildScenarioRup(scenario, erf);
 		
 		
-		System.out.println("trace of scenario:");
-		RuptureSurface surf = scenarioRup.getRuptureSurface();
-		LocationList topRowLocs = surf.getEvenlyDiscritizedUpperEdge();
-		LocationList bottomRowLocs = surf.getEvenlyDiscritizedLowerEdge();
-		for(int i=0;i<topRowLocs.size();i++) {
-			double lat = (topRowLocs.get(i).getLatitude() + bottomRowLocs.get(i).getLatitude())/2;
-			double lon = (topRowLocs.get(i).getLongitude() + bottomRowLocs.get(i).getLongitude())/2;
-			System.out.println(lon+"\t"+lat);
-		}
-		System.exit(1);;
+//		System.out.println("trace of scenario:");
+//		RuptureSurface surf = scenarioRup.getRuptureSurface();
+//		LocationList topRowLocs = surf.getEvenlyDiscritizedUpperEdge();
+//		LocationList bottomRowLocs = surf.getEvenlyDiscritizedLowerEdge();
+//		for(int i=0;i<topRowLocs.size();i++) {
+//			double lat = (topRowLocs.get(i).getLatitude() + bottomRowLocs.get(i).getLatitude())/2;
+//			double lon = (topRowLocs.get(i).getLongitude() + bottomRowLocs.get(i).getLongitude())/2;
+//			System.out.println(lon+"\t"+lat);
+//		}
+//		System.exit(1);;
 		
 		// TEST RIGHT HERE
 //		erf.setFltSectOccurranceTime(1848, scenarioRup.getOriginTime());
@@ -1120,7 +1120,7 @@ public class ETAS_Simulator {
 //		}
 //		System.exit(-1);
 		
-		boolean includeSpontEvents=false;
+		boolean includeSpontEvents=true;
 		boolean includeIndirectTriggering=true;
 		double gridSeisDiscr = 0.1;
 		
@@ -1309,8 +1309,8 @@ public class ETAS_Simulator {
 		// temporary hack
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
 		
-//		String fileName="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
-		String fileName="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip";
+//		String fileName="src/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
+		String fileName="src/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip";
 		FaultSystemSolution fss;
 		try {
 			fss = FaultSystemIO.loadSol(new File(fileName));
@@ -1888,8 +1888,8 @@ public class ETAS_Simulator {
 //		plotCatalogMagVsTime(getHistCatalog(2012, erf.getSolution().getRupSet()).getRupsInside(new CaliforniaRegions.SF_BOX()), "U3_EqkCatalogMagVsTimePlot");
 //		System.exit(0);
 
-		TestScenario scenario = TestScenario.PARKFIELD;
-//		TestScenario scenario = null;
+//		TestScenario scenario = TestScenario.PARKFIELD;
+		TestScenario scenario = null;
 		
 //		writeInfoAboutClosestSectionToLoc(erf, scenario.getLocation());
 //		System.exit(0);
@@ -1898,10 +1898,10 @@ public class ETAS_Simulator {
 		params.setImposeGR(false);	
 		params.setApplyGridSeisCorr(true);
 		params.setApplySubSeisForSupraNucl(true);
-		params.setTotalRateScaleFactor(1.0);
-		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.NO_ERT);
-//		params.setTotalRateScaleFactor(1.14);
-//		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.FULL_TD);
+//		params.setTotalRateScaleFactor(1.0);
+//		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.NO_ERT);
+		params.setTotalRateScaleFactor(1.14);
+		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.FULL_TD);
 		
 		String simulationName;
 		String imposeGR_string="";

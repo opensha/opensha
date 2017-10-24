@@ -98,8 +98,23 @@ public class RSQSimUtils {
 			surf = rupSurfs.get(0);
 		else
 			surf = new CompoundSurface(rupSurfs);
+		
+		Location hypo = null;
+		double earliestTime = Double.POSITIVE_INFINITY;
+		for (EventRecord rec : event) {
+			List<SimulatorElement> patches = rec.getElements();
+			double[] patchTimes = rec.getElementTimeFirstSlips();
+			for (int i=0; i<patches.size(); i++) {
+				if (patchTimes[i] < earliestTime) {
+					earliestTime = patchTimes[i];
+					hypo = patches.get(i).getCenterLocation();
+				}
+			}
+		}
+		Preconditions.checkNotNull(hypo, "Couldn't detect hypocenter for event %s.",
+				event.getID());
 
-		EqkRupture rup = new EqkRupture(mag, rake, surf, null);
+		EqkRupture rup = new EqkRupture(mag, rake, surf, hypo);
 
 		return rup;
 	}
@@ -124,6 +139,12 @@ public class RSQSimUtils {
 		int offset = getSubSectIndexOffset(elements, subSects);
 		for (SimulatorElement elem : elements)
 			elem.setFaultID(subSects.get(elem.getSectionID()-offset).getParentSectionId());
+	}
+	
+	public static void populateSubSectionNames(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
+		int offset = getSubSectIndexOffset(elements, subSects);
+		for (SimulatorElement elem : elements)
+			elem.setSectionName(subSects.get(elem.getSectionID()-offset).getName());
 	}
 	
 	public static List<List<FaultSectionPrefData>> getSectionsForRupture(SimulatorEvent event, int minElemSectID,
