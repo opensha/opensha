@@ -95,6 +95,10 @@ public abstract class SimulatorElement {
 	public String getSectionName() {
 		return sectionName;
 	}
+	
+	public void setSectionName(String sectionName) {
+		this.sectionName = sectionName;
+	}
 
 	public int getSectionID() {
 		return sectionID;

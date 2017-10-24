@@ -144,8 +144,11 @@ public abstract class EventRecord {
 	
 	public List<SimulatorElement> getElements() {
 		List<SimulatorElement> re_list = Lists.newArrayList();
-		for(int elemID:getElementIDs())
-			re_list.add(rectElementsList.get(elemID-1));	// index is ID-1
+		for(int elemID:getElementIDs()) {
+			SimulatorElement elem = rectElementsList.get(elemID-1); // index is ID-1
+			Preconditions.checkState(elem.getID() == elemID);
+			re_list.add(elem);
+		}
 		return re_list;
 	}
 
