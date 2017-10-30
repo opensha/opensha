@@ -556,22 +556,22 @@ public class RupturePlotGenerator {
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
 		PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
-		
 		ArrayList<SimulatorElement> rupElems = event.getAllElements();
-		for (SimulatorElement elem : rupElems) {
-			Vertex[] vertexes = elem.getVertices();
-			DefaultXY_DataSet xy = new DefaultXY_DataSet();
-			for (int i=0; i<=vertexes.length; i++) {
-				Vertex v;
-				if (i == vertexes.length)
-					v = vertexes[0];
-				else
-					v = vertexes[i];
-				xy.set(v.getLongitude(), v.getLatitude());
-			}
-			funcs.add(xy);
-			chars.add(eventChar);
-		}
+		addElementOutline(funcs, chars, rupElems, eventChar, null);
+//		for (SimulatorElement elem : rupElems) {
+//			Vertex[] vertexes = elem.getVertices();
+//			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+//			for (int i=0; i<=vertexes.length; i++) {
+//				Vertex v;
+//				if (i == vertexes.length)
+//					v = vertexes[0];
+//				else
+//					v = vertexes[i];
+//				xy.set(v.getLongitude(), v.getLatitude());
+//			}
+//			funcs.add(xy);
+//			chars.add(eventChar);
+//		}
 		
 		BasicStroke hypoStroke = new BasicStroke(1f);
 		List<XYAnnotation> anns = new ArrayList<>();
@@ -659,44 +659,12 @@ public class RupturePlotGenerator {
 			Region plotRegion = new Region(new Location(yRange.getLowerBound(), xRange.getLowerBound()),
 					new Location(yRange.getUpperBound(), xRange.getUpperBound()));
 			
-			HashMap<String, DefaultXY_DataSet> prevElemXYs = new HashMap<>();
+			List<XY_DataSet> allElemFuncs = new ArrayList<>();
+			List<PlotCurveCharacterstics> allElemChars = new ArrayList<>();
 			
-			int elemsAdded = 0;
-			for (SimulatorElement elem : allElems) {
-				Vertex[] vertexes = elem.getVertices();
-				boolean skip = true;
-				for (Location loc : vertexes) {
-					if (plotRegion.contains(loc)) {
-						skip = false;
-						break;
-					}
-				}
-				if (skip)
-					continue;
-				elemsAdded++;
-				DefaultXY_DataSet xy = new DefaultXY_DataSet();
-				for (int i=0; i<=vertexes.length; i++) {
-					Vertex v;
-					if (i == vertexes.length)
-						v = vertexes[0];
-					else
-						v = vertexes[i];
-					xy.set(v.getLongitude(), v.getLatitude());
-				}
-				String ptStr = pointKey(xy.get(xy.size()-1));
-				if (prevElemXYs.containsKey(ptStr)) {
-					// bundle it with another
-					DefaultXY_DataSet oXY = prevElemXYs.get(ptStr);
-					for (Point2D pt : xy)
-						oXY.set(pt);
-				} else {
-					prevElemXYs.put(ptStr, xy);
-					funcs.add(0, xy);
-					chars.add(0, allElemChar);
-				}
-			}
-			System.out.println("Added "+elemsAdded+"/"+allElems.size()+" elems to plot");
-			System.out.println("Used "+prevElemXYs.size()+"/"+elemsAdded+" possible funcs");
+			addElementOutline(allElemFuncs, allElemChars, allElems, allElemChar, plotRegion);
+			funcs.addAll(0, allElemFuncs);
+			chars.addAll(0, allElemChars);
 		}
 		
 		String title = "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
@@ -730,6 +698,50 @@ public class RupturePlotGenerator {
 		gp.getChartPanel().setSize(800, 800);
 		gp.saveAsPNG(file.getAbsolutePath()+".png");
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+	}
+	
+	public static void addElementOutline(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
+			List<SimulatorElement> elements, PlotCurveCharacterstics elemChar, Region plotRegion) {
+		HashMap<String, DefaultXY_DataSet> prevElemXYs = new HashMap<>();
+		
+		int elemsAdded = 0;
+		for (SimulatorElement elem : elements) {
+			Vertex[] vertexes = elem.getVertices();
+			if (plotRegion != null) {
+				boolean skip = true;
+				for (Location loc : vertexes) {
+					if (plotRegion.contains(loc)) {
+						skip = false;
+						break;
+					}
+				}
+				if (skip)
+					continue;
+			}
+			elemsAdded++;
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			for (int i=0; i<=vertexes.length; i++) {
+				Vertex v;
+				if (i == vertexes.length)
+					v = vertexes[0];
+				else
+					v = vertexes[i];
+				xy.set(v.getLongitude(), v.getLatitude());
+			}
+			String ptStr = pointKey(xy.get(xy.size()-1));
+			if (prevElemXYs.containsKey(ptStr)) {
+				// bundle it with another
+				DefaultXY_DataSet oXY = prevElemXYs.get(ptStr);
+				for (Point2D pt : xy)
+					oXY.set(pt);
+			} else {
+				prevElemXYs.put(ptStr, xy);
+				funcs.add(xy);
+				chars.add(elemChar);
+			}
+		}
+		System.out.println("Added "+elemsAdded+"/"+elements.size()+" elems to plot");
+		System.out.println("Used "+prevElemXYs.size()+"/"+elemsAdded+" possible funcs");
 	}
 	
 	private static String pointKey(Point2D pt) {
