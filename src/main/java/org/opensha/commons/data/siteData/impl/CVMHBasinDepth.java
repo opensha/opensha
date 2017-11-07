@@ -23,7 +23,7 @@ import com.google.common.primitives.Booleans;
 
 public class CVMHBasinDepth extends AbstractBinarySiteDataLoader implements ParameterChangeListener {
 	
-	public static final String NAME = "SCEC/Harvard Community Velocity Model Version 11.9.0 Basin Depth"; // TODO
+	public static final String NAME = "SCEC/Harvard Community Velocity Model Version 11.9.x Basin Depth"; // TODO
 	public static final String SHORT_NAME = "CVMH";
 	
 	// CVM4 region
@@ -48,7 +48,7 @@ public class CVMHBasinDepth extends AbstractBinarySiteDataLoader implements Para
 	
 	// versions
 	public enum Version {
-		VER_11_9_1("11.9.1 accessed 1/17/14 with UCVM 13.9.0", "11.9.1", new boolean[] { true, false}),
+		VER_11_9_1("11.9.1 accessed 1/17/14 with UCVM 13.9.0", "0", new boolean[] { true, false}),
 		VER_11_9_0("11.9.0 accessed 5/29/12 with UCVM 12.2.0", "11.9.0", new boolean[] { true });
 		
 		private String name, dirName;

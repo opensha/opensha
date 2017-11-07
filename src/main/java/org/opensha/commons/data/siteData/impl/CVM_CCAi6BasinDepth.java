@@ -22,6 +22,7 @@ package org.opensha.commons.data.siteData.impl;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.dom4j.Attribute;
 import org.dom4j.Document;
@@ -143,8 +144,24 @@ public class CVM_CCAi6BasinDepth extends AbstractBinarySiteDataLoader {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		CVM_CCAi6BasinDepth local = new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_1_0, false);
+		CVM_CCAi6BasinDepth z1 = new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_1_0, false);
+		CVM_CCAi6BasinDepth z25 = new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_2_5, false);
 		
+		ArrayList<Location> testLocs = new ArrayList<>();
+		testLocs.add(new Location(35.8, -121.25));
+		testLocs.add(new Location(35.8, -120.4));
+		testLocs.add(new Location(35.8, -119.5));
+		testLocs.add(new Location(35.8, -118.6));
+		testLocs.add(new Location(35.5, -120));
+		testLocs.add(new Location(35, -119.5));
+		testLocs.add(new Location(36, -121.0));
+		
+		for (Location loc : testLocs)
+			System.out.println((float)loc.getLongitude()+"\t"+(float)loc.getLatitude()
+				+"\t"+(z1.getValue(loc)*1000d)+"\t"+(z25.getValue(loc)*1000d));
+		System.exit(0);
+		
+		CVM_CCAi6BasinDepth local = new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_1_0, false);
 		Location outside = new Location(35, -122.5);
 		double outsideVal = local.getValue(outside);
 		System.out.println("Val: "+outsideVal+", valid? "+local.isValueValid(outsideVal));

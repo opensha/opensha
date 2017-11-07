@@ -1,6 +1,7 @@
-# CCA-06 Z files
+# CVM-H 11.9.x Z files
 
-Extracted by Scott Callaghan on 8/24/17, now using the second crossing
+* 11.9.1 accessed 1/17/14 with UCVM 13.9.0
+* 11.9.0 accessed 5/29/12 with UCVM 12.2.0
 
 ## File Format
 
@@ -21,9 +22,9 @@ The first data point is bottom left (at minX, minY).
 
 ## Parameters
 ```
-minLat = 33.35
-minLon = -123
-nx = 1551
-ny = 1201
-gridSpacing = 0.005 
+minLat = 31;
+minLon = -121;
+nx = 1701;
+ny = 1101;
+gridSpacing = 0.005; 
 ```

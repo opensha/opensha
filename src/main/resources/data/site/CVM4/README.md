@@ -1,6 +1,6 @@
-# CCA-06 Z files
+# CVM-S4 Z files
 
-Extracted by Scott Callaghan on 8/24/17, now using the second crossing
+Extracted by Kevin Milner on 2/17/09
 
 ## File Format
 
@@ -21,9 +21,9 @@ The first data point is bottom left (at minX, minY).
 
 ## Parameters
 ```
-minLat = 33.35
-minLon = -123
-nx = 1551
-ny = 1201
-gridSpacing = 0.005 
+minLat = 31;
+minLon = -121;
+nx = 1701;
+ny = 1101;
+gridSpacing = 0.005; 
 ```
