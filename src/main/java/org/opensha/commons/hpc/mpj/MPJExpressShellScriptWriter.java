@@ -33,6 +33,7 @@ public class MPJExpressShellScriptWriter extends JavaShellScriptWriter {
 	
 	private File mpjHome;
 	private Device device;
+	private boolean useLaunchWrapper = true;
 	
 	private MPJExpressShellScriptWriter(JavaShellScriptWriter javaWriter,
 			File mpjHome, Device device) {
@@ -69,6 +70,14 @@ public class MPJExpressShellScriptWriter extends JavaShellScriptWriter {
 		return device;
 	}
 	
+	public boolean isUseLaunchWrapper() {
+		return useLaunchWrapper;
+	}
+
+	public void setUseLaunchWrapper(boolean useLaunchWrapper) {
+		this.useLaunchWrapper = useLaunchWrapper;
+	}
+	
 	@Override
 	public List<String> buildScript(List<String> classNames, List<String> argss) {
 		ArrayList<String> script = new ArrayList<String>();
@@ -77,47 +86,69 @@ public class MPJExpressShellScriptWriter extends JavaShellScriptWriter {
 		script.add("");
 		script.add("export MPJ_HOME="+mpjHome.getAbsolutePath());
 		script.add("export PATH=$PATH:$MPJ_HOME/bin");
-		script.add("");
-		script.add("if [[ -e $PBS_NODEFILE ]]; then");
-		script.add("  #count the number of processors assigned by PBS");
-		script.add("  NP=`wc -l < $PBS_NODEFILE`");
-		script.add("  echo \"Running on $NP processors: \"`cat $PBS_NODEFILE`");
-		script.add("else");
-		script.add("  echo \"This script must be submitted to PBS with 'qsub -l nodes=X'\"");
-		script.add("  exit 1");
-		script.add("fi");
-		script.add("");
-		script.add("if [[ $NP -le 0 ]]; then");
-		script.add("  echo \"invalid NP: $NP\"");
-		script.add("  exit 1");
-		script.add("fi");
-		script.add("");
-		script.add("date");
-		script.add("echo \"STARTING MPJ\"");
-		script.add("mpjboot $PBS_NODEFILE");
-		script.add("");
-		script.addAll(getJVMSetupLines());
 		
 		String dev = getDevice().getDeviceName();
-		for (int i=0; i<classNames.size(); i++) {
+		
+		if (useLaunchWrapper) {
+			script.add("");
+			script.addAll(getJVMSetupLines());
+			for (int i=0; i<classNames.size(); i++) {
+				script.add("");
+				script.add("date");
+				script.add("echo \"RUNNING MPJ\"");
+				String command = "mpjrun_errdetect_wrapper.sh $PBS_NODEFILE -dev "+dev+" -Djava.library.path=$MPJ_HOME/lib";
+				command += getJVMArgs(classNames.get(i));
+				String myArgs = argss.get(i);
+				Preconditions.checkState(!myArgs.contains("\n"), "MPJExpress commands don't support newlines (sadly)");
+				command += getFormattedArgs(myArgs);
+				script.add(command);
+				script.add("ret=$?");
+				script.add("date");
+				script.add("");
+				script.add("exit $ret");
+			}
+		} else {
+			script.add("");
+			script.add("if [[ -e $PBS_NODEFILE ]]; then");
+			script.add("  #count the number of processors assigned by PBS");
+			script.add("  NP=`wc -l < $PBS_NODEFILE`");
+			script.add("  echo \"Running on $NP processors: \"`cat $PBS_NODEFILE`");
+			script.add("else");
+			script.add("  echo \"This script must be submitted to PBS with 'qsub -l nodes=X'\"");
+			script.add("  exit 1");
+			script.add("fi");
+			script.add("");
+			script.add("if [[ $NP -le 0 ]]; then");
+			script.add("  echo \"invalid NP: $NP\"");
+			script.add("  exit 1");
+			script.add("fi");
 			script.add("");
 			script.add("date");
-			script.add("echo \"RUNNING MPJ\"");
-			String command = "mpjrun.sh -machinesfile $PBS_NODEFILE -np $NP -dev "+dev+" -Djava.library.path=$MPJ_HOME/lib";
-			command += getJVMArgs(classNames.get(i));
-			String myArgs = argss.get(i);
-			Preconditions.checkState(!myArgs.contains("\n"), "MPJExpress commands don't support newlines (sadly)");
-			command += getFormattedArgs(myArgs);
-			script.add(command);
+			script.add("echo \"STARTING MPJ\"");
+			script.add("mpjboot $PBS_NODEFILE");
+			script.add("");
+			script.addAll(getJVMSetupLines());
+			
+			for (int i=0; i<classNames.size(); i++) {
+				script.add("");
+				script.add("date");
+				script.add("echo \"RUNNING MPJ\"");
+				String command = "mpjrun.sh -machinesfile $PBS_NODEFILE -np $NP -dev "+dev+" -Djava.library.path=$MPJ_HOME/lib";
+				command += getJVMArgs(classNames.get(i));
+				String myArgs = argss.get(i);
+				Preconditions.checkState(!myArgs.contains("\n"), "MPJExpress commands don't support newlines (sadly)");
+				command += getFormattedArgs(myArgs);
+				script.add(command);
+			}
+			
+			script.add("ret=$?");
+			script.add("");
+			script.add("date");
+			script.add("echo \"HALTING MPJ\"");
+			script.add("mpjhalt $PBS_NODEFILE");
+			script.add("");
+			script.add("exit $ret");
 		}
-		
-		script.add("ret=$?");
-		script.add("");
-		script.add("date");
-		script.add("echo \"HALTING MPJ\"");
-		script.add("mpjhalt $PBS_NODEFILE");
-		script.add("");
-		script.add("exit $ret");
 		
 		return script;
 	}
