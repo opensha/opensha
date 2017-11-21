@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
@@ -242,41 +243,17 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		
 		histQkList = Lists.newArrayList();
 		if (cmd.hasOption("trigger-catalog")) {
-			// load in historical catalog
 			File catFile = new File(cmd.getOptionValue("trigger-catalog"));
-			Preconditions.checkArgument(catFile.exists(), "Catalog file doesn't exist: "+catFile.getAbsolutePath());
-			ObsEqkRupList loadedRups = UCERF3_CatalogParser.loadCatalog(catFile);
-			if (cmd.hasOption("rupture-surfaces")) {
-				// add rupture surfaces
-				FaultModels fm = getFaultModel(sols[0]);
-				File surfsFile = new File(cmd.getOptionValue("rupture-surfaces"));
-				Preconditions.checkArgument(surfsFile.exists(), "Rupture surfaces file doesn't exist: "+surfsFile.getAbsolutePath());
-				FiniteFaultMappingData.loadRuptureSurfaces(surfsFile, loadedRups, fm, rupSet);
-			}
-			// filter for historical completeness
-			loadedRups = U3_EqkCatalogStatewideCompleteness.load().getFilteredCatalog(loadedRups);
-			if (rank == 0)
-				debug("Loaded "+loadedRups.size()+" rups from catalog");
-			int numWithSurfaces = 0;
-			double maxTriggerMag = 0d;
-			for (ObsEqkRupture rup : loadedRups) {
-				if (rup.getOriginTime() > ot) {
-					// skip all ruptures that occur after simulation start
-					System.out.println("Skipping a M"+rup.getMag()+" after sim start ("
-							+rup.getOriginTime()+" > "+ot+"): "+rup);
-					continue;
-				}
-				ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
-				etasRup.setID(Integer.parseInt(rup.getEventId()));
-				histQkList.add(etasRup);
-				if (rup.getRuptureSurface() != null && !(rup.getRuptureSurface() instanceof PointSurface))
-					numWithSurfaces++;
-				maxTriggerMag = Math.max(maxTriggerMag, rup.getMag());
-			}
-			if (rank == 0)
-				debug("Seeding sim with "+histQkList.size()+" catalog ruptures ("+numWithSurfaces+" with surfaces)");
-			if (rank == 0)
-				debug("Max trigger mag in input catalog: "+maxTriggerMag);
+			File surfsFile;
+			if (cmd.hasOption("rupture-surfaces"))
+				surfsFile = new File(cmd.getOptionValue("rupture-surfaces"));
+			else
+				surfsFile = null;
+			histQkList.addAll(loadHistoricalCatalog(catFile, surfsFile, sols[0], ot));
+//			if (rank == 0)
+//				debug("Seeding sim with "+histQkList.size()+" catalog ruptures ("+numWithSurfaces+" with surfaces)");
+//			if (rank == 0)
+//				debug("Max trigger mag in input catalog: "+maxTriggerMag);
 		}
 		
 		Location triggerHypo = null;
@@ -365,6 +342,45 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		}
 		
 		r = new Random(System.nanoTime() + (long)(rank*new Random().nextInt()));
+	}
+	
+	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemSolution sol, long ot)
+			throws IOException, DocumentException {
+		List<ETAS_EqkRupture> histQkList = new ArrayList<>();
+		// load in historical catalog
+		
+		Preconditions.checkArgument(catFile.exists(), "Catalog file doesn't exist: "+catFile.getAbsolutePath());
+		ObsEqkRupList loadedRups = UCERF3_CatalogParser.loadCatalog(catFile);
+		
+		if (surfsFile != null) {
+			// add rupture surfaces
+			FaultModels fm = getFaultModel(sol);
+			
+			Preconditions.checkArgument(surfsFile.exists(), "Rupture surfaces file doesn't exist: "+surfsFile.getAbsolutePath());
+			FiniteFaultMappingData.loadRuptureSurfaces(surfsFile, loadedRups, fm, sol.getRupSet());
+		}
+		
+		// filter for historical completeness
+		loadedRups = U3_EqkCatalogStatewideCompleteness.load().getFilteredCatalog(loadedRups);
+//		if (debug)
+//			debug("Loaded "+loadedRups.size()+" rups from catalog");
+//		int numWithSurfaces = 0;
+//		double maxTriggerMag = 0d;
+		for (ObsEqkRupture rup : loadedRups) {
+			if (rup.getOriginTime() > ot) {
+				// skip all ruptures that occur after simulation start
+				System.out.println("Skipping a M"+rup.getMag()+" after sim start ("
+						+rup.getOriginTime()+" > "+ot+"): "+rup);
+				continue;
+			}
+			ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
+			etasRup.setID(Integer.parseInt(rup.getEventId()));
+			histQkList.add(etasRup);
+//			if (rup.getRuptureSurface() != null && !(rup.getRuptureSurface() instanceof PointSurface))
+//				numWithSurfaces++;
+//			maxTriggerMag = Math.max(maxTriggerMag, rup.getMag());
+		}
+		return histQkList;
 	}
 	
 	/**

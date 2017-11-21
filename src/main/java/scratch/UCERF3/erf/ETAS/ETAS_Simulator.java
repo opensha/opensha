@@ -1918,15 +1918,16 @@ public class ETAS_Simulator {
 
 		simulationName += "_NoSpontaneous";	// to increment runs
 
-		Long seed = null;
+//		Long seed = null;
+		Long seed = 890841985480217717l;
 //		Long seed = 1449590752534l;
 //		Long seed = 1444170206879l;
 //		Long seed = 1439486175712l;
 		
-//		double startTimeYear=2012;
-//		double durationYears=10;
-		double startTimeYear=2014;
-		double durationYears=7.0/365.25;
+		double startTimeYear=2012;
+		double durationYears=10;
+//		double startTimeYear=2014;
+//		double durationYears=7.0/365.25;
 		
 		ObsEqkRupList histCat = null;
 //		ObsEqkRupList histCat = getHistCatalog(startTimeYear);

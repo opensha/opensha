@@ -1357,16 +1357,22 @@ public class ETAS_MultiSimAnalysisTools {
 		CSVFile<String> particCSV = new CSVFile<String>(true);
 		CSVFile<String> triggerCSV = new CSVFile<String>(true);
 
-		List<String> header = Lists.newArrayList("Section Name", "Section ID");
+		List<String> particHeader = Lists.newArrayList("Section Name", "Section ID");
+		List<String> triggerHeader = Lists.newArrayList("Section Name", "Section ID");
 		for (int i = 0; i < minMags.length; i++) {
+			String header;
 			if (minMags[i] > 1)
-				header.add("M≥" + (float) minMags[i]);
+				header = "M≥" + (float) minMags[i];
 			else
-				header.add("Total");
+				header = "Total";
+			particHeader.add(header);
+			triggerHeader.add(header);
+			if (refSol != null)
+				particHeader.add("Gain");
 		}
 
-		particCSV.addLine(header);
-		triggerCSV.addLine(header);
+		particCSV.addLine(particHeader);
+		triggerCSV.addLine(triggerHeader);
 		
 		Map<String, Integer> parentNamesToIDs = new HashMap<>();
 		for (FaultSectionPrefData sect : sects)
@@ -1440,16 +1446,36 @@ public class ETAS_MultiSimAnalysisTools {
 			for (int sectIndex = 0; sectIndex < rupSet.getNumSections(); sectIndex++) {
 				int row = sectIndex + 1;
 				if (i == 0) {
-					List<String> line = Lists.newArrayList(rupSet.getFaultSectionData(sectIndex).getSectionName(),
+					List<String> particLine = Lists.newArrayList(rupSet.getFaultSectionData(sectIndex).getSectionName(),
 							sectIndex + "");
-					for (int m = 0; m < minMags.length; m++)
-						line.add("");
-					particCSV.addLine(line);
-					triggerCSV.addLine(Lists.newArrayList(line)); // need to clone so we don't overwrite values
+					List<String> triggerLine = Lists.newArrayList(particLine);
+					for (int m = 0; m < minMags.length; m++) {
+						particLine.add("");
+						triggerLine.add("");
+						if (refSol != null)
+							particLine.add("");
+					}
+					particCSV.addLine(particLine);
+					triggerCSV.addLine(Lists.newArrayList(triggerLine)); // need to clone so we don't overwrite values
 				}
-				int col = i + 2;
-				particCSV.set(row, col, particRates[sectIndex] + "");
-				triggerCSV.set(row, col, triggerRates[sectIndex] + "");
+				int triggerCol = i + 2;
+				int particCol;
+				if (refSol != null)
+					particCol = i*2 + 2;
+				else
+					particCol = triggerCol;
+				
+				particCSV.set(row, particCol, particRates[sectIndex] + "");
+				if (refSol != null) {
+					double refVal = refParticRatesList.get(i)[sectIndex];
+					double gain;
+					if (addRefForRatio)
+						gain = (particRates[sectIndex] + refVal)/refVal;
+					else
+						gain = particRates[sectIndex]/refVal;
+					particCSV.set(row, particCol+1, gain + "");
+				}
+				triggerCSV.set(row, triggerCol, triggerRates[sectIndex] + "");
 			}
 			for (int j=0; j<parentNames.size(); j++) {
 				String parentName = parentNames.get(j);
