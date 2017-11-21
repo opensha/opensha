@@ -30,6 +30,8 @@ import org.opensha.sha.simulators.parsers.RSQSimFileReader;
 import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 
 public class RSQSimStateTransitionFileReader {
 	
@@ -240,6 +242,8 @@ public class RSQSimStateTransitionFileReader {
 			
 			System.out.println(time+"\t"+patch+"\t"+stateInt);
 		}
+		
+		raFile.close();
 	}
 	
 	/**
@@ -298,7 +302,11 @@ public class RSQSimStateTransitionFileReader {
 			if (!patchEndTimes.containsKey(patchID))
 				// it's for an unrelated patch
 				continue;
-			if (time < patchEndTimes.get(patchID)) {
+			boolean thisEvent = time < patchEndTimes.get(patchID) ||
+					(curStates[arrayIndex] == RSQSimState.LOCKED && time == patchEndTimes.get(patchID));
+//			if (patchID == 193480)
+//				System.out.println("patch "+patchID+" t="+time+" ("+(time - startTime)+") "+curStates[arrayIndex].name()+" "+thisEvent);
+			if (thisEvent) {
 				// it's actually for this patch and event
 				List<RSQSimStateTime> patchTimes = patchTransitions.get(patchID);
 				if (!patchTimes.isEmpty()) {
@@ -315,8 +323,8 @@ public class RSQSimStateTransitionFileReader {
 			if (!patchTimes.isEmpty()) {
 				RSQSimStateTime patchTime = patchTimes.get(patchTimes.size()-1);
 				Preconditions.checkState(patchTime.getState() == RSQSimState.LOCKED,
-						"Patch %s ended in non-locked state! Entered %s at relative t=%s",
-						patchID, patchTime.getState(), patchTime.getStartTime()-startTime);
+						"Event %s, patch %s ended in non-locked state! Entered %s at relative t=%s. Relative next time: %s",
+						event.getID(), patchID, patchTime.getState(), patchTime.getStartTime()-startTime, patchEndTimes.get(patchID) - startTime);
 				patchTimes.remove(patchTimes.size()-1);
 			}
 		}
@@ -363,6 +371,15 @@ public class RSQSimStateTransitionFileReader {
 	}
 	
 	public static void main(String[] args) throws IOException {
+		if (args.length == 1 && args[0].equals("--hardcoded")) {
+			File dir = new File("/data/kevin/simulators/catalogs/baseCatalogSW_10");
+			File transFile = new File(dir, "trans.baseCatalogSW_10t.out");
+			File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
+			String str = "--print-rup "+transFile.getAbsolutePath()+" "+geomFile.getAbsolutePath()
+				+" 32777581 32777582 32777583 32777584 32777585 32777586 32777587 32777588 32777589 327775810";
+			System.out.println("HARDCODED: "+str);
+			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
+		}
 		if (args.length > 0 && args[0].equals("--debug")) {
 			if (args.length != 5) {
 				System.err.println("USAGE: --debug <trans-file> <start-index> <num> <little/big>");
@@ -406,8 +423,12 @@ public class RSQSimStateTransitionFileReader {
 			System.out.println("Loaded "+events.size()+" events");
 			
 			RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
+			System.out.println("Transition file starts at "+transReader.getFirstTransitionTime()+" seconds");
+			System.out.println("Transition file ends at "+transReader.getLastTransitionTime()+" seconds");
 			for (RSQSimEvent e : events) {
 				System.out.println("************************************************");
+				double secsFromEnd = transReader.getLastTransitionTime() - e.getTime();
+				System.out.println("Event "+e.getID()+" at t="+e.getTime()+" s ("+(float)secsFromEnd+" s from end of trans file)");
 				Map<Integer, List<RSQSimStateTime>> transitions = transReader.getTransitions(e);
 				printTransitions(e, transitions);
 				System.out.println("************************************************");
