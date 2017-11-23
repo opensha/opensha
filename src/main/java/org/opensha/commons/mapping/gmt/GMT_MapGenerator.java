@@ -1031,7 +1031,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 		int dpi = (Integer)this.dpiParam.getValue();
 		if(!(Boolean)gmtSmoothingParam.getValue()) {	// note that this forces topo resolution to none (TOPO_RESOLUTION_NONE)
-			commandLine="${GMT_PATH}grdview "+ grdFileName + xOff + yOff + projWdth + " -C"+fileName+".cpt "+"-Ts -K"+dpi+ region + " > " + PS_FILE_NAME;
+			commandLine="${GMT_PATH}grdimage "+ grdFileName + xOff + yOff + projWdth + " -C"+fileName+".cpt "+" -K -E"+dpi+ region + " > " + PS_FILE_NAME;
 			gmtCommandLines.add(commandLine+"\n");
 		}
 		// else generate the image depending on whether topo relief is desired
