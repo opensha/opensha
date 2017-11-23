@@ -70,8 +70,8 @@ public abstract class AbstractBinarySiteDataLoader extends AbstractSiteData<Doub
 			
 			file = new RandomAccessFile(dataFile, "r");
 			
-			calc.setStartBottom(true);
-			calc.setStartLeft(true);
+			calc.setStartBottom(startBottom);
+			calc.setStartLeft(startLeft);
 			
 			recordBuffer = new byte[4];
 			ByteBuffer record = ByteBuffer.wrap(recordBuffer);
