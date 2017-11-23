@@ -1448,7 +1448,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			
 			if (!map.isUseGMTSmoothing()) {
 				if (!contourOnly) {
-					commandLine="${GMT_PATH}grdview "+ grdFileName + xOff + yOff + projWdth + " -C"+cptFile+" "+"-Ts -K"+dpi+ region + " > " + psFileName;
+					commandLine="${GMT_PATH}grdimage "+ grdFileName + xOff + yOff + projWdth + " -C"+cptFile+" -K -E"+dpi+ region + " > " + psFileName;
 					gmtCommandLines.add(commandLine+"\n");
 				}
 			}
