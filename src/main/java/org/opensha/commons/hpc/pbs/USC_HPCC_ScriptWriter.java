@@ -15,6 +15,7 @@ public class USC_HPCC_ScriptWriter extends BatchScriptWriter {
 	
 	private String nodesAddition;
 	private int perNodeMemGB = -1;
+	private boolean skipRootNode = false;
 	
 	public USC_HPCC_ScriptWriter() {
 		this(null);
@@ -34,6 +35,10 @@ public class USC_HPCC_ScriptWriter extends BatchScriptWriter {
 	
 	public void setPerNodeMemGB(int perNodeMemGB) {
 		this.perNodeMemGB = perNodeMemGB;
+	}
+	
+	public void setSkipRootNode(boolean skipRootNode) {
+		this.skipRootNode = skipRootNode;
 	}
 
 	@Override
@@ -62,6 +67,10 @@ public class USC_HPCC_ScriptWriter extends BatchScriptWriter {
 		pbs.add("	NEW_NODEFILE=\"/tmp/${USER}-hostfile-${PBS_JOBID}\"");
 		pbs.add("	echo \"creating PBS_NODEFILE: $NEW_NODEFILE\"");
 		pbs.add("	cat $PBS_NODEFILE | sort | uniq > $NEW_NODEFILE");
+		if (skipRootNode) {
+			pbs.add("	tail -n +2 $NEW_NODEFILE > ${NEW_NODEFILE}.tmp");
+			pbs.add("	mv ${NEW_NODEFILE}.tmp ${NEW_NODEFILE}");
+		}
 		pbs.add("	export PBS_NODEFILE=$NEW_NODEFILE");
 		pbs.add("fi");
 		pbs.add("");

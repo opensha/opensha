@@ -13,7 +13,7 @@ public class StampedeScriptWriter extends BatchScriptWriter {
 	private boolean knl;
 	
 	public StampedeScriptWriter() {
-		this(false);
+		this(true);
 	}
 	
 	public StampedeScriptWriter(boolean knl) {
