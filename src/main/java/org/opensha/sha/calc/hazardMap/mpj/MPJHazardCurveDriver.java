@@ -101,9 +101,9 @@ public class MPJHazardCurveDriver extends MPJTaskCalculator {
 	}
 	
 	public static void main(String[] args) {
-		args = MPJTaskCalculator.initMPJ(args);
-		
 		try {
+			args = MPJTaskCalculator.initMPJ(args);
+			
 			Options options = createOptions();
 			
 			CommandLine cmd = parse(options, args, MPJHazardCurveDriver.class);

@@ -94,6 +94,7 @@ public class RSQSimSRFGenerator {
 		int patchID = patch.getID();
 		double tStart = func.getTimeOfFirstSlip(patchID);
 		double tEnd = func.getTimeOfLastSlip(patchID);
+		double slipVel = func.getPatchSlipVel(patchID);
 		
 		List<Taper> tapers = null;
 		if (mode == SRFInterpolationMode.LIN_TAPER_VEL) {
@@ -111,7 +112,7 @@ public class RSQSimSRFGenerator {
 				double downTaperEnd = e + 0.5*taperLen;
 				tStart = Math.min(tStart, upTaperStart);
 				tEnd = Math.max(tEnd, downTaperEnd);
-				tapers.add(new Taper(upTaperStart, upTaperEnd, downTaperStart, downTaperEnd, func.getSlipVelocity()));
+				tapers.add(new Taper(upTaperStart, upTaperEnd, downTaperStart, downTaperEnd, slipVel));
 			}
 		}
 		
@@ -119,7 +120,7 @@ public class RSQSimSRFGenerator {
 		double totSlip = func.getCumulativeEventSlip(patchID, func.getEndTime());
 		int numSteps = (int)Math.ceil((tEnd - tStart)/dt);
 		double[] slipVels = new double[numSteps];
-		double constSlipPerStep = dt*func.getSlipVelocity();
+		double constSlipPerStep = dt*slipVel;
 		double curTotSlip = 0;
 		
 		for (int i=0; i<numSteps; i++) {
@@ -143,7 +144,7 @@ public class RSQSimSRFGenerator {
 				double deltaOn = Math.abs(targetSlip - slipIfOn);
 				double deltaOff = Math.abs(targetSlip - curTotSlip);
 				if (deltaOn < deltaOff)
-					slipVels[i] = func.getSlipVelocity();
+					slipVels[i] = slipVel;
 				break;
 
 			default:
@@ -176,10 +177,12 @@ public class RSQSimSRFGenerator {
 		slipFuncs.add(shiftedSlipFunc);
 		slipChars.add(actualChar);
 		
+		double slipVel = func.getPatchSlipVel(patchID);
+		
 		for (RSQSimStateTime trans : func.getTransitions(patchID)) {
 			double vel;
 			if (trans.getState() == RSQSimState.EARTHQUAKE_SLIP)
-				vel = func.getSlipVelocity();
+				vel = slipVel;
 			else
 				vel = 0d;
 			DiscretizedFunc velFunc = new ArbitrarilyDiscretizedFunc();
@@ -282,7 +285,7 @@ public class RSQSimSRFGenerator {
 		
 		List<Range> yRanges = new ArrayList<>();
 		yRanges.add(new Range(0d, slipMaxY));
-		yRanges.add(new Range(0d, func.getSlipVelocity()*1.05));
+		yRanges.add(new Range(0d, func.getMaxSlipVel()*1.05));
 		
 		gp.drawGraphPanel(specs, false, false, xRanges, null);
 
@@ -301,84 +304,84 @@ public class RSQSimSRFGenerator {
 ////		int[] eventIDs = { 399681 };
 //		int[] eventIDs = { 136704, 145982 };
 		
-		File catalogDir = new File("/data/kevin/simulators/catalogs/JG_UCERF3_millionElement");
-		File geomFile = new File(catalogDir, "UCERF3.D3.1.millionElements.flt");
-		File transFile = new File(catalogDir, "trans.UCERF3.D3.1.millionElements1.out");
-		
-		int[] eventIDs = { 4099020 };
-		
-		boolean plotIndividual = false;
-		int plotMod = 50;
-		boolean writeSRF = true;
-		
-		double slipVel = 1d;
-		
-		File outputDir = new File(catalogDir, "event_srfs");
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		
-		System.out.println("Loading geometry...");
-		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
-		double meanArea = 0d;
-		for (SimulatorElement e : elements)
-			meanArea += e.getArea()/1000000d; // to km^2
-		meanArea /= elements.size();
-		System.out.println("Loaded "+elements.size()+" elements. Mean area: "+(float)meanArea+" km^2");
-		List<RuptureIdentifier> loadIdens = new ArrayList<>();
-//		RuptureIdentifier loadIden = new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
-//				new MagRangeRuptureIdentifier(minMag, maxMag),
-//				new CatalogLengthLoadIden(maxLengthYears));
-		loadIdens.add(new EventIDsRupIden(eventIDs));
-		System.out.println("Loading events...");
-		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(catalogDir, elements, loadIdens);
-		System.out.println("Loaded "+events.size()+" events");
-		Preconditions.checkState(events.size() == eventIDs.length);
-
-		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
-		
-		SRFInterpolationMode[] modes = SRFInterpolationMode.values();
-		double[] dts = { 0.1, 0.05 };
-//		SRFInterpolationMode[] modes = { SRFInterpolationMode.ADJ_VEL };
-//		double[] dts = { 0.05 };
-		double srfVersion = 1.0;
-		
-		int patchDigits = (elements.size()+"").length();
-		
-		for (RSQSimEvent event : events) {
-			System.out.println("Event: "+event.getID()+", M"+(float)event.getMagnitude());
-			int eventID = event.getID();
-			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), slipVel);
-			String eventStr = "event_"+eventID;
-			
-			for (double dt : dts) {
-				File eventOutputDir = new File(outputDir, eventStr+"_"+(float)dt+"s");
-				System.out.println("dt="+dt+" => "+outputDir.getAbsolutePath());
-				Preconditions.checkState(eventOutputDir.exists() || eventOutputDir.mkdir());
-				
-				ArrayList<SimulatorElement> patches = event.getAllElements();
-				if (plotIndividual) {
-					System.out.println("Plotting patch slip/vel functions");
-					for (int i=0; i<patches.size(); i++) {
-						if (i % plotMod > 0)
-							continue;
-						SimulatorElement patch = patches.get(i);
-						String prefix = patch.getID()+"";
-						while (prefix.length() < patchDigits)
-							prefix = "0"+prefix;
-						prefix = "patch_"+prefix;
-						plotSlip(eventOutputDir, prefix, func, patch, dt, modes);
-					}
-				}
-				
-				if (writeSRF) {
-					for (SRFInterpolationMode mode : modes) {
-						File srfFile = new File(eventOutputDir.getAbsolutePath()+"_"+mode.name()+".srf");
-						System.out.println("Generating SRF for dt="+(float)dt+", "+mode);
-						List<SRF_PointData> srf = buildSRF(func, patches, dt, mode);
-						SRF_PointData.writeSRF(srfFile, srf, srfVersion);
-					}
-				}
-			}
-		}
+//		File catalogDir = new File("/data/kevin/simulators/catalogs/JG_UCERF3_millionElement");
+//		File geomFile = new File(catalogDir, "UCERF3.D3.1.millionElements.flt");
+//		File transFile = new File(catalogDir, "trans.UCERF3.D3.1.millionElements1.out");
+//		
+//		int[] eventIDs = { 4099020 };
+//		
+//		boolean plotIndividual = false;
+//		int plotMod = 50;
+//		boolean writeSRF = true;
+//		
+//		double slipVel = 1d;
+//		
+//		File outputDir = new File(catalogDir, "event_srfs");
+//		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+//		
+//		System.out.println("Loading geometry...");
+//		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
+//		double meanArea = 0d;
+//		for (SimulatorElement e : elements)
+//			meanArea += e.getArea()/1000000d; // to km^2
+//		meanArea /= elements.size();
+//		System.out.println("Loaded "+elements.size()+" elements. Mean area: "+(float)meanArea+" km^2");
+//		List<RuptureIdentifier> loadIdens = new ArrayList<>();
+////		RuptureIdentifier loadIden = new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
+////				new MagRangeRuptureIdentifier(minMag, maxMag),
+////				new CatalogLengthLoadIden(maxLengthYears));
+//		loadIdens.add(new EventIDsRupIden(eventIDs));
+//		System.out.println("Loading events...");
+//		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(catalogDir, elements, loadIdens);
+//		System.out.println("Loaded "+events.size()+" events");
+//		Preconditions.checkState(events.size() == eventIDs.length);
+//
+//		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
+//		
+//		SRFInterpolationMode[] modes = SRFInterpolationMode.values();
+//		double[] dts = { 0.1, 0.05 };
+////		SRFInterpolationMode[] modes = { SRFInterpolationMode.ADJ_VEL };
+////		double[] dts = { 0.05 };
+//		double srfVersion = 1.0;
+//		
+//		int patchDigits = (elements.size()+"").length();
+//		
+//		for (RSQSimEvent event : events) {
+//			System.out.println("Event: "+event.getID()+", M"+(float)event.getMagnitude());
+//			int eventID = event.getID();
+//			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), slipVel);
+//			String eventStr = "event_"+eventID;
+//			
+//			for (double dt : dts) {
+//				File eventOutputDir = new File(outputDir, eventStr+"_"+(float)dt+"s");
+//				System.out.println("dt="+dt+" => "+outputDir.getAbsolutePath());
+//				Preconditions.checkState(eventOutputDir.exists() || eventOutputDir.mkdir());
+//				
+//				ArrayList<SimulatorElement> patches = event.getAllElements();
+//				if (plotIndividual) {
+//					System.out.println("Plotting patch slip/vel functions");
+//					for (int i=0; i<patches.size(); i++) {
+//						if (i % plotMod > 0)
+//							continue;
+//						SimulatorElement patch = patches.get(i);
+//						String prefix = patch.getID()+"";
+//						while (prefix.length() < patchDigits)
+//							prefix = "0"+prefix;
+//						prefix = "patch_"+prefix;
+//						plotSlip(eventOutputDir, prefix, func, patch, dt, modes);
+//					}
+//				}
+//				
+//				if (writeSRF) {
+//					for (SRFInterpolationMode mode : modes) {
+//						File srfFile = new File(eventOutputDir.getAbsolutePath()+"_"+mode.name()+".srf");
+//						System.out.println("Generating SRF for dt="+(float)dt+", "+mode);
+//						List<SRF_PointData> srf = buildSRF(func, patches, dt, mode);
+//						SRF_PointData.writeSRF(srfFile, srf, srfVersion);
+//					}
+//				}
+//			}
+//		}
 	}
 
 }

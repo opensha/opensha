@@ -1052,10 +1052,12 @@ public class RSQSimFileReader {
 			double littleTime = littleRecord.get(0);
 			double bigTime = bigRecord.get(0);
 			
+//			System.out.println("pos="+pos+"\tlittleTime="+(float)littleTime+"\tbigTime="+(float)bigTime);
+			
 			if (!Double.isNaN(prevLittle) && !Double.isNaN(prevBig)) {
-				if (littleTime < prevLittle)
+				if ((float)littleTime < (float)prevLittle)
 					littleEndian = false;
-				if (bigTime < prevBig)
+				if ((float)bigTime < (float)prevBig)
 					bigEndian = false;
 			}
 			prevLittle = littleTime;

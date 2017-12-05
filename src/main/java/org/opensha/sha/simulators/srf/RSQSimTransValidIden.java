@@ -1,6 +1,7 @@
 package org.opensha.sha.simulators.srf;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
@@ -15,13 +16,13 @@ import com.google.common.base.Preconditions;
 public class RSQSimTransValidIden extends AbstractRuptureIdentifier {
 	
 	private RSQSimStateTransitionFileReader trans;
-	private double slipVel;
+	private Map<Integer, Double> slipVels;
 	private double firstTrans;
 	private double lastTrans;
 	
-	public RSQSimTransValidIden(RSQSimStateTransitionFileReader trans, double slipVel) throws IOException {
+	public RSQSimTransValidIden(RSQSimStateTransitionFileReader trans, Map<Integer, Double> slipVels) throws IOException {
 		this.trans = trans;
-		this.slipVel = slipVel;
+		this.slipVels = slipVels;
 		firstTrans = trans.getFirstTransitionTime();
 		lastTrans = trans.getLastTransitionTime();
 	}
@@ -44,7 +45,7 @@ public class RSQSimTransValidIden extends AbstractRuptureIdentifier {
 						// check that it finished
 						if (slipTime == null) {
 							try {
-								slipTime = new RSQSimEventSlipTimeFunc(trans.getTransitions((RSQSimEvent)event), slipVel);
+								slipTime = new RSQSimEventSlipTimeFunc(trans.getTransitions((RSQSimEvent)event), slipVels);
 							} catch (IOException e) {
 								throw ExceptionUtils.asRuntimeException(e);
 							} catch (IllegalStateException e) {

@@ -351,7 +351,7 @@ public class RupturePlotGenerator {
 		func = func.asRelativeTimeFunc();
 		
 		CPT slipCPT = GMT_CPT_Files.GMT_HOT.instance().reverse().rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
-		CPT velCPT = new CPT(0d, func.getSlipVelocity(), Color.BLUE, Color.RED);
+		CPT velCPT = new CPT(0d, func.getMaxSlipVel(), Color.BLUE, Color.RED);
 		
 		List<SimulatorElement> rupElems = event.getAllElements();
 		List<Double> emptyScalars = new ArrayList<>();
@@ -778,32 +778,32 @@ public class RupturePlotGenerator {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
-		File geomFile = new File(catalogDir, "zfault_Deepen.in");
-		File transFile = new File(catalogDir, "trans.rundir2194_long.out");
-		
-		int eventID = 136704;
-		
-		System.out.println("Loading geometry...");
-		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
-		double meanArea = 0d;
-		for (SimulatorElement e : elements)
-			meanArea += e.getArea()/1000000d; // to km^2
-		meanArea /= elements.size();
-		System.out.println("Loaded "+elements.size()+" elements. Mean area: "+(float)meanArea+" km^2");
-		List<RuptureIdentifier> loadIdens = new ArrayList<>();
-//		RuptureIdentifier loadIden = new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
-//				new MagRangeRuptureIdentifier(minMag, maxMag),
-//				new CatalogLengthLoadIden(maxLengthYears));
-		loadIdens.add(new EventIDsRupIden(eventID));
-		System.out.println("Loading events...");
-		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(catalogDir, elements, loadIdens);
-		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
-		
-		RSQSimEvent event = events.get(0);
-		RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), 1d);
-		
-		writeSlipPlot(event, func, new File("/tmp"), "plot_test");
+//		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
+//		File geomFile = new File(catalogDir, "zfault_Deepen.in");
+//		File transFile = new File(catalogDir, "trans.rundir2194_long.out");
+//		
+//		int eventID = 136704;
+//		
+//		System.out.println("Loading geometry...");
+//		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
+//		double meanArea = 0d;
+//		for (SimulatorElement e : elements)
+//			meanArea += e.getArea()/1000000d; // to km^2
+//		meanArea /= elements.size();
+//		System.out.println("Loaded "+elements.size()+" elements. Mean area: "+(float)meanArea+" km^2");
+//		List<RuptureIdentifier> loadIdens = new ArrayList<>();
+////		RuptureIdentifier loadIden = new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
+////				new MagRangeRuptureIdentifier(minMag, maxMag),
+////				new CatalogLengthLoadIden(maxLengthYears));
+//		loadIdens.add(new EventIDsRupIden(eventID));
+//		System.out.println("Loading events...");
+//		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(catalogDir, elements, loadIdens);
+//		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
+//		
+//		RSQSimEvent event = events.get(0);
+//		RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), 1d);
+//		
+//		writeSlipPlot(event, func, new File("/tmp"), "plot_test");
 	}
 
 }

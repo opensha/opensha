@@ -436,59 +436,59 @@ public class RSQSimStateTransitionFileReader {
 			
 			System.exit(0);
 		}
-//		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
-//		File geomFile = new File(catalogDir, "zfault_Deepen.in");
-//		File transFile = new File(catalogDir, "trans.rundir2194_long.out");
-		File catalogDir = new File("/data/kevin/simulators/catalogs/jacqui_12km_K");
-		File geomFile = new File(catalogDir, "UCERF3wFixed12kmDepth.flt");
-		File transFile = new File(catalogDir, "trans.UCERF3_flt_12km_K.out");
-//		double minMag = 6d;
-//		double maxMag = 6.1d;
-		double minMag = 7d;
-		double maxMag = 10d;
-		double skipYears = 5000;
-		double maxLengthYears = 25000;
-		double slipVel = 1d; // m/s
-		
-		// load events
-		System.out.println("Loading geometry...");
-		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
-		System.out.println("Loaded "+elements.size()+" elements");
-		List<RuptureIdentifier> loadIdens = new ArrayList<>();
-		RuptureIdentifier loadIden = new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
-				new MagRangeRuptureIdentifier(minMag, maxMag),
-				new CatalogLengthLoadIden(maxLengthYears));
-		loadIdens.add(loadIden);
-		System.out.println("Loading events...");
-		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(catalogDir, elements, loadIdens);
-		System.out.println("Loaded "+events.size()+" events with "+(float)minMag+"<=M<="+(float)maxMag
-				+", duration: "+SimulatorUtils.getSimulationDurationYears(events)+" years");
-//		List<RSQSimEvent> events = null;
-		
-		// load transitions
-		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
-//		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, ByteOrder.LITTLE_ENDIAN);
-//		System.exit(0);
-//		transReader.readTransition(0);
-		
-		double pDiffThresh = 1d;
-		MinMaxAveTracker pDiffTrack = new MinMaxAveTracker();
-		for (int i=0; i<10; i++) {
-			int index = new Random().nextInt(events.size());
-			RSQSimEvent e = events.get(index);
-			System.out.println("************************************************");
-			Map<Integer, List<RSQSimStateTime>> transitions = transReader.getTransitions(e);
-			printTransitions(e, transitions);
-			System.out.println("Validating...");
-			System.out.flush();
-			RSQSimEventSlipTimeFunc slipFunc = new RSQSimEventSlipTimeFunc(transitions, slipVel);
-			MinMaxAveTracker subTrack = slipFunc.validateTotalSlip(e, pDiffThresh);
-			pDiffTrack.addFrom(subTrack);
-			System.out.println("DONE. Max diff: "+(float)subTrack.getMax()+" %");
-			System.out.println("************************************************");
-		}
-		
-		System.out.println();
-		System.out.println("Patch slip % diffs: "+pDiffTrack);
+////		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
+////		File geomFile = new File(catalogDir, "zfault_Deepen.in");
+////		File transFile = new File(catalogDir, "trans.rundir2194_long.out");
+//		File catalogDir = new File("/data/kevin/simulators/catalogs/jacqui_12km_K");
+//		File geomFile = new File(catalogDir, "UCERF3wFixed12kmDepth.flt");
+//		File transFile = new File(catalogDir, "trans.UCERF3_flt_12km_K.out");
+////		double minMag = 6d;
+////		double maxMag = 6.1d;
+//		double minMag = 7d;
+//		double maxMag = 10d;
+//		double skipYears = 5000;
+//		double maxLengthYears = 25000;
+//		double slipVel = 1d; // m/s
+//		
+//		// load events
+//		System.out.println("Loading geometry...");
+//		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
+//		System.out.println("Loaded "+elements.size()+" elements");
+//		List<RuptureIdentifier> loadIdens = new ArrayList<>();
+//		RuptureIdentifier loadIden = new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
+//				new MagRangeRuptureIdentifier(minMag, maxMag),
+//				new CatalogLengthLoadIden(maxLengthYears));
+//		loadIdens.add(loadIden);
+//		System.out.println("Loading events...");
+//		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(catalogDir, elements, loadIdens);
+//		System.out.println("Loaded "+events.size()+" events with "+(float)minMag+"<=M<="+(float)maxMag
+//				+", duration: "+SimulatorUtils.getSimulationDurationYears(events)+" years");
+////		List<RSQSimEvent> events = null;
+//		
+//		// load transitions
+//		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
+////		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, ByteOrder.LITTLE_ENDIAN);
+////		System.exit(0);
+////		transReader.readTransition(0);
+//		
+//		double pDiffThresh = 1d;
+//		MinMaxAveTracker pDiffTrack = new MinMaxAveTracker();
+//		for (int i=0; i<10; i++) {
+//			int index = new Random().nextInt(events.size());
+//			RSQSimEvent e = events.get(index);
+//			System.out.println("************************************************");
+//			Map<Integer, List<RSQSimStateTime>> transitions = transReader.getTransitions(e);
+//			printTransitions(e, transitions);
+//			System.out.println("Validating...");
+//			System.out.flush();
+//			RSQSimEventSlipTimeFunc slipFunc = new RSQSimEventSlipTimeFunc(transitions, slipVel);
+//			MinMaxAveTracker subTrack = slipFunc.validateTotalSlip(e, pDiffThresh);
+//			pDiffTrack.addFrom(subTrack);
+//			System.out.println("DONE. Max diff: "+(float)subTrack.getMax()+" %");
+//			System.out.println("************************************************");
+//		}
+//		
+//		System.out.println();
+//		System.out.println("Patch slip % diffs: "+pDiffTrack);
 	}
 }
