@@ -88,6 +88,14 @@ public class STREC_DataWrapper extends AbstractSiteData<TectonicRegime> {
 			return new ArrayList<TectonicRegime>();
 		File tempDir = null;
 		ArrayList<TectonicRegime> ret = null;
+		
+		for (int i=0; i<locs.size(); i++) {
+			while (locs.get(i).getLongitude() > 180) {
+				Location loc = locs.get(i);
+				locs.set(i, new Location(loc.getLatitude(), loc.getLongitude()-360, loc.getDepth()));
+			}
+		}
+		
 		try {
 //			tempDir = Files.createTempDir();
 			tempDir = new File("/tmp/opensha_"+System.currentTimeMillis());
