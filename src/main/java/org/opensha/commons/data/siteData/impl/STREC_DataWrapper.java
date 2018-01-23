@@ -82,19 +82,21 @@ public class STREC_DataWrapper extends AbstractSiteData<TectonicRegime> {
 
 	@Override
 	public ArrayList<TectonicRegime> getValues(LocationList locs) throws IOException {
+		for (int i=0; i<locs.size(); i++) {
+//			System.out.println("Checking loc: "+locs.get(i));
+			while (locs.get(i).getLongitude() > 180) {
+				Location loc = locs.get(i);
+				locs.set(i, new Location(loc.getLatitude(), loc.getLongitude()-360, loc.getDepth()));
+//				System.out.println("New loc: "+locs.get(i));
+			}
+		}
+		
 		if (accessor != null)
 			return accessor.getValues(locs);
 		if (locs.isEmpty())
 			return new ArrayList<TectonicRegime>();
 		File tempDir = null;
 		ArrayList<TectonicRegime> ret = null;
-		
-		for (int i=0; i<locs.size(); i++) {
-			while (locs.get(i).getLongitude() > 180) {
-				Location loc = locs.get(i);
-				locs.set(i, new Location(loc.getLatitude(), loc.getLongitude()-360, loc.getDepth()));
-			}
-		}
 		
 		try {
 //			tempDir = Files.createTempDir();
