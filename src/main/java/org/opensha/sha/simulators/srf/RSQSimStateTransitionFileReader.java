@@ -255,7 +255,7 @@ public class RSQSimStateTransitionFileReader {
 	 */
 	private int readTransition(long index) throws IOException {
 		long arrayIndex = index - curIndex;
-		if (arrayIndex > 0l && arrayIndex < Integer.MAX_VALUE && arrayIndex < curTimes.length)
+		if (arrayIndex >= 0l && arrayIndex < Integer.MAX_VALUE && arrayIndex < curTimes.length)
 			// it's already in memory
 			return (int)arrayIndex;
 		// need to load it into memory

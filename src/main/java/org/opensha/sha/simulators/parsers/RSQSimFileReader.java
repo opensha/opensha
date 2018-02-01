@@ -953,7 +953,7 @@ public class RSQSimFileReader {
 		
 	}
 	
-	private static File findByExt(File dir, String ext) throws FileNotFoundException {
+	public static File findByExt(File dir, String ext) throws FileNotFoundException {
 		for (File file : dir.listFiles())
 			if (file.getName().endsWith(ext))
 				return file;
@@ -1055,9 +1055,11 @@ public class RSQSimFileReader {
 //			System.out.println("pos="+pos+"\tlittleTime="+(float)littleTime+"\tbigTime="+(float)bigTime);
 			
 			if (!Double.isNaN(prevLittle) && !Double.isNaN(prevBig)) {
-				if ((float)littleTime < (float)prevLittle)
+				if (!validTimes(prevLittle, littleTime))
+//				if ((float)littleTime < (float)prevLittle)
 					littleEndian = false;
-				if ((float)bigTime < (float)prevBig)
+//				if ((float)bigTime < (float)prevBig)
+				if (!validTimes(prevBig, bigTime))
 					bigEndian = false;
 			}
 			prevLittle = littleTime;
@@ -1086,6 +1088,16 @@ public class RSQSimFileReader {
 		
 		raFile.close();
 		return (lastTime - firstTime)/SimulatorUtils.SECONDS_PER_YEAR;
+	}
+	
+	private static final boolean validTimes(double prevTime, double time) {
+		if ((float)time >= (float)prevTime)
+			return true;
+		// less than, but could be close
+		if (prevTime - time < 60)
+			// it's within a minute, probably not an endianness issue
+			return true;
+		return false;
 	}
 
 }

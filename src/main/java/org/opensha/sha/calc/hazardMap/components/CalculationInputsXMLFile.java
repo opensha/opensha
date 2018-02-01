@@ -161,6 +161,8 @@ public class CalculationInputsXMLFile implements XMLSaveable {
 		return loadXML(doc, 1, false)[0];
 	}
 	
+	public static boolean UDPATE_FORECAST = true;
+	
 	public static CalculationInputsXMLFile[] loadXML(Document doc, int threads, boolean multERFs)
 	throws InvocationTargetException, IOException {
 		Preconditions.checkArgument(threads >= 1, "threads must be >= 1");
@@ -179,7 +181,8 @@ public class CalculationInputsXMLFile implements XMLSaveable {
 				} else {
 					erf = AbstractERF.fromXMLMetadata(erfElement);
 					System.out.println("Updating Forecast");
-					erf.updateForecast();
+					if (UDPATE_FORECAST)
+						erf.updateForecast();
 				}
 			} else {
 				// this means i>0 but not using mult erfs
