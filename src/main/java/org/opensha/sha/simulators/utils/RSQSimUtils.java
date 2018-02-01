@@ -60,7 +60,7 @@ import scratch.kevin.simulators.erf.SimulatorFaultSystemSolution;
 
 public class RSQSimUtils {
 
-	public static EqkRupture buildSubSectBasedRupture(SimulatorEvent event, List<FaultSectionPrefData> subSects,
+	public static RSQSimSubSectEqkRupture buildSubSectBasedRupture(RSQSimEvent event, List<FaultSectionPrefData> subSects,
 			List<SimulatorElement> elements, double minFractForInclusion, Map<Integer, Double> subSectAreas,
 			Map<IDPairing, Double> distsCache) {
 		int minElemSectID = getSubSectIndexOffset(elements, subSects);
@@ -114,7 +114,7 @@ public class RSQSimUtils {
 		Preconditions.checkNotNull(hypo, "Couldn't detect hypocenter for event %s.",
 				event.getID());
 
-		EqkRupture rup = new EqkRupture(mag, rake, surf, hypo);
+		RSQSimSubSectEqkRupture rup = new RSQSimSubSectEqkRupture(mag, rake, surf, hypo, event, rupSects);
 
 		return rup;
 	}

@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -15,6 +16,7 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.dom4j.DocumentException;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
@@ -262,14 +264,38 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	
 	
 	public static void main(String args[]) throws IOException, DocumentException {
-		int mappingCol = 16; // 14 for parsons, 16 for biasi
-		for (FaultModels fm : FaultModels.values()) {
-			List<FaultSectionPrefData> datas = new DeformationModelFetcher(
-					fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
-					InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
-			UCERF3_PaleoRateConstraintFetcher.getConstraints(datas, mappingCol++);
-		}
+//		int mappingCol = 16; // 14 for parsons, 16 for biasi
+//		for (FaultModels fm : FaultModels.values()) {
+//			List<FaultSectionPrefData> datas = new DeformationModelFetcher(
+//					fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
+//					InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
+//			UCERF3_PaleoRateConstraintFetcher.getConstraints(datas, mappingCol++);
+//		}
+//		System.exit(0);
+		
+		FaultModels fm = FaultModels.FM3_1;
+		List<FaultSectionPrefData> datas = new DeformationModelFetcher(
+				fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
+				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
+		HashSet<Integer> parentIDs = new HashSet<>();
+		for (FaultSectionPrefData data : datas)
+			parentIDs.add(data.getParentSectionId());
+		ArrayList<PaleoRateConstraint> constrs = UCERF3_PaleoRateConstraintFetcher.getConstraints(datas);
+		System.out.println("Loaded "+constrs.size()+" constraints");
+		HashSet<Integer> parentIDsConstrained = new HashSet<>();
+		for (PaleoRateConstraint constr : constrs)
+			parentIDsConstrained.add(datas.get(constr.getSectionIndex()).getParentSectionId());
+		System.out.println(parentIDsConstrained.size()+"/"+parentIDs.size()+" sections constrained");
 		System.exit(0);
+		System.out.println("Site Name\tSubsection Index");
+		CSVFile<String> csv = new CSVFile<>(true);
+		csv.addLine("Site Name", "Subsection Index");
+		for (PaleoRateConstraint constr : constrs) {
+			System.out.println(constr.getPaleoSiteName()+"\t"+constr.getSectionIndex());
+			csv.addLine(constr.getPaleoSiteName(), constr.getSectionIndex()+"");
+		}
+		csv.writeToFile(new File("/tmp/paleo_subsections.csv"));
+
 //   		FaultSystemRupSet faultSysRupSet = InversionFaultSystemRupSetFactory.cachedForBranch(DeformationModels.GEOLOGIC);
 //   		UCERF3_PaleoRateConstraintFetcher.getConstraints(faultSysRupSet.getFaultSectionDataList());
 

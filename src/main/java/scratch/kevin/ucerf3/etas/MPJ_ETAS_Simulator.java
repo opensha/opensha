@@ -169,7 +169,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		File solFile = new File(cmd.getOptionValue("sol-file"));
 		Preconditions.checkArgument(solFile.exists(), "Solution file doesn't exist: "+solFile.getAbsolutePath());
 		sols = new FaultSystemSolution[getNumThreads()];
-		// must load in solution ofr each thread as last even data will be overridden/updated
+		// must load in solution for each thread as last even data will be overridden/updated
 		for (int i=0; i<sols.length; i++)
 			sols[i] = FaultSystemIO.loadSol(solFile);
 		
@@ -438,84 +438,8 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		
 		Map<Integer, Integer> restartsMap = Maps.newHashMap();
 		
-		while (!queue.isEmpty()) {
+		while (!queue.isEmpty())
 			calcForDeque(queue, restartsMap);
-		}
-		
-//		while (!queue.isEmpty()) {
-//			int index = queue.poll();
-//			System.gc();
-//			
-//			File outputDir = new File(this.outputDir, "results");
-//			if (!outputDir.exists())
-//				outputDir.mkdir();
-//			
-//			String runName = ""+index;
-//			int desiredLen = ((getNumTasks()-1)+"").length();
-//			while (runName.length() < desiredLen)
-//				runName = "0"+runName;
-//			runName = "sim_"+runName;
-//			File resultsDir = new File(outputDir, runName);
-//			
-//			if (isAlreadyDone(resultsDir)) {
-//				debug(index+" is already done: "+resultsDir.getName());
-//				continue;
-//			}
-//			debug("calculating "+index);
-//			
-//			// reset date of last event
-//			if (timeIndep) {
-//				for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
-//					sect.setDateOfLastEvent(Long.MIN_VALUE);
-//			} else {
-//				LastEventData.populateSubSects(sol.getRupSet().getFaultSectionDataList(), lastEventData);
-//			}
-//			
-//			debug("Instantiationg ERF");
-//			FaultSystemSolutionERF_ETAS erf = buildERF(sol, timeIndep, duration);
-//			
-//			if (fssScenarioRupID >= 0) {
-//				// This sets the rupture as having occurred in the ERF (to apply elastic rebound)
-//				erf.setFltSystemSourceOccurranceTimeForFSSIndex(fssScenarioRupID, ot);
-//			}
-//			
-//			erf.updateForecast();
-//			debug("Done instantiating ERF");
-//			
-//			// redo with the previous random seed to avoid bias towards shorter running jobs in cases
-//			// with many restarts (as shorter jobs more likely to finish before wall time is up).
-//			long randSeed = getPrevRandSeed(resultsDir);
-//			if (randSeed > 0 && restartsMap.get(index) == null)
-//				debug("Resuming old rand seed of "+randSeed+" for "+runName);
-//			else
-//				randSeed = System.currentTimeMillis();
-//			
-//			
-////			List<ETAS_EqkRupture> obsEqkRuptureList = Lists.newArrayList(this.obsEqkRuptureList);
-//			try {
-//				ETAS_Simulator.testETAS_Simulation(resultsDir, erf, griddedRegion, triggerRup, histQkList, includeSpontEvents,
-//						includeIndirectTriggering, includeEqkRates, gridSeisDiscr, simulationName, randSeed,
-//						fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, new ETAS_ParameterList());
-//			} catch (Throwable t) {
-//				debug("Calc failed with seed "+randSeed+". Exception: "+t);
-//				t.printStackTrace();
-//				if (t.getCause() != null) {
-//					System.out.println("cause exceptoin:");
-//					t.getCause().printStackTrace();
-//				}
-//				System.err.flush();
-//				Integer prevFails = restartsMap.get(index);
-//				if (prevFails == null)
-//					prevFails = 0;
-//				if (prevFails == 2) {
-//					debug("Index "+index+" failed 3 times, bailing");
-//					ExceptionUtils.throwAsRuntimeException(t);
-//				}
-//				restartsMap.put(index, prevFails+1);
-//				debug("retrying "+index+" later");
-//				queue.add(index);
-//			}
-//		}
 	}
 	
 	private void calcForDeque(Deque<Integer> queue, Map<Integer, Integer> restartsMap) throws InterruptedException {
@@ -960,9 +884,9 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	}
 	
 	public static void main(String[] args) {
-		args = MPJTaskCalculator.initMPJ(args);
-		
 		try {
+			args = MPJTaskCalculator.initMPJ(args);
+			
 			Options options = createOptions();
 			
 			CommandLine cmd = parse(options, args, MPJ_ETAS_Simulator.class);
