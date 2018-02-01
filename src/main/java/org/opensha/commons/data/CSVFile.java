@@ -5,6 +5,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -209,12 +212,20 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	}
 	
 	public void writeToFile(File file) throws IOException {
-		FileWriter fw = new FileWriter(file);
+		writeWriter(new FileWriter(file));
+	}
+	
+	public void writeToStream(OutputStream stream) throws IOException {
+		writeWriter(new OutputStreamWriter(stream));
 		
+		stream.close();
+	}
+	
+	private void writeWriter(Writer w) throws IOException {
 		for (int i=0; i<getNumRows(); i++) {
-			fw.write(getLineStr(i) + "\n");
+			w.write(getLineStr(i) + "\n");
 		}
-		fw.close();
+		w.close();
 	}
 	
 	public void writeToTabSeparatedFile(File file, int headerLines) throws IOException {
