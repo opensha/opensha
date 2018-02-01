@@ -676,14 +676,15 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 
 	@Override
 	public double getStdDev() {
-		double[] std = new double[imrs.size()];
+		double[] vars = new double[imrs.size()];
 		for (int i=0; i<imrs.size(); i++) {
 			if (canSkipIMR(i))
 				continue;
 			ScalarIMR imr = imrs.get(i);
-			std[i] = imr.getStdDev();
+			double sd = imr.getStdDev();
+			vars[i] = sd*sd;
 		}
-		return getWeightedValue(std);
+		return Math.sqrt(getWeightedValue(vars));
 	}
 
 	@Override
