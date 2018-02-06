@@ -184,9 +184,9 @@ public class EvenlyDiscrXYZ_DataSet extends AbstractXYZ_DataSet {
 	
 	private int getIndex(double x, double y) {
 		int yInd = getYIndex(y);
-		Preconditions.checkState(yInd >= 0 && yInd < getNumY());
+		Preconditions.checkState(yInd >= 0 && yInd < getNumY(), "Bad y index. y=%s, yInd=%s, numY=%s", y, yInd, getNumY());
 		int xInd = getXIndex(x);
-		Preconditions.checkState(xInd >= 0 && xInd < getNumX());
+		Preconditions.checkState(xInd >= 0 && xInd < getNumX(), "Bad x index. x=%s, xInd=%s, numX=%s", x, xInd, getNumX());
 		return xInd + nx*yInd;
 	}
 	

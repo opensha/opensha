@@ -57,6 +57,7 @@ task fatJar(type: Jar) {
             exclude { it.path.contains('META-INF') }
         }
     }}
+    duplicatesStrategy = 'exclude'
     with jar
 }
 
