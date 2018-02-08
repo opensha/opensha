@@ -111,6 +111,15 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		setLocation(loc);
 	}
 
+	/**
+	 *  Constructor for the PointSurface object. Sets all the fields
+	 *  for a Location object.
+	 *
+	 *  OAF needs to have a default constructor.
+	 */
+	public PointSurface() {
+		setLocation(null);
+	}
 
 	/**
 	 * Sets the average strike of this surface on the Earth. An InvalidRangeException
