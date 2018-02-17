@@ -69,7 +69,9 @@ public class HazardCurveSetCalculator {
 					" for every IMR map.");
 		
 	
-		this.calc = new HazardCurveCalculator();
+		calc = new HazardCurveCalculator();
+		calc.setMaxSourceDistance(calcSettings.getMaxSourceDistance());
+		if (D) System.out.println("Max Source Cutoff: " + calcSettings.getMaxSourceDistance());
 		
 		erf.updateForecast();
 	}
@@ -84,8 +86,6 @@ public class HazardCurveSetCalculator {
 		Preconditions.checkState(siteIndexes.size() == sites.size());
 		if (D) System.out.println("ERF: " + erf.getName());
 		if (D) System.out.println("Num IMR Maps: " + imrMaps.size());
-		calc.setMaxSourceDistance(calcSettings.getMaxSourceDistance());
-		if (D) System.out.println("Max Source Cutoff: " + calcSettings.getMaxSourceDistance());
 		// looop over all sites
 		int siteCount = 0;
 		for (int i=0; i<sites.size(); i++) {
