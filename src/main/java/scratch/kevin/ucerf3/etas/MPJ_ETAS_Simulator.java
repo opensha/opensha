@@ -256,6 +256,9 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 //				debug("Max trigger mag in input catalog: "+maxTriggerMag);
 		}
 		
+		// purge any last event data after OT
+		LastEventData.filterDataAfterTime(lastEventData, ot);
+		
 		Location triggerHypo = null;
 		if (cmd.hasOption("trigger-loc")) {
 			String locStr = cmd.getOptionValue("trigger-loc");
@@ -366,11 +369,16 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 //			debug("Loaded "+loadedRups.size()+" rups from catalog");
 //		int numWithSurfaces = 0;
 //		double maxTriggerMag = 0d;
+		int numAfter = 0;
 		for (ObsEqkRupture rup : loadedRups) {
 			if (rup.getOriginTime() > ot) {
 				// skip all ruptures that occur after simulation start
-				System.out.println("Skipping a M"+rup.getMag()+" after sim start ("
-						+rup.getOriginTime()+" > "+ot+"): "+rup);
+				if (numAfter < 10)
+					System.out.println("Skipping a M"+rup.getMag()+" after sim start ("
+							+rup.getOriginTime()+" > "+ot+"): "+rup);
+				numAfter++;
+				if (numAfter == 10)
+					System.out.println("(supressing future output on skipped ruptures)");
 				continue;
 			}
 			ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
@@ -380,6 +388,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 //				numWithSurfaces++;
 //			maxTriggerMag = Math.max(maxTriggerMag, rup.getMag());
 		}
+		System.out.println("Skipped "+numAfter+" ruptures after sim start");
 		return histQkList;
 	}
 	

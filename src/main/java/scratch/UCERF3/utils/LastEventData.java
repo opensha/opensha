@@ -3,6 +3,7 @@ package scratch.UCERF3.utils;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.GregorianCalendar;
@@ -132,6 +133,30 @@ public class LastEventData {
 			}
 		}
 		return datas;
+	}
+	
+	/**
+	 * Remove all last event data after the given time
+	 * @param datas
+	 * @param timeMillis
+	 */
+	public static void filterDataAfterTime(Map<Integer, List<LastEventData>> datas, long timeMillis) {
+		for (Integer parentID : new ArrayList<>(datas.keySet())) {
+			List<LastEventData> parentDatas = datas.get(parentID);
+			if (parentDatas == null)
+				continue;
+			for (int i=parentDatas.size(); --i>=0;) {
+				LastEventData data = parentDatas.get(i);
+				long dataTime = data.getDateOfLastEvent().getTimeInMillis();
+//				System.out.println(data.getSectName()+" at "+data.getDateOfLastEvent().getTimeInMillis());
+				if (dataTime > timeMillis) {
+					long delta = dataTime - timeMillis;
+					System.out.println("Removing last event data on s='"+data.getSectName()
+						+"' with time="+dataTime+" > "+timeMillis+" (delta="+delta+")");
+					parentDatas.remove(i);
+				}
+			}
+		}
 	}
 	
 	/**

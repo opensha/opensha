@@ -3707,7 +3707,7 @@ public class ProbabilityModelsCalc {
 		double[] normTimeSince = new double[numSections];
 		for(int s=0; s<numSections;s++) {
 			long epochOfLast = dateOfLastForSect[s];
-			if(epochOfLast != Long.MIN_VALUE) {
+			if(epochOfLast != Long.MIN_VALUE && epochOfLast <= currentTimeMillis) {
 				double yearsSinceLast = ((double)(currentTimeMillis-epochOfLast)/MILLISEC_PER_YEAR);
 				normTimeSince[s] = longTermPartRateForSectArray[s]*yearsSinceLast;
 			}

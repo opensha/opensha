@@ -43,9 +43,12 @@ public class StandaloneCalc {
 		/*
 		 * INPUTS
 		 */
-		double duration = 1000;
+		double duration = 100;
 		boolean includeSpontEvents = true;
+//		int startYear = 2017;
+//		long ot = Math.round((startYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 		int startYear = 2017;
+		long ot = -1631410050000l;
 		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
 		boolean applySubSeisForSupraNucl = true;
 		double totRateScaleFactor = 1.14;
@@ -53,8 +56,8 @@ public class StandaloneCalc {
 		boolean griddedOnly = false;
 		boolean imposeGR = false;
 		
-//		long randSeed = 2702508434510800615l;
-		long randSeed = new Random().nextLong();
+		long randSeed = 1034492315904040044l;
+//		long randSeed = new Random().nextLong();
 		
 		boolean includeIndirectTriggering = true;
 		double gridSeisDiscr = 0.1;
@@ -73,9 +76,9 @@ public class StandaloneCalc {
 		boolean debug = false;
 		
 		File outputDir = new File("/tmp/etas_test");
-//		File solFile = new File("/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/data/scratch/InversionSolutions/"
-//				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
-		File solFile = new File(outputDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
+		File solFile = new File("/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/data/scratch/InversionSolutions/"
+				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
+//		File solFile = new File(outputDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		
 		/*
 		 * prepare simulation
@@ -88,7 +91,6 @@ public class StandaloneCalc {
 		
 		Map<Integer, List<LastEventData>> lastEventData = LastEventData.load();
 		
-		long ot = Math.round((startYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
@@ -97,6 +99,9 @@ public class StandaloneCalc {
 		if (catFile != null) {
 			histQkList.addAll(MPJ_ETAS_Simulator.loadHistoricalCatalog(catFile, surfsFile, sol, ot));
 		}
+		
+		// purge any last event data after OT
+		LastEventData.filterDataAfterTime(lastEventData, ot);
 		
 		String simulationName;
 		ETAS_EqkRupture triggerRup = null;
