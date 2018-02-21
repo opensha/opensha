@@ -18,6 +18,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParamLinker;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
 import org.opensha.commons.param.constraint.impl.EnumConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
@@ -558,6 +559,16 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 				linkParams(masterParam, param);
 			}
 			otherParams.addParameter(masterParam);
+		}
+	}
+	
+	public void setParameterInIMRs(String paramName, Object value) {
+		for (ScalarIMR imr : imrs) {
+			Parameter param = imr.getParameter(paramName);
+			if (param instanceof WarningParameter)
+				((WarningParameter)param).setValueIgnoreWarning(value);
+			else
+				param.setValue(value);
 		}
 	}
 	
