@@ -395,6 +395,7 @@ public class ETAS_Utils {
 	 * @return
 	 */
 	public int getPoissonRandomNumber(double lambda) {
+		Preconditions.checkState(Double.isFinite(lambda), "lambda = %s", lambda);
 		return (int) randomDataGen.nextPoisson(lambda);
 		/*
 	    double L = Math.exp(-lambda);
@@ -985,7 +986,8 @@ public class ETAS_Utils {
 	
 	public static EvenlyDiscretizedFunc getSpontanousEventRateFunction(IncrementalMagFreqDist mfd, long histCatStartTime, long forecastStartTime, 
 			long forecastEndTime, int numTimeSamples, double k, double p, double magMin, double c) {
-		
+		Preconditions.checkState(numTimeSamples > 0, "numTimeSamples=%s, forecastStartTime=%s, forecastEndTime=%s", numTimeSamples, forecastStartTime, forecastEndTime);
+		Preconditions.checkState(forecastEndTime > forecastStartTime, "numTimeSamples=%s, forecastStartTime=%s, forecastEndTime=%s", numTimeSamples, forecastStartTime, forecastEndTime);
 		double deltaTimeMillis = (double)(forecastEndTime-forecastStartTime)/(double)numTimeSamples;
 		EvenlyDiscretizedFunc rateVsEpochTimeFunc = new EvenlyDiscretizedFunc((double)forecastStartTime+deltaTimeMillis/2.0,(double)forecastEndTime-deltaTimeMillis/2.0,numTimeSamples);
 		double totalRatePerYear = mfd.getCumRate(2.55);
@@ -1010,9 +1012,11 @@ public class ETAS_Utils {
 	
 	public static EvenlyDiscretizedFunc getSpontanousEventRateFunction(IncrementalMagFreqDist mfd, EvenlyDiscretizedFunc yrCompleteForMagFunc, long forecastStartTime, 
 			long forecastEndTime, int numTimeSamples, double k, double p, double magMin, double c) {
-		
+		Preconditions.checkState(numTimeSamples > 0, "numTimeSamples=%s, forecastStartTime=%s, forecastEndTime=%s", numTimeSamples, forecastStartTime, forecastEndTime);
+		Preconditions.checkState(forecastEndTime > forecastStartTime, "numTimeSamples=%s, forecastStartTime=%s, forecastEndTime=%s", numTimeSamples, forecastStartTime, forecastEndTime);
 		double deltaTimeMillis = (double)(forecastEndTime-forecastStartTime)/(double)numTimeSamples;
 		EvenlyDiscretizedFunc rateVsEpochTimeFunc = new EvenlyDiscretizedFunc((double)forecastStartTime+deltaTimeMillis/2.0,(double)forecastEndTime-deltaTimeMillis/2.0,numTimeSamples);
+		Preconditions.checkState(Double.isFinite(mfd.calcSumOfY_Vals()), "MFD has non-finite values:\t%s", mfd);
 		double totalRatePerYear = mfd.getCumRate(2.55);
 		int firstMagIndex = mfd.getXIndex(2.55);
 		for(int i=0;i<rateVsEpochTimeFunc.size();i++) {
@@ -1021,8 +1025,14 @@ public class ETAS_Utils {
 				if(mfd.getY(m)>1e-10) {	// skip low rate bins
 					double mag = mfd.getX(m);
 					double magCompleteTimeMillis = (yrCompleteForMagFunc.getY(mag)-1970)*ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-					double histDurationDays = (rateVsEpochTimeFunc.getX(i)-magCompleteTimeMillis)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;					
-					rate += getExpectedNumEvents(k, p, mag, magMin, c, 0.0, histDurationDays)*mfd.getY(m);
+					double histDurationDays = (rateVsEpochTimeFunc.getX(i)-magCompleteTimeMillis)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
+					Preconditions.checkState(Double.isFinite(histDurationDays), "Historical duration days not finite: %s", histDurationDays);
+					Preconditions.checkState(histDurationDays >= 0,
+							"Need to fix for case forecast time before mag complete. forecastStartTime=%s, forecastEndTime=%s, "
+							+ "mag=%s, magCompleteTime=%s", forecastStartTime, forecastEndTime, mag, magCompleteTimeMillis);
+					double expectedNum = getExpectedNumEvents(k, p, mag, magMin, c, 0.0, histDurationDays);
+					Preconditions.checkState(Double.isFinite(expectedNum), "Expected num not finite with duration=%s: %s", histDurationDays, expectedNum);
+					rate += expectedNum*mfd.getY(m);
 				}
 			}
 			rateVsEpochTimeFunc.set(i,(totalRatePerYear-rate));
@@ -1084,8 +1094,11 @@ public class ETAS_Utils {
 		for(int i=0;i<rateFunc.size();i++) {
 			meanRatePerYear+= rateFunc.getY(i)/rateFunc.size();	// fact that it should be only half the first and last bin doesn't seem to matter
 		}
+		Preconditions.checkState(Double.isFinite(meanRatePerYear), "Bad meanRatePerYear = %s, rateFunc.size() = %s, sum rateFuncY's = %s",
+				meanRatePerYear, rateFunc.size(), rateFunc.calcSumOfY_Vals());
 		
 		double numYears = (rateFunc.getMaxX()-rateFunc.getMinX()+rateFunc.getDelta())/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+		Preconditions.checkState(Double.isFinite(numYears), "Bad numYears = %s", numYears);
 		int numEvents = getPoissonRandomNumber(meanRatePerYear*numYears);
 		long[] eventTimesMillis = new long[numEvents];
 		for(int i=0;i<numEvents;i++) {
