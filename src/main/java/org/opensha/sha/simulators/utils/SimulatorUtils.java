@@ -1,6 +1,7 @@
 package org.opensha.sha.simulators.utils;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.opensha.commons.geo.Location;
@@ -178,6 +179,15 @@ public class SimulatorUtils {
 			aveDep += loc.getDepth();
 		}
 		return new Location(aveLat/elems.size(), aveLon/elems.size(), aveDep/elems.size());
+	}
+	
+	public static class SimulatorElementIDComparator implements Comparator<SimulatorElement> {
+
+		@Override
+		public int compare(SimulatorElement s1, SimulatorElement s2) {
+			return Integer.compare(s1.getID(), s2.getID());
+		}
+		
 	}
 
 }

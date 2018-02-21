@@ -5,13 +5,19 @@ import java.awt.Color;
 import java.awt.Stroke;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -31,9 +37,12 @@ import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.data.Range;
 import org.jfree.ui.RectangleEdge;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -47,6 +56,7 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.SimulatorElement;
 import org.opensha.sha.simulators.SimulatorEvent;
@@ -120,11 +130,15 @@ public class RupturePlotGenerator {
 		writeSlipPlot(event, func, outputDir, prefix, null, null, null);
 	}
 	
-	private static Color RECT_COLOR = new Color(0, 70, 0);
-	private static Color OTHER_SURF_COLOR = new Color(70, 70, 70);
+	public static Color RECT_COLOR = new Color(0, 70, 0);
+	public static Color OTHER_SURF_COLOR = new Color(70, 70, 70);
+	public static PlotLineType OTHER_SURF_STROKE = PlotLineType.DASHED;
 	
-	private static Color HYPO_COLOR = new Color(255, 0, 0, 122);
-	private static Color RECT_HYPO_COLOR = new Color(0, 255, 0, 122);
+	public static Color HYPO_COLOR = new Color(255, 0, 0, 122);
+	public static Color RECT_HYPO_COLOR = new Color(0, 255, 0, 122);
+	
+	public static Color CA_OUTLINE_COLOR = Color.DARK_GRAY;
+	private static DefaultXY_DataSet[] caOutlines;
 	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
 			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
@@ -242,7 +256,7 @@ public class RupturePlotGenerator {
 				surfaces.addAll(((CompoundSurface)surfaceToOutline).getSurfaceList());
 			else
 				surfaces.add(surfaceToOutline);
-			Stroke surfStroke = PlotLineType.DASHED.buildStroke(3f);
+			Stroke surfStroke = OTHER_SURF_STROKE.buildStroke(3f);
 			for (RuptureSurface surf : surfaces) {
 				List<Location> outline = new ArrayList<>(surf.getPerimeter());
 				outline.add(outline.get(0)); // close it
@@ -552,12 +566,68 @@ public class RupturePlotGenerator {
 	
 	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
+		writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, null, null, null);
+	}
+	
+	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
+			double[] eventElemScalars, CPT elemCPT, String scalarLabel) throws IOException {
+		// determine extents
+		MinMaxAveTracker latTrack = new MinMaxAveTracker();
+		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+		
+		for (SimulatorElement elem : event.getAllElements()) {
+			Location loc = elem.getCenterLocation();
+			latTrack.addValue(loc.getLatitude());
+			lonTrack.addValue(loc.getLongitude());
+		}
+		if (rectangle != null) {
+			for (Location loc : rectangle) {
+				latTrack.addValue(loc.getLatitude());
+				lonTrack.addValue(loc.getLongitude());
+			}
+		}
+		if (surfaceToOutline != null) {
+			List<RuptureSurface> surfaces = new ArrayList<>();
+			if (surfaceToOutline instanceof CompoundSurface)
+				surfaces.addAll(((CompoundSurface)surfaceToOutline).getSurfaceList());
+			else
+				surfaces.add(surfaceToOutline);
+			for (RuptureSurface surf : surfaces) {
+				List<Location> outline = surf.getPerimeter();
+				for (Location loc : outline) {
+					latTrack.addValue(loc.getLatitude());
+					lonTrack.addValue(loc.getLongitude());
+				}
+			}
+		}
+		double centerLat = 0.5*(latTrack.getMax() + latTrack.getMin());
+		double centerLon = 0.5*(lonTrack.getMax() + lonTrack.getMin());
+		double maxDelta = Math.max(latTrack.getMax() - latTrack.getMin(), lonTrack.getMax() - lonTrack.getMin());
+		maxDelta *= 1.1;
+		Range xRange = new Range(centerLon - 0.5*maxDelta, centerLon + 0.5*maxDelta);
+		Range yRange = new Range(centerLat - 0.5*maxDelta, centerLat + 0.5*maxDelta);
+		
+		// determine thickness of background elements
+		DiscretizedFunc regThicknessFunc = buildRegionSizeThicknessFunc();
+		double minThickness = regThicknessFunc.getInterpolatedY(maxDelta);
+		
+		ArrayList<SimulatorElement> rupElems = event.getAllElements();
+		
+		double maxDepth;
+		if (allElems != null)
+			maxDepth = getMaxDepth(allElems);
+		else
+			maxDepth = getMaxDepth(rupElems);
+		
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
-		PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
-		ArrayList<SimulatorElement> rupElems = event.getAllElements();
-		addElementOutline(funcs, chars, rupElems, eventChar, null);
+		if (eventElemScalars == null) {
+			PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
+			addElementOutline(funcs, chars, rupElems, eventChar, null);
+		} else {
+			addElementScalarOutline(funcs, chars, rupElems, eventElemScalars, elemCPT, maxDepth, minThickness, 3d*minThickness);
+		}
 //		for (SimulatorElement elem : rupElems) {
 //			Vertex[] vertexes = elem.getVertices();
 //			DefaultXY_DataSet xy = new DefaultXY_DataSet();
@@ -590,10 +660,26 @@ public class RupturePlotGenerator {
 			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
 					star(hypoLoc.getLongitude(), hypoLoc.getLatitude(), hypoRadius), hypoStroke, Color.BLACK, HYPO_COLOR);
 			anns.add(rectHypoPoly);
+		} else {
+			double firstElemTime = Double.POSITIVE_INFINITY;
+			Location hypoLoc = null;
+			for (EventRecord rec : event) {
+				double[] times = rec.getElementTimeFirstSlips();
+				List<SimulatorElement> elems = rec.getElements();
+				for (int i=0; i<times.length; i++) {
+					if (times[i] < firstElemTime) {
+						firstElemTime = times[i];
+						hypoLoc = elems.get(i).getCenterLocation();
+					}
+				}
+			}
+			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
+					star(hypoLoc.getLongitude(), hypoLoc.getLatitude(), hypoRadius), hypoStroke, Color.BLACK, HYPO_COLOR);
+			anns.add(rectHypoPoly);
 		}
 		
 		if (rectangle != null) {
-			PlotCurveCharacterstics rectChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, RECT_COLOR);
+			PlotCurveCharacterstics rectChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f*(float)minThickness, RECT_COLOR);
 			DefaultXY_DataSet xy = new DefaultXY_DataSet();
 			for (int i=0; i<=rectangle.length; i++) {
 				Location l;
@@ -614,7 +700,7 @@ public class RupturePlotGenerator {
 		}
 		
 		if (surfaceToOutline != null) {
-			PlotCurveCharacterstics rectChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, OTHER_SURF_COLOR);
+			PlotCurveCharacterstics rectChar = new PlotCurveCharacterstics(OTHER_SURF_STROKE, 2f*(float)minThickness, OTHER_SURF_COLOR);
 			List<RuptureSurface> surfaces = new ArrayList<>();
 			if (surfaceToOutline instanceof CompoundSurface)
 				surfaces.addAll(((CompoundSurface)surfaceToOutline).getSurfaceList());
@@ -636,25 +722,9 @@ public class RupturePlotGenerator {
 			}
 		}
 		
-		MinMaxAveTracker latTrack = new MinMaxAveTracker();
-		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
-		
-		for (XY_DataSet xy : funcs) {
-			for (Point2D pt : xy) {
-				latTrack.addValue(pt.getY());
-				lonTrack.addValue(pt.getX());
-			}
-		}
-		double centerLat = latTrack.getAverage();
-		double centerLon = lonTrack.getAverage();
-		double maxDelta = Math.max(latTrack.getMax() - latTrack.getMin(), lonTrack.getMax() - lonTrack.getMin());
-		maxDelta *= 1.1;
-		Range xRange = new Range(centerLon - 0.5*maxDelta, centerLon + 0.5*maxDelta);
-		Range yRange = new Range(centerLat - 0.5*maxDelta, centerLat + 0.5*maxDelta);
-		
 		if (allElems != null) {
 			// now add all elements within region
-			PlotCurveCharacterstics allElemChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, new Color(210, 210, 210));
+			PlotCurveCharacterstics allElemChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)minThickness, new Color(210, 210, 210));
 			
 			Region plotRegion = new Region(new Location(yRange.getLowerBound(), xRange.getLowerBound()),
 					new Location(yRange.getUpperBound(), xRange.getUpperBound()));
@@ -665,6 +735,16 @@ public class RupturePlotGenerator {
 			addElementOutline(allElemFuncs, allElemChars, allElems, allElemChar, plotRegion);
 			funcs.addAll(0, allElemFuncs);
 			chars.addAll(0, allElemChars);
+		}
+		
+		if (CA_OUTLINE_COLOR != null) {
+			DefaultXY_DataSet[] outlines = loadCAOutlines();
+			PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)minThickness, CA_OUTLINE_COLOR);
+			
+			for (DefaultXY_DataSet outline : outlines) {
+				funcs.add(outline);
+				chars.add(outlineChar);
+			}
 		}
 		
 		String title = "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
@@ -678,6 +758,11 @@ public class RupturePlotGenerator {
 		gp.setBackgroundColor(Color.WHITE);
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
+		
+		if (eventElemScalars != null) {
+			PaintScaleLegend cptLegend = XYZGraphPanel.getLegendForCPT(elemCPT, scalarLabel, 24, 18, -1, RectangleEdge.BOTTOM);
+			gp.getChartPanel().getChart().addSubtitle(cptLegend);
+		}
 		
 		double tick;
 		if (maxDelta > 3d)
@@ -698,6 +783,35 @@ public class RupturePlotGenerator {
 		gp.getChartPanel().setSize(800, 800);
 		gp.saveAsPNG(file.getAbsolutePath()+".png");
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+	}
+	
+	private synchronized static DefaultXY_DataSet[] loadCAOutlines() throws IOException {
+		if (caOutlines == null) {
+			List<DefaultXY_DataSet> outlines = new ArrayList<>();
+			InputStream is = RupturePlotGenerator.class.getResourceAsStream("/resources/data/boundaries/california.txt");
+			BufferedReader br = new BufferedReader(new InputStreamReader(is));
+			String[] vals;
+	        String line;
+	        while ((line = br.readLine()) != null) {
+	        	line = line.trim();
+	        	if (line.isEmpty() || line.startsWith("#"))
+	        		continue;
+	        	if (line.startsWith("segment")) {
+	        		outlines.add(new DefaultXY_DataSet());
+	        		continue;
+	        	}
+	        	vals = line.trim().split(" ");
+	        	double lat = Double.valueOf(vals[0]);
+	        	double lon = Double.valueOf(vals[1]);
+	        	if (outlines.isEmpty())
+	        		outlines.add(new DefaultXY_DataSet());
+	        	outlines.get(outlines.size()-1).set(lon, lat);
+	        }
+	        br.close();
+			
+			caOutlines = outlines.toArray(new DefaultXY_DataSet[outlines.size()]);
+		}
+		return caOutlines;
 	}
 	
 	public static void addElementOutline(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
@@ -728,20 +842,96 @@ public class RupturePlotGenerator {
 					v = vertexes[i];
 				xy.set(v.getLongitude(), v.getLatitude());
 			}
-			String ptStr = pointKey(xy.get(xy.size()-1));
-			if (prevElemXYs.containsKey(ptStr)) {
+			String firstPtStr = pointKey(xy.get(0));
+			String lastPtStr = pointKey(xy.get(xy.size()-1));
+			if (prevElemXYs.containsKey(firstPtStr)) {
 				// bundle it with another
-				DefaultXY_DataSet oXY = prevElemXYs.get(ptStr);
+				DefaultXY_DataSet oXY = prevElemXYs.get(firstPtStr);
 				for (Point2D pt : xy)
 					oXY.set(pt);
 			} else {
-				prevElemXYs.put(ptStr, xy);
+				prevElemXYs.put(lastPtStr, xy);
 				funcs.add(xy);
 				chars.add(elemChar);
 			}
 		}
 		System.out.println("Added "+elemsAdded+"/"+elements.size()+" elems to plot");
 		System.out.println("Used "+prevElemXYs.size()+"/"+elemsAdded+" possible funcs");
+	}
+	
+	private static double getMaxDepth(List<SimulatorElement> elements) {
+		double maxDepth = 0d;
+		for (SimulatorElement el : elements)
+			maxDepth = Math.max(maxDepth, el.getAveDepth());
+		return maxDepth;
+	}
+	
+	private static DiscretizedFunc buildElemDepthThicknessFunc(double maxDepth, double thicknessSurface, double thicknessAtDepth) {
+		DiscretizedFunc depthThickFunc = new ArbitrarilyDiscretizedFunc();
+		depthThickFunc.set(0d, thicknessSurface);
+		depthThickFunc.set(maxDepth, thicknessAtDepth);
+		return depthThickFunc;
+	}
+	
+	private static DiscretizedFunc buildDepthSaturationFunc(double maxDepth) {
+		DiscretizedFunc depthThickFunc = new ArbitrarilyDiscretizedFunc();
+		depthThickFunc.set(0d, 1d);
+		depthThickFunc.set(maxDepth, 0.5d);
+		return depthThickFunc;
+	}
+	
+	private static DiscretizedFunc buildRegionSizeThicknessFunc() {
+		DiscretizedFunc func = new ArbitrarilyDiscretizedFunc();
+		func.set(0d, 1d); // never go above 1
+		func.set(1d, 1d);
+		func.set(5d, 0.5);
+		func.set(180d, 0.5);
+		return func;
+	}
+	
+	public static void addElementScalarOutline(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
+			List<SimulatorElement> elements, double[] scalars, CPT cpt, double maxDepth, double minThickness, double maxThickness) {
+		Preconditions.checkState(elements.size() == scalars.length);
+		
+		DiscretizedFunc depthThicknessFunc = buildElemDepthThicknessFunc(maxDepth, maxThickness, minThickness);
+		DiscretizedFunc depthSaturationFunc = buildDepthSaturationFunc(maxDepth);
+		
+		Map<SimulatorElement, Double> elemToScalarMap = new HashMap<>();
+		for (int e=0; e<elements.size(); e++)
+			elemToScalarMap.put(elements.get(e), scalars[e]);
+		
+		// first sort by depth decreasing (so that upper ones show up on top)
+		elements = new ArrayList<>(elements);
+		Collections.sort(elements, new Comparator<SimulatorElement>() {
+
+			@Override
+			public int compare(SimulatorElement o1, SimulatorElement o2) {
+				return Double.compare(o2.getAveDepth(), o1.getAveDepth());
+			}
+			
+		});
+		
+		for (SimulatorElement elem : elements) {
+			Vertex[] vertexes = elem.getVertices();
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			for (int i=0; i<=vertexes.length; i++) {
+				Vertex v;
+				if (i == vertexes.length)
+					v = vertexes[0];
+				else
+					v = vertexes[i];
+				xy.set(v.getLongitude(), v.getLatitude());
+			}
+			funcs.add(xy);
+			double depth = elem.getCenterLocation().getDepth();
+			float lineWidth = (float)depthThicknessFunc.getInterpolatedY(depth);
+			Color color = cpt.getColor(elemToScalarMap.get(elem).floatValue());
+			double saturationFactor = depthSaturationFunc.getInterpolatedY(depth);
+			color = new Color((int)(saturationFactor*color.getRed() + 0.5), (int)(saturationFactor*color.getGreen() + 0.5),
+					(int)(saturationFactor*color.getBlue() + 0.5));
+			PlotCurveCharacterstics elemChar = new PlotCurveCharacterstics(PlotLineType.SOLID, lineWidth, color);
+			chars.add(elemChar);
+		}
 	}
 	
 	private static String pointKey(Point2D pt) {
