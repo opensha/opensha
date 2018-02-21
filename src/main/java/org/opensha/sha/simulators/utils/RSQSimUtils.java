@@ -252,13 +252,24 @@ public class RSQSimUtils {
 		return sects;
 	}
 	
-	public static Map<Integer, Double> calcSubSectAreas(List<SimulatorElement> elements) {
+	public static Map<Integer, Double> calcSubSectAreas(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
+		int offset = getSubSectIndexOffset(elements, subSects);
 		Map<Integer, Double> subSectAreas = new HashMap<>();
 		for (SimulatorElement elem : elements) {
 			Double prevArea = subSectAreas.get(elem.getSectionID());
 			if (prevArea == null)
 				prevArea = 0d;
 			subSectAreas.put(elem.getSectionID(), prevArea + elem.getArea());
+		}
+		
+		for (FaultSectionPrefData sect : subSects) {
+			Integer id = sect.getSectionId() + offset;
+			double simSectArea = subSectAreas.get(id);
+			double sectLen = sect.getTraceLength()*1000d; // km to m
+			double sectWidth = sect.getOrigDownDipWidth()*1000d; // km to m
+			double fsdArea = sectLen * sectWidth;
+			if (fsdArea < simSectArea)
+				subSectAreas.put(id, fsdArea);
 		}
 		return subSectAreas;
 	}
@@ -292,7 +303,7 @@ public class RSQSimUtils {
 			
 			Map<Integer, Double> subSectAreas = null;
 			if (minFractForInclusion > 0)
-				subSectAreas = calcSubSectAreas(elements);
+				subSectAreas = calcSubSectAreas(elements, subSects);
 
 			System.out.print("Building ruptures...");
 			for (int i=0; i<events.size(); i++) {
