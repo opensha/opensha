@@ -502,6 +502,24 @@ public class XYZGraphPanel extends JPanel {
 	public ChartPanel getChartPanel() {
 		return chartPanel;
 	}
+	
+	/**
+	 * 
+	 * @return the X-Axis. Note that this will return the first X-Axis in the case
+	 * of multiple subplots
+	 */
+	public ValueAxis getXAxis() {
+		return xAxis;
+	}
+	
+	/**
+	 * 
+	 * @return the Y-Axis. Note that this will return the first Y-Axis in the case
+	 * of multiple subplots
+	 */
+	public ValueAxis getYAxis() {
+		return yAxis;
+	}
 
 	/**
 	 * Allows the user to save the chart as PNG.
