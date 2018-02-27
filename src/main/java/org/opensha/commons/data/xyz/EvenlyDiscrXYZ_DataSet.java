@@ -184,9 +184,11 @@ public class EvenlyDiscrXYZ_DataSet extends AbstractXYZ_DataSet {
 	
 	private int getIndex(double x, double y) {
 		int yInd = getYIndex(y);
-		Preconditions.checkState(yInd >= 0 && yInd < getNumY(), "Bad y index. y=%s, yInd=%s, numY=%s", y, yInd, getNumY());
+		Preconditions.checkState(yInd >= 0 && yInd < getNumY(),
+				"Bad y index. y=%s, yInd=%s, numY=%s, minY=%s, maxY=%s", y, yInd, getNumY(), minY, maxY);
 		int xInd = getXIndex(x);
-		Preconditions.checkState(xInd >= 0 && xInd < getNumX(), "Bad x index. x=%s, xInd=%s, numX=%s", x, xInd, getNumX());
+		Preconditions.checkState(xInd >= 0 && xInd < getNumX(),
+				"Bad x index. x=%s, xInd=%s, numX=%s, minX=%s, maxX=%s", x, xInd, getNumX(), minX, maxX);
 		return xInd + nx*yInd;
 	}
 	
@@ -199,11 +201,21 @@ public class EvenlyDiscrXYZ_DataSet extends AbstractXYZ_DataSet {
 	}
 	
 	public int getYIndex(double y) {
-		return (int)((y - minY) / gridSpacingY + 0.5);
+		return calcAxisIndex(y, minY, maxY, gridSpacingY, ny);
 	}
 	
 	public int getXIndex(double x) {
-		return (int)((x - minX) / gridSpacingX + 0.5);
+		return calcAxisIndex(x, minX, maxX, gridSpacingX, nx);
+	}
+	
+	private int calcAxisIndex(double val, double minVal, double maxVal, double spacing, int num) {
+		int index = (int)((val - minVal) / spacing + 0.5);
+		// handle edge cases
+		if (index == -1 && (float)val == (float)(minVal - 0.5*spacing))
+			return 0;
+		if (index == num && (float)val == (float)(maxVal + 0.5*spacing))
+			return num-1;
+		return index;
 	}
 	
 	@Override
