@@ -36,14 +36,14 @@ public class LinearBlender implements Blender {
 	 * bias in range[0,1] For example bias = .5 means a value between half of
 	 * smallColor and half of bigColor
 	 */
-	public int[] blend(int smallR, int smallG, int smallB, int bigR, int bigG,
-			int bigB, float bias) {
-		// TODO Auto-generated method stub
-		int rgb[] = new int[3];
+	public int[] blend(int smallR, int smallG, int smallB, int smallA, int bigR, int bigG,
+			int bigB, int bigA, float bias) {
+		int rgb[] = new int[4];
 		
 		rgb[0] = this.blend(smallR, bigR, bias);
 		rgb[1] = this.blend(smallG, bigG, bias);
 		rgb[2] = this.blend(smallB, bigB, bias);
+		rgb[3] = this.blend(smallA, bigA, bias);
 		
 		return rgb;
 	}
@@ -54,8 +54,9 @@ public class LinearBlender implements Blender {
 	}
 
 	public Color blend(Color small, Color big, float bias) {
-		int rgb[] = this.blend(small.getRed(), small.getGreen(), small.getBlue(), big.getRed(), big.getGreen(), big.getBlue(), bias);
-		return new Color(rgb[0], rgb[1], rgb[2]);
+		int rgba[] = this.blend(small.getRed(), small.getGreen(), small.getBlue(), small.getAlpha(),
+				big.getRed(), big.getGreen(), big.getBlue(), big.getAlpha(), bias);
+		return new Color(rgba[0], rgba[1], rgba[2], rgba[3]);
 	}
 
 }
