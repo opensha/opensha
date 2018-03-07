@@ -68,6 +68,15 @@ public enum SpatialSeisPDF implements LogicTreeBranchNode<SpatialSeisPDF> {
 			}
 			return Doubles.toArray(vals);
 		}
+	},
+	
+	/**
+	 * Unsmoothed raw data (gridded), from Morgan Page 3/5/18
+	 */
+	UNSMOOTHED_GRIDDED("Unsmoothed",												"Unsmoothed",		0.0d,	0.0d) {
+		@Override public double[] getPDF() {
+			return SmoothSeismicitySpatialPDF_Fetcher.getUnsmoothed();
+		}
 	};
 
 	

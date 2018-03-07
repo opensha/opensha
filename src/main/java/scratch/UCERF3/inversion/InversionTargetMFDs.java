@@ -157,10 +157,13 @@ public class InversionTargetMFDs {
 		boolean noMoRateFix = (logicTreeBranch.getValue(MomentRateFixes.class) == MomentRateFixes.NONE);
 		
 		// this prevents using any non smoothed seismicity PDF for computing rates on fault (def mod PDF doesn't make sense)
-		if(spatialSeisPDF == SpatialSeisPDF.UCERF2 || spatialSeisPDF == SpatialSeisPDF.UCERF3)
-			spatialSeisPDFforOnFaultRates = spatialSeisPDF;
-		else
-			spatialSeisPDFforOnFaultRates = SpatialSeisPDF.UCERF3;
+		if (!(spatialSeisPDF == SpatialSeisPDF.UCERF2 || spatialSeisPDF == SpatialSeisPDF.UCERF3))
+			System.out.println("WARNING: Was previously hardcoded (for unknown reasons) to force U3 or U2 spatial seismicity on faults. "
+					+ "This has been disabled.");
+			
+		spatialSeisPDFforOnFaultRates = spatialSeisPDF;
+//		else
+//			spatialSeisPDFforOnFaultRates = SpatialSeisPDF.UCERF3;
 
 		
 		// test to make sure it's a statewide deformation model

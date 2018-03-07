@@ -113,8 +113,8 @@ public class LogicTreePBSWriter {
 				null, USC_HPCC_ScriptWriter.MPJ_HOME, false) {
 			@Override
 			public BatchScriptWriter forBranch(LogicTreeBranch branch) {
-				if (branch != null && branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
-					return new USC_HPCC_ScriptWriter("dodecacore");
+//				if (branch != null && branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
+//					return new USC_HPCC_ScriptWriter("dodecacore");
 //				return new USC_HPCC_ScriptWriter("quadcore"); // TODO
 				return new USC_HPCC_ScriptWriter();
 			}
@@ -699,7 +699,8 @@ public class LogicTreePBSWriter {
 //		String runName = "ucerf3p3-synthetic-tests";
 //		String runName = "biasi-downsample-tests";
 //		String runName = "milner-downsample-tests";
-		String runName = "ave-slip-scale-tests";
+//		String runName = "ave-slip-scale-tests";
+		String runName = "unsmoothed-seis-tests";
 		if (args.length > 1)
 			runName = args[1];
 //		int constrained_run_mins = 60;	// 1 hour
@@ -718,14 +719,14 @@ public class LogicTreePBSWriter {
 
 		//		RunSites site = RunSites.RANGER;
 		//		RunSites site = RunSites.EPICENTER;
-		RunSites site = RunSites.HPCC;
-		int batchSize = 16;
-		int jobsPerNode = 4;
-		String threads = "5";
 //		RunSites site = RunSites.HPCC;
-//		int batchSize = 0;
-//		int jobsPerNode = 1;
-//		String threads = "95%"; // max for 8 core nodes, 23/24 for dodecacore
+//		int batchSize = 16;
+//		int jobsPerNode = 4;
+//		String threads = "5";
+		RunSites site = RunSites.HPCC;
+		int batchSize = 0;
+		int jobsPerNode = 1;
+		String threads = "95%"; // max for 8 core nodes, 23/24 for dodecacore
 //		String threads = "50%";
 //		RunSites site = RunSites.RANGER;
 //		int batchSize = 64;
@@ -736,8 +737,13 @@ public class LogicTreePBSWriter {
 //		int jobsPerNode = 3;
 //		String threads = "5"; // *2 = 16 (out of 16 possible)
 		
-//		LogicTreeBranch prescribedBranch = null;
-		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
+		LogicTreeBranch prescribedBranch = null;
+//		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
+//		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
+//		prescribedBranch.setValue(InversionModels.GR_CONSTRAINED);
+//		prescribedBranch.setValue(SpatialSeisPDF.UNSMOOTHED_GRIDDED);
+//		prescribedBranch.setValue(ScalingRelationships.HANKS_BAKUN_08);
+//		prescribedBranch.setValue(TotalMag5Rate.RATE_9p6);
 
 		//		String nameAdd = "VarSub5_0.3";
 		String nameAdd = null;
@@ -747,7 +753,7 @@ public class LogicTreePBSWriter {
 //		HashSet<String> ignores = loadIgnoresFromZip(new File("/home/kevin/OpenSHA/UCERF3/inversions/" +
 //				"2012_12_27-ucerf3p2_prod_runs_1/bins/2012_12_27-ucerf3p2_prod_runs_1_keeper_bins.zip"));
 
-		int numRuns = 100;
+		int numRuns = 1;
 		int runStart = 0;
 		boolean forcePlots = false;
 
@@ -788,12 +794,32 @@ public class LogicTreePBSWriter {
 //		trimmer = new LogicalAndTrimmer(trimmer, charUnconstOnly, noUCERF2);
 //		trimmer = new LogicalAndTrimmer(trimmer, grUnconstOnly, noUCERF2);
 //		trimmer = new LogicalAndTrimmer(trimmer, charOnly);
-		trimmer = new LogicalAndTrimmer(trimmer, charOnly, noUCERF2, getZengOnlyTrimmer());
+//		trimmer = new LogicalAndTrimmer(trimmer, charOnly, noUCERF2, getZengOnlyTrimmer());
 //		trimmer = new LogicalAndTrimmer(trimmer, grOnly);
 //		trimmer = new LogicalAndTrimmer(trimmer, grOnly, noUCERF2);
 //		trimmer = new LogicalAndTrimmer(trimmer, grOnly, noRefBranches, noUCERF2);
 		
-//		trimmer = new LogicalAndTrimmer(trimmer, new SingleValsTreeTrimmer(ScalingRelationships.ELLSWORTH_B));
+//		trimmer = new LogicalAndTrimmer(trimmer, charOrGR, noUCERF2, getZengOnlyTrimmer());
+		trimmer = new LogicalAndTrimmer(
+				// char or GR
+				charOrGR,
+				
+				// ref FM, DM, Dsr, MmaxOFf, MomRateFix
+				new SingleValsTreeTrimmer(FaultModels.FM3_1, DeformationModels.ZENGBB,
+				SlipAlongRuptureModels.TAPERED, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE),
+				
+				// Shaw or HB
+				new LogicalOrTrimmer(new SingleValsTreeTrimmer(ScalingRelationships.SHAW_2009_MOD),
+						new SingleValsTreeTrimmer(ScalingRelationships.HANKS_BAKUN_08)),
+				
+				// high or reg M5
+				new LogicalOrTrimmer(new SingleValsTreeTrimmer(TotalMag5Rate.RATE_7p9),
+						new SingleValsTreeTrimmer(TotalMag5Rate.RATE_9p6)),
+				
+				// U3 or unsmoothed spatial seismicity 
+				new LogicalOrTrimmer(new SingleValsTreeTrimmer(SpatialSeisPDF.UCERF3),
+						new SingleValsTreeTrimmer(SpatialSeisPDF.UNSMOOTHED_GRIDDED))
+				);
 		
 		
 //		TreeTrimmer defaultBranchesTrimmer = getUCERF3RefBranches();
@@ -986,10 +1012,10 @@ public class LogicTreePBSWriter {
 //		InversionOptions[] ops = { InversionOptions.RUP_DOWNSAMPLE_DM };
 //		variationBranches.add(buildVariationBranch(ops, toArray("0.1")));
 		
-		variationBranches = Lists.newArrayList();
-		InversionOptions[] ops = { InversionOptions.AVE_SLIP_SCALE, InversionOptions.AVE_SLIP_WT };
-		variationBranches.add(buildVariationBranch(ops, toArray("1.0", "1.2")));
-		variationBranches.add(buildVariationBranch(ops, toArray("1.2", "1.2")));
+//		variationBranches = Lists.newArrayList();
+//		InversionOptions[] ops = { InversionOptions.AVE_SLIP_SCALE, InversionOptions.AVE_SLIP_WT };
+//		variationBranches.add(buildVariationBranch(ops, toArray("1.0", "1.2")));
+//		variationBranches.add(buildVariationBranch(ops, toArray("1.2", "1.2")));
 		
 		List<InversionArg[]> saOptions = null;
 		
@@ -1159,8 +1185,8 @@ public class LogicTreePBSWriter {
 		if (!writeDir.exists())
 			writeDir.mkdir();
 
-		//		String queue = "nbns";
-		String queue = null;
+		String queue = "scec";
+//		String queue = null;
 		//		BatchScriptWriter batch = new USC_HPCC_ScriptWriter("pe1950");
 		//		BatchScriptWriter batch = new USC_HPCC_ScriptWriter("quadcore");
 		File javaBin = site.JAVA_BIN;

@@ -31,6 +31,7 @@ public class SmoothSeismicitySpatialPDF_Fetcher {
 	public static final String FILENAME_UCERF3pt3 = "SmoothSeis_KF_4-9-2013.txt";
 	public static final String FILENAME_UCERF3pt3_SHALLOW = "SmoothSeis_KF_4-9-2013_Shallow.txt";
 	public static final String FILENAME_UCERF3pt3_DEEP = "SmoothSeis_KF_4-9-2013_Deep.txt";
+	public static final String FILENAME_MP_UNSMOOTHED = "UnsmoothSeis_MP_3-5-2018.txt";
 
 	
 	final static CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion  = new CaliforniaRegions.RELM_TESTING_GRIDDED();
@@ -41,6 +42,10 @@ public class SmoothSeismicitySpatialPDF_Fetcher {
 	
 	public static double[] getUCERF3() {
 		return new GridReader(FILENAME_UCERF3pt3_SHALLOW).getValues();
+	}
+	
+	public static double[] getUnsmoothed() {
+		return new GridReader(FILENAME_MP_UNSMOOTHED).getValues();
 	}
 
 	public static GriddedGeoDataSet getUCERF2pdfAsGeoData() {
