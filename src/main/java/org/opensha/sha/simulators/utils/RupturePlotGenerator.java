@@ -785,7 +785,7 @@ public class RupturePlotGenerator {
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
 	}
 	
-	private synchronized static DefaultXY_DataSet[] loadCAOutlines() throws IOException {
+	public synchronized static DefaultXY_DataSet[] loadCAOutlines() throws IOException {
 		if (caOutlines == null) {
 			List<DefaultXY_DataSet> outlines = new ArrayList<>();
 			InputStream is = RupturePlotGenerator.class.getResourceAsStream("/resources/data/boundaries/california.txt");
