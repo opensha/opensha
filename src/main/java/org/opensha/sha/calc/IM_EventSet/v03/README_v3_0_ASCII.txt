@@ -16,6 +16,8 @@ java -jar -Xmx500M IM_EventSetCalc_v3_0_ASCII.jar ExampleInputFile_v3_0_ASCII.tx
 
 It will run the application IM_EventSetCalc_v2_1.jar with the inputfile ExampleInputFile_v2_1.txt, which must exists in the same location as the IM_EventSetCalc_v2_1.jar application, and will create the output-files in the directory ExampleOutputDir.
 
+NOTE: If you see an error message mentioning Java heap space, GC Overhead, or anything with "Memory" in the message, increase the memory to java by replacing the default "-Xmx500M" argument in the above example with "-Xmx2G". This allocates 2 GB of memory. Increase further (-Xmx3G, ...) if that still fails.
+
 An example input file is included in this directory as "ExampleInputFile_v3_0_ASCII.txt".
 
 Each line of the input file that starts with "#" is a comment that gets ignored by the program (they are just for user's information).
