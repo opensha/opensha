@@ -232,6 +232,89 @@ public class GriddedSurfaceUtils {
 		return distanceX;
 	}
 	
+	/**
+	 * This computes Ry0
+	 * @param surface
+	 * @param siteLoc
+	 * @return
+	 */
+	public static double getDistanceY0(FaultTrace trace, Location siteLoc) {
+		// set to zero if it's a point source
+		if(trace.size() == 1)
+			return 0d;
+		
+		Location firstTraceLoc = trace.first(); 				// first trace point
+		Location lastTraceLoc = trace.last(); 					// last trace point
+		
+		double distToFirst = LocationUtils.horzDistanceFast(firstTraceLoc, siteLoc);
+		double distToLast = LocationUtils.horzDistanceFast(lastTraceLoc, siteLoc);
+		
+		// the vector from p0 to p1 is in the direction of increasing Ry0
+		Location p0, p1;
+		
+		// this uses the last segment to define the azimuth, and can be screwy
+//		if (distToFirst < distToLast) {
+//			p0 = trace.get(1);
+//			p1 = firstTraceLoc;
+//		} else {
+//			p0 = trace.get(trace.size()-2);
+//			p1 = lastTraceLoc;
+//		}
+		// this uses the overall rupture azimuth and is less screwy
+		if (distToFirst < distToLast) {
+			p0 = lastTraceLoc;
+			p1 = firstTraceLoc;
+		} else {
+			p0 = firstTraceLoc;
+			p1 = lastTraceLoc;
+		}
+		
+		LocationVector traceVector = LocationUtils.vector(p0, p1);
+		LocationVector endToSite = LocationUtils.vector(p1, siteLoc);
+		
+		double endSiteAz = endToSite.getAzimuth();
+		while (endSiteAz < 0)
+			endSiteAz += 360;
+		double traceVectorAz = traceVector.getAzimuth();
+		while (traceVectorAz < 0)
+			traceVectorAz += 360;
+		
+		double azDiff = endSiteAz - traceVectorAz;
+		if (azDiff < -90)
+			azDiff += 360;
+		else if (azDiff > 90)
+			azDiff -= 360;
+		azDiff = Math.abs(azDiff);
+		
+//		double azDiff = Math.abs(endToSite.getAzimuth() - traceVector.getAzimuth());
+//		while (azDiff >= 360)
+//			azDiff -= 360;
+//		if (!Double.isNaN(1d)) {
+//			if ((float)siteLoc.getLatitude() == 34f && (float)siteLoc.getLongitude() == -116f) {
+//				System.out.println("Loc: "+siteLoc);
+//				System.out.println("P0: "+p0);
+//				System.out.println("P1: "+p1);
+//				System.out.println("TraceVector Az: "+traceVector.getAzimuth());
+//				System.out.println("EndToSite Az: "+endToSite.getAzimuth());
+//				System.out.println("Az Diff: "+azDiff);
+//			}
+//			return azDiff;
+//		}
+		Preconditions.checkState(azDiff >= 0);
+		
+		if (azDiff > 90)
+			// it's within the ends of the rupture
+			return 0;
+		
+		LocationVector abovePoint = new LocationVector(traceVector.getAzimuth() + 90, endToSite.getHorzDistance()*2, 0d);
+		LocationVector belowPoint = new LocationVector(traceVector.getAzimuth() - 90, endToSite.getHorzDistance()*2, 0d);
+		
+		Location perpP1 = LocationUtils.location(p1, abovePoint);
+		Location perpP2 = LocationUtils.location(p1, belowPoint);
+		
+		return Math.abs(LocationUtils.distanceToLine(perpP1, perpP2, siteLoc));
+	}
+	
 	
 	/**
 	 * This returns brief info about this surface
