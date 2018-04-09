@@ -81,7 +81,8 @@ public class MetadataLoader implements ParameterChangeWarningListener {
 			}
 			
 			Class newClass = Class.forName( className );
-			Constructor con = newClass.getConstructor(params);
+			Constructor con = newClass.getDeclaredConstructor(params);
+			con.setAccessible(true);
 			Object obj = con.newInstance( paramObjects );
 			return obj;
 		} catch (InvocationTargetException e) {
