@@ -63,8 +63,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private double[] variablePerturbBasis;
 	
-	private DoubleMatrix2D A, A_MFD;
-	private double[] d, d_MFD;
+	private DoubleMatrix2D A, A_ineq;
+	private double[] d, d_ineq;
 	private double relativeSmoothnessWt;
 	private boolean hasInequalityConstraint;
 	
@@ -80,20 +80,34 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private Random r = new Random();
 
+	/**
+	 * @param A A matrix, likely an instance of SparseDoubleMatrix2D
+	 * @param d d array
+	 * @param initialState initial state
+	 */
 	public SerialSimulatedAnnealing(DoubleMatrix2D A, double[] d, double[] initialState) {
 		this(A, d, initialState, 0, null, null);
 	}
 	
+	/**
+	 * 
+	 * @param A A matrix, likely an instance of SparseDoubleMatrix2D
+	 * @param d d array
+	 * @param initialState initial state
+	 * @param relativeSmoothnessWt relative weight for smoothness (entropy) constraint, or zero to disable
+	 * @param A_ineq A matrix for inequality constraints
+	 * @param d_ineq d array for inequality constraints
+	 */
 	public SerialSimulatedAnnealing(DoubleMatrix2D A, double[] d, double[] initialState, double relativeSmoothnessWt, 
-			DoubleMatrix2D A_MFD,  double[] d_MFD) {
+			DoubleMatrix2D A_ineq,  double[] d_ineq) {
 		this.relativeSmoothnessWt=relativeSmoothnessWt;
-		this.hasInequalityConstraint = A_MFD != null;
+		this.hasInequalityConstraint = A_ineq != null;
 		if (hasInequalityConstraint)
-			Preconditions.checkArgument(d_MFD != null, "we have an A_MFD matrix but no d_MFD vector!");
+			Preconditions.checkArgument(d_ineq != null, "we have an A_ineq matrix but no d_ineq vector!");
 		else
-			Preconditions.checkArgument(d_MFD == null, "we have a d_MFD vector but no A_MFD matrix!");
-		this.A_MFD=A_MFD;
-		this.d_MFD=d_MFD;
+			Preconditions.checkArgument(d_ineq == null, "we have a d_ineq vector but no A_ineq matrix!");
+		this.A_ineq=A_ineq;
+		this.d_ineq=d_ineq;
 		
 		setup(A, d, initialState);
 	}
@@ -121,8 +135,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		misfit_best = new double[nRow];
 		calculateMisfit(A, d, null, xbest, -1, Double.NaN, misfit_best);
 		if (hasInequalityConstraint) {
-			misfit_ineq_best = new double[d_MFD.length];
-			calculateMisfit(A_MFD, d_MFD, null, xbest, -1, Double.NaN, misfit_ineq_best);
+			misfit_ineq_best = new double[d_ineq.length];
+			calculateMisfit(A_ineq, d_ineq, null, xbest, -1, Double.NaN, misfit_ineq_best);
 		}
 		
 		Ebest = calculateEnergy(xbest, misfit_best, misfit_ineq_best);
@@ -316,7 +330,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		// Add MFD inequality constraint misfit (nonlinear) to energy 
 		double Einequality = 0;
 		if (hasInequalityConstraint) {
-			for (int i = 0; i < d_MFD.length; i++) {
+			for (int i = 0; i < d_ineq.length; i++) {
 				// NOTE: it is important that we loop over d_MFD.length and not the actual misfit array
 				// as it may be larger than nRow (for efficiency and less array copies)
 				if (misfit_ineq[i] > 0.0) // This makes it an INEQUALITY constraint (Target MFD is an UPPER bound)
@@ -380,8 +394,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			if (misfit_ineq_best != null) {
 				misfit_ineq = Arrays.copyOf(misfit_ineq_best, misfit_ineq_best.length);
 			}
-			misfit_ineq_new1 = new double[A_MFD.rows()];
-			misfit_ineq_new2 = new double[A_MFD.rows()];
+			misfit_ineq_new1 = new double[A_ineq.rows()];
+			misfit_ineq_new2 = new double[A_ineq.rows()];
 			misfit_ineq_cur_purtub = misfit_ineq_new1;
 		}
 
@@ -464,7 +478,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			// calculate new misfit vectors
 			calculateMisfit(A, d, misfit, x, index, perturb[index], misfit_cur_purtub);
 			if (hasInequalityConstraint)
-				calculateMisfit(A_MFD, d_MFD, misfit_ineq, x, index, perturb[index], misfit_ineq_cur_purtub);
+				calculateMisfit(A_ineq, d_ineq, misfit_ineq, x, index, perturb[index], misfit_ineq_cur_purtub);
 
 			// Calculate "energy" of new model (high misfit -> high energy)
 //			Enew = calculateMisfit(xnew);
@@ -481,7 +495,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					double[] comp_misfit_ineq_new = null;
 					if (hasInequalityConstraint) {
 						comp_misfit_ineq_new = new double[misfit_ineq.length];
-						calculateMisfit(A_MFD, d_MFD, null, x, -1, Double.NaN, comp_misfit_ineq_new);
+						calculateMisfit(A_ineq, d_ineq, null, x, -1, Double.NaN, comp_misfit_ineq_new);
 					}
 					double[] Enew_temp = calculateEnergy(x, comp_misfit_new, comp_misfit_ineq_new);
 					double pDiff = DataUtils.getPercentDiff(Enew[0], Enew_temp[0]);
@@ -592,7 +606,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					double[] comp_misfit_ineq_new = null;
 					if (hasInequalityConstraint) {
 						comp_misfit_ineq_new = new double[misfit_ineq.length];
-						calculateMisfit(A_MFD, d_MFD, null, xbest, -1, Double.NaN, comp_misfit_ineq_new);
+						calculateMisfit(A_ineq, d_ineq, null, xbest, -1, Double.NaN, comp_misfit_ineq_new);
 					}
 					double[] Ebest_temp = calculateEnergy(xbest, comp_misfit_new, comp_misfit_ineq_new);
 					double pDiff = DataUtils.getPercentDiff(Ebest[0], Ebest_temp[0]);
@@ -688,7 +702,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		ops.addOption(perturbOption);
 		
 		Option nonNegOption = new Option("nonneg", "nonnegativity-const", true,
-				"Cooling schedule. One of: "+enumOptionsStr(NonnegativityConstraintType.values())
+				"Nonnegativity constraint. One of: "+enumOptionsStr(NonnegativityConstraintType.values())
 				+". Default: "+NONNEGATIVITY_CONST_DEFAULT);
 		nonNegOption.setRequired(false);
 		ops.addOption(nonNegOption);

@@ -93,14 +93,14 @@ import com.google.common.collect.Table;
 import com.google.common.io.Files;
 
 /**
- * This is the main class for running UCERF3 Inversions. It handes creation of the input matrices,
+ * This is the main class for running UCERF3 Inversions. It handles creation of the input matrices,
  * running the inversion, and generating standard outputs/plots.
  * <br><br>
  * All options are specified via command line arguments. First, see Simulated Annealing specific
  * arguments in the ThreadedSimulatedAnnealing class. Then it requires the working directory and
  * a branch prefix, which is text based representation of the LogicTreeBranch to be computed
  * (see LogicTreeBranch.buildFileName()). There are also a number of inversion options that can
- * be used to override default behaviours, such as equation set weights and starting solutions.
+ * be used to override default behaviors, such as equation set weights and starting solutions.
  * These are all outlined in the InversionOptions enum below. These can be used to test specific
  * aspects of the model, and were widely used when developing the equation set weights.
  * @author kevin

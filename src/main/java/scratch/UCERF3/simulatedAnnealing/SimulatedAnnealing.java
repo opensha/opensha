@@ -42,8 +42,18 @@ public interface SimulatedAnnealing {
 	
 	public void setResults(double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq);
 
+	/**
+	 * Iterate for the given number of iterations
+	 * @param numIterations
+	 * @return
+	 */
 	public long iterate(long numIterations);
 
+	/**
+	 * Iterate until the given CompletionCriteria is satisfied
+	 * @param completion
+	 * @return
+	 */
 	public long iterate(CompletionCriteria completion);
 
 	public long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria);
