@@ -1539,7 +1539,8 @@ public class ETAS_Simulator {
 		SAF_PENINSULA_M5p5("SAF_PeninsulaM5pt5", new Location(37.72793, -122.54861, 7.0), 5.5),  // San Andreas (Peninsula) 2011 CFM, Subsection 12	37.72793, -122.54861, 7.0
 		SAF_PENINSULA_M6p3("SAF_PeninsulaM6pt3", 122568),  // Inversion Src #122568; 2 SECTIONS BETWEEN San Andreas (Peninsula) 2011 CFM, Subsection 12 AND San Andreas (Peninsula) 2011 CFM, Subsection 11
 		SAF_PENINSULA_M7("SAF_PeninsulaM7", 119367),  // Inversion Src #119367; 9 SECTIONS BETWEEN San Andreas (North Coast) 2011 CFM, Subsection 1 AND San Andreas (Peninsula) 2011 CFM, Subsection 9
-		HAYWIRED_M7("HaywiredM7pt1", 101499);  // SourceIndex=101485	Inversion Src #101499; 14 SECTIONS BETWEEN Hayward (So) 2011 CFM, Subsection 2 AND Hayward (No) 2011 CFM, Subsection 7	mag=7.09
+		HAYWIRED_M7("HaywiredM7pt1", 101499),  // SourceIndex=101485	Inversion Src #101499; 14 SECTIONS BETWEEN Hayward (So) 2011 CFM, Subsection 2 AND Hayward (No) 2011 CFM, Subsection 7	mag=7.09
+		SANTA_CRUZ_M5p3("SantaCruzM5.3", new Location(33.844, -119.716, 16.8), 5.3);
 		// IMPORTANT: DO NOT REMOVE OR RENAME SCENARIOS from this list if we have used them in the past and want figure reproducibility.
 		// these are used by the plotting code.
 				
