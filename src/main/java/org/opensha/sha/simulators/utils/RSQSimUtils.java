@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -119,17 +120,40 @@ public class RSQSimUtils {
 		return rup;
 	}
 	
+	private static boolean warned = false;
+	
 	public static int getSubSectIndexOffset(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
 		int minElemSectID = Integer.MAX_VALUE;
 		int maxElemSectID = -1;
+		HashSet<Integer> sectsFound = new HashSet<>();
 		for (SimulatorElement elem : elements) {
 			int id = elem.getSectionID();
 			if (id < minElemSectID)
 				minElemSectID = id;
 			if (id > maxElemSectID)
 				maxElemSectID = id;
+			sectsFound.add(id);
 		}
-		Preconditions.checkState(subSects.size()-1 == (maxElemSectID - minElemSectID),
+		int myNum = 1 + maxElemSectID - minElemSectID;
+		if (!warned) {
+			if (myNum != sectsFound.size()) {
+				System.err.println("WARNING: Sub sect range not complete, has holes. "
+						+sectsFound.size()+" unique, range suggests "+myNum+". Future warnings suppressed.");
+				warned = true;
+			}
+			if (myNum < subSects.size()) {
+				System.err.println("WARNING: Sub sect count different. We have "+myNum
+						+" (id range: "+minElemSectID+"-"+maxElemSectID+"), expected "+subSects.size()
+						+". Future warnings suppressed.");
+				warned = true;
+			}
+		}
+		if (myNum == subSects.size())
+			return minElemSectID;
+		if (elements.get(0).getSectionName().startsWith("nn"))
+			// bruce file, 0-based
+			return 0;
+		Preconditions.checkState(subSects.size() >= myNum,
 				"Couldn't map to subsections. Have %s sub sects, range in elems is %s to %s",
 				subSects.size(), minElemSectID, maxElemSectID);
 		return minElemSectID;
@@ -264,6 +288,9 @@ public class RSQSimUtils {
 		
 		for (FaultSectionPrefData sect : subSects) {
 			Integer id = sect.getSectionId() + offset;
+			if (!subSectAreas.containsKey(id))
+				// this subsection is skipped
+				continue;
 			double simSectArea = subSectAreas.get(id);
 			double sectLen = sect.getTraceLength()*1000d; // km to m
 			double sectWidth = sect.getOrigDownDipWidth()*1000d; // km to m
