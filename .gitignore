@@ -7,3 +7,4 @@ build
 classes
 tmp
 Scratch*.java
+.DS_Store
