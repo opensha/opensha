@@ -1,7 +1,9 @@
 package org.opensha.commons.util;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -51,6 +53,21 @@ public class ComparablePairing<C extends Comparable<C>, E> implements Comparable
 		}
 		
 		return list;
+	}
+	
+	/**
+	 * Returns a list of all elements in datas, sorted by the list of comparables
+	 * @param dataCompMap Map from data to comparables
+	 * @return
+	 */
+	public static <C extends Comparable<C>, E>  List<E> getSortedData(Map<E, C> dataCompMap) {
+		List<C> comps = new ArrayList<>();
+		List<E> datas = new ArrayList<>();
+		for (E data : dataCompMap.keySet()) {
+			datas.add(data);
+			comps.add(dataCompMap.get(data));
+		}
+		return getSortedData(comps, datas);
 	}
 	
 	/**
