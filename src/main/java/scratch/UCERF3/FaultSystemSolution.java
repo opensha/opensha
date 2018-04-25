@@ -474,8 +474,13 @@ public class FaultSystemSolution implements Serializable {
 		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
 		if (rups != null) {
 			for (int r : rups) {
-				double nucleationRate = getRateForRup(r)*rupSet.getAreaForSection(sectIndex)/rupSet.getAreaForRup(r);
-				mfd.addResampledMagRate(rupSet.getMagForRup(r), nucleationRate, true);
+				double nucleationScalar = rupSet.getAreaForSection(sectIndex)/rupSet.getAreaForRup(r);
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r)*nucleationScalar, true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY()*nucleationScalar, true);
 			}
 		}
 		return mfd;
@@ -495,8 +500,14 @@ public class FaultSystemSolution implements Serializable {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
 		List<Integer> rups = rupSet.getRupturesForParentSection(parentSectionID);
 		if (rups != null) {
-			for (int r : rups)
-				mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+			for (int r : rups) {
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY(), true);
+			}
 		}
 		return mfd;
 	}
@@ -515,8 +526,14 @@ public class FaultSystemSolution implements Serializable {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
 		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
 		if (rups != null) {
-			for (int r : rups)
-				mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+			for (int r : rups) {
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY(), true);
+			}
 		}
 		return mfd;
 	}
