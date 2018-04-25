@@ -28,7 +28,8 @@ public enum TectonicRegime {
 	/*
 	 * Other hardcoded/misc regimes
 	 */
-	CALIFORNIA("California");
+	CALIFORNIA("California", "CALIFORNIA"),
+	GLOBAL_AVERAGE("Global Average", "GLOBAL-AVERAGE");
 
 	private static Map<String, TectonicRegime> mappings = null;
 	
