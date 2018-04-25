@@ -2,6 +2,7 @@ package org.opensha.sha.simulators.srf;
 
 public class RSQSimStateTime {
 	
+	private final int patchID;
 	private final double startTime;
 	private double endTime;
 	private final RSQSimState state;
@@ -11,14 +12,19 @@ public class RSQSimStateTime {
 	 * @param startTime
 	 * @param state
 	 */
-	RSQSimStateTime(double startTime, RSQSimState state) {
-		this(startTime, Double.NaN, state);
+	RSQSimStateTime(int patchID, double startTime, RSQSimState state) {
+		this(patchID, startTime, Double.NaN, state);
 	}
 	
-	public RSQSimStateTime(double startTime, double endTime, RSQSimState state) {
+	public RSQSimStateTime(int patchID, double startTime, double endTime, RSQSimState state) {
+		this.patchID = patchID;
 		this.startTime = startTime;
 		this.endTime = endTime;
 		this.state = state;
+	}
+	
+	public int getPatchID() {
+		return patchID;
 	}
 
 	public double getEndTime() {

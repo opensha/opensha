@@ -6,6 +6,7 @@ import org.opensha.sha.simulators.utils.SimulatorUtils;
 public class EventTimeIdentifier extends AbstractRuptureIdentifier {
 	
 	private final double minTime, maxTime;
+	private boolean furtherPossible = true;
 
 	/**
 	 * 
@@ -25,6 +26,7 @@ public class EventTimeIdentifier extends AbstractRuptureIdentifier {
 	@Override
 	public boolean isMatch(SimulatorEvent event) {
 		double time = event.getTime();
+		furtherPossible = furtherPossible && time <= maxTime;
 		return time >= minTime && time <= maxTime;
 	}
 
@@ -33,6 +35,11 @@ public class EventTimeIdentifier extends AbstractRuptureIdentifier {
 		double startYears = minTime/SimulatorUtils.SECONDS_PER_YEAR;
 		double endYears = minTime/SimulatorUtils.SECONDS_PER_YEAR;
 		return "Time Window("+startYears+" yr to "+endYears+")";
+	}
+
+	@Override
+	public boolean furtherMatchesPossible() {
+		return furtherPossible;
 	}
 
 }

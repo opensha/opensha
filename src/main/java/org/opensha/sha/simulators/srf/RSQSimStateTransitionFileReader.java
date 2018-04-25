@@ -265,6 +265,27 @@ public class RSQSimStateTransitionFileReader {
 		return 0;
 	}
 	
+	public List<RSQSimStateTime> getTransitions(double startTime, double endTime) throws IOException {
+		List<RSQSimStateTime> trans = new ArrayList<>();
+		
+		long index;
+		if (startTime < timeMarkers[0])
+			index = 0;
+		else
+			index = getIndexBefore(startTime);
+		while (index < numTransitions) {
+			int arrayIndex = readTransition(index++);
+			double time = curTimes[arrayIndex];
+			int patchID = curPatchIDs[arrayIndex]+1; // these are zero based but in events it's 1-based
+			if (time < startTime)
+				continue;
+			if (time > endTime)
+				break;
+			trans.add(new RSQSimStateTime(patchID, time, curStates[arrayIndex]));
+		}
+		return trans;
+	}
+	
 	public Map<Integer, List<RSQSimStateTime>> getTransitions(RSQSimEvent event) throws IOException {
 		Map<Integer, List<RSQSimStateTime>> patchTransitions = new HashMap<>();
 		
@@ -314,7 +335,7 @@ public class RSQSimStateTransitionFileReader {
 					RSQSimStateTime prev = patchTimes.get(patchTimes.size()-1);
 					prev.setEndTime(time);
 				}
-				patchTimes.add(new RSQSimStateTime(time, curStates[arrayIndex]));
+				patchTimes.add(new RSQSimStateTime(patchID, time, curStates[arrayIndex]));
 			}
 		}
 		// now close each patch
@@ -372,13 +393,16 @@ public class RSQSimStateTransitionFileReader {
 	
 	public static void main(String[] args) throws IOException {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
-			File dir = new File("/data/kevin/simulators/catalogs/baseCatalogSW_10");
-			File transFile = new File(dir, "trans.baseCatalogSW_10t.out");
-			File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
-			String str = "--print-rup "+transFile.getAbsolutePath()+" "+geomFile.getAbsolutePath()
-				+" 32777581 32777582 32777583 32777584 32777585 32777586 32777587 32777588 32777589 327775810";
-			System.out.println("HARDCODED: "+str);
-			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
+//			File dir = new File("/data/kevin/simulators/catalogs/baseCatalogSW_10");
+//			File transFile = new File(dir, "trans.baseCatalogSW_10t.out");
+//			File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
+//			String str = "--print-rup "+transFile.getAbsolutePath()+" "+geomFile.getAbsolutePath()
+//				+" 32777581 32777582 32777583 32777584 32777585 32777586 32777587 32777588 32777589 327775810";
+//			System.out.println("HARDCODED: "+str);
+//			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
+			File dir = new File("/data/kevin/simulators/catalogs/rundir2585extend");
+			File transFile = new File(dir, "trans.extend2585.out");
+			args = Iterables.toArray(Splitter.on(" ").split("--debug "+transFile.getAbsolutePath()+" 0 100 little"), String.class);
 		}
 		if (args.length > 0 && args[0].equals("--debug")) {
 			if (args.length != 5) {

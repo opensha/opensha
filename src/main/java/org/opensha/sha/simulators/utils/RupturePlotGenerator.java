@@ -994,6 +994,15 @@ public class RupturePlotGenerator {
 //		RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), 1d);
 //		
 //		writeSlipPlot(event, func, new File("/tmp"), "plot_test");
+		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2585_1myr");
+		File geomFile = new File(catalogDir, "zfault_Deepen.in");
+		System.out.println("Loading geometry...");
+		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
+		ArrayList<RuptureIdentifier> loadIdens = new ArrayList<>();
+		loadIdens.add(new EventIDsRupIden(9474557));
+		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(catalogDir, elements, loadIdens);
+		for (RSQSimEvent event : events)
+			writeMapPlot(elements, event, null, new File("/tmp"), "event_"+event.getID());
 	}
 
 }

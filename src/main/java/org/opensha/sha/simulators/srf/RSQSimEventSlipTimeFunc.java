@@ -217,7 +217,7 @@ public class RSQSimEventSlipTimeFunc {
 			for (Integer patchID : patchTransitions.keySet()) {
 				List<RSQSimStateTime> relTrans = new ArrayList<>();
 				for (RSQSimStateTime trans : patchTransitions.get(patchID))
-					relTrans.add(new RSQSimStateTime(trans.getStartTime()-minTime, trans.getEndTime()-minTime, trans.getState()));
+					relTrans.add(new RSQSimStateTime(patchID, trans.getStartTime()-minTime, trans.getEndTime()-minTime, trans.getState()));
 				relPatchTransitions.put(patchID, relTrans);
 			}
 			Map<Integer, DiscretizedFunc> relSlipFuncs = new HashMap<>();

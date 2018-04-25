@@ -93,8 +93,11 @@ public class RSQSimSRFGenerator {
 		Location loc = patch.getCenterLocation();
 		int patchID = patch.getID();
 		double tStart = func.getTimeOfFirstSlip(patchID);
+		Preconditions.checkState(Double.isFinite(tStart), "Non-finite tStart for patch %s? %s", (Integer)patchID, (Double)tStart);
 		double tEnd = func.getTimeOfLastSlip(patchID);
+		Preconditions.checkState(Double.isFinite(tEnd), "Non-finite tEnd for patch %s? %s", (Integer)patchID, (Double)tEnd);
 		double slipVel = func.getPatchSlipVel(patchID);
+		Preconditions.checkState(Double.isFinite(slipVel), "Non-finite slipVel for patch %s? %s", (Integer)patchID, (Double)slipVel);
 		
 		List<Taper> tapers = null;
 		if (mode == SRFInterpolationMode.LIN_TAPER_VEL) {
