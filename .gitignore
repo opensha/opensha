@@ -8,3 +8,4 @@ classes
 tmp
 Scratch*.java
 .*.html
+.DS_Store
