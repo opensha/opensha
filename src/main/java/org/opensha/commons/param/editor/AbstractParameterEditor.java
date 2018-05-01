@@ -229,7 +229,10 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 			super.remove(widget);
 	}
 
-	protected final JComponent getWidget() {
+	/**
+	 * @return The widget representing this parameter (component inside of the border/label), if already created/displayed
+	 */
+	public final JComponent getWidget() {
 		return widget;
 	}
 
