@@ -11,14 +11,16 @@ import org.opensha.sha.simulators.RSQSimEvent;
 public class RSQSimSubSectEqkRupture extends EqkRupture {
 	
 	private int eventID;
+	private double timeSeconds;
 	private RSQSimEvent event;
 	private List<FaultSectionPrefData> subSections;
 	
 	public RSQSimSubSectEqkRupture(double mag, double aveRake, RuptureSurface ruptureSurface, Location hypocenterLocation,
-			int eventID, List<FaultSectionPrefData> subSections) {
+			int eventID, double timeSeconds, List<FaultSectionPrefData> subSections) {
 		super(mag, aveRake, ruptureSurface, hypocenterLocation);
 		
 		this.eventID = eventID;
+		this.timeSeconds = timeSeconds;
 		this.subSections = subSections;
 	}
 	
@@ -28,6 +30,7 @@ public class RSQSimSubSectEqkRupture extends EqkRupture {
 		
 		this.event = event;
 		this.eventID = event.getID();
+		this.timeSeconds = event.getTime();
 		this.subSections = subSections;
 	}
 
@@ -37,6 +40,10 @@ public class RSQSimSubSectEqkRupture extends EqkRupture {
 	
 	public int getEventID() {
 		return eventID;
+	}
+	
+	public double getTime() {
+		return timeSeconds;
 	}
 
 	public List<FaultSectionPrefData> getSubSections() {
