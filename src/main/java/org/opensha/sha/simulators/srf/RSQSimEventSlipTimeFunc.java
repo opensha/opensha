@@ -232,5 +232,39 @@ public class RSQSimEventSlipTimeFunc {
 		}
 		return relative;
 	}
+	
+	public RSQSimEventSlipTimeFunc getTimeScaledFunc(double timeScalar, boolean scaleVelocities) {
+		Map<Integer, Double> slipVels;
+		if (scaleVelocities) {
+			slipVels = new HashMap<>(this.slipVels);
+			for (Integer patchID : slipVels.keySet())
+				slipVels.put(patchID, slipVels.get(patchID)*timeScalar);
+		} else {
+			slipVels = this.slipVels;
+		}
+		Map<Integer, List<RSQSimStateTime>> scaledPatchTransitions = new HashMap<>();
+		for (Integer patchID : patchTransitions.keySet()) {
+			double patchRelStart = getTimeOfFirstSlip(patchID) - minTime;
+			double newPatchRelStart = patchRelStart/timeScalar;
+			double offsetForNoScale = patchRelStart - newPatchRelStart;
+//			double newPatchStart = minTime + patchRelStart/timeScalar;
+			List<RSQSimStateTime> scaledTrans = new ArrayList<>();
+			for (RSQSimStateTime trans : patchTransitions.get(patchID)) {
+				double relStart = trans.getStartTime() - minTime;
+				double relEnd = trans.getEndTime() - minTime;
+				double newStart, newEnd;
+				if (scaleVelocities) {
+					newStart = minTime + relStart/timeScalar;
+					newEnd = minTime + relEnd/timeScalar;
+				} else {
+					newStart = trans.getStartTime() - offsetForNoScale;
+					newEnd = newStart + (relEnd - relStart);
+				}
+				scaledTrans.add(new RSQSimStateTime(patchID, newStart, newEnd, trans.getState()));
+			}
+			scaledPatchTransitions.put(patchID, scaledTrans);
+		}
+		return new RSQSimEventSlipTimeFunc(scaledPatchTransitions, slipVels);
+	}
 
 }
