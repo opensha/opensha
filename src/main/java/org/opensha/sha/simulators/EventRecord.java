@@ -58,6 +58,16 @@ public abstract class EventRecord {
 		}
 	}
 	
+	public void scaleElementTimeFirstSlips(double timeScale, double eventTime) {
+		Preconditions.checkState(elementTimeFirstSlips != null);
+		for (int i=0; i<elementTimeFirstSlips.length; i++) {
+			double patchRelStart = elementTimeFirstSlips[i] - eventTime;
+			double newPatchRelStart = patchRelStart/timeScale;
+			double offsetForNoScale = patchRelStart - newPatchRelStart;
+			elementTimeFirstSlips[i] -= offsetForNoScale;
+		}
+	}
+	
 	public int getID() { return event_id;}
 	
 	public void setID(int id) {

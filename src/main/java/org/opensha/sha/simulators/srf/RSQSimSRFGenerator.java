@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
 import org.jfree.ui.TextAnchor;
@@ -314,8 +315,10 @@ public class RSQSimSRFGenerator {
 //		
 //		int[] eventIDs = { 4099020 };
 		
-		double[] timeScalars = { 1d, 2d };
-		boolean[] velScales = { false, true };
+		double[] timeScalars = { 1d };
+		boolean[] velScales = { false};
+//		double[] timeScalars = { 1d, 2d };
+//		boolean[] velScales = { false, true };
 		
 		boolean plotIndividual = true;
 		int plotMod = 50;
@@ -348,7 +351,8 @@ public class RSQSimSRFGenerator {
 //		SRFInterpolationMode[] modes = SRFInterpolationMode.values();
 //		double[] dts = { 0.1, 0.05 };
 		SRFInterpolationMode[] modes = { SRFInterpolationMode.ADJ_VEL };
-		double[] dts = { 0.05 };
+//		double[] dts = { 0.05 };
+		double[] dts = {  };
 		double srfVersion = 1.0;
 		
 		int patchDigits = (elements.size()+"").length();
@@ -362,6 +366,44 @@ public class RSQSimSRFGenerator {
 				slipVels.put(elemID, slipVel);
 			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), slipVels);
 			String eventStr = "event_"+eventID;
+			
+			SummaryStatistics patchSlipEventDurations = new SummaryStatistics();
+			SummaryStatistics patchFractSlippingDurations = new SummaryStatistics();
+			SummaryStatistics patchSlipTotalDurations = new SummaryStatistics();
+			SummaryStatistics patchCounts = new SummaryStatistics();
+			for (int patchID : slipVels.keySet()) {
+				List<RSQSimStateTime> patchTrans = func.getTransitions(patchID);
+				
+				int count = 0;
+				double totSlippingDuration = 0d;
+				for (RSQSimStateTime state : patchTrans) {
+					if (state.getState() == RSQSimState.EARTHQUAKE_SLIP) {
+						count++;
+						double duration = state.getDuration();
+						patchSlipEventDurations.addValue(duration);
+						totSlippingDuration += duration;
+					}
+				}
+				
+				double totDuration = func.getTimeOfLastSlip(patchID) - func.getTimeOfFirstSlip(patchID);
+				patchSlipTotalDurations.addValue(totDuration);
+				patchFractSlippingDurations.addValue(totSlippingDuration/totDuration);
+				patchCounts.addValue(count);
+			}
+			
+			System.out.println("Patches slipped an average of "+(float)patchCounts.getMean()
+				+" times (range: "+(int)patchCounts.getMin()+" => "+(int)patchCounts.getMax()+")");
+			System.out.println("Each slip event has an average duration of "+(float)patchSlipEventDurations.getMean()
+				+"s and a range of "+(float)patchSlipEventDurations.getMin()+"s to "
+					+(float)patchSlipEventDurations.getMax()+"s");
+			System.out.println("The average total duration (from beginning of first slip to end of last slip on an "
+					+ "individual patch) is "+(float)patchSlipTotalDurations.getMean()
+					+"s (range: "+(float)patchSlipTotalDurations.getMin()+"s => "
+					+(float)patchSlipTotalDurations.getMax()+"s)");
+			System.out.println("Of the duration (as defined above), patches are slipping (on average) "
+					+(float)(100d*patchFractSlippingDurations.getMean())+" % of the time (range: "
+					+(float)(100d*patchFractSlippingDurations.getMin())+"% => "
+					+(float)(100d*patchFractSlippingDurations.getMax())+"%)");
 			
 			for (double dt : dts) {
 				ArrayList<SimulatorElement> patches = event.getAllElements();
