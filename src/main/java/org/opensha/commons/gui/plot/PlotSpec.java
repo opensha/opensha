@@ -1,11 +1,13 @@
 package org.opensha.commons.gui.plot;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import org.jfree.chart.LegendItemCollection;
 import org.jfree.chart.annotations.XYAnnotation;
+import org.jfree.chart.title.Title;
 import org.jfree.ui.RectangleEdge;
 import org.opensha.commons.data.function.DiscretizedFunc;
 
@@ -26,7 +28,8 @@ public class PlotSpec implements Serializable {
 	private List<? extends PlotElement> elems;
 	private List<PlotCurveCharacterstics> chars;
 	private String title, xAxisLabel, yAxisLabel;
-	private List<? extends XYAnnotation> annotations;
+	private List<XYAnnotation> annotations;
+	private List<Title> subtitles;
 	
 	private boolean legend = false;
 	private boolean legendSkipBlank = true;
@@ -86,11 +89,36 @@ public class PlotSpec implements Serializable {
 	 * @param annotations
 	 */
 	public void setPlotAnnotations(List<? extends XYAnnotation> annotations) {
-		this.annotations = annotations;
+		this.annotations = new ArrayList<>(annotations);
 	}
 	
-	public List<? extends XYAnnotation> getPlotAnnotations() {
+	public void addPlotAnnotation(XYAnnotation annotation) {
+		if (annotations == null)
+			annotations = new ArrayList<>();
+		annotations.add(annotation);
+	}
+	
+	public List<XYAnnotation> getPlotAnnotations() {
 		return annotations;
+	}
+	
+	/**
+	 * Set the list of plot subtitles (such as a color scale label)
+	 * 
+	 * @param annotations
+	 */
+	public void setSubtitles(List<? extends Title> subtitles) {
+		this.subtitles = new ArrayList<>(subtitles);
+	}
+	
+	public void addSubtitle(Title subtitle) {
+		if (subtitles == null)
+			subtitles = new ArrayList<>();
+		subtitles.add(subtitle);
+	}
+	
+	public List<Title> getSubtitles() {
+		return subtitles;
 	}
 
 	public List<PlotCurveCharacterstics> getChars() {

@@ -673,6 +673,11 @@ public class GraphPanel extends JSplitPane {
 			chartLegend.setItemFont(new Font(legendFont.getName(), legendFont.getStyle(), legendFontSize));
 			chart.addLegend(chartLegend);
 		}
+		
+		for (PlotSpec spec : specs)
+			if (spec.getSubtitles() != null)
+				for (Title subtitle : spec.getSubtitles())
+					chart.addSubtitle(subtitle);
 
 		// Put into a panel
 		chartPanel = new ChartPanel(chart, true, true, true, true, false);
@@ -934,6 +939,11 @@ public class GraphPanel extends JSplitPane {
 		dataTextArea.setText(NO_PLOT_MSG);
 	}
 	
+	/**
+	 * Deprecated - use PlotSpec.addSubtitle
+	 * @param subtitle
+	 */
+	@Deprecated
 	public void addSubtitle(Title subtitle) {
 		JFreeChart chart = chartPanel.getChart();
 		chart.addSubtitle(subtitle);
