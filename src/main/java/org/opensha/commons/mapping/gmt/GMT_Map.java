@@ -80,6 +80,8 @@ public class GMT_Map implements Serializable {
 	private double imageWidth = 6.5;
 	
 	private String customLabel = null;
+	private Integer labelSize = null;
+	private Integer labelTickSize = null;
 	
 	private Double customScaleMin = null;
 	private Double customScaleMax = null;
@@ -268,6 +270,22 @@ public class GMT_Map implements Serializable {
 
 	public void setCustomLabel(String customLabel) {
 		this.customLabel = customLabel;
+	}
+	
+	public void setLabelSize(Integer labelSize) {
+		this.labelSize = labelSize;
+	}
+	
+	public Integer getLabelSize() {
+		return labelSize;
+	}
+	
+	public void setLabelTickSize(Integer labelTickSize) {
+		this.labelTickSize = labelTickSize;
+	}
+	
+	public Integer getLabelTickSize() {
+		return labelTickSize;
 	}
 	
 	public boolean isCustomScale() {

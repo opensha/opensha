@@ -1833,12 +1833,13 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	
 	public static void addColorbarCommand(ArrayList<String> gmtCommandLines, GMT_Map map,
 			double colorScaleMin, double colorScaleMax, String cptFile, String psFile) {
-		addColorbarCommand(gmtCommandLines, map.getCustomLabel(), map.isLogPlot(),
-				colorScaleMin, colorScaleMax, cptFile, psFile, map.isCPTEqualSpacing(), map.getCPTCustomInterval());
+		addColorbarCommand(gmtCommandLines, map.getCustomLabel(), map.isLogPlot(), colorScaleMin, colorScaleMax,
+				cptFile, psFile, map.isCPTEqualSpacing(), map.getCPTCustomInterval(), map.getLabelSize(), map.getLabelTickSize());
 	}
 	
 	public static void addColorbarCommand(ArrayList<String> gmtCommandLines, String scaleLabel, boolean isLog,
-			double colorScaleMin, double colorScaleMax, String cptFile, String psFile, boolean cptEqualSpacing, Double customTickInterval) {
+			double colorScaleMin, double colorScaleMax, String cptFile, String psFile, boolean cptEqualSpacing,
+			Double customTickInterval, Integer fontSize, Integer tickFontSize) {
 		// add the color scale
 		DecimalFormat df2 = new DecimalFormat("0.E0");
 		Float tickInc;
@@ -1853,6 +1854,14 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			scaleLabel = "Log10("+scaleLabel+")";
 		scaleLabel = stripFormatLabel(scaleLabel);
 		gmtCommandLines.add("# Colorbar/label");
+		if (fontSize != null && fontSize > 0) {
+			String commandLine = "${GMT_PATH}set FONT_LABEL="+fontSize+"p,Helvetica,black";
+			gmtCommandLines.add(commandLine+"\n");
+		}
+		if (tickFontSize != null && tickFontSize > 0) {
+			String commandLine = "${GMT_PATH}set FONT_ANNOT_PRIMARY="+tickFontSize+"p,Helvetica,black";
+			gmtCommandLines.add(commandLine+"\n");
+		}
 		if (cptEqualSpacing) {
 			String commandLine="${GMT_PATH}psscale -L -B:"+scaleLabel+": -D3.25i/-0.5i/6i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
 			gmtCommandLines.add(commandLine+"\n");
