@@ -15,18 +15,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageTypeSpecifier;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.metadata.IIOMetadata;
-import javax.imageio.metadata.IIOMetadataNode;
-import javax.imageio.stream.FileImageOutputStream;
 
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYLineAnnotation;
@@ -42,8 +32,8 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.AnimatedGIFRenderer;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -65,7 +55,6 @@ import org.opensha.sha.simulators.iden.EventIDsRupIden;
 import org.opensha.sha.simulators.iden.RuptureIdentifier;
 import org.opensha.sha.simulators.parsers.RSQSimFileReader;
 import org.opensha.sha.simulators.srf.RSQSimEventSlipTimeFunc;
-import org.opensha.sha.simulators.srf.RSQSimStateTransitionFileReader;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
@@ -382,52 +371,7 @@ public class RupturePlotGenerator {
 		elems.add(dummyData);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 0.01f, Color.WHITE));
 		
-		Iterator<ImageWriter> iter = ImageIO.getImageWritersBySuffix("gif");
-		Preconditions.checkArgument(iter.hasNext(), "No GIF image writers available!");
-		ImageWriter writer = iter.next();
-		
-		ImageWriteParam imageWriteParam = writer.getDefaultWriteParam();
-		ImageTypeSpecifier imageTypeSpecifier = ImageTypeSpecifier.createFromBufferedImageType(BufferedImage.TYPE_INT_RGB);
-
-		IIOMetadata imageMetaData = writer.getDefaultImageMetadata(imageTypeSpecifier, imageWriteParam);
-
-		String metaFormatName = imageMetaData.getNativeMetadataFormatName();
-
-		IIOMetadataNode root = (IIOMetadataNode)imageMetaData.getAsTree(metaFormatName);
-
-		IIOMetadataNode graphicsControlExtensionNode = getNode(root, "GraphicControlExtension");
-		
-		// in hundreths of a second
-		int delayTime = (int)(100d/fps);
-
-		graphicsControlExtensionNode.setAttribute("disposalMethod", "none");
-		graphicsControlExtensionNode.setAttribute("userInputFlag", "FALSE");
-		graphicsControlExtensionNode.setAttribute("transparentColorFlag", "FALSE");
-		graphicsControlExtensionNode.setAttribute("delayTime", delayTime+"");
-		graphicsControlExtensionNode.setAttribute("transparentColorIndex", "0");
-
-		IIOMetadataNode commentsNode = getNode(root, "CommentExtensions");
-		commentsNode.setAttribute("CommentExtension", "Created by SCEC-VDO");
-
-		IIOMetadataNode appEntensionsNode = getNode(root, "ApplicationExtensions");
-
-		IIOMetadataNode child = new IIOMetadataNode("ApplicationExtension");
-
-		child.setAttribute("applicationID", "NETSCAPE");
-		child.setAttribute("authenticationCode", "2.0");
-
-		int loop = 0;
-
-		child.setUserObject(new byte[]{ 0x1, (byte) (loop & 0xFF), (byte)((loop >> 8) & 0xFF)});
-		appEntensionsNode.appendChild(child);
-
-		imageMetaData.setFromTree(metaFormatName, root);
-
-		if (outputFile.exists())
-			Preconditions.checkState(outputFile.delete());
-		FileImageOutputStream output = new FileImageOutputStream(outputFile);
-		writer.setOutput(output);
-		writer.prepareWriteSequence(imageMetaData);
+		AnimatedGIFRenderer gifRender = new AnimatedGIFRenderer(outputFile, fps, true);
 		
 		double dt = 1/fps;
 		
@@ -527,36 +471,11 @@ public class RupturePlotGenerator {
 			gp.getChartPanel().setSize(width, height);
 			BufferedImage img = gp.getBufferedImage(width, height);
 			
-			writer.writeToSequence(new IIOImage(img, null, imageMetaData), imageWriteParam);
+			gifRender.writeFrame(img);
 		}
 		System.out.println("\nDONE");
 		
-		writer.endWriteSequence();
-		output.close();
-	}
-	
-	/**
-	 * Returns an existing child node, or creates and returns a new child node (if 
-	 * the requested node does not exist).
-	 * 
-	 * @param rootNode the <tt>IIOMetadataNode</tt> to search for the child node.
-	 * @param nodeName the name of the child node.
-	 * 
-	 * @return the child node, if found or a new node created with the given name.
-	 */
-	private static IIOMetadataNode getNode(
-			IIOMetadataNode rootNode,
-			String nodeName) {
-		int nNodes = rootNode.getLength();
-		for (int i = 0; i < nNodes; i++) {
-			if (rootNode.item(i).getNodeName().compareToIgnoreCase(nodeName)
-					== 0) {
-				return((IIOMetadataNode) rootNode.item(i));
-			}
-		}
-		IIOMetadataNode node = new IIOMetadataNode(nodeName);
-		rootNode.appendChild(node);
-		return(node);
+		gifRender.finalizeAnimation();
 	}
 	
 	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
