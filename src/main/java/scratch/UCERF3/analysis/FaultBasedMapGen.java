@@ -86,6 +86,10 @@ public class FaultBasedMapGen {
 	public static boolean LOCAL_MAPGEN = false;
 	public static boolean SAVE_ZIPS = false;
 	
+	public static Integer MAP_LABEL_SIZE = null;
+	public static Integer MAP_LABEL_TICK_SIZE = null;
+	public static double FAULT_THICKNESS = 2;
+	
 	private static CPT slipCPT = null;
 	public static CPT getSlipRateCPT() {
 		if (slipCPT == null) {
@@ -1114,9 +1118,8 @@ public class FaultBasedMapGen {
 		map.setCustomLabel(label);
 		map.setUseGMTSmoothing(false);
 		map.setTopoResolution(null);
-		
-//		double thickness = 8;
-		double thickness = 2;
+		map.setLabelSize(MAP_LABEL_SIZE);
+		map.setLabelTickSize(MAP_LABEL_TICK_SIZE);
 		
 		if (faults != null) {
 			Preconditions.checkState(faults.size() == values.length, "faults and values are different lengths!");
@@ -1153,11 +1156,11 @@ public class FaultBasedMapGen {
 				double value = val.value;
 				if ((float)value == (float)FAULT_HIGHLIGHT_VALUE) {
 					Color c = Color.BLACK;
-					for (PSXYPolygon poly : getPolygons(fault, c, 4*thickness))
+					for (PSXYPolygon poly : getPolygons(fault, c, 4*FAULT_THICKNESS))
 						map.addPolys(poly);
 				} else {
 					Color c = cpt.getColor((float)value);
-					for (PSXYPolygon poly : getPolygons(fault, c, thickness))
+					for (PSXYPolygon poly : getPolygons(fault, c, FAULT_THICKNESS))
 						map.addPolys(poly);
 				}
 			}
