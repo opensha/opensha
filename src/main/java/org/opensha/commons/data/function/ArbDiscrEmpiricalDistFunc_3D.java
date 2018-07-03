@@ -80,6 +80,15 @@ public class ArbDiscrEmpiricalDistFunc_3D implements Serializable {
 	public void set(double xVal, double yVal, double weight) {
 		arbDiscrEmpDistFuncArray[xAxisHist.getXIndex(xVal)].set(yVal,weight);
 	}
+	
+	public void set(EvenlyDiscretizedFunc func, double weight) {
+		if(func.getMinX() != xAxisHist.getMinX() || func.getDelta() != xAxisHist.getDelta() || func.size() != xAxisHist.size()) {
+			throw new RuntimeException("Functions are not consistent");
+		}
+		for(int i=0;i<func.size();i++)
+			set(func.getX(i), func.getY(i), weight);
+		
+	}
 
 	public HistogramFunction getXaxisHist() {
 		return xAxisHist;
@@ -158,6 +167,32 @@ public class ArbDiscrEmpiricalDistFunc_3D implements Serializable {
         }
         return func;
     }
+    
+    /**
+     * This gets the minimum value curve (ignoring weights)
+     * @return
+     */
+    public EvenlyDiscretizedFunc getMinCurve() {
+        EvenlyDiscretizedFunc func = getBaseXaxisFunc();
+        for(int i=0; i<func.size(); i++) {
+      	  func.set(i,arbDiscrEmpDistFuncArray[i].getMinX());
+        }
+        return func;
+    }
+    
+    /**
+     * This gets the maximum value curve (ignoring weights)
+     * @return
+     */
+    public EvenlyDiscretizedFunc getMaxCurve() {
+        EvenlyDiscretizedFunc func = getBaseXaxisFunc();
+        for(int i=0; i<func.size(); i++) {
+      	  func.set(i,arbDiscrEmpDistFuncArray[i].getMaxX());
+        }
+        return func;
+    }
+
+
     
     /**
      * Calculates the standard deviation curve for normalized distribution
