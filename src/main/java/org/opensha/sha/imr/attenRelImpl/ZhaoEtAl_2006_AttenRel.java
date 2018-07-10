@@ -777,9 +777,9 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_NONE))
 				  return 0;
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTER))
-				  return sigma[iper];
-			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTRA))
 				  return Tau_c[iper];
+			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTRA))
+				  return sigma[iper];
 			  else 
 				  return Double.NaN;
 		} else if (tecRegType.equals(FLT_TEC_ENV_INTERFACE)) {
@@ -788,9 +788,9 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_NONE))
 				  return 0;
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTER))
-				  return sigma[iper];
-			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTRA))
 				  return Tau_i[iper];
+			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTRA))
+				  return sigma[iper];
 			  else 
 				  return Double.NaN; 
 		} else if (tecRegType.equals(FLT_TEC_ENV_SLAB)) {
@@ -799,9 +799,9 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_NONE))
 				  return 0;
 			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTER))
-				  return sigma[iper];
-			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTRA))
 				  return Tau_s[iper];
+			  else if (stdDevType.equals(StdDevTypeParam.STD_DEV_TYPE_INTRA))
+				  return sigma[iper];
 			  else 
 				  return Double.NaN; 
 		}
