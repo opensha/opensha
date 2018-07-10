@@ -81,6 +81,16 @@ public class ArbDiscrEmpiricalDistFunc_3D implements Serializable {
 		arbDiscrEmpDistFuncArray[xAxisHist.getXIndex(xVal)].set(yVal,weight);
 	}
 	
+	/**
+	 * This is for setting the values
+	 * @param xInde
+	 * @param yVal
+	 * @param weight
+	 */
+	public void set(int xIndex, double yVal, double weight) {
+		arbDiscrEmpDistFuncArray[xIndex].set(yVal,weight);
+	}
+	
 	public void set(EvenlyDiscretizedFunc func, double weight) {
 		if(func.getMinX() != xAxisHist.getMinX() || func.getDelta() != xAxisHist.getDelta() || func.size() != xAxisHist.size()) {
 			throw new RuntimeException("Functions are not consistent");
