@@ -27,6 +27,7 @@ import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurfaceWithSubsets;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
+import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
 import org.opensha.sha.param.MagFreqDistParameter;
@@ -94,6 +95,7 @@ public class PoissonFaultERF extends AbstractERF{
     ArrayList supportedMagDists=new ArrayList();
     supportedMagDists.add(GaussianMagFreqDist.NAME);
     supportedMagDists.add(SingleMagFreqDist.NAME);
+    supportedMagDists.add(GutenbergRichterMagFreqDist.NAME);
     magDistParam = new MagFreqDistParameter(MAG_DIST_PARAM_NAME, supportedMagDists);
 
     // make the fault parameter
