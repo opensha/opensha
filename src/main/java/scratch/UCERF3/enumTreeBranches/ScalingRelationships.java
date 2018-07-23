@@ -43,6 +43,10 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 			return (ellB_magArea.getMedianMag(areaKm) + hb_magArea.getMedianMag(areaKm))/2;
 		}		
 		
+		public double getArea(double mag, double origWidth) {
+			return Double.NaN;
+		}
+		
 		@Override
 		public double getRelativeWeight(InversionModels im) {
 			return 0d;
@@ -63,6 +67,11 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 			return sh09_ModMagArea.getWidthDepMedianMag(area*1e-6, origWidth*1e-3);
 		}		
 		
+		public double getArea(double mag, double origWidth) {
+			return sh09_ModMagArea.getMedianArea(mag)*1e6;
+		}
+
+		
 		@Override
 		public double getRelativeWeight(InversionModels im) {
 			return 0.2d;
@@ -80,6 +89,11 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 		public double getMag(double area, double origWidth) {
 			return hb_magArea.getMedianMag(area*1e-6);
 		}		
+		
+		public double getArea(double mag, double origWidth) {
+			return hb_magArea.getMedianArea(mag)*1e6;
+		}
+
 		
 		@Override
 		public double getRelativeWeight(InversionModels im) {
@@ -100,6 +114,11 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 		public double getMag(double area, double origWidth) {
 			return ellB_magArea.getMedianMag(area*1e-6);
 		}		
+		
+		public double getArea(double mag, double origWidth) {
+			return ellB_magArea.getMedianArea(mag)*1e6;
+		}
+
 		
 		@Override
 		public double getRelativeWeight(InversionModels im) {
@@ -128,6 +147,11 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 			return ellB_magArea.getMedianMag(area*1e-6);
 		}		
 		
+		public double getArea(double mag, double origWidth) {
+			return ellB_magArea.getMedianArea(mag)*1e6;
+		}
+
+		
 		@Override
 		public double getRelativeWeight(InversionModels im) {
 			return 0.2d;
@@ -153,6 +177,11 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 		public double getMag(double area, double origWidth) {
 			return sh09_ModMagArea.getWidthDepMedianMag(area*1e-6, origWidth*1e-3);
 		}		
+		
+		public double getArea(double mag, double origWidth) {
+			return sh09_ModMagArea.getMedianArea(mag)*1e6;
+		}
+
 		
 		@Override
 		public double getRelativeWeight(InversionModels im) {
@@ -213,6 +242,11 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 			}
 			return map;
 		}
+		
+		public double getArea(double mag, double origWidth) {
+			return Double.NaN;
+		}
+
 	};
 	
 	private static Ellsworth_B_WG02_MagAreaRel ellB_magArea = new Ellsworth_B_WG02_MagAreaRel();
@@ -244,6 +278,9 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 	  * @return
 	  */
 	 public abstract double getMag(double area, double origWidth);
+	 
+	 public abstract double getArea(double mag, double origWidth);
+
 
 	
 	@Override
