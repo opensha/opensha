@@ -85,6 +85,7 @@ public class FaultBasedMapGen {
 	
 	public static boolean LOCAL_MAPGEN = false;
 	public static boolean SAVE_ZIPS = false;
+	public static boolean SAVE_PS = false;
 	
 	public static Integer MAP_LABEL_SIZE = null;
 	public static Integer MAP_LABEL_TICK_SIZE = null;
@@ -935,6 +936,11 @@ public class FaultBasedMapGen {
 					Preconditions.checkState(pdfFile.exists(), "No PDF file: %s", pdfFile.getAbsolutePath());
 					Files.move(pdfFile, new File(saveDir, prefix+".pdf"));
 				}
+				if (SAVE_PS) {
+					File psFile = new File(tempDir, map.getPSFileName());
+					Preconditions.checkState(psFile.exists(), "No PS file: %s", psFile.getAbsolutePath());
+					Files.move(psFile, new File(saveDir, prefix+".ps"));
+				}
 				
 				if (map.isGenerateKML())
 					Files.move(new File(tempDir, "map.kmz"), new File(saveDir, prefix+".kmz"));
@@ -956,6 +962,11 @@ public class FaultBasedMapGen {
 				if (map.getPDFFileName() != null) {
 					File pdfFile = new File(saveDir, prefix+".pdf");
 					FileUtils.downloadURL(baseURL+"map.pdf", pdfFile);
+				}
+				
+				if (SAVE_PS) {
+					File psFile = new File(saveDir, prefix+".ps");
+					FileUtils.downloadURL(baseURL+"map.ps", psFile);
 				}
 				
 				if (map.isGenerateKML()) {
