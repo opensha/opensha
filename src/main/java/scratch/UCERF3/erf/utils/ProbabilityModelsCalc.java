@@ -3135,7 +3135,7 @@ public class ProbabilityModelsCalc {
 	
 	
 	
-	
+
 	
 	/**
 	 * This simulates a number of next x-year catalogs (e.g., to check for biases at long durations).
@@ -3150,8 +3150,27 @@ public class ProbabilityModelsCalc {
 	 * @param inputDateOfLastFileName
 	 * @param numCatalogs
 	 */
-	public  void testER_NextXyrSimulation(File resultsDir, String inputDateOfLastFileName, 
+	public void testER_NextXyrSimulation(File resultsDir, String inputDateOfLastFileName, 
 			int numCatalogs, boolean makePlots, Long randomSeed) throws IOException  {
+		testER_NextXyrSimulation(resultsDir, inputDateOfLastFileName, numCatalogs, makePlots, randomSeed, erf.getTimeSpan().getDuration());
+	}
+	
+	/**
+	 * This simulates a number of next x-year catalogs (e.g., to check for biases at long durations).
+	 * 
+	 * The start time is obtained from the ERF, and we assume updateForecast() has been called.
+	 * 
+	 * Note that the predicted sections rates are expected to be biased high where second events
+	 * are likely (the simulation includes these, but the targets do not).  These cases should be
+	 * closer to the long-term rate to the extend that expected number (longTermSecRate*Duration) is high.
+	 * @param erf
+	 * @param dirNameSuffix
+	 * @param inputDateOfLastFileName
+	 * @param numCatalogs
+	 * @param forecastDurationYrs
+	 */
+	public void testER_NextXyrSimulation(File resultsDir, String inputDateOfLastFileName, 
+			int numCatalogs, boolean makePlots, Long randomSeed, double forecastDurationYrs) throws IOException  {
 		
 		
 		
@@ -3176,10 +3195,6 @@ public class ProbabilityModelsCalc {
 			paleoConstrainSections.add(constr.getSectionIndex());
 			info_fr.write("\t"+constr.getPaleoSiteName()+"\t"+constr.getSectionIndex()+"\t"+constr.getFaultSectionName()+"\n");
 		}
-
-		
-		// set duration and update forecast
-		double forecastDurationYrs = erf.getTimeSpan().getDuration();
 
 		RandomDataGenerator randomDataSampler = new RandomDataGenerator();
 		if(randomSeed == null) {
