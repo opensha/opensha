@@ -25,8 +25,11 @@ public class SectionIDIden extends AbstractRuptureIdentifier {
 	private String name;
 	private HashSet<Integer> elementIDs;
 	private HashSet<Integer> sectionIDs;
-	
+
 	private double momentFractForInclusion = 0;
+	private double areaFractForInclusion = 0;
+	
+	private double totalSectionArea;
 	
 	public static SectionIDIden getALLCAL2_NSAF(List<SimulatorElement> elems) {
 		// NOTE: no creeping
@@ -119,6 +122,14 @@ public class SectionIDIden extends AbstractRuptureIdentifier {
 		this.name = name;
 		elementIDs = new HashSet<Integer>(getElemIDs(elems, sectionIDs));
 		this.sectionIDs = new HashSet<Integer>(sectionIDs);
+		
+		// calculate total section area (used if area fraction is enabled)
+		totalSectionArea = 0d;
+		for (SimulatorElement elem : elems)
+			if (this.elementIDs.contains(elem.getID()))
+				totalSectionArea += elem.getArea();
+		
+//		System.out.println("Total section area for "+name+": "+(totalSectionArea*1e-6));
 	}
 	
 	/**
@@ -132,6 +143,18 @@ public class SectionIDIden extends AbstractRuptureIdentifier {
 		Preconditions.checkArgument(momentFractForInclusion >= 0 && momentFractForInclusion <= 1,
 				"moment fraction for inclusion must be in the range [0 1]: %s", momentFractForInclusion);
 		this.momentFractForInclusion = momentFractForInclusion;
+	}
+	
+	/**
+	 * By default, this identifier includes any event which ruptures any part of the given fault section. This method can be used
+	 * to specify a fraction of the selected fault section(s) which much rupture, by area, for a match.
+	 * 
+	 * @param areaFractForInclusion
+	 */
+	public void setAreaFractForInclusion(double areaFractForInclusion) {
+		Preconditions.checkArgument(areaFractForInclusion >= 0 && areaFractForInclusion <= 1,
+				"area fraction for inclusion must be in the range [0 1]: %s", areaFractForInclusion);
+		this.areaFractForInclusion = areaFractForInclusion;
 	}
 	
 	private static List<Integer> getElemIDs(List<SimulatorElement> elems, List<Integer> sectionIDs) {
@@ -168,19 +191,36 @@ public class SectionIDIden extends AbstractRuptureIdentifier {
 	@Override
 	public boolean isMatch(SimulatorEvent event) {
 		// true if at least one element matches
-		boolean elementMatch = isElementMatch(event);
-		if (momentFractForInclusion == 0 || !elementMatch)
-			return elementMatch;
-		// check moment on the given fault;
-		double momentOnFault = 0;
-		double totMoment = 0;
-		for (EventRecord rec : event) {
-			totMoment += rec.getMoment();
-			if (sectionIDs.contains(rec.getSectionID()))
-				momentOnFault += rec.getMoment();
+		if (!isElementMatch(event))
+			// doesn't match any elements
+			return false;
+		if (momentFractForInclusion > 0) {
+			// check moment on the given fault
+			double momentOnFault = 0;
+			double totMoment = 0;
+			for (EventRecord rec : event) {
+				totMoment += rec.getMoment();
+				if (sectionIDs.contains(rec.getSectionID()))
+					momentOnFault += rec.getMoment();
+			}
+			double fract = momentOnFault/totMoment;
+			if (fract < momentFractForInclusion)
+				return false;
 		}
-		double fract = momentOnFault/totMoment;
-		return fract >= momentFractForInclusion;
+		if (areaFractForInclusion > 0) {
+			// check area fraction on given fault
+			double areaOnFaultRuptured = 0;
+			for (SimulatorElement elem : event.getAllElements())
+				if (elementIDs.contains(elem.getID()))
+					areaOnFaultRuptured += elem.getArea();
+			double fract = areaOnFaultRuptured/totalSectionArea;
+			Preconditions.checkState((float)fract >= 0f && (float)fract <= 1f);
+//			System.out.println("Sect area: fract = "+(float)(areaOnFaultRuptured*1e-6)+" / "+(float)(totalSectionArea*1e-6)+" = "+(float)fract
+//					+" (threshold "+areaFractForInclusion+").");
+			if (fract < areaFractForInclusion)
+				return false;
+		}
+		return true;
 	}
 	
 	private boolean isElementMatch(SimulatorEvent event) {
