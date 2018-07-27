@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
@@ -23,52 +22,10 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
-import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
-import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
-import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
-import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
-import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
-import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
-import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
-import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.earthquake.param.MagDependentAperiodicityOptions;
-import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
-import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
-import org.opensha.sha.earthquake.param.ProbabilityModelParam;
-import org.opensha.sha.faultSurface.PointSurface;
-
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
-import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
-import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
-import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
-import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
-import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ApplyLongTermRatesInSamplingParam;
-import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
-import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ApplySubSeisRatesForSupraNucleationRatesParam;
-import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxCharFactorParam;
-import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
-import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelParam;
-import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_TotalRateScaleFactorParam;
-import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
-import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
-import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
-import scratch.UCERF3.utils.LastEventData;
-import scratch.UCERF3.utils.MatrixIO;
-import scratch.UCERF3.utils.RELM_RegionUtils;
-import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
-import scratch.UCERF3.utils.finiteFaultMap.FiniteFaultMappingData;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -78,6 +35,28 @@ import com.google.common.io.Files;
 import com.google.common.primitives.Ints;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
+import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
+import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ApplySubSeisRatesForSupraNucleationRatesParam;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelParam;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_TotalRateScaleFactorParam;
+import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
+import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
+import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
+import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.LastEventData;
+import scratch.UCERF3.utils.MatrixIO;
+import scratch.UCERF3.utils.RELM_RegionUtils;
 
 public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	
@@ -249,11 +228,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 				surfsFile = new File(cmd.getOptionValue("rupture-surfaces"));
 			else
 				surfsFile = null;
-			histQkList.addAll(loadHistoricalCatalog(catFile, surfsFile, sols[0], ot));
-//			if (rank == 0)
-//				debug("Seeding sim with "+histQkList.size()+" catalog ruptures ("+numWithSurfaces+" with surfaces)");
-//			if (rank == 0)
-//				debug("Max trigger mag in input catalog: "+maxTriggerMag);
+			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sols[0], ot));
 		}
 		
 		// purge any last event data after OT
@@ -345,68 +320,6 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		}
 		
 		r = new Random(System.nanoTime() + (long)(rank*new Random().nextInt()));
-	}
-	
-	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemSolution sol, long ot)
-			throws IOException, DocumentException {
-		List<ETAS_EqkRupture> histQkList = new ArrayList<>();
-		// load in historical catalog
-		
-		Preconditions.checkArgument(catFile.exists(), "Catalog file doesn't exist: "+catFile.getAbsolutePath());
-		ObsEqkRupList loadedRups = UCERF3_CatalogParser.loadCatalog(catFile);
-		
-		if (surfsFile != null) {
-			// add rupture surfaces
-			FaultModels fm = getFaultModel(sol);
-			
-			Preconditions.checkArgument(surfsFile.exists(), "Rupture surfaces file doesn't exist: "+surfsFile.getAbsolutePath());
-			FiniteFaultMappingData.loadRuptureSurfaces(surfsFile, loadedRups, fm, sol.getRupSet());
-		}
-		
-		// filter for historical completeness
-		loadedRups = U3_EqkCatalogStatewideCompleteness.load().getFilteredCatalog(loadedRups);
-//		if (debug)
-//			debug("Loaded "+loadedRups.size()+" rups from catalog");
-//		int numWithSurfaces = 0;
-//		double maxTriggerMag = 0d;
-		int numAfter = 0;
-		for (ObsEqkRupture rup : loadedRups) {
-			if (rup.getOriginTime() > ot) {
-				// skip all ruptures that occur after simulation start
-				if (numAfter < 10)
-					System.out.println("Skipping a M"+rup.getMag()+" after sim start ("
-							+rup.getOriginTime()+" > "+ot+"): "+rup);
-				numAfter++;
-				if (numAfter == 10)
-					System.out.println("(supressing future output on skipped ruptures)");
-				continue;
-			}
-			ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
-			etasRup.setID(Integer.parseInt(rup.getEventId()));
-			histQkList.add(etasRup);
-//			if (rup.getRuptureSurface() != null && !(rup.getRuptureSurface() instanceof PointSurface))
-//				numWithSurfaces++;
-//			maxTriggerMag = Math.max(maxTriggerMag, rup.getMag());
-		}
-		System.out.println("Skipped "+numAfter+" ruptures after sim start");
-		return histQkList;
-	}
-	
-	/**
-	 * A little kludgy, but determines FaultModel by rupture count
-	 * @param sol
-	 * @return
-	 */
-	private static FaultModels getFaultModel(FaultSystemSolution sol) {
-		int numRups = sol.getRupSet().getNumRuptures();
-		if (sol instanceof InversionFaultSystemSolution)
-			return ((InversionFaultSystemSolution)sol).getLogicTreeBranch().getValue(FaultModels.class);
-		else if (numRups == 253706)
-			return FaultModels.FM3_1;
-		else if (numRups == 305709)
-			return FaultModels.FM3_2;
-		else
-			throw new IllegalStateException("Don't know Fault Model for solution with "+numRups+" ruptures");
 	}
 
 	@Override
@@ -509,13 +422,9 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 
 				File resultsDir = getResultsDir(index);
 
-				try {
-					if (!metadataOnly && isAlreadyDone(resultsDir)) {
-						debug(index+" is already done: "+resultsDir.getName());
-						continue;
-					}
-				} catch (IOException e) {
-					throw ExceptionUtils.asRuntimeException(e);
+				if (!metadataOnly && ETAS_Launcher.isAlreadyDone(resultsDir)) {
+					debug(index+" is already done: "+resultsDir.getName());
+					continue;
 				}
 				debug("calculating "+index);
 
@@ -544,7 +453,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 					
 					erf.updateForecast();
 				} else {
-					erf = buildERF_millis(sol, timeIndep, duration, ot);
+					erf = ETAS_Launcher.buildERF_millis(sol, timeIndep, duration, ot);
 					
 					if (fssScenarioRupID >= 0) {
 						// This sets the rupture as having occurred in the ERF (to apply elastic rebound)
@@ -704,60 +613,6 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		
 		debug("Writing metadata to "+metadataFile.getAbsolutePath());
 		XMLUtils.writeDocumentToFile(metadataFile, doc);
-	}
-	
-	/**
-	 * Creates ERF for use with ETAS simulations. Will not be updated
-	 * @param sol
-	 * @param timeIndep
-	 * @param duration
-	 * @return
-	 */
-	public static FaultSystemSolutionERF_ETAS buildERF(FaultSystemSolution sol, boolean timeIndep, double duration) {
-		return buildERF(sol, timeIndep, duration, START_YEAR_DEFAULT);
-	}
-	
-	public static FaultSystemSolutionERF_ETAS buildERF(FaultSystemSolution sol, boolean timeIndep, double duration,
-			int startYear) {
-		long ot = Math.round((startYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
-		return buildERF_millis(sol, timeIndep, duration, ot);
-	}
-	
-	public static FaultSystemSolutionERF_ETAS buildERF_millis(FaultSystemSolution sol, boolean timeIndep, double duration,
-			long ot) {
-		FaultSystemSolutionERF_ETAS erf = new FaultSystemSolutionERF_ETAS(sol);
-		// set parameters
-		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
-		erf.setParameter(BackgroundRupParam.NAME, BackgroundRupType.POINT);
-		erf.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, false);
-		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
-		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
-		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE;
-		erf.setParameter(BPTAveragingTypeParam.NAME, aveType);
-		erf.setParameter(AleatoryMagAreaStdDevParam.NAME, 0.0);
-		if (!timeIndep) {
-			double startYear = 1970d + (double)ot/(double)ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-			erf.getParameter(HistoricOpenIntervalParam.NAME).setValue(startYear-1875d);
-		}
-		erf.getTimeSpan().setStartTimeInMillis(ot+1);
-		erf.getTimeSpan().setDuration(duration);
-		return erf;
-	}
-	
-	public static boolean isAlreadyDone(File resultsDir) throws IOException {
-		File infoFile = new File(resultsDir, "infoString.txt");
-		File eventsFile = new File(resultsDir, "simulatedEvents.txt");
-		if (!eventsFile.exists())
-			eventsFile = new File(resultsDir, "simulatedEvents.bin");
-		if (!eventsFile.exists())
-			eventsFile = new File(resultsDir, "simulatedEvents.bin.gz");
-		if (!infoFile.exists() || !eventsFile.exists() || eventsFile.length() == 0l)
-			return false;
-		for (String line : Files.readLines(infoFile, Charset.defaultCharset())) {
-			if (line.contains("Total num ruptures: "))
-				return true;
-		}
-		return false;
 	}
 	
 	private static long getPrevRandSeed(File resultsDir) throws IOException {

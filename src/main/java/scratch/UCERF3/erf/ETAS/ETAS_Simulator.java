@@ -201,8 +201,58 @@ public class ETAS_Simulator {
 			GriddedRegion griddedRegion, ETAS_EqkRupture scenarioRup, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
 			Long randomSeed, List<float[]> fractionSrcInCubeList, List<int[]> srcInCubeList, int[] inputIsCubeInsideFaultPolygon, 
-			ETAS_ParameterList etasParams)
-					throws IOException {
+			ETAS_ParameterList etasParams) throws IOException {
+		List<ETAS_EqkRupture> scenarioRups = null;
+		if (scenarioRup != null) {
+			scenarioRups = new ArrayList<>();
+			scenarioRups.add(scenarioRup);
+		}
+		testMultiScenarioETAS_Simulation(
+				resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
+				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed,
+				fractionSrcInCubeList, srcInCubeList, inputIsCubeInsideFaultPolygon, etasParams);
+	}
+	
+	/**
+	 * This represents an ETAS simulation which can take multiple scenario ruptures
+	 * 
+	 * This assume ER probabilities are constant up until 
+	 * the next fault-system event (only works if fault system events occur every few years or
+	 * less).
+	 * 
+	 * The IDs assigned to ETAS ruptures are as follows: the list index for events in the histQkList; histQkList.size() 
+	 * for any non-null scenarioRup; and the integers that follow the scenarioRup index for simulated events in order of 
+	 * creation (not occurrence)
+	 * 
+	 * TODO:
+	 * 
+	 * 0) get rid of ETAS_EqkRupture.setParentID() and the parentID field within (since pointer to parent rupture exists)
+	 * 1) define tests for all code elements
+	 * 2) document all the code
+	 * 
+	 * 
+	 * @param resultsDir
+	 * @param erf
+	 * @param griddedRegion
+	 * @param scenarioRups
+	 * @param histQkList
+	 * @param includeSpontEvents
+	 * @param includeIndirectTriggering - include secondary, tertiary, etc events
+	 * @param includeEqkRates - whether or not to include the long-term rate of events in sampling aftershocks
+	 * @param gridSeisDiscr - lat lon discretization of gridded seismicity (degrees)
+	 * @param simulationName
+	 * @param randomSeed - set for reproducibility, or set null if new seed desired
+	 * @param fractionSrcInCubeList - from pre-computed data file	TODO chance name of this
+	 * @param srcInCubeListt - from pre-computed data file	TODO chance name of this
+	 * @param inputIsCubeInsideFaultPolygont - from pre-computed data file
+	 * @param etasParams
+	 * @throws IOException
+	 */
+	public static void testMultiScenarioETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
+			GriddedRegion griddedRegion, List<ETAS_EqkRupture> scenarioRups, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
+			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
+			Long randomSeed, List<float[]> fractionSrcInCubeList, List<int[]> srcInCubeList, int[] inputIsCubeInsideFaultPolygon, 
+			ETAS_ParameterList etasParams) throws IOException {
 		
 		// Overide to Poisson if needed
 		if (etasParams.getU3ETAS_ProbModel() == U3ETAS_ProbabilityModelOptions.POISSON) {
@@ -276,8 +326,12 @@ public class ETAS_Simulator {
 		ArrayList<ETAS_EqkRupture> obsEqkRuptureList = new ArrayList<ETAS_EqkRupture>();
 		
 		if(histQkList != null) {
-			// now start at 1, zero is reserved for scenarios if included
-			int id=1;
+			// zero is reserved for scenarios if included
+			int id;
+			if (scenarioRups != null && !scenarioRups.isEmpty())
+				id = scenarioRups.size();
+			else
+				id = 1;
 			for(ObsEqkRupture qk : histQkList) {
 				Location hyp = qk.getHypocenterLocation();
 				if(griddedRegion.contains(hyp) && hyp.getDepth() < 24.0) {	//TODO remove hard-coded 24.0 (get from depth dist)
@@ -296,17 +350,24 @@ public class ETAS_Simulator {
 			System.out.println("obsEqkRuptureList.size()="+obsEqkRuptureList.size());
 		}
 		
-		// add scenario rup to end of obsEqkRuptureList
-		int scenarioRupID = -1;
-		double numPrimaryAshockForScenario = 0;
-		if(scenarioRup != null) {
+		// add scenario rup to beginning of obsEqkRuptureList
+		int[] scenarioRupIDs = null;
+		double[] numPrimaryAshockForScenarios = null;
+		if(scenarioRups != null && !scenarioRups.isEmpty()) {
 //			scenarioRupID = obsEqkRuptureList.size();
 			// zero is reserved for scenario rupture
-			scenarioRupID = 0;
-			scenarioRup.setID(scenarioRupID);
-			obsEqkRuptureList.add(scenarioRup);		
-			if(D) {
-				System.out.println("Num locs on scenario rup surface: "+scenarioRup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface().size());
+			scenarioRupIDs = new int[scenarioRups.size()];
+			numPrimaryAshockForScenarios = new double[scenarioRups.size()];
+			
+			for (int i=0; i<scenarioRups.size(); i++) {
+				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
+				scenarioRupIDs[i] = i;
+				scenarioRup.setID(i);
+				obsEqkRuptureList.add(scenarioRup);		
+				if(D) {
+					System.out.println("Num locs on scenario rup surface: "
+							+scenarioRup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface().size());
+				}
 			}
 		}
 		
@@ -405,8 +466,11 @@ public class ETAS_Simulator {
 			double endDay = (double)(simEndTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 			// get a list of random primary event times, in units of days since main shock
 			double[] randomAftShockTimes = etas_utils.getRandomEventTimes(etasParams.get_k(), etasParams.get_p(), parRup.getMag(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c(), startDay, endDay);
-			if(parRup.getID() == scenarioRupID)
-				numPrimaryAshockForScenario = randomAftShockTimes.length;
+			if (scenarioRupIDs != null) {
+				for (int i=0; i<scenarioRupIDs.length; i++)
+					if(parRup.getID() == scenarioRupIDs[i])
+						numPrimaryAshockForScenarios[i] = randomAftShockTimes.length;
+			}
 			LocationList locList = null;
 			if(randomAftShockTimes.length>0) {
 				for(int i=0; i<randomAftShockTimes.length;i++) {
@@ -515,29 +579,32 @@ public class ETAS_Simulator {
 
 		// If scenarioRup != null, generate  diagnostics if in debug mode!
 		List<EvenlyDiscretizedFunc> expectedPrimaryMFDsForScenarioList=null;
-		if(scenarioRup !=null) {
-			long rupOT = scenarioRup.getOriginTime();
-			double startDay = (double)(simStartTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;	// convert epoch to days from event origin time
-			double endDay = (double)(simEndTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
-			double expNum = ETAS_Utils.getExpectedNumEvents(etasParams.get_k(), etasParams.get_p(), scenarioRup.getMag(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c(), startDay, endDay);
-			
-			info_fr.write("\nMagnitude of Scenario: "+(float)scenarioRup.getMag()+"\n");
-			info_fr.write("\nExpected number of primary events for Scenario: "+expNum+"\n");
-			info_fr.write("\nObserved number of primary events for Scenario: "+numPrimaryAshockForScenario+"\n");
-			System.out.println("\nMagnitude of Scenario: "+(float)scenarioRup.getMag());
-			System.out.println("Expected number of primary events for Scenario: "+expNum);
-			System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenario+"\n");
+		if(scenarioRups !=null) {
+			for (int i=0; i<scenarioRups.size(); i++) {
+				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
+				long rupOT = scenarioRup.getOriginTime();
+				double startDay = (double)(simStartTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;	// convert epoch to days from event origin time
+				double endDay = (double)(simEndTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
+				double expNum = ETAS_Utils.getExpectedNumEvents(etasParams.get_k(), etasParams.get_p(), scenarioRup.getMag(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c(), startDay, endDay);
+				
+				info_fr.write("\nMagnitude of Scenario: "+(float)scenarioRup.getMag()+"\n");
+				info_fr.write("\nExpected number of primary events for Scenario: "+expNum+"\n");
+				info_fr.write("\nObserved number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+				System.out.println("\nMagnitude of Scenario: "+(float)scenarioRup.getMag());
+				System.out.println("Expected number of primary events for Scenario: "+expNum);
+				System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
 
-			if(D && generateDiagnosticsForScenario) {
-				System.out.println("Computing Scenario Diagnostics");
-				long timeMillis =System.currentTimeMillis();
-				expectedPrimaryMFDsForScenarioList = etas_PrimEventSampler.generateRuptureDiagnostics(scenarioRup, expNum, "Scenario", resultsDir,info_fr);
-				float timeMin = ((float)(System.currentTimeMillis()-timeMillis))/(1000f*60f);
-				System.out.println("Computing Scenario Diagnostics took (min): "+timeMin);
-				if (exit_after_scenario_diagnostics)
-					System.exit(0);
+				if(D && generateDiagnosticsForScenario) {
+					System.out.println("Computing Scenario Diagnostics");
+					long timeMillis =System.currentTimeMillis();
+					expectedPrimaryMFDsForScenarioList = etas_PrimEventSampler.generateRuptureDiagnostics(scenarioRup, expNum, "Scenario", resultsDir,info_fr);
+					float timeMin = ((float)(System.currentTimeMillis()-timeMillis))/(1000f*60f);
+					System.out.println("Computing Scenario Diagnostics took (min): "+timeMin);
+					if (exit_after_scenario_diagnostics)
+						System.exit(0);
+				}
+				info_fr.flush();
 			}
-			info_fr.flush();
 		}
 		
 		if(D) {
@@ -796,42 +863,44 @@ public class ETAS_Simulator {
 		info_fr.write(numInfo+"\n");
 
 
-		if(D && scenarioRup !=null) {	// scenario rupture included
-			int inputRupID = scenarioRup.getID();	// TODO already defined above?
-			ETAS_SimAnalysisTools.plotRateVsLogTimeForPrimaryAshocksOfRup(simulationName, new File(resultsDir,"logRateDecayForScenarioPrimaryAftershocks.pdf").getAbsolutePath(), simulatedRupsQueue, scenarioRup,
-					etasParams.get_k(), etasParams.get_p(), etasParams.get_c());
-			ETAS_SimAnalysisTools.plotRateVsLogTimeForAllAshocksOfRup(simulationName, new File(resultsDir,"logRateDecayForScenarioAllAftershocks.pdf").getAbsolutePath(), simulatedRupsQueue, scenarioRup,
-					etasParams.get_k(), etasParams.get_p(), etasParams.get_c());
+		if(D && scenarioRups != null && !scenarioRups.isEmpty()) {	// scenario rupture included
+			for (ETAS_EqkRupture scenarioRup : scenarioRups) {
+				int inputRupID = scenarioRup.getID();	// TODO already defined above?
+				ETAS_SimAnalysisTools.plotRateVsLogTimeForPrimaryAshocksOfRup(simulationName, new File(resultsDir,"logRateDecayForScenarioPrimaryAftershocks.pdf").getAbsolutePath(), simulatedRupsQueue, scenarioRup,
+						etasParams.get_k(), etasParams.get_p(), etasParams.get_c());
+				ETAS_SimAnalysisTools.plotRateVsLogTimeForAllAshocksOfRup(simulationName, new File(resultsDir,"logRateDecayForScenarioAllAftershocks.pdf").getAbsolutePath(), simulatedRupsQueue, scenarioRup,
+						etasParams.get_k(), etasParams.get_p(), etasParams.get_c());
 
-			ETAS_SimAnalysisTools.plotEpicenterMap(simulationName, new File(resultsDir,"hypoMap.pdf").getAbsolutePath(), obsEqkRuptureList.get(0), simulatedRupsQueue, griddedRegion.getBorder());
-			ETAS_SimAnalysisTools.plotDistDecayDensityOfAshocksForRup("Scenario in "+simulationName, new File(resultsDir,"distDecayDensityForScenario.pdf").getAbsolutePath(), 
-					simulatedRupsQueue, etasParams.get_q(), etasParams.get_d(), scenarioRup);
-			ArrayList<IncrementalMagFreqDist> obsAshockMFDsForScenario = ETAS_SimAnalysisTools.getAftershockMFDsForRup(simulatedRupsQueue, inputRupID, simulationName);
-			if(generateDiagnosticsForScenario == true)
-				obsAshockMFDsForScenario.add((IncrementalMagFreqDist)expectedPrimaryMFDsForScenarioList.get(0));
-			ETAS_SimAnalysisTools.plotMagFreqDistsForRup("AshocksOfScenarioMFD", resultsDir, obsAshockMFDsForScenario);
-			
-			
-			// write stats for first rup
-			
-			double expPrimNumAtMainMag = Double.NaN;
-			double expPrimNumAtMainMagMinusOne = Double.NaN;
-			if(generateDiagnosticsForScenario && expectedPrimaryMFDsForScenarioList.get(1) != null) {
-				expPrimNumAtMainMag = expectedPrimaryMFDsForScenarioList.get(1).getInterpolatedY(scenarioRup.getMag());
-				expPrimNumAtMainMagMinusOne = expectedPrimaryMFDsForScenarioList.get(1).getInterpolatedY(scenarioRup.getMag()-1.0);				
+				ETAS_SimAnalysisTools.plotEpicenterMap(simulationName, new File(resultsDir,"hypoMap.pdf").getAbsolutePath(), obsEqkRuptureList.get(0), simulatedRupsQueue, griddedRegion.getBorder());
+				ETAS_SimAnalysisTools.plotDistDecayDensityOfAshocksForRup("Scenario in "+simulationName, new File(resultsDir,"distDecayDensityForScenario.pdf").getAbsolutePath(), 
+						simulatedRupsQueue, etasParams.get_q(), etasParams.get_d(), scenarioRup);
+				ArrayList<IncrementalMagFreqDist> obsAshockMFDsForScenario = ETAS_SimAnalysisTools.getAftershockMFDsForRup(simulatedRupsQueue, inputRupID, simulationName);
+				if(generateDiagnosticsForScenario == true)
+					obsAshockMFDsForScenario.add((IncrementalMagFreqDist)expectedPrimaryMFDsForScenarioList.get(0));
+				ETAS_SimAnalysisTools.plotMagFreqDistsForRup("AshocksOfScenarioMFD", resultsDir, obsAshockMFDsForScenario);
+				
+				
+				// write stats for first rup
+				
+				double expPrimNumAtMainMag = Double.NaN;
+				double expPrimNumAtMainMagMinusOne = Double.NaN;
+				if(generateDiagnosticsForScenario && expectedPrimaryMFDsForScenarioList.get(1) != null) {
+					expPrimNumAtMainMag = expectedPrimaryMFDsForScenarioList.get(1).getInterpolatedY(scenarioRup.getMag());
+					expPrimNumAtMainMagMinusOne = expectedPrimaryMFDsForScenarioList.get(1).getInterpolatedY(scenarioRup.getMag()-1.0);				
+				}
+				EvenlyDiscretizedFunc obsPrimCumMFD = obsAshockMFDsForScenario.get(1).getCumRateDistWithOffset();
+				double obsPrimNumAtMainMag = obsPrimCumMFD.getInterpolatedY(scenarioRup.getMag());
+				double obsPrimNumAtMainMagMinusOne = obsPrimCumMFD.getInterpolatedY(scenarioRup.getMag()-1.0);
+				EvenlyDiscretizedFunc obsAllCumMFD = obsAshockMFDsForScenario.get(1).getCumRateDistWithOffset();
+				double obsAllNumAtMainMag = obsAllCumMFD.getInterpolatedY(scenarioRup.getMag());
+				double obsAllNumAtMainMagMinusOne = obsAllCumMFD.getInterpolatedY(scenarioRup.getMag()-1.0);
+				String testEventStats="\nAftershock Stats for Scenario event (only):\n";
+				testEventStats+="\tNum Primary Aftershocks at main shock mag("+(float)scenarioRup.getMag()+"):\n\t\tExpected="+expPrimNumAtMainMag+"\n\t\tObserved="+obsPrimNumAtMainMag+"\n";
+				testEventStats+="\tNum Primary Aftershocks at one minus main-shock mag("+(float)(scenarioRup.getMag()-1.0)+"):\n\t\tExpected="+expPrimNumAtMainMagMinusOne+"\n\t\tObserved="+obsPrimNumAtMainMagMinusOne+"\n";
+				testEventStats+="\tTotal Observed Num Aftershocks:\n\t\tAt main-shock mag = "+obsAllNumAtMainMag+"\n\t\tAt one minus main-shock mag = "+obsAllNumAtMainMagMinusOne+"\n";
+				if(D) System.out.println(testEventStats);
+				info_fr.write(testEventStats);
 			}
-			EvenlyDiscretizedFunc obsPrimCumMFD = obsAshockMFDsForScenario.get(1).getCumRateDistWithOffset();
-			double obsPrimNumAtMainMag = obsPrimCumMFD.getInterpolatedY(scenarioRup.getMag());
-			double obsPrimNumAtMainMagMinusOne = obsPrimCumMFD.getInterpolatedY(scenarioRup.getMag()-1.0);
-			EvenlyDiscretizedFunc obsAllCumMFD = obsAshockMFDsForScenario.get(1).getCumRateDistWithOffset();
-			double obsAllNumAtMainMag = obsAllCumMFD.getInterpolatedY(scenarioRup.getMag());
-			double obsAllNumAtMainMagMinusOne = obsAllCumMFD.getInterpolatedY(scenarioRup.getMag()-1.0);
-			String testEventStats="\nAftershock Stats for Scenario event (only):\n";
-			testEventStats+="\tNum Primary Aftershocks at main shock mag("+(float)scenarioRup.getMag()+"):\n\t\tExpected="+expPrimNumAtMainMag+"\n\t\tObserved="+obsPrimNumAtMainMag+"\n";
-			testEventStats+="\tNum Primary Aftershocks at one minus main-shock mag("+(float)(scenarioRup.getMag()-1.0)+"):\n\t\tExpected="+expPrimNumAtMainMagMinusOne+"\n\t\tObserved="+obsPrimNumAtMainMagMinusOne+"\n";
-			testEventStats+="\tTotal Observed Num Aftershocks:\n\t\tAt main-shock mag = "+obsAllNumAtMainMag+"\n\t\tAt one minus main-shock mag = "+obsAllNumAtMainMagMinusOne+"\n";
-			if(D) System.out.println(testEventStats);
-			info_fr.write(testEventStats);
 		} else if (D) {
 			ETAS_SimAnalysisTools.plotEpicenterMap(simulationName, new File(resultsDir,"hypoMap.pdf").getAbsolutePath(), null, simulatedRupsQueue, griddedRegion.getBorder());
 		}

@@ -1982,13 +1982,14 @@ public class ETAS_SimAnalysisTools {
 	 * @param parentID
 	 * @return
 	 */
-	public static List<ETAS_EqkRupture> getChildrenFromCatalog(List<ETAS_EqkRupture> catalog, int parentID) {
+	public static List<ETAS_EqkRupture> getChildrenFromCatalog(List<ETAS_EqkRupture> catalog, int... parentIDs) {
 		List<ETAS_EqkRupture> ret = Lists.newArrayList();
 		HashSet<Integer> parents = new HashSet<Integer>();
-		parents.add(parentID);
+		for (int parentID : parentIDs)
+			parents.add(parentID);
 		
 		for (ETAS_EqkRupture rup : catalog) {
-			if (parents.contains(rup.getParentID()) || rup.getID() == parentID) {
+			if (parents.contains(rup.getParentID()) || parents.contains(rup.getID())) {
 				// it's in the chain
 				ret.add(rup);
 				parents.add(rup.getID());

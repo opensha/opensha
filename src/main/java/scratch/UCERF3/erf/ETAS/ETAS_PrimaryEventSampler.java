@@ -6354,6 +6354,9 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		cptParam.getValue().setBelowMinColor(Color.WHITE);
 
 		try {
+			// now make cache file
+			MatrixIO.doubleArrayToFile(griddedSeisCorr, new File(defaultGriddedCorrFilename));
+			
 			// make plots
 			GMT_CA_Maps.makeMap(ratesFromAshocks, "Aftershock Nucleation Rate", "test", "ExpAfterShockRateFromSupraMap", gmt_MapGenerator);
 			GMT_CA_Maps.makeMap(origCellRates, "Original Nucleation Rate", "test", "OrigRateMap", gmt_MapGenerator);
@@ -6364,9 +6367,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			gmt_MapGenerator.setParameter(GMT_MapGenerator.LOG_PLOT_NAME, false);
 			System.out.println("Max Ratio = "+rateRatios.getMaxZ());
 			GMT_CA_Maps.makeMap(rateRatios, "Corrected vs Original Ratio", "test", "NewVsOrigRateRatioMap", gmt_MapGenerator);
-			
-			// now make cache file
-			MatrixIO.doubleArrayToFile(griddedSeisCorr, new File(defaultGriddedCorrFilename));
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

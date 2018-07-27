@@ -29,6 +29,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -45,14 +46,14 @@ public class StandaloneCalc {
 		 */
 		double duration = 100;
 		boolean includeSpontEvents = true;
-//		int startYear = 2017;
-//		long ot = Math.round((startYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 		int startYear = 2017;
-		long ot = -1631410050000l;
+		long ot = Math.round((startYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+//		int startYear = 2017;
+//		long ot = -1631410050000l;
 		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
 		boolean applySubSeisForSupraNucl = true;
 		double totRateScaleFactor = 1.14;
-		boolean gridSeisCorr = true;
+		boolean gridSeisCorr = false;
 		boolean griddedOnly = false;
 		boolean imposeGR = false;
 		
@@ -72,12 +73,17 @@ public class StandaloneCalc {
 		File surfsFile = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/finite_fault_mappings.xml");
 		
 		File cacheDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/cache_fm3p1_ba");
+		boolean generateCaches = false;
+//		File cacheDir = null;
+//		boolean generateCaches = true; // will go in src/scratch/UCERF3/data/scratch/InversionSolutions, make sure previous files are cleared out
 		
 		boolean debug = false;
 		
 		File outputDir = new File("/tmp/etas_test");
 		File solFile = new File("/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
+//		File solFile = new File("/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/data/scratch/InversionSolutions/"
+//				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 //		File solFile = new File(outputDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		
 		/*
@@ -97,7 +103,7 @@ public class StandaloneCalc {
 		
 		List<ETAS_EqkRupture> histQkList = Lists.newArrayList();
 		if (catFile != null) {
-			histQkList.addAll(MPJ_ETAS_Simulator.loadHistoricalCatalog(catFile, surfsFile, sol, ot));
+			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sol, ot));
 		}
 		
 		// purge any last event data after OT
@@ -170,18 +176,27 @@ public class StandaloneCalc {
 		 * Caches
 		 */
 		System.out.println("Loading caches");
-		File fractionSrcAtPointListFile = new File(cacheDir, "sectDistForCubeCache");
-		File srcAtPointListFile = new File(cacheDir, "sectInCubeCache");
-		File isCubeInsideFaultPolygonFile = new File(cacheDir, "cubeInsidePolyCache");
-		Preconditions.checkState(fractionSrcAtPointListFile.exists(),
-				"cache file not found: "+fractionSrcAtPointListFile.getAbsolutePath());
-		Preconditions.checkState(srcAtPointListFile.exists(),
-				"cache file not found: "+srcAtPointListFile.getAbsolutePath());
-		Preconditions.checkState(isCubeInsideFaultPolygonFile.exists(),
-				"cache file not found: "+isCubeInsideFaultPolygonFile.getAbsolutePath());
-		List<float[]> fractionSrcAtPointList = MatrixIO.floatArraysListFromFile(fractionSrcAtPointListFile);
-		List<int[]> srcAtPointList = MatrixIO.intArraysListFromFile(srcAtPointListFile);
-		int[] isCubeInsideFaultPolygon = MatrixIO.intArrayFromFile(isCubeInsideFaultPolygonFile);
+		List<float[]> fractionSrcAtPointList;
+		List<int[]> srcAtPointList;
+		int[] isCubeInsideFaultPolygon;
+		if (generateCaches) {
+			fractionSrcAtPointList = null;
+			srcAtPointList = null;
+			isCubeInsideFaultPolygon = null;
+		} else {
+			File fractionSrcAtPointListFile = new File(cacheDir, "sectDistForCubeCache");
+			File srcAtPointListFile = new File(cacheDir, "sectInCubeCache");
+			File isCubeInsideFaultPolygonFile = new File(cacheDir, "cubeInsidePolyCache");
+			Preconditions.checkState(fractionSrcAtPointListFile.exists(),
+					"cache file not found: "+fractionSrcAtPointListFile.getAbsolutePath());
+			Preconditions.checkState(srcAtPointListFile.exists(),
+					"cache file not found: "+srcAtPointListFile.getAbsolutePath());
+			Preconditions.checkState(isCubeInsideFaultPolygonFile.exists(),
+					"cache file not found: "+isCubeInsideFaultPolygonFile.getAbsolutePath());
+			fractionSrcAtPointList = MatrixIO.floatArraysListFromFile(fractionSrcAtPointListFile);
+			srcAtPointList = MatrixIO.intArraysListFromFile(srcAtPointListFile);
+			isCubeInsideFaultPolygon = MatrixIO.intArrayFromFile(isCubeInsideFaultPolygonFile);
+		}
 		
 		/*
 		 * Do the simulation
@@ -203,7 +218,7 @@ public class StandaloneCalc {
 			
 			erf.updateForecast();
 		} else {
-			erf = MPJ_ETAS_Simulator.buildERF_millis(sol, false, duration, ot);
+			erf = ETAS_Launcher.buildERF_millis(sol, false, duration, ot);
 			
 			if (fssScenarioRupID >= 0) {
 				// This sets the rupture as having occurred in the ERF (to apply elastic rebound)

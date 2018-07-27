@@ -28,6 +28,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
@@ -91,7 +92,7 @@ public class CSEP_ContainerTestExecutable {
 		
 		System.out.println("Loading fault system solution");
 		FaultSystemSolution sol = checkOutFSS();
-		histQkList = MPJ_ETAS_Simulator.loadHistoricalCatalog(catFile, null, sol, Long.MAX_VALUE);
+		histQkList = ETAS_Launcher.loadHistoricalCatalog(catFile, null, sol, Long.MAX_VALUE);
 		ot = histQkList.get(histQkList.size()-1).getOriginTime()+1;
 		
 		// purge any last event data after OT
@@ -179,7 +180,7 @@ public class CSEP_ContainerTestExecutable {
 				 */
 				FaultSystemSolution sol = checkOutFSS();
 				LastEventData.populateSubSects(sol.getRupSet().getFaultSectionDataList(), lastEventData);
-				AbstractERF erf = MPJ_ETAS_Simulator.buildERF_millis(sol, false, duration, ot);
+				AbstractERF erf = ETAS_Launcher.buildERF_millis(sol, false, duration, ot);
 
 				erf.updateForecast();
 				

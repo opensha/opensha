@@ -335,19 +335,26 @@ public class ETAS_CatalogIO {
 	}
 
 	public static void writeCatalogsBinary(File file, List<List<ETAS_EqkRupture>> catalogs) throws IOException {
-		Preconditions.checkNotNull(file, "File cannot be null!");
 		Preconditions.checkNotNull(catalogs, "Catalog cannot be null!");
-		Preconditions.checkArgument(!catalogs.isEmpty(), "Must supply at least one catalog");
 
-		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file), buffer_len));
-
-		// write number of catalogs as int
-		out.writeInt(catalogs.size());
+		DataOutputStream out = initCatalogsBinary(file, catalogs.size());
 
 		for (List<ETAS_EqkRupture> catalog : catalogs)
 			writeCatalogBinary(out, catalog);
 
 		out.close();
+	}
+	
+	public static DataOutputStream initCatalogsBinary(File file, int numCatalogs) throws IOException {
+		Preconditions.checkNotNull(file, "File cannot be null!");
+		Preconditions.checkArgument(numCatalogs > 0, "Must supply at least one catalog");
+		
+		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file), buffer_len));
+
+		// write number of catalogs as int
+		out.writeInt(numCatalogs);
+		
+		return out;
 	}
 
 	public static void writeCatalogBinary(DataOutputStream out, List<ETAS_EqkRupture> catalog) throws IOException {

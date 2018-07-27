@@ -8,6 +8,8 @@ dependencies {
 
     compileOnly project(path: ':opensha-core', configuration: 'compileOnly')
     compileAndResource project(path: ':opensha-core')
+    
+    compileAndResource 'com.google.code.gson:gson:2.7'
 
     testCompile 'junit:junit:4.12'
 }

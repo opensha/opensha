@@ -699,8 +699,8 @@ public class LogicTreePBSWriter {
 //		String runName = "ucerf3p3-synthetic-tests";
 //		String runName = "biasi-downsample-tests";
 //		String runName = "milner-downsample-tests";
-//		String runName = "ave-slip-scale-tests";
-		String runName = "unsmoothed-seis-tests";
+		String runName = "ave-slip-scale-tests";
+//		String runName = "unsmoothed-seis-tests";
 		if (args.length > 1)
 			runName = args[1];
 //		int constrained_run_mins = 60;	// 1 hour
@@ -719,14 +719,14 @@ public class LogicTreePBSWriter {
 
 		//		RunSites site = RunSites.RANGER;
 		//		RunSites site = RunSites.EPICENTER;
-//		RunSites site = RunSites.HPCC;
-//		int batchSize = 16;
-//		int jobsPerNode = 4;
-//		String threads = "5";
 		RunSites site = RunSites.HPCC;
-		int batchSize = 0;
-		int jobsPerNode = 1;
-		String threads = "95%"; // max for 8 core nodes, 23/24 for dodecacore
+		int batchSize = 16;
+		int jobsPerNode = 4;
+		String threads = "5";
+//		RunSites site = RunSites.HPCC;
+//		int batchSize = 0;
+//		int jobsPerNode = 1;
+//		String threads = "95%"; // max for 8 core nodes, 23/24 for dodecacore
 //		String threads = "50%";
 //		RunSites site = RunSites.RANGER;
 //		int batchSize = 64;
@@ -737,8 +737,8 @@ public class LogicTreePBSWriter {
 //		int jobsPerNode = 3;
 //		String threads = "5"; // *2 = 16 (out of 16 possible)
 		
-		LogicTreeBranch prescribedBranch = null;
-//		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
+//		LogicTreeBranch prescribedBranch = null;
+		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
 //		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
 //		prescribedBranch.setValue(InversionModels.GR_CONSTRAINED);
 //		prescribedBranch.setValue(SpatialSeisPDF.UNSMOOTHED_GRIDDED);
@@ -753,7 +753,7 @@ public class LogicTreePBSWriter {
 //		HashSet<String> ignores = loadIgnoresFromZip(new File("/home/kevin/OpenSHA/UCERF3/inversions/" +
 //				"2012_12_27-ucerf3p2_prod_runs_1/bins/2012_12_27-ucerf3p2_prod_runs_1_keeper_bins.zip"));
 
-		int numRuns = 1;
+		int numRuns = 100;
 		int runStart = 0;
 		boolean forcePlots = false;
 
@@ -800,26 +800,26 @@ public class LogicTreePBSWriter {
 //		trimmer = new LogicalAndTrimmer(trimmer, grOnly, noRefBranches, noUCERF2);
 		
 //		trimmer = new LogicalAndTrimmer(trimmer, charOrGR, noUCERF2, getZengOnlyTrimmer());
-		trimmer = new LogicalAndTrimmer(
-				// char or GR
-				charOrGR,
-				
-				// ref FM, DM, Dsr, MmaxOFf, MomRateFix
-				new SingleValsTreeTrimmer(FaultModels.FM3_1, DeformationModels.ZENGBB,
-				SlipAlongRuptureModels.TAPERED, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE),
-				
-				// Shaw or HB
-				new LogicalOrTrimmer(new SingleValsTreeTrimmer(ScalingRelationships.SHAW_2009_MOD),
-						new SingleValsTreeTrimmer(ScalingRelationships.HANKS_BAKUN_08)),
-				
-				// high or reg M5
-				new LogicalOrTrimmer(new SingleValsTreeTrimmer(TotalMag5Rate.RATE_7p9),
-						new SingleValsTreeTrimmer(TotalMag5Rate.RATE_9p6)),
-				
-				// U3 or unsmoothed spatial seismicity 
-				new LogicalOrTrimmer(new SingleValsTreeTrimmer(SpatialSeisPDF.UCERF3),
-						new SingleValsTreeTrimmer(SpatialSeisPDF.UNSMOOTHED_GRIDDED))
-				);
+//		trimmer = new LogicalAndTrimmer(
+//				// char or GR
+//				charOrGR,
+//				
+//				// ref FM, DM, Dsr, MmaxOFf, MomRateFix
+//				new SingleValsTreeTrimmer(FaultModels.FM3_1, DeformationModels.ZENGBB,
+//				SlipAlongRuptureModels.TAPERED, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE),
+//				
+//				// Shaw or HB
+//				new LogicalOrTrimmer(new SingleValsTreeTrimmer(ScalingRelationships.SHAW_2009_MOD),
+//						new SingleValsTreeTrimmer(ScalingRelationships.HANKS_BAKUN_08)),
+//				
+//				// high or reg M5
+//				new LogicalOrTrimmer(new SingleValsTreeTrimmer(TotalMag5Rate.RATE_7p9),
+//						new SingleValsTreeTrimmer(TotalMag5Rate.RATE_9p6)),
+//				
+//				// U3 or unsmoothed spatial seismicity 
+//				new LogicalOrTrimmer(new SingleValsTreeTrimmer(SpatialSeisPDF.UCERF3),
+//						new SingleValsTreeTrimmer(SpatialSeisPDF.UNSMOOTHED_GRIDDED))
+//				);
 		
 		
 //		TreeTrimmer defaultBranchesTrimmer = getUCERF3RefBranches();
@@ -1012,10 +1012,11 @@ public class LogicTreePBSWriter {
 //		InversionOptions[] ops = { InversionOptions.RUP_DOWNSAMPLE_DM };
 //		variationBranches.add(buildVariationBranch(ops, toArray("0.1")));
 		
-//		variationBranches = Lists.newArrayList();
-//		InversionOptions[] ops = { InversionOptions.AVE_SLIP_SCALE, InversionOptions.AVE_SLIP_WT };
+		variationBranches = Lists.newArrayList();
+		InversionOptions[] ops = { InversionOptions.AVE_SLIP_SCALE, InversionOptions.AVE_SLIP_WT };
 //		variationBranches.add(buildVariationBranch(ops, toArray("1.0", "1.2")));
 //		variationBranches.add(buildVariationBranch(ops, toArray("1.2", "1.2")));
+		variationBranches.add(buildVariationBranch(ops, toArray("1.5", "1.2")));
 		
 		List<InversionArg[]> saOptions = null;
 		
@@ -1408,14 +1409,14 @@ public class LogicTreePBSWriter {
 		//		DeformationModels.forFaultModel(null).toArray(new DeformationModels[0])
 		if (batchSize > 0) {
 			System.out.println("Writing batches!");
-			writeMPJDispatchJob(site, argsList, numRuns, batchSize, jobsPerNode, maxJobMins, runSubDir, writeDir);
+			writeMPJDispatchJob(site, argsList, numRuns, batchSize, jobsPerNode, maxJobMins, queue, runSubDir, writeDir);
 		}
 		System.exit(0);
 	}
 	
 	public static void writeMPJDispatchJob(RunSites site,
 			List<String> argsList, int numRuns, int maxNodes, int jobsPerNode,
-			int maxRuntimeMins, File remoteDir, File writeDir) throws IOException {
+			int maxRuntimeMins, String queue, File remoteDir, File writeDir) throws IOException {
 		if (numRuns > 1) {
 			List<String> sortedArgsList = Lists.newArrayList();
 			
@@ -1482,7 +1483,7 @@ public class LogicTreePBSWriter {
 			int nodes = (int)Math.ceil(nodesNeeded);
 			
 			File batchFile = new File(writeDir, "batch"+iStr+".pbs");
-			batch.writeScript(batchFile, script, jobMins, nodes, ppn, null);
+			batch.writeScript(batchFile, script, jobMins, nodes, ppn, queue);
 			System.out.println("Writing "+batchFile.getName()+" ("+nodes+" nodes)");
 		}
 	}

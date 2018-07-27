@@ -34,6 +34,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -268,7 +269,7 @@ public class ETAS_SimulationGUI extends JFrame implements ParameterChangeListene
 			lastEventData = LastEventData.load();
 		LastEventData.populateSubSects(sol.getRupSet().getFaultSectionDataList(), lastEventData);
 		
-		FaultSystemSolutionERF_ETAS erf = MPJ_ETAS_Simulator.buildERF(sol, false, 1d);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF(sol, false, 1d, 2014);
 		erf.updateForecast();
 		
 		ObsEqkRupList histQkList;
