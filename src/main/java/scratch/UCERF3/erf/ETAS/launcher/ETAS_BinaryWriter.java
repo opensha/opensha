@@ -65,24 +65,12 @@ class ETAS_BinaryWriter {
 
 		private int numCatalogs;
 		private BinaryFilteredOutputConfig binaryConf;
-		private int maxParentID;
+		private ETAS_Config config;
 
 		public InProgressWriter(File outputDir, int numCatalogs, ETAS_Config config, BinaryFilteredOutputConfig binaryConf) throws IOException {
 			this.numCatalogs = numCatalogs;
 			this.binaryConf = binaryConf;
-			
-			if (binaryConf.isDescendantsOnly()) {
-				List<TriggerRupture> triggerRups = config.getTriggerRuptures();
-				Preconditions.checkState((triggerRups != null && !triggerRups.isEmpty()) || config.getTriggerCatalogFile() != null,
-						"Cannot write descendants only files without either trigger ruptures or a trigger catalog");
-				if (!binaryConf.isIncludeTriggerCatalogDescendants()) {
-					Preconditions.checkState(triggerRups != null && !triggerRups.isEmpty(),
-							"Can't write descendants only files without trigger ruptures if includeTriggerCatalogDescendants=false");
-					maxParentID = triggerRups.size()-1;
-				} else {
-					maxParentID = -1;
-				}
-			}
+			this.config = config;
 			
 			String prefix = binaryConf.getPrefix();
 			inProgressFile = new File(outputDir, prefix+"_partial.bin");
@@ -92,20 +80,21 @@ class ETAS_BinaryWriter {
 		public synchronized void processCatalog(List<ETAS_EqkRupture> catalog) throws IOException {
 			if (dOut == null)
 				dOut = ETAS_CatalogIO.initCatalogsBinary(inProgressFile, numCatalogs);
-			if (binaryConf.isDescendantsOnly() && !catalog.isEmpty()) {
-				int maxParentID = this.maxParentID;
-				if (maxParentID < 0)
-					// track descendants of ruptures before the start of this catalog
-					// this includes both trigger ruptures and a trigger (historical) catalog
-					maxParentID = catalog.get(0).getID()-1;
-				int[] parentIDs = new int[maxParentID];
-				for (int i=0; i<maxParentID; i++)
-					parentIDs[i] = 0;
-				catalog = ETAS_SimAnalysisTools.getChildrenFromCatalog(catalog, parentIDs);
+			if (binaryConf.isDescendantsOnly() && !catalog.isEmpty())
+				catalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
+			if (binaryConf.getMinMag() != null && binaryConf.getMinMag() > 0 && !catalog.isEmpty()) {
+				if (binaryConf.isPreserveChainBelowMag()) {
+					catalog = ETAS_SimAnalysisTools.getAboveMagPreservingChain(catalog, binaryConf.getMinMag());
+				} else {
+					List<ETAS_EqkRupture> filteredCatalog = new ArrayList<>();
+					for (ETAS_EqkRupture rup : catalog)
+						if (rup.getMag() >= binaryConf.getMinMag())
+							filteredCatalog.add(rup);
+					catalog = filteredCatalog;
+				}
 			}
-			if (binaryConf.getMinMag() != null && binaryConf.getMinMag() > 0 && !catalog.isEmpty())
-				catalog = ETAS_SimAnalysisTools.getAboveMagPreservingChain(catalog, binaryConf.getMinMag());
 			ETAS_CatalogIO.writeCatalogBinary(dOut, catalog);
+			dOut.flush();
 		}
 		
 		public void finalize() throws IOException {

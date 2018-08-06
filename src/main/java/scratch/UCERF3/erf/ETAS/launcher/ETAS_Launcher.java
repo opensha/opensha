@@ -15,13 +15,20 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
@@ -54,12 +61,12 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
-import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -114,8 +121,12 @@ public class ETAS_Launcher {
 	private File resultsDir;
 	
 	private Random r;
-
+	
 	public ETAS_Launcher(ETAS_Config config) throws IOException {
+		this(config, true);
+	}
+	
+	public ETAS_Launcher(ETAS_Config config, boolean mkdirs) throws IOException {
 		ETAS_Simulator.D = false;
 		if (config.isGriddedOnly())
 			ETAS_Simulator_NoFaults.D = false;
@@ -217,10 +228,12 @@ public class ETAS_Launcher {
 		debug(DebugLevel.FINE, "Simulation name: "+simulationName);
 		
 		File outputDir = config.getOutputDir();
-		waitOnDirCreation(outputDir, 10, 2000);
+		if (mkdirs)
+			waitOnDirCreation(outputDir, 10, 2000);
 		
 		resultsDir = new File(outputDir, "results");
-		waitOnDirCreation(resultsDir, 10, 2000);
+		if (mkdirs)
+			waitOnDirCreation(resultsDir, 10, 2000);
 		
 		griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
 		
@@ -253,6 +266,14 @@ public class ETAS_Launcher {
 		return times;
 	}
 	
+	public List<ETAS_EqkRupture> getTriggerRuptures() {
+		return triggerRuptures;
+	}
+
+	public List<ETAS_EqkRupture> getHistQkList() {
+		return histQkList;
+	}
+
 	protected synchronized FaultSystemSolution checkOutFSS() {
 		FaultSystemSolution fss;
 		if (fssDeque.isEmpty()) {
@@ -617,13 +638,21 @@ public class ETAS_Launcher {
 		
 	}
 	
-	public void calculateAll() {
-		Runtime rt = Runtime.getRuntime();
-		long maxMemMB = rt.maxMemory() / 1024 / 1024;
-		debug(DebugLevel.FINE, "max mem MB: "+maxMemMB);
+	private static long getMaxMemMB() {
+		return Runtime.getRuntime().maxMemory() / 1024 / 1024;
+	}
+	
+	private static int defaultNumThreads() {
+		long maxMemMB = getMaxMemMB();
 		int maxThreads = (int)(maxMemMB/7000);
-		debug(DebugLevel.FINE, "max threads calculated from max mem: "+maxThreads);
-		calculateAll(Integer.max(1, Integer.min(maxThreads, rt.availableProcessors())));
+		return Integer.max(1, Integer.min(maxThreads, Runtime.getRuntime().availableProcessors()));
+	}
+	
+	public void calculateAll() {
+		debug(DebugLevel.FINE, "max mem MB: "+getMaxMemMB());
+		int threads = defaultNumThreads();
+		debug(DebugLevel.FINE, "max threads calculated from max mem & available procs: "+threads);
+		calculateAll(threads);
 	}
 	
 	public void calculateAll(int numThreads) {
@@ -735,15 +764,81 @@ public class ETAS_Launcher {
 		}
 		debug("done with "+tasks.size()+" simulations");
 	}
+	
+	public static List<ETAS_EqkRupture> getFilteredNoSpontaneous(ETAS_Config config, List<ETAS_EqkRupture> catalog) {
+		int numTriggerRuptures = config.getTriggerRuptures() == null ? 0 : config.getTriggerRuptures().size();
+		if (numTriggerRuptures == 0 && (config.getTriggerCatalogFile() == null || config.isTreatTriggerCatalogAsSpontaneous()))
+			// everything in this catalog is spontaneous, can't filter
+			return null;
+		if (catalog.isEmpty())
+			return catalog;
+		if (!config.isIncludeSpontaneous() && (config.getTriggerCatalogFile() == null || !config.isTreatTriggerCatalogAsSpontaneous()))
+			// does not include any spontaneous ruptures
+			return catalog;
+		int maxParentID;
+		if (config.getTriggerCatalogFile() != null && !config.isTreatTriggerCatalogAsSpontaneous())
+			// we have a trigger catalog, and want to include descendants of that catalog
+			maxParentID = catalog.get(0).getID()-1;
+		else
+			// only include descendants of the trigger ruptures
+			maxParentID = numTriggerRuptures-1;
+		int[] parentIDs = new int[maxParentID+1];
+		for (int i=0; i<maxParentID; i++)
+			parentIDs[i] = 0;
+		return ETAS_SimAnalysisTools.getChildrenFromCatalog(catalog, parentIDs);
+	}
+	
+	private static Options createOptions() {
+		Options ops = new Options();
+
+		Option threadsOption = new Option("t", "threads", true,
+				"Number of calculation threads. Default is the calculated from max JVM memory (set via -Xmx)" +
+						" and the number of available processors (in this case: "+defaultNumThreads()+")");
+		threadsOption.setRequired(false);
+		ops.addOption(threadsOption);
+		
+		return ops;
+	}
 
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");
-		File etasConfigFile = new File("/home/kevin/git/ucerf3-etas-launcher/json_examples/multiple_ruptures_example_simulation.json");
-		ETAS_Config config = ETAS_Config.readJSON(etasConfigFile);
 		
+		Options options = createOptions();
+		
+		CommandLineParser parser = new DefaultParser();
+		
+		CommandLine cmd;
+		try {
+			cmd = parser.parse(options, args);
+		} catch (ParseException e) {
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(ETAS_Launcher.class),
+					options, true );
+			System.exit(2);
+			return;
+		}
+		
+		args = cmd.getArgs();
+		
+		if (args.length != 1) {
+			System.err.println("USAGE: "+ClassUtils.getClassNameWithoutPackage(ETAS_Launcher.class)
+					+" [options] <conf-file.json>");
+			System.exit(2);
+		}
+		
+		File confFile = new File(args[0]);
+		Preconditions.checkArgument(confFile.exists(),
+				"configuration file doesn't exist: "+confFile.getAbsolutePath());
+		ETAS_Config config = ETAS_Config.readJSON(confFile);
+				
 		ETAS_Launcher launcher = new ETAS_Launcher(config);
 		
-		launcher.calculateAll();
+		if (cmd.hasOption("threads")) {
+			int numThreads = Integer.parseInt(cmd.getOptionValue("threads"));
+			launcher.calculateAll(numThreads);
+		} else {
+			launcher.calculateAll();
+		}
 	}
 
 }

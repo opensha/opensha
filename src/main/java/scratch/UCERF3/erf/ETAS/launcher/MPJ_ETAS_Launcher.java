@@ -25,6 +25,7 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 	public MPJ_ETAS_Launcher(CommandLine cmd, ETAS_Config config) throws IOException {
 		super(cmd);
 		this.config = config;
+		this.shuffle = false; // execute tasks in order
 		debug("building launcher");
 		this.launcher = new ETAS_LauncherPrintWrapper(config);
 		if (rank == 0)

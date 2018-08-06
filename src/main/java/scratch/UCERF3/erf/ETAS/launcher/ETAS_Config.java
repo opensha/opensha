@@ -46,16 +46,17 @@ public class ETAS_Config {
 	private boolean forceRecalc = false;
 	private String simulationName = null;
 	private int numRetries = 3;
+	private final File outputDir;
 	
 	// input ruptures
 	private File triggerCatalog = null;
 	private File triggerCatalogSurfaceMappings = null;
+	private Boolean treatTriggerCatalogAsSpontaneous = null;
 	private List<TriggerRupture> triggerRuptures = null;
 	
 	// paths
 	private final File cacheDir;
 	private final File fssFile;
-	private final File outputDir;
 	
 	// U3ETAS parameters
 	private U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
@@ -102,18 +103,19 @@ public class ETAS_Config {
 		double simulatedYears = numSimulations*duration;
 		binaryOutput = simulatedYears > 1000;
 		buildDefaultBinaryOutputFilters();
+		if (triggerCatalog != null)
+			this.treatTriggerCatalogAsSpontaneous = true;
 	}
 	
 	void buildDefaultBinaryOutputFilters() {
 		binaryOutputFilters = new ArrayList<>();
 		binaryOutputFilters.add(
-				new BinaryFilteredOutputConfig("results_complete", null, null, false, null));
+				new BinaryFilteredOutputConfig("results_complete", null, null, false));
 		binaryOutputFilters.add(
-				new BinaryFilteredOutputConfig("results_m5_preserve_chain", 5d, true, false, null));
+				new BinaryFilteredOutputConfig("results_m5_preserve_chain", 5d, true, false));
 		if (includeSpontaneous)
 			binaryOutputFilters.add(
-					new BinaryFilteredOutputConfig("results_triggered_descendants_chain", null, null, true,
-							triggerRuptures == null || triggerRuptures.isEmpty()));
+					new BinaryFilteredOutputConfig("results_triggered_descendants_chain", null, null, true));
 	}
 	
 	private static Gson buildGson() {
@@ -292,10 +294,8 @@ public class ETAS_Config {
 		private final Double minMag;
 		private final Boolean preserveChainBelowMag;
 		private final boolean descendantsOnly;
-		private final Boolean includeTriggerCatalogDescendants;
 		
-		public BinaryFilteredOutputConfig(String prefix, Double minMag, Boolean preserveChainBelowMag,
-				boolean descendantsOnly, Boolean includeTriggerCatalogDescendants) {
+		public BinaryFilteredOutputConfig(String prefix, Double minMag, Boolean preserveChainBelowMag, boolean descendantsOnly) {
 			this.prefix = prefix;
 			this.minMag = minMag;
 			if (minMag != null)
@@ -303,10 +303,6 @@ public class ETAS_Config {
 			else
 				this.preserveChainBelowMag = null;
 			this.descendantsOnly = descendantsOnly;
-			if (descendantsOnly)
-				this.includeTriggerCatalogDescendants = includeTriggerCatalogDescendants;
-			else
-				this.includeTriggerCatalogDescendants = null;
 		}
 
 		public String getPrefix() {
@@ -317,18 +313,14 @@ public class ETAS_Config {
 			return minMag;
 		}
 
-		public Boolean getPreserveChainBelowMag() {
+		public boolean isPreserveChainBelowMag() {
+			if (preserveChainBelowMag == null)
+				return true;
 			return preserveChainBelowMag;
 		}
 
 		public boolean isDescendantsOnly() {
 			return descendantsOnly;
-		}
-
-		public boolean isIncludeTriggerCatalogDescendants() {
-			if (includeTriggerCatalogDescendants == null)
-				return false;
-			return includeTriggerCatalogDescendants;
 		}
 	}
 	
@@ -358,6 +350,11 @@ public class ETAS_Config {
 	
 	public List<TriggerRupture> getTriggerRuptures() {
 		return triggerRuptures;
+	}
+	
+	public boolean hasTriggers() {
+		return getTriggerRuptures() != null && !getTriggerRuptures().isEmpty()
+				|| getTriggerCatalogFile() != null && !isTreatTriggerCatalogAsSpontaneous();
 	}
 	
 	public long getSimulationStartTimeMillis() {
@@ -421,6 +418,12 @@ public class ETAS_Config {
 
 	public File getTriggerCatalogSurfaceMappingsFile() {
 		return triggerCatalogSurfaceMappings;
+	}
+	
+	public boolean isTreatTriggerCatalogAsSpontaneous() {
+		if (treatTriggerCatalogAsSpontaneous == null)
+			return true;
+		return treatTriggerCatalogAsSpontaneous;
 	}
 
 	public File getCacheDir() {
