@@ -144,7 +144,7 @@ public class ETAS_PrimaryEventSampler {
 	double sourceRates[];
 	double totSectNuclRateArray[];
 	double totalSectRateInCubeArray[];
-	ArrayList<HashMap<Integer,Float>> srcNuclRateOnSectList;
+	SectionSourceNuclRates[] srcNuclRateOnSects;
 	SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray;
 	List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList;
 	double[] totLongTermSubSeisRateOnSectArray;
@@ -482,17 +482,18 @@ public class ETAS_PrimaryEventSampler {
 			// create the arrays that will store section nucleation info
 			totSectNuclRateArray = new double[rupSet.getNumSections()];
 			// this is a hashmap for each section, which contains the source index (key) and nucleation rate (value)
-			srcNuclRateOnSectList = new ArrayList<HashMap<Integer,Float>>();
-			for(int sect=0;sect<rupSet.getNumSections();sect++) {
-				srcNuclRateOnSectList.add(new HashMap<Integer,Float>());
-			}
-			for(int src=0; src<numFltSystSources; src++) {
-				int fltSysRupIndex = fssERF.getFltSysRupIndexForSource(src);
-				List<Integer> sectIndexList = rupSet.getSectionsIndicesForRup(fltSysRupIndex);
-				for(int sect:sectIndexList) {
-					srcNuclRateOnSectList.get(sect).put(src,0f);
+			srcNuclRateOnSects = new SectionSourceNuclRates[rupSet.getNumSections()];
+			for (int sect=0; sect<srcNuclRateOnSects.length; sect++) {
+				List<Integer> fssIndexes = rupSet.getRupturesForSection(sect);
+				List<Integer> srcIndexes = new ArrayList<>();
+				for (int fssIndex : fssIndexes) {
+					int srcIndex = fssERF.getSrcIndexForFltSysRup(fssIndex);
+					if (srcIndex >= 0)
+						// can be -1 for fss indexes with no source (0 rate, mag below sect min), and we want to skip those
+						srcIndexes.add(srcIndex);
 				}
-			}	
+				srcNuclRateOnSects[sect] = new SectionSourceNuclRates(srcIndexes);
+			}
 			
 			// now compute initial values for these arrays (nucleation rates of sections given norm time since last and any GR corr)
 			computeSectNucleationRates();
@@ -607,7 +608,8 @@ public class ETAS_PrimaryEventSampler {
 				else {
 					sectNuclRate = 0d;
 				}
-				srcNuclRateOnSectList.get(sectIndex).put(src, (float)sectNuclRate);
+				int index = srcNuclRateOnSects[sectIndex].indexOf(src);
+				srcNuclRateOnSects[sectIndex].setSourceNucleationRate(index, (float)sectNuclRate);
 				totSectNuclRateArray[sectIndex] += sectNuclRate;
 				
 //double tempTest = (float)sectNuclRate;
@@ -621,8 +623,8 @@ public class ETAS_PrimaryEventSampler {
 		// TESTS TODO do this only in debug mode?
 		for(int sect=0;sect<rupSet.getNumSections(); sect++) {
 			double testTotRate = 0;
-			for(float vals:srcNuclRateOnSectList.get(sect).values()) 
-				testTotRate += vals;
+			for (int i=0; i<srcNuclRateOnSects[sect].size(); i++)
+				testTotRate += srcNuclRateOnSects[sect].getSourceNucleationRate(i);
 			double ratio = testTotRate/totSectNuclRateArray[sect];
 			if(ratio<0.9999 || ratio>1.0001) {
 				throw new RuntimeException("Test failed in computeSectNucleationRates(); ratio ="+ratio+" for sect "+sect);
@@ -631,9 +633,10 @@ public class ETAS_PrimaryEventSampler {
 		// test that nucleation rates give back source rates
 		double[] testSrcRates = new double[numFltSystSources];
 		for(int sectIndex=0;sectIndex<rupSet.getNumSections();sectIndex++) {
-			HashMap<Integer,Float> map = srcNuclRateOnSectList.get(sectIndex);
-			for(int srcIndex:map.keySet())
-				testSrcRates[srcIndex] += map.get(srcIndex)/(grCorrFactorForSectArray[sectIndex]);
+			for (int i=0; i<srcNuclRateOnSects[sectIndex].size(); i++) {
+				int srcIndex = srcNuclRateOnSects[sectIndex].getSourceIndex(i);
+				testSrcRates[srcIndex] += srcNuclRateOnSects[sectIndex].getSourceNucleationRate(i)/(grCorrFactorForSectArray[sectIndex]);
+			}
 		}
 		for(int srcIndex=0;srcIndex<this.numFltSystSources;srcIndex++) {
 			double testRatio = testSrcRates[srcIndex]/sourceRates[srcIndex];
@@ -1447,9 +1450,9 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		for(int s=0;s<sectInCubeArray.length;s++) {
 			int sectIndex = sectInCubeArray[s];
 			double fracSectInCube = fracts[s];
-			HashMap<Integer,Float> srcRateOnSectMap = srcNuclRateOnSectList.get(sectIndex);
-			for(int srcIndex:srcRateOnSectMap.keySet()) {
-				double srcNuclRateInCube = srcRateOnSectMap.get(srcIndex)*fracSectInCube*fracSupra;
+			for (int i=0; i<srcNuclRateOnSects[sectIndex].size(); i++) {
+				int srcIndex = srcNuclRateOnSects[sectIndex].getSourceIndex(i);
+				double srcNuclRateInCube = srcNuclRateOnSects[sectIndex].getSourceNucleationRate(i)*fracSectInCube*fracSupra;
 				if(rateForSrcHashtable.containsKey(srcIndex)) {
 					double newRate = rateForSrcHashtable.get(srcIndex) + srcNuclRateInCube;
 					rateForSrcHashtable.put(srcIndex, newRate);
@@ -4599,16 +4602,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			else {	// choose a source that nucleates on the section
 				
 				int sectIndex = sectInCubeArray[randSampleIndex-1];
-				HashMap<Integer,Float> srcNuclRateHashMap = srcNuclRateOnSectList.get(sectIndex);
-				IntegerPDF_FunctionSampler srcSampler = new IntegerPDF_FunctionSampler(srcNuclRateHashMap.size());
-				int[] srcIndexArray = new int[srcNuclRateHashMap.size()];
-				int index=0;
-				for(int srcIndex:srcNuclRateHashMap.keySet()) {
-					srcIndexArray[index] = srcIndex;
-					srcSampler.set(index, srcNuclRateHashMap.get(srcIndex));
-					index+=1;
-				}
-				return srcIndexArray[srcSampler.getRandomInt(etas_utils.getRandomDouble())];
+//				HashMap<Integer,Float> srcNuclRateHashMap = srcNuclRateOnSectList.get(sectIndex);
+				IntegerPDF_FunctionSampler srcSampler = srcNuclRateOnSects[sectIndex].buildSampler();
+				int index = srcSampler.getRandomInt(etas_utils.getRandomDouble());
+				return srcNuclRateOnSects[sectIndex].getSourceIndex(index);
 			}
 		}
 	}
@@ -4653,16 +4650,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 				}
 				int randSectIndex = sectSampler.getRandomInt(etas_utils.getRandomDouble());
 				int sectIndex = sectInCubeArray[randSectIndex];
-				HashMap<Integer,Float> srcNuclRateHashMap = srcNuclRateOnSectList.get(sectIndex);
-				IntegerPDF_FunctionSampler srcSampler = new IntegerPDF_FunctionSampler(srcNuclRateHashMap.size());
-				int[] srcIndexArray = new int[srcNuclRateHashMap.size()];
-				int index=0;
-				for(int srcIndex:srcNuclRateHashMap.keySet()) {
-					srcIndexArray[index] = srcIndex;
-					srcSampler.set(index, srcNuclRateHashMap.get(srcIndex));
-					index+=1;
-				}
-				return srcIndexArray[srcSampler.getRandomInt(etas_utils.getRandomDouble())];
+				int index = srcNuclRateOnSects[sectIndex].buildSampler().getRandomInt(etas_utils.getRandomDouble());
+				return srcNuclRateOnSects[sectIndex].getSourceIndex(index);
 			}
 		}
 	}
@@ -6964,9 +6953,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			
 			rate2 += totSectNuclRateArray[sectID]/numCubesInsideFaultPolygonArray[sectID];
 			
-			HashMap<Integer,Float> map = srcNuclRateOnSectList.get(sectID);
-			for(int s:map.keySet())
-				rate3+=map.get(s)/numCubesInsideFaultPolygonArray[sectID];
+			for (int i=0; i<srcNuclRateOnSects[sectID].size(); i++)
+				rate3 += srcNuclRateOnSects[sectID].getSourceNucleationRate(i)/numCubesInsideFaultPolygonArray[sectID];
 			
 			testSubSeisMFD_ForSect(sectID);
 			index+=1;
