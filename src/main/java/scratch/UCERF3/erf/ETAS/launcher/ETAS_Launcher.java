@@ -18,6 +18,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -231,13 +234,17 @@ public class ETAS_Launcher {
 		if (mkdirs)
 			waitOnDirCreation(outputDir, 10, 2000);
 		
-		resultsDir = new File(outputDir, "results");
+		resultsDir = getResultsDir(outputDir);
 		if (mkdirs)
 			waitOnDirCreation(resultsDir, 10, 2000);
 		
 		griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
 		
 		r = new Random(System.nanoTime());
+	}
+	
+	static File getResultsDir(File outputDir) {
+		return new File(outputDir, "results");
 	}
 	
 	protected void setRandom(Random r) {
@@ -274,7 +281,7 @@ public class ETAS_Launcher {
 		return histQkList;
 	}
 
-	protected synchronized FaultSystemSolution checkOutFSS() {
+	public synchronized FaultSystemSolution checkOutFSS() {
 		FaultSystemSolution fss;
 		if (fssDeque.isEmpty()) {
 			// load a new one
@@ -315,7 +322,7 @@ public class ETAS_Launcher {
 		return fss;
 	}
 	
-	protected synchronized void checkInFSS(FaultSystemSolution fss) {
+	public synchronized void checkInFSS(FaultSystemSolution fss) {
 		fssDeque.push(fss);
 	}
 	
@@ -612,8 +619,22 @@ public class ETAS_Launcher {
 					}
 					success = true;
 				} catch (Throwable t) {
+					if (t instanceof OutOfMemoryError && exec != null) {
+						synchronized (exec) {
+							if (!exec.isShutdown() && exec.getMaximumPoolSize() > 1) {
+								int newThreads;
+								if (exec.getMaximumPoolSize() > 10)
+									newThreads = exec.getMaximumPoolSize()-2;
+								else
+									newThreads = exec.getMaximumPoolSize()-1;
+								threadLimit = Integer.max(1, newThreads);
+								debug(DebugLevel.ERROR, "Calc ran out of memory, reducing numThreads to "+threadLimit);
+								updateExecutorNumThreads(threadLimit);
+								throw (OutOfMemoryError)t;
+							}
+						}
+					}
 					failureThrow = t;
-					System.out.println("FAIL!!!!!");
 					debug(DebugLevel.ERROR, "Calc failed with seed "+randSeed+". Exception: "+t);
 					t.printStackTrace();
 					if (t.getCause() != null) {
@@ -644,7 +665,7 @@ public class ETAS_Launcher {
 	
 	private static int defaultNumThreads() {
 		long maxMemMB = getMaxMemMB();
-		int maxThreads = (int)(maxMemMB/7000);
+		int maxThreads = (int)(maxMemMB/5000);
 		return Integer.max(1, Integer.min(maxThreads, Runtime.getRuntime().availableProcessors()));
 	}
 	
@@ -681,23 +702,26 @@ public class ETAS_Launcher {
 		calculate(numThreads, batch, null);
 	}
 	
-	private ExecutorService exec;
-	private int execThreads = 0;
+	private void updateExecutorNumThreads(int numThreads) {
+		if (exec == null)
+			return;
+		// previous executor, still running
+		exec.setCorePoolSize(numThreads);
+		exec.setMaximumPoolSize(numThreads);
+	}
+	
+	private int threadLimit = Integer.MAX_VALUE;
+	
+	private ThreadPoolExecutor exec;
 	private ExecutorService getExecutor(int numThreads) {
-		if (exec != null) {
-			// previous executor
-			if (numThreads > execThreads || exec.isShutdown()) {
-				// need a bigger one or a new one
-				debug(DebugLevel.DEBUG, "Shutting down previous executor with numThreads="+numThreads+", isShutdown="+exec.isShutdown());
-				exec.shutdown();
-				debug(DebugLevel.DEBUG, "building new executor for numThreads="+numThreads);
-				exec = Executors.newFixedThreadPool(numThreads);
-				execThreads = numThreads;
-			}
+		if (exec != null && !exec.isShutdown()) {
+			// previous executor, still running
+			updateExecutorNumThreads(numThreads);
 		} else {
 			debug(DebugLevel.DEBUG, "building new executor for numThreads="+numThreads);
-			exec = Executors.newFixedThreadPool(numThreads);
-			execThreads = numThreads;
+			exec = new ThreadPoolExecutor(numThreads, numThreads,
+                    0L, TimeUnit.MILLISECONDS,
+                    new LinkedBlockingQueue<Runnable>());Executors.newFixedThreadPool(numThreads);
 		}
 		return exec;
 	}
@@ -710,7 +734,7 @@ public class ETAS_Launcher {
 	}
 	
 	void calculate(int numThreads, int[] batch, ETAS_BinaryWriter binaryWriter) {
-		List<CalcRunnable> tasks = new ArrayList<>();
+		ArrayList<CalcRunnable> tasks = new ArrayList<>();
 		
 		Long randSeed = config.getRandomSeed();
 		Preconditions.checkState(randSeed == null || config.getNumSimulations() == 1, "Can only specify a random seed with numSimulations=1");
@@ -724,29 +748,43 @@ public class ETAS_Launcher {
 				tasks.add(new CalcRunnable(index, randSeed));
 		}
 		
+		if (numThreads > threadLimit) {
+			debug("reducing thread count to previously encountered limit of "+threadLimit);
+			numThreads = threadLimit;
+		}
+		
 		debug("starting "+tasks.size()+" simulations with "+numThreads+" threads");
 		
 		if (numThreads > 1) {
 			ExecutorService exec = getExecutor(numThreads);
 			
-			List<Future<Integer>> futures = new ArrayList<>();
+			ArrayDeque<FutureContainer> futures = new ArrayDeque<>();
 			
 			for (CalcRunnable task : tasks)
-				futures.add(exec.submit(task));
+				futures.add(new FutureContainer(task, exec.submit(task)));
 			
-			for (Future<Integer> future : futures) {
+			while (!futures.isEmpty()) {
+				FutureContainer future = futures.pop();
 				try {
-					int index = future.get();
+					int index = future.future.get();
 					if (binaryWriter != null) {
 						debug(DebugLevel.FINE, "processing binary filter for "+index);
 						File resultsDir = getResultsDir(index);
 						binaryWriter.processCatalog(resultsDir);
 					}
-				} catch (InterruptedException | ExecutionException | IOException e) {
-					exec.shutdownNow();
-					if (e instanceof ExecutionException)
-						throw ExceptionUtils.asRuntimeException(e.getCause());
-					throw ExceptionUtils.asRuntimeException(e);
+				} catch (InterruptedException | ExecutionException | IOException | OutOfMemoryError e) {
+					if (e instanceof ExecutionException && e.getCause() instanceof OutOfMemoryError || e instanceof OutOfMemoryError) {
+						// we ran out of memory and already reduced thread count
+						Preconditions.checkState(threadLimit == 1 || threadLimit < numThreads);
+						CalcRunnable task = future.task;
+						debug("Resubmitting task "+task.index+" with threadLimit="+threadLimit);
+						futures.add(new FutureContainer(task, exec.submit(task)));
+					} else {
+						exec.shutdownNow();
+						if (e instanceof ExecutionException)
+							throw ExceptionUtils.asRuntimeException(e.getCause());
+						throw ExceptionUtils.asRuntimeException(e);
+					}
 				}
 			}
 		} else {
@@ -763,6 +801,16 @@ public class ETAS_Launcher {
 			}
 		}
 		debug("done with "+tasks.size()+" simulations");
+	}
+	
+	private class FutureContainer {
+		CalcRunnable task;
+		Future<Integer> future;
+		public FutureContainer(CalcRunnable task, Future<Integer> future) {
+			super();
+			this.task = task;
+			this.future = future;
+		}
 	}
 	
 	public static List<ETAS_EqkRupture> getFilteredNoSpontaneous(ETAS_Config config, List<ETAS_EqkRupture> catalog) {

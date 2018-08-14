@@ -671,6 +671,7 @@ public class ETAS_CatalogIO {
 					in.close();
 				} catch (IOException e1) {}
 				System.err.println("Error loading catalog "+index);
+				System.err.flush();
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}

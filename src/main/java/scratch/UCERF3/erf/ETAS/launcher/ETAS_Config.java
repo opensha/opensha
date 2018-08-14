@@ -99,12 +99,14 @@ public class ETAS_Config {
 		this.cacheDir = cacheDir;
 		this.fssFile = fssFile;
 		this.outputDir = outputDir;
+		this.triggerCatalog = triggerCatalog;
+		this.triggerCatalogSurfaceMappings = triggerCatalogSurfaceMappings;
 		this.triggerRuptures = triggerRuptures;
 		double simulatedYears = numSimulations*duration;
 		binaryOutput = simulatedYears > 1000;
-		buildDefaultBinaryOutputFilters();
 		if (triggerCatalog != null)
 			this.treatTriggerCatalogAsSpontaneous = true;
+		buildDefaultBinaryOutputFilters();
 	}
 	
 	void buildDefaultBinaryOutputFilters() {
@@ -113,9 +115,9 @@ public class ETAS_Config {
 				new BinaryFilteredOutputConfig("results_complete", null, null, false));
 		binaryOutputFilters.add(
 				new BinaryFilteredOutputConfig("results_m5_preserve_chain", 5d, true, false));
-		if (includeSpontaneous)
+		if (includeSpontaneous && hasTriggers())
 			binaryOutputFilters.add(
-					new BinaryFilteredOutputConfig("results_triggered_descendants_chain", null, null, true));
+					new BinaryFilteredOutputConfig("results_triggered_descendants", null, null, true));
 	}
 	
 	private static Gson buildGson() {
@@ -402,6 +404,10 @@ public class ETAS_Config {
 	
 	public boolean isForceRecalc() {
 		return forceRecalc;
+	}
+	
+	public void setSimulationName(String simulationName) {
+		this.simulationName = simulationName;
 	}
 	
 	public String getSimulationName() {

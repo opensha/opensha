@@ -41,6 +41,10 @@ abstract class TriggerRupture {
 		
 		final int fssIndex;
 		final Double overrideMag;
+		
+		FSS(int fssIndex) {
+			this(fssIndex, null, null);
+		}
 
 		FSS(int fssIndex, Long customOccurrenceTime, Double overrideMag) {
 			super(customOccurrenceTime);

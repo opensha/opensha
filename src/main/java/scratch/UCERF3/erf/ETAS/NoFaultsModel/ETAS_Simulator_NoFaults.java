@@ -252,7 +252,11 @@ public class ETAS_Simulator_NoFaults {
 		
 		if(histQkList != null) {
 			// now start at 1, zero is reserved for scenarios if included
-			int id=1;
+			int id;
+			if (scenarioRups != null && !scenarioRups.isEmpty())
+				id = scenarioRups.size();
+			else
+				id = 1;
 			for(ObsEqkRupture qk : histQkList) {
 				Location hyp = qk.getHypocenterLocation();
 				if(griddedRegion.contains(hyp) && hyp.getDepth() < 24.0) {	//TODO remove hard-coded 24.0 (get from depth dist)

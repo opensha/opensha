@@ -16,6 +16,7 @@ import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
@@ -29,20 +30,25 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 
-public class ETAS_MFD_Plot extends AbstractPlot {
+public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	
-	private static double mfdMinMag = 2.55;
-	private static double mfdDelta = 0.1;
-	private static int mfdNumMag = 66;
+	static double mfdMinMag = 2.55;
+	static double mfdDelta = 0.1;
+	static int mfdNumMag = 66;
 	private static double mfdMinY = 1e-4;
 	private static double mfdMaxY = 1e4;
 	
 	private String prefix;
 	private boolean annualize;
 	private boolean cumulative;
+	
+	private int numCatalogs = 0;
 	
 	private MFD_Stats totalWithSpontStats;
 	private MFD_Stats triggeredStats;
@@ -54,8 +60,8 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 	
 	private static double[] fractiles = {0.025, 0.975};
 	
-	public ETAS_MFD_Plot(ETAS_Config config, String prefix, boolean annualize, boolean cumulative) {
-		super(config);
+	public ETAS_MFD_Plot(ETAS_Config config, ETAS_Launcher launcher, String prefix, boolean annualize, boolean cumulative) {
+		super(config, launcher);
 		this.prefix = prefix;
 		this.annualize = annualize;
 		this.cumulative = cumulative;
@@ -63,8 +69,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 		if (config.isIncludeSpontaneous() || (config.getTriggerCatalogFile() != null && config.isTreatTriggerCatalogAsSpontaneous()))
 			// we have spontaneous ruptures
 			totalWithSpontStats = new MFD_Stats();
-		if ((config.getTriggerRuptures() != null && !config.getTriggerRuptures().isEmpty())
-				|| (config.getTriggerCatalogFile() != null && !config.isTreatTriggerCatalogAsSpontaneous())) {
+		if (config.hasTriggers()) {
 			// we have input ruptures
 			triggeredStats = new MFD_Stats();
 			triggeredPrimaryStats = new MFD_Stats();
@@ -81,7 +86,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog) {
+	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
 		if (totalWithSpontStats != null) {
 			IncrementalMagFreqDist totalHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
 			for (ETAS_EqkRupture rup : completeCatalog) {
@@ -114,6 +119,8 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 				triggeredPrimaryStats.addHistogram(primaryHist);
 			}
 		}
+		
+		numCatalogs++;
 	}
 	
 	private String getPlotTitle() {
@@ -124,7 +131,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 	}
 
 	@Override
-	public void finalize(File outputDir) throws IOException {
+	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
 		int numToTrim = calcNumToTrim();
 		
 		String title = getPlotTitle();
@@ -134,12 +141,12 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 				// this is has both spontaneous and trigger
 				myTitle = title+", Including Spontaneous";
 			
-			plot(outputDir, prefix, myTitle, totalWithSpontStats, null, numToTrim);
+			plot(outputDir, prefix, myTitle, totalWithSpontStats, null, numToTrim, fss);
 		}
 		if (triggeredStats != null) {
 			title += ", Triggered Events";
 			
-			plot(outputDir, prefix+"_triggered", title, triggeredStats, triggeredPrimaryStats, numToTrim);
+			plot(outputDir, prefix+"_triggered", title, triggeredStats, triggeredPrimaryStats, numToTrim, fss);
 		}
 	}
 
@@ -163,9 +170,12 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 				lines.add(topLevelHeading+"# "+myTitle);
 				lines.add(topLink); lines.add("");
 				
-				lines.add("*Note: This plot includes both spontaneous and triggered events*");
+				lines.add("*Note: This section includes both spontaneous and triggered events*");
 				lines.add("");
 			}
+			
+			lines.addAll(buildLegend());
+			lines.add("");
 			
 			lines.add("![MFD Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
 			lines.add("");
@@ -180,9 +190,12 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 				lines.add(topLevelHeading+"# "+title);
 				lines.add(topLink); lines.add("");
 				
-				lines.add("*Note: This plot only includes triggered events, spontaneous were calculated but filtered out here*");
+				lines.add("*Note: This section only includes triggered events, spontaneous were calculated but filtered out here*");
 				lines.add("");
 			}
+			
+			lines.addAll(buildLegend());
+			lines.add("");
 			
 			lines.add("![MFD Plot]("+relativePathToOutputDir+"/"+prefix+"_triggered.png)");
 			lines.add("");
@@ -194,27 +207,29 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 		return lines;
 	}
 	
-	private void plot(File outputDir, String prefix, String title, MFD_Stats stats, MFD_Stats primaryStats, int numToTrim) throws IOException {
+	private static String getFractilesString() {
+		List<String> percents = new ArrayList<>();
+		for (double fractile : fractiles)
+			percents.add(optionalDigitDF.format(fractile*100)+"%");
+		return Joiner.on(",").join(percents);
+	}
+	
+	private void plot(File outputDir, String prefix, String title, MFD_Stats stats, MFD_Stats primaryStats,
+			int numToTrim, FaultSystemSolution fss) throws IOException {
 		stats.calcStats();
 		
 		EvenlyDiscretizedFunc meanFunc = stats.getMeanFunc(numToTrim);
 		EvenlyDiscretizedFunc medianFunc = stats.getMedianFunc(numToTrim);
 		EvenlyDiscretizedFunc modeFunc = stats.getModeFunc(numToTrim);
-		EvenlyDiscretizedFunc fractWithFunc = stats.getFractWithFunc(numToTrim);
+		EvenlyDiscretizedFunc probFunc = stats.getProbFunc(numToTrim);
 		EvenlyDiscretizedFunc[] fractileFuncs = stats.getFractileFuncs(numToTrim);
 		
 		meanFunc.setName("Mean");
 		modeFunc.setName("Mode");
 		medianFunc.setName("Median");
-		if (cumulative)
-			fractWithFunc.setName("Fract Sims with ≥ Mag");
-		else
-			fractWithFunc.setName("Fract Sims with Mag");
+		probFunc.setName(getTimeShortLabel(getConfig().getDuration())+" Prob");
 		if (fractileFuncs.length > 0) {
-			List<String> percents = new ArrayList<>();
-			for (double fractile : fractiles)
-				percents.add(optionalDigitDF.format(fractile*100)+"%");
-			fractileFuncs[0].setName(Joiner.on(",").join(percents));
+			fractileFuncs[0].setName(getFractilesString());
 			for (int i=1; i<fractileFuncs.length; i++)
 				fractileFuncs[i].setName(null);
 		}
@@ -224,6 +239,30 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 		
 		funcs.add(meanFunc);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		
+		EvenlyDiscretizedFunc meanLower = new EvenlyDiscretizedFunc(meanFunc.getMinX(), meanFunc.getMaxX(), meanFunc.size());
+		EvenlyDiscretizedFunc meanUpper = new EvenlyDiscretizedFunc(meanFunc.getMinX(), meanFunc.getMaxX(), meanFunc.size());
+		double fssMaxMag = fss.getRupSet().getMaxMag();
+		for (int i=0; i<meanFunc.size(); i++) {
+			double mean = meanFunc.getY(i);
+			double x = meanFunc.getX(i);
+			boolean aboveMax = x - 0.5*mfdDelta > fssMaxMag;
+			if (aboveMax)
+				Preconditions.checkState(mean == 0);
+			
+			if (mean >= 1d || aboveMax) {
+				meanLower.set(x, mean);
+				meanUpper.set(x, mean);
+			} else {
+				double[] conf = ETAS_Utils.getBinomialProportion95confidenceInterval(mean, numCatalogs);
+				meanLower.set(i, conf[0]);
+				meanUpper.set(i, conf[1]);
+			}
+		}
+		UncertainArbDiscDataset confFunc = new UncertainArbDiscDataset(meanFunc, meanLower, meanUpper);
+		confFunc.setName("95% Conf");
+		funcs.add(confFunc);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 40)));
 		
 		for (EvenlyDiscretizedFunc func : fractileFuncs) {
 			funcs.add(func);
@@ -236,15 +275,17 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 		funcs.add(modeFunc);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.CYAN.darker()));
 		
-		funcs.add(fractWithFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
+		if (probFunc != null) {
+			funcs.add(probFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
+		}
 		
 		if (primaryStats != null) {
 			primaryStats.calcStats();
 			EvenlyDiscretizedFunc primaryFunc = primaryStats.getMeanFunc(numToTrim);
-			primaryFunc.setName("Primary Mean");
+			primaryFunc.setName("Primary");
 			
-			funcs.add(modeFunc);
+			funcs.add(primaryFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GREEN.darker()));
 		}
 		
@@ -257,7 +298,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 		if (annualize)
 			yAxisLabel += "Annual Rate";
 		else
-			yAxisLabel += "Number";
+			yAxisLabel = getTimeLabel(getConfig().getDuration(), false)+" "+yAxisLabel+"Number";
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Magnitude", yAxisLabel);
 		spec.setLegendVisible(true);
@@ -279,7 +320,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 		private List<Double> relativeWeights;
 		
 		private EvenlyDiscretizedFunc meanFunc;
-		private EvenlyDiscretizedFunc fractWithFunc;
+		private EvenlyDiscretizedFunc probFunc;
 		private EvenlyDiscretizedFunc medianFunc;
 		private EvenlyDiscretizedFunc modeFunc;
 		private EvenlyDiscretizedFunc[] fractileFuncs;
@@ -295,7 +336,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 			
 			if (meanFunc != null) {
 				meanFunc = null;
-				fractWithFunc = null;
+				probFunc = null;
 				medianFunc = null;
 				modeFunc = null;
 				fractileFuncs = null;
@@ -315,8 +356,8 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 			return trimFunc(meanFunc, numToTrim);
 		}
 
-		public EvenlyDiscretizedFunc getFractWithFunc(int numToTrim) {
-			return trimFunc(fractWithFunc, numToTrim);
+		public EvenlyDiscretizedFunc getProbFunc(int numToTrim) {
+			return trimFunc(probFunc, numToTrim);
 		}
 
 		public EvenlyDiscretizedFunc getMedianFunc(int numToTrim) {
@@ -337,7 +378,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 			int numMag = func0.size();
 			double deltaMag = func0.getDelta();
 			meanFunc = new EvenlyDiscretizedFunc(minMag, numMag, deltaMag);
-			fractWithFunc = new EvenlyDiscretizedFunc(minMag, numMag, deltaMag);
+			probFunc = new EvenlyDiscretizedFunc(minMag, numMag, deltaMag);
 			medianFunc = new EvenlyDiscretizedFunc(minMag, numMag, deltaMag);
 			modeFunc = new EvenlyDiscretizedFunc(minMag, numMag, deltaMag);
 			fractileFuncs = new EvenlyDiscretizedFunc[fractiles.length];
@@ -373,7 +414,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 				for (XY_DataSet func : histList)
 					if (func.getY(i) > 0)
 						numWith++;
-				fractWithFunc.set(i, (double)numWith/(double)histList.size());
+				probFunc.set(i, (double)numWith/(double)histList.size());
 				
 				for (int j=0; j<fractiles.length; j++) {
 					double fractile = fractiles[j];
@@ -404,7 +445,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 	}
 	
 	private static EvenlyDiscretizedFunc trimFunc(EvenlyDiscretizedFunc func, int numToTrim) {
-		if (numToTrim == 0)
+		if (numToTrim == 0 || func == null)
 			return func;
 		Preconditions.checkState(numToTrim > 0);
 		Preconditions.checkState(numToTrim < func.size());
@@ -416,12 +457,41 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 		return trimmed;
 	}
 	
+	private List<String> buildLegend() {
+		List<String> lines = new ArrayList<>();
+		
+		String quantity;
+		if (annualize)
+			quantity = "annual rate";
+		else
+			quantity = "expected number";
+		
+		double duration = getConfig().getDuration();
+		
+		lines.add("**Legend**");
+		lines.add("* **Mean** (thick black line): mean "+quantity+" across all "+numCatalogs+" catalogs");
+		lines.add("* **95% Conf** (light gray shaded region): binomial 95% confidence bounds on mean value");
+		lines.add("* **"+getFractilesString()+"** (thin black lines): "+quantity+" percentiles across all "+numCatalogs+" catalogs");
+		lines.add("* **Median** (thin blue line): median "+quantity+" across all "+numCatalogs+" catalogs");
+		if (annualize && duration != 1d)
+			lines.add("* **Mode** (thin cyan line): modal "+quantity+" across all "+numCatalogs+" catalogs (scaled to annualized value)");
+		else
+			lines.add("* **Mode** (thin cyan line): modal "+quantity+" across all "+numCatalogs+" catalogs");
+		lines.add("* **"+getTimeShortLabel(duration)+" Probability** (thin red line): "
+			+getTimeLabel(duration, false).toLowerCase()+" probability calculated as the fraction of catalogs with at least 1 occurrence");
+		if (triggeredPrimaryStats != null)
+			lines.add("* **Primary** (thin green line): mean "+quantity+" from primary triggered aftershocks only "
+					+ "(no secondary, tertiary, etc...) across all "+numCatalogs+" catalogs");
+		
+		return lines;
+	}
+	
 	private List<String> buildTable(MFD_Stats stats, MFD_Stats primaryStats, int numToTrim) throws IOException {
 		stats.calcStats();
 		EvenlyDiscretizedFunc meanFunc = stats.getMeanFunc(numToTrim);
 		EvenlyDiscretizedFunc medianFunc = stats.getMedianFunc(numToTrim);
 		EvenlyDiscretizedFunc modeFunc = stats.getModeFunc(numToTrim);
-		EvenlyDiscretizedFunc fractWithFunc = stats.getFractWithFunc(numToTrim);
+		EvenlyDiscretizedFunc probFunc = stats.getProbFunc(numToTrim);
 		EvenlyDiscretizedFunc[] fractileFuncs = stats.getFractileFuncs(numToTrim);
 		
 		TableBuilder builder = MarkdownUtils.tableBuilder();
@@ -431,10 +501,7 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 			builder.addColumn(optionalDigitDF.format(fractile*100d)+" %ile");
 		builder.addColumn("Median");
 		builder.addColumn("Mode");
-		if (cumulative)
-			builder.addColumn("Fract Sims with ≥ Mag");
-		else
-			builder.addColumn("Fract Sims with Mag");
+		builder.addColumn(getTimeShortLabel(getConfig().getDuration())+" Probability");
 		
 		EvenlyDiscretizedFunc primaryMean = null;
 		if (primaryStats != null) {
@@ -456,7 +523,8 @@ public class ETAS_MFD_Plot extends AbstractPlot {
 				builder.addColumn((float)fractileFunc.getY(i)+"");
 			builder.addColumn((float)medianFunc.getY(i)+"");
 			builder.addColumn((float)modeFunc.getY(i)+"");
-			builder.addColumn((float)fractWithFunc.getY(i)+"");
+			if (probFunc != null)
+				builder.addColumn((float)probFunc.getY(i)+"");
 			if (primaryMean != null)
 				builder.addColumn((float)primaryMean.getY(i)+"");
 			

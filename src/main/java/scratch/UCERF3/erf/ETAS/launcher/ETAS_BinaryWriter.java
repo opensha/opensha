@@ -4,7 +4,11 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.FileNameComparator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -101,6 +105,50 @@ class ETAS_BinaryWriter {
 			dOut.close();
 			Files.move(inProgressFile, destFile);
 		}
+	}
+	
+	public static void main(String[] args) throws IOException {
+		if (args.length < 1 || args.length > 2) {
+			System.err.println("USAGE: "+ClassUtils.getClassNameWithoutPackage(ETAS_BinaryWriter.class)+" <etas-config.json> [<results-dir>]");
+			System.exit(2);
+		}
+		
+		File confFile = new File(args[0]);
+		ETAS_Config config = ETAS_Config.readJSON(confFile);
+		
+		File outputDir = config.getOutputDir();
+		Preconditions.checkState(outputDir.exists(), "ETAS output dir doesn't exist: "+outputDir.getAbsolutePath());
+		
+		File resultsDir;
+		if (args.length == 2)
+			resultsDir = new File(args[1]);
+		else
+			resultsDir = ETAS_Launcher.getResultsDir(outputDir);
+		
+		Preconditions.checkState(resultsDir.exists(), "ETAS results dir doesn't exist: "+resultsDir.getAbsolutePath());
+		
+		ETAS_BinaryWriter writer = new ETAS_BinaryWriter(config.getOutputDir(), config);
+		
+		File[] subDirs = resultsDir.listFiles();
+		Arrays.sort(subDirs, new FileNameComparator());
+		
+		int numProcessed = 0;
+		int modulus = 10;
+		for (File catalogDir : subDirs) {
+			if (!catalogDir.getName().startsWith("sim_"))
+				continue;
+			if (!ETAS_Launcher.isAlreadyDone(catalogDir))
+				continue;
+			if (numProcessed % modulus == 0) {
+				System.out.println("Processing catalog "+numProcessed);
+				if (numProcessed == modulus*10)
+					modulus *= 10;
+			}
+			writer.processCatalog(catalogDir);
+			numProcessed++;
+		}
+		writer.finalize();
+		System.out.println("Finished binary consolidation of "+numProcessed+" catalogs");
 	}
 
 }

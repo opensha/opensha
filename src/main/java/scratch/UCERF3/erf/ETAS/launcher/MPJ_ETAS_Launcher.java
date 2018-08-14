@@ -69,6 +69,8 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 
 		@Override
 		protected void batchProcessedAsync(int[] batch, int processIndex) {
+			debug("running async post-batch hook for process "+processIndex+". "+getCountsString());
+			debug("async post-batch extimates: "+getRatesString());
 			try {
 				for (int index : batch) {
 					File catalogDir = launcher.getResultsDir(index);
@@ -77,6 +79,7 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
+			debug("done running async post-batch hook for process "+processIndex+". "+getCountsString());
 		}
 		
 	}
@@ -89,15 +92,15 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
 		launcher.calculateBatch(getNumThreads(), batch);
-		if (binaryWriter != null) {
-			((BinaryConsolidateHook)postBatchHook).shutdown();
-			binaryWriter.finalize();
-		}
 	}
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
 		launcher.shutdownExecutor();
+		if (binaryWriter != null) {
+			((BinaryConsolidateHook)postBatchHook).shutdown();
+			binaryWriter.finalize();
+		}
 	}
 
 	public static void main(String[] args) {

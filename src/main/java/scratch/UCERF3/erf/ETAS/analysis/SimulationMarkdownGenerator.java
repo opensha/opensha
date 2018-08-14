@@ -7,51 +7,125 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.TimeZone;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 
 public class SimulationMarkdownGenerator {
+	
+	private static Options createOptions() {
+		Options ops = new Options();
+
+		Option noMapsOption = new Option("nm", "no-maps", false,
+				"Flag to disable map plots (useful it no internet connection or map server down");
+		noMapsOption.setRequired(false);
+		ops.addOption(noMapsOption);
+		
+		return ops;
+	}
 
 	public static void main(String[] args) throws IOException {
-		File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
-				+ "2016_02_19-mojave_m7-10yr-full_td-subSeisSupraNucl-gridSeisCorr-scale1.14");
-		File configFile = new File(simDir, "config.json");
-		File inputFile = new File(simDir, "results_m5_preserve.bin");
+		Options options = createOptions();
+		
+		CommandLineParser parser = new DefaultParser();
+		
+		String syntax = ClassUtils.getClassNameWithoutPackage(SimulationMarkdownGenerator.class)
+				+" [options] <etas-config.json> <binary-catalogs-file.bin>";
+		
+		CommandLine cmd;
+		try {
+			cmd = parser.parse(options, args);
+		} catch (ParseException e) {
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp(syntax, options, true );
+			System.exit(2);
+			return;
+		}
+		
+		args = cmd.getArgs();
+		
+		File configFile;
+		File inputFile;
+		if (args.length == 1 && args[0].equals("--hardcoded")) {
+//			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//				+ "2018_08_07-MojaveM7-noSpont-10yr");
+//			configFile = new File(simDir, "config.json");
+//			inputFile = new File(simDir, "results_complete.bin");
+////			inputFile = new File(simDir, "results_complete_partial.bin");
+	
+			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+					+ "2018_07_27-spontaneous-10yr-full_td-fm3.2-subSeisSupraNucl-gridSeisCorr-scale1.14");
+			configFile = new File(simDir, "config.json");
+			inputFile = new File(simDir, "results_m5_preserve_chain.bin");
+		} else if (args.length != 2) {
+			System.err.println("USAGE: "+syntax);
+			System.exit(2);
+			throw new IllegalStateException("Unreachable");
+		} else {
+			configFile = new File(args[0]);
+			inputFile = new File(args[1]);
+		}
+		
+		Preconditions.checkState(configFile.exists(), "ETAS config file doesn't exist: "+configFile.getAbsolutePath());
 		ETAS_Config config = ETAS_Config.readJSON(configFile);
 		
 		File outputDir = config.getOutputDir();
+		if (!outputDir.exists() && !outputDir.mkdir()) {
+			System.out.println("Output dir doesn't exist and can't be created, "
+					+ "assuming that it was computed remotely: "+outputDir.getAbsolutePath());
+			outputDir = inputFile.getParentFile();
+			System.out.println("Using parent directory of input file as output dir: "+outputDir.getAbsolutePath());
+		}
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir(),
 				"Output dir doesn't exist and couldn't be created: %s", outputDir.getAbsolutePath());
 		File plotsDir = new File(outputDir, "plots");
 		Preconditions.checkState(plotsDir.exists() || plotsDir.mkdir(),
 				"Plot dir doesn't exist and couldn't be created: %s", plotsDir.getAbsolutePath());
 		
-		List<AbstractPlot> plots = new ArrayList<>();
+		List<ETAS_AbstractPlot> plots = new ArrayList<>();
 		
+		boolean skipMaps = cmd.hasOption("no-maps");
+		
+		ETAS_Launcher launcher = new ETAS_Launcher(config, false);
+		
+		boolean annualizeMFDs = !config.hasTriggers();
 		if (config.hasTriggers())
-			plots.add(new ETAS_MFD_Plot(config, "mag_num_cumulative", false, true));
+			plots.add(new ETAS_MFD_Plot(config, launcher, "mag_num_cumulative", annualizeMFDs, true));
 		else
-			plots.add(new ETAS_MFD_Plot(config, "mfd", true, true));
+			plots.add(new ETAS_MFD_Plot(config, launcher, "mfd", annualizeMFDs, true));
+		plots.add(new ETAS_FaultParticipationPlot(config, launcher, "fault_participation", annualizeMFDs, skipMaps));
+		if (!skipMaps)
+			plots.add(new ETAS_GriddedNucleationPlot(config, launcher, "gridded_nucleation", annualizeMFDs));
 		
 		Iterator<List<ETAS_EqkRupture>> catalogsIterator = ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0).iterator();
 		
 		boolean filterSpontaneous = false;
-		for (AbstractPlot plot : plots)
+		for (ETAS_AbstractPlot plot : plots)
 			filterSpontaneous = filterSpontaneous || plot.isFilterSpontaneous();
+		
+		FaultSystemSolution fss = launcher.checkOutFSS();
 		
 		int numProcessed = 0;
 		int modulus = 10;
 		while (catalogsIterator.hasNext()) {
-			int mod = numProcessed % modulus;
-			if (mod == 0) {
+			if (numProcessed % modulus == 0) {
 				System.out.println("Processing catalog "+numProcessed);
 				if (numProcessed == modulus*10)
 					modulus *= 10;
@@ -61,16 +135,19 @@ public class SimulationMarkdownGenerator {
 				catalog = catalogsIterator.next();
 				numProcessed++;
 			} catch (Exception e) {
-				System.out.println("Error loading catalog "+numProcessed);
 				e.printStackTrace();
+				System.err.flush();
+				System.out.println("Partial catalog detected or other error, stopping with "+numProcessed+" catalogs");
 				break;
 			}
 			List<ETAS_EqkRupture> triggeredOnlyCatalog = null;
 			if (filterSpontaneous)
 				triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
-			for (AbstractPlot plot : plots)
-				plot.doProcessCatalog(catalog, triggeredOnlyCatalog);
+			for (ETAS_AbstractPlot plot : plots)
+				plot.doProcessCatalog(catalog, triggeredOnlyCatalog, fss);
 		}
+		
+		System.out.println("Processed "+numProcessed+" catalogs");
 		
 		List<String> lines = new ArrayList<>();
 		
@@ -81,8 +158,6 @@ public class SimulationMarkdownGenerator {
 		lines.add("# "+simName+" Results");
 		lines.add("");
 		
-		ETAS_Launcher launcher = new ETAS_Launcher(config, false);
-		
 		TableBuilder builder = MarkdownUtils.tableBuilder();
 		builder.addLine(" ", simName);
 		if (numProcessed < config.getNumSimulations())
@@ -91,7 +166,7 @@ public class SimulationMarkdownGenerator {
 			builder.addLine("Num Simulations", numProcessed+"");
 		builder.addLine("Start Time", df.format(new Date(config.getSimulationStartTimeMillis())));
 		builder.addLine("Start Time Epoch Milliseconds", config.getSimulationStartTimeMillis()+"");
-		builder.addLine("Duration", AbstractPlot.getTimeLabel(config.getDuration(), true));
+		builder.addLine("Duration", ETAS_AbstractPlot.getTimeLabel(config.getDuration(), true));
 		builder.addLine("Includes Spontaneous?", config.isIncludeSpontaneous()+"");
 		List<ETAS_EqkRupture> triggerRups = launcher.getTriggerRuptures();
 		addTriggerLines(builder, "Trigger Ruptures", triggerRups);
@@ -107,11 +182,18 @@ public class SimulationMarkdownGenerator {
 		String topLink = "*[(top)](#table-of-contents)*";
 		lines.add("");
 		
-		for (AbstractPlot plot : plots) {
-			plot.finalize(plotsDir);
+		System.out.println("Finalizing plots");
+		for (ETAS_AbstractPlot plot : plots) {
+			System.out.println("Finalizing "+ClassUtils.getClassNameWithoutPackage(plot.getClass()));
+			plot.finalize(plotsDir, fss);
 			
-			lines.addAll(plot.generateMarkdown(plotsDir.getName(), "##", topLink));
+			List<String> plotLines = plot.generateMarkdown(plotsDir.getName(), "##", topLink);
+			
+			if (plotLines != null)
+				lines.addAll(plotLines);
 		}
+		
+		launcher.checkInFSS(fss);
 		
 		List<String> tocLines = new ArrayList<>();
 		tocLines.add("## Table Of Contents");
@@ -120,7 +202,9 @@ public class SimulationMarkdownGenerator {
 		
 		lines.addAll(tocIndex, tocLines);
 		
+		System.out.println("Writing markdown and HTML");
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+		System.out.println("DONE");
 	}
 	
 	private static void addTriggerLines(TableBuilder builder, String name, List<ETAS_EqkRupture> triggerRups) {
@@ -154,12 +238,15 @@ public class SimulationMarkdownGenerator {
 					}
 				}
 				builder.addLine(name, triggerRups.size()+" Trigger Ruptures");
-				builder.addLine(" ", "First: M"+AbstractPlot.optionalDigitDF.format(firstMag)+" at "+df.format(new Date(firstOT)));
-				builder.addLine(" ", "Last: M"+AbstractPlot.optionalDigitDF.format(lastMag)+" at "+df.format(new Date(lastOT)));
-				builder.addLine(" ", "Largest: M"+AbstractPlot.optionalDigitDF.format(maxMag)+" at "+df.format(new Date(biggestOT)));
+				builder.addLine(" ", "First: M"+ETAS_AbstractPlot.optionalDigitDF.format(firstMag)+" at "+df.format(new Date(firstOT)));
+				builder.addLine(" ", "Last: M"+ETAS_AbstractPlot.optionalDigitDF.format(lastMag)+" at "+df.format(new Date(lastOT)));
+				builder.addLine(" ", "Largest: M"+ETAS_AbstractPlot.optionalDigitDF.format(maxMag)+" at "+df.format(new Date(biggestOT)));
 			}
 		}
 	}
 
 	private static SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss z");
+	static {
+		df.setTimeZone(TimeZone.getTimeZone("UTC"));
+	}
 }
