@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -17,6 +19,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileNameComparator;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 
@@ -47,7 +51,7 @@ public class SimulationMarkdownGenerator {
 		CommandLineParser parser = new DefaultParser();
 		
 		String syntax = ClassUtils.getClassNameWithoutPackage(SimulationMarkdownGenerator.class)
-				+" [options] <etas-config.json> <binary-catalogs-file.bin>";
+				+" [options] <etas-config.json> <binary-catalogs-file.bin OR results directory>";
 		
 		CommandLine cmd;
 		try {
@@ -114,7 +118,11 @@ public class SimulationMarkdownGenerator {
 		if (!skipMaps)
 			plots.add(new ETAS_GriddedNucleationPlot(config, launcher, "gridded_nucleation", annualizeMFDs));
 		
-		Iterator<List<ETAS_EqkRupture>> catalogsIterator = ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0).iterator();
+		Iterator<List<ETAS_EqkRupture>> catalogsIterator;
+		if (inputFile.isDirectory())
+			catalogsIterator = new ETAS_ResultsDirIterator(inputFile);
+		else
+			catalogsIterator = ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0).iterator();
 		
 		boolean filterSpontaneous = false;
 		for (ETAS_AbstractPlot plot : plots)
@@ -248,5 +256,47 @@ public class SimulationMarkdownGenerator {
 	private static SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss z");
 	static {
 		df.setTimeZone(TimeZone.getTimeZone("UTC"));
+	}
+	
+	private static class ETAS_ResultsDirIterator implements Iterator<List<ETAS_EqkRupture>> {
+		
+		private LinkedList<File> files;
+		
+		public ETAS_ResultsDirIterator(File dir) {
+			files = new LinkedList<>();
+			File[] subDirs = dir.listFiles();
+			Arrays.sort(subDirs, new FileNameComparator());
+			for (File subDir : subDirs) {
+				if (ETAS_Launcher.isAlreadyDone(subDir))
+					files.add(subDir);
+			}
+		}
+
+		@Override
+		public boolean hasNext() {
+			return !files.isEmpty();
+		}
+
+		@Override
+		public List<ETAS_EqkRupture> next() {
+			File simFile = getSimFile(files.removeFirst());
+			try {
+				return ETAS_CatalogIO.loadCatalog(simFile);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
+		private File getSimFile(File dir) {
+			File eventsFile = new File(dir, "simulatedEvents.txt");
+			if (!eventsFile.exists())
+				eventsFile = new File(dir, "simulatedEvents.bin");
+			if (!eventsFile.exists())
+				eventsFile = new File(dir, "simulatedEvents.bin.gz");
+			if (eventsFile.exists())
+				return eventsFile;
+			throw new IllegalStateException("No events files found in "+dir.getAbsolutePath());
+		}
+		
 	}
 }

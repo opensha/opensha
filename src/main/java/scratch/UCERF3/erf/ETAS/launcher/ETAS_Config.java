@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
@@ -131,6 +132,12 @@ public class ETAS_Config {
 	}
 	
 	private static class FileTypeAdapter extends TypeAdapter<File> {
+		
+		private Map<String, String> env;
+		
+		private FileTypeAdapter() {
+			env = System.getenv();
+		}
 
 		@Override
 		public void write(JsonWriter out, File value) throws IOException {
@@ -140,6 +147,26 @@ public class ETAS_Config {
 		@Override
 		public File read(JsonReader in) throws IOException {
 			String path = in.nextString();
+			while (path.contains("$")) {
+				int index = path.indexOf("$");
+				Preconditions.checkState(index < path.length()-1, "path cannot end with a '$'");
+				String replaceStr = path.substring(index);
+				String var;
+				if (replaceStr.charAt(1) == '{') {
+					Preconditions.checkState(replaceStr.contains("}"));
+					replaceStr = replaceStr.substring(0, replaceStr.indexOf("}")+1);
+					var = replaceStr.substring(2, replaceStr.length()-1);
+				} else {
+					if (replaceStr.contains(File.separator))
+						replaceStr = replaceStr.substring(0, replaceStr.indexOf(File.separator));
+					var = replaceStr.substring(1);
+				}
+				String value = env.get(var);
+				System.out.println("Path ('"+path+"') contains environmental variable ('"+var+"')");
+				Preconditions.checkNotNull(value, "Environmental variable %s not found! Can't build path", var);
+				path = path.replace(replaceStr, value);
+				System.out.println("\treplacing '"+replaceStr+"' with '"+value+"': "+path);
+			}
 			return new File(path);
 		}
 		
@@ -523,6 +550,20 @@ public class ETAS_Config {
 	}
 
 	public static void main(String[] args) {
+		if (args.length == 1) {
+			File jsonFile = new File(args[0]);
+			try {
+				System.out.println("Loading JSON from "+jsonFile);
+				ETAS_Config config = readJSON(jsonFile);
+				System.out.println("================");
+				System.out.println(config.toJSON());
+				System.out.println("================");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return;
+		}
 		int numSimulations = 1000;
 		double duration = 10;
 		boolean includeSpontaneous = true;

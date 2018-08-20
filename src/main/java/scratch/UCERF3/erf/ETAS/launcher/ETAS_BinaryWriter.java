@@ -47,7 +47,12 @@ class ETAS_BinaryWriter {
 		else
 			throw new IllegalStateException("No ETAS catalogs found in "+catalogDir.getAbsolutePath());
 		
-		List<ETAS_EqkRupture> catalog = ETAS_CatalogIO.loadCatalog(catalogFile);
+		List<ETAS_EqkRupture> catalog;
+		try {
+			catalog = ETAS_CatalogIO.loadCatalog(catalogFile);
+		} catch (IllegalStateException e) {
+			throw new IllegalStateException("Exception processing catalog "+catalogFile.getAbsolutePath());
+		}
 		processCatalog(catalog);
 	}
 	
