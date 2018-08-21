@@ -5,8 +5,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
@@ -392,7 +394,10 @@ public class ETAS_Config {
 			return startTimeMillis;
 		}
 		Preconditions.checkNotNull(startYear, "Must specify either start year or time in milliseconds");
-		return Math.round((startYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+		GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+		cal.clear();
+		cal.set(startYear, 0, 1);
+		return cal.getTimeInMillis();
 	}
 	
 	public int getNumSimulations() {

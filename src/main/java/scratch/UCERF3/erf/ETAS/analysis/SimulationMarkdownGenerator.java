@@ -253,7 +253,7 @@ public class SimulationMarkdownGenerator {
 		}
 	}
 
-	private static SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss z");
+	public static final SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss z");
 	static {
 		df.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}

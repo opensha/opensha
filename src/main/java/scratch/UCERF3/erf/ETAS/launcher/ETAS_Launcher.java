@@ -70,6 +70,7 @@ import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
+import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -137,6 +138,8 @@ public class ETAS_Launcher {
 		this.config = config;
 		
 		this.simulationOT = config.getSimulationStartTimeMillis();
+		debug(DebugLevel.INFO, "Simulation start time (epoch milliseconds): "+simulationOT);
+		debug(DebugLevel.INFO, "Simulation start date: "+SimulationMarkdownGenerator.df.format(new Date(config.getSimulationStartTimeMillis())));
 		
 		lastEventData = LastEventData.load();
 		resetSubSectsMap = new HashMap<>();
@@ -190,8 +193,8 @@ public class ETAS_Launcher {
 			checkInFSS(fss);
 		}
 		
-		Preconditions.checkState(config.isIncludeSpontaneous() || !triggerRuptureConfigs.isEmpty() || !histQkList.isEmpty(),
-				"Empty simulation! Must include spontaneous, trigger ruptures, and/or a trigger catalog");
+		Preconditions.checkState(config.isIncludeSpontaneous() || (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty())
+				|| !histQkList.isEmpty(), "Empty simulation! Must include spontaneous, trigger ruptures, and/or a trigger catalog");
 		
 		simulationName = config.getSimulationName();
 		if (simulationName == null || simulationName.isEmpty()) {
