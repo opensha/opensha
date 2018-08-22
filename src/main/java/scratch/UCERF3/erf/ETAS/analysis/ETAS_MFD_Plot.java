@@ -66,9 +66,14 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		this.annualize = annualize;
 		this.cumulative = cumulative;
 		
-		if (config.isIncludeSpontaneous() || (config.getTriggerCatalogFile() != null && config.isTreatTriggerCatalogAsSpontaneous()))
+		boolean triggerCatAsSpont = config.getTriggerCatalogFile() != null && config.isTreatTriggerCatalogAsSpontaneous();
+		
+		if (config.isIncludeSpontaneous() || triggerCatAsSpont) {
 			// we have spontaneous ruptures
 			totalWithSpontStats = new MFD_Stats();
+			if (triggerCatAsSpont)
+				spontaneousFound = true;
+		}
 		if (config.hasTriggers()) {
 			// we have input ruptures
 			triggeredStats = new MFD_Stats();
@@ -240,30 +245,6 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		funcs.add(meanFunc);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		
-		EvenlyDiscretizedFunc meanLower = new EvenlyDiscretizedFunc(meanFunc.getMinX(), meanFunc.getMaxX(), meanFunc.size());
-		EvenlyDiscretizedFunc meanUpper = new EvenlyDiscretizedFunc(meanFunc.getMinX(), meanFunc.getMaxX(), meanFunc.size());
-		double fssMaxMag = fss.getRupSet().getMaxMag();
-		for (int i=0; i<meanFunc.size(); i++) {
-			double mean = meanFunc.getY(i);
-			double x = meanFunc.getX(i);
-			boolean aboveMax = x - 0.5*mfdDelta > fssMaxMag;
-			if (aboveMax)
-				Preconditions.checkState(mean == 0);
-			
-			if (mean >= 1d || aboveMax) {
-				meanLower.set(x, mean);
-				meanUpper.set(x, mean);
-			} else {
-				double[] conf = ETAS_Utils.getBinomialProportion95confidenceInterval(mean, numCatalogs);
-				meanLower.set(i, conf[0]);
-				meanUpper.set(i, conf[1]);
-			}
-		}
-		UncertainArbDiscDataset confFunc = new UncertainArbDiscDataset(meanFunc, meanLower, meanUpper);
-		confFunc.setName("95% Conf");
-		funcs.add(confFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 40)));
-		
 		for (EvenlyDiscretizedFunc func : fractileFuncs) {
 			funcs.add(func);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
@@ -278,6 +259,30 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		if (probFunc != null) {
 			funcs.add(probFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
+			
+			EvenlyDiscretizedFunc probLower = new EvenlyDiscretizedFunc(probFunc.getMinX(), probFunc.getMaxX(), probFunc.size());
+			EvenlyDiscretizedFunc probUpper = new EvenlyDiscretizedFunc(probFunc.getMinX(), probFunc.getMaxX(), probFunc.size());
+			double fssMaxMag = fss.getRupSet().getMaxMag();
+			for (int i=0; i<probFunc.size(); i++) {
+				double fract = probFunc.getY(i);
+				double x = probFunc.getX(i);
+				boolean aboveMax = x - 0.5*mfdDelta > fssMaxMag;
+				if (aboveMax)
+					Preconditions.checkState(fract == 0);
+				
+				if (fract >= 1d || aboveMax) {
+					probLower.set(x, fract);
+					probUpper.set(x, fract);
+				} else {
+					double[] conf = ETAS_Utils.getBinomialProportion95confidenceInterval(fract, numCatalogs);
+					probLower.set(i, conf[0]);
+					probUpper.set(i, conf[1]);
+				}
+			}
+			UncertainArbDiscDataset confFunc = new UncertainArbDiscDataset(probFunc, probLower, probUpper);
+			confFunc.setName("95% Conf");
+			funcs.add(confFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));
 		}
 		
 		if (primaryStats != null) {
@@ -470,7 +475,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		
 		lines.add("**Legend**");
 		lines.add("* **Mean** (thick black line): mean "+quantity+" across all "+numCatalogs+" catalogs");
-		lines.add("* **95% Conf** (light gray shaded region): binomial 95% confidence bounds on mean value");
+//		lines.add("* **95% Conf** (light gray shaded region): binomial 95% confidence bounds on mean value");
 		lines.add("* **"+getFractilesString()+"** (thin black lines): "+quantity+" percentiles across all "+numCatalogs+" catalogs");
 		lines.add("* **Median** (thin blue line): median "+quantity+" across all "+numCatalogs+" catalogs");
 		if (annualize && duration != 1d)
@@ -479,6 +484,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			lines.add("* **Mode** (thin cyan line): modal "+quantity+" across all "+numCatalogs+" catalogs");
 		lines.add("* **"+getTimeShortLabel(duration)+" Probability** (thin red line): "
 			+getTimeLabel(duration, false).toLowerCase()+" probability calculated as the fraction of catalogs with at least 1 occurrence");
+		lines.add("* **95% Conf** (light red shaded region): binomial 95% confidence bounds on probability");
 		if (triggeredPrimaryStats != null)
 			lines.add("* **Primary** (thin green line): mean "+quantity+" from primary triggered aftershocks only "
 					+ "(no secondary, tertiary, etc...) across all "+numCatalogs+" catalogs");
@@ -518,15 +524,15 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 				builder.addColumn("**M≥"+optionalDigitDF.format(mag)+"**");
 			else
 				builder.addColumn("**M"+optionalDigitDF.format(mag-0.5*mfdDelta)+"-"+optionalDigitDF.format(mag+0.5*mfdDelta)+"**");
-			builder.addColumn((float)meanFunc.getY(i)+"");
+			builder.addColumn(getProbStr(meanFunc.getY(i)));
 			for (EvenlyDiscretizedFunc fractileFunc : fractileFuncs)
-				builder.addColumn((float)fractileFunc.getY(i)+"");
-			builder.addColumn((float)medianFunc.getY(i)+"");
-			builder.addColumn((float)modeFunc.getY(i)+"");
+				builder.addColumn(getProbStr(fractileFunc.getY(i)));
+			builder.addColumn(getProbStr(medianFunc.getY(i)));
+			builder.addColumn(getProbStr(modeFunc.getY(i)));
 			if (probFunc != null)
-				builder.addColumn((float)probFunc.getY(i)+"");
+				builder.addColumn(getProbStr(probFunc.getY(i)));
 			if (primaryMean != null)
-				builder.addColumn((float)primaryMean.getY(i)+"");
+				builder.addColumn(getProbStr(primaryMean.getY(i)));
 			
 			builder.finalizeLine();
 		}

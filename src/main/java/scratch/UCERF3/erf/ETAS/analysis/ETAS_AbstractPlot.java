@@ -103,5 +103,14 @@ public abstract class ETAS_AbstractPlot {
 		label = label.replaceAll("Year", "yr");
 		return label;
 	}
+	
+	private static DecimalFormat normProbDF = new DecimalFormat("0.000");
+	private static DecimalFormat expProbDF = new DecimalFormat("0.00E0");
+	
+	protected static String getProbStr(double prob) {
+		if (prob < 0.01)
+			return expProbDF.format(prob);
+		return normProbDF.format(prob);
+	}
 
 }

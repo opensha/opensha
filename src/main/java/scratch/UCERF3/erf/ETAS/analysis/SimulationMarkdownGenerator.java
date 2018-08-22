@@ -46,6 +46,19 @@ public class SimulationMarkdownGenerator {
 	}
 
 	public static void main(String[] args) throws IOException {
+		if (args.length == 1 && args[0].equals("--hardcoded")) {
+			//			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+			//			+ "2018_08_07-MojaveM7-noSpont-10yr");
+			//		configFile = new File(simDir, "config.json");
+			//		inputFile = new File(simDir, "results_complete.bin");
+			////		inputFile = new File(simDir, "results_complete_partial.bin");
+
+			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+					+ "2018_08_07-MojaveM7-noSpont-10yr");
+			File configFile = new File(simDir, "config.json");
+			File inputFile = new File(simDir, "results_m5_preserve_chain.bin");
+			args = new String[] { configFile.getAbsolutePath(), inputFile.getAbsolutePath() };
+		}
 		Options options = createOptions();
 		
 		CommandLineParser parser = new DefaultParser();
@@ -67,18 +80,7 @@ public class SimulationMarkdownGenerator {
 		
 		File configFile;
 		File inputFile;
-		if (args.length == 1 && args[0].equals("--hardcoded")) {
-//			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
-//				+ "2018_08_07-MojaveM7-noSpont-10yr");
-//			configFile = new File(simDir, "config.json");
-//			inputFile = new File(simDir, "results_complete.bin");
-////			inputFile = new File(simDir, "results_complete_partial.bin");
-	
-			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
-					+ "2018_07_27-spontaneous-10yr-full_td-fm3.2-subSeisSupraNucl-gridSeisCorr-scale1.14");
-			configFile = new File(simDir, "config.json");
-			inputFile = new File(simDir, "results_m5_preserve_chain.bin");
-		} else if (args.length != 2) {
+		if (args.length != 2) {
 			System.err.println("USAGE: "+syntax);
 			System.exit(2);
 			throw new IllegalStateException("Unreachable");
@@ -109,11 +111,15 @@ public class SimulationMarkdownGenerator {
 		
 		ETAS_Launcher launcher = new ETAS_Launcher(config, false);
 		
-		boolean annualizeMFDs = !config.hasTriggers();
-		if (config.hasTriggers())
+		boolean hasTriggers = config.hasTriggers();
+		
+		boolean annualizeMFDs = !hasTriggers;
+		if (hasTriggers) {
 			plots.add(new ETAS_MFD_Plot(config, launcher, "mag_num_cumulative", annualizeMFDs, true));
-		else
+			plots.add(new ETAS_HazardChangePlot(config, launcher, "hazard_change_100km", 100d));
+		} else {
 			plots.add(new ETAS_MFD_Plot(config, launcher, "mfd", annualizeMFDs, true));
+		}
 		plots.add(new ETAS_FaultParticipationPlot(config, launcher, "fault_participation", annualizeMFDs, skipMaps));
 		if (!skipMaps)
 			plots.add(new ETAS_GriddedNucleationPlot(config, launcher, "gridded_nucleation", annualizeMFDs));
