@@ -1,4 +1,4 @@
-package scratch.UCERF3.erf.ETAS.launcher;
+package scratch.UCERF3.erf.ETAS.launcher.util;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -14,6 +14,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
+import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 
 public class ETAS_ConfigGenerator {
 	

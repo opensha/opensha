@@ -1,4 +1,4 @@
-package scratch.UCERF3.erf.ETAS.launcher;
+package scratch.UCERF3.erf.ETAS.launcher.util;
 
 import java.io.File;
 import java.io.IOException;
@@ -6,6 +6,9 @@ import java.io.IOException;
 import org.opensha.commons.geo.Location;
 
 import com.google.common.base.Preconditions;
+
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
+import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 
 class ETAS_ConfigExamplesWriter {
 

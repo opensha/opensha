@@ -54,7 +54,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	private String prefix;
 	private double radius;
 	
-	private static double[] times = { 1d / (365.25 * 24), 1d / 365.25, 7d / 365.25, 30 / 365.25, 1d, 10d, 30d, 100d };
+	static double[] times = { 1d / (365.25 * 24), 1d / 365.25, 7d / 365.25, 30 / 365.25, 1d, 10d, 30d, 100d };
 	private static double[] minMags = { 5d, 6d, 7d, 8d };
 	
 	private ArbitrarilyDiscretizedFunc etasTimesFunc;

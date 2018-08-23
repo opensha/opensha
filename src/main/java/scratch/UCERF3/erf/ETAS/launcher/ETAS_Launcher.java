@@ -662,7 +662,7 @@ public class ETAS_Launcher {
 		
 	}
 	
-	static long getMaxMemMB() {
+	public static long getMaxMemMB() {
 		return Runtime.getRuntime().maxMemory() / 1024 / 1024;
 	}
 	

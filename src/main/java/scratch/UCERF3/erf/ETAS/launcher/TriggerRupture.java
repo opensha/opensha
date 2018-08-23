@@ -15,7 +15,7 @@ import com.google.common.primitives.Ints;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 
-abstract class TriggerRupture {
+public abstract class TriggerRupture {
 	
 	final Long customOccurrenceTime;
 
@@ -37,16 +37,16 @@ abstract class TriggerRupture {
 	
 	public abstract int[] getSectionsRuptured(FaultSystemRupSet rupSet);
 	
-	static class FSS extends TriggerRupture {
+	public static class FSS extends TriggerRupture {
 		
 		final int fssIndex;
 		final Double overrideMag;
 		
-		FSS(int fssIndex) {
+		public FSS(int fssIndex) {
 			this(fssIndex, null, null);
 		}
 
-		FSS(int fssIndex, Long customOccurrenceTime, Double overrideMag) {
+		public FSS(int fssIndex, Long customOccurrenceTime, Double overrideMag) {
 			super(customOccurrenceTime);
 			this.fssIndex = fssIndex;
 			this.overrideMag = overrideMag;
@@ -82,12 +82,12 @@ abstract class TriggerRupture {
 		
 	}
 	
-	static class SectionBased extends TriggerRupture {
+	public static class SectionBased extends TriggerRupture {
 		
 		final int[] subSects;
 		final double mag;
 
-		SectionBased(int[] subSects, Long customOccurrenceTime, double mag) {
+		public SectionBased(int[] subSects, Long customOccurrenceTime, double mag) {
 			super(customOccurrenceTime);
 			Preconditions.checkState(subSects.length > 0, "Must supply at least 1 subsection index!");
 			this.subSects = subSects;
@@ -134,12 +134,12 @@ abstract class TriggerRupture {
 		
 	}
 	
-	static class Point extends TriggerRupture {
+	public static class Point extends TriggerRupture {
 		
 		final Location hypocenter;
 		final double mag;
 
-		Point(Location hypocenter, Long customOccurrenceTime, double mag) {
+		public Point(Location hypocenter, Long customOccurrenceTime, double mag) {
 			super(customOccurrenceTime);
 			this.hypocenter = hypocenter;
 			this.mag = mag;

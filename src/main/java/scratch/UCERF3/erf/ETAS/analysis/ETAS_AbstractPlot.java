@@ -4,10 +4,13 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotPreferences;
+
+import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -60,23 +63,31 @@ public abstract class ETAS_AbstractPlot {
 	}
 	
 	protected static final DecimalFormat optionalDigitDF = new DecimalFormat("0.##");
+	private static final DecimalFormat optionalSingleDigitDF = new DecimalFormat("0.#");
 	
 	protected static String getTimeLabel(double years, boolean plural) {
 		if (years < 1d) {
-			int days = (int) (years * 365.25 + 0.5);
-			if (days == 30) {
-				return "1 Month";
-			} else if (days == 7) {
-				return "1 Week";
-			} else if (days == 14) {
-				if (plural)
-					return "2 Weeks";
-				return "2 Week";
+			double fractionalDays = years * 365.25;
+			int days = (int) (fractionalDays + 0.5);
+			
+			double months = years *12d;
+			
+			if (days > 28) {
+				if (months > 1.05 && plural)
+					return optionalSingleDigitDF.format(months)+" Months";
+				else
+					return optionalSingleDigitDF.format(months)+" Month";
+			} else if (days >= 7 && days % 7 == 0) {
+				int weeks = days / 7;
+				if (weeks > 1 && plural)
+					return weeks+" Weeks";
+				else
+					return weeks+" Week";
 			} else if (years < 1d / 365.25) {
-				int hours = (int) (years * 365.25 * 24 + 0.5);
-				if (hours > 1 && plural)
-					return hours + " Hours";
-				return hours + " Hour";
+				double hours =years * 365.25 * 24;
+				if (hours > 1.05 && plural)
+					return optionalSingleDigitDF.format(hours) + " Hours";
+				return optionalSingleDigitDF.format(hours) + " Hour";
 			} else {
 				if (days > 1 && plural)
 					return days + " Days";
@@ -84,8 +95,8 @@ public abstract class ETAS_AbstractPlot {
 			}
 		} else {
 			if (plural && (int)years > 1)
-				return (int) years + " Years";
-			return (int) years + " Year";
+				return optionalSingleDigitDF.format(years) + " Years";
+			return optionalSingleDigitDF.format(years) + " Year";
 		}
 	}
 	
@@ -108,9 +119,39 @@ public abstract class ETAS_AbstractPlot {
 	private static DecimalFormat expProbDF = new DecimalFormat("0.00E0");
 	
 	protected static String getProbStr(double prob) {
-		if (prob < 0.01)
+		if (prob < 0.01 && prob > 0)
 			return expProbDF.format(prob);
 		return normProbDF.format(prob);
+	}
+	
+	public static void main(String[] args) {
+		List<Double> times = new ArrayList<>(Doubles.asList(ETAS_HazardChangePlot.times));
+		double day = 1/365.25;
+		times.add(day / 24);
+		times.add(1.5 * day / 24);
+		times.add(2 * day / 24);
+		times.add(day * 1);
+		times.add(day * 2);
+		times.add(day * 3);
+		times.add(day * 4);
+		times.add(day * 5);
+		times.add(day * 6);
+		times.add(day * 7);
+		times.add(day * 14);
+		times.add(day * 21);
+		times.add(day * 28);
+		times.add(day * 30);
+		times.add(day * 31);
+		times.add(day * 35);
+		times.add(day * 60);
+		times.add(day * 61);
+		times.add(day * 62);
+		times.add(day * 90);
+		times.add(day * 91);
+		times.add(day * 92);
+		times.add(1.1);
+		for (double time : times)
+			System.out.println((float)time+" =>\t"+getTimeLabel(time, true)+"\t"+getTimeLabel(time, false)+"\t"+getTimeShortLabel(time));
 	}
 
 }

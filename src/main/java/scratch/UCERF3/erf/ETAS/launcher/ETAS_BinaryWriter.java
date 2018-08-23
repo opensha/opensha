@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileNameComparator;
 
 import com.google.common.base.Preconditions;
@@ -17,6 +18,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 
 class ETAS_BinaryWriter {
 	
@@ -114,7 +116,7 @@ class ETAS_BinaryWriter {
 	
 	public static void main(String[] args) throws IOException {
 		if (args.length < 1 || args.length > 2) {
-			System.err.println("USAGE: "+ClassUtils.getClassNameWithoutPackage(ETAS_BinaryWriter.class)+" <etas-config.json> [<results-dir>]");
+			System.err.println("USAGE: "+ClassUtils.getClassNameWithoutPackage(ETAS_BinaryWriter.class)+" <etas-config.json> [<results-dir/catalogs.bin>]");
 			System.exit(2);
 		}
 		
@@ -134,24 +136,18 @@ class ETAS_BinaryWriter {
 		
 		ETAS_BinaryWriter writer = new ETAS_BinaryWriter(config.getOutputDir(), config);
 		
-		File[] subDirs = resultsDir.listFiles();
-		Arrays.sort(subDirs, new FileNameComparator());
-		
-		int numProcessed = 0;
-		int modulus = 10;
-		for (File catalogDir : subDirs) {
-			if (!catalogDir.getName().startsWith("sim_"))
-				continue;
-			if (!ETAS_Launcher.isAlreadyDone(catalogDir))
-				continue;
-			if (numProcessed % modulus == 0) {
-				System.out.println("Processing catalog "+numProcessed);
-				if (numProcessed == modulus*10)
-					modulus *= 10;
+		int numProcessed = ETAS_CatalogIteration.processCatalogs(resultsDir, new ETAS_CatalogIteration.Callback() {
+			
+			@Override
+			public void processCatalog(List<ETAS_EqkRupture> catalog, int index) {
+				try {
+					writer.processCatalog(catalog);
+				} catch (IOException e) {
+					ExceptionUtils.throwAsRuntimeException(e);
+				}
 			}
-			writer.processCatalog(catalogDir);
-			numProcessed++;
-		}
+		});
+		
 		writer.finalize();
 		System.out.println("Finished binary consolidation of "+numProcessed+" catalogs");
 	}

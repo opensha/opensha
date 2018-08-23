@@ -1,4 +1,6 @@
-package scratch.UCERF3.erf.ETAS.launcher;
+package scratch.UCERF3.erf.ETAS.launcher.util;
+
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 
 public class ETAS_EnvTest {
 

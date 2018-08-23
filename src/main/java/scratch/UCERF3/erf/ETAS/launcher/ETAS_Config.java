@@ -72,11 +72,11 @@ public class ETAS_Config {
 	private boolean includeIndirectTriggering = true;
 	private double gridSeisDiscr = 0.1;
 	
-	ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir) {
+	public ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir) {
 		this(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir, null, null);
 	}
 	
-	ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir,
+	public ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir,
 			File triggerCatalog, File triggerCatalogSurfaceMappings, TriggerRupture... triggerRuptures) {
 		this(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir,
 				triggerCatalog, triggerCatalogSurfaceMappings, toList(triggerRuptures));
@@ -112,7 +112,7 @@ public class ETAS_Config {
 		buildDefaultBinaryOutputFilters();
 	}
 	
-	void buildDefaultBinaryOutputFilters() {
+	public void buildDefaultBinaryOutputFilters() {
 		binaryOutputFilters = new ArrayList<>();
 		binaryOutputFilters.add(
 				new BinaryFilteredOutputConfig("results_complete", null, null, false));
