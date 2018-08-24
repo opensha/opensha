@@ -71,9 +71,10 @@ public abstract class ETAS_AbstractPlot {
 			int days = (int) (fractionalDays + 0.5);
 			
 			double months = years *12d;
+			boolean isRoundedMonth = Math.round(months) == Math.round(10d*months)/10d;
 			
-			if (days > 28) {
-				if (months > 1.05 && plural)
+			if (days > 28 && isRoundedMonth) {
+				if (months >= 1.05 && plural)
 					return optionalSingleDigitDF.format(months)+" Months";
 				else
 					return optionalSingleDigitDF.format(months)+" Month";
@@ -85,16 +86,16 @@ public abstract class ETAS_AbstractPlot {
 					return weeks+" Week";
 			} else if (years < 1d / 365.25) {
 				double hours =years * 365.25 * 24;
-				if (hours > 1.05 && plural)
+				if (hours >= 1.05 && plural)
 					return optionalSingleDigitDF.format(hours) + " Hours";
 				return optionalSingleDigitDF.format(hours) + " Hour";
 			} else {
-				if (days > 1 && plural)
-					return days + " Days";
-				return days + " Day";
+				if (fractionalDays >= 1.05 && plural)
+					return optionalSingleDigitDF.format(fractionalDays) + " Days";
+				return optionalSingleDigitDF.format(fractionalDays) + " Day";
 			}
 		} else {
-			if (plural && (int)years > 1)
+			if (plural && years >= 1.05)
 				return optionalSingleDigitDF.format(years) + " Years";
 			return optionalSingleDigitDF.format(years) + " Year";
 		}
@@ -126,6 +127,7 @@ public abstract class ETAS_AbstractPlot {
 	
 	public static void main(String[] args) {
 		List<Double> times = new ArrayList<>(Doubles.asList(ETAS_HazardChangePlot.times));
+		double month = 1d/12d;
 		double day = 1/365.25;
 		times.add(day / 24);
 		times.add(1.5 * day / 24);
@@ -150,8 +152,25 @@ public abstract class ETAS_AbstractPlot {
 		times.add(day * 91);
 		times.add(day * 92);
 		times.add(1.1);
+		times.add(month*1);
+		times.add(month*1.04);
+		times.add(month*1.05);
+		times.add(month*1.06);
+		times.add(month*1.94);
+		times.add(month*1.95);
+		times.add(month*1.96);
+		times.add(month*2);
+		times.add(month*2.04);
+		times.add(month*2.05);
+		times.add(month*2.06);
+		times.add(day*0.9);
+		times.add(day*0.95);
+		times.add(day*1.04);
+		times.add(day*1.1);
+		times.add(day*1.5);
 		for (double time : times)
 			System.out.println((float)time+" =>\t"+getTimeLabel(time, true)+"\t"+getTimeLabel(time, false)+"\t"+getTimeShortLabel(time));
 	}
 
 }
+
