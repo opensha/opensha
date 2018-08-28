@@ -81,6 +81,7 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	
 	/**
 	 * This makes the cumulative dist function
+	 * synchronized externally
 	 */
 	private void updateCumDistVals() {
 		sumOfYvals=0;
@@ -92,8 +93,8 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 //		for(int i=0;i<getNum();i++) System.out.println(i+"\t"+cumDistVals[i]);
 	}
 	
-	public double getSumOfY_vals() {
-		if(dataChange) {
+	public synchronized double getSumOfY_vals() {
+		if (dataChange) {
 			updateCumDistVals();
 			dataChange=false;
 		}
@@ -126,9 +127,9 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	 * @param prob - a value between 0 and 1.
 	 * @return
 	 */
-	public int getInt(double prob) {
+	public synchronized int getInt(double prob) {
 		// update if needed
-		if(dataChange) {
+		if (dataChange) {
 			updateCumDistVals();
 			dataChange=false;
 		}
@@ -190,36 +191,36 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	
 	
 	// override the following to record that data has changed
-	public void set(Point2D point) {
+	public synchronized void set(Point2D point) {
 		super.set(point);
 		dataChange = true;
 	}
-	public void set(double x, double y) {
+	public synchronized void set(double x, double y) {
 		super.set(x,y);
 		dataChange = true;
 	}
-	public void add(double x, double y) {
+	public synchronized void add(double x, double y) {
 		super.add(x, y);
 		dataChange = true;
 	}
-	public void set(int index, double y) {
+	public synchronized void set(int index, double y) {
 		super.set(index, y);
 		dataChange = true;
 	}
-	public void add(int index, double y) {
+	public synchronized void add(int index, double y) {
 		super.add(index, y);
 		dataChange = true;
 	}
-	public void set(double min, int num, double delta) {
+	public synchronized void set(double min, int num, double delta) {
 		super.set(min, num, delta);
 		dataChange = true;
 	}
-	public void set(double min, double max, int num) {
+	public synchronized void set(double min, double max, int num) {
 		super.set(min,max,num);
 		dataChange = true;
 	}
 	
-	public double[] getY_valuesArray() {
+	public synchronized double[] getY_valuesArray() {
 		return points;
 	}
 	
@@ -229,7 +230,7 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	 * @param fract fraction between 0 and 1, e.g. 0.999
 	 * @return
 	 */
-	public List<Integer> getOrderedIndicesOfHighestXFract(double fract) {
+	public synchronized List<Integer> getOrderedIndicesOfHighestXFract(double fract) {
 		Preconditions.checkArgument(fract > 0d && fract <= 1d, "Fract must be between 0 and 1: %s", fract);
 		
 		// need indexes and data in list form
