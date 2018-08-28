@@ -77,3 +77,12 @@ ext.getDate = {
     new Date().format('yyyy_MM_dd')
 }
 
+ext.getGitHash = { ->
+    def stdout = new ByteArrayOutputStream()
+    exec {
+        commandLine 'git', 'rev-parse', '--short', 'HEAD'
+        standardOutput = stdout
+    }
+    return stdout.toString().trim()
+}
+
