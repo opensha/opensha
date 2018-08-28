@@ -2,9 +2,11 @@ package scratch.UCERF3.erf.ETAS.analysis;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -25,11 +27,13 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.Files;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 
@@ -57,15 +61,19 @@ public class SimulationMarkdownGenerator {
 			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
 					+ "2018_08_07-MojaveM7-noSpont-10yr");
 			File configFile = new File(simDir, "config.json");
-			File inputFile = new File(simDir, "results_m5_preserve_chain.bin");
-			args = new String[] { configFile.getAbsolutePath(), inputFile.getAbsolutePath() };
+//			File inputFile = new File(simDir, "results_m5_preserve_chain.bin");
+//			args = new String[] { configFile.getAbsolutePath(), inputFile.getAb?olutePath() };
+			args = new String[] { configFile.getAbsolutePath() };
 		}
+		
+		// TODO optional second arg
+		
 		Options options = createOptions();
 		
 		CommandLineParser parser = new DefaultParser();
 		
 		String syntax = ClassUtils.getClassNameWithoutPackage(SimulationMarkdownGenerator.class)
-				+" [options] <etas-config.json> <binary-catalogs-file.bin OR results directory>";
+				+" [options] <etas-config.json> [<binary-catalogs-file.bin OR results directory>]";
 		
 		CommandLine cmd;
 		try {
@@ -81,17 +89,47 @@ public class SimulationMarkdownGenerator {
 		
 		File configFile;
 		File inputFile;
-		if (args.length != 2) {
+		if (args.length < 1 || args.length > 2) {
 			System.err.println("USAGE: "+syntax);
 			System.exit(2);
-			throw new IllegalStateException("Unreachable");
-		} else {
-			configFile = new File(args[0]);
-			inputFile = new File(args[1]);
 		}
+		
+		configFile = new File(args[0]);
 		
 		Preconditions.checkState(configFile.exists(), "ETAS config file doesn't exist: "+configFile.getAbsolutePath());
 		ETAS_Config config = ETAS_Config.readJSON(configFile);
+		if (args.length == 2) {
+			inputFile = new File(args[1]);
+		} else {
+			System.out.println("Catalogs file/dir not specififed, searching for catalogs...");
+			List<BinaryFilteredOutputConfig> binaryFilters = config.getBinaryOutputFilters();
+			inputFile = null;
+			if (binaryFilters != null) {
+				binaryFilters = new ArrayList<>(binaryFilters);
+				binaryFilters.sort(binaryOutputComparator); // sort so that the one with the lowest magnitude is used preferentially
+				for (BinaryFilteredOutputConfig bin : binaryFilters) {
+					File binFile = new File(config.getOutputDir(), bin.getPrefix()+".bin");
+					if (binFile.exists()) {
+						inputFile = binFile;
+						break;
+					}
+					// check for partial
+					binFile = new File(config.getOutputDir(), bin.getPrefix()+"_partial.bin");
+					if (binFile.exists()) {
+						inputFile = binFile;
+						break;
+					}
+				}
+			}
+			if (inputFile != null) {
+				System.out.println("Using binary catalogs file: "+inputFile.getAbsolutePath());
+			} else {
+				inputFile = new File(config.getOutputDir(), "results");
+				Preconditions.checkState(inputFile.exists(),
+						"Couldn't locate results binary files and results dir doesn't exist: %s", inputFile.getAbsolutePath());
+				System.out.println("Using results dir: "+inputFile.getAbsolutePath());
+			}
+		}
 		
 		File outputDir = config.getOutputDir();
 		if (!outputDir.exists() && !outputDir.mkdir()) {
@@ -193,6 +231,15 @@ public class SimulationMarkdownGenerator {
 				lines.addAll(plotLines);
 		}
 		
+		lines.add("");
+		lines.add("## JSON Input File");
+		lines.add(topLink); lines.add("");
+		lines.add("```");
+		for (String line : Files.readLines(configFile, Charset.defaultCharset()))
+			lines.add(line);
+		lines.add("```");
+		lines.add("");
+		
 		launcher.checkInFSS(fss);
 		
 		List<String> tocLines = new ArrayList<>();
@@ -249,4 +296,26 @@ public class SimulationMarkdownGenerator {
 	static {
 		df.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
+	
+	private static final Comparator<BinaryFilteredOutputConfig> binaryOutputComparator =
+			new Comparator<ETAS_Config.BinaryFilteredOutputConfig>() {
+		
+		@Override
+		public int compare(BinaryFilteredOutputConfig o1, BinaryFilteredOutputConfig o2) {
+			if (o1.isDescendantsOnly() != o2.isDescendantsOnly()) {
+				if (o1.isDescendantsOnly())
+					return -1;
+				return 1;
+			}
+			Double mag1 = o1.getMinMag();
+			Double mag2 = o2.getMinMag();
+			if (mag1 == null)
+				mag1 = Double.NEGATIVE_INFINITY;
+			if (mag2 == null)
+				mag2 = Double.NEGATIVE_INFINITY;
+			if (mag1 != mag2)
+				return Double.compare(mag1, mag2);
+			return 0;
+		}
+	};
 }

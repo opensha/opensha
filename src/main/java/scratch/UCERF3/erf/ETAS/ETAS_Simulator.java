@@ -210,7 +210,7 @@ public class ETAS_Simulator {
 		testMultiScenarioETAS_Simulation(
 				resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
 				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed,
-				fractionSrcInCubeList, srcInCubeList, inputIsCubeInsideFaultPolygon, etasParams);
+				fractionSrcInCubeList, srcInCubeList, inputIsCubeInsideFaultPolygon, etasParams, null);
 	}
 	
 	/**
@@ -246,13 +246,14 @@ public class ETAS_Simulator {
 	 * @param srcInCubeListt - from pre-computed data file	TODO chance name of this
 	 * @param inputIsCubeInsideFaultPolygont - from pre-computed data file
 	 * @param etasParams
+	 * @param cubeParams - ETAS cube params, can be shared if multi-threaded, or null to create a new one for this simulation
 	 * @throws IOException
 	 */
 	public static void testMultiScenarioETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
 			GriddedRegion griddedRegion, List<ETAS_EqkRupture> scenarioRups, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
 			Long randomSeed, List<float[]> fractionSrcInCubeList, List<int[]> srcInCubeList, int[] inputIsCubeInsideFaultPolygon, 
-			ETAS_ParameterList etasParams) throws IOException {
+			ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams) throws IOException {
 		
 		// Overide to Poisson if needed
 		if (etasParams.getU3ETAS_ProbModel() == U3ETAS_ProbabilityModelOptions.POISSON) {
@@ -284,7 +285,7 @@ public class ETAS_Simulator {
 			etas_utils = new ETAS_Utils(System.currentTimeMillis());
 		
 		// this could be input value
-		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution(etas_utils);
+		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
 		
 		// directory for saving results
 		if(!resultsDir.exists()) resultsDir.mkdir();
@@ -346,8 +347,8 @@ public class ETAS_Simulator {
 					id+=1;
 				}
 			}
-			System.out.println("histQkList.size()="+histQkList.size());
-			System.out.println("obsEqkRuptureList.size()="+obsEqkRuptureList.size());
+			if (D) System.out.println("histQkList.size()="+histQkList.size());
+			if (D) System.out.println("obsEqkRuptureList.size()="+obsEqkRuptureList.size());
 		}
 		
 		// add scenario rup to beginning of obsEqkRuptureList
@@ -441,9 +442,10 @@ public class ETAS_Simulator {
 		st = System.currentTimeMillis();
 		
 		// Create the ETAS_PrimaryEventSampler
-		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(griddedRegion, erf, sourceRates,
-				gridSeisDiscr,null, etasParams, etas_utils, fractionSrcInCubeList, srcInCubeList, 
-				inputIsCubeInsideFaultPolygon);  // latter three may be null
+		if (cubeParams == null)
+			cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
+		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, sourceRates, null, etasParams,
+				etas_utils, fractionSrcInCubeList, srcInCubeList, inputIsCubeInsideFaultPolygon);
 		if(D) System.out.println("ETAS_PrimaryEventSampler creation took "+(float)(System.currentTimeMillis()-st)/60000f+ " min");
 		info_fr.write("\nMaking ETAS_PrimaryEventSampler took "+(System.currentTimeMillis()-st)/60000+ " min");
 		info_fr.flush();
@@ -668,7 +670,7 @@ public class ETAS_Simulator {
 					// FOLLOWING ASSUMES A GRID SPACING OF 0.1 FOR BACKGROUND SEIS; "0.99" is to keep it in cell
 					hypoLoc = new Location(ptLoc.getLatitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
 							ptLoc.getLongitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
-							seisDepthDistribution.getRandomDepth());
+							seisDepthDistribution.getRandomDepth(etas_utils));
 					rup.setPointSurface(hypoLoc);
 
 				}

@@ -63,7 +63,10 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_LocationWeightCalculator;
+import scratch.UCERF3.erf.ETAS.ETAS_PrimaryEventSampler;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
@@ -121,10 +124,12 @@ public class ETAS_Launcher {
 	private Map<Long, List<Integer>> resetSubSectsMap;
 	
 	private GriddedRegion griddedRegion;
+	private ETAS_CubeDiscretizationParams cubeParams;
 	
 	private File resultsDir;
 	
 	private Random r;
+	private ETAS_ParameterList params;
 	
 	public ETAS_Launcher(ETAS_Config config) throws IOException {
 		this(config, true);
@@ -244,6 +249,16 @@ public class ETAS_Launcher {
 		griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
 		
 		r = new Random(System.nanoTime());
+		
+		params = new ETAS_ParameterList();
+		params.setImposeGR(config.isImposeGR());
+		params.setU3ETAS_ProbModel(config.getProbModel());
+		// already applied if applicable, setting here for metadata
+		params.setApplyGridSeisCorr(gridSeisCorrections != null);
+		params.setApplySubSeisForSupraNucl(config.isApplySubSeisForSupraNucl());
+		params.setTotalRateScaleFactor(config.getTotRateScaleFactor());
+		
+		cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
 	}
 	
 	static File getResultsDir(File outputDir) {
@@ -476,10 +491,10 @@ public class ETAS_Launcher {
 		return false;
 	}
 	
-	private static long getPrevRandSeed(File resultsDir) throws IOException {
+	private static Long getPrevRandSeed(File resultsDir) throws IOException {
 		File infoFile = new File(resultsDir, "infoString.txt");
 		if (!infoFile.exists())
-			return -1;
+			return null;
 		for (String line : Files.readLines(infoFile, Charset.defaultCharset())) {
 			if (line.contains("randomSeed=")) {
 				line = line.trim();
@@ -487,7 +502,7 @@ public class ETAS_Launcher {
 				return Long.parseLong(line);
 			}
 		}
-		return -1;
+		return null;
 	}
 	
 	private synchronized void checkLoadCaches() throws IOException {
@@ -570,19 +585,11 @@ public class ETAS_Launcher {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 				
-				if (randSeed > 0)
+				if (randSeed != null)
 					debug("Resuming old rand seed of "+randSeed+" for "+resultsDir.getName());
 				else
 					randSeed = r.nextLong();
 			}
-
-			ETAS_ParameterList params = new ETAS_ParameterList();
-			params.setImposeGR(config.isImposeGR());
-			params.setU3ETAS_ProbModel(config.getProbModel());
-			// already applied if applicable, setting here for metadata
-			params.setApplyGridSeisCorr(gridSeisCorrections != null);
-			params.setApplySubSeisForSupraNucl(config.isApplySubSeisForSupraNucl());
-			params.setTotalRateScaleFactor(config.getTotRateScaleFactor());
 			
 			boolean success = false;
 			int attempts = 0;
@@ -597,13 +604,13 @@ public class ETAS_Launcher {
 					if (config.isGriddedOnly()) {
 						ETAS_Simulator_NoFaults.testMultiScenarioETAS_Simulation(resultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
 								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
-								config.getGridSeisDiscr(), simulationName, randSeed, params);
+								config.getGridSeisDiscr(), simulationName, randSeed, params, cubeParams);
 					} else {
 						checkLoadCaches();
 						ETAS_Simulator.testMultiScenarioETAS_Simulation(resultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
 								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed,
-								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params);
+								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, cubeParams);
 					}
 					
 					debug("completed "+index);
@@ -652,7 +659,7 @@ public class ETAS_Launcher {
 				checkInFSS(sol);
 			
 			if (!success) {
-				Preconditions.checkState(failureThrow == null);
+				Preconditions.checkState(failureThrow != null);
 				debug("Index "+index+" failed 3 times, bailing");
 				ExceptionUtils.throwAsRuntimeException(failureThrow);
 			}
@@ -852,6 +859,10 @@ public class ETAS_Launcher {
 	}
 
 	public static void main(String[] args) throws IOException {
+		if (args.length == 1 && args[0].equals("--hardcoded")) {
+			String argsStr = "--threads 5 /tmp/etas_debug/mojave_m7_example.json";
+			args = argsStr.split(" ");
+		}
 		System.setProperty("java.awt.headless", "true");
 		
 		Options options = createOptions();

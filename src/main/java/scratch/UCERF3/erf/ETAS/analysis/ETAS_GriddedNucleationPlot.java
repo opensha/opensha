@@ -224,7 +224,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 			if ((float)mags[i] < (float)modalMag)
 				continue;
 			builder.initNewLine();
-			builder.addColumn("**M≥"+optionalDigitDF.format(mags[i])+"**");
+			builder.addColumn("**M&ge;"+optionalDigitDF.format(mags[i])+"**");
 			String magStr = "_m"+(float)mags[i];
 			if (hasSpont) {
 				builder.addColumn("![Nucleation Plot]("+relativePathToOutputDir+"/"+prefix+magStr+".png)");

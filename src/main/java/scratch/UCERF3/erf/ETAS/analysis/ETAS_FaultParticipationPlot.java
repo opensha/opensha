@@ -483,7 +483,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				if (minMag == 0)
 					builder.addColumn("**All Supra. Seis.**");
 				else
-					builder.addColumn("**M≥"+optionalDigitDF.format(minMag)+"**");
+					builder.addColumn("**M&ge;"+optionalDigitDF.format(minMag)+"**");
 				if (hasSpont) {
 					String prefix = plotPrefixes.get(minMag, true);
 					builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+".png)");

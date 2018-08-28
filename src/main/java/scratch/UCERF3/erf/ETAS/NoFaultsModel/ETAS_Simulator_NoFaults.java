@@ -110,7 +110,9 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_LocationWeightCalculator;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
@@ -188,13 +190,13 @@ public class ETAS_Simulator_NoFaults {
 			scenarioRups.add(scenarioRup);
 		}
 		testMultiScenarioETAS_Simulation(resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
-				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams);
+				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams, null);
 	}
 	
 	public static void testMultiScenarioETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
 			GriddedRegion griddedRegion, List<ETAS_EqkRupture> scenarioRups, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
-			Long randomSeed, ETAS_ParameterList etasParams)
+			Long randomSeed, ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams)
 					throws IOException {
 		
 		// etasParams.getU3ETAS_ProbModel() is ignored because no-faults assumes Poisson.
@@ -209,7 +211,7 @@ public class ETAS_Simulator_NoFaults {
 			etas_utils = new ETAS_Utils(System.currentTimeMillis());
 		
 		// this could be input value
-		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution(etas_utils);
+		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
 		
 		// directory for saving results
 		if(!resultsDir.exists()) resultsDir.mkdir();
@@ -365,8 +367,8 @@ public class ETAS_Simulator_NoFaults {
 		st = System.currentTimeMillis();
 		
 		// Create the ETAS_PrimaryEventSampler
-		ETAS_PrimaryEventSampler_noFaults etas_PrimEventSampler = new ETAS_PrimaryEventSampler_noFaults(griddedRegion, erf, sourceRates,
-				gridSeisDiscr,null, etasParams, etas_utils);  // latter three may be null
+		ETAS_PrimaryEventSampler_noFaults etas_PrimEventSampler = new ETAS_PrimaryEventSampler_noFaults(cubeParams, erf, sourceRates,
+				null, etasParams, etas_utils);  // latter three may be null
 		if(D) System.out.println("ETAS_PrimaryEventSampler creation took "+(float)(System.currentTimeMillis()-st)/60000f+ " min");
 		info_fr.write("\nMaking ETAS_PrimaryEventSampler took "+(System.currentTimeMillis()-st)/60000+ " min");
 		info_fr.flush();
@@ -590,7 +592,7 @@ public class ETAS_Simulator_NoFaults {
 					// FOLLOWING ASSUMES A GRID SPACING OF 0.1 FOR BACKGROUND SEIS; "0.99" is to keep it in cell
 					hypoLoc = new Location(ptLoc.getLatitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
 							ptLoc.getLongitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
-							seisDepthDistribution.getRandomDepth());
+							seisDepthDistribution.getRandomDepth(etas_utils));
 					rup.setPointSurface(hypoLoc);
 
 				}

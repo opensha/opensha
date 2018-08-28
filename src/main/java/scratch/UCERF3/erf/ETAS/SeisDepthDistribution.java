@@ -18,17 +18,8 @@ public class SeisDepthDistribution {
 	ArbitrarilyDiscretizedFunc depthDistFunc;
 	ArbitrarilyDiscretizedFunc inverseCumDepthDistFunc;
 	HistogramFunction cumHistFunc;
-	
-	ETAS_Utils etas_utils;
 
-	/**
-	 * 
-	 * @param etas_utils - needed for random number reproducibility
-	 */
-	public SeisDepthDistribution(ETAS_Utils etas_utils) {
-		
-		this.etas_utils = etas_utils;
-		
+	public SeisDepthDistribution() {
 		depthDistFunc = new ArbitrarilyDiscretizedFunc();
 		for(int i=0;i<depthVals.length;i++) {
 			depthDistFunc.set(depthVals[i], relWtVals[i]);		
@@ -89,7 +80,7 @@ public class SeisDepthDistribution {
 	 * This returns a random depth from the depth distribution
 	 * @return
 	 */
-	public double getRandomDepth() {
+	public double getRandomDepth(ETAS_Utils etas_utils) {
 		// this is a little faster
 		return inverseCumDepthDistFunc.getInterpolatedY(etas_utils.getRandomDouble());
 //		double randDepth = cumHistFunc.getFirstInterpolatedX(Math.random());
@@ -117,11 +108,11 @@ public class SeisDepthDistribution {
 	}
 	
 	
-	public void testRandomDepth(int numSamples) {
+	public void testRandomDepth(int numSamples, ETAS_Utils etas_utils) {
 		HistogramFunction testRandHistFunc = new HistogramFunction(0.05, 240,0.1);
 		long st = System.currentTimeMillis();
 		for(int i=0;i<numSamples;i++) {
-			double depth = getRandomDepth();
+			double depth = getRandomDepth(etas_utils);
 			if(depth<0 || depth>24)
 				throw new RuntimeException("problem depth: "+depth);
 			testRandHistFunc.add(depth, 1.0);
@@ -144,11 +135,11 @@ public class SeisDepthDistribution {
 	 */
 	public static void main(String[] args) {
 		
-		SeisDepthDistribution test = new SeisDepthDistribution(new ETAS_Utils());
+		SeisDepthDistribution test = new SeisDepthDistribution();
 		
 //		test.plotBinnedDepthDistribution();
 		
-		test.testRandomDepth(100000000);
+		test.testRandomDepth(100000000, new ETAS_Utils());
 
 	}
 

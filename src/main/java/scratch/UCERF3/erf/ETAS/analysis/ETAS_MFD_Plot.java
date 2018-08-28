@@ -97,6 +97,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			for (ETAS_EqkRupture rup : completeCatalog) {
 				int xIndex = totalHist.getClosestXIndex(rup.getMag());
 				totalHist.add(xIndex, 1d);
+				// this is used to find the modal magnitude, which is used to trim plots for magnitude filtered catalogs
 				totalCountHist.add(xIndex, 1d);
 				spontaneousFound = spontaneousFound || rup.getGeneration() == 0;
 			}
@@ -112,6 +113,9 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 				for (ETAS_EqkRupture rup : triggeredOnlyCatalog) {
 					int xIndex = noSpontHist.getClosestXIndex(rup.getMag());
 					noSpontHist.add(xIndex, 1d);
+					if (totalWithSpontStats == null)
+						// do it here
+						totalCountHist.add(xIndex, 1d);
 					if (rup.getGeneration() == 1)
 						primaryHist.add(xIndex, 1d);
 				}
@@ -308,6 +312,10 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Magnitude", yAxisLabel);
 		spec.setLegendVisible(true);
 		
+		double mfdMinY = ETAS_MFD_Plot.mfdMinY;
+		if (mfdMinY > 1d/(double)numCatalogs)
+			mfdMinY = Math.pow(10, Math.floor(Math.log10(1d/numCatalogs)));
+		
 		HeadlessGraphPanel gp = buildGraphPanel();
 		gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 		gp.setUserBounds(meanFunc.getMinX(), meanFunc.getMaxX(), mfdMinY, mfdMaxY);
@@ -439,8 +447,10 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		double minMag = mfdMinMag;
 		// double catMinMag = Double.POSITIVE_INFINITY;
 		double catModalMag = totalCountHist.getX(totalCountHist.getXindexForMaxY()) - 0.49 * mfdDelta;
+//		System.out.println(totalCountHist);
 		if (Double.isInfinite(catModalMag))
 			throw new IllegalStateException("Empty catalogs!");
+//		System.out.println("Modal mag: "+catModalMag);
 		int numToTrim = 0;
 		while (catModalMag > (minMag + 0.5 * mfdDelta) && minMag < 5.04) {
 			minMag += mfdDelta;
@@ -521,7 +531,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			double mag = meanFunc.getX(i);
 			builder.initNewLine();
 			if (cumulative)
-				builder.addColumn("**M≥"+optionalDigitDF.format(mag)+"**");
+				builder.addColumn("**M&ge;"+optionalDigitDF.format(mag)+"**");
 			else
 				builder.addColumn("**M"+optionalDigitDF.format(mag-0.5*mfdDelta)+"-"+optionalDigitDF.format(mag+0.5*mfdDelta)+"**");
 			builder.addColumn(getProbStr(meanFunc.getY(i)));

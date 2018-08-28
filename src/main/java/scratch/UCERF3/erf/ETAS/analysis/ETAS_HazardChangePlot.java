@@ -500,7 +500,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		for (int m=0; m<minMags.length; m++) {
 			if (!hasMags[m])
 				continue;
-			lines.add(topLevelHeading+"# M≥"+(float)minMags[m]+" "+title);
+			lines.add(topLevelHeading+"# M&ge;"+(float)minMags[m]+" "+title);
 			lines.add(topLink); lines.add("");
 			lines.add("![Hazard Change]("+relativePathToOutputDir+"/"+prefix+"_m"+(float)minMags[m]+".png)");
 			lines.add("");

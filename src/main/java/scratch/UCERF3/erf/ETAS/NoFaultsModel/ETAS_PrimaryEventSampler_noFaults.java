@@ -66,8 +66,10 @@ import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.analysis.GMT_CA_Maps;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
+import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_LocationWeightCalculator;
+import scratch.UCERF3.erf.ETAS.ETAS_PrimaryEventSampler;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
@@ -156,17 +158,13 @@ public class ETAS_PrimaryEventSampler_noFaults {
 	
 	boolean includeSpatialDecay;
 	
-	ETAS_LocationWeightCalculator etas_LocWeightCalc;
+	ETAS_LocationWeightCalculator locWeightCalc;
 	
 	SummedMagFreqDist[] mfdForSrcArray;
 	
 	
 	ETAS_Utils etas_utils;
 	ETAS_ParameterList etasParams;
-	
-	public static final double DEFAULT_MAX_DEPTH = 24;
-	public static final double DEFAULT_DEPTH_DISCR = 2.0;
-	public static final int DEFAULT_NUM_PT_SRC_SUB_PTS = 5;		// 5 is good for orig pt-src gridding of 0.1
 	
 	/**
 	 * 
@@ -182,41 +180,8 @@ public class ETAS_PrimaryEventSampler_noFaults {
 	 * @param applyGR_Corr
 	 * @param probMode
 	 */
-	public ETAS_PrimaryEventSampler_noFaults(GriddedRegion griddedRegion, AbstractNthRupERF erf, double sourceRates[],
-			double pointSrcDiscr, String outputFileNameWithPath, ETAS_ParameterList etasParams, ETAS_Utils etas_utils) {
-
-		this(griddedRegion, DEFAULT_NUM_PT_SRC_SUB_PTS, erf, sourceRates, DEFAULT_MAX_DEPTH, DEFAULT_DEPTH_DISCR, 
-				pointSrcDiscr, outputFileNameWithPath, etasParams, true, etas_utils);
-	}
-
-	
-	/**
-	 * TODO
-	 * 
-	 * 		resolve potential ambiguities between attributes of griddedRegion and pointSrcDiscr
-	 * 
-	 * 		make this take an ETAS_ParamList to simplify the constructor
-	 * 
-	 * @param griddedRegion
-	 * @param numPtSrcSubPts - the
-	 * @param erf
-	 * @param sourceRates - pointer to an array of source rates (which may get updated externally)
-	 * @param maxDepth
-	 * @param depthDiscr
-	 * @param pointSrcDiscr - the grid spacing of gridded seismicity in the ERF
-	 * @param outputFileNameWithPath - TODO not used
-	 * @param distDecay - ETAS distance decay parameter
-	 * @param minDist - ETAS minimum distance parameter
-	 * @param includeERF_Rates - tells whether to consider long-term rates in sampling aftershocks
-	 * @param includeSpatialDecay - tells whether to include spatial decay in sampling aftershocks (for testing)
-	 * @param etas_utils - this is for obtaining reproducible random numbers (seed set in this object)
-	 * @param applyGR_Corr - whether or not to apply the GR correction
-	 * @param probMode
-	 */
-	public ETAS_PrimaryEventSampler_noFaults(GriddedRegion griddedRegion, int numPtSrcSubPts, AbstractNthRupERF erf, double sourceRates[],
-			double maxDepth, double depthDiscr, double pointSrcDiscr, String outputFileNameWithPath, ETAS_ParameterList etasParams, 
-			boolean includeSpatialDecay, ETAS_Utils etas_utils) {
-		
+	public ETAS_PrimaryEventSampler_noFaults(ETAS_CubeDiscretizationParams cubeParams, AbstractNthRupERF erf, double sourceRates[],
+			String outputFileNameWithPath, ETAS_ParameterList etasParams, ETAS_Utils etas_utils) {
 		this.etasParams = etasParams;
 
 		this.etasDistDecay=etasParams.get_q();
@@ -230,36 +195,24 @@ public class ETAS_PrimaryEventSampler_noFaults {
 			APPLY_ERT_GRIDDED = false;
 		}
 		
-		this.includeSpatialDecay=includeSpatialDecay;
+		this.includeSpatialDecay = true;
 			
-		origGriddedRegion = griddedRegion;
+		origGriddedRegion = cubeParams.getGriddedRegion();
 		cubeLatLonSpacing = pointSrcDiscr/numPtSrcSubPts;	// TODO pointSrcDiscr from griddedRegion?
-		if(D) System.out.println("Gridded Region has "+griddedRegion.getNumLocations()+" cells");
+		if(D) System.out.println("Gridded Region has "+origGriddedRegion.getNumLocations()+" cells");
 		
-		this.numPtSrcSubPts = numPtSrcSubPts;
+		this.numPtSrcSubPts = cubeParams.getNumPtSrcSubPts();
 		this.erf = erf;
 		
-		this.maxDepth=maxDepth;	// the bottom of the deepest cube
-		this.depthDiscr=depthDiscr;
-		this.pointSrcDiscr = pointSrcDiscr;
+		this.maxDepth=cubeParams.getMaxDepth();	// the bottom of the deepest cube
+		this.depthDiscr=cubeParams.getDepthDiscr();
+		this.pointSrcDiscr = cubeParams.getPointSrcDiscr();
 		numCubeDepths = (int)Math.round(maxDepth/depthDiscr);
 		
 		this.etas_utils = etas_utils;
-				
-		Region regionForRates = new Region(griddedRegion.getBorder(),BorderType.MERCATOR_LINEAR);
 		
-		// need to set the region anchors so that the gridRegForRatesInSpace sub-regions fall completely inside the gridded seis regions
-		// this assumes the point sources have an anchor of GriddedRegion.ANCHOR_0_0)
-		if(numPtSrcSubPts % 2 == 0) {	// it's an even number
-			gridRegForCubes = new GriddedRegion(regionForRates, cubeLatLonSpacing, new Location(cubeLatLonSpacing/2d,cubeLatLonSpacing/2d));
-			// parent locs are mid way between cubes:
-			gridRegForParentLocs = new GriddedRegion(regionForRates, cubeLatLonSpacing, GriddedRegion.ANCHOR_0_0);			
-		}
-		else {	// it's odd
-			gridRegForCubes = new GriddedRegion(regionForRates, cubeLatLonSpacing, GriddedRegion.ANCHOR_0_0);
-			// parent locs are mid way between cubes:
-			gridRegForParentLocs = new GriddedRegion(regionForRates, cubeLatLonSpacing, new Location(cubeLatLonSpacing/2d,cubeLatLonSpacing/2d));			
-		}
+		gridRegForCubes = cubeParams.getGridRegForCubes();
+		gridRegForParentLocs = cubeParams.getGridRegForParentLocs();
 		
 		numCubesPerDepth = gridRegForCubes.getNumLocations();
 		numCubes = numCubesPerDepth*numCubeDepths;
@@ -318,21 +271,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 		getCubeSamplerWithERF_GriddedRatesOnly();
 		double runtime = ((double)(System.currentTimeMillis()-startTime))/1000;
 		if (D) System.out.println("getCubeSamplerWithERF_RatesOnly() took (sec): "+runtime);
-				
-		if(D) System.out.println("Creating ETAS_LocationWeightCalculator");
-		startTime= System.currentTimeMillis();
-		double maxDistKm=1000;
-		double midLat = (gridRegForCubes.getMaxLat() + gridRegForCubes.getMinLat())/2.0;
-		etas_LocWeightCalc = new ETAS_LocationWeightCalculator(maxDistKm, maxDepth, cubeLatLonSpacing, depthDiscr, midLat, etasDistDecay, etasMinDist, etas_utils);
-		if(D) ETAS_SimAnalysisTools.writeMemoryUse("Memory after making etas_LocWeightCalc");
-		runtime = ((double)(System.currentTimeMillis()-startTime))/1000;
-		if(D) System.out.println("Done creating ETAS_LocationWeightCalculator; it took (sec): "+runtime);
-		
 	}
-	
-	
-	
-	
 	
 	public void addRuptureToProcess(ETAS_EqkRupture rup) {
 		int parLocIndex = getParLocIndexForLocation(rup.getParentTriggerLoc());
@@ -347,22 +286,6 @@ public class ETAS_PrimaryEventSampler_noFaults {
 			}
 		}
 	}
-	
-	
-	
-	
-
-	
-	
-	
-	
-
-	
-	
-	
-	
-	
-
 	
 	/**
 	 * This loops over all points on the rupture surface and creates a net (average) point sampler.
@@ -817,7 +740,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 			}
 		}
 		else { // Only distance dacay
-			Location relativeLoc = etas_LocWeightCalc.getRandomLoc(translatedParLoc.getDepth());
+			Location relativeLoc = locWeightCalc.getRandomLoc(translatedParLoc.getDepth(), etas_utils);
 			double latSign = 1;
 			double lonSign = 1;
 			if(etas_utils.getRandomDouble()<0.5) {
@@ -855,8 +778,8 @@ public class ETAS_PrimaryEventSampler_noFaults {
 			
 		rupToFillIn.setGridNodeIndex(randSrcIndex);
 						
-		Location deltaLoc = etas_LocWeightCalc.getRandomDeltaLoc(Math.abs(relLat), Math.abs(relLon), 
-					depthForCubeCenter[aftShCubeIndex],translatedParLoc.getDepth());
+		Location deltaLoc = locWeightCalc.getRandomDeltaLoc(Math.abs(relLat), Math.abs(relLon), 
+					depthForCubeCenter[aftShCubeIndex],translatedParLoc.getDepth(), etas_utils);
 			
 		double newLat, newLon, newDep;
 		if(relLat<0.0)	// neg value
@@ -1001,7 +924,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 		for(int index=0; index<numCubes; index++) {
 			double relLat = Math.abs(parLoc.getLatitude()-latForCubeCenter[index]);
 			double relLon = Math.abs(parLoc.getLongitude()-lonForCubeCenter[index]);
-			sampler.set(index,etas_LocWeightCalc.getProbAtPoint(relLat, relLon, depthForCubeCenter[index], parLoc.getDepth())*cubeSamplerGriddedRatesOnly.getY(index));
+			sampler.set(index, locWeightCalc.getProbAtPoint(relLat, relLon, depthForCubeCenter[index], parLoc.getDepth())*cubeSamplerGriddedRatesOnly.getY(index));
 		}
 		return sampler;
 	}
@@ -1021,7 +944,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 			for(int index=0; index<numCubes; index++) {
 				double relLat = Math.abs(parLoc.getLatitude()-latForCubeCenter[index]);
 				double relLon = Math.abs(parLoc.getLongitude()-lonForCubeCenter[index]);
-				sampler.set(index,etas_LocWeightCalc.getProbAtPoint(relLat, relLon, depthForCubeCenter[index], parLoc.getDepth()));
+				sampler.set(index, locWeightCalc.getProbAtPoint(relLat, relLon, depthForCubeCenter[index], parLoc.getDepth()));
 //				if(relLat<0.25 && relLon<0.25)
 //					fw1.write((float)relLat+"\t"+(float)relLon+"\t"+(float)relDep+"\t"+(float)sampler.getY(index)+"\n");
 			}
@@ -1481,8 +1404,10 @@ public class ETAS_PrimaryEventSampler_noFaults {
 //				System.out.println("HERE "+erf.getSource(s).getName());
 		}
 		
-		ETAS_PrimaryEventSampler_noFaults etas_PrimEventSampler = new ETAS_PrimaryEventSampler_noFaults(griddedRegion, erf, sourceRates, 
-				gridSeisDiscr,null, etasParams, new ETAS_Utils());
+		ETAS_CubeDiscretizationParams cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
+		
+		ETAS_PrimaryEventSampler_noFaults etas_PrimEventSampler = new ETAS_PrimaryEventSampler_noFaults(cubeParams, erf, sourceRates, 
+				null, etasParams, new ETAS_Utils());
 		
 //		etas_PrimEventSampler.plotExpectedLongTermMFDs();
 		

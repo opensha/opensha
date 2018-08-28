@@ -10,6 +10,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_PrimaryEventSampler;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
@@ -91,8 +92,9 @@ public class CacheFileGen {
 			//						System.out.println("HERE "+erf.getSource(s).getName());
 		}
 
-		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(reg, erf, sourceRates, 
-				gridSeisDiscr,null, params, new ETAS_Utils(),null,null,null);
+		ETAS_CubeDiscretizationParams cubeParams = new ETAS_CubeDiscretizationParams(reg);
+		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, sourceRates, 
+				null, params, new ETAS_Utils(),null,null,null);
 		
 		etas_PrimEventSampler.getExpectedAfterShockRateInGridCellsFromSupraRates(10d, new ETAS_ParameterList(), 2.0, null);
 	}

@@ -17,6 +17,8 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 
+import com.google.common.base.Preconditions;
+
 /**
  * TODO Add depth dependent wts and make separate pointWt for each possible depth
  * 
@@ -62,7 +64,7 @@ public class ETAS_LocationWeightCalculator {
 	int histNum;				// old=31
 	
 	LocationList[][][] subLocsArray;
-	IntegerPDF_FunctionSampler[][][] subLocSamplerArray;
+	IntegerPDF_FunctionSampler[][][][] subLocSamplerArray;
 
 	int[] numSubDistances = {100,20,10,5,2,2};
 	
@@ -70,8 +72,6 @@ public class ETAS_LocationWeightCalculator {
 	
 	EvenlyDiscretizedFunc targetLogDistDecay;
 	ArrayList<HistogramFunction> logDistWeightHistList, logDistNumCellHistList, finalLogDistDecayList;
-	
-	ETAS_Utils etas_utils;
 	
 	Location[] locationArray;
 	IntegerPDF_FunctionSampler[] randLocSampler;
@@ -89,7 +89,7 @@ public class ETAS_LocationWeightCalculator {
 	 * @param etas_utils - used for generating random samples so that reproducibility can be maintained.
 	 */
 	public ETAS_LocationWeightCalculator(double maxDistKm, double maxDepthKm, double latLonDiscrDeg, double depthDiscrKm, 
-			double midLat, double etasDistDecay, double etasMinDist, ETAS_Utils etas_utils) {
+			double midLat, double etasDistDecay, double etasMinDist) {
 		
 		cosMidLat = Math.cos(midLat*Math.PI/180);
 		double aveLatLonDiscrKm = (latLonDiscrDeg+cosMidLat*latLonDiscrDeg)*111/2.0;
@@ -102,8 +102,6 @@ public class ETAS_LocationWeightCalculator {
 		this.midLat = midLat;
 		this.etasDistDecay=etasDistDecay;
 		this.etasMinDist=etasMinDist;
-		
-		this.etas_utils = etas_utils;
 						
 		// the number of points in each direction
 		numLatLon = (int)Math.round(maxLatLonDeg/latLonDiscrDeg);
@@ -122,12 +120,12 @@ public class ETAS_LocationWeightCalculator {
 		// the following is info for the close points that are subdivided
 		int maxNumPtsWithSubLocs = numSubDistances.length;
 		subLocsArray = new LocationList[maxNumPtsWithSubLocs][maxNumPtsWithSubLocs][maxNumPtsWithSubLocs];
-		subLocSamplerArray = new IntegerPDF_FunctionSampler[maxNumPtsWithSubLocs][maxNumPtsWithSubLocs][maxNumPtsWithSubLocs];
+		subLocSamplerArray = new IntegerPDF_FunctionSampler[maxNumPtsWithSubLocs][maxNumPtsWithSubLocs][maxNumPtsWithSubLocs][numParDepth];
 
 				
 		double[] distances=null;
 		
-		seisDepthDistribution = new SeisDepthDistribution(etas_utils);
+		seisDepthDistribution = new SeisDepthDistribution();
 
 		// find minimum distance that will be sampled, and then find appropriate first bin
 //		double minDistSampled = Double.POSITIVE_INFINITY;
@@ -292,10 +290,11 @@ public class ETAS_LocationWeightCalculator {
 	 * @param relLon - as above for longitude
 	 * @param dep - absolute depth (km)
 	 * @param parDep - absolute depth of parent/source (km)
+	 * @param etas_utils - provides random numbers for reproducibility
 	 * 
 	 * @return
 	 */
-	public Location getRandomDeltaLoc(double relLat, double relLon, double depth, double parDep) {
+	public Location getRandomDeltaLoc(double relLat, double relLon, double depth, double parDep, ETAS_Utils etas_utils) {
 		int iLat = getLatIndex(relLat);
 		int iLon = getLonIndex(relLon);
 		int iDep = getDepthIndex(depth);
@@ -318,8 +317,6 @@ public class ETAS_LocationWeightCalculator {
 				double midDepth = getDepth(iDepDiff);
 				
 				LocationList locList = new LocationList();
-				IntegerPDF_FunctionSampler newSampler = new IntegerPDF_FunctionSampler(numSubLoc*numSubLoc*numSubLoc);
-				int index = 0;
 				for(int iSubLat = 0; iSubLat < numSubLoc; iSubLat++) {
 					double lat = (midLat-latLonDiscrDeg/2) + iSubLat*deltaSubLatLon + deltaSubLatLon/2;
 					for(int iSubLon = 0; iSubLon < numSubLoc; iSubLon++) {
@@ -327,25 +324,62 @@ public class ETAS_LocationWeightCalculator {
 						for(int iSubDep = 0; iSubDep < numSubLoc; iSubDep++) {
 							double dep = (midDepth-depthDiscrKm/2) + iSubDep*deltaDepth + deltaDepth/2;
 							locList.add(new Location(lat-midLat,lon-midLon,dep-midDepth));	// add the deltaLoc to list
-							double dist = getDistance(lat, lon, dep);
-							double logDist = Math.log10(dist);
-							double wt = 4d*ETAS_Utils.getHardebeckDensity(dist, etasDistDecay, etasMinDist, maxDepthKm);	// depth and cell volume not important here
-							double normWt;
-							if(logDist<logDistWeightHist.getX(0))
-								normWt = targetLogDistDecay.getY(0)/logDistWeightHist.getY(0);
-							else
-								normWt = targetLogDistDecay.getY(logDist)/logDistWeightHist.getY(logDist);
-							newSampler.add(index, wt*normWt);		// add the sampler
-							index ++;
+//							double dist = getDistance(lat, lon, dep);
+//							double logDist = Math.log10(dist);
+//							double wt = 4d*ETAS_Utils.getHardebeckDensity(dist, etasDistDecay, etasMinDist, maxDepthKm);	// depth and cell volume not important here
+//							double normWt;
+//							if(logDist<logDistWeightHist.getX(0))
+//								normWt = targetLogDistDecay.getY(0)/logDistWeightHist.getY(0);
+//							else
+//								normWt = targetLogDistDecay.getY(logDist)/logDistWeightHist.getY(logDist);
+//							newSampler.add(index, wt*normWt);		// add the sampler
+//							mySum += wt*normWt;
+//							index ++;
 						}
 					}
 				}
-				subLocsArray[iLat][iLon][iDepDiff] = locList;
-				subLocSamplerArray[iLat][iLon][iDepDiff] = newSampler;
+				synchronized (subLocsArray) {
+					if (subLocsArray[iLat][iLon][iDepDiff] == null) {
+						subLocsArray[iLat][iLon][iDepDiff] = locList;
+//						subLocSamplerArray[iLat][iLon][iDepDiff] = newSampler;
+					}
+				}
+			}
+			if(subLocSamplerArray[iLat][iLon][iDepDiff][iParDep] == null) {
+				IntegerPDF_FunctionSampler newSampler = new IntegerPDF_FunctionSampler(numSubLoc*numSubLoc*numSubLoc);
+				int index = 0;
+				double midLat = getLat(iLat);
+				double midLon = getLon(iLon);
+				double midDepth = getDepth(iDepDiff);
+				for (Location tempLoc : subLocsArray[iLat][iLon][iDepDiff]) {
+					// need to undo this transformation
+//					locList.add(new Location(lat-midLat,lon-midLon,dep-midDepth));
+					double lat = tempLoc.getLatitude()+midLat;
+					double lon = tempLoc.getLongitude()+midLon;
+					double dep = tempLoc.getDepth()+midDepth;
+					double dist = getDistance(lat, lon, dep);
+					double logDist = Math.log10(dist);
+					double wt = 4d*ETAS_Utils.getHardebeckDensity(dist, etasDistDecay, etasMinDist, maxDepthKm);	// depth and cell volume not important here
+					Preconditions.checkState(Double.isFinite(wt), "bad wt=%s for dist=%s, logDist=%s", wt, dist, logDist);
+					double normWt;
+					if(logDist<logDistWeightHist.getX(0))
+						normWt = targetLogDistDecay.getY(0)/logDistWeightHist.getY(0);
+					else
+						normWt = targetLogDistDecay.getY(logDist)/logDistWeightHist.getY(logDist);
+					Preconditions.checkState(Double.isFinite(normWt), "bad normWt=%s", normWt);
+					newSampler.add(index, wt*normWt);		// add the sampler
+					index ++;
+				}
+				synchronized (subLocSamplerArray) {
+					if (subLocSamplerArray[iLat][iLon][iDepDiff][iParDep] == null) {
+						subLocSamplerArray[iLat][iLon][iDepDiff][iParDep] = newSampler;
+					}
+				}
 			}
 			
-			int randLocIndex = subLocSamplerArray[iLat][iLon][iDepDiff].getRandomInt(etas_utils.getRandomDouble());
-			loc = subLocsArray[iLat][iLon][iDepDiff].get(randLocIndex);		
+			double rand = etas_utils.getRandomDouble();
+			int randLocIndex = subLocSamplerArray[iLat][iLon][iDepDiff][iParDep].getRandomInt(rand);
+			loc = subLocsArray[iLat][iLon][iDepDiff].get(randLocIndex);
 			if(iDep-iParDep<0) { // need to flip the sign of the depth if parent/source is above
 				loc = new Location(loc.getLatitude(), loc.getLongitude(), -loc.getDepth());
 			}
@@ -357,9 +391,10 @@ public class ETAS_LocationWeightCalculator {
 			loc = new Location(0, 0, 0);	// no delta
 		}
 		// Add an additional random element
-		return new Location(loc.getLatitude()+deltaSubLatLon*(etas_utils.getRandomDouble()-0.5)*0.999,
-					loc.getLongitude()+deltaSubLatLon*(etas_utils.getRandomDouble()-0.5)*0.999,
-					loc.getDepth()+deltaDepth*(etas_utils.getRandomDouble()-0.5)*0.999);
+		double lat = loc.getLatitude()+deltaSubLatLon*(etas_utils.getRandomDouble()-0.5)*0.999;
+		double lon = loc.getLongitude()+deltaSubLatLon*(etas_utils.getRandomDouble()-0.5)*0.999;
+		depth = loc.getDepth()+deltaDepth*(etas_utils.getRandomDouble()-0.5)*0.999;
+		return new Location(lat, lon, depth);
 //		return loc;
 		
 	}
@@ -452,11 +487,16 @@ public class ETAS_LocationWeightCalculator {
 	 * the parent event epicenter (and always positive because of the quarter-space used here), 
 	 * and depth is absolute
 	 * @param parDepth
+	 * @param etas_utils - provides random numbers for reproducibility
 	 * @return
 	 */
-	public Location getRandomLoc(double parDepth) {
-		if(locationArray == null)
-			initRandomLocData();
+	public Location getRandomLoc(double parDepth, ETAS_Utils etas_utils) {
+		if(locationArray == null) {
+			synchronized (this) {
+				if (locationArray == null)
+					initRandomLocData();
+			}
+		}
 		int randInt = randLocSampler[getParDepthIndex(parDepth)].getRandomInt(etas_utils.getRandomDouble());
 		return locationArray[randInt];
 	}
@@ -468,7 +508,7 @@ public class ETAS_LocationWeightCalculator {
 			st = System.currentTimeMillis();
 		}
 		int totNumPts = numLatLon*numLatLon*numDepth;
-		locationArray = new Location[totNumPts];
+		Location[] locationArray = new Location[totNumPts];
 		randLocSampler = new IntegerPDF_FunctionSampler[numParDepth];
 		for(int iParDep=0;iParDep<numParDepth;iParDep++) {
 			randLocSampler[iParDep] = new IntegerPDF_FunctionSampler(totNumPts);
@@ -490,11 +530,11 @@ public class ETAS_LocationWeightCalculator {
 			double timeSec = ((double)(System.currentTimeMillis()-st))/1000d;
 			System.out.println("Done with initRandomLocData(); that took "+timeSec+" seconds");
 		}
-
+		this.locationArray = locationArray;
 	}
 
 
-	public void testRandomSamples(int numSamples, double parDepth) {
+	public void testRandomSamples(int numSamples, double parDepth, ETAS_Utils etas_utils) {
 		
 		//test
 //		getRandomDeltaLoc(this.getLat(0), this.getLon(1), this.getDepth(2));
@@ -539,7 +579,7 @@ public class ETAS_LocationWeightCalculator {
 			double relLat = getLat(iLatArray[sampIndex]);
 			double relLon = getLon(iLonArray[sampIndex]);
 			double depth = getDepth(iDepArray[sampIndex]);
-			Location deltaLoc=getRandomDeltaLoc(relLat, relLon, depth, parDepth);
+			Location deltaLoc=getRandomDeltaLoc(relLat, relLon, depth, parDepth, etas_utils);
 //			deltaLoc = new Location(0d,0d,0d);
 			double dist = getDistance(relLat+deltaLoc.getLatitude(), relLon+deltaLoc.getLongitude(), depth+deltaLoc.getDepth()-parDepth);
 			distArray[i]=dist;
@@ -701,13 +741,13 @@ public class ETAS_LocationWeightCalculator {
 		
 		ETAS_SimAnalysisTools.writeMemoryUse("before");
 		ETAS_LocationWeightCalculator calc = new ETAS_LocationWeightCalculator(maxDistKm, maxDepthKm, 
-					latLonDiscrDeg, depthDiscrKm, midLat, etasDistDecay, etasMinDist, new ETAS_Utils());
+					latLonDiscrDeg, depthDiscrKm, midLat, etasDistDecay, etasMinDist);
 		ETAS_SimAnalysisTools.writeMemoryUse("after");
 
 //		for(int i=0; i<=12;i++)
 //			calc.testRandomSamples(100000, i*2);
 		
-		calc.testRandomSamples(100000, 16d);
+		calc.testRandomSamples(100000, 16d, new ETAS_Utils());
 
 	}
 
