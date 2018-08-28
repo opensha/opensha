@@ -14,3 +14,62 @@ dependencies {
 
     testCompile 'junit:junit:4.12'
 }
+
+task appHCJar(type: Jar) {
+    baseName = 'HazardCurveGUI-'+getDate()+'-'+getGitHash()
+    from { configurations.compileAndResource.collect {
+        it.isDirectory() ? it : zipTree(it).matching {
+            exclude { it.path.contains('META-INF') }
+        }
+    }}
+    from { configurations.compileOnly.collect {
+        it.isDirectory() ? it : zipTree(it).matching {
+            exclude { it.path.contains('META-INF') }
+        }
+    }}
+    from(project(':opensha-commons').projectDir) {
+    	include 'build.version'
+   	}
+	manifest {
+    	attributes(
+			'Class-Path': configurations.compileAndResource.collect { it.getName() }.join(' '),
+			'Main-Class': 'org.opensha.sha.gui.HazardCurveApplication'
+		)
+	}
+    with jar
+}
+
+void createAppTask(String taskName, String prefix, String mainClass) {
+	task (taskName, type: Jar) {
+		baseName = prefix+'-'+getDate()+'-'+getGitHash()
+    	from { configurations.compileAndResource.collect {
+        	it.isDirectory() ? it : zipTree(it).matching {
+            	exclude { it.path.contains('META-INF') }
+        	}
+    	}}
+    	from { configurations.compileOnly.collect {
+	        it.isDirectory() ? it : zipTree(it).matching {
+            	exclude { it.path.contains('META-INF') }
+        	}
+    	}}
+    	from(project(':opensha-commons').projectDir) {
+	    	include 'build.version'
+	   	}
+		manifest {
+    		attributes(
+				'Class-Path': configurations.compileAndResource.collect { it.getName() }.join(' '),
+				'Main-Class': mainClass
+			)
+		}
+    	with jar
+   }
+}
+createAppTask("appJarHC", "HazardCurveGUI", "org.opensha.sha.gui.HazardCurveApplication")
+createAppTask("appJarHS", "HazardSpectrumGUI", "org.opensha.sha.gui.HazardSpectrumApplication")
+createAppTask("appJarAR", "AttenuationRelationshipGUI", "org.opensha.sha.imr.attenRelImpl.gui.AttenuationRelationshipApplet")
+createAppTask("appJarSM", "ShakeMapGUI", "org.opensha.sha.gui.ScenarioShakeMapApp")
+createAppTask("appJarSD", "SiteDataGUI", "org.opensha.commons.data.siteData.gui.SiteDataCombinedApp")
+
+task appJars(type: GradleBuild) {
+     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD']
+}
