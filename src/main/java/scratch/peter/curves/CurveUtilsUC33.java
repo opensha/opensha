@@ -61,11 +61,11 @@ import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.Interpolate;
-import org.opensha.nshmp.NEHRP_TestCity;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.util.NEHRP_TestCity;
 import org.opensha.sra.rtgm.RTGM;
 import org.opensha.sra.rtgm.RTGM.Frequency;
 

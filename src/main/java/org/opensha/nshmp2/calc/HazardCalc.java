@@ -2,9 +2,8 @@ package org.opensha.nshmp2.calc;
 
 import static org.opensha.nshmp2.util.SourceType.CLUSTER;
 import static org.opensha.nshmp2.util.SourceType.GRIDDED;
-
+import static org.opensha.sha.util.NEHRP_TestCity.*;
 import static org.opensha.nshmp2.util.Period.*;
-import static org.opensha.nshmp.NEHRP_TestCity.*;
 
 import java.awt.geom.Point2D;
 import java.util.List;
@@ -17,7 +16,6 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Location;
-import org.opensha.nshmp.NEHRP_TestCity;
 import org.opensha.nshmp2.erf.NSHMP2008;
 import org.opensha.nshmp2.erf.NSHMP_ListERF;
 import org.opensha.nshmp2.erf.source.ClusterERF;
@@ -48,6 +46,7 @@ import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
+import org.opensha.sha.util.NEHRP_TestCity;
 
 import scratch.peter.curves.ProbOfExceed;
 import scratch.peter.nshmp.DeterministicResult;
