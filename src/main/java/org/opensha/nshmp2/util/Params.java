@@ -10,7 +10,7 @@ import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.StringParameter;
-import org.opensha.nshmp.NEHRP_TestCity;
+import org.opensha.sha.util.NEHRP_TestCity;
 import org.opensha.sha.util.TectonicRegionType;
 
 /**

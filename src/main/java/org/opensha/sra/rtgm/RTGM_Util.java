@@ -14,7 +14,7 @@ import org.apache.commons.math3.special.Erf;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.Interpolate;
-import org.opensha.nshmp.NEHRP_TestCity;
+import org.opensha.sha.util.NEHRP_TestCity;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
