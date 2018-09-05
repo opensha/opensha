@@ -34,8 +34,8 @@ import javax.swing.JLabel;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.ControlPanel;
-import org.opensha.nshmp.NEHRP_TestCity;
 import org.opensha.sha.gui.beans.Site_GuiBean;
+import org.opensha.sha.util.NEHRP_TestCity;
 /**
  * <p>Title: SitesOfInterest </p>
  * <p>Description: It displays a list of interesting sites which user can choose </p>
