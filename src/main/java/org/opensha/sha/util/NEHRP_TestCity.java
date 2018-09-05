@@ -1,4 +1,4 @@
-package org.opensha.nshmp;
+package org.opensha.sha.util;
 
 import java.util.EnumSet;
 import java.util.Map;

@@ -24,7 +24,6 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
-import org.opensha.nshmp.NEHRP_TestCity;
 import org.opensha.nshmp2.util.FaultCode;
 import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.nshmp2.util.NSHMP_Utils;
@@ -33,6 +32,7 @@ import org.opensha.nshmp2.util.SourceRegion;
 import org.opensha.nshmp2.util.SourceType;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.NEHRP_TestCity;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
