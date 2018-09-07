@@ -48,7 +48,7 @@ public class CVMHBasinDepth extends AbstractBinarySiteDataLoader implements Para
 	
 	// versions
 	public enum Version {
-		VER_11_9_1("11.9.1 accessed 1/17/14 with UCVM 13.9.0", "0", new boolean[] { true, false}),
+		VER_11_9_1("11.9.1 accessed 1/17/14 with UCVM 13.9.0", "11.9.1", new boolean[] { true, false}),
 		VER_11_9_0("11.9.0 accessed 5/29/12 with UCVM 12.2.0", "11.9.0", new boolean[] { true });
 		
 		private String name, dirName;
@@ -173,19 +173,22 @@ public class CVMHBasinDepth extends AbstractBinarySiteDataLoader implements Para
 	}
 	
 	public static void main(String[] args) throws IOException {
-		CVMHBasinDepth cvmh = new CVMHBasinDepth(TYPE_DEPTH_TO_2_5, null, false);
+		CVMHBasinDepth cvmh = new CVMHBasinDepth(TYPE_DEPTH_TO_2_5);
 		
 		System.out.println(cvmh.getApplicableRegion());
-		FileWriter fw = new FileWriter(new File("/tmp/cvmh_grid_locs.txt"));
-		for (long pos=0; pos<=cvmh.maxFilePos; pos+=4) {
-			Double val = cvmh.getValue(pos);
-			long x = cvmh.calc.calcFileX(pos);
-			long y = cvmh.calc.calcFileY(pos);
-			Location loc = cvmh.calc.getLocationForPoint(x, y);
+		
+		System.out.print(cvmh.getValue(new Location(34, -118)));
+//		FileWriter fw = new FileWriter(new File("/tmp/cvmh_grid_locs.txt"));
+//		for (long pos=0; pos<=cvmh.maxFilePos; pos+=4) {
+//			Double val = cvmh.getValue(pos);
+//			long x = cvmh.calc.calcFileX(pos);
+//			long y = cvmh.calc.calcFileY(pos);
+//			Location loc = cvmh.calc.getLocationForPoint(x, y);
+//			System.out.println(loc+"\t"+val);
 //			System.out.println(loc.getLatitude() + ", " + loc.getLongitude() + ": " + val);
-			fw.write((float)loc.getLatitude()+"\t"+(float)loc.getLongitude()+"\t"+val.floatValue()+"\n");
-		}
-		fw.close();
+//			fw.write((float)loc.getLatitude()+"\t"+(float)loc.getLongitude()+"\t"+val.floatValue()+"\n");
+//		}
+//		fw.close();
 	}
 
 	@Override
