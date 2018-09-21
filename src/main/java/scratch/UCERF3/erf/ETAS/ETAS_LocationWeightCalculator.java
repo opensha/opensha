@@ -372,6 +372,8 @@ public class ETAS_LocationWeightCalculator {
 				}
 				synchronized (subLocSamplerArray) {
 					if (subLocSamplerArray[iLat][iLon][iDepDiff][iParDep] == null) {
+						// force it to update the CDF values
+						newSampler.getSumOfY_vals();
 						subLocSamplerArray[iLat][iLon][iDepDiff][iParDep] = newSampler;
 					}
 				}
@@ -530,6 +532,9 @@ public class ETAS_LocationWeightCalculator {
 			double timeSec = ((double)(System.currentTimeMillis()-st))/1000d;
 			System.out.println("Done with initRandomLocData(); that took "+timeSec+" seconds");
 		}
+		for(int iParDep=0;iParDep<numParDepth;iParDep++)
+			// force it to update the CDF cache so that we don't have thread collision later
+			randLocSampler[iParDep].getSumOfY_vals();
 		this.locationArray = locationArray;
 	}
 

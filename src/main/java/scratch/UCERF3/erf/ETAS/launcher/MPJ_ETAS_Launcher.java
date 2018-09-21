@@ -27,13 +27,14 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 		this.config = config;
 		this.shuffle = false; // execute tasks in order
 		debug("building launcher");
-		this.launcher = new ETAS_LauncherPrintWrapper(config);
+		Long randSeed = config.getRandomSeed();
+		if (randSeed == null)
+			randSeed = System.nanoTime() + (long)(rank*new Random().nextInt());
+		this.launcher = new ETAS_LauncherPrintWrapper(config, randSeed);
 		if (rank == 0)
 			this.launcher.setDebugLevel(DebugLevel.FINE);
 		else
 			this.launcher.setDebugLevel(DebugLevel.INFO);
-		
-		launcher.setRandom(new Random(System.nanoTime() + (long)(rank*new Random().nextInt())));
 		
 		if (rank == 0 && config.hasBinaryOutputFilters()) {
 			binaryWriter = new ETAS_BinaryWriter(config.getOutputDir(), config);
@@ -49,8 +50,8 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 	 */
 	private class ETAS_LauncherPrintWrapper extends ETAS_Launcher {
 
-		public ETAS_LauncherPrintWrapper(ETAS_Config config) throws IOException {
-			super(config);
+		public ETAS_LauncherPrintWrapper(ETAS_Config config, Long randSeed) throws IOException {
+			super(config, true, randSeed);
 		}
 
 		@Override

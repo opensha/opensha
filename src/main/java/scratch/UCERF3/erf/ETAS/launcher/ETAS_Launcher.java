@@ -29,6 +29,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.math3.random.RandomDataGenerator;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.util.ClassUtils;
@@ -128,7 +129,7 @@ public class ETAS_Launcher {
 	
 	private File resultsDir;
 	
-	private Random r;
+	private long[] randSeeds;
 	private ETAS_ParameterList params;
 	
 	public ETAS_Launcher(ETAS_Config config) throws IOException {
@@ -136,6 +137,10 @@ public class ETAS_Launcher {
 	}
 	
 	public ETAS_Launcher(ETAS_Config config, boolean mkdirs) throws IOException {
+		this(config, mkdirs, config.getRandomSeed());
+	}
+	
+	public ETAS_Launcher(ETAS_Config config, boolean mkdirs, Long randSeed) throws IOException {
 		ETAS_Simulator.D = false;
 		if (config.isGriddedOnly())
 			ETAS_Simulator_NoFaults.D = false;
@@ -248,7 +253,13 @@ public class ETAS_Launcher {
 		
 		griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
 		
-		r = new Random(System.nanoTime());
+		if (randSeed == null) {
+			randSeed = System.nanoTime();
+			debug("determining random seeds with current nano time="+randSeed);
+		} else {
+			debug("determining random seeds from input seed="+randSeed);
+		}
+		buildRandomSeeds(randSeed);
 		
 		params = new ETAS_ParameterList();
 		params.setImposeGR(config.isImposeGR());
@@ -265,9 +276,17 @@ public class ETAS_Launcher {
 		return new File(outputDir, "results");
 	}
 	
-	protected void setRandom(Random r) {
-		Preconditions.checkNotNull(r);
-		this.r = r;
+	private void buildRandomSeeds(long seed) {
+		randSeeds = new long[config.getNumSimulations()];
+		if (randSeeds.length == 1) {
+			randSeeds[0] = seed;
+		} else {
+			// seed random number generator with this seed to determine reproducible seeds for all simulations
+			RandomDataGenerator r = new RandomDataGenerator();
+			r.reSeed(seed);
+			for (int i=0; i<config.getNumSimulations(); i++)
+				randSeeds[i] = r.nextLong(Long.MIN_VALUE, Long.MAX_VALUE);
+		}
 	}
 	
 	public void debug(String message) {
@@ -538,13 +557,10 @@ public class ETAS_Launcher {
 	private class CalcRunnable implements Callable<Integer> {
 		
 		private int index;
-		private Long randSeed;
-		
-		public CalcRunnable(int index) {
-			this(index, null);
-		}
+		private long randSeed;
 
-		public CalcRunnable(int index, Long randSeed) {
+		public CalcRunnable(int index, long randSeed) {
+			Preconditions.checkArgument(index >= 0);
 			this.index = index;
 			this.randSeed = randSeed;
 		}
@@ -563,7 +579,7 @@ public class ETAS_Launcher {
 			
 			debug("calculating "+index);
 
-			debug("Instantiationg ERF");
+			debug("Instantiating ERF");
 			AbstractERF erf;
 			FaultSystemSolution sol = null;
 			if (config.isGriddedOnly()) {
@@ -575,20 +591,21 @@ public class ETAS_Launcher {
 			erf.updateForecast();
 
 			debug("Done instantiating ERF");
-
-			if (randSeed == null) {
-				// redo with the previous random seed to avoid bias towards shorter running jobs in cases
+			
+			if (config.getRandomSeed() == null) {
+				// detect previous random seed to avoid bias towards shorter running jobs in cases
 				// with many restarts (as shorter jobs more likely to finish before wall time is up).
+				Long prevRandSeed;
 				try {
-					randSeed = getPrevRandSeed(resultsDir);
+					prevRandSeed = getPrevRandSeed(resultsDir);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 				
-				if (randSeed != null)
+				if (prevRandSeed != null) {
+					randSeed = prevRandSeed;
 					debug("Resuming old rand seed of "+randSeed+" for "+resultsDir.getName());
-				else
-					randSeed = r.nextLong();
+				}
 			}
 			
 			boolean success = false;
@@ -746,16 +763,13 @@ public class ETAS_Launcher {
 	void calculate(int numThreads, int[] batch, ETAS_BinaryWriter binaryWriter) {
 		ArrayList<CalcRunnable> tasks = new ArrayList<>();
 		
-		Long randSeed = config.getRandomSeed();
-		Preconditions.checkState(randSeed == null || config.getNumSimulations() == 1, "Can only specify a random seed with numSimulations=1");
-		
 		if (batch != null && batch.length > 0) {
 			// we're doing a fixed index/batch
 			for (int index : batch)
-				tasks.add(new CalcRunnable(index, randSeed));
+				tasks.add(new CalcRunnable(index, randSeeds[index]));
 		} else {
 			for (int index=0; index<config.getNumSimulations(); index++)
-				tasks.add(new CalcRunnable(index, randSeed));
+				tasks.add(new CalcRunnable(index, randSeeds[index]));
 		}
 		
 		if (numThreads > threadLimit) {

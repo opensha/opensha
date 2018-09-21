@@ -159,6 +159,8 @@ class ETAS_ConfigExamplesWriter {
 		int startYear = 2018;
 		boolean includeSpontaneous = false;
 		
+		long randSeed = 123456789;
+		
 		File outputDir = new File("$ETAS_LAUNCHER/tutorial/user_output/mojave_m7");
 		ETAS_Config config = new ETAS_Config(numSimulations, simDuration, includeSpontaneous, cacheDir, fssFile, outputDir);
 		
@@ -166,6 +168,7 @@ class ETAS_ConfigExamplesWriter {
 		config.setStartYear(startYear);
 		config.addTriggerRupture(new TriggerRupture.FSS(193821));
 		config.buildDefaultBinaryOutputFilters();
+		config.setRandomSeed(randSeed);
 		
 		config.writeJSON(new File(tutorialsDir, "mojave_m7_example.json"));
 		
@@ -180,6 +183,7 @@ class ETAS_ConfigExamplesWriter {
 		config.setSimulationName("Spontaneous Only");
 		config.setStartYear(startYear);
 		config.buildDefaultBinaryOutputFilters();
+		config.setRandomSeed(randSeed);
 		
 		config.writeJSON(new File(tutorialsDir, "spontaneous_only_example.json"));
 		
@@ -195,6 +199,7 @@ class ETAS_ConfigExamplesWriter {
 		config.setStartYear(startYear);
 		config.setTriggerCatalog(new File("$ETAS_LAUNCHER/inputs/u3_historical_catalog.txt"));
 		config.buildDefaultBinaryOutputFilters();
+		config.setRandomSeed(randSeed);
 		
 		config.writeJSON(new File(tutorialsDir, "input_catalog_with_spontaneous_example.json"));
 	}

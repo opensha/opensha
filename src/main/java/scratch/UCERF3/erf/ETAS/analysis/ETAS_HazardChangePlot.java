@@ -38,6 +38,7 @@ import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
@@ -245,9 +246,12 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				double u3Prob;
 				try {
 					u3Prob = addToSimFuncs[m].getInterpolatedY_inLogXLogYDomain(duration);
+					Preconditions.checkState(Double.isFinite(u3Prob));
 				} catch (Exception e) {
 					u3Prob = addToSimFuncs[m].getInterpolatedY(duration);
 				}
+				Preconditions.checkState(Double.isFinite(u3Prob) && u3Prob >= 0 && u3Prob <= 1d,
+						"Bad U3 prob: %s\n\n$s", u3Prob, addToSimFuncs[m]);
 				double simProb = (double)numWith/(double)totalNum;
 				
 				double[] conf = ETAS_Utils.getBinomialProportion95confidenceInterval(simProb, totalNum);
@@ -378,9 +382,9 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		}
 		Preconditions.checkState(!sourceIDs.isEmpty(), "No UCERF3 source IDs found inside of trigger region!");
 		
-		ArbitrarilyDiscretizedFunc[] ret = new ArbitrarilyDiscretizedFunc[minMags.length];
-		for (int m=0; m<ret.length; m++)
-			ret[m] = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc[] funcs = new ArbitrarilyDiscretizedFunc[minMags.length];
+		for (int m=0; m<funcs.length; m++)
+			funcs[m] = new ArbitrarilyDiscretizedFunc();
 		
 		ArrayDeque<FaultSystemSolutionERF_ETAS> erfDeque = new ArrayDeque<>();
 		erfDeque.push(erf);
@@ -393,7 +397,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		List<Future<?>> futures = new ArrayList<>();
 		
 		for (int t=0; t<u3TimesFunc.size(); t++)
-			futures.add(exec.submit(new U3CalcRunnable(fss, timeIndep, sourceIDs, erfDeque, u3TimesFunc.getX(t), ret)));
+			futures.add(exec.submit(new U3CalcRunnable(fss, timeIndep, sourceIDs, erfDeque, u3TimesFunc.getX(t), funcs)));
 		
 		for (Future<?> future : futures) {
 			try {
@@ -405,7 +409,41 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		
 		exec.shutdown();
 		
-		return ret;
+		// now smooth the coarse UCERF3 functions assuming an exponential form
+		HashSet<Double> smoothedXVals = new HashSet<>();
+		for (int i=0; i<etasTimesFunc.size(); i++)
+			smoothedXVals.add(etasTimesFunc.getX(i));
+		for (int i=0; i<u3TimesFunc.getX(i); i++)
+			smoothedXVals.add(u3TimesFunc.getX(i));
+		
+		ArbitrarilyDiscretizedFunc[] smoothed = new ArbitrarilyDiscretizedFunc[funcs.length];
+		for (int m=0; m<funcs.length; m++) {
+			ArbitrarilyDiscretizedFunc rateFunc = new ArbitrarilyDiscretizedFunc();
+			for (int i=0; i<funcs[m].size(); i++) {
+				double time = funcs[m].getX(i);
+				double prob = funcs[m].getY(i);
+				if (prob == 1d)
+					// edge case where the implied rate is high enough that the probability is 1
+					prob -= 1e-10;
+				double rate = -Math.log(1 - prob)/time;
+				rateFunc.set(time, rate);
+			}
+			System.out.println(rateFunc);
+			smoothed[m] = new ArbitrarilyDiscretizedFunc();
+			for (double x : smoothedXVals) {
+				double smoothedRate = rateFunc.getInterpolatedY(x);
+				double smoothedProb;
+				if (Double.isInfinite(smoothedRate))
+					smoothedProb = 1d;
+				else
+					smoothedProb = 1d - Math.exp(-smoothedRate*x);
+				Preconditions.checkState(Double.isFinite(smoothedProb),
+						"Bad smoothed prob! 1-e^(-%s*%s)=%s", smoothedRate, x, smoothedProb);
+				smoothed[m].set(x, smoothedProb);
+			}
+		}
+		
+		return smoothed;
 	}
 	
 	private class U3CalcRunnable implements Runnable {

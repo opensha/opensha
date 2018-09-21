@@ -23,6 +23,7 @@ import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
@@ -313,48 +314,53 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	}
 	
 	public static void main(String[] args) throws IOException, DocumentException {
-//		File fssFile = new File("/tmp/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_" +
-//				"NoFix_SpatSeisU3_VarPaleo0.6_VarSmoothPaleoSect1000_VarSectNuclMFDWt0.01_sol.zip");
-		File fssFile = new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/"
-				+ "InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
-		InversionFaultSystemSolution ivfss = FaultSystemIO.loadInvSol(fssFile);
-		GridSourceProvider sourceProv = ivfss.getGridSourceProvider();
-		System.out.println("Saving");
-//		File gridSourcesFile = new File("/tmp/grid_sources.xml");
-//		writeGriddedSeisFile(gridSourcesFile, sourceProv);
+		File dataDir = new File("/home/kevin/OpenSHA/UCERF3/fss_csvs");
+		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip");
+		File outputFile = new File(dataDir, solFile.getName().replaceAll(".zip", "")+"_grid_sources.xml");
+		FaultSystemSolution fss = FaultSystemIO.loadSol(solFile);
+		writeGriddedSeisFile(outputFile, fss.getGridSourceProvider());
+////		File fssFile = new File("/tmp/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_" +
+////				"NoFix_SpatSeisU3_VarPaleo0.6_VarSmoothPaleoSect1000_VarSectNuclMFDWt0.01_sol.zip");
+//		File fssFile = new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/"
+//				+ "InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
+//		InversionFaultSystemSolution ivfss = FaultSystemIO.loadInvSol(fssFile);
+//		GridSourceProvider sourceProv = ivfss.getGridSourceProvider();
+//		System.out.println("Saving");
+////		File gridSourcesFile = new File("/tmp/grid_sources.xml");
+////		writeGriddedSeisFile(gridSourcesFile, sourceProv);
+////		
+////		System.out.println("Loading");
+////		GridSourceFileReader reader = fromFile(gridSourcesFile);
+//		
+//		File gridSourcesRegionFile = new File("/tmp/grid_sources_reg.xml");
+//		File gridSourcesBinFile = new File("/tmp/grid_sources.bin");
+//		writeGriddedSeisBinFile(gridSourcesBinFile, gridSourcesRegionFile, sourceProv, 0d);
 //		
 //		System.out.println("Loading");
-//		GridSourceFileReader reader = fromFile(gridSourcesFile);
-		
-		File gridSourcesRegionFile = new File("/tmp/grid_sources_reg.xml");
-		File gridSourcesBinFile = new File("/tmp/grid_sources.bin");
-		writeGriddedSeisBinFile(gridSourcesBinFile, gridSourcesRegionFile, sourceProv, 0d);
-		
-		System.out.println("Loading");
-		GridSourceFileReader reader = fromBinFile(gridSourcesBinFile, gridSourcesRegionFile);
-		System.out.println("DONE");
-		
-		for (int i=0; i<sourceProv.getGriddedRegion().getNumLocations(); i++) {
-			IncrementalMagFreqDist nodeSubSeisMFD = sourceProv.getNodeSubSeisMFD(i);
-			IncrementalMagFreqDist nodeUnassociatedMFD = sourceProv.getNodeUnassociatedMFD(i);
-			
-			if (nodeSubSeisMFD == null || nodeSubSeisMFD.getMaxY() == 0) {
-				Preconditions.checkState(reader.getNodeSubSeisMFD(i) == null);
-			} else {
-				Preconditions.checkNotNull(reader.getNodeSubSeisMFD(i), i+". Was supposed to be size "+nodeSubSeisMFD.size()
-						+" tot "+(float)nodeSubSeisMFD.getTotalIncrRate()+", was null");
-				Preconditions.checkState((float)nodeSubSeisMFD.getTotalIncrRate() ==
-						(float)reader.getNodeSubSeisMFD(i).getTotalIncrRate());
-			}
-			if (nodeUnassociatedMFD == null || nodeUnassociatedMFD.getMaxY() == 0) {
-				Preconditions.checkState(reader.getNodeUnassociatedMFD(i) == null);
-			} else {
-				Preconditions.checkNotNull(reader.getNodeUnassociatedMFD(i));
-				Preconditions.checkState((float)nodeUnassociatedMFD.getTotalIncrRate() ==
-						(float)reader.getNodeUnassociatedMFD(i).getTotalIncrRate());
-			}
-		}
-		System.out.println("Validated");
+//		GridSourceFileReader reader = fromBinFile(gridSourcesBinFile, gridSourcesRegionFile);
+//		System.out.println("DONE");
+//		
+//		for (int i=0; i<sourceProv.getGriddedRegion().getNumLocations(); i++) {
+//			IncrementalMagFreqDist nodeSubSeisMFD = sourceProv.getNodeSubSeisMFD(i);
+//			IncrementalMagFreqDist nodeUnassociatedMFD = sourceProv.getNodeUnassociatedMFD(i);
+//			
+//			if (nodeSubSeisMFD == null || nodeSubSeisMFD.getMaxY() == 0) {
+//				Preconditions.checkState(reader.getNodeSubSeisMFD(i) == null);
+//			} else {
+//				Preconditions.checkNotNull(reader.getNodeSubSeisMFD(i), i+". Was supposed to be size "+nodeSubSeisMFD.size()
+//						+" tot "+(float)nodeSubSeisMFD.getTotalIncrRate()+", was null");
+//				Preconditions.checkState((float)nodeSubSeisMFD.getTotalIncrRate() ==
+//						(float)reader.getNodeSubSeisMFD(i).getTotalIncrRate());
+//			}
+//			if (nodeUnassociatedMFD == null || nodeUnassociatedMFD.getMaxY() == 0) {
+//				Preconditions.checkState(reader.getNodeUnassociatedMFD(i) == null);
+//			} else {
+//				Preconditions.checkNotNull(reader.getNodeUnassociatedMFD(i));
+//				Preconditions.checkState((float)nodeUnassociatedMFD.getTotalIncrRate() ==
+//						(float)reader.getNodeUnassociatedMFD(i).getTotalIncrRate());
+//			}
+//		}
+//		System.out.println("Validated");
 	}
 	
 	@Override

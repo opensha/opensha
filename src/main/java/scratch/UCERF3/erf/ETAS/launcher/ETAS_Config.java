@@ -133,6 +133,34 @@ public class ETAS_Config {
 		return gson;
 	}
 	
+	public static File resolvePath(String path) {
+		return resolvePath(path, System.getenv());
+	}
+	
+	private static File resolvePath(String path, Map<String, String> env) {
+		while (path.contains("$")) {
+			int index = path.indexOf("$");
+			Preconditions.checkState(index < path.length()-1, "path cannot end with a '$'");
+			String replaceStr = path.substring(index);
+			String var;
+			if (replaceStr.charAt(1) == '{') {
+				Preconditions.checkState(replaceStr.contains("}"));
+				replaceStr = replaceStr.substring(0, replaceStr.indexOf("}")+1);
+				var = replaceStr.substring(2, replaceStr.length()-1);
+			} else {
+				if (replaceStr.contains(File.separator))
+					replaceStr = replaceStr.substring(0, replaceStr.indexOf(File.separator));
+				var = replaceStr.substring(1);
+			}
+			String value = env.get(var);
+			System.out.println("Path ('"+path+"') contains environmental variable ('"+var+"')");
+			Preconditions.checkNotNull(value, "Environmental variable %s not found! Can't build path", var);
+			path = path.replace(replaceStr, value);
+			System.out.println("\treplacing '"+replaceStr+"' with '"+value+"': "+path);
+		}
+		return new File(path);
+	}
+	
 	private static class FileTypeAdapter extends TypeAdapter<File> {
 		
 		private Map<String, String> env;
@@ -148,28 +176,7 @@ public class ETAS_Config {
 
 		@Override
 		public File read(JsonReader in) throws IOException {
-			String path = in.nextString();
-			while (path.contains("$")) {
-				int index = path.indexOf("$");
-				Preconditions.checkState(index < path.length()-1, "path cannot end with a '$'");
-				String replaceStr = path.substring(index);
-				String var;
-				if (replaceStr.charAt(1) == '{') {
-					Preconditions.checkState(replaceStr.contains("}"));
-					replaceStr = replaceStr.substring(0, replaceStr.indexOf("}")+1);
-					var = replaceStr.substring(2, replaceStr.length()-1);
-				} else {
-					if (replaceStr.contains(File.separator))
-						replaceStr = replaceStr.substring(0, replaceStr.indexOf(File.separator));
-					var = replaceStr.substring(1);
-				}
-				String value = env.get(var);
-				System.out.println("Path ('"+path+"') contains environmental variable ('"+var+"')");
-				Preconditions.checkNotNull(value, "Environmental variable %s not found! Can't build path", var);
-				path = path.replace(replaceStr, value);
-				System.out.println("\treplacing '"+replaceStr+"' with '"+value+"': "+path);
-			}
-			return new File(path);
+			return resolvePath(in.nextString(), env);
 		}
 		
 	}
@@ -411,10 +418,12 @@ public class ETAS_Config {
 	public boolean isIncludeSpontaneous() {
 		return includeSpontaneous;
 	}
+	
+	public void setRandomSeed(Long randomSeed) {
+		this.randomSeed = randomSeed;
+	}
 
 	public Long getRandomSeed() {
-		Preconditions.checkState(randomSeed == null || getNumSimulations() == 1,
-				"randomSeed field only applicable for single simulation runs");
 		return randomSeed;
 	}
 	
