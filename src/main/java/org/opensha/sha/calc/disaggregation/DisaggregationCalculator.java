@@ -31,8 +31,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.swing.JOptionPane;
-
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
@@ -40,11 +38,11 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
 import org.opensha.sha.calc.params.MagDistCutoffParam;
 import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
-import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
 import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
 import org.opensha.sha.earthquake.AbstractERF;
@@ -53,7 +51,6 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
-import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.util.TRTUtils;
@@ -156,6 +153,15 @@ implements DisaggregationCalculatorAPI{
 		setDistanceRange(5, 11, 10);
 		
 		//Create adjustable parameters
+	}
+	
+	/**
+	 * @return Default parameters required by disaggregate() below, obtained from a Hazard Curve Calculator instance
+	 */
+	public static ParameterList getDefaultParams() {
+		ParameterList disaggParams = new HazardCurveCalculator().getAdjustableParams();
+		
+		return disaggParams;
 	}
 
 	/**
