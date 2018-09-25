@@ -25,6 +25,7 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.region.CaliforniaRegions.RELM_TESTING_GRIDDED;

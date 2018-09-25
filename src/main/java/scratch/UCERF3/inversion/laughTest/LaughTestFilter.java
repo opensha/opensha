@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.collect.Lists;
@@ -15,7 +16,6 @@ import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
-import scratch.UCERF3.utils.IDPairing;
 
 public class LaughTestFilter implements XMLSaveable {
 	

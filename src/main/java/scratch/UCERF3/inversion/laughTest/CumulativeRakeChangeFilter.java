@@ -3,9 +3,8 @@ package scratch.UCERF3.inversion.laughTest;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-
-import scratch.UCERF3.utils.IDPairing;
 
 /**
  * This filter keeps track of the cumulative rake changes along a rupture and stops the

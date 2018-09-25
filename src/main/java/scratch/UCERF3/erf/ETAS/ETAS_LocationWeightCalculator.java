@@ -9,6 +9,7 @@ import java.util.List;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import org.apache.commons.math3.util.ArithmeticUtils;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 

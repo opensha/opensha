@@ -21,6 +21,7 @@ import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.nshmp2.erf.source.PointSource13b;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -63,7 +64,6 @@ import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSystemIO;
-import scratch.UCERF3.utils.IDPairing;
 
 public class FSS_ERF_ParamTest {
 	

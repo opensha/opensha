@@ -1,8 +1,8 @@
 package scratch.UCERF3.inversion.coulomb;
 
-import com.google.common.base.Preconditions;
+import org.opensha.commons.util.IDPairing;
 
-import scratch.UCERF3.utils.IDPairing;
+import com.google.common.base.Preconditions;
 
 public class CoulombRatesRecord {
 	

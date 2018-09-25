@@ -4,11 +4,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.base.Preconditions;
-
-import scratch.UCERF3.utils.IDPairing;
 
 /**
  * This restricts the maximum azimuth change of any junction in the rupture. Azimuth

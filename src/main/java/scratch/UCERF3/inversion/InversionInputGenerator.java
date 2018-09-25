@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -30,7 +31,6 @@ import cern.colt.matrix.tdouble.impl.SparseRCDoubleMatrix2D;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
-import scratch.UCERF3.utils.IDPairing;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.SectionMFD_constraint;

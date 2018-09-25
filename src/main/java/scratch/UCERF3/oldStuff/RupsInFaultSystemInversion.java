@@ -25,6 +25,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.SegRateConstraint;
 import org.opensha.commons.gui.plot.GraphWindow;
@@ -34,7 +35,6 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.simulatedAnnealing.SerialSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
-import scratch.UCERF3.utils.IDPairing;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 

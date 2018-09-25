@@ -16,6 +16,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.simulators.SimulatorEvent;
 import org.opensha.sha.simulators.EventRecord;
@@ -37,7 +38,6 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.utils.FaultSystemIO;
-import scratch.UCERF3.utils.IDPairing;
 
 public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 	

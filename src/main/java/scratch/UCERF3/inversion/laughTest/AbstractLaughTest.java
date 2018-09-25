@@ -3,9 +3,8 @@ package scratch.UCERF3.inversion.laughTest;
 import java.util.List;
 
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-
-import scratch.UCERF3.utils.IDPairing;
 
 import com.google.common.collect.Lists;
 

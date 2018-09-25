@@ -23,6 +23,7 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.IDPairing;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -43,7 +44,6 @@ import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.IDPairing;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.FaultSystemIO;

@@ -16,9 +16,9 @@ import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
+import org.opensha.commons.util.IDPairing;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.utils.IDPairing;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Preconditions;

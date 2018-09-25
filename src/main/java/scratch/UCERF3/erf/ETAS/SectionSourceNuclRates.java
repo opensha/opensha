@@ -3,6 +3,8 @@ package scratch.UCERF3.erf.ETAS;
 import java.util.Arrays;
 import java.util.Collection;
 
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 

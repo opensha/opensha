@@ -6,6 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.util.ExceptionUtils;
 
 import com.google.common.base.Preconditions;

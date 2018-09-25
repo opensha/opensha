@@ -5,11 +5,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.collect.Maps;
-
-import scratch.UCERF3.utils.IDPairing;
 
 public class MinSectsPerParentFilter {
 	

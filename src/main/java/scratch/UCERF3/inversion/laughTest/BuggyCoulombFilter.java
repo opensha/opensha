@@ -3,6 +3,7 @@ package scratch.UCERF3.inversion.laughTest;
 import java.util.HashSet;
 import java.util.List;
 
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.base.Joiner;
@@ -11,7 +12,6 @@ import com.google.common.collect.Lists;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesRecord;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
-import scratch.UCERF3.utils.IDPairing;
 
 /**
  * This is the buggy coulomb filter used in UCERF3.2 and below, kept for compatibility

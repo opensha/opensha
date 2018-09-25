@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.base.Preconditions;
@@ -18,7 +19,6 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.IDPairing;
 
 public class SectionClusterList extends ArrayList<SectionCluster> {
 	

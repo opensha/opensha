@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.base.Joiner;
@@ -23,7 +24,6 @@ import scratch.UCERF3.inversion.laughTest.BuggyCoulombFilter;
 import scratch.UCERF3.inversion.laughTest.CoulombFilter;
 import scratch.UCERF3.inversion.laughTest.AbstractLaughTest;
 import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
-import scratch.UCERF3.utils.IDPairing;
 
 /**
  * 

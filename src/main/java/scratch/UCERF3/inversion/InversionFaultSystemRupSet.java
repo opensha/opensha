@@ -20,6 +20,7 @@ import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.Shaw_2009_
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -48,7 +49,6 @@ import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
 import scratch.UCERF3.utils.FaultSectionDataWriter;
-import scratch.UCERF3.utils.IDPairing;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 
 /**

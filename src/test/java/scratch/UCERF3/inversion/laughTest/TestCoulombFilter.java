@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
@@ -13,7 +14,6 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesRecord;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 import scratch.UCERF3.inversion.laughTest.CoulombFilter;
-import scratch.UCERF3.utils.IDPairing;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
