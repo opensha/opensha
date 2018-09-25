@@ -25,14 +25,13 @@ import java.util.List;
 
 import org.opensha.commons.data.Named;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.util.TectonicRegionType;
-
-import scratch.UCERF3.erf.ETAS.IntegerPDF_FunctionSampler;
 /**
  * <p>Title: ProbEqkSource</p>
  * <p>Description: Class for Probabilistic earthquake source.
