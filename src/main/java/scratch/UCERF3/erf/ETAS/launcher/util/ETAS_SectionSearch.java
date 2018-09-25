@@ -79,7 +79,7 @@ public class ETAS_SectionSearch {
 		args = cmd.getArgs();
 		
 		if (args.length != 1) {
-			System.err.println("USAGE: "+ClassUtils.getClassNameWithoutPackage(ETAS_Launcher.class)
+			System.err.println("USAGE: "+ClassUtils.getClassNameWithoutPackage(ETAS_SectionSearch.class)
 					+" [options] <fss_file.zip>");
 			System.exit(2);
 		}

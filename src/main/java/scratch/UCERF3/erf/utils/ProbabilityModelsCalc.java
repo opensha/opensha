@@ -3212,7 +3212,8 @@ public class ProbabilityModelsCalc {
 			info_fr.write("\t"+param.getName()+" = "+param.getValue()+"\n");
 		}
 		TimeSpan tsp = erf.getTimeSpan();
-		info_fr.write("\nERF StartTime: "+tsp.getStartTimeYear()+"\n");
+		if (!tsp.getStartTimePrecision().equals(TimeSpan.NONE))
+			info_fr.write("\nERF StartTime: "+tsp.getStartTimeYear()+"\n");
 		info_fr.write("\nERF TimeSpan Duration: "+erf.getTimeSpan().getDuration()+" years\n");
 
 		info_fr.flush();
