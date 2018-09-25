@@ -139,7 +139,7 @@ extends HttpServlet {
 		doGet(request, response);
 	}
 	
-	private static String getPlotDirName(String plotDirName) {
+	private static File getPlotDir(String plotDirName) {
 		if (plotDirName != null) {
 			File f = new File(GMT_DATA_DIR, plotDirName);
 			int fileCounter = 1;
@@ -150,18 +150,30 @@ extends HttpServlet {
 				f = new File(GMT_DATA_DIR, modPlotDirName);
 				++fileCounter;
 			}
-			return modPlotDirName;
+			return f;
 		}
 		else {
-			return "" + System.currentTimeMillis();
+			return createUniqueDir(GMT_DATA_DIR);
 		}
+	}
+	
+	public static synchronized File createUniqueDir(File parentDir) {
+		int count = 0;
+		long millis = System.currentTimeMillis();
+		File newDir = new File(parentDir, millis+"");
+		while (newDir.exists()) {
+			count++;
+			newDir = new File(parentDir, millis+"_"+count);
+		}
+		Preconditions.checkState(!newDir.exists());
+		Preconditions.checkState(newDir.mkdir());
+		return newDir;
 	}
 	
 	public static String createMap(SecureMapGenerator gmt, GMT_Map map, String plotDirName, String metadata,
 			String metadataFileName) throws IOException, GMT_MapException {
 		//Name of the directory in which we are storing all the gmt data for the user
-		plotDirName = getPlotDirName(plotDirName);
-		File newDir = new File(GMT_DATA_DIR, plotDirName);
+		File newDir = getPlotDir(plotDirName);
 
 		//create a gmt directory for each user in which all his gmt files will be stored
 		Preconditions.checkState(newDir.exists() || newDir.mkdir());
