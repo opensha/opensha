@@ -69,12 +69,6 @@ extends HttpServlet {
 		ObjectOutputStream outputToApplet = new ObjectOutputStream(response.
 				getOutputStream());
 
-		//gets the current time in milliseconds to be the new director for each user
-		String currentMilliSec = "";
-		currentMilliSec += System.currentTimeMillis();
-		//Name of the directory in which we are storing all the gmt data for the user
-		File newDir = null;
-
 		try {
 			//create the main directory if it does not exist already
 			if (!GMT_DATA_DIR.exists())
@@ -85,7 +79,8 @@ extends HttpServlet {
 			ObjectInputStream inputFromApplet = new ObjectInputStream(request.
 					getInputStream());
 
-			newDir = new File(GMT_DATA_DIR, currentMilliSec);
+			//Name of the directory in which we are storing all the gmt data for the user
+			File newDir = GMT_MapGeneratorServlet.createUniqueDir(GMT_DATA_DIR);
 
 			//create a gmt directory for each user in which all his gmt files will be stored
 			Preconditions.checkState(newDir.exists() || newDir.mkdir());
@@ -140,7 +135,7 @@ extends HttpServlet {
 			FileUtils.createZipFile(newDir.getAbsolutePath());
 			//URL path to folder where all GMT related files and map data file for this
 			//calculations reside.
-			String mapImagePath = GMT_URL_PATH+currentMilliSec+SystemUtils.FILE_SEPARATOR;
+			String mapImagePath = GMT_URL_PATH+newDir.getName()+File.separator;
 			System.out.println("DisaggregationPlotServlet: sending image path to application");
 			//returns the URL to the folder where map image resides
 			outputToApplet.writeObject(mapImagePath);
