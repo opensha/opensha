@@ -1,11 +1,9 @@
-package scratch.UCERF3.erf.ETAS;
+package org.opensha.commons.data.function;
 
 import java.awt.geom.Point2D;
 import java.util.Collections;
 import java.util.List;
 
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.util.ComparablePairing;
 
 import com.google.common.base.Joiner;

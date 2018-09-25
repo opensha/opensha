@@ -5,8 +5,7 @@ import java.util.concurrent.ExecutionException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.ExceptionUtils;
-
-import scratch.UCERF3.utils.IDPairing;
+import org.opensha.commons.util.IDPairing;
 
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;

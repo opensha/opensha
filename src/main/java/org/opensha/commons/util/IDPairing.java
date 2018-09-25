@@ -1,4 +1,4 @@
-package scratch.UCERF3.utils;
+package org.opensha.commons.util;
 
 import java.io.Serializable;
 
