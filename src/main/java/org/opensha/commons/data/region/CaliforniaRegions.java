@@ -287,7 +287,7 @@ public class CaliforniaRegions {
 	}
 	
 	/** 
-	 * A box defining the region of the CyberShake 1.0 map region
+	 * A box defining the region of the CyberShake CCA map region
 	 */
 	public static final class CYBERSHAKE_CCA_MAP_REGION extends Region {
 		/** New instance of region. */
@@ -299,12 +299,24 @@ public class CaliforniaRegions {
 	}
 	
 	/** 
-	 * A box defining the region of the CyberShake 1.0 map region
+	 * A box defining the region of the CyberShake CCA map region
 	 */
 	public static final class CYBERSHAKE_CCA_MAP_GRIDDED extends GriddedRegion {
 		/** New instance of region. */
 		public CYBERSHAKE_CCA_MAP_GRIDDED(double spacing) {
 			super(new CYBERSHAKE_CCA_MAP_REGION(), spacing, null);
+		}
+	}
+	
+	/** 
+	 * A box defining the region of the CyberShake Bay Area map region
+	 */
+	public static final class CYBERSHAKE_BAY_AREA_MAP_REGION extends Region {
+		/** New instance of region. */
+		public CYBERSHAKE_BAY_AREA_MAP_REGION() {
+			super(readCoords("CyberShake_Map_BayArea.coords"), 
+					BorderType.MERCATOR_LINEAR);
+			this.setName("CyberShake Bay Area Map Region");
 		}
 	}
 
