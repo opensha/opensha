@@ -174,6 +174,7 @@ extends HttpServlet {
 			String metadataFileName) throws IOException, GMT_MapException {
 		//Name of the directory in which we are storing all the gmt data for the user
 		File newDir = getPlotDir(plotDirName);
+		plotDirName = newDir.getName();
 
 		//create a gmt directory for each user in which all his gmt files will be stored
 		Preconditions.checkState(newDir.exists() || newDir.mkdir());
