@@ -770,16 +770,15 @@ public class CurveUtilsUC33 {
 				MAG_7p3, MAG_7p6, MAG_7p9,
 				UCERF2, UCERF3);
 	
-	@SuppressWarnings("unchecked")
 	private static List<? extends Class<? extends LogicTreeBranchNode<?>>> UC33classList =
 			Lists.newArrayList(
-				FaultModels.class,
-				DeformationModels.class,
-				ScalingRelationships.class,
-				SlipAlongRuptureModels.class,
-				TotalMag5Rate.class,
-				MaxMagOffFault.class,
-				SpatialSeisPDF.class);
+				(Class<? extends LogicTreeBranchNode<?>>)FaultModels.class,
+				(Class<? extends LogicTreeBranchNode<?>>)DeformationModels.class,
+				(Class<? extends LogicTreeBranchNode<?>>)ScalingRelationships.class,
+				(Class<? extends LogicTreeBranchNode<?>>)SlipAlongRuptureModels.class,
+				(Class<? extends LogicTreeBranchNode<?>>)TotalMag5Rate.class,
+				(Class<? extends LogicTreeBranchNode<?>>)MaxMagOffFault.class,
+				(Class<? extends LogicTreeBranchNode<?>>)SpatialSeisPDF.class);
 
 	// creates and writes a table of flags indicating which nodes are used
 	// in a branch; this simplifies process of building histograms in Matlab
