@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Random;
+import java.util.TimeZone;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -19,13 +20,17 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
+import org.opensha.sha.earthquake.param.BackgroundRupParam;
+import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityOptions;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.PointSurface;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -61,9 +66,14 @@ public class U3TD_ComparisonLauncher {
 		ops.addOption(durationOption);
 		
 		Option tiOption = new Option("ti", "time-independent", false,
-				"If true, time-independent model used. Simulations will start at 1/1/1970");
+				"If supplied, time-independent model used. Simulations will start at 1/1/1970");
 		tiOption.setRequired(false);
 		ops.addOption(tiOption);
+		
+		Option griddedOption = new Option("g", "gridded", false,
+				"If supplied, gridded ruptures will be included");
+		griddedOption.setRequired(false);
+		ops.addOption(griddedOption);
 		
 		Option covOption = new Option("c", "cov", true,
 				"COV option for time dependent model. One of: LOW_VALUES, MID_VALUES, HIGH_VALUES. Default: "+COV_DEFAULT.name());
@@ -75,11 +85,12 @@ public class U3TD_ComparisonLauncher {
 
 	public static void main(String[] args) {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
-			String argsStr = "--duration 3 --fss-file /home/kevin/git/ucerf3-etas-launcher/inputs/"
+			String argsStr = "--duration 10 --fss-file /home/kevin/git/ucerf3-etas-launcher/inputs/"
 					+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"
-					+ " --start-year 2017"
+//					+ " --start-year 2017"
 					+ " --cov MID_VALUES"
 					+ " --time-independent"
+					+ " --gridded"
 					+ " /tmp/td_sim";
 			args = argsStr.split(" ");
 		}
@@ -124,8 +135,19 @@ public class U3TD_ComparisonLauncher {
 		System.out.println("Building ERF");
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fss);
 		
+		GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+		int startYear;
+		if (cmd.hasOption("start-year")) {
+			startYear = Integer.parseInt(cmd.getOptionValue("start-year"));
+			cal.clear();
+			cal.set(startYear, 0, 1);
+		} else {
+			startYear = cal.get(GregorianCalendar.YEAR);
+		}
+		
 		if (ti) {
 			erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
+			System.out.println("startYear: "+startYear);
 		} else {
 			erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_BPT);
 			MagDependentAperiodicityOptions cov = COV_DEFAULT;
@@ -133,15 +155,15 @@ public class U3TD_ComparisonLauncher {
 				cov = MagDependentAperiodicityOptions.valueOf(cmd.getOptionValue("cov"));
 			erf.setParameter(MagDependentAperiodicityParam.NAME, cov);
 			
-			int startYear;
-			if (cmd.hasOption("start-year"))
-				startYear = Integer.parseInt(cmd.getOptionValue("start-year"));
-			else
-				startYear = new GregorianCalendar().get(GregorianCalendar.YEAR);
 			erf.getTimeSpan().setStartTime(startYear);
 			System.out.println("startYear: "+erf.getTimeSpan().getStartTimeYear());
 		}
-		erf.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.EXCLUDE);
+		if (cmd.hasOption("gridded")) {
+			erf.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.INCLUDE);
+			erf.setParameter(BackgroundRupParam.NAME, BackgroundRupType.POINT);
+		} else {
+			erf.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.EXCLUDE);
+		}
 		
 		if (!ti)
 			erf.eraseDatesOfLastEventAfterStartTime();
@@ -177,16 +199,34 @@ public class U3TD_ComparisonLauncher {
 				String[] split = line.split("\t");
 				Preconditions.checkState(split.length > 3);
 				int fssIndex = Integer.parseInt(split[1]);
-				Preconditions.checkState(fssIndex >= 0 && fssIndex < rupSet.getNumRuptures(), "bad FSS index=%s", fssIndex);
-				long epochMillis = Long.parseLong(split[3]);
-				LocationList rupLocs = rupSet.getSurfaceForRupupture(fssIndex, 1d, false).getEvenlyDiscritizedListOfLocsOnSurface();
-				Location hypoLoc = rupLocs.get(r.nextInt(rupLocs.size()));
 				int id = etasRups.size();
-				ObsEqkRupture rup = new ObsEqkRupture(id+"", epochMillis, hypoLoc, rupSet.getMagForRup(fssIndex));
-				ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
-				etasRup.setID(id);
-				etasRup.setFSSIndex(fssIndex);
-				etasRups.add(etasRup);
+				long epochMillis = Long.parseLong(split[3]);
+				if (ti)
+					epochMillis += cal.getTimeInMillis();
+				if (fssIndex == -1) {
+					// gridded
+					int nthIndex = Integer.parseInt(split[0]);
+					ProbEqkRupture probRup = erf.getNthRupture(nthIndex);
+					Preconditions.checkState(probRup.getRuptureSurface() instanceof PointSurface);
+					Location hypoLoc = ((PointSurface)probRup.getRuptureSurface()).getLocation();
+					ObsEqkRupture rup = new ObsEqkRupture(id+"", epochMillis, hypoLoc, probRup.getMag());
+					ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
+					etasRup.setID(id);
+					etasRup.setFSSIndex(fssIndex);
+					int srcIndex = erf.getSrcIndexForNthRup(nthIndex);
+					etasRup.setGridNodeIndex(srcIndex - erf.getNumFaultSystemSources());
+					etasRups.add(etasRup);
+				} else {
+					Preconditions.checkState(fssIndex >= 0 && fssIndex < rupSet.getNumRuptures(), "bad FSS index=%s", fssIndex);
+					LocationList rupLocs = rupSet.getSurfaceForRupupture(fssIndex, 1d, false).getEvenlyDiscritizedListOfLocsOnSurface();
+					Location hypoLoc = rupLocs.get(r.nextInt(rupLocs.size()));
+					
+					ObsEqkRupture rup = new ObsEqkRupture(id+"", epochMillis, hypoLoc, rupSet.getMagForRup(fssIndex));
+					ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
+					etasRup.setID(id);
+					etasRup.setFSSIndex(fssIndex);
+					etasRups.add(etasRup);
+				}
 			}
 			Files.move(outputFile, new File(outputDir, "sampledEventsData_orig.txt"));
 			System.out.println("Writing new output file");

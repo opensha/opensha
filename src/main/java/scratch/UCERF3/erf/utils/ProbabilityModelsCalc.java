@@ -3452,10 +3452,12 @@ public class ProbabilityModelsCalc {
 					obsRupRateArray[nthRup] += 1;
 
 					// set that fault system event has occurred (and save normalized RI)
+					int fltSystRupIndex = -1;
+					double normRI = Double.NaN;
+					int utilizedPaleoSite = 0;
 					if(srcIndex < erf.getNumFaultSystemSources()) {	// ignore other sources
-						int fltSystRupIndex = erf.getFltSysRupIndexForSource(srcIndex);
+						fltSystRupIndex = erf.getFltSysRupIndexForSource(srcIndex);
 						
-						double normRI=Double.NaN;
 						// compute and save the normalize recurrence interval if all sections had date of last
 						if(aveNormTimeSinceLast) {	// average time since last
 							normRI = getAveNormTimeSinceLastEventWhereKnown(fltSystRupIndex, currentTimeMillis);
@@ -3474,7 +3476,6 @@ public class ProbabilityModelsCalc {
 						
 						
 						// reset last event time and increment simulated/obs rate on sections & check if paleo site hit
-						int utilizedPaleoSite = 0;
 						for(int sect:sectIndexArrayForSrcList.get(srcIndex)) {
 							dateOfLastForSect[sect] = currentTimeMillis;
 							obsSectRateArray[sect] += 1.0; // add the event
@@ -3482,16 +3483,14 @@ public class ProbabilityModelsCalc {
 								utilizedPaleoSite=1;
 						}
 						numRupsAtPaleoSites += utilizedPaleoSite;
-
-
-						// write event info out
-						try {
-							eventFileWriter.write(nthRup+"\t"+fltSystRupIndex+"\t"+currentYear+"\t"+currentTimeMillis+"\t"+normRI+"\t"+fltSysRupSet.getMagForRup(fltSystRupIndex)+"\t"+nthCatalog+"\t"+timeToNextInYrs+"\t"+utilizedPaleoSite+"\n");
-							eventFileWriter.flush();
-						} catch (IOException e1) {
-							e1.printStackTrace();
-						}
-
+					}
+					// write event info out
+					double mag = erf.getNthRupture(nthRup).getMag();
+					try {
+						eventFileWriter.write(nthRup+"\t"+fltSystRupIndex+"\t"+currentYear+"\t"+currentTimeMillis+"\t"+normRI+"\t"+mag+"\t"+nthCatalog+"\t"+timeToNextInYrs+"\t"+utilizedPaleoSite+"\n");
+						eventFileWriter.flush();
+					} catch (IOException e1) {
+						e1.printStackTrace();
 					}
 					obsMFD.addResampledMagRate(magOfNthRups[nthRup], 1.0, true);
 					obsMoRate += MagUtils.magToMoment(magOfNthRups[nthRup]);

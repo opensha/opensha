@@ -113,21 +113,21 @@ public class ETAS_CatalogIO {
 			sb.append(catDateFormat.format(rup.getOriginTimeCal().getTime())).append("\t");
 		}
 		if(hypoLoc != null) {
-			sb.append(hypoLoc.getLatitude()).append("\t");
-			sb.append(hypoLoc.getLongitude()).append("\t");
-			sb.append(hypoLoc.getDepth()).append("\t");			
+			sb.append((float)hypoLoc.getLatitude()).append("\t");
+			sb.append((float)hypoLoc.getLongitude()).append("\t");
+			sb.append((float)hypoLoc.getDepth()).append("\t");			
 		}
 		else {
 			sb.append("null").append("\t");
 			sb.append("null").append("\t");
 			sb.append("null").append("\t");
 		}
-		sb.append(rup.getMag()).append("\t");
+		sb.append((float)rup.getMag()).append("\t");
 		sb.append(rup.getID()).append("\t");
 		sb.append(rup.getParentID()).append("\t");
 		sb.append(rup.getGeneration()).append("\t");
 		sb.append(rup.getOriginTime()).append("\t");
-		sb.append(rup.getDistanceToParent()).append("\t");
+		sb.append((float)rup.getDistanceToParent()).append("\t");
 		sb.append(rup.getNthERF_Index()).append("\t");
 		sb.append(rup.getFSSIndex()).append("\t");
 		sb.append(rup.getGridNodeIndex());
