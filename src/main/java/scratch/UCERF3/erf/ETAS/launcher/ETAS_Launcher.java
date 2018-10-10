@@ -3,16 +3,19 @@ package scratch.UCERF3.erf.ETAS.launcher;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Deque;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.TimeZone;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +37,7 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -74,6 +78,7 @@ import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
+import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
@@ -131,6 +136,8 @@ public class ETAS_Launcher {
 	
 	private long[] randSeeds;
 	private ETAS_ParameterList params;
+	
+	private boolean dateLastDebug = false;
 	
 	public ETAS_Launcher(ETAS_Config config) throws IOException {
 		this(config, true);
@@ -196,7 +203,7 @@ public class ETAS_Launcher {
 			FaultSystemSolution fss = checkOutFSS();
 			try {
 				histQkList.addAll(loadHistoricalCatalog(config.getTriggerCatalogFile(),
-						config.getTriggerCatalogSurfaceMappingsFile(), fss, simulationOT));
+						config.getTriggerCatalogSurfaceMappingsFile(), fss, simulationOT, resetSubSectsMap));
 			} catch (DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -363,8 +370,8 @@ public class ETAS_Launcher {
 		fssDeque.push(fss);
 	}
 	
-	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemSolution sol, long ot)
-			throws IOException, DocumentException {
+	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemSolution sol,
+			long ot, Map<Long, List<Integer>> resetSubSectsMap) throws IOException, DocumentException {
 		List<ETAS_EqkRupture> histQkList = new ArrayList<>();
 		// load in historical catalog
 		
@@ -393,7 +400,16 @@ public class ETAS_Launcher {
 					System.out.println("(supressing future output on skipped ruptures)");
 				continue;
 			}
-			ETAS_EqkRupture etasRup = new ETAS_EqkRupture(rup);
+			ETAS_EqkRupture etasRup = rup instanceof ETAS_EqkRupture ? (ETAS_EqkRupture)rup : new ETAS_EqkRupture(rup);
+			if (etasRup.getFSSIndex() >= 0 && resetSubSectsMap != null) {
+				// reset times
+				List<Integer> sectIndexes = sol.getRupSet().getSectionsIndicesForRup(etasRup.getFSSIndex());
+				System.out.print("Resetting elastic rebound for historical rupture, ot="+etasRup.getOriginTime()+", sects=");
+				for (Integer sectIndex : sectIndexes)
+					System.out.print(sectIndex+" ");
+				System.out.println();
+				resetSubSectsMap.put(etasRup.getOriginTime(), sectIndexes);
+			}
 			etasRup.setID(Integer.parseInt(rup.getEventId()));
 			histQkList.add(etasRup);
 		}
@@ -589,6 +605,37 @@ public class ETAS_Launcher {
 				erf = buildERF_millis(sol, config.isTimeIndependentERF(), config.getDuration(), simulationOT);
 			}
 			erf.updateForecast();
+			
+			if (index == 0 && dateLastDebug) {
+				debug(DebugLevel.INFO, "Date of last event information:");
+				Map<Long, List<FaultSectionPrefData>> lastEventSects = new HashMap<>();
+				for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList()) {
+					Long dateLast = sect.getDateOfLastEvent();
+					if (dateLast > Long.MIN_VALUE) {
+						List<FaultSectionPrefData> sects = lastEventSects.get(dateLast);
+						if (sects == null) {
+							sects = new ArrayList<>();
+							lastEventSects.put(dateLast, sects);
+						}
+						sects.add(sect);
+					}
+				}
+				List<Long> allTimes = new ArrayList<>(lastEventSects.keySet());
+				Collections.sort(allTimes);
+				DateFormat df = new SimpleDateFormat("yyyy/MM/dd hh:mm:ss.SSS z");
+				for (Long time : allTimes) {
+					GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+					long timeDelta = simulationOT - time;
+					double timeDeltaYears = timeDelta / ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+					cal.setTimeInMillis(time);
+					String timeStr = df.format(cal.getTime());
+					debug(DebugLevel.INFO, time+": "+timeStr+" ("
+							+ETAS_AbstractPlot.getTimeShortLabel(timeDeltaYears)+" before simulation start)");
+					for (FaultSectionPrefData sect: lastEventSects.get(time))
+						debug(DebugLevel.INFO, "\t"+sect.getName());
+				}
+				debug(DebugLevel.INFO, "Sim start: "+simulationOT+": "+df.format(new Date(simulationOT)));
+			}
 
 			debug("Done instantiating ERF");
 			
@@ -868,13 +915,18 @@ public class ETAS_Launcher {
 						" and the number of available processors (in this case: "+defaultNumThreads()+")");
 		threadsOption.setRequired(false);
 		ops.addOption(threadsOption);
+
+		Option dateLastDebugOption = new Option("d", "date-last-debug", false,
+				"Flag to print out date of last event data for debugging");
+		dateLastDebugOption.setRequired(false);
+		ops.addOption(dateLastDebugOption);
 		
 		return ops;
 	}
 
 	public static void main(String[] args) throws IOException {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
-			String argsStr = "--threads 5 /tmp/etas_debug/mojave_m7_example.json";
+			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers.json";
 			args = argsStr.split(" ");
 		}
 		System.setProperty("java.awt.headless", "true");
@@ -908,6 +960,8 @@ public class ETAS_Launcher {
 		ETAS_Config config = ETAS_Config.readJSON(confFile);
 				
 		ETAS_Launcher launcher = new ETAS_Launcher(config);
+		
+		launcher.dateLastDebug = cmd.hasOption("date-last-debug");
 		
 		if (cmd.hasOption("threads")) {
 			int numThreads = Integer.parseInt(cmd.getOptionValue("threads"));

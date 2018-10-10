@@ -92,7 +92,7 @@ public class CSEP_ContainerTestExecutable {
 		
 		System.out.println("Loading fault system solution");
 		FaultSystemSolution sol = checkOutFSS();
-		histQkList = ETAS_Launcher.loadHistoricalCatalog(catFile, null, sol, Long.MAX_VALUE);
+		histQkList = ETAS_Launcher.loadHistoricalCatalog(catFile, null, sol, Long.MAX_VALUE, null);
 		ot = histQkList.get(histQkList.size()-1).getOriginTime()+1;
 		
 		// purge any last event data after OT

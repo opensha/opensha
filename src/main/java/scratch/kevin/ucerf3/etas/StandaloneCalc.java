@@ -103,7 +103,7 @@ public class StandaloneCalc {
 		
 		List<ETAS_EqkRupture> histQkList = Lists.newArrayList();
 		if (catFile != null) {
-			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sol, ot));
+			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sol, ot, null));
 		}
 		
 		// purge any last event data after OT

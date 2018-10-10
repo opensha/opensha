@@ -228,7 +228,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 				surfsFile = new File(cmd.getOptionValue("rupture-surfaces"));
 			else
 				surfsFile = null;
-			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sols[0], ot));
+			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sols[0], ot, null));
 		}
 		
 		// purge any last event data after OT
