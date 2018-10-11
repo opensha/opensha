@@ -1030,7 +1030,8 @@ public class ETAS_Utils {
 					Preconditions.checkState(Double.isFinite(histDurationDays), "Historical duration days not finite: %s", histDurationDays);
 					Preconditions.checkState(histDurationDays >= 0,
 							"Need to fix for case forecast time before mag complete. forecastStartTime=%s, forecastEndTime=%s, "
-							+ "mag=%s, magCompleteTime=%s", forecastStartTime, forecastEndTime, mag, magCompleteTimeMillis);
+							+ "mag=%s, magCompleteTime=%s, yearsUntilMagComplete=%s", forecastStartTime, forecastEndTime, (float)mag,
+							(long)magCompleteTimeMillis, (float)(-histDurationDays/365.25));
 					double expectedNum = getExpectedNumEvents(k, p, mag, magMin, c, 0.0, histDurationDays);
 					Preconditions.checkState(Double.isFinite(expectedNum), "Expected num not finite with duration=%s: %s", histDurationDays, expectedNum);
 					rate += expectedNum*mfd.getY(m);
