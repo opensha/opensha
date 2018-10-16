@@ -8,7 +8,7 @@ import org.opensha.commons.geo.Region;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 
 /**
- * Container for storing all parameters related to cube discretization. Thread safe, and can be shared amung threads to reduce
+ * Container for storing all parameters related to cube discretization. Thread safe, and can be shared among threads to reduce
  * memory and initialization overhead (especially important for the location weight calculator).
  * @author kevin
  *

@@ -984,7 +984,20 @@ public class ETAS_Utils {
 	}
 
 	
-	
+	/**
+	 * 	 * This provides the rate of spontaneous events versus time over a time span following an historic catalog that has a magnitude-independent
+	 * catalog of completeness
+	 * @param mfd
+	 * @param histCatStartTime
+	 * @param forecastStartTime
+	 * @param forecastEndTime
+	 * @param numTimeSamples
+	 * @param k
+	 * @param p
+	 * @param magMin
+	 * @param c
+	 * @return
+	 */
 	public static EvenlyDiscretizedFunc getSpontanousEventRateFunction(IncrementalMagFreqDist mfd, long histCatStartTime, long forecastStartTime, 
 			long forecastEndTime, int numTimeSamples, double k, double p, double magMin, double c) {
 		Preconditions.checkState(numTimeSamples > 0, "numTimeSamples=%s, forecastStartTime=%s, forecastEndTime=%s", numTimeSamples, forecastStartTime, forecastEndTime);
@@ -997,49 +1010,62 @@ public class ETAS_Utils {
 			// compute time over which we have observations
 			double histDurationDays = (rateVsEpochTimeFunc.getX(i)-(double)histCatStartTime)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 			// loop over magnitudes
-			double rate=0;
-			for(int m=firstMagIndex;m<mfd.size();m++) {
-				if(mfd.getY(m)>1e-10) {	// skip low rate bins
-					double mag = mfd.getX(m);
-					rate += getExpectedNumEvents(k, p, mag, magMin, c, 0.0, histDurationDays)*mfd.getY(m);
-				}
+			double aftRate=0;
+			if(histDurationDays>0) {  // otherwise keep aftRate = 0 because there are no parents, and all events should be spontaneous
+				for(int m=firstMagIndex;m<mfd.size();m++) {
+					if(mfd.getY(m)>1e-10) {	// skip low rate bins
+						double mag = mfd.getX(m);
+						aftRate += getExpectedNumEvents(k, p, mag, magMin, c, 0.0, histDurationDays)*mfd.getY(m);
+					}
+				}			
 			}
-			rateVsEpochTimeFunc.set(i,(totalRatePerYear-rate));
+			rateVsEpochTimeFunc.set(i,(totalRatePerYear-aftRate));
 		}
 		return rateVsEpochTimeFunc;
 	}
 	
 	
-	
+	/**
+	 * This provides the rate of spontaneous events versus time over a time span following an historic catalog that has a magnitude-dependent
+	 * catalog of completeness
+	 * @param mfd - the total long-term MFD
+	 * @param yrCompleteForMagFunc - the tells the year, as a function of magnitude, after which the catalog is complete.
+	 * @param forecastStartTime - epoch
+	 * @param forecastEndTime - epoch
+	 * @param numTimeSamples - number of x-axis points on the returned function
+	 * @param k
+	 * @param p
+	 * @param magMin
+	 * @param c
+	 * @return
+	 */
 	public static EvenlyDiscretizedFunc getSpontanousEventRateFunction(IncrementalMagFreqDist mfd, EvenlyDiscretizedFunc yrCompleteForMagFunc, long forecastStartTime, 
 			long forecastEndTime, int numTimeSamples, double k, double p, double magMin, double c) {
 		Preconditions.checkState(numTimeSamples > 0, "numTimeSamples=%s, forecastStartTime=%s, forecastEndTime=%s", numTimeSamples, forecastStartTime, forecastEndTime);
 		Preconditions.checkState(forecastEndTime > forecastStartTime, "numTimeSamples=%s, forecastStartTime=%s, forecastEndTime=%s", numTimeSamples, forecastStartTime, forecastEndTime);
 		double deltaTimeMillis = (double)(forecastEndTime-forecastStartTime)/(double)numTimeSamples;
-		EvenlyDiscretizedFunc rateVsEpochTimeFunc = new EvenlyDiscretizedFunc((double)forecastStartTime+deltaTimeMillis/2.0,(double)forecastEndTime-deltaTimeMillis/2.0,numTimeSamples);
+		EvenlyDiscretizedFunc spRateVsEpochTimeFunc = new EvenlyDiscretizedFunc((double)forecastStartTime+deltaTimeMillis/2.0,(double)forecastEndTime-deltaTimeMillis/2.0,numTimeSamples);
 		Preconditions.checkState(Double.isFinite(mfd.calcSumOfY_Vals()), "MFD has non-finite values:\t%s", mfd);
 		double totalRatePerYear = mfd.getCumRate(2.55);
 		int firstMagIndex = mfd.getXIndex(2.55);
-		for(int i=0;i<rateVsEpochTimeFunc.size();i++) {
-			double rate=0;
+		for(int i=0;i<spRateVsEpochTimeFunc.size();i++) {
+			double aftRate=0;
 			for(int m=firstMagIndex;m<mfd.size();m++) {
 				if(mfd.getY(m)>1e-10) {	// skip low rate bins
 					double mag = mfd.getX(m);
 					double magCompleteTimeMillis = (yrCompleteForMagFunc.getY(mag)-1970)*ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-					double histDurationDays = (rateVsEpochTimeFunc.getX(i)-magCompleteTimeMillis)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
+					double histDurationDays = (spRateVsEpochTimeFunc.getX(i)-magCompleteTimeMillis)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 					Preconditions.checkState(Double.isFinite(histDurationDays), "Historical duration days not finite: %s", histDurationDays);
-					Preconditions.checkState(histDurationDays >= 0,
-							"Need to fix for case forecast time before mag complete. forecastStartTime=%s, forecastEndTime=%s, "
-							+ "mag=%s, magCompleteTime=%s, yearsUntilMagComplete=%s", forecastStartTime, forecastEndTime, (float)mag,
-							(long)magCompleteTimeMillis, (float)(-histDurationDays/365.25));
+					if(histDurationDays<=0)
+						continue;	// no parents, so rate of aftershocks is zero, so add nothing to aftRate
 					double expectedNum = getExpectedNumEvents(k, p, mag, magMin, c, 0.0, histDurationDays);
 					Preconditions.checkState(Double.isFinite(expectedNum), "Expected num not finite with duration=%s: %s", histDurationDays, expectedNum);
-					rate += expectedNum*mfd.getY(m);
+					aftRate += expectedNum*mfd.getY(m);
 				}
 			}
-			rateVsEpochTimeFunc.set(i,(totalRatePerYear-rate));
+			spRateVsEpochTimeFunc.set(i,(totalRatePerYear-aftRate));
 		}
-		return rateVsEpochTimeFunc;
+		return spRateVsEpochTimeFunc;
 	}
 
 	

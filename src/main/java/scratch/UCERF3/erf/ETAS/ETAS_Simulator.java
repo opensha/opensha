@@ -367,7 +367,7 @@ public class ETAS_Simulator {
 				scenarioRup.setID(i);
 				obsEqkRuptureList.add(scenarioRup);		
 				if(D) {
-					System.out.println("Num locs on scenario rup surface: "
+					System.out.println("Num locs on scenario "+i+" rup surface: "
 							+scenarioRup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface().size());
 				}
 			}
@@ -539,7 +539,7 @@ public class ETAS_Simulator {
 			
 			
 			// NEW WAY (time-dep rate of spont events)
-			long histCatStartTime = simStartTimeMillis;
+			long histCatStartTime = simStartTimeMillis; // this is the default if histQkList==null
 			long[] spontEventTimes;
 			IncrementalMagFreqDist mfd = etas_PrimEventSampler.getLongTermTotalERF_MFD().deepClone();
 			// Apply scale factor
@@ -715,7 +715,7 @@ public class ETAS_Simulator {
 			
 			long rupOT = rup.getOriginTime();
 			
-			// now sample primary aftershock times for this event
+			// now sample primary aftershock times for this event (this should be in a method because it's redundant with code above)
 			if(includeIndirectTriggering) {
 				int parID = rup.getID();	// rupture is now the parent
 				int gen = rup.getGeneration()+1;
@@ -1924,7 +1924,7 @@ public class ETAS_Simulator {
 //		writeInfoAboutSourceWithThisFirstAndLastSection(getU3_ETAS_ERF(2014,1.0),825,830);
 //		System.exit(0);
 		
-//		FaultSystemSolutionERF_ETAS erf = getU3_ETAS_ERF(2014,10.0);	
+		FaultSystemSolutionERF_ETAS erf = getU3_ETAS_ERF(2014,10.0);	
 //		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 //		erf.updateForecast();
 //		
@@ -2002,11 +2002,14 @@ public class ETAS_Simulator {
 //		double startTimeYear=2014;
 //		double durationYears=7.0/365.25;
 		
-		ObsEqkRupList histCat = null;
-//		ObsEqkRupList histCat = getHistCatalog(startTimeYear);
+//		ObsEqkRupList histCat = null;
+		ObsEqkRupList histCat = getHistCatalog(startTimeYear, erf.getSolution().getRupSet());
 //		ObsEqkRupList histCat = getHistCatalogFiltedForStatewideCompleteness(startTimeYear,erf.getSolution().getRupSet());
+		
+//		plotCatalogMagVsTime(histCat, "U3_FullEqkCatalogMagVsTimePlot");
+//		System.exit(-1);
 
-		runTest(scenario, params, seed, simulationName, histCat, startTimeYear, durationYears);
+//		runTest(scenario, params, seed, simulationName, histCat, startTimeYear, durationYears);
 		
 		
 		
