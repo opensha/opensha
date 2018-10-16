@@ -4,6 +4,7 @@ public class RSQSimStateTime {
 	
 	private final int patchID;
 	private final double startTime;
+	private final double velocity;
 	private double endTime;
 	private final RSQSimState state;
 	
@@ -12,15 +13,16 @@ public class RSQSimStateTime {
 	 * @param startTime
 	 * @param state
 	 */
-	RSQSimStateTime(int patchID, double startTime, RSQSimState state) {
-		this(patchID, startTime, Double.NaN, state);
+	RSQSimStateTime(int patchID, double startTime, RSQSimState state, double velocity) {
+		this(patchID, startTime, Double.NaN, state, velocity);
 	}
 	
-	public RSQSimStateTime(int patchID, double startTime, double endTime, RSQSimState state) {
+	public RSQSimStateTime(int patchID, double startTime, double endTime, RSQSimState state, double velocity) {
 		this.patchID = patchID;
 		this.startTime = startTime;
 		this.endTime = endTime;
 		this.state = state;
+		this.velocity = velocity;
 	}
 	
 	public int getPatchID() {
@@ -51,9 +53,16 @@ public class RSQSimStateTime {
 		return time >= startTime && time < endTime;
 	}
 	
+	public double getVelocity() {
+		return velocity;
+	}
+	
 	@Override
 	public String toString() {
-		return "["+startTime+" => "+endTime+": "+state.name()+"]";
+		if (!Double.isNaN(velocity) && state == RSQSimState.EARTHQUAKE_SLIP)
+			return "["+startTime+" => "+endTime+": "+state.name()+", vel="+velocity+"]";
+		else
+			return "["+startTime+" => "+endTime+": "+state.name()+"]";
 	}
 
 }

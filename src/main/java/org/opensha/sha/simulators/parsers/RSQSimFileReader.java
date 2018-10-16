@@ -109,15 +109,20 @@ public class RSQSimFileReader {
 					Location loc3 = utmToLoc(longZone, latZone, x3, y3, z3);
 					
 					double rake = Double.parseDouble(tok.nextToken());
-					double slipRate = Double.parseDouble(tok.nextToken());
+					
+					String slipRateStr = tok.nextToken();
+					double slipRate = slipRateStr.equals("NA") ? 0d : Double.parseDouble(slipRateStr);
 					
 					int sectNum = -1;
 					String sectName = null;
 					
 					if (tok.hasMoreTokens()) {
-						sectNum = Integer.parseInt(tok.nextToken());
-						if (tok.hasMoreTokens())
-							sectName = tok.nextToken();
+						String sectNumStr = tok.nextToken();
+						if (!sectNumStr.equals("NA")) {
+							sectNum = Integer.parseInt(sectNumStr);
+							if (tok.hasMoreTokens())
+								sectName = tok.nextToken();
+						}
 					}
 					
 					Vertex[] vertices = new Vertex[3];
@@ -166,7 +171,7 @@ public class RSQSimFileReader {
 					double halfWidthKM = w*0.5/1000d;
 					double halfLengthKM = l*0.5/1000d;
 					
-					Vertex[] vertices = new Vertex[3];
+					Vertex[] vertices = new Vertex[4];
 					LocationVector v = new LocationVector(strike, halfLengthKM, 0d);
 					Location centerLeft = LocationUtils.location(center, v);
 					v.reverse();
@@ -270,9 +275,6 @@ public class RSQSimFileReader {
 		int num = tok.countTokens();
 		Preconditions.checkState(num >= 9);
 		
-		if (num > 11)
-			// always triangular
-			return true;
 		if (num < 11)
 			// always rectangular
 			return false;

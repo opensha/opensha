@@ -44,8 +44,8 @@ public class RSQSimSRFGenerator {
 	public static enum SRFInterpolationMode {
 		NONE,
 		ADJ_VEL,
-		LIN_TAPER_VEL,
-		CONST_VEL_ADJ_LEN
+		LIN_TAPER_VEL
+//		CONST_VEL_ADJ_LEN
 	}
 	
 	public static List<SRF_PointData> buildSRF(RSQSimEventSlipTimeFunc func, List<SimulatorElement> patches,
@@ -99,8 +99,6 @@ public class RSQSimSRFGenerator {
 		Preconditions.checkState(Double.isFinite(tStart), "Non-finite tStart for patch %s? %s", (Integer)patchID, (Double)tStart);
 		double tEnd = func.getTimeOfLastSlip(patchID);
 		Preconditions.checkState(Double.isFinite(tEnd), "Non-finite tEnd for patch %s? %s", (Integer)patchID, (Double)tEnd);
-		double slipVel = func.getPatchSlipVel(patchID);
-		Preconditions.checkState(Double.isFinite(slipVel), "Non-finite slipVel for patch %s? %s", (Integer)patchID, (Double)slipVel);
 		
 		List<Taper> tapers = null;
 		if (mode == SRFInterpolationMode.LIN_TAPER_VEL) {
@@ -118,6 +116,8 @@ public class RSQSimSRFGenerator {
 				double downTaperEnd = e + 0.5*taperLen;
 				tStart = Math.min(tStart, upTaperStart);
 				tEnd = Math.max(tEnd, downTaperEnd);
+				double slipVel = func.getVelocity(trans);
+				Preconditions.checkState(Double.isFinite(slipVel) && slipVel > 0, "Bad slipVel for patch %s? %s", (Integer)patchID, (Double)slipVel);
 				tapers.add(new Taper(upTaperStart, upTaperEnd, downTaperStart, downTaperEnd, slipVel));
 			}
 		}
@@ -126,7 +126,7 @@ public class RSQSimSRFGenerator {
 		double totSlip = func.getCumulativeEventSlip(patchID, func.getEndTime());
 		int numSteps = (int)Math.ceil((tEnd - tStart)/dt);
 		double[] slipVels = new double[numSteps];
-		double constSlipPerStep = dt*slipVel;
+//		double constSlipPerStep = dt*slipVel;
 		double curTotSlip = 0;
 		
 		for (int i=0; i<numSteps; i++) {
@@ -144,14 +144,14 @@ public class RSQSimSRFGenerator {
 				for (Taper taper : tapers)
 					slipVels[i] += taper.getVel(time);
 				break;
-			case CONST_VEL_ADJ_LEN:
-				double targetSlip = func.getCumulativeEventSlip(patchID, time+dt);
-				double slipIfOn = curTotSlip + constSlipPerStep;
-				double deltaOn = Math.abs(targetSlip - slipIfOn);
-				double deltaOff = Math.abs(targetSlip - curTotSlip);
-				if (deltaOn < deltaOff)
-					slipVels[i] = slipVel;
-				break;
+//			case CONST_VEL_ADJ_LEN:
+//				double targetSlip = func.getCumulativeEventSlip(patchID, time+dt);
+//				double slipIfOn = curTotSlip + constSlipPerStep;
+//				double deltaOn = Math.abs(targetSlip - slipIfOn);
+//				double deltaOff = Math.abs(targetSlip - curTotSlip);
+//				if (deltaOn < deltaOff)
+//					slipVels[i] = slipVel;
+//				break;
 
 			default:
 				throw new IllegalStateException("Unknown interpolation mode: "+mode);
@@ -183,12 +183,10 @@ public class RSQSimSRFGenerator {
 		slipFuncs.add(shiftedSlipFunc);
 		slipChars.add(actualChar);
 		
-		double slipVel = func.getPatchSlipVel(patchID);
-		
 		for (RSQSimStateTime trans : func.getTransitions(patchID)) {
 			double vel;
 			if (trans.getState() == RSQSimState.EARTHQUAKE_SLIP)
-				vel = slipVel;
+				vel = func.getVelocity(trans);
 			else
 				vel = 0d;
 			DiscretizedFunc velFunc = new ArbitrarilyDiscretizedFunc();
@@ -225,9 +223,9 @@ public class RSQSimSRFGenerator {
 			case LIN_TAPER_VEL:
 				c = Color.CYAN;
 				break;
-			case CONST_VEL_ADJ_LEN:
-				c = Color.BLUE;
-				break;
+//			case CONST_VEL_ADJ_LEN:
+//				c = Color.BLUE;
+//				break;
 
 			default:
 				throw new IllegalStateException("Unknown interpolation mode: "+mode);
@@ -306,6 +304,7 @@ public class RSQSimSRFGenerator {
 		File catalogDir = new File("/data/kevin/simulators/catalogs/bruce/rundir2585");
 		File geomFile = new File(catalogDir, "zfault_Deepen.in");
 		File transFile = new File(catalogDir, "trans..out");
+		boolean variableSlipSpeed = transFile.getName().startsWith("transV");
 		
 		int[] eventIDs = { 1670183 };
 		
@@ -346,7 +345,8 @@ public class RSQSimSRFGenerator {
 		System.out.println("Loaded "+events.size()+" events");
 		Preconditions.checkState(events.size() == eventIDs.length);
 
-		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(transFile, elements);
+		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(
+				transFile, elements, variableSlipSpeed);
 		
 //		SRFInterpolationMode[] modes = SRFInterpolationMode.values();
 //		double[] dts = { 0.1, 0.05 };
@@ -364,7 +364,7 @@ public class RSQSimSRFGenerator {
 			Map<Integer, Double> slipVels = new HashMap<>();
 			for (int elemID : event.getAllElementIDs())
 				slipVels.put(elemID, slipVel);
-			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), slipVels);
+			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), slipVels, variableSlipSpeed);
 			String eventStr = "event_"+eventID;
 			
 			SummaryStatistics patchSlipEventDurations = new SummaryStatistics();

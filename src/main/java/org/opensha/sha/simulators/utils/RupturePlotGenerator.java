@@ -354,7 +354,10 @@ public class RupturePlotGenerator {
 		func = func.asRelativeTimeFunc();
 		
 		CPT slipCPT = GMT_CPT_Files.GMT_HOT.instance().reverse().rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
-		CPT velCPT = new CPT(0d, func.getMaxSlipVel(), Color.BLUE, Color.RED);
+		CPT velCPT = new CPT(0.01d, func.getMaxSlipVel(), new Color(100, 100, 255), Color.RED, new Color(60, 0, 0));
+		velCPT.add(0, new CPTVal(0f, Color.WHITE, velCPT.getMinValue(), Color.WHITE));
+//		CPT velCPT = new CPT(0.01d, func.getMaxSlipVel(), Color.BLUE, Color.RED, new Color(100, 0, 0));
+//		velCPT.add(0, new CPTVal(0f, Color.WHITE, velCPT.getMinValue(), Color.WHITE));
 		
 		List<SimulatorElement> rupElems = event.getAllElements();
 		List<Double> emptyScalars = new ArrayList<>();
@@ -388,8 +391,10 @@ public class RupturePlotGenerator {
 		
 		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
-//		PaintScaleLegend timeCPTbar = XYZGraphPanel.getLegendForCPT(velCPT, "SLip Velocity (m/s)",
-//				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 0.5, RectangleEdge.BOTTOM);
+		PaintScaleLegend velCPTbar = null;
+		if (func.getMaxSlipVel() != func.getMinSlipVel())
+			velCPTbar = XYZGraphPanel.getLegendForCPT(velCPT, "SLip Velocity (m/s)",
+					prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 0.5, RectangleEdge.BOTTOM);
 		
 		double minDAS = Double.POSITIVE_INFINITY;
 		double maxDAS = Double.NEGATIVE_INFINITY;
@@ -446,14 +451,16 @@ public class RupturePlotGenerator {
 			slipSpec.setPlotAnnotations(slipPolys);
 			specs.add(slipSpec);
 			
+			slipSpec.addSubtitle(slipCPTbar);
+			
 			PlotSpec velSpec = new PlotSpec(elems, chars, myTitle, "Distance Along Strike (km)", "Depth (km)");
 			velSpec.setPlotAnnotations(velPolys);
+			if (velCPTbar != null)
+				velSpec.addSubtitle(velCPTbar);
 			specs.add(velSpec);
 			
 			gp.setyAxisInverted(true);
 			gp.drawGraphPanel(specs, false, false, xRanges, yRanges);
-			gp.addSubtitle(slipCPTbar);
-//			gp.addSubtitle(timeCPTbar);
 			
 //			int bufferX = 113;
 //			int bufferY = 332;
@@ -461,6 +468,10 @@ public class RupturePlotGenerator {
 			int bufferY = 100;
 			
 			int height = 400;
+			if (velCPTbar != null) {
+				bufferY += 80;
+				height += 80;
+			}
 			double heightEach = (height - bufferY)/3d;
 //			System.out.println("Height each: "+heightEach);
 //			double targetWidth = heightEach*maxDepth/maxDAS;

@@ -45,7 +45,8 @@ public class RSQSimTransValidIden extends AbstractRuptureIdentifier {
 						// check that it finished
 						if (slipTime == null) {
 							try {
-								slipTime = new RSQSimEventSlipTimeFunc(trans.getTransitions((RSQSimEvent)event), slipVels);
+								slipTime = new RSQSimEventSlipTimeFunc(trans.getTransitions((RSQSimEvent)event), slipVels,
+										trans.isVariableSlipSpeed());
 							} catch (IOException e) {
 								throw ExceptionUtils.asRuntimeException(e);
 							} catch (IllegalStateException e) {
