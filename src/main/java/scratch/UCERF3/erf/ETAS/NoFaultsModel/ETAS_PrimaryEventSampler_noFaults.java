@@ -271,6 +271,8 @@ public class ETAS_PrimaryEventSampler_noFaults {
 		getCubeSamplerWithERF_GriddedRatesOnly();
 		double runtime = ((double)(System.currentTimeMillis()-startTime))/1000;
 		if (D) System.out.println("getCubeSamplerWithERF_RatesOnly() took (sec): "+runtime);
+		
+		locWeightCalc = cubeParams.getLocationWeightCalc(etasParams);
 	}
 	
 	public void addRuptureToProcess(ETAS_EqkRupture rup) {

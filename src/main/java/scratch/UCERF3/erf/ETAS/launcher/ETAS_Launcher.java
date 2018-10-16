@@ -606,7 +606,7 @@ public class ETAS_Launcher {
 			}
 			erf.updateForecast();
 			
-			if (index == 0 && dateLastDebug) {
+			if (index == 0 && dateLastDebug && sol != null) {
 				debug(DebugLevel.INFO, "Date of last event information:");
 				Map<Long, List<FaultSectionPrefData>> lastEventSects = new HashMap<>();
 				for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList()) {
@@ -926,7 +926,8 @@ public class ETAS_Launcher {
 
 	public static void main(String[] args) throws IOException {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
-			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers.json";
+//			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers.json";
+			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers_gridded.json";
 			args = argsStr.split(" ");
 		}
 		System.setProperty("java.awt.headless", "true");
