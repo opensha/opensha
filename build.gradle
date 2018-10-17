@@ -6,7 +6,7 @@ apply from: 'build-common.gradle'
 
 dependencies {
 
-    compileAndResource 'com.google.guava:guava:21.0'
+    compileAndResource 'com.google.guava:guava:26.0-jre'
     compileAndResource 'org.jfree:jfreechart:1.0.19'
     compileAndResource 'dom4j:dom4j:1.6.1'
     compileAndResource 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
