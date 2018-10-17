@@ -60,7 +60,7 @@ public class GridReader {
 	}
 
 	static {
-		SPLIT = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
+		SPLIT = Splitter.on(CharMatcher.whitespace()).omitEmptyStrings();
 		FN_STR_TO_DBL = new FnStrToDbl();
 		FN_DBL_TO_KEY = new FnDblToKey();
 		FN_STR_TO_KEY = Functions.compose(FN_DBL_TO_KEY, FN_STR_TO_DBL);
