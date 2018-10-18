@@ -1304,12 +1304,47 @@ public class ETAS_Simulator {
 
 	}
 	
+	public static void plotHistQksRateRatesVsTime() {
+		double minYear = 1984;
+		double maxYear = 2012;
+		double deltaYear = 1;
+		double minMag = 2.5;
+		double maxMag = 3.0;
+		int numYear = (int) Math.round(maxYear-minYear);
+		ObsEqkRupList histQksList = getHistCatalog(2012, 	getU3_ETAS_ERF(2014,10.0).getSolution().getRupSet());
+//		DefaultXY_DataSet rateVsTimeXYdata = new DefaultXY_DataSet();
+		HistogramFunction rateVsTime = new HistogramFunction(minYear+deltaYear/2.0, maxYear-deltaYear/2.0, numYear);
+		boolean first = true;
+		double lastYear = Double.NaN;
+		for(ObsEqkRupture rup:histQksList.getRupsBetweenMag(minMag, maxMag)) {
+			double year = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
+			rateVsTime.add(year, 1.0);
+//			if(first) {
+//				lastYear = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
+//				first=false;
+//			} else {
+//				double year = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
+//				if(year<lastYear) throw new RuntimeException("fix");
+//				rateVsTimeXYdata.set((year+lastYear)/2,1.0/(year-lastYear));
+//				lastYear = year;
+//			}
+		}
+		rateVsTime.scale(1.0/deltaYear);
+		GraphWindow graph = new GraphWindow(rateVsTime, "Rate vs Time"); 
+		graph.setX_AxisLabel("Year");
+		graph.setY_AxisLabel("Rate (per year)");
+//		graph.setYLog(true);
+//		graph.setY_AxisRange(1e-5,1e4);
+
+	}
 	
-	public static void plotFilteredCatalogMagFreqDist(ObsEqkRupList obsQkList,IncrementalMagFreqDist yrCompleteForMagFunc, 
+	
+	public static void plotFilteredCatalogMagFreqDist(ObsEqkRupList obsQkList,U3_EqkCatalogStatewideCompleteness yrCompleteForMagFunc, 
 			SummedMagFreqDist targetMFD, String fileName) {
 		SummedMagFreqDist mfd = new SummedMagFreqDist(2.55,8.45,60);
+		EvenlyDiscretizedFunc func = yrCompleteForMagFunc.getEvenlyDiscretizedMagYearFunc();
 		for(ObsEqkRupture rup:obsQkList) {
-			double yrs = 2012.0 - yrCompleteForMagFunc.getClosestYtoX(rup.getMag());
+			double yrs = 2012.0 - func.getClosestYtoX(rup.getMag());
 			mfd.addResampledMagRate(rup.getMag(), 1.0/yrs, true);
 		}
 		mfd.setName("Catalog MFD");
@@ -1924,7 +1959,7 @@ public class ETAS_Simulator {
 //		writeInfoAboutSourceWithThisFirstAndLastSection(getU3_ETAS_ERF(2014,1.0),825,830);
 //		System.exit(0);
 		
-		FaultSystemSolutionERF_ETAS erf = getU3_ETAS_ERF(2014,10.0);	
+//		FaultSystemSolutionERF_ETAS erf = getU3_ETAS_ERF(2014,10.0);	
 //		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 //		erf.updateForecast();
 //		
@@ -2003,8 +2038,10 @@ public class ETAS_Simulator {
 //		double durationYears=7.0/365.25;
 		
 //		ObsEqkRupList histCat = null;
-		ObsEqkRupList histCat = getHistCatalog(startTimeYear, erf.getSolution().getRupSet());
+//		ObsEqkRupList histCat = getHistCatalog(startTimeYear, erf.getSolution().getRupSet());
 //		ObsEqkRupList histCat = getHistCatalogFiltedForStatewideCompleteness(startTimeYear,erf.getSolution().getRupSet());
+		
+		plotHistQksRateRatesVsTime();
 		
 //		plotCatalogMagVsTime(histCat, "U3_FullEqkCatalogMagVsTimePlot");
 //		System.exit(-1);

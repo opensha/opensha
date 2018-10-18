@@ -1395,7 +1395,7 @@ public class ETAS_Utils {
 	
 	public static void main(String[] args) {
 		
-		HaywiredGainVsTimeCalcs();
+//		HaywiredGainVsTimeCalcs();
 		
 //		double[] n = {1e4, 1e5, 1e6, 1e3, 1e2, 10};
 //		for(int i=0;i<n.length;i++) {
@@ -1460,9 +1460,9 @@ public class ETAS_Utils {
 //		ETAS_Simulator.plotCatalogMagVsTime(ETAS_Simulator.getHistCatalog(2012), "CatalogVsTime");
 //		ETAS_Simulator.plotCatalogMagVsTime(ETAS_Simulator.getHistCatalogFiltedForStatewideCompleteness(2012), "FilteredCatalogVsTime");
 //		
-//		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012, 1.0);
-//		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
-//		erf.updateForecast();
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012, 1.0);
+		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
+		erf.updateForecast();
 		
 		
 //		// plot fraction subseis triggered by supra
@@ -1478,9 +1478,16 @@ public class ETAS_Utils {
 
 
 		
-//		SummedMagFreqDist mfd = ERF_Calculator.getTotalMFD_ForERF(erf, 2.55, 8.45, 60, true);
-//		ETAS_Simulator.plotFilteredCatalogMagFreqDist(ETAS_Simulator.getHistCatalogFiltedForStatewideCompleteness(2012),
-//				new U3_EqkCatalogStatewideCompleteness(), mfd, "FilteredCatalogMFD");
+		SummedMagFreqDist mfd = ERF_Calculator.getTotalMFD_ForERF(erf, 2.55, 8.45, 60, true);
+		U3_EqkCatalogStatewideCompleteness completeness;
+		try {
+			completeness = U3_EqkCatalogStatewideCompleteness.load();
+			ETAS_Simulator.plotFilteredCatalogMagFreqDist(ETAS_Simulator.getHistCatalogFiltedForStatewideCompleteness(2012, erf.getSolution().getRupSet()),
+					completeness, mfd, "FilteredCatalogMFD");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 //		System.out.println(mfd.getCumRateDistWithOffset());
 //		System.exit(-1);
