@@ -353,8 +353,11 @@ public class RupturePlotGenerator {
 		System.out.println("Done estimating DAS");
 		func = func.asRelativeTimeFunc();
 		
-		CPT slipCPT = GMT_CPT_Files.GMT_HOT.instance().reverse().rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
+		CPT slipCPT = GMT_CPT_Files.GMT_HOT.instance().reverse().rescale(0.01d, Math.ceil(func.getMaxCumulativeSlip()));
+		slipCPT = slipCPT.asDiscrete(20, false);
+		slipCPT.add(0, new CPTVal(0f, Color.WHITE, slipCPT.getMinValue(), Color.WHITE));
 		CPT velCPT = new CPT(0.01d, func.getMaxSlipVel(), new Color(100, 100, 255), Color.RED, new Color(60, 0, 0));
+		velCPT = velCPT.asDiscrete(20, true);
 		velCPT.add(0, new CPTVal(0f, Color.WHITE, velCPT.getMinValue(), Color.WHITE));
 //		CPT velCPT = new CPT(0.01d, func.getMaxSlipVel(), Color.BLUE, Color.RED, new Color(100, 0, 0));
 //		velCPT.add(0, new CPTVal(0f, Color.WHITE, velCPT.getMinValue(), Color.WHITE));
