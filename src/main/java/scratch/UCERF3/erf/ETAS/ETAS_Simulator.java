@@ -1305,29 +1305,30 @@ public class ETAS_Simulator {
 	}
 	
 	public static void plotHistQksRateRatesVsTime() {
-		double minYear = 1984;
+		double minYear = 1933;
 		double maxYear = 2012;
 		double deltaYear = 1;
-		double minMag = 2.5;
-		double maxMag = 3.0;
+		double minMag = 4;
+		double maxMag = 5;
 		int numYear = (int) Math.round(maxYear-minYear);
-		ObsEqkRupList histQksList = getHistCatalog(2012, 	getU3_ETAS_ERF(2014,10.0).getSolution().getRupSet());
+		
+		File file = new File("/Users/field/workspace/OpenSHA/dev/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt");
+		ObsEqkRupList histQksList=null;
+		try {
+			histQksList = UCERF3_CatalogParser.loadCatalogGardnerKnopoffFiltered(file);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+
+		System.out.println("numQks = "+histQksList.size());
 //		DefaultXY_DataSet rateVsTimeXYdata = new DefaultXY_DataSet();
 		HistogramFunction rateVsTime = new HistogramFunction(minYear+deltaYear/2.0, maxYear-deltaYear/2.0, numYear);
 		boolean first = true;
 		double lastYear = Double.NaN;
 		for(ObsEqkRupture rup:histQksList.getRupsBetweenMag(minMag, maxMag)) {
 			double year = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
-			rateVsTime.add(year, 1.0);
-//			if(first) {
-//				lastYear = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
-//				first=false;
-//			} else {
-//				double year = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
-//				if(year<lastYear) throw new RuntimeException("fix");
-//				rateVsTimeXYdata.set((year+lastYear)/2,1.0/(year-lastYear));
-//				lastYear = year;
-//			}
+			if(year>=minYear && year<=maxYear)
+				rateVsTime.add(year, 1.0);
 		}
 		rateVsTime.scale(1.0/deltaYear);
 		GraphWindow graph = new GraphWindow(rateVsTime, "Rate vs Time"); 
@@ -2037,16 +2038,16 @@ public class ETAS_Simulator {
 //		double startTimeYear=2014;
 //		double durationYears=7.0/365.25;
 		
-//		ObsEqkRupList histCat = null;
+		ObsEqkRupList histCat = null;
 //		ObsEqkRupList histCat = getHistCatalog(startTimeYear, erf.getSolution().getRupSet());
 //		ObsEqkRupList histCat = getHistCatalogFiltedForStatewideCompleteness(startTimeYear,erf.getSolution().getRupSet());
 		
-		plotHistQksRateRatesVsTime();
+//		plotHistQksRateRatesVsTime();
 		
 //		plotCatalogMagVsTime(histCat, "U3_FullEqkCatalogMagVsTimePlot");
 //		System.exit(-1);
 
-//		runTest(scenario, params, seed, simulationName, histCat, startTimeYear, durationYears);
+		runTest(scenario, params, seed, simulationName, histCat, startTimeYear, durationYears);
 		
 		
 		
