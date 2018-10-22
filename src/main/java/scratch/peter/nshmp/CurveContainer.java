@@ -327,7 +327,7 @@ public class CurveContainer implements Iterable<Location> {
 		private CurveContainer cc;
 		
 		CurveFileProcessor_NSHMP(GriddedRegion region) {
-			split = Splitter.on(CharMatcher.WHITESPACE).omitEmptyStrings();
+			split = Splitter.on(CharMatcher.whitespace()).omitEmptyStrings();
 			cc = new CurveContainer();
 			cc.region = region;
 			cc.xs = Lists.newArrayList();
