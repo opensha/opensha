@@ -124,7 +124,7 @@ public class BinaryMesh2DCalculator {
 	}
 	
 	private long calcMaxFilePos() {
-		return (nx - 1) * (ny - 1) * numBytesPerPoint;
+		return (nx*ny - 1) * numBytesPerPoint;
 	}
 
 	public MeshOrder getMeshOrder() {

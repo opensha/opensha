@@ -19,8 +19,15 @@
 
 package org.opensha.commons.util.binFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+
+import com.google.common.base.Preconditions;
+import com.google.common.io.Files;
 
 public class GeolocatedRectangularBinaryMesh2DCalculator extends
 		BinaryMesh2DCalculator {
@@ -110,6 +117,81 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 			if (D) System.out.println("Wrapping X!");
 			wrapX = true;
 		}
+	}
+	
+	public static GeolocatedRectangularBinaryMesh2DCalculator readHDR(File hdrFile) throws IOException {
+		/*
+		 * EXAMPLE:
+		 * BYTEORDER      I
+		 * LAYOUT         BIL
+		 * NROWS          916
+		 * NCOLS          1266
+		 * NBANDS         1
+		 * NBITS          32
+		 * BANDROWBYTES   5064
+		 * TOTALROWBYTES  5064
+		 * PIXELTYPE      FLOAT
+		 * ULXMAP         -119.38000000000001
+		 * ULYMAP         35.08
+		 * XDIM           0.002
+		 * YDIM           0.002
+		 */
+		DataType dataType = null;
+		Integer nx = null, ny = null;
+		MeshOrder meshOrder = MeshOrder.FAST_XY;
+		Double gridSpacing = null;
+		Double startLat = null, startLon = null;
+		for (String line : Files.readLines(hdrFile, Charset.defaultCharset())) {
+			line = line.trim();
+			String[] split = line.split("\\s+");
+			Preconditions.checkState(split.length == 2, "Bad split on line: "+line);
+			switch (split[0]) {
+			case "PIXELTYPE":
+				dataType = DataType.valueOf(split[1]);
+				Preconditions.checkNotNull(dataType, "Unkown data type: %s", split[1]);
+				break;
+			case "NROWS":
+				ny = Integer.parseInt(split[1]);
+				break;
+			case "NCOLS":
+				nx = Integer.parseInt(split[1]);
+				break;
+			case "LAYOUT":
+				Preconditions.checkState(split[1].equals("BIL"), "Only BIL layout currently supported");
+				break;
+			case "XDIM":
+				if (gridSpacing == null)
+					gridSpacing = Double.parseDouble(split[1]);
+				else
+					Preconditions.checkState(gridSpacing == Double.parseDouble(split[1]), "XDIM must equal YDIM");
+				break;
+			case "YDIM":
+				if (gridSpacing == null)
+					gridSpacing = Double.parseDouble(split[1]);
+				else
+					Preconditions.checkState(gridSpacing == Double.parseDouble(split[1]), "XDIM must equal YDIM");
+				break;
+			case "ULXMAP":
+				startLon = Double.parseDouble(split[1]);
+				break;
+			case "ULYMAP":
+				startLat = Double.parseDouble(split[1]);
+				break;
+				
+			default:
+				break;
+			}
+		}
+		Preconditions.checkNotNull(dataType, "data type not specified in input file (no PIXELTYPE line)");
+		Preconditions.checkNotNull(nx, "nx not specified in input file (no NCOLS line)");
+		Preconditions.checkNotNull(ny, "ny not specified in input file (no NROWS line)");
+		Preconditions.checkNotNull(gridSpacing, "gridSpacing not specified in input file (no XDIM/YDIM lines)");
+		Preconditions.checkNotNull(startLat, "startLat not specified in input file (no ULYMAP line)");
+		Preconditions.checkNotNull(startLon, "startLon not specified in input file (no ULXMAP line)");
+		GeolocatedRectangularBinaryMesh2DCalculator calc =new GeolocatedRectangularBinaryMesh2DCalculator(
+				dataType, nx, ny, startLat, startLon, false, true, gridSpacing);
+		calc.setMeshOrder(meshOrder);
+		return calc;
 	}
 	
 	public long[] calcClosestLocationIndices(Location loc) {

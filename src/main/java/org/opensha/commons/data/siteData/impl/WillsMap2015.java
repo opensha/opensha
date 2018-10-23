@@ -38,6 +38,8 @@ import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.binFile.BinaryMesh2DCalculator.DataType;
 import org.opensha.commons.util.binFile.GeolocatedRectangularBinaryMesh2DCalculator;
 
+import com.google.common.base.Preconditions;
+
 public class WillsMap2015 extends AbstractSiteData<Double> {
 	
 	public static final int nx = 41104;	// NCOLS
@@ -85,12 +87,22 @@ public class WillsMap2015 extends AbstractSiteData<Double> {
 	}
 	
 	private WillsMap2015(boolean useServlet, String dataFile) throws IOException {
+		this(useServlet, dataFile, new GeolocatedRectangularBinaryMesh2DCalculator(
+				DataType.FLOAT, nx, ny, startLat, startLon, startBottom, startLeft, spacing));
+	}
+	
+	public WillsMap2015(String dataFile, GeolocatedRectangularBinaryMesh2DCalculator calc)
+			throws IOException {
+		this(false, dataFile, calc);
+	}
+	
+	private WillsMap2015(boolean useServlet, String dataFile, GeolocatedRectangularBinaryMesh2DCalculator calc)
+			throws IOException {
 		super();
 		this.useServlet = useServlet;
 		this.fileName = dataFile;
 		
-		calc = new GeolocatedRectangularBinaryMesh2DCalculator(
-				DataType.FLOAT, nx, ny, startLat, startLon, startBottom, startLeft, spacing);
+		this.calc = calc;
 		
 		applicableRegion = calc.getApplicableRegion();
 		
@@ -100,6 +112,8 @@ public class WillsMap2015 extends AbstractSiteData<Double> {
 			file = new RandomAccessFile(new File(dataFile), "r");
 			
 			recordBuffer = new byte[4];
+			Preconditions.checkState((calc.getMaxFilePos()+recordBuffer.length) == file.length(),
+					"Mesh calculator and file inconsistent: calc.getMaxFilePos()=%s, file.length()=%s", calc.getMaxFilePos(), file.length());
 			ByteBuffer record = ByteBuffer.wrap(recordBuffer);
 			record.order(ByteOrder.LITTLE_ENDIAN);
 			floatBuff = record.asFloatBuffer();
@@ -162,13 +176,16 @@ public class WillsMap2015 extends AbstractSiteData<Double> {
 			
 			double val = floatBuff.get(0);
 			
-			if (val <= 0)
+			if ((float)val <= 0f || Double.isNaN(val))
 				return Double.NaN;
 			
 			// round to get rid of float nastiness
-			val = Math.round(val*100d)/100d;
-			
-			return certifyMinMaxVs30((double)val);
+			Preconditions.checkState(Double.isNaN(val) || val > 0, "Bad value! %s", val);
+			double roundVal = Math.round(val*100d)/100d;
+			Preconditions.checkState(Double.isNaN(roundVal) || roundVal > 0, "Bad rounded value: %s (orig: %s)", roundVal, val);
+			double boundsVal = certifyMinMaxVs30((double)roundVal);
+			Preconditions.checkState(Double.isNaN(boundsVal) || boundsVal > 0, "Bad bounds val! %s (rounded: %s, orig %s)", boundsVal, roundVal, val);
+			return roundVal;
 		}
 	}
 
