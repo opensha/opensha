@@ -4,8 +4,10 @@ import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
@@ -21,7 +23,10 @@ public class BinaryHazardCurveReader {
 	
 	public BinaryHazardCurveReader(String filename) throws Exception {
 		// Set up the reader
-		reader = new DataInputStream(new BufferedInputStream(new FileInputStream(filename)));
+		InputStream in = new BufferedInputStream(new FileInputStream(filename));
+		if (filename.toLowerCase().endsWith(".gz"))
+			in = new GZIPInputStream(in);
+		reader = new DataInputStream(in);
 		
 		// Pre-populate the IML values
 		int imlcount = reader.readInt();

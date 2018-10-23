@@ -191,7 +191,8 @@ public class RSQSimStateTransitionFileReader {
 	private synchronized void read(long index, int num) throws IOException {
 //		System.out.println("index: "+index);
 		Preconditions.checkState(index >= 0, "Bad index: %s", index);
-		raFile.seek(index*bytesPerRecord);
+		long seek = index*bytesPerRecord;
+		raFile.seek(seek);
 		curIndex = index;
 		if (index + num > numTransitions)
 			num = (int)(numTransitions - index);
@@ -207,35 +208,51 @@ public class RSQSimStateTransitionFileReader {
 		raFile.readFully(buffer, 0, len);
 		
 		for (int i=0; i<num; i++) {
-			int srcPos = i*bytesPerRecord;
+			try {
+				int srcPos = i*bytesPerRecord;
 //			System.out.println("srcPos="+srcPos);
-			System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
-			srcPos += 8;
-			curTimes[i] = doubleBuff.get(0);
-			if (i > 0)
-				Preconditions.checkState(curTimes[i] >= curTimes[i-1],
-					"File is out of order: %s, %s", curTimes[i-1], curTimes[i]);
-			System.arraycopy(buffer, srcPos, intBytes, 0, 4);
-			srcPos += 4;
-			curPatchIDs[i] = intBuff.get(0);
-			int stateInt = buffer[srcPos]; // 1 byte int
-			srcPos += 1;
-//			System.out.println("time="+(float)curTimes[i]+"\tpatch="+curPatchIDs[i]+"\tstateInt="+stateInt);
-			curStates[i] = RSQSimState.forInt(stateInt);
-			if (transV) {
 				System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
 				srcPos += 8;
-				curVels[i] = doubleBuff.get(0);
-				Preconditions.checkState(curStates[i] != RSQSimState.EARTHQUAKE_SLIP || curVels[i] > 0,
-						"Bad slip velocity in state %s: %s", curStates[i], curVels[i]);
+				curTimes[i] = doubleBuff.get(0);
+				if (i > 0)
+					Preconditions.checkState(curTimes[i] >= curTimes[i-1],
+						"File is out of order: %s, %s", curTimes[i-1], curTimes[i]);
+				System.arraycopy(buffer, srcPos, intBytes, 0, 4);
+				srcPos += 4;
+				curPatchIDs[i] = intBuff.get(0);
+				int stateInt = buffer[srcPos]; // 1 byte int
+				srcPos += 1;
+//			System.out.println("time="+(float)curTimes[i]+"\tpatch="+curPatchIDs[i]+"\tstateInt="+stateInt);
+				curStates[i] = RSQSimState.forInt(stateInt);
+				if (transV) {
+					System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
+					srcPos += 8;
+					curVels[i] = doubleBuff.get(0);
+					if (curVels[i] < 0 && curStates[i] == RSQSimState.EARTHQUAKE_SLIP) {
+						System.err.println("WARNING: Bad (negative) velocity, setting to 1e-6 as temporary fix");
+						curVels[i] = 1e-6;
+					}
+					Preconditions.checkState(curStates[i] != RSQSimState.EARTHQUAKE_SLIP || curVels[i] > 0,
+							"Bad slip velocity in state %s at pos=%s: %s", curStates[i], srcPos, curVels[i]);
+				}
+			} catch (Exception e) {
+				System.out.println();
+				System.out.flush();
+				String message = "Error reading transition index "+(index+i)+". Read began at index "
+						+index+" (pos="+seek+"), this is transition "+i+" of "+num+" in this read";
+				if (e instanceof IOException)
+					throw new IOException(message, e);
+				throw new RuntimeException(message, e);
 			}
 		}
 	}
 	
-	private static void debug_read(File file, int startIndex, int num, ByteOrder byteOrder, boolean transV) throws IOException {
+	private static void debug_read(File file, long startIndex, int num, ByteOrder byteOrder, boolean transV) throws IOException {
 		RandomAccessFile raFile = new RandomAccessFile(file, "r");
 		int bytesPerRecord = transV ? transV_bytes_per_record : regular_bytes_per_record;
-		raFile.seek(startIndex*bytesPerRecord);
+		long seek = startIndex*bytesPerRecord;
+		System.out.println("Seeking to: "+seek);
+		raFile.seek(seek);
 		
 		byte[] doubleBytes = new byte[8];
 		byte[] intBytes = new byte[4];
@@ -268,11 +285,91 @@ public class RSQSimStateTransitionFileReader {
 				System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
 				srcPos += 8;
 				double vel = doubleBuff.get(0);
-				System.out.println(time+"\t"+patch+"\t"+stateInt+"\t"+vel);
+				System.out.println((startIndex+i)+":\t"+time+"\t"+patch+"\t"+stateInt+"\t"+vel);
 			} else {
-				System.out.println(time+"\t"+patch+"\t"+stateInt);
+				System.out.println((startIndex+i)+":\t"+time+"\t"+patch+"\t"+stateInt);
 			}
 		}
+		
+		raFile.close();
+	}
+	
+	private static void debug_read_all_transV(File file, ByteOrder byteOrder) throws IOException {
+		RandomAccessFile raFile = new RandomAccessFile(file, "r");
+		int bytesPerRecord = transV_bytes_per_record;
+		
+		byte[] doubleBytes = new byte[8];
+		byte[] intBytes = new byte[4];
+		
+		ByteBuffer doubleRecord = ByteBuffer.wrap(doubleBytes);
+		doubleRecord.order(byteOrder);
+		DoubleBuffer doubleBuff = doubleRecord.asDoubleBuffer();
+		
+		ByteBuffer intRecord = ByteBuffer.wrap(intBytes);
+		intRecord.order(byteOrder);
+		IntBuffer intBuff = intRecord.asIntBuffer();
+		
+		long file_length = raFile.length();
+		long num = file_length / bytesPerRecord;
+		
+		int numPerBuffer = 10000;
+		
+		int bufferLen = bytesPerRecord * numPerBuffer;
+		
+		byte[] buffer = new byte[bufferLen];
+		
+		long transitionIndex = 0;
+		long filePos = 0;
+		
+		int numBad = 0;
+		
+		outer:
+		while (transitionIndex <= num) {
+			for (int i=0; i<numPerBuffer; i++) {
+				if (transitionIndex == num)
+					break outer;
+				if (i == 0) {
+					long numLeft = num-transitionIndex;
+					int numToRead = (int)Long.min(numLeft, numPerBuffer);
+					raFile.readFully(buffer, 0, numToRead*bytesPerRecord);
+				}
+				int srcPos = i*bytesPerRecord;
+				System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
+				srcPos += 8;
+				double time = doubleBuff.get(0);
+				System.arraycopy(buffer, srcPos, intBytes, 0, 4);
+				srcPos += 4;
+				int patch = intBuff.get(0);
+				int stateInt = buffer[srcPos]; // 1 byte int
+				srcPos += 1;
+				System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
+				srcPos += 8;
+				double vel = doubleBuff.get(0);
+				if (stateInt == 2 && vel <= 0) {
+					System.out.println("Bad velocity at transition "+transitionIndex+" at pos="+(filePos+i*bytesPerRecord));
+					for (int j=i-1; j<numPerBuffer && j<=i+1; j++) {
+						srcPos = j*bytesPerRecord;
+						System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
+						srcPos += 8;
+						time = doubleBuff.get(0);
+						System.arraycopy(buffer, srcPos, intBytes, 0, 4);
+						srcPos += 4;
+						patch = intBuff.get(0);
+						stateInt = buffer[srcPos]; // 1 byte int
+						srcPos += 1;
+						System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
+						srcPos += 8;
+						vel = doubleBuff.get(0);
+						System.out.println("\t"+(transitionIndex+(j-i))+":\t"+time+"\t"+patch+"\t"+stateInt+"\t"+vel);
+						numBad++;
+					}
+				}
+				transitionIndex++;
+				filePos += srcPos;
+			}
+		}
+		
+		System.out.println("Num bad: "+numBad);
 		
 		raFile.close();
 	}
@@ -376,7 +473,7 @@ public class RSQSimStateTransitionFileReader {
 			List<RSQSimStateTime> patchTimes = patchTransitions.get(patchID);
 			if (!patchTimes.isEmpty()) {
 				RSQSimStateTime patchTime = patchTimes.get(patchTimes.size()-1);
-				Preconditions.checkState(patchTime.getState() == RSQSimState.LOCKED,
+				Preconditions.checkState(patchTime.getState() != RSQSimState.NUCLEATING_SLIP && patchTime.getState() != RSQSimState.EARTHQUAKE_SLIP,
 						"Event %s, patch %s ended in non-locked state! Entered %s at relative t=%s. Relative next time: %s",
 						event.getID(), patchID, patchTime.getState(), patchTime.getStartTime()-startTime, patchEndTimes.get(patchID) - startTime);
 				patchTimes.remove(patchTimes.size()-1);
@@ -446,9 +543,17 @@ public class RSQSimStateTransitionFileReader {
 //				+" 32777581 32777582 32777583 32777584 32777585 32777586 32777587 32777588 32777589 327775810";
 //			System.out.println("HARDCODED: "+str);
 //			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
-			File dir = new File("/data/kevin/simulators/catalogs/rundir2585extend");
-			File transFile = new File(dir, "trans.extend2585.out");
-			args = Iterables.toArray(Splitter.on(" ").split("--debug "+transFile.getAbsolutePath()+" 0 100 little"), String.class);
+			File dir = new File("/home/kevin/Simulators/catalogs/bruce/rundir2829");
+			File transFile = new File(dir, "transV..out");
+//			int startIndex = 310432440;
+//			int num = 10;
+//			int startIndex = 310068232;
+//			int num = 364216;
+//			int startIndex = 13007950;
+//			int num = 20;
+			int startIndex = 0;
+			int num = -1;
+			args = Iterables.toArray(Splitter.on(" ").split("--debug "+transFile.getAbsolutePath()+" "+startIndex+" "+num+" little"), String.class);
 		}
 		if (args.length > 0 && args[0].equals("--debug")) {
 			if (args.length != 5) {
@@ -456,7 +561,7 @@ public class RSQSimStateTransitionFileReader {
 				System.exit(2);
 			}
 			File file = new File(args[1]);
-			boolean transV = args[1].startsWith("transV");
+			boolean transV = file.getName().startsWith("transV");
 			int startIndex = Integer.parseInt(args[2]);
 			int num = Integer.parseInt(args[3]);
 			ByteOrder byteOrder = null;
@@ -469,7 +574,15 @@ public class RSQSimStateTransitionFileReader {
 				System.exit(2);
 			}
 			
-			debug_read(file, startIndex, num, byteOrder, transV);
+			System.out.println("TransV ? "+transV);
+			
+			if (transV && num <= 0) {
+				System.out.println("Debugging bad velocities");
+				debug_read_all_transV(file, byteOrder);
+			} else {
+				System.out.println("Reading "+num+" starting at "+startIndex);
+				debug_read(file, startIndex, num, byteOrder, transV);
+			}
 			
 			System.exit(0);
 		} else if (args.length > 0 && args[0].equals("--print-rup")) {
