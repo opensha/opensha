@@ -64,6 +64,7 @@ public class UCERF3_CatalogParser {
 			}
 			
 			GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("GMT-0:00"));
+			cal.clear();
 			cal.set(year, month-1, date, hourOfDay, minute, second);
 			
 			Location hypoLoc = new Location(latitude, longitude, depth);
