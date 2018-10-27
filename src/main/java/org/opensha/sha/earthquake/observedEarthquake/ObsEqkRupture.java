@@ -20,6 +20,7 @@
 package org.opensha.sha.earthquake.observedEarthquake;
 
 import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.EqkRupture;
@@ -71,13 +72,11 @@ public class ObsEqkRupture extends EqkRupture implements java.io.Serializable{
 	}
 
 	/**
-	 * This returns the origin time of this event as a GregorianCalendar
-	 * (note the TimeZone of this calendar will be wherever the code is 
-	 * running when this method is called, as this is the default returned
-	 * by GregorianCalendar.getTimeZone())
+	 * This returns the origin time of this event as a GregorianCalendar for UTC time zone
 	 */
 	public GregorianCalendar getOriginTimeCal() {
-		GregorianCalendar cal = new GregorianCalendar();
+		// GregorianCalendar cal = new GregorianCalendar();
+		GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
 		cal.setTimeInMillis(originTimeInMillis);
 		return cal;
 	}	
