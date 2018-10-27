@@ -119,6 +119,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools.EpicenterMapThread;
+import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -179,21 +180,21 @@ public class ETAS_Simulator_NoFaults {
 	 * @param etasParams
 	 * @throws IOException
 	 */
-	public static void testETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
+	public static void runETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
 			GriddedRegion griddedRegion, ETAS_EqkRupture scenarioRup, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
-			Long randomSeed, ETAS_ParameterList etasParams)
+			Long randomSeed, ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams)
 					throws IOException {
 		List<ETAS_EqkRupture> scenarioRups = null;
 		if (scenarioRup != null) {
 			scenarioRups = new ArrayList<>();
 			scenarioRups.add(scenarioRup);
 		}
-		testMultiScenarioETAS_Simulation(resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
-				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams, null);
+		runETAS_Simulation(resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
+				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams, cubeParams);
 	}
 	
-	public static void testMultiScenarioETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
+	public static void runETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
 			GriddedRegion griddedRegion, List<ETAS_EqkRupture> scenarioRups, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
 			Long randomSeed, ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams)
@@ -367,6 +368,8 @@ public class ETAS_Simulator_NoFaults {
 		st = System.currentTimeMillis();
 		
 		// Create the ETAS_PrimaryEventSampler
+		if (cubeParams == null)
+			cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
 		ETAS_PrimaryEventSampler_noFaults etas_PrimEventSampler = new ETAS_PrimaryEventSampler_noFaults(cubeParams, erf, sourceRates,
 				null, etasParams, etas_utils);  // latter three may be null
 		if(D) System.out.println("ETAS_PrimaryEventSampler creation took "+(float)(System.currentTimeMillis()-st)/60000f+ " min");
@@ -547,8 +550,6 @@ public class ETAS_Simulator_NoFaults {
 		}
 		
 		if (D) System.out.println("Looping over eventsToProcess (initial num = "+eventsToProcess.size()+")...\n");
-		if (D) System.out.println("\tFault system ruptures triggered (date\tmag\tname\tnthRup,src,rupInSrc,fltSysRup):");
-		info_fr.write("\nFault system ruptures triggered (date\tmag\tname\tnthRup,src,rupInSrc,fltSysRup):\n");
 		info_fr.flush();
 
 		st = System.currentTimeMillis();
@@ -761,202 +762,57 @@ public class ETAS_Simulator_NoFaults {
 	}
 	
 	
-	/**
-	 * This utility finds the source index for the fault system rupture that has the given first and last subsection
-	 * @param erf
-	 * @param firstSectID
-	 * @param secondSectID
-	 */
-	private static void writeInfoAboutSourceWithThisFirstAndLastSection(FaultSystemSolutionERF erf, int firstSectID, int secondSectID) {
-		System.out.println("Looking for source...");
-		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
-			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
-			List<Integer> sectListForSrc = rupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
-			boolean firstIsIt = rupSet.getFaultSectionData(sectListForSrc.get(0)).getSectionId() == firstSectID;
-			boolean lastIsIt = rupSet.getFaultSectionData(sectListForSrc.get(sectListForSrc.size()-1)).getSectionId() == secondSectID;
-			if(firstIsIt && lastIsIt) {
-				int fssIndex=erf.getFltSysRupIndexForSource(s);
-				System.out.println("SourceIndex="+s+"\tfssIndex="+fssIndex+"\t"+erf.getSource(s).getName()+"\tmag="+erf.getSolution().getRupSet().getMagForRup(fssIndex));
-				break; 
-			}
-			firstIsIt = rupSet.getFaultSectionData(sectListForSrc.get(0)).getSectionId() == secondSectID;
-			lastIsIt = rupSet.getFaultSectionData(sectListForSrc.get(sectListForSrc.size()-1)).getSectionId() == firstSectID;
-			if(firstIsIt && lastIsIt) {
-				int fssIndex=erf.getFltSysRupIndexForSource(s);
-				System.out.println("SourceIndex="+s+"\tfssIndex="+fssIndex+"\t"+erf.getSource(s).getName()+"\tmag="+erf.getSolution().getRupSet().getMagForRup(fssIndex));
-				break;
-			}
-		}
-	}
-	
-	
-	/**
-	 * This utility finds the source index for the fault system rupture that has the given first and last subsection
-	 * @param erf
-	 * @param firstSectID
-	 * @param secondSectID
-	 */
-	private static void writeTotRateRupOccurOnTheseTwoSections(FaultSystemSolutionERF erf, int firstSectID, int secondSectID) {
-		System.out.println("Looking for source...");
-		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
-		double totRate=0;
-		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
-			List<Integer> sectListForSrc = rupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
-			if(sectListForSrc.contains(firstSectID) && sectListForSrc.contains(secondSectID)) {
-				totRate += erf.getSource(s).computeTotalEquivMeanAnnualRate(erf.getTimeSpan().getDuration());
-			}
-		}
-		System.out.println("totRate="+totRate+"\n\t"+rupSet.getFaultSectionData(firstSectID).getName()+"\n\t"+rupSet.getFaultSectionData(secondSectID).getName());
-	}
-
-	
-	
-	private static void writeInfoAboutClosestSectionToLoc(FaultSystemSolutionERF erf, Location loc) {
-		List<FaultSectionPrefData> fltDataList = erf.getSolution().getRupSet().getFaultSectionDataList();
-		double minDist = Double.MAX_VALUE;
-		int index=-1;
-		CalcProgressBar progressBar = new CalcProgressBar("Fault data to process", "junk");
-		progressBar.showProgress(true);
-		int counter=0;
-
-		for(FaultSectionPrefData fltData:fltDataList) {
-			progressBar.updateProgress(counter, fltDataList.size());
-			counter+=1;
-			double dist = LocationUtils.distanceToSurf(loc, fltData.getStirlingGriddedSurface(1.0, false, true));
-			if(minDist>dist) {
-				minDist=dist;
-				index = fltData.getSectionId();
-			}
-		}
-		progressBar.showProgress(false);
-		minDist = LocationUtils.distanceToSurf(loc, fltDataList.get(index).getStirlingGriddedSurface(0.01, false, true));
-		System.out.println(index+"\tdist="+(float)minDist+"\tfor\t"+fltDataList.get(index).getName());
-	}
-
-	
-	
-	/**
-	 * This utility writes info about sources that use the given index and that are between the specified minimum and maximum mag
-	 * @param erf
-	 * @param sectID
-	 * @param minMag
-	 * @param maxMag
-	 */
-	private static void writeInfoAboutSourcesThatUseSection(FaultSystemSolutionERF erf, int sectID, double minMag, double maxMag) {
-		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
-		System.out.println("srcIndex\tfssIndex\tprob\tmag\tname\t"+rupSet.getFaultSectionData(sectID).getName());
-		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
-			List<Integer> sectListForSrc = rupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
-			if(sectListForSrc.contains(sectID)) {
-				int fssIndex=erf.getFltSysRupIndexForSource(s);
-				double meanMag = erf.getSolution().getRupSet().getMagForRup(fssIndex);
-				if(meanMag<minMag || meanMag>maxMag)
-					continue;
-				double prob = erf.getSource(s).computeTotalProb();
-				System.out.println(+s+"\t"+fssIndex+"\t"+prob+"\t"+meanMag+"\t"+erf.getSource(s).getName());
-//				double probAboveM7 = erf.getSource(s).computeTotalProbAbove(7.0);
-//				if(probAboveM7 > 0.0)
-//					System.out.println(+s+"\t"+fssIndex+"\t"+probAboveM7+"\t"+meanMag+"\t"+erf.getSource(s).getName());
-			}
-		}
-	}
-	
-	
-	/**
-	 * This utility writes a location near the center of the surface of the given section
-	 * @param erf
-	 * @param sectID
-	 */
-	private static void writeLocationAtCenterOfSectionSurf(FaultSystemSolutionERF erf, int sectID) {
-		String name = erf.getSolution().getRupSet().getFaultSectionData(sectID).getName();
-		StirlingGriddedSurface surf = erf.getSolution().getRupSet().getFaultSectionData(sectID).getStirlingGriddedSurface(1.0, false, true);
-		Location loc = surf.getLocation(surf.getNumRows()/2, surf.getNumCols()/2);
-		System.out.println("Locationat center of "+name+"\t"+loc.getLatitude()+", "+loc.getLongitude()+", "+loc.getDepth());
-	}
-
-
-	
-	
-	/**
-	 * This builds a scenario rup for the given scenario.
-	 * This returns null is scenario=null.
-	 * TODO origin time should be passed in, as well as whether ERF elastic rebound is reset for scenario?
-	 * @param scenario
-	 * @param erf
-	 * @return
-	 */
-	public static ETAS_EqkRupture buildScenarioRup(TestScenario scenario, FaultSystemSolutionERF_ETAS erf) {
-		ETAS_EqkRupture scenarioRup=null;
-		if(scenario != null) {
-			scenarioRup = new ETAS_EqkRupture();
-			Long ot = Math.round((2012.0-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR); // occurs at 2014
-			scenarioRup.setOriginTime(ot);	
-			int fssIndex = scenario.fssIndex;
-			if(fssIndex>=0) {
-				int srcID = erf.getSrcIndexForFltSysRup(fssIndex);
-				Preconditions.checkState(srcID >= 0, "Source not found for FSS index="+fssIndex);
-				ProbEqkRupture rupFromERF = erf.getSource(srcID).getRupture(0);
-				scenarioRup.setAveRake(rupFromERF.getAveRake());
-				scenarioRup.setMag(rupFromERF.getMag());
-				if (!Double.isNaN(scenario.mag))
-					// override mag
-					scenarioRup.setMag(scenario.mag);
-				scenarioRup.setFSSIndex(fssIndex);
-				scenarioRup.setRuptureSurface(rupFromERF.getRuptureSurface());
-//	System.out.println(rupFromERF.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface().size());
-//				CompoundSurface trimmedSurface = GriddedSurfaceUtils.trimEndsOfSurface(
-//						(CompoundSurface)rupFromERF.getRuptureSurface(), 3, 3);
-//				scenarioRup.setRuptureSurface(trimmedSurface);
-//	System.out.println(trimmedSurface.getEvenlyDiscritizedListOfLocsOnSurface().size());
-//	System.exit(-1);
-//				scenarioRup.setRuptureSurface(rupFromERF.getRuptureSurface().getMoved(new LocationVector(295.037, 0.5, 0.0)));
-//				System.out.println("test Mainshock: "+erf.getSource(srcID).getName()+"; mag="+scenarioRup.getMag());
-				System.out.println("\tProbBeforeDateOfLastReset: "+erf.getSource(srcID).getRupture(0).getProbability());
-				erf.setFltSystemSourceOccurranceTime(srcID, ot);
-				erf.updateForecast();
-				System.out.println("\tProbAfterDateOfLastReset: "+erf.getSource(srcID).getRupture(0).getProbability());
-			} 
-			else {
-				scenarioRup.setAveRake(0.0);
-				if (scenario == TestScenario.CUSTOM) {
-					// prompt for loc/mag
-					ParameterList params = new ParameterList();
-					DoubleParameter magParam = new DoubleParameter("Magnitude", 2d, 8.89, (Double)scenario.mag);
-					params.addParameter(magParam);
-					LocationParameter locParam = new LocationParameter("Hpocenter Location", scenario.loc);
-					params.addParameter(locParam);
-					ParameterListEditor edit = new ParameterListEditor(params);
-					
-					// this will block until done
-					JOptionPane.showMessageDialog(null, edit, "Custom Rupture", JOptionPane.PLAIN_MESSAGE);
-					scenarioRup.setMag(magParam.getValue());
-					scenarioRup.setPointSurface(locParam.getValue());
-					System.out.println("Loaded custom scenario: M"+(float)scenarioRup.getMag()
-							+", "+scenarioRup.getHypocenterLocation());
-				} else {
-					scenarioRup.setMag(scenario.mag);
-					scenarioRup.setPointSurface(scenario.loc);
-					scenarioRup.setHypocenterLocation(scenario.loc);
-				}
-			}	
-		}
-	return scenarioRup;
-	}
-
-	/**
-	 * 
-	 * 
-	 * TODO:
-	 * 
-	 * @param scenario
-	 * @param etasParams
-	 * @param randomSeed
-	 * @param simulationName - if null this will be constructed from input information
-	 * @param histQkList
-	 */
-	public static void runTest(TestScenario scenario, ETAS_ParameterList etasParams, Long randomSeed, 
-			String simulationName, boolean includeHistEvents, double startTimeYear, double durationYears) {
+	public static void configAndRunSimulation() {
+//		
+//		UCERF3_GriddedSeisOnlyERF_ETAS erf = getU3_ETAS_ERF__GriddedSeisOnly(2012, 1);
+//		System.out.println("UCERF3_GriddedSeisOnlyERF_ETAS Parameters:");
+//		for(Parameter param:erf.getAdjustableParameterList())
+//			System.out.println("\t"+param.getName()+" = "+param.getValue());
+//		System.exit(0);
 		
+		ETAS_Simulator_NoFaults.D=true;
+		ETAS_Simulator_NoFaults.live_map=true;
+		
+//		ETAS_Simulator.TestScenario scenario = ETAS_Simulator.TestScenario.MOJAVE_M7;
+		ETAS_Simulator.TestScenario scenario = null;
+		
+		String simulationName = "Landers";
+		String incrementString = "_1"; // set as "-1", or "_2" to save previous runs
+		
+		Long seed = null;
+//		Long seed = 1449590752534l;
+		
+//		double startTimeYear=2014;
+//		long startTimeMillis = ETAS_Simulator.getStartTimeMillisFromYear(startTimeYear);
+		long startTimeMillis = 709732654000l;	// Landers OT plus 1 millisec
+
+
+		double durationYears=1;
+//		double durationYears=7.0/365.25;
+		
+		ETAS_ParameterList params = new ETAS_ParameterList();
+		params.setImposeGR(false);	
+		params.setApplyGridSeisCorr(false);
+		params.setApplySubSeisForSupraNucl(false);
+		params.setTotalRateScaleFactor(1.0);
+		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
+		
+		boolean includeSpontEvents=false;
+		boolean includeIndirectTriggering=true;
+		double gridSeisDiscr = 0.1;
+		
+		boolean includeHistCat = true;
+		
+		simulationName +="NoFaults_";
+		if(scenario == null)
+			simulationName += "NoScenario";
+		else
+			simulationName += scenario;
+
+		// add suffix to simulation:
+		simulationName += incrementString;
+		
+
 		ETAS_SimAnalysisTools.writeMemoryUse("Memory at beginning of run");
 
 		Long st = System.currentTimeMillis();
@@ -969,29 +825,34 @@ public class ETAS_Simulator_NoFaults {
 
 		// Make fault system ERF is needed for scenario
 		FaultSystemSolutionERF_ETAS erf = null;
-		if(scenario.fssIndex>=0 || includeHistEvents)
-			erf = getU3_ETAS_ERF(startTimeYear, durationYears);
+		if((scenario!=null && scenario.getFSS_Index()>=0) || includeHistCat)
+			erf = ETAS_Simulator.getU3_ETAS_ERF(startTimeMillis, durationYears, params.getApplyGridSeisCorr());
 		
-		ObsEqkRupList histQkList=null;
-		if(includeHistEvents)
-			histQkList = getHistCatalogFiltedForStatewideCompleteness(startTimeYear,erf.getSolution().getRupSet());
-
-
+		List<ETAS_EqkRupture> histQkList=null;
+		if(includeHistCat) {
+			try {
+				histQkList = ETAS_Simulator.getFilteredHistCatalog(startTimeMillis, erf);
+			} catch (IOException | DocumentException e1) {
+				e1.printStackTrace();
+			}
+		}
 		
-		ETAS_EqkRupture scenarioRup = buildScenarioRup(scenario, erf);
+		// Build scenario, reseting date of last event for fault sections in erf if appropriate
+		ArrayList<ETAS_EqkRupture> scenarioList=null;
+		if(scenario != null ) {
+			ETAS_EqkRupture scenarioRup = ETAS_Simulator.buildScenarioRup(scenario, erf, startTimeMillis);
+			scenarioList = new ArrayList<ETAS_EqkRupture>();
+			scenarioList.add(scenarioRup);
+		}
 		
-		boolean includeSpontEvents=false;
-		boolean includeIndirectTriggering=true;
-		double gridSeisDiscr = 0.1;
-		
-		UCERF3_GriddedSeisOnlyERF_ETAS erf_noFlts = getU3_ETAS_ERF__GriddedSeisOnly(2012, 1);
+		UCERF3_GriddedSeisOnlyERF_ETAS erf_noFlts = getU3_ETAS_ERF__GriddedSeisOnly(startTimeMillis, durationYears);
 		
 		System.out.println("Starting testETAS_Simulation");
 		try {
 			String dirNameForSavingFiles = "U3_ETAS_"+simulationName+"/";
 			File resultsDir = new File(dirNameForSavingFiles);
-			testETAS_Simulation(resultsDir, erf_noFlts, griddedRegion, scenarioRup, histQkList,  includeSpontEvents, 
-					includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams);
+			runETAS_Simulation(resultsDir, erf_noFlts, griddedRegion, scenarioList, histQkList,  includeSpontEvents, 
+					includeIndirectTriggering, gridSeisDiscr, simulationName, seed, params, null);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -1001,157 +862,96 @@ public class ETAS_Simulator_NoFaults {
 
 	}
 	
-	public static ObsEqkRupList getHistCatalog(double startTimeYear, FaultSystemRupSet rupSet) {
-		File file = new File("/Users/field/workspace/OpenSHA/dev/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt");
-		ObsEqkRupList histQkList=null;
-		try {
-			histQkList = UCERF3_CatalogParser.loadCatalog(file);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		
-//		HistogramFunction func = new HistogramFunction(1.0, 61, 2.0);
-//		for(ObsEqkRupture qk : histQkList) {
-//			func.add(qk.getHypocenterLocation().getDepth(), 1);
+
+//	/**
+//	 * 
+//	 * 
+//	 * TODO:
+//	 * 
+//	 * @param scenario
+//	 * @param etasParams
+//	 * @param randomSeed
+//	 * @param simulationName - if null this will be constructed from input information
+//	 * @param histQkList
+//	 */
+//	public static void runTest(ETAS_Simulator.TestScenario scenario, ETAS_ParameterList etasParams, Long randomSeed, 
+//			String simulationName, boolean includeHistEvents, double startTimeYear, double durationYears) {
+//		
+//		ETAS_SimAnalysisTools.writeMemoryUse("Memory at beginning of run");
+//
+//		Long st = System.currentTimeMillis();
+//
+//		if(simulationName == null) {
+//			throw new RuntimeException("simulationName is null");
 //		}
-//		GraphWindow graph = new GraphWindow(func, "Hypocenter Depth Histogram");
-		double timeInMillis = (startTimeYear-1970)*ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-		histQkList = histQkList.getRupsBefore((long)timeInMillis);
-		
-		// load in rupture surfaces. Note: this must happen before mag complete filtering, surface loading needs all ruptures
-		Preconditions.checkState(rupSet.getNumRuptures() == 253706, "Hardcoded to FM3.1 but this rup set isn't FM3.1");
-		try {
-			FiniteFaultMappingData.loadRuptureSurfaces(
-					UCERF3_DataUtils.locateResourceAsStream("EarthquakeCatalog", "finite_fault_mappings.xml"),
-					histQkList, FaultModels.FM3_1, rupSet);
-		} catch (DocumentException e1) {
-			ExceptionUtils.throwAsRuntimeException(e1);
-		}
-		
-		return histQkList;
-	}
+//		
+//		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
+//
+//		// Make fault system ERF is needed for scenario
+//		FaultSystemSolutionERF_ETAS erf = null;
+//		if(scenario.getFSS_Index()>=0 || includeHistEvents)
+//			erf = getU3_ETAS_ERF(startTimeYear, durationYears);
+//		
+//		ObsEqkRupList histQkList=null;
+//		if(includeHistEvents)
+//			histQkList = getHistCatalogFiltedForStatewideCompleteness(startTimeYear,erf.getSolution().getRupSet());
+//
+//
+//		
+//		ETAS_EqkRupture scenarioRup = ETAS_Simulator.buildScenarioRup(scenario, erf);
+//		
+//		boolean includeSpontEvents=false;
+//		boolean includeIndirectTriggering=true;
+//		double gridSeisDiscr = 0.1;
+//		
+//		UCERF3_GriddedSeisOnlyERF_ETAS erf_noFlts = getU3_ETAS_ERF__GriddedSeisOnly(2012, 1);
+//		
+//		System.out.println("Starting testETAS_Simulation");
+//		try {
+//			String dirNameForSavingFiles = "U3_ETAS_"+simulationName+"/";
+//			File resultsDir = new File(dirNameForSavingFiles);
+//			runETAS_Simulation(resultsDir, erf_noFlts, griddedRegion, scenarioRup, histQkList,  includeSpontEvents, 
+//					includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
+//		
+//		float timeMin = (float)(System.currentTimeMillis()-st)/60000f;
+//		System.out.println("Total simulation took "+timeMin+" min");
+//
+//	}
+//	
+//	public static ObsEqkRupList getHistCatalog(double startTimeYear, FaultSystemRupSet rupSet) {
+//		File file = new File("/Users/field/workspace/OpenSHA/dev/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt");
+//		ObsEqkRupList histQkList=null;
+//		try {
+//			histQkList = UCERF3_CatalogParser.loadCatalog(file);
+//		} catch (IOException e1) {
+//			e1.printStackTrace();
+//		}
+//		
+////		HistogramFunction func = new HistogramFunction(1.0, 61, 2.0);
+////		for(ObsEqkRupture qk : histQkList) {
+////			func.add(qk.getHypocenterLocation().getDepth(), 1);
+////		}
+////		GraphWindow graph = new GraphWindow(func, "Hypocenter Depth Histogram");
+//		double timeInMillis = (startTimeYear-1970)*ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+//		histQkList = histQkList.getRupsBefore((long)timeInMillis);
+//		
+//		// load in rupture surfaces. Note: this must happen before mag complete filtering, surface loading needs all ruptures
+//		Preconditions.checkState(rupSet.getNumRuptures() == 253706, "Hardcoded to FM3.1 but this rup set isn't FM3.1");
+//		try {
+//			FiniteFaultMappingData.loadRuptureSurfaces(
+//					UCERF3_DataUtils.locateResourceAsStream("EarthquakeCatalog", "finite_fault_mappings.xml"),
+//					histQkList, FaultModels.FM3_1, rupSet);
+//		} catch (DocumentException e1) {
+//			ExceptionUtils.throwAsRuntimeException(e1);
+//		}
+//		
+//		return histQkList;
+//	}
+//	
 	
-	/**
-	 * This returns a list of observed ruptures that has been filtered for state wide completeness according to
-	 * UCERF3.data.U3_EqkCatalogStatewideCompleteness
-	 * @param startTimeYear
-	 * @return
-	 */
-	public static ObsEqkRupList getHistCatalogFiltedForStatewideCompleteness(double startTimeYear, FaultSystemRupSet rupSet) {
-		ObsEqkRupList qkList = getHistCatalog(startTimeYear, rupSet);
-		
-		// filter by mag complete
-		U3_EqkCatalogStatewideCompleteness magComplete;
-		try {
-			magComplete = U3_EqkCatalogStatewideCompleteness.load();
-		} catch (IOException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-		return magComplete.getFilteredCatalog(qkList);
-	}
-
-	
-	public static void plotCatalogMagVsTime(ObsEqkRupList obsQkList, String fileName) {
-		DefaultXY_DataSet yearVsMagXYdata = new DefaultXY_DataSet();
-		for(ObsEqkRupture rup:obsQkList) {
-			double otYear = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
-			yearVsMagXYdata.set(rup.getMag(),otYear);
-		}
-		
-		U3_EqkCatalogStatewideCompleteness magComplete;
-		try {
-			magComplete = U3_EqkCatalogStatewideCompleteness.load();
-		} catch (IOException e1) {
-			throw ExceptionUtils.asRuntimeException(e1);
-		}
-		EvenlyDiscretizedFunc yrMagCompleteFunc = magComplete.getEvenlyDiscretizedMagYearFunc();
-		DefaultXY_DataSet yearVsMagCompleteXYdata = new DefaultXY_DataSet();
-		double deltaMagOver2 = yrMagCompleteFunc.getDelta()/2.0;
-		for(int i=0;i<yrMagCompleteFunc.size();i++) {
-			yearVsMagCompleteXYdata.set(yrMagCompleteFunc.getX(i)-deltaMagOver2,yrMagCompleteFunc.getY(i));
-			yearVsMagCompleteXYdata.set(yrMagCompleteFunc.getX(i)+deltaMagOver2,yrMagCompleteFunc.getY(i));
-		}
-
-		
-		ArrayList<XY_DataSet> funcList = new ArrayList<XY_DataSet>();
-		funcList.add(yearVsMagXYdata);
-		funcList.add(yearVsMagCompleteXYdata);
-		ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
-		plotCharList.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 1f, Color.RED));
-		plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
-		GraphWindow graph = new GraphWindow(funcList, "Year vs Mag", plotCharList); 
-		graph.setX_AxisLabel("Mag");
-		graph.setY_AxisLabel("Year");
-		graph.setY_AxisRange(1750, 2015);
-		
-		if(fileName != null) {
-			try {
-				graph.saveAsPDF(fileName+".pdf");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-	}
-	
-	
-	public static void plotFilteredCatalogMagFreqDist(ObsEqkRupList obsQkList,IncrementalMagFreqDist yrCompleteForMagFunc, 
-			SummedMagFreqDist targetMFD, String fileName) {
-		SummedMagFreqDist mfd = new SummedMagFreqDist(2.55,8.45,60);
-		for(ObsEqkRupture rup:obsQkList) {
-			double yrs = 2012.0 - yrCompleteForMagFunc.getClosestYtoX(rup.getMag());
-			mfd.addResampledMagRate(rup.getMag(), 1.0/yrs, true);
-		}
-		mfd.setName("Catalog MFD");
-		mfd.setInfo("Total Rate = "+mfd.getTotalIncrRate());
-		
-		ArrayList<XY_DataSet> funcList = new ArrayList<XY_DataSet>();
-		funcList.add(mfd);
-		funcList.add(mfd.getCumRateDistWithOffset());
-		funcList.get(1).setName("Cumulative Catalog MFD");
-		ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
-		plotCharList.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 2f, Color.BLUE));
-		plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
-		
-		double expNumAftershockRatio=Double.NaN;
-		if(targetMFD != null) {
-			
-			// compute ratio of expected num aftershocks
-			double maxMag = targetMFD.getMaxMagWithNonZeroRate();
-			double sumObs=0;
-			double sumTarget=0;
-			for(double mag=2.55;mag< maxMag+mfd.getDelta()/2.0; mag += mfd.getDelta()) {
-				sumObs += mfd.getY(mag)*Math.pow(10, mag);
-				sumTarget += targetMFD.getY(mag)*Math.pow(10, mag);
-			}
-			expNumAftershockRatio=sumObs/sumTarget;			
-			targetMFD.setName("Target MFD");
-			targetMFD.setInfo("Total Rate = "+targetMFD.getTotalIncrRate());
-			funcList.add(targetMFD);
-			funcList.add(targetMFD.getCumRateDistWithOffset());
-			funcList.get(3).setName("Cumulative Target MFD");
-			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.BLACK));			
-			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));			
-		}
-		mfd.setInfo(mfd.getInfo()+"\n"+"expNumAftershockRatio = "+(float)expNumAftershockRatio);
-
-		GraphWindow graph = new GraphWindow(funcList, "MFDs; expNumAftershockRatio = "+(float)expNumAftershockRatio, plotCharList); 
-		graph.setX_AxisLabel("Mag");
-		graph.setY_AxisLabel("Rate (per year)");
-		graph.setYLog(true);
-		graph.setY_AxisRange(1e-5,1e4);
-		
-		if(fileName != null) {
-			try {
-				graph.saveAsPDF(fileName+".pdf");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-
-	}
-
 	
 	
 	/**
@@ -1163,121 +963,9 @@ public class ETAS_Simulator_NoFaults {
 
 
 	
-	public static FaultSystemSolutionERF_ETAS getU3_ETAS_ERF(double startTimeYear, double durationYears) {
-		
-		// means solution ERF
-		System.out.println("Starting ERF instantiation");
-		
-		// temporary hack
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		
-//		String fileName="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
-		String fileName="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip";
-		FaultSystemSolution fss;
-		try {
-			fss = FaultSystemIO.loadSol(new File(fileName));
-		} catch (Exception e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-		
-		
-////		// Or for Reference branch ERF:
-////		// U3.3 compuond file, assumed to be in data/scratch/InversionSolutions
-////		// download it from here: http://opensha.usc.edu/ftp/kmilner/ucerf3/2013_05_10-ucerf3p3-production-10runs/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL.zip
-//		String fileName = "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL.zip";
-//		File invDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions");
-//		File compoundFile = new File(invDir, fileName);
-//		CompoundFaultSystemSolution fetcher;
-//		InversionFaultSystemSolution fss=null;
-//		try {
-//			fetcher = CompoundFaultSystemSolution.fromZipFile(compoundFile);
-//			LogicTreeBranch ref = LogicTreeBranch.DEFAULT;
-//			fss = fetcher.getSolution(ref);
-//		} catch (ZipException e) {
-//			e.printStackTrace();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-
-		
-		
-		int numSectsWithDateLast = 0;
-		for (FaultSectionPrefData sect : fss.getRupSet().getFaultSectionDataList())
-			if (sect.getDateOfLastEvent() > Long.MIN_VALUE)
-				numSectsWithDateLast++;
-		System.out.println(numSectsWithDateLast+"/"+fss.getRupSet().getFaultSectionDataList().size()+" sects have date of last");
-		return getU3_ETAS_ERF(fss, startTimeYear, durationYears);
-	}
 	
 	
-	public static FaultSystemSolutionERF_ETAS getU3_ETAS_ERF(FaultSystemSolution fss, double startTimeYear, double durationYears) {
-		Long st = System.currentTimeMillis();
-		FaultSystemSolutionERF_ETAS erf = new FaultSystemSolutionERF_ETAS(fss);
-		
-		// set parameters
-		erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
-		erf.setParameter(BackgroundRupParam.NAME, BackgroundRupType.POINT);
-		erf.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, false);
-		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
-		erf.getParameter(MagDependentAperiodicityParam.NAME).setValue(MagDependentAperiodicityOptions.MID_VALUES);
-		BPTAveragingTypeOptions aveType = BPTAveragingTypeOptions.AVE_RI_AVE_NORM_TIME_SINCE;
-		erf.setParameter(BPTAveragingTypeParam.NAME, aveType);
-		erf.setParameter(AleatoryMagAreaStdDevParam.NAME, 0.0);
-		erf.getParameter(HistoricOpenIntervalParam.NAME).setValue(startTimeYear-1875d);	
-		erf.getTimeSpan().setStartTimeInMillis(Math.round((startTimeYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR)+1);
-		erf.getTimeSpan().setDuration(durationYears);
-		
-		erf.updateForecast();
-		
-		// for number of gridded source ruptures
-//		int numGridRups=0;
-//		for(int s=erf.getNumFaultSystemSources();s<erf.getNumSources();s++)
-//			numGridRups+=erf.getSource(s).getNumRuptures();
-//		System.out.println("numGridRups="+numGridRups);
-		
-		float timeSec = (float)(System.currentTimeMillis()-st)/1000f;
-		System.out.println("ERF instantiation took "+timeSec+" sec");
-		
-		
-		
-//		FaultSystemSolutionERF tempERF = (FaultSystemSolutionERF)erf;
-//		InversionFaultSystemSolution invSol = (InversionFaultSystemSolution)tempERF.getSolution();
-//		double minMag = 2.05;
-//		double maxMag = 8.95;
-//		int numMag = 70;
-//		List<GutenbergRichterMagFreqDist> subSeisMFD_List = invSol.getFinalSubSeismoOnFaultMFD_List();
-//		List<IncrementalMagFreqDist> supraSeisMFD_List = invSol.getFinalSupraSeismoOnFaultMFD_List(minMag, maxMag, numMag);
-////		for(int s=0;s<invSol.getRupSet().getNumSections(); s++) {
-////			System.out.println(s+"\t"+invSol.getRupSet().getFaultSectionData(s).getName());
-////		}
-//		
-//		ArrayList<IncrementalMagFreqDist> mfdList = new ArrayList<IncrementalMagFreqDist>();
-//		SummedMagFreqDist[] tdMFD_Array = FaultSysSolutionERF_Calc.calcNucleationMFDForAllSects(tempERF, minMag, maxMag, numMag);
-//		SummedMagFreqDist[] tiMFD_Array = FaultSysSolutionERF_Calc.calcTimeIndNucleationMFDForAllSects(tempERF, minMag, maxMag, numMag);
-//		int parkfieldIndex = 1923;
-//		mfdList.add(supraSeisMFD_List.get(parkfieldIndex));
-//		mfdList.add(tdMFD_Array[parkfieldIndex]);
-//		mfdList.add(tiMFD_Array[parkfieldIndex]);
-//		mfdList.add(subSeisMFD_List.get(parkfieldIndex));
-//		GraphWindow mfd_Graph = new GraphWindow(mfdList, "MFDs"); 
-//		mfd_Graph.setX_AxisLabel("Mag");
-//		mfd_Graph.setY_AxisLabel("Rate");
-//		mfd_Graph.setYLog(true);
-//		mfd_Graph.setPlotLabelFontSize(22);
-//		mfd_Graph.setAxisLabelFontSize(20);
-//		mfd_Graph.setTickLabelFontSize(18);			
-////		System.out.println(parkfieldIndex+"\t"+invSol.getRupSet().getFaultSectionData(parkfieldIndex).getName());
-////		System.out.println(supraSeisMFD_List.get(parkfieldIndex).toString());
-////		System.exit(-1);
-		
-		
-		
-
-		return erf;
-	}
-	
-	
-	public static UCERF3_GriddedSeisOnlyERF_ETAS getU3_ETAS_ERF__GriddedSeisOnly(double startTimeYear, double durationYears) {
+	public static UCERF3_GriddedSeisOnlyERF_ETAS getU3_ETAS_ERF__GriddedSeisOnly(long startTimeMillis, double durationYears) {
 		Long st = System.currentTimeMillis();
 		
 		UCERF3_GriddedSeisOnlyERF_ETAS erf = new UCERF3_GriddedSeisOnlyERF_ETAS();
@@ -1289,7 +977,7 @@ public class ETAS_Simulator_NoFaults {
 		erf.setParameter("Total Regional Rate",TotalMag5Rate.RATE_7p9);
 		erf.setParameter("Spatial Seis PDF",SpatialSeisPDF.UCERF3);
 
-		erf.getTimeSpan().setStartTimeInMillis(Math.round((startTimeYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR)+1);
+		erf.getTimeSpan().setStartTimeInMillis(startTimeMillis);
 		erf.getTimeSpan().setDuration(durationYears);
 		
 		erf.updateForecast();
@@ -1301,366 +989,52 @@ public class ETAS_Simulator_NoFaults {
 
 	
 	
-	/**
-	 * Test scenarios
-	 *
-	 */
-	public enum TestScenario {
-		// IMPORTANT: DO NOT REMOVE OR RENAME SCENARIOS from this list if we have used them in the past and want figure reproducibility.
-		// these are used by the plotting code.
-		MOJAVE_M7pt4("MojaveM7.4", 193830),		// SourceIndex=193816	fssIndex=193830	Inversion Src #193830; 18 SECTIONS BETWEEN San Andreas (San Bernardino N), Subsection 2 AND San Andreas (Mojave S), Subsection 0	mag=7.391156552897243
-		MOJAVE_M7pt8("MojaveM7.8", 18366),
-		MOJAVE_M7("MojaveM7", 193821),		// 193807	Inversion Src #193821; 9 SECTIONS BETWEEN San Andreas (San Bernardino N), Subsection 2 AND San Andreas (Mojave S), Subsection 9: writeInfoAboutSourceWithThisFirstAndLastSection(getU3_ETAS_ERF(), 1846, 1946); & the other write method here
-		MOJAVE_M7_ALT("MojaveM7_Alt", 195766),		// Inversion Src #195766; 9 SECTIONS BETWEEN San Andreas (Mojave S), Subsection 4 AND San Andreas (Mojave S), Subsection 12 (away from branching faults, but has a MFD spike near 6.3 at one end)
-		MOJAVE_M6pt3_FSS("MojaveM6.3_FSS", 195759),	// 		subsections 11 and 12
-		MOJAVE_M6pt3_ptSrc("MojaveM6.3_PtSrc", new Location(34.42295,-117.80177,5.8), 6.3),	// on Mojave subsection 10 (id=1847), and very close to subsection 11 (id=1848)
-		MOJAVE_M7pt5_ptSrc("MojaveM7.5_PtSrc", new Location(34.42295,-117.80177,5.8), 7.5),	// 
-		MOJAVE_M5p5("MojaveM5.5", new Location(34.42295,-117.80177,5.8), 5.5),	// on Mojave subsection 10 (id=1847), and very close to subsection 11 (id=1848)
-		MOJAVE_M5p5_SECT1850("Mojave_M5.5_Sect1850", new Location(34.354,-117.639,6.5500), 5.5), // Location at center of San Andreas (Mojave S), Subsection 13	34.35453627367332, -117.63914790390031, 6.550000190734863
-		MOJAVE_M5p5_2kmAway("MojaveM5.5_2kmAway", LocationUtils.location(new Location(34.42295,-117.80177,5.8), new LocationVector((295.037-270.0), 2.0, 0.0)), 5.5),	//
-		MOJAVE_M5p5_5kmAway("MojaveM5.5_5kmAway", LocationUtils.location(new Location(34.42295,-117.80177,5.8), new LocationVector((295.037-270.0), 5.0, 0.0)), 5.5),	//
-		MOJAVE_M5("MojaveM5", new Location(34.42295,-117.80177,5.8), 5.0),	// on Mojave subsection 10 (id=1847), and very close to subsection 11 (id=1848)
-		N_PALM_SPRINGS_1986("N Palm Springs M6.0", new Location(34.02,-116.76,10.0), 6.0),		// original provided by Kevin
-		MOJAVE_OLD("Mojave M7.05", 197792),		// original provided by Kevin
-		LANDERS("Landers", 246711),			// found by running: writeInfoAboutSourceWithThisFirstAndLastSection(erf, 243, 989);
-		NORTHRIDGE("Northridge", 187455),	// found by running: writeInfoAboutSourceWithThisFirstAndLastSection(erf, 1409, 1413);
-		LA_HABRA_6p2("La Habra 6.2", new Location(33.932,-117.917,4.8), 6.2),
-		SURPRISE_VALLEY_5p0("SurpriseValley5pt0", new Location(41.83975, -120.12356, 4.6750), 5.0), // Locationat center of Surprise Valley 2011 CFM, Subsection 14	41.83975, -120.12356, 4.675
-		SURPRISE_VALLEY_5p5("SurpriseValley5pt5", new Location(41.83975, -120.12356, 4.6750), 5.5),	// found with writeLocationAtCenterOfSectionSurf(erf, 2460);  2nd highest Charfactor
-		NEAR_MAACAMA("Near Maacama", new Location(39.79509, -123.56665-0.04, 7.54615), 7.0),
-		ON_MAACAMA("On Maacama", new Location(39.79509, -123.56665, 7.54615), 7.0),
-		ON_N_MOJAVE("On N Mojave", getMojaveTestLoc(0.0), 6.0),	// on N edge of the Mojave scenario
-		NEAR_N_MOJAVE_3KM("On N Mojave", getMojaveTestLoc(3.0), 5.0),	// on N edge of the Mojave scenario
-		CUSTOM("Custom (will prompt)", new Location(34, -118), 5d), // will prompt when built, these are just defaults
-		NAPA("Napa 6.0", 93902, null, 6d), // supra-seismogenic rup that is a 6.3 in U3, overridden to be a 6.0
-		PARKFIELD("Parkfield M6", 30473), // Parkfield M6 fault based rup
-		BOMBAY_BEACH_M6("Bombay Beach M6", new Location(33.3183,-115.7283,5.8), 6.0), // Bombay Beach M6 in location of 2009 M4.8
-		// From Felzer appendix: 2009   3 24 11 55 43.9300 33.3172 -115.728 5.96 4.96 7.00 2.00 0.09 0.01; Andy's paper says it's M 4.8
-		BOMBAY_BEACH_M4pt8("Bombay Beach M4.8", new Location(33.3172,-115.728, 5.96), 4.8), // Bombay Beach M6 in location of 2009 M4.8
-		ROBINSON_CREEK_M5p5("Robinson Creek M5pt5", new Location(38.22137, -119.24255, 7.15), 5.5),  // based on writeLocationAtCenterOfSectionSurf(erf, 1717);	// Robinson Creek Subsection 0; highest Charfactor
-		CENTRAL_VALLEY_M3("Central Valley M3", new Location(37.622,-119.993,5.8), 3.0), // Central Valley - farthest from faults
-		CENTRAL_VALLEY_M5p0("Central Valley M5", new Location(37.622,-119.993,5.8), 5.0), // Central Valley - farthest from faults
-		ZAYANTE_VERGELES_M5p5("Zayante-Vergeles M5pt5", new Location(36.71779, -121.59369, 6.49000), 5.5), // writeLocationAtCenterOfSectionSurf(erf, 2605);	// Zayante-Vergeles 2011 CFM, Subsection 7; 36.71779, -121.59369, 6.49000; lowest char factor on more than one section
-		SAN_JACINTO_0_M4p8("San Jacinto (Borrego) M4pt8", new Location(33.1917, -116.17999, 7.41061), 4.8),	// San Jacinto (Borrego), Subsection 0	33.1917, -116.17999, 7.41061
-		SAN_JACINTO_0_M5p5("San Jacinto (Borrego) M5pt5", new Location(33.1917, -116.17999, 7.41061), 5.5),	// San Jacinto (Borrego), Subsection 0	33.1917, -116.17999, 7.41061
-		MENDOCINO_12_M5p5("Mendocino M5pt5", new Location(40.38540, -125.01342, 6.0), 5.5),	// Mendocino, Subsection 12	40.38540, -125.01342, 6.0
-		SAF_PENINSULA_M5p5("SAF_PeninsulaM5pt5", new Location(37.72793, -122.54861, 7.0), 5.5),  // San Andreas (Peninsula) 2011 CFM, Subsection 12	37.72793, -122.54861, 7.0
-		SAF_PENINSULA_M6p3("SAF_PeninsulaM6pt3", 122568),  // Inversion Src #122568; 2 SECTIONS BETWEEN San Andreas (Peninsula) 2011 CFM, Subsection 12 AND San Andreas (Peninsula) 2011 CFM, Subsection 11
-		SAF_PENINSULA_M7("SAF_PeninsulaM7", 119367),  // Inversion Src #119367; 9 SECTIONS BETWEEN San Andreas (North Coast) 2011 CFM, Subsection 1 AND San Andreas (Peninsula) 2011 CFM, Subsection 9
-		HAYWIRED_M7("HaywiredM7pt1", 101499);  // SourceIndex=101485	Inversion Src #101499; 14 SECTIONS BETWEEN Hayward (So) 2011 CFM, Subsection 2 AND Hayward (No) 2011 CFM, Subsection 7	mag=7.09
-		// IMPORTANT: DO NOT REMOVE OR RENAME SCENARIOS from this list if we have used them in the past and want figure reproducibility.
-		// these are used by the plotting code.
-				
-		private String name;
-		private int fssIndex;
-		private Location loc;
-		private double mag;
-		private TestScenario(String name, int fssIndex) {
-			this(name, fssIndex, null, Double.NaN);
-		}
-		
-		private TestScenario(String name, Location loc, double mag) {
-			this(name, -1, loc, mag);
-		}
-		
-		private TestScenario(String name, int fssIndex, Location loc, double mag) {
-			this.fssIndex = fssIndex;
-			this.name = name;
-			this.loc = loc;
-			this.mag = mag;
-			Preconditions.checkState(loc != null || fssIndex >= 0);
-			if (fssIndex >= 0)
-				Preconditions.checkState(loc == null);
-			else
-				Preconditions.checkState(loc != null);
-		}
-		
-		@Override
-		public String toString() {
-			return name;
-		}
-		
-		public int getFSS_Index() {return fssIndex;}
-		
-		public Location getLocation() {return loc;}
-		
-		public double getMagnitude() {return mag;}
-		
-		public void updateMag(double mag) {
-			this.mag = mag;
-		}
-		
-		public void relocatePtAwayFromFault(FaultSystemRupSet rupSet, double distAway) {
-			// find closest subsection
-			FaultSectionPrefData closest = null;
-			double closestDist = Double.MAX_VALUE;
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
-				// just use fault trace for efficiency
-				for (Location loc : sect.getFaultTrace()) {
-					double dist = LocationUtils.horzDistanceFast(loc, this.loc);
-					if (dist < closestDist) {
-						closestDist = dist;
-						closest = sect;
-						// don't break, other trace locs might be even closer
-					}
-				}
-			}
-			Preconditions.checkNotNull(closest);
-			System.out.println("Cloasest section: "+closest.getName()+". Trace dist: "+closestDist);
-			relocatePtAwayFromFault(closest, distAway);
-		}
-		
-		public void relocatePtAwayFromFault(FaultSectionPrefData closestSect, double distAway) {
-			double strike = closestSect.getFaultTrace().getAveStrike();
-			double strikeRad = Math.toRadians(strike);
-			
-			// add pi/2 to move perpendicular from the fault
-			double azimuth = strikeRad + Math.PI*0.5;
-			
-			Location newLoc = LocationUtils.location(loc, azimuth, distAway);
-			
-			StirlingGriddedSurface surf = closestSect.getStirlingGriddedSurface(0.1d);
-			double origDist = Double.POSITIVE_INFINITY;
-			double newDist = Double.POSITIVE_INFINITY;
-			for (Location surfLoc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
-				origDist = Math.min(LocationUtils.linearDistanceFast(surfLoc, loc), origDist);
-				newDist = Math.min(LocationUtils.linearDistanceFast(surfLoc, newLoc), newDist);
-			}
-			double delta = newDist - origDist;
-			System.out.println("Attempted to move away by "+distAway+" from "+closestSect.getName()
-					+". Actual: "+origDist+" => "+newDist+" = "+delta);
-			System.out.println("\tOrig Loc: "+loc);
-			System.out.println("\tNew Loc: "+newLoc);
-			System.out.println("\tStrike: "+strike);
-			System.out.println("\tMoved in direction: "+LocationUtils.azimuth(loc, newLoc));
-			System.out.println("\tMoved distance: "+LocationUtils.linearDistanceFast(loc, newLoc));
-			loc = newLoc;
-		}
-	}
-
 	
-	public static Location getMojaveTestLoc(double horzDist) {
-		Location loc = new Location(34.698495, -118.508948, 6.550000191);
-		if(horzDist == 0.0)
-			return loc;
-		else {
-			LocationVector vect = new LocationVector((295.037-270.0), horzDist, 0.0);
-			return LocationUtils.location(loc, vect);			
-		}
-	}
-	
-	/**
-	 *  A temporary method to see if switching back and forth from Poisson to Time Dependent effects
-	 *  parameter values (e.g., start time and duration).
-	 *  
-	 * @param erf
-	 */
-	public static void testERF_ParamChanges(FaultSystemSolutionERF_ETAS erf) {
-		
-		ArrayList paramValueList = new ArrayList();
-		System.out.println("\nOrig ERF Adjustable Paramteres:\n");
-		for(Parameter param : erf.getAdjustableParameterList()) {
-			System.out.println("\t"+param.getName()+" = "+param.getValue());
-			paramValueList.add(param.getValue());
-		}
-		TimeSpan tsp = erf.getTimeSpan();
-		String startTimeString = tsp.getStartTimeMonth()+"/"+tsp.getStartTimeDay()+"/"+tsp.getStartTimeYear()+"; hr="+tsp.getStartTimeHour()+"; min="+tsp.getStartTimeMinute()+"; sec="+tsp.getStartTimeSecond();
-		double duration = erf.getTimeSpan().getDuration();
-		System.out.println("\tERF StartTime: "+startTimeString);
-		System.out.println("\tERF TimeSpan Duration: "+duration+" years");
-		paramValueList.add(startTimeString);
-		paramValueList.add(duration);
-		int numParams = paramValueList.size();
-		
-		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
-		erf.updateForecast();
-		System.out.println("\nPois ERF Adjustable Paramteres:\n");
-		for(Parameter param : erf.getAdjustableParameterList()) {
-			System.out.println("\t"+param.getName()+" = "+param.getValue());
-		}
-		tsp = erf.getTimeSpan();
-		startTimeString = tsp.getStartTimeMonth()+"/"+tsp.getStartTimeDay()+"/"+tsp.getStartTimeYear()+"; hr="+tsp.getStartTimeHour()+"; min="+tsp.getStartTimeMinute()+"; sec="+tsp.getStartTimeSecond();
-		System.out.println("\tERF StartTime: "+startTimeString);
-		System.out.println("\tERF TimeSpan Duration: "+erf.getTimeSpan().getDuration()+" years");
-
-		
-		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.U3_BPT);
-		erf.updateForecast();
-		System.out.println("\nFinal ERF Adjustable Paramteres:\n");
-		int testNum = erf.getAdjustableParameterList().size()+2;
-		if(numParams != testNum) {
-			System.out.println("PROBLEM: num parameters changed:\t"+numParams+"\t"+testNum);
-		}
-		int i=0;
-		for(Parameter param : erf.getAdjustableParameterList()) {
-			System.out.println("\t"+param.getName()+" = "+param.getValue());
-			if(param.getValue() != paramValueList.get(i))
-				System.out.println("PROBLEM: "+param.getValue()+"\t"+paramValueList.get(i));
-			i+=1;
-		}
-		tsp = erf.getTimeSpan();
-		double duration2 = erf.getTimeSpan().getDuration();
-		String startTimeString2 = tsp.getStartTimeMonth()+"/"+tsp.getStartTimeDay()+"/"+tsp.getStartTimeYear()+"; hr="+tsp.getStartTimeHour()+"; min="+tsp.getStartTimeMinute()+"; sec="+tsp.getStartTimeSecond();
-		System.out.println("\tERF StartTime: "+startTimeString2);
-		System.out.println("\tERF TimeSpan Duration: "+duration2+" years");
-		if(!startTimeString2.equals(startTimeString))
-			System.out.println("PROBLEM: "+startTimeString2+"\t"+startTimeString2);
-		if(duration2 != duration)
-			System.out.println("PROBLEM Duration: "+duration2+"\t"+duration);
-
-
-	}
-	
-	/**
-	 * 
-	 * @param label - plot label
-	 * @param local - whether GMT map is made locally or on server
-	 * @param dirName
-	 * @return
-	 */
-	public static void plotERF_RatesMap(FaultSystemSolutionERF_ETAS erf, String dirName) {
-		
-		CaliforniaRegions.RELM_TESTING_GRIDDED mapGriddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
-		GriddedGeoDataSet xyzDataSet = ERF_Calculator.getNucleationRatesInRegion(erf, mapGriddedRegion, 0d, 10d);
-		
-		if(D) 
-			System.out.println("OrigERF_RatesMap: min="+xyzDataSet.getMinZ()+"; max="+xyzDataSet.getMaxZ());
-		
-		String metadata = "Map from calling plotOrigERF_RatesMap() method";
-		
-		GMT_MapGenerator gmt_MapGenerator = GMT_CA_Maps.getDefaultGMT_MapGenerator();
-		
-		//override default scale
-		gmt_MapGenerator.setParameter(GMT_MapGenerator.COLOR_SCALE_MIN_PARAM_NAME, -3.5);
-		gmt_MapGenerator.setParameter(GMT_MapGenerator.COLOR_SCALE_MAX_PARAM_NAME, 1.5);
-		CPTParameter cptParam = (CPTParameter )gmt_MapGenerator.getAdjustableParamsList().getParameter(GMT_MapGenerator.CPT_PARAM_NAME);
-		cptParam.setValue(GMT_CPT_Files.MAX_SPECTRUM.getFileName());
-		cptParam.getValue().setBelowMinColor(Color.WHITE);
-
-		try {
-			GMT_CA_Maps.makeMap(xyzDataSet, "OrigERF_RatesMap", metadata, dirName, gmt_MapGenerator);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-
-
-	/**
-	 * This shows that El Mayor Cucapah reset Laguna Salada subsections 0-12 (leaving 13 and 14) according to UCERF3 rules.
-	 * @param erf
-	 */
-	private static void plotElMayorAndLagunaSalada(FaultSystemSolutionERF_ETAS erf) {
-		ObsEqkRupList histCat = getHistCatalogFiltedForStatewideCompleteness(2012,erf.getSolution().getRupSet());
-		// this shows that the ID for El Mayor is 4552
-//		for(int i=0;i<histCat.size();i++)
-//			if(histCat.get(i).getMag()>7) {
-//				double year = ((double)histCat.get(i).getOriginTime())/(365.25*24*3600*1000)+1970.0;
-//				System.out.println(i+"\t"+histCat.get(i).getMag()+"\t"+year);
-//			}
-//		System.exit(-1);
-
-		LocationList locListForElMayor = histCat.get(4552).getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface();
-		DefaultXY_DataSet elMayorXYdata = new DefaultXY_DataSet();
-		for(Location loc:locListForElMayor)
-			elMayorXYdata.set(loc.getLongitude(), loc.getLatitude());
-		
-		ArrayList<XY_DataSet> funcList = new ArrayList<XY_DataSet>();
-		funcList.add(elMayorXYdata);
-		ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
-		plotCharList.add(new PlotCurveCharacterstics(PlotSymbol.BOLD_CROSS, 1f, Color.RED));
-
-		FaultSystemRupSet rupSet = ((FaultSystemSolutionERF)erf).getSolution().getRupSet();
-		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);	// this works for U3, but not generalized
-
-		for(int i=1042;i<=1056;i++) {
-			DefaultXY_DataSet lagunaSaladaPolygonsXYdata = new DefaultXY_DataSet();
-			FaultSectionPrefData fltData = rupSet.getFaultSectionData(i);
-			System.out.println(fltData.getName());
-			Region polyReg = faultPolyMgr.getPoly(i);
-			for(Location loc : polyReg.getBorder()) {
-				lagunaSaladaPolygonsXYdata.set(loc.getLongitude(), loc.getLatitude());
-			}
-			funcList.add(lagunaSaladaPolygonsXYdata);
-			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLUE));
-		}
-		
-		GraphWindow graph = new GraphWindow(funcList, "El Mayor and Laguna Salada", plotCharList); 
-		graph.setX_AxisLabel("Longitude");
-		graph.setY_AxisLabel("Latitude");
-
-
-		
-	}
-
-	
-	
-	public static void tempTestGainResult() {
-		
-		FaultSystemSolutionERF_ETAS erf = getU3_ETAS_ERF(2014,10.0);	
-		double[] td_rates = FaultSysSolutionERF_Calc.calcParticipationRateForAllSects(erf, 6.7);
-		
-		
-		// this will reset sections involved in scenario
-		buildScenarioRup(TestScenario.MOJAVE_M7, erf);
-		double[] td_postScen_rates = FaultSysSolutionERF_Calc.calcParticipationRateForAllSects(erf, 6.7);
-
-		
-		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
-		erf.updateForecast();
-		double[] ti_rates = FaultSysSolutionERF_Calc.calcParticipationRateForAllSects(erf, 6.7);
-
-		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
-
-		for(int i=0;i<ti_rates.length;i++)
-			System.out.println(td_rates[i]+"\t"+td_postScen_rates[i]+"\t"+ti_rates[i]+"\t"+rupSet.getFaultSectionData(i).getName());
-
-	}
-
-	
-
-
 	
 
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		
+		configAndRunSimulation();
+		
+		
+// OLD SUTFF BELOW (pre Oct 2018) FROM BEFORE CLEANUP		
+////		
+////		UCERF3_GriddedSeisOnlyERF_ETAS erf = getU3_ETAS_ERF__GriddedSeisOnly(2012, 1);
+////		System.out.println("UCERF3_GriddedSeisOnlyERF_ETAS Parameters:");
+////		for(Parameter param:erf.getAdjustableParameterList())
+////			System.out.println("\t"+param.getName()+" = "+param.getValue());
+////		System.exit(0);
+////		
+//
+//		ETAS_Simulator.TestScenario scenario = ETAS_Simulator.TestScenario.MOJAVE_M7;
+////		TestScenario scenario = null;
 //		
-//		UCERF3_GriddedSeisOnlyERF_ETAS erf = getU3_ETAS_ERF__GriddedSeisOnly(2012, 1);
-//		System.out.println("UCERF3_GriddedSeisOnlyERF_ETAS Parameters:");
-//		for(Parameter param:erf.getAdjustableParameterList())
-//			System.out.println("\t"+param.getName()+" = "+param.getValue());
-//		System.exit(0);
+//		ETAS_ParameterList params = new ETAS_ParameterList();
+//		params.setImposeGR(false);	
+//		params.setTotalRateScaleFactor(1.0);
+//		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
 //		
-
-		TestScenario scenario = TestScenario.MOJAVE_M7;
-//		TestScenario scenario = null;
-		
-		ETAS_ParameterList params = new ETAS_ParameterList();
-		params.setImposeGR(false);	
-		params.setTotalRateScaleFactor(1.0);
-		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
-		
-		String simulationName="NoFaults_";
-		if(scenario == null)
-			simulationName += "NoScenario";
-		else
-			simulationName += scenario;
-
-		// add suffix to simulation:
-		simulationName += "_4";
-		
-		Long seed = null;
-//		Long seed = 1449590752534l;
-		
-		double startTimeYear=2012;
-		double durationYears=10;
-//		double durationYears=7.0/365.25;
-		
-		boolean includeHistCat = false;
-		
-		runTest(scenario, params, seed, simulationName, includeHistCat, startTimeYear, durationYears);
+//		String simulationName="NoFaults_";
+//		if(scenario == null)
+//			simulationName += "NoScenario";
+//		else
+//			simulationName += scenario;
+//
+//		// add suffix to simulation:
+//		simulationName += "_4";
+//		
+//		Long seed = null;
+////		Long seed = 1449590752534l;
+//		
+//		double startTimeYear=2012;
+//		double durationYears=10;
+////		double durationYears=7.0/365.25;
+//		
+//		boolean includeHistCat = false;
+//		
+//		runTest(scenario, params, seed, simulationName, includeHistCat, startTimeYear, durationYears);
 	}
 }

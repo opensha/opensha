@@ -60,6 +60,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.dom4j.DocumentException;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -1460,7 +1461,7 @@ public class ETAS_Utils {
 //		ETAS_Simulator.plotCatalogMagVsTime(ETAS_Simulator.getHistCatalog(2012), "CatalogVsTime");
 //		ETAS_Simulator.plotCatalogMagVsTime(ETAS_Simulator.getHistCatalogFiltedForStatewideCompleteness(2012), "FilteredCatalogVsTime");
 //		
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012, 1.0);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, 1.0, false);
 		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 		erf.updateForecast();
 		
@@ -1482,11 +1483,12 @@ public class ETAS_Utils {
 		U3_EqkCatalogStatewideCompleteness completeness;
 		try {
 			completeness = U3_EqkCatalogStatewideCompleteness.load();
-			ETAS_Simulator.plotFilteredCatalogMagFreqDist(ETAS_Simulator.getHistCatalogFiltedForStatewideCompleteness(2012, erf.getSolution().getRupSet()),
-					completeness, mfd, "FilteredCatalogMFD");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			
+			List<ETAS_EqkRupture> histCat=null;
+			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getStartTimeMillisFromYear(2012), erf);
+			ETAS_Simulator.plotFilteredCatalogMagFreqDist(histCat, completeness, mfd, "FilteredCatalogMFD");
+		} catch (IOException | DocumentException e) {
+				e.printStackTrace();
 		}
 		
 //		System.out.println(mfd.getCumRateDistWithOffset());
@@ -2399,7 +2401,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 
 		
 		String simulationName = "MagTimeCatalogSimulation_1000yrs_100_NoHistCat_U3MFD";
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012, 1.0);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, 1.0, false);
 		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 		erf.updateForecast();
 		SummedMagFreqDist mfd = ERF_Calculator.getTotalMFD_ForERF(erf, 2.55, 8.45, 60, true);

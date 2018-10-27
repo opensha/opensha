@@ -101,6 +101,8 @@ import com.google.common.collect.Maps;
  * 
  * make sourceRates[] for only fault-based sources (not used otherwise?)
  * 
+ * fix case in getERT_FracSupra(*) where large historical events that are not FSS ruptures are assigned NoERT (1.0 is returned)
+ * 
  * @author field
  *
  */
@@ -1699,7 +1701,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	 * It is also 1.0 if the parent mag is less than 4.0.  Otherwise the answer depends on the approximate
 	 * fraction of the cube that is within the source radius computed by ETAS_Utils.getRuptureRadiusFromMag(parMag)
 	 * (zero if completely inside and 1 if completely outside)
-	 * TODO remove hard coded mag threshold and halfCubeWidth
+	 * TODO remove hard coded mag threshold and halfCubeWidth; fix case for non-FSS finite ruptures
 	 * @param parentRup
 	 * @param cubeLoc
 	 * @return
@@ -1711,7 +1713,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		double frac;
 		boolean pointSurface = parentRup.getRuptureSurface() instanceof PointSurface;
 		if(!pointSurface) {
-			if (D) System.out.println("*****\nWarning: finite rupture not a FSS rupture, so no ERT applied; need to fix this at some point\n*******");
+//			if (D) System.out.println("*****\nWarning: finite rupture not a FSS rupture, so no ERT applied; need to fix this at some point\n*******");
 			return 1;
 //			throw new RuntimeException("non PointSurface case not yet supported");	// otherwise we need to know the point from which triggering occurrs?
 		}
@@ -6316,10 +6318,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		
 		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
 		
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2014d,1d);
-		
-		if(etasParams.getApplyGridSeisCorr())
-			ETAS_Simulator.correctGriddedSeismicityRatesInERF(erf, false);
+		long startTimeMillis = ETAS_Simulator.getStartTimeMillisFromYear(2014d);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(startTimeMillis,1d, false);
 		
 //		System.out.println(erf.getSolution().getGridSourceProvider().getClass());
 //		System.out.println(erf.getSolution().getClass());

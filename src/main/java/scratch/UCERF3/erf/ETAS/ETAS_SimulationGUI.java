@@ -279,12 +279,11 @@ public class ETAS_SimulationGUI extends JFrame implements ParameterChangeListene
 			histQkList = new ObsEqkRupList();
 		
 		ETAS_Simulator.TestScenario scenario = scenarioParam.getValue();
-		ETAS_EqkRupture scenarioRup = ETAS_Simulator.buildScenarioRup(scenario, erf);
-		
-		ETAS_Simulator.testETAS_Simulation(outputDir, erf, griddedRegion, scenarioRup, histQkList,
+		ETAS_EqkRupture scenarioRup = ETAS_Simulator.buildScenarioRup(scenario, erf, ETAS_Simulator.getStartTimeMillisFromYear(2014d));
+		ETAS_Simulator.runETAS_Simulation(outputDir, erf, griddedRegion, scenarioRup, histQkList,
 				includeSpontEventsParam.getValue(), includeIndirectTriggeringParam.getValue(),
 				griddedRegion.getLatSpacing(), null, randomSeed, fractionSectInCubeCache, sectInCubeCache,
-				cubeInsidePolyCache, etasParams);
+				cubeInsidePolyCache, etasParams, null);
 		
 		System.out.println("Done calculating");
 	}

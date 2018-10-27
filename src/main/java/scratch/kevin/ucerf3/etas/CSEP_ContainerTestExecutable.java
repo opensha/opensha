@@ -201,9 +201,10 @@ public class CSEP_ContainerTestExecutable {
 				}
 				
 				System.out.println("Running simulation "+index);
-				ETAS_Simulator.testETAS_Simulation(myOutputDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, null,
+				ETAS_EqkRupture scenarioRup = null;
+				ETAS_Simulator.runETAS_Simulation(myOutputDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, scenarioRup,
 						histQkList, includeSpontEvents, includeIndirectTriggering, gridSeisDiscr, simulationName, randSeed,
-						fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params);
+						fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, null);
 				
 				// convert to binary
 				File asciiFile = new File(myOutputDir, "simulatedEvents.txt");

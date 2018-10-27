@@ -72,6 +72,7 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.kevin.ucerf3.etas.MPJ_ETAS_Simulator;
@@ -616,7 +617,7 @@ public class ETAS_SimAnalysisTools {
 	 * @return
 	 */
 	public static IncrementalMagFreqDist getTotalAftershockMFD_ForU3_RegionalGR(double mainshockMag, double expNumForM2p5) {
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012, 1.0);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, 1.0, false);
 		return getTotalAftershockMFD_ForU3_RegionalGR(mainshockMag, expNumForM2p5, erf);
 	}
 	
@@ -632,7 +633,9 @@ public class ETAS_SimAnalysisTools {
 	 */
 	public static IncrementalMagFreqDist getTotalAftershockMFD_ForU3_RegionalGR(double mainshockMag, double expNumForM2p5,
 			FaultSystemSolution fss) {
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(fss, 2012, 1.0);
+		//FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(fss, 2012, 1.0);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF(fss, false, 1.0, 2012);
+		erf.updateForecast();
 		return getTotalAftershockMFD_ForU3_RegionalGR(mainshockMag, expNumForM2p5, erf);
 	}
 	

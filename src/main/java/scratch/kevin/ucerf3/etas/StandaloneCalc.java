@@ -2,6 +2,7 @@ package scratch.kevin.ucerf3.etas;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -239,13 +240,13 @@ public class StandaloneCalc {
 		System.out.println("Running simulation...");
 		if (griddedOnly) {
 			gridSeisDiscr = 0.1;
-			ETAS_Simulator_NoFaults.testETAS_Simulation(outputDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
+			ETAS_Simulator_NoFaults.runETAS_Simulation(outputDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
 					triggerRup, histQkList, includeSpontEvents, includeIndirectTriggering, gridSeisDiscr, simulationName,
-					randSeed, params);
+					randSeed, params, null);
 		} else {
-			ETAS_Simulator.testETAS_Simulation(outputDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, triggerRup,
+			ETAS_Simulator.runETAS_Simulation(outputDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, triggerRup,
 					histQkList, includeSpontEvents, includeIndirectTriggering, gridSeisDiscr, simulationName, randSeed,
-					fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params);
+					fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, null);
 		}
 		
 		System.out.println("DONE");

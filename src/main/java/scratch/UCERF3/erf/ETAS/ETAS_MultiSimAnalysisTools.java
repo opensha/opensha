@@ -4584,7 +4584,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		System.out.println("Making ERF");
 		double duration = 10;
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration, false);
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		String dir = "/Users/field/Field_Other/CEA_WGCEP/UCERF3/UCERF3-ETAS/ResultsAndAnalysis/ScenarioSimulations";
@@ -4626,7 +4626,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		System.out.println("Making ERF");
 		double duration = 10;
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration, false);
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		//// // THIS WAS TO TEST WHETHER TIME DEPENDENCE CAN EXPLAIN
@@ -4816,7 +4816,7 @@ public class ETAS_MultiSimAnalysisTools {
 		long maxOT = ot + (long) (duration * ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 
 		int fssIndex = 193821; // the M7 Mojave scenario
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012, duration);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration, false);
 		int srcID = erf.getSrcIndexForFltSysRup(fssIndex);
 		erf.setFltSystemSourceOccurranceTime(srcID, ot);
 		erf.updateForecast();
@@ -4969,7 +4969,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		// SourceIndex=101485 Inversion Src #101499 for Haywired
 		int fssIndex = 101499;
-		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012, duration);
+		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration, false);
 		int srcID = erf.getSrcIndexForFltSysRup(fssIndex);
 		// erf.setFltSystemSourceOccurranceTime(srcID, ot); // don't apply
 		// because we want relative to pre-event probabilities

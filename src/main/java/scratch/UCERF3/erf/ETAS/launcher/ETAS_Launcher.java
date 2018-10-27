@@ -666,12 +666,12 @@ public class ETAS_Launcher {
 				attempts++;
 				try {
 					if (config.isGriddedOnly()) {
-						ETAS_Simulator_NoFaults.testMultiScenarioETAS_Simulation(resultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
+						ETAS_Simulator_NoFaults.runETAS_Simulation(resultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
 								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed, params, cubeParams);
 					} else {
 						checkLoadCaches();
-						ETAS_Simulator.testMultiScenarioETAS_Simulation(resultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
+						ETAS_Simulator.runETAS_Simulation(resultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
 								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed,
 								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, cubeParams);

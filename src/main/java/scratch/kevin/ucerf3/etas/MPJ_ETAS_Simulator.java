@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
@@ -508,13 +509,13 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 				try {
 					if (griddedOnly) {
 						double gridSeisDiscr = 0.1;
-						ETAS_Simulator_NoFaults.testETAS_Simulation(resultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
+						ETAS_Simulator_NoFaults.runETAS_Simulation(resultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
 								triggerRup, histQkList, includeSpontEvents, includeIndirectTriggering, gridSeisDiscr, simulationName,
-								randSeed, params);
+								randSeed, params, null);
 					} else {
-						ETAS_Simulator.testETAS_Simulation(resultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, triggerRup,
+						ETAS_Simulator.runETAS_Simulation(resultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, triggerRup,
 								histQkList, includeSpontEvents, includeIndirectTriggering, gridSeisDiscr, simulationName, randSeed,
-								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params);
+								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, null);
 					}
 					
 					debug("completed "+index);

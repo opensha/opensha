@@ -2,6 +2,8 @@ package scratch.kevin.ucerf3.etas;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
@@ -74,8 +76,10 @@ public class CacheFileGen {
 		ETAS_ParameterList params = new ETAS_ParameterList();
 		params.setApplyGridSeisCorr(true);
 		
-		ETAS_Simulator.testETAS_Simulation(resultsDir, erf, reg, mainshockRup, histQkList, includeSpontEvents,
-				includeIndirectTriggering, gridSeisDiscr, null, randSeed, params);
+		ETAS_Simulator.runETAS_Simulation(resultsDir, erf, reg, mainshockRup, histQkList, includeSpontEvents,
+				includeIndirectTriggering, gridSeisDiscr, null, randSeed,
+				null, null, null, params, null);
+
 		
 		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
 		
