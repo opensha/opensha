@@ -1208,4 +1208,9 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		return new QuadSurface(trace, dipDeg, width);
 	}
 
+	@Override
+	public void clearCache() {
+		cache.clearCache();
+	}
+
 }
