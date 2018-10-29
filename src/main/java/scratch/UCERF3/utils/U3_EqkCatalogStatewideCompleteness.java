@@ -105,6 +105,10 @@ public class U3_EqkCatalogStatewideCompleteness {
 		return load(UCERF3_DataUtils.locateResourceAsStream("EarthquakeCatalog", "U3_EqkCatalogStatewideCompleteness.csv"));
 	}
 	
+	public static U3_EqkCatalogStatewideCompleteness loadRelaxed() throws IOException {
+		return load(UCERF3_DataUtils.locateResourceAsStream("EarthquakeCatalog", "U3_EqkCatalogStatewideCompletenessRelaxed.csv"));
+	}
+	
 	public static U3_EqkCatalogStatewideCompleteness load(InputStream is) throws IOException {
 		if (!(is instanceof BufferedInputStream))
 			is = new BufferedInputStream(is);

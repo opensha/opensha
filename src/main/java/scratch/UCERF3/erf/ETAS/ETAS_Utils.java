@@ -1486,7 +1486,7 @@ public class ETAS_Utils {
 			
 			List<ETAS_EqkRupture> histCat=null;
 			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getStartTimeMillisFromYear(2012), erf);
-			ETAS_Simulator.plotFilteredCatalogMagFreqDist(histCat, completeness, mfd, "FilteredCatalogMFD");
+			MiscInfoAndPlotsCalc.plotFilteredCatalogMagFreqDist(histCat, completeness, mfd, "FilteredCatalogMFD");
 		} catch (IOException | DocumentException e) {
 				e.printStackTrace();
 		}

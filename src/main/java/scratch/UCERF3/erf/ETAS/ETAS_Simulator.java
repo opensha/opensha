@@ -997,143 +997,6 @@ System.out.println("Got here 2\n");
 	}
 	
 	
-	public static void plotCatalogMagVsTime(ObsEqkRupList obsQkList, String fileName) {
-		DefaultXY_DataSet yearVsMagXYdata = new DefaultXY_DataSet();
-		for(ObsEqkRupture rup:obsQkList) {
-			double otYear = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
-			yearVsMagXYdata.set(rup.getMag(),otYear);
-		}
-		
-		U3_EqkCatalogStatewideCompleteness magComplete;
-		try {
-			magComplete = U3_EqkCatalogStatewideCompleteness.load();
-		} catch (IOException e1) {
-			throw ExceptionUtils.asRuntimeException(e1);
-		}
-		EvenlyDiscretizedFunc yrMagCompleteFunc = magComplete.getEvenlyDiscretizedMagYearFunc();
-		DefaultXY_DataSet yearVsMagCompleteXYdata = new DefaultXY_DataSet();
-		double deltaMagOver2 = yrMagCompleteFunc.getDelta()/2.0;
-		for(int i=0;i<yrMagCompleteFunc.size();i++) {
-			yearVsMagCompleteXYdata.set(yrMagCompleteFunc.getX(i)-deltaMagOver2,yrMagCompleteFunc.getY(i));
-			yearVsMagCompleteXYdata.set(yrMagCompleteFunc.getX(i)+deltaMagOver2,yrMagCompleteFunc.getY(i));
-		}
-
-		
-		ArrayList<XY_DataSet> funcList = new ArrayList<XY_DataSet>();
-		funcList.add(yearVsMagXYdata);
-		funcList.add(yearVsMagCompleteXYdata);
-		ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
-		plotCharList.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 1f, Color.RED));
-		plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
-		GraphWindow graph = new GraphWindow(funcList, "Year vs Mag", plotCharList); 
-		graph.setX_AxisLabel("Mag");
-		graph.setY_AxisLabel("Year");
-		graph.setY_AxisRange(1750, 2015);
-		
-		if(fileName != null) {
-			try {
-				graph.saveAsPDF(fileName+".pdf");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-	}
-	
-	public static void plotHistQksRateRatesVsTime() {
-		double minYear = 1933;
-		double maxYear = 2012;
-		double deltaYear = 1;
-		double minMag = 4;
-		double maxMag = 5;
-		int numYear = (int) Math.round(maxYear-minYear);
-		
-		File file = new File("/Users/field/workspace/OpenSHA/dev/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt");
-		ObsEqkRupList histQksList=null;
-		try {
-			histQksList = UCERF3_CatalogParser.loadCatalogGardnerKnopoffFiltered(file);
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-
-		System.out.println("numQks = "+histQksList.size());
-//		DefaultXY_DataSet rateVsTimeXYdata = new DefaultXY_DataSet();
-		HistogramFunction rateVsTime = new HistogramFunction(minYear+deltaYear/2.0, maxYear-deltaYear/2.0, numYear);
-		boolean first = true;
-		double lastYear = Double.NaN;
-		for(ObsEqkRupture rup:histQksList.getRupsBetweenMag(minMag, maxMag)) {
-			double year = rup.getOriginTime()/ProbabilityModelsCalc.MILLISEC_PER_YEAR+1970;
-			if(year>=minYear && year<=maxYear)
-				rateVsTime.add(year, 1.0);
-		}
-		rateVsTime.scale(1.0/deltaYear);
-		GraphWindow graph = new GraphWindow(rateVsTime, "Rate vs Time"); 
-		graph.setX_AxisLabel("Year");
-		graph.setY_AxisLabel("Rate (per year)");
-//		graph.setYLog(true);
-//		graph.setY_AxisRange(1e-5,1e4);
-
-	}
-	
-	
-	public static void plotFilteredCatalogMagFreqDist(List<ETAS_EqkRupture> obsQkList,U3_EqkCatalogStatewideCompleteness yrCompleteForMagFunc, 
-			SummedMagFreqDist targetMFD, String fileName) {
-		SummedMagFreqDist mfd = new SummedMagFreqDist(2.55,8.45,60);
-		EvenlyDiscretizedFunc func = yrCompleteForMagFunc.getEvenlyDiscretizedMagYearFunc();
-		for(ObsEqkRupture rup:obsQkList) {
-			double yrs = 2012.0 - func.getClosestYtoX(rup.getMag());
-			mfd.addResampledMagRate(rup.getMag(), 1.0/yrs, true);
-		}
-		mfd.setName("Catalog MFD");
-		mfd.setInfo("Total Rate = "+mfd.getTotalIncrRate());
-		
-		ArrayList<XY_DataSet> funcList = new ArrayList<XY_DataSet>();
-		funcList.add(mfd);
-		funcList.add(mfd.getCumRateDistWithOffset());
-		funcList.get(1).setName("Cumulative Catalog MFD");
-		ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
-		plotCharList.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 2f, Color.BLUE));
-		plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
-		
-		double expNumAftershockRatio=Double.NaN;
-		if(targetMFD != null) {
-			
-			// compute ratio of expected num aftershocks
-			double maxMag = targetMFD.getMaxMagWithNonZeroRate();
-			double sumObs=0;
-			double sumTarget=0;
-			for(double mag=2.55;mag< maxMag+mfd.getDelta()/2.0; mag += mfd.getDelta()) {
-				sumObs += mfd.getY(mag)*Math.pow(10, mag);
-				sumTarget += targetMFD.getY(mag)*Math.pow(10, mag);
-			}
-			expNumAftershockRatio=sumObs/sumTarget;			
-			targetMFD.setName("Target MFD");
-			targetMFD.setInfo("Total Rate = "+targetMFD.getTotalIncrRate());
-			funcList.add(targetMFD);
-			funcList.add(targetMFD.getCumRateDistWithOffset());
-			funcList.get(3).setName("Cumulative Target MFD");
-			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.BLACK));			
-			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));			
-		}
-		mfd.setInfo(mfd.getInfo()+"\n"+"expNumAftershockRatio = "+(float)expNumAftershockRatio);
-
-		GraphWindow graph = new GraphWindow(funcList, "MFDs; expNumAftershockRatio = "+(float)expNumAftershockRatio, plotCharList); 
-		graph.setX_AxisLabel("Mag");
-		graph.setY_AxisLabel("Rate (per year)");
-		graph.setYLog(true);
-		graph.setY_AxisRange(1e-5,1e4);
-		
-		if(fileName != null) {
-			try {
-				graph.saveAsPDF(fileName+".pdf");
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-
-
-	}
-
 	
 	
 	/**
@@ -1655,7 +1518,7 @@ System.out.println("Got here 2\n");
 //		MiscInfoAndPlotsCalc.writeInfoAboutSourcesThatUseSection(getU3_ETAS_ERF(2012.0,1.0), 1850, 6, 7);
 //		System.exit(0);
 		
-//		plotCatalogMagVsTime(getHistCatalog(2012, erf.getSolution().getRupSet()).getRupsInside(new CaliforniaRegions.SF_BOX()), "U3_EqkCatalogMagVsTimePlot");
+//		MiscInfoAndPlotsCalc.plotCatalogMagVsTime(getHistCatalog(2012, erf.getSolution().getRupSet()).getRupsInside(new CaliforniaRegions.SF_BOX()), "U3_EqkCatalogMagVsTimePlot");
 //		System.exit(0);
 
 //		TestScenario scenario = TestScenario.PARKFIELD;
@@ -1703,9 +1566,9 @@ System.out.println("Got here 2\n");
 ////		ObsEqkRupList histCat = getHistCatalog(startTimeYear, erf.getSolution().getRupSet());
 ////		ObsEqkRupList histCat = getHistCatalogFiltedForStatewideCompleteness(startTimeYear,erf.getSolution().getRupSet());
 //		
-////		plotHistQksRateRatesVsTime();
+////		MiscInfoAndPlotsCalc.plotHistQksRateRatesVsTime();
 //		
-////		plotCatalogMagVsTime(histCat, "U3_FullEqkCatalogMagVsTimePlot");
+////		MiscInfoAndPlotsCalc.plotCatalogMagVsTime(histCat, "U3_FullEqkCatalogMagVsTimePlot");
 ////		System.exit(-1);
 //
 //		runTest(scenario, params, seed, simulationName, histCat, startTimeYear, durationYears);
