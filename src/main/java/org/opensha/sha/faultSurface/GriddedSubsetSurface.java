@@ -353,7 +353,6 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 		return (size() == 1);
 	}
 
-
 	/**
 	 * This returns the parent surface
 	 * @return
@@ -361,7 +360,6 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	public EvenlyGriddedSurface getParentSurface() {
 		return parentSurface;
 	}
-	
 	
 	/**
 	 * This returns the minimum distance as the minimum among all location
@@ -374,20 +372,21 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 		return GriddedSurfaceUtils.getMinDistanceBetweenSurfaces(surface, this);
 	}
 
-
-
 	@Override
 	public RuptureSurface getMoved(LocationVector v) {
 		return new GriddedSubsetSurface(window.getNumRows(), window.getNumCols(),
 				window.getStartRow(), window.getStartCol(), (EvenlyGriddedSurface)parentSurface.getMoved(v));
 	}
 
-
-
 	@Override
 	public GriddedSubsetSurface copyShallow() {
 		return new GriddedSubsetSurface(window.getNumRows(), window.getNumCols(),
 				window.getStartRow(), window.getStartCol(), parentSurface);
+	}
+
+	@Override
+	public void clearCache() {
+		cache.clearCache();
 	}
 
 }

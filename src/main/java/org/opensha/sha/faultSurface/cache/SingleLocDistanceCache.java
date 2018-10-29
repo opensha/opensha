@@ -62,4 +62,12 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 		this.distX = distX;
 	}
 
+	@Override
+	public synchronized void clearCache() {
+		this.siteLocForDistCalcs = null;
+		this.surfDists = null;
+		this.siteLocForDistXCalc = null;
+		this.distX = Double.NaN;
+	}
+
 }

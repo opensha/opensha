@@ -23,5 +23,10 @@ public interface CacheEnabledSurface extends RuptureSurface {
 	 * @return
 	 */
 	public double calcDistanceX(Location loc);
+	
+	/**
+	 * Clears any cached site distances.
+	 */
+	public void clearCache();
 
 }

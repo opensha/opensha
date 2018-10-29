@@ -54,4 +54,10 @@ public class HybridDistanceCache implements SurfaceDistanceCache {
 		return distX;
 	}
 
+	@Override
+	public void clearCache() {
+		singleCache.clearCache();
+		multiCache.clearCache();
+	}
+
 }

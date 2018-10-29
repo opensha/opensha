@@ -30,7 +30,6 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
-import org.opensha.sha.faultSurface.cache.SingleLocDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
 import org.opensha.sha.faultSurface.cache.SurfaceDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
@@ -359,6 +358,11 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 			for (int col=0; col<getNumCols(); col++)
 				o.set(row, col, get(row, col));
 		return o;
+	}
+
+	@Override
+	public void clearCache() {
+		cache.clearCache();
 	}
 	
 }

@@ -29,5 +29,10 @@ public interface SurfaceDistanceCache {
 	 * @return
 	 */
 	public double getDistanceX(Location loc);
+	
+	/**
+	 * Clears any cached site distances.
+	 */
+	public void clearCache();
 
 }

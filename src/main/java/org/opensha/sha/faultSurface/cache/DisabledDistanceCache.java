@@ -7,7 +7,7 @@ import org.opensha.commons.geo.Location;
  * @author kevin
  *
  */
-public class DisabledDistanceCache implements SurfaceDistanceCache {
+class DisabledDistanceCache implements SurfaceDistanceCache {
 	
 	private CacheEnabledSurface surf;
 	
@@ -23,6 +23,11 @@ public class DisabledDistanceCache implements SurfaceDistanceCache {
 	@Override
 	public synchronized double getDistanceX(Location loc) {
 		return surf.calcDistanceX(loc);
+	}
+
+	@Override
+	public void clearCache() {
+		// do nothing
 	}
 
 }

@@ -129,4 +129,10 @@ public class MultiDistanceCache implements SurfaceDistanceCache {
 		}
 	}
 
+	@Override
+	public void clearCache() {
+		distCache.invalidateAll();
+		distXCache.invalidateAll();
+	}
+
 }

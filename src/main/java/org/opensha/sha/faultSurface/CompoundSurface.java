@@ -10,7 +10,6 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
-import org.opensha.sha.faultSurface.cache.SingleLocDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
 import org.opensha.sha.faultSurface.cache.SurfaceDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
@@ -604,7 +603,6 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 
 	}
 
-
 	@Override
 	public RuptureSurface getMoved(LocationVector v) {
 		List<RuptureSurface> movedSurfs = Lists.newArrayList();
@@ -613,10 +611,14 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 		return new CompoundSurface(movedSurfs);
 	}
 
-
 	@Override
 	public CompoundSurface copyShallow() {
 		return new CompoundSurface(surfaces);
+	}
+
+	@Override
+	public void clearCache() {
+		cache.clearCache();
 	}
 
 
