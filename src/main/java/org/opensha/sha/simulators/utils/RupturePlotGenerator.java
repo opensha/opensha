@@ -36,6 +36,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.AnimatedGIFRenderer;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
@@ -505,6 +506,12 @@ public class RupturePlotGenerator {
 	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
 			double[] eventElemScalars, CPT elemCPT, String scalarLabel) throws IOException {
+		writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, eventElemScalars, elemCPT, scalarLabel, null);
+	}
+	
+	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
+			double[] eventElemScalars, CPT elemCPT, String scalarLabel, List<XYAnnotation> anns) throws IOException {
 		// determine extents
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
@@ -534,10 +541,24 @@ public class RupturePlotGenerator {
 				}
 			}
 		}
+		if (anns != null) {
+			for (XYAnnotation ann : anns) {
+				if (ann instanceof XYPolygonAnnotation) {
+					double[] poly = ((XYPolygonAnnotation)ann).getPolygonCoordinates();
+					for (int i=0; i<poly.length; i++) {
+						if (i % 2 == 0)
+							lonTrack.addValue(poly[i]);
+						else
+							latTrack.addValue(poly[i]);
+					}
+				}
+			}
+		}
 		double centerLat = 0.5*(latTrack.getMax() + latTrack.getMin());
 		double centerLon = 0.5*(lonTrack.getMax() + lonTrack.getMin());
 		double maxDelta = Math.max(latTrack.getMax() - latTrack.getMin(), lonTrack.getMax() - lonTrack.getMin());
-		maxDelta *= 1.1;
+		maxDelta *= 1.2;
+		maxDelta = Math.max(maxDelta, 0.75);
 		Range xRange = new Range(centerLon - 0.5*maxDelta, centerLon + 0.5*maxDelta);
 		Range yRange = new Range(centerLat - 0.5*maxDelta, centerLat + 0.5*maxDelta);
 		
@@ -556,8 +577,10 @@ public class RupturePlotGenerator {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		if (eventElemScalars == null) {
-			PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
-			addElementOutline(funcs, chars, rupElems, eventChar, null);
+//			PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
+//			addElementOutline(funcs, chars, rupElems, eventChar, null);
+			double maxRupDepth = getMaxDepth(rupElems);
+			addDepthDepOutline(funcs, chars, rupElems, Color.BLACK, maxRupDepth, minThickness, 3d*minThickness);
 		} else {
 			addElementScalarOutline(funcs, chars, rupElems, eventElemScalars, elemCPT, maxDepth, minThickness, 3d*minThickness);
 		}
@@ -577,7 +600,8 @@ public class RupturePlotGenerator {
 //		}
 		
 		BasicStroke hypoStroke = new BasicStroke(1f);
-		List<XYAnnotation> anns = new ArrayList<>();
+		if (anns == null)
+			anns = new ArrayList<>();
 		double hypoRadius = 0.02;
 		
 		if (func != null) {
@@ -788,8 +812,8 @@ public class RupturePlotGenerator {
 				chars.add(elemChar);
 			}
 		}
-		System.out.println("Added "+elemsAdded+"/"+elements.size()+" elems to plot");
-		System.out.println("Used "+prevElemXYs.size()+"/"+elemsAdded+" possible funcs");
+//		System.out.println("Added "+elemsAdded+"/"+elements.size()+" elems to plot");
+//		System.out.println("Used "+prevElemXYs.size()+"/"+elemsAdded+" possible funcs");
 	}
 	
 	private static double getMaxDepth(List<SimulatorElement> elements) {
@@ -821,6 +845,8 @@ public class RupturePlotGenerator {
 		func.set(180d, 0.5);
 		return func;
 	}
+	
+
 	
 	public static void addElementScalarOutline(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
 			List<SimulatorElement> elements, double[] scalars, CPT cpt, double maxDepth, double minThickness, double maxThickness) {
@@ -862,6 +888,45 @@ public class RupturePlotGenerator {
 			double saturationFactor = depthSaturationFunc.getInterpolatedY(depth);
 			color = new Color((int)(saturationFactor*color.getRed() + 0.5), (int)(saturationFactor*color.getGreen() + 0.5),
 					(int)(saturationFactor*color.getBlue() + 0.5));
+			PlotCurveCharacterstics elemChar = new PlotCurveCharacterstics(PlotLineType.SOLID, lineWidth, color);
+			chars.add(elemChar);
+		}
+	}
+	
+	public static void addDepthDepOutline(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
+			List<SimulatorElement> elements, Color upperColor, double maxDepth, double minThickness, double maxThickness) {
+		DiscretizedFunc depthThicknessFunc = buildElemDepthThicknessFunc(maxDepth, maxThickness, minThickness);
+		DiscretizedFunc depthSaturationFunc = buildDepthSaturationFunc(maxDepth);
+		
+		// first sort by depth decreasing (so that upper ones show up on top)
+		elements = new ArrayList<>(elements);
+		Collections.sort(elements, new Comparator<SimulatorElement>() {
+
+			@Override
+			public int compare(SimulatorElement o1, SimulatorElement o2) {
+				return Double.compare(o2.getAveDepth(), o1.getAveDepth());
+			}
+			
+		});
+		
+		for (SimulatorElement elem : elements) {
+			Vertex[] vertexes = elem.getVertices();
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			for (int i=0; i<=vertexes.length; i++) {
+				Vertex v;
+				if (i == vertexes.length)
+					v = vertexes[0];
+				else
+					v = vertexes[i];
+				xy.set(v.getLongitude(), v.getLatitude());
+			}
+			funcs.add(xy);
+			double depth = elem.getCenterLocation().getDepth();
+			float lineWidth = (float)depthThicknessFunc.getInterpolatedY(depth);
+			double saturationFactor = depthSaturationFunc.getInterpolatedY(depth);
+			Color color = new Color((int)(saturationFactor*upperColor.getRed() + 0.5),
+					(int)(saturationFactor*upperColor.getGreen() + 0.5),
+					(int)(saturationFactor*upperColor.getBlue() + 0.5));
 			PlotCurveCharacterstics elemChar = new PlotCurveCharacterstics(PlotLineType.SOLID, lineWidth, color);
 			chars.add(elemChar);
 		}
