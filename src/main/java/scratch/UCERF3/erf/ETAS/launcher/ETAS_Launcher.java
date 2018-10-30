@@ -272,7 +272,13 @@ public class ETAS_Launcher {
 		params.setImposeGR(config.isImposeGR());
 		params.setU3ETAS_ProbModel(config.getProbModel());
 		// already applied if applicable, setting here for metadata
-		params.setApplyGridSeisCorr(gridSeisCorrections != null);
+		if (config.isGriddedOnly()) {
+			if (config.isGridSeisCorr())
+				debug(DebugLevel.INFO, "WARNING: grid seis correction not applied in gridded only case");
+			Preconditions.checkState(config.getTotRateScaleFactor() == 1,
+					"Total rate scale factor for fault-based ETAS (for now, we don't know the appropriate value for gridded only");
+		}
+		params.setApplyGridSeisCorr(config.isGridSeisCorr() && !config.isGriddedOnly());
 		params.setApplySubSeisForSupraNucl(config.isApplySubSeisForSupraNucl());
 		params.setTotalRateScaleFactor(config.getTotRateScaleFactor());
 		
@@ -333,7 +339,7 @@ public class ETAS_Launcher {
 				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+config.getFSS_File().getAbsolutePath());
 				fss = FaultSystemIO.loadSol(config.getFSS_File());
 				
-				if (config.isGridSeisCorr()) {
+				if (config.isGridSeisCorr() && !config.isGriddedOnly()) {
 					if (gridSeisCorrections == null) {
 						File cacheFile = new File(config.getCacheDir(), "griddedSeisCorrectionCache");
 						debug(DebugLevel.FINE, "Loading gridded seismicity correction cache file from "+cacheFile.getAbsolutePath());
