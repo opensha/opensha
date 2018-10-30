@@ -370,7 +370,7 @@ public class MiscInfoAndPlotsCalc {
 		
 		List<ETAS_EqkRupture> histCat=null;
 		try {
-			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getStartTimeMillisFromYear(2012), erf);
+			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getTimeInMillisFromYear(2012), erf);
 		} catch (IOException | DocumentException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -1387,7 +1387,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 		etasParams.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
 		
 		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
-		long startTimeMillis = ETAS_Simulator.getStartTimeMillisFromYear(2014d);
+		long startTimeMillis = ETAS_Simulator.getTimeInMillisFromYear(2014d);
 		UCERF3_GriddedSeisOnlyERF_ETAS erf = ETAS_Simulator_NoFaults.getU3_ETAS_ERF__GriddedSeisOnly(startTimeMillis,1d);
 		
 		

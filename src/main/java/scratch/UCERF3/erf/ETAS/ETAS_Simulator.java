@@ -1053,7 +1053,7 @@ public class ETAS_Simulator {
 
 
 	public static FaultSystemSolutionERF_ETAS getU3_ETAS_ERF(double startYear, double durationYears, boolean applyGridSeisCorr) {
-		return getU3_ETAS_ERF(getStartTimeMillisFromYear(startYear), durationYears, applyGridSeisCorr);
+		return getU3_ETAS_ERF(getTimeInMillisFromYear(startYear), durationYears, applyGridSeisCorr);
 	}
 
 	/**
@@ -1120,7 +1120,7 @@ public class ETAS_Simulator {
 		}
 		
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF_millis(fss, false, durationYears, startTimeMillis);
-		erf.updateForecast();
+		erf.updateForecast();	// not sure if this is needed
 		
 		// apply the gridded seismicity correction is requested
 		//System.out.println("TotalRateBeforeGriddedSeisCorr: "+ERF_Calculator.getTotalMFD_ForERF(erf, 2.55, 8.45, 60, true).getTotalIncrRate());		
@@ -1366,7 +1366,7 @@ public class ETAS_Simulator {
 	 * @param year
 	 * @return
 	 */
-	public static long getStartTimeMillisFromYear(double year) {
+	public static long getTimeInMillisFromYear(double year) {
 		double year1 = Math.floor(year);
 		double year2 = Math.ceil(year);
 		
@@ -1385,6 +1385,39 @@ public class ETAS_Simulator {
 		
 		return result;
 	}
+	
+	
+	/**
+	 * this returns the decimal year for the given epoch milliseconds
+	 * @param millis
+	 * @return year
+	 */
+	public static double getYearFromTimeInMillis(long millis) {
+		
+		GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+		cal.clear();
+		cal.setTimeInMillis(millis);
+		int year = cal.get(GregorianCalendar.YEAR);
+//		System.out.println(year);
+
+		double year1 = year;
+		double year2 = year+1.0;
+		
+		GregorianCalendar cal1 = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+		cal1.clear();
+		cal1.set((int)year1, 0, 1);
+		long millis1 = cal1.getTimeInMillis();
+		
+		GregorianCalendar cal2 = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+		cal2.clear();
+		cal2.set((int)year2, 0, 1);
+		long millis2 = cal2.getTimeInMillis();
+		
+		double fractYear = ((double)(millis-millis1))/((double)(millis2-millis1));
+		
+		return year1 + fractYear;
+	}
+
 
 	
 	public static void configAndRunSimulation() {
@@ -1404,7 +1437,7 @@ public class ETAS_Simulator {
 		// set start time
 //		double startTimeYear=2012.0;
 //		long startTimeMillis = getStartTimeMillisFromYear(startTimeYear);		
-		long startTimeMillis = 709732654000l;	// Landers OT plus 1 millisec
+		long startTimeMillis = 709732654000l;	// Landers OT
 
 		// set the duration
 		double durationYears=1;
@@ -1438,9 +1471,9 @@ public class ETAS_Simulator {
 			}
 			
 			// print out time of big events
-			for(ETAS_EqkRupture rup:histCat)
-				if(rup.getMag()>7)
-					System.out.println(rup.getMag()+"\t"+rup.getOriginTime()+"\t"+rup.getOriginTimeCal().getTime()+"\t"+rup.getEventId());
+//			for(ETAS_EqkRupture rup:histCat)
+//				if(rup.getMag()>7)
+//					System.out.println(rup.getMag()+"\t"+rup.getOriginTime()+"\t"+rup.getOriginTimeCal().getTime()+"\t"+rup.getEventId());
 //			System.exit(-1);
 		}
 		
@@ -1473,9 +1506,6 @@ public class ETAS_Simulator {
 		try {
 			String dirNameForSavingFiles = "U3_ETAS_"+simulationName+"/";
 			File resultsDir = new File(dirNameForSavingFiles);
-//			testETAS_Simulation(resultsDir, erf, griddedRegion, scenarioRup, histCat,  includeSpontEvents, 
-//					includeIndirectTriggering, gridSeisDiscr, simulationName, seed, params);
-			
 			runETAS_Simulation(resultsDir, erf, griddedRegion, scenarioList, histCat,  includeSpontEvents,
 					includeIndirectTriggering, gridSeisDiscr, simulationName, seed, null, null, null, params, null);
 		} catch (IOException e) {

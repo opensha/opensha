@@ -6318,7 +6318,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		
 		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
 		
-		long startTimeMillis = ETAS_Simulator.getStartTimeMillisFromYear(2014d);
+		long startTimeMillis = ETAS_Simulator.getTimeInMillisFromYear(2014d);
 		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(startTimeMillis,1d, false);
 		
 //		System.out.println(erf.getSolution().getGridSourceProvider().getClass());
