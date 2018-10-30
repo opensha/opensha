@@ -513,6 +513,54 @@ public class ETAS_Simulator {
 						mfd, U3_EqkCatalogStatewideCompleteness.load().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
 						simEndTimeMillis, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
 			
+			
+			//********************
+//			EvenlyDiscretizedFunc funcCatIncompl = etas_utils.getSpontanousEventRateFunction(mfd, U3_EqkCatalogStatewideCompleteness.load().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
+//					simEndTimeMillis, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
+//			funcCatIncompl.setName("funcCatIncompl");
+//			
+////			histCatStartTime = simStartTimeMillis - (long)(12.0*(double)ProbabilityModelsCalc.MILLISEC_PER_YEAR); // 12 years prior
+//			EvenlyDiscretizedFunc funcNoCat = etas_utils.getSpontanousEventRateFunction(mfd, histCatStartTime, simStartTimeMillis, 
+//					simEndTimeMillis, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
+//			funcNoCat.setName("funcNoCat");
+//			ArrayList<EvenlyDiscretizedFunc> funcList = new ArrayList<EvenlyDiscretizedFunc>();
+//			funcList.add(funcCatIncompl);
+//			funcList.add(funcNoCat);
+//			ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
+//			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+//			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
+//			GraphWindow graph = new GraphWindow(funcList, "Year vs Mag", plotCharList); 
+//			graph.setX_AxisLabel("Time");
+//			graph.setY_AxisLabel("Rate");
+			
+			
+			
+//			long simEnd = simStartTimeMillis + (long)(1.0*(double)ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+//			histCatStartTime = simStartTimeMillis;
+//			EvenlyDiscretizedFunc funcNoCat1 = etas_utils.getSpontanousEventRateFunction(mfd, histCatStartTime, simStartTimeMillis, 
+//					simEnd, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
+//			funcNoCat1.setName("funcNoCat1");
+//
+//			
+//			histCatStartTime = simStartTimeMillis - (long)(12.0*(double)ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+//			EvenlyDiscretizedFunc funcNoCat2 = etas_utils.getSpontanousEventRateFunction(mfd, histCatStartTime, simStartTimeMillis, 
+//					simEnd, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
+//			funcNoCat2.setName("funcNoCat2");
+//
+//
+//			ArrayList<EvenlyDiscretizedFunc> funcList = new ArrayList<EvenlyDiscretizedFunc>();
+//			funcList.add(funcNoCat1);
+//			funcList.add(funcNoCat2);
+//			ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
+//			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+//			plotCharList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
+//			GraphWindow graph = new GraphWindow(funcList, "Year vs Mag", plotCharList); 
+//			graph.setX_AxisLabel("Time");
+//			graph.setY_AxisLabel("Rate");
+
+			//************************
+
+	
 			// This is to write out the fraction spontaneous as a funcation of time
 //			EvenlyDiscretizedFunc rateFunc = etas_utils.getSpontanousEventRateFunction(mfd, U3_EqkCatalogStatewideCompleteness.load().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
 //					simEndTimeMillis, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
@@ -577,12 +625,9 @@ public class ETAS_Simulator {
 //			etas_PrimEventSampler.testMagFreqDist();	// this is time consuming
 		}
 		
-System.out.println("Got here 1\n");
-
 		CalcProgressBar progressBar;
 		try {
 			progressBar = new CalcProgressBar("Primary aftershocks to process", "junk");
-System.out.println("Got here 2\n");
 			progressBar.showProgress(true);
 		} catch (Throwable t) {
 			// headless, don't show it
@@ -1351,7 +1396,7 @@ System.out.println("Got here 2\n");
 		TestScenario scenario = null;
 		
 		String simulationName = "Landers";	// leave blank if scenario is not null
-		String incrementString = "_2"; // set as "-1", or "_2" to save previous runs
+		String incrementString = "_RelaxedCat"; // set as "-1", or "_2" to save previous runs
 		
 		Long seed = null;
 //		Long seed = 890841985480217717l;

@@ -1055,10 +1055,10 @@ public class ETAS_Utils {
 				if(mfd.getY(m)>1e-10) {	// skip low rate bins
 					double mag = mfd.getX(m);
 					double magCompleteTimeMillis = (yrCompleteForMagFunc.getY(mag)-1970)*ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+					if(magCompleteTimeMillis>forecastStartTime)	//
+						magCompleteTimeMillis=forecastStartTime;
 					double histDurationDays = (spRateVsEpochTimeFunc.getX(i)-magCompleteTimeMillis)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 					Preconditions.checkState(Double.isFinite(histDurationDays), "Historical duration days not finite: %s", histDurationDays);
-					if(histDurationDays<=0)
-						continue;	// no parents, so rate of aftershocks is zero, so add nothing to aftRate
 					double expectedNum = getExpectedNumEvents(k, p, mag, magMin, c, 0.0, histDurationDays);
 					Preconditions.checkState(Double.isFinite(expectedNum), "Expected num not finite with duration=%s: %s", histDurationDays, expectedNum);
 					aftRate += expectedNum*mfd.getY(m);
