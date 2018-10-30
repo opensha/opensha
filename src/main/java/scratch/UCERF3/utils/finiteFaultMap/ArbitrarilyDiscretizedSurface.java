@@ -315,4 +315,9 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 		return new ArbitrarilyDiscretizedSurface(locs, dip);
 	}
 
+	@Override
+	public void clearCache() {
+		cache.clearCache();
+	}
+
 }
