@@ -1482,10 +1482,10 @@ public class ETAS_Utils {
 		SummedMagFreqDist mfd = ERF_Calculator.getTotalMFD_ForERF(erf, 2.55, 8.45, 60, true);
 		U3_EqkCatalogStatewideCompleteness completeness;
 		try {
-			completeness = U3_EqkCatalogStatewideCompleteness.load();
+			completeness = U3_EqkCatalogStatewideCompleteness.STRICT;
 			
 			List<ETAS_EqkRupture> histCat=null;
-			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getTimeInMillisFromYear(2012), erf);
+			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getTimeInMillisFromYear(2012), erf, completeness);
 			MiscInfoAndPlotsCalc.plotFilteredCatalogMagFreqDist(histCat, completeness, mfd, "FilteredCatalogMFD");
 		} catch (IOException | DocumentException e) {
 				e.printStackTrace();
@@ -2537,7 +2537,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 	
 	
 	public static void magTimeCatalogSimulation(File resultsDir, IncrementalMagFreqDist mfd, List<? extends ObsEqkRupture> histQkList, String simulationName, 
-			ETAS_ParameterList etasParams, double startYear, double numYears, int numCatalogs, double binWidthYears,IncrementalMagFreqDist mfdForSpontEvents)
+			ETAS_ParameterList etasParams, double startYear, double numYears, int numCatalogs, double binWidthYears, IncrementalMagFreqDist mfdForSpontEvents)
 					throws IOException {
 		
 		boolean D = false;
@@ -2693,7 +2693,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 						etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
 			else
 				spontEventTimes = etasUtils.getRandomSpontanousEventTimes(
-						mfdForSpontEvents, U3_EqkCatalogStatewideCompleteness.load().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
+						mfdForSpontEvents, etasParams.getStatewideCompletenessModel().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
 						simEndTimeMillis, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
 
 			for(int r=0;r<spontEventTimes.length;r++) {

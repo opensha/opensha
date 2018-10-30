@@ -102,9 +102,27 @@ public class StandaloneCalc {
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		
+		double[] gridSeisCorrections = null;
+		
+		if (gridSeisCorr) {
+			File cacheFile = new File(cacheDir, "griddedSeisCorrectionCache");
+			System.out.println("Loading gridded seismicity correction cache file from "+cacheFile.getAbsolutePath());
+			gridSeisCorrections = MatrixIO.doubleArrayFromFile(cacheFile);
+			
+			ETAS_Simulator.correctGriddedSeismicityRatesInERF(sol, false, gridSeisCorrections);
+		}
+
+		ETAS_ParameterList params = new ETAS_ParameterList();
+		params.setImposeGR(imposeGR);
+		params.setU3ETAS_ProbModel(probModel);
+		// already applied if applicable, setting here for metadata
+		params.setApplyGridSeisCorr(gridSeisCorrections != null);
+		params.setApplySubSeisForSupraNucl(applySubSeisForSupraNucl);
+		params.setTotalRateScaleFactor(totRateScaleFactor);
+		
 		List<ETAS_EqkRupture> histQkList = Lists.newArrayList();
 		if (catFile != null) {
-			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sol, ot, null));
+			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sol, ot, null, params.getStatewideCompletenessModel()));
 		}
 		
 		// purge any last event data after OT
@@ -159,16 +177,6 @@ public class StandaloneCalc {
 		} else {
 			// only spontaneous
 			simulationName = "Spontaneous events";
-		}
-		
-		double[] gridSeisCorrections = null;
-		
-		if (gridSeisCorr) {
-			File cacheFile = new File(cacheDir, "griddedSeisCorrectionCache");
-			System.out.println("Loading gridded seismicity correction cache file from "+cacheFile.getAbsolutePath());
-			gridSeisCorrections = MatrixIO.doubleArrayFromFile(cacheFile);
-			
-			ETAS_Simulator.correctGriddedSeismicityRatesInERF(sol, false, gridSeisCorrections);
 		}
 		
 		GriddedRegion griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
@@ -228,14 +236,6 @@ public class StandaloneCalc {
 
 			erf.updateForecast();
 		}
-
-		ETAS_ParameterList params = new ETAS_ParameterList();
-		params.setImposeGR(imposeGR);
-		params.setU3ETAS_ProbModel(probModel);
-		// already applied if applicable, setting here for metadata
-		params.setApplyGridSeisCorr(gridSeisCorrections != null);
-		params.setApplySubSeisForSupraNucl(applySubSeisForSupraNucl);
-		params.setTotalRateScaleFactor(totRateScaleFactor);
 		
 		System.out.println("Running simulation...");
 		if (griddedOnly) {

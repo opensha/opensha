@@ -44,6 +44,7 @@ import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.analysis.GMT_CA_Maps;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator.TestScenario;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
@@ -60,14 +61,9 @@ public class MiscInfoAndPlotsCalc {
 			yearVsMagXYdata.set(rup.getMag(),otYear);
 		}
 		
-		U3_EqkCatalogStatewideCompleteness magComplete;
-		U3_EqkCatalogStatewideCompleteness magCompleteRelaxed;
-		try {
-			magComplete = U3_EqkCatalogStatewideCompleteness.load();
-			magCompleteRelaxed = U3_EqkCatalogStatewideCompleteness.loadRelaxed();
-		} catch (IOException e1) {
-			throw ExceptionUtils.asRuntimeException(e1);
-		}
+		U3_EqkCatalogStatewideCompleteness magComplete = U3_EqkCatalogStatewideCompleteness.STRICT;
+		U3_EqkCatalogStatewideCompleteness magCompleteRelaxed = U3_EqkCatalogStatewideCompleteness.RELAXED;
+		
 		EvenlyDiscretizedFunc yrMagCompleteFunc = magComplete.getEvenlyDiscretizedMagYearFunc();
 		DefaultXY_DataSet yearVsMagCompleteXYdata = new DefaultXY_DataSet();
 		double deltaMagOver2 = yrMagCompleteFunc.getDelta()/2.0;
@@ -370,7 +366,8 @@ public class MiscInfoAndPlotsCalc {
 		
 		List<ETAS_EqkRupture> histCat=null;
 		try {
-			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getTimeInMillisFromYear(2012), erf);
+			histCat = ETAS_Simulator.getFilteredHistCatalog(ETAS_Simulator.getTimeInMillisFromYear(2012), erf,
+					U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE);
 		} catch (IOException | DocumentException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -525,16 +522,13 @@ public class MiscInfoAndPlotsCalc {
 			loadedRups = UCERF3_CatalogParser.loadCatalog(catFile);
 			plotCatalogMagVsTime(loadedRups, "FullU3_CatMagVsTime");
 			
-			U3_EqkCatalogStatewideCompleteness magComplete = U3_EqkCatalogStatewideCompleteness.load();
+			U3_EqkCatalogStatewideCompleteness magComplete = U3_EqkCatalogStatewideCompleteness.STRICT;
 			ObsEqkRupList filteredCat = magComplete.getFilteredCatalog(loadedRups);
 			plotCatalogMagVsTime(filteredCat, "Filtered_CatMagVsTime");
-
 			
-			U3_EqkCatalogStatewideCompleteness magCompleteRelaxed = U3_EqkCatalogStatewideCompleteness.loadRelaxed();
+			U3_EqkCatalogStatewideCompleteness magCompleteRelaxed = U3_EqkCatalogStatewideCompleteness.RELAXED;
 			ObsEqkRupList filteredCatRelaxed = magCompleteRelaxed.getFilteredCatalog(loadedRups);
 			plotCatalogMagVsTime(filteredCatRelaxed, "RelaxedFiltered_FullU3_CatMagVsTimeFiltered");
-
-
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -48,6 +48,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ApplySubSeisRatesForSupraNucleationRatesParam;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelParam;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_TotalRateScaleFactorParam;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
@@ -229,7 +230,8 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 				surfsFile = new File(cmd.getOptionValue("rupture-surfaces"));
 			else
 				surfsFile = null;
-			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sols[0], ot, null));
+			histQkList.addAll(ETAS_Launcher.loadHistoricalCatalog(catFile, surfsFile, sols[0], ot, null,
+					U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE));
 		}
 		
 		// purge any last event data after OT

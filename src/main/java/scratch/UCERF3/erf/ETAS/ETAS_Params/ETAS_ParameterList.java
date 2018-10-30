@@ -10,6 +10,8 @@ import org.opensha.commons.param.ParameterList;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
+
 /**
  * This holds a complete list of ETAS parameters
  * @author field
@@ -31,6 +33,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	U3ETAS_ApplySubSeisRatesForSupraNucleationRatesParam applySubSeisForSupraNuclParam = new U3ETAS_ApplySubSeisRatesForSupraNucleationRatesParam();
 	U3ETAS_ApplyGridSeisCorrectionParam applyGridSeisCorrParam = new U3ETAS_ApplyGridSeisCorrectionParam();
 	U3ETAS_TotalRateScaleFactorParam totalRateScaleFactorParam = new U3ETAS_TotalRateScaleFactorParam();
+	U3ETAS_StatewideCatalogCompletenessParam statewideCompletenessParam = new U3ETAS_StatewideCatalogCompletenessParam();
 	//	U3ETAS_MaxCharFactorParam maxCharFactorParam = new U3ETAS_MaxCharFactorParam();
 //	ETAS_FractionSpontaneousParam fractSpontParam = new ETAS_FractionSpontaneousParam();
 //	ETAS_ApplyLongTermRatesInSamplingParam applyLongTermRatesParam = new ETAS_ApplyLongTermRatesInSamplingParam();
@@ -46,6 +49,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 		this.addParameter(applySubSeisForSupraNuclParam);
 		this.addParameter(applyGridSeisCorrParam);
 		this.addParameter(totalRateScaleFactorParam);
+		this.addParameter(statewideCompletenessParam);
 //		this.addParameter(maxCharFactorParam);
 //		this.addParameter(fractSpontParam); // computed from other things
 //		this.addParameter(applyLongTermRatesParam);
@@ -62,6 +66,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	public boolean getApplySubSeisForSupraNucl() {return applySubSeisForSupraNuclParam.getValue();}
 	public boolean getApplyGridSeisCorr() {return applyGridSeisCorrParam.getValue();}
 	public double getTotalRateScaleFactor() {return totalRateScaleFactorParam.getValue();}
+	public U3_EqkCatalogStatewideCompleteness getStatewideCompletenessModel() { return statewideCompletenessParam.getValue(); }
 //	public double getMaxCharFactor() {return maxCharFactorParam.getValue(); }
 //	public double getFractSpont() {return fractSpontParam.getValue();}
 //	public boolean getApplyLongTermRates() {return applyLongTermRatesParam.getValue();}
@@ -77,6 +82,8 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	public void setApplySubSeisForSupraNucl(boolean value) {applySubSeisForSupraNuclParam.setValue(value);}
 	public void setApplyGridSeisCorr(boolean value) {applyGridSeisCorrParam.setValue(value);}
 	public void setTotalRateScaleFactor(double value) {totalRateScaleFactorParam.setValue(value);}
+	public void setStatewideCompletenessModel(U3_EqkCatalogStatewideCompleteness completenessModel)
+		{statewideCompletenessParam.setValue(completenessModel);}
 
 	
 //	public void setMaxCharFactor(double value) {maxCharFactorParam.setValue(value); }

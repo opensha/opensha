@@ -511,7 +511,7 @@ public class ETAS_Simulator {
 						etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
 			else
 				spontEventTimes = etas_utils.getRandomSpontanousEventTimes(
-						mfd, U3_EqkCatalogStatewideCompleteness.load().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
+						mfd, etasParams.getStatewideCompletenessModel().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
 						simEndTimeMillis, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
 			
 			
@@ -1007,14 +1007,14 @@ public class ETAS_Simulator {
 	
 
 	
-	public static List<ETAS_EqkRupture> getFilteredHistCatalog(long startTimeMillis, FaultSystemSolutionERF_ETAS erf) 
+	public static List<ETAS_EqkRupture> getFilteredHistCatalog(long startTimeMillis, FaultSystemSolutionERF_ETAS erf, U3_EqkCatalogStatewideCompleteness completenessModel) 
 			throws IOException, DocumentException {
 		File file1 = new File("src/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt");
 		File file2 = new File("src/scratch/UCERF3/data/EarthquakeCatalog/u3_historical_catalog_finite_fault_mappings.xml");
 		
 		Map<Long, List<Integer>> resetSubSectsMap = new HashMap<>();	// this holds the sections reset by historical events (which will override geologic values since timing for these is more accurate)
 
-		List<ETAS_EqkRupture> histCat =  ETAS_Launcher.loadHistoricalCatalog(file1, file2, erf.getSolution(), startTimeMillis, resetSubSectsMap);
+		List<ETAS_EqkRupture> histCat =  ETAS_Launcher.loadHistoricalCatalog(file1, file2, erf.getSolution(), startTimeMillis, resetSubSectsMap, completenessModel);
 		
 //		for(ETAS_EqkRupture qk:histCat) {
 //			if(qk instanceof ETAS_EqkRupture) {
@@ -1487,7 +1487,7 @@ public class ETAS_Simulator {
 		List<ETAS_EqkRupture> histCat=null;
 		if(includeHistCat) {
 			try {
-				histCat = getFilteredHistCatalog(startTimeMillis, erf);
+				histCat = getFilteredHistCatalog(startTimeMillis, erf, params.getStatewideCompletenessModel());
 			} catch (IOException | DocumentException e1) {
 				e1.printStackTrace();
 			}

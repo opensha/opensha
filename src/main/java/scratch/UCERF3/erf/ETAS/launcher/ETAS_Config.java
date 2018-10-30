@@ -32,8 +32,10 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
 public class ETAS_Config {
 	
@@ -71,6 +73,7 @@ public class ETAS_Config {
 	private boolean imposeGR = false;
 	private boolean includeIndirectTriggering = true;
 	private double gridSeisDiscr = 0.1;
+	private U3_EqkCatalogStatewideCompleteness catalogCompletenessModel = U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE;
 	
 	public ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir) {
 		this(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir, null, null);
@@ -520,6 +523,10 @@ public class ETAS_Config {
 	public double getGridSeisDiscr() {
 		return gridSeisDiscr;
 	}
+	
+	public U3_EqkCatalogStatewideCompleteness getCompletenessModel() {
+		return catalogCompletenessModel;
+	}
 
 	private transient FaultSystemSolution fss;
 	public synchronized FaultSystemSolution loadFSS() {
@@ -560,6 +567,7 @@ public class ETAS_Config {
 	public static ETAS_Config readJSON(String json) {
 		Gson gson = buildGson();
 		ETAS_Config conf = gson.fromJson(json, ETAS_Config.class);
+		conf.catalogCompletenessModel = U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE;
 		return conf;
 	}
 

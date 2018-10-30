@@ -471,7 +471,7 @@ public class ETAS_Simulator_NoFaults {
 						etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
 			else
 				spontEventTimes = etas_utils.getRandomSpontanousEventTimes(
-						mfd, U3_EqkCatalogStatewideCompleteness.load().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
+						mfd, etasParams.getStatewideCompletenessModel().getEvenlyDiscretizedMagYearFunc(), simStartTimeMillis, 
 						simEndTimeMillis, 1000, etasParams.get_k(), etasParams.get_p(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c());
 			
 			System.out.println("Done with getRandomSpontanousEventTimes");
@@ -831,7 +831,7 @@ public class ETAS_Simulator_NoFaults {
 		List<ETAS_EqkRupture> histQkList=null;
 		if(includeHistCat) {
 			try {
-				histQkList = ETAS_Simulator.getFilteredHistCatalog(startTimeMillis, erf);
+				histQkList = ETAS_Simulator.getFilteredHistCatalog(startTimeMillis, erf, params.getStatewideCompletenessModel());
 			} catch (IOException | DocumentException e1) {
 				e1.printStackTrace();
 			}

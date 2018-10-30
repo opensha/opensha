@@ -197,13 +197,33 @@ public class ETAS_Launcher {
 			}
 		}
 		
+		params = new ETAS_ParameterList();
+		params.setImposeGR(config.isImposeGR());
+		params.setU3ETAS_ProbModel(config.getProbModel());
+		// already applied if applicable, setting here for metadata
+		if (config.isGriddedOnly()) {
+			if (config.isGridSeisCorr())
+				debug(DebugLevel.INFO, "WARNING: grid seis correction not applied in gridded only case");
+			Preconditions.checkState(config.getTotRateScaleFactor() == 1,
+					"Total rate scale factor for fault-based ETAS (for now, we don't know the appropriate value for gridded only");
+		}
+		params.setApplyGridSeisCorr(config.isGridSeisCorr() && !config.isGriddedOnly());
+		params.setApplySubSeisForSupraNucl(config.isApplySubSeisForSupraNucl());
+		params.setTotalRateScaleFactor(config.getTotRateScaleFactor());
+		// TODO set completeness model
+		
 		// now load a trigger catalog
 		histQkList = new ArrayList<>();
 		if (config.getTriggerCatalogFile() != null) {
+			if (config.getCompletenessModel() == null)
+				debug(DebugLevel.INFO, "WARNING: statewide completeness model not specified, using default. "
+						+ "Specify with `catalogCompletenessModel` JSON parameter");
+			else
+				params.setStatewideCompletenessModel(config.getCompletenessModel());
 			FaultSystemSolution fss = checkOutFSS();
 			try {
-				histQkList.addAll(loadHistoricalCatalog(config.getTriggerCatalogFile(),
-						config.getTriggerCatalogSurfaceMappingsFile(), fss, simulationOT, resetSubSectsMap));
+				histQkList.addAll(loadHistoricalCatalog(config.getTriggerCatalogFile(), config.getTriggerCatalogSurfaceMappingsFile(),
+						fss, simulationOT, resetSubSectsMap, params.getStatewideCompletenessModel()));
 			} catch (DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -267,20 +287,6 @@ public class ETAS_Launcher {
 			debug("determining random seeds from input seed="+randSeed);
 		}
 		buildRandomSeeds(randSeed);
-		
-		params = new ETAS_ParameterList();
-		params.setImposeGR(config.isImposeGR());
-		params.setU3ETAS_ProbModel(config.getProbModel());
-		// already applied if applicable, setting here for metadata
-		if (config.isGriddedOnly()) {
-			if (config.isGridSeisCorr())
-				debug(DebugLevel.INFO, "WARNING: grid seis correction not applied in gridded only case");
-			Preconditions.checkState(config.getTotRateScaleFactor() == 1,
-					"Total rate scale factor for fault-based ETAS (for now, we don't know the appropriate value for gridded only");
-		}
-		params.setApplyGridSeisCorr(config.isGridSeisCorr() && !config.isGriddedOnly());
-		params.setApplySubSeisForSupraNucl(config.isApplySubSeisForSupraNucl());
-		params.setTotalRateScaleFactor(config.getTotRateScaleFactor());
 		
 		cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
 	}
@@ -377,7 +383,8 @@ public class ETAS_Launcher {
 	}
 	
 	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemSolution sol,
-			long ot, Map<Long, List<Integer>> resetSubSectsMap) throws IOException, DocumentException {
+			long ot, Map<Long, List<Integer>> resetSubSectsMap, U3_EqkCatalogStatewideCompleteness completenessModel)
+					throws IOException, DocumentException {
 		List<ETAS_EqkRupture> histQkList = new ArrayList<>();
 		// load in historical catalog
 		
@@ -393,7 +400,7 @@ public class ETAS_Launcher {
 		}
 		
 		// filter for historical completeness
-		loadedRups = U3_EqkCatalogStatewideCompleteness.load().getFilteredCatalog(loadedRups);
+		loadedRups = completenessModel.getFilteredCatalog(loadedRups);
 		int numAfter = 0;
 		for (ObsEqkRupture rup : loadedRups) {
 			if (rup.getOriginTime() > ot) {
