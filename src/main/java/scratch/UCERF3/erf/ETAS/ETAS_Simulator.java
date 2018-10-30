@@ -113,6 +113,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools.EpicenterMapThread;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
@@ -1354,6 +1355,27 @@ public class ETAS_Simulator {
 			System.out.println("\tMoved in direction: "+LocationUtils.azimuth(loc, newLoc));
 			System.out.println("\tMoved distance: "+LocationUtils.linearDistanceFast(loc, newLoc));
 			loc = newLoc;
+		}
+		
+		/**
+		 * @return an ETAS_Launcher TriggerRupture instance, which will occur at simulation start time
+		 */
+		public TriggerRupture buildTriggerRupture() {
+			return buildTriggerRupture(null);
+		}
+		
+		/**
+		 * @param customOccurrenceTime if non-null, rupture will occur at the specified time, else simulation start time
+		 * @return an ETAS_Launcher TriggerRupture instance
+		 */
+		public TriggerRupture buildTriggerRupture(Long customOccurrenceTime) {
+			if (fssIndex >= 0) {
+				Double overrideMag = null;
+				if (Double.isNaN(mag))
+					overrideMag = mag;
+				return new TriggerRupture.FSS(fssIndex, customOccurrenceTime, overrideMag);
+			}
+			return new TriggerRupture.Point(loc, customOccurrenceTime, mag);
 		}
 	}
 
