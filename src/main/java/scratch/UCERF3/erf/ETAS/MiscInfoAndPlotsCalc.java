@@ -373,7 +373,7 @@ public class MiscInfoAndPlotsCalc {
 			e.printStackTrace();
 		}
 
-		// this shows that the ID for El Mayor is 4552
+		// this shows that the ID for El Mayor is 54751
 //		for(int i=0;i<histCat.size();i++)
 //			if(histCat.get(i).getMag()>7) {
 //				double year = ((double)histCat.get(i).getOriginTime())/(365.25*24*3600*1000)+1970.0;
@@ -381,7 +381,7 @@ public class MiscInfoAndPlotsCalc {
 //			}
 //		System.exit(-1);
 
-		LocationList locListForElMayor = histCat.get(4552).getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface();
+		LocationList locListForElMayor = histCat.get(54751).getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface();
 		DefaultXY_DataSet elMayorXYdata = new DefaultXY_DataSet();
 		for(Location loc:locListForElMayor)
 			elMayorXYdata.set(loc.getLongitude(), loc.getLatitude());

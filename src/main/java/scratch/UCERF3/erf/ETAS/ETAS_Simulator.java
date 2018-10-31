@@ -1457,9 +1457,9 @@ public class ETAS_Simulator {
 //		Long seed = 890841985480217717l;
 		
 		// set start time
-//		double startTimeYear=2012.0;
-//		long startTimeMillis = getStartTimeMillisFromYear(startTimeYear);		
-		long startTimeMillis = 709732654000l;	// Landers OT
+		double startTimeYear=2012.0;
+		long startTimeMillis = getTimeInMillisFromYear(startTimeYear);		
+//		long startTimeMillis = 709732654000l;	// Landers OT
 
 		// set the duration
 		double durationYears=1;
@@ -1473,6 +1473,7 @@ public class ETAS_Simulator {
 //		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.NO_ERT);
 		params.setTotalRateScaleFactor(1.14);
 		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.FULL_TD);
+		params.setStatewideCompletenessModel(U3_EqkCatalogStatewideCompleteness.RELAXED);
 		
 		boolean includeSpontEvents=true;
 		boolean includeIndirectTriggering=true;
@@ -1482,6 +1483,9 @@ public class ETAS_Simulator {
 
 		// Instantiate ERF; this resets date of last event on sections that ruptured after start time.
 		FaultSystemSolutionERF_ETAS erf = getU3_ETAS_ERF(startTimeMillis, durationYears, params.getApplyGridSeisCorr());
+		
+		MiscInfoAndPlotsCalc.plotElMayorAndLagunaSalada(erf); // makes sure the index therein is correct
+
 		
 		// Get this historic catalog, filtering for start time and mag of completeness, and resetting data of last event on fault sections where appropriate
 		List<ETAS_EqkRupture> histCat=null;
@@ -1493,16 +1497,21 @@ public class ETAS_Simulator {
 			}
 			
 			// print out time of big events
-//			for(ETAS_EqkRupture rup:histCat)
-//				if(rup.getMag()>7)
-//					System.out.println(rup.getMag()+"\t"+rup.getOriginTime()+"\t"+rup.getOriginTimeCal().getTime()+"\t"+rup.getEventId());
+			for(int i=0;i<histCat.size();i++) {
+				ETAS_EqkRupture rup = histCat.get(i);
+				if(rup.getMag()>7)
+					System.out.println(i+"\t"+rup.getMag()+"\t"+rup.getOriginTime()+"\t"+rup.getOriginTimeCal().getTime()+"\t"+rup.getEventId()+"\t"+rup.getID());
+			}
 //			System.exit(-1);
 		}
 		
 		// Build scenario, reseting date of last event for fault sections in erf if appropriate
 		ArrayList<ETAS_EqkRupture> scenarioList=null;
 		if(scenario != null ) {
+			
 			ETAS_EqkRupture scenarioRup = buildScenarioRup(scenario, erf, startTimeMillis);
+//			// the following is an alternative that I have not yet tested:
+//			ETAS_EqkRupture scenarioRup = scenario.buildTriggerRupture().buildRupture(erf.getSolution().getRupSet(), startTimeMillis);
 			scenarioList = new ArrayList<ETAS_EqkRupture>();
 			scenarioList.add(scenarioRup);
 		}
@@ -1525,14 +1534,14 @@ public class ETAS_Simulator {
 		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
 				
 		System.out.println("Starting RunETAS_Simulation");
-		try {
-			String dirNameForSavingFiles = "U3_ETAS_"+simulationName+"/";
-			File resultsDir = new File(dirNameForSavingFiles);
-			runETAS_Simulation(resultsDir, erf, griddedRegion, scenarioList, histCat,  includeSpontEvents,
-					includeIndirectTriggering, gridSeisDiscr, simulationName, seed, null, null, null, params, null);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+//		try {
+//			String dirNameForSavingFiles = "U3_ETAS_"+simulationName+"/";
+//			File resultsDir = new File(dirNameForSavingFiles);
+//			runETAS_Simulation(resultsDir, erf, griddedRegion, scenarioList, histCat,  includeSpontEvents,
+//					includeIndirectTriggering, gridSeisDiscr, simulationName, seed, null, null, null, params, null);
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		}
 		
 		float timeMin = (float)(System.currentTimeMillis()-st)/60000f;
 		System.out.println("Total simulation took "+timeMin+" min");

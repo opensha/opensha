@@ -784,7 +784,7 @@ public class ETAS_Simulator_NoFaults {
 		
 //		double startTimeYear=2014;
 //		long startTimeMillis = ETAS_Simulator.getStartTimeMillisFromYear(startTimeYear);
-		long startTimeMillis = 709732654000l;	// Landers OT plus 1 millisec
+		long startTimeMillis = 709732654000l;	// Landers OT
 
 
 		double durationYears=1;
@@ -863,95 +863,7 @@ public class ETAS_Simulator_NoFaults {
 	}
 	
 
-//	/**
-//	 * 
-//	 * 
-//	 * TODO:
-//	 * 
-//	 * @param scenario
-//	 * @param etasParams
-//	 * @param randomSeed
-//	 * @param simulationName - if null this will be constructed from input information
-//	 * @param histQkList
-//	 */
-//	public static void runTest(ETAS_Simulator.TestScenario scenario, ETAS_ParameterList etasParams, Long randomSeed, 
-//			String simulationName, boolean includeHistEvents, double startTimeYear, double durationYears) {
-//		
-//		ETAS_SimAnalysisTools.writeMemoryUse("Memory at beginning of run");
-//
-//		Long st = System.currentTimeMillis();
-//
-//		if(simulationName == null) {
-//			throw new RuntimeException("simulationName is null");
-//		}
-//		
-//		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
-//
-//		// Make fault system ERF is needed for scenario
-//		FaultSystemSolutionERF_ETAS erf = null;
-//		if(scenario.getFSS_Index()>=0 || includeHistEvents)
-//			erf = getU3_ETAS_ERF(startTimeYear, durationYears);
-//		
-//		ObsEqkRupList histQkList=null;
-//		if(includeHistEvents)
-//			histQkList = getHistCatalogFiltedForStatewideCompleteness(startTimeYear,erf.getSolution().getRupSet());
-//
-//
-//		
-//		ETAS_EqkRupture scenarioRup = ETAS_Simulator.buildScenarioRup(scenario, erf);
-//		
-//		boolean includeSpontEvents=false;
-//		boolean includeIndirectTriggering=true;
-//		double gridSeisDiscr = 0.1;
-//		
-//		UCERF3_GriddedSeisOnlyERF_ETAS erf_noFlts = getU3_ETAS_ERF__GriddedSeisOnly(2012, 1);
-//		
-//		System.out.println("Starting testETAS_Simulation");
-//		try {
-//			String dirNameForSavingFiles = "U3_ETAS_"+simulationName+"/";
-//			File resultsDir = new File(dirNameForSavingFiles);
-//			runETAS_Simulation(resultsDir, erf_noFlts, griddedRegion, scenarioRup, histQkList,  includeSpontEvents, 
-//					includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams);
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
-//		
-//		float timeMin = (float)(System.currentTimeMillis()-st)/60000f;
-//		System.out.println("Total simulation took "+timeMin+" min");
-//
-//	}
-//	
-//	public static ObsEqkRupList getHistCatalog(double startTimeYear, FaultSystemRupSet rupSet) {
-//		File file = new File("/Users/field/workspace/OpenSHA/dev/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt");
-//		ObsEqkRupList histQkList=null;
-//		try {
-//			histQkList = UCERF3_CatalogParser.loadCatalog(file);
-//		} catch (IOException e1) {
-//			e1.printStackTrace();
-//		}
-//		
-////		HistogramFunction func = new HistogramFunction(1.0, 61, 2.0);
-////		for(ObsEqkRupture qk : histQkList) {
-////			func.add(qk.getHypocenterLocation().getDepth(), 1);
-////		}
-////		GraphWindow graph = new GraphWindow(func, "Hypocenter Depth Histogram");
-//		double timeInMillis = (startTimeYear-1970)*ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-//		histQkList = histQkList.getRupsBefore((long)timeInMillis);
-//		
-//		// load in rupture surfaces. Note: this must happen before mag complete filtering, surface loading needs all ruptures
-//		Preconditions.checkState(rupSet.getNumRuptures() == 253706, "Hardcoded to FM3.1 but this rup set isn't FM3.1");
-//		try {
-//			FiniteFaultMappingData.loadRuptureSurfaces(
-//					UCERF3_DataUtils.locateResourceAsStream("EarthquakeCatalog", "finite_fault_mappings.xml"),
-//					histQkList, FaultModels.FM3_1, rupSet);
-//		} catch (DocumentException e1) {
-//			ExceptionUtils.throwAsRuntimeException(e1);
-//		}
-//		
-//		return histQkList;
-//	}
-//	
-	
+
 	
 	
 	/**
