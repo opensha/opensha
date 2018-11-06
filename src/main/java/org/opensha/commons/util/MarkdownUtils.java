@@ -214,7 +214,8 @@ public class MarkdownUtils {
 	public static List<String> buildTOC(List<String> lines, int minLevel, int maxLevel) {
 		LinkedList<String> toc = new LinkedList<>();
 		
-		for (String line : lines) {
+		for (int i=0; i<lines.size(); i++) {
+			String line = lines.get(i);
 			if (line.startsWith("#")) {
 				String headerPart = line.substring(0, line.lastIndexOf('#')+1);
 				int level = headerPart.length();
@@ -225,8 +226,41 @@ public class MarkdownUtils {
 						level--;
 					}
 					String title = line.substring(headerPart.length()).trim();
-					String anchor = getAnchorName(title);
-					tocLine += "* ["+title+"](#"+anchor+")";
+					
+					String link = null;
+					// see if it's just a link, if so use that link rather than a link to the link
+//					System.out.println("Looking for links on "+title);
+					for (int j=i+1; j<lines.size(); j++) {
+						String l2 = lines.get(j).trim();
+//						System.out.println(l2);
+						if (l2.isEmpty())
+							continue;
+						if (l2.contains("[(top)]"))
+							continue;
+						if (l2.startsWith("#"))
+							break;
+						if (l2.startsWith("[") && l2.contains("](") && l2.endsWith(")")) {
+//							System.out.println("Has a link!");
+							// it's a link
+							if (link == null) {
+								link = l2.substring(l2.lastIndexOf("(")+1);
+								link = link.substring(0, link.length()-1);
+							} else {
+								// not the first link
+//								System.out.println("not the first link");
+								link = null;
+								break;
+							}
+						} else {
+							// not a link
+//							System.out.println("Has non link!");
+							link = null;
+							break;
+						}
+					}
+					if (link == null)
+						link = "#"+getAnchorName(title);
+					tocLine += "* ["+title+"]("+link+")";
 					toc.add(tocLine);
 				}
 			}
