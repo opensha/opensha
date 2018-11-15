@@ -13,7 +13,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 /**
- * Quick partial implementation of RuptureSurface interface to allow for triangles. A rull triangular surface implementation
+ * Quick partial implementation of RuptureSurface interface to allow for triangles. A full triangular surface implementation
  * is needed in the future. Package private to discourage external use.
  * @author kevin
  *
@@ -91,6 +91,11 @@ class TriangularElementSurface implements RuptureSurface {
 	@Override
 	public double getArea() {
 		return area;
+	}
+
+	@Override
+	public double getAreaInsideRegion(Region region) {
+		throw new UnsupportedOperationException("Not yet implemented");
 	}
 
 	@Override

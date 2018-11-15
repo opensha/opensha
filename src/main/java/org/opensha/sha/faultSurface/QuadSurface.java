@@ -108,6 +108,9 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	 */
 	private double discr_km = 1d;
 	
+	private FaultTrace[] horzSpans;
+	private FaultTrace[] horzSpansDiscr;
+	
 	// create cache using default caching policy
 	private SurfaceDistanceCache cache = SurfaceCachingPolicy.build(this);
 	
@@ -724,17 +727,35 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 
 	@Override
+	public double getAreaInsideRegion(Region region) {
+		// TODO could be more efficient in quad space
+		int numRows = getNumDiscrDownDip();
+		int numCols = getNumDiscrAlongStrike();
+		double gridSpacingDown = getAveWidth()/(numRows-1);
+		double gridSpacingAlong = getAveLength()/(numCols-1);
+		// this is not simply trivial because we are not grid centered
+		double areaInside = 0d;
+		for (int row=0; row<numRows; row++) {
+			// it's a top or bottom so this point represents a half cell
+			double myWidth = row == 0 || row == numRows-1 ? 0.5*gridSpacingDown : gridSpacingDown;
+			FaultTrace span = getEvenlyDiscretizedHorizontalSpan(row);
+			Preconditions.checkState(span.size() == numCols);
+			for (int col=0; col<numCols; col++) {
+				// it's a left or right so this point represents a half cell
+				double myLen = col == 0 || col == numCols-1 ? 0.5*gridSpacingAlong : gridSpacingAlong;
+				if (region.contains(span.get(col)))
+					areaInside += myWidth * myLen;
+			}
+		}
+		return areaInside;
+	}
+
+	@Override
 	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
 		LocationList locs = new LocationList();
-		locs.addAll(getEvenlyDiscritizedUpperEdge());
-		int numSpans = (int)Math.ceil(trace.getTraceLength()/discr_km);
-		int numDDW = (int)Math.ceil(width/discr_km);
-		double ddw_increment = width/(double)numDDW;
-		for (int i=0; i<numDDW; i++) {
-			FaultTrace subTrace = new FaultTrace("subTrace");
-			subTrace.addAll(getHorizontalPoints(ddw_increment*(double)(i+1)));
-			locs.addAll(FaultUtils.resampleTrace(subTrace, numSpans));
-		}
+		int numDDW = getNumDiscrDownDip();
+		for (int i=0; i<numDDW; i++)
+			locs.addAll(getEvenlyDiscretizedHorizontalSpan(i));
 		return locs;
 	}
 
@@ -764,17 +785,12 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 
 	@Override
 	public FaultTrace getEvenlyDiscritizedUpperEdge() {
-		// TODO cache these?
-		int numSpans = (int)Math.ceil(trace.getTraceLength()/discr_km);
-		return FaultUtils.resampleTrace(trace, numSpans);
+		return getEvenlyDiscretizedHorizontalSpan(0);
 	}
 
 	@Override
 	public LocationList getEvenlyDiscritizedLowerEdge() {
-		FaultTrace lower = new FaultTrace("lower");
-		lower.addAll(getHorizontalPoints(width));
-		int numSpans = (int)Math.ceil(lower.getTraceLength()/discr_km);
-		return FaultUtils.resampleTrace(lower, numSpans);
+		return getEvenlyDiscretizedHorizontalSpan(getNumDiscrDownDip()-1);
 	}
 
 	@Override
@@ -786,8 +802,10 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	 * Sets grid spacing used for all evenly discretized methods
 	 * @param gridSpacing
 	 */
-	public void setAveGridSpacing(double gridSpacing) {
+	public synchronized void setAveGridSpacing(double gridSpacing) {
 		this.discr_km = gridSpacing;
+		horzSpans = null;
+		horzSpansDiscr = null;
 	}
 
 	@Override
@@ -824,6 +842,53 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		for (int i=locs.size(); --i>=0;)
 			reversed.add(locs.get(i));
 		return reversed;
+	}
+	
+	// add 1e-5 here so that it rounds up if exactly even, so for a 1km trace with 1km spacing, we need 2 points
+	private int getNumDiscrAlongStrike() {
+		int val = (int)Math.ceil((1e-5+getAveLength())/discr_km);
+		return val > 2 ? val : 2;
+	}
+	
+	private int getNumDiscrDownDip() {
+		int val = (int)Math.ceil((1e-5+width)/discr_km);
+		return val > 2 ? val : 2;
+	}
+	
+	private synchronized FaultTrace getHorizontalSpan(int index) {
+		if (horzSpans != null) {
+			Preconditions.checkState(index <= horzSpans.length);
+			if (horzSpans[index] != null)
+				return horzSpans[index];
+		} else {
+			horzSpans = new FaultTrace[getNumDiscrDownDip()];
+		}
+		if (index == 0) {
+			horzSpans[index] = trace;
+		} else {
+			FaultTrace locs = new FaultTrace("SubTrace "+index);
+			double widthDownDip = index*width/(horzSpans.length-1d);
+			double hDistance = widthDownDip * Math.cos( dipRad );
+			double vDistance = widthDownDip * Math.sin(dipRad);
+			LocationVector dir = new LocationVector(avgDipDirDeg, hDistance, vDistance);
+			for (Location traceLoc : trace)
+				locs.add(LocationUtils.location(traceLoc, dir));
+			horzSpans[index] = locs;
+		}
+		return horzSpans[index];
+	}
+	
+	private synchronized FaultTrace getEvenlyDiscretizedHorizontalSpan(int index) {
+		if (horzSpansDiscr != null) {
+			Preconditions.checkState(index <= horzSpansDiscr.length);
+			if (horzSpansDiscr[index] != null)
+				return horzSpansDiscr[index];
+		} else {
+			horzSpansDiscr = new FaultTrace[getNumDiscrDownDip()];
+		}
+		FaultTrace subTrace = getHorizontalSpan(index);
+		horzSpansDiscr[index] = FaultUtils.resampleTrace(subTrace, getNumDiscrAlongStrike());
+		return horzSpansDiscr[index];
 	}
 	
 	/**
