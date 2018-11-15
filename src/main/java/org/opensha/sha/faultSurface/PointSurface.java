@@ -339,6 +339,11 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	}
 
 	@Override
+	public double getAreaInsideRegion(Region region) {
+		return 0;
+	}
+
+	@Override
 	public double getAveGridSpacing() {
 		return 0;
 	}

@@ -46,6 +46,13 @@ public class MarkdownUtils {
 			return addLine(vals.toArray(new String[vals.size()]));
 		}
 		
+		public TableBuilder addLine(Object... vals) {
+			String[] strs = new String[vals.length];
+			for (int i=0; i<vals.length;  i++)
+				strs[i] = vals[i].toString();
+			return addLine(strs);
+		}
+		
 		public TableBuilder addLine(String... vals) {
 			lines.add(vals);
 			
@@ -57,6 +64,10 @@ public class MarkdownUtils {
 				finalizeLine();
 			curLine = new ArrayList<>();
 			return this;
+		}
+		
+		public TableBuilder addColumn(Object val) {
+			return addColumn(val.toString());
 		}
 		
 		public TableBuilder addColumn(String val) {

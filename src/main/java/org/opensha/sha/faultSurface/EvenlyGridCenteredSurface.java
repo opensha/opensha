@@ -21,6 +21,7 @@ package org.opensha.sha.faultSurface;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.Region;
 
 /**
  * <p>Title:EvenlyGridCenteredSurface </p>
@@ -133,6 +134,22 @@ public class EvenlyGridCenteredSurface extends AbstractEvenlyGriddedSurfaceWithS
 		surf.gridSpacingAlong = getGridSpacingAlongStrike();
 		surf.gridSpacingDown = getGridSpacingDownDip();
 		return surf;
+	}
+
+	@Override
+	public double getAreaInsideRegion(Region region) {
+		double gridSpacingDown = getGridSpacingDownDip();
+		double gridSpacingAlong = getGridSpacingAlongStrike();
+		double areaEach = gridSpacingAlong * gridSpacingDown;
+		// this is not simply trivial because we are not grid centered
+		double areaInside = 0d;
+		for (int row=0; row<getNumRows(); row++) {
+			for (int col=0; col<getNumCols(); col++) {
+				if (region.contains(get(row, col)))
+					areaInside += areaEach;
+			}
+		}
+		return areaInside;
 	}
 
 }

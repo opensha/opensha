@@ -47,6 +47,13 @@ public interface RuptureSurface extends Surface3D {
      */
     public double getArea();
     
+    /**
+     * This returns the surface area in km-sq that lies within the given region
+     * @param region
+     * @return double
+     */
+    public double getAreaInsideRegion(Region region);
+    
 	/**
 	 * This returns a list of locations that are evenly spread (at least 
 	 * approximately) over the rupture surface, with a spacing given by

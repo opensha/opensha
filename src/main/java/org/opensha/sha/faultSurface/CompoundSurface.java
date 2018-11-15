@@ -622,4 +622,13 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 
 
+	@Override
+	public double getAreaInsideRegion(Region region) {
+		double area = 0d;
+		for (RuptureSurface surf : surfaces)
+			area += surf.getAreaInsideRegion(region);
+		return area;
+	}
+
+
 }
