@@ -41,6 +41,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
+import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
@@ -128,7 +129,6 @@ public class RupturePlotGenerator {
 	public static Color RECT_HYPO_COLOR = new Color(0, 255, 0, 122);
 	
 	public static Color CA_OUTLINE_COLOR = Color.DARK_GRAY;
-	private static DefaultXY_DataSet[] caOutlines;
 	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
 			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
@@ -695,10 +695,10 @@ public class RupturePlotGenerator {
 		}
 		
 		if (CA_OUTLINE_COLOR != null) {
-			DefaultXY_DataSet[] outlines = loadCAOutlines();
+			XY_DataSet[] outlines = PoliticalBoundariesData.loadCAOutlines();
 			PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)minThickness, CA_OUTLINE_COLOR);
 			
-			for (DefaultXY_DataSet outline : outlines) {
+			for (XY_DataSet outline : outlines) {
 				funcs.add(outline);
 				chars.add(outlineChar);
 			}
@@ -740,35 +740,6 @@ public class RupturePlotGenerator {
 		gp.getChartPanel().setSize(800, 800);
 		gp.saveAsPNG(file.getAbsolutePath()+".png");
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
-	}
-	
-	public synchronized static DefaultXY_DataSet[] loadCAOutlines() throws IOException {
-		if (caOutlines == null) {
-			List<DefaultXY_DataSet> outlines = new ArrayList<>();
-			InputStream is = RupturePlotGenerator.class.getResourceAsStream("/resources/data/boundaries/california.txt");
-			BufferedReader br = new BufferedReader(new InputStreamReader(is));
-			String[] vals;
-	        String line;
-	        while ((line = br.readLine()) != null) {
-	        	line = line.trim();
-	        	if (line.isEmpty() || line.startsWith("#"))
-	        		continue;
-	        	if (line.startsWith("segment")) {
-	        		outlines.add(new DefaultXY_DataSet());
-	        		continue;
-	        	}
-	        	vals = line.trim().split(" ");
-	        	double lat = Double.valueOf(vals[0]);
-	        	double lon = Double.valueOf(vals[1]);
-	        	if (outlines.isEmpty())
-	        		outlines.add(new DefaultXY_DataSet());
-	        	outlines.get(outlines.size()-1).set(lon, lat);
-	        }
-	        br.close();
-			
-			caOutlines = outlines.toArray(new DefaultXY_DataSet[outlines.size()]);
-		}
-		return caOutlines;
 	}
 	
 	public static void addElementOutline(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
