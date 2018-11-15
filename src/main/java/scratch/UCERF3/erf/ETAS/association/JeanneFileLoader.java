@@ -1,4 +1,4 @@
-package scratch.UCERF3.utils.finiteFaultMap;
+package scratch.UCERF3.erf.ETAS.association;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -83,7 +83,7 @@ public class JeanneFileLoader {
 				if (D) System.err.println("Failed to create evenly gridded, doing arbitrary: "+e.getMessage());
 				LocationList locList = new LocationList();
 				locList.addAll(finiteLocs.get(id));
-				surf = new ArbitrarilyDiscretizedSurface(locList, Double.NaN);
+				surf = new ArbitrarilyDiscretizedSurface(locList);
 			}
 			ObsEqkRupture rup = getForID(id, inputRups, surf);
 			if (rup != null) {
