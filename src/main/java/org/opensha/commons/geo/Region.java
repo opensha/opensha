@@ -40,6 +40,7 @@ import org.dom4j.Element;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.metadata.XMLSaveable;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
 
@@ -380,8 +381,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 		Rectangle2D rRect = area.getBounds2D();
 		Location origin = new Location(rRect.getCenterY(), rRect.getCenterX());
 		// compute orthogonal coordinates in km
-		List<Double> xs = Lists.newArrayList();
-		List<Double> ys = Lists.newArrayList();
+		List<Double> xs = new ArrayList<>();
+		List<Double> ys = new ArrayList<>();
 		for (Location loc : border) {
 			LocationVector v = LocationUtils.vector(origin, loc);
 			double az = v.getAzimuthRad();
@@ -392,7 +393,26 @@ public class Region implements Serializable, XMLSaveable, Named {
 		// repeat first point
 		xs.add(xs.get(0));
 		ys.add(ys.get(0));
-		return computeArea(Doubles.toArray(xs), Doubles.toArray(ys));
+		double area = computeArea(Doubles.toArray(xs), Doubles.toArray(ys));
+		if (interiors != null) {
+			// subtract interiors
+			for (LocationList interiorBorder : interiors) {
+				xs.clear();
+				ys.clear();
+				for (Location loc : interiorBorder) {
+					LocationVector v = LocationUtils.vector(origin, loc);
+					double az = v.getAzimuthRad();
+					double d = v.getHorzDistance();
+					xs.add(Math.sin(az) * d);
+					ys.add(Math.cos(az) * d);
+				}
+				// repeat first point
+				xs.add(xs.get(0));
+				ys.add(ys.get(0));
+				area -= computeArea(Doubles.toArray(xs), Doubles.toArray(ys));
+			}
+		}
+		return area;
 	}
 
 	public static void main(String[] args) {
@@ -608,6 +628,197 @@ public class Region implements Serializable, XMLSaveable, Named {
 		newRegion.area = newArea;
 		newRegion.border = Region.createBorder(newArea, true);
 		return newRegion;
+	}
+	
+	// subtraction is tricky, this flag enables easier debugging
+	private static final boolean SUBTRACT_DEBUG = false;
+
+	/**
+	 * Returns the first {@code Region} subtracted by the second, or null if no they don't intersect.
+	 * As subtraction can result in nonsingularity, an array of {@code Region}s is returned.
+	 * 
+	 * @param minuend the minuend, from which a {@code Region} will be subtracted
+	 * @param subtrahend the subtrahend {@code Region} which is to be subtracted
+	 * @return array of resultant {@code Region} defined by the subtraction of {@code subtrahend}
+	 *         from {@code minuend}, or {@code null} if no intersection. If the subtraction results in an empty area,
+	 *         a zero-length array is returned.
+	 * @throws NullPointerException if either supplied {@code Region} is
+	 *         {@code null}
+	 */
+	public static Region[] subtract(Region minuend, Region subtrahend) {
+		if (SUBTRACT_DEBUG) System.out.println("Subtracting region");
+		
+		// first test for intersection
+		Area newArea = (Area) minuend.area.clone();
+		newArea.intersect(subtrahend.area);
+		if (SUBTRACT_DEBUG) System.out.println("Intersect? "+!newArea.isEmpty());
+		if (newArea.isEmpty()) return null;
+		
+		// now subtract
+		newArea = (Area) minuend.area.clone();
+		newArea.subtract(subtrahend.area);
+		if (SUBTRACT_DEBUG) System.out.println("Superceded? "+newArea.isEmpty());
+		if (newArea.isEmpty()) return new Region[0];
+		List<Area> solids = new ArrayList<>();
+		List<Area> holes =new ArrayList<>();
+		splitArea(newArea, solids, holes);
+		if (solids.isEmpty()) {
+			// this happens when the the area of the subtracted region is zero
+			if (!holes.isEmpty()) {
+				// see if these are those trivial numerical precision issue holes
+				List<Region> holeRegions = new ArrayList<>();
+				for (Area area : holes) {
+					Region hole = new Region();
+					hole.area = area;
+					hole.border = Region.createBorder(area, true);
+					holeRegions.add(hole);
+				}
+				if (!areHolesSignificant(minuend, holeRegions)) {
+					if (SUBTRACT_DEBUG) System.out.println("Unmatched hole(s) is sufficiently tiny, ignoring");
+					holes.clear();
+				} else if (SUBTRACT_DEBUG) System.out.println("Unmatched hole is significant, failing");
+			}
+			Preconditions.checkState(holes.isEmpty(), "Have 0 solids but %s holes", holes.size());
+			return new Region[0];
+		}
+		if (SUBTRACT_DEBUG) System.out.println("Creating regions for "+solids.size()+" solids and "+holes.size()+" holes");
+		List<Region> regions = new ArrayList<>();
+		for (Area area : solids) {
+			Region region = new Region();
+			region.area = area;
+			region.border = Region.createBorder(area, true);
+			if (region.border.isEmpty()) {
+				if (SUBTRACT_DEBUG) System.out.println("That solid was empty, skipping");
+			} else {
+				if (SUBTRACT_DEBUG) System.out.println("Built solid with extent="+region.getExtent());
+				regions.add(region);
+			}
+		}
+		// now process any holes
+		for (Area area : holes) {
+			Region hole = new Region();
+			hole.area = area;
+			hole.border = Region.createBorder(area, true);
+			if (hole.border.isEmpty()) {
+				if (SUBTRACT_DEBUG) System.out.println("That solid was empty, skipping");
+				continue;
+			} else {
+				if (SUBTRACT_DEBUG) System.out.println("Built hole with extent="+hole.getExtent());
+			}
+			// find the region which contains it
+			boolean found = false;
+			for (Region region : regions) {
+				if (region.contains(hole)) {
+					found = true;
+					region.addInterior(hole);
+					break;
+				}
+			}
+			if (!found) {
+				// not found but might be insiginificant, in which case we can skip
+				if (!isHoleSignificant(minuend, hole)) {
+					if (SUBTRACT_DEBUG) System.out.println("Unmatched hole is sufficiently tiny, skipping");
+					found = true;
+				} else if (SUBTRACT_DEBUG) System.out.println("Unmatched hole is significant, failing");
+			}
+			Preconditions.checkState(found, "No solid region found which contains hole!");
+		}
+		
+		Region[] ret = regions.toArray(new Region[0]);
+		if (SUBTRACT_DEBUG) System.out.println("Returning "+ret.length+" regions");
+		
+		return ret;
+	}
+	
+	private static boolean isHoleSignificant(Region minuend, Region hole) {
+		return areHolesSignificant(minuend, Lists.newArrayList(hole));
+	}
+	
+	private static boolean areHolesSignificant(Region minuend, List<Region> holes) {
+		// sometimes numerical precision issues lead to an extra "hole" with a crazy small area that is not contained within
+		// a region.
+		
+		double minuendExtent = minuend.getExtent();
+		double holeExtent = 0d;
+		for (Region hole : holes)
+			if (!hole.border.isEmpty())
+				holeExtent += hole.getExtent();
+		double ratio = holeExtent/minuendExtent;
+		if (SUBTRACT_DEBUG) System.out.println("We have no solids but "+holes.size()+" hole(s). "
+				+ "Hole area ratio = "+holeExtent+"/"+minuendExtent+" = "+ratio);
+		// call it significant if it's a significant fraction (1/1000) of the minuend area, or it's smaller than a micrometer
+		return ratio > 1e-3 && holeExtent > 1e-0;
+	}
+	
+	/**
+	 * Recursively splits an area into solids and holes
+	 * @param multiArea area which need not be singular
+	 * @param solids list of solids to be populated
+	 * @param holes list of holes to be populated
+	 */
+	private static void splitArea(Area multiArea, List<Area> solids, List<Area> holes) {
+		if (SUBTRACT_DEBUG) System.out.println("Splitting an area");
+		if (SUBTRACT_DEBUG) System.out.println("Splitting!");
+		PathIterator iter = multiArea.getPathIterator(null);
+		if (SUBTRACT_DEBUG) System.out.println("Winding rule: "+iter.getWindingRule());
+		Path2D.Double poly = new Path2D.Double(Path2D.WIND_EVEN_ODD);
+		
+		// these are used to determine the direction of the path. if it's clockwise, directionTest will be positive
+		// which means that this is a solid. if it's counter-clockwise, directionTest will be negative indicating a hole
+		double[] moveToPt = null;
+		double[] prevPoint = null;
+		double directionTest = 0d;
+		int index = 0;
+		while(!iter.isDone()) {
+			double[] point = new double[6]; //x,y
+			int type = iter.currentSegment(point); 
+			if(type == PathIterator.SEG_MOVETO) {
+				if (SUBTRACT_DEBUG) System.out.println("Area "+index+": SEG_MOVETO\t"+point[0]+"\t"+point[1]);
+				poly.moveTo(point[0], point[1]);
+				moveToPt = point;
+			} else if(type == PathIterator.SEG_CLOSE) {
+				if (SUBTRACT_DEBUG) System.out.println("Area "+index+": SEG_CLOSE\t"+point[0]+"\t"+point[1]);
+				if (moveToPt != null) {
+					// (x2 − x1)(y2 + y1).
+					if (SUBTRACT_DEBUG) System.out.println("\t\t"+((moveToPt[0]-prevPoint[0])*(moveToPt[1]+prevPoint[1])));
+					directionTest += (moveToPt[0]-prevPoint[0])*(moveToPt[1]+prevPoint[1]);
+				}
+				boolean hole = directionTest < 0;
+				if (SUBTRACT_DEBUG) System.out.println("Direction Test: "+directionTest+"\tHole? "+hole);
+				poly.closePath();
+				Area area = new Area(poly);
+				if (!area.isEmpty()) {
+//					System.out.println("Adding area");
+					if (!area.isSingular()) {
+						// not quite sure why the Area constructor sometimes addes new little patches, but it does
+						// this fixes it
+						if (SUBTRACT_DEBUG) System.out.println("Re-splitting a split area...");
+						splitArea(area, solids, holes);
+					} else {
+						if (hole)
+							holes.add(area);
+						else
+							solids.add(area);
+					}
+				} else {
+					if (SUBTRACT_DEBUG) System.out.println("Skipping empty area");
+				}
+				index++;
+				poly = new Path2D.Double(Path2D.WIND_EVEN_ODD);
+			} else if (type == PathIterator.SEG_LINETO) {
+				if (SUBTRACT_DEBUG) System.out.println("Area "+index+": SEG_LINETO\t"+point[0]+"\t"+point[1]);
+				poly.lineTo(point[0], point[1]);
+				if (prevPoint != null) {
+					// (x2 − x1)(y2 + y1).
+					if (SUBTRACT_DEBUG) System.out.println("\t\t"+((point[0]-prevPoint[0])*(point[1]+prevPoint[1])));
+					directionTest += (point[0]-prevPoint[0])*(point[1]+prevPoint[1]);
+				}
+			} else {
+				throw new IllegalStateException("Unexpected area path type: "+type);
+			}
+			iter.next();
+			prevPoint = point;
+		}
 	}
 
 	/**
