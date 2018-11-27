@@ -165,8 +165,10 @@ extends HttpServlet {
 			count++;
 			newDir = new File(parentDir, millis+"_"+count);
 		}
-		Preconditions.checkState(!newDir.exists());
-		Preconditions.checkState(newDir.mkdir());
+		Preconditions.checkState(!newDir.exists(),
+				"new dir is supposed to be unique but already exists: %s", newDir.getAbsoluteFile());
+		Preconditions.checkState(newDir.mkdir(),
+				"cannot create unique map dir: %s", newDir.getAbsoluteFile());
 		return newDir;
 	}
 	
