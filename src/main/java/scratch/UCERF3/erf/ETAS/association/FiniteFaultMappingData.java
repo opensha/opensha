@@ -1,4 +1,4 @@
-package scratch.UCERF3.utils.finiteFaultMap;
+package scratch.UCERF3.erf.ETAS.association;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -90,7 +90,7 @@ public class FiniteFaultMappingData implements XMLSaveable {
 		return rupIndexMap.containsKey(rupture);
 	}
 	
-	private static final DateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss z");
+	static final DateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss z");
 
 	@Override
 	public Element toXMLMetadata(Element root) {

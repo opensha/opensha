@@ -24,7 +24,7 @@ import com.google.common.collect.Lists;
  * "Strict" values taken from Table L9 of Felzer (2013, UCERF3_TI Appendix L; http://pubs.usgs.gov/of/2013/1165/pdf/ofr2013-1165_appendixL.pdf).
  * 
  * On 10/29/18, Ned added a new "Relaxed" option chosen to have a less restrictive option (to include more historical data in ETAS simulations,
- * but at the cost of under-estimating spontaneous rates in some regions
+ * but at the cost of under-estimating spontaneous rates in some regions)
  * 
  * @author kevin
  *

@@ -22,6 +22,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
+import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -75,6 +76,11 @@ public class U3TD_ComparisonLauncher {
 		griddedOption.setRequired(false);
 		ops.addOption(griddedOption);
 		
+		Option aftershockFilterOption = new Option("af", "aftershock-filter", false,
+				"If supplied, Gardner Knopoff aftershock filter will be applied");
+		aftershockFilterOption.setRequired(false);
+		ops.addOption(aftershockFilterOption);
+		
 		Option covOption = new Option("c", "cov", true,
 				"COV option for time dependent model. One of: LOW_VALUES, MID_VALUES, HIGH_VALUES. Default: "+COV_DEFAULT.name());
 		covOption.setRequired(false);
@@ -105,7 +111,7 @@ public class U3TD_ComparisonLauncher {
 			cmd = parser.parse(options, args);
 		} catch (ParseException e) {
 			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(ETAS_SectionSearch.class),
+			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(U3TD_ComparisonLauncher.class),
 					options, true );
 			System.exit(2);
 			return;
@@ -134,6 +140,9 @@ public class U3TD_ComparisonLauncher {
 		
 		System.out.println("Building ERF");
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fss);
+		
+		if (cmd.hasOption("aftershock-filter"))
+			erf.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, true);
 		
 		GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
 		int startYear;

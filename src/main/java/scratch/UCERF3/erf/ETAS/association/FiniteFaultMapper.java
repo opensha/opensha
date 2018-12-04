@@ -1,4 +1,4 @@
-package scratch.UCERF3.utils.finiteFaultMap;
+package scratch.UCERF3.erf.ETAS.association;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,9 +30,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.erf.ETAS.association.JeanneFileLoader.LocComparator;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.utils.FaultSystemIO;
-import scratch.UCERF3.utils.finiteFaultMap.JeanneFileLoader.LocComparator;
 
 /**
  * This class maps Jeanne's Finite Fault surfaces to the closest UCERF3 ruptures. It has been validated in SCEC-VDO to provide
