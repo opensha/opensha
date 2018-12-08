@@ -108,11 +108,47 @@ public class ComcatEventWebService extends EventWebService {
 
 
 
+	// The URL from the last operation, or null if none or unknown.
+
+	protected URL last_url;
+
+	// Get the URL from the last operation, or null if none or unknown.
+
+	public URL get_last_url () {
+		return last_url;
+	}
+
+
+
+
+	// Base URL to the real-time feed service, or null if none supplied.
+
+	protected URL feedURL;
+
+	public URL getFeedUrl() {
+		return feedURL;
+	}
+
+
+
+
 	// Construct a web service.
 
 	public ComcatEventWebService (final URL serviceURL) {
 		super (serviceURL);
+		this.feedURL = null;
 		http_status_code = -1;
+		last_url = null;
+	}
+
+	// Construct a web service, using both Comcat and the real-time feed.
+	// If feedURL is null, then the real-time feed is not used.
+
+	public ComcatEventWebService (final URL serviceURL, final URL feedURL) {
+		super (serviceURL);
+		this.feedURL = feedURL;
+		http_status_code = -1;
+		last_url = null;
 	}
 
 
@@ -131,7 +167,9 @@ public class ComcatEventWebService extends EventWebService {
 		// Construct the URL that contains the query.
 		// Throws MalformedURLException (subclass of IOException) if error in forming URL.
 
+		last_url = null;
 		URL url = getUrl (query, Format.GEOJSON);
+		last_url = url;
 
 		// Create a connection.
 		// This is a local operation that does not call out to the network.
@@ -219,6 +257,91 @@ public class ComcatEventWebService extends EventWebService {
 		}
 
 		return events;
+	}
+
+
+
+
+	/**
+	 * Convert an EventQuery object into an EventWebService URL, using a specific
+	 * return format.
+	 *
+	 * @param query
+	 *          the query.
+	 * @param format
+	 *          the format.
+	 * @return a URL for query and format.
+	 * @throws MalformedURLException
+	 */
+	@Override
+	public URL getUrl(final EventQuery query, final Format format)
+			throws MalformedURLException {
+
+		// If we have a real-time feed URL ...
+
+		if (feedURL != null) {
+
+			// If this query contains an event ID ...
+
+			if (query.getEventId() != null) {
+
+				// If the return format is geojson ...
+
+				if (format == Format.GEOJSON || (format == null && query.getFormat() == Format.GEOJSON)) {
+				
+					// If there are no other conditions in the query ...
+
+					if (   query.getAlertLevel() == null
+						&& query.getCatalog() == null
+						&& query.getContributor() == null
+						&& query.getEndTime() == null
+						&& query.getEventType() == null
+						&& query.getIncludeAllMagnitudes() == null
+						&& query.getIncludeAllOrigins() == null
+						&& query.getIncludeArrivals() == null
+						&& query.getKmlAnimated() == null
+						&& query.getKmlColorBy() == null
+						&& query.getLatitude() == null
+						&& query.getLimit() == null
+						&& query.getLongitude() == null
+						&& query.getMagnitudeType() == null
+						&& query.getMaxCdi() == null
+						&& query.getMaxDepth() == null
+						&& query.getMaxGap() == null
+						&& query.getMaxLatitude() == null
+						&& query.getMaxLongitude() == null
+						&& query.getMaxMagnitude() == null
+						&& query.getMaxMmi() == null
+						&& query.getMaxRadius() == null
+						&& query.getMaxSig() == null
+						&& query.getMinCdi() == null
+						&& query.getMinDepth() == null
+						&& query.getMinFelt() == null
+						&& query.getMinGap() == null
+						&& query.getMinLatitude() == null
+						&& query.getMinLongitude() == null
+						&& query.getMinMagnitude() == null
+						&& query.getMinMmi() == null
+						&& query.getMinRadius() == null
+						&& query.getMinSig() == null
+						&& query.getOffset() == null
+						&& query.getOrderBy() == null
+						&& query.getProductType() == null
+						&& query.getReviewStatus() == null
+						&& query.getStartTime() == null
+						&& query.getUpdatedAfter() == null
+					) {
+						// Return a URL for the real-time feed
+
+						return new URL (feedURL, query.getEventId() + ".geojson");
+					}
+				}
+			}
+		}
+
+		// Pass thru to superclass
+
+		return super.getUrl (query, format);
 	}
 
 }
