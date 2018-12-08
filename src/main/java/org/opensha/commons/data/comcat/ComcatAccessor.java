@@ -106,6 +106,10 @@ public class ComcatAccessor {
 
 	protected int local_http_status;
 
+	// The geojson returned from the last fetchEvent, or null if none.
+
+	protected JsonEvent last_geojson;
+
 
 
 
@@ -146,7 +150,10 @@ public class ComcatAccessor {
 
 			try {
 				//service = new EventWebService(new URL("https://earthquake.usgs.gov/fdsnws/event/1/"));
-				service = new ComcatEventWebService(new URL("https://earthquake.usgs.gov/fdsnws/event/1/"));
+				//service = new ComcatEventWebService(new URL("https://earthquake.usgs.gov/fdsnws/event/1/"));
+				URL serviceURL = new URL ("https://earthquake.usgs.gov/fdsnws/event/1/");
+				URL feedURL = new URL ("https://earthquake.usgs.gov/earthquakes/feed/v1.0/detail/");
+				service = new ComcatEventWebService(serviceURL, feedURL);
 			} catch (MalformedURLException e) {
 				ExceptionUtils.throwAsRuntimeException(e);
 			}
@@ -157,6 +164,8 @@ public class ComcatAccessor {
 
 		http_statuses = new ArrayList<Integer>();
 		local_http_status = -1;
+
+		last_geojson = null;
 	}
 
 
@@ -254,6 +263,8 @@ public class ComcatAccessor {
 		http_statuses.clear();
 		local_http_status = -1;
 
+		last_geojson = null;
+
 		// Set up query on event id
 
 		EventQuery query = new EventQuery();
@@ -276,6 +287,8 @@ public class ComcatAccessor {
 		}
 		
 		JsonEvent event = events.get(0);
+
+		last_geojson = event;
 
 		// Convert event to our form, treating any failure as if nothing was returned
 
@@ -713,6 +726,36 @@ public class ComcatAccessor {
 
 	public int get_http_status_code (int i) {
 		return http_statuses.get(i).intValue();
+	}
+
+
+
+
+	// Get the URL from the last operation, or null if none or unknown.
+
+	public URL get_last_url () {
+		if (service instanceof ComcatEventWebService) {
+			return ((ComcatEventWebService)service).get_last_url();
+		}
+		return null;
+	}
+
+
+	// Get the URL from the last operation as a string, or "<null>" if none or unknown.
+
+	public String get_last_url_as_string () {
+		URL result = get_last_url();
+		return ((result == null) ? "<null>" : result.toString());
+	}
+
+
+
+
+	// Get the geojson from the last fetchEvent, or null if none.
+	// Note: JsonEvent is a subclass of org.json.simple.JSONObject.
+
+	public JsonEvent get_last_geojson () {
+		return last_geojson;
 	}
 	
 
