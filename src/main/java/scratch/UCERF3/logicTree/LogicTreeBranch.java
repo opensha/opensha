@@ -103,7 +103,7 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 		this(branch.branch);
 	}
 	
-	private LogicTreeBranch(List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
+	protected LogicTreeBranch(List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
 		this.branch = branch;
 	}
 	
@@ -549,6 +549,23 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 		return wt;
 	}
 	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static synchronized double getClassWeightTotal(Class<? extends LogicTreeBranchNode> clazz, InversionModels im) {
+		if (classWeightTotals == null)
+			classWeightTotals = HashBasedTable.create();
+		
+		Double tot = classWeightTotals.get(clazz, im);
+		
+		if (tot == null) {
+			tot = 0d;
+			for (LogicTreeBranchNode<?> val : clazz.getEnumConstants())
+				tot += val.getRelativeWeight(im);
+			classWeightTotals.put((Class<? extends LogicTreeBranchNode<?>>) clazz, im, tot);
+		}
+		
+		return tot;
+	}
+	
 	/**
 	 * @param node
 	 * @param im
@@ -556,28 +573,10 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	 */
 	public static double getNormalizedWt(
 			LogicTreeBranchNode<? extends Enum<?>> node, InversionModels im) {
-		if (classWeightTotals == null) {
-			synchronized(LogicTreeBranch.class) {
-				// this if looks redundant, but it's possible that we need this when threading
-				if (classWeightTotals == null) {
-					Table<Class<? extends LogicTreeBranchNode<?>>, InversionModels, Double>
-						myClassWeightTotals = HashBasedTable.create();
-					for (Class<? extends LogicTreeBranchNode<?>> clazz : getLogicTreeNodeClasses()) {
-						for (InversionModels myIM : InversionModels.values()) {
-							double tot = 0;
-							for (LogicTreeBranchNode<?> val : clazz.getEnumConstants())
-								tot += val.getRelativeWeight(myIM);
-							myClassWeightTotals.put(clazz, myIM, tot);
-						}
-					}
-					classWeightTotals = myClassWeightTotals;
-				}
-			}
-		}
 		if (node == null)
 			return 0d;
 		Class<? extends LogicTreeBranchNode> clazz = getEnumEnclosingClass(node.getClass());
-		return node.getRelativeWeight(im) / classWeightTotals.get(clazz, im);
+		return node.getRelativeWeight(im) / getClassWeightTotal(clazz, im);
 	}
 
 	@Override

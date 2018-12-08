@@ -9,10 +9,16 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.dom4j.DocumentException;
 import org.jfree.chart.axis.NumberTickUnit;
@@ -20,7 +26,9 @@ import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -32,6 +40,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -39,13 +48,17 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 
 import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
@@ -55,33 +68,35 @@ import scratch.UCERF3.utils.FaultSystemIO;
 public class FiniteFaultSectionResetCalc {
 	
 	private FaultSystemRupSet rupSet;
-	private double minFractionalAreaInPolygon;
 	
+	// parameters
+	private double minFractionalAreaInPolygon;
 	private double faultBuffer;
+	private boolean removeOverlapsWithDist;
+	
 	private Region[] polygons;
 	private double[] sectAreas;
 	private EvenlyGriddedSurface[] sectSurfaces;
 	private XY_DataSet[] sectPolygonXYs;
 	
-	/**
-	 * @param rupSet
-	 * @param minFractionalAreaInPolygon sections will be reset if the area of a rupture within a section's polygon is at least
-	 * this fraction of that section's area 
-	 */
-	public FiniteFaultSectionResetCalc(FaultSystemRupSet rupSet, double minFractionalAreaInPolygon) {
-		this(rupSet, minFractionalAreaInPolygon, InversionTargetMFDs.FAULT_BUFFER);
-	}
+	private Table<EvenlyGriddedSurface, Region, Double> rupSetAreaInPolysCache = HashBasedTable.create();
 	
 	/**
 	 * @param rupSet
 	 * @param minFractionalAreaInPolygon sections will be reset if the area of a rupture within a section's polygon is at least
 	 * this fraction of that section's area 
+	 * @param faultBuffer fault section polygon buffer in KM (must be >0)
+	 * @param removeOverlapsWithDist flag to remove overlaps in polygons by prioritizing sections with lower mean distance to rupture
 	 */
-	public FiniteFaultSectionResetCalc(FaultSystemRupSet rupSet, double minFractionalAreaInPolygon, double faultBuffer) {
+	public FiniteFaultSectionResetCalc(FaultSystemRupSet rupSet, double minFractionalAreaInPolygon, double faultBuffer,
+			boolean removeOverlapsWithDist) {
 		this.rupSet = rupSet;
+		Preconditions.checkArgument(minFractionalAreaInPolygon > 0d && minFractionalAreaInPolygon <= 1d,
+				"Min Fractional Area in Polygon must be in range (0 1]");
 		this.minFractionalAreaInPolygon = minFractionalAreaInPolygon;
-		
+		Preconditions.checkArgument(faultBuffer > 0d, "Fault buffer must be positive");
 		setFaultBuffer(faultBuffer);
+		this.removeOverlapsWithDist = removeOverlapsWithDist;
 	}
 	
 	public void setFaultBuffer(double faultBuffer) {
@@ -117,12 +132,33 @@ public class FiniteFaultSectionResetCalc {
 		double[] areas = new double[rupSet.getNumRuptures()];
 		boolean any = false;
 		for (int s=0; s<rupSet.getNumSections(); s++) {
-			 areas[s] = surf.getAreaInsideRegion(getPolygon(s));
-			 any = any || areas[s] > 0;
+			areas[s] = getAreaInPoly(surf, getPolygon(s));
+			any = any || areas[s] > 0;
 		}
 		if (!any)
 			return null;
 		return areas;
+	}
+	
+	private double getAreaInPoly(RuptureSurface surf, Region polygon) {
+		if (surf instanceof CompoundSurface) {
+			// cache for FSS ruptures
+			double area = 0d;
+			for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
+				if (subSurf instanceof EvenlyGriddedSurface) {
+					Double myArea = rupSetAreaInPolysCache.get(surf, polygon);
+					if (myArea == null) {
+						myArea = subSurf.getAreaInsideRegion(polygon);
+						rupSetAreaInPolysCache.put((EvenlyGriddedSurface)subSurf, polygon, myArea);
+					}
+					area += myArea;
+				} else {
+					area += subSurf.getAreaInsideRegion(polygon);
+				}
+			}
+			return area;
+		}
+		return surf.getAreaInsideRegion(polygon);
 	}
 	
 	/**
@@ -143,9 +179,8 @@ public class FiniteFaultSectionResetCalc {
 
 	public List<FaultSectionPrefData> getMatchingSections(RuptureSurface surf) {
 		double[] areas = getAreaInSectionPolygons(surf);
-		// TODO add distances when implemented
-		SectRupDistances[] dists = null;
-		return getMatchingSections(areas, dists);
+		SectRupDistances[] dists = removeOverlapsWithDist ? getSectRupDistances(surf, areas) : null;
+		return getMatchingSections(surf, areas, dists);
 	}
 	
 	public class SectRupDistances {
@@ -187,19 +222,148 @@ public class FiniteFaultSectionResetCalc {
 			return meanDist;
 		}
 	}
+	
+	private class DistSortableSections implements Comparable<DistSortableSections> {
+		private final int index;
+		private final FaultSectionPrefData sect;
+		private final SectRupDistances dist;
+		private List<Region> polygons;
+		private double area;
+		public DistSortableSections(int index, FaultSectionPrefData sect, SectRupDistances dist, Region polygon,
+				double area) {
+			super();
+			this.index = index;
+			this.sect = sect;
+			this.dist = dist;
+			this.polygons = new ArrayList<>();
+			this.polygons.add(polygon);
+			this.area = area;
+		}
+		@Override
+		public int compareTo(DistSortableSections o) {
+			return Double.compare(dist.getMeanDist(), o.dist.getMeanDist());
+		}
+	}
 
-	public List<FaultSectionPrefData> getMatchingSections(double[] areas, SectRupDistances[] meanSectDists) {
+	public List<FaultSectionPrefData> getMatchingSections(RuptureSurface surf, double[] areas, SectRupDistances[] dists) {
 		if (areas == null)
 			return null;
+		if (removeOverlapsWithDist) {
+			List<DistSortableSections> sects = removeOverlaps(surf, areas, dists);
+			double[] modAreas = new double[areas.length];
+			for (DistSortableSections sect : sects)
+				modAreas[sect.index] = sect.area;
+			areas = modAreas;
+		}
+		return getMatchingSections(areas);
+	}
+
+	private List<FaultSectionPrefData> getMatchingSections(double[] finalAreas) {
 		List<FaultSectionPrefData> sects = new ArrayList<>();
 		for (int s=0; s<rupSet.getNumSections(); s++) {
-			 double fractOfSurface = areas[s]/sectAreas[s];
+			 double fractOfSurface = finalAreas[s]/sectAreas[s];
 			 if (fractOfSurface > minFractionalAreaInPolygon)
 				 sects.add(rupSet.getFaultSectionData(s));
 		}
 		if (sects.isEmpty())
 			return  null;
 		return sects;
+	}
+
+	private List<DistSortableSections> removeOverlaps(RuptureSurface surf, double[] areas, SectRupDistances[] dists) {
+		if (areas == null)
+			return null;
+		final boolean D = false;
+		Preconditions.checkNotNull(dists, "distances not calculated but removeOverlapsWithDist=true");
+		List<DistSortableSections> sects = new ArrayList<>();
+		for (int s=0; s<areas.length; s++) {
+			if (areas[s] > 0) {
+				Preconditions.checkNotNull(dists[s]);
+				sects.add(new DistSortableSections(s, rupSet.getFaultSectionData(s), dists[s], getPolygon(s), areas[s]));
+			}
+		}
+		Preconditions.checkState(!sects.isEmpty());
+		
+		// sort by mean distance, increasing
+		Collections.sort(sects);
+		
+		for (int i=0; i<sects.size(); i++) {
+			DistSortableSections s1 = sects.get(i);
+			if (s1.polygons == null)
+				// this section has been completely superseded by other regions
+				continue;
+			if (D) System.out.println("S1: "+s1.index+". "+s1.sect.getName()+" (with "+s1.polygons.size()+" polys)");
+			for (int j=i+1; j<sects.size(); j++) {
+				DistSortableSections s2 = sects.get(j);
+				if (s2.polygons == null)
+					// this section has been completely superseded by other regions
+					continue;
+				if (D) System.out.println("\tS2: "+s2.index+". "+s2.sect.getName()+" (with "+s2.polygons.size()+" polys)");
+				
+				boolean modified = false;
+				List<Region> newRegions = new ArrayList<>();
+				
+				for (int k=0; k<s2.polygons.size(); k++) {
+					Region p2 = s2.polygons.get(k);
+//					Preconditions.checkState(k < 10);
+					boolean any = false;
+					for (int l=0; l<s1.polygons.size(); l++) {
+						Region p1 = s1.polygons.get(l);
+						if (D) System.out.println("\t\tsubtracting S1["+l+"] from S2:["+k+"]");
+						// subtract the higher priority polygon (S1) from this polygon (S2)
+						Region[] subtracted;
+						try {
+							subtracted = Region.subtract(p2, p1);
+						} catch (RuntimeException e) {
+							if (D) System.out.println("===Minuend===");
+							if (D) printRegionCode(p2, "minuend");
+							if (D) System.out.println("===Subtrahend===");
+							if (D) printRegionCode(p1, "subtrahend");
+							throw e;
+						}
+						if (subtracted == null) {
+							// does not intersect
+//							System.out.println("\t\t\tno intersection");
+						} else {
+							// it intersects
+							any = true;
+//							System.out.println("\t\t\treturned "+subtracted.length+" intersections");
+							for (Region newRegion : subtracted)
+								newRegions.add(newRegion);
+						}
+					}
+					if (any)
+						modified = true;
+					else
+						newRegions.add(p2);
+				}
+				
+				if (modified) {
+					s2.polygons = newRegions.isEmpty() ? null : newRegions;
+					s2.area = 0d;
+					for (Region region : newRegions)
+						s2.area += surf.getAreaInsideRegion(region);
+				}
+			}
+		}
+		return sects;
+	}
+	
+	private static void printRegionCode(Region region, String varName) {
+		System.out.println("LocationList "+varName+"Border = new LocationList();");
+		for (Location loc : region.getBorder())
+			System.out.println(varName+"Border.add(new Location("+loc.getLatitude()+", "+loc.getLongitude()+"));");
+		System.out.println("Region "+varName+" = new Region("+varName+"Border, null);");
+		List<LocationList> interiors = region.getInteriors();
+		if (interiors != null) {
+			for (int i=0; i<interiors.size(); i++) {
+				String lName = varName+"Int"+i;
+				System.out.println("LocationList "+lName+" = new LocationList();");
+				for (Location loc : interiors.get(i))
+					System.out.println(lName+".add(new Location("+loc.getLatitude()+", "+loc.getLongitude()+"));");
+				System.out.println(varName+".addInterior(new Region("+lName+", name));");
+			}
+		}
 	}
 	
 	public Region getPolygon(int sectIndex) {
@@ -234,12 +398,16 @@ public class FiniteFaultSectionResetCalc {
 		}
 		table.addLine("**Min Area Fraction**&ast;", optionalDigitDF.format(minFractionalAreaInPolygon));
 		table.addLine("**Fault Polygon Buffer**", optionalDigitDF.format(faultBuffer)+" [km]");
+		table.addLine("**Remove Polygon Overlap?**", removeOverlapsWithDist ? "Yes (sorted by mean section distance)" : "No");
 		lines.addAll(table.build());
 		
 		lines.add("");
 		lines.add("*&ast; Ruptures are considered to reset a fault section if at least this fraction of the section's area ruptures "
 				+ "inside its polygon*");
 		lines.add("");
+		int u3ResultIndex = lines.size();
+		int totNumU3 = 0;
+		int totMatchesU3 = 0;
 		
 		if (finiteRups.isEmpty()) {
 			lines.add("**No ruptures with finite surfaces!**");
@@ -258,19 +426,26 @@ public class FiniteFaultSectionResetCalc {
 				
 				Date date = new Date(rup.getOriginTime());
 				String name = "M"+optionalDigitDF.format(rup.getMag())+" on "+printDateFormat.format(date);
-				lines.add("## "+name);
-				lines.add(topLink); lines.add("");
+				System.out.println("Processing "+name);
 				
 				double[] areas = getAreaInSectionPolygons(surf);
 				SectRupDistances[] dists = getSectRupDistances(surf, areas);
-				List<FaultSectionPrefData> matches = getMatchingSections(areas, dists);
+				double[] noOverlapAreas = null;
+				List<DistSortableSections> sectsNoOverlap = null;
+				if (removeOverlapsWithDist) {
+					sectsNoOverlap = removeOverlaps(surf, areas, dists);
+					if (sectsNoOverlap != null) {
+						noOverlapAreas = new double[areas.length];
+						for (DistSortableSections sect : sectsNoOverlap)
+							noOverlapAreas[sect.index] = sect.area;
+					}
+				}
+				List<FaultSectionPrefData> matches = getMatchingSections(surf, areas, dists);
 				List<FaultSectionPrefData> fssSects = fssIndex < 0 ? null : rupSet.getFaultSectionDataForRupture(fssIndex);
 				
 				String prefix = fileDateFormat.format(date)+"_m"+optionalDigitDF.format(rup.getMag());
 				if (replot || !new File(resourcesDir, prefix+".png").exists())
-					plotMatchingSections(resourcesDir, prefix, surf, name, fssSects, "UCERF3-Mapped", areas, matches);
-				lines.add("![Map Plot](resources/"+prefix+".png)");
-				lines.add("");
+					plotMatchingSections(resourcesDir, prefix, surf, name, fssSects, "UCERF3-Mapped", areas, matches, sectsNoOverlap);
 				
 				table = MarkdownUtils.tableBuilder();
 				
@@ -280,17 +455,24 @@ public class FiniteFaultSectionResetCalc {
 				table.addColumn("Section Name");
 				table.addColumn("Match?");
 				table.addColumn("Section Area");
-				table.addColumn("Rup Area in Poly");
+				if (removeOverlapsWithDist) {
+					table.addColumn("Rup Area in Raw Poly");
+					table.addColumn("Rup Area in No-Overlap Poly");
+				} else {
+					table.addColumn("Rup Area in Poly");
+				}
 				table.addColumn("Area Fraction");
 				table.addColumn("Sect Distance To Rup");
 				if (hasFSS)
 					table.addColumn("UCERF3 Rupture Section?");
 				table.finalizeLine();
+				boolean matchesU3 = true;
 				for (int index=0; index<rupSet.getNumSections(); index++) {
 					FaultSectionPrefData sect = rupSet.getFaultSectionData(index);
 					double area = areas == null ? 0 : areas[index];
 					boolean match = matches != null && matches.contains(sect);
 					boolean fssMatch = fssSects != null && fssSects.contains(sect);
+					matchesU3 = matchesU3 && match == fssMatch;
 					if (area == 0d && !match && !fssMatch)
 						continue;
 					any = true;
@@ -300,7 +482,15 @@ public class FiniteFaultSectionResetCalc {
 					table.addColumn(match ? yes : no);
 					table.addColumn(optionalDigitDF.format(sectAreas[index])+" [km^2]");
 					table.addColumn(optionalDigitDF.format(area)+" [km^2]");
-					table.addColumn(optionalDigitDF.format(area/sectAreas[index]));
+					double fract;
+					if (removeOverlapsWithDist) {
+						double noOverlapArea = noOverlapAreas == null ? 0 : noOverlapAreas[index];
+						table.addColumn(optionalDigitDF.format(noOverlapArea)+" [km^2]");
+						fract = noOverlapArea/sectAreas[index];
+					} else {
+						fract = area/sectAreas[index];
+					}
+					table.addColumn(optionalDigitDF.format(fract));
 					SectRupDistances dist = dists != null && dists[index] != null ? dists[index]
 							: new SectRupDistances(getSectSurface(index), surf);
 					table.addColumn("mean="+optionalDigitDF.format(dist.getMeanDist())+" ["+optionalDigitDF.format(dist.getMinDist())
@@ -309,11 +499,42 @@ public class FiniteFaultSectionResetCalc {
 						table.addColumn(fssMatch ? yes : no);
 					table.finalizeLine();
 				}
+				if (hasFSS && fssIndex >= 0) {
+					totNumU3++;
+					name += ", UCERF3-mapped, match: ";
+					if (matchesU3) {
+						name += "YES";
+						totMatchesU3++;
+					} else {
+						name += "NO";
+					}
+				}
+				lines.add("## "+name);
+				lines.add(topLink); lines.add("");
+				lines.add("![Map Plot](resources/"+prefix+".png)");
+				lines.add("");
 				if (any) {
 					lines.add("");
 					lines.addAll(table.build());
 				}
 				lines.add("");
+			}
+			if (totNumU3 > 0) {
+				List<String> u3Lines = new ArrayList<>();
+				u3Lines.add("### UCERF3 Mappings Summary");
+				u3Lines.add("");
+				u3Lines.add("This catalog contains UCERF3-mapped ruptures where we can compare this algorithm against "
+						+ "the external UCERF3 mapping");
+				u3Lines.add("");
+				table = MarkdownUtils.tableBuilder();
+				table.addLine("**# With UCERF3 Mappings**", totNumU3);
+				double percent = totMatchesU3*100d/totNumU3;
+				table.addLine("**Perfect Matches**", totMatchesU3+" ("+optionalDigitDF.format(percent)+" %)");
+				u3Lines.addAll(table.build());
+				u3Lines.add("");
+				
+				lines.addAll(u3ResultIndex, u3Lines);
+				tocIndex += u3Lines.size();
 			}
 			// add TOC
 			lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 4));
@@ -337,6 +558,7 @@ public class FiniteFaultSectionResetCalc {
 	
 	private static final float POINT_THICKNESS = 1.5f;
 	private static final float LINE_THICKNESS = 2f;
+	private static final float LINE_THICKNESS_ORIG_POLY = 1f;
 	
 	private static final double REGION_BUFFER_DEGREES = 0.2d;
 	
@@ -344,13 +566,14 @@ public class FiniteFaultSectionResetCalc {
 			Collection<FaultSectionPrefData> externalMatches, String externalName) throws IOException {
 		double[] areas = getAreaInSectionPolygons(surf);
 		SectRupDistances[] dists = getSectRupDistances(surf, areas);
-		List<FaultSectionPrefData> matches = getMatchingSections(areas, dists);
-		plotMatchingSections(outputDir, prefix, surf, title, externalMatches, externalName, areas, matches);
+		List<FaultSectionPrefData> matches = getMatchingSections(surf, areas, dists);
+		List<DistSortableSections> sectsNoOverlap = removeOverlapsWithDist ? removeOverlaps(surf, areas, dists) : null;
+		plotMatchingSections(outputDir, prefix, surf, title, externalMatches, externalName, areas, matches, sectsNoOverlap);
 	}
 	
 	private void plotMatchingSections(File outputDir, String prefix, RuptureSurface surf, String title,
 			Collection<FaultSectionPrefData> externalMatches, String externalName, double[] areas,
-			List<FaultSectionPrefData> matches) throws IOException {
+			List<FaultSectionPrefData> matches, List<DistSortableSections> sectsNoOverlap) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
@@ -368,24 +591,32 @@ public class FiniteFaultSectionResetCalc {
 		XY_DataSet matchXY = new DefaultXY_DataSet();
 		PlotCurveCharacterstics matchPointChar = new PlotCurveCharacterstics(
 				PlotSymbol.FILLED_CIRCLE, POINT_THICKNESS, COLOR_MATCH);
+		PlotCurveCharacterstics matchPolyOrigChar = new PlotCurveCharacterstics(
+				PlotLineType.DOTTED, LINE_THICKNESS_ORIG_POLY, COLOR_MATCH);
 		PlotCurveCharacterstics matchPolyChar = new PlotCurveCharacterstics(
 				PlotLineType.SOLID, LINE_THICKNESS, COLOR_MATCH);
 		
 		XY_DataSet noMatch_externalMatchXY = new DefaultXY_DataSet();
 		PlotCurveCharacterstics noMatch_externalMatchPointChar = new PlotCurveCharacterstics(
 				PlotSymbol.FILLED_CIRCLE, POINT_THICKNESS, COLOR_NO_MATCH_EXTERNAL_MATCH);
+		PlotCurveCharacterstics noMatch_externalMatchPolyOrigChar = new PlotCurveCharacterstics(
+				PlotLineType.DOTTED, LINE_THICKNESS_ORIG_POLY, COLOR_NO_MATCH_EXTERNAL_MATCH);
 		PlotCurveCharacterstics noMatch_externalMatchPolyChar = new PlotCurveCharacterstics(
 				PlotLineType.SOLID, LINE_THICKNESS, COLOR_NO_MATCH_EXTERNAL_MATCH);
 		
 		XY_DataSet match_noExternalXY = new DefaultXY_DataSet();
 		PlotCurveCharacterstics match_noExternalPointChar = new PlotCurveCharacterstics(
 				PlotSymbol.FILLED_CIRCLE, POINT_THICKNESS, COLOR_MATCH_EXTERNAL_NO_MATCH);
+		PlotCurveCharacterstics match_noExternalPolyOrigChar = new PlotCurveCharacterstics(
+				PlotLineType.DOTTED, LINE_THICKNESS_ORIG_POLY, COLOR_MATCH_EXTERNAL_NO_MATCH);
 		PlotCurveCharacterstics match_noExternalPolyChar = new PlotCurveCharacterstics(
 				PlotLineType.SOLID, LINE_THICKNESS, COLOR_MATCH_EXTERNAL_NO_MATCH);
 		
 		XY_DataSet hasAreaXY = new DefaultXY_DataSet();
 		PlotCurveCharacterstics hasAreaPointChar = new PlotCurveCharacterstics(
 				PlotSymbol.FILLED_CIRCLE, POINT_THICKNESS, COLOR_HAS_AREA_NO_MATCH);
+		PlotCurveCharacterstics hasAreaPolyOrigChar = new PlotCurveCharacterstics(
+				PlotLineType.DOTTED, LINE_THICKNESS_ORIG_POLY, COLOR_HAS_AREA_NO_MATCH);
 		PlotCurveCharacterstics hasAreaPolyChar = new PlotCurveCharacterstics(
 				PlotLineType.SOLID, LINE_THICKNESS, COLOR_HAS_AREA_NO_MATCH);
 		
@@ -394,6 +625,59 @@ public class FiniteFaultSectionResetCalc {
 				PlotSymbol.FILLED_CIRCLE, Math.min(1f, POINT_THICKNESS), COLOR_NO_AREA);
 		PlotCurveCharacterstics noAreaPolyChar = new PlotCurveCharacterstics(
 				PlotLineType.SOLID, Math.min(1f, LINE_THICKNESS), COLOR_NO_AREA);
+		
+		if (sectsNoOverlap != null) {
+			for (DistSortableSections sectNoOverlap : sectsNoOverlap) {
+				FaultSectionPrefData sect = sectNoOverlap.sect;
+				
+				int index = sectNoOverlap.index;
+				boolean hasArea = areas != null && areas[index] > 0d;
+				boolean match = matches != null && matches.contains(sect);
+				
+				PlotCurveCharacterstics polyChar = null;
+				
+				if (externalMatches != null) {
+					Preconditions.checkNotNull(externalName);
+					boolean externalMatch = externalMatches.contains(sect);
+					
+					if (match) {
+						if (externalMatch)
+							polyChar = matchPolyChar;
+						else
+							polyChar = match_noExternalPolyChar;
+					} else {
+						if (externalMatch)
+							polyChar = noMatch_externalMatchPolyChar;
+					}
+				} else if (match)
+					polyChar = matchPolyChar;
+				
+				if (polyChar == null && hasArea)
+					polyChar = hasAreaPolyChar;
+				
+				if (polyChar != null && sectNoOverlap.polygons != null) {
+					for (Region poly : sectNoOverlap.polygons) {
+						DefaultXY_DataSet xy = new DefaultXY_DataSet();
+						for (Location loc : poly.getBorder())
+							xy.set(loc.getLongitude(), loc.getLatitude());
+						xy.set(xy.get(0));
+						funcs.add(xy);
+						chars.add(polyChar);
+						List<LocationList> interiors = poly.getInteriors();
+						if (interiors != null) {
+							for (LocationList interior : interiors) {
+								xy = new DefaultXY_DataSet();
+								for (Location loc : interior)
+									xy.set(loc.getLongitude(), loc.getLatitude());
+								xy.set(xy.get(0));
+								funcs.add(xy);
+								chars.add(polyChar);
+							}
+						}
+					}
+				}
+			}
+		}
 		
 		List<Integer> noAreaIndexes = new ArrayList<>();
 		
@@ -413,25 +697,25 @@ public class FiniteFaultSectionResetCalc {
 					if (externalMatch) {
 						addSurface(getSectSurface(index), matchXY);
 						funcs.add(getSectPolygonXY(index));
-						chars.add(matchPolyChar);
+						chars.add(sectsNoOverlap == null ? matchPolyChar : matchPolyOrigChar);
 					} else {
 						addSurface(getSectSurface(index), match_noExternalXY);
 						funcs.add(getSectPolygonXY(index));
-						chars.add(match_noExternalPolyChar);
+						chars.add(sectsNoOverlap == null ? match_noExternalPolyChar : match_noExternalPolyOrigChar);
 					}
 					added = true;
 				} else {
 					if (externalMatch) {
 						addSurface(getSectSurface(index), noMatch_externalMatchXY);
 						funcs.add(getSectPolygonXY(index));
-						chars.add(noMatch_externalMatchPolyChar);
+						chars.add(sectsNoOverlap == null ? noMatch_externalMatchPolyChar : noMatch_externalMatchPolyOrigChar);
 						added = true;
 					}
 				}
 			} else if (match) {
 				addSurface(getSectSurface(index), matchXY);
 				funcs.add(getSectPolygonXY(index));
-				chars.add(matchPolyChar);
+				chars.add(sectsNoOverlap == null ? matchPolyChar : matchPolyOrigChar);
 				added = true;
 			}
 			
@@ -439,7 +723,7 @@ public class FiniteFaultSectionResetCalc {
 				if (hasArea) {
 					addSurface(getSectSurface(index), hasAreaXY);
 					funcs.add(getSectPolygonXY(index));
-					chars.add(hasAreaPolyChar);
+					chars.add(sectsNoOverlap == null ? hasAreaPolyChar : hasAreaPolyOrigChar);
 				} else {
 					noAreaIndexes.add(index);
 				}
@@ -583,91 +867,221 @@ public class FiniteFaultSectionResetCalc {
 		return sectPolygonXYs[index];
 	}
 	
+	private static class ParamSweepCallable implements Callable<ParamSweepCallable> {
+		private final FaultSystemSolution sol;
+		private final RuptureSurface[] surfs;
+		private final int bufferIndex;
+		private final double faultBuffer;
+		private final EvenlyDiscretizedFunc fractAreas;
+		private final boolean removeOverlap;
+		
+		private double[] matchRates;
+		private int[] matchCounts;
+		
+		public ParamSweepCallable(FaultSystemSolution sol, RuptureSurface[] surfs, int bufferIndex,double faultBuffer,
+				EvenlyDiscretizedFunc fractAreas, boolean removeOverlap) {
+			this.sol = sol;
+			this.surfs = surfs;
+			this.bufferIndex = bufferIndex;
+			this.faultBuffer = faultBuffer;
+			this.fractAreas = fractAreas;
+			this.removeOverlap = removeOverlap;
+		}
+
+		@Override
+		public ParamSweepCallable call() throws Exception {
+			FaultSystemRupSet rupSet = sol.getRupSet();
+			
+			FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, fractAreas.getX(0), faultBuffer, removeOverlap);
+			matchRates = new double[fractAreas.size()];
+			matchCounts = new int[fractAreas.size()];
+			for (int r=0; r<surfs.length; r++) {
+				if (r % 1000 == 0)
+					System.out.println("Rupture "+r);
+				double[] areas = calc.getAreaInSectionPolygons(surfs[r]);
+				if (areas == null)
+					continue;
+				if (removeOverlap) {
+					SectRupDistances[] dists = calc.getSectRupDistances(surfs[r], areas);
+					List<DistSortableSections> sects = calc.removeOverlaps(surfs[r], areas, dists);
+					double[] modAreas = new double[areas.length];
+					for (DistSortableSections sect : sects)
+						modAreas[sect.index] = sect.area;
+					areas = modAreas;
+				}
+				List<FaultSectionPrefData> sects = rupSet.getFaultSectionDataForRupture(r);
+				for (int i=0; i<matchRates.length; i++) {
+					calc.minFractionalAreaInPolygon = fractAreas.getX(i);
+					List<FaultSectionPrefData> matches = calc.getMatchingSections(areas);
+					if (matches != null && matches.size() == sects.size()) {
+						// potential match
+						boolean match = true;
+						for (FaultSectionPrefData sect : sects) {
+							if (!matches.contains(sect)) {
+								match = false;
+								break;
+							}
+						}
+						if (match) {
+							matchCounts[i]++;
+							matchRates[i] += sol.getRateForRup(r);
+						}
+					}
+				}
+			}
+			
+			System.out.println("buffer="+(float)faultBuffer+"\tremoveOverlap="+removeOverlap);
+			for (int i=0; i<matchCounts.length; i++) {
+				System.out.println("\tfractArea="+(float)fractAreas.getX(i));
+				System.out.println("\t"+matchCounts[i]+"/"+rupSet.getNumRuptures()+" matches ("
+						+optionalDigitDF.format(100d*matchCounts[i]/rupSet.getNumRuptures())+" %)");
+				double totRate = sol.getTotalRateForAllFaultSystemRups();
+				System.out.println("\t"+(float)matchRates[i]+"/"+(float)totRate+" matches ("
+						+optionalDigitDF.format(100d*matchRates[i]/totRate)+" %)");
+			}
+			
+			return this;
+		}
+	}
+	
+	public static void writeParamSweepMarkdown(File markdownDir, FaultSystemSolution sol, int threads) throws IOException {
+		Preconditions.checkState(markdownDir.exists() || markdownDir.mkdir());
+		File resourcesDir = new File(markdownDir, "resources");
+		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
+		
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("# Finite Fault Section Reset Parameter Sweep");
+		lines.add("");
+		
+		EvenlyDiscretizedFunc faultBufferFunc = new EvenlyDiscretizedFunc(1d, 12d, 12);
+		EvenlyDiscretizedFunc fractAreaFunc = new EvenlyDiscretizedFunc(0.1d, 1d, 10);
+		
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		RuptureSurface[] surfs = new RuptureSurface[rupSet.getNumRuptures()];
+		double totRate = sol.getTotalRateForAllFaultSystemRups();
+		for (int r=0; r<rupSet.getNumRuptures(); r++)
+			surfs[r] = rupSet.getSurfaceForRupupture(r, 1d, false);
+		
+		ExecutorService exec = Executors.newFixedThreadPool(threads);
+		
+		for (boolean removeOverlap : new boolean[] {false, true}) {
+			if (removeOverlap)
+				lines.add("## Removing Overlap from Polygons (rupture distance sorted)");
+			else
+				lines.add("## Retaining All Overlapping Polygons");
+			lines.add("");
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			csv.addLine("Fault Buffer", "Min Area Fraction", "Match Count", "Match Fraction", "Match Rate", "Match Rate Fraction");
+			
+			double[][] matchRates = new double[faultBufferFunc.size()][fractAreaFunc.size()];
+			int[][] matchCounts = new int[faultBufferFunc.size()][fractAreaFunc.size()];
+			
+			List<Future<ParamSweepCallable>> futures = new ArrayList<>();
+			
+			for (int i=0; i<faultBufferFunc.size(); i++) {
+				double faultBuffer = faultBufferFunc.getX(i);
+				futures.add(exec.submit(new ParamSweepCallable(sol, surfs, i, faultBuffer, fractAreaFunc, removeOverlap)));
+			}
+			
+			System.out.println("Waiting on "+futures.size()+" futures");
+			for (Future<ParamSweepCallable> future : futures) {
+				try {
+					ParamSweepCallable result = future.get();
+					for (int i=0; i<fractAreaFunc.size(); i++) {
+						List<String> line = new ArrayList<>();
+						line.add((float)result.faultBuffer+"");
+						line.add((float)result.fractAreas.getClosestXIndex(i)+"");
+						line.add(result.matchCounts[i]+"");
+						line.add((float)((double)result.matchCounts[i]/rupSet.getNumRuptures())+"");
+						line.add((float)result.matchRates[i]+"");
+						line.add((float)((double)result.matchRates[i]/totRate)+"");
+						csv.addLine(line);
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+			
+			String csvName;
+			if (removeOverlap)
+				csvName = "results_remove_overlap.csv";
+			else
+				csvName = "results_retain_overlap.csv";
+			csv.writeToFile(new File(resourcesDir, csvName));
+		}
+		
+		// add TOC
+//		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 4));
+//		lines.add(tocIndex, "## Table Of Contents");
+		// write markdown
+		MarkdownUtils.writeReadmeAndHTML(lines, markdownDir);
+	}
+	
 	public static void main(String[] args) throws IOException, DocumentException {
 		File etasInputDir = new File("/home/kevin/git/ucerf3-etas-launcher/inputs");
 		
-		File catFile = new File(etasInputDir, "u3_historical_catalog.txt");
-		File xmlFile = new File(etasInputDir, "u3_historical_catalog_finite_fault_mappings.xml");
+		boolean doSweep = true;
+		boolean doHistorical = false;
 		
-		File mainOutputDir = new File("/home/kevin/git/misc-research/ucerf3_etas/finite_section_mapping");
-		
-		Map<FaultModels, FaultSystemRupSet> rupSetMap = new HashMap<>();
-		
-		FaultSystemRupSet rupSet31 = FaultSystemIO.loadRupSet(new File(etasInputDir,
-				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
-		rupSetMap.put(FaultModels.FM3_1, rupSet31);
-//		FaultSystemRupSet rupSet32 = FaultSystemIO.loadRupSet(new File(etasInputDir,
-//				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
-//		rupSetMap.put(FaultModels.FM3_2, rupSet32);
-		
-		double[] minFracts = { 0.5 };
-		double[] faultBuffers = { InversionTargetMFDs.FAULT_BUFFER, 1d };
-		boolean replot = false;
-		
-		for (FaultModels fm : rupSetMap.keySet()) {
-			System.out.println("Doing "+fm);
-			FaultSystemRupSet rupSet = rupSetMap.get(fm);
-			ObsEqkRupList inputRups = UCERF3_CatalogParser.loadCatalog(catFile);
-			FiniteFaultMappingData.loadRuptureSurfaces(xmlFile, inputRups, fm, rupSet);
+		if (doSweep) {
+			System.out.println("Doing sweep");
 			
-			for (double faultBuffer : faultBuffers) {
-				for (double minFract : minFracts) {
-					String dirName = "u3_catalog-"+fm.encodeChoiceString()+"-minFract"+(float)minFract+"-polyBuffer"+(float)faultBuffer;
-					File markdownDir = new File(mainOutputDir, dirName);
-					
-					System.out.println("Fault buffer: "+faultBuffer);
-					System.out.println("Minimum fract inside polygon: "+minFract);
-					
-					FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, minFract, faultBuffer);
-					
-					calc.writeMatchMarkdown(markdownDir, inputRups, replot);
-					
-//					for (ObsEqkRupture rup : inputRups) {
-//						RuptureSurface surf = rup.getRuptureSurface();
-//						if (surf == null || surf instanceof PointSurface)
-//							continue;
-//						int fssIndex = -1;
-//						if (rup instanceof ETAS_EqkRupture)
-//							fssIndex = ((ETAS_EqkRupture)rup).getFSSIndex();
-//						
-//						System.out.println("Processing M"+(float)rup.getMag()+" on "
-//								+FiniteFaultMappingData.df.format(new Date(rup.getOriginTime())));
-//						
-//						List<FaultSectionPrefData> resetSects = calc.getMatchingSections(surf);
-//						if (fssIndex >= 0) {
-//							List<FaultSectionPrefData> mappedSects = rupSet.getFaultSectionDataForRupture(fssIndex);
-//							System.out.println("\tIt's an FSS rupture with "+mappedSects.size()+" sections");
-//							if (resetSects != null)
-//								System.out.println("\tReset sects calc found "+resetSects.size()+" sections");
-//							for (FaultSectionPrefData sect : mappedSects) {
-//								boolean match = resetSects != null && resetSects.contains(sect);
-//								if (match)
-//									System.out.println("\t\t"+sect.getName()+"\tMATCH");
-//								else
-//									System.out.println("\t\t"+sect.getName()+"\t(MISSING)");
-//							}
-//							List<FaultSectionPrefData> additionalSects = new ArrayList<>();
-//							if (resetSects != null) {
-//								for (FaultSectionPrefData sect : resetSects) {
-//									if (!mappedSects.contains(sect))
-//										additionalSects.add(sect);
-//								}
-//							}
-//							System.out.println("\tAdditional reset sects not in mapped rupture: "+additionalSects.size());
-//							for (FaultSectionPrefData sect : additionalSects)
-//								System.out.println("\t\t"+sect.getName());
-//						} else {
-//							System.out.println("\tNot an FSS rupture");
-//							if (resetSects == null) {
-//								System.out.println("\tNo reset sects found ");
-//							} else {
-//								System.out.println("\tReset sects calc found "+resetSects.size()+" sections:");
-//								for (FaultSectionPrefData sect : resetSects)
-//									System.out.println("\t\t"+sect.getName());
-//							}
-//						}
-//						System.out.println();
-//					}
+			FaultSystemSolution sol = FaultSystemIO.loadSol(new File(etasInputDir,
+					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+			
+			File markdownDir = new File("/home/kevin/git/misc-research/ucerf3_etas/finite_section_mapping/param_sweep");
+			Preconditions.checkState(markdownDir.exists() || markdownDir.mkdir());
+			
+			int threads = Integer.min(Runtime.getRuntime().availableProcessors(), 6);
+			writeParamSweepMarkdown(markdownDir, sol, threads);
+		}
+		
+		if (doHistorical) {
+			System.out.println("Doing historical");
+			File catFile = new File(etasInputDir, "u3_historical_catalog.txt");
+			File xmlFile = new File(etasInputDir, "u3_historical_catalog_finite_fault_mappings.xml");
+			
+			File mainOutputDir = new File("/home/kevin/git/misc-research/ucerf3_etas/finite_section_mapping");
+			
+			Map<FaultModels, FaultSystemRupSet> rupSetMap = new HashMap<>();
+			
+			FaultSystemRupSet rupSet31 = FaultSystemIO.loadRupSet(new File(etasInputDir,
+					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+			rupSetMap.put(FaultModels.FM3_1, rupSet31);
+//			FaultSystemRupSet rupSet32 = FaultSystemIO.loadRupSet(new File(etasInputDir,
+//					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+//			rupSetMap.put(FaultModels.FM3_2, rupSet32);
+			
+			double[] minFracts = { 0.5 };
+			double[] faultBuffers = { InversionTargetMFDs.FAULT_BUFFER, 1d };
+			boolean[] removeOverlaps = { true, false };
+			boolean replot = true;
+			
+			for (FaultModels fm : rupSetMap.keySet()) {
+				System.out.println("Doing "+fm);
+				FaultSystemRupSet rupSet = rupSetMap.get(fm);
+				ObsEqkRupList inputRups = UCERF3_CatalogParser.loadCatalog(catFile);
+				FiniteFaultMappingData.loadRuptureSurfaces(xmlFile, inputRups, fm, rupSet);
+				
+				for (double faultBuffer : faultBuffers) {
+					for (double minFract : minFracts) {
+						for (boolean removeOverlap : removeOverlaps) {
+							String dirName = "u3_catalog-"+fm.encodeChoiceString()+"-minFract"+(float)minFract+"-polyBuffer"+(float)faultBuffer;
+							if (removeOverlap)
+								dirName += "-removeOverlap";
+							File markdownDir = new File(mainOutputDir, dirName);
+							
+							System.out.println("Fault buffer: "+faultBuffer);
+							System.out.println("Minimum fract inside polygon: "+minFract);
+							System.out.println("Remove overlap? "+removeOverlap);
+							
+							FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, minFract, faultBuffer, removeOverlap);
+							
+							calc.writeMatchMarkdown(markdownDir, inputRups, replot);
+						}
+					}
 				}
 			}
 		}
