@@ -4759,7 +4759,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 
 				// TODO only need this temporarily?
 				if (Double.isNaN(longTermSupraSeisMFD_OnSectArray[sectIndex].getMaxMagWithNonZeroRate())){
-					System.out.println("NaN HERE: "+fssERF.getSolution().getRupSet().getFaultSectionData(sectIndex).getName());
+					if (D) System.out.println("NaN HERE: "+fssERF.getSolution().getRupSet().getFaultSectionData(sectIndex).getName());
 //					throw new RuntimeException("Problem");
 				}
 
