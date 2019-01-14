@@ -315,7 +315,8 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	
 	public static void main(String[] args) throws IOException, DocumentException {
 		File dataDir = new File("/home/kevin/OpenSHA/UCERF3/fss_csvs");
-		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip");
+//		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip");
+		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_TRUE_HAZARD_MEAN_SOL.zip");
 		File outputFile = new File(dataDir, solFile.getName().replaceAll(".zip", "")+"_grid_sources.xml");
 		FaultSystemSolution fss = FaultSystemIO.loadSol(solFile);
 		writeGriddedSeisFile(outputFile, fss.getGridSourceProvider());

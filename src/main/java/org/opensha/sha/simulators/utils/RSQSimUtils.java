@@ -100,6 +100,14 @@ public class RSQSimUtils {
 		else
 			surf = new CompoundSurface(rupSurfs);
 		
+		Location hypo = getHypocenter(event);
+
+		RSQSimSubSectEqkRupture rup = new RSQSimSubSectEqkRupture(mag, rake, surf, hypo, event, rupSects);
+
+		return rup;
+	}
+
+	public static Location getHypocenter(RSQSimEvent event) {
 		Location hypo = null;
 		double earliestTime = Double.POSITIVE_INFINITY;
 		for (EventRecord rec : event) {
@@ -114,10 +122,7 @@ public class RSQSimUtils {
 		}
 		Preconditions.checkNotNull(hypo, "Couldn't detect hypocenter for event %s.",
 				event.getID());
-
-		RSQSimSubSectEqkRupture rup = new RSQSimSubSectEqkRupture(mag, rake, surf, hypo, event, rupSects);
-
-		return rup;
+		return hypo;
 	}
 	
 	private static boolean warned = false;
