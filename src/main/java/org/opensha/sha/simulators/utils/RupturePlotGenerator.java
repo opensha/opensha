@@ -130,6 +130,8 @@ public class RupturePlotGenerator {
 	
 	public static Color CA_OUTLINE_COLOR = Color.DARK_GRAY;
 	
+	public static Color OTHER_ELEM_COLOR = new Color(210, 210, 210);
+	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
 			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
 		System.out.println("Estimating DAS");
@@ -681,7 +683,7 @@ public class RupturePlotGenerator {
 		
 		if (allElems != null) {
 			// now add all elements within region
-			PlotCurveCharacterstics allElemChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)minThickness, new Color(210, 210, 210));
+			PlotCurveCharacterstics allElemChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)minThickness, OTHER_ELEM_COLOR);
 			
 			Region plotRegion = new Region(new Location(yRange.getLowerBound(), xRange.getLowerBound()),
 					new Location(yRange.getUpperBound(), xRange.getUpperBound()));
@@ -904,9 +906,10 @@ public class RupturePlotGenerator {
 	}
 	
 	private static String pointKey(Point2D pt) {
-		return magDF.format(pt.getX())+"_"+magDF.format(pt.getY());
+		return keyDF.format(pt.getX())+"_"+keyDF.format(pt.getY());
 	}
-	
+
+	private static final DecimalFormat keyDF = new DecimalFormat("0.000");
 	private static final DecimalFormat magDF = new DecimalFormat("0.00");
 	
 	private static double[] star(double x, double y, double radius) {
