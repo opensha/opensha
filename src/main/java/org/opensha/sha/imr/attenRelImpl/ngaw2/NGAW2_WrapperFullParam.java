@@ -257,7 +257,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 			if (supportsPhiTau)
 				gm = new DefaultGroundMotion(gm.mean()+val*sign, gm.stdDev(), gm.phi(), gm.tau());
 			else
-				gm = new DefaultGroundMotion(gm.mean(), gm.stdDev());
+				gm = new DefaultGroundMotion(gm.mean()+val*sign, gm.stdDev());
 		}
 		
 		return gm;
