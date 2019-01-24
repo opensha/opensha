@@ -33,9 +33,10 @@ public class CacheFileGen {
 //		File solFile = new File(args[0]);
 		FaultSystemSolution fss = FaultSystemIO.loadSol(
 //				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
-//						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
-				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
-						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+////						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+//				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
+//						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+				new File("/home/kevin/OpenSHA/UCERF3/cybershake_etas/ucerf2_mapped_sol.zip"));
 		LastEventData.populateSubSects(fss.getRupSet().getFaultSectionDataList(), LastEventData.load());
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF(fss, false, 1d, 2014);
 //		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(fss);

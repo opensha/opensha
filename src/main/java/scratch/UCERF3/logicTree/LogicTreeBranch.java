@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
@@ -171,6 +172,11 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 		return branch.get(index);
 	}
 	
+	@SuppressWarnings("rawtypes")
+	private Class<? extends LogicTreeBranchNode> getClass(int index) {
+		return getEnumEnclosingClass(getValue(index).getClass());
+	}
+	
 	/**
 	 * Enums with choices that implement an abstract method create subclasses for each
 	 * choice. This ensures that the clazz you are using is an enum parent class and not
@@ -191,7 +197,13 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	 */
 	public void clearValue(Class<? extends LogicTreeBranchNode<?>> clazz) {
 		clazz = getEnumEnclosingClass(clazz);
-		branch.set(getLogicTreeNodeClasses().indexOf(clazz), null);
+		for (int i=0; i<size(); i++) {
+			if (clazz.equals(getClass(i))) {
+				branch.set(i, null);
+				return;
+			}
+		}
+		throw new NoSuchElementException("Class not in logic tree: "+clazz);
 	}
 	
 	/**
@@ -206,15 +218,16 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	 * Sets the given value in the branch. Cannot be null (use clearValue(clazz)).
 	 * @param value
 	 */
+	@SuppressWarnings("rawtypes")
 	public void setValue(LogicTreeBranchNode<?> value) {
 		Class<? extends LogicTreeBranchNode> clazz = getEnumEnclosingClass(value.getClass());
 		
 //		System.out.println("Clazz? "+clazz);
 		
-		List<Class<? extends LogicTreeBranchNode<?>>> branchClasses = getLogicTreeNodeClasses();
-		Preconditions.checkState(branch.size() == branchClasses.size());
-		for (int i=0; i<branchClasses.size(); i++) {
-			Class<? extends LogicTreeBranchNode<?>> nodeClazz = branchClasses.get(i);
+//		List<Class<? extends LogicTreeBranchNode<?>>> branchClasses = getLogicTreeNodeClasses();
+//		Preconditions.checkState(branch.size() == branchClasses.size());
+		for (int i=0; i<branch.size(); i++) {
+			Class<? extends LogicTreeBranchNode> nodeClazz = getClass(i);
 //			System.out.println("testing: "+nodeClazz);
 			if (nodeClazz.equals(clazz)) {
 				branch.set(i, value);
@@ -581,7 +594,8 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 
 	@Override
 	public int compareTo(LogicTreeBranch o) {
-		for (int i=0; i<getLogicTreeNodeClasses().size(); i++) {
+		int size = Integer.min(size(), o.size());
+		for (int i=0; i<size; i++) {
 			LogicTreeBranchNode<?> val = getValue(i);
 			LogicTreeBranchNode<?> oval = o.getValue(i);
 			int cmp = val.getShortName().compareTo(oval.getShortName());
