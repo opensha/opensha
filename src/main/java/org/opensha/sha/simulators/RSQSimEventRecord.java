@@ -2,6 +2,8 @@ package org.opensha.sha.simulators;
 
 import java.util.List;
 
+import com.google.common.base.Preconditions;
+
 public class RSQSimEventRecord extends EventRecord {
 	
 	// values for the entire event
@@ -96,6 +98,13 @@ public class RSQSimEventRecord extends EventRecord {
 			for (int i=0; i<nextSlipTimes.length; i++)
 				nextSlipTimes[i] = Double.POSITIVE_INFINITY;
 		}
+	}
+	
+	public void setNextSlipTimes(double[] nextSlipTimes) {
+		getElementIDs(); // initialize a trim if needed
+		Preconditions.checkState(nextSlipTimes.length == elementIDs.length,
+				"Bad next slip time length. nextSlipTimes.length=%s != elementIDs.length=%s", nextSlipTimes.length, elementIDs.length);
+		this.nextSlipTimes = nextSlipTimes;
 	}
 	
 	public double[] getNextSlipTimes() {
