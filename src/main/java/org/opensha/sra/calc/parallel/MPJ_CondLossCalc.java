@@ -209,7 +209,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		return new File(tractMainDir, "process_"+rank);
 	}
 	
-	private static String getTractName(Asset asset) {
+	public static String getTractName(Asset asset) {
 		return asset.getParameterList().getParameter(String.class, "AssetName").getValue().trim().replaceAll("\\W+", "_");
 	}
 	
@@ -637,16 +637,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		return new BufferedInputStream(fis, buffer_len);
 	}
 	
-	/**
-	 * This writes a file containing expected losses for each grid node/magnitude bin
-	 * 
-	 * @param erf
-	 * @param origResults
-	 * @param file
-	 * @throws IOException
-	 */
-	public static void writeFSSGridSourcesFile(FaultSystemSolutionERF erf, double[][] origResults, File file)
-			throws IOException {
+	public static DiscretizedFunc[] mapResultsToGridded(FaultSystemSolutionERF erf, double[][] origResults) {
 		int fssSources = erf.getNumFaultSystemSources();
 		if (erf.getParameter(IncludeBackgroundParam.NAME).getValue() == IncludeBackgroundOption.ONLY)
 			fssSources = 0;
@@ -658,23 +649,17 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 //		System.exit(0);
 		
 		if (numGridded <= 0)
-			return;
+			return null;
 		
 		BackgroundRupType bgType = (BackgroundRupType)erf.getParameter(BackgroundRupParam.NAME).getValue();
 		
 		GridSourceProvider prov = erf.getSolution().getGridSourceProvider();
-
-		DataOutputStream out = new DataOutputStream(getOutputStream(file));
-		out.writeInt(numGridded);
+		
+		DiscretizedFunc[] ret = new DiscretizedFunc[numGridded];
 		
 		for (int srcIndex=fssSources; srcIndex<erf.getNumSources(); srcIndex++) {
 			// returned in nodeList order
 			int nodeIndex = srcIndex - fssSources;
-			Location loc = prov.getGriddedRegion().locationForIndex(nodeIndex);
-			
-			// write location to be safe in case gridding changes in the future
-			out.writeDouble(loc.getLatitude());
-			out.writeDouble(loc.getLongitude());
 			
 			ProbEqkSource source = erf.getSource(srcIndex);
 			
@@ -726,11 +711,52 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 			for (int i=0; i<fractTrack.size(); i++)
 				Preconditions.checkState((float)fractTrack.getY(i) == 1f,
 						"Fract for mag "+fractTrack.getX(i)+" != 1: "+fractTrack.getY(i));
-			out.writeInt(func.size());
-			for (int i=0; i<func.size(); i++) {
-				out.writeDouble(func.getX(i));
+			ret[nodeIndex] = func;
+		}
+		
+		return ret;
+	}
+	
+	/**
+	 * This writes a file containing expected losses for each grid node/magnitude bin
+	 * 
+	 * @param erf
+	 * @param origResults
+	 * @param file
+	 * @throws IOException
+	 */
+	public static void writeFSSGridSourcesFile(FaultSystemSolutionERF erf, double[][] origResults, File file)
+			throws IOException {
+		DiscretizedFunc[] griddedResults = mapResultsToGridded(erf, origResults);
+		if (griddedResults == null)
+			return;
+		
+		int fssSources = erf.getNumFaultSystemSources();
+		if (erf.getParameter(IncludeBackgroundParam.NAME).getValue() == IncludeBackgroundOption.ONLY)
+			fssSources = 0;
+		int numSources = erf.getNumSources();
+		int numGridded = numSources - fssSources;
+		Preconditions.checkState(numGridded == griddedResults.length);
+		
+		GridSourceProvider prov = erf.getSolution().getGridSourceProvider();
+
+		DataOutputStream out = new DataOutputStream(getOutputStream(file));
+		out.writeInt(griddedResults.length);
+		
+		for (int srcIndex=fssSources; srcIndex<erf.getNumSources(); srcIndex++) {
+			// returned in nodeList order
+			int nodeIndex = srcIndex - fssSources;
+			Location loc = prov.getGriddedRegion().locationForIndex(nodeIndex);
+			
+			// write location to be safe in case gridding changes in the future
+			out.writeDouble(loc.getLatitude());
+			out.writeDouble(loc.getLongitude());
+			
+			out.writeInt(griddedResults[nodeIndex].size());
+			for (int i=0; i<griddedResults[nodeIndex].size(); i++) {
+				out.writeDouble(griddedResults[nodeIndex].getX(i));
 				// expected loss
-				out.writeDouble(func.getY(i));
+				out.writeDouble(griddedResults[nodeIndex].getY(i));
 			}
 		}
 		
