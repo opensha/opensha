@@ -18,10 +18,20 @@ public class LinearRuptureIden extends AbstractRuptureIdentifier {
 	
 	private Map<IDPairing, Double> horzDistanceCache;
 
+	private boolean fractional;
+	
 	public LinearRuptureIden(double maxDeviation) {
+		this(maxDeviation, false);
+	}
+
+	public LinearRuptureIden(double maxDeviation, boolean fractional) {
+		this(maxDeviation, fractional, new HashMap<>());
+	}
+
+	public LinearRuptureIden(double maxDeviation, boolean fractional, Map<IDPairing, Double> horzDistanceCache) {
 		this.maxDeviation = maxDeviation;
-		
-		horzDistanceCache = new HashMap<>();
+		this.fractional = fractional;
+		this.horzDistanceCache = horzDistanceCache;
 	}
 
 	@Override
@@ -68,10 +78,17 @@ public class LinearRuptureIden extends AbstractRuptureIdentifier {
 		// strip out depth
 		loc2 = new Location(loc2.getLatitude(), loc2.getLongitude());
 		
+		double maxDeviation;
+		if (fractional)
+			maxDeviation = maxDist*this.maxDeviation;
+		else
+			maxDeviation = this.maxDeviation;
+		
 		for (SimulatorElement elem : elems) {
 			if (elem == furthest1 || elem == furthest2)
 				continue;
 			Location elemLoc = elem.getCenterLocation();
+			// strip out depth
 			elemLoc = new Location(elemLoc.getLatitude(), elemLoc.getLongitude());
 			double dist = Math.abs(LocationUtils.distanceToLineFast(loc1, loc2, elemLoc));
 			Preconditions.checkState(Double.isFinite(dist), "Bad dist: %s\n\tLoc1: %s\n\tLoc2: %s\n\tTest Loc: %s", dist, loc1, loc2, elemLoc);
