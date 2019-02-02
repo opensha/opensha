@@ -173,6 +173,8 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	
 	// leave as a FaultSystemSolution for use with Simulator/other FSS
 	private FaultSystemSolution faultSysSolution;		// the FFS for the ERF
+	private boolean cacheGridSources = false;			// if true, grid sources are cached instead of build on the fly
+	private ProbEqkSource[] gridSourceCache = null;
 	private GridSourceProvider gridSources;				// grid sources from the FSS
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
 	int totNumRupsFromFaultSystem;						// the sum of all nth ruptures that come from fault system sources (and not equal to faultSysSolution.getNumRuptures())
@@ -416,6 +418,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		boolean numOtherRupsChanged=false;	// this is needed below
 		if(bgRupTypeChanged) {
 			numOtherRupsChanged = initOtherSources();	// these are created even if not used; this sets numOtherSources
+			gridSourceCache = null;
 		}
 		
 		// update following FSS-related arrays if needed: longTermRateOfFltSysRupInERF[], srcIndexForFltSysRup[], fltSysRupIndexForSource[], numNonZeroFaultSystemSources
@@ -990,8 +993,26 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	protected ProbEqkSource getOtherSource(int iSource) {
 		if (gridSources == null)
 			return null;
+		if (cacheGridSources) {
+			synchronized (this) {
+				if (gridSourceCache == null)
+					gridSourceCache = new ProbEqkSource[numOtherSources];
+				if (gridSourceCache[iSource] != null)
+					return gridSourceCache[iSource];
+			}
+			// if we made it here, it's not cached
+			gridSourceCache[iSource] = gridSources.getSource(iSource, timeSpan.getDuration(),
+					applyAftershockFilter, bgRupType);
+			return gridSourceCache[iSource];
+		}
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
 				applyAftershockFilter, bgRupType);
+	}
+	
+	public void setCacheGridSources(boolean cacheGridSources) {
+		this.cacheGridSources = cacheGridSources;
+		if (!cacheGridSources)
+			gridSourceCache = null;
 	}
 	
 	/**

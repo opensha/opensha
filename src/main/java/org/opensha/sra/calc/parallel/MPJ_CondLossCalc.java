@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sra.gui.portfolioeal.Asset;
@@ -673,22 +674,31 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 			ArbitrarilyDiscretizedFunc fractTrack = new ArbitrarilyDiscretizedFunc();
 			
 			for (int r=0; r<source.getNumRuptures(); r++) {
-				ProbEqkRupture rup = source.getRupture(r);
+				double rake, mag;
+				if (source instanceof Point2Vert_FaultPoisSource) {
+					Point2Vert_FaultPoisSource fs = (Point2Vert_FaultPoisSource)source;
+					rake = fs.getAveRake(r);
+					mag = fs.getMag(r);
+				} else {
+					ProbEqkRupture rup = source.getRupture(r);
+					rake = rup.getAveRake();
+					mag = rup.getMag();
+				}
 				
 				// need to scale loss by the fraction with that focal mech
 				double fract = 0d;
-				if ((float)rup.getAveRake() == -90f)
+				if ((float)rake == -90f)
 					fract = fractNormal;
-				else if ((float)rup.getAveRake() == 90f)
+				else if ((float)rake == 90f)
 					fract = fractReverse;
-				else if ((float)rup.getAveRake() == 0f)
+				else if ((float)rake == 0f)
 					fract = fractSS;
 				else
-					throw new IllegalStateException("Unkown rake: "+rup.getAveRake());
+					throw new IllegalStateException("Unkown rake: "+rake);
 				if (bgType == BackgroundRupType.CROSSHAIR)
 					// there are twice as many ruptures in the crosshair case
 					fract *= 0.5;
-				else if (bgType == BackgroundRupType.POINT && (float)rup.getAveRake() != 0f)
+				else if (bgType == BackgroundRupType.POINT && (float)rake != 0f)
 					// non SS rups have 2 for each mech type
 					fract *= 0.5;
 				
@@ -697,14 +707,13 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 					loss = 0d;
 				else
 					loss = fract*origResults[srcIndex][r];
-				double mag = rup.getMag();
 				int ind = func.getXIndex(mag);
 				if (ind >= 0) {
 					func.set(ind, func.getY(ind)+loss);
 					fractTrack.set(ind, fractTrack.getY(ind)+fract);
 				} else {
-					func.set(rup.getMag(), loss);
-					fractTrack.set(rup.getMag(), fract);
+					func.set(mag, loss);
+					fractTrack.set(mag, fract);
 				}
 			}
 			// make sure we got all of the fractional losses for each mag bin

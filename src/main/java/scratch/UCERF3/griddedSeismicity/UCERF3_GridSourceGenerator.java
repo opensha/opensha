@@ -35,9 +35,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 
 	private final CaliforniaRegions.RELM_TESTING_GRIDDED region = RELM_RegionUtils.getGriddedRegionInstance();
 
-	private double[] fracStrikeSlip,fracNormal,fracReverse;
-	
-	private InversionFaultSystemSolution ifss;
+	private static double[] fracStrikeSlip,fracNormal,fracReverse;
 	private LogicTreeBranch branch;
 	private FaultPolyMgr polyMgr;
 	
@@ -75,9 +73,6 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 *        grided/background sources should be generated
 	 */
 	public UCERF3_GridSourceGenerator(InversionFaultSystemSolution ifss) {
-		initFocalMechGrids();
-
-		this.ifss = ifss;
 		branch = ifss.getLogicTreeBranch();
 		srcSpatialPDF = branch.getValue(SpatialSeisPDF.class).getPDF();
 //		totalMgt5_Rate = branch.getValue(TotalMag5Rate.class).getRateMag5();
@@ -91,9 +86,9 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 		polyMgr = ifss.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 
 		System.out.println("   initSectionMFDs() ...");
-		initSectionMFDs();
+		initSectionMFDs(ifss);
 		System.out.println("   initNodeMFDs() ...");
-		initNodeMFDs();
+		initNodeMFDs(ifss);
 		System.out.println("   updateSpatialPDF() ...");
 		updateSpatialPDF();
 	}
@@ -103,7 +98,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 * Initialize the sub-seismogenic MFDs for each fault section
 	 * (sectSubSeisMFDs)
 	 */
-	private void initSectionMFDs() {
+	private void initSectionMFDs(InversionFaultSystemSolution ifss) {
 
 		List<GutenbergRichterMagFreqDist> subSeisMFD_list = 
 				ifss.getFinalSubSeismoOnFaultMFD_List();
@@ -122,7 +117,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 * (nodeSubSeisMFDs) by partitioning the sectSubSeisMFDs according to
 	 * the overlapping fraction of each fault section and grid node.
 	 */
-	private void initNodeMFDs() {
+	private void initNodeMFDs(InversionFaultSystemSolution ifss) {
 		nodeSubSeisMFDs = Maps.newHashMap();
 		for (FaultSectionPrefData sect : ifss.getRupSet().getFaultSectionDataList()) {
 			int id = sect.getSectionId();
@@ -308,29 +303,31 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 
 	@Override
 	public double getFracStrikeSlip(int idx) {
+		checkInitFocalMechGrids();
 		return fracStrikeSlip[idx];
 	}
 
 
 	@Override
 	public double getFracReverse(int idx) {
+		checkInitFocalMechGrids();
 		return fracReverse[idx];
 	}
 
 
 	@Override
 	public double getFracNormal(int idx) {
+		checkInitFocalMechGrids();
 		return fracNormal[idx];
 	}
 	
-	private void initFocalMechGrids() {
-		GridReader gRead;
-		gRead = new GridReader("StrikeSlipWts.txt");
-		fracStrikeSlip = gRead.getValues();
-		gRead = new GridReader("ReverseWts.txt");
-		fracReverse = gRead.getValues();
-		gRead = new GridReader("NormalWts.txt");
-		fracNormal = gRead.getValues();
+	private synchronized static void checkInitFocalMechGrids() {
+		if (fracStrikeSlip == null)
+			fracStrikeSlip = new GridReader("StrikeSlipWts.txt").getValues();
+		if (fracReverse == null)
+			fracReverse = new GridReader("ReverseWts.txt").getValues();
+		if (fracNormal == null)
+			fracNormal = new GridReader("NormalWts.txt").getValues();
 	}
 
 }
