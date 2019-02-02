@@ -217,7 +217,7 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 		n_firstIndex = -1;
 		n_lastIndex = -1;
 		rv_firstIndex = -1;
-		rv_lastIndex =- 1;
+		rv_lastIndex = -1;
 
 		numRuptures = 0;
 		if(fracStrikeSlip>0) {
@@ -237,12 +237,14 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 		}
 
 		if(this.isCrossHair) numRuptures+=numRuptures;
-
+	}
+	
+	private void checkInitSurfaces() {
 		double depth = 1.0;
 
 		double maxMag = magFreqDist.getX(magFreqDist.size()-1);
 		// make finite source if necessary
-		if(maxMag > magCutOff) {
+		if(maxMag > magCutOff && finiteFaultSurface1 == null) {
 			Location loc1, loc2;
 			LocationVector dir;
 			double halfLength = magLengthRelationship.getMedianLength(maxMag)/2.0;
@@ -285,6 +287,8 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 	 */
 	public LocationList getAllSourceLocs() {
 		LocationList locList = new LocationList();
+		
+		checkInitSurfaces();
 
 		if(this.finiteFaultSurface1!=null) { 
 			locList = finiteFaultSurface1.getEvenlyDiscritizedListOfLocsOnSurface();
@@ -318,39 +322,67 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 		return numRuptures;
 	}
 
+	private int getMagIndex(int nthRupture) {
+		if(this.isCrossHair && nthRupture>=numRuptures/2)
+			nthRupture -= numRuptures/2;
+		if(nthRupture >= ss_firstIndex && nthRupture <= ss_lastIndex)
+			return nthRupture-ss_firstIndex;
+		if(nthRupture >= n_firstIndex && nthRupture <= n_lastIndex)
+			return nthRupture-n_firstIndex;
+		if(nthRupture >= rv_firstIndex && nthRupture <= rv_lastIndex)
+			return nthRupture-rv_firstIndex;
+		throw new IllegalStateException("bad rupture index: "+nthRupture+", size="+getNumRuptures());
+	}
+	
+	public double getMag(int nthRupture) {
+		return magFreqDist.getX(getMagIndex(nthRupture));
+	}
+
+	public double getAveRake(int nthRupture) {
+		if(this.isCrossHair && nthRupture>=numRuptures/2)
+			nthRupture -= numRuptures/2;
+		if(nthRupture >= ss_firstIndex && nthRupture <= ss_lastIndex)
+			return 0d;
+		if(nthRupture >= n_firstIndex && nthRupture <= n_lastIndex)
+			return -90;
+		if(nthRupture >= rv_firstIndex && nthRupture <= rv_lastIndex)
+			return 90;
+		throw new IllegalStateException("bad rupture index: "+nthRupture+", size="+getNumRuptures());
+	}
+
+	public double getDip(int nthRupture) {
+		if(this.isCrossHair && nthRupture>=numRuptures/2)
+			nthRupture -= numRuptures/2;
+		if(nthRupture >= ss_firstIndex && nthRupture <= ss_lastIndex)
+			return 90d;
+		if(nthRupture >= n_firstIndex && nthRupture <= n_lastIndex)
+			return 50;
+		if(nthRupture >= rv_firstIndex && nthRupture <= rv_lastIndex)
+			return 50;
+		throw new IllegalStateException("bad rupture index: "+nthRupture+", size="+getNumRuptures());
+	}
+
+	public double getFraction(int nthRupture) {
+		if(this.isCrossHair && nthRupture>=numRuptures/2)
+			nthRupture -= numRuptures/2;
+		if(nthRupture >= ss_firstIndex && nthRupture <= ss_lastIndex)
+			return fracStrikeSlip;
+		if(nthRupture >= n_firstIndex && nthRupture <= n_lastIndex)
+			return fracNormal;
+		if(nthRupture >= rv_firstIndex && nthRupture <= rv_lastIndex)
+			return fracReverse;
+		throw new IllegalStateException("bad rupture index: "+nthRupture+", size="+getNumRuptures());
+	}
 
 	/**
 	 * This makes and returns the nth probEqkRupture for this source.
 	 */
 	public ProbEqkRupture getRupture(int nthRupture){
-		boolean secondSurface = false;
-		if(this.isCrossHair && nthRupture>=numRuptures/2) { // whether second surface needs to be used
-			nthRupture -= numRuptures/2;
-			secondSurface = true;
-		}
-		double fraction=Double.NaN;
-		double rake = Double.NaN;
-		double dip = Double.NaN;
-		int magIndex = -1;
-		if(nthRupture >= ss_firstIndex && nthRupture <= ss_lastIndex) {
-			rake = 0;
-			dip=90;
-			magIndex = nthRupture-ss_firstIndex;
-			fraction=fracStrikeSlip;
-		}
-		else if(nthRupture >= n_firstIndex && nthRupture <= n_lastIndex) {
-			rake = -90;
-			dip=50;
-			magIndex = nthRupture-n_firstIndex;
-			fraction=fracNormal;
-		}
-		else if(nthRupture >= rv_firstIndex && nthRupture <= rv_lastIndex) {
-			rake = 90;
-			dip=50;
-			magIndex = nthRupture-rv_firstIndex;
-			fraction=fracReverse;
-		}
-
+		boolean secondSurface = this.isCrossHair && nthRupture>=numRuptures/2;
+		double fraction = getFraction(nthRupture);
+		double rake = getAveRake(nthRupture);
+		double dip = getDip(nthRupture);
+		int magIndex = getMagIndex(nthRupture);
 
 		// set the magnitude
 		double mag = magFreqDist.getX(magIndex);
@@ -378,6 +410,8 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 		}
 		else { // set finite surface
 			FrankelGriddedSurface finiteFault;
+			
+			checkInitSurfaces();
 
 			// set the appropriate surface in case of CrossHair option
 			if(secondSurface) finiteFault = this.finiteFaultSurface2;
