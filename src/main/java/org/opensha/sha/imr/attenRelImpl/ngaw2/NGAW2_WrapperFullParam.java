@@ -205,7 +205,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 	/**
 	 * This updates all values in the wrapped GMPE
 	 */
-	private synchronized ScalarGroundMotion getGroundMotion() {
+	public synchronized ScalarGroundMotion getGroundMotion() {
 		if (gm != null)
 			return gm;
 		
