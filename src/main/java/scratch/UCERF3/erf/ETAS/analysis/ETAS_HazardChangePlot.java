@@ -23,6 +23,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -122,8 +123,15 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			if (surf == null || surf instanceof PointSurface) {
 				triggerRegions.add(new Region(rup.getHypocenterLocation(), radius));
 			} else if (surf instanceof CompoundSurface) {		
-				for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList())
-					triggerRegions.add(new Region(subSurf.getUpperEdge(), radius));
+				for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
+					LocationList upper;
+					try {
+						upper = subSurf.getUpperEdge();
+					} catch (Exception e) {
+						upper = subSurf.getEvenlyDiscritizedUpperEdge();
+					}
+					triggerRegions.add(new Region(upper, radius));
+				}
 			} else {
 				triggerRegions.add(new Region(surf.getUpperEdge(), radius));
 			}
