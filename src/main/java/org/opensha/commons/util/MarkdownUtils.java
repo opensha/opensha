@@ -322,8 +322,14 @@ public class MarkdownUtils {
 		fw.write("<!DOCTYPE html>\n");
 		fw.write("<html>\n");
 		fw.write("<head>\n");
+		fw.write("<style>\n");
+		fw.write("table {\n");
+		fw.write("\tborder-collapse: collapse\n");
+		fw.write("}\n");
+		fw.write("table, th, td {\n");
+		fw.write("\tborder: 1px solid black\n");
+		fw.write("}\n");
 		if (MAX_WIDTH > 0) {
-			fw.write("<style>\n");
 			fw.write("body {\n");
 			fw.write("\tmax-width:"+MAX_WIDTH+"px;\n");
 			fw.write("\tmargin: auto;\n");
@@ -332,8 +338,8 @@ public class MarkdownUtils {
 			fw.write("\tmax-width: 100%;\n");
 			fw.write("\tmax-height: 100%;\n");
 			fw.write("}\n");
-			fw.write("</style>\n");
 		}
+		fw.write("</style>\n");
 		fw.write("</head>\n");
 		fw.write("<body>\n");
 		renderer.render(document, fw);
