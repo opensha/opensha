@@ -138,6 +138,15 @@ public class SimulationMarkdownGenerator {
 			outputDir = inputFile.getParentFile();
 			System.out.println("Using parent directory of input file as output dir: "+outputDir.getAbsolutePath());
 		}
+		
+		
+		boolean skipMaps = cmd.hasOption("no-maps");
+		
+		generateMarkdown(configFile, inputFile, config, outputDir, skipMaps);
+	}
+
+	public static void generateMarkdown(File configFile, File inputFile, ETAS_Config config, File outputDir,
+			boolean skipMaps) throws IOException {
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir(),
 				"Output dir doesn't exist and couldn't be created: %s", outputDir.getAbsolutePath());
 		File plotsDir = new File(outputDir, "plots");
@@ -145,8 +154,6 @@ public class SimulationMarkdownGenerator {
 				"Plot dir doesn't exist and couldn't be created: %s", plotsDir.getAbsolutePath());
 		
 		List<ETAS_AbstractPlot> plots = new ArrayList<>();
-		
-		boolean skipMaps = cmd.hasOption("no-maps");
 		
 		ETAS_Launcher launcher = new ETAS_Launcher(config, false);
 		
@@ -297,7 +304,7 @@ public class SimulationMarkdownGenerator {
 		df.setTimeZone(TimeZone.getTimeZone("UTC"));
 	}
 	
-	private static final Comparator<BinaryFilteredOutputConfig> binaryOutputComparator =
+	public static final Comparator<BinaryFilteredOutputConfig> binaryOutputComparator =
 			new Comparator<ETAS_Config.BinaryFilteredOutputConfig>() {
 		
 		@Override

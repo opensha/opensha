@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sra.gui.portfolioeal.Asset;
@@ -209,7 +210,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		return new File(tractMainDir, "process_"+rank);
 	}
 	
-	private static String getTractName(Asset asset) {
+	public static String getTractName(Asset asset) {
 		return asset.getParameterList().getParameter(String.class, "AssetName").getValue().trim().replaceAll("\\W+", "_");
 	}
 	
@@ -637,16 +638,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		return new BufferedInputStream(fis, buffer_len);
 	}
 	
-	/**
-	 * This writes a file containing expected losses for each grid node/magnitude bin
-	 * 
-	 * @param erf
-	 * @param origResults
-	 * @param file
-	 * @throws IOException
-	 */
-	public static void writeFSSGridSourcesFile(FaultSystemSolutionERF erf, double[][] origResults, File file)
-			throws IOException {
+	public static DiscretizedFunc[] mapResultsToGridded(FaultSystemSolutionERF erf, double[][] origResults) {
 		int fssSources = erf.getNumFaultSystemSources();
 		if (erf.getParameter(IncludeBackgroundParam.NAME).getValue() == IncludeBackgroundOption.ONLY)
 			fssSources = 0;
@@ -658,23 +650,17 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 //		System.exit(0);
 		
 		if (numGridded <= 0)
-			return;
+			return null;
 		
 		BackgroundRupType bgType = (BackgroundRupType)erf.getParameter(BackgroundRupParam.NAME).getValue();
 		
 		GridSourceProvider prov = erf.getSolution().getGridSourceProvider();
-
-		DataOutputStream out = new DataOutputStream(getOutputStream(file));
-		out.writeInt(numGridded);
+		
+		DiscretizedFunc[] ret = new DiscretizedFunc[numGridded];
 		
 		for (int srcIndex=fssSources; srcIndex<erf.getNumSources(); srcIndex++) {
 			// returned in nodeList order
 			int nodeIndex = srcIndex - fssSources;
-			Location loc = prov.getGriddedRegion().locationForIndex(nodeIndex);
-			
-			// write location to be safe in case gridding changes in the future
-			out.writeDouble(loc.getLatitude());
-			out.writeDouble(loc.getLongitude());
 			
 			ProbEqkSource source = erf.getSource(srcIndex);
 			
@@ -688,22 +674,31 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 			ArbitrarilyDiscretizedFunc fractTrack = new ArbitrarilyDiscretizedFunc();
 			
 			for (int r=0; r<source.getNumRuptures(); r++) {
-				ProbEqkRupture rup = source.getRupture(r);
+				double rake, mag;
+				if (source instanceof Point2Vert_FaultPoisSource) {
+					Point2Vert_FaultPoisSource fs = (Point2Vert_FaultPoisSource)source;
+					rake = fs.getAveRake(r);
+					mag = fs.getMag(r);
+				} else {
+					ProbEqkRupture rup = source.getRupture(r);
+					rake = rup.getAveRake();
+					mag = rup.getMag();
+				}
 				
 				// need to scale loss by the fraction with that focal mech
 				double fract = 0d;
-				if ((float)rup.getAveRake() == -90f)
+				if ((float)rake == -90f)
 					fract = fractNormal;
-				else if ((float)rup.getAveRake() == 90f)
+				else if ((float)rake == 90f)
 					fract = fractReverse;
-				else if ((float)rup.getAveRake() == 0f)
+				else if ((float)rake == 0f)
 					fract = fractSS;
 				else
-					throw new IllegalStateException("Unkown rake: "+rup.getAveRake());
+					throw new IllegalStateException("Unkown rake: "+rake);
 				if (bgType == BackgroundRupType.CROSSHAIR)
 					// there are twice as many ruptures in the crosshair case
 					fract *= 0.5;
-				else if (bgType == BackgroundRupType.POINT && (float)rup.getAveRake() != 0f)
+				else if (bgType == BackgroundRupType.POINT && (float)rake != 0f)
 					// non SS rups have 2 for each mech type
 					fract *= 0.5;
 				
@@ -712,25 +707,65 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 					loss = 0d;
 				else
 					loss = fract*origResults[srcIndex][r];
-				double mag = rup.getMag();
 				int ind = func.getXIndex(mag);
 				if (ind >= 0) {
 					func.set(ind, func.getY(ind)+loss);
 					fractTrack.set(ind, fractTrack.getY(ind)+fract);
 				} else {
-					func.set(rup.getMag(), loss);
-					fractTrack.set(rup.getMag(), fract);
+					func.set(mag, loss);
+					fractTrack.set(mag, fract);
 				}
 			}
 			// make sure we got all of the fractional losses for each mag bin
 			for (int i=0; i<fractTrack.size(); i++)
 				Preconditions.checkState((float)fractTrack.getY(i) == 1f,
 						"Fract for mag "+fractTrack.getX(i)+" != 1: "+fractTrack.getY(i));
-			out.writeInt(func.size());
-			for (int i=0; i<func.size(); i++) {
-				out.writeDouble(func.getX(i));
+			ret[nodeIndex] = func;
+		}
+		
+		return ret;
+	}
+	
+	/**
+	 * This writes a file containing expected losses for each grid node/magnitude bin
+	 * 
+	 * @param erf
+	 * @param origResults
+	 * @param file
+	 * @throws IOException
+	 */
+	public static void writeFSSGridSourcesFile(FaultSystemSolutionERF erf, double[][] origResults, File file)
+			throws IOException {
+		DiscretizedFunc[] griddedResults = mapResultsToGridded(erf, origResults);
+		if (griddedResults == null)
+			return;
+		
+		int fssSources = erf.getNumFaultSystemSources();
+		if (erf.getParameter(IncludeBackgroundParam.NAME).getValue() == IncludeBackgroundOption.ONLY)
+			fssSources = 0;
+		int numSources = erf.getNumSources();
+		int numGridded = numSources - fssSources;
+		Preconditions.checkState(numGridded == griddedResults.length);
+		
+		GridSourceProvider prov = erf.getSolution().getGridSourceProvider();
+
+		DataOutputStream out = new DataOutputStream(getOutputStream(file));
+		out.writeInt(griddedResults.length);
+		
+		for (int srcIndex=fssSources; srcIndex<erf.getNumSources(); srcIndex++) {
+			// returned in nodeList order
+			int nodeIndex = srcIndex - fssSources;
+			Location loc = prov.getGriddedRegion().locationForIndex(nodeIndex);
+			
+			// write location to be safe in case gridding changes in the future
+			out.writeDouble(loc.getLatitude());
+			out.writeDouble(loc.getLongitude());
+			
+			out.writeInt(griddedResults[nodeIndex].size());
+			for (int i=0; i<griddedResults[nodeIndex].size(); i++) {
+				out.writeDouble(griddedResults[nodeIndex].getX(i));
 				// expected loss
-				out.writeDouble(func.getY(i));
+				out.writeDouble(griddedResults[nodeIndex].getY(i));
 			}
 		}
 		
