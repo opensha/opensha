@@ -295,7 +295,7 @@ public class ComcatAccessor {
 		ObsEqkRupture rup = null;
 
 		try {
-			rup = eventToObsRup (event, wrapLon, extendedInfo);
+			rup = eventToObsRup (event, wrapLon, extendedInfo, eventID);
 		} catch (Exception e) {
 			rup = null;
 		}
@@ -545,7 +545,7 @@ public class ComcatAccessor {
 				ObsEqkRupture rup = null;
 
 				try {
-					rup = eventToObsRup (event, wrapLon, extendedInfo);
+					rup = eventToObsRup (event, wrapLon, extendedInfo, null);
 				} catch (Exception e) {
 					rup = null;
 				}
@@ -645,12 +645,15 @@ public class ComcatAccessor {
 	// If wrapLon is true, longitudes range from 0 to +360.
 	// If extendedInfo is true, extended information is added to the ObsEqkRupture,
 	//  which presently is the place description, list of ids, network, and event code.
+	// If query_id is non-null, then the event is dropped if the list of ids does not include query_id.
+	//  This can be used to reject (probably rare) cases where Comcat does not include the queried
+	//  event id in the list of ids (e.g., "us1000h4p4").
 	// If the conversion could not be performed, then the function either returns null
 	//  or throws an exception.  Note that the event.getXXXXX functions can return null,
 	//  which will lead to NullPointerException being thrown.
 	// Note: A subclass can override this method to add more extended information.
 	
-	protected ObsEqkRupture eventToObsRup(JsonEvent event, boolean wrapLon, boolean extendedInfo) {
+	protected ObsEqkRupture eventToObsRup (JsonEvent event, boolean wrapLon, boolean extendedInfo, String query_id) {
 		double lat = event.getLatitude().doubleValue();
 		double lon = event.getLongitude().doubleValue();
 
@@ -681,6 +684,12 @@ public class ComcatAccessor {
 		String event_id = event.getEventId().toString();
 		if (event_id == null || event_id.isEmpty()) {
 			return null;	// this ensures returned events always have an event ID
+		}
+
+		if (query_id != null) {
+			if (!( idsToList(event.getIds(), event_id).contains(query_id) )) {
+				return null;	// ensures returned events always contain the queried ID
+			}
 		}
 
 		ObsEqkRupture rup = new ObsEqkRupture(event_id, event.getTime().getTime(), hypo, mag);
