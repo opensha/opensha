@@ -37,13 +37,11 @@ import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF
 import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF_List;
 import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
 
-import scratch.stirling.NewZealandERF_2012;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.FaultSystemSolutionPoissonERF;
 import scratch.UCERF3.erf.UCERF3_CompoundSol_ERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.utils.ModUCERF2.ModMeanUCERF2_FM2pt1;
-import scratch.christine.URS.URS_MeanUCERF2;
 
 public enum ERF_Ref {
 	
@@ -151,16 +149,10 @@ public enum ERF_Ref {
 	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, DEVELOPMENT, false),
 	
 	/** STEP Alaska Forecast */
-	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
-	
-	// add NZ?
-	NEW_ZEALAND_2012(NewZealandERF_2012.class, NewZealandERF_2012.NAME, DEVELOPMENT, false),
-	
+	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false);
+		
 	// EXPERIMENTAL
-	
-	/** URS modified MeanUCERF2 */
-	URS_MEAN_UCERF_2(URS_MeanUCERF2.class, URS_MeanUCERF2.NAME, EXPERIMENTAL, false);
-	
+		
 //	TEST_ETAS1_ERF(TestModel1_ERF.class, TestModel1_ERF.NAME, EXPERIMENTAL, false);
 
 	
