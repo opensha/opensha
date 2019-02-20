@@ -1,7 +1,7 @@
 package org.opensha.nshmp2.erf.source;
 
 import org.opensha.nshmp2.util.FaultType;
-import org.opensha.nshmp2.util.FocalMech;
+import org.opensha.sha.util.FocalMech;
 
 import com.google.common.base.Predicate;
 
