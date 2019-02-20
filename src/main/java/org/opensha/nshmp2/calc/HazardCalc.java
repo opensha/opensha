@@ -27,7 +27,6 @@ import org.opensha.nshmp2.imr.NSHMP08_CEUS_Grid;
 import org.opensha.nshmp2.imr.NSHMP08_SUB_SlabGrid;
 import org.opensha.nshmp2.imr.NSHMP08_WUS;
 import org.opensha.nshmp2.imr.NSHMP08_WUS_Grid;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.nshmp2.util.NSHMP_Utils;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.SiteTypeParam;
@@ -46,6 +45,7 @@ import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
+import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.NEHRP_TestCity;
 
 import scratch.UCERF3.utils.ProbOfExceed;
