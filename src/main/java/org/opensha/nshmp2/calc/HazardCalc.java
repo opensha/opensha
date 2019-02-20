@@ -48,7 +48,7 @@ import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import org.opensha.sha.util.NEHRP_TestCity;
 
-import scratch.peter.curves.ProbOfExceed;
+import scratch.UCERF3.utils.ProbOfExceed;
 import scratch.peter.nshmp.DeterministicResult;
 import scratch.peter.nshmp.HazardCurveCalculatorNSHMP;
 
