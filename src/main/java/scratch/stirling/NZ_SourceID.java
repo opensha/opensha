@@ -1,11 +1,11 @@
 package scratch.stirling;
 
+import static org.opensha.sha.util.FocalMech.*;
 import static org.opensha.sha.util.TectonicRegionType.*;
-import static org.opensha.nshmp2.util.FocalMech.*;
 
 import java.util.Map;
 
-import org.opensha.nshmp2.util.FocalMech;
+import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.collect.ImmutableMap;
