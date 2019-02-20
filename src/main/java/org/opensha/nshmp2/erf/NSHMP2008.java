@@ -16,8 +16,8 @@ import org.opensha.nshmp2.erf.source.NSHMP_ERF;
 import org.opensha.nshmp2.erf.source.Sources;
 import org.opensha.nshmp2.erf.source.SubductionERF;
 import org.opensha.nshmp2.util.FaultType;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.sha.earthquake.EpistemicListERF;
+import org.opensha.sha.util.FocalMech;
 
 import com.google.common.collect.Lists;
 

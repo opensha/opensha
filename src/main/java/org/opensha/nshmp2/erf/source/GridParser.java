@@ -2,11 +2,11 @@ package org.opensha.nshmp2.erf.source;
 
 import static com.google.common.base.Preconditions.*;
 import static org.opensha.nshmp2.util.FaultCode.*;
-import static org.opensha.nshmp2.util.FocalMech.*;
 import static org.opensha.nshmp2.util.NSHMP_Utils.*;
 import static org.opensha.nshmp2.util.RateType.*;
 import static org.opensha.nshmp2.util.SourceRegion.*;
 import static org.opensha.nshmp2.util.SourceType.*;
+import static org.opensha.sha.util.FocalMech.*;
 
 import java.io.File;
 import java.net.URL;
@@ -27,7 +27,6 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.nshmp2.util.FaultCode;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.nshmp2.util.NSHMP_Utils;
 import org.opensha.nshmp2.util.RateType;
 import org.opensha.nshmp2.util.SourceIMR;
@@ -35,6 +34,7 @@ import org.opensha.nshmp2.util.SourceRegion;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;

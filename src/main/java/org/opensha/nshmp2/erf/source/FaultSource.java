@@ -13,7 +13,6 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.nshmp2.util.FaultType;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultSource;
@@ -23,6 +22,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 
 import com.google.common.collect.Lists;
 

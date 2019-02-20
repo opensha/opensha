@@ -16,7 +16,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.geo.Location;
 import org.opensha.nshmp2.util.FaultType;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.nshmp2.util.NSHMP_Utils;
 import org.opensha.nshmp2.util.SourceIMR;
 import org.opensha.nshmp2.util.SourceRegion;
@@ -24,6 +23,7 @@ import org.opensha.nshmp2.util.SourceType;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;

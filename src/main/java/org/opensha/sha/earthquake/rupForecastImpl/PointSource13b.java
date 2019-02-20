@@ -16,10 +16,10 @@
  * the License.
  ******************************************************************************/
 
-package org.opensha.nshmp2.erf.source;
+package org.opensha.sha.earthquake.rupForecastImpl;
 
-import static org.opensha.nshmp2.util.FocalMech.*;
 import static org.opensha.nshmp2.util.NSHMP_Utils.*;
+import static org.opensha.sha.util.FocalMech.*;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 import static java.lang.Math.*;
 
@@ -34,7 +34,6 @@ import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.nshmp2.util.NSHMP_Utils;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -43,6 +42,7 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.NSHMP_Util;
 
 import com.google.common.base.Joiner;

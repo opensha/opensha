@@ -1,4 +1,4 @@
-package org.opensha.nshmp2.util;
+package org.opensha.sha.util;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;

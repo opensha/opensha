@@ -22,7 +22,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.geo.Location;
 import org.opensha.nshmp2.util.FaultType;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.nshmp2.util.NSHMP_Utils;
 import org.opensha.nshmp2.util.SourceIMR;
 import org.opensha.nshmp2.util.SourceRegion;
@@ -31,6 +30,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterators;
