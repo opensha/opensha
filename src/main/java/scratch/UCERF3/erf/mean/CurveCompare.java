@@ -14,8 +14,8 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FileNameComparator;
 import org.opensha.nshmp2.util.Period;
 
+import scratch.UCERF3.utils.ProbOfExceed;
 import scratch.peter.curves.CurveUtilsUC33;
-import scratch.peter.curves.ProbOfExceed;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
