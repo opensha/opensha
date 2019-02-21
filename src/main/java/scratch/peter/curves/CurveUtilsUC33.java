@@ -29,9 +29,9 @@ import static scratch.UCERF3.enumTreeBranches.SpatialSeisPDF.UCERF3;
 import static scratch.UCERF3.enumTreeBranches.TotalMag5Rate.RATE_6p5;
 import static scratch.UCERF3.enumTreeBranches.TotalMag5Rate.RATE_7p9;
 import static scratch.UCERF3.enumTreeBranches.TotalMag5Rate.RATE_9p6;
-import static scratch.peter.curves.ProbOfExceed.PE10IN50;
-import static scratch.peter.curves.ProbOfExceed.PE1IN100;
-import static scratch.peter.curves.ProbOfExceed.PE2IN50;
+import static scratch.UCERF3.utils.ProbOfExceed.PE10IN50;
+import static scratch.UCERF3.utils.ProbOfExceed.PE1IN100;
+import static scratch.UCERF3.utils.ProbOfExceed.PE2IN50;
 
 import java.awt.geom.Point2D;
 import java.io.File;
@@ -83,6 +83,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.utils.ProbOfExceed;
 import scratch.peter.nshmp.CurveContainer;
 import scratch.peter.ucerf3.calc.UC3_CalcUtils;
 

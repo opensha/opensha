@@ -372,13 +372,13 @@ public class CurveContainer implements Iterable<Location> {
 		}
 	}
 	
-	static class CurveFileProcessor_SHA implements LineProcessor<CurveContainer> {
+	public static class CurveFileProcessor_SHA implements LineProcessor<CurveContainer> {
 		
 		private Splitter split;
 		private boolean firstLine = true;
 		private CurveContainer cc;
 		
-		CurveFileProcessor_SHA(GriddedRegion region) {
+		public CurveFileProcessor_SHA(GriddedRegion region) {
 			split = Splitter.on(',').omitEmptyStrings();
 			cc = new CurveContainer();
 			cc.region = region;
