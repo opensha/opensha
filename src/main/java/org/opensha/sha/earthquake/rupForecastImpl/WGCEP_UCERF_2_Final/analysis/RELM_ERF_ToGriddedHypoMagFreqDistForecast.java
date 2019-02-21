@@ -1,4 +1,4 @@
-package scratch.vipin.relm;
+package org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.analysis;
 
 import java.util.ArrayList;
 

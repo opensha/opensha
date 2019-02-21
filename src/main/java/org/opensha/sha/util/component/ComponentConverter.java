@@ -13,8 +13,10 @@ public class ComponentConverter {
 	
 	static {
 		transTable = HashBasedTable.create();
-		
-		transTable.put(Component.RotD50, Component.RotD100, new ShahiBaker2014Trans());
+
+		ShahiBaker2014Trans shahiBaker = new ShahiBaker2014Trans();
+		transTable.put(Component.RotD50, Component.RotD100, shahiBaker);
+		transTable.put(Component.RotD100, Component.RotD50, new ReverseComponentTranslation(shahiBaker));
 		for (Boore2010Trans trans : Boore2010Trans.getAllConverters())
 			transTable.put(trans.getFromComponent(), trans.getToComponent(), trans);
 	}

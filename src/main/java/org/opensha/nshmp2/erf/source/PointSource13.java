@@ -18,8 +18,8 @@
 
 package org.opensha.nshmp2.erf.source;
 
-import static org.opensha.nshmp2.util.FocalMech.*;
 import static org.opensha.nshmp2.util.NSHMP_Utils.*;
+import static org.opensha.sha.util.FocalMech.*;
 
 import java.util.Iterator;
 import java.util.List;
@@ -32,13 +32,13 @@ import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
-import org.opensha.nshmp2.util.FocalMech;
 import org.opensha.nshmp2.util.NSHMP_Utils;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.NSHMP_Util;
 
 import com.google.common.collect.Range;
