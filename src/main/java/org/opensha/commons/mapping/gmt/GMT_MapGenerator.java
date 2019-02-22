@@ -133,12 +133,6 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 	protected GeoDataSet xyzDataSet;
 
-	// common GMT command-line strings
-	protected String xOff;
-	protected String yOff;
-	protected String region;
-	protected String projWdth;
-
 	// for map boundary parameters
 	public final static String MIN_LAT_PARAM_NAME = "Min Latitude";
 	public final static String MAX_LAT_PARAM_NAME = "Max Latitude";
@@ -943,7 +937,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		double maxLat = Math.rint(((maxTempLat-minLat)/gridSpacing))*gridSpacing +minLat;
 		double maxLon = Math.rint(((maxTempLon-minLon)/gridSpacing))*gridSpacing +minLon;
 
-		region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat+" ";
+		String region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat+" ";
 		if(D) System.out.println(C+" region = "+region);
 
 		// this is the prefixed used for temporary files
@@ -975,14 +969,14 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 		// plot size parameter
 		double plotWdth = 6.5;
-		projWdth = " -JM"+plotWdth+"i ";
+		String projWdth = " -JM"+plotWdth+"i ";
 		double plotHght = ((maxLat-minLat)/(maxLon-minLon))*plotWdth/Math.cos(Math.PI*(maxLat+minLat)/(2*180));
 
 		double yOffset = 11 - plotHght - 0.5;
-		yOff = " -Y" + yOffset + "i ";
+		String yOff = " -Y" + yOffset + "i ";
 
 		// set x-axis offset to 1 inch
-		xOff = " -X1.0i ";
+		String xOff = " -X1.0i ";
 
 		gmtCommandLines.add("#!/bin/bash\n\n");
 		gmtCommandLines.add("# path variables\n");
@@ -1089,7 +1083,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 
 		// This adds intermediate commands
-		addIntermediateGMT_ScriptLines(gmtCommandLines);
+		addIntermediateGMT_ScriptLines(gmtCommandLines, region, projWdth);
 		// set some defaults
 
 		// add the color scale
@@ -1297,7 +1291,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		double maxLat = Math.rint(((maxTempLat-minLat)/gridSpacing))*gridSpacing +minLat;
 		double maxLon = Math.rint(((maxTempLon-minLon)/gridSpacing))*gridSpacing +minLon;
 
-		region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat+" ";
+		String region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat+" ";
 		if(D) System.out.println(C+" region = "+region);
 
 		// this is the prefixed used for temporary files
@@ -1331,14 +1325,14 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 		// plot size parameter
 		double plotWdth = 6.5;
-		projWdth = " -JM"+plotWdth+"i ";
+		String projWdth = " -JM"+plotWdth+"i ";
 		double plotHght = ((maxLat-minLat)/(maxLon-minLon))*plotWdth/Math.cos(Math.PI*(maxLat+minLat)/(2*180));
 
 		double yOffset = 11 - plotHght - 0.5;
-		yOff = " -Y" + yOffset + "i ";
+		String yOff = " -Y" + yOffset + "i ";
 
 		// set x-axis offset to 1 inch
-		xOff = " -X1.0i ";
+		String xOff = " -X1.0i ";
 
 		gmtCommandLines.add("#!/bin/bash");
 		gmtCommandLines.add("");
@@ -1878,7 +1872,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	 * These lines have to be added at an intermediate step because the last layer in GMT
 	 * has to have the "-O" but not "-K" option.
 	 */
-	protected void addIntermediateGMT_ScriptLines(ArrayList gmtLines) {
+	protected void addIntermediateGMT_ScriptLines(ArrayList gmtLines, String region, String projWdth) {
 
 	}
 
