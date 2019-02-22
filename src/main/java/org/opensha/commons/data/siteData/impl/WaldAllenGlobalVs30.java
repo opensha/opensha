@@ -83,7 +83,9 @@ public class WaldAllenGlobalVs30 extends AbstractSiteData<Double> implements Par
 	private boolean interpolate = true;
 	
 	/**
-	 * Creates function for active tectonic regions from Allen & Wald 2008
+	 * Creates function for active tectonic regions from Allen & Wald 2009.
+	 * From the "Modified 30 arsec Gradient Range (m/m) (Active Tectonic)" column of Table 1,
+	 * https://pubs.geoscienceworld.org/ssa/bssa/article/99/2A/935/342177/on-the-use-of-high-resolution-topographic-data-as 
 	 * @return
 	 */
 	public static ArbitrarilyDiscretizedFunc createActiveCoefficients() {
