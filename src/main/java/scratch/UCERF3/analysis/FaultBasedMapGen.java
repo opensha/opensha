@@ -896,6 +896,7 @@ public class FaultBasedMapGen {
 		String baseURL;
 		if (LOCAL_MAPGEN) {
 			GMT_MapGenerator.clearEnv();
+			GMT_MapGenerator.GMT_DATA_PATH = "/data/kevin/opensha/gmt/";
 			map.setJPGFileName(null);
 			File tempDir = Files.createTempDir();
 			List<String> script = gmt.getGMT_ScriptLines(map, tempDir.getAbsolutePath());
