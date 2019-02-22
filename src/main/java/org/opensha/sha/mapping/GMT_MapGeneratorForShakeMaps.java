@@ -595,7 +595,7 @@ public class GMT_MapGeneratorForShakeMaps extends GMT_MapGenerator{
 			double maxLon = Math.rint(((maxTempLon-minLon)/gridSpacing))*gridSpacing +minLon;
 
 			//redefing the region for proper discretization of the region required by the GMT
-			region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat+" ";
+			String region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat+" ";
 			String commandLine;
 			//if the selected IMT is SA
 			if(imt.equals(SA_Param.NAME)){
@@ -808,7 +808,7 @@ public class GMT_MapGeneratorForShakeMaps extends GMT_MapGenerator{
 	/**
 	 * This method adds intermediate script commands to plot the earthquake rupture and hypocenter.
 	 */
-	protected void addIntermediateGMT_ScriptLines(ArrayList gmtLines) {
+	protected void addIntermediateGMT_ScriptLines(ArrayList gmtLines, String region, String projWdth) {
 
 		String rupPlot = (String) rupPlotParam.getValue();
 
