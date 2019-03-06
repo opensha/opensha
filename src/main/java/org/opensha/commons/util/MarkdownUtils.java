@@ -202,7 +202,7 @@ public class MarkdownUtils {
 	}
 	
 	private static final CharMatcher ALNUM = CharMatcher.inRange('a', 'z').or(CharMatcher.inRange('A', 'Z'))
-			  .or(CharMatcher.inRange('0', '9')).or(CharMatcher.is('-'));
+			  .or(CharMatcher.inRange('0', '9')).or(CharMatcher.is('_')).or(CharMatcher.is('-'));
 	
 	/**
 	 * Builds a table of contents with links to all headers. Each header should be unique
