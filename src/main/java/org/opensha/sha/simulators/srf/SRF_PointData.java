@@ -6,7 +6,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.DecimalFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -162,12 +164,25 @@ public class SRF_PointData {
 		return tInit + dt*index;
 	}
 	
+	public FocalMechanism getFocalMech() {
+		return focal;
+	}
+	
+	public double getArea() {
+		return area;
+	}
+	
+	public SRF_PointData translated(Location newLocation) {
+		return new SRF_PointData(newLocation, focal, area, tInit, dt, totSlip1, slipVels1,
+				totSlip2, slipVels2, totSlip3, slipVels3);
+	}
+	
 	private static final String split_regex = "\\s+";
 	
-	private static SRF_PointData fromPointLine(String line, double version) {
+	private static SRF_PointData fromPointLine(String line, Deque<String> lines, double version) {
 		line = line.trim();
 		String[] split = line.split(split_regex);
-		Preconditions.checkState(split.length >= 15, "Bad file line. Should have at least 15 space separated fields");
+		Preconditions.checkState(split.length >= 8, "Bad file line. Should have at least 8 space separated fields");
 		int index = 0;
 		double lon = Double.parseDouble(split[index++]);
 		double lat = Double.parseDouble(split[index++]);
@@ -183,6 +198,13 @@ public class SRF_PointData {
 		double dt = Double.parseDouble(split[index++]);
 		if (version > 1)
 			index += 2; // skip vs and den
+		// might have a line break here
+		if (index == split.length) {
+			Preconditions.checkState(!lines.isEmpty());
+			index = 0;
+			split = lines.pop().trim().split(split_regex);
+			Preconditions.checkState(split.length >= 7, "Bad file line. Should have at least 7 space separated fields");
+		}
 		double rake = Double.parseDouble(split[index++]);
 		// convert them from cm to m
 		double totSlip1 = Double.parseDouble(split[index++])*0.01;
@@ -191,16 +213,29 @@ public class SRF_PointData {
 		int nt2 = Integer.parseInt(split[index++]);
 		double totSlip3 = Double.parseDouble(split[index++])*0.01;
 		int nt3 = Integer.parseInt(split[index++]);
+		
+		List<Double> rawSlips = new ArrayList<>();
+		int numSlips = nt1+nt2+nt3;
+		
+		while (rawSlips.size() < numSlips) {
+			if (index == split.length) {
+				index = 0;
+				split = lines.pop().trim().split(split_regex);
+				Preconditions.checkState(split.length > 0, "Bad file line.");
+			}
+			// convert them from cm/s to m/s
+			rawSlips.add(Double.parseDouble(split[index++])*0.01);
+		}
+		
 		double[] slipVels1 = new double[nt1];
 		double[] slipVels2 = new double[nt2];
 		double[] slipVels3 = new double[nt3];
-		// convert them from cm/s to m/s
 		for (int i=0; i<nt1; i++)
-			slipVels1[i] = Double.parseDouble(split[index++])*0.01;
+			slipVels1[i] = rawSlips.remove(0);
 		for (int i=0; i<nt2; i++)
-			slipVels2[i] = Double.parseDouble(split[index++])*0.01;
+			slipVels2[i] = rawSlips.remove(0);
 		for (int i=0; i<nt3; i++)
-			slipVels3[i] = Double.parseDouble(split[index++])*0.01;
+			slipVels3[i] = rawSlips.remove(0);
 		Preconditions.checkState(index == split.length, "Unxpected number values. Expected %s, encountered %s", index, split.length);
 		
 		FocalMechanism focal = new FocalMechanism(strike, dip, rake);
@@ -212,7 +247,9 @@ public class SRF_PointData {
 		int numPoints = -1;
 		List<SRF_PointData> points = new ArrayList<>();
 		double version = -1;
-		for (String line : Files.readLines(srfFile, Charset.defaultCharset())) {
+		ArrayDeque<String> lines = new ArrayDeque<>(Files.readLines(srfFile, Charset.defaultCharset()));
+		while (!lines.isEmpty()) {
+			String line = lines.pop();
 			line = line.trim();
 			if (line.isEmpty())
 				continue;
@@ -228,7 +265,7 @@ public class SRF_PointData {
 				Preconditions.checkState(numPoints > 0, "Bad num points: %s", numPoints);
 			} else if (numPoints > 0) {
 //				System.out.println("Parsing line: "+line);
-				points.add(fromPointLine(line, version));
+				points.add(fromPointLine(line, lines, version));
 			}
 		}
 		

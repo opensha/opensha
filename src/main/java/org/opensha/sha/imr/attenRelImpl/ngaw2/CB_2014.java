@@ -274,7 +274,7 @@ public class CB_2014 implements NGAW2_GMM {
 		
 		// Basin Response term  -- Equation 20
 		// update z2p5 with CA model if not supplied -- Equation 33
-		if (Double.isNaN(z2p5)) z2p5 = exp(7.089 - 1.144 * log(vs30));
+		if (Double.isNaN(z2p5)) z2p5 = calcZ25ref(vs30);
 		double Fsed = 0.0;
 		if (z2p5 <= 1.0) {
 			Fsed = c.c14 * (z2p5 - 1.0);
@@ -302,6 +302,10 @@ public class CB_2014 implements NGAW2_GMM {
 		
 		// total model -- Equation 1
 		return Fmag + Fr + Fflt + Fhw + Fsite + Fsed + Fhyp + Fdip + Fatn;
+	}
+	
+	public static double calcZ25ref(double vs30) {
+		return exp(7.089 - 1.144 * log(vs30));
 	}
 
 	// Aleatory uncertainty model
