@@ -828,6 +828,25 @@ public class FaultSysSolutionERF_Calc {
 		return calcSummedProbs(probs);
 	}
 	
+	public static double calcParticipationProbForSect(FaultSystemSolutionERF erf, double minMag, int sectionIndex) {
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		
+		HashSet<Integer> rupIndexes = new HashSet<Integer>(rupSet.getRupturesForSection(sectionIndex));
+		
+		List<Double> probs = Lists.newArrayList();
+
+		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
+			int fssRupIndex = erf.getFltSysRupIndexForSource(s);
+			if (!rupIndexes.contains(fssRupIndex))
+				continue;
+			for (ProbEqkRupture rup : erf.getSource(s)) {
+				if (rup.getMag() >= minMag)
+					probs.add(rup.getProbability());
+			}
+		}
+		return calcSummedProbs(probs);
+	}
+	
 	/**
 	 * Calculates nucleation rate above the given magnitude for the given parent section
 	 * @param erf
