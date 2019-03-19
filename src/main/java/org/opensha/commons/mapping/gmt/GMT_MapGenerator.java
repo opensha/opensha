@@ -48,6 +48,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.GMT_Map.HighwayFile;
 import org.opensha.commons.mapping.gmt.elements.CoastAttributes;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.mapping.gmt.elements.PSText;
 import org.opensha.commons.mapping.gmt.elements.PSXYPolygon;
 import org.opensha.commons.mapping.gmt.elements.PSXYSymbol;
 import org.opensha.commons.mapping.gmt.elements.PSXYSymbolSet;
@@ -64,6 +65,8 @@ import org.opensha.commons.util.RunScript;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.cybershake.maps.GMT_InterpolationSettings;
+
+import com.google.common.base.Preconditions;
 
 /**
  * <p>Title: GMT_MapGenerator</p>
@@ -1341,6 +1344,30 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		gmtCommandLines.addAll(getGMTPathEnvLines());
 		gmtCommandLines.add("## Plot Script ##");
 		gmtCommandLines.add("");
+		
+		// set some defaults
+		gmtCommandLines.add("# Set GMT paper/font & map defaults");
+		if(map.isBlackBackground())
+			commandLine = "${GMT_PATH}gmtset FONT_ANNOT_PRIMARY=14p,white FONT_LABEL=18p,white PS_PAGE_COLOR=0/0/0 PS_PAGE_ORIENTATION=portrait PS_MEDIA=letter";
+		else
+			commandLine = "${GMT_PATH}gmtset FONT_ANNOT_PRIMARY=14p,black FONT_LABEL=18p,black PS_PAGE_COLOR=255/255/255 PS_PAGE_ORIENTATION=portrait PS_MEDIA=letter";
+		gmtCommandLines.add(commandLine);
+		gmtCommandLines.add("");
+		if(map.isBlackBackground())
+			commandLine="${GMT_PATH}gmtset MAP_DEFAULT_PEN=+white FORMAT_GEO_MAP=-D MAP_FRAME_WIDTH=0.1i COLOR_FOREGROUND=255/255/255 MAP_FRAME_PEN=1p";
+		else
+			commandLine="${GMT_PATH}gmtset MAP_DEFAULT_PEN=black FORMAT_GEO_MAP=-D MAP_FRAME_WIDTH=0.1i COLOR_FOREGROUND=255/255/255 MAP_FRAME_PEN=1p";
+		gmtCommandLines.add(commandLine);
+		gmtCommandLines.add("");
+		
+		if (map.getGMT_Params() != null) {
+			gmtCommandLines.add("# GMT Params");
+			for (String name : map.getGMT_Params().keySet()) {
+				String value = map.getGMT_Params().get(name);
+				gmtCommandLines.add("${GMT_PATH}gmtset "+name+" "+value);
+			}
+			gmtCommandLines.add("");
+		}
 
 		GeoDataSet griddedData = map.getGriddedData();
 		
@@ -1370,6 +1397,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 					gmtCommandLines.add(commandLine);
 				}
 			}
+		} else if (map.getCustomGRDPath() != null) {
+			File grdFile = new File(map.getCustomGRDPath());
+			Preconditions.checkState(grdFile.exists(), "File doesn't esist: "+grdFile.getAbsolutePath());
+			grdFileName = grdFile.getAbsolutePath();
 		}
 		
 		// get color scale limits
@@ -1400,21 +1431,13 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		}
 		
 		String psFileName = map.getPSFileName();
-
-		// set some defaults
-		gmtCommandLines.add("# Set GMT paper/font defaults");
-		if(map.isBlackBackground())
-			commandLine = "${GMT_PATH}gmtset FONT_ANNOT_PRIMARY=14p,white FONT_LABEL=18p,white PS_PAGE_COLOR=0/0/0 PS_PAGE_ORIENTATION=portrait PS_MEDIA=letter";
-		else
-			commandLine = "${GMT_PATH}gmtset FONT_ANNOT_PRIMARY=14p,black FONT_LABEL=18p,black PS_PAGE_COLOR=255/255/255 PS_PAGE_ORIENTATION=portrait PS_MEDIA=letter";
-		gmtCommandLines.add(commandLine+"\n");
 		
 		boolean doContour = map.getGriddedData() != null && map.getContourIncrement() > 0;
 		boolean contourOnly = doContour && map.isContourOnly();
 		String grdFileForContour = grdFileName;
 		
 		int dpi = map.getDpi();
-		if (griddedData == null) {
+		if (griddedData == null && map.getCustomGRDPath() == null) {
 			// we have to initialize it ourselves - this doesn't actually plot anything
 			commandLine="echo 1000 1000 | ${GMT_PATH}psxy "+region+ xOff + yOff + projWdth+" -K > " + psFileName;
 			gmtCommandLines.add(commandLine+"\n");
@@ -1447,7 +1470,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 				}
 			}
 			// generate the image depending on whether topo relief is desired
-			else if (map.getTopoResolution() == null) {
+			else if (map.getTopoResolution() == null && map.getCustomIntenPath() == null) {
 				if (!contourOnly) {
 					gmtCommandLines.add("# Plot the gridded data");
 					commandLine="${GMT_PATH}grdimage "+ grdFileName + xOff + yOff + projWdth + " -C"+cptFile+" "+" -K -E"+dpi+ region + " > " + psFileName;
@@ -1457,21 +1480,35 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			else if (!contourOnly) {
 				// redefine the region so that maxLat, minLat, and delta fall exactly on the topoIntenFile
 				TopographicSlopeFile topoFile = map.getTopoResolution();
-				gridSpacing = GeoTools.secondsToDeg(map.getTopoResolution().resolution());
-				double tempNum = Math.ceil((minLat-topoFile.region().getMinLat())/gridSpacing);
-				minLat = tempNum*gridSpacing+topoFile.region().getMinLat();
-				tempNum = Math.ceil((minLon-(topoFile.region().getMinLon()))/gridSpacing);
-				minLon = tempNum*gridSpacing+(topoFile.region().getMinLon());
-				maxLat = Math.floor(((maxLat-minLat)/gridSpacing))*gridSpacing +minLat;
-				maxLon = Math.floor(((maxLon-minLon)/gridSpacing))*gridSpacing +minLon;
-				region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat + " ";
+				String hiResFile;
+				String intenFile;
+				if (topoFile != null) {
+					gridSpacing = GeoTools.secondsToDeg(map.getTopoResolution().resolution());
+					double tempNum = Math.ceil((minLat-topoFile.region().getMinLat())/gridSpacing);
+					minLat = tempNum*gridSpacing+topoFile.region().getMinLat();
+					tempNum = Math.ceil((minLon-(topoFile.region().getMinLon()))/gridSpacing);
+					minLon = tempNum*gridSpacing+(topoFile.region().getMinLon());
+					maxLat = Math.floor(((maxLat-minLat)/gridSpacing))*gridSpacing +minLat;
+					maxLon = Math.floor(((maxLon-minLon)/gridSpacing))*gridSpacing +minLon;
+					region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat + " ";
 
-				String hiResFile = tempFilePrefix+"HiResData.grd";
-				rmFiles.add(hiResFile);
-				gmtCommandLines.add("# Resample the map to the topo resolution");
-				commandLine="${GMT_PATH}grdsample "+grdFileName+" -G"+hiResFile+" -I" +
-				topoFile.resolution() + "s -nl "+region;
-				gmtCommandLines.add(commandLine);
+					hiResFile = tempFilePrefix+"HiResData.grd";
+					rmFiles.add(hiResFile);
+					gmtCommandLines.add("# Resample the map to the topo resolution");
+					commandLine="${GMT_PATH}grdsample "+grdFileName+" -G"+hiResFile+" -I" +
+					topoFile.resolution() + "s -nl "+region;
+					gmtCommandLines.add(commandLine);
+					
+					intenFile = tempFilePrefix+"Inten.grd";
+					gmtCommandLines.add("# Cut the topo file to match the data region");
+					commandLine="${GMT_PATH}grdcut " + topoIntenFile + " -G"+intenFile+ " " +region;
+					rmFiles.add(intenFile);
+					gmtCommandLines.add(commandLine);
+				} else {
+					Preconditions.checkNotNull(map.getCustomIntenPath());
+					hiResFile = grdFileName;
+					intenFile = map.getCustomIntenPath();
+				}
 				
 				if (map.isMaskIfNotRectangular() && !map.getRegion().isRectangular()) {
 					String maskName = "mask.xy";
@@ -1494,14 +1531,9 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 				}
 				grdFileForContour = hiResFile;
 				
-				String intenFile = tempFilePrefix+"Inten.grd";
-				gmtCommandLines.add("# Cut the topo file to match the data region");
-				commandLine="${GMT_PATH}grdcut " + topoIntenFile + " -G"+intenFile+ " " +region;
-				rmFiles.add(intenFile);
-				gmtCommandLines.add(commandLine);
 				gmtCommandLines.add("# Plot the gridded data with topographic shading");
 				commandLine="${GMT_PATH}grdimage "+hiResFile+" " + xOff + yOff + projWdth +
-				" -I"+tempFilePrefix+"Inten.grd -C"+cptFile+" "+ "-K -E"+dpi+ region + " > " + psFileName;
+				" -I"+intenFile+" -C"+cptFile+" "+ "-K -E"+dpi+ region + " > " + psFileName;
 				gmtCommandLines.add(commandLine);
 			}
 		}
@@ -1531,24 +1563,20 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 //		//TODO: figure this out...
 //		// This adds intermediate commands
 //		addIntermediateGMT_ScriptLines(gmtCommandLines);
-		
-		// set some defaults
-		gmtCommandLines.add("# Set GMT map property defaults");
-		if(map.isBlackBackground())
-			commandLine="${GMT_PATH}gmtset MAP_DEFAULT_PEN=+white FORMAT_GEO_MAP=-D MAP_FRAME_WIDTH=0.1i COLOR_FOREGROUND=255/255/255 MAP_FRAME_PEN=1p";
-		else
-			commandLine="${GMT_PATH}gmtset MAP_DEFAULT_PEN=black FORMAT_GEO_MAP=-D MAP_FRAME_WIDTH=0.1i COLOR_FOREGROUND=255/255/255 MAP_FRAME_PEN=1p";
-		gmtCommandLines.add(commandLine);
 
 		addColorbarCommand(gmtCommandLines, map, colorScaleMin, colorScaleMax, cptFile, psFileName);
 
 		// add the basemap
-		double niceKmLength = getNiceKmScaleLength(minLat, minLon, maxLon);
-		double kmScaleXoffset = plotWdth/4;
+		
 		double niceTick = getNiceMapTickInterval(minLat, maxLat, minLon, maxLon);
 		gmtCommandLines.add("# Map frame and KM scale label");
-		commandLine="${GMT_PATH}psbasemap -B"+niceTick+"/"+niceTick+"eWNs " + projWdth +region+
-		" -Lfx"+kmScaleXoffset+"i/0.5i/"+minLat+"/"+niceKmLength+"+l -O >> " + psFileName;
+		commandLine="${GMT_PATH}psbasemap -B"+niceTick+"/"+niceTick+"eWNs " + projWdth +region;
+		if (map.isDrawScaleKM()) {
+			double niceKmLength = getNiceKmScaleLength(minLat, minLon, maxLon);
+			double kmScaleXoffset = plotWdth/4;
+			commandLine += " -Lfx"+kmScaleXoffset+"i/0.5i/"+minLat+"/"+niceKmLength+"+l";
+		}
+		commandLine += " -O >> " + psFileName;
 		gmtCommandLines.add(commandLine);
 		
 		gmtCommandLines.add("");
@@ -1816,6 +1844,24 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		}
 	}
 	
+	public static void addTextCommands(ArrayList<String> gmtCommandLines, GMT_Map map,
+			String region, String proj, String psFile) {
+		ArrayList<PSText> text = map.getText();
+		if (text != null && text.size() > 0) {
+			System.out.println("Map has " + text.size() + " text items!");
+			gmtCommandLines.add("");
+			gmtCommandLines.add("# Text");
+			for (int i=0; i<text.size(); i++) {
+				PSText item = text.get(i);
+				Point2D point = item.getPoint();
+				String line = "echo "+point.getX()+" "+point.getY()+" "+item.getText()
+						+" | ${GMT_PATH}pstext "+item.getFontArg();
+				line += " " + region + proj + " -K -O >> " + psFile;
+				gmtCommandLines.add(line);
+			}
+		}
+	}
+	
 	public static void addSpecialElements(ArrayList<String> gmtCommandLines, GMT_Map map,
 			String region, String proj, String psFile) throws GMT_MapException {
 		addHighwayCommand(gmtCommandLines, map, region, proj, psFile);
@@ -1823,6 +1869,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		addPolyCommands(gmtCommandLines, map, region, proj, psFile);
 		addSymbolCommands(gmtCommandLines, map, region, proj, psFile);
 		addSymbolSetCommands(gmtCommandLines, map, region, proj, psFile);
+		addTextCommands(gmtCommandLines, map, region, proj, psFile);
 	}
 	
 	public static void addColorbarCommand(ArrayList<String> gmtCommandLines, GMT_Map map,

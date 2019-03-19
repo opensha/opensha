@@ -21,11 +21,14 @@ package org.opensha.commons.mapping.gmt;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.elements.CoastAttributes;
+import org.opensha.commons.mapping.gmt.elements.PSText;
 import org.opensha.commons.mapping.gmt.elements.PSXYPolygon;
 import org.opensha.commons.mapping.gmt.elements.PSXYSymbol;
 import org.opensha.commons.mapping.gmt.elements.PSXYSymbolSet;
@@ -48,6 +51,9 @@ public class GMT_Map implements Serializable {
 	private boolean rescaleCPT = true;
 	private double griddedDataInc;
 	private GeoDataSet griddedData = null;
+	
+	private String customGRDPath;
+	private String customIntenPath;
 	
 	public enum HighwayFile {
 		ALL			("CA All", "ca_hiwys.all.xy"),
@@ -97,6 +103,8 @@ public class GMT_Map implements Serializable {
 	
 	private boolean logPlot = false;
 	
+	private boolean drawScaleKM = true;
+	
 	private String xyzFileName = GMT_MapGenerator.DEFAULT_XYZ_FILE_NAME;
 	private String psFileName = GMT_MapGenerator.DEFAULT_PS_FILE_NAME;
 	private String pdfFileName = GMT_MapGenerator.DEFAULT_PDF_FILE_NAME;
@@ -107,6 +115,7 @@ public class GMT_Map implements Serializable {
 	
 	private ArrayList<PSXYSymbol> xySymbols = new ArrayList<PSXYSymbol>();
 	private ArrayList<PSXYPolygon> xyLines = new ArrayList<PSXYPolygon>();
+	private ArrayList<PSText> xyText = new ArrayList<PSText>();
 	private PSXYSymbolSet xySymbolSet = null;
 	
 	private boolean generateKML = false;
@@ -119,6 +128,8 @@ public class GMT_Map implements Serializable {
 	// if non zero, will draw contour lines
 	private double contourIncrement = 0d;
 	private boolean contourOnly = false;
+	
+	private Map<String, String> gmtSetVals;
 	
 	public GMT_Map(Region region, GeoDataSet griddedData,
 			double griddedDataInc, String cptFile) {
@@ -425,6 +436,18 @@ public class GMT_Map implements Serializable {
 		this.xySymbolSet = xySymbolSet;
 	}
 
+	public ArrayList<PSText> getText() {
+		return xyText;
+	}
+
+	public void setText(ArrayList<PSText> xyText) {
+		this.xyText = xyText;
+	}
+	
+	public void addText(PSText text) {
+		this.xyText.add(text);
+	}
+
 	public boolean isGenerateKML() {
 		return generateKML;
 	}
@@ -467,6 +490,40 @@ public class GMT_Map implements Serializable {
 
 	public void setContourOnly(boolean contourOnly) {
 		this.contourOnly = contourOnly;
+	}
+	
+	public boolean isDrawScaleKM() {
+		return drawScaleKM;
+	}
+	
+	public void setDrawScaleKM(boolean drawScaleKM) {
+		this.drawScaleKM = drawScaleKM;
+	}
+
+	public String getCustomGRDPath() {
+		return customGRDPath;
+	}
+
+	public void setCustomGRDPath(String customGRDPath) {
+		this.customGRDPath = customGRDPath;
+	}
+
+	public String getCustomIntenPath() {
+		return customIntenPath;
+	}
+
+	public void setCustomIntenPath(String customIntenPath) {
+		this.customIntenPath = customIntenPath;
+	}
+	
+	public void setGMT_Param(String name, String value) {
+		if (gmtSetVals == null)
+			gmtSetVals = new HashMap<>();
+		gmtSetVals.put(name, value);
+	}
+	
+	public Map<String, String> getGMT_Params() {
+		return gmtSetVals;
 	}
 
 }

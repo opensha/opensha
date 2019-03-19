@@ -37,9 +37,7 @@ public class CoastAttributes implements Serializable {
 	 * Default constructor, for filled ocean
 	 */
 	public CoastAttributes() {
-		fillColor = new Color(17, 73, 71);
-		lineColor = fillColor;
-		lineSize = 1d;
+		this(new Color(17, 73, 71), 1d, new Color(17, 73, 71));
 	}
 	
 	/**
@@ -58,9 +56,7 @@ public class CoastAttributes implements Serializable {
 	 * @param lineSize
 	 */
 	public CoastAttributes(Color lineColor, double lineSize) {
-		this.lineColor = lineColor;
-		this.lineSize = lineSize;
-		this.fillColor = null;
+		this(lineColor, lineSize, null);
 	}
 	
 	/**
@@ -69,8 +65,18 @@ public class CoastAttributes implements Serializable {
 	 * @param fillColor
 	 */
 	public CoastAttributes(Color fillColor) {
-		this.lineColor = fillColor;
-		this.lineSize = 1d;
+		this(fillColor, 1d, fillColor);
+	}
+	
+	/**
+	 * Fill coast and draw coastline with the specified color/size
+	 * 
+	 * @param lineColor
+	 * @param lineSize
+	 */
+	public CoastAttributes(Color lineColor, double lineSize, Color fillColor) {
+		this.lineColor = lineColor;
+		this.lineSize = lineSize;
 		this.fillColor = fillColor;
 	}
 
