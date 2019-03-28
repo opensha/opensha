@@ -1294,7 +1294,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		double maxLat = Math.rint(((maxTempLat-minLat)/gridSpacing))*gridSpacing +minLat;
 		double maxLon = Math.rint(((maxTempLon-minLon)/gridSpacing))*gridSpacing +minLon;
 
-		String region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat+" ";
+		String region = " -R" + (float)minLon + "/" + (float)maxLon + "/" + (float)minLat + "/" + (float)maxLat+" ";
 		if(D) System.out.println(C+" region = "+region);
 
 		// this is the prefixed used for temporary files
