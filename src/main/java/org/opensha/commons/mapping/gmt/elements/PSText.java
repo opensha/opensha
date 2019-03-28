@@ -2,10 +2,11 @@ package org.opensha.commons.mapping.gmt.elements;
 
 import java.awt.Color;
 import java.awt.geom.Point2D;
+import java.io.Serializable;
 
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 
-public class PSText {
+public class PSText implements Serializable {
 	
 	private Point2D pt;
 	private Color color;
@@ -20,7 +21,7 @@ public class PSText {
 		LEFT_BOTTOM("+jLB"),
 		RIGHT_TOP("+jRT"),
 		RIGHT("+jR"),
-		RIGHT_MIDDLE("+jRB");
+		RIGHT_BOTTOM("+jRB");
 		
 		private String str;
 
@@ -46,7 +47,7 @@ public class PSText {
 	}
 	
 	public String getFontArg() {
-		return "-F+f"+fontSize+"p,Helvetica,"+GMT_MapGenerator.getGMTColorString(color)+justify.str;
+		return "-F+f"+fontSize+"p,Helvetica-Bold,"+GMT_MapGenerator.getGMTColorString(color)+justify.str;
 	}
 
 }
