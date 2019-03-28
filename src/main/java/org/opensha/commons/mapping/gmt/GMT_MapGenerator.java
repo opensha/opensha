@@ -1490,7 +1490,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 					minLon = tempNum*gridSpacing+(topoFile.region().getMinLon());
 					maxLat = Math.floor(((maxLat-minLat)/gridSpacing))*gridSpacing +minLat;
 					maxLon = Math.floor(((maxLon-minLon)/gridSpacing))*gridSpacing +minLon;
-					region = " -R" + minLon + "/" + maxLon + "/" + minLat + "/" + maxLat + " ";
+					region = " -R" + (float)minLon + "/" + (float)maxLon + "/" + (float)minLat + "/" + (float)maxLat + " ";
 
 					hiResFile = tempFilePrefix+"HiResData.grd";
 					rmFiles.add(hiResFile);
