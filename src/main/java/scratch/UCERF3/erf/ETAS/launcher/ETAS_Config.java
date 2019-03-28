@@ -74,6 +74,9 @@ public class ETAS_Config {
 	private boolean includeIndirectTriggering = true;
 	private double gridSeisDiscr = 0.1;
 	private U3_EqkCatalogStatewideCompleteness catalogCompletenessModel = U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE;
+	private Double etas_p = null;
+	private Double etas_c = null;
+	private Double etas_log10_k = null;
 	
 	public ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir) {
 		this(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir, null, null);
@@ -490,6 +493,30 @@ public class ETAS_Config {
 
 	public U3ETAS_ProbabilityModelOptions getProbModel() {
 		return probModel;
+	}
+	
+	public void setETAS_P(Double p) {
+		this.etas_p = p;
+	}
+	
+	public Double getETAS_P() {
+		return etas_p;
+	}
+	
+	public void setETAS_C(Double c) {
+		this.etas_c = c;
+	}
+	
+	public Double getETAS_C() {
+		return etas_c;
+	}
+	
+	public void setETAS_Log10_K(Double log10_k) {
+		this.etas_log10_k = log10_k;
+	}
+	
+	public Double getETAS_Log10_K() {
+		return etas_log10_k;
 	}
 
 	public boolean isApplySubSeisForSupraNucl() {

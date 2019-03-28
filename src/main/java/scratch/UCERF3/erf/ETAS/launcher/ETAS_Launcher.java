@@ -210,7 +210,21 @@ public class ETAS_Launcher {
 		params.setApplyGridSeisCorr(config.isGridSeisCorr() && !config.isGriddedOnly());
 		params.setApplySubSeisForSupraNucl(config.isApplySubSeisForSupraNucl());
 		params.setTotalRateScaleFactor(config.getTotRateScaleFactor());
-		// TODO set completeness model
+		if (config.getETAS_P() != null) {
+			debug(DebugLevel.INFO, "Setting custom p parameter value: "+config.getETAS_P());
+			params.set_p(config.getETAS_P());
+		}
+		if (config.getETAS_C() != null) {
+			debug(DebugLevel.INFO, "Setting custom c parameter value: "+config.getETAS_C());
+			params.set_c(config.getETAS_C());
+		}
+		if (config.getETAS_Log10_K() != null) {
+			double log10k = config.getETAS_Log10_K();
+			double k = Math.pow(10, log10k)*Math.pow(365.25, 1d - params.get_p());
+			debug(DebugLevel.INFO, "Setting custom k from Log10(k)="+(float)log10k+" and p: "+k);
+			params.set_k(k);
+		}
+		params.setStatewideCompletenessModel(config.getCompletenessModel());
 		
 		// now load a trigger catalog
 		histQkList = new ArrayList<>();

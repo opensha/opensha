@@ -39,18 +39,24 @@ public class ETAS_ConfigGenerator {
 		HPC_Sites hpcSite = HPC_Sites.HPC;
 		
 		FaultModels fm = FaultModels.FM3_1;
-		boolean u2 = true;
-		Integer startYear = 2019;
+		boolean u2 = false;
+		Integer startYear = 1919;
 		Long startTimeMillis = null;
-		boolean histCatalog = false;
-		boolean includeSpontaneous = false;
-		int numSimulations = 500000;
-		double duration = 10d;
+		boolean histCatalog = true;
+		boolean includeSpontaneous = true;
+		int numSimulations = 1000;
+		double duration = 100d;
 		Long randomSeed = null;
 		
-//		TriggerRupture[] triggerRups = null;
+		// etas params
+		Double p = 1.08;
+		Double c = 0.04;
+		Double log10k = -2.31;
+		
+		TriggerRupture[] triggerRups = null;
 //		String scenarioName = "Spontaneous";
-//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+		String scenarioName = "Historical1919_critical";
+		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		String nameAdd = null;
 		
@@ -70,12 +76,12 @@ public class ETAS_ConfigGenerator {
 //		String scenarioName = "Parkfield M6";
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
-		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(34.42295,-117.80177,5.8), null, 6) };
-		String scenarioName = "Mojave Point M6";
-		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+//		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(34.42295,-117.80177,5.8), null, 6) };
+//		String scenarioName = "Mojave Point M6";
+//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		// only if mpj == true
-		int nodes = 18;
+		int nodes = 36;
 		int hours = 24;
 		String queue = "scec";
 //		String queue = "scec_hiprio";
@@ -157,6 +163,12 @@ public class ETAS_ConfigGenerator {
 			config.setStartYear(startYear);
 		else
 			config.setStartTimeMillis(startTimeMillis);
+		if (p != null)
+			config.setETAS_P(p);
+		if (c != null)
+			config.setETAS_C(c);
+		if (log10k != null)
+			config.setETAS_Log10_K(log10k);
 		
 		File configFile = new File(outputDir, "config.json");
 		File localConfFile = new File(localOutputDir, "config.json");
