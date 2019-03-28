@@ -413,11 +413,11 @@ public class ModAttenuationRelationship extends AttenuationRelationship implemen
 		}
 	}
 	
-	protected ScalarIMR getCurrentIMR() {
+	public ScalarIMR getCurrentIMR() {
 		return imr;
 	}
 	
-	protected AbstractAttenRelMod getCurrentMod() {
+	public AbstractAttenRelMod getCurrentMod() {
 		return mod;
 	}
 

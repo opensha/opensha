@@ -34,6 +34,10 @@ public class FixedStdDevMod extends AbstractAttenRelMod {
 		modParams.addParameter(stdDevParam);
 	}
 	
+	public void setStdDev(double stdDev) {
+		stdDevParam.setValue(stdDev);
+	}
+	
 	@Override
 	public void setIMRParams(ScalarIMR imr) {
 		// do nothing

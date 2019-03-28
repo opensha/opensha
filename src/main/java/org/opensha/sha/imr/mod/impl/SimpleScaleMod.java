@@ -41,6 +41,18 @@ public class SimpleScaleMod extends AbstractAttenRelMod {
 		modParams.addParameter(logSpaceScaleParam);
 	}
 	
+	public void setMeanScaleFactor(double scale) {
+		meanScaleParam.setValue(scale);
+	}
+	
+	public void setMeanScaleInLogSpace(boolean logSpace) {
+		logSpaceScaleParam.setValue(logSpace);
+	}
+	
+	public void setStdDevScaleFactor(double scale) {
+		stdDevScaleParam.setValue(scale);
+	}
+	
 	@Override
 	public void setIMRParams(ScalarIMR imr) {
 		// do nothing
