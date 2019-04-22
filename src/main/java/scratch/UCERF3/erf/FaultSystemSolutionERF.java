@@ -416,7 +416,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		
 		// update other sources if needed
 		boolean numOtherRupsChanged=false;	// this is needed below
-		if(bgRupTypeChanged) {
+		if(bgRupTypeChanged || timeSpanChangeFlag) {
 			numOtherRupsChanged = initOtherSources();	// these are created even if not used; this sets numOtherSources
 			gridSourceCache = null;
 		}

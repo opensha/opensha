@@ -340,7 +340,7 @@ public class ETAS_Simulator {
 		PriorityQueue<ETAS_EqkRupture>  simulatedRupsQueue = new PriorityQueue<ETAS_EqkRupture>(1000, oigTimeComparator);
 		
 		// this is for keeping track of aftershocks on the fault system
-		ArrayList<Integer> nthFaultSysRupAftershocks = new ArrayList<Integer>();
+		ArrayList<Integer> nthFaultSysRupAftershocks = D ? new ArrayList<Integer>() : null;
 		
 		// get simulation timespan info
 		long simStartTimeMillis = erf.getTimeSpan().getStartTimeCalendar().getTimeInMillis();
@@ -354,30 +354,11 @@ public class ETAS_Simulator {
 		if(D) System.out.println("Done updating forecast in testETAS_Simulation");
 		
 		//Compute origTotRate; this calculation includes any ruptures outside region, 
-		// but this is dominated by gridded seis so shouldn't matter; using 
-		// ERF_Calculator.getTotalRateInRegion(erf, griddedRegion, 0.0) takes way too long.
-		if(D) System.out.println("Computing origTotRate");
+				// but this is dominated by gridded seis so shouldn't matter; using 
+				// ERF_Calculator.getTotalRateInRegion(erf, griddedRegion, 0.0) takes way too long.
+		if(D) System.out.println("Computing original spontaneousRupSampler & sourceRates[s]");
 		long st = System.currentTimeMillis();
 		double origTotRate=0;
-		for (int sourceID=0; sourceID<erf.getNumSources(); sourceID++) {
-			ProbEqkSource src = erf.getSource(sourceID);
-			for (int rupID=0; rupID<src.getNumRuptures(); rupID++) {
-				ProbEqkRupture rup = src.getRupture(rupID);
-				double rupRate = rup.getMeanAnnualRate(erf.getTimeSpan().getDuration());
-				Preconditions.checkState(Doubles.isFinite(rupRate),
-						"Non fininte rup rate: %s, prob=%s, src=%s, rup=%s, mag=%s, ptSource=%s",
-						rupRate, rup.getProbability(), sourceID, rupID, rup.getMag(), rup.getRuptureSurface().isPointSurface());
-				origTotRate += rupRate;
-			}
-		}
-		if (D) System.out.println("\torigTotRate="+(float)origTotRate+"; that took (sec): "+(float)(System.currentTimeMillis()-st)/1000f);
-		info_fr.write("\nExpected mean annual rate over timeSpan (per year) = "+(float)origTotRate+"\n");
-		info_fr.flush();
-		
-		
-		// TODO This loop is redundant with that above; combine
-		if(D) System.out.println("Computing original spontaneousRupSampler & sourceRates[s]");
-		st = System.currentTimeMillis();
 		double sourceRates[] = new double[erf.getNumSources()];
 		double duration = erf.getTimeSpan().getDuration();
 		IntegerPDF_FunctionSampler spontaneousRupSampler = new IntegerPDF_FunctionSampler(erf.getTotNumRups());
@@ -390,13 +371,23 @@ public class ETAS_Simulator {
 				double rate = fssERF.getSolution().getRateForRup(fssERF.getFltSysRupIndexForSource(s));
 				System.out.println("ZERO RATE FAULT SOURCE: "+rate+"\t"+src.getRupture(0).getProbability()+"\t"+src.getName());
 			}
-			for(ProbEqkRupture rup:src) {
+			for (int r=0; r<src.getNumRuptures(); r++) {
+				ProbEqkRupture rup = src.getRupture(r);
 				if (nthRup >= spontaneousRupSampler.size())
 					throw new RuntimeException("Weird...tot num="+erf.getTotNumRups()+", nth="+nthRup);
-				spontaneousRupSampler.set(nthRup, rup.getMeanAnnualRate(duration));
+				double rupRate = rup.getMeanAnnualRate(duration);
+				if (!Double.isFinite(rupRate)) {
+					Preconditions.checkState(Doubles.isFinite(rupRate),
+							"Non fininte rup rate: %s, prob=%s, src=%s, rup=%s, mag=%s, ptSource=%s",
+							rupRate, rup.getProbability(), s, r, rup.getMag(), rup.getRuptureSurface().isPointSurface());
+				}
+				origTotRate += rupRate;
+				spontaneousRupSampler.set(nthRup, rupRate);
 				nthRup+=1;
 			}
 		}
+		info_fr.write("\nExpected mean annual rate over timeSpan (per year) = "+(float)origTotRate+"\n");
+		info_fr.flush();
 		if(D) System.out.println("\tspontaneousRupSampler.calcSumOfY_Vals()="+(float)spontaneousRupSampler.calcSumOfY_Vals() +
 				"; that took (sec): "+(float)(System.currentTimeMillis()-st)/1000f);
 		
@@ -774,13 +765,13 @@ public class ETAS_Simulator {
 			// if it was a fault system rupture, need to update time span, rup rates, block, and samplers.
 
 			if(srcIndex<numFaultSysSources) {
-				
-				nthFaultSysRupAftershocks.add(nthRup);
 
 				// set the start time for the time dependent calcs
 				erf.getTimeSpan().setStartTimeInMillis(rupOT);	
 				
 				if(D) {
+					nthFaultSysRupAftershocks.add(nthRup);
+					
 					Toolkit.getDefaultToolkit().beep();
 					System.out.println("GOT A FAULT SYSTEM RUPTURE!");
 				}

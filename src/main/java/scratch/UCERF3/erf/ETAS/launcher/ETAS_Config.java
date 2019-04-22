@@ -49,6 +49,7 @@ public class ETAS_Config {
 	private boolean binaryOutput;
 	private List<BinaryFilteredOutputConfig> binaryOutputFilters;
 	private boolean forceRecalc = false;
+	private Boolean reuseERFs = null;
 	private String simulationName = null;
 	private int numRetries = 3;
 	private final File outputDir;
@@ -451,6 +452,10 @@ public class ETAS_Config {
 	
 	public boolean isForceRecalc() {
 		return forceRecalc;
+	}
+	
+	public boolean isReuseERFs() {
+		return reuseERFs == null ? false : reuseERFs;
 	}
 	
 	public void setSimulationName(String simulationName) {

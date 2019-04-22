@@ -124,6 +124,7 @@ public class ETAS_Launcher {
 	private int[] isCubeInsideFaultPolygon;
 	
 	private Deque<FaultSystemSolution> fssDeque = new ArrayDeque<>();
+	private Deque<AbstractERF> erfDeque = new ArrayDeque<>();
 	
 	// last event data
 	private Map<Integer, List<LastEventData>> lastEventData;
@@ -351,9 +352,13 @@ public class ETAS_Launcher {
 		return histQkList;
 	}
 
-	public synchronized FaultSystemSolution checkOutFSS() {
-		FaultSystemSolution fss;
-		if (fssDeque.isEmpty()) {
+	public FaultSystemSolution checkOutFSS() {
+		FaultSystemSolution fss = null;
+		synchronized (fssDeque) {
+			if (!fssDeque.isEmpty())
+				fss = fssDeque.pop();
+		}
+		if (fss== null) {
 			// load a new one
 			try {
 				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+config.getFSS_File().getAbsolutePath());
@@ -361,17 +366,19 @@ public class ETAS_Launcher {
 				
 				if (config.isGridSeisCorr() && !config.isGriddedOnly()) {
 					if (gridSeisCorrections == null) {
-						File cacheFile = new File(config.getCacheDir(), "griddedSeisCorrectionCache");
-						debug(DebugLevel.FINE, "Loading gridded seismicity correction cache file from "+cacheFile.getAbsolutePath());
-						gridSeisCorrections = MatrixIO.doubleArrayFromFile(cacheFile);
+						synchronized (fssDeque) {
+							if (gridSeisCorrections == null) {
+								File cacheFile = new File(config.getCacheDir(), "griddedSeisCorrectionCache");
+								debug(DebugLevel.FINE, "Loading gridded seismicity correction cache file from "+cacheFile.getAbsolutePath());
+								gridSeisCorrections = MatrixIO.doubleArrayFromFile(cacheFile);
+							}
+						}
 					}
 					ETAS_Simulator.correctGriddedSeismicityRatesInERF(fss, false, gridSeisCorrections);
 				}
 			} catch (IOException | DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
-		} else {
-			fss = fssDeque.pop();
 		}
 		// reset last event data
 		FaultSystemRupSet rupSet = fss.getRupSet();
@@ -516,6 +523,7 @@ public class ETAS_Launcher {
 		}
 		erf.getTimeSpan().setStartTimeInMillis(ot+1);
 		erf.getTimeSpan().setDuration(duration);
+		erf.setCacheGridSources(false); // seems faster with set to false, and less memory
 		return erf;
 	}
 	
@@ -533,6 +541,52 @@ public class ETAS_Launcher {
 		erf.getTimeSpan().setDuration(duration);
 		
 		return erf;
+	}
+
+	private AbstractERF checkOutERF() {
+		AbstractERF erf = null;
+		synchronized (erfDeque) {
+			if (!erfDeque.isEmpty())
+				erf = erfDeque.pop();
+		}
+		if (erf == null) {
+			// load a new one
+			debug(DebugLevel.FINE, "Loading a new ERF");
+			FaultSystemSolution sol = null;
+			if (config.isGriddedOnly()) {
+				erf = buildGriddedERF(simulationOT, config.getDuration());
+			} else {
+				sol = checkOutFSS();
+				erf = buildERF_millis(sol, config.isTimeIndependentERF(), config.getDuration(), simulationOT);
+			}
+			erf.updateForecast();
+		} else {
+			// already have one, need to reset 
+			if (!config.isGriddedOnly() && !config.isTimeIndependentERF()) {
+				double startYear = 1970d + (double)simulationOT/(double)ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+				erf.getParameter(HistoricOpenIntervalParam.NAME).setValue(startYear-1875d);
+			}
+			erf.getTimeSpan().setStartTimeInMillis(simulationOT+1);
+			erf.getTimeSpan().setDuration(config.getDuration());
+			
+			if (!config.isGriddedOnly()) {
+				// reset all time of last event data
+				FaultSystemSolutionERF_ETAS fssERF = (FaultSystemSolutionERF_ETAS)erf;
+				FaultSystemRupSet rupSet = fssERF.getSolution().getRupSet();
+				for (int s=0; s<rupSet.getNumSections(); s++)
+					fssERF.setFltSectOccurranceTime(s, rupSet.getFaultSectionData(s).getDateOfLastEvent());
+			}
+			
+			erf.updateForecast();
+		}
+		
+		return erf;
+	}
+	
+	private void checkInERF(AbstractERF erf) {
+		synchronized (erfDeque) {
+			erfDeque.push(erf);
+		}
 	}
 	
 	public static boolean isAlreadyDone(File resultsDir) {
@@ -610,7 +664,7 @@ public class ETAS_Launcher {
 
 		@Override
 		public Integer call() {
-			System.gc();
+//			System.gc();
 			
 			File resultsDir = getResultsDir(index);
 			if (!config.isForceRecalc() && isAlreadyDone(resultsDir)) {
@@ -623,15 +677,8 @@ public class ETAS_Launcher {
 			debug("calculating "+index);
 
 			debug("Instantiating ERF");
-			AbstractERF erf;
-			FaultSystemSolution sol = null;
-			if (config.isGriddedOnly()) {
-				erf = buildGriddedERF(simulationOT, config.getDuration());
-			} else {
-				sol = checkOutFSS();
-				erf = buildERF_millis(sol, config.isTimeIndependentERF(), config.getDuration(), simulationOT);
-			}
-			erf.updateForecast();
+			AbstractERF erf = checkOutERF();
+			FaultSystemSolution sol = config.isGriddedOnly() ? null : ((FaultSystemSolutionERF_ETAS)erf).getSolution();
 			
 			if (index == 0 && dateLastDebug && sol != null) {
 				debug(DebugLevel.INFO, "Date of last event information:");
@@ -746,7 +793,11 @@ public class ETAS_Launcher {
 				}
 			}
 			
-			if (sol != null)
+			if (config.isReuseERFs())
+				// return this ERF for future use
+				checkInERF(erf);
+			else if (sol != null)
+				// not reusing ERFs, so return the association FSS for reuse
 				checkInFSS(sol);
 			
 			if (!success) {
@@ -954,7 +1005,8 @@ public class ETAS_Launcher {
 	public static void main(String[] args) throws IOException {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 //			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers.json";
-			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers_gridded.json";
+			String argsStr = "--date-last-debug --threads 6 /tmp/config.json";
+//			String argsStr = "--date-last-debug --threads 6 /tmp/config_noreuse.json";
 			args = argsStr.split(" ");
 		}
 		System.setProperty("java.awt.headless", "true");
