@@ -1,6 +1,7 @@
 package org.opensha.commons.data.function;
 
 import java.awt.geom.Point2D;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -134,60 +135,85 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 			updateCumDistVals();
 			dataChange=false;
 		}
-//		System.out.println("prob="+prob);
 		
-		// this is needed because the first one is never accessed in the algorithm below
-		if(prob<cumDistVals[0]) return 0;
 		
-		// search for the index
-		int indexLow=0;
-		int indexHigh=size();
-		long st = System.currentTimeMillis();
-		while(indexHigh-indexLow > 1) {
-			int testIndex = (int)Math.floor((indexHigh+indexLow)/2);
-			if(prob<cumDistVals[testIndex]) {
-				indexHigh=testIndex;
-			}
-			else {
-				indexLow=testIndex;
-			}
-//			if(System.currentTimeMillis()-st > 10000) {	// 100 sec
-//				System.out.println("prob="+prob+"\tindexLow="+indexLow+"\tindexHigh="+indexHigh+"\ttestIndex="+testIndex);
-//				try{
-//					FileWriter fw1 = new FileWriter("tempIntPDF_Data");
-//					fw1.write("prob="+prob+"\tindexLow="+indexLow+"\tindexHigh="+indexHigh+"\ttestIndex="+testIndex+"\n");
-//					for(int i=0;i<this.getNum();i++) {
-//						fw1.write(i+"\t"+(float)getX(i)+"\t"+getY(i)+"\t"+cumDistVals[i]+"\n");
-//					}
-//					fw1.close();
-//				}catch(Exception e) {
-//					e.printStackTrace();
-//
-//				}
-//				System.exit(0);
-//
-//			}
+		// faster version which uses Java's built in binary search. 20% faster than the original algorithm commented out below
+		// 
+		// it is also slightly more accurate. if there is a cum dist value exactly at the given probability, it will return
+		// that index, rather than the index above. this case is rarely if ever encountered
+		int ind = Arrays.binarySearch(cumDistVals, prob);
+		if (ind < 0) {
+			// ind = (-insertion_point - 1)
+			// ind + 1 = -insertion_point
+			// insertion_point = -(ind + 1)
+			ind = -(ind + 1);
 		}
-		if(indexHigh == this.size()) {
+		
+		if (ind >= size()) {
 			boolean containsNaNs=false;
-			for(int i=0;i<this.size();i++)
+			for(int i=0;i<this.size();i++) {
 				if(Double.isNaN(getY(i))) {
-						containsNaNs=true;
-						break;
+					containsNaNs=true;
+					break;
 				}
-//			System.out.println(this);
-			throw new RuntimeException("Problem: chosen int above x-axis bounds; Y-axis contain NaNs? = "+containsNaNs+"\tsumOfAllYVals="+this.getSumOfY_vals());
+			}
+			throw new RuntimeException("Problem: chosen int above x-axis bounds; Y-axis contain NaNs? = "
+					+containsNaNs+"\tsumOfAllYVals="+this.getSumOfY_vals());
 		}
-
-		/*
-		if(indexHigh == this.getNum()) {
-			System.out.println("Error: "+prob+"\n");
-			ArrayList funcs = new ArrayList();
-			funcs.add(this);
-			GraphWindow sr_graph = new GraphWindow(funcs, "");  
-		}
-		*/
-		return indexHigh;
+		return ind;
+//		
+//		
+//		// this is needed because the first one is never accessed in the algorithm below
+//		if(prob<cumDistVals[0]) return 0;
+//		
+//		// search for the index
+//		int indexLow=0;
+//		int indexHigh=size();
+////		long st = System.currentTimeMillis();
+//		while (indexHigh-indexLow > 1) {
+//			int testIndex = (int)Math.floor((indexHigh+indexLow)/2);
+//			if (prob<cumDistVals[testIndex]) {
+//				indexHigh=testIndex;
+//			} else {
+//				indexLow=testIndex;
+//			}
+////			if(System.currentTimeMillis()-st > 10000) {	// 100 sec
+////				System.out.println("prob="+prob+"\tindexLow="+indexLow+"\tindexHigh="+indexHigh+"\ttestIndex="+testIndex);
+////				try{
+////					FileWriter fw1 = new FileWriter("tempIntPDF_Data");
+////					fw1.write("prob="+prob+"\tindexLow="+indexLow+"\tindexHigh="+indexHigh+"\ttestIndex="+testIndex+"\n");
+////					for(int i=0;i<this.getNum();i++) {
+////						fw1.write(i+"\t"+(float)getX(i)+"\t"+getY(i)+"\t"+cumDistVals[i]+"\n");
+////					}
+////					fw1.close();
+////				}catch(Exception e) {
+////					e.printStackTrace();
+////
+////				}
+////				System.exit(0);
+////
+////			}
+//		}
+//		if(indexHigh == this.size()) {
+//			boolean containsNaNs=false;
+//			for(int i=0;i<this.size();i++)
+//				if(Double.isNaN(getY(i))) {
+//						containsNaNs=true;
+//						break;
+//				}
+////			System.out.println(this);
+//			throw new RuntimeException("Problem: chosen int above x-axis bounds; Y-axis contain NaNs? = "+containsNaNs+"\tsumOfAllYVals="+this.getSumOfY_vals());
+//		}
+//
+//		/*
+//		if(indexHigh == this.getNum()) {
+//			System.out.println("Error: "+prob+"\n");
+//			ArrayList funcs = new ArrayList();
+//			funcs.add(this);
+//			GraphWindow sr_graph = new GraphWindow(funcs, "");  
+//		}
+//		*/
+//		return indexHigh;
 	}
 	
 	
@@ -264,14 +290,46 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	}
 	
 	public static void main(String[] args) {
+		double[] testVals = new double[250000];
+		for (int i=0; i<testVals.length; i++)
+			testVals[i] = Math.random();
+		IntegerPDF_FunctionSampler benchSampler = new IntegerPDF_FunctionSampler(testVals);
+		System.out.println("Benchmarking...");
+		long st = System.currentTimeMillis();
+		double sum = 0;
+		for (int i=0; i<1000000000; i++)
+			sum += benchSampler.getInt(Math.random());
+		long elapsed = System.currentTimeMillis() - st;
+		System.out.println("benchmark test sum of "+sum+" after "+elapsed+" ms");
+		
 		double[] values = { 1d, 10d, 0.01d, 5d, 100d, 6d, 0.1d };
 		IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(values);
 		System.out.println("Data: "+Joiner.on(",").join(Doubles.asList(values)));
-		System.out.println("0.5: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.5)));
-		System.out.println("0.9: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.9)));
-		System.out.println("0.99: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.99)));
-		System.out.println("0.999: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.999)));
-		System.out.println("1.0: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(1d)));
+		sampler.updateCumDistVals();
+		System.out.println("Sorted data: "+Joiner.on(",").join(Doubles.asList(sampler.cumDistVals)));
+		System.out.println(sampler.getInt(0));	// 0
+		System.out.println(sampler.getInt(0.00818933748259765));	// 0
+		System.out.println(sampler.getInt(0.00818933748259766));	// 1
+		System.out.println(sampler.getInt(0.089));	// 1
+		System.out.println(sampler.getInt(0.0901));	// 2
+		System.out.println(sampler.getInt(0.092));	// 3
+		System.out.println(sampler.getInt(0.1));	// 3
+		try {
+			System.out.println(sampler.getInt(1d));	// exception
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		sum = 0;
+		st = System.currentTimeMillis();
+		for (int i=0; i<1000000000; i++)
+			sum += sampler.getInt(Math.random());
+		elapsed = System.currentTimeMillis() - st;
+		System.out.println("sum of "+sum+" after "+elapsed+" ms");
+//		System.out.println("0.5: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.5)));
+//		System.out.println("0.9: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.9)));
+//		System.out.println("0.99: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.99)));
+//		System.out.println("0.999: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.999)));
+//		System.out.println("1.0: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(1d)));
 	}
 
 }
