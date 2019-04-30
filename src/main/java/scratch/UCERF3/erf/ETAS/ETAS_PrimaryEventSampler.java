@@ -306,7 +306,7 @@ public class ETAS_PrimaryEventSampler {
 				
 		this.sourceRates = sourceRates;	// pointer to current source rates
 		
-		System.gc();	// garbage collect
+		if(D) System.gc();	// garbage collect
 		
 		if(D)  ETAS_SimAnalysisTools.writeMemoryUse("Memory before making data");
 		
@@ -446,7 +446,7 @@ public class ETAS_PrimaryEventSampler {
 			
 			// now compute initial values for these arrays (nucleation rates of sections given norm time since last and any GR corr)
 			computeSectNucleationRates();
-			System.gc();	// garbage collect
+			if (D) System.gc();	// garbage collect
 			if (D) ETAS_SimAnalysisTools.writeMemoryUse("Memory after making data");
 		}
 		
@@ -4357,8 +4357,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 				mfdForSrcArray[s] = ERF_Calculator.getTotalMFD_ForSource(erf.getSource(s), erf.getTimeSpan().getDuration(), 5.05, 8.95, 40, true);
 			}
 		}
-		System.gc();
-		if(D)ETAS_SimAnalysisTools.writeMemoryUse("Memory after discarding chached Samplers");
+		if (D) System.gc();
+		if (D) ETAS_SimAnalysisTools.writeMemoryUse("Memory after discarding chached Samplers");
 	}
 	
 	

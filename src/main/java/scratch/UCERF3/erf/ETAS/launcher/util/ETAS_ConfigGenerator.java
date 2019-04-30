@@ -36,21 +36,33 @@ public class ETAS_ConfigGenerator {
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException {
 		boolean mpj = true;
-		HPC_Sites hpcSite = HPC_Sites.HPC;
+		HPC_Sites hpcSite = HPC_Sites.Stampede2;
 		
 		FaultModels fm = FaultModels.FM3_1;
-		boolean u2 = true;
-		Integer startYear = 2019;
+		boolean u2 = false;
+		Integer startYear = 2000;
 		Long startTimeMillis = null;
-		boolean histCatalog = false;
-		boolean includeSpontaneous = false;
-		int numSimulations = 500000;
-		double duration = 10d;
+		boolean histCatalog = true;
+		boolean includeSpontaneous = true;
+		int numSimulations = 10000;
+		double duration = 1d;
+//		double duration = 7d/365.25;
 		Long randomSeed = null;
 		
-//		TriggerRupture[] triggerRups = null;
-//		String scenarioName = "Spontaneous";
-//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+		// etas params
+		Double p = null;
+		Double c = null;
+		Double log10k = null;
+		
+//		// critical set from Morgan
+//		Double p = 1.08;
+//		Double c = 0.04;
+//		Double log10k = -2.31;
+		
+		TriggerRupture[] triggerRups = null;
+		String scenarioName = "Spontaneous";
+//		String scenarioName = "Historical1919_critical";
+		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		String nameAdd = null;
 		
@@ -70,20 +82,21 @@ public class ETAS_ConfigGenerator {
 //		String scenarioName = "Parkfield M6";
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
-		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(34.42295,-117.80177,5.8), null, 6) };
-		String scenarioName = "Mojave Point M6";
-		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+//		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(34.42295,-117.80177,5.8), null, 6) };
+//		String scenarioName = "Mojave Point M6";
+//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		// only if mpj == true
-		int nodes = 18;
-		int hours = 24;
-		String queue = "scec";
+		int nodes = 5;
+		int hours = 10;
+		String queue = hpcSite == HPC_Sites.HPC ? "scec" : null;
 //		String queue = "scec_hiprio";
 //		Integer threads = null;
 		
-		Integer threads = 8;
+		Integer threads = 50;
 		randomSeed = 123456789l;
-		nameAdd = threads+"threads";
+		
+		nameAdd = nodes+"nodes_"+threads+"threads";
 		
 		File mainOutputDir = new File("${ETAS_SIM_DIR}");
 		File launcherDir = new File("${ETAS_LAUNCHER}");
@@ -157,6 +170,12 @@ public class ETAS_ConfigGenerator {
 			config.setStartYear(startYear);
 		else
 			config.setStartTimeMillis(startTimeMillis);
+		if (p != null)
+			config.setETAS_P(p);
+		if (c != null)
+			config.setETAS_C(c);
+		if (log10k != null)
+			config.setETAS_Log10_K(log10k);
 		
 		File configFile = new File(outputDir, "config.json");
 		File localConfFile = new File(localOutputDir, "config.json");
@@ -185,12 +204,14 @@ public class ETAS_ConfigGenerator {
 			if (line.startsWith("#SBATCH -N"))
 				line = "#SBATCH -N "+nodes;
 			
+			if (line.startsWith("#SBATCH -n")) {
+				int cores = threads == null ? nodes : nodes*threads;
+				line = "#SBATCH -n "+cores;
+			}
+			
 			if (line.startsWith("#SBATCH -p")) {
 				nodeLineFound = true;
-				if (queue == null)
-					// no queue
-					continue;
-				else
+				if (queue != null)
 					line = "#SBATCH -p "+queue;
 			}
 			

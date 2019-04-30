@@ -1148,21 +1148,21 @@ public class FaultBasedMapGen {
 //				Preconditions.checkState(Double.isNaN(vals.get(i).value)
 //						|| vals.get(i).value >= vals.get(i-1).value, vals.get(i-1).value+", "+vals.get(i).value);
 			
-			try {
-				FileWriter fw = new FileWriter(new File("/tmp/text.xy"));
-				for (TraceValue val : vals) {
-					LocationList fault = val.trace;
-					double value = val.value;
-					fw.write("> -Z"+value+"\n");
-					for (Location loc : fault)
-						fw.write(loc.getLongitude()+"\t"+loc.getLatitude()+"\n");
-				}
-				fw.close();
-				cpt.writeCPTFile(new File("/tmp/cpt.cpt"));
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+//			try {
+//				FileWriter fw = new FileWriter(new File("/tmp/text.xy"));
+//				for (TraceValue val : vals) {
+//					LocationList fault = val.trace;
+//					double value = val.value;
+//					fw.write("> -Z"+value+"\n");
+//					for (Location loc : fault)
+//						fw.write(loc.getLongitude()+"\t"+loc.getLatitude()+"\n");
+//				}
+//				fw.close();
+//				cpt.writeCPTFile(new File("/tmp/cpt.cpt"));
+//			} catch (IOException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
 			for (TraceValue val : vals) {
 				LocationList fault = val.trace;
 				double value = val.value;

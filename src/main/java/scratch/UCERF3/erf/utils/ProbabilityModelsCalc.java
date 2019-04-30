@@ -604,7 +604,7 @@ public class ProbabilityModelsCalc {
 		}
 		
 		Preconditions.checkState(Double.isNaN(aveTimeSinceLastWhereKnownYears)
-				|| aveTimeSinceLastWhereKnownYears >= 0, "aveTimeSinceLastWhereKnownYears="+aveTimeSinceLastWhereKnownYears);
+				|| aveTimeSinceLastWhereKnownYears >= 0, "aveTimeSinceLastWhereKnownYears=%s", aveTimeSinceLastWhereKnownYears);
 		// the following global variables were just set by the above 
 		// 		double totRupArea
 		// 		double totRupAreaWithDateOfLast

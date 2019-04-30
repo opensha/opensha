@@ -237,7 +237,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 				
 		this.sourceRates = sourceRates;	// pointer to current source rates
 		
-		System.gc();	// garbage collect
+		if (D) System.gc();	// garbage collect
 		
 		if(D)  ETAS_SimAnalysisTools.writeMemoryUse("Memory before making data");
 		

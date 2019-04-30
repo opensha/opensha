@@ -17,8 +17,10 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.FileNameComparator;
 import org.opensha.commons.util.cpt.CPT;
@@ -39,10 +41,14 @@ class LogFileBenchmark {
 	
 	private DiscretizedFunc[] fractileFuncs;
 
+	private String title;
 	private String xValName;
+	private String yValName;
 	
-	public LogFileBenchmark(String xValName) {
+	public LogFileBenchmark(String title, String xValName, String yValName) {
+		this.title = title;
 		this.xValName = xValName;
+		this.yValName = yValName;
 		meanFunc = new ArbitrarilyDiscretizedFunc();
 		timeToSolFunc = new ArbitrarilyDiscretizedFunc();
 		
@@ -51,13 +57,16 @@ class LogFileBenchmark {
 			fractileFuncs[f] = new ArbitrarilyDiscretizedFunc();
 	}
 	
-	public void addLog(double xVal, File logFile) throws IOException {
+	public void addLog(double xVal, File logFile, boolean first) throws IOException {
 		if (logFile.isDirectory()) {
 			File[] files = logFile.listFiles();
 			Arrays.sort(files, new FileNameComparator());
 			for (File file : files) {
-				if (file.getName().contains(".slurm.o"))
+				if (file.getName().contains(".slurm.o")) {
 					logFile = file;
+					if (first)
+						break;
+				}
 			}
 			Preconditions.checkState(!logFile.isDirectory(), "No slurm output files found in "+logFile.getAbsolutePath());
 		}
@@ -155,14 +164,27 @@ class LogFileBenchmark {
 		}
 	}
 	
-	public void plot() {
+	public void plot() throws IOException {
 		List<DiscretizedFunc> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
 		funcs.add(timeToSolFunc);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
 		
-		PlotSpec spec = new PlotSpec(funcs, chars, "Time To Solution", xValName, "Time (hours)");
+		PlotSpec spec = new PlotSpec(funcs, chars, title, xValName, yValName);
+		
+		PlotPreferences plotPrefs = PlotPreferences.getDefault();
+		plotPrefs.setTickLabelFontSize(18);
+		plotPrefs.setAxisLabelFontSize(20);
+		plotPrefs.setPlotLabelFontSize(21);
+		plotPrefs.setBackgroundColor(Color.WHITE);
+
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(plotPrefs);
+		
+		gp.drawGraphPanel(spec);
+		gp.getChartPanel().setSize(800, 600);
+		gp.saveAsPNG("/tmp/scaling.png");
+		gp.saveAsPDF("/tmp/scaling.pdf");
 		
 		GraphWindow gw = new GraphWindow(spec);
 		gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
@@ -194,15 +216,24 @@ class LogFileBenchmark {
 	public static void main(String[] args) throws IOException {
 		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations");
 //		String prefix = "2018_08_31-Spontaneous-includeSpont-historicalCatalog-10yr-";
-		String prefix = "2018_08_31-MojaveM7-noSpont-10yr-";
+//		String prefix = "2018_08_31-MojaveM7-noSpont-10yr-";
+		String prefix = "2019_04_12-Spontaneous-includeSpont-historicalCatalog-1yr-5nodes_";
+
+//		int[] threads = { 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16 };
+		int[] threads = { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 };
+		boolean first = false;
 		
-		int[] threads = { 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16 };
-		
-		LogFileBenchmark benchmark = new LogFileBenchmark("# Threads");
+		LogFileBenchmark benchmark = new LogFileBenchmark("OpenSHA UCERF3-ETAS Stampede2 SKX Scaling",
+				"# Threads per SKX Node", "Time To Solution (hours)");
 		
 		for (int thread : threads) {
 			File dir = new File(outputDir, prefix+thread+"threads");
-			benchmark.addLog(thread, dir);
+			try {
+				benchmark.addLog(thread, dir, first);
+			} catch (Exception e) {
+				System.out.println("Skipping "+dir.getName());
+				e.printStackTrace();
+			}
 		}
 		
 		benchmark.plot();
