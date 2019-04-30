@@ -352,9 +352,7 @@ public class ASK_2014 implements NGAW2_GMM {
 	private static final double calcSoilTerm(Coeffs c, double vs30, double z1p0) {
 		// short circuit; default z1 will be the same as z1ref
 		if (Double.isNaN(z1p0)) return 0.0;
-		// -- Equation 18
-		double vsPow4 = vs30 * vs30 * vs30 * vs30;
-		double z1ref = exp(-7.67 / 4.0 * log((vsPow4 + A) / B)) / 1000.0; // km
+		double z1ref = calcZ1ref(vs30);
 
 //		double z1c = (vs30 > 500.0) ? c.a46 :
 //					 (vs30 > 300.0) ? c.a45 :
@@ -365,6 +363,12 @@ public class ASK_2014 implements NGAW2_GMM {
 		double z1c = Interpolate.findY(VS_BINS, vsCoeff, vs30);
 		
 		return z1c * log((z1p0 + 0.01) / (z1ref + 0.01));
+	}
+	
+	public static final double calcZ1ref(double vs30) {
+		// -- Equation 18
+		double vsPow4 = vs30 * vs30 * vs30 * vs30;
+		return exp(-7.67 / 4.0 * log((vsPow4 + A) / B)) / 1000.0; // km
 	}
 	
 	// -- Equation 24

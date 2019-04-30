@@ -267,8 +267,13 @@ public class BSSA_2014 implements NGAW2_GMM {
 	// model of ChiouYoungs_2013 -- Equations 10, 11
 	private static final double calcDeltaZ1(double z1p0, double vs30) {
 		if (Double.isNaN(z1p0)) return 0.0;
+		return z1p0 - calcZ1ref(vs30);
+	}
+	
+	public static final double calcZ1ref(double vs30) {
+		// -- Equation 18
 		double vsPow4 = vs30 * vs30 * vs30 * vs30;
-		return z1p0 - exp(-7.15 / 4.0 * log((vsPow4 + A) / B)) / 1000.0;
+		return exp(-7.15 / 4.0 * log((vsPow4 + A) / B)) / 1000.0; // km
 	}
 
 	// Aleatory uncertainty model
