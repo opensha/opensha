@@ -213,10 +213,13 @@ class SectionPolygons {
 		for (Integer pID : parentAreaMap.keySet()) {
 			idx++;
 			
-			StringBuilder sb = new StringBuilder();
-			sb.append(Strings.padEnd(Integer.toString(idx), 5, ' '));
-			sb.append(Strings.padEnd(Integer.toString(pID), 5, ' '));
-			sb.append(Strings.padEnd(parentNameMap.get(pID), 48, ' '));
+			StringBuilder sb = null;
+			if (log) {
+				sb = new StringBuilder();
+				sb.append(Strings.padEnd(Integer.toString(idx), 5, ' '));
+				sb.append(Strings.padEnd(Integer.toString(pID), 5, ' '));
+				sb.append(Strings.padEnd(parentNameMap.get(pID), 48, ' '));
+			}
 
 			if (parentAreaMap.get(pID) == null) {
 				if (log) System.out.println(sb.append("null-poly"));
