@@ -454,6 +454,10 @@ public class ETAS_Config {
 		return forceRecalc;
 	}
 	
+	public void setReuseERFs(Boolean reuseERFs) {
+		this.reuseERFs = reuseERFs;
+	}
+	
 	public boolean isReuseERFs() {
 		return reuseERFs == null ? false : reuseERFs;
 	}
