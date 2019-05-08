@@ -917,6 +917,14 @@ public class DataUtils {
 		public int getNum() {
 			return num;
 		}
+		
+		/**
+		 * 
+		 * @return sum of all values added to this tracker
+		 */
+		public double getSum() {
+			return tot;
+		}
 
 		@Override
 		public String toString() {
