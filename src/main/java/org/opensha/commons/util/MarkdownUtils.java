@@ -15,6 +15,7 @@ import org.commonmark.ext.heading.anchor.HeadingAnchorExtension;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
+import org.opensha.commons.data.CSVFile;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
@@ -140,6 +141,19 @@ public class MarkdownUtils {
 	 */
 	public static TableBuilder tableBuilder() {
 		return new TableBuilder();
+	}
+	
+	public static TableBuilder tableFromCSV(CSVFile<String> csv, boolean boldFirstColumn) {
+		TableBuilder table = tableBuilder();
+		for (int row=0; row<csv.getNumRows(); row++) {
+			List<String> line = new ArrayList<>(csv.getLine(row));
+			if (line.isEmpty())
+				continue;
+			if (boldFirstColumn)
+				line.set(0, "**"+line.get(0)+"**");
+			table.addLine(line);
+		}
+		return table;
 	}
 	
 	private static String generateTableDashLine(int numVals) {
