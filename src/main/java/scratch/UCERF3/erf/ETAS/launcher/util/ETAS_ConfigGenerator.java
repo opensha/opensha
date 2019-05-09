@@ -39,15 +39,17 @@ public class ETAS_ConfigGenerator {
 		HPC_Sites hpcSite = HPC_Sites.Stampede2;
 		
 		FaultModels fm = FaultModels.FM3_1;
-		boolean u2 = false;
-		Integer startYear = 2000;
+		boolean u2 = true;
+		Integer startYear = 2019;
 		Long startTimeMillis = null;
-		boolean histCatalog = true;
-		boolean includeSpontaneous = true;
-		int numSimulations = 10000;
-		double duration = 1d;
+		boolean histCatalog = false;
+		boolean includeSpontaneous = false;
+		int numSimulations = 500000;
+		double duration = 10d;
 //		double duration = 7d/365.25;
-		Long randomSeed = null;
+//		Long randomSeed = 123456789l;
+		Long randomSeed = 987654321l;
+		Boolean reuseERFs = false;
 		
 		// etas params
 		Double p = null;
@@ -59,10 +61,10 @@ public class ETAS_ConfigGenerator {
 //		Double c = 0.04;
 //		Double log10k = -2.31;
 		
-		TriggerRupture[] triggerRups = null;
-		String scenarioName = "Spontaneous";
-//		String scenarioName = "Historical1919_critical";
-		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+//		TriggerRupture[] triggerRups = null;
+//		String scenarioName = "Spontaneous";
+////		String scenarioName = "Historical1919_critical";
+//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		String nameAdd = null;
 		
@@ -70,9 +72,9 @@ public class ETAS_ConfigGenerator {
 //		String scenarioName = "Mojave M7";
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
-//		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(33.3172,-115.728, 5.96), null, 4.8) };
-//		String scenarioName = "2009 Bombay Beach M4.8";
-//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(33.3172,-115.728, 5.96), null, 4.8) };
+		String scenarioName = "2009 Bombay Beach M4.8";
+		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 //		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(33.3172,-115.728, 5.96), null, 6) };
 //		String scenarioName = "2009 Bombay Beach M6";
@@ -87,16 +89,15 @@ public class ETAS_ConfigGenerator {
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		// only if mpj == true
-		int nodes = 5;
-		int hours = 10;
+		int nodes = 20;
+		int hours = 24;
 		String queue = hpcSite == HPC_Sites.HPC ? "scec" : null;
 //		String queue = "scec_hiprio";
 //		Integer threads = null;
 		
-		Integer threads = 50;
-		randomSeed = 123456789l;
+		Integer threads = 30;
 		
-		nameAdd = nodes+"nodes_"+threads+"threads";
+//		nameAdd = nodes+"nodes_"+threads+"threads";
 		
 		File mainOutputDir = new File("${ETAS_SIM_DIR}");
 		File launcherDir = new File("${ETAS_LAUNCHER}");
@@ -162,6 +163,7 @@ public class ETAS_ConfigGenerator {
 		
 		ETAS_Config config = new ETAS_Config(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir,
 				triggerCatalog, triggerCatalogSurfaceMappings, triggerRups);
+		config.setReuseERFs(reuseERFs);
 		config.setSimulationName(scenarioName);
 		config.setRandomSeed(randomSeed);
 		Preconditions.checkState(startYear == null || startTimeMillis == null, "cannot supply both startYear and startTimeMillis");
