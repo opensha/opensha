@@ -1904,7 +1904,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			gmtCommandLines.add(commandLine+"\n");
 		}
 		if (cptEqualSpacing) {
-			String commandLine="${GMT_PATH}psscale -L -B:"+scaleLabel+": -D3.25i/-0.5i/6i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
+			String commandLine="${GMT_PATH}psscale -L -B+l"+scaleLabel+" -D3.25i/-0.5i/6i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
 			gmtCommandLines.add(commandLine+"\n");
 		} else {
 			String commandLine="${GMT_PATH}psscale -Ba"+tickInc+":"+scaleLabel+": -D3.25i/-0.5i/6i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
