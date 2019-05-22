@@ -17,15 +17,20 @@ import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.Interpolate;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.RSQSimEvent;
@@ -50,7 +55,20 @@ public class RSQSimSubSectionMapper {
 	private List<SimulatorElement> elements;
 	private Map<Integer, Double> subSectAreas;
 	private Map<IDPairing, Double> distsCache;
-	private Map<SimulatorElement, Double> elemSectDASs;
+	private Map<SimulatorElement, DAS_Record> elemRawDASs;
+	private Map<SimulatorElement, DAS_Record> elemSectDASs;
+	
+	public final class DAS_Record {
+		public final double midDAS;
+		public final double startDAS;
+		public final double endDAS;
+		
+		public DAS_Record(double midDAS, double startDAS, double endDAS) {
+			this.midDAS = midDAS;
+			this.startDAS = startDAS;
+			this.endDAS = endDAS;
+		}
+	}
 	
 	private int minElemSectID;
 	private Map<SimulatorElement, FaultSectionPrefData> elemToSectsMap;
@@ -101,9 +119,11 @@ public class RSQSimSubSectionMapper {
 		
 		// now compute DAS for each element
 		elemSectDASs = new HashMap<>();
+		elemRawDASs = new HashMap<>();
 		for (FaultSectionPrefData sect : subSects) {
 			if (!sectsToElemsMap.containsKey(sect))
 				continue;
+			HashSet<SimulatorElement> sectElems = sectsToElemsMap.get(sect);
 			// first create a really high resolution 3-D fault surface
 			SimpleFaultData sfd = new SimpleFaultData(sect.getAveDip(), Math.max(sect.getAveLowerDepth(), 20), sect.getOrigAveUpperDepth(),
 					sect.getFaultTrace(), sect.getDipDirection());
@@ -111,6 +131,11 @@ public class RSQSimSubSectionMapper {
 			StirlingGriddedSurface gridSurf = new StirlingGriddedSurface(sfd, 0.5, 1d);
 			
 			ArbitrarilyDiscretizedFunc[] dasFuncs = new ArbitrarilyDiscretizedFunc[gridSurf.getNumRows()];
+//			ArbitrarilyDiscretizedFunc[] dasFuncs = new ArbitrarilyDiscretizedFunc[1];
+			
+			boolean debugSect = sect.getParentSectionId() == 142;
+			if (debugSect)
+				System.out.println("DEBUG section "+sect.getSectionName());
 			
 			// build a mapping function from the DAS computed assuming a straight line to the actual DAS
 			// do this separately for each depth to avoid any systematic offset issues with depth
@@ -139,14 +164,15 @@ public class RSQSimSubSectionMapper {
 			}
 			
 			// calculate raw DAS for each element
-			Map<SimulatorElement, Double> rawDASs = new HashMap<>();
 			Map<SimulatorElement, Integer> elemRows = new HashMap<>();
 			XY_DataSet dasDepthFunc = new DefaultXY_DataSet();
-			for (SimulatorElement elem : sectsToElemsMap.get(sect)) {
+			List<Double> dips = new ArrayList<>();
+			for (SimulatorElement elem : sectElems) {
 				Location center = elem.getCenterLocation();
+				dips.add(elem.getFocalMechanism().getDip());
 				int closestRow = -1;
 				double minDepthDiff = Double.POSITIVE_INFINITY;
-				for (int row=0; row<gridSurf.getNumRows(); row++) {
+				for (int row=0; row<dasFuncs.length; row++) {
 					double depthDiff = Math.abs(center.getDepth() - gridSurf.get(row, 0).getDepth());
 					if (depthDiff < minDepthDiff) {
 						minDepthDiff = depthDiff;
@@ -155,40 +181,76 @@ public class RSQSimSubSectionMapper {
 				}
 				Location start = gridSurf.get(closestRow, 0);
 				Location end = gridSurf.get(closestRow, gridSurf.getNumCols()-1);
-				double rawDAS = calcStraightLineDAS(start, end, center);
-				rawDASs.put(elem, rawDAS);
+				double rawMidDAS = calcStraightLineDAS(start, end, center);
+				double rawMinDAS = Double.POSITIVE_INFINITY;
+				double rawMaxDAS = Double.NEGATIVE_INFINITY;
+				for (Location vert : elem.getVertices()) {
+					double vertRawDAS = calcStraightLineDAS(start, end, vert);
+					rawMinDAS = Math.min(rawMinDAS, vertRawDAS);
+					rawMaxDAS = Math.max(rawMaxDAS, vertRawDAS);
+					dasDepthFunc.set(vertRawDAS, vert.getDepth());
+				}
+				elemRawDASs.put(elem, new DAS_Record(rawMidDAS, rawMinDAS, rawMaxDAS));
 				elemRows.put(elem, closestRow);
-				dasDepthFunc.set(rawDAS, center.getDepth());
 			}
 			
 			double minDepth = dasDepthFunc.getMinY();
 			double maxDepth = dasDepthFunc.getMaxY();
+			double aveDip = FaultUtils.getAngleAverage(dips);
+			double estDDW = (maxDepth - minDepth)/Math.sin(Math.toRadians(aveDip));
 			
-			double midDepth = 0.5*(maxDepth + minDepth);
-			double upperHalfMin = Double.POSITIVE_INFINITY;
-			double upperHalfMax = Double.NEGATIVE_INFINITY;
-			double lowerHalfMin = Double.POSITIVE_INFINITY;
-			double lowerHalfMax = Double.NEGATIVE_INFINITY;
+			double aveArea = 0d;
+			for (SimulatorElement e : sectElems)
+				aveArea += e.getArea()*1e-6;
+			aveArea /= sectElems.size();
+			double aveSpacing = Math.sqrt(aveArea);
+			
+			double estNumDownDip = estDDW/aveSpacing;
+			int numDepthBins = Integer.max(2, (int)Math.round(estNumDownDip / 4));
+			if (debugSect) {
+				System.out.println("\tEstimated DDW with dip="+(float)aveDip+": "+estDDW);
+				System.out.println("\tEstimated average spacing: "+aveSpacing);
+				System.out.println("\tEstimated num down dip: "+estNumDownDip);
+				System.out.println("\tDepth bins: "+numDepthBins);
+			}
+			
+			EvenlyDiscretizedFunc minFunc = new EvenlyDiscretizedFunc(minDepth, maxDepth, numDepthBins);
+			EvenlyDiscretizedFunc maxFunc = new EvenlyDiscretizedFunc(minDepth, maxDepth, numDepthBins);
+			for (int i=0; i<minFunc.size(); i++) {
+				minFunc.set(i, Double.POSITIVE_INFINITY);
+				maxFunc.set(i, Double.NEGATIVE_INFINITY);
+			}
 			
 			for (Point2D pt : dasDepthFunc) {
 				double das = pt.getX();
 				double depth = pt.getY();
-				if (depth > midDepth) {
-					lowerHalfMax = Math.max(lowerHalfMax, das);
-					lowerHalfMin = Math.min(lowerHalfMin, das);
-				} else {
-					upperHalfMax = Math.max(upperHalfMax, das);
-					upperHalfMin = Math.min(upperHalfMin, das);
-				}
+				int ind = minFunc.getClosestXIndex(depth);
+				minFunc.set(ind, Math.min(minFunc.getY(ind), das));
+				maxFunc.set(ind, Math.max(maxFunc.getY(ind), das));
 			}
 			
-			// first calculate assuming no depth dependent bias
+			boolean hasNonFinite = false;
+			for (int i=0; i<minFunc.size(); i++)
+				hasNonFinite = hasNonFinite || !Double.isFinite(minFunc.getY(i));
+			Preconditions.checkState(!hasNonFinite, "We have a non-finite depth bin while correcting section DAS");
+			
 			DiscretizedFunc depthMinDASFunc = new ArbitrarilyDiscretizedFunc();
 			DiscretizedFunc depthMaxDASFunc = new ArbitrarilyDiscretizedFunc();
-			depthMinDASFunc.set(minDepth, upperHalfMin);
-			depthMinDASFunc.set(maxDepth, lowerHalfMin);
-			depthMaxDASFunc.set(minDepth, upperHalfMax);
-			depthMaxDASFunc.set(maxDepth, lowerHalfMax);
+			// only map based on the ends to avoid any squirreliness
+			depthMinDASFunc = new ArbitrarilyDiscretizedFunc();
+			depthMaxDASFunc = new ArbitrarilyDiscretizedFunc();
+			depthMinDASFunc.set(minDepth, minFunc.getY(0));
+			depthMinDASFunc.set(maxDepth, minFunc.getY(minFunc.size()-1));
+			depthMaxDASFunc.set(minDepth, maxFunc.getY(0));
+			depthMaxDASFunc.set(maxDepth, maxFunc.getY(maxFunc.size()-1));
+			
+//			// first calculate assuming no depth dependent bias
+//			DiscretizedFunc depthMinDASFunc = new ArbitrarilyDiscretizedFunc();
+//			DiscretizedFunc depthMaxDASFunc = new ArbitrarilyDiscretizedFunc();
+//			depthMinDASFunc.set(minDepth, upperHalfMin);
+//			depthMinDASFunc.set(maxDepth, lowerHalfMin);
+//			depthMaxDASFunc.set(minDepth, upperHalfMax);
+//			depthMaxDASFunc.set(maxDepth, lowerHalfMax);
 //			depthMinDASFunc.set(minDepth, dasDepthFunc.getMinX());
 //			depthMinDASFunc.set(maxDepth, dasDepthFunc.getMinX());
 //			depthMaxDASFunc.set(minDepth, dasDepthFunc.getMaxX());
@@ -250,8 +312,8 @@ public class RSQSimSubSectionMapper {
 //			}
 			
 			// now convert to actual DAS, with any bias removed
-			for (SimulatorElement elem : rawDASs.keySet()) {
-				double rawDAS = rawDASs.get(elem);
+			for (SimulatorElement elem : sectElems) {
+				DAS_Record rawDAS = elemRawDASs.get(elem);
 				double depth = elem.getCenterLocation().getDepth();
 				
 				double myMinDAS = depthMinDASFunc.getInterpolatedY(depth);
@@ -259,20 +321,31 @@ public class RSQSimSubSectionMapper {
 				double dasSpan = myMaxDAS - myMinDAS;
 				
 				// normalize it
-				double normDAS = (rawDAS - myMinDAS) / dasSpan;
+				double[] normDASArray = {
+						(rawDAS.midDAS - myMinDAS) / dasSpan,
+						(rawDAS.startDAS - myMinDAS) / dasSpan,
+						(rawDAS.endDAS - myMinDAS) / dasSpan };
 //				Preconditions.checkState((float)normDAS <= 1f && (float)normDAS >= 0f,
 //						"Bad normalized DAS. raw=%s, range=[%s %s], depth=%s", rawDAS, myMinDAS, myMaxDAS, depth);
 				
+				// map onto actual DAS
+				double[] interpDASArray = new double[3];
 				int row = elemRows.get(elem);
-				double das;
-				if (normDAS <= dasFuncs[row].getMinX())
-					das = dasFuncs[row].getMinY();
-				else if (normDAS >= dasFuncs[row].getMaxX())
-					das = dasFuncs[row].getMaxY();
-				else
-					das = dasFuncs[row].getInterpolatedY(normDAS);
+				for (int i=0; i<normDASArray.length; i++) {
+					double normDAS = normDASArray[i];
+					double das;
+					if (normDAS <= dasFuncs[row].getMinX())
+						das = dasFuncs[row].getMinY();
+					else if (normDAS >= dasFuncs[row].getMaxX())
+						das = dasFuncs[row].getMaxY();
+					else
+						das = dasFuncs[row].getInterpolatedY(normDAS);
+					interpDASArray[i] = das;
+				}
+				DAS_Record das = new DAS_Record(interpDASArray[0], interpDASArray[1], interpDASArray[2]);
 //				if (elem.getID() == 180899 || elem.getID() == 180886 || elem.getID() == 180845 || elem.getID() == 180940) {
 //				if (elem.getID() == 78269 || elem.getID() == 78358 || elem.getID() == 78387) {
+//				if (elem.getID() == 262957 || elem.getID() == 262969) {
 //					System.out.println("Debug for "+elem.getID()+", sectID="+elem.getSectionID()+", mapped row="+row);
 //					System.out.println("\traw DAS: "+rawDAS);
 //					System.out.println("\tmy DAS Range: "+myMinDAS+" "+myMaxDAS);
@@ -320,7 +393,7 @@ public class RSQSimSubSectionMapper {
 		return elemToSectsMap.get(element);
 	}
 	
-	public double getElemSubSectDAS(SimulatorElement element) {
+	public DAS_Record getElemSubSectDAS(SimulatorElement element) {
 		return elemSectDASs.get(element);
 	}
 	
@@ -545,16 +618,16 @@ public class RSQSimSubSectionMapper {
 			double area = elem.getArea();
 			areaSlipped += area;
 			momentOnSect += FaultMomentCalc.getMoment(area, slip);
-			double das = elemSectDASs.get(elem);
-			minDAS = Math.min(das, minDAS);
-			maxDAS = Math.max(das, maxDAS);
+			DAS_Record das = elemSectDASs.get(elem);
+			minDAS = Math.min(das.startDAS, minDAS);
+			maxDAS = Math.max(das.endDAS, maxDAS);
 			
 			if (slipSectsToElemsMap != null) {
 				// track slips
 				if (slipSectsToElemsMap.get(subSect).contains(elem)) {
 					// this element is inside the slip region
-					minSlipRegionDAS = Math.min(das, minSlipRegionDAS);
-					maxSlipRegionDAS = Math.max(das, maxSlipRegionDAS);
+					minSlipRegionDAS = Math.min(das.startDAS, minSlipRegionDAS);
+					maxSlipRegionDAS = Math.max(das.endDAS, maxSlipRegionDAS);
 					areaWeightedSlipInSlipRegion += area*slip;
 				}
 			}
@@ -597,7 +670,7 @@ public class RSQSimSubSectionMapper {
 			Preconditions.checkState(slipElemsToSectsMap != null, "Must enable slip tracking with trackSlipOnSections(...)");
 			double totArea = 0d;
 			for (SimulatorElement elem : slipSectsToElemsMap.get(subSect)) {
-				double das = elemSectDASs.get(elem);
+				double das = elemSectDASs.get(elem).midDAS;
 				double area = elem.getArea();
 				switch (type) {
 				case MID_SEIS_FULL_LEN:
@@ -631,14 +704,57 @@ public class RSQSimSubSectionMapper {
 		}
 	}
 	
+	private void debugPlotDAS(File outputDir, int parentSectID) throws IOException {
+		List<FaultSectionPrefData> parentSects = new ArrayList<>();
+		String parentName = null;
+		for (FaultSectionPrefData sect : subSects) {
+			if (sect.getParentSectionId() == parentSectID) {
+				parentSects.add(sect);
+				parentName = sect.getParentSectionName();
+			}
+		}
+		Preconditions.checkState(!parentSects.isEmpty());
+		List<SimulatorElement> mappedElements = new ArrayList<>();
+		List<RuptureSurface> sectSurfs = new ArrayList<>();
+		for (FaultSectionPrefData sect : parentSects) {
+			mappedElements.addAll(sectsToElemsMap.get(sect));
+			sectSurfs.add(sect.getStirlingGriddedSurface(1d, false, false));
+		}
+		
+		CompoundSurface surfaceToOutline = new CompoundSurface(sectSurfs);
+		
+		double[] dasScalars = new double[mappedElements.size()];
+		
+		String prefix = "das_debug_"+parentName.replaceAll("\\W+", "");
+		
+		// first raw das
+		for (int i=0; i<dasScalars.length; i++)
+			dasScalars[i] = elemRawDASs.get(mappedElements.get(i)).midDAS;
+		
+		CPT elemCPT = GMT_CPT_Files.MAX_SPECTRUM.instance().rescale(0d, StatUtils.max(dasScalars));
+		
+		RupturePlotGenerator.writeMapPlot(elements, null, null, outputDir, prefix+"_raw_das", null, null, surfaceToOutline,
+				mappedElements, dasScalars, elemCPT, "Raw DAS", null);
+		
+		// now mid das
+		for (int i=0; i<dasScalars.length; i++)
+			dasScalars[i] = elemSectDASs.get(mappedElements.get(i)).midDAS;
+		
+		elemCPT = elemCPT.rescale(0d, StatUtils.max(dasScalars));
+		
+		RupturePlotGenerator.writeMapPlot(elements, null, null, outputDir, prefix+"_mid_das", null, null, surfaceToOutline,
+				mappedElements, dasScalars, elemCPT, "Mid DAS", null);
+	}
+	
 	public static void main(String[] args) throws IOException {
-//		File dir = new File("/data/kevin/simulators/catalogs/rundir2585_1myr");
-		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir3165");
+		File dir = new File("/data/kevin/simulators/catalogs/rundir2585_1myr");
+//		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir3165");
 		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
 		List<FaultSectionPrefData> subSects = RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
 		RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements);
-		
+		mapper.debugPlotDAS(new File("/tmp"), 142);
+		mapper.debugPlotDAS(new File("/tmp"), 151);
 	}
 
 }
