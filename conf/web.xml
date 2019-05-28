@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!--
+ Licensed to the Apache Software Foundation (ASF) under one or more
+  contributor license agreements.  See the NOTICE file distributed with
+  this work for additional information regarding copyright ownership.
+  The ASF licenses this file to You under the Apache License, Version 2.0
+  (the "License"); you may not use this file except in compliance with
+  the License.  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://java.sun.com/xml/ns/javaee http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+   version="2.5">
+
+  <display-name>Welcome to Tomcat</display-name>
+  <description>
+     Welcome to Tomcat
+  </description>
+
+  <!-- ********* SERVLETS ********* -->
+
+  <!-- * SRA Vulnerability Servlet * -->
+  <servlet>
+    <servlet-name>VulnerabilityServlet</servlet-name>
+    <servlet-class>org.opensha.sra.vulnerability.models.servlet.VulnerabilityServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>VulnerabilityServlet</servlet-name>
+    <url-pattern>/VulnerabilityServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** Fault DB Dervlets ** -->
+  <!-- * DB Access Servlet * -->
+  <servlet>
+    <servlet-name>faultDB_Access</servlet-name>
+    <servlet-class>org.opensha.refFaultParamDb.servlets.DB_AccessServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+    <init-param>
+      <param-name>DbConnectionPropertiesFileName</param-name>
+      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/DbConnection_Prop.dat</param-value>
+    </init-param>
+    <init-param>
+      <param-name>EmailConfig</param-name>
+      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/opensha-commons/conf/EmailConfig.txt</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>faultDB_Access</servlet-name>
+    <url-pattern>/Fault_DB_AccessServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- * DB Access Servlet Version 3 * -->
+  <servlet>
+    <servlet-name>faultDB_Access3</servlet-name>
+    <servlet-class>org.opensha.refFaultParamDb.servlets.DB_AccessServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+    <init-param>
+      <param-name>DbConnectionPropertiesFileName</param-name>
+      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/DbConnection_Prop_ver3.dat</param-value>
+    </init-param>
+    <init-param>
+      <param-name>EmailConfig</param-name>
+      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/opensha-commons/conf/EmailConfig.txt</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>faultDB_Access3</servlet-name>
+    <url-pattern>/Fault_DB_AccessServlet_Ver3</url-pattern>
+  </servlet-mapping>
+
+  <!-- * Update E-Mail Servlet * -->
+  <servlet>
+    <servlet-name>faultDB_Email</servlet-name>
+    <servlet-class>org.opensha.refFaultParamDb.servlets.RefFaultDB_UpdateEmailServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+    <init-param>
+      <param-name>EmailConfig</param-name>
+      <param-value>/var/lib/tomcat/webapps/OpenSHA_dev/WEB-INF/conf/EmailConfig.txt</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>faultDB_Email</servlet-name>
+    <url-pattern>/Fault_DB_EmailServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- * User Account Info Servlet * -->
+  <servlet>
+    <servlet-name>faultDB_Account</servlet-name>
+    <servlet-class>org.opensha.refFaultParamDb.servlets.UserAccountInfoServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+    <init-param>
+      <param-name>EmailConfig</param-name>
+      <param-value>/var/lib/tomcat/webapps/OpenSHA_dev/WEB-INF/conf/EmailConfig.txt</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>faultDB_Account</servlet-name>
+    <url-pattern>/Fault_DB_AccountServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** GMT Web Service ** -->
+  <servlet>
+    <servlet-name>gmtWS</servlet-name>
+    <servlet-class>org.opensha.commons.mapping.servlet.GMT_MapGeneratorServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>gmtWS</servlet-name>
+    <url-pattern>/GMT_MapGeneratorServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** GMT Disaggregation Service ** -->
+  <servlet>
+    <servlet-name>disaggServlet</servlet-name>
+    <servlet-class>org.opensha.sha.gui.servlets.DisaggregationPlotServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>disaggServlet</servlet-name>
+    <url-pattern>/DisaggregationPlotServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** GMT HAZUS Web Service ** -->
+  <servlet>
+    <servlet-name>gmtHazusWS</servlet-name>
+    <servlet-class>org.opensha.sha.mapping.GMT_HazusMapServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>gmtHazusWS</servlet-name>
+    <url-pattern>/GMT_HazusMapServlet</url-pattern>
+  </servlet-mapping>
+  
+  <!-- ** GMT CyberShake Interpolated Diff Map Service ** -->
+  <servlet>
+    <servlet-name>csGMTInterpDiff</servlet-name>
+    <servlet-class>org.opensha.sha.cybershake.maps.servlet.CS_InterpDiffMapServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>csGMTInterpDiff</servlet-name>
+    <url-pattern>/CS_InterpDiffMapServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** GMT Server-Side region creation Service ** -->
+  <servlet>
+    <servlet-name>GriddedRegionServlet</servlet-name>
+    <servlet-class>org.opensha.sha.gui.servlets.GriddedRegionServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>GriddedRegionServlet</servlet-name>
+    <url-pattern>/GriddedRegionServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** GMT Server-Side ShakeMap Calc Servlet ** -->
+  <servlet>
+    <servlet-name>ScenarioShakeMapCalcServlet</servlet-name>
+    <servlet-class>org.opensha.sha.gui.servlets.ScenarioShakeMapCalcServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>ScenarioShakeMapCalcServlet</servlet-name>
+    <url-pattern>/ScenarioShakeMapCalcServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** GMT Server-Side ShakeMap Gen Servlet ** -->
+  <servlet>
+    <servlet-name>ScenarioShakeMapGeneratorServlet</servlet-name>
+    <servlet-class>org.opensha.sha.gui.servlets.ScenarioShakeMapGeneratorServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>ScenarioShakeMapGeneratorServlet</servlet-name>
+    <url-pattern>/ScenarioShakeMapGeneratorServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** GMT Server-Side ShakeMap HAZUS Servlet ** -->
+  <servlet>
+    <servlet-name>ScenarioShakeMapForHazusGeneratorServlet</servlet-name>
+    <servlet-class>org.opensha.sha.gui.servlets.ScenarioShakeMapForHazusGeneratorServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>ScenarioShakeMapForHazusGeneratorServlet</servlet-name>
+    <url-pattern>/ScenarioShakeMapForHazusGeneratorServlet</url-pattern>
+  </servlet-mapping>
+
+  <!-- ** Site Type Data ** -->
+  <!-- * CVM4 2.5 * -->
+  <servlet>
+    <servlet-name>CVM4_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM4BasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM4_2_5</servlet-name>
+    <url-pattern>/SiteData/CVM4_2_5</url-pattern>
+  </servlet-mapping>
+
+  <!-- * CVM4 1.0 * -->
+  <servlet>
+    <servlet-name>CVM4_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM4BasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM4_1_0</servlet-name>
+    <url-pattern>/SiteData/CVM4_1_0</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CVM4i26 2.5 * -->
+  <servlet>
+    <servlet-name>CVM4i26_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM4i26BasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM4i26_2_5</servlet-name>
+    <url-pattern>/SiteData/CVM4i26_2_5</url-pattern>
+  </servlet-mapping>
+
+  <!-- * CVM4i26 1.0 * -->
+  <servlet>
+    <servlet-name>CVM4i26_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM4i26BasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM4i26_1_0</servlet-name>
+    <url-pattern>/SiteData/CVM4i26_1_0</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CVM_CCAi6 2.5 * -->
+  <servlet>
+    <servlet-name>CVM_CCAi6_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM_CCAi6BasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM_CCAi6_2_5</servlet-name>
+    <url-pattern>/SiteData/CVM_CCAi6_2_5</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CVM_CCAi6 1.0 * -->
+  <servlet>
+    <servlet-name>CVM_CCAi6_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM_CCAi6BasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM_CCAi6_1_0</servlet-name>
+    <url-pattern>/SiteData/CVM_CCAi6_1_0</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CS 18.8 2.5 * -->
+  <servlet>
+    <servlet-name>CS18_8_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CS_Study18_8_BasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CS18_8_2_5</servlet-name>
+    <url-pattern>/SiteData/CS18_8_2_5</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CS 18.8 1.0 * -->
+  <servlet>
+    <servlet-name>CS18_8_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CS_Study18_8_BasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CS18_8_1_0</servlet-name>
+    <url-pattern>/SiteData/CS18_8_1_0</url-pattern>
+  </servlet-mapping>
+
+  <!-- * CVM Vs30 * -->
+  <servlet>
+    <servlet-name>CVM_Vs30</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM_Vs30_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM_Vs30</servlet-name>
+    <url-pattern>/SiteData/CVM_Vs30</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CVMH 2.5 * -->
+  <servlet>
+    <servlet-name>CVMH_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVMHBasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVMH_2_5</servlet-name>
+    <url-pattern>/SiteData/CVMH_2_5</url-pattern>
+  </servlet-mapping>
+
+  <!-- * CVMH 1.0 * -->
+  <servlet>
+    <servlet-name>CVMH_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVMHBasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVMH_1_0</servlet-name>
+    <url-pattern>/SiteData/CVMH_1_0</url-pattern>
+  </servlet-mapping>
+
+  <!-- * SF06 2.5 * -->
+  <servlet>
+    <servlet-name>SF06_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.USGSBayAreaBasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>SF06_2_5</servlet-name>
+    <url-pattern>/SiteData/SF06_2_5</url-pattern>
+  </servlet-mapping>
+
+  <!-- * CVM4 1.0 * -->
+  <servlet>
+    <servlet-name>SF06_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.USGSBayAreaBasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>SF06_1_0</servlet-name>
+    <url-pattern>/SiteData/SF06_1_0</url-pattern>
+  </servlet-mapping>
+
+  <!-- * CVM2 * -->
+  <servlet>
+    <servlet-name>CVM2</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CVM2BasinDepthServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CVM2</servlet-name>
+    <url-pattern>/SiteData/CVM2</url-pattern>
+  </servlet-mapping>
+
+  <!-- * Wills 2015 * -->
+  <servlet>
+    <servlet-name>Wills2015</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.WillsMap2015Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>Wills2015</servlet-name>
+    <url-pattern>/SiteData/Wills2015</url-pattern>
+  </servlet-mapping>
+
+  <!-- * Wills 2006 * -->
+  <servlet>
+    <servlet-name>Wills2006</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.WillsMap2006Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>Wills2006</servlet-name>
+    <url-pattern>/SiteData/Wills2006</url-pattern>
+  </servlet-mapping>
+
+  <!-- * Wills 2000 * -->
+  <servlet>
+    <servlet-name>Wills2000</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.WillsMap2000Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>Wills2000</servlet-name>
+    <url-pattern>/SiteData/Wills2000</url-pattern>
+  </servlet-mapping>
+
+  <!-- * SRTM30_Plus * -->
+  <servlet>
+    <servlet-name>SRTM30_Plus</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.SRTM30PlusTopographyServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>SRTM30_Plus</servlet-name>
+    <url-pattern>/SiteData/SRTM30_Plus</url-pattern>
+  </servlet-mapping>
+
+  <!-- * SRTM30_Plus Topo Slope * -->
+  <servlet>
+    <servlet-name>SRTM30_Plus_Slope</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.SRTM30PlusTopoSlopeServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>SRTM30_Plus_Slope</servlet-name>
+    <url-pattern>/SiteData/SRTM30_Plus_Slope</url-pattern>
+  </servlet-mapping>
+
+  <!-- * SRTM30 * -->
+  <servlet>
+    <servlet-name>SRTM30</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.SRTM30TopographyServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>SRTM30</servlet-name>
+    <url-pattern>/SiteData/SRTM30</url-pattern>
+  </servlet-mapping>
+
+  <!-- * SRTM30 Topo Slope * -->
+  <servlet>
+    <servlet-name>SRTM30_Slope</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.SRTM30TopoSlopeServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>SRTM30_Slope</servlet-name>
+    <url-pattern>/SiteData/SRTM30_Slope</url-pattern>
+  </servlet-mapping>
+
+  <!-- * US 3 sec topography * -->
+  <servlet>
+    <servlet-name>US3secNED</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.US_3secTopographyServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>US3secNED</servlet-name>
+    <url-pattern>/SiteData/US3secNED</url-pattern>
+  </servlet-mapping>
+
+  <!-- * Garcia Region Perl Script * -->
+  <servlet>
+    <servlet-name>GarciaRegionPerlWrapper</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.GarciaRegionPerlWrapperServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>GarciaRegionPerlWrapper</servlet-name>
+    <url-pattern>/SiteData/GarciaRegionPerlWrapper</url-pattern>
+  </servlet-mapping>
+
+  <!-- * STREC Tectonic Regime Script * -->
+  <servlet>
+    <servlet-name>STREC_DataWrapper</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.STREC_DataWrapperServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>STREC_DataWrapper</servlet-name>
+    <url-pattern>/SiteData/STREC_DataWrapper</url-pattern>
+  </servlet-mapping>
+
+
+  <!-- ** ERF related ** -->
+  <!-- * WG02 Fortran Wrapper * -->
+  <servlet>
+    <servlet-name>WG02_Fortran</servlet-name>
+    <servlet-class>org.opensha.sha.earthquake.rupForecastImpl.WG02.servlet.WG02Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>WG02_Fortran</servlet-name>
+    <url-pattern>/WG02_Fortran</url-pattern>
+  </servlet-mapping>
+
+  <!-- ********* END SERVLETS ********* -->
+
+
+  <!-- Define a Security Constraint on this Application -->
+  <security-constraint>
+    <web-resource-collection>
+      <web-resource-name>HTMLHostManager and HostManager commands</web-resource-name>
+      <url-pattern>/restricted/*</url-pattern>
+    </web-resource-collection>
+    <auth-constraint>
+       <!-- NOTE:  This role is not present in the default users file -->
+       <role-name>kmilner</role-name>
+    </auth-constraint>
+  </security-constraint>
+
+  <!-- Define the Login Configuration for this Application -->
+  <login-config>
+    <auth-method>BASIC</auth-method>
+    <realm-name>Tomcat Host Manager Application</realm-name>
+  </login-config>
+
+  <!-- Security roles referenced by this web application -->
+  <security-role>
+    <description>
+      The role that is required to log in to the Manager Application
+    </description>
+    <role-name>kmilner</role-name>
+  </security-role>
+
+
+</web-app>
