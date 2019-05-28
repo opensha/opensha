@@ -103,7 +103,7 @@
     </init-param>
     <init-param>
       <param-name>EmailConfig</param-name>
-      <param-value>/var/lib/tomcat/webapps/OpenSHA_dev/WEB-INF/conf/EmailConfig.txt</param-value>
+      <param-value>/usr/share/tomcat/webapps/OpenSHA_master/WEB-INF/opensha-commons/conf/EmailConfig.txt</param-value>
     </init-param>
   </servlet>
 
