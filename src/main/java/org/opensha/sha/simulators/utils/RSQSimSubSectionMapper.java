@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ import org.opensha.sha.faultSurface.SimpleFaultData;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.SimulatorElement;
+import org.opensha.sha.simulators.Vertex;
 import org.opensha.sha.simulators.parsers.RSQSimFileReader;
 
 import com.google.common.base.Preconditions;
@@ -55,18 +57,39 @@ public class RSQSimSubSectionMapper {
 	private List<SimulatorElement> elements;
 	private Map<Integer, Double> subSectAreas;
 	private Map<IDPairing, Double> distsCache;
-	private Map<SimulatorElement, DAS_Record> elemRawDASs;
-	private Map<SimulatorElement, DAS_Record> elemSectDASs;
+	private Map<SimulatorElement, SubSectDAS_Record> elemRawDASs;
+	private Map<SimulatorElement, SubSectDAS_Record> elemSectDASs;
 	
-	public final class DAS_Record {
+	public static class DAS_Record {
 		public final double midDAS;
 		public final double startDAS;
 		public final double endDAS;
 		
+		public DAS_Record(double startDAS, double endDAS) {
+			this(0.5*(startDAS + endDAS), startDAS, endDAS);
+		}
+		
 		public DAS_Record(double midDAS, double startDAS, double endDAS) {
+			Preconditions.checkState(endDAS >= startDAS && midDAS >= startDAS && midDAS <= endDAS,
+					"Bad DAS: mid=%s, start=%s, end=%s", midDAS, startDAS, endDAS);
 			this.midDAS = midDAS;
 			this.startDAS = startDAS;
 			this.endDAS = endDAS;
+		}
+		
+		public DAS_Record getReversed(double totalLen) {
+			Preconditions.checkState(endDAS <= totalLen);
+			return new DAS_Record(totalLen - midDAS, totalLen - endDAS, totalLen - startDAS);
+		}
+	}
+	
+	public static class SubSectDAS_Record extends DAS_Record {
+
+		public final double[] vertDASs;
+
+		public SubSectDAS_Record(double[] vertDASs, double midDAS) {
+			super(midDAS, StatUtils.min(vertDASs), StatUtils.max(vertDASs));
+			this.vertDASs = vertDASs;
 		}
 	}
 	
@@ -77,14 +100,41 @@ public class RSQSimSubSectionMapper {
 	// for slip on sections
 	private Map<SimulatorElement, FaultSectionPrefData> slipElemsToSectsMap;
 	private Map<FaultSectionPrefData, HashSet<SimulatorElement>> slipSectsToElemsMap;
+	private Map<FaultSectionPrefData, double[]> sectMidDepthConstraints;
 	
 	private LoadingCache<RSQSimEvent, List<List<SubSectionMapping>>> mappingsCache;
+
+	public static final double MID_SEIS_MIN_DEPTH_DEFAULT = 4d;
+	public static final double MID_SEIS_MAX_DEPTH_DEFAULT = 8d;
+	public static final double MID_SEIS_BUFFER_DEFAULT = 2d;
 	
 	public enum SlipAlongSectAlgorithm {
-		MID_SEIS_FULL_LEN,
-		MID_SEIS_SLIPPED_LEN,
-		MID_SEIS_MID_SLIPPED_LEN,
-		MID_SEIS_SURF_SLIP_LEN
+		MID_SEIS_FULL_LEN("Full Mapped Subsection Length",
+				"Average slip in the mid-seismogenic zone across the whole length of each mapped subsection"),
+		MID_SEIS_SLIPPED_LEN("Full Slipped Length",
+				"Average slip in the mid-seismogenic zone across the section of fault that slipped "
+				+ "(regardless of if that slip was in the mid-seismgenic zone or not)"),
+		MID_SEIS_MID_SLIPPED_LEN("Mid-Seismogenic Slipped Length",
+				"Average slip in the mid-seismogenic zone across the section of fault that slipped "
+				+ "in that mid-seismogenic zone (including any holes with no slip)"),
+		MID_SEIS_SURF_SLIP_LEN("Surface Slipped Length",
+				"Average slip in the mid-seismogenic zone across the section of fault that had surface slip");
+		
+		private String name;
+		private String description;
+		
+		private SlipAlongSectAlgorithm(String name, String description) {
+			this.name = name;
+			this.description = description;
+		}
+		
+		public String toString() {
+			return name;
+		}
+		
+		public String getDescription() {
+			return description;
+		}
 	}
 
 	public RSQSimSubSectionMapper(List<FaultSectionPrefData> subSects, List<SimulatorElement> elements) {
@@ -130,12 +180,15 @@ public class RSQSimSubSectionMapper {
 //			StirlingGriddedSurface gridSurf = sect.getStirlingGriddedSurface(0.5, false, false);
 			StirlingGriddedSurface gridSurf = new StirlingGriddedSurface(sfd, 0.5, 1d);
 			
+			double sectLen = sect.getFaultTrace().getTraceLength();
+			
 			ArbitrarilyDiscretizedFunc[] dasFuncs = new ArbitrarilyDiscretizedFunc[gridSurf.getNumRows()];
 //			ArbitrarilyDiscretizedFunc[] dasFuncs = new ArbitrarilyDiscretizedFunc[1];
 			
-			boolean debugSect = sect.getParentSectionId() == 142;
+//			boolean debugSect = sect.getParentSectionId() == 151;
+			boolean debugSect = false;
 			if (debugSect)
-				System.out.println("DEBUG section "+sect.getSectionName());
+				System.out.println("DEBUG section "+sect.getSectionName()+" with "+sectElems.size()+" elements");
 			
 			// build a mapping function from the DAS computed assuming a straight line to the actual DAS
 			// do this separately for each depth to avoid any systematic offset issues with depth
@@ -159,7 +212,10 @@ public class RSQSimSubSectionMapper {
 				double dasSpan = maxDAS - minDAS;
 				for (Point2D pt : dasFunc) {
 					double normX = (pt.getX() - minDAS) / dasSpan;
-					dasFuncs[row].set(normX, pt.getY());
+					double uncorrectedDAS = pt.getY();
+					Preconditions.checkState(uncorrectedDAS <= cumulativeLen && uncorrectedDAS >= 0d);
+					double realDAS = sectLen*uncorrectedDAS/cumulativeLen; // fix any difference in this row length vs the real length
+					dasFuncs[row].set(normX, realDAS);
 				}
 			}
 			
@@ -182,15 +238,22 @@ public class RSQSimSubSectionMapper {
 				Location start = gridSurf.get(closestRow, 0);
 				Location end = gridSurf.get(closestRow, gridSurf.getNumCols()-1);
 				double rawMidDAS = calcStraightLineDAS(start, end, center);
-				double rawMinDAS = Double.POSITIVE_INFINITY;
-				double rawMaxDAS = Double.NEGATIVE_INFINITY;
-				for (Location vert : elem.getVertices()) {
-					double vertRawDAS = calcStraightLineDAS(start, end, vert);
-					rawMinDAS = Math.min(rawMinDAS, vertRawDAS);
-					rawMaxDAS = Math.max(rawMaxDAS, vertRawDAS);
-					dasDepthFunc.set(vertRawDAS, vert.getDepth());
+				Vertex[] verts = elem.getVertices();
+				double[] vertDASs = new double[verts.length];
+				for (int i=0; i<verts.length; i++) {
+					vertDASs[i] = calcStraightLineDAS(start, end, verts[i]);
+					dasDepthFunc.set(vertDASs[i], verts[i].getDepth());
 				}
-				elemRawDASs.put(elem, new DAS_Record(rawMidDAS, rawMinDAS, rawMaxDAS));
+				try {
+					elemRawDASs.put(elem, new SubSectDAS_Record(vertDASs, rawMidDAS));
+				} catch (RuntimeException e1) {
+					System.out.println("Element: "+elem.getID()+". "+elem.getName()+" ("+elem.getSectionName()+")");
+					System.out.println("Center: "+center+", DAS="+calcStraightLineDAS(start, end, center));
+					System.out.println("Vertices:");
+					for (Location vert : elem.getVertices())
+						System.out.println("\t"+vert+", DAS="+calcStraightLineDAS(start, end, vert));
+					throw e1;
+				}
 				elemRows.put(elem, closestRow);
 			}
 			
@@ -206,7 +269,7 @@ public class RSQSimSubSectionMapper {
 			double aveSpacing = Math.sqrt(aveArea);
 			
 			double estNumDownDip = estDDW/aveSpacing;
-			int numDepthBins = Integer.max(2, (int)Math.round(estNumDownDip / 4));
+			int numDepthBins = Integer.max(2, (int)Math.round(estNumDownDip / 3));
 			if (debugSect) {
 				System.out.println("\tEstimated DDW with dip="+(float)aveDip+": "+estDDW);
 				System.out.println("\tEstimated average spacing: "+aveSpacing);
@@ -244,76 +307,9 @@ public class RSQSimSubSectionMapper {
 			depthMaxDASFunc.set(minDepth, maxFunc.getY(0));
 			depthMaxDASFunc.set(maxDepth, maxFunc.getY(maxFunc.size()-1));
 			
-//			// first calculate assuming no depth dependent bias
-//			DiscretizedFunc depthMinDASFunc = new ArbitrarilyDiscretizedFunc();
-//			DiscretizedFunc depthMaxDASFunc = new ArbitrarilyDiscretizedFunc();
-//			depthMinDASFunc.set(minDepth, upperHalfMin);
-//			depthMinDASFunc.set(maxDepth, lowerHalfMin);
-//			depthMaxDASFunc.set(minDepth, upperHalfMax);
-//			depthMaxDASFunc.set(maxDepth, lowerHalfMax);
-//			depthMinDASFunc.set(minDepth, dasDepthFunc.getMinX());
-//			depthMinDASFunc.set(maxDepth, dasDepthFunc.getMinX());
-//			depthMaxDASFunc.set(minDepth, dasDepthFunc.getMaxX());
-//			depthMaxDASFunc.set(maxDepth, dasDepthFunc.getMaxX());
-			
-//			double depthRange = maxDepth - minDepth;
-//			double minDAS = dasDepthFunc.getMinX();
-//			double maxDAS = dasDepthFunc.getMaxX();
-//			double aveArea = 0d;
-//			for (SimulatorElement e : rawDASs.keySet())
-//				aveArea += e.getArea()*1e-6;
-//			aveArea /= rawDASs.keySet().size();
-//			double aveSpacing = Math.sqrt(aveArea);
-//			
-//			double numSpacings = depthRange / aveSpacing;
-//			
-//			if (numSpacings > 5) {
-//				// allow for depth dependence
-//				List<Double> upperDASs = new ArrayList<>();
-//				List<Double> lowerDASs = new ArrayList<>();
-//				
-//				// the fraction from the bottom or top that we consider to be the bottom or top
-//				// this depends on the spacing and width, and needs to be conservative enough to put enough elements into each bin
-//				double fract;
-//				if (numSpacings > 30)
-//					// we have more than 20 element rows, do the top or bottom 20%
-//					fract = 0.15;
-//				else
-//					fract = Interpolate.findY(5, 0.5, 30, 0.15, numSpacings);
-//				
-//				for (SimulatorElement elem : rawDASs.keySet()) {
-//					double depth = elem.getCenterLocation().getDepth();
-//					double fractDepth = (depth - minDepth) / depthRange;
-//					Preconditions.checkState(fractDepth >= 0d && fractDepth <= 1d);
-//					if (fractDepth < fract)
-//						upperDASs.add(rawDASs.get(elem));
-//					else if (fractDepth > (1d-fract))
-//						lowerDASs.add(rawDASs.get(elem));
-//				}
-//				// make sure we have enough in each bin
-//				if (upperDASs.size() > 5 && lowerDASs.size() > 5) {
-//					double[] uppers = Doubles.toArray(upperDASs);
-//					double[] lowers = Doubles.toArray(lowerDASs);
-//					double upperMin = StatUtils.min(uppers);
-//					double upperMax = StatUtils.max(uppers);
-//					double lowerMin = StatUtils.min(lowers);
-//					double lowerMax = StatUtils.max(lowers);
-//					
-//					depthMinDASFunc.set(minDepth, upperMin);
-//					depthMinDASFunc.set(maxDepth, lowerMin);
-//					depthMaxDASFunc.set(minDepth, upperMax);
-//					depthMaxDASFunc.set(maxDepth, lowerMax);
-//					
-//					System.out.println("Doing depth skew correction for "+sect.getName()+" with "+rawDASs.size()+" total");
-//					System.out.println("\tfract: "+fract);
-//					System.out.println("\tUpper range from "+uppers.length+" vals: ["+(float)upperMin+" "+(float)upperMax+"]");
-//					System.out.println("\tLower range from "+lowers.length+" vals: ["+(float)lowerMin+" "+(float)lowerMax+"]");
-//				}
-//			}
-			
 			// now convert to actual DAS, with any bias removed
 			for (SimulatorElement elem : sectElems) {
-				DAS_Record rawDAS = elemRawDASs.get(elem);
+				SubSectDAS_Record rawDAS = elemRawDASs.get(elem);
 				double depth = elem.getCenterLocation().getDepth();
 				
 				double myMinDAS = depthMinDASFunc.getInterpolatedY(depth);
@@ -321,18 +317,17 @@ public class RSQSimSubSectionMapper {
 				double dasSpan = myMaxDAS - myMinDAS;
 				
 				// normalize it
-				double[] normDASArray = {
-						(rawDAS.midDAS - myMinDAS) / dasSpan,
-						(rawDAS.startDAS - myMinDAS) / dasSpan,
-						(rawDAS.endDAS - myMinDAS) / dasSpan };
-//				Preconditions.checkState((float)normDAS <= 1f && (float)normDAS >= 0f,
-//						"Bad normalized DAS. raw=%s, range=[%s %s], depth=%s", rawDAS, myMinDAS, myMaxDAS, depth);
+				double normMidDAS = (rawDAS.midDAS - myMinDAS) / dasSpan;
+				double[] normVertDASs = new double[rawDAS.vertDASs.length];
+				for (int i=0; i<normVertDASs.length; i++)
+					normVertDASs[i] = (rawDAS.vertDASs[i] - myMinDAS) / dasSpan;
 				
 				// map onto actual DAS
-				double[] interpDASArray = new double[3];
+				double interpMinDAS = -1;
+				double[] interpVertDASArray = new double[normVertDASs.length];
 				int row = elemRows.get(elem);
-				for (int i=0; i<normDASArray.length; i++) {
-					double normDAS = normDASArray[i];
+				for (int i=-1; i<normVertDASs.length; i++) {
+					double normDAS = i < 0 ? normMidDAS : normVertDASs[i];
 					double das;
 					if (normDAS <= dasFuncs[row].getMinX())
 						das = dasFuncs[row].getMinY();
@@ -340,9 +335,20 @@ public class RSQSimSubSectionMapper {
 						das = dasFuncs[row].getMaxY();
 					else
 						das = dasFuncs[row].getInterpolatedY(normDAS);
-					interpDASArray[i] = das;
+					if (i < 0)
+						interpMinDAS = das;
+					else
+						interpVertDASArray[i] = das;
 				}
-				DAS_Record das = new DAS_Record(interpDASArray[0], interpDASArray[1], interpDASArray[2]);
+				SubSectDAS_Record das;
+//				try {
+					das = new SubSectDAS_Record(interpVertDASArray, interpMinDAS);
+//				} catch (RuntimeException e1) {
+//					System.out.println("Row Func: "+dasFuncs[row]);
+//					System.out.println("Normalized DASs: mid="+interp+", range=["+normDASArray[1]+" "+normDASArray[2]+"]");
+//					System.out.println("Interpolated DASs: mid="+interpDASArray[0]+", range=["+interpDASArray[1]+" "+interpDASArray[2]+"]");
+//					throw e1;
+//				}
 //				if (elem.getID() == 180899 || elem.getID() == 180886 || elem.getID() == 180845 || elem.getID() == 180940) {
 //				if (elem.getID() == 78269 || elem.getID() == 78358 || elem.getID() == 78387) {
 //				if (elem.getID() == 262957 || elem.getID() == 262969) {
@@ -368,19 +374,25 @@ public class RSQSimSubSectionMapper {
 	
 	private double calcStraightLineDAS(Location start, Location end, Location loc) {
 		double distToLine = Math.abs(LocationUtils.distanceToLineFast(start, end, loc));
-		double distToSegment = Math.abs(LocationUtils.distanceToLineSegmentFast(start, end, loc));
 		double distToStart = LocationUtils.horzDistanceFast(start, loc);
-		double distToEnd = LocationUtils.horzDistanceFast(end, loc);
 		if (distToLine > distToStart) {
 			Preconditions.checkState(Math.abs(distToLine - distToStart) < 0.1,
 					"Bad triangle in straight line DAS calc. distToLine=%s, distToStart=%s", distToLine, distToStart);
 			return 0d;
 		}
 		double ret = Math.sqrt(distToStart*distToStart - distToLine*distToLine);
-		if (distToSegment > 1.01*distToLine && distToStart < distToEnd) {
-			// we're before the start, das should be negative
+		// now check to see if we're before the start
+		double startEndAz = LocationUtils.azimuth(start, end);
+		Location orthogonal = LocationUtils.location(start, Math.toRadians(startEndAz+90), distToStart);
+		double distToOrthogonal = LocationUtils.distanceToLineFast(start, orthogonal, loc);
+		if (distToOrthogonal > 0)
+			// positive sign here means above the orthogonal line, and thus before the start
 			ret = -ret;
-		}
+//		if (distToSegment > 1.01*distToLine && distToStart < distToEnd) {
+//			// we're before the start, das should be negative
+//			ret = -ret;
+//		}
+//		System.out.println("distToLine="+distToLine+"\tdistToStart="+distToStart+"\tret="+ret);
 		Preconditions.checkState(Double.isFinite(ret), "Non-finite straight line DAS. distToLine=%s, distToStart=%s", distToLine, distToStart);
 		return ret;
 	}
@@ -393,8 +405,29 @@ public class RSQSimSubSectionMapper {
 		return elemToSectsMap.get(element);
 	}
 	
-	public DAS_Record getElemSubSectDAS(SimulatorElement element) {
+	public Collection<SimulatorElement> getElementsForSection(FaultSectionPrefData sect) {
+		return sectsToElemsMap.get(sect);
+	}
+	
+	public SubSectDAS_Record getElemSubSectDAS(SimulatorElement element) {
 		return elemSectDASs.get(element);
+	}
+	
+	/**
+	 * Calling this method will enable tracking of slip on each subsection. Slip will be tracked within a band of elements for which
+	 * the center is >= minDepth and <= maxDepth. If faultDownDipBuffer is >0, then only elements whose center depth is at least
+	 * faultDownDipBuffer away down dip from the top of the fault, or up dip from the bottom, will be included.
+	 * 
+	 * This method uses default values of all parameters, and will not reset things if custom paremters have already been set.
+	 */
+	public void trackSlipOnSections() {
+		if (slipElemsToSectsMap == null)
+			trackSlipOnSections(MID_SEIS_MIN_DEPTH_DEFAULT, MID_SEIS_MAX_DEPTH_DEFAULT, MID_SEIS_BUFFER_DEFAULT);
+	}
+	
+	public double[] getSlipOnSectionDepthConstraints(FaultSectionPrefData sect) {
+		Preconditions.checkNotNull(sectMidDepthConstraints, "Must enable slip on section tracking first");
+		return sectMidDepthConstraints.get(sect);
 	}
 	
 	/**
@@ -456,6 +489,7 @@ public class RSQSimSubSectionMapper {
 		
 		slipElemsToSectsMap = new HashMap<>();
 		slipSectsToElemsMap = new HashMap<>();
+		sectMidDepthConstraints = new HashMap<>();
 		
 		for (SimulatorElement elem : elements) {
 			int sectID = elem.getSectionID() - minElemSectID;
@@ -468,6 +502,7 @@ public class RSQSimSubSectionMapper {
 				myMinDepth = Math.max(myMinDepth, constr[0]);
 				myMaxDepth = Math.min(myMaxDepth, constr[1]);
 			}
+			sectMidDepthConstraints.put(subSect, new double[] {myMinDepth, myMaxDepth});
 			
 			double depth = elem.getCenterLocation().getDepth();
 			if (depth >= myMinDepth && depth <= myMaxDepth) {
@@ -572,15 +607,19 @@ public class RSQSimSubSectionMapper {
 		}
 
 		// sort bundles (put faults in order from one end to the other)
+		HashSet<FaultSectionPrefData> reversedSections = new HashSet<>();
 		if (rupSectsListBundled.size() > 1)
-			rupSectsListBundled = SimulatorFaultSystemSolution.sortRupture(subSects, rupSectsListBundled, distsCache);
+			rupSectsListBundled = SimulatorFaultSystemSolution.sortRupture(subSects, rupSectsListBundled, distsCache, reversedSections);
 		
 		// build return list
 		List<List<SubSectionMapping>> ret = new ArrayList<>();
 		for (List<FaultSectionPrefData> bundle : rupSectsListBundled) {
 			List<SubSectionMapping> bundleMappings = new ArrayList<>();
-			for (FaultSectionPrefData sect : bundle)
-				bundleMappings.add(sectMap.get(sect));
+			for (FaultSectionPrefData sect : bundle) {
+				SubSectionMapping mapping = sectMap.get(sect);
+				mapping.setReversed(reversedSections.contains(sect));
+				bundleMappings.add(mapping);
+			}
 			ret.add(Collections.unmodifiableList(bundleMappings));
 		}
 		
@@ -606,16 +645,34 @@ public class RSQSimSubSectionMapper {
 		
 		private double minSlipRegionDAS = Double.POSITIVE_INFINITY;
 		private double maxSlipRegionDAS = Double.NEGATIVE_INFINITY;
-		private double areaWeightedSlipInSlipRegion;
+		private Map<SimulatorElement, Double> elemSlipsInSlipRegion;
 		
-		public SubSectionMapping(FaultSectionPrefData subSect) {
+		private double minSurfaceSlipDAS = Double.POSITIVE_INFINITY;
+		private double maxSurfaceSlipDAS = Double.NEGATIVE_INFINITY;
+		
+		private boolean reversed;
+		
+		private SubSectionMapping(FaultSectionPrefData subSect) {
 			this.subSect = subSect;
 			this.areaSlipped = subSectAreas.get(subSect.getSectionId());
+			
+			if (slipSectsToElemsMap != null)
+				elemSlipsInSlipRegion = new HashMap<>();
+		}
+		
+		private void setReversed(boolean reversed) {
+			this.reversed = reversed;
+		}
+		
+		public boolean isReversed() {
+			return reversed;
 		}
 		
 		protected void addSlip(SimulatorElement elem, double slip) {
-			Preconditions.checkState(slip > 0);
+			if (slip == 0d)
+				return;
 			double area = elem.getArea();
+			Preconditions.checkState(area > 0, "Zero area!");
 			areaSlipped += area;
 			momentOnSect += FaultMomentCalc.getMoment(area, slip);
 			DAS_Record das = elemSectDASs.get(elem);
@@ -628,7 +685,15 @@ public class RSQSimSubSectionMapper {
 					// this element is inside the slip region
 					minSlipRegionDAS = Math.min(das.startDAS, minSlipRegionDAS);
 					maxSlipRegionDAS = Math.max(das.endDAS, maxSlipRegionDAS);
-					areaWeightedSlipInSlipRegion += area*slip;
+					elemSlipsInSlipRegion.put(elem, slip);
+				}
+				int numSurface = 0;
+				for (Location loc : elem.getVertices())
+					if ((float)loc.getDepth() == 0f)
+						numSurface++;
+				if (numSurface > 1) {
+					minSurfaceSlipDAS = Math.min(minSurfaceSlipDAS, das.startDAS);
+					maxSurfaceSlipDAS = Math.max(maxSurfaceSlipDAS, das.endDAS);
 				}
 			}
 		}
@@ -649,25 +714,39 @@ public class RSQSimSubSectionMapper {
 			return momentOnSect;
 		}
 		
-		public double getLengthForSlip(SlipAlongSectAlgorithm type) {
+		public DAS_Record getDASforSlip(SlipAlongSectAlgorithm type) {
 			Preconditions.checkState(slipElemsToSectsMap != null, "Must enable slip tracking with trackSlipOnSections(...)");
 			switch (type) {
 			case MID_SEIS_FULL_LEN:
-				return subSect.getFaultTrace().getTraceLength();
+				return new DAS_Record(0d, subSect.getFaultTrace().getTraceLength());
 			case MID_SEIS_SURF_SLIP_LEN:
-				throw new IllegalStateException("TODO");
+				if (Double.isFinite(minSurfaceSlipDAS))
+					return new DAS_Record(minSurfaceSlipDAS, maxSurfaceSlipDAS);
+				return null;
 			case MID_SEIS_SLIPPED_LEN:
-				return maxDAS - minDAS;
+				if (Double.isFinite(minDAS))
+					return new DAS_Record(minDAS, maxDAS);
+				return null;
 			case MID_SEIS_MID_SLIPPED_LEN:
-				return maxSlipRegionDAS - minSlipRegionDAS;
-
+				if (Double.isFinite(minSlipRegionDAS))
+					return new DAS_Record(minSlipRegionDAS, maxSlipRegionDAS);
+				return null;
 			default:
 				throw new IllegalStateException("Unsupported type: "+type);
 			}
 		}
 		
+		public double getLengthForSlip(SlipAlongSectAlgorithm type) {
+			DAS_Record record = getDASforSlip(type);
+			if (record == null)
+				return 0d;
+			return record.endDAS - record.startDAS;
+		}
+		
 		public double getAreaForAverageSlip(SlipAlongSectAlgorithm type) {
 			Preconditions.checkState(slipElemsToSectsMap != null, "Must enable slip tracking with trackSlipOnSections(...)");
+			if (type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN && !Double.isFinite(minSurfaceSlipDAS))
+				return 0d; // no surface slip
 			double totArea = 0d;
 			for (SimulatorElement elem : slipSectsToElemsMap.get(subSect)) {
 				double das = elemSectDASs.get(elem).midDAS;
@@ -677,7 +756,9 @@ public class RSQSimSubSectionMapper {
 					totArea += area;
 					break;
 				case MID_SEIS_SURF_SLIP_LEN:
-					throw new IllegalStateException("TODO");
+					if (das >= minSurfaceSlipDAS && das <= maxSurfaceSlipDAS)
+						totArea += area;
+					break;
 				case MID_SEIS_SLIPPED_LEN:
 					if (das >= minDAS && das <= maxDAS)
 						totArea += area;
@@ -695,10 +776,24 @@ public class RSQSimSubSectionMapper {
 		}
 		
 		public double getAverageSlip(SlipAlongSectAlgorithm type) {
+			if (type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN && !Double.isFinite(minSurfaceSlipDAS))
+				return 0d; // no surface slip
 			double areaForSlipCalc = getAreaForAverageSlip(type);
 			if (areaForSlipCalc == 0d) {
-				Preconditions.checkState(areaWeightedSlipInSlipRegion == 0d);
+				Preconditions.checkState(type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN
+						|| elemSlipsInSlipRegion.isEmpty(),
+						"Area for slip is zero but we have %s elems which slipped. Type: %s",
+						elemSlipsInSlipRegion.size(), type);
 				return 0d;
+			}
+			double areaWeightedSlipInSlipRegion = 0d;
+			for (SimulatorElement elem : elemSlipsInSlipRegion.keySet()) {
+				if (type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN) {
+					double das = elemSectDASs.get(elem).midDAS;
+					if (das > maxSurfaceSlipDAS || das < minSurfaceSlipDAS)
+						continue;
+				}
+				areaWeightedSlipInSlipRegion += elem.getArea() * elemSlipsInSlipRegion.get(elem);
 			}
 			return areaWeightedSlipInSlipRegion/areaForSlipCalc;
 		}
@@ -716,9 +811,12 @@ public class RSQSimSubSectionMapper {
 		Preconditions.checkState(!parentSects.isEmpty());
 		List<SimulatorElement> mappedElements = new ArrayList<>();
 		List<RuptureSurface> sectSurfs = new ArrayList<>();
+		List<Double> mappedIDs = new ArrayList<>();
 		for (FaultSectionPrefData sect : parentSects) {
 			mappedElements.addAll(sectsToElemsMap.get(sect));
 			sectSurfs.add(sect.getStirlingGriddedSurface(1d, false, false));
+			for (int i=0; i<sectsToElemsMap.get(sect).size(); i++)
+				mappedIDs.add((double)sect.getSectionId());
 		}
 		
 		CompoundSurface surfaceToOutline = new CompoundSurface(sectSurfs);
@@ -734,7 +832,7 @@ public class RSQSimSubSectionMapper {
 		CPT elemCPT = GMT_CPT_Files.MAX_SPECTRUM.instance().rescale(0d, StatUtils.max(dasScalars));
 		
 		RupturePlotGenerator.writeMapPlot(elements, null, null, outputDir, prefix+"_raw_das", null, null, surfaceToOutline,
-				mappedElements, dasScalars, elemCPT, "Raw DAS", null);
+				mappedElements, dasScalars, elemCPT, parentName+" Raw DAS", null);
 		
 		// now mid das
 		for (int i=0; i<dasScalars.length; i++)
@@ -743,7 +841,15 @@ public class RSQSimSubSectionMapper {
 		elemCPT = elemCPT.rescale(0d, StatUtils.max(dasScalars));
 		
 		RupturePlotGenerator.writeMapPlot(elements, null, null, outputDir, prefix+"_mid_das", null, null, surfaceToOutline,
-				mappedElements, dasScalars, elemCPT, "Mid DAS", null);
+				mappedElements, dasScalars, elemCPT, parentName+" Mid DAS", null);
+		
+		// now sect
+		dasScalars = Doubles.toArray(mappedIDs);
+		
+		elemCPT = elemCPT.rescale(StatUtils.min(dasScalars), StatUtils.max(dasScalars));
+		
+		RupturePlotGenerator.writeMapPlot(elements, null, null, outputDir, prefix+"_sect_mappings", null, null, surfaceToOutline,
+				mappedElements, dasScalars, elemCPT, parentName+" Section Mappings", null);
 	}
 	
 	public static void main(String[] args) throws IOException {

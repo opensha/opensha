@@ -3,6 +3,7 @@ package scratch.kevin.simulators.erf;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -257,6 +258,13 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			List<FaultSectionPrefData> fsd,
 			List<List<FaultSectionPrefData>> subSectsForFaults,
 			Map<IDPairing, Double> distsCache) {
+		return sortRupture(fsd, subSectsForFaults, distsCache, null);
+	}
+	
+	public static List<List<FaultSectionPrefData>> sortRupture(
+			List<FaultSectionPrefData> fsd,
+			List<List<FaultSectionPrefData>> subSectsForFaults,
+			Map<IDPairing, Double> distsCache, Collection<FaultSectionPrefData> reversedSections) {
 		// select the most isolated endpoint as the starting point
 		double isolatedMaxDist = 0;
 		int isolatedFaultIndex = -1;
@@ -349,9 +357,12 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		List<List<FaultSectionPrefData>> sortedFaults = Lists.newArrayList();
 		// add the first fault
 		List<FaultSectionPrefData> curFault = subSectsForFaults.remove(isolatedFaultIndex);
-		if (!isolatedFaultStart)
+		if (!isolatedFaultStart) {
 			// this means we're starting on the end of this one, reverse it
 			Collections.reverse(curFault);
+			if (reversedSections != null)
+				reversedSections.addAll(curFault);
+		}
 		sortedFaults.add(curFault);
 		int curEndID = curFault.get(0).getSectionId();
 		
@@ -381,8 +392,11 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			}
 			
 			curFault = subSectsForFaults.remove(closestFaultIndex);
-			if (!closestAtStart)
+			if (!closestAtStart) {
 				Collections.reverse(curFault);
+				if (reversedSections != null)
+					reversedSections.addAll(curFault);
+			}
 			sortedFaults.add(curFault);
 			curEndID = curFault.get(0).getSectionId();
 		}
