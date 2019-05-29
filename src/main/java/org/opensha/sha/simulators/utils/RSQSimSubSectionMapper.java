@@ -425,11 +425,6 @@ public class RSQSimSubSectionMapper {
 			trackSlipOnSections(MID_SEIS_MIN_DEPTH_DEFAULT, MID_SEIS_MAX_DEPTH_DEFAULT, MID_SEIS_BUFFER_DEFAULT);
 	}
 	
-	public double[] getSlipOnSectionDepthConstraints(FaultSectionPrefData sect) {
-		Preconditions.checkNotNull(sectMidDepthConstraints, "Must enable slip on section tracking first");
-		return sectMidDepthConstraints.get(sect);
-	}
-	
 	/**
 	 * Calling this method will enable tracking of slip on each subsection. Slip will be tracked within a band of elements for which
 	 * the center is >= minDepth and <= maxDepth. If faultDownDipBuffer is >0, then only elements whose center depth is at least
@@ -515,6 +510,16 @@ public class RSQSimSubSectionMapper {
 				elemsForSect.add(elem);
 			}
 		}
+	}
+	
+	public double[] getSlipOnSectionDepthConstraints(FaultSectionPrefData sect) {
+		Preconditions.checkNotNull(sectMidDepthConstraints, "Must enable slip on section tracking first");
+		return sectMidDepthConstraints.get(sect);
+	}
+	
+	public HashSet<SimulatorElement> getSlipSectionsForSect(FaultSectionPrefData sect) {
+		Preconditions.checkNotNull(sectMidDepthConstraints, "Must enable slip on section tracking first");
+		return slipSectsToElemsMap.get(sect);
 	}
 	
 	/**
