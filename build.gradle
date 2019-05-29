@@ -13,7 +13,7 @@ dependencies {
     compileAndResource 'com.lowagie:itext:2.1.7'
     compileAndResource 'gov.nist.math:jama:1.0.3'
     compileAndResource 'javax.servlet:javax.servlet-api:3.1.0'
-    compileOnly 'javax.mail:mail:1.4.7'
+    compileAndResource 'javax.mail:mail:1.4.7'
     
     /* apache commons */
     compileAndResource 'org.apache.commons:commons-lang3:3.6'
