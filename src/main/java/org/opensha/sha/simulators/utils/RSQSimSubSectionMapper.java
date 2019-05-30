@@ -81,6 +81,10 @@ public class RSQSimSubSectionMapper {
 			Preconditions.checkState(endDAS <= totalLen);
 			return new DAS_Record(totalLen - midDAS, totalLen - endDAS, totalLen - startDAS);
 		}
+		
+		public boolean contains(double das) {
+			return das >= startDAS && das <= endDAS;
+		}
 	}
 	
 	public static class SubSectDAS_Record extends DAS_Record {
@@ -748,59 +752,57 @@ public class RSQSimSubSectionMapper {
 			return record.endDAS - record.startDAS;
 		}
 		
-		public double getAreaForAverageSlip(SlipAlongSectAlgorithm type) {
-			Preconditions.checkState(slipElemsToSectsMap != null, "Must enable slip tracking with trackSlipOnSections(...)");
-			if (type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN && !Double.isFinite(minSurfaceSlipDAS))
-				return 0d; // no surface slip
-			double totArea = 0d;
+		public List<SimulatorElement> getSlipCalcElements(SlipAlongSectAlgorithm type) {
+			return getSlipCalcElements(getDASforSlip(type));
+		}
+		
+		public List<SimulatorElement> getSlipCalcElements(DAS_Record slipDAS) {
+			if (slipDAS == null)
+				return null;
+			Preconditions.checkNotNull(slipSectsToElemsMap, "Must enable slip tracking with trackSlipOnSections(...)");
+			List<SimulatorElement> elems = new ArrayList<>();
 			for (SimulatorElement elem : slipSectsToElemsMap.get(subSect)) {
-				double das = elemSectDASs.get(elem).midDAS;
-				double area = elem.getArea();
-				switch (type) {
-				case MID_SEIS_FULL_LEN:
-					totArea += area;
-					break;
-				case MID_SEIS_SURF_SLIP_LEN:
-					if (das >= minSurfaceSlipDAS && das <= maxSurfaceSlipDAS)
-						totArea += area;
-					break;
-				case MID_SEIS_SLIPPED_LEN:
-					if (das >= minDAS && das <= maxDAS)
-						totArea += area;
-					break;
-				case MID_SEIS_MID_SLIPPED_LEN:
-					if (das >= minSlipRegionDAS && das <= maxSlipRegionDAS)
-						totArea += area;
-					break;
-
-				default:
-					throw new IllegalStateException("Unsupported type: "+type);
-				}
+				if (slipDAS.contains(elemSectDASs.get(elem).midDAS))
+					elems.add(elem);
 			}
+			return elems;
+		}
+		
+		public double getAreaForAverageSlip(SlipAlongSectAlgorithm type) {
+			return getAreaForAverageSlip(getDASforSlip(type));
+		}
+		
+		public double getAreaForAverageSlip(DAS_Record slipDAS) {
+			List<SimulatorElement> slipElems = getSlipCalcElements(slipDAS);
+			if (slipElems == null)
+				return 0d;
+			
+			double totArea = 0d;
+			for (SimulatorElement elem : slipElems)
+				totArea += elem.getArea();
+			
 			return totArea;
 		}
 		
 		public double getAverageSlip(SlipAlongSectAlgorithm type) {
-			if (type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN && !Double.isFinite(minSurfaceSlipDAS))
-				return 0d; // no surface slip
-			double areaForSlipCalc = getAreaForAverageSlip(type);
-			if (areaForSlipCalc == 0d) {
-				Preconditions.checkState(type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN
-						|| elemSlipsInSlipRegion.isEmpty(),
-						"Area for slip is zero but we have %s elems which slipped. Type: %s",
-						elemSlipsInSlipRegion.size(), type);
+			return getAverageSlip(getDASforSlip(type));
+		}
+		
+		public double getAverageSlip(DAS_Record slipDAS) {
+			List<SimulatorElement> slipElems = getSlipCalcElements(slipDAS);
+			if (slipElems == null || slipElems.isEmpty())
 				return 0d;
-			}
+			
 			double areaWeightedSlipInSlipRegion = 0d;
-			for (SimulatorElement elem : elemSlipsInSlipRegion.keySet()) {
-				if (type == SlipAlongSectAlgorithm.MID_SEIS_SURF_SLIP_LEN) {
-					double das = elemSectDASs.get(elem).midDAS;
-					if (das > maxSurfaceSlipDAS || das < minSurfaceSlipDAS)
-						continue;
-				}
-				areaWeightedSlipInSlipRegion += elem.getArea() * elemSlipsInSlipRegion.get(elem);
+			double totArea = 0d;
+			for (SimulatorElement elem : slipElems) {
+				double area = elem.getArea();
+				totArea += area;
+				if (elemSlipsInSlipRegion.containsKey(elem))
+					areaWeightedSlipInSlipRegion += area * elemSlipsInSlipRegion.get(elem);
 			}
-			return areaWeightedSlipInSlipRegion/areaForSlipCalc;
+			Preconditions.checkState(totArea > 0);
+			return areaWeightedSlipInSlipRegion/totArea;
 		}
 	}
 	
