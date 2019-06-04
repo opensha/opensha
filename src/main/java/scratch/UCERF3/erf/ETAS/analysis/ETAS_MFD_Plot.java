@@ -443,6 +443,10 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 	
 	private int calcNumToTrim() {
+		return calcNumToTrim(totalCountHist);
+	}
+	
+	static int calcNumToTrim(HistogramFunction totalCountHist) {
 		// now trim
 		double minMag = mfdMinMag;
 		// double catMinMag = Double.POSITIVE_INFINITY;

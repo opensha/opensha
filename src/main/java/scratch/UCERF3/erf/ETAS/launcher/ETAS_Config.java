@@ -499,6 +499,10 @@ public class ETAS_Config {
 	public File getOutputDir() {
 		return outputDir;
 	}
+	
+	public void setProbModel(U3ETAS_ProbabilityModelOptions probModel) {
+		this.probModel = probModel;
+	}
 
 	public U3ETAS_ProbabilityModelOptions getProbModel() {
 		return probModel;

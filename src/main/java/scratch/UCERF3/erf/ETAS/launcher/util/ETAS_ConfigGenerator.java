@@ -16,6 +16,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
@@ -36,20 +37,21 @@ public class ETAS_ConfigGenerator {
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException {
 		boolean mpj = true;
-		HPC_Sites hpcSite = HPC_Sites.Stampede2;
+		HPC_Sites hpcSite = HPC_Sites.HPC;
 		
 		FaultModels fm = FaultModels.FM3_1;
-		boolean u2 = true;
-		Integer startYear = 2019;
+		boolean u2 = false;
+		Integer startYear = 2012;
 		Long startTimeMillis = null;
-		boolean histCatalog = false;
-		boolean includeSpontaneous = false;
-		int numSimulations = 500000;
-		double duration = 10d;
+		boolean histCatalog = true;
+		boolean includeSpontaneous = true;
+		int numSimulations = 1000;
+		double duration = 1000d;
 //		double duration = 7d/365.25;
-//		Long randomSeed = 123456789l;
-		Long randomSeed = 987654321l;
+		Long randomSeed = 123456789l;
+//		Long randomSeed = 987654321l;
 		Boolean reuseERFs = false;
+		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
 		
 		// etas params
 		Double p = null;
@@ -61,10 +63,10 @@ public class ETAS_ConfigGenerator {
 //		Double c = 0.04;
 //		Double log10k = -2.31;
 		
-//		TriggerRupture[] triggerRups = null;
-//		String scenarioName = "Spontaneous";
-////		String scenarioName = "Historical1919_critical";
-//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+		TriggerRupture[] triggerRups = null;
+		String scenarioName = "Spontaneous";
+//		String scenarioName = "Historical1919_critical";
+		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		String nameAdd = null;
 		
@@ -72,9 +74,9 @@ public class ETAS_ConfigGenerator {
 //		String scenarioName = "Mojave M7";
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
-		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(33.3172,-115.728, 5.96), null, 4.8) };
-		String scenarioName = "2009 Bombay Beach M4.8";
-		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+//		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(33.3172,-115.728, 5.96), null, 4.8) };
+//		String scenarioName = "2009 Bombay Beach M4.8";
+//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 //		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(33.3172,-115.728, 5.96), null, 6) };
 //		String scenarioName = "2009 Bombay Beach M6";
@@ -89,7 +91,7 @@ public class ETAS_ConfigGenerator {
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		// only if mpj == true
-		int nodes = 20;
+		int nodes = 18;
 		int hours = 24;
 		String queue = hpcSite == HPC_Sites.HPC ? "scec" : null;
 //		String queue = "scec_hiprio";
@@ -149,6 +151,7 @@ public class ETAS_ConfigGenerator {
 			scenarioFileName += "-noSpont";
 		if (histCatalog)
 			scenarioFileName += "-historicalCatalog";
+		scenarioFileName += "-"+probModel.name().toLowerCase();
 		scenarioFileName += "-"+ETAS_AbstractPlot.getTimeShortLabel(duration).replaceAll(" ", "");
 		if (nameAdd != null && !nameAdd.isEmpty())
 			scenarioFileName += "-"+nameAdd;
@@ -166,6 +169,7 @@ public class ETAS_ConfigGenerator {
 		config.setReuseERFs(reuseERFs);
 		config.setSimulationName(scenarioName);
 		config.setRandomSeed(randomSeed);
+		config.setProbModel(probModel);
 		Preconditions.checkState(startYear == null || startTimeMillis == null, "cannot supply both startYear and startTimeMillis");
 		Preconditions.checkState(startYear != null || startTimeMillis != null, "must supply either startYear and startTimeMillis");
 		if (startYear != null)
