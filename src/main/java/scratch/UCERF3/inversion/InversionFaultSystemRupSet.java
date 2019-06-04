@@ -512,7 +512,18 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 			index += 1;
 		}
 
-		double aveSlip = getAveSlipForRup(rthRup);  // in meters
+		double aveSlip; // in meters
+		if (rupMeanSlip != null) {
+			aveSlip = getAveSlipForRup(rthRup);
+		} else {
+			double area = getAreaForRup(rthRup);
+			double length = getLengthForRup(rthRup);
+			double totOrigArea = 0d;
+			for (FaultSectionPrefData sect : getFaultSectionDataForRupture(rthRup))
+				totOrigArea += sect.getTraceLength()*1e3*sect.getOrigDownDipWidth()*1e3;
+			double origDDW = totOrigArea/length;
+			aveSlip = scalingRelationship.getAveSlip(area, length, origDDW);
+		}
 
 		if (slipModelType == SlipAlongRuptureModels.MEAN_UCERF3) {
 			// get mean weights
