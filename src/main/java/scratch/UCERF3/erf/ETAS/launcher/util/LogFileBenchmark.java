@@ -215,12 +215,12 @@ class LogFileBenchmark {
 	
 	public static void main(String[] args) throws IOException {
 		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations");
-//		String prefix = "2018_08_31-Spontaneous-includeSpont-historicalCatalog-10yr-";
+		String prefix = "2018_08_31-Spontaneous-includeSpont-historicalCatalog-10yr-";
 //		String prefix = "2018_08_31-MojaveM7-noSpont-10yr-";
-		String prefix = "2019_04_12-Spontaneous-includeSpont-historicalCatalog-1yr-5nodes_";
+//		String prefix = "2019_04_12-Spontaneous-includeSpont-historicalCatalog-1yr-5nodes_";
 
-//		int[] threads = { 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16 };
-		int[] threads = { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 };
+		int[] threads = { 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16 };
+//		int[] threads = { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 };
 		boolean first = false;
 		
 		LogFileBenchmark benchmark = new LogFileBenchmark("OpenSHA UCERF3-ETAS Stampede2 SKX Scaling",

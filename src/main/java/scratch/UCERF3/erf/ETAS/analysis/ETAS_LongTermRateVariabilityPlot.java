@@ -15,10 +15,10 @@ import org.opensha.commons.calc.FractileCurveCalculator;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.AbstractXY_DataSet;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -42,7 +42,9 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	
 	private static double[] fractiles = {0.025, 0.16, 0.84, 0.975};
 	
-	private EvenlyDiscretizedFunc durationFunc;
+	private static int target_sim_mfds_per_duration = 50;
+	
+	private DiscretizedFunc durationFunc;
 	private Map<Double, List<IncrementalMagFreqDist>> durMFDsListMap;
 	
 	private HistogramFunction totalCountHist;
@@ -70,12 +72,39 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 		Preconditions.checkState(!config.hasTriggers(), "Long term variability plot not applicable to aftershock catalogs");
 		
 		double totDuration = config.getDuration();
-		int targetNumDurations = 50;
+		// only do high resolution up to duration of 100
+		double evenMaxDuration = Math.min(100, totDuration);
+		int targetNumDurations = totDuration > 100 ? 25 : 50;
 		int myDelta = 1;
-		while (totDuration / myDelta > targetNumDurations)
+		while (evenMaxDuration / myDelta > targetNumDurations)
 			myDelta++;
-		durationFunc = new EvenlyDiscretizedFunc((double)myDelta, (int)(totDuration/myDelta), (double)myDelta);
+		EvenlyDiscretizedFunc evenDurFunc = new EvenlyDiscretizedFunc(
+				(double)myDelta, (int)(evenMaxDuration/myDelta), (double)myDelta);
+		if (myDelta > 1) {
+			// add point at 1
+			durationFunc = new ArbitrarilyDiscretizedFunc();
+			durationFunc.set(1d, 0d);
+			for (Point2D pt : evenDurFunc)
+				durationFunc.set(pt);
+		} else {
+			durationFunc = evenDurFunc;
+		}
+		if (totDuration > evenMaxDuration) {
+			// now add a very low resolution one for the long durations
+			if (totDuration >= 500)
+				myDelta = 100;
+			else if (totDuration >= 250)
+				myDelta = 50;
+			else
+				myDelta = 20;
+			evenDurFunc = new EvenlyDiscretizedFunc(
+					(double)evenMaxDuration+myDelta, (int)(totDuration/myDelta), (double)myDelta);
+			for (Point2D pt : evenDurFunc)
+				if (pt.getX() <= totDuration)
+					durationFunc.set(pt);
+		}
 		Preconditions.checkState((float)durationFunc.getMaxX() <= (float)totDuration);
+		System.out.println("Calculating long term variability with "+durationFunc.size()+" durations");
 //		System.out.println("Duration func size: "+durationFunc.size());
 //		System.out.println("Duration func delta: "+durationFunc.getDelta());
 //		System.out.println("Duration func max: "+durationFunc.getMaxX());
@@ -100,11 +129,18 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		long simStartTime = getConfig().getSimulationStartTimeMillis();
+		double simDuration = getConfig().getDuration();
 		// pad by 1s for rounding errors
-		long simEndTime = simStartTime + (long)(getConfig().getDuration()*ProbabilityModelsCalc.MILLISEC_PER_YEAR) + 1000;
-		long sweepDeltaMillis = (long)ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+		long simEndTime = simStartTime + (long)(simDuration*ProbabilityModelsCalc.MILLISEC_PER_YEAR) + 1000;
 		for (double duration : durMFDsListMap.keySet()) {
+			double maxSweeps = (simDuration - duration);
+			double sweepDeltaYears = 1d;
+			if (maxSweeps > target_sim_mfds_per_duration)
+				sweepDeltaYears = Math.min(duration, maxSweeps/target_sim_mfds_per_duration);
 			List<IncrementalMagFreqDist> mfdList = durMFDsListMap.get(duration);
+//			if (mfdList.isEmpty())
+//				System.out.println("Sweep delta for duration "+duration+": "+sweepDeltaYears);
+			long sweepDeltaMillis = (long)(sweepDeltaYears*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 			long durationMillis = (long)(duration*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 			int numProcessed = 0;
 			for (long startTime=simStartTime; startTime+durationMillis<=simEndTime; startTime+=sweepDeltaMillis) {
@@ -138,6 +174,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		
 		Map<Double, MFD_VarStats> durStatsMap = new HashMap<>();
+//		System.out.println("Building dur stats");
 		Double myMinMag = null;
 		for (Double duration : durMFDsListMap.keySet()) {
 			List<IncrementalMagFreqDist> mfds = durMFDsListMap.get(duration);
@@ -163,12 +200,14 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 		PlotCurveCharacterstics modeChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.CYAN.darker());
 		PlotCurveCharacterstics stdDevChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GREEN.darker());
 		
+//		System.out.println("Plotting");
 		// first magnitude dependent plots for each fixed duration
 		if (fixedDurations != null && fixedDurations.length > 0) {
 			fixedDurPrefixes = new ArrayList<>();
 			fixedDurCSVs = new ArrayList<>();
 			for (int i=0; i<fixedDurations.length; i++) {
 				double duration = fixedDurations[i];
+//				System.out.println("Plotting fixed duration: "+duration);
 				MFD_VarStats stats = durStatsMap.get(duration);
 				
 				// build CSV file
@@ -183,6 +222,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 				
 				String myPrefix = prefix+"_"+optionalDigitDF.format(duration)+"yr";
 				fixedDurPrefixes.add(myPrefix);
+//				System.out.println("writing CSV with "+durCSV.getNumRows()+" rows");
 				
 				durCSV.writeToFile(new File(outputDir, myPrefix+".csv"));
 				
@@ -245,32 +285,33 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 		durPrefixes = new ArrayList<>();
 		
 		for (double durMag : durMinMags) {
-			EvenlyDiscretizedFunc meanFunc = new EvenlyDiscretizedFunc(durationFunc.getMinX(), durationFunc.getMaxX(), durationFunc.size());
-			EvenlyDiscretizedFunc[] fractileFuncs = new EvenlyDiscretizedFunc[fractiles.length];
+			ArbitrarilyDiscretizedFunc meanFunc = new ArbitrarilyDiscretizedFunc();
+			ArbitrarilyDiscretizedFunc[] fractileFuncs = new ArbitrarilyDiscretizedFunc[fractiles.length];
 			for (int i=0; i<fractileFuncs.length; i++)
-				fractileFuncs[i] = new EvenlyDiscretizedFunc(durationFunc.getMinX(), durationFunc.getMaxX(), durationFunc.size());
-			EvenlyDiscretizedFunc medianFunc = new EvenlyDiscretizedFunc(durationFunc.getMinX(), durationFunc.getMaxX(), durationFunc.size());
-			EvenlyDiscretizedFunc modeFunc = new EvenlyDiscretizedFunc(durationFunc.getMinX(), durationFunc.getMaxX(), durationFunc.size());
-			EvenlyDiscretizedFunc stdDevFunc = new EvenlyDiscretizedFunc(durationFunc.getMinX(), durationFunc.getMaxX(), durationFunc.size());
+				fractileFuncs[i] = new ArbitrarilyDiscretizedFunc();
+			ArbitrarilyDiscretizedFunc medianFunc = new ArbitrarilyDiscretizedFunc();
+			ArbitrarilyDiscretizedFunc modeFunc = new ArbitrarilyDiscretizedFunc();
+			ArbitrarilyDiscretizedFunc stdDevFunc = new ArbitrarilyDiscretizedFunc();
 			
 			CSVFile<String> csv = new CSVFile<>(true);
 			List<String> header = new ArrayList<>(commonHeader);
 			header.add(0, "Duration (years)");
 			csv.addLine(header);
 			
-			for (int d=0; d<durationFunc.size(); d++) {
-				MFD_VarStats stats = durStatsMap.get(durationFunc.getX(d));
+			for (int i=0; i<durationFunc.size(); i++) {
+				double duration = durationFunc.getX(i);
+				MFD_VarStats stats = durStatsMap.get(duration);
 				
 				int magIndex = stats.meanFunc.getClosestXIndex(durMag);
 
-				meanFunc.set(d, stats.meanFunc.getY(magIndex));
+				meanFunc.set(duration, stats.meanFunc.getY(magIndex));
 				for (int f=0; f<fractileFuncs.length; f++)
-					fractileFuncs[f].set(d, stats.fractileFuncs[f].getY(magIndex));
-				medianFunc.set(d, stats.medianFunc.getY(magIndex));
-				modeFunc.set(d, stats.modeFunc.getY(magIndex));
-				stdDevFunc.set(d, stats.stdDevFunc.getY(magIndex));
+					fractileFuncs[f].set(duration, stats.fractileFuncs[f].getY(magIndex));
+				medianFunc.set(duration, stats.medianFunc.getY(magIndex));
+				modeFunc.set(duration, stats.modeFunc.getY(magIndex));
+				stdDevFunc.set(duration, stats.stdDevFunc.getY(magIndex));
 				
-				csv.addLine(stats.getCSVLine(magIndex, (float)durationFunc.getX(d)+""));
+				csv.addLine(stats.getCSVLine(magIndex, (float)duration+""));
 			}
 			
 			String myPrefix = prefix+"_m"+optionalDigitDF.format(durMag);
@@ -290,7 +331,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 			chars.add(meanChar);
 			
 			for (int j=0; j<fractileFuncs.length; j++) {
-				EvenlyDiscretizedFunc func = fractileFuncs[j];
+				DiscretizedFunc func = fractileFuncs[j];
 				if (j == 0)
 					func.setName(getFractilesString());
 				funcs.add(func);

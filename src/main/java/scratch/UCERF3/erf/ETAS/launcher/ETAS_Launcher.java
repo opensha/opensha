@@ -149,6 +149,10 @@ public class ETAS_Launcher {
 	}
 	
 	public ETAS_Launcher(ETAS_Config config, boolean mkdirs, Long randSeed) throws IOException {
+		this(config, mkdirs, randSeed, null);
+	}
+	
+	ETAS_Launcher(ETAS_Config config, boolean mkdirs, Long randSeed, ETAS_CubeDiscretizationParams cubeParams) throws IOException {
 		ETAS_Simulator.D = false;
 		if (config.isGriddedOnly())
 			ETAS_Simulator_NoFaults.D = false;
@@ -303,7 +307,9 @@ public class ETAS_Launcher {
 		}
 		buildRandomSeeds(randSeed);
 		
-		cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
+		if (cubeParams == null)
+			cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
+		this.cubeParams = cubeParams;
 	}
 	
 	static File getResultsDir(File outputDir) {
@@ -321,6 +327,11 @@ public class ETAS_Launcher {
 			for (int i=0; i<config.getNumSimulations(); i++)
 				randSeeds[i] = r.nextLong(Long.MIN_VALUE, Long.MAX_VALUE);
 		}
+	}
+	
+	void setRandomSeeds(long[] randSeeds) {
+		Preconditions.checkState(randSeeds.length == config.getNumSimulations());
+		this.randSeeds = randSeeds;
 	}
 	
 	public void debug(String message) {
@@ -382,6 +393,11 @@ public class ETAS_Launcher {
 		}
 		// reset last event data
 		FaultSystemRupSet rupSet = fss.getRupSet();
+		resetLastEventData(rupSet);
+		return fss;
+	}
+
+	private void resetLastEventData(FaultSystemRupSet rupSet) {
 		if (config.isTimeIndependentERF()) {
 			for (int s=0; s<rupSet.getNumSections(); s++)
 				rupSet.getFaultSectionData(s).setDateOfLastEvent(Long.MIN_VALUE);
@@ -396,7 +412,6 @@ public class ETAS_Launcher {
 				}
 			}
 		}
-		return fss;
 	}
 	
 	public synchronized void checkInFSS(FaultSystemSolution fss) {
@@ -573,6 +588,7 @@ public class ETAS_Launcher {
 				// reset all time of last event data
 				FaultSystemSolutionERF_ETAS fssERF = (FaultSystemSolutionERF_ETAS)erf;
 				FaultSystemRupSet rupSet = fssERF.getSolution().getRupSet();
+				resetLastEventData(rupSet);
 				for (int s=0; s<rupSet.getNumSections(); s++)
 					fssERF.setFltSectOccurranceTime(s, rupSet.getFaultSectionData(s).getDateOfLastEvent());
 			}

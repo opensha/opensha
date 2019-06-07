@@ -1123,11 +1123,12 @@ public class ETAS_Utils {
 		for(int i=0;i<rateFunc.size();i++) {
 			meanRatePerYear+= rateFunc.getY(i)/rateFunc.size();	// fact that it should be only half the first and last bin doesn't seem to matter
 		}
-		Preconditions.checkState(Double.isFinite(meanRatePerYear), "Bad meanRatePerYear = %s, rateFunc.size() = %s, sum rateFuncY's = %s",
-				meanRatePerYear, rateFunc.size(), rateFunc.calcSumOfY_Vals());
+		Preconditions.checkState(Double.isFinite(meanRatePerYear) && meanRatePerYear >= 0,
+				"Bad meanRatePerYear = %s, rateFunc.size() = %s, sum rateFuncY's = %s\nInput MFD:\n%s",
+				meanRatePerYear, rateFunc.size(), rateFunc.calcSumOfY_Vals(), mfd);
 		
 		double numYears = (rateFunc.getMaxX()-rateFunc.getMinX()+rateFunc.getDelta())/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-		Preconditions.checkState(Double.isFinite(numYears), "Bad numYears = %s", numYears);
+		Preconditions.checkState(Double.isFinite(numYears) && numYears > 0d, "Bad numYears = %s", numYears);
 		int numEvents = getPoissonRandomNumber(meanRatePerYear*numYears);
 		long[] eventTimesMillis = new long[numEvents];
 		for(int i=0;i<numEvents;i++) {

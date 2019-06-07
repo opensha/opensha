@@ -48,10 +48,11 @@ public class ETAS_ConfigGenerator {
 		int numSimulations = 1000;
 		double duration = 1000d;
 //		double duration = 7d/365.25;
-		Long randomSeed = 123456789l;
+//		Long randomSeed = 123456789l;
+		Long randomSeed = System.nanoTime();
 //		Long randomSeed = 987654321l;
 		Boolean reuseERFs = false;
-		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
+		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
 		
 		// etas params
 		Double p = null;
@@ -97,7 +98,7 @@ public class ETAS_ConfigGenerator {
 //		String queue = "scec_hiprio";
 //		Integer threads = null;
 		
-		Integer threads = 30;
+		Integer threads = hpcSite == HPC_Sites.HPC ? 12 : 30;
 		
 //		nameAdd = nodes+"nodes_"+threads+"threads";
 		

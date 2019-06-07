@@ -442,6 +442,10 @@ public class ETAS_Config {
 		this.binaryOutput = binaryOutput;
 	}
 	
+	public void setBinaryOutputFilters(List<BinaryFilteredOutputConfig> binaryOutputFilters) {
+		this.binaryOutputFilters = binaryOutputFilters;
+	}
+	
 	public List<BinaryFilteredOutputConfig> getBinaryOutputFilters() {
 		return binaryOutputFilters;
 	}
@@ -459,7 +463,7 @@ public class ETAS_Config {
 	}
 	
 	public boolean isReuseERFs() {
-		return reuseERFs == null ? false : reuseERFs;
+		return reuseERFs == null ? true : reuseERFs;
 	}
 	
 	public void setSimulationName(String simulationName) {
@@ -538,6 +542,10 @@ public class ETAS_Config {
 
 	public double getTotRateScaleFactor() {
 		return totRateScaleFactor;
+	}
+	
+	public void setGridSeisCorr(boolean gridSeisCorr) {
+		this.gridSeisCorr = gridSeisCorr;
 	}
 
 	public boolean isGridSeisCorr() {
