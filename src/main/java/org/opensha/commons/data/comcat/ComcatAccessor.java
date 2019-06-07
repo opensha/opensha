@@ -394,9 +394,89 @@ public class ComcatAccessor {
 	 * Note: As a special case, if endTime == startTime, then the end time is the current time.
 	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
 	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
-	 * Note: This function is overridden in org.opensha.oaf.comcat.ComcatOAFAccessor.
 	 */
 	public ObsEqkRupList fetchEventList (String exclude_id, long startTime, long endTime,
+			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
+			double minMag, int limit_per_call, int max_calls) {
+
+		// The list of ruptures we are going to build
+
+		final ObsEqkRupList rups = new ObsEqkRupList();
+
+		// The visitor that builds the list
+
+		ComcatVisitor visitor = new ComcatVisitor() {
+			@Override
+			public int visit (ObsEqkRupture rup, JsonEvent geojson) {
+				rups.add(rup);
+				return 0;
+			}
+		};
+
+		// Visit each event
+
+		visitEventList (visitor, exclude_id, startTime, endTime,
+			minDepth, maxDepth, region, wrapLon, extendedInfo,
+			minMag, limit_per_call, max_calls);
+
+		// Return the list
+		
+		return rups;
+	}
+
+
+
+
+	/**
+	 * Fetch a list of events satisfying the given conditions.
+	 * @param exclude_id = An event id to exclude from the results, or null if none.
+	 * @param startTime = Start of time interval, in milliseconds after the epoch.
+	 * @param endTime = End of time interval, in milliseconds after the epoch.
+	 * @param minDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param maxDepth = Maximum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param region = Region to search.  Events not in this region are filtered out.
+	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
+	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
+	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @return
+	 * Note: As a special case, if endTime == startTime, then the end time is the current time.
+	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
+	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
+	 */
+	public ObsEqkRupList fetchEventList (String exclude_id, long startTime, long endTime,
+			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
+			double minMag) {
+
+		return fetchEventList (exclude_id, startTime, endTime,
+			minDepth, maxDepth, region, wrapLon, extendedInfo,
+			minMag, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
+	}
+
+
+
+	
+	/**
+	 * Visit a list of events satisfying the given conditions.
+	 * @param visitor = The visitor that is called for each event, cannot be null.
+	 * @param exclude_id = An event id to exclude from the results, or null if none.
+	 * @param startTime = Start of time interval, in milliseconds after the epoch.
+	 * @param endTime = End of time interval, in milliseconds after the epoch.
+	 * @param minDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param maxDepth = Maximum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param region = Region to search.  Events not in this region are filtered out.
+	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
+	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
+	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @param limit_per_call = Maximum number of events to fetch in a single call to Comcat, or 0 for default.
+	 * @param max_calls = Maximum number of calls to ComCat, or 0 for default.
+	 * @return
+	 * Returns the result code from the last call to the visitor.
+	 * Note: As a special case, if endTime == startTime, then the end time is the current time.
+	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
+	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
+	 * Note: This function is overridden in org.opensha.oaf.comcat.ComcatOAFAccessor.
+	 */
+	public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
 			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
 			double minMag, int limit_per_call, int max_calls) {
 
@@ -404,6 +484,12 @@ public class ComcatAccessor {
 
 		http_statuses.clear();
 		local_http_status = -1;
+
+		// Check the visitor
+
+		if (visitor == null) {
+			throw new IllegalArgumentException ("ComcatAccessor.visitEventList: No visitor supplied");
+		}
 
 		// Start a query
 
@@ -499,6 +585,14 @@ public class ComcatAccessor {
 			event_filter.add (exclude_id);
 		}
 
+		// The number of events processed
+
+		int total_count = 0;
+
+		// Result code to return
+
+		int result = 0;
+
 		// The list of ruptures we are going to build
 
 		ObsEqkRupList rups = new ObsEqkRupList();
@@ -570,10 +664,22 @@ public class ComcatAccessor {
 					continue;
 				}
 
-				// Add the event to our list
+				// Visit the event
 
-				rups.add(rup);
+				result = visitor.visit (rup, event);
 				++filtered_count;
+				++total_count;
+
+				// Stop if requested
+
+				if (result != 0) {
+
+					if (D) {
+						System.out.println("Visitor requested stop, total number of events returned = " + total_count);
+					}
+		
+					return result;
+				}
 			}
 
 			// Display the number of events that survived filtering
@@ -603,17 +709,18 @@ public class ComcatAccessor {
 		// Display final result
 		
 		if (D) {
-			System.out.println("Total number of events returned = " + rups.size());
+			System.out.println("Total number of events returned = " + total_count);
 		}
 		
-		return rups;
+		return result;
 	}
 
 
 
-
+	
 	/**
-	 * Fetch a list of events satisfying the given conditions.
+	 * Visit a list of events satisfying the given conditions.
+	 * @param visitor = The visitor that is called for each event, cannot be null.
 	 * @param exclude_id = An event id to exclude from the results, or null if none.
 	 * @param startTime = Start of time interval, in milliseconds after the epoch.
 	 * @param endTime = End of time interval, in milliseconds after the epoch.
@@ -624,17 +731,19 @@ public class ComcatAccessor {
 	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
 	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
 	 * @return
+	 * Returns the result code from the last call to the visitor.
 	 * Note: As a special case, if endTime == startTime, then the end time is the current time.
 	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
 	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
 	 */
-	public ObsEqkRupList fetchEventList (String exclude_id, long startTime, long endTime,
+	public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
 			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
 			double minMag) {
 
-		return fetchEventList (exclude_id, startTime, endTime,
+		return visitEventList (visitor, exclude_id, startTime, endTime,
 			minDepth, maxDepth, region, wrapLon, extendedInfo,
 			minMag, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
+
 	}
 
 
