@@ -111,6 +111,9 @@ public class RSQSimSubSectionMapper {
 	public static final double MID_SEIS_MIN_DEPTH_DEFAULT = 4d;
 	public static final double MID_SEIS_MAX_DEPTH_DEFAULT = 8d;
 	public static final double MID_SEIS_BUFFER_DEFAULT = 2d;
+	private double minSlipDepth;
+	private double maxSlipDepth;
+	private double faultDownDipBuffer;
 	
 	public enum SlipAlongSectAlgorithm {
 		MID_SEIS_FULL_LEN("Full Mapped Subsection Length",
@@ -405,6 +408,10 @@ public class RSQSimSubSectionMapper {
 		return subSects;
 	}
 	
+	public boolean isMapped(FaultSectionPrefData sect) {
+		return sectsToElemsMap.containsKey(sect) && !sectsToElemsMap.get(sect).isEmpty();
+	}
+	
 	public FaultSectionPrefData getMappedSection(SimulatorElement element) {
 		return elemToSectsMap.get(element);
 	}
@@ -438,6 +445,10 @@ public class RSQSimSubSectionMapper {
 	 * @param faultDownDipBuffer
 	 */
 	public void trackSlipOnSections(double minDepth, double maxDepth, double faultDownDipBuffer) {
+		this.minSlipDepth = minDepth;
+		this.maxSlipDepth = maxDepth;
+		this.faultDownDipBuffer = faultDownDipBuffer;
+		
 		mappingsCache.invalidateAll();
 		Preconditions.checkArgument(minDepth < maxDepth, "minDepth must be > maxDepth!");
 		
@@ -516,6 +527,18 @@ public class RSQSimSubSectionMapper {
 		}
 	}
 	
+	public double getMinSlipDepth() {
+		return minSlipDepth;
+	}
+
+	public double getMaxSlipDepth() {
+		return maxSlipDepth;
+	}
+
+	public double getFaultDownDipBuffer() {
+		return faultDownDipBuffer;
+	}
+
 	public double[] getSlipOnSectionDepthConstraints(FaultSectionPrefData sect) {
 		Preconditions.checkNotNull(sectMidDepthConstraints, "Must enable slip on section tracking first");
 		return sectMidDepthConstraints.get(sect);
