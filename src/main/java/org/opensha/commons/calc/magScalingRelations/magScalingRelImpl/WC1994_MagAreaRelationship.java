@@ -63,7 +63,7 @@ public class WC1994_MagAreaRelationship extends MagAreaRelationship {
       if (Double.isNaN(rake))
         // apply the "All" case
         return  4.07 + 0.98*Math.log(area)*lnToLog;
-      else if (( rake <= 45 && rake >= -45 ) || (rake >= 135 && rake <= -135))
+      else if (( rake <= 45 && rake >= -45 ) || rake >= 135 || rake <= -135)
         // strike slip
         return  3.98 + 1.02*Math.log(area)*lnToLog;
       else if (rake > 0)
@@ -85,7 +85,7 @@ public class WC1994_MagAreaRelationship extends MagAreaRelationship {
       if (Double.isNaN(rake))
         // apply the "All" case
         return  0.24;
-      else if (( rake <= 45 && rake >= -45 ) || (rake >= 135 && rake <= -135))
+      else if (( rake <= 45 && rake >= -45 ) || rake >= 135 || rake <= -135)
         // strike slip
         return  0.23;
       else if (rake > 0)
@@ -107,7 +107,7 @@ public class WC1994_MagAreaRelationship extends MagAreaRelationship {
       if  (Double.isNaN(rake))
           // their "All" case
           return Math.pow(10.0,-3.49+0.91*mag);
-      else if (( rake <= 45 && rake >= -45 ) || (rake >= 135 && rake <= -135))
+      else if (( rake <= 45 && rake >= -45 ) || rake >= 135 || rake <= -135)
           // strike slip
           return  Math.pow(10.0, -3.42 + 0.90*mag);
       else if (rake > 0)
@@ -131,7 +131,7 @@ public class WC1994_MagAreaRelationship extends MagAreaRelationship {
       if (Double.isNaN(rake))
         // apply the "All" case
         return  0.24;
-      else if (( rake <= 45 && rake >= -45 ) || (rake >= 135 && rake <= -135))
+      else if (( rake <= 45 && rake >= -45 ) || rake >= 135 || rake <= -135)
         // strike slip
         return  0.22;
       else if (rake > 0)
@@ -163,7 +163,7 @@ public class WC1994_MagAreaRelationship extends MagAreaRelationship {
     	String type;
         if (Double.isNaN(rake))
             type = "All";
-          else if (( rake <= 45 && rake >= -45 ) || (rake >= 135 && rake <= -135))
+          else if (( rake <= 45 && rake >= -45 ) || rake >= 135 || rake <= -135)
             type = "strike slip";
           else if (rake > 0)
             type = "thrust/reverse";
