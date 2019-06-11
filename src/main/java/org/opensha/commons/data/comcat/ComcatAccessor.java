@@ -4,10 +4,13 @@ import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
 import gov.usgs.earthquake.event.Format;
 import gov.usgs.earthquake.event.JsonEvent;
+import gov.usgs.earthquake.event.OrderBy;
 
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
+import java.net.UnknownHostException;
 import java.net.URL;
+import javax.net.ssl.SSLException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Comparator;
@@ -224,6 +227,54 @@ public class ComcatAccessor {
 	// This is chosen to respect the limits for both Comcat (-100.0 km) and OpenSHA (-5.0).
 
 	public static final double DEFAULT_MIN_DEPTH = 0.0;
+
+	// The following four parameters control how to break up a large query (exceeding the size limit)
+	// into a series of smaller queries.  Ideally, this would be done simply by incrementing the
+	// offset value by the size limit after each query.  But currently (as of 06/2019) that approach
+	// does not work reliably.  So these parameters offer some options.
+	//
+	// Multi-query operations can be handled either by increasing the offset value after each query,
+	// or by descreasing the end time after each query.
+	//
+	// To increase the offset value after each query, set OVERLAP_TIME = -1L.  In this case, you
+	// can set OVERLAP_FRACTION = 0 for each succeeding query to begin after the previous query,
+	// or OVERLAP_FRACTION > 1 to allow for some overlap between successive queries (i.e., events
+	// at the end of the previous query are re-fetched at the beginning of the next query.)
+	// Overlap provides increased assurance that all matching events are found.
+	//
+	// To decrease the end time after each query, set OVERLAP_TIME >= 0L.  A positive value
+	// creates that much overlap between the time intervals of successive queries.  If
+	// OVERLAP_RESAMPLE > 1 then each query that returns a number of events equal to or close
+	// to the size limit is repeated with the start time increased, so that all returned events
+	// come from queries that are comfortably below the size limit.
+
+	// The fraction (i.e., value 10 represents 1/10) of count that is kept as offset overlap between queries in a multi-query operation.
+	// This is meant to compensate for the offset= parameter not being honored exactly.
+	// (Set to zero if offset overlap is not desired.)
+	// Note: This is ignored if OVERLAP_TIME >= 0L.
+
+	public static final int OVERLAP_FRACTION = 10;
+
+	// The minimum limit needed for offset overlap to be applied between queries in a multi-query operation.
+	// (Set to a very large value, larger than the Comcat size limit, if offset overlap is not desired.)
+	// Note: This is ignored if OVERLAP_TIME >= 0L.
+
+	public static final int OVERLAP_MIN_LIMIT = 10000;
+
+	// The time, in milliseconds, of time overlap between queries in a multi-query operation.
+	// (Set to -1L if multi-query operations use offset.)
+	// Note: If OVERLAP_TIME >= 0L then multi-query operations are done by adjusting the end time
+	// of each query.  Otherwise, they are done by adjusting the offset parameter.
+
+	public static final long OVERLAP_TIME = 60000L;
+
+	// Control resampling, when time overlap is being used between queries in a multi-query operation.
+	// The value is the reciprocal of a fraction.  If less than that fraction of the limit is
+	// remaining, then Comcat is resampled by adjusting the start time.
+	// (Set to zero if resampling is not desired, or if time overlap is not being used.)
+	// Note: This is ignored if OVERLAP_TIME < 0L.
+
+	public static final int OVERLAP_RESAMPLE = 0;
 	
 
 
@@ -283,6 +334,7 @@ public class ComcatAccessor {
 		// Error if more than one event was returned
 
 		if (events.size() != 1) {
+			reportQueryError          ("ComcatAccessor: Received more than one match, count = " + events.size(), null);
 			throw new ComcatException ("ComcatAccessor: Received more than one match, count = " + events.size());
 		}
 		
@@ -518,11 +570,17 @@ public class ComcatAccessor {
 
 		query.setStartTime(new Date(startTime));
 
+		long original_end_time;
+
 		if (endTime == startTime) {
 			query.setEndTime(new Date(timeNow));
+			original_end_time = timeNow;
 		} else {
 			query.setEndTime(new Date(endTime));
+			original_end_time = endTime;
 		}
+
+		long current_end_time = original_end_time;
 		
 		// If the region is a circle, use Comcat's circle query
 
@@ -554,6 +612,10 @@ public class ComcatAccessor {
 		if (minMag >= -9.0) {
 			query.setMinMagnitude(new BigDecimal(String.format("%.3f", minMag)));
 		}
+
+		// Set the sort order to descending origin time
+
+		query.setOrderBy (OrderBy.TIME);
 
 		// Calculate our limit and insert it in the query
 
@@ -607,32 +669,121 @@ public class ComcatAccessor {
 				query.setOffset(offset);
 			}
 
-			// Display the query URL
+			// If end time has changed, insert end time into query
 
-			if (D) {
-				try {
-					System.out.println(service.getUrl(query, Format.GEOJSON));
-				} catch (MalformedURLException e) {
-					e.printStackTrace();
-				}
+			if (current_end_time != original_end_time) {
+				query.setEndTime(new Date(current_end_time));
 			}
+
+			//  // Display the query URL
+			//  
+			//  if (D) {
+			//  	try {
+			//  		System.out.println(service.getUrl(query, Format.GEOJSON));
+			//  	} catch (MalformedURLException e) {
+			//  		e.printStackTrace();
+			//  	}
+			//  }
 
 			// Call Comcat to get the list of events satisfying the query
 
 			List<JsonEvent> events = getEventsFromComcat (query);
 
-			// Display the number of events received
+			//  // Display the number of events received
+			//  
+			//  int count = events.size();
+			//  if (D) {
+			//  	System.out.println ("Count of events received = " + count);
+			//  }
+
+			// Get the number of events received
 
 			int count = events.size();
-			if (D) {
-				System.out.println ("Count of events received = " + count);
+
+			// Set flag indicating if this is the last query
+
+			boolean f_done = false;
+
+			// Stop if we didn't get all we asked for
+
+			if (count < my_limit) {
+				f_done = true;
+			}
+
+			// If resampling is desired ...
+
+			if (OVERLAP_TIME >= 0L && OVERLAP_RESAMPLE > 1) {
+
+				// The resampling threshold
+
+				int resample_threshold = my_limit;
+				resample_threshold -= (my_limit / OVERLAP_RESAMPLE);
+
+				// If number of events exceeds the threshold ...
+
+				if (count > resample_threshold) {
+
+					// Accumulate the time of each returned earthquake
+
+					long[] event_times = new long[count];
+					int n = 0;
+
+					for (JsonEvent event : events) {
+						Date d = event.getTime();
+						if (d != null) {
+							event_times[n] = d.getTime();
+							++n;
+						}
+					}
+
+					// If the number of times exceeds the threshold ...
+
+					if (n > resample_threshold) {
+
+						// Sort the times into ascending order
+						// (Comcat supposedly returns times in descending order,
+						// but we don't rely on that.)
+
+						Arrays.sort (event_times, 0, n);
+
+						// Set the new start time
+
+						long new_start_time = event_times[n - resample_threshold];
+						query.setStartTime(new Date(new_start_time));
+
+						// Call Comcat to get the list of events satisfying the query
+
+						events = getEventsFromComcat (query);
+
+						// Restore the original start time
+
+						query.setStartTime(new Date(startTime));
+
+						// This is not the last query
+
+						f_done = false;
+					}
+				}
 			}
 
 			// Loop over returned events
 
 			int filtered_count = 0;
 
+			int filtered_by_conversion = 0;
+			int filtered_by_location = 0;
+			int filtered_by_id = 0;
+
+			long last_received_time = current_end_time;
+
 			for (JsonEvent event : events) {
+
+				// Record the time
+
+				Date received_time = event.getTime();
+				if (received_time != null) {
+					last_received_time = Math.min (last_received_time, received_time.getTime());
+				}
 
 				// Convert to our form
 
@@ -647,6 +798,7 @@ public class ComcatAccessor {
 				// Skip this event if we couldn't convert it
 
 				if (rup == null) {
+					++filtered_by_conversion;
 					continue;
 				}
 
@@ -654,6 +806,7 @@ public class ComcatAccessor {
 
 				if (f_region_filter) {
 					if (!( region.contains(rup.getHypocenterLocation()) )) {
+						++filtered_by_location;
 						continue;
 					}
 				}
@@ -661,6 +814,7 @@ public class ComcatAccessor {
 				// Do event id filtering (must be the last filter done)
 
 				if (!( event_filter.add (rup.getEventId()) )) {
+					++filtered_by_id;
 					continue;
 				}
 
@@ -676,6 +830,11 @@ public class ComcatAccessor {
 
 					if (D) {
 						System.out.println("Visitor requested stop, total number of events returned = " + total_count);
+						if (filtered_by_conversion != 0 || filtered_by_location != 0 || filtered_by_id != 0) {
+							System.out.println ("Events filtered due to conversion = " + filtered_by_conversion
+												+ ", location = " + filtered_by_location
+												+ ", id = " + filtered_by_id);
+						}
 					}
 		
 					return result;
@@ -686,21 +845,54 @@ public class ComcatAccessor {
 
 			if (D) {
 				System.out.println ("Count of events after filtering = " + filtered_count);
+				if (filtered_by_conversion != 0 || filtered_by_location != 0 || filtered_by_id != 0) {
+					System.out.println ("Events filtered due to conversion = " + filtered_by_conversion
+										+ ", location = " + filtered_by_location
+										+ ", id = " + filtered_by_id);
+				}
 			}
 
-			// Advance the offset
+			// Adjust the end time, if multi-query operations are being done via end time
 
-			offset += count;
+			if (OVERLAP_TIME >= 0L) {
 
-			// Stop if we didn't get all we asked for
+				// Adjust end time to the last time received, plus overlap, forcing end time to decrease
 
-			if (count < my_limit) {
+				current_end_time = Math.min (current_end_time - 1L, last_received_time + OVERLAP_TIME);
+
+				// If exhausted time interval, stop
+
+				if (current_end_time < startTime) {
+					break;
+				}
+			}
+
+			// Otherwise, multi-query operations are being done via offset
+
+			else {
+
+				// Advance the offset
+
+				offset += count;
+
+				// If offset overlap is desired, apply it
+
+				if (OVERLAP_FRACTION > 1 && my_limit >= OVERLAP_MIN_LIMIT) {
+					int overlap = count / OVERLAP_FRACTION;
+					offset -= overlap;
+				}
+			}
+
+			// Stop if this is the last query
+
+			if (f_done) {
 				break;
 			}
 
 			// If reached the maximum permitted number of calls, it's an error
 
 			if (n_call >= my_max_calls) {
+				reportQueryError          ("ComcatAccessor: Exceeded maximum number of Comcat calls in a single operation", null);
 				throw new ComcatException ("ComcatAccessor: Exceeded maximum number of Comcat calls in a single operation");
 			}
 
@@ -869,11 +1061,92 @@ public class ComcatAccessor {
 
 
 
+	// Set the connection timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default, or -2 for the ComcatEventWebService default.
+	// The call is ignored if the service is not ComcatEventWebService.
+
+	public void setConnectTimeout (int the_connectTimeout) {
+		if (service instanceof ComcatEventWebService) {
+			((ComcatEventWebService)service).setConnectTimeout (the_connectTimeout);
+		}
+		return;
+	}
+
+
+	// Set the read timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default, or -2 for the ComcatEventWebService default.
+	// The call is ignored if the service is not ComcatEventWebService.
+
+	public void setReadTimeout (int the_readTimeout) {
+		if (service instanceof ComcatEventWebService) {
+			((ComcatEventWebService)service).setReadTimeout (the_readTimeout);
+		}
+		return;
+	}
+
+
+	// Set the timeout readback flag.
+	// The timeout readback flag is false by default.
+	// The call is ignored if the service is not ComcatEventWebService.
+
+	public void setEnableTimeoutReadback (boolean the_enableTimeoutReadback) {
+		if (service instanceof ComcatEventWebService) {
+			((ComcatEventWebService)service).setEnableTimeoutReadback (the_enableTimeoutReadback);
+		}
+		return;
+	}
+
+
+	// Get the connection timeout from the last operation, in milliseconds.
+	// It is 0 if no timeout, -1 if unknown (e.g., if timeout readback is disabled).
+
+	public int getLastConnectTimeout () {
+		if (service instanceof ComcatEventWebService) {
+			return ((ComcatEventWebService)service).getLastConnectTimeout();
+		}
+		return -1;
+	}
+
+
+	// Get the read timeout from the last operation, in milliseconds.
+	// It is 0 if no timeout, -1 if unknown (e.g., if timeout readback is disabled).
+
+	public int getLastReadTimeout () {
+		if (service instanceof ComcatEventWebService) {
+			return ((ComcatEventWebService)service).getLastReadTimeout();
+		}
+		return -1;
+	}
+
+
+
+
 	// Get the geojson from the last fetchEvent, or null if none.
 	// Note: JsonEvent is a subclass of org.json.simple.JSONObject.
 
 	public JsonEvent get_last_geojson () {
 		return last_geojson;
+	}
+
+
+
+
+	// Report an error during a Comcat operation.
+	// Parameters:
+	//  message = Message describing the error, cannot be null or empty.
+	//  e = Exception thrown by service, can be null if error does not originate in the service.
+	// Note: This function is intended only to report or log errors.
+	// It is not intended to be used for any sort of error recovery.
+	// (Error recovery should be done by catching ComcatException.)
+	// This function should never throw an exception.
+	// It is called when ComcatException is about to be thrown.
+
+	protected void reportQueryError (String message, Exception e) {
+		try {
+			System.out.println (message);
+		} catch (Exception e2) {
+		}
+		return;
 	}
 	
 
@@ -902,23 +1175,65 @@ public class ComcatAccessor {
 		List<JsonEvent> events = null;
 		local_http_status = 0;
 
+			// Display the query URL
+
+		if (D) {
+			try {
+				System.out.println (service.getUrl(query, Format.GEOJSON));
+			} catch (MalformedURLException e) {
+				System.out.println ("Comcat query with unknown URL");
+			}
+		}
+
 		try {
 			events = service.getEvents(query);
 
 		} catch (SocketTimeoutException e) {
-			// This exception (subclass of IOException) indicates an I/O error.
+			// This exception (subclass of IOException) indicates a timeout connecting to or
+			// reading from Comcat.  We use the HTTP status code to differentiate.
+			if (get_http_status_code() == -1) {
+				http_statuses.add (new Integer(get_http_status_code()));
+				reportQueryError          ("ComcatAccessor: Timeout error (SocketTimeoutException) while accessing Comcat", e);
+				throw new ComcatException ("ComcatAccessor: Timeout error (SocketTimeoutException) while accessing Comcat", e);
+			}
+			if (get_http_status_code() == -2) {
+				http_statuses.add (new Integer(get_http_status_code()));
+				reportQueryError          ("ComcatAccessor: Timeout error (SocketTimeoutException) while connecting to Comcat", e);
+				throw new ComcatException ("ComcatAccessor: Timeout error (SocketTimeoutException) while connecting to Comcat", e);
+			}
 			http_statuses.add (new Integer(get_http_status_code()));
-			throw new ComcatException ("ComcatAccessor: I/O error (SocketTimeoutException) while accessing Comcat", e);
+			reportQueryError          ("ComcatAccessor: Timeout error (SocketTimeoutException) while reading data from Comcat", e);
+			throw new ComcatException ("ComcatAccessor: Timeout error (SocketTimeoutException) while reading data from Comcat", e);
 
 		} catch (UnknownServiceException e) {
 			// This exception (subclass of IOException) indicates an I/O error.
 			http_statuses.add (new Integer(get_http_status_code()));
+			reportQueryError          ("ComcatAccessor: I/O error (UnknownServiceException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: I/O error (UnknownServiceException) while accessing Comcat", e);
 
 		} catch (ZipException e) {
 			// This exception (subclass of IOException) indicates a data error.
 			http_statuses.add (new Integer(get_http_status_code()));
+			reportQueryError          ("ComcatAccessor: Data error (ZipException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: Data error (ZipException) while accessing Comcat", e);
+
+		} catch (UnknownHostException e) {
+			// This exception (subclass of IOException) indicates bad host name, DNS failure, or connectivity issue.
+			http_statuses.add (new Integer(get_http_status_code()));
+			reportQueryError          ("ComcatAccessor: Unable to find host (UnknownHostException) while accessing Comcat", e);
+			throw new ComcatException ("ComcatAccessor: Unable to find host (UnknownHostException) while accessing Comcat", e);
+
+		} catch (SSLException e) {
+			// This exception (subclass of IOException) indicates a failure in setting up SSL.
+			http_statuses.add (new Integer(get_http_status_code()));
+			reportQueryError          ("ComcatAccessor: SSL error (SSLException) while accessing Comcat", e);
+			throw new ComcatException ("ComcatAccessor: SSL error (SSLException) while accessing Comcat", e);
+
+		} catch (MalformedURLException e) {
+			// This exception (subclass of IOException) indicates a bad query URL.
+			http_statuses.add (new Integer(get_http_status_code()));
+			reportQueryError          ("ComcatAccessor: Bad query URL (MalformedURLException) while accessing Comcat", e);
+			throw new ComcatException ("ComcatAccessor: Bad query URL (MalformedURLException) while accessing Comcat", e);
 
 		} catch (FileNotFoundException e) {
 			// If the HTTP status is unknown, then we don't know if this is error or not-found.
@@ -930,6 +1245,7 @@ public class ComcatAccessor {
 			// Otherwise it's an I/O error
 			else {
 				http_statuses.add (new Integer(get_http_status_code()));
+				reportQueryError          ("ComcatAccessor: I/O error (FileNotFoundException) while accessing Comcat", e);
 				throw new ComcatException ("ComcatAccessor: I/O error (FileNotFoundException) while accessing Comcat", e);
 			}
 
@@ -938,11 +1254,13 @@ public class ComcatAccessor {
 			// EventWebService typically throws this exception when an eventID refers to a deleted event
 			// (in response to Comcat HTTP status 409), but we nonetheless treat it as an I/O error.
 			http_statuses.add (new Integer(get_http_status_code()));
+			reportQueryError          ("ComcatAccessor: I/O error (IOException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: I/O error (IOException) while accessing Comcat", e);
 
 		} catch (Exception e) {
 			// An exception not an I/O exception probably indicates bad data received.
 			http_statuses.add (new Integer(get_http_status_code()));
+			reportQueryError          ("ComcatAccessor: Data error (Exception) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: Data error (Exception) while accessing Comcat", e);
 		}
 
@@ -954,6 +1272,12 @@ public class ComcatAccessor {
 
 		if (events == null) {
 			events = new ArrayList<JsonEvent>();
+		}
+
+		// Display the number of events received
+
+		if (D) {
+			System.out.println ("Count of events received = " + events.size());
 		}
 
 		// Return the list of events
