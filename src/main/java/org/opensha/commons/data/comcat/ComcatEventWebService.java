@@ -3,6 +3,7 @@ package org.opensha.commons.data.comcat;
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
 import gov.usgs.earthquake.event.Format;
+import gov.usgs.earthquake.event.ISO8601;
 import gov.usgs.earthquake.event.JsonEvent;
 import gov.usgs.earthquake.event.UrlUtil;
 
@@ -14,6 +15,7 @@ import java.net.HttpURLConnection;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import java.util.zip.GZIPInputStream;
 
@@ -434,6 +436,13 @@ public class ComcatEventWebService extends EventWebService {
 	public URL getUrl(final EventQuery query, final Format format)
 			throws MalformedURLException {
 
+		// See if the query is ComcatEventQuery
+
+		ComcatEventQuery ceq = null;
+		if (query instanceof ComcatEventQuery) {
+			ceq = (ComcatEventQuery)query;
+		}
+
 		// If we have a real-time feed URL ...
 
 		if (feedURL != null) {
@@ -456,6 +465,7 @@ public class ComcatEventWebService extends EventWebService {
 						&& query.getIncludeAllMagnitudes() == null
 						&& query.getIncludeAllOrigins() == null
 						&& query.getIncludeArrivals() == null
+						&& (ceq == null || ceq.getIncludeSuperseded() == null)
 						&& query.getKmlAnimated() == null
 						&& query.getKmlColorBy() == null
 						&& query.getLatitude() == null
@@ -496,9 +506,53 @@ public class ComcatEventWebService extends EventWebService {
 			}
 		}
 
-		// Pass thru to superclass
+		// fill hashmap with parameters
+		HashMap<String, Object> params = new HashMap<String, Object>();
+		params.put("alertlevel", query.getAlertLevel());
+		params.put("catalog", query.getCatalog());
+		params.put("contributor", query.getContributor());
+		params.put("endtime", ISO8601.format(query.getEndTime()));
+		params.put("eventid", query.getEventId());
+		params.put("eventtype", query.getEventType());
+		params.put("format", format == null ? query.getFormat() : format);
+		params.put("includeallmagnitudes", query.getIncludeAllMagnitudes());
+		params.put("includeallorigins", query.getIncludeAllOrigins());
+		params.put("includearrivals", query.getIncludeArrivals());
+		if (ceq != null) {params.put("includesuperseded", ceq.getIncludeSuperseded());}
+		params.put("kmlanimated", query.getKmlAnimated());
+		params.put("kmlcolorby", query.getKmlColorBy());
+		params.put("latitude", query.getLatitude());
+		params.put("limit", query.getLimit());
+		params.put("longitude", query.getLongitude());
+		params.put("magnitudetype", query.getMagnitudeType());
+		params.put("maxcdi", query.getMaxCdi());
+		params.put("maxdepth", query.getMaxDepth());
+		params.put("maxgap", query.getMaxGap());
+		params.put("maxlatitude", query.getMaxLatitude());
+		params.put("maxlongitude", query.getMaxLongitude());
+		params.put("maxmagnitude", query.getMaxMagnitude());
+		params.put("maxmmi", query.getMaxMmi());
+		params.put("maxradius", query.getMaxRadius());
+		params.put("maxsig", query.getMaxSig());
+		params.put("mincdi", query.getMinCdi());
+		params.put("mindepth", query.getMinDepth());
+		params.put("minfelt", query.getMinFelt());
+		params.put("mingap", query.getMinGap());
+		params.put("minlatitude", query.getMinLatitude());
+		params.put("minlongitude", query.getMinLongitude());
+		params.put("minmagnitude", query.getMinMagnitude());
+		params.put("minmmi", query.getMinMmi());
+		params.put("minradius", query.getMinRadius());
+		params.put("minsig", query.getMinSig());
+		params.put("offset", query.getOffset());
+		params.put("orderby", query.getOrderBy());
+		params.put("producttype", query.getProductType());
+		params.put("reviewstatus", query.getReviewStatus());
+		params.put("starttime", ISO8601.format(query.getStartTime()));
+		params.put("updatedafter", ISO8601.format(query.getUpdatedAfter()));
 
-		return super.getUrl (query, format);
+		String queryString = UrlUtil.getQueryString(params);
+		return new URL(getServiceUrl(), "query" + queryString);
 	}
 
 }

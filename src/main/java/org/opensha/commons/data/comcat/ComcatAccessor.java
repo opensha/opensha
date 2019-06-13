@@ -290,7 +290,7 @@ public class ComcatAccessor {
 	 * Note: This entry point always returns extended information.
 	 */
 	public ObsEqkRupture fetchEvent(String eventID, boolean wrapLon) {
-		return fetchEvent(eventID, wrapLon, true);
+		return fetchEvent(eventID, wrapLon, true, false);
 	}
 	
 
@@ -305,9 +305,27 @@ public class ComcatAccessor {
 	 * The return value can be null if the event could not be obtained.
 	 * A null return means the event is either not found or deleted in Comcat.
 	 * A ComcatException means that there was an error accessing Comcat.
-	 * Note: This function is overridden in org.opensha.oaf.comcat.ComcatOAFAccessor.
 	 */
 	public ObsEqkRupture fetchEvent (String eventID, boolean wrapLon, boolean extendedInfo) {
+		return fetchEvent (eventID, wrapLon, extendedInfo, false);
+	}
+	
+
+
+
+	/**
+	 * Fetches an event with the given ID, e.g. "ci37166079"
+	 * @param eventID = Earthquake event id.
+	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
+	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
+	 * @param superseded = True to include superseded and deletion products in the geojson.
+	 * @return
+	 * The return value can be null if the event could not be obtained.
+	 * A null return means the event is either not found or deleted in Comcat.
+	 * A ComcatException means that there was an error accessing Comcat.
+	 * Note: This function is overridden in org.opensha.oaf.comcat.ComcatOAFAccessor.
+	 */
+	public ObsEqkRupture fetchEvent (String eventID, boolean wrapLon, boolean extendedInfo, boolean superseded) {
 
 		// Initialize HTTP statuses
 
@@ -318,8 +336,14 @@ public class ComcatAccessor {
 
 		// Set up query on event id
 
-		EventQuery query = new EventQuery();
+		ComcatEventQuery query = new ComcatEventQuery();
 		query.setEventId(eventID);
+
+		// Ask for superseded and deletion products if desired
+
+		if (superseded) {
+			query.setIncludeSuperseded (true);
+		}
 
 		// Call Comcat to get the list of events satisfying the query
 
@@ -467,9 +491,11 @@ public class ComcatAccessor {
 
 		// Visit each event
 
+		String productType = null;
+
 		visitEventList (visitor, exclude_id, startTime, endTime,
 			minDepth, maxDepth, region, wrapLon, extendedInfo,
-			minMag, limit_per_call, max_calls);
+			minMag, productType, limit_per_call, max_calls);
 
 		// Return the list
 		
@@ -519,6 +545,7 @@ public class ComcatAccessor {
 	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
 	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
 	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @param productType = Required product type, or null if none.
 	 * @param limit_per_call = Maximum number of events to fetch in a single call to Comcat, or 0 for default.
 	 * @param max_calls = Maximum number of calls to ComCat, or 0 for default.
 	 * @return
@@ -530,7 +557,7 @@ public class ComcatAccessor {
 	 */
 	public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
 			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
-			double minMag, int limit_per_call, int max_calls) {
+			double minMag, String productType, int limit_per_call, int max_calls) {
 
 		// Initialize HTTP statuses
 
@@ -545,7 +572,7 @@ public class ComcatAccessor {
 
 		// Start a query
 
-		EventQuery query = new EventQuery();
+		ComcatEventQuery query = new ComcatEventQuery();
 
 		// Insert depth into query
 
@@ -611,6 +638,12 @@ public class ComcatAccessor {
 
 		if (minMag >= -9.0) {
 			query.setMinMagnitude(new BigDecimal(String.format("%.3f", minMag)));
+		}
+
+		// Insert product type in the query
+
+		if (productType != null) {
+			query.setProductType (productType);
 		}
 
 		// Set the sort order to descending origin time
@@ -922,6 +955,7 @@ public class ComcatAccessor {
 	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
 	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
 	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @param productType = Required product type, or null if none.
 	 * @return
 	 * Returns the result code from the last call to the visitor.
 	 * Note: As a special case, if endTime == startTime, then the end time is the current time.
@@ -930,11 +964,11 @@ public class ComcatAccessor {
 	 */
 	public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
 			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
-			double minMag) {
+			double minMag, String productType) {
 
 		return visitEventList (visitor, exclude_id, startTime, endTime,
 			minDepth, maxDepth, region, wrapLon, extendedInfo,
-			minMag, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
+			minMag, productType, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
 
 	}
 
