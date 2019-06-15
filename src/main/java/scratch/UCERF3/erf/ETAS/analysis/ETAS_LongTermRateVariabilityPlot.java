@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
@@ -38,7 +39,9 @@ import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	
-	private static double[] FIXED_DURATIONS_DEFAULT = { 80, 62, 28 };
+	private static double[] FIXED_DURATIONS_DEFAULT = { 162, 80, 28 };
+	
+	private static boolean OVERLAP = false;
 	
 	private static double[] fractiles = {0.025, 0.16, 0.84, 0.975};
 	
@@ -60,6 +63,8 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	private List<CSVFile<String>> durCSVs;
 	private List<String> durPrefixes;
 	
+	private Random r;
+	
 	protected ETAS_LongTermRateVariabilityPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix) {
 		this(config, launcher, prefix, FIXED_DURATIONS_DEFAULT);
 	}
@@ -72,6 +77,9 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 		Preconditions.checkState(!config.hasTriggers(), "Long term variability plot not applicable to aftershock catalogs");
 		
 		double totDuration = config.getDuration();
+		
+		this.r = new Random((long)(totDuration*config.getNumSimulations()));
+		
 		// only do high resolution up to duration of 100
 		double evenMaxDuration = Math.min(100, totDuration);
 		int targetNumDurations = totDuration > 100 ? 25 : 50;
@@ -133,17 +141,31 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 		// pad by 1s for rounding errors
 		long simEndTime = simStartTime + (long)(simDuration*ProbabilityModelsCalc.MILLISEC_PER_YEAR) + 1000;
 		for (double duration : durMFDsListMap.keySet()) {
-			double maxSweeps = (simDuration - duration);
-			double sweepDeltaYears = 1d;
-			if (maxSweeps > target_sim_mfds_per_duration)
-				sweepDeltaYears = Math.min(duration, maxSweeps/target_sim_mfds_per_duration);
 			List<IncrementalMagFreqDist> mfdList = durMFDsListMap.get(duration);
-//			if (mfdList.isEmpty())
-//				System.out.println("Sweep delta for duration "+duration+": "+sweepDeltaYears);
-			long sweepDeltaMillis = (long)(sweepDeltaYears*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 			long durationMillis = (long)(duration*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+			long sweepStartTime;
+			long sweepDeltaMillis;
+			if (OVERLAP) {
+				double maxSweeps = (simDuration - duration);
+				double sweepDeltaYears = 1d;
+				if (maxSweeps > target_sim_mfds_per_duration)
+					sweepDeltaYears = Math.min(duration, maxSweeps/target_sim_mfds_per_duration);
+				sweepDeltaMillis = (long)(sweepDeltaYears*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+				sweepStartTime = simStartTime;
+			} else {
+				sweepDeltaMillis = durationMillis;
+				// choose a random start time to not stack them all up at the start if catalog duration is
+				// not perfectly divisible by sweep duration
+				long durMod = durationMillis % sweepDeltaMillis;
+				if (durMod > 1)
+					sweepStartTime = simStartTime+(long)Math.round(r.nextDouble()*durMod);
+				else
+					sweepStartTime = simStartTime;
+			}
+			
+			
 			int numProcessed = 0;
-			for (long startTime=simStartTime; startTime+durationMillis<=simEndTime; startTime+=sweepDeltaMillis) {
+			for (long startTime=sweepStartTime; startTime+durationMillis<=simEndTime; startTime+=sweepDeltaMillis) {
 				long endTime = startTime+durationMillis;
 				mfdList.add(calcSubMFD(completeCatalog, startTime, endTime));
 				numProcessed++;

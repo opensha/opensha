@@ -26,6 +26,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.SimulatorElement;
@@ -59,9 +60,9 @@ import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 public class RSQSimUtils {
 
 	public static RSQSimSubSectEqkRupture buildSubSectBasedRupture(
-			RSQSimSubSectionMapper mapper, RSQSimEvent event, double minFractForInclusion) {
-		List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(event, minFractForInclusion);
-		if (minFractForInclusion > 0 && mappings.isEmpty())
+			RSQSimSubSectionMapper mapper, RSQSimEvent event) {
+		List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(event);
+		if (mapper.getMinFractForInclusion() > 0 && mappings.isEmpty())
 			// fallback to any that touch if empty
 			mappings = mapper.getAllSubSectionMappings(event);
 		
@@ -227,11 +228,11 @@ public class RSQSimUtils {
 			Double prevArea = subSectAreas.get(elem.getSectionID());
 			if (prevArea == null)
 				prevArea = 0d;
-			subSectAreas.put(elem.getSectionID(), prevArea + elem.getArea());
+			subSectAreas.put(elem.getSectionID()-offset, prevArea + elem.getArea());
 		}
 		
 		for (FaultSectionPrefData sect : subSects) {
-			Integer id = sect.getSectionId() + offset;
+			Integer id = sect.getSectionId();
 			if (!subSectAreas.containsKey(id))
 				// this subsection is skipped
 				continue;
@@ -263,7 +264,7 @@ public class RSQSimUtils {
 			this.events = events;
 			minElemSectID = getSubSectIndexOffset(elements, subSects);
 			
-			RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements);
+			RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements, minFractForInclusion);
 			
 			// for each rup
 			double[] mags = new double[events.size()];
@@ -272,12 +273,6 @@ public class RSQSimUtils {
 			double[] rupLengths = new double[events.size()];
 			List<List<Integer>> sectionForRups = Lists.newArrayList();
 
-			Map<IDPairing, Double> distsCache = Maps.newHashMap();
-			
-			Map<Integer, Double> subSectAreas = null;
-			if (minFractForInclusion > 0)
-				subSectAreas = calcSubSectAreas(elements, subSects);
-
 			System.out.print("Building ruptures...");
 			for (int i=0; i<events.size(); i++) {
 				RSQSimEvent e = events.get(i);
@@ -285,7 +280,8 @@ public class RSQSimUtils {
 				rupAreas[i] = e.getArea();
 				rupLengths[i] = e.getLength();
 				
-				List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(e, minFractForInclusion);
+				List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(e);
+				
 				if (minFractForInclusion > 0 && mappings.isEmpty())
 					// fallback to any that touch if empty
 					mappings = mapper.getAllSubSectionMappings(e);
@@ -620,6 +616,60 @@ public class RSQSimUtils {
 		}
 		
 		out.close();
+	}
+	
+	/**
+	 * Determines the FaultStyle for the given element, using rake tolerance. If the rake of the element is within
+	 * rakeTolerance of either -180, 0, or +180, it is strike-slip, 90 it is reverse, and -90 it is normal. Otherwise
+	 * UNKNOWN will be returned.
+	 * @param elem
+	 * @param rakeTolerance
+	 * @return
+	 */
+	public static FaultStyle getFaultStyle(SimulatorElement elem, double rakeTolerance) {
+		FocalMechanism mech = elem.getFocalMechanism();
+		double rake = mech.getRake();
+		Preconditions.checkState(rake >= -180d && rake <= 180d, "Bad rake: %s", rake);
+		Preconditions.checkState(rakeTolerance >= 0d);
+		if (rake <= -180+rakeTolerance || rake >= 180-rakeTolerance)
+			return FaultStyle.STRIKE_SLIP;
+		if (rake >= -rakeTolerance && rake <= rakeTolerance)
+			return FaultStyle.STRIKE_SLIP;
+		if (rake >= 90-rakeTolerance && rake <= 90+rakeTolerance)
+			return FaultStyle.REVERSE;
+		if (rake >= -90-rakeTolerance && rake <= -90+rakeTolerance)
+			return FaultStyle.NORMAL;
+		return FaultStyle.UNKNOWN;
+	}
+	
+	/**
+	 * Calculates the FaultStyle for the given rupture. The style is first determined on each element using the element rake and the
+	 * give rake tolerance. If the event involves elements with multiple fault styles, then the dominant fault style is returned if at
+	 * no more than maxFractOther fraction of all elements are of a different style. Otherwise, UNKNOWN is returned.
+	 * @param event
+	 * @param rakeTolerance
+	 * @param maxFractOther
+	 * @return
+	 */
+	public static FaultStyle calcFaultStyle(SimulatorEvent event, double rakeTolerance, double maxFractOther) {
+		Map<FaultStyle, Integer> styleCounts = new HashMap<>();
+		int numElems = 0;
+		for (SimulatorElement elem : event.getAllElements()) {
+			FaultStyle style = getFaultStyle(elem, rakeTolerance);
+			Integer prevCount = styleCounts.containsKey(style) ? styleCounts.get(style) : 0;
+			styleCounts.put(style, prevCount+1);
+			numElems++;
+		}
+	
+		Preconditions.checkState(!styleCounts.isEmpty());
+		if (styleCounts.size() == 1)
+			return styleCounts.keySet().iterator().next();
+		for (FaultStyle style : styleCounts.keySet()) {
+			double fract = (double)styleCounts.get(style) / numElems;
+			if (fract >= 1d-maxFractOther)
+				return style;
+		}
+		return FaultStyle.UNKNOWN;
 	}
 	
 	public static void main(String[] args) throws IOException, GMT_MapException, RuntimeException {

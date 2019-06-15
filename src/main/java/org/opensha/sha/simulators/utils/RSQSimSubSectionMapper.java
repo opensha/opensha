@@ -78,7 +78,7 @@ public class RSQSimSubSectionMapper {
 		}
 		
 		public DAS_Record getReversed(double totalLen) {
-			Preconditions.checkState(endDAS <= totalLen);
+			Preconditions.checkState((float)endDAS <= (float)totalLen);
 			return new DAS_Record(totalLen - midDAS, totalLen - endDAS, totalLen - startDAS);
 		}
 		
@@ -114,9 +114,10 @@ public class RSQSimSubSectionMapper {
 	private double minSlipDepth;
 	private double maxSlipDepth;
 	private double faultDownDipBuffer;
+	private double minFractForInclusion;
 	
 	public enum SlipAlongSectAlgorithm {
-		MID_SEIS_FULL_LEN("Full Mapped Subsection Length",
+		MID_SEIS_FULL_SUBSECTION_LEN("Full Mapped Subsection Length",
 				"Average slip in the mid-seismogenic zone across the whole length of each mapped subsection"),
 		MID_SEIS_SLIPPED_LEN("Full Slipped Length",
 				"Average slip in the mid-seismogenic zone across the section of fault that slipped "
@@ -144,14 +145,15 @@ public class RSQSimSubSectionMapper {
 		}
 	}
 
-	public RSQSimSubSectionMapper(List<FaultSectionPrefData> subSects, List<SimulatorElement> elements) {
-		this(subSects, elements, RSQSimUtils.calcSubSectAreas(elements, subSects), new HashMap<>());
+	public RSQSimSubSectionMapper(List<FaultSectionPrefData> subSects, List<SimulatorElement> elements, double minFractForInclusion) {
+		this(subSects, elements, minFractForInclusion, RSQSimUtils.calcSubSectAreas(elements, subSects), new HashMap<>());
 	}
 	
-	public RSQSimSubSectionMapper(List<FaultSectionPrefData> subSects, List<SimulatorElement> elements,
+	public RSQSimSubSectionMapper(List<FaultSectionPrefData> subSects, List<SimulatorElement> elements, double minFractForInclusion,
 			Map<Integer, Double> subSectAreas, Map<IDPairing, Double> distsCache) {
 		this.subSects = subSects;
 		this.elements = elements;
+		this.minFractForInclusion = minFractForInclusion;
 		this.subSectAreas = subSectAreas;
 		this.distsCache = distsCache;
 		
@@ -180,6 +182,8 @@ public class RSQSimSubSectionMapper {
 		for (FaultSectionPrefData sect : subSects) {
 			if (!sectsToElemsMap.containsKey(sect))
 				continue;
+			Preconditions.checkState(subSectAreas.containsKey(sect.getSectionId()), "No area found for section %s, %s, with %s mapped elements",
+					sect.getSectionId(), sect.getSectionName(), sectsToElemsMap.get(sect).size());
 			HashSet<SimulatorElement> sectElems = sectsToElemsMap.get(sect);
 			// first create a really high resolution 3-D fault surface
 			SimpleFaultData sfd = new SimpleFaultData(sect.getAveDip(), Math.max(sect.getAveLowerDepth(), 20), sect.getOrigAveUpperDepth(),
@@ -483,17 +487,16 @@ public class RSQSimSubSectionMapper {
 				aveDip /= (double)dips.size();
 				double bufferVertical = Math.sin(Math.toRadians(aveDip))*faultDownDipBuffer;
 				double[] depthRange = sectDDConstraints.get(sectID);
-				depthRange[0] += bufferVertical;
-				depthRange[1] -= bufferVertical;
-				if (depthRange[0] > depthRange[1] || depthRange[1] < minDepth || depthRange[0] > maxDepth) {
-					double sMinDepth = depthRange[0]-bufferVertical;
-					double sMaxDepth = depthRange[0]-bufferVertical;
-					System.out.println("WARNING: depth range invalid for section "+sectID+". AveDip of "+(float)aveDip+" leads to vertical "
-							+"buffer of "+bufferVertical+" km for "+faultDownDipBuffer+" km down-dip buffer.");
-					System.out.println("\tSection depth range: ["+sMinDepth+" "+sMaxDepth+"]");
-					System.out.println("\tSection buffered: ["+depthRange[0]+" "+depthRange[1]+"]");
-					System.out.println("\tGlobal min/max: ["+minDepth+" "+maxDepth+"]");
-				}
+				double[] depthConstraint = { depthRange[0] + bufferVertical, depthRange[1] - bufferVertical };
+//				if (depthConstraint[0] > depthConstraint[1]) {
+//					System.out.println("WARNING: depth range invalid for section "+sectID+": "+subSects.get(sectID).getName());
+//					System.out.println("\tAveDip of "+(float)aveDip+" leads to vertical "
+//							+"buffer of "+bufferVertical+" km for "+faultDownDipBuffer+" km down-dip buffer.");
+//					System.out.println("\tSection depth range: ["+depthConstraint[0]+" "+depthConstraint[1]+"]");
+//					System.out.println("\tSection buffered: ["+depthRange[0]+" "+depthRange[1]+"]");
+//					System.out.println("\tGlobal min/max: ["+minDepth+" "+maxDepth+"]");
+//				}
+				sectDDConstraints.put(sectID, depthConstraint);
 			}
 		}
 		
@@ -509,8 +512,14 @@ public class RSQSimSubSectionMapper {
 			double myMaxDepth = maxDepth;
 			if (sectDDConstraints != null) {
 				double[] constr = sectDDConstraints.get(sectID);
-				myMinDepth = Math.max(myMinDepth, constr[0]);
-				myMaxDepth = Math.min(myMaxDepth, constr[1]);
+				if (constr[0] > myMaxDepth || constr[1] < myMinDepth) {
+					// we're completely above or below the global range, just use the section buffered and ignore global ranges
+					myMinDepth = constr[0];
+					myMaxDepth = constr[1];
+				} else {
+					myMinDepth = Math.max(myMinDepth, constr[0]);
+					myMaxDepth = Math.min(myMaxDepth, constr[1]);
+				}
 			}
 			sectMidDepthConstraints.put(subSect, new double[] {myMinDepth, myMaxDepth});
 			
@@ -523,6 +532,12 @@ public class RSQSimSubSectionMapper {
 					slipSectsToElemsMap.put(subSect, elemsForSect);
 				}
 				elemsForSect.add(elem);
+			}
+		}
+		for (FaultSectionPrefData subSect : subSects) {
+			if (!slipSectsToElemsMap.containsKey(subSect) ) {
+//				System.out.println("WARNING: no slip elements for section: "+subSect.getName());
+				slipSectsToElemsMap.put(subSect, new HashSet<>());
 			}
 		}
 	}
@@ -549,6 +564,14 @@ public class RSQSimSubSectionMapper {
 		return slipSectsToElemsMap.get(sect);
 	}
 	
+	public void setMinFractForInclusion(double minFractForInclusion) {
+		this.minFractForInclusion = minFractForInclusion;
+	}
+	
+	public double getMinFractForInclusion() {
+		return minFractForInclusion;
+	}
+	
 	/**
 	 * Returns an unmodifiable list of all subsection mappings for which at least one element slipped in the event. Sections are
 	 * bundled by parent section (one sublist for each parent), and both bundles and mappings within bundles are sorted from end to end
@@ -571,7 +594,7 @@ public class RSQSimSubSectionMapper {
 	 * @param event
 	 * @return parent section bundles list of all mappings
 	 */
-	public List<List<SubSectionMapping>> getFilteredSubSectionMappings(RSQSimEvent event, double minFractForInclusion) {
+	public List<List<SubSectionMapping>> getFilteredSubSectionMappings(RSQSimEvent event) {
 		List<List<SubSectionMapping>> allMappings = getAllSubSectionMappings(event);
 		if (minFractForInclusion == 0d)
 			return allMappings;
@@ -607,8 +630,10 @@ public class RSQSimSubSectionMapper {
 		
 		for (int i=0; i<elems.size(); i++) {
 			SimulatorElement elem = elems.get(i);
+			Preconditions.checkNotNull(elem, "Element is null??");
 			double slip = slips[i];
 			FaultSectionPrefData sect = elemToSectsMap.get(elem);
+			Preconditions.checkNotNull(sect, "No section mapping for element %s with section named: %s", elem.getID(), elem.getSectionName());
 			SubSectionMapping mapping = sectMap.get(sect);
 			if (mapping == null) {
 				mapping = new SubSectionMapping(sect);
@@ -749,7 +774,7 @@ public class RSQSimSubSectionMapper {
 		public DAS_Record getDASforSlip(SlipAlongSectAlgorithm type) {
 			Preconditions.checkState(slipElemsToSectsMap != null, "Must enable slip tracking with trackSlipOnSections(...)");
 			switch (type) {
-			case MID_SEIS_FULL_LEN:
+			case MID_SEIS_FULL_SUBSECTION_LEN:
 				return new DAS_Record(0d, subSect.getFaultTrace().getTraceLength());
 			case MID_SEIS_SURF_SLIP_LEN:
 				if (Double.isFinite(minSurfaceSlipDAS))
@@ -888,7 +913,7 @@ public class RSQSimSubSectionMapper {
 		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
 		List<FaultSectionPrefData> subSects = RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
-		RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements);
+		RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements, 0.2);
 		mapper.debugPlotDAS(new File("/tmp"), 142);
 		mapper.debugPlotDAS(new File("/tmp"), 151);
 	}

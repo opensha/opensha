@@ -22,11 +22,13 @@ public abstract class PaleoProbabilityModel {
 	
 	public abstract double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex, int sectIndex);
 	
+	public abstract double getProbPaleoVisible(double mag, List<FaultSectionPrefData> rupSections, int sectIndex);
+	
 	public abstract double getProbPaleoVisible(double mag, double distAlongRup);
 	
-	double getDistAlongRup(FaultSystemRupSet rupSet, int rupIndex, int sectIndex) {
+	double getDistAlongRup(List<FaultSectionPrefData> rupSections, int sectIndex) {
 		return InversionInputGenerator.getDistanceAlongRupture(
-				rupSet.getFaultSectionDataForRupture(rupIndex), sectIndex, traceLengthCache);
+				rupSections, sectIndex, traceLengthCache);
 	}
 
 }

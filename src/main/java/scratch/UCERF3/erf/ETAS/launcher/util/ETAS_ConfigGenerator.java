@@ -46,12 +46,12 @@ public class ETAS_ConfigGenerator {
 		boolean histCatalog = true;
 		boolean includeSpontaneous = true;
 		int numSimulations = 1000;
-		double duration = 1000d;
+		double duration = 10d;
 //		double duration = 7d/365.25;
-//		Long randomSeed = 123456789l;
-		Long randomSeed = System.nanoTime();
+		Long randomSeed = 123456789l;
+//		Long randomSeed = System.nanoTime();
 //		Long randomSeed = 987654321l;
-		Boolean reuseERFs = false;
+		Boolean reuseERFs = true;
 		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
 		
 		// etas params
@@ -92,13 +92,16 @@ public class ETAS_ConfigGenerator {
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		// only if mpj == true
-		int nodes = 18;
-		int hours = 24;
+		int nodes = 5;
+		int hours = 12;
 		String queue = hpcSite == HPC_Sites.HPC ? "scec" : null;
 //		String queue = "scec_hiprio";
-//		Integer threads = null;
+		Integer threads = null;
 		
-		Integer threads = hpcSite == HPC_Sites.HPC ? 12 : 30;
+//		Integer threads = 12;
+		
+		if (hpcSite == HPC_Sites.HPC && threads != null && threads > 12)
+			throw new IllegalStateException("did you set the threads right?");
 		
 //		nameAdd = nodes+"nodes_"+threads+"threads";
 		

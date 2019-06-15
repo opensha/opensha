@@ -60,6 +60,7 @@ public class SimulationMarkdownGenerator {
 
 			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
 					+ "2019_06_05-Spontaneous-includeSpont-historicalCatalog-full_td-1000yr");
+//					+ "2019_06_05-Spontaneous-includeSpont-historicalCatalog-no_ert-1000yr");
 			File configFile = new File(simDir, "config.json");
 //			File inputFile = new File(simDir, "results_m5_preserve_chain.bin");
 //			args = new String[] { configFile.getAbsolutePath(), inputFile.getAb?olutePath() };

@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.StringTokenizer;
 
 import org.apache.commons.math3.stat.StatUtils;
@@ -13,6 +14,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -30,9 +32,13 @@ public class UCERF3_PaleoProbabilityModel extends PaleoProbabilityModel {
 	}
 	
 	@Override
-	public double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex,
-			int sectIndex) {
-		return getProbPaleoVisible(rupSet.getMagForRup(rupIndex), getDistAlongRup(rupSet, rupIndex, sectIndex));
+	public double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex, int sectIndex) {
+		return getProbPaleoVisible(rupSet.getMagForRup(rupIndex), rupSet.getFaultSectionDataForRupture(rupIndex), sectIndex);
+	}
+	
+	@Override
+	public double getProbPaleoVisible(double mag, List<FaultSectionPrefData> rupSects, int sectIndex) {
+		return getProbPaleoVisible(mag, getDistAlongRup(rupSects, sectIndex));
 	}
 
 	@Override
