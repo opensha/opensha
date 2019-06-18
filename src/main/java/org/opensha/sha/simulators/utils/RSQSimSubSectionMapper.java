@@ -37,6 +37,7 @@ import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.SimulatorElement;
 import org.opensha.sha.simulators.Vertex;
+import org.opensha.sha.simulators.iden.MagRangeRuptureIdentifier;
 import org.opensha.sha.simulators.parsers.RSQSimFileReader;
 
 import com.google.common.base.Preconditions;
@@ -156,6 +157,8 @@ public class RSQSimSubSectionMapper {
 		this.minFractForInclusion = minFractForInclusion;
 		this.subSectAreas = subSectAreas;
 		this.distsCache = distsCache;
+		
+//		System.out.println("Min fract: "+this.minFractForInclusion);
 		
 		this.minElemSectID = RSQSimUtils.getSubSectIndexOffset(elements, subSects);
 		
@@ -711,7 +714,7 @@ public class RSQSimSubSectionMapper {
 		
 		private SubSectionMapping(FaultSectionPrefData subSect) {
 			this.subSect = subSect;
-			this.areaSlipped = subSectAreas.get(subSect.getSectionId());
+			this.subSectArea = subSectAreas.get(subSect.getSectionId());
 			
 			if (slipSectsToElemsMap != null)
 				elemSlipsInSlipRegion = new HashMap<>();
@@ -914,8 +917,38 @@ public class RSQSimSubSectionMapper {
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
 		List<FaultSectionPrefData> subSects = RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
 		RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements, 0.2);
-		mapper.debugPlotDAS(new File("/tmp"), 142);
-		mapper.debugPlotDAS(new File("/tmp"), 151);
+//		mapper.debugPlotDAS(new File("/tmp"), 142);
+//		mapper.debugPlotDAS(new File("/tmp"), 151);
+		int maxNum = 10;
+		double minMag = 6.5;
+		int count = 0;
+		for (RSQSimEvent event : RSQSimFileReader.getEventsIterable(dir, elements,
+				Lists.newArrayList(new MagRangeRuptureIdentifier(minMag, Double.POSITIVE_INFINITY)))) {
+			List<List<SubSectionMapping>> allMappings = mapper.getAllSubSectionMappings(event);
+			List<List<SubSectionMapping>> filteredMappings = mapper.getFilteredSubSectionMappings(event);
+			HashSet<SubSectionMapping> allFiltered = new HashSet<>();
+			for (List<SubSectionMapping> bundle : filteredMappings)
+				allFiltered.addAll(bundle);
+			boolean hasAll = true;
+			System.out.println("Event with M="+event.getMagnitude());
+			for (List<SubSectionMapping> bundle : allMappings) {
+				for (SubSectionMapping mapping : bundle) {
+					int sectID = mapping.getSubSect().getSectionId();
+					double areaSlipped = mapping.getAreaSlipped();
+					double totArea = mapper.subSectAreas.get(sectID);
+					double fract = areaSlipped / totArea;
+					System.out.println("\tSect "+sectID+": fractSlipped = "+(float)areaSlipped
+							+" / "+(float)totArea+" = "+(float)fract);
+					boolean included = allFiltered.contains(mapping);
+					hasAll = hasAll && included;
+					System.out.println("\t\tIncluded? "+included);
+				}
+			}
+			count++;
+			System.out.println();
+			if (count == maxNum)
+				break;
+		}
 	}
 
 }
