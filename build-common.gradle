@@ -58,6 +58,7 @@ task fatJar(type: Jar) {
         }
     }}
     duplicatesStrategy = 'exclude'
+	from sourceSets.main.allJava
     with jar
 }
 
