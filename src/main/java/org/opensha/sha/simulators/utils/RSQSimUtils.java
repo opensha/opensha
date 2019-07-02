@@ -5,8 +5,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,10 +23,10 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.SimulatorElement;
@@ -39,6 +37,7 @@ import org.opensha.sha.simulators.iden.EventTimeIdentifier;
 import org.opensha.sha.simulators.iden.LogicalAndRupIden;
 import org.opensha.sha.simulators.iden.MagRangeRuptureIdentifier;
 import org.opensha.sha.simulators.parsers.RSQSimFileReader;
+import org.opensha.sha.simulators.utils.RSQSimSubSectionMapper.SubSectionMapping;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -57,40 +56,36 @@ import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
-import scratch.kevin.simulators.erf.SimulatorFaultSystemSolution;
 
 public class RSQSimUtils {
 
-	public static RSQSimSubSectEqkRupture buildSubSectBasedRupture(RSQSimEvent event, List<FaultSectionPrefData> subSects,
-			List<SimulatorElement> elements, double minFractForInclusion, Map<Integer, Double> subSectAreas,
-			Map<IDPairing, Double> distsCache) {
-		int minElemSectID = getSubSectIndexOffset(elements, subSects);
+	public static RSQSimSubSectEqkRupture buildSubSectBasedRupture(
+			RSQSimSubSectionMapper mapper, RSQSimEvent event) {
+		List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(event);
+		if (mapper.getMinFractForInclusion() > 0 && mappings.isEmpty())
+			// fallback to any that touch if empty
+			mappings = mapper.getAllSubSectionMappings(event);
+		
 		double mag = event.getMagnitude();
 
-		List<Double> rakes = Lists.newArrayList();
-		for (SimulatorElement elem : event.getAllElements())
-			rakes.add(elem.getFocalMechanism().getRake());
+		List<Double> rakes = new ArrayList<>();
+		for (List<SubSectionMapping> bundle : mappings)
+			for (SubSectionMapping mapping : bundle)
+				rakes.add(mapping.getSubSect().getAveRake());
 		double rake = FaultUtils.getAngleAverage(rakes);
 		if (rake > 180)
 			rake -= 360;
 
-		List<List<FaultSectionPrefData>> rupSectsListBundled =
-				getSectionsForRupture(event, minElemSectID, subSects, distsCache, minFractForInclusion, subSectAreas);
-		if (minFractForInclusion > 0 && rupSectsListBundled.isEmpty()) {
-			// fallback to any that touch if empty
-			rupSectsListBundled = getSectionsForRupture(
-					event, minElemSectID, subSects, distsCache, 0d, subSectAreas);
-		}
-
-		List<FaultSectionPrefData> rupSects = Lists.newArrayList();
-		for (List<FaultSectionPrefData> sects : rupSectsListBundled)
-			rupSects.addAll(sects);
+		List<FaultSectionPrefData> rupSects = new ArrayList<>();
+		for (List<SubSectionMapping> bundle : mappings)
+			for (SubSectionMapping mapping : bundle)
+				rupSects.add(mapping.getSubSect());
 		Preconditions.checkState(!rupSects.isEmpty(), "No mapped sections! ID=%s, M=%s, %s elems",
 				event.getID(), event.getMagnitude(), event.getAllElementIDs().length);
 
 		double gridSpacing = 1d;
 
-		List<RuptureSurface> rupSurfs = Lists.newArrayList();
+		List<RuptureSurface> rupSurfs = new ArrayList<>();
 		for (FaultSectionPrefData sect : rupSects)
 			rupSurfs.add(sect.getStirlingGriddedSurface(gridSpacing, false, false));
 
@@ -176,61 +171,6 @@ public class RSQSimUtils {
 			elem.setSectionName(subSects.get(elem.getSectionID()-offset).getName());
 	}
 	
-	public static List<List<FaultSectionPrefData>> getSectionsForRupture(SimulatorEvent event, int minElemSectID,
-			List<FaultSectionPrefData> subSects, Map<IDPairing, Double> distsCache,
-			double minFractForInclusion, Map<Integer, Double> subSectAreas) {
-//		HashSet<Integer> rupSectIDs = new HashSet<Integer>();
-		Map<Integer, Double> areaOnSectsMap = new HashMap<>();
-
-		for (SimulatorElement elem : event.getAllElements()) {
-			Double prevArea = areaOnSectsMap.get(elem.getSectionID());
-			if (prevArea == null)
-				prevArea = 0d;
-			areaOnSectsMap.put(elem.getSectionID(), prevArea + elem.getArea());
-		}
-		
-		// bundle by parent section id
-		Map<Integer, List<FaultSectionPrefData>> rupSectsBundled = Maps.newHashMap();
-		for (int sectID : areaOnSectsMap.keySet()) {
-			if (minFractForInclusion > 0) {
-				double fractOn = areaOnSectsMap.get(sectID) / subSectAreas.get(sectID);
-				if (fractOn < minFractForInclusion)
-					continue;
-			}
-			// convert to 0-based
-			sectID -= minElemSectID;
-			FaultSectionPrefData sect = subSects.get(sectID);
-			List<FaultSectionPrefData> sects = rupSectsBundled.get(sect.getParentSectionId());
-			if (sects == null) {
-				sects = Lists.newArrayList();
-				rupSectsBundled.put(sect.getParentSectionId(), sects);
-			}
-			sects.add(sect);
-		}
-
-		List<List<FaultSectionPrefData>> rupSectsListBundled = Lists.newArrayList();
-		for (List<FaultSectionPrefData> sects : rupSectsBundled.values()) {
-			Collections.sort(sects, sectIDCompare);
-			rupSectsListBundled.add(sects);
-		}
-		
-		if (rupSectsListBundled.size() > 1)
-			rupSectsListBundled = SimulatorFaultSystemSolution.sortRupture(subSects, rupSectsListBundled, distsCache);
-		
-		if (minFractForInclusion > 0 && rupSectsBundled.isEmpty())
-			return getSectionsForRupture(event, minElemSectID, subSects, distsCache, 0d, null);
-		
-		return rupSectsListBundled;
-	}
-	
-	private static Comparator<FaultSectionPrefData> sectIDCompare = new Comparator<FaultSectionPrefData>() {
-
-		@Override
-		public int compare(FaultSectionPrefData o1, FaultSectionPrefData o2) {
-			return new Integer(o1.getSectionId()).compareTo(o2.getSectionId());
-		}
-	};
-	
 	private static File getCacheDir() {
 		File scratchDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
 		if (scratchDir.exists()) {
@@ -288,11 +228,11 @@ public class RSQSimUtils {
 			Double prevArea = subSectAreas.get(elem.getSectionID());
 			if (prevArea == null)
 				prevArea = 0d;
-			subSectAreas.put(elem.getSectionID(), prevArea + elem.getArea());
+			subSectAreas.put(elem.getSectionID()-offset, prevArea + elem.getArea());
 		}
 		
 		for (FaultSectionPrefData sect : subSects) {
-			Integer id = sect.getSectionId() + offset;
+			Integer id = sect.getSectionId();
 			if (!subSectAreas.containsKey(id))
 				// this subsection is skipped
 				continue;
@@ -324,6 +264,8 @@ public class RSQSimUtils {
 			this.events = events;
 			minElemSectID = getSubSectIndexOffset(elements, subSects);
 			
+			RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements, minFractForInclusion);
+			
 			// for each rup
 			double[] mags = new double[events.size()];
 			double[] rupRakes = new double[events.size()];
@@ -331,30 +273,24 @@ public class RSQSimUtils {
 			double[] rupLengths = new double[events.size()];
 			List<List<Integer>> sectionForRups = Lists.newArrayList();
 
-			Map<IDPairing, Double> distsCache = Maps.newHashMap();
-			
-			Map<Integer, Double> subSectAreas = null;
-			if (minFractForInclusion > 0)
-				subSectAreas = calcSubSectAreas(elements, subSects);
-
 			System.out.print("Building ruptures...");
 			for (int i=0; i<events.size(); i++) {
-				SimulatorEvent e = events.get(i);
+				RSQSimEvent e = events.get(i);
 				mags[i] = e.getMagnitude();
 				rupAreas[i] = e.getArea();
 				rupLengths[i] = e.getLength();
 				
-				List<List<FaultSectionPrefData>> subSectsForFaults = getSectionsForRupture(
-						e, minElemSectID, subSects, distsCache, minFractForInclusion, subSectAreas);
-				if (subSectsForFaults.isEmpty())
+				List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(e);
+				
+				if (minFractForInclusion > 0 && mappings.isEmpty())
 					// fallback to any that touch if empty
-					subSectsForFaults = getSectionsForRupture(
-							e, minElemSectID, subSects, distsCache, 0d, subSectAreas);
+					mappings = mapper.getAllSubSectionMappings(e);
 
 				List<Double> rakes = Lists.newArrayList();
 				List<Integer> rupSectIndexes = Lists.newArrayList();
-				for (List<FaultSectionPrefData> faultList : subSectsForFaults) {
-					for (FaultSectionPrefData subSect : faultList) {
+				for (List<SubSectionMapping> bundle : mappings) {
+					for (SubSectionMapping mapping : bundle) {
+						FaultSectionPrefData subSect = mapping.getSubSect();
 						rupSectIndexes.add(subSect.getSectionId());
 						rakes.add(subSect.getAveRake());
 					}
@@ -680,6 +616,60 @@ public class RSQSimUtils {
 		}
 		
 		out.close();
+	}
+	
+	/**
+	 * Determines the FaultStyle for the given element, using rake tolerance. If the rake of the element is within
+	 * rakeTolerance of either -180, 0, or +180, it is strike-slip, 90 it is reverse, and -90 it is normal. Otherwise
+	 * UNKNOWN will be returned.
+	 * @param elem
+	 * @param rakeTolerance
+	 * @return
+	 */
+	public static FaultStyle getFaultStyle(SimulatorElement elem, double rakeTolerance) {
+		FocalMechanism mech = elem.getFocalMechanism();
+		double rake = mech.getRake();
+		Preconditions.checkState(rake >= -180d && rake <= 180d, "Bad rake: %s", rake);
+		Preconditions.checkState(rakeTolerance >= 0d);
+		if (rake <= -180+rakeTolerance || rake >= 180-rakeTolerance)
+			return FaultStyle.STRIKE_SLIP;
+		if (rake >= -rakeTolerance && rake <= rakeTolerance)
+			return FaultStyle.STRIKE_SLIP;
+		if (rake >= 90-rakeTolerance && rake <= 90+rakeTolerance)
+			return FaultStyle.REVERSE;
+		if (rake >= -90-rakeTolerance && rake <= -90+rakeTolerance)
+			return FaultStyle.NORMAL;
+		return FaultStyle.UNKNOWN;
+	}
+	
+	/**
+	 * Calculates the FaultStyle for the given rupture. The style is first determined on each element using the element rake and the
+	 * give rake tolerance. If the event involves elements with multiple fault styles, then the dominant fault style is returned if at
+	 * no more than maxFractOther fraction of all elements are of a different style. Otherwise, UNKNOWN is returned.
+	 * @param event
+	 * @param rakeTolerance
+	 * @param maxFractOther
+	 * @return
+	 */
+	public static FaultStyle calcFaultStyle(SimulatorEvent event, double rakeTolerance, double maxFractOther) {
+		Map<FaultStyle, Integer> styleCounts = new HashMap<>();
+		int numElems = 0;
+		for (SimulatorElement elem : event.getAllElements()) {
+			FaultStyle style = getFaultStyle(elem, rakeTolerance);
+			Integer prevCount = styleCounts.containsKey(style) ? styleCounts.get(style) : 0;
+			styleCounts.put(style, prevCount+1);
+			numElems++;
+		}
+	
+		Preconditions.checkState(!styleCounts.isEmpty());
+		if (styleCounts.size() == 1)
+			return styleCounts.keySet().iterator().next();
+		for (FaultStyle style : styleCounts.keySet()) {
+			double fract = (double)styleCounts.get(style) / numElems;
+			if (fract >= 1d-maxFractOther)
+				return style;
+		}
+		return FaultStyle.UNKNOWN;
 	}
 	
 	public static void main(String[] args) throws IOException, GMT_MapException, RuntimeException {

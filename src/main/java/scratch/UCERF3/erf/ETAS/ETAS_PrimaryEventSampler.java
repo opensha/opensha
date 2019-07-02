@@ -1068,13 +1068,13 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 				gridSeisStatus[i] = 0;	// no cubes are inside; all are truly off
 				num0 += 1;
 				if(frac > 1e-10)	// should be 0.0
-					throw new RuntimeException("Problem: frac > 1e-10");
+					throw new RuntimeException("Problem: frac > 1e-10; "+frac);
 			}
 			else if (subSeisMFD != null && trulyOffMFD == null) {
 				gridSeisStatus[i] = 1;	// all cubes are inside; all are subseimo
 				num1 += 1;
 				if(frac < 1.0 -1e-10)	// should be 1.0
-					throw new RuntimeException("Problem: frac < 1.0 -1e-10");
+					throw new RuntimeException("Problem: frac < 1.0 -1e-10; "+frac);
 
 			}
 			else if (subSeisMFD != null && trulyOffMFD != null) {

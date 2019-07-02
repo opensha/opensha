@@ -59,7 +59,8 @@ public class SimulationMarkdownGenerator {
 			////		inputFile = new File(simDir, "results_complete_partial.bin");
 
 			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
-					+ "2018_08_07-MojaveM7-noSpont-10yr");
+					+ "2019_06_05-Spontaneous-includeSpont-historicalCatalog-full_td-1000yr");
+//					+ "2019_06_05-Spontaneous-includeSpont-historicalCatalog-no_ert-1000yr");
 			File configFile = new File(simDir, "config.json");
 //			File inputFile = new File(simDir, "results_m5_preserve_chain.bin");
 //			args = new String[] { configFile.getAbsolutePath(), inputFile.getAb?olutePath() };
@@ -165,6 +166,8 @@ public class SimulationMarkdownGenerator {
 			plots.add(new ETAS_HazardChangePlot(config, launcher, "hazard_change_100km", 100d));
 		} else {
 			plots.add(new ETAS_MFD_Plot(config, launcher, "mfd", annualizeMFDs, true));
+			if (config.getDuration() > 50)
+				plots.add(new ETAS_LongTermRateVariabilityPlot(config, launcher, "long_term_var"));
 		}
 		plots.add(new ETAS_FaultParticipationPlot(config, launcher, "fault_participation", annualizeMFDs, skipMaps));
 		if (!skipMaps)

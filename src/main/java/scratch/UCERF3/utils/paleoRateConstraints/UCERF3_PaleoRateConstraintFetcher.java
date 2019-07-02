@@ -38,7 +38,7 @@ public class UCERF3_PaleoRateConstraintFetcher {
 //	private final static String PALEO_DATA_FILE_NAME = "UCERF3_PaleoRateData_v08_withMappings.xls";
 	private final static String PALEO_DATA_FILE_NAME = "UCERF3_PaleoRateData_BIASI_v02_withMappings.xls";
 	
-	protected final static boolean D = true;  // for debugging
+	protected final static boolean D = false;  // for debugging
 	
 	public static ArrayList<PaleoRateConstraint> getConstraints(
 			List<FaultSectionPrefData> faultSectionData) throws IOException {
@@ -146,7 +146,7 @@ public class UCERF3_PaleoRateConstraintFetcher {
 				}
 				continue; // closest fault section is at a distance of more than 2 km
 			}
-			System.out.println("Matching constraint for closest index: "+closestFaultSectionIndex+" site name: "+siteName);
+			if (D) System.out.println("Matching constraint for closest index: "+closestFaultSectionIndex+" site name: "+siteName);
 			// add to Seg Rate Constraint list
 			String name = faultSectionData.get(closestFaultSectionIndex).getSectionName();
 			PaleoRateConstraint paleoRateConstraint;

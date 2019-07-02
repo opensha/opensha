@@ -112,6 +112,10 @@ public class FiniteFaultSectionResetCalc {
 		}
 	}
 	
+	public void setRemoveOverlapsWithDist(boolean removeOverlapsWithDist) {
+		this.removeOverlapsWithDist = removeOverlapsWithDist;
+	}
+	
 	public void setMinFractionalAreaInPolygon(double minFractionalAreaInPolygon) {
 		this.minFractionalAreaInPolygon = minFractionalAreaInPolygon;
 	}
