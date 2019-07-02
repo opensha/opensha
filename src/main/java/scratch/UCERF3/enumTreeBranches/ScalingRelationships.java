@@ -376,7 +376,79 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 		}
 
 	}
+
 	
+	public static void makeSlipAreaPlot(double downDipWidth, int maxLength, boolean saveFiles) {
+		
+		ArbitrarilyDiscretizedFunc u2_func = new ArbitrarilyDiscretizedFunc();
+		u2_func.setName("AVE_UCERF2");
+		ArbitrarilyDiscretizedFunc sh09_funcMod = new ArbitrarilyDiscretizedFunc();
+		sh09_funcMod.setName("SHAW_2009_MOD");
+		ArbitrarilyDiscretizedFunc ellB_func = new ArbitrarilyDiscretizedFunc();
+		ellB_func.setName("ELLSWORTH_B");
+		ArbitrarilyDiscretizedFunc hb_func = new ArbitrarilyDiscretizedFunc();
+		hb_func.setName("HANKS_BAKUN_08");
+		ArbitrarilyDiscretizedFunc sh12_sqrtL_func = new ArbitrarilyDiscretizedFunc();
+		sh12_sqrtL_func.setName("ELLB_SQRT_LENGTH");
+		ArbitrarilyDiscretizedFunc sh12_csd_func = new ArbitrarilyDiscretizedFunc();
+		sh12_csd_func.setName("SHAW_CONST_STRESS_DROP");
+		
+		
+		ScalingRelationships u2 = ScalingRelationships.AVE_UCERF2;
+		ScalingRelationships sh09_Mod = ScalingRelationships.SHAW_2009_MOD;
+		ScalingRelationships ellB = ScalingRelationships.ELLSWORTH_B;
+		ScalingRelationships hb = ScalingRelationships.HANKS_BAKUN_08;
+		ScalingRelationships sh12_sqrtL = ScalingRelationships.ELLB_SQRT_LENGTH;
+		ScalingRelationships sh12_csd = ScalingRelationships.SHAW_CONST_STRESS_DROP;
+		
+		
+		// log10 area from 1 to 5
+    	for(int i=1; i<=maxLength; i++) {
+    		double lengthKm = (double)i;
+    		double length = lengthKm*1e3;
+    		double area = length*downDipWidth*1e3;
+    		double areaKm = area*1e-6;
+    		u2_func.set(areaKm,u2.getAveSlip(area, length, downDipWidth*1e3));
+    		sh09_funcMod.set(areaKm,sh09_Mod.getAveSlip(area, length, downDipWidth*1e3));
+    		ellB_func.set(areaKm,ellB.getAveSlip(area, length, downDipWidth*1e3));
+    		hb_func.set(areaKm,hb.getAveSlip(area, length, downDipWidth*1e3));
+    		sh12_sqrtL_func.set(areaKm,sh12_sqrtL.getAveSlip(area, length, downDipWidth*1e3));
+    		sh12_csd_func.set(areaKm,sh12_csd.getAveSlip(area, length, downDipWidth*1e3));
+    	}
+    	
+    	ArrayList<ArbitrarilyDiscretizedFunc> funcs = new ArrayList<ArbitrarilyDiscretizedFunc>();
+    	funcs.add(sh09_funcMod);
+    	funcs.add(ellB_func);
+    	funcs.add(hb_func);
+    	funcs.add(sh12_sqrtL_func);
+    	funcs.add(sh12_csd_func);
+    	
+    	ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, null, 1f, Color.BLUE));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, null, 1f, Color.RED));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, null, 1f, Color.GREEN));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, null, 1f, Color.BLACK));
+		plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, null, 1f, Color.MAGENTA));
+
+    	
+		GraphWindow graph = new GraphWindow(funcs, "Slip-Area Relationships; DDW="+downDipWidth+" km", plotChars); 
+		graph.setX_AxisLabel("Area (km-sq)");
+		graph.setY_AxisLabel("Slip (m)");
+		graph.setPlotLabelFontSize(18);
+		graph.setAxisLabelFontSize(18);
+		graph.setTickLabelFontSize(16);
+		
+		if(saveFiles) {
+			try {
+				graph.saveAsPDF("slipAreaScalingPlot.pdf");
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+	}
+
 	
 	public static void makeSlipMagPlot(double downDipWidth, int maxLength, boolean saveFiles) {
 		
@@ -569,6 +641,7 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 	//public 
 	public static void main(String[] args) throws IOException {
 		
+		 makeSlipAreaPlot(11, 1000, true);
 		 makeSlipLengthPlot(11, 1000, true);
 		 makeMagAreaPlot(true);
 
