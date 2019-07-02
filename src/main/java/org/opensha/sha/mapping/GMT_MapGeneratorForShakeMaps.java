@@ -539,7 +539,7 @@ public class GMT_MapGeneratorForShakeMaps extends GMT_MapGenerator{
 		gmtCommandLines.add("ORIG_LD=$LD_LIBRARY_PATH");
 		File gmtDir = new File(hazusDir, "gmt_4.5.14");
 		File cdfDir = new File(hazusDir, "netcdf");
-		gmtCommandLines.add("export LD_LIBRARY_PATH="+gmtDir.getAbsolutePath()+":"+cdfDir.getAbsolutePath()+":$ORIG_LD");
+		gmtCommandLines.add("export LD_LIBRARY_PATH="+gmtDir.getAbsolutePath()+"/lib:"+cdfDir.getAbsolutePath()+":$ORIG_LD");
 		//if the selected IMT is SA
 		if(imt.equals(SA_Param.NAME)){
 			commandLine = "${GMT_PATH}xyz2grd "+map.getXyzFileName()+" -Gtemp.grd=1 "+
