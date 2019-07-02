@@ -3,6 +3,7 @@ package org.opensha.commons.data.comcat;
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
 import gov.usgs.earthquake.event.Format;
+import gov.usgs.earthquake.event.ISO8601;
 import gov.usgs.earthquake.event.JsonEvent;
 import gov.usgs.earthquake.event.UrlUtil;
 
@@ -14,6 +15,7 @@ import java.net.HttpURLConnection;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import java.util.zip.GZIPInputStream;
 
@@ -28,13 +30,26 @@ import java.util.zip.ZipException;
  * Class to access Comcat using USGS event web services.
  * Author: Michael Barall 05/29/2018.
  *
- * This extends the USGS EventWebService class in order to examine HTTP status codes
- * and properly attribute errors.
+ * This extends the USGS EventWebService class in order to:
+ *  - Examine HTTP status codes and properly attribute errors.
+ *  - Make use of the detail feed, when possible.
+ *  - Impose timeouts on the TCP connection to Comcat.
  *
- * The major reason to use this class is that the USGS version throws exceptions
+ * One reason to use this class is that the USGS version throws exceptions
  * for both no data available and network errors, and there is no reliable way to
  * tell the difference.  (Telling the difference requires examining the HTTP status
- * code, which the USGS version does not do.)
+ * code, which the USGS version does not do.)  This class examines the HTTP status
+ * code so that it can distinguish between no data and network errors.
+ *
+ * A second reason to use this class is to make use of the detail feed, which
+ * is a higher-performance system.  The USGS version sends all queries to Comcat.
+ * This class can send single-event queries to the detail feed, while continuing
+ * to send multi-event queries to Comcat.
+ *
+ * A third reason to use this class is to impose timeouts on the TCP connection
+ * to Comcat.  The USGS version imposes no timeouts, which means that in rare
+ * instances it can get stuck in an infinite wait state.  This class imposes
+ * timeouts to ensure that it will not wait forever for a response from Comcat.
  */
 
 public class ComcatEventWebService extends EventWebService {
@@ -132,6 +147,116 @@ public class ComcatEventWebService extends EventWebService {
 
 
 
+	// Default connection timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default.
+	// Note: See java.net.URLConnection for information on timeouts.
+
+	public static final int DEFAULT_CONNECT_TIMEOUT = 15000;		// 15 seconds
+
+	// Default read timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default.
+	// Note: See java.net.URLConnection for information on timeouts.
+	// Note: The value is large because it can take over 60 seconds for
+	// Comcat to respond to a query that matches a large number of events.
+	// Note: The system default is apparently 0, meaing no timeout, but on rare
+	// occasions the use of 0 can cause the program to hang in an infinite wait.
+
+	public static final int DEFAULT_READ_TIMEOUT = 300000;			// 5 minutes
+
+
+	// The connection timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default.
+
+	protected int connectTimeout;
+
+	// Get the connection timeout setting, in milliseconds.
+
+	public int getConnectTimeout () {
+		return connectTimeout;
+	}
+
+	// Set the connection timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default, or -2 for our default.
+
+	public void setConnectTimeout (int the_connectTimeout) {
+		if (the_connectTimeout < -2) {
+			throw new IllegalArgumentException ("Invalid connection timeout: " + the_connectTimeout);
+		}
+		connectTimeout = ( (the_connectTimeout == -2) ? DEFAULT_CONNECT_TIMEOUT : the_connectTimeout );
+		return;
+	}
+
+
+	// The read timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default.
+
+	protected int readTimeout;
+
+	// Get the read timeout setting, in milliseconds.
+
+	public int getReadTimeout () {
+		return readTimeout;
+	}
+
+	// Set the read timeout, in milliseconds.
+	// Use 0 for no timeout, or -1 for the system default, or -2 for our default.
+
+	public void setReadTimeout (int the_readTimeout) {
+		if (the_readTimeout < -2) {
+			throw new IllegalArgumentException ("Invalid read timeout: " + the_readTimeout);
+		}
+		readTimeout = ( (the_readTimeout == -2) ? DEFAULT_READ_TIMEOUT : the_readTimeout );
+		return;
+	}
+
+
+	// Flag which is true to enable timeout value readback from the system.
+	// It is false by default.
+
+	protected boolean enableTimeoutReadback;
+
+	// Get the timeout readback flag.
+
+	public boolean getEnableTimeoutReadback () {
+		return enableTimeoutReadback;
+	}
+
+	// Set the timeout readback flag.
+
+	public void setEnableTimeoutReadback (boolean the_enableTimeoutReadback) {
+		enableTimeoutReadback = the_enableTimeoutReadback;
+		return;
+	}
+
+
+	// The connection timeout from the last query, in milliseconds.
+	// It is 0 if no timeout, -1 if unknown (e.g., if timeout readback is disabled).
+
+	protected int lastConnectTimeout;
+
+	// Get the connection timeout from the last query, in milliseconds.
+	// It is 0 if no timeout, -1 if unknown (e.g., if timeout readback is disabled).
+
+	public int getLastConnectTimeout () {
+		return lastConnectTimeout;
+	}
+
+
+	// The read timeout from the last query, in milliseconds.
+	// It is 0 if no timeout, -1 if unknown (e.g., if timeout readback is disabled).
+
+	protected int lastReadTimeout;
+
+	// Get the read timeout from the last query, in milliseconds.
+	// It is 0 if no timeout, -1 if unknown (e.g., if timeout readback is disabled).
+
+	public int getLastReadTimeout () {
+		return lastReadTimeout;
+	}
+
+
+
+
 	// Construct a web service.
 
 	public ComcatEventWebService (final URL serviceURL) {
@@ -139,6 +264,12 @@ public class ComcatEventWebService extends EventWebService {
 		this.feedURL = null;
 		http_status_code = -1;
 		last_url = null;
+
+		connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+		readTimeout = DEFAULT_READ_TIMEOUT;
+		enableTimeoutReadback = false;
+		lastConnectTimeout = -1;
+		lastReadTimeout = -1;
 	}
 
 	// Construct a web service, using both Comcat and the real-time feed.
@@ -149,6 +280,12 @@ public class ComcatEventWebService extends EventWebService {
 		this.feedURL = feedURL;
 		http_status_code = -1;
 		last_url = null;
+
+		connectTimeout = DEFAULT_CONNECT_TIMEOUT;
+		readTimeout = DEFAULT_READ_TIMEOUT;
+		enableTimeoutReadback = false;
+		lastConnectTimeout = -1;
+		lastReadTimeout = -1;
 	}
 
 
@@ -163,6 +300,11 @@ public class ComcatEventWebService extends EventWebService {
 		// Set the HTTP status code to the special value for failed connection attempt.
 
 		http_status_code = -2;
+
+		// Timeouts are unknown at this point.
+
+		lastConnectTimeout = -1;
+		lastReadTimeout = -1;
 
 		// Construct the URL that contains the query.
 		// Throws MalformedURLException (subclass of IOException) if error in forming URL.
@@ -182,6 +324,23 @@ public class ComcatEventWebService extends EventWebService {
 		// This should not throw an exception.
 
 		conn.addRequestProperty("Accept-encoding", UrlUtil.GZIP_ENCODING);
+
+		// Set the timeouts, if desired.
+
+		if (connectTimeout >= 0) {
+			conn.setConnectTimeout (connectTimeout);
+		}
+
+		if (readTimeout >= 0) {
+			conn.setReadTimeout (readTimeout);
+		}
+
+		// Read back timeouts, if desired.
+
+		if (enableTimeoutReadback) {
+			lastConnectTimeout = conn.getConnectTimeout ();
+			lastReadTimeout = conn.getReadTimeout ();
+		}
 
 		// Connect to Comcat.
 		// Throws SocketTimeoutException (subclass of IOException) if timeout trying to establish connection.
@@ -277,6 +436,13 @@ public class ComcatEventWebService extends EventWebService {
 	public URL getUrl(final EventQuery query, final Format format)
 			throws MalformedURLException {
 
+		// See if the query is ComcatEventQuery
+
+		ComcatEventQuery ceq = null;
+		if (query instanceof ComcatEventQuery) {
+			ceq = (ComcatEventQuery)query;
+		}
+
 		// If we have a real-time feed URL ...
 
 		if (feedURL != null) {
@@ -299,6 +465,7 @@ public class ComcatEventWebService extends EventWebService {
 						&& query.getIncludeAllMagnitudes() == null
 						&& query.getIncludeAllOrigins() == null
 						&& query.getIncludeArrivals() == null
+						&& (ceq == null || ceq.getIncludeSuperseded() == null)
 						&& query.getKmlAnimated() == null
 						&& query.getKmlColorBy() == null
 						&& query.getLatitude() == null
@@ -339,9 +506,53 @@ public class ComcatEventWebService extends EventWebService {
 			}
 		}
 
-		// Pass thru to superclass
+		// fill hashmap with parameters
+		HashMap<String, Object> params = new HashMap<String, Object>();
+		params.put("alertlevel", query.getAlertLevel());
+		params.put("catalog", query.getCatalog());
+		params.put("contributor", query.getContributor());
+		params.put("endtime", ISO8601.format(query.getEndTime()));
+		params.put("eventid", query.getEventId());
+		params.put("eventtype", query.getEventType());
+		params.put("format", format == null ? query.getFormat() : format);
+		params.put("includeallmagnitudes", query.getIncludeAllMagnitudes());
+		params.put("includeallorigins", query.getIncludeAllOrigins());
+		params.put("includearrivals", query.getIncludeArrivals());
+		if (ceq != null) {params.put("includesuperseded", ceq.getIncludeSuperseded());}
+		params.put("kmlanimated", query.getKmlAnimated());
+		params.put("kmlcolorby", query.getKmlColorBy());
+		params.put("latitude", query.getLatitude());
+		params.put("limit", query.getLimit());
+		params.put("longitude", query.getLongitude());
+		params.put("magnitudetype", query.getMagnitudeType());
+		params.put("maxcdi", query.getMaxCdi());
+		params.put("maxdepth", query.getMaxDepth());
+		params.put("maxgap", query.getMaxGap());
+		params.put("maxlatitude", query.getMaxLatitude());
+		params.put("maxlongitude", query.getMaxLongitude());
+		params.put("maxmagnitude", query.getMaxMagnitude());
+		params.put("maxmmi", query.getMaxMmi());
+		params.put("maxradius", query.getMaxRadius());
+		params.put("maxsig", query.getMaxSig());
+		params.put("mincdi", query.getMinCdi());
+		params.put("mindepth", query.getMinDepth());
+		params.put("minfelt", query.getMinFelt());
+		params.put("mingap", query.getMinGap());
+		params.put("minlatitude", query.getMinLatitude());
+		params.put("minlongitude", query.getMinLongitude());
+		params.put("minmagnitude", query.getMinMagnitude());
+		params.put("minmmi", query.getMinMmi());
+		params.put("minradius", query.getMinRadius());
+		params.put("minsig", query.getMinSig());
+		params.put("offset", query.getOffset());
+		params.put("orderby", query.getOrderBy());
+		params.put("producttype", query.getProductType());
+		params.put("reviewstatus", query.getReviewStatus());
+		params.put("starttime", ISO8601.format(query.getStartTime()));
+		params.put("updatedafter", ISO8601.format(query.getUpdatedAfter()));
 
-		return super.getUrl (query, format);
+		String queryString = UrlUtil.getQueryString(params);
+		return new URL(getServiceUrl(), "query" + queryString);
 	}
 
 }

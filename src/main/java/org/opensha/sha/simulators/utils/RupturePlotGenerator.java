@@ -514,15 +514,33 @@ public class RupturePlotGenerator {
 	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
 			double[] eventElemScalars, CPT elemCPT, String scalarLabel, List<XYAnnotation> anns) throws IOException {
+		writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, null,
+				eventElemScalars, elemCPT, scalarLabel, anns);
+	}
+	
+	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
+			List<SimulatorElement> scaledElems, double[] customElemScalars, CPT elemCPT, String scalarLabel,
+			List<XYAnnotation> anns) throws IOException {
 		// determine extents
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
 		
-		for (SimulatorElement elem : event.getAllElements()) {
-			Location loc = elem.getCenterLocation();
-			latTrack.addValue(loc.getLatitude());
-			lonTrack.addValue(loc.getLongitude());
+		if (event != null) {
+			for (SimulatorElement elem : event.getAllElements()) {
+				Location loc = elem.getCenterLocation();
+				latTrack.addValue(loc.getLatitude());
+				lonTrack.addValue(loc.getLongitude());
+			}
 		}
+		if (scaledElems != null) {
+			for (SimulatorElement elem : scaledElems) {
+				Location loc = elem.getCenterLocation();
+				latTrack.addValue(loc.getLatitude());
+				lonTrack.addValue(loc.getLongitude());
+			}
+		}
+		
 		if (rectangle != null) {
 			for (Location loc : rectangle) {
 				latTrack.addValue(loc.getLatitude());
@@ -568,7 +586,7 @@ public class RupturePlotGenerator {
 		DiscretizedFunc regThicknessFunc = buildRegionSizeThicknessFunc();
 		double minThickness = regThicknessFunc.getInterpolatedY(maxDelta);
 		
-		ArrayList<SimulatorElement> rupElems = event.getAllElements();
+		List<SimulatorElement> rupElems = event == null && customElemScalars != null ? scaledElems : event.getAllElements();
 		
 		double maxDepth;
 		if (allElems != null)
@@ -578,13 +596,13 @@ public class RupturePlotGenerator {
 		
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		if (eventElemScalars == null) {
+		if (customElemScalars == null) {
 //			PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
 //			addElementOutline(funcs, chars, rupElems, eventChar, null);
 			double maxRupDepth = getMaxDepth(rupElems);
 			addDepthDepOutline(funcs, chars, rupElems, Color.BLACK, maxRupDepth, minThickness, 3d*minThickness);
 		} else {
-			addElementScalarOutline(funcs, chars, rupElems, eventElemScalars, elemCPT, maxDepth, minThickness, 3d*minThickness);
+			addElementScalarOutline(funcs, chars, rupElems, customElemScalars, elemCPT, maxDepth, minThickness, 3d*minThickness);
 		}
 //		for (SimulatorElement elem : rupElems) {
 //			Vertex[] vertexes = elem.getVertices();
@@ -619,7 +637,7 @@ public class RupturePlotGenerator {
 			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
 					star(hypoLoc.getLongitude(), hypoLoc.getLatitude(), hypoRadius), hypoStroke, Color.BLACK, HYPO_COLOR);
 			anns.add(rectHypoPoly);
-		} else {
+		} else if (event != null) {
 			double firstElemTime = Double.POSITIVE_INFINITY;
 			Location hypoLoc = null;
 			for (EventRecord rec : event) {
@@ -706,7 +724,7 @@ public class RupturePlotGenerator {
 			}
 		}
 		
-		String title = "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
+		String title = event == null ? null : "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
 		spec.setPlotAnnotations(anns);
 		
@@ -718,7 +736,7 @@ public class RupturePlotGenerator {
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		
-		if (eventElemScalars != null) {
+		if (customElemScalars != null) {
 			PaintScaleLegend cptLegend = XYZGraphPanel.getLegendForCPT(elemCPT, scalarLabel, 24, 18, -1, RectangleEdge.BOTTOM);
 			gp.getChartPanel().getChart().addSubtitle(cptLegend);
 		}
