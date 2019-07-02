@@ -30,6 +30,7 @@ import org.opensha.sha.magdist.GaussianMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.param.MagFreqDistParameter;
 import org.opensha.sha.param.SimpleFaultParameter;
 
@@ -96,6 +97,7 @@ public class PoissonFaultERF extends AbstractERF{
     supportedMagDists.add(GaussianMagFreqDist.NAME);
     supportedMagDists.add(SingleMagFreqDist.NAME);
     supportedMagDists.add(GutenbergRichterMagFreqDist.NAME);
+    supportedMagDists.add(SummedMagFreqDist.NAME);
     magDistParam = new MagFreqDistParameter(MAG_DIST_PARAM_NAME, supportedMagDists);
 
     // make the fault parameter
