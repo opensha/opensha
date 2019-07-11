@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 
 import org.opensha.commons.geo.Location;
+import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.SimpleFaultData;
 
 import com.google.common.base.Preconditions;
 
@@ -156,7 +158,7 @@ class ETAS_ConfigExamplesWriter {
 	private static void writeTutorialExamples(File tutorialsDir, File cacheDir, File fssFile) throws IOException {
 		int numSimulations = 10;
 		double simDuration = 10d;
-		int startYear = 2018;
+		Integer startYear = 2018;
 		boolean includeSpontaneous = false;
 		
 		long randSeed = 123456789;
@@ -202,6 +204,28 @@ class ETAS_ConfigExamplesWriter {
 		config.setRandomSeed(randSeed);
 		
 		config.writeJSON(new File(tutorialsDir, "input_catalog_with_spontaneous_example.json"));
+		
+		numSimulations = 10;
+		simDuration = 10d;
+		startYear = null;
+		includeSpontaneous = false;
+		long startTimeMillis = 1562383192000l;
+		
+		outputDir = new File("$ETAS_LAUNCHER/tutorial/user_output/searless_valley_m7p1_finite_surface");
+		config = new ETAS_Config(numSimulations, simDuration, includeSpontaneous, cacheDir, fssFile, outputDir);
+		
+		config.setSimulationName("Input Catalog With Spontaneous");
+		config.setStartTimeMillis(startTimeMillis);
+		FaultTrace trace = new FaultTrace("Searless Valley");
+		trace.add(new Location(35.910, -117.742));
+		trace.add(new Location(35.618, -117.417));
+		SimpleFaultData sfd = new SimpleFaultData(90, 12, 0, trace);
+		Location hypo = new Location(35.766, -117.605, 17);
+		config.addTriggerRupture(new TriggerRupture.SimpleFault(null, hypo, 7.1, sfd));
+		config.buildDefaultBinaryOutputFilters();
+		config.setRandomSeed(randSeed);
+		
+		config.writeJSON(new File(tutorialsDir, "searless_valley_m7p1_finite_surface.json"));
 	}
 
 }

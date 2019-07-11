@@ -556,9 +556,14 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			table.addColumn("Forecast Duration");
 			table.addColumn("UCERF3-ETAS [95% Conf]");
 			table.addColumn("UCERF3-ETAS Triggered Only");
-			if (tdFuncs != null)
+			if (tdFuncs != null) {
 				table.addColumn("UCERF3-TD");
-			table.addColumn("UCERF3-TI");
+				table.addColumn("UCERF3-ETAS/TD Gain");
+				table.addColumn("UCERF3-TI");
+			} else {
+				table.addColumn("UCERF3-TI");
+				table.addColumn("UCERF3-ETAS/TI Gain");
+			}
 			table.finalizeLine();
 			
 			boolean hasAsterisk = false;
@@ -571,15 +576,23 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 					asterisk = " \\*";
 					hasAsterisk = true;
 				}
-				table.addColumn(getProbStr(simFuncs[m].getY(time))+" ["+getProbStr(simLowerFuncs[m].getY(time))
+				double etasProb = simFuncs[m].getY(time);
+				table.addColumn(getProbStr(etasProb)+" ["+getProbStr(simLowerFuncs[m].getY(time))
 						+" - "+getProbStr(simUpperFuncs[m].getY(time))+"]"+asterisk);
 				if ((float)time > (float)simOnlyFuncs[m].getMaxX())
 					table.addColumn("\\*");
 				else
 					table.addColumn(getProbStr(simOnlyFuncs[m].getY(time)));
-				if (tdFuncs != null)
-					table.addColumn(getProbStr(tdFuncs[m].getY(time)));
-				table.addColumn(getProbStr(tiFuncs[m].getY(time)));
+				if (tdFuncs != null) {
+					double tdProb = tdFuncs[m].getY(time);
+					table.addColumn(getProbStr(tdProb));
+					table.addColumn(optionalDigitDF.format(etasProb/tdProb)+asterisk);
+					table.addColumn(getProbStr(tiFuncs[m].getY(time)));
+				} else {
+					double tiProb = tiFuncs[m].getY(time);
+					table.addColumn(getProbStr(tiProb));
+					table.addColumn(optionalDigitDF.format(etasProb/tiProb)+asterisk);
+				}
 				
 				table.finalizeLine();
 			}

@@ -114,6 +114,7 @@ public class ETAS_Launcher {
 	
 	private long simulationOT;
 	private String simulationName;
+	private File fssFile;
 	private List<ETAS_EqkRupture> triggerRuptures;
 	private List<ETAS_EqkRupture> histQkList;
 	
@@ -165,6 +166,7 @@ public class ETAS_Launcher {
 		
 		lastEventData = LastEventData.load();
 		resetSubSectsMap = new HashMap<>();
+		fssFile = ETAS_Config.resolvePath(config.getFSS_File());
 		
 		// purge any last event data after OT
 		LastEventData.filterDataAfterTime(lastEventData, simulationOT);
@@ -241,7 +243,8 @@ public class ETAS_Launcher {
 				params.setStatewideCompletenessModel(config.getCompletenessModel());
 			FaultSystemSolution fss = checkOutFSS();
 			try {
-				histQkList.addAll(loadHistoricalCatalog(config.getTriggerCatalogFile(), config.getTriggerCatalogSurfaceMappingsFile(),
+				histQkList.addAll(loadHistoricalCatalog(ETAS_Config.resolvePath(config.getTriggerCatalogFile()),
+						ETAS_Config.resolvePath(config.getTriggerCatalogSurfaceMappingsFile()),
 						fss, simulationOT, resetSubSectsMap, params.getStatewideCompletenessModel()));
 			} catch (DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
@@ -289,7 +292,7 @@ public class ETAS_Launcher {
 		
 		debug(DebugLevel.FINE, "Simulation name: "+simulationName);
 		
-		File outputDir = config.getOutputDir();
+		File outputDir = ETAS_Config.resolvePath(config.getOutputDir());
 		if (mkdirs)
 			waitOnDirCreation(outputDir, 10, 2000);
 		
@@ -369,17 +372,17 @@ public class ETAS_Launcher {
 			if (!fssDeque.isEmpty())
 				fss = fssDeque.pop();
 		}
-		if (fss== null) {
+		if (fss == null) {
 			// load a new one
 			try {
-				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+config.getFSS_File().getAbsolutePath());
-				fss = FaultSystemIO.loadSol(config.getFSS_File());
+				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+fssFile.getAbsolutePath());
+				fss = FaultSystemIO.loadSol(fssFile);
 				
 				if (config.isGridSeisCorr() && !config.isGriddedOnly()) {
 					if (gridSeisCorrections == null) {
 						synchronized (fssDeque) {
 							if (gridSeisCorrections == null) {
-								File cacheFile = new File(config.getCacheDir(), "griddedSeisCorrectionCache");
+								File cacheFile = new File(ETAS_Config.resolvePath(config.getCacheDir()), "griddedSeisCorrectionCache");
 								debug(DebugLevel.FINE, "Loading gridded seismicity correction cache file from "+cacheFile.getAbsolutePath());
 								gridSeisCorrections = MatrixIO.doubleArrayFromFile(cacheFile);
 							}

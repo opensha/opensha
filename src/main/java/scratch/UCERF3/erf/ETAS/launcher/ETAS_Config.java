@@ -10,14 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
-import org.dom4j.DocumentException;
+import org.opensha.commons.data.comcat.ComcatRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.FaultUtils;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.faultSurface.CompoundSurface;
-import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.SimpleFaultData;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -28,12 +27,9 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
-import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
@@ -78,6 +74,9 @@ public class ETAS_Config {
 	private Double etas_p = null;
 	private Double etas_c = null;
 	private Double etas_log10_k = null;
+	
+	// metadata for Comcat driven events
+	private Region comcatRegion = null;
 	
 	public ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir) {
 		this(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir, null, null);
@@ -136,8 +135,15 @@ public class ETAS_Config {
 		builder.registerTypeAdapter(File.class, new FileTypeAdapter().nullSafe());
 		builder.registerTypeAdapter(Location.class, new LocationTypeAdapter().nullSafe());
 		builder.registerTypeAdapter(TriggerRupture.class, new TriggerRuptureTypeAdapter().nullSafe());
+		builder.registerTypeAdapter(Region.class, new RegionTypeAdapter().nullSafe());
 		Gson gson = builder.create();
 		return gson;
+	}
+	
+	public static File resolvePath(File file) {
+		if (file == null)
+			return null;
+		return resolvePath(file.getPath());
 	}
 	
 	public static File resolvePath(String path) {
@@ -251,6 +257,40 @@ public class ETAS_Config {
 				out.name("latitude").value(loc.getLatitude());
 				out.name("longitude").value(loc.getLongitude());
 				out.name("depth").value(loc.getDepth());
+			} else if (value instanceof TriggerRupture.SimpleFault) {
+				TriggerRupture.SimpleFault sfdRup = (TriggerRupture.SimpleFault)value;
+				out.name("mag").value(sfdRup.mag);
+				if (sfdRup.hypo != null) {
+					out.name("latitude").value(sfdRup.hypo.getLatitude());
+					out.name("longitude").value(sfdRup.hypo.getLongitude());
+					out.name("depth").value(sfdRup.hypo.getDepth());
+				}
+				out.name("ruptureSurfaces").beginArray();
+				for (SimpleFaultData sfd : sfdRup.sfds) {
+					out.beginObject();
+					out.name("dip").value(sfd.getAveDip());
+					if (Double.isFinite(sfd.getAveDipDir()))
+						out.name("dipDir").value(sfd.getAveDipDir());
+					out.name("upperDepth").value(sfd.getUpperSeismogenicDepth());
+					out.name("lowerDepth").value(sfd.getLowerSeismogenicDepth());
+					out.name("trace").beginArray();
+					for (Location loc : sfd.getFaultTrace()) {
+						out.beginObject();
+						out.name("latitude").value(loc.getLatitude());
+						out.name("longitude").value(loc.getLongitude());
+						out.name("depth").value(loc.getDepth());
+						out.endObject();
+					}
+					out.endArray();
+					out.endObject();
+				}
+				out.endArray();
+				if (sfdRup.sectsReset != null && sfdRup.sectsReset.length > 0) {
+					out.name("subSectResetIndexes").beginArray();
+					for (int index : sfdRup.sectsReset)
+						out.value(index);
+					out.endArray();
+				}
 			} else {
 				throw new IllegalStateException("Not yet implemented for subcalss "+value.getClass().getName());
 			}
@@ -273,6 +313,9 @@ public class ETAS_Config {
 			Double lat = null;
 			Double lon = null;
 			Double depth = null;
+			
+			// SFD
+			SimpleFaultData[] sfds = null;
 			
 			in.beginObject();
 			while (in.hasNext()) {
@@ -305,6 +348,81 @@ public class ETAS_Config {
 				case "depth":
 					depth = in.nextDouble();
 					break;
+				case "ruptureSurfaces":
+					List<SimpleFaultData> sfdList = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext()) {
+						in.beginObject();
+						Double dip = null;
+						double dipDir = Double.NaN;
+						Double upperDepth = null;
+						Double lowerDepth = null;
+						FaultTrace trace = null;
+						while (in.hasNext()) {
+							switch (in.nextName()) {
+							case "dip":
+								dip = in.nextDouble();
+								break;
+							case "dipDir":
+								dipDir = in.nextDouble();
+								break;
+							case "upperDepth":
+								upperDepth = in.nextDouble();
+								break;
+							case "lowerDepth":
+								lowerDepth = in.nextDouble();
+								break;
+							case "trace":
+								in.beginArray();
+								trace = new FaultTrace("Custom Fault");
+								while (in.hasNext()) {
+									in.beginObject();
+									Double trLat = null; Double trLon = null; Double trDepth = null;
+									while (in.hasNext()) {
+										switch (in.nextName()) {
+										case "latitude":
+											trLat = in.nextDouble();
+											break;
+										case "longitude":
+											trLon = in.nextDouble();
+											break;
+										case "depth":
+											trDepth = in.nextDouble();
+											break;
+										}
+									}
+									Preconditions.checkNotNull(trLat, "trace point latitude not specified");
+									Preconditions.checkNotNull(trLon, "trace point longitude not specified");
+									if (depth == null)
+										trace.add(new Location(trLat, trLon));
+									else
+										trace.add(new Location(trLat, trLon, trDepth));
+									in.endObject();
+								}
+								in.endArray();
+								break;
+							}
+						}
+						in.endObject();
+						Preconditions.checkNotNull(dip, "surface dip not specified");
+						Preconditions.checkNotNull(upperDepth, "surface upper depth not specified");
+						Preconditions.checkNotNull(lowerDepth, "surface lower depth not specified");
+						Preconditions.checkNotNull(trace, "surface trace not specified");
+						sfdList.add(new SimpleFaultData(dip, lowerDepth, upperDepth, trace, dipDir));
+					}
+					in.endArray();
+					sfds = sfdList.toArray(new SimpleFaultData[0]);
+					break;
+				case "subSectResetIndexes":
+					in.beginArray();
+					List<Integer> myIndexes = new ArrayList<>();
+					while (in.hasNext()) {
+						int index = in.nextInt();
+						myIndexes.add(index);
+					}
+					in.endArray();
+					subSects = Ints.toArray(myIndexes);
+					break;
 				}
 			}
 			in.endObject();
@@ -314,6 +432,14 @@ public class ETAS_Config {
 						"Cannot specify point source location for FSS rupture");
 				Preconditions.checkState(subSects == null, "Cannot specify sub sections for FSS rupture");
 				return new TriggerRupture.FSS(fssIndex, customOccurrenceTime, mag);
+			}
+			if (sfds != null) {
+				Location hypo = null;
+				if (lat != null && lon != null) {
+					hypo = new Location(lat, lon, depth);
+				}
+				Preconditions.checkNotNull(mag, "Must specify magnitude for sub sect rupture");
+				return new TriggerRupture.SimpleFault(customOccurrenceTime, hypo, mag, subSects, sfds);
 			}
 			if (subSects != null) {
 				Preconditions.checkState(lat == null && lon == null && depth == null,
@@ -329,6 +455,155 @@ public class ETAS_Config {
 			Location hypocenter = new Location(lat, lon, depth);
 			
 			return new TriggerRupture.Point(hypocenter, customOccurrenceTime, mag);
+		}
+		
+	}
+	
+	public static class CircularRegion extends Region implements ComcatRegion {
+		private Location center;
+		private double radius;
+
+		public CircularRegion(Location center, double radius) {
+			super(center, radius);
+			this.center = center;
+			this.radius = radius;
+		}
+
+		@Override
+		public boolean contains(double lat, double lon) {
+			return contains(new Location(lat, lon));
+		}
+
+		@Override
+		public boolean isCircular() {
+			return true;
+		}
+
+		@Override
+		public double getCircleCenterLat() {
+			return center.getLatitude();
+		}
+
+		@Override
+		public double getCircleCenterLon() {
+			return center.getLongitude();
+		}
+
+		@Override
+		public double getCircleRadiusDeg() {
+			return radius;
+		}
+	}
+	
+	private static class RegionTypeAdapter extends TypeAdapter<Region> {
+
+		@Override
+		public void write(JsonWriter out, Region value) throws IOException {
+			out.beginObject();
+			if (value.isRectangular()) {
+				out.name("minLatitude").value(value.getMinLat());
+				out.name("maxLatitude").value(value.getMaxLat());
+				out.name("minLongitude").value(value.getMinLon());
+				out.name("maxLongitude").value(value.getMaxLon());
+			} else if (value instanceof CircularRegion) {
+				CircularRegion circle = (CircularRegion)value;
+				out.name("centerLatitude").value(circle.center.getLatitude());
+				out.name("centerLongitude").value(circle.center.getLongitude());
+				out.name("radius").value(circle.radius);
+			} else {
+				out.name("border").beginArray();
+				for (Location loc : value.getBorder()) {
+					out.beginObject();
+					out.name("latitude").value(loc.getLatitude());
+					out.name("longitude").value(loc.getLongitude());
+					out.endObject();
+				}
+				out.endArray();
+			}
+			out.endObject();
+		}
+
+		@Override
+		public Region read(JsonReader in) throws IOException {
+			in.beginObject();
+			// rectangular
+			Double minLat = null;
+			Double maxLat = null;
+			Double minLon = null;
+			Double maxLon = null;
+			
+			// circular
+			Double centerLat = null;
+			Double centerLon = null;
+			Double radius = null;
+			
+			// arbitrary
+			LocationList border = null;
+			
+			while (in.hasNext()) {
+				switch (in.nextName()) {
+				case "minLatitude":
+					minLat = in.nextDouble();
+					break;
+				case "maxLatitude":
+					maxLat = in.nextDouble();
+					break;
+				case "minLongitude":
+					minLon = in.nextDouble();
+					break;
+				case "maxLongitude":
+					maxLon = in.nextDouble();
+					break;
+				case "centerLatitude":
+					centerLat = in.nextDouble();
+					break;
+				case "centerLongitude":
+					centerLon = in.nextDouble();
+					break;
+				case "radius":
+					radius = in.nextDouble();
+					break;
+				case "border":
+					border = new LocationList();
+					in.beginArray();
+					while (in.hasNext()) {
+						Double lat = null;
+						Double lon = null;
+						in.beginObject();
+						while (in.hasNext()) {
+							switch (in.nextName()) {
+							case "latitude":
+								lat = in.nextDouble();
+								break;
+							case "longitude":
+								lon = in.nextDouble();
+								break;
+							}
+						}
+						in.endObject();
+						Preconditions.checkNotNull(lat, "Border latitude not supplied");
+						Preconditions.checkNotNull(lon, "Border longtiude not supplied");
+						border.add(new Location(lat, lon));
+					}
+					in.endArray();
+					break;
+				}
+			}
+			in.endObject();
+			
+			if (minLat != null) {
+				Preconditions.checkNotNull(maxLat, "maxLatitude not specified");
+				Preconditions.checkNotNull(minLon, "minLongitude not specified");
+				Preconditions.checkNotNull(maxLon, "maxLongitude not specified");
+				return new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+			}
+			if (centerLat != null) {
+				Preconditions.checkNotNull(centerLon, "centerLatitude not specified");
+				Preconditions.checkNotNull(radius, "circle radius not specified");
+				return new Region(new Location(centerLat, centerLon), radius);
+			}
+			Preconditions.checkNotNull(border, "Must specify either rectangular region, circular region, or supply border");
+			return new Region(border, null);
 		}
 		
 	}
@@ -540,6 +815,10 @@ public class ETAS_Config {
 		return applySubSeisForSupraNucl;
 	}
 
+	public void setTotRateScaleFactor(double totRateScaleFactor) {
+		this.totRateScaleFactor = totRateScaleFactor;
+	}
+
 	public double getTotRateScaleFactor() {
 		return totRateScaleFactor;
 	}
@@ -575,6 +854,14 @@ public class ETAS_Config {
 	public U3_EqkCatalogStatewideCompleteness getCompletenessModel() {
 		return catalogCompletenessModel;
 	}
+	
+	public void setComcatRegion(Region comcatRegion) {
+		this.comcatRegion = comcatRegion;
+	}
+	
+	public Region getComcatRegion() {
+		return comcatRegion;
+	}
 
 	private transient FaultSystemSolution fss;
 	public synchronized FaultSystemSolution loadFSS() {
@@ -596,6 +883,7 @@ public class ETAS_Config {
 	}
 	
 	public void writeJSON(File jsonFile) throws IOException {
+		jsonFile = resolvePath(jsonFile);
 		FileWriter fw = new FileWriter(jsonFile);
 		fw.write(toJSON()+"\n");
 		fw.close();
@@ -641,12 +929,24 @@ public class ETAS_Config {
 		File fssFile = new File("/home/scec-02/kmilner/ucerf3/inversion_compound_plots/2013_05_10-ucerf3p3-production-10runs/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		File outputDir = new File("/tmp");
+		FaultTrace trace1 = new FaultTrace("asdf");
+		trace1.add(new Location(34, -118));
+		trace1.add(new Location(34, -119));
+		FaultTrace trace2 = new FaultTrace("asdf");
+		trace2.add(new Location(35, -118));
+		trace2.add(new Location(35, -119));
+		trace2.add(new Location(35, -120));
+		SimpleFaultData[] sfds = {
+				new SimpleFaultData(90d, 10, 0, trace1, Double.NaN),
+				new SimpleFaultData(60d, 12, 2, trace2, Double.NaN)
+		};
 		ETAS_Config conf = new ETAS_Config(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir,
 				null, null,
 				new TriggerRupture.FSS(1234, 11111243l, 6.5),
 				new TriggerRupture.FSS(12345, null, null),
 				new TriggerRupture.SectionBased(new int[] {0,5,10}, null, 7.2),
-				new TriggerRupture.Point(new Location(34, -118, 5.5), 12321l, 5.7));
+				new TriggerRupture.Point(new Location(34, -118, 5.5), 12321l, 5.7),
+				new TriggerRupture.SimpleFault(123456l, null, 8d, sfds));
 		
 		String json1 = conf.toJSON();
 		System.out.println("Orig JSON");

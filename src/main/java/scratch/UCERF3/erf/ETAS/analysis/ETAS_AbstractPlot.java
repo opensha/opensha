@@ -6,10 +6,12 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotPreferences;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
@@ -22,10 +24,13 @@ public abstract class ETAS_AbstractPlot {
 	
 	private ETAS_Config config;
 	private ETAS_Launcher launcher;
+	
+	private Stopwatch processStopwatch;
 
 	protected ETAS_AbstractPlot(ETAS_Config config, ETAS_Launcher launcher) {
 		this.config = config;
 		this.launcher = launcher;
+		processStopwatch = Stopwatch.createUnstarted();
 	}
 	
 	public abstract boolean isFilterSpontaneous();
@@ -34,7 +39,18 @@ public abstract class ETAS_AbstractPlot {
 		List<ETAS_EqkRupture> triggeredOnlyCatalog = null;
 		if (isFilterSpontaneous())
 			triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
-		doProcessCatalog(catalog, triggeredOnlyCatalog, fss);
+		processCatalog(catalog, triggeredOnlyCatalog, fss);
+	}
+	
+	public void processCatalog(List<ETAS_EqkRupture> completeCatalog,
+			List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
+		processStopwatch.start();
+		doProcessCatalog(completeCatalog, triggeredOnlyCatalog, fss);
+		processStopwatch.stop();
+	}
+	
+	public long getProcessTimeMS() {
+		return processStopwatch.elapsed(TimeUnit.MILLISECONDS);
 	}
 	
 	protected abstract void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog,
@@ -52,7 +68,7 @@ public abstract class ETAS_AbstractPlot {
 	
 	public abstract List<String> generateMarkdown(String relativePathToOutputDir, String topLevelHeading, String topLink) throws IOException;
 	
-	protected static HeadlessGraphPanel buildGraphPanel() {
+	static HeadlessGraphPanel buildGraphPanel() {
 		PlotPreferences plotPrefs = PlotPreferences.getDefault();
 		plotPrefs.setTickLabelFontSize(20);
 		plotPrefs.setAxisLabelFontSize(22);

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,11 +14,13 @@ import java.util.Map;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
@@ -37,6 +40,7 @@ import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 
@@ -47,7 +51,13 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	private boolean hasSpont;
 	private boolean hasTriggered;
 	
-	private double[] minMagBins = { 0d, 6.5d, 7d, 7.5d, 8d };
+	private static final double[] default_calc_durations = { 1d / 365.25, 7d / 365.25, 30 / 365.25, 1d };
+	private static final double[] default_map_durations = { 1d }; // must be a subset of above
+	
+	private double[] durations;
+	private double[] mapDurations;
+	private long[] maxOTs;
+	private double[] plotMagBins = { 0d, 6.5d, 7d, 7.5d, 8d };
 	
 	private FaultStats[] subSectStats;
 	private Map<Integer, FaultStats> parentSectStats;
@@ -59,6 +69,12 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	
 	private Map<Double, CSVFile<String>> sectionCSVs;
 	private Map<Double, CSVFile<String>> parentCSVs;
+	
+	private static final double mfdMinMag = 6.05;
+	private static final double mfdDeltaMag = 0.1;
+	private static final int mfdNumMag = 31;
+	
+	private EvenlyDiscretizedFunc magXIndexes;
 
 	protected ETAS_FaultParticipationPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, boolean annualize, boolean skipMaps) {
 		super(config, launcher);
@@ -69,6 +85,33 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		this.hasTriggered = config.hasTriggers();
 		this.hasSpont = config.isIncludeSpontaneous()
 				|| (config.getTriggerCatalogFile() != null && config.isTreatTriggerCatalogAsSpontaneous());
+
+		double calcDuration = config.getDuration();
+		if (annualize) {
+			durations = new double[] {calcDuration};
+			mapDurations = durations;
+		} else {
+			List<Double> durList = new ArrayList<>();
+			for (double dur : default_calc_durations)
+				if (dur <= calcDuration)
+					durList.add(dur);
+			if (!durList.contains(calcDuration))
+				durList.add(calcDuration);
+			durations = Doubles.toArray(durList);
+			durList = new ArrayList<>();
+			for (double dur : default_map_durations)
+				if (dur <= calcDuration)
+					durList.add(dur);
+			if (!durList.contains(calcDuration))
+				durList.add(calcDuration);
+			mapDurations = Doubles.toArray(durList);
+		}
+		maxOTs = new long[durations.length];
+		for (int i=0; i<maxOTs.length; i++)
+			maxOTs[i] = config.getSimulationStartTimeMillis() +
+				(long)(durations[i] * ProbabilityModelsCalc.MILLISEC_PER_YEAR + 0.5);
+		
+		magXIndexes = new EvenlyDiscretizedFunc(mfdMinMag, mfdNumMag, mfdDeltaMag);
 	}
 
 	@Override
@@ -91,18 +134,19 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			
 			for (int s=0; s<rupSet.getNumSections(); s++) {
 				FaultSectionPrefData sect = rupSet.getFaultSectionData(s);
-				subSectStats[s] = new FaultStats(s, sect.getName(), new HashSet<>(rupSet.getRupturesForSection(s)));
+				HashSet<Integer> rupIDs = new HashSet<>(rupSet.getRupturesForSection(s));
+				subSectStats[s] = new FaultStats(s, sect.getName(), rupIDs);
 				mapRupturesToStat(subSectStats[s]);
 				Integer parentID = sect.getParentSectionId();
 				if (!parentSectStats.containsKey(parentID)) {
-					FaultStats parentStats = new FaultStats(parentID, sect.getParentSectionName(),
-							new HashSet<>(rupSet.getRupturesForParentSection(parentID)));
+					HashSet<Integer> parentRups = new HashSet<>(rupSet.getRupturesForParentSection(parentID));
+					FaultStats parentStats = new FaultStats(parentID, sect.getParentSectionName(), parentRups);
 					mapRupturesToStat(parentStats);
 					parentSectStats.put(parentID, parentStats);
 				}
 			}
 			
-			hasMags = new boolean[minMagBins.length];
+			hasMags = new boolean[plotMagBins.length];
 			System.out.println("DONE Initializing section stats/mappings");
 		}
 		
@@ -134,133 +178,169 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		private String name;
 		
 		private HashSet<Integer> allRupIDs;
-		private List<int[]> spontCounts;
-		private List<int[]> triggeredCounts;
-		private List<int[]> triggeredPrimaryCounts;
 		
-		private double[] spontMeans;
-		private double[] spontProbs;
+		// magnitude number distributions for each duration
+		// will be a total sum during processing, then will be divided by the number of
+		// catalogs to turn into a mean
+		private IncrementalMagFreqDist[] spontMNDs;
+		private IncrementalMagFreqDist[] triggeredMNDs;
+		private IncrementalMagFreqDist[] triggeredPrimaryMNDs;
 		
-		private double[] triggeredMeans;
-		private double[] triggeredProbs;
-		private double[] triggeredPrimaryMeans;
+		private EvenlyDiscretizedFunc[] spontCumulativeMNDs;
+		private EvenlyDiscretizedFunc[] triggeredCumulativeMNDs;
+		private EvenlyDiscretizedFunc[] triggeredPrimaryCumulativeMNDs;
+		
+		// these keep track of if each catalog had at least 1 rupture above the magnitude threshold
+		// binned as [durationIndex][magIndex]
+		private List<boolean[][]> spontAnyList;
+		private List<boolean[][]> triggeredAnyList;
+		
+		private IncrementalMagFreqDist[] spontIncrProbs;
+		private EvenlyDiscretizedFunc[] spontCumulativeProbs;
+		private IncrementalMagFreqDist[] triggeredIncrProbs;
+		private EvenlyDiscretizedFunc[] triggeredCumulativeProbs;
 		
 		private FaultStats(int id, String name, HashSet<Integer> allRupIDs) {
 			this.id = id;
 			this.name = name;
 			this.allRupIDs = allRupIDs;
-			if (hasSpont)
-				this.spontCounts = new ArrayList<>();
+			if (hasSpont) {
+				this.spontMNDs = new IncrementalMagFreqDist[durations.length];
+				for (int i=0; i<durations.length; i++)
+					spontMNDs[i] = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDeltaMag);
+				this.spontAnyList = new ArrayList<>();
+			}
 			if (hasTriggered) {
-				this.triggeredCounts = new ArrayList<>();
-				this.triggeredPrimaryCounts = new ArrayList<>();
+				this.triggeredMNDs = new IncrementalMagFreqDist[durations.length];
+				this.triggeredPrimaryMNDs = new IncrementalMagFreqDist[durations.length];
+				for (int i=0; i<durations.length; i++) {
+					triggeredMNDs[i] = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDeltaMag);
+					triggeredPrimaryMNDs[i] = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDeltaMag);
+				}
+				this.triggeredAnyList = new ArrayList<>();
 			}
 		}
 		
 		public void processCatalog(List<ETAS_EqkRupture> catalog, List<ETAS_EqkRupture> triggeredOnlyCatalog) {
-			spontMeans = null;
-			triggeredProbs = null;
-			triggeredPrimaryMeans = null;
-			if (hasSpont) {
-				int[] mySpontCounts = null;
-				for (ETAS_EqkRupture rup : catalog) {
-					int fssIndex = rup.getFSSIndex();
-					if (fssIndex < 0 || !allRupIDs.contains(fssIndex))
+			Preconditions.checkState(spontIncrProbs == null && triggeredIncrProbs == null);
+			if (hasSpont)
+				doProcessCatalog(catalog, spontMNDs, null, spontAnyList);
+			if (hasTriggered)
+				doProcessCatalog(triggeredOnlyCatalog, triggeredMNDs, triggeredPrimaryMNDs, triggeredAnyList);
+		}
+		
+		private void doProcessCatalog(List<ETAS_EqkRupture> catalog, IncrementalMagFreqDist[] mnds,
+				IncrementalMagFreqDist[] primaryMNDs, List<boolean[][]> anyList) {
+			boolean[][] myAny = null;
+			for (ETAS_EqkRupture rup : catalog) {
+				int fssIndex = rup.getFSSIndex();
+				if (fssIndex < 0 || !allRupIDs.contains(fssIndex))
+					continue;
+				// it's on this fault
+				double mag = rup.getMag();
+				int magIndex = mnds[0].getClosestXIndex(mag);
+				if (myAny == null)
+					myAny = new boolean[durations.length][mfdNumMag];
+				boolean primary = rup.getGeneration() == 1;
+				for (int d=0; d<durations.length; d++) {
+					if (rup.getOriginTime() > maxOTs[d])
 						continue;
-					double mag = rup.getMag();
-					// it's on this fault
-					if (mySpontCounts == null)
-						mySpontCounts = new int[minMagBins.length];
-					for (int i=0; i<minMagBins.length; i++) {
-						if (mag >= minMagBins[i]) {
-							hasMags[i] = true;
-							mySpontCounts[i]++;
-						}
-					}
+					mnds[d].add(magIndex, 1d);
+					if (primary && primaryMNDs != null)
+						primaryMNDs[d].add(magIndex, 1d);
+					myAny[d][magIndex] = true;
 				}
-				spontCounts.add(mySpontCounts);
 			}
-			if (hasTriggered) {
-				int[] myTriggeredCounts = null;
-				int[] myTriggeredPrimaryCounts = null;
-				for (ETAS_EqkRupture rup : triggeredOnlyCatalog) {
-					int fssIndex = rup.getFSSIndex();
-					if (fssIndex < 0 || !allRupIDs.contains(fssIndex))
-						continue;
-					double mag = rup.getMag();
-					// it's on this fault
-					if (myTriggeredCounts == null) {
-						myTriggeredCounts = new int[minMagBins.length];
-						myTriggeredPrimaryCounts = new int[minMagBins.length];
-					}
-					boolean primary = rup.getGeneration() == 1;
-					for (int i=0; i<minMagBins.length; i++) {
-						if (mag >= minMagBins[i]) {
-							myTriggeredCounts[i]++;
-							hasMags[i] = true;
-							if (primary)
-								myTriggeredPrimaryCounts[i]++;
-						}
-					}
-				}
-				triggeredCounts.add(myTriggeredCounts);
-				triggeredPrimaryCounts.add(myTriggeredPrimaryCounts);
-			}
+			anyList.add(myAny);
 		}
 		
 		public void calcStats(int numCatalogs) {
-			if (spontMeans != null || triggeredMeans != null)
-				return;
+			Preconditions.checkState(spontIncrProbs == null  && triggeredIncrProbs == null);
+			
+			double rateScalar = 1d/numCatalogs;
 			
 			if (hasSpont) {
-				spontMeans = new double[minMagBins.length];
-				spontProbs = new double[minMagBins.length];
-				doCalcStats(spontCounts, numCatalogs, spontMeans, spontProbs);
+				Preconditions.checkState(spontCumulativeMNDs == null);
+				spontCumulativeMNDs = new EvenlyDiscretizedFunc[durations.length];
+				spontIncrProbs = new IncrementalMagFreqDist[durations.length];
+				spontCumulativeProbs = new EvenlyDiscretizedFunc[durations.length];
 			}
-			
 			if (hasTriggered) {
-				triggeredMeans = new double[minMagBins.length];
-				triggeredProbs = new double[minMagBins.length];
-				doCalcStats(triggeredCounts, numCatalogs, triggeredMeans, triggeredProbs);
-				
-				triggeredPrimaryMeans = new double[minMagBins.length];
-				doCalcStats(triggeredPrimaryCounts, numCatalogs, triggeredPrimaryMeans, null);
+				Preconditions.checkState(triggeredCumulativeMNDs == null && triggeredPrimaryCumulativeMNDs == null);
+				triggeredCumulativeMNDs = new EvenlyDiscretizedFunc[durations.length];
+				triggeredPrimaryCumulativeMNDs = new EvenlyDiscretizedFunc[durations.length];
+				triggeredIncrProbs = new IncrementalMagFreqDist[durations.length];
+				triggeredCumulativeProbs = new EvenlyDiscretizedFunc[durations.length];
+			}
+
+			for (int d=0; d<durations.length; d++) {
+				double durScalar = annualize ? rateScalar/durations[d] : rateScalar;
+				if (hasSpont) {
+					spontMNDs[d].scale(durScalar);
+					spontCumulativeMNDs[d] = spontMNDs[d].getCumRateDistWithOffset();
+					calcProbs(spontAnyList, spontIncrProbs, spontCumulativeProbs, numCatalogs);
+				}
+				if (hasTriggered) {
+					triggeredMNDs[d].scale(durScalar);
+					triggeredCumulativeMNDs[d] = triggeredMNDs[d].getCumRateDistWithOffset();
+					triggeredPrimaryMNDs[d].scale(durScalar);
+					triggeredPrimaryCumulativeMNDs[d] = triggeredPrimaryMNDs[d].getCumRateDistWithOffset();
+					calcProbs(triggeredAnyList, triggeredIncrProbs, triggeredCumulativeProbs, numCatalogs);
+				}
 			}
 		}
 		
-		private void doCalcStats(List<int[]> counts, int numCatalogs, double means[], double[] fractWiths) {
-			for (int i=0; i<minMagBins.length; i++) {
-				int numWith = 0;
-				double sum = 0;
-				for (int[] myCounts : counts) {
-					if (myCounts != null && myCounts[i] > 0) {
-						numWith++;
-						sum += myCounts[i];
+		private void calcProbs(List<boolean[][]> anyList, IncrementalMagFreqDist[] incrProbs,
+				EvenlyDiscretizedFunc[] cumulativeProbs, int numCatalogs) {
+			for (int d=0; d<durations.length; d++) {
+				incrProbs[d] = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDeltaMag);
+				cumulativeProbs[d] = new EvenlyDiscretizedFunc(mfdMinMag-0.5*mfdDeltaMag, mfdNumMag, mfdDeltaMag);
+				
+				int[] incrCounts = new int[mfdNumMag];
+				int[] cumulativeCounts = new int[mfdNumMag];
+				
+				for (boolean[][] any : anyList) {
+					if (any == null)
+						continue;
+					int maxMagIndex = -1;
+					for (int m=0; m<mfdNumMag; m++) {
+						if (any[d][m]) {
+							incrCounts[m]++;
+							maxMagIndex = Integer.max(maxMagIndex, m);
+						}
+					}
+					if (maxMagIndex >= 0) {
+						for (int m=0; m<=maxMagIndex; m++)
+							cumulativeCounts[m]++;
+						double plotMag = incrProbs[d].getX(maxMagIndex);
+						for (int m=0; m<plotMagBins.length; m++)
+							if (plotMag >= plotMagBins[m])
+								hasMags[m] = true;
 					}
 				}
-				means[i] = sum/(double)numCatalogs;
-				if (annualize)
-					means[i] /= getConfig().getDuration();
-				if (fractWiths != null)
-					fractWiths[i] = (double)numWith/(double)numCatalogs;
+				
+				for (int m=0; m<mfdNumMag; m++) {
+					incrProbs[d].set(m, (double)incrCounts[m]/(double)numCatalogs);
+					cumulativeProbs[d].set(m, (double)cumulativeCounts[m]/(double)numCatalogs);
+					Preconditions.checkState(cumulativeCounts[m] >= incrCounts[m]);
+				}
 			}
 		}
 	}
 	
-	private static Comparator<FaultStats> statsNameComparator = new Comparator<ETAS_FaultParticipationPlot.FaultStats>() {
-
-		@Override
-		public int compare(FaultStats o1, FaultStats o2) {
-			return o1.name.compareTo(o2.name);
-		}
-	};
-	
-	private CSVFile<String> buildCSV(FaultStats[] stats, boolean parents, int magIndex) {
+	private CSVFile<String> buildCSV(FaultStats[] stats, boolean parents, double minMag) {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
 		if (parents) {
-			Arrays.sort(stats, statsNameComparator);
+			Map<String, FaultStats> namesMap = new HashMap<>();
+			for (FaultStats stat : stats)
+				namesMap.put(stat.name, stat);
+			List<String> names = new ArrayList<>(namesMap.keySet());
+			Collections.sort(names);
+			stats = new FaultStats[names.size()];
+			for (int i=0; i<names.size(); i++)
+				stats[i] = namesMap.get(names.get(i));
 			header.add("Parent ID");
 			header.add("Parent Name");
 		} else {
@@ -268,42 +348,51 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			header.add("Subsection Name");
 		}
 		
-		double duration = getConfig().getDuration();
+		double calcDuration = getConfig().getDuration();
+		
 		if (annualize) {
 			if (hasSpont) {
 				header.add("Total Mean Annual Rate");
-				header.add("Total "+getTimeLabel(duration, false)+" Prob");
+				for (double duration : durations)
+					header.add("Total "+getTimeLabel(duration, false)+" Prob");
 			}
 			if (hasTriggered) {
 				header.add("Triggered Mean Annual Rate");
-				header.add("Triggered "+getTimeLabel(duration, false)+" Prob");
+				for (double duration : durations)
+					header.add("Triggered "+getTimeLabel(duration, false)+" Prob");
 				header.add("Triggered Primary Mean Annual Rate");
 			}
 		} else {
 			if (hasSpont) {
-				header.add("Total Mean Count");
-				header.add("Total "+getTimeLabel(duration, false)+" Prob");
+				header.add("Total "+getTimeLabel(calcDuration, false)+" Mean Count");
+				for (double duration : durations)
+					header.add("Total "+getTimeLabel(duration, false)+" Prob");
 			}
 			if (hasTriggered) {
-				header.add("Triggered Mean Count");
-				header.add("Triggered "+getTimeLabel(duration, false)+" Prob");
-				header.add("Triggered Primary Mean Count");
+				header.add("Triggered "+getTimeLabel(calcDuration, false)+" Mean Count");
+				for (double duration : durations)
+					header.add("Triggered "+getTimeLabel(duration, false)+" Prob");
+				header.add("Triggered "+getTimeLabel(calcDuration, false)+" Primary Mean Count");
 			}
 		}
 		csv.addLine(header);
+		
+		int magIndex = getMFD_magIndex(minMag);
 		
 		for (FaultStats stat : stats) {
 			List<String> line = new ArrayList<>();
 			line.add(stat.id+"");
 			line.add(stat.name);
 			if (hasSpont) {
-				line.add((float)stat.spontMeans[magIndex]+"");
-				line.add((float)stat.spontProbs[magIndex]+"");
+				line.add((float)stat.spontCumulativeMNDs[durations.length-1].getY(magIndex)+"");
+				for (int d=0; d<durations.length; d++)
+					line.add((float)stat.spontCumulativeProbs[d].getY(magIndex)+"");
 			}
 			if (hasTriggered) {
-				line.add((float)stat.triggeredMeans[magIndex]+"");
-				line.add((float)stat.triggeredProbs[magIndex]+"");
-				line.add((float)stat.triggeredPrimaryMeans[magIndex]+"");
+				line.add((float)stat.triggeredCumulativeMNDs[durations.length-1].getY(magIndex)+"");
+				for (int d=0; d<durations.length; d++)
+					line.add((float)stat.triggeredCumulativeProbs[d].getY(magIndex)+"");
+				line.add((float)stat.triggeredPrimaryCumulativeMNDs[durations.length-1].getY(magIndex)+"");
 			}
 			csv.addLine(line);
 		}
@@ -311,7 +400,20 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		return csv;
 	}
 	
-	private Table<Double, Boolean, String> plotPrefixes;
+	private int getMFD_magIndex(double minMag) {
+		int minIndex = mfdNumMag;
+		for (int i=mfdNumMag; --i>=0;) {
+			if ((float)magXIndexes.getX(i) >= (float)minMag)
+				minIndex = i;
+			else
+				break;
+		}
+		Preconditions.checkState(minIndex < mfdNumMag);
+		return minIndex;
+	}
+	
+	// duration, spontaneous, mags
+	private Table<Double, Boolean, String[]> plotPrefixes;
 
 	@Override
 	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
@@ -327,26 +429,28 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		sectionCSVs = new HashMap<>();
 		parentCSVs = new HashMap<>();
 		FaultStats[] parentStatsArray = new ArrayList<>(parentSectStats.values()).toArray(new FaultStats[0]);
-		for (int m=0; m<minMagBins.length; m++) {
-			double mag = minMagBins[m];
+		for (int p=0; p<plotMagBins.length; p++) {
+			double plotMinMag = plotMagBins[p];
+			if (!hasMags[p])
+				continue;
 			String magStr;
-			if (mag == 0)
+			if (plotMinMag == 0)
 				magStr = "supra_seis";
 			else
-				magStr = "m"+optionalDigitDF.format(mag);
+				magStr = "m"+optionalDigitDF.format(plotMinMag);
 			
-			boolean hasMag = false;
-			for (FaultStats stats : parentStatsArray)
-				hasMag = hasMag || (hasSpont && stats.spontMeans[m] > 0) || (hasTriggered && stats.triggeredMeans[m] > 0);
-			if (!hasMag)
-				continue;
+//			boolean hasMag = false;
+//			for (FaultStats stats : parentStatsArray)
+//				hasMag = hasMag || (hasSpont && stats.spontMeans[m] > 0) || (hasTriggered && stats.triggeredMeans[m] > 0);
+//			if (!hasMag)
+//				continue;
 			
-			CSVFile<String> sectionCSV = buildCSV(subSectStats, false, m);
-			sectionCSVs.put(mag, sectionCSV);
+			CSVFile<String> sectionCSV = buildCSV(subSectStats, false, plotMinMag);
+			sectionCSVs.put(plotMinMag, sectionCSV);
 			sectionCSV.writeToFile(new File(outputDir, prefix+"_"+magStr+"_sub_sects.csv"));
 			
-			CSVFile<String> parentCSV = buildCSV(parentStatsArray, true, m);
-			parentCSVs.put(mag, parentCSV);
+			CSVFile<String> parentCSV = buildCSV(parentStatsArray, true, plotMinMag);
+			parentCSVs.put(plotMinMag, parentCSV);
 			parentCSV.writeToFile(new File(outputDir, prefix+"_"+magStr+"_parent_sects.csv"));
 		}
 		
@@ -354,11 +458,16 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		if (!skipMaps) {
 			CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
 			double maxRate = 0;
+			int minPlotMagIndex = getMFD_magIndex(StatUtils.min(plotMagBins));
+			int maxDurationIndex = 0;
+			for (int d=1; d<mapDurations.length; d++)
+				if (mapDurations[d] > mapDurations[maxDurationIndex])
+					maxDurationIndex = d;
 			for (FaultStats stats : subSectStats) {
 				if (hasSpont)
-					maxRate = Math.max(maxRate, StatUtils.max(stats.spontMeans));
+					maxRate = Math.max(maxRate, stats.spontCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex));
 				else
-					maxRate = Math.max(maxRate, StatUtils.max(stats.triggeredMeans));
+					maxRate = Math.max(maxRate, stats.triggeredCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex));
 			}
 			double fractionalRate;
 			if (annualize)
@@ -392,55 +501,66 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			
 			plotPrefixes = HashBasedTable.create();
 			
-			for (boolean spont : sponts) {
-				for (int i = 0; i < minMagBins.length; i++) {
-					if (!hasMags[i])
-						continue;
-					double[] particRates = new double[subSectStats.length];
-					double[] primaryRates = null;
-					if (!spont)
-						primaryRates = new double[subSectStats.length];
-					
-					for (int s=0; s<subSectStats.length; s++) {
-						if (spont) {
-							particRates[s] = subSectStats[s].spontMeans[i];
-						} else {
-							particRates[s] = subSectStats[s].triggeredMeans[i];
-							primaryRates[s] = subSectStats[s].triggeredPrimaryMeans[i];
-						}
-					}
-
-					String magStr;
-					String prefixAdd;
-					if (minMagBins[i] > 1) {
-						magStr = " M>="+(float) minMagBins[i];
-						prefixAdd = "_m"+(float) minMagBins[i];
-					} else {
-						magStr = "";
-						prefixAdd = "";
-					}
-					String particTitle;
-					if (annualize)
-						particTitle = "Log10" + magStr + " Participation Rate";
-					else
-						particTitle = "Log10" + magStr + " Participation Exp. Num";
-					
-					if (!spont) {
-						particTitle += ", Triggered Only";
-						prefixAdd += "_triggered";
-					}
-					
-					plotPrefixes.put(minMagBins[i], spont, prefix+"_partic"+prefixAdd);
-
-					try {
-						FaultBasedMapGen.makeFaultPlot(cpt, faults, FaultBasedMapGen.log10(particRates), region, outputDir,
-								prefix+"_partic"+prefixAdd, false, false, particTitle);
+			for (int d=0; d<mapDurations.length; d++) {
+				for (boolean spont : sponts) {
+					plotPrefixes.put(mapDurations[d], spont, new String[plotMagBins.length]);
+					for (int p=0; p<plotMagBins.length; p++) {
+						if (!hasMags[p])
+							continue;
+						int magIndex = getMFD_magIndex(plotMagBins[p]);
+						double[] particRates = new double[subSectStats.length];
+						double[] primaryRates = null;
+						if (!spont && d == maxDurationIndex)
+							primaryRates = new double[subSectStats.length];
 						
-						if (!spont)
-							FaultBasedMapGen.makeFaultPlot(cpt, faults, FaultBasedMapGen.log10(primaryRates), region, outputDir,
-									prefix+"_partic"+prefixAdd+"_primary", false, false, particTitle+", Primary");
-					} catch (GMT_MapException | RuntimeException e) {
-						throw ExceptionUtils.asRuntimeException(e);
+						for (int s=0; s<subSectStats.length; s++) {
+							if (spont) {
+								particRates[s] = subSectStats[s].spontCumulativeMNDs[d].getY(magIndex);
+							} else {
+								particRates[s] = subSectStats[s].triggeredCumulativeMNDs[d].getY(magIndex);
+								if (primaryRates != null)
+									primaryRates[s] = subSectStats[s].triggeredPrimaryCumulativeMNDs[d].getY(magIndex);
+							}
+						}
+
+						String magStr;
+						String prefixAdd;
+						if (plotMagBins[p] > 1) {
+							magStr = " M>="+(float)plotMagBins[p];
+							prefixAdd = "_m"+(float)plotMagBins[p];
+						} else {
+							magStr = "";
+							prefixAdd = "";
+						}
+						String particTitle;
+						if (annualize) {
+							particTitle = "Log10" + magStr + " Participation Rate";
+						} else {
+							if (mapDurations.length > 1) {
+								prefixAdd = "_"+getTimeShortLabel(mapDurations[d]).replaceAll(" ", "")+prefixAdd;
+								particTitle = "Log10 "+getTimeShortLabel(mapDurations[d])+magStr+" Participation Exp. Num";
+							} else {
+								particTitle = "Log10"+magStr+" Participation Exp. Num";
+							}
+						}
+						
+						if (!spont) {
+							particTitle += ", Triggered Only";
+							prefixAdd += "_triggered";
+						}
+						
+						plotPrefixes.get(mapDurations[d], spont)[p] = prefix+"_partic"+prefixAdd;
+
+						try {
+							FaultBasedMapGen.makeFaultPlot(cpt, faults, FaultBasedMapGen.log10(particRates), region, outputDir,
+									prefix+"_partic"+prefixAdd, false, false, particTitle);
+							
+							if (!spont && primaryRates != null)
+								FaultBasedMapGen.makeFaultPlot(cpt, faults, FaultBasedMapGen.log10(primaryRates), region, outputDir,
+										prefix+"_partic"+prefixAdd+"_primary", false, false, particTitle+", Primary");
+						} catch (GMT_MapException | RuntimeException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
 					}
 				}
 			}
@@ -468,15 +588,22 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			
 			builder.initNewLine();
 			builder.addColumn("Min Mag");
-			if (hasSpont)
-				builder.addColumn("Complete Catalog (including spontaneous)");
-			if (hasTriggered) {
-				builder.addColumn("Triggered Ruptures (no spontaneous)");
-				builder.addColumn("Triggered Ruptures (primary aftershocks only)");
+			for (int d=0; d<mapDurations.length; d++) {
+				String label = annualize ? "" : getTimeShortLabel(mapDurations[d])+" ";
+				if (hasSpont)
+					builder.addColumn(label+"Complete Catalog (including spontaneous)");
+				if (hasTriggered) {
+					builder.addColumn(label+"Triggered Ruptures (no spontaneous)");
+				}
 			}
+			if (hasTriggered) {
+				String titlePprefix = annualize ? "" : getTimeShortLabel(StatUtils.max(mapDurations))+" ";
+				builder.addColumn(titlePprefix+"Triggered Ruptures (primary aftershocks only)");
+			}
+			
 			builder.finalizeLine();
-			for (int i=0; i<minMagBins.length; i++) {
-				double minMag = minMagBins[i];
+			for (int i=0; i<plotMagBins.length; i++) {
+				double minMag = plotMagBins[i];
 				if (!hasMags[i])
 					continue;
 				builder.initNewLine();
@@ -484,22 +611,28 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					builder.addColumn("**All Supra. Seis.**");
 				else
 					builder.addColumn("**M&ge;"+optionalDigitDF.format(minMag)+"**");
-				if (hasSpont) {
-					String prefix = plotPrefixes.get(minMag, true);
-					builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
+				String maxTriggeredPrefix = null;
+				for (int d=0; d<mapDurations.length; d++) {
+					if (hasSpont) {
+						String prefix = plotPrefixes.get(mapDurations[d], true)[i];
+						builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
+					}
+					if (hasTriggered) {
+						String prefix = plotPrefixes.get(mapDurations[d], false)[i];
+						if (mapDurations[d] == StatUtils.max(mapDurations))
+							maxTriggeredPrefix = prefix;
+						builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
+					}
 				}
-				if (hasTriggered) {
-					String prefix = plotPrefixes.get(minMag, false);
-					builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
-					builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+"_primary.png)");
-				}
+				if (hasTriggered)
+					builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+maxTriggeredPrefix+"_primary.png)");
 				builder.finalizeLine();
 			}
 			lines.addAll(builder.build());
 		}
 		
-		for (int m = 0; m < minMagBins.length; m++) {
-			double minMag = minMagBins[m];
+		for (int m=0; m<plotMagBins.length; m++) {
+			double minMag = plotMagBins[m];
 			if (!hasMags[m])
 				continue;
 			CSVFile<String> parentCSV = parentCSVs.get(minMag);
