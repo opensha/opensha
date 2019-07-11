@@ -1,0 +1,321 @@
+# Fault ID	Fault Name
+861	Airport Lake
+667	Almanor 2011 CFM
+222	Anacapa-Dume alt 2
+197	Anaheim
+722	Antelope Valley 2011
+845	Ash Hill
+881	Baker
+668	Bartlett Springs 2011 CFM
+669	Battle Creek 2011 CFM
+842	Bear River fault zone
+581	Bennett Valley 2011 CFM
+158	Bicycle Lake
+741	Big Lagoon - Bald Mtn 2011 CFM
+192	Big Pine (Central)
+191	Big Pine (East)
+200	Big Pine (West)
+87	Blackwater
+169	Blue Cut
+171	Brawley (Seismic Zone) alt 2
+541	Breckenridge 2011
+882	Bullion Mountains
+94	Burnt Mtn
+561	Butano 2011 CFM
+165	Cady
+602	Calaveras (Central) 2011 CFM
+601	Calaveras (No) 2011 CFM
+621	Calaveras (So) - Paicines extension 2011 CFM
+603	Calaveras (So) 2011 CFM
+88	Calico-Hidalgo
+724	Camp Rock 2011
+173	Canada David (Detachment)
+176	Carlsbad
+721	Carson Range (Genoa)
+670	Casmalia 2011 CFM
+34	Cedar Mtn-Mahogany Mtn
+172	Cerro Prieto
+129	Channel Islands Thrust
+214	Channel Islands Western Deep Ramp
+239	Chino alt 2
+124	Clamshell-Sawpit
+844	Clayton
+81	Cleghorn
+884	Cleghorn Lake
+883	Cleghorn Pass
+582	Collayami 2011 CFM
+184	Compton
+622	Concord 2011 CFM
+624	Contra Costa (Briones) 2011 CFM
+625	Contra Costa (Dillon Point) 2011 CFM
+626	Contra Costa (Lafayette) 2011 CFM
+627	Contra Costa (Lake Chabot) 2011 CFM
+628	Contra Costa (Larkey) 2011 CFM
+629	Contra Costa (Ozal - Columbus) 2011 CFM
+630	Contra Costa (Reliez Valley) 2011 CFM
+631	Contra Costa (Southampton) 2011 CFM
+632	Contra Costa (Vallejo) 2011 CFM
+121	Coronado Bank alt2
+157	Coyote Canyon
+163	Coyote Lake
+125	Cucamonga
+894	Davis Creek
+245	Death Valley (Black Mtns Frontal)
+45	Death Valley (Fish Lake Valley)
+46	Death Valley (No)
+246	Death Valley (So)
+51	Deep Springs
+230	Del Valle
+889	Dog Valley
+888	Dry Mountain
+249	Earthquake Valley
+255	Earthquake Valley (No  Extension)
+256	Earthquake Valley (So Extension)
+671	East Huasna 2011 CFM
+672	Eaton Roughs 2011 CFM
+96	Elmore Ranch
+103	Elsinore (Coyote Mountains)
+296	Elsinore (Glen Ivy) rev
+102	Elsinore (Julian)
+402	Elsinore (Stepovers Combined)
+299	Elsinore (Temecula) rev
+196	Elysian Park (Lower CFM)
+146	Elysian Park (Upper)
+90	Emerson-Copper Mtn 2011
+95	Eureka Peak
+698	Fish Slough 2011 CFM
+893	Fitzhugh Creek
+204	Fontana (Seismicity)
+634	Franklin 2011 CFM
+699	Garberville - Briceland 2011 CFM
+159	Garlic Springs
+341	Garlock (Central)
+48	Garlock (East)
+49	Garlock (West)
+700	Gillem - Big Crack 2011 CFM
+160	Goldstone Lake
+701	Goose Lake 2011 CFM
+86	Gravel Hills-Harper Lk
+131	Great Valley 01
+133	Great Valley 02
+132	Great Valley 03 Mysterious Ridge
+383	Great Valley 03a Dunnigan Hills
+134	Great Valley 04a Trout Creek
+381	Great Valley 04b Gordon Valley
+135	Great Valley 05 Pittsburg Kirby Hills alt2
+382	Great Valley 06 Midland alt2
+136	Great Valley 07 (Orestimba)
+137	Great Valley 08 (Quinto)
+151	Great Valley 09 (Laguna Seca)
+138	Great Valley 10 (Panoche)
+139	Great Valley 11
+140	Great Valley 12
+142	Great Valley 13 (Coalinga)
+141	Great Valley 14 (Kettleman Hills)
+623	Green Valley 2011 CFM
+636	Greenville (No) 2011 CFM
+635	Greenville (So) 2011 CFM
+702	Hartley Springs 2011 CFM
+37	Hat Creek-McArthur-Mayfield
+639	Hayward (No) 2011 CFM
+638	Hayward (So) 2011 CFM
+637	Hayward (So) extension 2011 CFM
+167	Hector Mine
+84	Helendale-So Lockhart
+703	Hilton Creek 2011 CFM
+108	Hollywood
+229	Holser alt 2
+723	Homestead Valley 2011
+704	Honey Lake 2011 CFM
+30	Hosgri
+208	Hosgri (Extension)
+50	Hunter Mountain-Saline Valley
+677	Hunting Creek - Bartlett Springs connector 2011
+640	Hunting Creek - Berryessa 2011 CFM
+97	Imperial
+678	Incline Village 2011 CFM
+65	Independence rev 2011
+892	Jess Valley
+91	Johnson Valley (No) 2011 rev
+168	Joshua Tree (Seismicity)
+679	Keddie Ridge 2011 CFM
+542	Kern Canyon (Lake Isabella) 2011
+544	Kern Canyon (North Kern) 2011
+543	Kern Canyon (South Kern) 2011
+92	Kickapoo
+680	King Range 2011 CFM
+641	La Panza 2011
+104	Laguna Salada
+207	Lake Isabella (Seismicity)
+642	Las Positas
+890	Last Chance
+85	Lenwood-Lockhart-Old Woman Springs
+705	Likely 2011 CFM
+681	Lions Head 2011 CFM
+144	Little Lake
+16	Little Salmon (Offshore)
+17	Little Salmon (Onshore)
+683	Los Alamos 2011 CFM
+780	Los Alamos extension
+643	Los Medanos - Roe Island
+74	Los Osos 2011
+201	Lost Hills
+166	Ludlow
+644	Maacama 2011 CFM
+546	Mad River - Trinidad fault zone (alt2)
+224	Malibu Coast (Extension) alt 2
+223	Malibu Coast alt 2
+164	Manix-Afton Hills
+155	McLean Lake
+13	Mendocino
+605	Mission (connected) 2011 CFM
+250	Mission Creek
+779	Mission Hills 2011
+78	Mission Ridge-Arroyo Parida-Santa Ana
+686	Mohawk Valley 2011 CFM
+707	Mono Lake 2011 CFM
+646	Monte Vista - Shannon 2011 CFM
+11	Monterey Bay-Tularcitos
+188	Morales (East)
+187	Morales (West)
+2	Mount Diablo Thrust
+156	Nelson Lake
+122	Newport-Inglewood (Offshore)
+234	Newport-Inglewood alt 2
+216	North Channel
+83	North Frontal  (East)
+82	North Frontal  (West)
+199	North Salt Lake
+687	North Tahoe 2011 CFM
+130	Northridge
+211	Northridge Hills
+218	Oak Ridge (Offshore)
+203	Oak Ridge (Offshore) west extension
+116	Oak Ridge (Onshore)
+709	Oceanic - West Huasna
+175	Oceanside alt2
+921	Ortigalita (North)
+9	Ortigalita (South)
+64	Owens Valley
+891	Owens Valley Keough Hot Springs
+47	Owl Lake
+841	Ozena
+109	Palos Verdes
+244	Panamint Valley
+162	Paradise
+186	Peralta Hills
+647	Pilarcitos 2011 CFM
+193	Pine Mtn
+93	Pinto Mtn
+89	Pisgah-Bullion Mtn-Mesquite Lk
+217	Pitas Point (Upper)
+688	Pittville 2011 CFM
+58	Pleito
+666	Point Reyes 2011 CFM
+843	Point Reyes 2011 connector
+545	Polaris 2011 CFM
+243	Puente Hills (Coyote Hills)
+241	Puente Hills (LA)
+242	Puente Hills (Santa Fe Springs)
+648	Quien Sabe 2011 CFM
+152	Raymond
+118	Red Mountain
+161	Red Pass
+233	Redondo Canyon alt 2
+649	Reliz 2011 CFM
+205	Richfield
+650	Rinconada 2011 CFM
+38	Robinson Creek
+689	Rocky Ledge 2011 CFM
+651	Rodgers Creek - Healdsburg 2011 CFM
+123	Rose Canyon
+42	Round Valley
+690	Russ 2011 CFM
+287	San Andreas (Big Bend)
+300	San Andreas (Carrizo) rev
+285	San Andreas (Cholame) rev
+295	San Andreas (Coachella) rev
+658	San Andreas (Creeping Section) 2011 CFM
+286	San Andreas (Mojave N)
+301	San Andreas (Mojave S)
+294	San Andreas (North Branch Mill Creek)
+654	San Andreas (North Coast) 2011 CFM
+653	San Andreas (Offshore) 2011 CFM
+32	San Andreas (Parkfield)
+655	San Andreas (Peninsula) 2011 CFM
+282	San Andreas (San Bernardino N)
+283	San Andreas (San Bernardino S)
+284	San Andreas (San Gorgonio Pass-Garnet HIll)
+657	San Andreas (Santa Cruz Mts) 2011 CFM
+80	San Cayetano
+178	San Clemente
+179	San Diego Trough north alt2
+177	San Diego Trough south
+247	San Gabriel
+248	San Gabriel (Extension)
+194	San Gorgonio Pass
+660	San Gregorio (North) 2011 CFM
+661	San Gregorio (South) 2011 CFM
+293	San Jacinto (Anza) rev
+99	San Jacinto (Borrego)
+292	San Jacinto (Clark) rev
+101	San Jacinto (Coyote Creek)
+901	San Jacinto (Lytle Creek connector)
+119	San Jacinto (San Bernardino)
+289	San Jacinto (San Jacinto Valley) rev
+401	San Jacinto (Stepovers Combined)
+28	San Jacinto (Superstition Mtn)
+143	San Joaquin Hills
+107	San Jose
+31	San Juan
+710	San Luis Bay 2011 CFM
+75	San Luis Range (So Margin)
+693	San Luis Range - Pecho 2011 CFM
+181	San Pedro Basin
+183	San Pedro Escarpment
+198	San Vicente
+180	Santa Cruz Catalina Ridge alt2
+111	Santa Cruz Island
+185	Santa Monica Bay
+225	Santa Monica alt 2
+110	Santa Rosa Island
+778	Santa Susana East (connector)
+231	Santa Susana alt 2
+79	Santa Ynez (East)
+77	Santa Ynez (West)
+781	Santa Ynez River
+662	Sargent 2011 CFM
+209	Scodie Lineament
+885	Sheephole
+547	Shoreline
+114	Sierra Madre
+113	Sierra Madre (San Fernando)
+210	Sierra Nevada  (No Extension)
+664	Silver Creek 2011 CFM
+115	Simi-Santa Rosa
+202	Sisar
+694	Skinner Flat 2011 CFM
+63	So Sierra Nevada
+189	South Cuyama
+719	South Klamath Lake East
+720	South Klamath Lake West
+98	Superstition Hills
+708	Surprise Valley 2011 CFM
+695	Swain Ravine - Spenceville
+15	Table Bluff
+145	Tank Canyon
+174	Thirty Mile Bank
+887	Tin Mountain
+886	Towne Pass
+117	Ventura-Pitas Point
+112	Verdugo
+696	Walker Spring 2011 CFM
+665	West Napa 2011 CFM
+321	West Tahoe
+44	White Mountains
+253	White Wolf
+254	White Wolf (Extension)
+237	Whittier alt 2
+697	Wight Way 2011 CFM
+206	Yorba Linda
+53	Zayante-Vergeles
