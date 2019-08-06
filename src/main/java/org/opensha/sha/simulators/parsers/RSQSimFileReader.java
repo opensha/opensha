@@ -475,13 +475,18 @@ public class RSQSimFileReader {
 	
 	public static List<RSQSimEvent> readEventsFile(File file, List<SimulatorElement> elements,
 			Collection<? extends RuptureIdentifier> rupIdens) throws IOException {
+		return readEventsFile(file, elements, rupIdens, false);
+	}
+	
+	public static List<RSQSimEvent> readEventsFile(File file, List<SimulatorElement> elements,
+			Collection<? extends RuptureIdentifier> rupIdens, boolean skipSlipsAndTimes) throws IOException {
 		// detect file names
 		if (file.isDirectory()) {
 			// find the first .*List file and use that as the basis
 			for (File sub : file.listFiles()) {
 				if (sub.getName().endsWith(".eList")) {
 					System.out.println("Found eList file in directory: "+sub.getAbsolutePath());
-					return readEventsFile(sub, elements, rupIdens);
+					return readEventsFile(sub, elements, rupIdens, skipSlipsAndTimes);
 				}
 			}
 			throw new FileNotFoundException("Couldn't find eList file in given directory");
@@ -505,7 +510,7 @@ public class RSQSimFileReader {
 		Preconditions.checkState(tListFile.exists(),
 				"Couldn't find tList file with prefix %s: %s", prefix, tListFile.getAbsolutePath());
 		return readEventsFile(new FileInputStream(eListFile), new FileInputStream(pListFile), new FileInputStream(dListFile),
-				new FileInputStream(tListFile), elements, rupIdens, isBigEndian(pListFile, elements));
+				new FileInputStream(tListFile), elements, rupIdens, isBigEndian(pListFile, elements), skipSlipsAndTimes);
 	}
 	
 	public static List<RSQSimEvent> readEventsFile(File eListFile, File pListFile, File dListFile, File tListFile,
@@ -521,7 +526,7 @@ public class RSQSimFileReader {
 	public static List<RSQSimEvent> readEventsFile(File eListFile, File pListFile, File dListFile, File tListFile,
 			List<SimulatorElement> elements, Collection<? extends RuptureIdentifier> rupIdens, boolean bigEndian) throws IOException {
 		return readEventsFile(new FileInputStream(eListFile), new FileInputStream(pListFile), new FileInputStream(dListFile),
-				new FileInputStream(tListFile), elements, rupIdens, bigEndian);
+				new FileInputStream(tListFile), elements, rupIdens, bigEndian, false);
 	}
 	
 	/**
@@ -531,7 +536,15 @@ public class RSQSimFileReader {
 	 * @return
 	 * @throws IOException
 	 */
-	private static boolean isBigEndian(File pListFile, List<SimulatorElement> elements) throws IOException {
+	public static boolean isBigEndian(File pListFile, List<SimulatorElement> elements) throws IOException {
+		if (pListFile.isDirectory()) {
+			for (File file : pListFile.listFiles()) {
+				if (file.getName().endsWith(".pList")) {
+					pListFile = file;
+					break;
+				}
+			}
+		}
 		RandomAccessFile raFile = new RandomAccessFile(pListFile, "r");
 		// 4 byte ints
 		long len = raFile.length();
@@ -591,11 +604,11 @@ public class RSQSimFileReader {
 	 */
 	private static List<RSQSimEvent> readEventsFile(
 			InputStream eListStream, InputStream pListStream, InputStream dListStream, InputStream tListStream,
-			List<SimulatorElement> elements, Collection<? extends RuptureIdentifier> rupIdens, boolean bigEndian)
-					throws IOException {
+			List<SimulatorElement> elements, Collection<? extends RuptureIdentifier> rupIdens, boolean bigEndian,
+			boolean skipSlipsAndTimes) throws IOException {
 		List<RSQSimEvent> events = Lists.newArrayList();
 		
-		populateEvents(eListStream, pListStream, dListStream, tListStream, elements, rupIdens, bigEndian, events);
+		populateEvents(eListStream, pListStream, dListStream, tListStream, elements, rupIdens, bigEndian, events, skipSlipsAndTimes);
 		
 		return events;
 	}
@@ -603,7 +616,7 @@ public class RSQSimFileReader {
 	private static void populateEvents(
 			InputStream eListStream, InputStream pListStream, InputStream dListStream, InputStream tListStream,
 			List<SimulatorElement> elements, Collection<? extends RuptureIdentifier> rupIdens, boolean bigEndian,
-			Collection<RSQSimEvent> events) throws IOException {
+			Collection<RSQSimEvent> events, boolean skipSlipsAndTimes) throws IOException {
 		if (!(eListStream instanceof BufferedInputStream))
 			eListStream = new BufferedInputStream(eListStream);
 		if (!(pListStream instanceof BufferedInputStream))
@@ -612,6 +625,9 @@ public class RSQSimFileReader {
 			dListStream = new BufferedInputStream(dListStream);
 		if (!(tListStream instanceof BufferedInputStream))
 			tListStream = new BufferedInputStream(tListStream);
+		
+		if (skipSlipsAndTimes)
+			System.out.println("Skipping individual patch slips and times to conserve memory");
 		
 		DataInput eIn, pIn, dIn, tIn;
 		if (bigEndian) {
@@ -635,7 +651,9 @@ public class RSQSimFileReader {
 		HashSet<Integer> eventIDsLoaded = new HashSet<Integer>();
 		
 		int eventID, patchID;
-		double slip, time;
+		double slip, time, elementMoment;
+		
+		int numNegSlips = 0;
 		
 		while (true) {
 			try {
@@ -644,6 +662,16 @@ public class RSQSimFileReader {
 				slip = dIn.readDouble(); // in meters
 				time = tIn.readDouble(); // in seconds
 				
+				if (slip < 0) {
+					if (numNegSlips == 0)
+						System.err.println("WARNING: Negative slip present in dList file.");
+					if (numNegSlips < 10)
+						System.err.println("\teventID="+eventID+"\tpatchID="+patchID+"\tslip="+slip);
+					else if (numNegSlips == 10)
+						System.err.println("Future negetive slip warning supressed");
+					numNegSlips++;
+				}
+				
 //				if (eventID % 10000 == 0 && curEventID != eventID)
 //					System.out.println("Loading eventID="+eventID+". So far kept "+events.size()+" events");
 				
@@ -651,7 +679,7 @@ public class RSQSimFileReader {
 				
 				SimulatorElement element = elements.get(patchID-1);
 				Preconditions.checkState(element.getID() == patchID, "Elements not sequential");
-				double elementMoment = FaultMomentCalc.getMoment(element.getArea(), slip);
+				elementMoment = FaultMomentCalc.getMoment(element.getArea(), slip);
 				
 				if (eventID != curEventID) {
 					if (!curRecordMap.isEmpty()) {
@@ -691,7 +719,7 @@ public class RSQSimFileReader {
 				}
 				
 				RSQSimEventRecord prevEventRecord = patchToPrevRecordMap.get(patchID);
-				if (prevEventRecord != null)
+				if (prevEventRecord != null && !skipSlipsAndTimes)
 					// tell the previous event that this is the next time this patch ruptured
 					// used for mapping transition information to specific events
 					prevEventRecord.setNextSlipTime(patchID, time);
@@ -706,11 +734,15 @@ public class RSQSimFileReader {
 					event.setSectionID(element.getSectionID());
 					event.setFirstPatchToSlip(patchID);
 				}
-				
-				event.addSlip(patchID, slip, time);
-				if (time < event.getTime()) {
-					event.setFirstPatchToSlip(patchID);
-					event.setTime(time);
+				if (skipSlipsAndTimes) {
+					if (slip > 0)
+						event.addElement(patchID);
+				} else {
+					event.addSlip(patchID, slip, time);
+					if (time < event.getTime()) {
+						event.setFirstPatchToSlip(patchID);
+						event.setTime(time);
+					}
 				}
 				event.setMoment(event.getMoment()+elementMoment);
 				patchToPrevRecordMap.put(patchID, event);
@@ -718,6 +750,8 @@ public class RSQSimFileReader {
 				break;
 			}
 		}
+		if (numNegSlips > 0)
+			System.err.println("WARNING: found "+numNegSlips+" total negative slips!");
 		if (!curRecordMap.isEmpty()) {
 			Preconditions.checkState(!eventIDsLoaded.contains(curEventID),
 					"Duplicate eventID found, file is out of order or corrupt: %s", curEventID);
@@ -836,13 +870,18 @@ public class RSQSimFileReader {
 	
 	public static Iterable<RSQSimEvent> getEventsIterable(File file, List<SimulatorElement> elements,
 			Collection<? extends RuptureIdentifier> rupIdens) throws IOException {
+		return getEventsIterable(file, elements, rupIdens, false);
+	}
+	
+	public static Iterable<RSQSimEvent> getEventsIterable(File file, List<SimulatorElement> elements,
+			Collection<? extends RuptureIdentifier> rupIdens, boolean skipSlipsAndTimes) throws IOException {
 		// detect file names
 		if (file.isDirectory()) {
 			// find the first .*List file and use that as the basis
 			for (File sub : file.listFiles()) {
 				if (sub.getName().endsWith(".eList")) {
 					System.out.println("Found eList file in directory: "+sub.getAbsolutePath());
-					return getEventsIterable(sub, elements, rupIdens);
+					return getEventsIterable(sub, elements, rupIdens, skipSlipsAndTimes);
 				}
 			}
 			throw new FileNotFoundException("Couldn't find eList file in given directory");
@@ -867,7 +906,7 @@ public class RSQSimFileReader {
 				"Couldn't find tList file with prefix %s: %s", prefix, tListFile.getAbsolutePath());
 		
 		return new RSQSimEventsIterable(new FileInputStream(eListFile), new FileInputStream(pListFile), new FileInputStream(dListFile),
-				new FileInputStream(tListFile), elements, rupIdens, isBigEndian(pListFile, elements));
+				new FileInputStream(tListFile), elements, rupIdens, isBigEndian(pListFile, elements), skipSlipsAndTimes);
 	}
 	
 	// max number of events to load into memory when iterating over events file
@@ -882,9 +921,10 @@ public class RSQSimFileReader {
 		private List<SimulatorElement> elements;
 		private Collection<? extends RuptureIdentifier> rupIdens;
 		private boolean bigEndian;
+		private boolean skipSlipsAndTimes;
 
 		private RSQSimEventsIterable(InputStream eListStream, InputStream pListStream, InputStream dListStream, InputStream tListStream,
-				List<SimulatorElement> elements, Collection<? extends RuptureIdentifier> rupIdens, boolean bigEndian) {
+				List<SimulatorElement> elements, Collection<? extends RuptureIdentifier> rupIdens, boolean bigEndian, boolean skipSlipsAndTimes) {
 			this.eListStream = eListStream;
 			this.pListStream = pListStream;
 			this.dListStream = dListStream;
@@ -892,6 +932,7 @@ public class RSQSimFileReader {
 			this.elements = elements;
 			this.rupIdens = rupIdens;
 			this.bigEndian = bigEndian;
+			this.skipSlipsAndTimes = skipSlipsAndTimes;
 		}
 
 		@Override
@@ -901,7 +942,7 @@ public class RSQSimFileReader {
 				@Override
 				public void run() {
 					try {
-						populateEvents(eListStream, pListStream, dListStream, tListStream, elements, rupIdens, bigEndian, deque);
+						populateEvents(eListStream, pListStream, dListStream, tListStream, elements, rupIdens, bigEndian, deque, skipSlipsAndTimes);
 					} catch (IOException e) {
 						e.printStackTrace();
 					}

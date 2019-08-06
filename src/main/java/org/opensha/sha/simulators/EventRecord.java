@@ -34,6 +34,10 @@ public abstract class EventRecord {
     	this.rectElementsList=rectElementsList; 
     }
     
+    public void addElement(int id) {
+    	addSlip(id, Double.NaN, Double.NaN);
+    }
+    
     public void addSlip(int id, double slip) {
     	addSlip(id, slip, Double.NaN);
     }
@@ -41,10 +45,12 @@ public abstract class EventRecord {
 	public void addSlip(int id, double slip, double time) {
 		int ind = numElements;
 		numElements++;
-		elementSlips = Doubles.ensureCapacity(elementSlips, numElements, element_array_padding);
-		elementSlips[ind] = slip;
 		elementIDs = Ints.ensureCapacity(elementIDs, numElements, element_array_padding);
 		elementIDs[ind] = id;
+		if (!Double.isNaN(slip)) {
+			elementSlips = Doubles.ensureCapacity(elementSlips, numElements, element_array_padding);
+			elementSlips[ind] = slip;
+		}
 		if (Double.isNaN(time)) {
 			Preconditions.checkState(elementTimeFirstSlips == null,
 					"Some elementes have NaN time of first slip while others have real ones");
