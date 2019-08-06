@@ -103,6 +103,10 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	private double minGridLat, minGridLon, maxGridLat, maxGridLon;
 	private int numLonNodes, numLatNodes;
 
+	// the lat-lon arrays of node centers
+	private double[] lonNodeCenters;
+	private double[] latNodeCenters;
+
 	// the lat-lon arrays of node edges
 	private double[] lonNodeEdges;
 	private double[] latNodeEdges;
@@ -768,9 +772,11 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	 * @return the index of the associated node or -1 if no such node exists
 	 */
 	public int indexForLocation(Location loc) {
-		int lonIndex = getNodeIndex(lonNodeEdges, loc.getLongitude());
+//		int lonIndex = getNodeIndex(lonNodeEdges, loc.getLongitude());
+		int lonIndex = getNodeIndex(lonNodeCenters, loc.getLongitude(), lonSpacing);
 		if (lonIndex == -1) return -1;
-		int latIndex = getNodeIndex(latNodeEdges, loc.getLatitude());
+//		int latIndex = getNodeIndex(latNodeEdges, loc.getLatitude());
+		int latIndex = getNodeIndex(latNodeCenters, loc.getLatitude(), latSpacing);
 		if (latIndex == -1) return -1;
 		int gridIndex = ((latIndex) * numLonNodes) + lonIndex;
 		return gridIndices[gridIndex];
@@ -890,6 +896,16 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		idx = (idx < -1) ? (-idx - 2) : idx;
 		return (idx == edgeVals.length - 1) ? -1 : idx;
 	}
+	
+	private static final double PRECISION_SCALE = 1 + 1e-14;
+	private static int getNodeIndex(double[] nodes, double value, double spacing) {
+		double iVal = PRECISION_SCALE * (value - nodes[0]) / spacing;
+		int i = (int) Math.round(iVal);
+		// special cases
+		if (i == -1 && (float)(nodes[0]-0.5*spacing) == (float)value)
+			return 0;
+		return (i<0) ? -1 : (i>=nodes.length) ? -1 : i;
+	}
 
 	/* grid setup */
 	private void initGrid(double latSpacing, double lonSpacing, Location anchor) {
@@ -940,9 +956,9 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	private void initNodes() {
 
 		// temp node center arrays
-		double[] lonNodes = initNodeCenters(anchor.getLongitude(), getMaxLon(),
+		lonNodeCenters = initNodeCenters(anchor.getLongitude(), getMaxLon(),
 			lonSpacing);
-		double[] latNodes = initNodeCenters(anchor.getLatitude(), getMaxLat(),
+		latNodeCenters = initNodeCenters(anchor.getLatitude(), getMaxLat(),
 			latSpacing);
 
 		// node edge arrays
@@ -952,14 +968,14 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 			latSpacing);
 
 		// range data
-		numLatNodes = latNodes.length;
-		numLonNodes = lonNodes.length;
+		numLatNodes = latNodeCenters.length;
+		numLonNodes = lonNodeCenters.length;
 //		System.out.println("numLat="+numLatNodes+", numLon="+numLonNodes);
-		minGridLat = (numLatNodes != 0) ? latNodes[0] : Double.NaN;
-		maxGridLat = (numLatNodes != 0) ? latNodes[numLatNodes - 1]
+		minGridLat = (numLatNodes != 0) ? latNodeCenters[0] : Double.NaN;
+		maxGridLat = (numLatNodes != 0) ? latNodeCenters[numLatNodes - 1]
 			: Double.NaN;
-		minGridLon = (numLonNodes != 0) ? lonNodes[0] : Double.NaN;
-		maxGridLon = (numLonNodes != 0) ? lonNodes[numLonNodes - 1]
+		minGridLon = (numLonNodes != 0) ? lonNodeCenters[0] : Double.NaN;
+		maxGridLon = (numLonNodes != 0) ? lonNodeCenters[numLonNodes - 1]
 			: Double.NaN;
 		int gridSize = numLonNodes * numLatNodes;
 
@@ -969,8 +985,8 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		int node_idx = 0;
 		int grid_idx = 0;
 		Location loc;
-		for (double lat : latNodes) {
-			for (double lon : lonNodes) {
+		for (double lat : latNodeCenters) {
+			for (double lon : lonNodeCenters) {
 				loc = new Location(lat, lon);
 				if (contains(loc)) {
 					nodeList.add(loc);
