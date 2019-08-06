@@ -4063,14 +4063,16 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			return false;
 		}
 		
-////System.out.println("actualParentLoc: "+actualParentLoc);
-////System.out.println("parDepIndex: "+getParDepthIndex(actualParentLoc.getDepth()));
-////System.out.println("getParDepth(parDepIndex): "+getParDepth(parDepIndex));
-////System.out.println("translatedParLoc: "+translatedParLoc);
-////System.exit(0);
-		
 		int parLocIndex = getParLocIndexForLocation(actualParentLoc);
 		Location translatedParLoc = getParLocationForIndex(parLocIndex);
+		
+//		if (translatedParLoc.getDepth() < 0) {
+//			System.out.println("actualParentLoc: "+actualParentLoc);
+//			System.out.println("parDepIndex: "+getParDepthIndex(actualParentLoc.getDepth()));
+////			System.out.println("getParDepth(parDepIndex): "+getParDepth(parDepIndex));
+//			System.out.println("translatedParLoc: "+translatedParLoc);
+//			System.exit(0);
+//		}
 		
 		// get the cube index for where the event was triggered
 		int aftShCubeIndex = -1;
@@ -4884,12 +4886,25 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		return iDep*numParLocsPerDepth+iReg;
 	}	
 	
+	private boolean warnedNegDepth = false;
+	private boolean warnedBelow = false;
+	
 	private int getParDepthIndex(double depth) {
 		int depthIndex = (int)Math.round(depth/depthDiscr);
-		if(depthIndex<numParDepths)
-			return depthIndex;
-		else
-			return -1;
+		if (depthIndex < 0) {
+			if (!warnedNegDepth)
+				System.err.println("WARNING: negative depth ("+depth+"), moving to surface. "
+						+ "Further warnings surpressed.");
+			warnedNegDepth = true;
+			return 0;
+		} else if (depthIndex >= numParDepths) {
+			if (!warnedBelow)
+				System.err.println("WARNING: depth ("+depth+") below model max, "
+						+ "moving to maxDepth="+maxDepth+". Further warnings surpressed");
+			warnedBelow = true;
+			return numParDepths-1;
+		}
+		return depthIndex;
 	}
 	
 	private double getParDepth(int parDepthIndex) {

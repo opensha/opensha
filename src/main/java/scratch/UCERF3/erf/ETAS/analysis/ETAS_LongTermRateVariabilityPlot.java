@@ -129,6 +129,11 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
+	public int getVersion() {
+		return 1;
+	}
+
+	@Override
 	public boolean isFilterSpontaneous() {
 		return false;
 	}
@@ -192,7 +197,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public List<Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		
 		Map<Double, MFD_VarStats> durStatsMap = new HashMap<>();
@@ -390,6 +395,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 			gp.saveAsPDF(new File(outputDir, myPrefix+".pdf").getAbsolutePath());
 			gp.saveAsTXT(new File(outputDir, myPrefix+".txt").getAbsolutePath());
 		}
+		return null;
 	}
 	
 	private static Range getYRange(DiscretizedFunc... funcs) {

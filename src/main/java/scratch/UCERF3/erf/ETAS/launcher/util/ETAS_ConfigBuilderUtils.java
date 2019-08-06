@@ -88,6 +88,10 @@ class ETAS_ConfigBuilderUtils {
 		/*
 		 * Simulation parameters
 		 */
+		Option seedOption = new Option("rand", "random-seed", true, "Random seed for simulations");
+		seedOption.setRequired(false);
+		ops.addOption(seedOption);
+		
 		Option fmOption = new Option("fm", "fault-model", false, "Fault model (default: "+FM_DEFAULT.name()+")");
 		fmOption.setRequired(false);
 		ops.addOption(fmOption);
@@ -116,6 +120,11 @@ class ETAS_ConfigBuilderUtils {
 		scaleOption.setRequired(false);
 		ops.addOption(scaleOption);
 		
+		Option griddedOnlyOption = new Option("go", "gridded-only", false, "Flag for gridded only (no-faults) ETAS. Will also change the default "
+				+ "probability model to POISSON");
+		griddedOnlyOption.setRequired(false);
+		ops.addOption(griddedOnlyOption);
+		
 		/*
 		 * HPC options
 		 */
@@ -142,15 +151,19 @@ class ETAS_ConfigBuilderUtils {
 		return ops;
 	}
 	
-	public static ETAS_Config buildBasicConfig(CommandLine cmd, String simulationName, List<TriggerRupture> triggerRuptures) {
+	public static ETAS_Config buildBasicConfig(CommandLine cmd, String simulationName, List<TriggerRupture> triggerRuptures,
+			String configCommand) {
 		int numSimulations = Integer.parseInt(cmd.getOptionValue("num-simulations"));
 		double duration = cmd.hasOption("duration-years") ? Double.parseDouble(cmd.getOptionValue("duration-years")) : DURATION_DEFAULT;
 		boolean includeSpontaneous = cmd.hasOption("include-spontaneous");
 		
 		FaultModels fm = cmd.hasOption("fault-model") ? FaultModels.valueOf(cmd.getOptionValue("fault-model")) : FM_DEFAULT;
 		
+		boolean griddedOnly = cmd.hasOption("gridded-only");
 		U3ETAS_ProbabilityModelOptions probModel = cmd.hasOption("prob-model") ?
 				U3ETAS_ProbabilityModelOptions.valueOf(cmd.getOptionValue("prob-model")) : PROB_MODEL_DEFAULT;
+		if (griddedOnly)
+			probModel = U3ETAS_ProbabilityModelOptions.POISSON;
 		double scaleFactor = cmd.hasOption("scale-factor") ? Double.parseDouble(cmd.getOptionValue("scale-factor"))
 				: probModelScaleMap.get(probModel);
 		
@@ -167,17 +180,20 @@ class ETAS_ConfigBuilderUtils {
 		
 		File outputDir;
 		if (cmd.hasOption("output-dir")) {
-			outputDir = new File(cmd.getOptionValue("output-dir"));
+			outputDir = new File(cmd.getOptionValue("output-dir")).getAbsoluteFile();
 		} else {
 			String dirName = df.format(new Date())+"-";
 			String namePrefix = simulationName.replaceAll("\\.", "p");
 			namePrefix = namePrefix.replaceAll("\\(", "_");
 			namePrefix = namePrefix.replaceAll("\\)", "_");
+			namePrefix = namePrefix.replaceAll(",", "_");
 			namePrefix = namePrefix.replaceAll("\\W+", "");
 			while (namePrefix.startsWith("_"))
 				namePrefix = namePrefix.substring(1);
 			while (namePrefix.endsWith("_"))
 				namePrefix = namePrefix.substring(0, namePrefix.length()-1);
+			while (namePrefix.contains("__"))
+				namePrefix = namePrefix.replaceAll("__", "_");
 			dirName += namePrefix;
 			if (includeSpontaneous)
 				dirName += "-includeSpont";
@@ -188,6 +204,8 @@ class ETAS_ConfigBuilderUtils {
 			dirName += "-"+probModel.name().toLowerCase();
 			if (scaleFactor != 1d)
 				dirName += "-scale"+(float)scaleFactor;
+			if (griddedOnly)
+				dirName += "-griddedOnly";
 			outputDir = new File("${ETAS_SIM_DIR}/"+dirName); 
 //			System.out.println("Determined output dir: "+outputDir.getPath());
 		}
@@ -197,7 +215,14 @@ class ETAS_ConfigBuilderUtils {
 		config.setSimulationName(simulationName);
 		config.setProbModel(probModel);
 		config.setTotRateScaleFactor(scaleFactor);
-		config.setRandomSeed(System.currentTimeMillis());
+		long curTime = System.currentTimeMillis();
+		if (cmd.hasOption("random-seed"))
+			config.setRandomSeed(Long.parseLong(cmd.getOptionValue("random-seed")));
+		else
+			config.setRandomSeed(curTime);
+		config.setGriddedOnly(griddedOnly);
+		config.setConfigCommand(configCommand);
+		config.setConfigTime(curTime);
 		
 		return config;
 	}
@@ -229,31 +254,31 @@ class ETAS_ConfigBuilderUtils {
 		int lastIndexSBATCH = -1;
 		
 		for (String line : Files.readLines(inputFile, Charset.defaultCharset())) {
-			line = line.trim();
-			if (line.startsWith("#SBATCH -t") && hours != null)
+			String tline = line.trim();
+			if (tline.startsWith("#SBATCH -t") && hours != null)
 				line = "#SBATCH -t "+hours+":00:00";
 			
-			if (line.startsWith("#SBATCH -N") && nodes != null)
+			if (tline.startsWith("#SBATCH -N") && nodes != null)
 				line = "#SBATCH -N "+nodes;
 			
-			if (line.startsWith("#SBATCH -n") && nodes != null) {
+			if (tline.startsWith("#SBATCH -n") && nodes != null) {
 				int cores = threads == null ? nodes : nodes*threads;
 				line = "#SBATCH -n "+cores;
 			}
 			
-			if (line.startsWith("#SBATCH -p")) {
+			if (tline.startsWith("#SBATCH -p")) {
 				nodeLineFound = true;
 				if (queue != null)
 					line = "#SBATCH -p "+queue;
 			}
 			
-			if (line.startsWith("ETAS_CONF_JSON="))
+			if (tline.startsWith("ETAS_CONF_JSON="))
 				line = "ETAS_CONF_JSON="+configFile.getPath();
 			
-			if (line.startsWith("#SBATCH"))
+			if (tline.startsWith("#SBATCH"))
 				lastIndexSBATCH = lines.size();
 			
-			if (threads != null && line.startsWith("THREADS="))
+			if (threads != null && tline.startsWith("THREADS="))
 				line = "THREADS="+threads;
 			
 			lines.add(line);

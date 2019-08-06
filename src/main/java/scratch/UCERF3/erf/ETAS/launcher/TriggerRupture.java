@@ -3,7 +3,10 @@ package scratch.UCERF3.erf.ETAS.launcher;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.commons.data.comcat.EdgeRuptureSurface;
+import org.opensha.commons.data.comcat.ShakeMapFiniteFaultAccessor;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -20,6 +23,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 public abstract class TriggerRupture {
 	
 	final Long customOccurrenceTime;
+	String comcatEventID;
 
 	protected TriggerRupture(Long customOccurrenceTime) {
 		this.customOccurrenceTime = customOccurrenceTime;
@@ -35,6 +39,14 @@ public abstract class TriggerRupture {
 		return simulationStartTime;
 	}
 	
+	public String getComcatEventID() {
+		return comcatEventID;
+	}
+
+	public void setComcatEventID(String comcatEventID) {
+		this.comcatEventID = comcatEventID;
+	}
+
 	public abstract ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime);
 	
 	public abstract int[] getSectionsRuptured(FaultSystemRupSet rupSet);
@@ -140,11 +152,17 @@ public abstract class TriggerRupture {
 		
 		final Location hypocenter;
 		final double mag;
+		public final int[] sectsReset;
 
 		public Point(Location hypocenter, Long customOccurrenceTime, double mag) {
+			this(hypocenter, customOccurrenceTime, mag, null);
+		}
+
+		public Point(Location hypocenter, Long customOccurrenceTime, double mag, int[] sectsReset) {
 			super(customOccurrenceTime);
 			this.hypocenter = hypocenter;
 			this.mag = mag;
+			this.sectsReset = sectsReset;
 		}
 
 		@Override
@@ -165,7 +183,7 @@ public abstract class TriggerRupture {
 
 		@Override
 		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
-			return null;
+			return sectsReset;
 		}
 		
 	}
@@ -183,7 +201,7 @@ public abstract class TriggerRupture {
 
 		public SimpleFault(Long customOccurrenceTime, Location hypo, double mag, int[] sectsReset, SimpleFaultData... sfds) {
 			super(customOccurrenceTime);
-			Preconditions.checkState(sfds.length > 0, "Must supply at least 1 subsection index!");
+			Preconditions.checkState(sfds.length > 0, "Must supply at least 1 simple fault description!");
 			this.sfds = sfds;
 			this.hypo = hypo;
 			this.mag = mag;
@@ -205,6 +223,56 @@ public abstract class TriggerRupture {
 			double gridSpacing = 1;
 			for (SimpleFaultData sfd : sfds)
 				rupSurfs.add(new StirlingGriddedSurface(sfd, gridSpacing, gridSpacing));
+			if (rupSurfs.size() == 1)
+				mainshockRup.setRuptureSurface(rupSurfs.get(0));
+			else
+				mainshockRup.setRuptureSurface(new CompoundSurface(rupSurfs));
+			
+			return mainshockRup;
+		}
+
+		@Override
+		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
+			return sectsReset;
+		}
+		
+	}
+	
+	public static class EdgeFault extends TriggerRupture {
+		
+		public final LocationList[] outlines;
+		public final Location hypo;
+		public final double mag;
+		public final int[] sectsReset;
+
+		public EdgeFault(Long customOccurrenceTime, Location hypo, double mag, LocationList... outlines) {
+			this(customOccurrenceTime, hypo, mag, null, outlines);
+		}
+
+		public EdgeFault(Long customOccurrenceTime, Location hypo, double mag, int[] sectsReset, LocationList... outlines) {
+			super(customOccurrenceTime);
+			Preconditions.checkState(outlines.length > 0, "Must supply at least 1 rupture outline!");
+			this.outlines = outlines;
+			this.hypo = hypo;
+			this.mag = mag;
+			this.sectsReset = sectsReset;
+		}
+
+		@Override
+		public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime) {
+			long ot = getOccurrenceTime(simulationStartTime);
+			
+			System.out.println("Building rupture from "+outlines.length+" faults outlines, OT="+ot+" and M="+(float)mag);
+			
+			ETAS_EqkRupture mainshockRup = new ETAS_EqkRupture();
+			mainshockRup.setOriginTime(ot);
+			mainshockRup.setMag(mag);
+			mainshockRup.setHypocenterLocation(hypo);
+			
+			List<RuptureSurface> rupSurfs = new ArrayList<>();
+			double gridSpacing = 1;
+			for (LocationList outline : outlines)
+				rupSurfs.add(EdgeRuptureSurface.build(outline, gridSpacing));
 			if (rupSurfs.size() == 1)
 				mainshockRup.setRuptureSurface(rupSurfs.get(0));
 			else

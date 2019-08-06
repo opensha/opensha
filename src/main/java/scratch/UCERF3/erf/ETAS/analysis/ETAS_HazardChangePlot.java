@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.ui.TextAnchor;
 import org.opensha.commons.data.TimeSpan;
@@ -58,6 +59,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	
 	static double[] times = { 1d / (365.25 * 24), 1d / 365.25, 7d / 365.25, 30 / 365.25, 1d, 10d, 30d, 100d };
 	private static double[] minMags = { 5d, 6d, 7d, 8d };
+	private static double overallMinMag = StatUtils.min(minMags);
 	
 	private ArbitrarilyDiscretizedFunc etasTimesFunc;
 	private ArbitrarilyDiscretizedFunc u3TimesFunc;
@@ -151,6 +153,11 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		for (int m=0; m<minMags.length; m++)
 			hasMags[m] = false;
 	}
+
+	@Override
+	public int getVersion() {
+		return 1;
+	}
 	
 	private static boolean isHardcodedTime(double time) {
 		for (double test : times)
@@ -188,6 +195,8 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		
 		int[][] counts = new int[minMags.length][etasTimesFunc.size()];
 		for (ETAS_EqkRupture rup : triggeredOnlyCatalog) {
+			if (rup.getMag() < overallMinMag)
+				continue;
 			int fssIndex = rup.getFSSIndex();
 			if (fssIndex >= 0 && fssIndexesInside.contains(fssIndex) || insideTriggerRegion(rup.getHypocenterLocation())) {
 				// it's a match!
@@ -212,9 +221,9 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
 		if (tiFuncs != null)
-			return;
+			return null;
 		System.out.println("Calculating hazard change for U3-TI");
 		tiFuncs = calcUCERF3(fss, true);
 		ArbitrarilyDiscretizedFunc[] addToSimFuncs;
@@ -363,6 +372,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			gp.saveAsPDF(new File(outputDir, myPrefix+".pdf").getAbsolutePath());
 			gp.saveAsTXT(new File(outputDir, myPrefix+".txt").getAbsolutePath());
 		}
+		return null;
 	}
 	
 	private ArbitrarilyDiscretizedFunc[] calcUCERF3(FaultSystemSolution fss, boolean timeIndep) {

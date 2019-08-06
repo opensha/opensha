@@ -6,9 +6,11 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
 
 import org.opensha.commons.data.comcat.ComcatRegion;
 import org.opensha.commons.geo.Location;
@@ -28,6 +30,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
+import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -75,8 +79,38 @@ public class ETAS_Config {
 	private Double etas_c = null;
 	private Double etas_log10_k = null;
 	
-	// metadata for Comcat driven events
+	// metadata
+	private String configCommand = null;
+	private Long configTime = null;
+	
+	// Comcat driven events
+	private ComcatMetadata comcatMetadata = null;
+	@Deprecated
 	private Region comcatRegion = null;
+	@Deprecated
+	private String comcatEventID = null;
+	
+	public static  class ComcatMetadata {
+		public final Region region;
+		public final String eventID;
+		public final double minDepth;
+		public final double maxDepth;
+		public final double minMag;
+		public final long startTime;
+		public final long endTime;
+		public Double magComplete;
+		public ComcatMetadata(Region region, String eventID, double minDepth, double maxDepth,
+				double minMag, long startTime, long endTime) {
+			super();
+			this.region = region;
+			this.eventID = eventID;
+			this.minDepth = minDepth;
+			this.maxDepth = maxDepth;
+			this.minMag = minMag;
+			this.startTime = startTime;
+			this.endTime = endTime;
+		}
+	}
 	
 	public ETAS_Config(int numSimulations, double duration, boolean includeSpontaneous, File cacheDir, File fssFile, File outputDir) {
 		this(numSimulations, duration, includeSpontaneous, cacheDir, fssFile, outputDir, null, null);
@@ -150,6 +184,8 @@ public class ETAS_Config {
 		return resolvePath(path, System.getenv());
 	}
 	
+	private static HashSet<String> resolvedVars = new HashSet<>();
+	
 	private static File resolvePath(String path, Map<String, String> env) {
 		while (path.contains("$")) {
 			int index = path.indexOf("$");
@@ -166,10 +202,17 @@ public class ETAS_Config {
 				var = replaceStr.substring(1);
 			}
 			String value = env.get(var);
-			System.out.println("Path ('"+path+"') contains environmental variable ('"+var+"')");
+			boolean firstTime = !resolvedVars.contains(var);
+			if (value == null || firstTime)
+				System.out.println("Path ('"+path+"') contains environmental variable ('"+var+"')");
 			Preconditions.checkNotNull(value, "Environmental variable %s not found! Can't build path", var);
 			path = path.replace(replaceStr, value);
-			System.out.println("\treplacing '"+replaceStr+"' with '"+value+"': "+path);
+			if (firstTime) {
+				System.out.println("\treplacing '"+replaceStr+"' with '"+value+"': "+path);
+				synchronized (resolvedVars) {
+					resolvedVars.add(var);
+				}
+			}
 		}
 		return new File(path);
 	}
@@ -238,6 +281,8 @@ public class ETAS_Config {
 			out.beginObject();
 			if (value.customOccurrenceTime != null && value.customOccurrenceTime > Long.MIN_VALUE)
 				out.name("occurrenceTimeMillis").value(value.customOccurrenceTime);
+			if (value.comcatEventID != null && value.comcatEventID.length() > 0)
+				out.name("comcatEventID").value(value.comcatEventID);
 			if (value instanceof TriggerRupture.FSS) {
 				TriggerRupture.FSS fssRup = (TriggerRupture.FSS)value;
 				out.name("fssIndex").value(fssRup.fssIndex);
@@ -257,6 +302,12 @@ public class ETAS_Config {
 				out.name("latitude").value(loc.getLatitude());
 				out.name("longitude").value(loc.getLongitude());
 				out.name("depth").value(loc.getDepth());
+				if (ptRup.sectsReset != null && ptRup.sectsReset.length > 0) {
+					out.name("subSectResetIndexes").beginArray();
+					for (int index : ptRup.sectsReset)
+						out.value(index);
+					out.endArray();
+				}
 			} else if (value instanceof TriggerRupture.SimpleFault) {
 				TriggerRupture.SimpleFault sfdRup = (TriggerRupture.SimpleFault)value;
 				out.name("mag").value(sfdRup.mag);
@@ -291,6 +342,35 @@ public class ETAS_Config {
 						out.value(index);
 					out.endArray();
 				}
+			} else if (value instanceof TriggerRupture.EdgeFault) {
+				TriggerRupture.EdgeFault edgeRup = (TriggerRupture.EdgeFault)value;
+				out.name("mag").value(edgeRup.mag);
+				if (edgeRup.hypo != null) {
+					out.name("latitude").value(edgeRup.hypo.getLatitude());
+					out.name("longitude").value(edgeRup.hypo.getLongitude());
+					out.name("depth").value(edgeRup.hypo.getDepth());
+				}
+				out.name("ruptureSurfaces").beginArray();
+				for (LocationList outline : edgeRup.outlines) {
+					out.beginObject();
+					out.name("outline").beginArray();
+					for (Location loc : outline) {
+						out.beginObject();
+						out.name("latitude").value(loc.getLatitude());
+						out.name("longitude").value(loc.getLongitude());
+						out.name("depth").value(loc.getDepth());
+						out.endObject();
+					}
+					out.endArray();
+					out.endObject();
+				}
+				out.endArray();
+				if (edgeRup.sectsReset != null && edgeRup.sectsReset.length > 0) {
+					out.name("subSectResetIndexes").beginArray();
+					for (int index : edgeRup.sectsReset)
+						out.value(index);
+					out.endArray();
+				}
 			} else {
 				throw new IllegalStateException("Not yet implemented for subcalss "+value.getClass().getName());
 			}
@@ -317,11 +397,22 @@ public class ETAS_Config {
 			// SFD
 			SimpleFaultData[] sfds = null;
 			
+			// EdgeRupture
+			LocationList[] outlines = null;
+			
+			// SFD, Edge, or Point
+			int[] resetSubSects = null;
+			
+			String comcatEventID = null;
+			
 			in.beginObject();
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "occurrenceTimeMillis":
 					customOccurrenceTime = in.nextLong();
+					break;
+				case "comcatEventID":
+					comcatEventID = in.nextString();
 					break;
 				case "mag":
 					mag = in.nextDouble();
@@ -349,7 +440,9 @@ public class ETAS_Config {
 					depth = in.nextDouble();
 					break;
 				case "ruptureSurfaces":
+					// SFD or EdgeRupture
 					List<SimpleFaultData> sfdList = new ArrayList<>();
+					List<LocationList> outlineList = new ArrayList<>();
 					in.beginArray();
 					while (in.hasNext()) {
 						in.beginObject();
@@ -358,6 +451,7 @@ public class ETAS_Config {
 						Double upperDepth = null;
 						Double lowerDepth = null;
 						FaultTrace trace = null;
+						LocationList outline = null;
 						while (in.hasNext()) {
 							switch (in.nextName()) {
 							case "dip":
@@ -377,26 +471,17 @@ public class ETAS_Config {
 								trace = new FaultTrace("Custom Fault");
 								while (in.hasNext()) {
 									in.beginObject();
-									Double trLat = null; Double trLon = null; Double trDepth = null;
-									while (in.hasNext()) {
-										switch (in.nextName()) {
-										case "latitude":
-											trLat = in.nextDouble();
-											break;
-										case "longitude":
-											trLon = in.nextDouble();
-											break;
-										case "depth":
-											trDepth = in.nextDouble();
-											break;
-										}
-									}
-									Preconditions.checkNotNull(trLat, "trace point latitude not specified");
-									Preconditions.checkNotNull(trLon, "trace point longitude not specified");
-									if (depth == null)
-										trace.add(new Location(trLat, trLon));
-									else
-										trace.add(new Location(trLat, trLon, trDepth));
+									trace.add(readLocation(in, true));
+									in.endObject();
+								}
+								in.endArray();
+								break;
+							case "outline":
+								in.beginArray();
+								outline = new LocationList();
+								while (in.hasNext()) {
+									in.beginObject();
+									outline.add(readLocation(in, false));
 									in.endObject();
 								}
 								in.endArray();
@@ -404,14 +489,28 @@ public class ETAS_Config {
 							}
 						}
 						in.endObject();
-						Preconditions.checkNotNull(dip, "surface dip not specified");
-						Preconditions.checkNotNull(upperDepth, "surface upper depth not specified");
-						Preconditions.checkNotNull(lowerDepth, "surface lower depth not specified");
-						Preconditions.checkNotNull(trace, "surface trace not specified");
-						sfdList.add(new SimpleFaultData(dip, lowerDepth, upperDepth, trace, dipDir));
+						if (outline == null) {
+							Preconditions.checkNotNull(dip, "surface dip not specified");
+							Preconditions.checkNotNull(upperDepth, "surface upper depth not specified");
+							Preconditions.checkNotNull(lowerDepth, "surface lower depth not specified");
+							Preconditions.checkNotNull(trace, "surface trace not specified");
+							sfdList.add(new SimpleFaultData(dip, lowerDepth, upperDepth, trace, dipDir));
+						} else {
+							Preconditions.checkState(dip == null, "surface dip cannot be specified with outline");
+							Preconditions.checkState(upperDepth == null, "surface upper depth cannot be specified with outline");
+							Preconditions.checkState(lowerDepth == null, "surface lower depth cannot be specified with outline");
+							Preconditions.checkState(trace == null, "surface trace cannot be specified with outline");
+							outlineList.add(outline);
+						}
 					}
 					in.endArray();
-					sfds = sfdList.toArray(new SimpleFaultData[0]);
+					if (sfdList.size() > 0) {
+						Preconditions.checkState(outlineList.isEmpty(), "Can't mix simple faults and outlines");
+						sfds = sfdList.toArray(new SimpleFaultData[0]);
+					} else {
+						Preconditions.checkState(outlineList.size() > 0, "No rupture surfaces specified");
+						outlines = outlineList.toArray(new LocationList[0]);
+					}
 					break;
 				case "subSectResetIndexes":
 					in.beginArray();
@@ -421,42 +520,74 @@ public class ETAS_Config {
 						myIndexes.add(index);
 					}
 					in.endArray();
-					subSects = Ints.toArray(myIndexes);
+					resetSubSects = Ints.toArray(myIndexes);
 					break;
 				}
 			}
 			in.endObject();
 			
+			TriggerRupture trigger;
+			
 			if (fssIndex != null) {
 				Preconditions.checkState(lat == null && lon == null && depth == null,
 						"Cannot specify point source location for FSS rupture");
 				Preconditions.checkState(subSects == null, "Cannot specify sub sections for FSS rupture");
-				return new TriggerRupture.FSS(fssIndex, customOccurrenceTime, mag);
-			}
-			if (sfds != null) {
+				trigger = new TriggerRupture.FSS(fssIndex, customOccurrenceTime, mag);
+			} else if (sfds != null) {
 				Location hypo = null;
-				if (lat != null && lon != null) {
+				if (lat != null && lon != null)
 					hypo = new Location(lat, lon, depth);
-				}
-				Preconditions.checkNotNull(mag, "Must specify magnitude for sub sect rupture");
-				return new TriggerRupture.SimpleFault(customOccurrenceTime, hypo, mag, subSects, sfds);
-			}
-			if (subSects != null) {
+				Preconditions.checkNotNull(mag, "Must specify magnitude for simple fault rupture");
+				trigger = new TriggerRupture.SimpleFault(customOccurrenceTime, hypo, mag, resetSubSects, sfds);
+			} else if (outlines != null) {
+				Location hypo = null;
+				if (lat != null && lon != null)
+					hypo = new Location(lat, lon, depth);
+				Preconditions.checkNotNull(mag, "Must specify magnitude for edge rupture");
+				trigger = new TriggerRupture.EdgeFault(customOccurrenceTime, hypo, mag, resetSubSects, outlines);
+			} else if (subSects != null) {
 				Preconditions.checkState(lat == null && lon == null && depth == null,
 						"Cannot specify point source location for sub sect rupture");
 				Preconditions.checkNotNull(mag, "Must specify magnitude for sub sect rupture");
-				return new TriggerRupture.SectionBased(subSects, customOccurrenceTime, mag);
+				trigger = new TriggerRupture.SectionBased(subSects, customOccurrenceTime, mag);
+			} else {
+				// must be point rupture
+				Preconditions.checkNotNull(lat, "Must specify latitude for point source rupture");
+				Preconditions.checkNotNull(lon, "Must specify longitude for point source rupture");
+				Preconditions.checkNotNull(depth, "Must specify depth for point source rupture");
+				Preconditions.checkNotNull(mag, "Must specify magnitude for point source rupture");
+				Location hypocenter = new Location(lat, lon, depth);
+
+				trigger = new TriggerRupture.Point(hypocenter, customOccurrenceTime, mag, resetSubSects);
 			}
-			// must be point rupture
-			Preconditions.checkNotNull(lat, "Must specify latitude for point source rupture");
-			Preconditions.checkNotNull(lon, "Must specify longitude for point source rupture");
-			Preconditions.checkNotNull(depth, "Must specify depth for point source rupture");
-			Preconditions.checkNotNull(mag, "Must specify magnitude for point source rupture");
-			Location hypocenter = new Location(lat, lon, depth);
-			
-			return new TriggerRupture.Point(hypocenter, customOccurrenceTime, mag);
+			trigger.setComcatEventID(comcatEventID);
+			return trigger;
 		}
 		
+	}
+	
+	private static Location readLocation(JsonReader in, boolean allowNullDepth) throws IOException {
+		Double lat = null; Double lon = null; Double depth = null;
+		while (in.hasNext()) {
+			switch (in.nextName()) {
+			case "latitude":
+				lat = in.nextDouble();
+				break;
+			case "longitude":
+				lon = in.nextDouble();
+				break;
+			case "depth":
+				depth = in.nextDouble();
+				break;
+			}
+		}
+		Preconditions.checkNotNull(lat, "trace point latitude not specified");
+		Preconditions.checkNotNull(lon, "trace point longitude not specified");
+		if (!allowNullDepth)
+			Preconditions.checkNotNull(depth, "trace point depth not specified");
+		if (depth == null)
+			return new Location(lat, lon);
+		return new Location(lat, lon, depth);
 	}
 	
 	public static class CircularRegion extends Region implements ComcatRegion {
@@ -476,22 +607,9 @@ public class ETAS_Config {
 
 		@Override
 		public boolean isCircular() {
-			return true;
-		}
-
-		@Override
-		public double getCircleCenterLat() {
-			return center.getLatitude();
-		}
-
-		@Override
-		public double getCircleCenterLon() {
-			return center.getLongitude();
-		}
-
-		@Override
-		public double getCircleRadiusDeg() {
-			return radius;
+			// don't tell ComCat that it's circular, we don't want to use their 
+			// circle query which is in degrees
+			return false;
 		}
 	}
 	
@@ -839,6 +957,10 @@ public class ETAS_Config {
 		return griddedOnly;
 	}
 
+	public void setGriddedOnly(boolean griddedOnly) {
+		this.griddedOnly = griddedOnly;
+	}
+
 	public boolean isImposeGR() {
 		return imposeGR;
 	}
@@ -855,12 +977,28 @@ public class ETAS_Config {
 		return catalogCompletenessModel;
 	}
 	
-	public void setComcatRegion(Region comcatRegion) {
-		this.comcatRegion = comcatRegion;
+	public void setComcatMetadata(ComcatMetadata comcatMetadata) {
+		this.comcatMetadata = comcatMetadata;
 	}
 	
-	public Region getComcatRegion() {
-		return comcatRegion;
+	public ComcatMetadata getComcatMetadata() {
+		return comcatMetadata;
+	}
+
+	public String getConfigCommand() {
+		return configCommand;
+	}
+
+	public void setConfigCommand(String configCommand) {
+		this.configCommand = configCommand;
+	}
+
+	public Long getConfigTime() {
+		return configTime;
+	}
+
+	public void setConfigTime(Long configTime) {
+		this.configTime = configTime;
 	}
 
 	private transient FaultSystemSolution fss;
@@ -903,25 +1041,85 @@ public class ETAS_Config {
 	public static ETAS_Config readJSON(String json) {
 		Gson gson = buildGson();
 		ETAS_Config conf = gson.fromJson(json, ETAS_Config.class);
-		conf.catalogCompletenessModel = U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE;
 		return conf;
+	}
+	
+	public static void checkFixComcatMeta(File jsonFile) throws IOException {
+		if (jsonFile.isDirectory()) {
+			for (File file : jsonFile.listFiles()) {
+				if (file.isDirectory() && file.getName().contains("_ci"))
+					checkFixComcatMeta(file);
+				if (file.getName().endsWith(".json"))
+					checkFixComcatMeta(file);
+			}
+			return;
+		}
+		ETAS_Config config = readJSON(jsonFile);
+		if (config.comcatRegion != null) {
+			System.out.println("Fixing ComCat metadata for: "+jsonFile.getAbsolutePath());
+			String eventID = config.comcatEventID;
+			String parentName = jsonFile.getParentFile().getName();
+			if (eventID == null && parentName.contains("_ci")) {
+				eventID = parentName.substring(parentName.indexOf("_ci")+1);
+				eventID = eventID.substring(0, eventID.indexOf("_"));
+			}
+			double minDepth = -10;
+			double maxDepth = ETAS_CubeDiscretizationParams.DEFAULT_MAX_DEPTH;
+			double minMag = ETAS_Utils.magMin_DEFAULT;
+			long startTime = Long.MAX_VALUE;
+			for (TriggerRupture trigger : config.getTriggerRuptures())
+				if (trigger.customOccurrenceTime != null)
+					startTime = Long.min(startTime, trigger.customOccurrenceTime);
+			long endTime = config.getSimulationStartTimeMillis() - 1000;
+			config.comcatMetadata = new ComcatMetadata(config.comcatRegion, eventID,
+					minDepth, maxDepth, minMag, startTime, endTime);
+			config.comcatEventID = null;
+			config.comcatRegion = null;
+			config.writeJSON(jsonFile);
+		} else  if (config.comcatMetadata != null && config.outputDir.getPath().contains("/home")) {
+			System.out.println("Fixing paths from previous comcat metadat repair: "+jsonFile.getAbsoluteFile());
+			Map<String, String> env = System.getenv();
+			String json = config.toJSON();
+			for (String var : env.keySet()) {
+				String val = env.get(var);
+				if (!var.startsWith("ETAS") || !json.contains(val) || var.equals("ETAS_MEM_GB"))
+					continue;
+				System.out.println("\tReplacing path '"+val+"' with ${"+var+"}");
+				json = json.replaceAll(val, Matcher.quoteReplacement("${"+var+"}"));
+			}
+			FileWriter fw = new FileWriter(jsonFile);
+			fw.write(json+"\n");
+			fw.close();
+		}
 	}
 
 	public static void main(String[] args) {
 		if (args.length == 1) {
 			File jsonFile = new File(args[0]);
 			try {
-				System.out.println("Loading JSON from "+jsonFile);
-				ETAS_Config config = readJSON(jsonFile);
-				System.out.println("================");
-				System.out.println(config.toJSON());
-				System.out.println("================");
+				if (!jsonFile.isDirectory()) {
+					System.out.println("Loading JSON from "+jsonFile);
+					ETAS_Config config = readJSON(jsonFile);
+					System.out.println("================");
+					System.out.println(config.toJSON());
+					System.out.println("================");
+				} else {
+					checkFixComcatMeta(jsonFile);
+				}
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			return;
 		}
+		try {
+//			checkFixComcatMeta(new File("/home/kevin/git/ucerf3-etas-results"));
+			checkFixComcatMeta(new File("/home/kevin/OpenSHA/UCERF3/etas/simulations"));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.exit(0);
 		int numSimulations = 1000;
 		double duration = 10;
 		boolean includeSpontaneous = true;

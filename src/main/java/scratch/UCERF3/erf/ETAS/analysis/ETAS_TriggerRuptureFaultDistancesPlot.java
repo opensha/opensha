@@ -3,40 +3,28 @@ package scratch.UCERF3.erf.ETAS.analysis;
 import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jfree.chart.axis.NumberTickUnit;
-import org.jfree.chart.axis.TickUnit;
-import org.jfree.chart.axis.TickUnits;
-import org.jfree.chart.plot.XYPlot;
-import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
-import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
-import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
-import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
-import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
-import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.MarkdownUtils;
-import org.opensha.commons.util.cpt.CPT;
-import org.opensha.nshmp2.erf.source.PointSource;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
@@ -58,10 +46,17 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 	private CSVFile<String> csv;
 	private double maxDist;
 	private File outputDir;
+	
+	private boolean hasFinite = false;
 
 	public ETAS_TriggerRuptureFaultDistancesPlot(ETAS_Config config, ETAS_Launcher launcher, double maxDist) {
 		super(config, launcher);
 		this.maxDist = maxDist;
+	}
+
+	@Override
+	public int getVersion() {
+		return 1;
 	}
 	
 	private class FaultDistStats implements Comparable<FaultDistStats> {
@@ -73,7 +68,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		
 		private int numHyposInsidePolygon = 0;
 		private double maxMagHypoInsidePolygon = Double.NEGATIVE_INFINITY;
-		
+//		
 		private int numSurfsInsidePolygon = 0;
 		private double maxMagSurfsInsidePolygon = Double.NEGATIVE_INFINITY;
 		
@@ -82,6 +77,8 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		private double minPolyDistToAny = Double.POSITIVE_INFINITY;
 		private double minDistToMax = Double.POSITIVE_INFINITY;
 		private double minPolyDistToMax = Double.POSITIVE_INFINITY;
+		private double minHypoDistToMax = Double.POSITIVE_INFINITY;
+		private double minHypoPolyDistToMax = Double.POSITIVE_INFINITY;
 		
 		public FaultDistStats(String parentName) {
 			this.parentName = parentName;
@@ -118,16 +115,31 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 				hypoContains = hypoContains || hypo != null && poly.contains(hypo);
 				for (Location rupLoc : surfLocs) {
 					surfContains = surfContains || poly.contains(rupLoc);
+					double polyDist = poly.distanceToLocation(rupLoc);
+					minPolyDistToAny = Math.min(minPolyDistToAny, polyDist);
+					if (isMaxMag)
+						minPolyDistToMax = Math.min(minPolyDistToMax, polyDist);
+				}
+//				if (!surfContains && minPolyDistToAny > 2*maxDist)
+//					// far away, skip
+//					continue;
+				for (Location rupLoc : surfLocs) {
 					for (Location sectLoc : sectLocs) {
 						double dist = LocationUtils.linearDistanceFast(rupLoc, sectLoc);
 						minDistToAny = Math.min(minDistToAny, dist);
 						if (isMaxMag)
 							minDistToMax = Math.min(minDistToMax, dist);
 					}
-					double polyDist = poly.distanceToLocation(rupLoc);
-					minPolyDistToAny = Math.min(minPolyDistToAny, polyDist);
-					if (isMaxMag)
-						minPolyDistToMax = Math.min(minPolyDistToMax, polyDist);
+				}
+				
+				if (isMaxMag && surfLocs.size() > 1 && hypo != null) {
+					// check hypocenter
+					for (Location sectLoc : sectLocs) {
+						double dist = LocationUtils.linearDistanceFast(hypo, sectLoc);
+						minHypoDistToMax = Math.min(minHypoDistToMax, dist);
+					}
+					double polyDist = poly.distanceToLocation(hypo);
+					minHypoPolyDistToMax = Math.min(minHypoPolyDistToMax, polyDist);
 				}
 			}
 			if (hypoContains) {
@@ -162,23 +174,61 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
 		this.outputDir = outputDir;
 		List<FaultSectionPrefData> subSects = fss.getRupSet().getFaultSectionDataList();
 		FaultPolyMgr polyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);
 		System.out.println("Building polygons");
-		Map<Integer, FaultDistStats> statsMap = new HashMap<>();
+		
+		Region mapRegion = ETAS_EventMapPlotUtils.getMapRegion(getConfig(), getLauncher());
+		
+		// determine region that we're interested in
+		List<ETAS_EqkRupture> triggers = getLauncher().getTriggerRuptures();
+		List<LocationList> triggerLocLists = new ArrayList<>();
+		MinMaxAveTracker latTrack = new MinMaxAveTracker();
+		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+		for (ETAS_EqkRupture trigger : triggers) {
+			LocationList surfLocs = trigger.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface();
+			for (Location loc : surfLocs) {
+				latTrack.addValue(loc.getLatitude());
+				lonTrack.addValue(loc.getLongitude());
+			}
+			triggerLocLists.add(surfLocs);
+		}
+		latTrack.addValue(mapRegion.getMaxLat());
+		latTrack.addValue(mapRegion.getMinLat());
+		lonTrack.addValue(mapRegion.getMaxLon());
+		lonTrack.addValue(mapRegion.getMinLon());
+		Location maxLoc = new Location(latTrack.getMax(), lonTrack.getMax());
+		Location minLoc = new Location(latTrack.getMin(), lonTrack.getMin());
+		// buffer by 1.5*maxDist
+		maxLoc = LocationUtils.location(maxLoc, Math.PI/4d, maxDist*1.5);
+		minLoc = LocationUtils.location(minLoc, 5d*Math.PI/4d, maxDist*1.5);
+		Region totSurfRegion = new Region(maxLoc, minLoc);
+		List<FaultSectionPrefData> nearSects = new ArrayList<>();
 		for (FaultSectionPrefData sect : subSects) {
+			boolean contains = false;
+			for (Location loc : sect.getFaultTrace())
+				contains = contains || totSurfRegion.contains(loc);
+			if (contains)
+				nearSects.add(sect);
+		}
+		System.out.println("Will compute distances for "+nearSects.size()
+			+" nearby sections (of "+subSects.size()+" total)");
+		
+		Map<Integer, FaultDistStats> statsMap = new HashMap<>();
+		for (FaultSectionPrefData sect : nearSects) {
 			Integer parentID = sect.getParentSectionId();
 			if (!statsMap.containsKey(parentID))
 				statsMap.put(parentID, new FaultDistStats(sect.getParentSectionName()));
 			statsMap.get(parentID).addSubSect(sect, polyMgr.getPoly(sect.getSectionId()));
 		}
 		distStats = new ArrayList<>(statsMap.values());
-		List<ETAS_EqkRupture> triggers = getLauncher().getTriggerRuptures();
 		System.out.println("Processing "+triggers.size()+" triggers");
-		for (ETAS_EqkRupture trigger : triggers) {
-			LocationList surfLocs = trigger.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface();
+		for (int i = 0; i < triggers.size(); i++) {
+			ETAS_EqkRupture trigger = triggers.get(i);
+			hasFinite = hasFinite || !trigger.getRuptureSurface().isPointSurface();
+			LocationList surfLocs = triggerLocLists.get(i);
 			for (FaultDistStats stats : distStats)
 				stats.processTrigger(trigger, surfLocs);
 		}
@@ -187,6 +237,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		csv = new CSVFile<>(true);
 		List<String> header = new ArrayList<>();
 		header.add("Section Name");
+		header.add("Strike, Dip, Rake");
 		if (triggers.size() > 1) {
 			header.add("# Hypos In Poly");
 			header.add("Max Mag w/ Hypo In Poly");
@@ -196,47 +247,86 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 			header.add("Min Poly Dist To Any (km)");
 			header.add("Min Dist To Largest (km)");
 			header.add("Min Poly Dist To Largest (km)");
+			if (hasFinite) {
+				header.add("Min Hypo Dist To Largest (km)");
+				header.add("Min Hypo Poly Dist To Largest (km)");
+			}
 		} else {
 			header.add("Hypocenter In Polygon?");
 			header.add("Surface In Polygon?");
-			header.add("Minimum Distance (km)");
-			header.add("Minimum Poly Distance (km)");
+			if (hasFinite) {
+				header.add("Minimum Surface Distance (km)");
+				header.add("Minimum Surface Poly Distance (km)");
+				header.add("Minimum Hypo Distance (km)");
+				header.add("Minimum Hypo Poly Distance (km)");
+			} else {
+				header.add("Minimum Distance (km)");
+				header.add("Minimum Poly Distance (km)");
+			}
 		}
 		csv.addLine(header);
+		
 		for (FaultDistStats dists : distStats) {
 			List<String> line = new ArrayList<>();
 			line.add(dists.parentName);
+			List<Double> strikes = new ArrayList<>();
+			List<Double> dips = new ArrayList<>();
+			List<Double> rakes = new ArrayList<>();
+			for (FaultSectionPrefData sect : dists.subSects) {
+				strikes.add(sect.getFaultTrace().getAveStrike());
+				dips.add(sect.getAveDip());
+				rakes.add(sect.getAveRake());
+			}
+			double aveStrike = FaultUtils.getAngleAverage(strikes);
+			double aveDip = FaultUtils.getAngleAverage(dips);
+			double aveRake = FaultUtils.getInRakeRange(FaultUtils.getAngleAverage(rakes));
+			line.add(Math.round(aveStrike)+", "+Math.round(aveDip)+", "+Math.round(aveRake));
 			if (triggers.size() > 1) {
 				line.add(dists.numHyposInsidePolygon+"");
 				line.add(Double.isFinite(dists.maxMagHypoInsidePolygon) ? (float)dists.maxMagHypoInsidePolygon+"" : "");
 				line.add(dists.numSurfsInsidePolygon+"");
 				line.add(Double.isFinite(dists.maxMagSurfsInsidePolygon) ? (float)dists.maxMagSurfsInsidePolygon+"" : "");
-				line.add((float)dists.minDistToAny+"");
-				line.add((float)dists.minPolyDistToAny+"");
-				line.add((float)dists.minDistToMax+"");
-				line.add((float)dists.minPolyDistToMax+"");
+				line.add(distStr(dists.minDistToAny));
+				line.add(distStr(dists.minPolyDistToAny));
+				line.add(distStr(dists.minDistToMax));
+				line.add(distStr(dists.minPolyDistToMax));
+				if (hasFinite) {
+					line.add(distStr(dists.minHypoDistToMax));
+					line.add(distStr(dists.minHypoPolyDistToMax));
+				}
 			} else {
 				line.add(dists.numHyposInsidePolygon > 0 ? "true" : "false");
 				line.add(dists.numSurfsInsidePolygon > 0 ? "true" : "false");
-				line.add((float)dists.minDistToAny+"");
-				line.add((float)dists.minPolyDistToAny+"");
+				line.add(distStr(dists.minDistToAny));
+				line.add(distStr(dists.minPolyDistToAny));
+				if (hasFinite) {
+					line.add(distStr(dists.minHypoDistToMax));
+					line.add(distStr(dists.minHypoPolyDistToMax));
+				}
 			}
 			csv.addLine(line);
 		}
 		csv.writeToFile(new File(outputDir, "trigger_rup_fault_distances.csv"));
 		
-		makeMapPlot(outputDir, "trigger_rup_fault_map", triggers);
+		makeMapPlot(outputDir, "trigger_rup_fault_map", triggers, mapRegion);
 		makeDepthPlot(outputDir, "trigger_rup_depth_map", triggers);
+		
+		return null;
 	}
 	
-	private void makeMapPlot(File outputDir, String prefix, List<ETAS_EqkRupture> triggers) throws IOException {
-		Region mapRegion = ETAS_EventMapPlotUtils.getMapRegion(getConfig(), getLauncher());
-		
+	private static DecimalFormat distDF = new DecimalFormat("0.000");
+	private static String distStr(double dist) {
+		if (Double.isFinite(dist))
+			return distDF.format(dist);
+		return "N/A";
+	}
+	
+	private void makeMapPlot(File outputDir, String prefix, List<ETAS_EqkRupture> triggers, Region mapRegion) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
 		XY_DataSet[] caXYs = PoliticalBoundariesData.loadCAOutlines();
-		PlotCurveCharacterstics caOutlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.LIGHT_GRAY);
+		PlotCurveCharacterstics caOutlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK);
 		for (XY_DataSet caXY : caXYs) {
 			funcs.add(caXY);
 			chars.add(caOutlineChar);
@@ -247,7 +337,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		List<XY_DataSet> polyXYs = new ArrayList<>();
 		PlotCurveCharacterstics faultTraceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK);
 		PlotCurveCharacterstics faultOutlineChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Color.BLACK);
-		PlotCurveCharacterstics faultPolyChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1.5f, Color.GRAY);
+		PlotCurveCharacterstics faultPolyChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1.5f, Color.LIGHT_GRAY);
 		
 		// add faults and polygons
 		for (FaultDistStats stats : distStats) {
@@ -290,21 +380,30 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 	}
 	
 	private void makeDepthPlot(File outputDir, String prefix, List<ETAS_EqkRupture> triggers) throws IOException {
-		double sfdMag = Double.POSITIVE_INFINITY;
-		SimpleFaultData[] sfds = null;
-		for (TriggerRupture rup : getConfig().getTriggerRuptures()) {
-			if (rup instanceof SimpleFault) {
-				SimpleFault sfRup = (SimpleFault)rup;
-				if (sfds != null && sfRup.mag < sfdMag)
-					continue;
-				sfdMag = sfRup.mag;
-				sfds = sfRup.sfds;
+		double surfMag = Double.NEGATIVE_INFINITY;
+		RuptureSurface surf = null;
+		for (ETAS_EqkRupture trigger : triggers) {
+			RuptureSurface mySurf = trigger.getRuptureSurface();
+			if (!mySurf.isPointSurface() && trigger.getMag() > surfMag) {
+				surf = mySurf;
+				surfMag = trigger.getMag();
 			}
 		}
+		if (triggers.isEmpty() || surf == null || surf.isPointSurface()) {
+			System.out.println("Skipping depth plot:");
+			if (triggers.isEmpty())
+				System.out.println("\tno triggers");
+			if (surf == null)
+				System.out.println("\tno surf");
+			else if (surf.isPointSurface())
+				System.out.println("\tpoint surface ("+ClassUtils.getClassNameWithoutPackage(surf.getClass())+")");
+			return;
+		}
+		
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
-		ETAS_EventMapPlotUtils.buildEventDepthPlot(triggers, funcs, chars, sfds);
+		ETAS_EventMapPlotUtils.buildEventDepthPlot(triggers, funcs, chars, surf);
 		
 		ETAS_EventMapPlotUtils.writeDepthPlot(funcs, chars, "Trigger Rupture Depth Profile", outputDir, prefix);
 	}

@@ -17,6 +17,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
@@ -29,6 +30,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -41,6 +43,7 @@ import com.google.common.base.Preconditions;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 
 /**
  * Utility methods used by multiple plots for maps
@@ -50,7 +53,8 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 class ETAS_EventMapPlotUtils {
 	
 	static Region getMapRegion(ETAS_Config config, ETAS_Launcher launcher) {
-		Region mapRegion = config.getComcatRegion();
+		ComcatMetadata meta = config.getComcatMetadata();
+		Region mapRegion = meta == null ? null : meta.region;
 		List<ETAS_EqkRupture> triggerRups = launcher.getTriggerRuptures();
 		if (mapRegion == null && triggerRups != null && !triggerRups.isEmpty()) {
 			MinMaxAveTracker latTrack = new MinMaxAveTracker();
@@ -61,33 +65,44 @@ class ETAS_EventMapPlotUtils {
 					lonTrack.addValue(loc.getLongitude());
 				}
 			}
-			double maxSpan = Math.max(latTrack.getMax()-latTrack.getMin(), lonTrack.getMax()-lonTrack.getMin());
-			double centerLat = 0.5*(latTrack.getMax() + latTrack.getMin());
-			double centerLon = 0.5*(lonTrack.getMax() + lonTrack.getMin());
-			System.out.println("Lon range: "+lonTrack.getMin()+" "+lonTrack.getMax());
-			System.out.println("Lat range: "+latTrack.getMin()+" "+latTrack.getMax());
-			System.out.println("Center: "+centerLat+", "+centerLon);
-			System.out.println("Span: "+maxSpan);
-			double halfSpan = maxSpan*0.5;
-			Location topRight = new Location(centerLat + halfSpan, centerLon + halfSpan);
-			Location bottomLeft = new Location(centerLat - halfSpan, centerLon - halfSpan);
-			// now buffer by 20km in each direction
-			topRight = LocationUtils.location(topRight, new LocationVector(45, 20, 0d));
-			bottomLeft = LocationUtils.location(bottomLeft, new LocationVector(225, 20, 0d));
-			mapRegion = new Region(topRight, bottomLeft);
+			mapRegion = getMapRegion(latTrack, lonTrack);
 		}
+		return mapRegion;
+	}
+
+	static Region getMapRegion(MinMaxAveTracker latTrack, MinMaxAveTracker lonTrack) {
+		Region mapRegion;
+		double maxSpan = Math.max(latTrack.getMax()-latTrack.getMin(), lonTrack.getMax()-lonTrack.getMin());
+		double centerLat = 0.5*(latTrack.getMax() + latTrack.getMin());
+		double centerLon = 0.5*(lonTrack.getMax() + lonTrack.getMin());
+		System.out.println("Lon range: "+lonTrack.getMin()+" "+lonTrack.getMax());
+		System.out.println("Lat range: "+latTrack.getMin()+" "+latTrack.getMax());
+		System.out.println("Center: "+centerLat+", "+centerLon);
+		System.out.println("Span: "+maxSpan);
+		double halfSpan = maxSpan*0.5;
+		Location topRight = new Location(centerLat + halfSpan, centerLon + halfSpan);
+		Location bottomLeft = new Location(centerLat - halfSpan, centerLon - halfSpan);
+		// now buffer by 20km in each direction
+		topRight = LocationUtils.location(topRight, new LocationVector(45, 20, 0d));
+		bottomLeft = LocationUtils.location(bottomLeft, new LocationVector(225, 20, 0d));
+		mapRegion = new Region(topRight, bottomLeft);
 		return mapRegion;
 	}
 	
 	static final float rup_surface_thickness = 3f;
 	
-	static void buildEventPlot(List<ETAS_EqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars)
+	static void buildEventPlot(List<? extends ObsEqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars)
 			throws IOException {
+		buildEventPlot(events, funcs, chars, 0d);
+	}
+	
+	static void buildEventPlot(List<? extends ObsEqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
+			double maxMag) throws IOException {
 		if (events.isEmpty())
 			return;
 		
 		MinMaxAveTracker magTrack = new MinMaxAveTracker();
-		for (ETAS_EqkRupture rup : events)
+		for (ObsEqkRupture rup : events)
 			magTrack.addValue(rup.getMag());
 		
 		// add trigger ruptures
@@ -103,8 +118,9 @@ class ETAS_EventMapPlotUtils {
 			magSizeFunc.set(magSizeFunc.getMaxX()+1, magSizeFunc.getMaxY()*1.5);
 
 		if (events.size() > 1) {
-			double maxMag = magTrack.getMax();
-			double minFilledMag = maxMag > 7 ? 6d : 5d;
+			if (!(maxMag > 0))
+				maxMag = magTrack.getMax();
+			double minFilledMag = 5d;
 
 			magRanges = new ArrayList<>();
 			magChars = new ArrayList<>();
@@ -112,6 +128,7 @@ class ETAS_EventMapPlotUtils {
 
 			double magCeil = Math.ceil(maxMag);
 			double magFloor = Math.floor(magTrack.getMin());
+//			System.out.println("MaxMag: "+maxMag+", ceil: "+magCeil+", floor: "+magFloor);
 
 			if (magCeil == maxMag || magFloor == magCeil)
 				magCeil += 1;
@@ -150,16 +167,22 @@ class ETAS_EventMapPlotUtils {
 				symbolWidth = magSizeFunc.getInterpolatedY(mag);
 			singleQuakeChar = new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, (float)symbolWidth, magCPT.getMaxColor());
 		}
-		for (ETAS_EqkRupture event : events) {
+		
+		List<XY_DataSet> surfXYs = new ArrayList<>();
+		List<PlotCurveCharacterstics> surfChars = new ArrayList<>();
+		for (ObsEqkRupture event : events) {
 			double mag = event.getMag();
 			XY_DataSet ptXY;
 			PlotCurveCharacterstics plotChar;
+			Location hypo = event.getHypocenterLocation();
 			if (singleQuakeChar != null) {
 				ptXY = new DefaultXY_DataSet();
 				ptXY.setName("M"+(float)mag);
 				plotChar = singleQuakeChar;
-				funcs.add(ptXY);
-				chars.add(plotChar);
+				if (hypo != null) {
+					funcs.add(ptXY);
+					chars.add(plotChar);
+				}
 			} else {
 				ptXY = null;
 				plotChar = null;
@@ -170,34 +193,52 @@ class ETAS_EventMapPlotUtils {
 						plotChar = magChars.get(i);
 					}
 				}
-				Preconditions.checkNotNull(ptXY);
+				Preconditions.checkNotNull(ptXY, "No mag ranges found which contain M=%s", mag);
 			}
 			RuptureSurface surf = event.getRuptureSurface();
-			if (!surf.isPointSurface()) {
-				List<XY_DataSet> surfXYs = getSurfOutlines(surf);
+			if (surf != null && !surf.isPointSurface()) {
+				List<XY_DataSet> mySurfXYs = getSurfOutlines(surf);
 				PlotCurveCharacterstics surfChar = new PlotCurveCharacterstics(
 						PlotLineType.DOTTED, rup_surface_thickness-1f, plotChar.getColor());
-				for (XY_DataSet surfXY : surfXYs) {
-					funcs.add(surfXY);
-					chars.add(surfChar);
+				for (XY_DataSet surfXY : mySurfXYs) {
+					surfXYs.add(surfXY);
+					surfChars.add(surfChar);
 				}
-				surfXYs = getSurfTraces(surf);
+				mySurfXYs = getSurfTraces(surf);
 				surfChar = new PlotCurveCharacterstics(
 						PlotLineType.SOLID, rup_surface_thickness, plotChar.getColor());
-				for (XY_DataSet surfXY : surfXYs) {
-					funcs.add(surfXY);
-					chars.add(surfChar);
+				for (XY_DataSet surfXY : mySurfXYs) {
+					surfXYs.add(surfXY);
+					surfChars.add(surfChar);
 				}
 			}
-			Location hypo = event.getHypocenterLocation();
-			ptXY.set(hypo.getLongitude(), hypo.getLatitude());
+			if (hypo != null)
+				ptXY.set(hypo.getLongitude(), hypo.getLatitude());
 		}
 
+		// add finite surfaces below quakes
+		funcs.addAll(surfXYs);
+		chars.addAll(surfChars);
+		
 		for (int i=0; magXYs != null && i<magXYs.size(); i++) {
 			XY_DataSet xy = magXYs.get(i);
 			if (xy.size() > 0) {
 				funcs.add(xy);
 				chars.add(magChars.get(i));
+			}
+		}
+		
+		// add transparent surfaces above quakes
+		if (magXYs != null) {
+			for (int i=0; i<surfXYs.size(); i++) {
+				funcs.add(surfXYs.get(i));
+				PlotCurveCharacterstics surfChar = surfChars.get(i);
+				Color c = surfChar.getColor();
+				if (surfChar.getLineType() == PlotLineType.SOLID)
+					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 220);
+				else
+					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 127);
+				chars.add(new PlotCurveCharacterstics(surfChar.getLineType(), surfChar.getLineWidth(), c));
 			}
 		}
 	}
@@ -211,7 +252,7 @@ class ETAS_EventMapPlotUtils {
 		List<XY_DataSet> ret = new ArrayList<>();
 		for (RuptureSurface subSurf : allSurfs) {
 			XY_DataSet surfXY = new DefaultXY_DataSet();
-			for (Location loc : subSurf.getUpperEdge())
+			for (Location loc : subSurf.getEvenlyDiscritizedUpperEdge())
 				surfXY.set(loc.getLongitude(), loc.getLatitude());
 			ret.add(surfXY);
 		}
@@ -227,16 +268,46 @@ class ETAS_EventMapPlotUtils {
 			allSurfs.add(surf);
 		List<XY_DataSet> ret = new ArrayList<>();
 		for (RuptureSurface subSurf : allSurfs) {
-			XY_DataSet surfXY = new DefaultXY_DataSet();
 			if (dip == 90d) {
-				for (Location loc : subSurf.getUpperEdge())
+				XY_DataSet surfXY = new DefaultXY_DataSet();
+				for (Location loc : subSurf.getEvenlyDiscritizedUpperEdge())
 					surfXY.set(loc.getLongitude(), loc.getLatitude());
+				ret.add(surfXY);
 			} else {
-				for (Location loc : subSurf.getPerimeter())
-					surfXY.set(loc.getLongitude(), loc.getLatitude());
-				surfXY.set(surfXY.get(0));
+				if (surf instanceof EvenlyGriddedSurface) {
+					// add each leg separately
+					// this will cause them to draw overlaps consistently (dotted lines will not mush together to look like solid)
+					
+					EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surf;
+					
+					// top and bottom
+					XY_DataSet topXY = new DefaultXY_DataSet();
+					XY_DataSet botXY = new DefaultXY_DataSet();
+					for (int col=0; col<gridSurf.getNumCols(); col++) {
+						Location topLoc = gridSurf.get(0, col);
+						Location botLoc = gridSurf.get(gridSurf.getNumRows()-1, col);
+						topXY.set(topLoc.getLongitude(), topLoc.getLatitude());
+						botXY.set(botLoc.getLongitude(), botLoc.getLatitude());
+					}
+					
+					// left and right
+					XY_DataSet leftXY = new DefaultXY_DataSet();
+					XY_DataSet rightXY = new DefaultXY_DataSet();
+					for (int row=0; row<gridSurf.getNumRows(); row++) {
+						Location leftLoc = gridSurf.get(row, 0);
+						Location rightLoc = gridSurf.get(row, gridSurf.getNumCols()-1);
+						leftXY.set(leftLoc.getLongitude(), leftLoc.getLatitude());
+						rightXY.set(rightLoc.getLongitude(), rightLoc.getLatitude());
+					}
+					ret.add(topXY); ret.add(botXY); ret.add(leftXY); ret.add(rightXY);
+				} else {
+					XY_DataSet surfXY = new DefaultXY_DataSet();
+					for (Location loc : subSurf.getPerimeter())
+						surfXY.set(loc.getLongitude(), loc.getLatitude());
+					surfXY.set(surfXY.get(0));
+					ret.add(surfXY);
+				}
 			}
-			ret.add(surfXY);
 		}
 		return ret;
 	}
@@ -247,6 +318,11 @@ class ETAS_EventMapPlotUtils {
 	
 	static void writeMapPlot(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars, Region mapRegion, String title,
 			File outputDir, String prefix) throws IOException {
+		writeMapPlot(funcs, chars, mapRegion, title, outputDir, prefix, 1000);
+	}
+	
+	static void writeMapPlot(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars, Region mapRegion, String title,
+			File outputDir, String prefix, int width) throws IOException {
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
 		spec.setLegendVisible(true);
 		
@@ -273,59 +349,91 @@ class ETAS_EventMapPlotUtils {
 		XYPlot plot = gp.getPlot();
 		plot.getRangeAxis().setStandardTickUnits(tus);
 		plot.getDomainAxis().setStandardTickUnits(tus);
-		gp.getChartPanel().setSize(1000, (int)(1000d*latSpan/lonSpan));
+		gp.getChartPanel().setSize(width, (int)((double)(width)*latSpan/lonSpan));
 		
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
 	}
 	
 	static void buildEventDepthPlot(List<ETAS_EqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
-			SimpleFaultData... sfds) throws IOException {
-		if (events.isEmpty() || sfds.length == 0)
+			RuptureSurface surf) throws IOException {
+		if (events.isEmpty() || surf == null || surf.isPointSurface())
 			return;
 		
 		FaultTrace trace;
-		if (sfds.length > 1) {
+		if (surf instanceof CompoundSurface) {
+			// use extents
+			List<? extends RuptureSurface> subSurfs = ((CompoundSurface)surf).getSurfaceList();
+			List<Location[]> pairs = new ArrayList<>();
+			for (int i=0; i<subSurfs.size(); i++) {
+				LocationList tr1 = subSurfs.get(i).getUpperEdge();
+				pairs.add(new Location[] { tr1.first(), tr1.last() });
+				for (int j=i+1; j<subSurfs.size(); j++) {
+					LocationList tr2 = subSurfs.get(j).getUpperEdge();
+					pairs.add(new Location[] { tr1.first(), tr2.first() });
+					pairs.add(new Location[] { tr1.first(), tr2.last() });
+					pairs.add(new Location[] { tr1.last(), tr2.first() });
+					pairs.add(new Location[] { tr1.last(), tr2.last() });
+				}
+			}
+			Location[] furthestPair = null;
+			double furthestDist = 0d;
+			for (Location[] pair : pairs) {
+				double dist = LocationUtils.horzDistanceFast(pair[0], pair[1]);
+				if (dist > furthestDist) {
+					furthestDist = dist;
+					furthestPair = pair;
+				}
+			}
+			
 			trace = new FaultTrace(null);
-			trace.add(sfds[0].getFaultTrace().first());
-			trace.add(sfds[sfds.length-1].getFaultTrace().last());
+			trace.add(furthestPair[0]);
+			trace.add(furthestPair[1]);
 		} else {
-			trace = sfds[0].getFaultTrace();
+			trace = surf.getUpperEdge();
 		}
 		
 		// draw rupture
-		PlotCurveCharacterstics sfdBelowChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK);
-		PlotCurveCharacterstics sfdAboveChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, Color.BLACK);
-		List<XY_DataSet> sfdFuncs = new ArrayList<>();
-		for (SimpleFaultData sfd : sfds) {
-			for (int i=1; i<trace.size(); i++) {
-				FaultTrace subTrace = new FaultTrace(null);
-				subTrace.add(trace.get(i-1));
-				subTrace.add(trace.get(i));
-				SimpleFaultData subSFD = new SimpleFaultData(sfd.getAveDip(), sfd.getLowerSeismogenicDepth(),
-						sfd.getUpperSeismogenicDepth(), subTrace, sfd.getAveDipDir());
-				EvenlyGriddedSurface subSurf = new StirlingGriddedSurface(subSFD, 0.1d, 0.1d);
-				
-				XY_DataSet xy = new DefaultXY_DataSet();
-				if (i == 1 && sfd == sfds[0])
-					xy.setName("Simple Fault Surface");
-				Location topLeft = subSurf.get(0, 0);
-				Location botLeft = subSurf.get(subSurf.getNumRows()-1, 0);
-				Location topRight = subSurf.get(0, subSurf.getNumCols()-1);
-				Location botRight = subSurf.get(subSurf.getNumRows()-1, subSurf.getNumCols()-1);
+		PlotCurveCharacterstics rupBelowChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK);
+		PlotCurveCharacterstics rupAboveChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, Color.BLACK);
+		List<XY_DataSet> rupFuncs = new ArrayList<>();
+		List<RuptureSurface> subSurfs = new ArrayList<>();
+		if (surf instanceof CompoundSurface)
+			subSurfs.addAll(((CompoundSurface)surf).getSurfaceList());
+		else
+			subSurfs.add(surf);
+		for (RuptureSurface subSurf : subSurfs) {
+			XY_DataSet xy = new DefaultXY_DataSet();
+			if (rupFuncs.isEmpty())
+				xy.setName("Rupture Surface");
+			if (subSurf instanceof EvenlyGriddedSurface) {
+				EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)subSurf;
+				Location topLeft = gridSurf.get(0, 0);
+				Location botLeft = gridSurf.get(gridSurf.getNumRows()-1, 0);
+				Location topRight = gridSurf.get(0, gridSurf.getNumCols()-1);
+				Location botRight = gridSurf.get(gridSurf.getNumRows()-1, gridSurf.getNumCols()-1);
 				xy.set(traceDist(trace, topLeft), topLeft.getDepth());
 				xy.set(traceDist(trace, topRight), topRight.getDepth());
 				xy.set(traceDist(trace, botLeft), botLeft.getDepth());
 				xy.set(traceDist(trace, botRight), botRight.getDepth());
 				xy.set(traceDist(trace, topLeft), topLeft.getDepth());
-				sfdFuncs.add(xy);
-				if (xy.getName() != null) {
-					xy = xy.deepClone();
-					xy.setName(null);
-				}
-				funcs.add(xy);
-				chars.add(sfdBelowChar);
+			} else {
+				FaultTrace upper = subSurf.getEvenlyDiscritizedUpperEdge();
+				LocationList lower = subSurf.getEvenlyDiscritizedLowerEdge();
+				for (Location loc : upper)
+					xy.set(traceDist(trace, loc), loc.getDepth());
+				for (int j=lower.size(); --j>=0;)
+					xy.set(traceDist(trace, lower.get(j)), lower.get(j).getDepth());
+				// close it
+				xy.set(traceDist(trace, upper.first()), upper.first().getDepth());
 			}
+			rupFuncs.add(xy);
+			if (xy.getName() != null) {
+				xy = xy.deepClone();
+				xy.setName(null);
+			}
+			funcs.add(xy);
+			chars.add(rupBelowChar);
 		}
 		
 		MinMaxAveTracker magTrack = new MinMaxAveTracker();
@@ -381,6 +489,8 @@ class ETAS_EventMapPlotUtils {
 		}
 		
 		for (ETAS_EqkRupture event : events) {
+			if (event.getHypocenterLocation() == null)
+				continue;
 			double mag = event.getMag();
 			XY_DataSet ptXY = null;
 			for (int i=0; i<magRanges.size(); i++) {
@@ -401,9 +511,9 @@ class ETAS_EventMapPlotUtils {
 			}
 		}
 		
-		for (XY_DataSet xy : sfdFuncs) {
+		for (XY_DataSet xy : rupFuncs) {
 			funcs.add(xy);
-			chars.add(sfdAboveChar);
+			chars.add(rupAboveChar);
 		}
 	}
 	

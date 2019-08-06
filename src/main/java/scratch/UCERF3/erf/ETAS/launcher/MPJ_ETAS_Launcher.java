@@ -2,9 +2,11 @@ package scratch.UCERF3.erf.ETAS.launcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Random;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
@@ -30,7 +32,8 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 		Long randSeed = config.getRandomSeed();
 		if (randSeed == null)
 			randSeed = System.nanoTime() + (long)(rank*new Random().nextInt());
-		this.launcher = new ETAS_LauncherPrintWrapper(config, randSeed);
+		boolean tmpLink = cmd.hasOption("temp-dir") && config.hasBinaryOutputFilters();
+		this.launcher = new ETAS_LauncherPrintWrapper(config, rank == 0 && !tmpLink, randSeed);
 		if (rank == 0)
 			this.launcher.setDebugLevel(DebugLevel.FINE);
 		else
@@ -41,6 +44,29 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 			
 			postBatchHook = new BinaryConsolidateHook();
 		}
+		if (tmpLink) {
+			File outputDir = config.getOutputDir();
+			if (rank == 0)
+				ETAS_Launcher.waitOnDirCreation(outputDir, 10, 2000);
+			
+			File scratchDir = new File(cmd.getOptionValue("scratch-dir"));
+			File scratchSubDir = new File(scratchDir, outputDir.getName());
+			if (rank == 0)
+				ETAS_Launcher.waitOnDirCreation(scratchSubDir, 10, 2000);
+			
+			// build link to results dir in temp dir
+			File resultsDir = ETAS_Launcher.getResultsDir(outputDir);
+			
+			File scratchResultsDir = new File(scratchSubDir, "results");
+			if (rank == 0) {
+				ETAS_Launcher.waitOnDirCreation(scratchResultsDir, 10, 2000);
+				if (resultsDir.exists()) {
+					debug("Creating link to scratch results dir: "
+							+scratchResultsDir.getAbsolutePath());
+				}
+				Files.createSymbolicLink(resultsDir.toPath(), scratchResultsDir.toPath());
+			}
+		}
 	}
 	
 	/**
@@ -50,8 +76,8 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 	 */
 	private class ETAS_LauncherPrintWrapper extends ETAS_Launcher {
 
-		public ETAS_LauncherPrintWrapper(ETAS_Config config, Long randSeed) throws IOException {
-			super(config, true, randSeed);
+		public ETAS_LauncherPrintWrapper(ETAS_Config config, boolean mkdirs, Long randSeed) throws IOException {
+			super(config, mkdirs, randSeed);
 		}
 
 		@Override
@@ -102,6 +128,18 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 			((BinaryConsolidateHook)postBatchHook).shutdown();
 			binaryWriter.finalize();
 		}
+	}
+	
+	protected static Options createOptions() {
+		Options ops = MPJTaskCalculator.createOptions();
+
+		Option tmpDirOption = new Option("scratch", "scratch-dir", true,
+				"Scratch directory. If supplied and binary output filters are enabled, the results directory will "
+				+ "be written here and symbolically lined back to the output directory.");
+		tmpDirOption.setRequired(false);
+		ops.addOption(tmpDirOption);
+		
+		return ops;
 	}
 
 	public static void main(String[] args) {

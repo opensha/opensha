@@ -486,7 +486,7 @@ public class ETAS_Launcher {
 			throw new IllegalStateException("Don't know Fault Model for solution with "+numRups+" ruptures");
 	}
 	
-	private static void waitOnDirCreation(File dir, int maxRetries, long sleepMillis) {
+	static void waitOnDirCreation(File dir, int maxRetries, long sleepMillis) {
 		int retry = 0;
 		while (!(dir.exists() || dir.mkdir())) {
 			try {
@@ -561,7 +561,7 @@ public class ETAS_Launcher {
 		return erf;
 	}
 
-	private AbstractERF checkOutERF() {
+	public AbstractERF checkOutERF() {
 		AbstractERF erf = null;
 		synchronized (erfDeque) {
 			if (!erfDeque.isEmpty())
@@ -602,7 +602,7 @@ public class ETAS_Launcher {
 		return erf;
 	}
 	
-	private void checkInERF(AbstractERF erf) {
+	public void checkInERF(AbstractERF erf) {
 		synchronized (erfDeque) {
 			erfDeque.push(erf);
 		}
@@ -821,7 +821,7 @@ public class ETAS_Launcher {
 			
 			if (!success) {
 				Preconditions.checkState(failureThrow != null);
-				debug("Index "+index+" failed 3 times, bailing");
+				debug("Index "+index+" failed "+attempts+" times, bailing");
 				ExceptionUtils.throwAsRuntimeException(failureThrow);
 			}
 			
@@ -1024,8 +1024,11 @@ public class ETAS_Launcher {
 	public static void main(String[] args) throws IOException {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 //			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers.json";
-			String argsStr = "--date-last-debug --threads 6 /tmp/config.json";
+//			String argsStr = "--date-last-debug --threads 6 /tmp/config.json";
 //			String argsStr = "--date-last-debug --threads 6 /tmp/config_noreuse.json";
+			String argsStr = "--threads 1 /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+					+ "2019_07_18-ComCatM7p1_ci38457511_InvertedSurface_ShakeMapSurface"
+					+ "-noSpont-full_td-scale1.14/small/config.json";
 			args = argsStr.split(" ");
 		}
 		System.setProperty("java.awt.headless", "true");

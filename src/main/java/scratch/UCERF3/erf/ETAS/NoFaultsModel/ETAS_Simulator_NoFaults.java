@@ -517,9 +517,11 @@ public class ETAS_Simulator_NoFaults {
 				info_fr.write("\nMagnitude of Scenario: "+(float)scenarioRup.getMag()+"\n");
 				info_fr.write("\nExpected number of primary events for Scenario: "+expNum+"\n");
 				info_fr.write("\nObserved number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
-				System.out.println("\nMagnitude of Scenario: "+(float)scenarioRup.getMag());
-				System.out.println("Expected number of primary events for Scenario: "+expNum);
-				System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+				if (D) {
+					System.out.println("\nMagnitude of Scenario: "+(float)scenarioRup.getMag());
+					System.out.println("Expected number of primary events for Scenario: "+expNum);
+					System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+				}
 
 				if(D && generateDiagnosticsForScenario) {
 					System.out.println("Computing Scenario Diagnostics");
@@ -705,10 +707,11 @@ public class ETAS_Simulator_NoFaults {
 		info_fr.write(numInfo+"\n");
 
 
-		if(scenarioRups !=null && !scenarioRups.isEmpty()) {
+		if(scenarioRups !=null && !scenarioRups.isEmpty() && D) {
 			for (int i=0; i<scenarioRups.size(); i++) {
 				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
 				int inputRupID = scenarioRup.getID();	// TODO already defined above?
+				ArrayList<IncrementalMagFreqDist> obsAshockMFDsForScenario = ETAS_SimAnalysisTools.getAftershockMFDsForRup(simulatedRupsQueue, inputRupID, simulationName);
 				ETAS_SimAnalysisTools.plotRateVsLogTimeForPrimaryAshocksOfRup(simulationName, new File(resultsDir,"logRateDecayForScenarioPrimaryAftershocks.pdf").getAbsolutePath(), simulatedRupsQueue, scenarioRup,
 						etasParams.get_k(), etasParams.get_p(), etasParams.get_c());
 				ETAS_SimAnalysisTools.plotRateVsLogTimeForAllAshocksOfRup(simulationName, new File(resultsDir,"logRateDecayForScenarioAllAftershocks.pdf").getAbsolutePath(), simulatedRupsQueue, scenarioRup,
@@ -717,11 +720,9 @@ public class ETAS_Simulator_NoFaults {
 				ETAS_SimAnalysisTools.plotEpicenterMap(simulationName, new File(resultsDir,"hypoMap.pdf").getAbsolutePath(), obsEqkRuptureList.get(0), simulatedRupsQueue, griddedRegion.getBorder());
 				ETAS_SimAnalysisTools.plotDistDecayDensityOfAshocksForRup("Scenario in "+simulationName, new File(resultsDir,"distDecayDensityForScenario.pdf").getAbsolutePath(), 
 						simulatedRupsQueue, etasParams.get_q(), etasParams.get_d(), scenarioRup);
-				ArrayList<IncrementalMagFreqDist> obsAshockMFDsForScenario = ETAS_SimAnalysisTools.getAftershockMFDsForRup(simulatedRupsQueue, inputRupID, simulationName);
 				if(generateDiagnosticsForScenario == true)
 					obsAshockMFDsForScenario.add((IncrementalMagFreqDist)expectedPrimaryMFDsForScenarioList.get(0));
 				ETAS_SimAnalysisTools.plotMagFreqDistsForRup("AshocksOfScenarioMFD", resultsDir, obsAshockMFDsForScenario);
-				
 				
 				// write stats for first rup
 				

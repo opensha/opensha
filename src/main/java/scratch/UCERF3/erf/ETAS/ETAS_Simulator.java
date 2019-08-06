@@ -594,10 +594,12 @@ public class ETAS_Simulator {
 				info_fr.write("\nMagnitude of Scenario: "+(float)scenarioRup.getMag()+"\n");
 				info_fr.write("\nExpected number of primary events for Scenario: "+expNum+"\n");
 				info_fr.write("\nObserved number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
-				System.out.println("\nMagnitude of Scenario: "+(float)scenarioRup.getMag());
-				System.out.println("Expected number of primary events for Scenario: "+expNum);
-				System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
-
+				if (D) {
+					System.out.println("\nMagnitude of Scenario: "+(float)scenarioRup.getMag());
+					System.out.println("Expected number of primary events for Scenario: "+expNum);
+					System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+				}
+				
 				if(D && generateDiagnosticsForScenario) {
 					System.out.println("Computing Scenario Diagnostics");
 					long timeMillis =System.currentTimeMillis();

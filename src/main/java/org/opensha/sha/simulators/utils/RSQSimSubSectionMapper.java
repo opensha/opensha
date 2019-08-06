@@ -657,7 +657,9 @@ public class RSQSimSubSectionMapper {
 		for (int i=0; i<elems.size(); i++) {
 			SimulatorElement elem = elems.get(i);
 			Preconditions.checkNotNull(elem, "Element is null??");
-			double slip = slips[i];
+			double slip = slips.length > 0 ? slips[i] : Double.MIN_VALUE;
+//			Preconditions.checkState(slip >= 0, "Bad slip=%s on element %s, event %s",
+//					slip, elem.getID(), event.getID());
 			FaultSectionPrefData sect = elemToSectsMap.get(elem);
 			Preconditions.checkNotNull(sect, "No section mapping for element %s with section named: %s", elem.getID(), elem.getSectionName());
 			SubSectionMapping mapping = sectMap.get(sect);
@@ -752,7 +754,7 @@ public class RSQSimSubSectionMapper {
 		}
 		
 		protected void addSlip(SimulatorElement elem, double slip) {
-			if (slip == 0d)
+			if (slip <= 0d)
 				return;
 			double area = elem.getArea();
 			Preconditions.checkState(area > 0, "Zero area!");
