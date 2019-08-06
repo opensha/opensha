@@ -188,16 +188,13 @@ public class MarkdownUtils {
 		File mdFile = new File(outputDir, "README.md");
 		// write markdown
 		FileWriter fw = new FileWriter(mdFile);
-		StringBuilder str = new StringBuilder();
-		for (String line : lines) {
+		for (String line : lines)
 			fw.write(line+"\n");
-			str.append(line).append("\n");
-		}
 		fw.close();
 
 		// write html
 		File htmlFile = new File(outputDir, "index.html");
-		writeHTML(str.toString(), htmlFile);
+		writeHTML(lines, htmlFile);
 	}
 	
 	/**
@@ -301,6 +298,15 @@ public class MarkdownUtils {
 	public static String getAnchorName(String heading) {
 		while (heading.startsWith("#"))
 			heading = heading.substring(1);
+		while (heading.contains("&") && heading.contains(";")) {
+			int indexAnd = heading.indexOf("&");
+			int indexSemi = heading.indexOf(";");
+			if (indexSemi > indexAnd) {
+				// remove special symbol
+				String symbol = heading.substring(indexAnd, indexSemi+1);
+				heading = heading.replace(symbol, "");
+			}
+		}
 		heading = heading.trim();
 		return ALNUM.retainFrom(heading.toLowerCase().replaceAll(" ", "-")).toLowerCase();
 	}
@@ -313,8 +319,13 @@ public class MarkdownUtils {
 	 */
 	public static void writeHTML(List<String> lines, File outputFile) throws IOException {
 		StringBuilder str = new StringBuilder();
-		for (String line : lines)
+		for (String line : lines) {
+			if (line.contains("[") && line.contains("](") &&
+					(line.contains("README.md)") || line.contains("README.md#")))
+				// replace links to README.md with index.html
+				line = line.replace("README.md", "index.html");
 			str.append(line).append("\n");
+		}
 		writeHTML(str.toString(), outputFile);
 	}
 	
