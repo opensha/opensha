@@ -146,7 +146,7 @@ extends HttpServlet {
 			String modPlotDirName = plotDirName;
 			//checking if the directory already exists then add
 			while (f.exists()) {
-				modPlotDirName = plotDirName + fileCounter;
+				modPlotDirName = plotDirName +"_"+ fileCounter;
 				f = new File(GMT_DATA_DIR, modPlotDirName);
 				++fileCounter;
 			}
