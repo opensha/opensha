@@ -436,8 +436,14 @@ public class GraphPanel extends JSplitPane {
 				//xAxis.setAutoRangeMinimumSize(.1);
 
 				/* to set the range of the axis on the input from the user if the range combo box is selected*/
-				if (xRanges != null && xRanges.size() > i && xRanges.get(i) != null)
-					xAxis.setRange(xRanges.get(i));
+				if (xRanges != null && xRanges.size() > i && xRanges.get(i) != null) {
+					Range xRange = xRanges.get(i);
+					xAxis.setRange(xRange);
+					if (xLog)
+						Preconditions.checkState(xRange.getLowerBound() > 0 && Double.isFinite(xRange.getUpperBound()),
+								"X is log spacing, but x range contains 0 or is infinite: [%s %s]",
+								xRange.getLowerBound(), xRange.getUpperBound());
+				}
 
 			}catch(Exception e){
 				//e.printStackTrace();
@@ -477,8 +483,14 @@ public class GraphPanel extends JSplitPane {
 					yAxis.setInverted(true);
 
 				/* to set the range of the axis on the input from the user if the range combo box is selected*/
-				if (yRanges != null && yRanges.size() > i && yRanges.get(i) != null)
-					yAxis.setRange(yRanges.get(i));
+				if (yRanges != null && yRanges.size() > i && yRanges.get(i) != null) {
+					Range yRange = yRanges.get(i);
+					yAxis.setRange(yRange);
+					if (yLog)
+						Preconditions.checkState(yRange.getLowerBound() > 0 && Double.isFinite(yRange.getUpperBound()),
+								"Y is log spacing, but y range contains 0 or is infinite: [%s %s]",
+								yRange.getLowerBound(), yRange.getUpperBound());
+				}
 
 			}catch(Exception e){
 				//e.printStackTrace();
