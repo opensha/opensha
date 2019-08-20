@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.axis.NumberTickUnit;
@@ -380,6 +381,11 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			threshold = 7d; // 1wk
 		else
 			threshold = 30d; // 1mo
+		
+		// randomly wait up to 10% longer than the threshold in order to get plots to spread
+		// out a bit and not all replot at the same time
+		threshold += new Random(prevResult.time).nextDouble()*threshold*0.1;
+		
 		boolean comcatUpdate = daysSinceUpdate > threshold;
 		String updateStr;
 		if (comcatUpdate) {
