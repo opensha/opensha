@@ -151,6 +151,19 @@ class ETAS_ConfigBuilderUtils {
 		return ops;
 	}
 	
+	protected static List<String> getNonDefaultOptionsStrings(CommandLine cmd) {
+		List<String> ops = new ArrayList<>();
+		boolean griddedOnly = cmd.hasOption("gridded-only");
+		U3ETAS_ProbabilityModelOptions probModel = cmd.hasOption("prob-model") ?
+				U3ETAS_ProbabilityModelOptions.valueOf(cmd.getOptionValue("prob-model")) : PROB_MODEL_DEFAULT;
+		if (griddedOnly)
+			ops.add("No Faults");
+		if (probModel != PROB_MODEL_DEFAULT && !griddedOnly)
+			ops.add(probModel.toString());
+		
+		return ops;
+	}
+	
 	public static ETAS_Config buildBasicConfig(CommandLine cmd, String simulationName, List<TriggerRupture> triggerRuptures,
 			String configCommand) {
 		int numSimulations = Integer.parseInt(cmd.getOptionValue("num-simulations"));

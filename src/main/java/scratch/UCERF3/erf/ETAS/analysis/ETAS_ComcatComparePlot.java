@@ -5,6 +5,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -23,6 +24,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
@@ -337,7 +339,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return true;
 	}
 	
-	private static final int VERSION = 2;
+	private static final int VERSION = 3;
 
 	@Override
 	public int getVersion() {
@@ -413,14 +415,14 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			double mag = rup.getMag();
 			int mfdIndex = totalCountHist.getClosestXIndex(mag);
 			totalCountHist.add(mfdIndex, 1d);
+			long ot = rup.getOriginTime();
+			if (ot > maxOTs[maxOTs.length-1])
+				continue;
 			Location hypo = rup.getHypocenterLocation();
 			if (!quickContains(hypo))
 				continue;
 			catMFD.add(mfdIndex, 1d);
 			if (mag < magBins[0])
-				continue;
-			long ot = rup.getOriginTime();
-			if (ot > maxOTs[maxOTs.length-1])
 				continue;
 			if (mag >= comcatMc) {
 				double relTime = (rup.getOriginTime() - startTime);
@@ -468,6 +470,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		overallMc = Math.max(comcatMc, simMc);
 		writeTimeFuncPlot(outputDir, "comcat_compare_cumulative_num");
 		writeMagNumPlot(outputDir, "comcat_compare_mag_num");
+		writeMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile");
 		
 		calcMapData();
 		List<Runnable> mapRunnables = new ArrayList<>();
@@ -574,6 +577,100 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		gp.setUserBounds(simMc, comcatMND.getMaxX(), minY, maxY);
 
 		gp.drawGraphPanel(spec, false, true);
+		gp.getChartPanel().setSize(800, 600);
+		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
+		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
+//		gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
+	}
+	
+	private void writeMagPercentileCumulativeNumPlot(File outputDir, String prefix)
+			throws IOException {
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		List<EvenlyDiscretizedFunc> cumulativeMNDs = new ArrayList<>();
+		for (IncrementalMagFreqDist incr : catalogRegionMFDs)
+			cumulativeMNDs.add(incr.getCumRateDistWithOffset());
+		
+		EvenlyDiscretizedFunc magFunc = cumulativeMNDs.get(0);
+		
+		ArbitrarilyDiscretizedFunc upper95 = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc lower95 = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc upper68 = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc lower68 = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc middle = new ArbitrarilyDiscretizedFunc();
+		
+		EvenlyDiscretizedFunc dataFunc = new EvenlyDiscretizedFunc(magFunc.getMinX(),
+				magFunc.getMaxX(), magFunc.size());
+		
+		EvenlyDiscretizedFunc comcatCumulativeMND = comcatMND.getCumRateDistWithOffset();
+		
+		for (int i=0; i<magFunc.size(); i++) {
+			double mag = magFunc.getX(i);
+			upper95.set(mag, 97.5);
+			lower95.set(mag, 2.5);
+			upper68.set(mag, 84);
+			lower68.set(mag, 16);
+			middle.set(mag, 50);
+			
+			double[] counts = new double[cumulativeMNDs.size()];
+			for (int j=0; j<counts.length; j++)
+				counts[j] = cumulativeMNDs.get(j).getY(i);
+			Arrays.sort(counts);
+			Preconditions.checkState(mag == comcatCumulativeMND.getX(i));
+			double dataVal = comcatCumulativeMND.getY(i);
+			int index = Arrays.binarySearch(counts, dataVal);
+			if (index < 0) {
+				// convert to insertion index
+				index = -(index + 1);
+			} else {
+				// it's an exact match, place it at the min index as per definition of percentile
+				// (the percentage of values that lie below)
+				while (index > 0 && (float)counts[index-1] == (float)dataVal)
+					index--;
+			}
+			double numBelow = index;
+			double percentile = 100d*numBelow/(double)counts.length;
+//			System.out.println("M="+(float)mag+"\tdataVal="+(float)dataVal+"\tindex="+index
+//					+"\tcounts[index]="+(float)counts[index]);
+			dataFunc.set(i, percentile);
+		}
+
+		UncertainArbDiscDataset bounds95 = new UncertainArbDiscDataset(middle, lower95, upper95);
+		bounds95.setName("95% Confidence");
+		funcs.add(bounds95);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 20)));
+		
+		UncertainArbDiscDataset bounds68 = new UncertainArbDiscDataset(middle, lower68, upper68);
+		bounds68.setName("68% Confidence");
+		funcs.add(bounds68);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 40)));
+		
+		double minY = 0d;
+		double maxY = 100d;
+		
+		if ((float)comcatMc > (float)simMc) {
+			XY_DataSet mcFunc = new DefaultXY_DataSet();
+			mcFunc.set(comcatMc, minY);
+			mcFunc.set(comcatMc, maxY);
+			mcFunc.setName("Mc");
+			funcs.add(mcFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Color.RED));
+		}
+		
+		dataFunc.setName("ComCat Data Num≥M");
+		funcs.add(dataFunc);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, "Cumulative Count Data Percentile Comparison",
+				"Magnitude", "Simulation Percentile");
+		spec.setLegendVisible(true);
+		
+		HeadlessGraphPanel gp = buildGraphPanel();
+		gp.setLegendFontSize(18);
+		gp.setUserBounds(simMc, comcatMND.getMaxX(), minY, maxY);
+
+		gp.drawGraphPanel(spec, false, false);
 		gp.getChartPanel().setSize(800, 600);
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
@@ -914,6 +1011,11 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		lines.add("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num.png)");
 		lines.add("");
 		
+		lines.add(topLevelHeading+"# ComCat Cumulative Number Simulation Percentiles");
+		lines.add(topLink); lines.add("");
+		lines.add("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num_percentile.png)");
+		lines.add("");
+		
 		lines.add(topLevelHeading+"# ComCat Mean Spatial Distribution");
 		lines.add(topLink); lines.add("");
 		lines.addAll(mapPlotTable(relativePathToOutputDir, mapMeanPrefixes).build());
@@ -976,8 +1078,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			ETAS_Config config = ETAS_Config.readJSON(configFile);
 			ETAS_Launcher launcher = new ETAS_Launcher(config, false);
 			
-//			int maxNumCatalogs = 0;
-			int maxNumCatalogs = 30000;
+			int maxNumCatalogs = 0;
+//			int maxNumCatalogs = 30000;
 			
 			ETAS_ComcatComparePlot plot = new ETAS_ComcatComparePlot(config, launcher);
 			File outputDir = new File(simDir, "plots");

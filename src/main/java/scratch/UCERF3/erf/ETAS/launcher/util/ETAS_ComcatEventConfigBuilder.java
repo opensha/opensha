@@ -62,9 +62,13 @@ public class ETAS_ComcatEventConfigBuilder {
 		idOption.setRequired(true);
 		ops.addOption(idOption);
 
-		Option nameOption = new Option("n", "name", true, "Event name");
+		Option nameOption = new Option("n", "name", true, "Simulation name");
 		nameOption.setRequired(false);
 		ops.addOption(nameOption);
+
+		Option nameAddOption = new Option("na", "name-add", true, "Custom addendum to automatically generated name");
+		nameAddOption.setRequired(false);
+		ops.addOption(nameAddOption);
 		
 		/*
 		 * Fore/aftershock time and region options  
@@ -199,9 +203,10 @@ public class ETAS_ComcatEventConfigBuilder {
 			argz += " --event-id ci38457511";
 			argz += " --num-simulations 100000";
 			argz += " --days-before 7";
-//			argz += " --days-after 28";
+			argz += " --days-after 14";
 //			argz += " --end-now";
 //			argz += " --gridded-only";
+//			argz += " --prob-model NO_ERT";
 			
 			// took these from first ComCat finite fault
 //			argz += " --finite-surf-dip 85";
@@ -218,7 +223,7 @@ public class ETAS_ComcatEventConfigBuilder {
 			argz += " --finite-surf-shakemap";
 			argz += " --finite-surf-shakemap-min-mag 5";
 			
-			argz += " --random-seed 123456789";
+//			argz += " --random-seed 123456789";
 			
 			// hpc options
 			argz += " --hpc-site USC_HPC";
@@ -554,6 +559,7 @@ public class ETAS_ComcatEventConfigBuilder {
 			
 			String name;
 			if (cmd.hasOption("name")) {
+				Preconditions.checkArgument(!cmd.hasOption("name-add"), "Can't supply both --name and --name-add");
 				name = cmd.getOptionValue("name");
 			} else {
 				name = "ComCat M"+(float)rup.getMag()+" ("+eventID+")";
@@ -571,8 +577,15 @@ public class ETAS_ComcatEventConfigBuilder {
 					if (numShakeMapSurfs > 1)
 						name += "s";
 				}
-				if (cmd.hasOption("gridded-only"))
-					name += ", No Faults";
+				List<String> nonDefaultOptions = ETAS_ConfigBuilderUtils.getNonDefaultOptionsStrings(cmd);
+				if (nonDefaultOptions != null && !nonDefaultOptions.isEmpty())
+					name += ", "+Joiner.on(", ").join(nonDefaultOptions);
+				if (cmd.hasOption("name-add")) {
+					String nameAdd = cmd.getOptionValue("name-add");
+					if (!nameAdd.startsWith(","))
+						nameAdd = ", "+nameAdd;
+					name += nameAdd;
+				}
 			}
 			
 			String configCommand = "u3etas_comcat_event_config_builder.sh "+Joiner.on(" ").join(args);
