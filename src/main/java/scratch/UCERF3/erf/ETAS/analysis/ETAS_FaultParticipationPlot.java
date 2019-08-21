@@ -136,8 +136,6 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				(long)(durations[i] * ProbabilityModelsCalc.MILLISEC_PER_YEAR + 0.5);
 		
 		magXIndexes = new EvenlyDiscretizedFunc(mfdMinMag, mfdNumMag, mfdDeltaMag);
-		tdCalcThread = new TD_CalcThread();
-		tdCalcThread.start();
 	}
 
 	@Override
@@ -179,6 +177,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			
 			hasMags = new boolean[plotMagBins.length];
 			System.out.println("DONE Initializing section stats/mappings");
+			tdCalcThread = new TD_CalcThread();
+			tdCalcThread.start();
 		}
 		
 		HashSet<FaultStats> statsToProcess = new HashSet<>();

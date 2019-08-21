@@ -407,6 +407,8 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		
 		ETAS_EventMapPlotUtils.writeDepthPlot(funcs, chars, "Trigger Rupture Depth Profile", outputDir, prefix);
 	}
+	
+//	static void makeMagTimePlot
 
 	@Override
 	public List<String> generateMarkdown(String relativePathToOutputDir, String topLevelHeading, String topLink)

@@ -78,7 +78,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private double modalMag;
 	private double comcatMc;
 	private IncrementalMagFreqDist comcatMND;
-	private EvenlyDiscretizedFunc comcatCumulativeTimeFunc;
+	private EvenlyDiscretizedFunc timeDiscretization;
 	private double simMc;
 	private double overallMc;
 	
@@ -96,7 +96,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private double[][][] catalogMeans;
 //	private double[][][] catalogMedians;
 	private List<IncrementalMagFreqDist> catalogRegionMFDs;
-	private List<EvenlyDiscretizedFunc> catalogTimeFuncs;
+	private double[] timeFuncMcs;
+	private List<EvenlyDiscretizedFunc[]> catalogTimeFuncs;
 	private EvenlyDiscretizedFunc[] catalogDepthDistributions;
 	private HistogramFunction totalCountHist;
 	
@@ -178,9 +179,9 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		System.out.println("Mc="+(float)comcatMc);
 		timeDays = curDuration <= 1d;
 		if (timeDays)
-			comcatCumulativeTimeFunc = new EvenlyDiscretizedFunc(0d, durations[durations.length-1]*365.25, 100);
+			timeDiscretization = new EvenlyDiscretizedFunc(0d, durations[durations.length-1]*365.25, 100);
 		else
-			comcatCumulativeTimeFunc = new EvenlyDiscretizedFunc(0d, durations[durations.length-1], 100);
+			timeDiscretization = new EvenlyDiscretizedFunc(0d, durations[durations.length-1], 100);
 		double maxTriggerMag = 0d;
 		for (ETAS_EqkRupture rup : launcher.getTriggerRuptures())
 			maxTriggerMag = Math.max(maxTriggerMag, rup.getMag());
@@ -199,6 +200,12 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			mags.add(mag);
 		System.out.println("Magnitudes for ComCat comparison: "+Joiner.on(", ").join(mags));
 		magBins = Doubles.toArray(mags);
+		// now mags for cumultative time func comparison
+		List<Double> timeMags = new ArrayList<>(mags);
+		for (int m=timeMags.size(); --m>=1;)
+			if (timeMags.get(m).floatValue() > (float)maxEventMag)
+				timeMags.remove(m);
+		timeFuncMcs = Doubles.toArray(timeMags);
 		
 		catalogDurMagGridCounts = new ArrayList<>();
 		catalogRegionMFDs = new ArrayList<>();
@@ -340,7 +347,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return true;
 	}
 	
-	private static final int VERSION = 3;
+	private static final int VERSION = 5;
 
 	@Override
 	public int getVersion() {
@@ -415,8 +422,10 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		short[][][] magGridCounts = new short[durations.length][magBins.length][];
 		IncrementalMagFreqDist catMFD = new IncrementalMagFreqDist(
 				totalCountHist.getMinX(), totalCountHist.getMaxX(), totalCountHist.size());
-		EvenlyDiscretizedFunc timeFunc = new EvenlyDiscretizedFunc(comcatCumulativeTimeFunc.getMinX(),
-				comcatCumulativeTimeFunc.getMaxX(), comcatCumulativeTimeFunc.size());
+		EvenlyDiscretizedFunc[] timeFuncs = new EvenlyDiscretizedFunc[timeFuncMcs.length];
+		for (int i=0; i<timeFuncs.length; i++)
+			timeFuncs[i] = new EvenlyDiscretizedFunc(timeDiscretization.getMinX(),
+					timeDiscretization.getMaxX(), timeDiscretization.size());
 		for (ETAS_EqkRupture rup : completeCatalog) {
 			double mag = rup.getMag();
 			int mfdIndex = totalCountHist.getClosestXIndex(mag);
@@ -430,15 +439,19 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			catMFD.add(mfdIndex, 1d);
 			if (mag < magBins[0])
 				continue;
-			if (mag >= comcatMc) {
+			if (mag >= timeFuncMcs[0]) {
 				double relTime = (rup.getOriginTime() - startTime);
 				if (timeDays)
 					relTime /= ProbabilityModelsCalc.MILLISEC_PER_DAY;
 				else
 					relTime /= ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-				int timeIndex = timeFunc.getClosestXIndex(relTime);
-				for (int i=timeIndex; i<timeFunc.size(); i++)
-					timeFunc.add(i, 1d);
+				int timeIndex = timeFuncs[0].getClosestXIndex(relTime);
+				for (int m=0; m<timeFuncMcs.length; m++) {
+					if (mag >= timeFuncMcs[m]) {
+						for (int i=timeIndex; i<timeFuncs[m].size(); i++)
+							timeFuncs[m].add(i, 1d);
+					}
+				}
 			}
 			int depthIndex = catalogDepthDistributions[0].getClosestXIndex(hypo.getDepth());
 			for (int i=0; i<magBins.length; i++)
@@ -464,7 +477,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		}
 		catalogDurMagGridCounts.add(magGridCounts);
 		catalogRegionMFDs.add(catMFD);
-		catalogTimeFuncs.add(timeFunc);
+		catalogTimeFuncs.add(timeFuncs);
 	}
 
 	@Override
@@ -474,7 +487,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		simMc = totalCountHist.getX(numToTrim)-0.5*totalCountHist.getDelta();
 		overallMc = Math.max(comcatMc, simMc);
-		writeTimeFuncPlot(outputDir, "comcat_compare_cumulative_num");
+		for (int m=0; m<timeFuncMcs.length; m++)
+			writeTimeFuncPlot(outputDir, "comcat_compare_cumulative_num_m"+optionalDigitDF.format(timeFuncMcs[m]), m);
 		writeMagNumPlot(outputDir, "comcat_compare_mag_num");
 		writeMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile");
 		
@@ -496,14 +510,29 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return new FractileCurveCalculator(functionList, relativeWts);
 	}
 	
-	private void writeTimeFuncPlot(File outputDir, String prefix) throws IOException {
+	private FractileCurveCalculator buildFractileCalc(List<? extends EvenlyDiscretizedFunc[]> funcs, int index) {
+		XY_DataSetList functionList = new XY_DataSetList();
+		List<Double> relativeWts = new ArrayList<>();
+		for (EvenlyDiscretizedFunc[] func : funcs) {
+			functionList.add(func[index]);
+			relativeWts.add(1d);
+		}
+		return new FractileCurveCalculator(functionList, relativeWts);
+	}
+	
+	private void writeTimeFuncPlot(File outputDir, String prefix, int magIndex) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
-		FractileCurveCalculator timeFractals = buildFractileCalc(catalogTimeFuncs);
+		FractileCurveCalculator timeFractals = buildFractileCalc(catalogTimeFuncs, magIndex);
+		
+		double mc = timeFuncMcs[magIndex];
+		
+		EvenlyDiscretizedFunc comcatCumulativeTimeFunc = new EvenlyDiscretizedFunc(timeDiscretization.getMinX(),
+				timeDiscretization.getMaxX(), timeDiscretization.size());
 		
 		for (ObsEqkRupture rup : comcatEvents) {
-			if (rup.getMag() < overallMc)
+			if (rup.getMag() < mc)
 				continue;
 			double relTime = (rup.getOriginTime() - startTime);
 			if (timeDays)
@@ -518,8 +547,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		buildSimFractalFuncs(timeFractals, funcs, chars, comcatCumulativeTimeFunc, false);
 		
 		String xAxisLabel = timeDays ? "Time (days)" : "Time (years)";
-		PlotSpec spec = new PlotSpec(funcs, chars, "Cumulative Number Comparison, Mc="+optionalDigitDF.format(overallMc),
-				xAxisLabel, "Cumulative Num Earthquakes M≥"+optionalDigitDF.format(overallMc));
+		PlotSpec spec = new PlotSpec(funcs, chars, "Cumulative Number Comparison, Mc="+optionalDigitDF.format(mc),
+				xAxisLabel, "Cumulative Num Earthquakes M≥"+optionalDigitDF.format(mc));
 		spec.setLegendVisible(true);
 		
 		double maxY = Math.max(2*comcatCumulativeTimeFunc.getMaxY(),
@@ -669,7 +698,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, "Cumulative Count Data Percentile Comparison",
-				"Magnitude", "Simulation Percentile");
+				"Minimum Magnitude", "Simulation Percentile");
 		spec.setLegendVisible(true);
 		
 		HeadlessGraphPanel gp = buildGraphPanel();
@@ -1007,14 +1036,23 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			+", "+getTimeShortLabel(curDuration)+" after the simulation start time");
 		lines.add("");
 		
-		lines.add(topLevelHeading+"# ComCat Magnitude-Number Distribution");
+		lines.add(topLevelHeading+"# ComCat Magnitude-Number Distributions");
 		lines.add(topLink); lines.add("");
 		lines.add("![MND]("+relativePathToOutputDir+"/comcat_compare_mag_num.png)");
 		lines.add("");
 		
 		lines.add(topLevelHeading+"# ComCat Cumulative Number Vs Time");
 		lines.add(topLink); lines.add("");
-		lines.add("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num.png)");
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		for (double mag : timeFuncMcs)
+			table.addColumn("M&ge;"+optionalDigitDF.format(mag));
+		table.finalizeLine();
+		table.initNewLine();
+		for (int m=0; m<timeFuncMcs.length; m++)
+			table.addColumn("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num_m"+optionalDigitDF.format(timeFuncMcs[m])+".png)");
+		table.finalizeLine();
+		lines.addAll(table.build());
 		lines.add("");
 		
 		lines.add(topLevelHeading+"# ComCat Cumulative Number Simulation Percentiles");
@@ -1034,7 +1072,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		
 		lines.add(topLevelHeading+"# ComCat Depth Distribution");
 		lines.add(topLink); lines.add("");
-		TableBuilder table = MarkdownUtils.tableBuilder();
+		table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
 		for (double mag : magBins)
 			if (mag >= overallMc)

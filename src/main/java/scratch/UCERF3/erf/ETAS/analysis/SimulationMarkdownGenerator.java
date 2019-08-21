@@ -449,11 +449,11 @@ public class SimulationMarkdownGenerator {
 				}
 			}
 		}, maxCatalogs);
-		DecimalFormat timeDF = new DecimalFormat("0.00");
+		
 		totalProcessWatch.stop();
 		
 		double totProcessSeconds = seconds(totalProcessWatch.elapsed(TimeUnit.MILLISECONDS));
-		System.out.println("Processed "+numProcessed+" catalogs in "+timeDF.format(totProcessSeconds)+" s");
+		System.out.println("Processed "+numProcessed+" catalogs in "+timeStr(totProcessSeconds));
 		
 		List<String> lines = new ArrayList<>();
 		
@@ -519,25 +519,25 @@ public class SimulationMarkdownGenerator {
 		exec.shutdown();
 		double totFinalizeTime = seconds(finalizeWatch.elapsed(TimeUnit.MILLISECONDS));
 		
-		System.out.println("Total catalog processing time: "+timeDF.format(totProcessSeconds)+" s");
+		System.out.println("Total catalog processing time: "+timeStr(totProcessSeconds));
 		DecimalFormat percentDF = new DecimalFormat("0.00 %");
 		double overhead = totProcessSeconds - sumProcessTimes;
-		System.out.println("\tI/O overhead: "+timeDF.format(overhead)+" s ("+percentDF.format(overhead/totProcessSeconds)+")");
+		System.out.println("\tI/O overhead: "+timeStr(overhead)+" ("+percentDF.format(overhead/totProcessSeconds)+")");
 		for (ETAS_AbstractPlot plot : plots) {
 			if (prevResults.containsKey(plot))
 				continue;
 			double plotSecs = seconds(plot.getProcessTimeMS());
 			System.out.println("\t"+ClassUtils.getClassNameWithoutPackage(plot.getClass())+" "
-					+timeDF.format(plotSecs)+" s ("+percentDF.format(plotSecs/totProcessSeconds)+")");
+					+timeStr(plotSecs)+" ("+percentDF.format(plotSecs/totProcessSeconds)+")");
 		}
 		System.out.println();
-		System.out.println("Total finalize time: "+timeDF.format(totFinalizeTime)+" s");
+		System.out.println("Total finalize time: "+timeStr(totFinalizeTime));
 		for (int i=0; i<plots.size(); i++) {
 			if (prevResults.containsKey(plots.get(i)))
 				continue;
 			double finalizeSecs = finalizeTimes.get(i);
 			System.out.println("\t"+ClassUtils.getClassNameWithoutPackage(plots.get(i).getClass())+" "
-					+timeDF.format(finalizeSecs)+" s ("+percentDF.format(finalizeSecs/totFinalizeTime)+")");
+					+timeStr(finalizeSecs)+" ("+percentDF.format(finalizeSecs/totFinalizeTime)+")");
 		}
 		
 		lines.add("");
@@ -570,6 +570,19 @@ public class SimulationMarkdownGenerator {
 		writePlotMetadata(meta, metadataFile);
 		
 		return meta;
+	}
+	
+	private static DecimalFormat timeDF = new DecimalFormat("0.00");
+	
+	private static String timeStr(long millis) {
+		return timeStr((double)millis/1000d);
+	}
+	
+	private static String timeStr(double seconds) {
+		if (seconds < 60)
+			return timeDF.format(seconds)+" s";
+		double mins = seconds/60d;
+		return timeDF.format(mins)+" m";
 	}
 	
 	public static List<String> getCatalogSummarytable(ETAS_Config config, int numProcessed, List<ETAS_EqkRupture> triggerRups, List<ETAS_EqkRupture> histRups) {
