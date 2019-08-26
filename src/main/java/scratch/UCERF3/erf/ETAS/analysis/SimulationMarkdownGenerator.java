@@ -601,6 +601,8 @@ public class SimulationMarkdownGenerator {
 			addTriggerLines(builder, "Historical Ruptures", histRups);
 		else
 			addTriggerLines(builder, "Trigger Ruptures", histRups);
+		if (config.getConfigCommand() != null && !config.getConfigCommand().isEmpty())
+			builder.addLine("Config Generated With", config.getConfigCommand());
 		return builder.build();
 	}
 	

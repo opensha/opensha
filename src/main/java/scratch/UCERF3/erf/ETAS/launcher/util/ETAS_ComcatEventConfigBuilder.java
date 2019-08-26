@@ -199,25 +199,28 @@ public class ETAS_ComcatEventConfigBuilder {
 	public static void main(String[] args) {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 			String argz = "";
-			
-			argz += " --event-id ci38457511";
+
+//			argz += " --event-id ci38443183"; // M6.4
+			argz += " --event-id ci38457511"; // M7.1
 			argz += " --num-simulations 100000";
 			argz += " --days-before 7";
-			argz += " --days-after 14";
+			argz += " --days-after 49";
 //			argz += " --end-now";
 //			argz += " --gridded-only";
 //			argz += " --prob-model NO_ERT";
+//			argz += " --include-spontaneous";
 			
 			// took these from first ComCat finite fault
 //			argz += " --finite-surf-dip 85";
 //			argz += " --finite-surf-strike 139";
-//			// ajusted these to match https://topex.ucsd.edu/SV_7.1/
+//			// adjusted these to match https://topex.ucsd.edu/SV_7.1/
 //			argz += " --finite-surf-length-along 29";
 //			argz += " --finite-surf-length-before 22";
 //			argz += " --finite-surf-upper-depth 0";
 //			argz += " --finite-surf-lower-depth 12";
 
 //			argz += " --finite-surf-inversion";
+//			argz += " --finite-surf-inversion-min-slip 0.5";
 //			argz += " --finite-surf-inversion-min-mag 6";
 
 			argz += " --finite-surf-shakemap";
@@ -229,7 +232,8 @@ public class ETAS_ComcatEventConfigBuilder {
 			argz += " --hpc-site USC_HPC";
 			argz += " --nodes 36";
 			argz += " --hours 24";
-			argz += " --queue scec_hiprio";
+//			argz += " --queue scec_hiprio";
+			argz += " --queue scec";
 			
 			args = argz.trim().split(" ");
 		}
@@ -571,10 +575,17 @@ public class ETAS_ComcatEventConfigBuilder {
 					name += ", Inverted Surface";
 					if (numInvSurfs > 1)
 						name += "s";
+					if (invSurfMinSlip > 0)
+						name += " (minSlip="+(float)invSurfMinSlip+")";
 				}
 				if (numShakeMapSurfs > 0) {
 					name += ", ShakeMap Surface";
 					if (numShakeMapSurfs > 1)
+						name += "s";
+				}
+				if (sfd == null && numInvSurfs == 0 && numShakeMapSurfs == 0) {
+					name += ", Point Source";
+					if (triggerRuptures.size() > 1)
 						name += "s";
 				}
 				List<String> nonDefaultOptions = ETAS_ConfigBuilderUtils.getNonDefaultOptionsStrings(cmd);

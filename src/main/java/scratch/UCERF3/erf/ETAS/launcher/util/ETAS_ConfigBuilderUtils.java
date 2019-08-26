@@ -100,7 +100,7 @@ class ETAS_ConfigBuilderUtils {
 		spontOption.setRequired(false);
 		ops.addOption(spontOption);
 		
-		Option histCatalogOption = new Option("hc", "historical-catalog", false, "If supplied, includeSpontaneous will be set to true");
+		Option histCatalogOption = new Option("hc", "historical-catalog", false, "If supplied, historical catalog will be included");
 		histCatalogOption.setRequired(false);
 		ops.addOption(histCatalogOption);
 		
@@ -156,10 +156,13 @@ class ETAS_ConfigBuilderUtils {
 		boolean griddedOnly = cmd.hasOption("gridded-only");
 		U3ETAS_ProbabilityModelOptions probModel = cmd.hasOption("prob-model") ?
 				U3ETAS_ProbabilityModelOptions.valueOf(cmd.getOptionValue("prob-model")) : PROB_MODEL_DEFAULT;
+				
 		if (griddedOnly)
 			ops.add("No Faults");
 		if (probModel != PROB_MODEL_DEFAULT && !griddedOnly)
 			ops.add(probModel.toString());
+		if (cmd.hasOption("include-spontaneous"))
+			ops.add("Spontaneous");
 		
 		return ops;
 	}
