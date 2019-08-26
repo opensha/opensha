@@ -999,8 +999,8 @@ public class ETAS_Launcher {
 			// only include descendants of the trigger ruptures
 			maxParentID = numTriggerRuptures-1;
 		int[] parentIDs = new int[maxParentID+1];
-		for (int i=0; i<maxParentID; i++)
-			parentIDs[i] = 0;
+		for (int i=0; i<=maxParentID; i++)
+			parentIDs[i] = i;
 		return ETAS_SimAnalysisTools.getChildrenFromCatalog(catalog, parentIDs);
 	}
 	
