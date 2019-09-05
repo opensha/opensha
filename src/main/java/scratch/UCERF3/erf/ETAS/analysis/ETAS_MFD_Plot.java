@@ -13,6 +13,7 @@ import java.util.Map;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.opensha.commons.calc.FractileCurveCalculator;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.AbstractXY_DataSet;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -107,7 +108,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 
 	@Override
 	public int getVersion() {
-		return 1;
+		return 2;
 	}
 	
 	private MFD_Stats[] buildStats() {
@@ -361,8 +362,8 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	
 	private void plot(File outputDir, String prefix, String title, MFD_Stats stats, MFD_Stats primaryStats, MFD_Stats supraStats,
 			int numToTrim, FaultSystemSolution fss, double duration) throws IOException {
-		stats.calcStats();
-		supraStats.calcStats();
+		stats.calcStats(annualize, getConfig());
+		supraStats.calcStats(annualize, getConfig());
 		
 		EvenlyDiscretizedFunc meanFunc = stats.getMeanFunc(numToTrim);
 		EvenlyDiscretizedFunc medianFunc = stats.getMedianFunc(numToTrim);
@@ -433,7 +434,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		}
 		
 		if (primaryStats != null) {
-			primaryStats.calcStats();
+			primaryStats.calcStats(annualize, getConfig());
 			EvenlyDiscretizedFunc primaryFunc = primaryStats.getMeanFunc(numToTrim);
 			primaryFunc.setName("Primary");
 			
@@ -469,9 +470,102 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
 		gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
+		
+		// write CSV
+		CSVFile<String> csv = new CSVFile<>(true);
+		
+		List<String> header = new ArrayList<>();
+		header.add("Mag");
+		header.add("Mean");
+		for (double fractile : fractiles)
+			header.add(optionalDigitDF.format(fractile*100d)+" %ile");
+		header.add("Median");
+		header.add("Mode");
+		if (probFunc != null) {
+			header.add(getTimeShortLabel(duration)+" Probability");
+			if (supraProbFunc != null)
+				header.add(getTimeShortLabel(duration)+" Supra-Seis Prob");
+		}
+		
+		EvenlyDiscretizedFunc primaryMean = null;
+		if (primaryStats != null) {
+			primaryStats.calcStats(annualize, getConfig());
+			primaryMean = primaryStats.getMeanFunc(numToTrim);
+			header.add("Primary Aftershocks Mean");
+		}
+		csv.addLine(header);
+		
+		for (int i=0; i<meanFunc.size(); i++) {
+			double mag = meanFunc.getX(i);
+			List<String> line = new ArrayList<>();
+			line.add((float)mag+"");
+			line.add((float)meanFunc.getY(i)+"");
+			for (EvenlyDiscretizedFunc fractileFunc : fractileFuncs)
+				line.add((float)fractileFunc.getY(i)+"");
+			line.add((float)medianFunc.getY(i)+"");
+			line.add((float)modeFunc.getY(i)+"");
+			if (probFunc != null) {
+				line.add((float)probFunc.getY(i)+"");
+				if (supraProbFunc != null)
+					line.add((float)supraProbFunc.getY(i)+"");
+			}
+			if (primaryMean != null)
+				line.add((float)primaryMean.getY(i)+"");
+			
+			csv.addLine(line);
+		}
+		csv.writeToFile(new File(outputDir, prefix+".csv"));
 	}
 	
-	private class MFD_Stats {
+	public static MFD_Stats readCSV(File csvFile) throws IOException {
+		CSVFile<String> csv = CSVFile.readFile(csvFile, true);
+		
+		double minMag = csv.getDouble(1, 0);
+		int numMag = csv.getNumRows()-1;
+		int meanCol = getCSVColumn(csv, "Mean");
+		EvenlyDiscretizedFunc meanFunc = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		int probCol = getCSVColumn(csv, "Probability");
+		EvenlyDiscretizedFunc probFunc = probCol >= 0 ? new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta) : null;
+		int medianCol = getCSVColumn(csv, "Median");
+		EvenlyDiscretizedFunc medianFunc = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		int modeCol = getCSVColumn(csv, "Mode");
+		EvenlyDiscretizedFunc modeFunc = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		int numFracts = (medianCol - 1) - meanCol;
+		EvenlyDiscretizedFunc[] fractileFuncs = new EvenlyDiscretizedFunc[numFracts];
+		for (int i=0; i<numFracts; i++)
+			fractileFuncs[i] = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		
+		for (int m=0; m<numMag; m++) {
+			int row = m+1;
+			meanFunc.set(m, csv.getDouble(row, meanCol));
+			modeFunc.set(m, csv.getDouble(row, modeCol));
+			medianFunc.set(m, csv.getDouble(row, medianCol));
+			if (probFunc != null)
+				probFunc.set(m, csv.getDouble(row, probCol));
+			for (int i=0; i<numFracts; i++)
+				fractileFuncs[i].set(m, csv.getDouble(row, meanCol+1+i));
+		}
+		
+		MFD_Stats stats = new MFD_Stats();
+		
+		stats.meanFunc = meanFunc;
+		stats.probFunc = probFunc;
+		stats.medianFunc = medianFunc;
+		stats.modeFunc = modeFunc;
+		stats.fractileFuncs = fractileFuncs;
+		
+		return stats;
+	}
+	
+	private static int getCSVColumn(CSVFile<String> csv, String name) {
+		name = name.toLowerCase();
+		for (int col=1; col<csv.getNumCols(); col++)
+			if (csv.get(0, col).toLowerCase().contains(name))
+				return col;
+		return -1;
+	}
+	
+	public static class MFD_Stats {
 		
 		private XY_DataSetList histList;
 		private List<Double> relativeWeights;
@@ -525,7 +619,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			return trimFunc(modeFunc, numToTrim);
 		}
 
-		public synchronized void calcStats() {
+		public synchronized void calcStats(boolean annualize, ETAS_Config config) {
 			if (meanFunc != null)
 				// already calculated
 				return;
@@ -555,7 +649,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			// populate input functions
 			double rateScalar = 1d;
 			if (annualize)
-				rateScalar = 1d/getConfig().getDuration();
+				rateScalar = 1d/config.getDuration();
 			for (int i=0; i<meanCurve.size(); i++) {
 				meanFunc.set(i, meanCurve.getY(i)*rateScalar);
 				
@@ -651,8 +745,8 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 	
 	private List<String> buildTable(MFD_Stats stats, MFD_Stats primaryStats, MFD_Stats supraStats, int numToTrim, double duration) throws IOException {
-		stats.calcStats();
-		supraStats.calcStats();
+		stats.calcStats(annualize, getConfig());
+		supraStats.calcStats(annualize, getConfig());
 		EvenlyDiscretizedFunc meanFunc = stats.getMeanFunc(numToTrim);
 		EvenlyDiscretizedFunc medianFunc = stats.getMedianFunc(numToTrim);
 		EvenlyDiscretizedFunc modeFunc = stats.getModeFunc(numToTrim);
@@ -675,7 +769,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		
 		EvenlyDiscretizedFunc primaryMean = null;
 		if (primaryStats != null) {
-			primaryStats.calcStats();
+			primaryStats.calcStats(annualize, getConfig());
 			primaryMean = primaryStats.getMeanFunc(numToTrim);
 			builder.addColumn("Primary Aftershocks Mean");
 		}

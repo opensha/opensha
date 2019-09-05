@@ -23,6 +23,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 
+import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
+
 
 /**
  *
@@ -47,6 +49,9 @@ public class ETAS_EqkRupture extends ObsEqkRupture {
 	private ETAS_EqkRupture parentRup=null;
 	private int parentID=-1;	// TODO get rid of this
 	private Location parentTriggerLoc = null;
+	
+	// trigger ruptures can have their own ETAS parameters. otherwise these will be NaN
+	private double k = Double.NaN, c = Double.NaN, p = Double.NaN;
 	
 	public ETAS_EqkRupture() {};
 	
@@ -243,6 +248,45 @@ public class ETAS_EqkRupture extends ObsEqkRupture {
 		return oldestAncestor;
 	}
 	
+	/**
+	 * Set custom k, p, and c values for this rupture 
+	 * @param k
+	 * @param p
+	 * @param c
+	 */
+	public void setCustomETAS_Params(Double k, Double p, Double c) {
+		this.k = k == null ? Double.NaN : k;
+		this.p = p == null ? Double.NaN : p;
+		this.c = c == null ? Double.NaN : c;
+	}
+	
+	/**
+	 * @param etasParams
+	 * @return k parameter for this rupture. If this rupture has it's own k value, that will be returned, 
+	 * otherwise the value from etasParams will be returned
+	 */
+	public double getETAS_k(ETAS_ParameterList etasParams) {
+		return Double.isFinite(k) ? k : etasParams.get_k();
+	}
+
+	/**
+	 * @param etasParams
+	 * @return c parameter for this rupture. If this rupture has it's own c value, that will be returned, 
+	 * otherwise the value from etasParams will be returned
+	 */
+	public double getETAS_c(ETAS_ParameterList etasParams) {
+		return Double.isFinite(c) ? c : etasParams.get_c();
+	}
+
+	/**
+	 * @param etasParams
+	 * @return p parameter for this rupture. If this rupture has it's own p value, that will be returned, 
+	 * otherwise the value from etasParams will be returned
+	 */
+	public double getETAS_p(ETAS_ParameterList etasParams) {
+		return Double.isFinite(p) ? p : etasParams.get_p();
+	}
+	
 	@Override
 	public Object clone() {
 		ObsEqkRupture parentClone = (ObsEqkRupture)super.clone();
@@ -257,6 +301,9 @@ public class ETAS_EqkRupture extends ObsEqkRupture {
 		clone.parentRup = parentRup;
 		clone.parentID = parentID;
 		clone.parentTriggerLoc = parentTriggerLoc;
+		clone.k = k;
+		clone.p = p;
+		clone.c = c;
 		return clone;
 	}
 	

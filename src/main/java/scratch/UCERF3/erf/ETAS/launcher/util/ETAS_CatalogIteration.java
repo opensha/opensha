@@ -1,18 +1,23 @@
 package scratch.UCERF3.erf.ETAS.launcher.util;
 
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.BinarayCatalogsIterable;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileNameComparator;
+
+import com.google.common.base.Stopwatch;
 
 public class ETAS_CatalogIteration {
 	
@@ -21,21 +26,50 @@ public class ETAS_CatalogIteration {
 	}
 	
 	public static int processCatalogs(File catalogsFile, Callback callback) {
-		return processCatalogs(catalogsFile, callback, -1);
+		return processCatalogs(catalogsFile, callback, -1, 0d);
 	}
 	
-	public static int processCatalogs(File catalogsFile, Callback callback, int numToProcess) {
+	public static int processCatalogs(File catalogsFile, Callback callback, int numToProcess, double minMag) {
 		Iterator<List<ETAS_EqkRupture>> catalogsIterator;
-		if (catalogsFile.isDirectory())
-			catalogsIterator = new ETAS_ResultsDirIterator(catalogsFile);
-		else
-			catalogsIterator = ETAS_CatalogIO.getBinaryCatalogsIterable(catalogsFile, 0).iterator();
+		int totalNum;
+		if (catalogsFile.isDirectory()) {
+			catalogsIterator = new ETAS_ResultsDirIterator(catalogsFile, minMag);
+			totalNum = ((ETAS_ResultsDirIterator)catalogsIterator).files.size();
+		} else {
+			BinarayCatalogsIterable iterable = ETAS_CatalogIO.getBinaryCatalogsIterable(catalogsFile, minMag);
+			totalNum = iterable.getNumCatalogs();
+			catalogsIterator = iterable.iterator();
+		}
 		
 		int numProcessed = 0;
 		int modulus = 10;
+		Stopwatch watch = Stopwatch.createStarted();
+		DecimalFormat timeDF = new DecimalFormat("0.00");
+		DecimalFormat percentDF = new DecimalFormat("0.0%");
 		while (catalogsIterator.hasNext()) {
 			if (numProcessed % modulus == 0) {
-				System.out.println("Processing catalog "+numProcessed);
+				double fractProcessed = (double)numProcessed/(double)totalNum;
+				if (numProcessed > 0 && totalNum >= numProcessed
+						&& (numProcessed >= 100 || fractProcessed >= 0.01)) {
+					long elapsed = watch.elapsed(TimeUnit.MILLISECONDS);
+					double secsElapsed = (double)elapsed/1000d;
+					
+					double catsPerSec = (double)numProcessed/secsElapsed;
+					double seconds = (totalNum - numProcessed)/catsPerSec;
+					double mins = seconds / 60d;
+					double hours = mins / 60d;
+					String timeStr;
+					if (hours > 1)
+						timeStr = timeDF.format(hours)+" h";
+					else if (mins > 1)
+						timeStr = timeDF.format(mins)+" m";
+					else
+						timeStr = timeDF.format(seconds)+" s";
+					System.out.println("Processing catalog "+numProcessed+" ("
+						+percentDF.format(fractProcessed)+" done, approx "+timeStr+" left)");
+				} else {
+					System.out.println("Processing catalog "+numProcessed);
+				}
 				if (numProcessed == modulus*10)
 					modulus *= 10;
 			}
@@ -57,6 +91,7 @@ public class ETAS_CatalogIteration {
 			if (numProcessed == numToProcess)
 				break;
 		}
+		watch.stop();
 		
 		return numProcessed;
 	}
@@ -64,8 +99,10 @@ public class ETAS_CatalogIteration {
 	static class ETAS_ResultsDirIterator implements Iterator<List<ETAS_EqkRupture>> {
 		
 		private LinkedList<File> files;
+		private double minMag;
 		
-		public ETAS_ResultsDirIterator(File dir) {
+		public ETAS_ResultsDirIterator(File dir, double minMag) {
+			this.minMag = minMag;
 			files = new LinkedList<>();
 			File[] subDirs = dir.listFiles();
 			Arrays.sort(subDirs, new FileNameComparator());
@@ -84,7 +121,7 @@ public class ETAS_CatalogIteration {
 		public List<ETAS_EqkRupture> next() {
 			File simFile = getSimFile(files.removeFirst());
 			try {
-				return ETAS_CatalogIO.loadCatalog(simFile);
+				return ETAS_CatalogIO.loadCatalog(simFile, minMag);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}

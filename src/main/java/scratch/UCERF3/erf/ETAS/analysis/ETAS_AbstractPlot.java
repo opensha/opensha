@@ -147,7 +147,7 @@ public abstract class ETAS_AbstractPlot {
 	
 	public abstract List<String> generateMarkdown(String relativePathToOutputDir, String topLevelHeading, String topLink) throws IOException;
 	
-	static HeadlessGraphPanel buildGraphPanel() {
+	public static HeadlessGraphPanel buildGraphPanel() {
 		PlotPreferences plotPrefs = PlotPreferences.getDefault();
 		plotPrefs.setTickLabelFontSize(20);
 		plotPrefs.setAxisLabelFontSize(22);

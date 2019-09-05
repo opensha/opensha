@@ -141,7 +141,14 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		
 		unionRegion = triggerRegions.get(0);
 		for (int i=1; i<triggerRegions.size(); i++) {
-			unionRegion = Region.union(unionRegion, triggerRegions.get(i));
+			try {
+				unionRegion = Region.union(unionRegion, triggerRegions.get(i));
+			} catch (Exception e) {
+				unionRegion = null;
+				System.err.println("Exception unioning trigger regions, will be slower:");
+				e.printStackTrace();
+				break;
+			}
 			if (unionRegion == null) {
 				System.out.println("Warning, can't union trigger rupture buffered regions, will be slower");
 				break;

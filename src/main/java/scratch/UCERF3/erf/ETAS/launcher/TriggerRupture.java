@@ -19,11 +19,15 @@ import com.google.common.primitives.Ints;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 
 public abstract class TriggerRupture {
 	
 	final Long customOccurrenceTime;
-	String comcatEventID;
+	private String comcatEventID;
+	private Double etas_log10_k;
+	private Double etas_p;
+	private Double etas_c;
 
 	protected TriggerRupture(Long customOccurrenceTime) {
 		this.customOccurrenceTime = customOccurrenceTime;
@@ -46,8 +50,40 @@ public abstract class TriggerRupture {
 	public void setComcatEventID(String comcatEventID) {
 		this.comcatEventID = comcatEventID;
 	}
+	
+	public void setETAS_Params(Double log10_k, Double p, Double c) {
+		this.etas_log10_k = log10_k;
+		this.etas_p = p;
+		this.etas_c = c;
+	}
+	
+	public Double getETAS_log10_k() {
+		return etas_log10_k;
+	}
+	
+	public Double getETAS_p() {
+		return etas_p;
+	}
+	
+	public Double getETAS_c() {
+		return etas_c;
+	}
 
-	public abstract ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime);
+	public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime, ETAS_ParameterList etasParams) {
+		ETAS_EqkRupture rupture = new ETAS_EqkRupture();
+		long ot = getOccurrenceTime(simulationStartTime);
+		rupture.setOriginTime(ot);
+		Double k = null;
+		if (etas_log10_k != null) {
+			// convert k to UCERF3-ETAS units
+			k = Math.pow(10, etas_log10_k);
+		}
+		rupture.setCustomETAS_Params(k, etas_p, etas_c);
+		populateRupture(rupSet, rupture);
+		return rupture;
+	}
+	
+	protected abstract void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture);
 	
 	public abstract int[] getSectionsRuptured(FaultSystemRupSet rupSet);
 	
@@ -67,26 +103,20 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime) {
+		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
 			double origMag = rupSet.getMagForRup(fssIndex);
 			
-			long ot = getOccurrenceTime(simulationStartTime);
+			System.out.println("Building FSS rupture with index="+fssIndex+", OT="+rupture.getOriginTime()+", original M="+(float)origMag);
 			
-			System.out.println("Building FSS rupture with index="+fssIndex+", OT="+ot+", original M="+(float)origMag);
-			
-			ETAS_EqkRupture mainshockRup = new ETAS_EqkRupture();
-			mainshockRup.setOriginTime(ot);
-			mainshockRup.setAveRake(rupSet.getAveRakeForRup(fssIndex));
-			mainshockRup.setMag(origMag);
-			mainshockRup.setRuptureSurface(rupSet.getSurfaceForRupupture(fssIndex, 1d, false));
-			mainshockRup.setFSSIndex(fssIndex);
+			rupture.setAveRake(rupSet.getAveRakeForRup(fssIndex));
+			rupture.setMag(origMag);
+			rupture.setRuptureSurface(rupSet.getSurfaceForRupupture(fssIndex, 1d, false));
+			rupture.setFSSIndex(fssIndex);
 			
 			if (overrideMag != null && overrideMag > 0) {
 				System.out.println("\tOverriding magnitude with specified mag: "+overrideMag);
-				mainshockRup.setMag(overrideMag);
+				rupture.setMag(overrideMag);
 			}
-			
-			return mainshockRup;
 		}
 
 		@Override
@@ -109,14 +139,10 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime) {
-			long ot = getOccurrenceTime(simulationStartTime);
+		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+			System.out.println("Building rupture from "+subSects.length+" specified subsections with OT="+rupture.getOriginTime()+" and M="+(float)mag);
 			
-			System.out.println("Building rupture from "+subSects.length+" specified subsections with OT="+ot+" and M="+(float)mag);
-			
-			ETAS_EqkRupture mainshockRup = new ETAS_EqkRupture();
-			mainshockRup.setOriginTime(ot);
-			mainshockRup.setMag(mag);
+			rupture.setMag(mag);
 			
 			List<RuptureSurface> rupSurfs = new ArrayList<>();
 			List<Double> rakes = new ArrayList<>();
@@ -131,14 +157,12 @@ public abstract class TriggerRupture {
 				rupSurfs.add(fltData.getStirlingGriddedSurface(gridSpacing, false, true));
 			}
 			if (rupSurfs.size() == 1) {
-				mainshockRup.setAveRake(rakes.get(0));
-				mainshockRup.setRuptureSurface(rupSurfs.get(0));
+				rupture.setAveRake(rakes.get(0));
+				rupture.setRuptureSurface(rupSurfs.get(0));
 			} else {
-				mainshockRup.setAveRake(FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(areas, rakes)));
-				mainshockRup.setRuptureSurface(new CompoundSurface(rupSurfs));
+				rupture.setAveRake(FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(areas, rakes)));
+				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
 			}
-			
-			return mainshockRup;
 		}
 
 		@Override
@@ -166,19 +190,13 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime) {
-			long ot = getOccurrenceTime(simulationStartTime);
-			
+		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
 //			System.out.println("Building point rupture hypo="+hypocenter+", OT="+ot+", M="+(float)mag);
 			
-			ETAS_EqkRupture mainshockRup = new ETAS_EqkRupture();
-			mainshockRup.setOriginTime(ot);
-			mainshockRup.setAveRake(0.0); // not used
-			mainshockRup.setMag(mag);
-			mainshockRup.setPointSurface(hypocenter);
-			mainshockRup.setHypocenterLocation(hypocenter);
-			
-			return mainshockRup;
+			rupture.setAveRake(0.0); // not used
+			rupture.setMag(mag);
+			rupture.setPointSurface(hypocenter);
+			rupture.setHypocenterLocation(hypocenter);
 		}
 
 		@Override
@@ -209,26 +227,20 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime) {
-			long ot = getOccurrenceTime(simulationStartTime);
+		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+			System.out.println("Building rupture from "+sfds.length+" simple faults OT="+rupture.getOriginTime()+" and M="+(float)mag);
 			
-			System.out.println("Building rupture from "+sfds.length+" simple faults OT="+ot+" and M="+(float)mag);
-			
-			ETAS_EqkRupture mainshockRup = new ETAS_EqkRupture();
-			mainshockRup.setOriginTime(ot);
-			mainshockRup.setMag(mag);
-			mainshockRup.setHypocenterLocation(hypo);
+			rupture.setMag(mag);
+			rupture.setHypocenterLocation(hypo);
 			
 			List<RuptureSurface> rupSurfs = new ArrayList<>();
 			double gridSpacing = 1;
 			for (SimpleFaultData sfd : sfds)
 				rupSurfs.add(new StirlingGriddedSurface(sfd, gridSpacing, gridSpacing));
 			if (rupSurfs.size() == 1)
-				mainshockRup.setRuptureSurface(rupSurfs.get(0));
+				rupture.setRuptureSurface(rupSurfs.get(0));
 			else
-				mainshockRup.setRuptureSurface(new CompoundSurface(rupSurfs));
-			
-			return mainshockRup;
+				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
 		}
 
 		@Override
@@ -259,26 +271,20 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime) {
-			long ot = getOccurrenceTime(simulationStartTime);
+		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+			System.out.println("Building rupture from "+outlines.length+" faults outlines, OT="+rupture.getOriginTime()+" and M="+(float)mag);
 			
-			System.out.println("Building rupture from "+outlines.length+" faults outlines, OT="+ot+" and M="+(float)mag);
-			
-			ETAS_EqkRupture mainshockRup = new ETAS_EqkRupture();
-			mainshockRup.setOriginTime(ot);
-			mainshockRup.setMag(mag);
-			mainshockRup.setHypocenterLocation(hypo);
+			rupture.setMag(mag);
+			rupture.setHypocenterLocation(hypo);
 			
 			List<RuptureSurface> rupSurfs = new ArrayList<>();
 			double gridSpacing = 1;
 			for (LocationList outline : outlines)
 				rupSurfs.add(EdgeRuptureSurface.build(outline, gridSpacing));
 			if (rupSurfs.size() == 1)
-				mainshockRup.setRuptureSurface(rupSurfs.get(0));
+				rupture.setRuptureSurface(rupSurfs.get(0));
 			else
-				mainshockRup.setRuptureSurface(new CompoundSurface(rupSurfs));
-			
-			return mainshockRup;
+				rupture.setRuptureSurface(new CompoundSurface(rupSurfs));
 		}
 
 		@Override

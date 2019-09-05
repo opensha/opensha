@@ -452,7 +452,8 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 //				+ "2019_07_04-SearlesValleyM64-includeSpont-full_td-10yr");
 //				+ "2019-06-05_M7.1_SearlesValley_Sequence_UpdatedMw_and_depth");
 //				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-start-noon");
-				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-following-M7.1");
+//				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-following-M7.1");
+				+ "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces_CulledSurface");
 		File configFile = new File(simDir, "config.json");
 		
 		try {

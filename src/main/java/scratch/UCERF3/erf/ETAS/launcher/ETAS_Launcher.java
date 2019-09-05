@@ -164,46 +164,7 @@ public class ETAS_Launcher {
 		debug(DebugLevel.INFO, "Simulation start time (epoch milliseconds): "+simulationOT);
 		debug(DebugLevel.INFO, "Simulation start date: "+SimulationMarkdownGenerator.df.format(new Date(config.getSimulationStartTimeMillis())));
 		
-		lastEventData = LastEventData.load();
-		resetSubSectsMap = new HashMap<>();
-		fssFile = ETAS_Config.resolvePath(config.getFSS_File());
-		
-		// purge any last event data after OT
-		LastEventData.filterDataAfterTime(lastEventData, simulationOT);
-		
-		// load trigger ruptures
-		List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
-		if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
-			debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
-			FaultSystemSolution fss = checkOutFSS();
-			FaultSystemRupSet rupSet = fss.getRupSet();
-			
-			triggerRuptures = new ArrayList<>();
-			for (TriggerRupture triggerRup : triggerRuptureConfigs) {
-				ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT);
-				triggerRuptures.add(rup);
-				int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
-				if (rupturedSects != null && rupturedSects.length > 0) {
-					long time = rup.getOriginTime();
-					List<Integer> sects = resetSubSectsMap.get(time);
-					if (sects == null) {
-						sects = new ArrayList<>();
-						resetSubSectsMap.put(time, sects);
-					}
-					for (int sect : rupturedSects)
-						sects.add(sect);
-				}
-			}
-			
-			checkInFSS(fss);
-			
-			if (!resetSubSectsMap.isEmpty()) {
-				debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
-				for (Long time : getSortedResetTimes())
-					debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
-			}
-		}
-		
+		// load ETAS parameters
 		params = new ETAS_ParameterList();
 		params.setImposeGR(config.isImposeGR());
 		params.setU3ETAS_ProbModel(config.getProbModel());
@@ -227,11 +188,51 @@ public class ETAS_Launcher {
 		}
 		if (config.getETAS_Log10_K() != null) {
 			double log10k = config.getETAS_Log10_K();
-			double k = Math.pow(10, log10k)*Math.pow(365.25, 1d - params.get_p());
-			debug(DebugLevel.INFO, "Setting custom k from Log10(k)="+(float)log10k+" and p: "+k);
+			double k = Math.pow(10, log10k);
+			debug(DebugLevel.INFO, "Setting custom k from Log10(k)="+(float)log10k+": "+k);
 			params.set_k(k);
 		}
 		params.setStatewideCompletenessModel(config.getCompletenessModel());
+		
+		lastEventData = LastEventData.load();
+		resetSubSectsMap = new HashMap<>();
+		fssFile = ETAS_Config.resolvePath(config.getFSS_File());
+		
+		// purge any last event data after OT
+		LastEventData.filterDataAfterTime(lastEventData, simulationOT);
+		
+		// load trigger ruptures
+		List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
+		if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
+			debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
+			FaultSystemSolution fss = checkOutFSS();
+			FaultSystemRupSet rupSet = fss.getRupSet();
+			
+			triggerRuptures = new ArrayList<>();
+			for (TriggerRupture triggerRup : triggerRuptureConfigs) {
+				ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT, params);
+				triggerRuptures.add(rup);
+				int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
+				if (rupturedSects != null && rupturedSects.length > 0) {
+					long time = rup.getOriginTime();
+					List<Integer> sects = resetSubSectsMap.get(time);
+					if (sects == null) {
+						sects = new ArrayList<>();
+						resetSubSectsMap.put(time, sects);
+					}
+					for (int sect : rupturedSects)
+						sects.add(sect);
+				}
+			}
+			
+			checkInFSS(fss);
+			
+			if (!resetSubSectsMap.isEmpty()) {
+				debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
+				for (Long time : getSortedResetTimes())
+					debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
+			}
+		}
 		
 		// now load a trigger catalog
 		histQkList = new ArrayList<>();

@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -79,6 +80,11 @@ public class SimulationMarkdownGenerator {
 				"Number of calculation threads. Default is the number of available processors (in this case: "+defaultNumThreads()+")");
 		threadsOption.setRequired(false);
 		ops.addOption(threadsOption);
+
+		Option parentDirOption = new Option("jd", "json-dir", false,
+				"Use directory which contains JSON input file as output dir (instead of output dir defined in JSON file)");
+		parentDirOption.setRequired(false);
+		ops.addOption(parentDirOption);
 		
 		return ops;
 	}
@@ -106,18 +112,19 @@ public class SimulationMarkdownGenerator {
 //					+ "2019_07_11-ComCatM7p1_ci38457511_5p9DaysAfter_FiniteSurface-noSpont-full_td-scale1.14");
 //					+ "2019_07_11-ComCatM7p1_ci38457511_FiniteSurface_NoFaults-noSpont-poisson-griddedOnly");
 //					+ "2019_07_16-ComCatM7p1_ci38457511_11DaysAfter_ShakeMapSurfaces-noSpont-full_td-scale1.14");
-					+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
-//			File configFile = new File(simDir, "config.json");
-			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"
-					+ "comcat-ridgecrest-m7.1-example/config.json");
+//					+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
+					+ "2019_08_27-Start1919_100yr_Spontaneous-includeSpont-full_td-scale1.14");
+			File configFile = new File(simDir, "config.json");
+//			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"
+//					+ "comcat-ridgecrest-m7.1-example/config.json");
 //			File inputFile = new File(simDir, "results_m5_preserve_chain.bin");
 //			args = new String[] { configFile.getAbsolutePath(), inputFile.getAb?olutePath() };
-//			args = new String[] { configFile.getAbsolutePath() };
 //			String gitHash = getGitHash();
 //			System.out.println(gitHash);
 //			System.out.println(getGitCommitTime(gitHash));
 //			System.exit(0);
-			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
+			args = new String[] { configFile.getAbsolutePath() };
+//			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
 		}
 		
 		// TODO optional second arg
@@ -160,12 +167,19 @@ public class SimulationMarkdownGenerator {
 				inputFile = locateInputFile(config);
 			}
 			
-			File outputDir = config.getOutputDir();
-			if (!outputDir.exists() && !outputDir.mkdir()) {
-				System.out.println("Output dir doesn't exist and can't be created, "
-						+ "assuming that it was computed remotely: "+outputDir.getAbsolutePath());
-				outputDir = inputFile.getParentFile();
-				System.out.println("Using parent directory of input file as output dir: "+outputDir.getAbsolutePath());
+			File outputDir;
+			boolean jsonDir = cmd.hasOption("json-dir");
+			if (jsonDir) {
+				outputDir = configFile.getParentFile();
+				System.out.println("Using parent directory of JSON configuration file for output dir: "+outputDir.getAbsolutePath());
+			} else {
+				outputDir = config.getOutputDir();
+				if (!outputDir.exists() && !outputDir.mkdir()) {
+					System.out.println("Output dir doesn't exist and can't be created, "
+							+ "assuming that it was computed remotely: "+outputDir.getAbsolutePath());
+					outputDir = inputFile.getParentFile();
+					System.out.println("Using parent directory of input file as output dir: "+outputDir.getAbsolutePath());
+				}
 			}
 			
 			boolean skipMaps = cmd.hasOption("no-maps");
@@ -182,20 +196,31 @@ public class SimulationMarkdownGenerator {
 		}
 		System.exit(0);
 	}
+	
+	public static double getPreferredMinMag(ETAS_Config config) {
+		if (config.getDuration() >= 200)
+			return 5d;
+		else if (config.getDuration() >= 50)
+			return 4d;
+		return 0d;
+	}
 
 	public static File locateInputFile(ETAS_Config config) {
 		List<BinaryFilteredOutputConfig> binaryFilters = config.getBinaryOutputFilters();
 		File inputFile = null;
 		if (binaryFilters != null) {
 			binaryFilters = new ArrayList<>(binaryFilters);
-			binaryFilters.sort(binaryOutputComparator); // sort so that the one with the lowest magnitude is used preferentially
-			if (config.getDuration() > 200) {
+			// sort so that the one with the lowest magnitude is used preferentially
+			binaryFilters.sort(binaryOutputComparator);
+			double minMag = getPreferredMinMag(config);
+			if (minMag > 0) {
 				List<BinaryFilteredOutputConfig> filtered = new ArrayList<>();
 				for (BinaryFilteredOutputConfig bin : binaryFilters)
-					if (bin.getMinMag() != null && bin.getMinMag() >= 4.9)
+					if (bin.getMinMag() != null && bin.getMinMag().floatValue() >= (float)minMag)
 						filtered.add(bin);
 				if (!filtered.isEmpty()) {
-					System.out.println("Skipping binary files below M5 as catalog duration is > 200 years");
+					System.out.println("Skipping binary files below M="+(float)minMag+" as catalog duration is long. "
+							+ "Override by explicitly specifying input binary file.");
 					binaryFilters = filtered;
 				}
 			}
@@ -359,13 +384,16 @@ public class SimulationMarkdownGenerator {
 			plots.add(new ETAS_MFD_Plot(config, launcher, "mfd", annualizeMFDs, true));
 			if (config.getDuration() > 50)
 				plots.add(new ETAS_LongTermRateVariabilityPlot(config, launcher, "long_term_var"));
+			if (config.getDuration() >= ETAS_StationarityPlot.MIN_SIM_DURATION)
+				plots.add(new ETAS_StationarityPlot(config, launcher, "stationarity"));
 		}
 		if (!config.isGriddedOnly())
 			plots.add(new ETAS_FaultParticipationPlot(config, launcher, "fault_participation", annualizeMFDs, skipMaps));
 		if (!skipMaps)
 			plots.add(new ETAS_GriddedNucleationPlot(config, launcher, "gridded_nucleation", annualizeMFDs));
-		
-		Map<ETAS_AbstractPlot, PlotResult> prevResults = new HashMap<>();
+
+		Map<ETAS_AbstractPlot, PlotResult> allPrevResults = new HashMap<>();
+		Map<ETAS_AbstractPlot, PlotResult> prevDoneResults = new HashMap<>();
 		
 		File metadataFile = new File(plotsDir, "metadata.json");
 		if (!forceUpdateAll && metadataFile.exists()) {
@@ -377,20 +405,22 @@ public class SimulationMarkdownGenerator {
 					Map<String, ETAS_AbstractPlot> plotClassNameMap = new HashMap<>();
 					for (ETAS_AbstractPlot plot : plots)
 						plotClassNameMap.put(plot.getClass().getName(), plot);
-					System.out.println("Looking for plots we can skip (override with --force-replot option)...");
+					System.out.println("Looking for plots we can skip (override with --force-update option)...");
 					for (PlotResult result : meta.plots) {
 						ETAS_AbstractPlot plot = plotClassNameMap.get(result.className);
+						if (plot != null)
+							allPrevResults.put(plot, result);
 						boolean evalUpdate = plot != null && forceUpdateEvaluation && plot.isEvaluationPlot();
 						if (plot != null && !evalUpdate && !plot.shouldReplot(result)) {
 							System.out.println("\tSkipping plot (already done): "
 									+ClassUtils.getClassNameWithoutPackage(plot.getClass()));
-							prevResults.put(plot, result);
+							prevDoneResults.put(plot, result);
 						} else {
 							System.out.println("\tWill update plot: "
 									+ClassUtils.getClassNameWithoutPackage(plot.getClass()));
 						}
 					}
-					if (plots.size() == prevResults.size()) {
+					if (plots.size() == prevDoneResults.size()) {
 						System.out.println("No plots left to update.");
 						String gitHash;
 						long gitTime;
@@ -426,8 +456,16 @@ public class SimulationMarkdownGenerator {
 		
 		FaultSystemSolution fss = launcher.checkOutFSS();
 		
+		HashSet<ETAS_AbstractPlot> plotsToProcess = new HashSet<>();
+		for (ETAS_AbstractPlot plot : plots)
+			if (!prevDoneResults.containsKey(plot))
+				plotsToProcess.add(plot);
+		
+		Preconditions.checkState(!plotsToProcess.isEmpty(), "No plots to process?");
+		
 		// process catalogs
 		Stopwatch totalProcessWatch = Stopwatch.createStarted();
+		double loadMag = inputFile.isDirectory() && !config.hasTriggers() ? getPreferredMinMag(config) : 0d;
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
 			
 			@Override
@@ -435,25 +473,26 @@ public class SimulationMarkdownGenerator {
 				List<ETAS_EqkRupture> triggeredOnlyCatalog = null;
 				if (isFilterSpontaneous)
 					triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
-				for (int i=plots.size(); --i>=0;) {
-					ETAS_AbstractPlot plot = plots.get(i);
+				for (ETAS_AbstractPlot plot : plots) {
 					try {
-						if (!prevResults.containsKey(plot))
+						if (plotsToProcess.contains(plot))
 							plot.processCatalog(catalog, triggeredOnlyCatalog, fss);
 					} catch (Exception e) {
 						System.err.println("Error processing catalog with plot "
 								+ClassUtils.getClassNameWithoutPackage(plot.getClass())+", disabling plot");
 						e.printStackTrace();
-						plots.remove(i);
+						plotsToProcess.remove(plot);
 					}
 				}
 			}
-		}, maxCatalogs);
+		}, maxCatalogs, loadMag);
 		
 		totalProcessWatch.stop();
 		
 		double totProcessSeconds = seconds(totalProcessWatch.elapsed(TimeUnit.MILLISECONDS));
 		System.out.println("Processed "+numProcessed+" catalogs in "+timeStr(totProcessSeconds));
+		if (numProcessed == 0)
+			return null;
 		
 		List<String> lines = new ArrayList<>();
 		
@@ -473,7 +512,7 @@ public class SimulationMarkdownGenerator {
 		String topLink = "*[(top)](#table-of-contents)*";
 		lines.add("");
 		
-		List<Double> finalizeTimes = new ArrayList<>();
+		Map<ETAS_AbstractPlot, Double> finalizeTimes = new HashMap<>();
 		Stopwatch finalizeWatch = Stopwatch.createStarted();
 		
 		System.out.println("Finalizing plots with "+threads+" threads");
@@ -482,37 +521,43 @@ public class SimulationMarkdownGenerator {
 		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		Map<ETAS_AbstractPlot, Future<PlotMarkdownBuilder>> futures = new HashMap<>();
 		List<PlotResult> plotResults = new ArrayList<>();
-		for (ETAS_AbstractPlot plot : plots) {
-			if (!prevResults.containsKey(plot)) {
-				sumProcessTimes += seconds(plot.getProcessTimeMS());
-				PlotFinalizeCallable call = new PlotFinalizeCallable(plot, plotsDir, fss, exec);
-				plotCallables.put(plot, call);
-				futures.put(plot, exec.submit(call));
-			}
+		for (ETAS_AbstractPlot plot : plotsToProcess) {
+			sumProcessTimes += seconds(plot.getProcessTimeMS());
+			PlotFinalizeCallable call = new PlotFinalizeCallable(plot, plotsDir, fss, exec);
+			plotCallables.put(plot, call);
+			futures.put(plot, exec.submit(call));
 		}
 		for (ETAS_AbstractPlot plot : plots) {
-			if (prevResults.containsKey(plot)) {
-				PlotResult result = prevResults.get(plot);
-				lines.addAll(result.markdown);
-				lines.add("");
-				plotResults.add(result);
-				finalizeTimes.add(0d);
-			} else {
+			PlotResult result = null;
+			Double finalizeTime = null;
+			if (plotCallables.containsKey(plot)) {
+				// we processed it this time and it succeeded (to this point at least)
 				try {
 					PlotMarkdownBuilder builder = futures.get(plot).get();
 					if (builder != null) {
 						List<String> plotLines = builder.buildMarkdown(plotsDir.getName(), "##", topLink);
 						if (plotLines != null && !plotLines.isEmpty()) {
-							lines.addAll(plotLines);
-							lines.add("");
-							
-							plotResults.add(new PlotResult(plot.getClass(), plot.getVersion(), plotStartTime, plotLines));
+							result = new PlotResult(plot.getClass(), plot.getVersion(), plotStartTime, plotLines);
 						}
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				finalizeTimes.add(seconds(plotCallables.get(plot).finalizeSubWatch.elapsed(TimeUnit.MILLISECONDS)));
+				if (result == null)
+					// try to fall back to a previous version if available
+					result = allPrevResults.get(plot);
+				finalizeTime = seconds(plotCallables.get(plot).finalizeSubWatch.elapsed(TimeUnit.MILLISECONDS));
+			}
+			if (result == null && prevDoneResults.containsKey(plot)) {
+				// already done previously
+				result = prevDoneResults.get(plot);
+				finalizeTime = 0d;
+			}
+			if (result != null) {
+				lines.addAll(result.markdown);
+				lines.add("");
+				plotResults.add(result);
+				finalizeTimes.put(plot, finalizeTime);
 			}
 		}
 		finalizeWatch.stop();
@@ -524,7 +569,7 @@ public class SimulationMarkdownGenerator {
 		double overhead = totProcessSeconds - sumProcessTimes;
 		System.out.println("\tI/O overhead: "+timeStr(overhead)+" ("+percentDF.format(overhead/totProcessSeconds)+")");
 		for (ETAS_AbstractPlot plot : plots) {
-			if (prevResults.containsKey(plot))
+			if (prevDoneResults.containsKey(plot))
 				continue;
 			double plotSecs = seconds(plot.getProcessTimeMS());
 			System.out.println("\t"+ClassUtils.getClassNameWithoutPackage(plot.getClass())+" "
@@ -533,11 +578,13 @@ public class SimulationMarkdownGenerator {
 		System.out.println();
 		System.out.println("Total finalize time: "+timeStr(totFinalizeTime));
 		for (int i=0; i<plots.size(); i++) {
-			if (prevResults.containsKey(plots.get(i)))
+			ETAS_AbstractPlot plot = plots.get(i);
+			if (prevDoneResults.containsKey(plot))
 				continue;
-			double finalizeSecs = finalizeTimes.get(i);
-			System.out.println("\t"+ClassUtils.getClassNameWithoutPackage(plots.get(i).getClass())+" "
-					+timeStr(finalizeSecs)+" ("+percentDF.format(finalizeSecs/totFinalizeTime)+")");
+			Double finalizeSecs = finalizeTimes.get(plot);
+			if (finalizeSecs != null)
+				System.out.println("\t"+ClassUtils.getClassNameWithoutPackage(plots.get(i).getClass())+" "
+						+timeStr(finalizeSecs)+" ("+percentDF.format(finalizeSecs/totFinalizeTime)+")");
 		}
 		
 		lines.add("");

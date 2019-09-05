@@ -13,6 +13,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -27,6 +33,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
@@ -64,6 +71,13 @@ public class ETAS_MarkdownIndexWriter {
 		updateAfterOption.setRequired(false);
 		ops.addOption(updateAfterOption);
 
+		Option updateIntevalOption = new Option("ui", "update-interval", true,
+				"Update interval in minutes. If this is being run on a cron job, you can supply"
+				+ " this optional hint argument to tell how often. It will attempt to exit and not"
+				+ " process any more older simulations if within 20% of the interval of the next update.");
+		updateIntevalOption.setRequired(false);
+		ops.addOption(updateIntevalOption);
+
 		Option threadsOption = new Option("t", "threads", true,
 				"Number of calculation threads. Default is the number of available processors (in this case: "
 						+SimulationMarkdownGenerator.defaultNumThreads()+")");
@@ -99,6 +113,8 @@ public class ETAS_MarkdownIndexWriter {
 		
 		Options options = createOptions();
 		
+		Stopwatch runningWatch = Stopwatch.createStarted();
+		
 		CommandLineParser parser = new DefaultParser();
 		
 		String syntax = ClassUtils.getClassNameWithoutPackage(SimulationMarkdownGenerator.class)
@@ -116,20 +132,37 @@ public class ETAS_MarkdownIndexWriter {
 		
 		args = cmd.getArgs();
 		
+		double updateInterval = cmd.hasOption("update-interval")
+				? Double.parseDouble(cmd.getOptionValue("update-interval")) : 0d;
+		
 		Preconditions.checkArgument(args.length == 1,
 				"Usage: "+ClassUtils.getClassNameWithoutPackage(ETAS_MarkdownIndexWriter.class)+" <dir>");
 		File mainDir = new File(args[0]);
 		Preconditions.checkState(mainDir.exists());
 		
 		// look for sub dirs
+		System.out.println("Scanning directory for ETAS subdirectories: "+mainDir.getAbsolutePath());
 		File[] subDirArray = mainDir.listFiles();
 		Arrays.sort(subDirArray, new FileNameComparator());
 		
-		List<SimulationDir> sims = new ArrayList<>();
+		ExecutorService exec = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+		List<Future<SimulationDir>> futures = new ArrayList<>();
 		for (File subDir : subDirArray) {
 			if (!subDir.isDirectory())
 				continue;
-			SimulationDir sim = loadSimDir(subDir);
+			futures.add(exec.submit(new SimLoadCallable(subDir)));
+		};
+		
+		List<SimulationDir> sims = new ArrayList<>();
+		
+		for (Future<SimulationDir> future : futures) {
+			SimulationDir sim =  null;
+			try {
+				sim = future.get();
+			} catch (InterruptedException | ExecutionException e) {
+				e.printStackTrace();
+				System.exit(1);
+			}
 			if (sim != null)
 				sims.add(sim);
 		}
@@ -138,6 +171,8 @@ public class ETAS_MarkdownIndexWriter {
 			System.out.println("No ETAS subdirectories of "+mainDir.getAbsolutePath()+" found.");
 			System.exit(0);
 		}
+		
+		System.out.println("Found "+sims.size()+" ETAS subdirectories");
 		
 		Collections.sort(sims);
 		
@@ -149,7 +184,7 @@ public class ETAS_MarkdownIndexWriter {
 			if (cmd.hasOption("update-after")) {
 				String dateStr = cmd.getOptionValue("update-after");
 				try {
-					forceBeforeTime = ETAS_ConfigBuilderUtils.df.parse(dateStr).getTime();
+					forceBeforeTime = ETAS_ConfigBuilder.df.parse(dateStr).getTime();
 				} catch (Exception e) {
 					System.err.println("Expected date in the format: yyyy_mm_dd");
 					e.printStackTrace();
@@ -178,30 +213,6 @@ public class ETAS_MarkdownIndexWriter {
 					System.out.println("\tupdating due to missing plot metadata");
 					update = true;
 				}
-				if (sim.plotMetadata != null && sim.plotMetadata.launcherGitTime != null && gitTime != null) {
-					long curDiff = gitTime - sim.plotMetadata.launcherGitTime;
-					double curDiffDays = (double)curDiff/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
-//					long configTime = sim.configDate == null ? System.currentTimeMillis()-7l*ProbabilityModelsCalc.MILLISEC_PER_DAY
-//							: sim.configDate.getTime();
-//					double configDiffDays = (double)(System.currentTimeMillis()-configTime)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
-//					double minDays;
-//					if (configDiffDays < 2)
-//						minDays = 0;
-//					else if (configDiffDays < 7)
-//						minDays = 1;
-//					else if (configDiffDays < 30)
-//						minDays = 3;
-//					else
-//						minDays = 7;
-//					if (curDiffDays > minDays) {
-//						System.out.println("\tupdating due to new version of plotting code (>1 day old)");
-//						update = true;
-//					}
-					if (curDiff > 0) {
-						System.out.println("\tupdating due to new jar file ("+(float)curDiffDays+" days newer)");
-						update = true;
-					}
-				}
 				if (sim.configDate != null && sim.configDate.getTime() >= forceBeforeTime) {
 					System.out.println("\tupdating due to configuration date on or after --update-after option");
 					update = true;
@@ -225,6 +236,35 @@ public class ETAS_MarkdownIndexWriter {
 						update = true;
 					} else {
 						System.out.println("\tsimulation was not complete when last plotted, but results file has not been modified since");
+					}
+				}
+				if (!update && updateInterval > 0) {
+					// see if we should exit
+					double curInterval = runningWatch.elapsed(TimeUnit.SECONDS)/60d;
+					double fractInterval = curInterval/updateInterval;
+					int numMissed = (int)fractInterval;
+					if (fractInterval > 1)
+						fractInterval -= Math.floor(fractInterval);
+					double minsUntilNext = (1d-fractInterval)*updateInterval;
+					// lower exit the threshold as we miss more and more updates
+					// no missed updates: halt 80% into cycle
+					// 1 missed update: halt 70% into cycle
+					// 2 missed updates: halt 60% into cycle
+					// ...
+					// 8 missed updates: halt no matter what
+					double threshold = 1.0 - 0.1*(numMissed+2);
+					if (fractInterval > threshold) {
+						System.out.println("\tskipping update checks on old sim as we're "+(float)minsUntilNext
+								+" minutes away from the next automated plot update, will try again next time");
+						continue;
+					}
+				}
+				if (sim.plotMetadata != null && sim.plotMetadata.launcherGitTime != null && gitTime != null) {
+					long curDiff = gitTime - sim.plotMetadata.launcherGitTime;
+					double curDiffDays = (double)curDiff/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
+					if (curDiff > 0) {
+						System.out.println("\tupdating due to new jar file ("+(float)curDiffDays+" days newer)");
+						update = true;
 					}
 				}
 				if (sim.config.getComcatMetadata() != null) {
@@ -328,10 +368,32 @@ public class ETAS_MarkdownIndexWriter {
 		
 		MarkdownUtils.writeReadmeAndHTML(lines, mainDir);
 		
+		runningWatch.stop();
+		double secs = runningWatch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		double mins = secs/60d;
+		if (mins > 1)
+			System.out.println("Took "+(float)mins+" minutes to rebuild index");
+		else
+			System.out.println("Took "+(float)secs+" seconds to rebuild index");
+		
 		System.exit(0);
 	}
 	
 	private static DateFormat outDateFormat = new SimpleDateFormat("yyyy/MM/dd");
+	
+	private static class SimLoadCallable implements Callable<SimulationDir> {
+		
+		private File simDir;
+
+		public SimLoadCallable(File simDir) {
+			this.simDir = simDir;
+		}
+
+		@Override
+		public SimulationDir call() throws Exception {
+			return loadSimDir(simDir);
+		}
+	}
 	
 	private static SimulationDir loadSimDir(File simDir) throws IOException {
 		ETAS_Config config = null;
@@ -364,7 +426,7 @@ public class ETAS_MarkdownIndexWriter {
 				if (dateStr.contains("_")) {
 					// it might be a date, lets try
 					try {
-						configDate = ETAS_ConfigBuilderUtils.df.parse(dateStr);
+						configDate = ETAS_ConfigBuilder.df.parse(dateStr);
 //						System.out.println("Date from dir name: "+outDateFormat.format(configDate));
 					} catch (Exception e) {
 						System.out.println("Couldn't parse date from dirName: "+dateStr);

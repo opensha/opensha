@@ -50,7 +50,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
  * @author kevin
  *
  */
-class ETAS_EventMapPlotUtils {
+public class ETAS_EventMapPlotUtils {
 	
 	static Region getMapRegion(ETAS_Config config, ETAS_Launcher launcher) {
 		ComcatMetadata meta = config.getComcatMetadata();
@@ -96,7 +96,7 @@ class ETAS_EventMapPlotUtils {
 		buildEventPlot(events, funcs, chars, 0d);
 	}
 	
-	static void buildEventPlot(List<? extends ObsEqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
+	public static void buildEventPlot(List<? extends ObsEqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
 			double maxMag) throws IOException {
 		if (events.isEmpty())
 			return;
@@ -243,7 +243,7 @@ class ETAS_EventMapPlotUtils {
 		}
 	}
 	
-	static List<XY_DataSet> getSurfTraces(RuptureSurface surf) {
+	public static List<XY_DataSet> getSurfTraces(RuptureSurface surf) {
 		List<RuptureSurface> allSurfs = new ArrayList<>();
 		if (surf instanceof CompoundSurface)
 			allSurfs.addAll(((CompoundSurface)surf).getSurfaceList());
@@ -259,7 +259,7 @@ class ETAS_EventMapPlotUtils {
 		return ret;
 	}
 	
-	static List<XY_DataSet> getSurfOutlines(RuptureSurface surf) {
+	public static List<XY_DataSet> getSurfOutlines(RuptureSurface surf) {
 		double dip = surf.getAveDip();
 		List<RuptureSurface> allSurfs = new ArrayList<>();
 		if (surf instanceof CompoundSurface)
@@ -321,7 +321,7 @@ class ETAS_EventMapPlotUtils {
 		writeMapPlot(funcs, chars, mapRegion, title, outputDir, prefix, 1000);
 	}
 	
-	static void writeMapPlot(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars, Region mapRegion, String title,
+	public static HeadlessGraphPanel writeMapPlot(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars, Region mapRegion, String title,
 			File outputDir, String prefix, int width) throws IOException {
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
 		spec.setLegendVisible(true);
@@ -353,6 +353,7 @@ class ETAS_EventMapPlotUtils {
 		
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
+		return gp;
 	}
 	
 	static void buildEventDepthPlot(List<ETAS_EqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,

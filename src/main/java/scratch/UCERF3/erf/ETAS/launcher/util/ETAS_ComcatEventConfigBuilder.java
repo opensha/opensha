@@ -27,6 +27,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.MarkdownUtils;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -41,7 +42,6 @@ import com.google.common.primitives.Ints;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
-import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_TriggerRuptureFaultDistancesPlot;
 import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator;
@@ -53,10 +53,10 @@ import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 
-public class ETAS_ComcatEventConfigBuilder {
+public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 	
 	private static Options createOptions() {
-		Options ops = ETAS_ConfigBuilderUtils.getCommonOptions();
+		Options ops = getCommonOptions();
 
 		Option idOption = new Option("id", "event-id", true, "Primary ComCat event ID of interest");
 		idOption.setRequired(true);
@@ -131,6 +131,16 @@ public class ETAS_ComcatEventConfigBuilder {
 		finiteSurfShakeMap.setRequired(false);
 		ops.addOption(finiteSurfShakeMap);
 		
+		Option finiteSurfShakeMapVersion = new Option("fssmv", "finite-surf-shakemap-version", true,
+				"ShakeMap source Version number to use for mainshock. Must also supply --finite-surf-shakemap option");
+		finiteSurfShakeMapVersion.setRequired(false);
+		ops.addOption(finiteSurfShakeMapVersion);
+		
+		Option finiteSurfShakeMapPlanar = new Option("fssmp", "finite-surf-shakemap-planar-extents", false,
+				"Flag to build a planar surface based off of the extents (min & max lat, lon, depth) instead of using the actual surface");
+		finiteSurfShakeMapPlanar.setRequired(false);
+		ops.addOption(finiteSurfShakeMapPlanar);
+		
 		Option finiteSurfShakeMapMag = new Option("fssmmm", "finite-surf-shakemap-min-mag", true,
 				"Minimum magnitude above which to search for shakemap finite surfaces. Must also supply --finite-surf-shakemap option");
 		finiteSurfShakeMapMag.setRequired(false);
@@ -193,6 +203,29 @@ public class ETAS_ComcatEventConfigBuilder {
 		finiteSurfFromSects.setRequired(false);
 		ops.addOption(finiteSurfFromSects);
 		
+		/*
+		 * Mainshock-specific ETAS params (all others will be applied to all other ComCat events
+		 */
+		Option kOption = new Option("mek", "mainshock-etas-k", true, "Mainshock-specific ETAS productivity parameter parameter,"
+				+ " k, in Log10 units");
+		kOption.setRequired(false);
+		ops.addOption(kOption);
+		
+		Option pOption = new Option("mep", "mainshock-etas-p", true, "Mainshock-specific ETAS temporal decay paramter, p");
+		pOption.setRequired(false);
+		ops.addOption(pOption);
+		
+		Option cOption = new Option("mec", "mainshock-etas-c", true, "Mainshock-specific ETAS minimum time paramter, c");
+		cOption.setRequired(false);
+		ops.addOption(cOption);
+		
+		/*
+		 * Evaluation options
+		 */
+		Option mcOption = new Option("mc", "mag-complete", true, "Magnitude of Completeness for evaluation plots");
+		mcOption.setRequired(false);
+		ops.addOption(mcOption);
+		
 		return ops;
 	}
 
@@ -200,15 +233,32 @@ public class ETAS_ComcatEventConfigBuilder {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 			String argz = "";
 
-//			argz += " --event-id ci38443183"; // M6.4
-			argz += " --event-id ci38457511"; // M7.1
+//			argz += " --event-id ci38443183"; // 2019 Searles Valley M6.4
+			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
 			argz += " --num-simulations 100000";
+//			argz += " --num-simulations 1000";
 			argz += " --days-before 7";
-			argz += " --days-after 49";
+//			argz += " --days-after 7";
 //			argz += " --end-now";
 //			argz += " --gridded-only";
 //			argz += " --prob-model NO_ERT";
 //			argz += " --include-spontaneous";
+			argz += " --mag-complete 3.5";
+//			argz += " --scale-factor 1.0";
+//			argz += " --name-add CulledSurface";
+//			argz += " --fault-model FM3_2";
+
+			// from Morgan by e-mail 8/26/19 for Ridgcrest from Nic's ETAS GUI
+//			argz += " --etas-k -3.03 --etas-p 1.15 --etas-c "+(float)+Math.pow(10, -3.33);
+//			argz += " --mainshock-etas-k -2.3";
+			// from Morgan by e-mail 8/26/19 for Ridgcrest from Nic's ETAS GUI with a modified c value
+//			argz += " --etas-k -3.03 --etas-p 1.15 --etas-c 0.002";
+//			argz += " --mainshock-etas-k -2.3";
+			// from Morgan by e-mail 8/28/19 for Ridgcrest from her own ETAS code
+//			argz += " --etas-k -2.2833 --etas-p 1.2434 --etas-c 0.0102";
+			// from when I ran Nic's ETAS GUI
+//			argz += " --etas-k -2.666 --etas-p 1.07133 --etas-c "+(float)+8.0307e-4;
+//			argz += " --mainshock-etas-k -2.2412";
 			
 			// took these from first ComCat finite fault
 //			argz += " --finite-surf-dip 85";
@@ -225,6 +275,9 @@ public class ETAS_ComcatEventConfigBuilder {
 
 			argz += " --finite-surf-shakemap";
 			argz += " --finite-surf-shakemap-min-mag 5";
+			argz += " --finite-surf-shakemap-version 7";
+//			argz += " --finite-surf-shakemap-planar-extents";
+//			argz += " --finite-surf-shakemap-min-mag 7";
 			
 //			argz += " --random-seed 123456789";
 			
@@ -290,6 +343,9 @@ public class ETAS_ComcatEventConfigBuilder {
 			double shakeMapSurfMag = cmd.hasOption("finite-surf-shakemap-min-mag")
 					? Double.parseDouble(cmd.getOptionValue("finite-surf-shakemap-min-mag"))
 							: Double.POSITIVE_INFINITY;
+			int shakeMapVersion = cmd.hasOption("finite-surf-shakemap-version")
+					? Integer.parseInt(cmd.getOptionValue("finite-surf-shakemap-version")) : -1;
+			boolean shakeMapPlanarExtents = cmd.hasOption("finite-surf-shakemap-planar-extents");
 			ShakeMapFiniteFaultAccessor smAccessor = shakeMapSurfs ? new ShakeMapFiniteFaultAccessor() : null;
 			
 			boolean invSurfs = cmd.hasOption("finite-surf-inversion");
@@ -373,8 +429,10 @@ public class ETAS_ComcatEventConfigBuilder {
 			int numShakeMapSurfs = 0;
 			if (sfd == null && primaryFiniteFault == null && shakeMapSurfs) {
 				System.out.println("Looking for ShakeMap surface for "+eventID);
-				primaryFiniteFault = smAccessor.fetchShakemapSourceOutlines(eventID);
+				primaryFiniteFault = smAccessor.fetchShakemapSourceOutlines(eventID, shakeMapVersion);
 				Preconditions.checkNotNull(primaryFiniteFault, "No ShakeMap surface found");
+				if (shakeMapPlanarExtents)
+					primaryFiniteFault = getPlanarExtentsSurface(primaryFiniteFault);
 				numShakeMapSurfs++;
 			}
 			
@@ -406,31 +464,32 @@ public class ETAS_ComcatEventConfigBuilder {
 					// use simple trace through extents
 					System.out.println("Failed to create sausage region around SM fault trace, "
 							+ "using simple straight line trace");
-					List<Location[]> pairs = new ArrayList<>();
-					for (int i=0; i<primaryFiniteFault.length; i++) {
-						LocationList tr1 = primaryFiniteFault[i];
-						pairs.add(new Location[] { tr1.first(), tr1.last() });
-						for (int j=i+1; j<primaryFiniteFault.length; j++) {
-							LocationList tr2 = primaryFiniteFault[j];
-							pairs.add(new Location[] { tr1.first(), tr2.first() });
-							pairs.add(new Location[] { tr1.first(), tr2.last() });
-							pairs.add(new Location[] { tr1.last(), tr2.first() });
-							pairs.add(new Location[] { tr1.last(), tr2.last() });
-						}
-					}
-					Location[] furthestPair = null;
-					double furthestDist = 0d;
-					for (Location[] pair : pairs) {
-						double dist = LocationUtils.horzDistanceFast(pair[0], pair[1]);
-						if (dist > furthestDist) {
-							furthestDist = dist;
-							furthestPair = pair;
-						}
-					}
+//					List<Location[]> pairs = new ArrayList<>();
+//					for (int i=0; i<primaryFiniteFault.length; i++) {
+//						LocationList tr1 = primaryFiniteFault[i];
+//						pairs.add(new Location[] { tr1.first(), tr1.last() });
+//						for (int j=i+1; j<primaryFiniteFault.length; j++) {
+//							LocationList tr2 = primaryFiniteFault[j];
+//							pairs.add(new Location[] { tr1.first(), tr2.first() });
+//							pairs.add(new Location[] { tr1.first(), tr2.last() });
+//							pairs.add(new Location[] { tr1.last(), tr2.first() });
+//							pairs.add(new Location[] { tr1.last(), tr2.last() });
+//						}
+//					}
+//					Location[] furthestPair = null;
+//					double furthestDist = 0d;
+//					for (Location[] pair : pairs) {
+//						double dist = LocationUtils.horzDistanceFast(pair[0], pair[1]);
+//						if (dist > furthestDist) {
+//							furthestDist = dist;
+//							furthestPair = pair;
+//						}
+//					}
 					
+					LocationList planar = getPlanarExtentsSurface(primaryFiniteFault)[0];
 					FaultTrace simpleTrace = new FaultTrace(null);
-					simpleTrace.add(furthestPair[0]);
-					simpleTrace.add(furthestPair[1]);
+					simpleTrace.add(planar.get(0));
+					simpleTrace.add(planar.get(1));
 					region = new Region(simpleTrace, radius);
 				}
 			} else {
@@ -501,6 +560,10 @@ public class ETAS_ComcatEventConfigBuilder {
 			long lastInputTime = Long.MIN_VALUE;
 			List<TriggerRupture> triggerRuptures = new ArrayList<>();
 			
+			Double ms_log10_k = doubleArgIfPresent(cmd, "mainshock-etas-k");
+			Double ms_p = doubleArgIfPresent(cmd, "mainshock-etas-p");
+			Double ms_c = doubleArgIfPresent(cmd, "mainshock-etas-c");
+			
 			HashSet<String> prevIDs = new HashSet<>();
 			for (ObsEqkRupture eq : comcatEvents) {
 				Preconditions.checkState(!prevIDs.contains(eq.getEventId()), "Duplicate event found: %s", eventID);
@@ -522,6 +585,10 @@ public class ETAS_ComcatEventConfigBuilder {
 						triggerRup = new TriggerRupture.Point(eq.getHypocenterLocation(), eq.getOriginTime(),
 								eq.getMag(), resetSubSects);
 					System.out.println("Primary rupture type: "+ClassUtils.getClassNameWithoutPackage(triggerRup.getClass()));
+					if (ms_log10_k != null || ms_p != null || ms_c != null) {
+						System.out.println("Setting custom mainshock ETAS parameters");
+						triggerRup.setETAS_Params(ms_log10_k, ms_p, ms_c);
+					}
 				} else {
 					if (invSurfs && eq.getMag() >= invSurfMag) {
 						// look for inverted surface
@@ -543,6 +610,8 @@ public class ETAS_ComcatEventConfigBuilder {
 						LocationList[] outlines = smAccessor.fetchShakemapSourceOutlines(eq.getEventId());
 						if (outlines != null) {
 							System.out.println("\tFound surface!");
+							if (shakeMapPlanarExtents)
+								outlines = getPlanarExtentsSurface(outlines);
 							triggerRup = new TriggerRupture.EdgeFault(eq.getOriginTime(),
 									eq.getHypocenterLocation(), eq.getMag(), outlines);
 							numShakeMapSurfs++;
@@ -569,6 +638,17 @@ public class ETAS_ComcatEventConfigBuilder {
 				name = "ComCat M"+(float)rup.getMag()+" ("+eventID+")";
 				if (daysAfter > 0)
 					name += ", "+daysDF.format(daysAfter)+" Days After";
+				if (ms_log10_k != null || ms_p != null || ms_c != null) {
+					name += ", Mainshock ";
+					List<String> msVals = new ArrayList<>();
+					if (ms_log10_k != null)
+						msVals.add("Log10(k)="+ms_log10_k.floatValue());
+					if (ms_p != null)
+						msVals.add("p="+ms_p.floatValue());
+					if (ms_c != null)
+						msVals.add("c="+ms_c.floatValue());
+					name += Joiner.on(",").join(msVals);
+				}
 				if (sfd != null)
 					name += ", Finite Surface";
 				if (numInvSurfs > 0) {
@@ -582,13 +662,17 @@ public class ETAS_ComcatEventConfigBuilder {
 					name += ", ShakeMap Surface";
 					if (numShakeMapSurfs > 1)
 						name += "s";
+					if (shakeMapVersion >= 0)
+						name += " (Version "+shakeMapVersion+")";
+					if (shakeMapPlanarExtents)
+						name += " (Planar Extents)";
 				}
 				if (sfd == null && numInvSurfs == 0 && numShakeMapSurfs == 0) {
 					name += ", Point Source";
 					if (triggerRuptures.size() > 1)
 						name += "s";
 				}
-				List<String> nonDefaultOptions = ETAS_ConfigBuilderUtils.getNonDefaultOptionsStrings(cmd);
+				List<String> nonDefaultOptions = getNonDefaultOptionsStrings(cmd);
 				if (nonDefaultOptions != null && !nonDefaultOptions.isEmpty())
 					name += ", "+Joiner.on(", ").join(nonDefaultOptions);
 				if (cmd.hasOption("name-add")) {
@@ -601,9 +685,12 @@ public class ETAS_ComcatEventConfigBuilder {
 			
 			String configCommand = "u3etas_comcat_event_config_builder.sh "+Joiner.on(" ").join(args);
 			
-			ETAS_Config config = ETAS_ConfigBuilderUtils.buildBasicConfig(cmd, name, triggerRuptures, configCommand);
+			ETAS_Config config = buildBasicConfig(cmd, name, triggerRuptures, configCommand);
 			config.setStartTimeMillis(simulationStartTime);
-			config.setComcatMetadata(new ComcatMetadata(region, eventID, minDepth, maxDepth, minMag, comcatStartTime, comcatEndTime));
+			ComcatMetadata meta = new ComcatMetadata(region, eventID, minDepth, maxDepth, minMag, comcatStartTime, comcatEndTime);
+			if (cmd.hasOption("mag-complete"))
+				meta.magComplete = Double.parseDouble(cmd.getOptionValue("mag-complete"));
+			config.setComcatMetadata(meta);
 			
 			File outputDir = config.getOutputDir();
 			System.out.println("Output dir: "+outputDir.getPath());
@@ -619,7 +706,7 @@ public class ETAS_ComcatEventConfigBuilder {
 				System.err.println("WARNING: overwriting previous configuration file");
 			config.writeJSON(configFile);
 			
-			ETAS_ConfigBuilderUtils.checkWriteHPC(config, relativeConfigFile, cmd);
+			checkWriteHPC(config, relativeConfigFile, cmd);
 			
 			// now write plots
 			File plotDir = new File(outputDir, "config_input_plots");
@@ -689,6 +776,55 @@ public class ETAS_ComcatEventConfigBuilder {
 			e.printStackTrace();
 			System.exit(1);
 		}
+	}
+	
+	private static LocationList[] getPlanarExtentsSurface(LocationList[] rawSurf) {
+		MinMaxAveTracker latTrack = new MinMaxAveTracker();
+		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+		MinMaxAveTracker depthTrack = new MinMaxAveTracker();
+		
+		for (LocationList surf : rawSurf) {
+			for (Location loc : surf) {
+				latTrack.addValue(loc.getLatitude());
+				lonTrack.addValue(loc.getLongitude());
+				depthTrack.addValue(loc.getDepth());
+			}
+		}
+		
+		Location bottomLeft = new Location(latTrack.getMin(), lonTrack.getMin());
+		Location bottomRight = new Location(latTrack.getMin(), lonTrack.getMax());
+		
+		// figure out if it should go from bottom left to top right or bottom right to top left
+		double distFromBottomLeft = 0d;
+		double distFromBottomRight = 0d;
+		for (LocationList surf : rawSurf) {
+			for (Location loc : surf) {
+				distFromBottomLeft += LocationUtils.horzDistanceFast(loc, bottomLeft);
+				distFromBottomRight += LocationUtils.horzDistanceFast(loc, bottomRight);
+			}
+		}
+		
+		LocationList extents = new LocationList();
+		
+		double startLat = latTrack.getMin();
+		double endLat = latTrack.getMax();
+		double startLon, endLon;
+		if (distFromBottomLeft < distFromBottomRight) {
+			startLon = lonTrack.getMin();
+			endLon = lonTrack.getMax();
+		} else {
+			startLon = lonTrack.getMax();
+			endLon = lonTrack.getMin();
+		}
+		double startDepth = depthTrack.getMin();
+		double endDepth = depthTrack.getMax();
+		extents.add(new Location(startLat, startLon, startDepth));
+		extents.add(new Location(endLat, endLon, startDepth));
+		extents.add(new Location(endLat, endLon, endDepth));
+		extents.add(new Location(startLat, startLon, endDepth));
+		extents.add(new Location(startLat, startLon, startDepth));
+		
+		return new LocationList[] { extents };
 	}
 	
 	private static final DecimalFormat daysDF = new DecimalFormat("0.#");

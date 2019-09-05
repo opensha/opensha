@@ -30,6 +30,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -72,7 +73,18 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	protected ETAS_LongTermRateVariabilityPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, double[] fixedDurations) {
 		super(config, launcher);
 		this.prefix = prefix;
+		if (fixedDurations != null) {
+			List<Double> myDurs = new ArrayList<>();
+			for (double duration : fixedDurations)
+				if (config.getDuration() >= duration)
+					myDurs.add(duration);
+			if (myDurs.isEmpty())
+				fixedDurations = null;
+			else
+				fixedDurations = Doubles.toArray(myDurs);
+		}
 		this.fixedDurations = fixedDurations;
+		
 		Preconditions.checkState(config.isIncludeSpontaneous(), "Long term variability requires spontaneous ruptures");
 		Preconditions.checkState(!config.hasTriggers(), "Long term variability plot not applicable to aftershock catalogs");
 		

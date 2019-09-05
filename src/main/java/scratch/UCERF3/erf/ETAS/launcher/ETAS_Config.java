@@ -52,7 +52,7 @@ public class ETAS_Config {
 	private Boolean reuseERFs = null;
 	private String simulationName = null;
 	private int numRetries = 3;
-	private final File outputDir;
+	private File outputDir;
 	
 	// input ruptures
 	private File triggerCatalog = null;
@@ -85,10 +85,6 @@ public class ETAS_Config {
 	
 	// Comcat driven events
 	private ComcatMetadata comcatMetadata = null;
-	@Deprecated
-	private Region comcatRegion = null;
-	@Deprecated
-	private String comcatEventID = null;
 	
 	public static  class ComcatMetadata {
 		public final Region region;
@@ -163,10 +159,10 @@ public class ETAS_Config {
 					new BinaryFilteredOutputConfig("results_triggered_descendants", null, null, true));
 	}
 	
-	private static Gson buildGson() {
+	private static Gson buildGson(boolean resolvePaths) {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
-		builder.registerTypeAdapter(File.class, new FileTypeAdapter().nullSafe());
+		builder.registerTypeAdapter(File.class, new FileTypeAdapter(resolvePaths).nullSafe());
 		builder.registerTypeAdapter(Location.class, new LocationTypeAdapter().nullSafe());
 		builder.registerTypeAdapter(TriggerRupture.class, new TriggerRuptureTypeAdapter().nullSafe());
 		builder.registerTypeAdapter(Region.class, new RegionTypeAdapter().nullSafe());
@@ -220,8 +216,10 @@ public class ETAS_Config {
 	private static class FileTypeAdapter extends TypeAdapter<File> {
 		
 		private Map<String, String> env;
+		private boolean resolvePaths;
 		
-		private FileTypeAdapter() {
+		private FileTypeAdapter(boolean resolvePaths) {
+			this.resolvePaths = resolvePaths;
 			env = System.getenv();
 		}
 
@@ -232,7 +230,10 @@ public class ETAS_Config {
 
 		@Override
 		public File read(JsonReader in) throws IOException {
-			return resolvePath(in.nextString(), env);
+			String path = in.nextString();
+			if (resolvePaths)
+				return resolvePath(path, env);
+			return new File(path);
 		}
 		
 	}
@@ -281,8 +282,14 @@ public class ETAS_Config {
 			out.beginObject();
 			if (value.customOccurrenceTime != null && value.customOccurrenceTime > Long.MIN_VALUE)
 				out.name("occurrenceTimeMillis").value(value.customOccurrenceTime);
-			if (value.comcatEventID != null && value.comcatEventID.length() > 0)
-				out.name("comcatEventID").value(value.comcatEventID);
+			if (value.getComcatEventID() != null && value.getComcatEventID().length() > 0)
+				out.name("comcatEventID").value(value.getComcatEventID());
+			if (value.getETAS_log10_k() != null)
+				out.name("etas_log10_k").value(value.getETAS_log10_k());
+			if (value.getETAS_p() != null)
+				out.name("etas_p").value(value.getETAS_p());
+			if (value.getETAS_c() != null)
+				out.name("etas_c").value(value.getETAS_c());
 			if (value instanceof TriggerRupture.FSS) {
 				TriggerRupture.FSS fssRup = (TriggerRupture.FSS)value;
 				out.name("fssIndex").value(fssRup.fssIndex);
@@ -405,6 +412,9 @@ public class ETAS_Config {
 			
 			String comcatEventID = null;
 			
+			// ETAS params
+			Double log10_k = null, p = null, c = null;
+			
 			in.beginObject();
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -522,6 +532,16 @@ public class ETAS_Config {
 					in.endArray();
 					resetSubSects = Ints.toArray(myIndexes);
 					break;
+				case "etas_log10_k":
+					log10_k = in.nextDouble();
+//					System.out.println("Custom k-value: "+log10_k);
+					break;
+				case "etas_p":
+					p = in.nextDouble();
+					break;
+				case "etas_c":
+					c = in.nextDouble();
+					break;
 				}
 			}
 			in.endObject();
@@ -561,6 +581,7 @@ public class ETAS_Config {
 				trigger = new TriggerRupture.Point(hypocenter, customOccurrenceTime, mag, resetSubSects);
 			}
 			trigger.setComcatEventID(comcatEventID);
+			trigger.setETAS_Params(log10_k, p, c);
 			return trigger;
 		}
 		
@@ -718,7 +739,7 @@ public class ETAS_Config {
 			if (centerLat != null) {
 				Preconditions.checkNotNull(centerLon, "centerLatitude not specified");
 				Preconditions.checkNotNull(radius, "circle radius not specified");
-				return new Region(new Location(centerLat, centerLon), radius);
+				return new CircularRegion(new Location(centerLat, centerLon), radius);
 			}
 			Preconditions.checkNotNull(border, "Must specify either rectangular region, circular region, or supply border");
 			return new Region(border, null);
@@ -896,6 +917,10 @@ public class ETAS_Config {
 	public File getOutputDir() {
 		return outputDir;
 	}
+
+	public void setOutputDir(File outputDir) {
+		this.outputDir = outputDir;
+	}
 	
 	public void setProbModel(U3ETAS_ProbabilityModelOptions probModel) {
 		this.probModel = probModel;
@@ -1016,7 +1041,7 @@ public class ETAS_Config {
 	}
 	
 	public String toJSON() {
-		Gson gson = buildGson();
+		Gson gson = buildGson(true);
 		return gson.toJson(this);
 	}
 	
@@ -1028,6 +1053,10 @@ public class ETAS_Config {
 	}
 	
 	public static ETAS_Config readJSON(File jsonFile) throws IOException {
+		return readJSON(jsonFile, true);
+	}
+	
+	public static ETAS_Config readJSON(File jsonFile, boolean resolvePaths) throws IOException {
 		String json = null;
 		for (String line : Files.readLines(jsonFile, Charset.defaultCharset())) {
 			if (json == null)
@@ -1035,63 +1064,40 @@ public class ETAS_Config {
 			else
 				json += "\n"+line;
 		}
-		return readJSON(json);
+		return readJSON(json, resolvePaths);
 	}
 	
 	public static ETAS_Config readJSON(String json) {
-		Gson gson = buildGson();
+		return readJSON(json, true);
+	}
+	
+	public static ETAS_Config readJSON(String json, boolean resolvePaths) {
+		Gson gson = buildGson(resolvePaths);
 		ETAS_Config conf = gson.fromJson(json, ETAS_Config.class);
 		return conf;
 	}
 	
-	public static void checkFixComcatMeta(File jsonFile) throws IOException {
-		if (jsonFile.isDirectory()) {
-			for (File file : jsonFile.listFiles()) {
-				if (file.isDirectory() && file.getName().contains("_ci"))
-					checkFixComcatMeta(file);
-				if (file.getName().endsWith(".json"))
-					checkFixComcatMeta(file);
-			}
-			return;
-		}
+	public static void updateComcatMagComplete(File jsonFile, Double magComplete) throws IOException {
 		ETAS_Config config = readJSON(jsonFile);
-		if (config.comcatRegion != null) {
-			System.out.println("Fixing ComCat metadata for: "+jsonFile.getAbsolutePath());
-			String eventID = config.comcatEventID;
-			String parentName = jsonFile.getParentFile().getName();
-			if (eventID == null && parentName.contains("_ci")) {
-				eventID = parentName.substring(parentName.indexOf("_ci")+1);
-				eventID = eventID.substring(0, eventID.indexOf("_"));
-			}
-			double minDepth = -10;
-			double maxDepth = ETAS_CubeDiscretizationParams.DEFAULT_MAX_DEPTH;
-			double minMag = ETAS_Utils.magMin_DEFAULT;
-			long startTime = Long.MAX_VALUE;
-			for (TriggerRupture trigger : config.getTriggerRuptures())
-				if (trigger.customOccurrenceTime != null)
-					startTime = Long.min(startTime, trigger.customOccurrenceTime);
-			long endTime = config.getSimulationStartTimeMillis() - 1000;
-			config.comcatMetadata = new ComcatMetadata(config.comcatRegion, eventID,
-					minDepth, maxDepth, minMag, startTime, endTime);
-			config.comcatEventID = null;
-			config.comcatRegion = null;
-			config.writeJSON(jsonFile);
-		} else  if (config.comcatMetadata != null && config.outputDir.getPath().contains("/home")) {
-			System.out.println("Fixing paths from previous comcat metadat repair: "+jsonFile.getAbsoluteFile());
-			Map<String, String> env = System.getenv();
-			String json = config.toJSON();
-			for (String var : env.keySet()) {
-				String val = env.get(var);
-				if (!var.startsWith("ETAS") || !json.contains(val) || var.equals("ETAS_MEM_GB"))
-					continue;
-				System.out.println("\tReplacing path '"+val+"' with ${"+var+"}");
-				json = json.replaceAll(val, Matcher.quoteReplacement("${"+var+"}"));
-			}
-			FileWriter fw = new FileWriter(jsonFile);
-			fw.write(json+"\n");
-			fw.close();
+		ComcatMetadata meta = config.comcatMetadata;
+		Preconditions.checkNotNull(meta);
+		meta.magComplete = magComplete;
+		
+		Map<String, String> env = System.getenv();
+		String json = config.toJSON();
+		for (String var : env.keySet()) {
+			String val = env.get(var);
+			if (!var.startsWith("ETAS") || !json.contains(val) || var.equals("ETAS_MEM_GB"))
+				continue;
+			System.out.println("\tReplacing path '"+val+"' with ${"+var+"}");
+			json = json.replaceAll(val, Matcher.quoteReplacement("${"+var+"}"));
 		}
+		FileWriter fw = new FileWriter(jsonFile);
+		fw.write(json+"\n");
+		fw.close();
 	}
+	
+//	public static void unResolvePaths
 
 	public static void main(String[] args) {
 		if (args.length == 1) {
@@ -1103,21 +1109,12 @@ public class ETAS_Config {
 					System.out.println("================");
 					System.out.println(config.toJSON());
 					System.out.println("================");
-				} else {
-					checkFixComcatMeta(jsonFile);
 				}
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			return;
-		}
-		try {
-//			checkFixComcatMeta(new File("/home/kevin/git/ucerf3-etas-results"));
-			checkFixComcatMeta(new File("/home/kevin/OpenSHA/UCERF3/etas/simulations"));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		}
 		System.exit(0);
 		int numSimulations = 1000;

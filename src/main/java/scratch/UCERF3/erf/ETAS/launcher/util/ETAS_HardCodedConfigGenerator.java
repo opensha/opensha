@@ -20,7 +20,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
-import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ConfigBuilderUtils.HPC_Sites;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ConfigBuilder.HPC_Sites;
 
 public class ETAS_HardCodedConfigGenerator {
 	
@@ -190,7 +190,7 @@ public class ETAS_HardCodedConfigGenerator {
 		if (mpj) {
 			File slurmScriptFile = new File(localOutputDir, "etas_sim_mpj.slurm");
 			File template = hpcSite.getSlurmFile();
-			ETAS_ConfigBuilderUtils.updateSlurmScript(template, slurmScriptFile, nodes, threads, hours, queue, configFile);
+			ETAS_ConfigBuilder.updateSlurmScript(template, slurmScriptFile, nodes, threads, hours, queue, configFile);
 		}
 	}
 	
