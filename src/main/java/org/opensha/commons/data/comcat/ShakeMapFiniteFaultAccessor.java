@@ -3,6 +3,7 @@ package org.opensha.commons.data.comcat;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -13,6 +14,8 @@ import java.util.Set;
 import org.apache.commons.io.IOUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -25,8 +28,10 @@ import com.google.common.base.Preconditions;
 
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
+import gov.usgs.earthquake.event.Format;
 import gov.usgs.earthquake.event.JsonEvent;
 import gov.usgs.earthquake.event.JsonUtil;
+import gov.usgs.earthquake.event.UrlUtil;
 
 public class ShakeMapFiniteFaultAccessor {
 	
@@ -61,6 +66,17 @@ public class ShakeMapFiniteFaultAccessor {
 	 * trace in reverse, then close the polygon by repeating the first point
 	 */
 	public LocationList[] fetchShakemapSourceOutlines(String eventID) {
+		return fetchShakemapSourceOutlines(eventID, -1);
+	}
+	
+	/**
+	 * @param eventID
+	 * @param version ShakeMap version to use (or -1 for best available)
+	 * @return array of all rupture surface outlines. These outlines are direct from ShakeMap, and will follow
+	 * their EdgeRupture specification where points are listed on the upper trace along strike, then the lower
+	 * trace in reverse, then close the polygon by repeating the first point
+	 */
+	public LocationList[] fetchShakemapSourceOutlines(String eventID, int version) {
 		EventQuery query = new EventQuery();
 		query.setEventId(eventID);
 		List<JsonEvent> events;
@@ -87,8 +103,44 @@ public class ShakeMapFiniteFaultAccessor {
 		JSONObject shakemap;
 
 		if (shakemaps != null) {
-
-			shakemap = (JSONObject) shakemaps.get(0);
+			if (shakemaps.size() > 1 || version >= 0) {
+				if (version < 0)
+					System.out.println("Found "+shakemaps.size()+" ShakeMaps, using most preferred");
+				shakemap = null;
+				double maxWeight = Double.NEGATIVE_INFINITY;
+				String bestVersion = null;
+				for (int i=0; i<shakemaps.size(); i++) {
+					JSONObject smObj = (JSONObject)shakemaps.get(i);
+					String smVersionStr = ((JSONObject)smObj.get("properties")).get("version").toString();
+					int smVersion = Integer.parseInt(smVersionStr);
+//					System.out.println("ShakMap Version: "+smVersionStr);
+//					for (Object key : smObj.keySet())
+//						System.out.println("\t"+key+": "+smObj.get(key));
+					if (version >= 0) {
+						if (smVersion == version) {
+							System.out.println("Found specified ShakeMap, version "+version);
+							shakemap = smObj;
+							break;
+						}
+					} else {
+						double weight = Double.parseDouble(smObj.get("preferredWeight").toString());
+						System.out.println("\tVersion "+smVersionStr+", weight="+(int)weight);
+						if (weight > maxWeight) {
+							maxWeight = weight;
+							shakemap = smObj;
+							bestVersion = smVersionStr;
+						}
+					}
+				}
+				if (version < 0)
+					System.out.println("Using best version ("+bestVersion+") with weight="+(int)maxWeight);
+				else if (shakemap == null)
+					System.out.println("Didn't find ShakeMap with version="+version);
+			} else {
+				shakemap = (JSONObject) shakemaps.get(0);
+			}
+			if (shakemap == null)
+				return null;
 
 			JSONObject contents = (JSONObject) shakemap.get("contents");
 			JSONObject fault = null;
@@ -103,8 +155,12 @@ public class ShakeMapFiniteFaultAccessor {
 						fault = (JSONObject) contents.get(str);
 						if(D) System.out.println(fault.get("url"));
 						break;
+					}	else if (str.toLowerCase().endsWith("rupture.json")){
+						if(D) System.out.println(str);
+						fault = (JSONObject) contents.get(str);
+						if(D) System.out.println(fault.get("url"));
+						break;
 					}
-					// TODO fault.json
 				}
 				
 				if (fault != null) {
@@ -119,6 +175,8 @@ public class ShakeMapFiniteFaultAccessor {
 					try {
 						if (urlStr.toLowerCase().endsWith(".txt"))
 							return parseFaultTextFile(url);
+						else if (urlStr.toLowerCase().endsWith(".json"))
+							return parseFaultJSON(url);
 					} catch (IOException e) {
 						if(D) System.out.println("No Shakemap");
 						System.err.println("Error loading ShakeMap finite fault file");
@@ -135,7 +193,6 @@ public class ShakeMapFiniteFaultAccessor {
 		return null;
 	}
 	
-	
 	/**
 	 * Build a RuptureSurface for the given event. For complex surfaces with multiple outlines,
 	 * a CompoundSurface will be returned
@@ -143,6 +200,17 @@ public class ShakeMapFiniteFaultAccessor {
 	 * @return
 	 */
 	public RuptureSurface fetchShakemapSourceSurface(String eventID) {
+		return fetchShakemapSourceSurface(eventID, -1);
+	}
+	
+	/**
+	 * Build a RuptureSurface for the given event. For complex surfaces with multiple outlines,
+	 * a CompoundSurface will be returned
+	 * @param eventID
+	 * @param version ShakeMap version to use (or -1 for best available)
+	 * @return
+	 */
+	public RuptureSurface fetchShakemapSourceSurface(String eventID, int version) {
 		LocationList[] outlines = fetchShakemapSourceOutlines(eventID);
 		if (outlines == null)
 			return null;
@@ -182,16 +250,59 @@ public class ShakeMapFiniteFaultAccessor {
 		return outlines.toArray(new LocationList[0]);
 	}
 	
-	static LocationList parsePolygonFeature(JSONObject feature) {
+	private static LocationList[] parseFaultJSON(URL url) throws IOException {
+		JSONParser parser = new JSONParser();
+		InputStream input = UrlUtil.getInputStream(url);
+		// parse feature collection into objects
+		JSONObject feed;
+		try {
+			feed = JsonUtil.getJsonObject(parser
+					.parse(new InputStreamReader(input)));
+		} catch (ParseException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		} finally {
+			if (input != null)
+				input.close();
+		}
+		JSONArray featuresArray = JsonUtil.getJsonArray(feed.get("features"));
+		List<LocationList> ret = new ArrayList<>();
+		for (Object featureObj : featuresArray) {
+			JSONObject feature = (JSONObject)featureObj;
+			for (LocationList l : parsePolygonFeature(feature))
+				ret.add(l);
+		}
+		return ret.toArray(new LocationList[0]);
+	}
+	
+	static LocationList[] parsePolygonFeature(JSONObject feature) {
 		JSONObject geom = JsonUtil.getJsonObject(feature.get("geometry"));
+		Preconditions.checkNotNull(geom);
 		String type = JsonUtil.getString(geom.get("type"));
-		Preconditions.checkState(type.equals("Polygon"), "Only 'Polygon' geometry type supported. Type is: %s", type);
+		boolean multi = type.equals("MultiPolygon");
+		Preconditions.checkState(type.equals("Polygon") || multi,
+				"Only 'Polygon' or 'MultiPolygon' geometry type supported. Type is: %s", type);
 		JSONArray coordsOuter = JsonUtil.getJsonArray(geom.get("coordinates"));
 		JSONArray coordsInner = JsonUtil.getJsonArray(coordsOuter.get(0));
+		LocationList[] ret;
+		if (multi) {
+			ret = new LocationList[coordsInner.size()];
+			for (int i=0; i<ret.length; i++)
+				ret[i] = parseLocList((JSONArray)coordsInner.get(i));
+		} else {
+			ret = new LocationList[] {
+					parseLocList(coordsInner)
+			};
+		}
+		
+		return ret;
+	}
+	
+	private static LocationList parseLocList(JSONArray array) {
 		LocationList ret = new LocationList();
-		for (Object coordsObj : coordsInner) {
+		for (Object coordsObj : array) {
 			JSONArray coords = JsonUtil.getJsonArray(coordsObj);
-			Preconditions.checkState(coords.size() == 3, "Expected 3 values (lon, lat, depth)");
+			Preconditions.checkState(coords.size() == 3,
+					"Expected 3 values (lon, lat, depth), have %s", coords.size());
 			double lon = ((Number)coords.get(0)).doubleValue();
 			double lat = ((Number)coords.get(1)).doubleValue();
 			double depth = ((Number)coords.get(2)).doubleValue()/1000d; // m to km
@@ -202,6 +313,7 @@ public class ShakeMapFiniteFaultAccessor {
 	
 	public static void main(String[] args) {
 		ShakeMapFiniteFaultAccessor source = new ShakeMapFiniteFaultAccessor();
+//		source.fetchShakemapSourceOutlines("ci38443183", 6);
 		source.fetchShakemapSourceOutlines("ci38457511");
 	}
 

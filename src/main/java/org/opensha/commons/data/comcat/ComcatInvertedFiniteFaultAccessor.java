@@ -169,11 +169,12 @@ public class ComcatInvertedFiniteFaultAccessor {
 		ComcatInvertedFiniteFault ret = new ComcatInvertedFiniteFault();
 		for (Object featureObj : featuresArray) {
 			JSONObject feature = (JSONObject)featureObj;
-			LocationList outline = ShakeMapFiniteFaultAccessor.parsePolygonFeature(feature);
+			LocationList[] outline = ShakeMapFiniteFaultAccessor.parsePolygonFeature(feature);
 			JSONObject props = JsonUtil.getJsonObject(feature.get("properties"));
 			double slip = ((Number)props.get("slip")).doubleValue();
 			double moment = ((Number)props.get("sf_moment")).doubleValue();
-			ret.addRecord(outline, slip, moment);
+			for (LocationList o : outline)
+				ret.addRecord(o, slip, moment);
 		}
 		
 		return ret;

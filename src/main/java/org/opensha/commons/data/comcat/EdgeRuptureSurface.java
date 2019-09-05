@@ -171,12 +171,18 @@ public class EdgeRuptureSurface extends AbstractEvenlyGriddedSurface {
 				"Surface outline must be a closed polygon");
 		int numEach = locs.size()/2;
 		FaultTrace upper = new FaultTrace(null);
-		for (int i=0; i<numEach; i++)
+		for (int i=0; i<numEach; i++) {
 			upper.add(locs.get(i));
+//			System.out.println("\tupper["+i+"]: "+upper.last());
+		}
 		LocationList lower = new LocationList();
-		for (int i=numEach; i<numEach*2; i++)
+		for (int i=numEach; i<numEach*2; i++) {
 			lower.add(locs.get(i));
-		return new EdgeRuptureSurface(upper, lower, maxGridSpacing);
+//			System.out.println("\tlower["+i+"]: "+lower.last());
+		}
+		EdgeRuptureSurface surf = new EdgeRuptureSurface(upper, lower, maxGridSpacing);
+//		System.out.println(surf.getUpperEdge());
+		return surf;
 	}
 
 }
