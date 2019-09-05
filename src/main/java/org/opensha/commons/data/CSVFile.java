@@ -162,6 +162,22 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return getLine(row).get(col);
 	}
 	
+	public double getDouble(int row, int col) throws NumberFormatException {
+		return Double.parseDouble(get(row, col).toString());
+	}
+	
+	public float getFloat(int row, int col) throws NumberFormatException {
+		return Float.parseFloat(get(row, col).toString());
+	}
+	
+	public int getInt(int row, int col) throws NumberFormatException {
+		return Integer.parseInt(get(row, col).toString());
+	}
+	
+	public long getLong(int row, int col) throws NumberFormatException {
+		return Long.parseLong(get(row, col).toString());
+	}
+	
 	public List<E> getLine(int index) {
 		return values.get(index);
 	}
