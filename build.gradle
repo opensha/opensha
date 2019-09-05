@@ -69,7 +69,8 @@ createAppTask("appJarHS", "HazardSpectrumGUI", "org.opensha.sha.gui.HazardSpectr
 createAppTask("appJarAR", "AttenuationRelationshipGUI", "org.opensha.sha.imr.attenRelImpl.gui.AttenuationRelationshipApplet")
 createAppTask("appJarSM", "ShakeMapGUI", "org.opensha.sha.gui.ScenarioShakeMapApp")
 createAppTask("appJarSD", "SiteDataGUI", "org.opensha.commons.data.siteData.gui.SiteDataCombinedApp")
+createAppTask("appJarGMT", "GMTMapApp", "org.opensha.commons.mapping.gmt.gui.GMT_MapGeneratorApplet")
 
 task appJars(type: GradleBuild) {
-     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD']
+     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT']
 }
