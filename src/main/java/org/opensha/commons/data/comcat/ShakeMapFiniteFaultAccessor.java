@@ -182,7 +182,6 @@ public class ShakeMapFiniteFaultAccessor {
 						System.err.println("Error loading ShakeMap finite fault file");
 						throw ExceptionUtils.asRuntimeException(e);
 					}
-					// TODO fault.json
 				} else {
 					if(D) System.out.println("Shakemap exists, but no finite fault");
 				}
@@ -279,8 +278,12 @@ public class ShakeMapFiniteFaultAccessor {
 		Preconditions.checkNotNull(geom);
 		String type = JsonUtil.getString(geom.get("type"));
 		boolean multi = type.equals("MultiPolygon");
-		Preconditions.checkState(type.equals("Polygon") || multi,
-				"Only 'Polygon' or 'MultiPolygon' geometry type supported. Type is: %s", type);
+		boolean poly = type.equals("Polygon");
+		if (!poly && !multi) {
+			System.out.println("Cannot fetch ShakeMap source with geometry type '"+type
+					+"'. Currently supported geometry types are 'Polygon' and 'MultiPolygon'");
+			return null;
+		}
 		JSONArray coordsOuter = JsonUtil.getJsonArray(geom.get("coordinates"));
 		JSONArray coordsInner = JsonUtil.getJsonArray(coordsOuter.get(0));
 		LocationList[] ret;
