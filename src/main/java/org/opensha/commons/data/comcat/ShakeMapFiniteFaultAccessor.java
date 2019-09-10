@@ -267,7 +267,10 @@ public class ShakeMapFiniteFaultAccessor {
 		List<LocationList> ret = new ArrayList<>();
 		for (Object featureObj : featuresArray) {
 			JSONObject feature = (JSONObject)featureObj;
-			for (LocationList l : parsePolygonFeature(feature))
+			LocationList[] locLists = parsePolygonFeature(feature);
+			if (locLists == null)
+				return null;
+			for (LocationList l : locLists)
 				ret.add(l);
 		}
 		return ret.toArray(new LocationList[0]);
