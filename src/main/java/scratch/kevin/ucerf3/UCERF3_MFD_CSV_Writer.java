@@ -32,8 +32,14 @@ public class UCERF3_MFD_CSV_Writer {
 		
 		FaultModels fm = FaultModels.FM3_1;
 		DeformationModels dm = DeformationModels.GEOLOGIC;
-		
-		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/mfd_csv_files");
+
+//		Region region = new CaliforniaRegions.RELM_TESTING();
+//		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/mfd_csv_files");
+//		Region region = new CaliforniaRegions.RELM_SOCAL();
+//		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/mfd_csv_files/socal");
+		Region region = new CaliforniaRegions.RELM_NOCAL();
+		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/mfd_csv_files/nocal");
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
 		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
 		
@@ -43,8 +49,6 @@ public class UCERF3_MFD_CSV_Writer {
 		List<Double> weights = new ArrayList<>();
 		
 		double totWeight = 0d;
-		
-		Region region = new CaliforniaRegions.RELM_TESTING();
 		
 		for (LogicTreeBranch branch : cfss.getBranches()) {
 			if (fm != null && branch.getValue(FaultModels.class) != fm)

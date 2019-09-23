@@ -20,32 +20,24 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ConfigBuilder.HPC_Sites;
 
-public class ETAS_ConfigGenerator {
-	
-	private enum HPC_Sites {
-		HPC("usc_hpcc_mpj_express.slurm"),
-		Stampede2("tacc_stampede2_fastmpj.slurm");
-		
-		private String fileName;
-		
-		private HPC_Sites(String fileName) {
-			this.fileName = fileName;
-		}
-	}
+public class ETAS_HardCodedConfigGenerator {
 	
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException {
 		boolean mpj = true;
-		HPC_Sites hpcSite = HPC_Sites.HPC;
+		HPC_Sites hpcSite = HPC_Sites.USC_HPC;
 		
 		FaultModels fm = FaultModels.FM3_1;
 		boolean u2 = false;
-		Integer startYear = 2012;
-		Long startTimeMillis = null;
-		boolean histCatalog = true;
-		boolean includeSpontaneous = true;
-		int numSimulations = 1000;
+//		Integer startYear = 2019;
+//		Long startTimeMillis = null;
+		Integer startYear = null;
+		Long startTimeMillis = 1562261628000l;
+		boolean histCatalog = false;
+		boolean includeSpontaneous = false;
+		int numSimulations = 100000;
 		double duration = 10d;
 //		double duration = 7d/365.25;
 		Long randomSeed = 123456789l;
@@ -64,10 +56,10 @@ public class ETAS_ConfigGenerator {
 //		Double c = 0.04;
 //		Double log10k = -2.31;
 		
-		TriggerRupture[] triggerRups = null;
-		String scenarioName = "Spontaneous";
-//		String scenarioName = "Historical1919_critical";
-		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+//		TriggerRupture[] triggerRups = null;
+//		String scenarioName = "Spontaneous";
+////		String scenarioName = "Historical1919_critical";
+//		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
 		String nameAdd = null;
 		
@@ -91,16 +83,20 @@ public class ETAS_ConfigGenerator {
 //		String scenarioName = "Mojave Point M6";
 //		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
 		
+		TriggerRupture[] triggerRups = { new TriggerRupture.Point(new Location(35.705, -117.508, 8.7), null, 6.4) };
+		String scenarioName = "Searles Valley M6.4";
+		String customCatalogName = null; // null if disabled, otherwise file name within submit dir
+		
 		// only if mpj == true
-		int nodes = 5;
-		int hours = 12;
-		String queue = hpcSite == HPC_Sites.HPC ? "scec" : null;
+		int nodes = 36;
+		int hours = 24;
+		String queue = hpcSite == HPC_Sites.USC_HPC ? "scec_hiprio" : null;
 //		String queue = "scec_hiprio";
 		Integer threads = null;
 		
 //		Integer threads = 12;
 		
-		if (hpcSite == HPC_Sites.HPC && threads != null && threads > 12)
+		if (hpcSite == HPC_Sites.USC_HPC && threads != null && threads > 12)
 			throw new IllegalStateException("did you set the threads right?");
 		
 //		nameAdd = nodes+"nodes_"+threads+"threads";
@@ -192,64 +188,10 @@ public class ETAS_ConfigGenerator {
 		config.writeJSON(localConfFile);
 		
 		if (mpj) {
-			File templateDir = ETAS_Config.resolvePath(new File(new File(launcherDir, "parallel"), "mpj_examples").getPath());
 			File slurmScriptFile = new File(localOutputDir, "etas_sim_mpj.slurm");
-			File template = new File(templateDir, hpcSite.fileName);
-			updateSlurmScript(template, slurmScriptFile, nodes, threads, hours, queue, configFile);
+			File template = hpcSite.getSlurmFile();
+			ETAS_ConfigBuilder.updateSlurmScript(template, slurmScriptFile, nodes, threads, hours, queue, configFile);
 		}
-	}
-	
-	private static void updateSlurmScript(File inputFile, File outputFile, int nodes, Integer threads, int hours, String queue, File configFile)
-			throws IOException {
-		List<String> lines = new ArrayList<>();
-		
-		boolean nodeLineFound = true;
-		int lastIndexSBATCH = -1;
-		
-		for (String line : Files.readLines(inputFile, Charset.defaultCharset())) {
-			line = line.trim();
-			if (line.startsWith("#SBATCH -t"))
-				line = "#SBATCH -t "+hours+":00:00";
-			
-			if (line.startsWith("#SBATCH -N"))
-				line = "#SBATCH -N "+nodes;
-			
-			if (line.startsWith("#SBATCH -n")) {
-				int cores = threads == null ? nodes : nodes*threads;
-				line = "#SBATCH -n "+cores;
-			}
-			
-			if (line.startsWith("#SBATCH -p")) {
-				nodeLineFound = true;
-				if (queue != null)
-					line = "#SBATCH -p "+queue;
-			}
-			
-			if (line.startsWith("ETAS_CONF_JSON="))
-				line = "ETAS_CONF_JSON="+configFile.getPath();
-			
-			if (line.startsWith("#SBATCH"))
-				lastIndexSBATCH = lines.size();
-			
-			if (threads != null && line.startsWith("THREADS="))
-				line = "THREADS="+threads;
-			
-			lines.add(line);
-		}
-		
-		Preconditions.checkState(lastIndexSBATCH >= 0);
-		
-		if (queue != null && !nodeLineFound) {
-			// need to add it
-			lines.add(lastIndexSBATCH+1, "#SBATCH -p "+queue);
-		}
-		
-		FileWriter fw = new FileWriter(outputFile);
-		
-		for (String line : lines)
-			fw.write(line+"\n");
-		
-		fw.close();
 	}
 	
 	public static final DateFormat df = new SimpleDateFormat("yyyy_MM_dd");

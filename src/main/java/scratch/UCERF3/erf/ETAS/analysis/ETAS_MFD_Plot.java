@@ -1,16 +1,19 @@
 package scratch.UCERF3.erf.ETAS.analysis;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.opensha.commons.calc.FractileCurveCalculator;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.AbstractXY_DataSet;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -29,12 +32,14 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	
@@ -50,9 +55,13 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	
 	private int numCatalogs = 0;
 	
-	private MFD_Stats totalWithSpontStats;
-	private MFD_Stats triggeredStats;
-	private MFD_Stats triggeredPrimaryStats;
+	private double[] durations;
+	
+	private MFD_Stats[] totalWithSpontStats;
+	private MFD_Stats[] totalWithSpontSupraStats;
+	private MFD_Stats[] triggeredStats;
+	private MFD_Stats[] triggeredSupraStats;
+	private MFD_Stats[] triggeredPrimaryStats;
 	
 	private HistogramFunction totalCountHist;
 	
@@ -67,21 +76,46 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		this.cumulative = cumulative;
 		
 		boolean triggerCatAsSpont = config.getTriggerCatalogFile() != null && config.isTreatTriggerCatalogAsSpontaneous();
-		
+
+		double totDuration = config.getDuration();
+		if (!annualize) {
+			List<Double> myDurations = new ArrayList<>();
+			for (double duration : ETAS_HazardChangePlot.times)
+				if (duration < totDuration)
+					myDurations.add(duration);
+			myDurations.add(totDuration);
+			durations = Doubles.toArray(myDurations);
+		} else {
+			durations = new double[] {totDuration};
+		}
 		if (config.isIncludeSpontaneous() || triggerCatAsSpont) {
 			// we have spontaneous ruptures
-			totalWithSpontStats = new MFD_Stats();
+			totalWithSpontStats = buildStats();
+			totalWithSpontSupraStats = buildStats();
 			if (triggerCatAsSpont)
 				spontaneousFound = true;
 		}
 		if (config.hasTriggers()) {
 			// we have input ruptures
-			triggeredStats = new MFD_Stats();
-			triggeredPrimaryStats = new MFD_Stats();
+			triggeredStats = buildStats();
+			triggeredSupraStats = buildStats();
+			triggeredPrimaryStats = buildStats();
 		}
 		Preconditions.checkState(totalWithSpontStats != null || triggeredStats != null, "Must either have spontaneous, or trigger ruptures");
 		
 		totalCountHist = new HistogramFunction(mfdMinMag, mfdNumMag, mfdDelta);
+	}
+
+	@Override
+	public int getVersion() {
+		return 2;
+	}
+	
+	private MFD_Stats[] buildStats() {
+		MFD_Stats[] ret = new MFD_Stats[durations.length];
+		for (int i=0; i<ret.length; i++)
+			ret[i] = new MFD_Stats();
+		return ret;
 	}
 
 	@Override
@@ -92,40 +126,58 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
-		if (totalWithSpontStats != null) {
-			IncrementalMagFreqDist totalHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
-			for (ETAS_EqkRupture rup : completeCatalog) {
-				int xIndex = totalHist.getClosestXIndex(rup.getMag());
-				totalHist.add(xIndex, 1d);
-				// this is used to find the modal magnitude, which is used to trim plots for magnitude filtered catalogs
-				totalCountHist.add(xIndex, 1d);
-				spontaneousFound = spontaneousFound || rup.getGeneration() == 0;
-			}
-			if (cumulative)
-				totalWithSpontStats.addHistogram(totalHist.getCumRateDistWithOffset());
-			else
-				totalWithSpontStats.addHistogram(totalHist);
-		}
-		if (triggeredStats != null) {
-			IncrementalMagFreqDist noSpontHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
-			IncrementalMagFreqDist primaryHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
-			if (triggeredOnlyCatalog != null) {
-				for (ETAS_EqkRupture rup : triggeredOnlyCatalog) {
-					int xIndex = noSpontHist.getClosestXIndex(rup.getMag());
-					noSpontHist.add(xIndex, 1d);
-					if (totalWithSpontStats == null)
-						// do it here
-						totalCountHist.add(xIndex, 1d);
-					if (rup.getGeneration() == 1)
-						primaryHist.add(xIndex, 1d);
+		for (int i=0; i<durations.length; i++) {
+			long maxOT = getConfig().getSimulationStartTimeMillis() + (long)(ProbabilityModelsCalc.MILLISEC_PER_YEAR*durations[i]+0.5);
+			if (totalWithSpontStats != null) {
+				IncrementalMagFreqDist totalHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
+				IncrementalMagFreqDist supraHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
+				for (ETAS_EqkRupture rup : completeCatalog) {
+					if (rup.getOriginTime() > maxOT)
+						break;
+					int xIndex = totalHist.getClosestXIndex(rup.getMag());
+					totalHist.add(xIndex, 1d);
+					// this is used to find the modal magnitude, which is used to trim plots for magnitude filtered catalogs
+					totalCountHist.add(xIndex, 1d);
+					spontaneousFound = spontaneousFound || rup.getGeneration() == 0;
+					if (rup.getFSSIndex() > 0)
+						supraHist.add(xIndex, 1d);
+				}
+				if (cumulative) {
+					totalWithSpontStats[i].addHistogram(totalHist.getCumRateDistWithOffset());
+					totalWithSpontSupraStats[i].addHistogram(supraHist.getCumRateDistWithOffset());
+				} else {
+					totalWithSpontStats[i].addHistogram(totalHist);
+					totalWithSpontSupraStats[i].addHistogram(supraHist);
 				}
 			}
-			if (cumulative) {
-				triggeredStats.addHistogram(noSpontHist.getCumRateDistWithOffset());
-				triggeredPrimaryStats.addHistogram(primaryHist.getCumRateDistWithOffset());
-			} else {
-				triggeredStats.addHistogram(noSpontHist);
-				triggeredPrimaryStats.addHistogram(primaryHist);
+			if (triggeredStats != null) {
+				IncrementalMagFreqDist noSpontHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
+				IncrementalMagFreqDist supraHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
+				IncrementalMagFreqDist primaryHist = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDelta);
+				if (triggeredOnlyCatalog != null) {
+					for (ETAS_EqkRupture rup : triggeredOnlyCatalog) {
+						if (rup.getOriginTime() > maxOT)
+							break;
+						int xIndex = noSpontHist.getClosestXIndex(rup.getMag());
+						noSpontHist.add(xIndex, 1d);
+						if (totalWithSpontStats == null)
+							// do it here
+							totalCountHist.add(xIndex, 1d);
+						if (rup.getGeneration() == 1)
+							primaryHist.add(xIndex, 1d);
+						if (rup.getFSSIndex() > 0)
+							supraHist.add(xIndex, 1d);
+					}
+				}
+				if (cumulative) {
+					triggeredStats[i].addHistogram(noSpontHist.getCumRateDistWithOffset());
+					triggeredSupraStats[i].addHistogram(supraHist.getCumRateDistWithOffset());
+					triggeredPrimaryStats[i].addHistogram(primaryHist.getCumRateDistWithOffset());
+				} else {
+					triggeredStats[i].addHistogram(noSpontHist);
+					triggeredSupraStats[i].addHistogram(supraHist);
+					triggeredPrimaryStats[i].addHistogram(primaryHist);
+				}
 			}
 		}
 		
@@ -140,23 +192,32 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public List<Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
 		int numToTrim = calcNumToTrim();
 		
 		String title = getPlotTitle();
-		if (totalWithSpontStats != null && spontaneousFound) {
-			String myTitle = title;
-			if (triggeredStats != null)
-				// this is has both spontaneous and trigger
-				myTitle = title+", Including Spontaneous";
-			
-			plot(outputDir, prefix, myTitle, totalWithSpontStats, null, numToTrim, fss);
+		for (int i=0; i<durations.length; i++) {
+			String durTitle = title;
+			String durPrefix = prefix;
+			if (durations.length > 1) {
+				durTitle = getTimeLabel(durations[i], false)+" "+title;
+				durPrefix = getTimeShortLabel(durations[i]).replaceAll(" ", "")+"_"+prefix;
+			}
+			if (totalWithSpontStats != null && spontaneousFound) {
+				String myTitle = durTitle;
+				if (triggeredStats != null)
+					// this is has both spontaneous and trigger
+					myTitle += ", Including Spontaneous";
+				
+				plot(outputDir, durPrefix, myTitle, totalWithSpontStats[i], null, totalWithSpontSupraStats[i], numToTrim, fss, durations[i]);
+			}
+			if (triggeredStats != null) {
+				durTitle += ", Triggered Events";
+				
+				plot(outputDir, durPrefix+"_triggered", durTitle, triggeredStats[i], triggeredPrimaryStats[i], triggeredSupraStats[i], numToTrim, fss, durations[i]);
+			}
 		}
-		if (triggeredStats != null) {
-			title += ", Triggered Events";
-			
-			plot(outputDir, prefix+"_triggered", title, triggeredStats, triggeredPrimaryStats, numToTrim, fss);
-		}
+		return null;
 	}
 
 	@Override
@@ -167,53 +228,129 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		
 		String title = getPlotTitle();
 		
+		if (triggeredStats != null && !annualize && durations.length > 1) {
+			// do a summary table
+			lines.add(topLevelHeading+" Probabilities Summary Table");
+			lines.add(topLink); lines.add("");
+			
+			double maxTriggerMag = 0d;
+			for (ETAS_EqkRupture trigger : getLauncher().getTriggerRuptures())
+				maxTriggerMag = Math.max(maxTriggerMag, trigger.getMag());
+			
+			double modalMag = totalCountHist.getX(totalCountHist.getXindexForMaxY()) - 0.5*mfdDelta;
+			double minTableMag = Math.max(Math.floor(maxTriggerMag-3d), Math.floor(modalMag));
+			minTableMag = Math.max(minTableMag, Math.ceil(mfdMinMag-0.5*mfdDelta));
+			double maxMag = 0d;
+			for (Point2D pt : totalCountHist)
+				if (pt.getY() > 0)
+					maxMag = Math.max(maxMag, pt.getX());
+			List<Double> mags = new ArrayList<>();
+			boolean maxTriggerFound = false;
+			for (double mag=minTableMag; mag <= maxMag; mag += 0.5) {
+				if ((float)mag == (float)maxTriggerMag)
+					maxTriggerFound = true;
+				mags.add(mag);
+			}
+			if (!maxTriggerFound) {
+				mags.add(maxTriggerMag);
+				Collections.sort(mags);
+			}
+			System.out.println("Table mags: "+Joiner.on(", ").join(mags));
+			
+			if (totalWithSpontStats != null && spontaneousFound) {
+				// we also have spontaneous
+				lines.add(topLevelHeading+"# Probabilities Summary Table, Including Spontaneous");
+				lines.add(topLink); lines.add("");
+				
+				lines.addAll(getProbsSummaryTable(mags, totalWithSpontStats).build());
+				lines.add("");
+				lines.add(topLevelHeading+"# Probabilities Summary Table, Triggered Only");
+				lines.add(topLink); lines.add("");
+			}
+			
+			lines.addAll(getProbsSummaryTable(mags, triggeredStats).build());
+			lines.add("");
+		}
+		
 		lines.add(topLevelHeading+" "+title);
 		lines.add(topLink); lines.add("");
 		
-		if (totalWithSpontStats != null && spontaneousFound) {
+		if (durations.length > 1)
+			topLevelHeading += "#";
+		
+		for (int i=durations.length; --i>=0;) {
+			String prefix = this.prefix;
 			String myTitle = title;
+			if (durations.length > 1) {
+				myTitle = getTimeLabel(durations[i], false)+" "+title;
+				lines.add(topLevelHeading+" "+myTitle);
+				lines.add(topLink); lines.add("");
+				prefix = getTimeShortLabel(durations[i]).replaceAll(" ", "")+"_"+prefix;
+			}
+			
+			if (totalWithSpontStats != null && spontaneousFound) {
+				if (triggeredStats != null) {
+					// this is has both spontaneous and trigger
+					myTitle = myTitle+", Including Spontaneous";
+					
+					lines.add(topLevelHeading+"# "+myTitle);
+					lines.add(topLink); lines.add("");
+					
+					lines.add("*Note: This section includes both spontaneous and triggered events*");
+					lines.add("");
+				}
+				
+				lines.addAll(buildLegend(durations[i]));
+				lines.add("");
+				
+				lines.add("![MFD Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
+				lines.add("");
+				
+				lines.addAll(buildTable(totalWithSpontStats[i], null, totalWithSpontSupraStats[i], numToTrim, durations[i]));
+				lines.add("");
+			}
 			if (triggeredStats != null) {
-				// this is has both spontaneous and trigger
-				myTitle = title+", Including Spontaneous";
+				myTitle += ", Triggered Events";
 				
-				lines.add(topLevelHeading+"# "+myTitle);
-				lines.add(topLink); lines.add("");
+				if (totalWithSpontStats != null) {
+					lines.add(topLevelHeading+"# "+myTitle);
+					lines.add(topLink); lines.add("");
+					
+					lines.add("*Note: This section only includes triggered events, spontaneous were calculated but filtered out here*");
+					lines.add("");
+				}
 				
-				lines.add("*Note: This section includes both spontaneous and triggered events*");
+				lines.addAll(buildLegend(durations[i]));
+				lines.add("");
+				
+				lines.add("![MFD Plot]("+relativePathToOutputDir+"/"+prefix+"_triggered.png)");
+				lines.add("");
+				
+				lines.addAll(buildTable(triggeredStats[i], triggeredPrimaryStats[i], triggeredSupraStats[i], numToTrim, durations[i]));
 				lines.add("");
 			}
-			
-			lines.addAll(buildLegend());
-			lines.add("");
-			
-			lines.add("![MFD Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
-			lines.add("");
-			
-			lines.addAll(buildTable(totalWithSpontStats, null, numToTrim));
-			lines.add("");
-		}
-		if (triggeredStats != null) {
-			title += ", Triggered Events";
-			
-			if (totalWithSpontStats != null) {
-				lines.add(topLevelHeading+"# "+title);
-				lines.add(topLink); lines.add("");
-				
-				lines.add("*Note: This section only includes triggered events, spontaneous were calculated but filtered out here*");
-				lines.add("");
-			}
-			
-			lines.addAll(buildLegend());
-			lines.add("");
-			
-			lines.add("![MFD Plot]("+relativePathToOutputDir+"/"+prefix+"_triggered.png)");
-			lines.add("");
-			
-			lines.addAll(buildTable(triggeredStats, triggeredPrimaryStats, numToTrim));
-			lines.add("");
 		}
 		
 		return lines;
+	}
+	
+	private TableBuilder getProbsSummaryTable(List<Double> mags, MFD_Stats[] stats) {
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("Magnitude");
+		for (double duration : durations)
+			table.addColumn(getTimeLabel(duration, false)+" Prob");
+		table.finalizeLine();
+		for (double mag : mags) {
+			table.initNewLine();
+			table.addColumn("**M&ge;"+optionalDigitDF.format(mag)+"**");
+			for (int d=0; d<durations.length; d++) {
+				double val = stats[d].probFunc.getInterpolatedY(mag);
+				table.addColumn(getProbStr(val, true));
+			}
+			table.finalizeLine();
+		}
+		return table;
 	}
 	
 	private static String getFractilesString() {
@@ -223,20 +360,22 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		return Joiner.on(",").join(percents);
 	}
 	
-	private void plot(File outputDir, String prefix, String title, MFD_Stats stats, MFD_Stats primaryStats,
-			int numToTrim, FaultSystemSolution fss) throws IOException {
-		stats.calcStats();
+	private void plot(File outputDir, String prefix, String title, MFD_Stats stats, MFD_Stats primaryStats, MFD_Stats supraStats,
+			int numToTrim, FaultSystemSolution fss, double duration) throws IOException {
+		stats.calcStats(annualize, getConfig());
+		supraStats.calcStats(annualize, getConfig());
 		
 		EvenlyDiscretizedFunc meanFunc = stats.getMeanFunc(numToTrim);
 		EvenlyDiscretizedFunc medianFunc = stats.getMedianFunc(numToTrim);
 		EvenlyDiscretizedFunc modeFunc = stats.getModeFunc(numToTrim);
 		EvenlyDiscretizedFunc probFunc = stats.getProbFunc(numToTrim);
+		EvenlyDiscretizedFunc supraProbFunc = supraStats.getProbFunc(numToTrim);
 		EvenlyDiscretizedFunc[] fractileFuncs = stats.getFractileFuncs(numToTrim);
 		
 		meanFunc.setName("Mean");
 		modeFunc.setName("Mode");
 		medianFunc.setName("Median");
-		probFunc.setName(getTimeShortLabel(getConfig().getDuration())+" Prob");
+		probFunc.setName(getTimeShortLabel(duration)+" Prob");
 		if (fractileFuncs.length > 0) {
 			fractileFuncs[0].setName(getFractilesString());
 			for (int i=1; i<fractileFuncs.length; i++)
@@ -287,10 +426,15 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			confFunc.setName("95% Conf");
 			funcs.add(confFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));
+			if (supraProbFunc != null) {
+				supraProbFunc.setName("Supra");
+				funcs.add(supraProbFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.RED));
+			}
 		}
 		
 		if (primaryStats != null) {
-			primaryStats.calcStats();
+			primaryStats.calcStats(annualize, getConfig());
 			EvenlyDiscretizedFunc primaryFunc = primaryStats.getMeanFunc(numToTrim);
 			primaryFunc.setName("Primary");
 			
@@ -307,7 +451,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		if (annualize)
 			yAxisLabel += "Annual Rate";
 		else
-			yAxisLabel = getTimeLabel(getConfig().getDuration(), false)+" "+yAxisLabel+"Number";
+			yAxisLabel = getTimeLabel(duration, false)+" "+yAxisLabel+"Number";
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Magnitude", yAxisLabel);
 		spec.setLegendVisible(true);
@@ -317,6 +461,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			mfdMinY = Math.pow(10, Math.floor(Math.log10(1d/numCatalogs)));
 		
 		HeadlessGraphPanel gp = buildGraphPanel();
+		gp.setLegendFontSize(18);
 		gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 		gp.setUserBounds(meanFunc.getMinX(), meanFunc.getMaxX(), mfdMinY, mfdMaxY);
 
@@ -325,9 +470,102 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
 		gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
+		
+		// write CSV
+		CSVFile<String> csv = new CSVFile<>(true);
+		
+		List<String> header = new ArrayList<>();
+		header.add("Mag");
+		header.add("Mean");
+		for (double fractile : fractiles)
+			header.add(optionalDigitDF.format(fractile*100d)+" %ile");
+		header.add("Median");
+		header.add("Mode");
+		if (probFunc != null) {
+			header.add(getTimeShortLabel(duration)+" Probability");
+			if (supraProbFunc != null)
+				header.add(getTimeShortLabel(duration)+" Supra-Seis Prob");
+		}
+		
+		EvenlyDiscretizedFunc primaryMean = null;
+		if (primaryStats != null) {
+			primaryStats.calcStats(annualize, getConfig());
+			primaryMean = primaryStats.getMeanFunc(numToTrim);
+			header.add("Primary Aftershocks Mean");
+		}
+		csv.addLine(header);
+		
+		for (int i=0; i<meanFunc.size(); i++) {
+			double mag = meanFunc.getX(i);
+			List<String> line = new ArrayList<>();
+			line.add((float)mag+"");
+			line.add((float)meanFunc.getY(i)+"");
+			for (EvenlyDiscretizedFunc fractileFunc : fractileFuncs)
+				line.add((float)fractileFunc.getY(i)+"");
+			line.add((float)medianFunc.getY(i)+"");
+			line.add((float)modeFunc.getY(i)+"");
+			if (probFunc != null) {
+				line.add((float)probFunc.getY(i)+"");
+				if (supraProbFunc != null)
+					line.add((float)supraProbFunc.getY(i)+"");
+			}
+			if (primaryMean != null)
+				line.add((float)primaryMean.getY(i)+"");
+			
+			csv.addLine(line);
+		}
+		csv.writeToFile(new File(outputDir, prefix+".csv"));
 	}
 	
-	private class MFD_Stats {
+	public static MFD_Stats readCSV(File csvFile) throws IOException {
+		CSVFile<String> csv = CSVFile.readFile(csvFile, true);
+		
+		double minMag = csv.getDouble(1, 0);
+		int numMag = csv.getNumRows()-1;
+		int meanCol = getCSVColumn(csv, "Mean");
+		EvenlyDiscretizedFunc meanFunc = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		int probCol = getCSVColumn(csv, "Probability");
+		EvenlyDiscretizedFunc probFunc = probCol >= 0 ? new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta) : null;
+		int medianCol = getCSVColumn(csv, "Median");
+		EvenlyDiscretizedFunc medianFunc = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		int modeCol = getCSVColumn(csv, "Mode");
+		EvenlyDiscretizedFunc modeFunc = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		int numFracts = (medianCol - 1) - meanCol;
+		EvenlyDiscretizedFunc[] fractileFuncs = new EvenlyDiscretizedFunc[numFracts];
+		for (int i=0; i<numFracts; i++)
+			fractileFuncs[i] = new EvenlyDiscretizedFunc(minMag, numMag, mfdDelta);
+		
+		for (int m=0; m<numMag; m++) {
+			int row = m+1;
+			meanFunc.set(m, csv.getDouble(row, meanCol));
+			modeFunc.set(m, csv.getDouble(row, modeCol));
+			medianFunc.set(m, csv.getDouble(row, medianCol));
+			if (probFunc != null)
+				probFunc.set(m, csv.getDouble(row, probCol));
+			for (int i=0; i<numFracts; i++)
+				fractileFuncs[i].set(m, csv.getDouble(row, meanCol+1+i));
+		}
+		
+		MFD_Stats stats = new MFD_Stats();
+		
+		stats.meanFunc = meanFunc;
+		stats.probFunc = probFunc;
+		stats.medianFunc = medianFunc;
+		stats.modeFunc = modeFunc;
+		stats.fractileFuncs = fractileFuncs;
+		
+		return stats;
+	}
+	
+	private static int getCSVColumn(CSVFile<String> csv, String name) {
+		name = name.toLowerCase();
+		for (int col=1; col<csv.getNumCols(); col++)
+			if (csv.get(0, col).toLowerCase().contains(name))
+				return col;
+		return -1;
+	}
+	
+	public static class MFD_Stats {
 		
 		private XY_DataSetList histList;
 		private List<Double> relativeWeights;
@@ -381,7 +619,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			return trimFunc(modeFunc, numToTrim);
 		}
 
-		public synchronized void calcStats() {
+		public synchronized void calcStats(boolean annualize, ETAS_Config config) {
 			if (meanFunc != null)
 				// already calculated
 				return;
@@ -411,7 +649,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			// populate input functions
 			double rateScalar = 1d;
 			if (annualize)
-				rateScalar = 1d/getConfig().getDuration();
+				rateScalar = 1d/config.getDuration();
 			for (int i=0; i<meanCurve.size(); i++) {
 				meanFunc.set(i, meanCurve.getY(i)*rateScalar);
 				
@@ -476,7 +714,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		return trimmed;
 	}
 	
-	private List<String> buildLegend() {
+	private List<String> buildLegend(double duration) {
 		List<String> lines = new ArrayList<>();
 		
 		String quantity;
@@ -484,8 +722,6 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			quantity = "annual rate";
 		else
 			quantity = "expected number";
-		
-		double duration = getConfig().getDuration();
 		
 		lines.add("**Legend**");
 		lines.add("* **Mean** (thick black line): mean "+quantity+" across all "+numCatalogs+" catalogs");
@@ -498,6 +734,8 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			lines.add("* **Mode** (thin cyan line): modal "+quantity+" across all "+numCatalogs+" catalogs");
 		lines.add("* **"+getTimeShortLabel(duration)+" Probability** (thin red line): "
 			+getTimeLabel(duration, false).toLowerCase()+" probability calculated as the fraction of catalogs with at least 1 occurrence");
+		lines.add("* **"+getTimeShortLabel(duration)+" Supraseismogenic Probability** (thin dashed red line): same as above, but only for "
+				+ "supraseismogenic ruptures on explicitly modeled UCERF3 faults");
 		lines.add("* **95% Conf** (light red shaded region): binomial 95% confidence bounds on probability");
 		if (triggeredPrimaryStats != null)
 			lines.add("* **Primary** (thin green line): mean "+quantity+" from primary triggered aftershocks only "
@@ -506,12 +744,14 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		return lines;
 	}
 	
-	private List<String> buildTable(MFD_Stats stats, MFD_Stats primaryStats, int numToTrim) throws IOException {
-		stats.calcStats();
+	private List<String> buildTable(MFD_Stats stats, MFD_Stats primaryStats, MFD_Stats supraStats, int numToTrim, double duration) throws IOException {
+		stats.calcStats(annualize, getConfig());
+		supraStats.calcStats(annualize, getConfig());
 		EvenlyDiscretizedFunc meanFunc = stats.getMeanFunc(numToTrim);
 		EvenlyDiscretizedFunc medianFunc = stats.getMedianFunc(numToTrim);
 		EvenlyDiscretizedFunc modeFunc = stats.getModeFunc(numToTrim);
 		EvenlyDiscretizedFunc probFunc = stats.getProbFunc(numToTrim);
+		EvenlyDiscretizedFunc supraProbFunc = supraStats.getProbFunc(numToTrim);
 		EvenlyDiscretizedFunc[] fractileFuncs = stats.getFractileFuncs(numToTrim);
 		
 		TableBuilder builder = MarkdownUtils.tableBuilder();
@@ -521,11 +761,15 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			builder.addColumn(optionalDigitDF.format(fractile*100d)+" %ile");
 		builder.addColumn("Median");
 		builder.addColumn("Mode");
-		builder.addColumn(getTimeShortLabel(getConfig().getDuration())+" Probability");
+		if (probFunc != null) {
+			builder.addColumn(getTimeShortLabel(duration)+" Probability");
+			if (supraProbFunc != null)
+				builder.addColumn(getTimeShortLabel(duration)+" Supra-Seis Prob");
+		}
 		
 		EvenlyDiscretizedFunc primaryMean = null;
 		if (primaryStats != null) {
-			primaryStats.calcStats();
+			primaryStats.calcStats(annualize, getConfig());
 			primaryMean = primaryStats.getMeanFunc(numToTrim);
 			builder.addColumn("Primary Aftershocks Mean");
 		}
@@ -543,8 +787,11 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 				builder.addColumn(getProbStr(fractileFunc.getY(i)));
 			builder.addColumn(getProbStr(medianFunc.getY(i)));
 			builder.addColumn(getProbStr(modeFunc.getY(i)));
-			if (probFunc != null)
-				builder.addColumn(getProbStr(probFunc.getY(i)));
+			if (probFunc != null) {
+				builder.addColumn(getProbStr(probFunc.getY(i), true));
+				if (supraProbFunc != null)
+					builder.addColumn(getProbStr(supraProbFunc.getY(i), true));
+			}
 			if (primaryMean != null)
 				builder.addColumn(getProbStr(primaryMean.getY(i)));
 			

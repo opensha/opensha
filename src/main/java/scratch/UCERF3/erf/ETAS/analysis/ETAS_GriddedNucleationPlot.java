@@ -84,6 +84,11 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
+	public int getVersion() {
+		return 1;
+	}
+
+	@Override
 	public boolean isFilterSpontaneous() {
 		return hasTriggered;
 	}
@@ -123,7 +128,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
 		if (numRupsSkipped > 0)
 			System.out.println("GriddedNucleation: skipped "+numRupsSkipped+" ruptures outside of region");
 		
@@ -138,66 +143,85 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		
 		System.out.println("GriddedParticipation modal magnitude (will skip plots below): "+(float)modalMag);
 		
-		try {
-			if (hasSpont)
-				plot(totalXYZs, modalMag, scalar, outputDir, prefix);
-			if (hasTriggered) {
-				plot(triggeredXYZs, modalMag, scalar, outputDir, prefix+"_triggered");
-				plot(triggeredPrimaryXYZs, modalMag, scalar, outputDir, prefix+"_triggered_primary");
-			}
-		} catch (GMT_MapException e) {
-			throw ExceptionUtils.asRuntimeException(e);
+		List<Runnable> runnables = new ArrayList<>();
+		if (hasSpont)
+			runnables.add(new MapRunnable(totalXYZs, modalMag, scalar, outputDir, prefix));
+		if (hasTriggered) {
+			runnables.add(new MapRunnable(triggeredXYZs, modalMag, scalar, outputDir, prefix+"_triggered"));
+			runnables.add(new MapRunnable(triggeredPrimaryXYZs, modalMag, scalar, outputDir, prefix+"_triggered_primary"));
 		}
+		return runnables;
 	}
 	
-	private void plot(GriddedGeoDataSet[] xyzs, double modalMag, double scalar, File outputDir, String prefix)
-			throws GMT_MapException, IOException {
-		// now log10 and scale
-		for (GriddedGeoDataSet xyz : xyzs) {
-			xyz.scale(scalar);
-			xyz.log10();
+	private class MapRunnable implements Runnable {
+		private GriddedGeoDataSet[] xyzs;
+		private double modalMag;
+		private double scalar;
+		private File outputDir;
+		private String prefix;
+
+		public MapRunnable(GriddedGeoDataSet[] xyzs, double modalMag, double scalar, File outputDir, String prefix) {
+			this.xyzs = xyzs;
+			this.modalMag = modalMag;
+			this.scalar = scalar;
+			this.outputDir = outputDir;
+			this.prefix = prefix;
 		}
 
-		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
-		cpt.setNanColor(Color.GRAY);
-		cpt.setBelowMinColor(Color.BLUE);
+		@Override
+		public void run() {
+			try {
+				// now log10 and scale
+				for (GriddedGeoDataSet xyz : xyzs) {
+					xyz.scale(scalar);
+					xyz.log10();
+				}
 
-		Region plotReg = new Region(new Location(reg.getMinGridLat(), reg.getMinGridLon()),
-				new Location(reg.getMaxGridLat(), reg.getMaxGridLon()));
+				CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
+				cpt.setNanColor(Color.GRAY);
+				cpt.setBelowMinColor(Color.BLUE);
 
-		double minZ = Math.floor(Math.log10(scalar));
+				Region plotReg = new Region(new Location(reg.getMinGridLat(), reg.getMinGridLon()),
+						new Location(reg.getMaxGridLat(), reg.getMaxGridLon()));
 
-		for (int i = 0; i < mags.length; i++) {
-			if ((float)mags[i] < (float)modalMag)
-				continue;
+				double minZ = Math.floor(Math.log10(scalar));
+
+				for (int i = 0; i < mags.length; i++) {
+					if ((float)mags[i] < (float)modalMag)
+						continue;
+					
+					GriddedGeoDataSet xyz = xyzs[i];
+					
+					double maxZ = Math.ceil(xyz.getMaxZ());
+					if (xyz.getMaxZ() == Double.NEGATIVE_INFINITY)
+						maxZ = minZ + 4;
+					if (maxZ == minZ)
+						maxZ++;
+					
+					for (int j=0; j<xyz.size(); j++)
+						if (Double.isInfinite(xyz.get(j)))
+							xyz.set(j, minZ);
+
+					Preconditions.checkState(minZ < maxZ, "minZ=%s >= maxZ=%s", minZ, maxZ);
+
+					double mag = mags[i];
+					String label = "Log10 M>=" + (float) mag;
+					if (annualize)
+						label += " Nucleation Rate";
+					else
+						label += " Expected Num";
+					String myPrefix = prefix+"_m"+(float)mag;
+					GMT_Map map = FaultBasedMapGen.buildMap(cpt.rescale(minZ, maxZ), null, null,
+							xyzs[i], discr, plotReg, false, label);
+					map.setCPTCustomInterval(1d);
+					String baseURL = FaultBasedMapGen.plotMap(outputDir, myPrefix, false, map);
+//				if (downloadZip)
+//					FileUtils.downloadURL(baseURL + "/allFiles.zip", new File(outputDir, myPrefix + ".zip"));
+				}
+			} catch (IOException | GMT_MapException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
 			
-			GriddedGeoDataSet xyz = xyzs[i];
-			
-			double maxZ = Math.ceil(xyz.getMaxZ());
-			if (xyz.getMaxZ() == Double.NEGATIVE_INFINITY)
-				maxZ = minZ + 4;
-			if (maxZ == minZ)
-				maxZ++;
-			
-			for (int j=0; j<xyz.size(); j++)
-				if (Double.isInfinite(xyz.get(j)))
-					xyz.set(j, minZ);
-
-			Preconditions.checkState(minZ < maxZ, "minZ=%s >= maxZ=%s", minZ, maxZ);
-
-			double mag = mags[i];
-			String label = "Log10 M>=" + (float) mag;
-			if (annualize)
-				label += " Nucleation Rate";
-			else
-				label += " Expected Num";
-			String myPrefix = prefix+"_m"+(float)mag;
-			GMT_Map map = FaultBasedMapGen.buildMap(cpt.rescale(minZ, maxZ), null, null,
-					xyzs[i], discr, plotReg, false, label);
-			map.setCPTCustomInterval(1d);
-			String baseURL = FaultBasedMapGen.plotMap(outputDir, myPrefix, false, map);
-//			if (downloadZip)
-//				FileUtils.downloadURL(baseURL + "/allFiles.zip", new File(outputDir, myPrefix + ".zip"));
 		}
 	}
 

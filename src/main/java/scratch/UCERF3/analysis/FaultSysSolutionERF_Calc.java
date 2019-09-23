@@ -1696,6 +1696,16 @@ public class FaultSysSolutionERF_Calc {
 		}
 	}
 	
+	public static double calcSummedProbs(double... probs) {
+		double totOneMinus = 1;
+		for (double prob : probs) {
+			totOneMinus *= (1-prob);
+		}
+		double totProb = 1 - totOneMinus;
+		
+		return totProb;
+	}
+	
 	public static double calcSummedProbs(List<Double> probs) {
 		double totOneMinus = 1;
 		for (double prob : probs) {

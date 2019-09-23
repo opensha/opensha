@@ -486,6 +486,23 @@ public class ETAS_Utils {
 		return getRandomEventTimes(k_DEFAULT, p_DEFAULT, magMain, magMin_DEFAULT, c_DEFAULT, tMinDays, tMaxDays);
 	}
 	
+	/**
+	 * This gives a random set of primary aftershock event times for the given parameters
+	 * @param rup
+	 * @param etasParams
+	 * @param magMain
+	 * @param magMin
+	 * @param tMinDays
+	 * @param tMaxDays
+	 * @return - event times in days since the main shock
+	 */
+	public double[] getRandomEventTimes(ETAS_EqkRupture rup, ETAS_ParameterList etasParams,
+			double magMain, double magMin, double tMinDays, double tMaxDays) {
+		double k = rup.getETAS_k(etasParams);
+		double p = rup.getETAS_p(etasParams);
+		double c = rup.getETAS_c(etasParams);
+		return getRandomEventTimes(k, p, magMain, magMin, c, tMinDays, tMaxDays);
+	}
 	
 	/**
 	 * This gives a random set of primary aftershock event times for the given parameters
@@ -1007,6 +1024,7 @@ public class ETAS_Utils {
 		EvenlyDiscretizedFunc rateVsEpochTimeFunc = new EvenlyDiscretizedFunc((double)forecastStartTime+deltaTimeMillis/2.0,(double)forecastEndTime-deltaTimeMillis/2.0,numTimeSamples);
 		double totalRatePerYear = mfd.getCumRate(2.55);
 		int firstMagIndex = mfd.getXIndex(2.55);
+		boolean warned = false;
 		for(int i=0;i<rateVsEpochTimeFunc.size();i++) {
 			// compute time over which we have observations
 			double histDurationDays = (rateVsEpochTimeFunc.getX(i)-(double)histCatStartTime)/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
@@ -1020,7 +1038,21 @@ public class ETAS_Utils {
 					}
 				}			
 			}
-			rateVsEpochTimeFunc.set(i,(totalRatePerYear-aftRate));
+			if (aftRate > totalRatePerYear) {
+				// ETAS parameters imply a rate of events greater than the long term MFD
+				if (!warned) {
+					System.err.println("WARNING: ETAS parameters imply a rate of aftershocks from historical (or previous spontaneous) events larger than the long-term MFD, "
+							+ "spontaneous rates will thus be zero from here on out");
+					System.err.println("\tepoch time: "+rateVsEpochTimeFunc.getX(i));
+					System.err.println("\taftershock rate: "+aftRate);
+					System.err.println("\tlong-term rate: "+totalRatePerYear);
+					System.err.println("Future warnings surpressed");
+					warned = true;
+				}
+				rateVsEpochTimeFunc.set(i, 0d);
+			} else {
+				rateVsEpochTimeFunc.set(i,(totalRatePerYear-aftRate));
+			}
 		}
 		return rateVsEpochTimeFunc;
 	}
@@ -1049,6 +1081,7 @@ public class ETAS_Utils {
 		Preconditions.checkState(Double.isFinite(mfd.calcSumOfY_Vals()), "MFD has non-finite values:\t%s", mfd);
 		double totalRatePerYear = mfd.getCumRate(2.55);
 		int firstMagIndex = mfd.getXIndex(2.55);
+		boolean warned = false;
 		for(int i=0;i<spRateVsEpochTimeFunc.size();i++) {
 			double aftRate=0;
 			for(int m=firstMagIndex;m<mfd.size();m++) {
@@ -1064,8 +1097,24 @@ public class ETAS_Utils {
 					aftRate += expectedNum*mfd.getY(m);
 				}
 			}
-			spRateVsEpochTimeFunc.set(i,(totalRatePerYear-aftRate));
+			if (aftRate > totalRatePerYear) {
+				// ETAS parameters imply a rate of events greater than the long term MFD
+				if (!warned) {
+					System.err.println("WARNING: ETAS parameters imply a rate of aftershocks from historical (or previous spontaneous) events larger than the long-term MFD "
+							+ "spontaneous rates will thus be zero from here on out");
+					System.err.println("\tepoch time: "+spRateVsEpochTimeFunc.getX(i));
+					System.err.println("\taftershock rate: "+aftRate);
+					System.err.println("\tlong-term rate: "+totalRatePerYear);
+					System.err.println("Future warnings surpressed");
+					warned = true;
+				}
+				spRateVsEpochTimeFunc.set(i, 0d);
+			} else {
+				spRateVsEpochTimeFunc.set(i,(totalRatePerYear-aftRate));
+			}
 		}
+		if (warned)
+			System.err.println("Total spontaneous rate function sumY="+spRateVsEpochTimeFunc.calcSumOfY_Vals());
 		return spRateVsEpochTimeFunc;
 	}
 

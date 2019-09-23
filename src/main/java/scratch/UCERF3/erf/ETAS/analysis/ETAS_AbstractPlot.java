@@ -6,15 +6,23 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotPreferences;
+import org.opensha.commons.util.ExceptionUtils;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
-import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
+import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator.PlotResult;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 
@@ -22,19 +30,84 @@ public abstract class ETAS_AbstractPlot {
 	
 	private ETAS_Config config;
 	private ETAS_Launcher launcher;
+	
+	private Stopwatch processStopwatch;
+	
+	private AsyncManager asyncManager;
 
 	protected ETAS_AbstractPlot(ETAS_Config config, ETAS_Launcher launcher) {
 		this.config = config;
 		this.launcher = launcher;
+		processStopwatch = Stopwatch.createUnstarted();
+		
+		if (isProcessAsync())
+			asyncManager = new AsyncManager(config);
 	}
 	
+	/**
+	 * Gets the version number for this plot. This is used when regenerating plots for
+	 * a simulation to determine if this one needs to be rebuilt. The default implementation of
+	 * shouldReplot(Integer, Long) returns true if this version number is greater than the
+	 * previous version (or the previous version is null), but can be overridden for advanced
+	 * functionality.
+	 * @return
+	 */
+	public abstract int getVersion();
+	
+	/**
+	 * Checks if this plot should be regenerated, based on the previous version run and 
+	 * previous plot time. Default implementation returns true if prevResult is null,
+	 * or if prevResult.version is less than getVersion()
+	 * @param prevResult previous plot result (can be null)
+	 * @return true if plot should be regenerated, false otherwise
+	 */
+	public boolean shouldReplot(PlotResult prevResult) {
+		return shouldReplot(prevResult, getVersion());
+	}
+	
+	static boolean shouldReplot(PlotResult prevResult, int version) {
+		return prevResult == null || prevResult.version < version;
+	}
+	
+	/**
+	 * If true, and spontaneous ruptures exist in this simulation, the triggeredOnlyCatalog
+	 * will be populated
+	 * @return
+	 */
 	public abstract boolean isFilterSpontaneous();
 	
-	public void processCatalog(List<ETAS_EqkRupture> catalog, FaultSystemSolution fss) {
+	/**
+	 * @return true if this is an evaluation plot with real data. If true, then the plot generator code will
+	 * always replot it (but the cron job will defer to shouldReplot(...)
+	 */
+	public boolean isEvaluationPlot() {
+		return false;
+	}
+	
+	public final void processCatalog(List<ETAS_EqkRupture> catalog, FaultSystemSolution fss) {
 		List<ETAS_EqkRupture> triggeredOnlyCatalog = null;
 		if (isFilterSpontaneous())
 			triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
-		doProcessCatalog(catalog, triggeredOnlyCatalog, fss);
+		processCatalog(catalog, triggeredOnlyCatalog, fss);
+	}
+	
+	public final void processCatalog(List<ETAS_EqkRupture> completeCatalog,
+			List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
+		processStopwatch.start();
+		try {
+			if (asyncManager == null)
+				doProcessCatalog(completeCatalog, triggeredOnlyCatalog, fss);
+			else
+				asyncManager.processAsync(completeCatalog, triggeredOnlyCatalog, fss);
+		} catch (RuntimeException e) {
+			throw e;
+		} finally {
+			processStopwatch.stop();
+		}
+	}
+	
+	public long getProcessTimeMS() {
+		return processStopwatch.elapsed(TimeUnit.MILLISECONDS);
 	}
 	
 	protected abstract void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog,
@@ -48,11 +121,33 @@ public abstract class ETAS_AbstractPlot {
 		return launcher;
 	}
 	
-	public abstract void finalize(File outputDir, FaultSystemSolution fss) throws IOException;
+	/**
+	 * If overridden to return true, doProcessCatalog will be called asynchronously
+	 * @return
+	 */
+	protected boolean isProcessAsync() {
+		return false;
+	}
+	
+	/**
+	 * Called to build all plots from data gathered from each catalog. Can return a list
+	 * of Runnable instances to be executed in parallel before generateMarkdown is called.
+	 * @param outputDir
+	 * @param fss
+	 * @return list of Runnable instances to be executed in parallel before generateMarkdown is called, or null
+	 * @throws IOException
+	 */
+	public final List<? extends Runnable> finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+		if (asyncManager != null)
+			asyncManager.waitOnFutures();
+		return doFinalize(outputDir, fss);
+	}
+	
+	public abstract List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException;
 	
 	public abstract List<String> generateMarkdown(String relativePathToOutputDir, String topLevelHeading, String topLink) throws IOException;
 	
-	protected static HeadlessGraphPanel buildGraphPanel() {
+	public static HeadlessGraphPanel buildGraphPanel() {
 		PlotPreferences plotPrefs = PlotPreferences.getDefault();
 		plotPrefs.setTickLabelFontSize(20);
 		plotPrefs.setAxisLabelFontSize(22);
@@ -134,11 +229,21 @@ public abstract class ETAS_AbstractPlot {
 	
 	private static DecimalFormat normProbDF = new DecimalFormat("0.000");
 	private static DecimalFormat expProbDF = new DecimalFormat("0.00E0");
+	private static DecimalFormat percentProbDF = new DecimalFormat("0.00%");
 	
 	protected static String getProbStr(double prob) {
+		return getProbStr(prob, false);
+	}
+	
+	protected static String getProbStr(double prob, boolean includePercent) {
+		String ret;
 		if (prob < 0.01 && prob > 0)
-			return expProbDF.format(prob);
-		return normProbDF.format(prob);
+			ret = expProbDF.format(prob);
+		else
+			ret = normProbDF.format(prob);
+		if (includePercent)
+			ret += " ("+percentProbDF.format(prob)+")";
+		return ret;
 	}
 	
 	public static void main(String[] args) {
@@ -186,6 +291,80 @@ public abstract class ETAS_AbstractPlot {
 		times.add(day*1.5);
 		for (double time : times)
 			System.out.println((float)time+" =>\t"+getTimeLabel(time, true)+"\t"+getTimeLabel(time, false)+"\t"+getTimeShortLabel(time));
+	}
+	
+	private static final int GLOBAL_MAX_PRELOAD = 50;
+	private static final double MAX_PRELOAD_YEARS = 1000;
+	private class AsyncManager {
+		
+		private ExecutorService exec;
+		private List<Future<?>> futures;
+		
+		public AsyncManager(ETAS_Config config) {
+			int maxPreload = GLOBAL_MAX_PRELOAD;
+			maxPreload = Integer.min(maxPreload, config.getNumSimulations()/100);
+			maxPreload = Integer.min(maxPreload, (int)(MAX_PRELOAD_YEARS/config.getDuration()+0.5));
+			maxPreload = Integer.max(2, maxPreload);
+			
+//			System.out.println("Max preload: "+maxPreload);
+			
+			exec = new ThreadPoolExecutor(1, 1,
+					0L, TimeUnit.MILLISECONDS,
+					new LimitedQueue<Runnable>(maxPreload));
+			futures = new ArrayList<>(config.getNumSimulations());
+		}
+		
+		public void processAsync(List<ETAS_EqkRupture> completeCatalog,
+			List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
+			futures.add(exec.submit(new ProcessRunnable(completeCatalog, triggeredOnlyCatalog, fss)));
+		}
+		
+		public void waitOnFutures() {
+			try {
+				for (Future<?> future : futures)
+					future.get();
+			} catch (InterruptedException | ExecutionException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			exec.shutdown();
+		}
+	}
+	
+	private class ProcessRunnable implements Runnable {
+		private final List<ETAS_EqkRupture> completeCatalog;
+		private final List<ETAS_EqkRupture> triggeredOnlyCatalog;
+		private final FaultSystemSolution fss;
+		
+		public ProcessRunnable(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+				FaultSystemSolution fss) {
+			this.completeCatalog = completeCatalog;
+			this.triggeredOnlyCatalog = triggeredOnlyCatalog;
+			this.fss = fss;
+		}
+
+		@Override
+		public void run() {
+			doProcessCatalog(completeCatalog, triggeredOnlyCatalog, fss);
+		}
+	}
+	
+	public static class LimitedQueue<E> extends LinkedBlockingQueue<E>  {
+	    public LimitedQueue(int maxSize) {
+	        super(maxSize);
+	    }
+
+	    @Override
+	    public boolean offer(E e)  {
+	        // turn offer() and add() into a blocking calls (unless interrupted)
+	        try {
+	            put(e);
+	            return true;
+	        } catch(InterruptedException ie) {
+	            Thread.currentThread().interrupt();
+	        }
+	        return false;
+	    }
+
 	}
 
 }

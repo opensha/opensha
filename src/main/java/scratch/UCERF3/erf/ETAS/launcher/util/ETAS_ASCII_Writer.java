@@ -85,7 +85,7 @@ class ETAS_ASCII_Writer {
 					e.printStackTrace();
 				}
 			}
-		}, numCatalogs);
+		}, numCatalogs, 0d);
 		
 		if (zip != null) {
 			zip.close();

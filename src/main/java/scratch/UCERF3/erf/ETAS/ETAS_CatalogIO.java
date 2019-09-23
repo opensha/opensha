@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
 import java.util.TimeZone;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
@@ -427,7 +428,7 @@ public class ETAS_CatalogIO {
 		return loadCatalogsBinary(getIS(file), minMag);
 	}
 
-	public static final int buffer_len = 655360;
+	public static final int buffer_len = 6553600;
 
 	private static InputStream getIS(File file) throws IOException {
 		Preconditions.checkNotNull(file, "File cannot be null!");
@@ -633,12 +634,20 @@ public class ETAS_CatalogIO {
 		}
 	}
 	
+	private static final int ITERABLE_PRELOAD_CAPACITY = 500; // catalogs
+	
 	private static class BinarayCatalogsListIterator implements Iterator<List<ETAS_EqkRupture>> {
 		
 		private double minMag;
 		
 		private int numCatalogs;
-		private int index;
+		private int retIndex;
+		private int loadIndex;
+		
+		private Throwable exception;
+		
+		private Thread loadThread;
+		private LinkedBlockingDeque<List<ETAS_EqkRupture>> deque;
 		
 		private DataInputStream in;
 		
@@ -649,36 +658,69 @@ public class ETAS_CatalogIO {
 			in = new DataInputStream(is);
 
 			numCatalogs = in.readInt();
-			index = 0;
+			
+			deque = new LinkedBlockingDeque<>(ITERABLE_PRELOAD_CAPACITY);
+			loadIndex = 0;
+			loadThread = new Thread() {
+				@Override
+				public void run() {
+					try {
+						while (loadIndex < numCatalogs) {
+							deque.putLast(doLoadCatalogBinary(in, minMag));
+							loadIndex++;
+						}
+						in.close();
+					} catch (Exception e) {
+						exception = e;
+						try {
+							in.close();
+						} catch (IOException e1) {}
+					}
+				}
+			};
+			loadThread.start();
+			retIndex = 0;
 		}
 
 		@Override
 		public boolean hasNext() {
-			return index < numCatalogs;
+			waitUntilReady();
+			return !deque.isEmpty();
 		}
 
 		@Override
 		public List<ETAS_EqkRupture> next() {
-			Preconditions.checkState(hasNext(), "No more catalogs to load!");
-			try {
-				List<ETAS_EqkRupture> catalog = doLoadCatalogBinary(in, minMag);
-				index++;
-				if (!hasNext())
-					in.close();
-				return catalog;
-			} catch (IOException e) {
-				try {
-					in.close();
-				} catch (IOException e1) {}
-				System.err.println("Error loading catalog "+index);
-				System.err.flush();
-				throw ExceptionUtils.asRuntimeException(e);
+			waitUntilReady();
+			if (deque.isEmpty()) {
+				if (exception == null) {
+					throw new IllegalStateException("No more catalogs to load (loaded "+retIndex+"/"+numCatalogs+")");
+				} else {
+					System.err.println("Error loading catalog "+retIndex);
+					System.err.flush();
+					throw ExceptionUtils.asRuntimeException(exception);
+				}
 			}
+			List<ETAS_EqkRupture> catalog = deque.removeFirst();
+			retIndex++;
+			return catalog;
 		}
 
 		@Override
 		public void remove() {
 			throw new UnsupportedOperationException();
+		}
+		
+		/**
+		 * Blocks until either a new event is available or the loading thread has completed (all events populated)
+		 */
+		private void waitUntilReady() {
+			while (deque.isEmpty() && loadThread.isAlive()) {
+//				try {
+//					Thread.sleep(100);
+//				} catch (InterruptedException e) {
+//					ExceptionUtils.throwAsRuntimeException(e);
+//				}
+			}
 		}
 		
 	}

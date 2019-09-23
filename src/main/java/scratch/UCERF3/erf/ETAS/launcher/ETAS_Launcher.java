@@ -114,6 +114,7 @@ public class ETAS_Launcher {
 	
 	private long simulationOT;
 	private String simulationName;
+	private File fssFile;
 	private List<ETAS_EqkRupture> triggerRuptures;
 	private List<ETAS_EqkRupture> histQkList;
 	
@@ -163,45 +164,7 @@ public class ETAS_Launcher {
 		debug(DebugLevel.INFO, "Simulation start time (epoch milliseconds): "+simulationOT);
 		debug(DebugLevel.INFO, "Simulation start date: "+SimulationMarkdownGenerator.df.format(new Date(config.getSimulationStartTimeMillis())));
 		
-		lastEventData = LastEventData.load();
-		resetSubSectsMap = new HashMap<>();
-		
-		// purge any last event data after OT
-		LastEventData.filterDataAfterTime(lastEventData, simulationOT);
-		
-		// load trigger ruptures
-		List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
-		if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
-			debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
-			FaultSystemSolution fss = checkOutFSS();
-			FaultSystemRupSet rupSet = fss.getRupSet();
-			
-			triggerRuptures = new ArrayList<>();
-			for (TriggerRupture triggerRup : triggerRuptureConfigs) {
-				ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT);
-				triggerRuptures.add(rup);
-				int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
-				if (rupturedSects != null && rupturedSects.length > 0) {
-					long time = rup.getOriginTime();
-					List<Integer> sects = resetSubSectsMap.get(time);
-					if (sects == null) {
-						sects = new ArrayList<>();
-						resetSubSectsMap.put(time, sects);
-					}
-					for (int sect : rupturedSects)
-						sects.add(sect);
-				}
-			}
-			
-			checkInFSS(fss);
-			
-			if (!resetSubSectsMap.isEmpty()) {
-				debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
-				for (Long time : getSortedResetTimes())
-					debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
-			}
-		}
-		
+		// load ETAS parameters
 		params = new ETAS_ParameterList();
 		params.setImposeGR(config.isImposeGR());
 		params.setU3ETAS_ProbModel(config.getProbModel());
@@ -225,11 +188,51 @@ public class ETAS_Launcher {
 		}
 		if (config.getETAS_Log10_K() != null) {
 			double log10k = config.getETAS_Log10_K();
-			double k = Math.pow(10, log10k)*Math.pow(365.25, 1d - params.get_p());
-			debug(DebugLevel.INFO, "Setting custom k from Log10(k)="+(float)log10k+" and p: "+k);
+			double k = Math.pow(10, log10k);
+			debug(DebugLevel.INFO, "Setting custom k from Log10(k)="+(float)log10k+": "+k);
 			params.set_k(k);
 		}
 		params.setStatewideCompletenessModel(config.getCompletenessModel());
+		
+		lastEventData = LastEventData.load();
+		resetSubSectsMap = new HashMap<>();
+		fssFile = ETAS_Config.resolvePath(config.getFSS_File());
+		
+		// purge any last event data after OT
+		LastEventData.filterDataAfterTime(lastEventData, simulationOT);
+		
+		// load trigger ruptures
+		List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
+		if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
+			debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
+			FaultSystemSolution fss = checkOutFSS();
+			FaultSystemRupSet rupSet = fss.getRupSet();
+			
+			triggerRuptures = new ArrayList<>();
+			for (TriggerRupture triggerRup : triggerRuptureConfigs) {
+				ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT, params);
+				triggerRuptures.add(rup);
+				int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
+				if (rupturedSects != null && rupturedSects.length > 0) {
+					long time = rup.getOriginTime();
+					List<Integer> sects = resetSubSectsMap.get(time);
+					if (sects == null) {
+						sects = new ArrayList<>();
+						resetSubSectsMap.put(time, sects);
+					}
+					for (int sect : rupturedSects)
+						sects.add(sect);
+				}
+			}
+			
+			checkInFSS(fss);
+			
+			if (!resetSubSectsMap.isEmpty()) {
+				debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
+				for (Long time : getSortedResetTimes())
+					debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
+			}
+		}
 		
 		// now load a trigger catalog
 		histQkList = new ArrayList<>();
@@ -241,7 +244,8 @@ public class ETAS_Launcher {
 				params.setStatewideCompletenessModel(config.getCompletenessModel());
 			FaultSystemSolution fss = checkOutFSS();
 			try {
-				histQkList.addAll(loadHistoricalCatalog(config.getTriggerCatalogFile(), config.getTriggerCatalogSurfaceMappingsFile(),
+				histQkList.addAll(loadHistoricalCatalog(ETAS_Config.resolvePath(config.getTriggerCatalogFile()),
+						ETAS_Config.resolvePath(config.getTriggerCatalogSurfaceMappingsFile()),
 						fss, simulationOT, resetSubSectsMap, params.getStatewideCompletenessModel()));
 			} catch (DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
@@ -289,7 +293,7 @@ public class ETAS_Launcher {
 		
 		debug(DebugLevel.FINE, "Simulation name: "+simulationName);
 		
-		File outputDir = config.getOutputDir();
+		File outputDir = ETAS_Config.resolvePath(config.getOutputDir());
 		if (mkdirs)
 			waitOnDirCreation(outputDir, 10, 2000);
 		
@@ -369,17 +373,17 @@ public class ETAS_Launcher {
 			if (!fssDeque.isEmpty())
 				fss = fssDeque.pop();
 		}
-		if (fss== null) {
+		if (fss == null) {
 			// load a new one
 			try {
-				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+config.getFSS_File().getAbsolutePath());
-				fss = FaultSystemIO.loadSol(config.getFSS_File());
+				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+fssFile.getAbsolutePath());
+				fss = FaultSystemIO.loadSol(fssFile);
 				
 				if (config.isGridSeisCorr() && !config.isGriddedOnly()) {
 					if (gridSeisCorrections == null) {
 						synchronized (fssDeque) {
 							if (gridSeisCorrections == null) {
-								File cacheFile = new File(config.getCacheDir(), "griddedSeisCorrectionCache");
+								File cacheFile = new File(ETAS_Config.resolvePath(config.getCacheDir()), "griddedSeisCorrectionCache");
 								debug(DebugLevel.FINE, "Loading gridded seismicity correction cache file from "+cacheFile.getAbsolutePath());
 								gridSeisCorrections = MatrixIO.doubleArrayFromFile(cacheFile);
 							}
@@ -483,7 +487,7 @@ public class ETAS_Launcher {
 			throw new IllegalStateException("Don't know Fault Model for solution with "+numRups+" ruptures");
 	}
 	
-	private static void waitOnDirCreation(File dir, int maxRetries, long sleepMillis) {
+	static void waitOnDirCreation(File dir, int maxRetries, long sleepMillis) {
 		int retry = 0;
 		while (!(dir.exists() || dir.mkdir())) {
 			try {
@@ -558,7 +562,7 @@ public class ETAS_Launcher {
 		return erf;
 	}
 
-	private AbstractERF checkOutERF() {
+	public AbstractERF checkOutERF() {
 		AbstractERF erf = null;
 		synchronized (erfDeque) {
 			if (!erfDeque.isEmpty())
@@ -599,7 +603,7 @@ public class ETAS_Launcher {
 		return erf;
 	}
 	
-	private void checkInERF(AbstractERF erf) {
+	public void checkInERF(AbstractERF erf) {
 		synchronized (erfDeque) {
 			erfDeque.push(erf);
 		}
@@ -818,7 +822,7 @@ public class ETAS_Launcher {
 			
 			if (!success) {
 				Preconditions.checkState(failureThrow != null);
-				debug("Index "+index+" failed 3 times, bailing");
+				debug("Index "+index+" failed "+attempts+" times, bailing");
 				ExceptionUtils.throwAsRuntimeException(failureThrow);
 			}
 			
@@ -996,8 +1000,8 @@ public class ETAS_Launcher {
 			// only include descendants of the trigger ruptures
 			maxParentID = numTriggerRuptures-1;
 		int[] parentIDs = new int[maxParentID+1];
-		for (int i=0; i<maxParentID; i++)
-			parentIDs[i] = 0;
+		for (int i=0; i<=maxParentID; i++)
+			parentIDs[i] = i;
 		return ETAS_SimAnalysisTools.getChildrenFromCatalog(catalog, parentIDs);
 	}
 	
@@ -1021,8 +1025,11 @@ public class ETAS_Launcher {
 	public static void main(String[] args) throws IOException {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 //			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers.json";
-			String argsStr = "--date-last-debug --threads 6 /tmp/config.json";
+//			String argsStr = "--date-last-debug --threads 6 /tmp/config.json";
 //			String argsStr = "--date-last-debug --threads 6 /tmp/config_noreuse.json";
+			String argsStr = "--threads 1 /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+					+ "2019_07_18-ComCatM7p1_ci38457511_InvertedSurface_ShakeMapSurface"
+					+ "-noSpont-full_td-scale1.14/small/config.json";
 			args = argsStr.split(" ");
 		}
 		System.setProperty("java.awt.headless", "true");

@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.ui.TextAnchor;
 import org.opensha.commons.data.TimeSpan;
@@ -58,6 +59,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	
 	static double[] times = { 1d / (365.25 * 24), 1d / 365.25, 7d / 365.25, 30 / 365.25, 1d, 10d, 30d, 100d };
 	private static double[] minMags = { 5d, 6d, 7d, 8d };
+	private static double overallMinMag = StatUtils.min(minMags);
 	
 	private ArbitrarilyDiscretizedFunc etasTimesFunc;
 	private ArbitrarilyDiscretizedFunc u3TimesFunc;
@@ -139,7 +141,14 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		
 		unionRegion = triggerRegions.get(0);
 		for (int i=1; i<triggerRegions.size(); i++) {
-			unionRegion = Region.union(unionRegion, triggerRegions.get(i));
+			try {
+				unionRegion = Region.union(unionRegion, triggerRegions.get(i));
+			} catch (Exception e) {
+				unionRegion = null;
+				System.err.println("Exception unioning trigger regions, will be slower:");
+				e.printStackTrace();
+				break;
+			}
 			if (unionRegion == null) {
 				System.out.println("Warning, can't union trigger rupture buffered regions, will be slower");
 				break;
@@ -150,6 +159,11 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		hasMags = new boolean[minMags.length];
 		for (int m=0; m<minMags.length; m++)
 			hasMags[m] = false;
+	}
+
+	@Override
+	public int getVersion() {
+		return 1;
 	}
 	
 	private static boolean isHardcodedTime(double time) {
@@ -188,6 +202,8 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		
 		int[][] counts = new int[minMags.length][etasTimesFunc.size()];
 		for (ETAS_EqkRupture rup : triggeredOnlyCatalog) {
+			if (rup.getMag() < overallMinMag)
+				continue;
 			int fssIndex = rup.getFSSIndex();
 			if (fssIndex >= 0 && fssIndexesInside.contains(fssIndex) || insideTriggerRegion(rup.getHypocenterLocation())) {
 				// it's a match!
@@ -212,9 +228,9 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
 		if (tiFuncs != null)
-			return;
+			return null;
 		System.out.println("Calculating hazard change for U3-TI");
 		tiFuncs = calcUCERF3(fss, true);
 		ArbitrarilyDiscretizedFunc[] addToSimFuncs;
@@ -363,6 +379,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			gp.saveAsPDF(new File(outputDir, myPrefix+".pdf").getAbsolutePath());
 			gp.saveAsTXT(new File(outputDir, myPrefix+".txt").getAbsolutePath());
 		}
+		return null;
 	}
 	
 	private ArbitrarilyDiscretizedFunc[] calcUCERF3(FaultSystemSolution fss, boolean timeIndep) {
@@ -556,9 +573,14 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			table.addColumn("Forecast Duration");
 			table.addColumn("UCERF3-ETAS [95% Conf]");
 			table.addColumn("UCERF3-ETAS Triggered Only");
-			if (tdFuncs != null)
+			if (tdFuncs != null) {
 				table.addColumn("UCERF3-TD");
-			table.addColumn("UCERF3-TI");
+				table.addColumn("UCERF3-ETAS/TD Gain");
+				table.addColumn("UCERF3-TI");
+			} else {
+				table.addColumn("UCERF3-TI");
+				table.addColumn("UCERF3-ETAS/TI Gain");
+			}
 			table.finalizeLine();
 			
 			boolean hasAsterisk = false;
@@ -571,15 +593,23 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 					asterisk = " \\*";
 					hasAsterisk = true;
 				}
-				table.addColumn(getProbStr(simFuncs[m].getY(time))+" ["+getProbStr(simLowerFuncs[m].getY(time))
+				double etasProb = simFuncs[m].getY(time);
+				table.addColumn(getProbStr(etasProb)+" ["+getProbStr(simLowerFuncs[m].getY(time))
 						+" - "+getProbStr(simUpperFuncs[m].getY(time))+"]"+asterisk);
 				if ((float)time > (float)simOnlyFuncs[m].getMaxX())
 					table.addColumn("\\*");
 				else
 					table.addColumn(getProbStr(simOnlyFuncs[m].getY(time)));
-				if (tdFuncs != null)
-					table.addColumn(getProbStr(tdFuncs[m].getY(time)));
-				table.addColumn(getProbStr(tiFuncs[m].getY(time)));
+				if (tdFuncs != null) {
+					double tdProb = tdFuncs[m].getY(time);
+					table.addColumn(getProbStr(tdProb));
+					table.addColumn(optionalDigitDF.format(etasProb/tdProb)+asterisk);
+					table.addColumn(getProbStr(tiFuncs[m].getY(time)));
+				} else {
+					double tiProb = tiFuncs[m].getY(time);
+					table.addColumn(getProbStr(tiProb));
+					table.addColumn(optionalDigitDF.format(etasProb/tiProb)+asterisk);
+				}
 				
 				table.finalizeLine();
 			}
