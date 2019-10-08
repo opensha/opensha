@@ -1,6 +1,5 @@
 package org.opensha.commons.data.comcat;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -18,17 +17,14 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.faultSurface.CompoundSurface;
-import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
 
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
-import gov.usgs.earthquake.event.Format;
 import gov.usgs.earthquake.event.JsonEvent;
 import gov.usgs.earthquake.event.JsonUtil;
 import gov.usgs.earthquake.event.UrlUtil;
