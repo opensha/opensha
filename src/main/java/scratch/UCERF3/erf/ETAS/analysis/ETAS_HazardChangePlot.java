@@ -331,7 +331,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			
 			double annY1 = Math.pow(10, Math.log10(minProb)+0.985*(Math.log10(1d) - Math.log10(minProb)));
 			double annY2 = Math.pow(10, Math.log10(minProb)+0.94*(Math.log10(1d) - Math.log10(minProb)));
-			System.out.println("Ann Y's: "+annY1+" "+annY2);
+//			System.out.println("Ann Y's: "+annY1+" "+annY2);
 			
 			List<XYTextAnnotation> annotations = new ArrayList<>();
 
@@ -453,7 +453,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				double rate = -Math.log(1 - prob)/time;
 				rateFunc.set(time, rate);
 			}
-			System.out.println(rateFunc);
+//			System.out.println(rateFunc);
 			smoothed[m] = new ArbitrarilyDiscretizedFunc();
 			for (double x : smoothedXVals) {
 				double smoothedRate = rateFunc.getInterpolatedY(x);

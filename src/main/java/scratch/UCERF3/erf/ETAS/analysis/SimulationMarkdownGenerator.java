@@ -2,9 +2,11 @@ package scratch.UCERF3.erf.ETAS.analysis;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -112,8 +114,8 @@ public class SimulationMarkdownGenerator {
 //					+ "2019_07_11-ComCatM7p1_ci38457511_5p9DaysAfter_FiniteSurface-noSpont-full_td-scale1.14");
 //					+ "2019_07_11-ComCatM7p1_ci38457511_FiniteSurface_NoFaults-noSpont-poisson-griddedOnly");
 //					+ "2019_07_16-ComCatM7p1_ci38457511_11DaysAfter_ShakeMapSurfaces-noSpont-full_td-scale1.14");
-//					+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
-					+ "2019_08_27-Start1919_100yr_Spontaneous-includeSpont-full_td-scale1.14");
+					+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
+//					+ "2019_08_27-Start1919_100yr_Spontaneous-includeSpont-full_td-scale1.14");
 			File configFile = new File(simDir, "config.json");
 //			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"
 //					+ "comcat-ridgecrest-m7.1-example/config.json");
@@ -123,8 +125,8 @@ public class SimulationMarkdownGenerator {
 //			System.out.println(gitHash);
 //			System.out.println(getGitCommitTime(gitHash));
 //			System.exit(0);
-			args = new String[] { configFile.getAbsolutePath() };
-//			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
+//			args = new String[] { configFile.getAbsolutePath() };
+			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
 		}
 		
 		// TODO optional second arg
@@ -280,16 +282,21 @@ public class SimulationMarkdownGenerator {
 
 		@Override
 		public PlotMarkdownBuilder call() throws Exception {
-			System.out.println("Finalizing "+ClassUtils.getClassNameWithoutPackage(plot.getClass()));
+			String cName = ClassUtils.getClassNameWithoutPackage(plot.getClass());
+			System.out.println("Finalizing "+cName);
 			finalizeSubWatch = Stopwatch.createStarted();
 			List<? extends Runnable> runnables = plot.finalize(plotsDir, fss);
+			finalizeSubWatch.stop();
+			
+			String finalStr = "Done finalizing "+cName+" in "+timeStr(finalizeSubWatch.elapsed(TimeUnit.MILLISECONDS));
 			if (runnables != null && !runnables.isEmpty()) {
 				finalizeFutures = new ArrayList<>();
 				for (Runnable runnable : runnables)
 					finalizeFutures.add(exec.submit(runnable));
+				System.out.println(finalStr+" (but must process "+finalizeFutures.size()+" runnables)");
+			} else {
+				System.out.println(finalStr);
 			}
-			
-			finalizeSubWatch.stop();
 			return new PlotMarkdownBuilder(plot, finalizeFutures, finalizeSubWatch);
 		}
 		
@@ -399,7 +406,10 @@ public class SimulationMarkdownGenerator {
 		if (!forceUpdateAll && metadataFile.exists()) {
 			try {
 				PlotMetadata meta = readPlotMetadata(metadataFile);
-				if (meta.simulationsProcessed < config.getNumSimulations()) {
+				int compNumSims = config.getNumSimulations();
+				if (maxCatalogs > 0 && maxCatalogs < compNumSims)
+					compNumSims = maxCatalogs;
+				if (meta.simulationsProcessed < compNumSims) {
 					System.out.println("Reprocessing all plots as previous version was on incomplete simulation");
 				} else if (meta.plots != null ) {
 					Map<String, ETAS_AbstractPlot> plotClassNameMap = new HashMap<>();
@@ -466,6 +476,7 @@ public class SimulationMarkdownGenerator {
 		// process catalogs
 		Stopwatch totalProcessWatch = Stopwatch.createStarted();
 		double loadMag = inputFile.isDirectory() && !config.hasTriggers() ? getPreferredMinMag(config) : 0d;
+		System.out.println("Processing "+config.getSimulationName());
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
 			
 			@Override
@@ -590,10 +601,7 @@ public class SimulationMarkdownGenerator {
 		lines.add("");
 		lines.add("## JSON Input File");
 		lines.add(topLink); lines.add("");
-		lines.add("```");
-		for (String line : Files.readLines(configFile, Charset.defaultCharset()))
-			lines.add(line);
-		lines.add("```");
+		addConfigLines(config, configFile, lines);
 		lines.add("");
 		
 		launcher.checkInFSS(fss);
@@ -617,6 +625,30 @@ public class SimulationMarkdownGenerator {
 		writePlotMetadata(meta, metadataFile);
 		
 		return meta;
+	}
+	
+	public static void addConfigLines(ETAS_Config config, File configFile, List<String> lines) throws IOException {
+		lines.add("```");
+		BufferedReader jsonReader = new BufferedReader(new FileReader(configFile));
+		List<String> configLines = new ArrayList<>();
+		String line;
+		int maxLines = config.getTriggerRuptures() != null && !config.getTriggerRuptures().isEmpty() ? 1000 : Integer.MAX_VALUE;
+		while ((line = jsonReader.readLine()) != null) {
+			configLines.add(line);
+			if (configLines.size() == maxLines) {
+				jsonReader.close();
+				configLines = null;
+				break;
+			}
+		}
+		if (configLines == null) {
+			// build it without trigger ruptures
+			String json = config.toJSON(true);
+			lines.add(json);
+		} else {
+			lines.addAll(configLines);
+		}
+		lines.add("```");
 	}
 	
 	private static DecimalFormat timeDF = new DecimalFormat("0.00");
@@ -777,17 +809,10 @@ public class SimulationMarkdownGenerator {
 	}
 	
 	public static PlotMetadata readPlotMetadata(File jsonFile) throws IOException {
-		String json = null;
-		for (String line : Files.readLines(jsonFile, Charset.defaultCharset())) {
-			if (json == null)
-				json = line;
-			else
-				json += "\n"+line;
-		}
-		return readPlotMetadata(json);
+		return readPlotMetadata(new BufferedReader(new FileReader(jsonFile)));
 	}
 	
-	public static PlotMetadata readPlotMetadata(String json) {
+	public static PlotMetadata readPlotMetadata(Reader json) {
 		Gson gson = buildGson();
 		PlotMetadata conf = gson.fromJson(json, PlotMetadata.class);
 		return conf;

@@ -59,6 +59,9 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	
 	private static final double[] default_map_durations = { 7d / 365.25, 30 / 365.25, 1d };
 	private double[] durations;
+	
+	private boolean noTitles = false;
+	private Region forceRegion = null;
 
 	public ETAS_SimulatedCatalogPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, double... percentiles) {
 		super(config, launcher);
@@ -122,6 +125,14 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		}
 		for (ETAS_EqkRupture rup : completeCatalog)
 			maxMag = Math.max(maxMag, rup.getMag());
+	}
+	
+	public void setHideTitles() {
+		this.noTitles = true;
+	}
+
+	public void setForceRegion(Region forceRegion) {
+		this.forceRegion = forceRegion;
 	}
 
 	@Override
@@ -215,42 +226,47 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 				}
 			}
 			
-			// define region
-			double maxSpan = Math.max(latTrack.getMax()-latTrack.getMin(), lonTrack.getMax()-lonTrack.getMin());
-			double centerLat = latTrack.getAverage();
-			double centerLon = lonTrack.getAverage();
-//			System.out.println("Lon range: "+lonTrack.getMin()+" "+lonTrack.getMax());
-//			System.out.println("Lat range: "+latTrack.getMin()+" "+latTrack.getMax());
-//			System.out.println("Center: "+centerLat+", "+centerLon);
-//			System.out.println("Span: "+maxSpan);
-			double halfSpan = maxSpan*0.5;
-			Location topRight = new Location(centerLat + halfSpan, centerLon + halfSpan);
-			Location bottomLeft = new Location(centerLat - halfSpan, centerLon - halfSpan);
-			// now buffer by 20km in each direction
-			topRight = LocationUtils.location(topRight, new LocationVector(45, 20, 0d));
-			bottomLeft = LocationUtils.location(bottomLeft, new LocationVector(225, 20, 0d));
-			Region mapRegion = new Region(topRight, bottomLeft);
-			// now try the shrink the region if it's larger than 3 degrees
-			int minNumInside = (int)Math.round(catalogLocs.size()*0.95);
-			double mySpan = maxSpan;
-			while (mySpan > 3d) {
-				mySpan = mySpan*0.9;
-				halfSpan = mySpan*0.5;
-				topRight = new Location(centerLat + halfSpan, centerLon + halfSpan);
-				bottomLeft = new Location(centerLat - halfSpan, centerLon - halfSpan);
+			Region mapRegion;
+			if (forceRegion == null) {
+				// define region
+				double maxSpan = Math.max(latTrack.getMax()-latTrack.getMin(), lonTrack.getMax()-lonTrack.getMin());
+				double centerLat = latTrack.getAverage();
+				double centerLon = lonTrack.getAverage();
+//				System.out.println("Lon range: "+lonTrack.getMin()+" "+lonTrack.getMax());
+//				System.out.println("Lat range: "+latTrack.getMin()+" "+latTrack.getMax());
+//				System.out.println("Center: "+centerLat+", "+centerLon);
+//				System.out.println("Span: "+maxSpan);
+				double halfSpan = maxSpan*0.5;
+				Location topRight = new Location(centerLat + halfSpan, centerLon + halfSpan);
+				Location bottomLeft = new Location(centerLat - halfSpan, centerLon - halfSpan);
 				// now buffer by 20km in each direction
 				topRight = LocationUtils.location(topRight, new LocationVector(45, 20, 0d));
 				bottomLeft = LocationUtils.location(bottomLeft, new LocationVector(225, 20, 0d));
-				Region testRegion = new Region(topRight, bottomLeft);
-				int numInside = 0;
-				for (Location loc : catalogLocs)
-					if (testRegion.contains(loc))
-						numInside++;
-				if (numInside >= minNumInside) {
-					mapRegion = testRegion;
-				} else {
-					break;
+				mapRegion = new Region(topRight, bottomLeft);
+				// now try the shrink the region if it's larger than 3 degrees
+				int minNumInside = (int)Math.round(catalogLocs.size()*0.95);
+				double mySpan = maxSpan;
+				while (mySpan > 3d) {
+					mySpan = mySpan*0.9;
+					halfSpan = mySpan*0.5;
+					topRight = new Location(centerLat + halfSpan, centerLon + halfSpan);
+					bottomLeft = new Location(centerLat - halfSpan, centerLon - halfSpan);
+					// now buffer by 20km in each direction
+					topRight = LocationUtils.location(topRight, new LocationVector(45, 20, 0d));
+					bottomLeft = LocationUtils.location(bottomLeft, new LocationVector(225, 20, 0d));
+					Region testRegion = new Region(topRight, bottomLeft);
+					int numInside = 0;
+					for (Location loc : catalogLocs)
+						if (testRegion.contains(loc))
+							numInside++;
+					if (numInside >= minNumInside) {
+						mapRegion = testRegion;
+					} else {
+						break;
+					}
 				}
+			} else {
+				mapRegion = forceRegion;
 			}
 			
 			for (double duration : durations) {
@@ -298,8 +314,8 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 			
 			try {
 				ETAS_EventMapPlotUtils.buildEventPlot(subCatalog, funcs, chars, maxMag);
-				String myPrefix = prefix+"_p"+pDF.format(percentile)+"_"+getTimeShortLabel(duration).replace(" ", "");
-				String title = "p"+pDF.format(percentile)+" %-ile Catalog, "+subCatalog.size()
+				String myPrefix = prefix+"_p"+pLabel(percentile)+"_"+getTimeShortLabel(duration).replace(" ", "");
+				String title = noTitles ? " " : "p"+pLabel(percentile)+" %-ile Catalog, "+subCatalog.size()
 					+" Events, "+getTimeLabel(duration, false);
 				ETAS_EventMapPlotUtils.writeMapPlot(funcs, chars, mapRegion, title, outputDir, myPrefix, 700);
 			} catch (IOException e) {
@@ -308,7 +324,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		}
 	}
 	
-	private static DecimalFormat pDF = new DecimalFormat("0.0");
+	public static DecimalFormat pDF = new DecimalFormat("0.0#####");
 
 	@Override
 	public List<String> generateMarkdown(String relativePathToOutputDir, String topLevelHeading, String topLink)
@@ -325,13 +341,13 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		table.initNewLine();
 		table.addColumn("Duration");
 		for (double percentile : percentiles)
-			table.addColumn("p"+pDF.format(percentile)+" %-ile");
+			table.addColumn("p"+pLabel(percentile)+" %-ile");
 		table.finalizeLine();
 		for (double duration : durations) {
 			table.initNewLine();
 			table.addColumn("**"+getTimeLabel(duration, false)+"**");
 			for (double percentile : percentiles)
-				table.addColumn("![Map]("+relativePathToOutputDir+"/"+prefix+"_p"+pDF.format(percentile)
+				table.addColumn("![Map]("+relativePathToOutputDir+"/"+prefix+"_p"+pLabel(percentile)
 					+"_"+getTimeShortLabel(duration).replace(" ", "")+".png)");
 			table.finalizeLine();
 		}
@@ -339,6 +355,12 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		lines.addAll(table.build());
 		
 		return lines;
+	}
+	
+	private String pLabel(double percentile) {
+		if (percentile == 100d)
+			percentile = 100d*(catalogCount-1d)/(double)catalogCount;
+		return pDF.format(percentile);
 	}
 	
 	public static void main(String[] args) {

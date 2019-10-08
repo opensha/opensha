@@ -69,6 +69,12 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	
 	private static double[] fractiles = {0.025, 0.975};
 	
+	private boolean noTitles = false;
+	private boolean includeMedian = true;
+	private boolean includeMode = true;
+	private boolean includePrimary = true;
+	private Color probColor = Color.RED;
+	
 	public ETAS_MFD_Plot(ETAS_Config config, ETAS_Launcher launcher, String prefix, boolean annualize, boolean cumulative) {
 		super(config, launcher);
 		this.prefix = prefix;
@@ -189,6 +195,26 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			return "Magnitude Frequency Distribution";
 		else
 			return "Magnitude Number Distribution";
+	}
+	
+	public void setHideTitles() {
+		this.noTitles = true;
+	}
+
+	public void setIncludeMedian(boolean includeMedian) {
+		this.includeMedian = includeMedian;
+	}
+
+	public void setIncludeMode(boolean includeMode) {
+		this.includeMode = includeMode;
+	}
+
+	public void setIncludePrimary(boolean includePrimary) {
+		this.includePrimary = includePrimary;
+	}
+	
+	public void setProbColor(Color probColor) {
+		this.probColor = probColor;
 	}
 
 	@Override
@@ -393,15 +419,19 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
 		}
 		
-		funcs.add(medianFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
+		if (includeMedian) {
+			funcs.add(medianFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
+		}
 		
-		funcs.add(modeFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.CYAN.darker()));
+		if (includeMode) {
+			funcs.add(modeFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.CYAN.darker()));
+		}
 		
 		if (probFunc != null) {
 			funcs.add(probFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, probColor));
 			
 			EvenlyDiscretizedFunc probLower = new EvenlyDiscretizedFunc(probFunc.getMinX(), probFunc.getMaxX(), probFunc.size());
 			EvenlyDiscretizedFunc probUpper = new EvenlyDiscretizedFunc(probFunc.getMinX(), probFunc.getMaxX(), probFunc.size());
@@ -425,15 +455,16 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			UncertainArbDiscDataset confFunc = new UncertainArbDiscDataset(probFunc, probLower, probUpper);
 			confFunc.setName("95% Conf");
 			funcs.add(confFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
+					new Color(probColor.getRed(), probColor.getGreen(), probColor.getBlue(), 30)));
 			if (supraProbFunc != null) {
 				supraProbFunc.setName("Supra");
 				funcs.add(supraProbFunc);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.RED));
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, probColor));
 			}
 		}
 		
-		if (primaryStats != null) {
+		if (primaryStats != null && includePrimary) {
 			primaryStats.calcStats(annualize, getConfig());
 			EvenlyDiscretizedFunc primaryFunc = primaryStats.getMeanFunc(numToTrim);
 			primaryFunc.setName("Primary");
@@ -453,7 +484,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		else
 			yAxisLabel = getTimeLabel(duration, false)+" "+yAxisLabel+"Number";
 		
-		PlotSpec spec = new PlotSpec(funcs, chars, title, "Magnitude", yAxisLabel);
+		PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : title, "Magnitude", yAxisLabel);
 		spec.setLegendVisible(true);
 		
 		double mfdMinY = ETAS_MFD_Plot.mfdMinY;

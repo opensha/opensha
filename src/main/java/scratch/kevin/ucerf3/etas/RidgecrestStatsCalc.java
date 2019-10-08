@@ -10,6 +10,10 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import javax.imageio.ImageIO;
 
@@ -21,36 +25,59 @@ import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYBoxAnnotation;
 import org.jfree.chart.annotations.XYLineAnnotation;
 import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.axis.NumberTickUnit;
+import org.jfree.chart.axis.TickUnit;
+import org.jfree.chart.axis.TickUnits;
+import org.jfree.chart.plot.DatasetRenderingOrder;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
 import org.jfree.ui.TextAnchor;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.comcat.ComcatAccessor;
+import org.opensha.commons.data.comcat.ComcatEventWebService;
+import org.opensha.commons.data.comcat.ComcatRegionAdapter;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
+import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
 
 import oracle.net.aso.r;
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
+import scratch.UCERF3.erf.ETAS.analysis.ETAS_ComcatComparePlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_EventMapPlotUtils;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_MFD_Plot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_MFD_Plot.MFD_Stats;
+import scratch.UCERF3.erf.ETAS.analysis.ETAS_SimulatedCatalogPlot;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.utils.FaultSystemIO;
 
 public class RidgecrestStatsCalc {
@@ -59,6 +86,7 @@ public class RidgecrestStatsCalc {
 		File gitDir = new File("/home/kevin/git/ucerf3-etas-results");
 //		updateMagComplete(mainDir, "ci38457511", 3.5);
 //		System.exit(0);
+		boolean redoPaperFigs = true;
 		
 		FaultSystemSolution fss = FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
@@ -74,15 +102,21 @@ public class RidgecrestStatsCalc {
 		lines.add("");
 		
 		lines.add("This is a landing page for various Ridgecrest figures and tables. Click on the simulation names"
-				+ " in the tables below to see the details of each simulation, along with many plots.");
+				+ " in the tables below to see the details of each simulation, along with *many* plots.");
 		lines.add("");
-		lines.add("[Download my 2019 SCEC Annual Meeting poster here.](2019_SCEC_Poster.pdf)");
+		lines.add("Download my [2019 SCEC Annual Meeting poster here](Milner_2019_SCEC_Poster.pdf), or "
+				+ "[read the abstract here](https://www.scec.org/publication/9401).");
 		lines.add("");
 		lines.add("You can also view the complete list of UCERF3-ETAS simulations [here](../README.md), though the "
 				+ "list is quite long and not all are for Ridgecrest.");
 		lines.add("");
 		
 		int tocIndex = lines.size();
+		lines.add("");
+		
+		lines.add("## Paper Figures");
+		lines.add("");
+		lines.addAll(writePaperFigures(gitDir, outputDir, "###", redoPaperFigs));
 		lines.add("");
 		
 		lines.add("## Summary Tables");
@@ -115,7 +149,21 @@ public class RidgecrestStatsCalc {
 				"M6.4, Point Source", false));
 		set.add(new Results(new File(gitDir, "2019_08_20-ComCatM6p4_ci38443183_ShakeMapSurface-noSpont-full_td-scale1.14"),
 				"M6.4, ShakeMap Source", true));
+		set.add(new Results(new File(gitDir, "2019_09_19-ComCatM6p4_ci38443183_PointSources_ImposeGR"),
+				"M6.4, Point Source, Impose G-R", false));
+		set.add(new Results(new File(gitDir, "2019_09_24-ComCatM6p4_ci38443183_PointSources_NoFaults"),
+				"M6.4, Point Source, No Faults", false));
 		
+		// M6.4 just before 7.1
+		set = new ArrayList<>();
+		resultSets.add(set);
+		resultSetNames.add("M6.4 (Just Before 7.1)");
+		set.add(new Results(new File(gitDir, "2019_09_19-ComCatM6p4_ci38443183_1p4DaysAfter_PointSources"),
+				"M6.4, Point Source, Just Before 7.1", false));
+		set.add(new Results(new File(gitDir, "2019_09_19-ComCatM6p4_ci38443183_1p4DaysAfter_ShakeMapSurface"),
+				"M6.4, ShakeMap Source, Just Before 7.1", true));
+		
+		// M7.1 Geom
 		set = new ArrayList<>();
 		resultSets.add(set);
 		resultSetNames.add("M7.1, Geometry Variations");
@@ -135,6 +183,9 @@ public class RidgecrestStatsCalc {
 		set.add(new Results(new File(gitDir, "2019_08_30-ComCatM7p1_ci38457511_ShakeMapSurface_Version10"),
 				"M7.1, Prev ShakeMap Source (V10)", false));
 		
+		set.add(new Results(new File(gitDir, "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-following-M7.1"),
+				"M7.1, First Finite Source", false));
+		
 		set.add(new Results(new File(gitDir, "2019_07_11-ComCatM7p1_ci38457511_FiniteSurface-noSpont-full_td-scale1.14"),
 				"M7.1, Quad Source", false));
 		
@@ -144,6 +195,13 @@ public class RidgecrestStatsCalc {
 		set.add(new Results(new File(gitDir, "2019_08_20-ComCatM7p1_ci38457511_InvertedSurface_minSlip0p5_ShakeMapSurface-noSpont-full_td-scale1.14"),
 				"M7.1, Inverted Source (minSlip=0.5)", false));
 		
+		set.add(new Results(new File(gitDir, "2019_09_17-ComCatM7p1_ci38457511_KMLSurface_ShakeMapSurface"),
+				"M7.1, KML Surface Rupture Source", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_17-ComCatM7p1_ci38457511_KMLSurface_ShakeMapSurface_FieldVerified"),
+				"M7.1, KML Surface Rupture Source (Field Verified Only)", false));
+		
+		// M7.1 Params
 		set = new ArrayList<>();
 		resultSets.add(set);
 		resultSetNames.add("M7.1, Parameter Variations");
@@ -172,10 +230,72 @@ public class RidgecrestStatsCalc {
 		set.add(new Results(new File(gitDir, "2019_09_03-ComCatM7p1_ci38457511_PointSources_NoFaults"),
 				"M7.1, Point Source, No Faults)", false));
 		
+		// M7.1 7 Days After
+		set = new ArrayList<>();
+		resultSets.add(set);
+		resultSetNames.add("M7.1, 7 Days After");
+		
+		set.add(new Results(new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces"),
+				"M7.1, ShakeMap Source, 7 Days After", true));
+		
+		set.add(new Results(new File(gitDir, "2019_07_16-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces-noSpont-full_td-scale1.14"),
+				"M7.1, ShakeMap Source, 7 Days After (Early Catalog)", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces_NoFaults"),
+				"M7.1, ShakeMap Source, No Faults, 7 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_09-ComCatM7p1_ci38457511_7DaysAfter_PointSources"),
+				"M7.1, Point Source, 7 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_07_12-ComCatM7p1_ci38457511_7DaysAfter_FiniteSurface-noSpont-full_td-scale1.14"),
+				"M7.1, Quad Source, 7 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_09-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces_PlanarExtents"),
+				"M7.1, ShakeMap Source (Planar Extents), 7 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_09-ComCatM7p1_ci38457511_7DaysAfter_MainshockLog10_k_2p3_ShakeMapSurfaces_Log10_k_3p03_p1p15"),
+				"M7.1, ShakeMap Source, Seq. Specific, 7 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_18-ComCatM7p1_ci38457511_7DaysAfter_KMLSurface_ShakeMapSurface"),
+				"M7.1, KML Surface Rupture Source, 7 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_18-ComCatM7p1_ci38457511_7DaysAfter_KMLSurface_ShakeMapSurface_FieldVerified"),
+				"M7.1, KML Surface Rupture Source (Field Verified Only), 7 Days After", false));
+		
+		// M7.1 28 Days After
+		set = new ArrayList<>();
+		resultSets.add(set);
+		resultSetNames.add("M7.1, 28 Days After");
+		
+		set.add(new Results(new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces"),
+				"M7.1, ShakeMap Source, 28 Days After", true));
+		
+		set.add(new Results(new File(gitDir, "2019_08_03-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces-noSpont-full_td-scale1.14"),
+				"M7.1, ShakeMap Source, 28 Days After (Early Catalog)", false));
+		
+		set.add(new Results(new File(gitDir, "2019_08_20-ComCatM7p1_ci38457511_28DaysAfter_PointSources-noSpont-full_td-scale1.14"),
+				"M7.1, Point Source, 28 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_08_20-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces_NoFaults-noSpont-poisson-griddedOnly"),
+				"M7.1, ShakeMap Source, No Faults, 28 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_09-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces_PlanarExtents"),
+				"M7.1, ShakeMap Source (Planar Extents), 28 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_08_31-ComCatM7p1_ci38457511_28DaysAfter_MainshockLog10_k_2p3_ShakeMapSurfaces_Log10_k_3p03_p1p15_c0p002"),
+				"M7.1, ShakeMap Source, Seq. Specific, 28 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_18-ComCatM7p1_ci38457511_28DaysAfter_KMLSurface_ShakeMapSurface"),
+				"M7.1, KML Surface Rupture Source, 28 Days After", false));
+		
+		set.add(new Results(new File(gitDir, "2019_09_18-ComCatM7p1_ci38457511_28DaysAfter_KMLSurface_ShakeMapSurface_FieldVerified"),
+				"M7.1, KML Surface Rupture Source (Field Verified Only), 28 Days After", false));
+		
 		List<String> header = new ArrayList<>();
 		header.add("Name");
 		header.add("1 Week Prob M≥7.1");
 		header.add("1 Month Prob M≥7.1");
+		header.add("1 Month Prob M≥7");
 		header.add("1 Month Mean Num M≥3.5");
 		header.add("1 Month Median Num M≥3.5");
 		header.add("1 Month Garlock Prob M≥7");
@@ -186,28 +306,7 @@ public class RidgecrestStatsCalc {
 		// add faults to bottom of plot
 		List<XY_DataSet> inputFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> inputChars = new ArrayList<>();
-		PlotCurveCharacterstics faultTraceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.LIGHT_GRAY);
-		PlotCurveCharacterstics faultOutlineChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 1.5f, Color.LIGHT_GRAY);
-
-		boolean firstTrace = true;
-		for (FaultSectionPrefData sect : fss.getRupSet().getFaultSectionDataList()) {
-			RuptureSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
-			List<XY_DataSet> outlines = ETAS_EventMapPlotUtils.getSurfOutlines(surf);
-			for (XY_DataSet outline : outlines) {
-				inputFuncs.add(outline);
-				inputChars.add(faultOutlineChar);
-			}
-			List<XY_DataSet> traces = ETAS_EventMapPlotUtils.getSurfTraces(surf);
-			for (int i=0; i<traces.size(); i++) {
-				XY_DataSet trace = traces.get(i);
-				if (firstTrace) {
-					trace.setName("Fault Traces");
-					firstTrace = false;
-				}
-				inputFuncs.add(trace);
-				inputChars.add(faultTraceChar);
-			}
-		}
+		populateMapInputFuncs(fss.getRupSet().getFaultSectionDataList(), inputFuncs, inputChars, Color.LIGHT_GRAY, Color.LIGHT_GRAY, null);
 		
 		for (int i=0; i<resultSets.size(); i++) {
 			CSVFile<String> summaryTable = new CSVFile<>(false);
@@ -234,6 +333,7 @@ public class RidgecrestStatsCalc {
 				
 				vals.add(r.weekMFD.getProbFunc(0).getInterpolatedY(7.1d));
 				vals.add(r.monthMFD.getProbFunc(0).getInterpolatedY(7.1d));
+				vals.add(r.monthMFD.getProbFunc(0).getInterpolatedY(7d));
 				vals.add(r.monthMFD.getMeanFunc(0).getInterpolatedY(3.5d));
 				vals.add(r.monthMFD.getMedianFunc(0).getInterpolatedY(3.5d));
 				if (r.garlockProbs == null)
@@ -252,7 +352,7 @@ public class RidgecrestStatsCalc {
 					baselineVals = vals;
 				}
 				List<String> line = new ArrayList<>();
-				line.add(r.name);
+				line.add("["+r.name+"](../"+r.dir.getName()+"/README.md)");
 				for (int j = 0; j < vals.size(); j++) {
 					Double val = vals.get(j);
 					if (Double.isFinite(val)) {
@@ -337,12 +437,17 @@ public class RidgecrestStatsCalc {
 			for (Results r : resultSets.get(i)) {
 				if (r.baseline)
 					baseline = r;
-				table.addColumn(r.name);
+				table.addColumn("**["+r.name+"](../"+r.dir.getName()+"/README.md)**");
 				names.add(r.name);
 				configs.add(ETAS_Config.readJSON(r.configFile));
 			}
 			table.finalizeLine();
 			table.initNewLine();
+			
+			double maxY = 0d;
+			for (Results r : resultSets.get(i))
+				maxY = Math.max(maxY, StatUtils.max(buildPlotVals(r)));
+			System.out.println("MaxY for "+setName+": "+(float)maxY);
 			
 			for (int j=0; j<names.size(); j++) {
 				Results r = resultSets.get(i).get(j);
@@ -350,7 +455,7 @@ public class RidgecrestStatsCalc {
 				HeadlessGraphPanel mapGP = writeMapPlot(configs.get(j), names.get(j),
 						resourcesDir, mapPrefix, inputFuncs, inputChars);
 				String chartPrefix = "prob_chart_"+r.dir.getName();
-				HeadlessGraphPanel chartGP = writeProbChartPlot(resourcesDir, r, baseline, chartPrefix);
+				HeadlessGraphPanel chartGP = writeProbChartPlot(resourcesDir, r, baseline, chartPrefix, maxY);
 				File combFile = new File(resourcesDir, "comb_chart_map_"+r.dir.getName()+".png");
 				mergePlots(chartGP, mapGP, combFile);
 				table.addColumn("![Map]("+resourcesDir.getName()+"/"+combFile.getName()+")");
@@ -362,6 +467,58 @@ public class RidgecrestStatsCalc {
 			lines.addAll(table.wrap(4, 0).build());
 		}
 		return lines;
+	}
+	
+	private static void populateMapInputFuncs(List<FaultSectionPrefData> sects, List<XY_DataSet> inputFuncs,
+			List<PlotCurveCharacterstics> inputChars, Color traceColor, Color outlineColor, Color polygonColor) {
+		PlotCurveCharacterstics faultTraceChar = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, polygonColor == null ? 2f : 4f, traceColor);
+		PlotCurveCharacterstics faultOutlineChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 1.5f, outlineColor);
+		PlotCurveCharacterstics faultPolyChar = null;
+		List<Region> polys = null;
+		if (polygonColor != null) {
+			faultPolyChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 1.5f, polygonColor);
+			FaultPolyMgr polyMgr = FaultPolyMgr.create(sects, InversionTargetMFDs.FAULT_BUFFER);
+			polys = new ArrayList<>();
+			for (int s=0; s<sects.size(); s++)
+				polys.add(polyMgr.getPoly(s));
+		}
+
+		boolean firstTrace = true;
+		boolean firstPoly = true;
+		for (FaultSectionPrefData sect : sects) {
+			RuptureSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
+			List<XY_DataSet> outlines = ETAS_EventMapPlotUtils.getSurfOutlines(surf);
+			for (XY_DataSet outline : outlines) {
+				inputFuncs.add(outline);
+				inputChars.add(faultOutlineChar);
+			}
+			List<XY_DataSet> traces = ETAS_EventMapPlotUtils.getSurfTraces(surf);
+			for (int i=0; i<traces.size(); i++) {
+				XY_DataSet trace = traces.get(i);
+				if (firstTrace) {
+					trace.setName("Fault Traces");
+					firstTrace = false;
+				}
+				inputFuncs.add(trace);
+				inputChars.add(faultTraceChar);
+			}
+			if (polygonColor != null) {
+				Region poly = polys.get(sect.getSectionId());
+				if (poly != null) {
+					XY_DataSet polyXY = new DefaultXY_DataSet();
+					for (Location loc : poly.getBorder())
+						polyXY.set(loc.getLongitude(), loc.getLatitude());
+					polyXY.set(polyXY.get(0)); // close it
+					if (firstPoly) {
+						polyXY.setName("Fault Polygons");
+						firstPoly = false;
+					}
+					inputFuncs.add(polyXY);
+					inputChars.add(faultPolyChar);
+				}
+			}
+		}
 	}
 	
 	private static final DecimalFormat probDF = new DecimalFormat("0.000%");
@@ -430,7 +587,7 @@ public class RidgecrestStatsCalc {
 	private static HeadlessGraphPanel writeMapPlot(ETAS_Config config, String name, File outputDir, String prefix,
 			List<XY_DataSet> inputFuncs, List<PlotCurveCharacterstics> inputChars) throws IOException {
 		double minMag = 3d;
-		double maxMag = 8d;
+		double maxMag = 7.1d;
 		ObsEqkRupList triggers = new ObsEqkRupList();
 		for (TriggerRupture trigger : config.getTriggerRuptures()) {
 			ETAS_EqkRupture rup = trigger.buildRupture(null, config.getSimulationStartTimeMillis(), null);
@@ -452,7 +609,7 @@ public class RidgecrestStatsCalc {
 	}
 	
 	private static HeadlessGraphPanel writeProbChartPlot(File outputDir, Results result, Results baseline,
-			String prefix) throws IOException {
+			String prefix, double maxY) throws IOException {
 		List<XYAnnotation> anns = new ArrayList<>();
 		
 		String[] labels = {
@@ -464,13 +621,8 @@ public class RidgecrestStatsCalc {
 		double[] vals = buildPlotVals(result);
 		double[] baseVals = baseline == null ? null : buildPlotVals(baseline);
 		
-		double maxY = StatUtils.max(vals);
-		if (baseVals != null)
-			maxY = Math.max(maxY, StatUtils.max(baseVals));
-		if (maxY < 1d)
-			maxY = 1.5;
-		else
-			maxY = 7;
+		// rescale for room at the top for labels
+		maxY *= 1.4;
 		
 		double buffer = 0.07;
 		
@@ -572,5 +724,460 @@ public class RidgecrestStatsCalc {
 				comb.setRGB(x, y, topBI.getRGB(x, y));
 		ImageIO.write(comb, "png", outputFile);
 	}
+	
+	private static List<String> writePaperFigures(File gitDir, File outputDir,
+			String heading, boolean redoResultPlots) throws IOException {
+		List<String> lines = new ArrayList<>();
+		
+		File paperDir = new File(outputDir, "paper_figures");
+		Preconditions.checkState(paperDir.exists() || paperDir.mkdir());
+		
+		lines.add(heading+" Input Plots");
+		lines.add("");
+		
+		List<XY_DataSet> inputFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> inputChars = new ArrayList<>();
+		ETAS_Config initialConfig = ETAS_Config.readJSON(
+				new File(gitDir, "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces/config.json"));
+		FaultSystemSolution fss = initialConfig.loadFSS();
+		ETAS_Config sevenDayConfig = ETAS_Config.readJSON(
+				new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces/config.json"));
+		List<FaultSectionPrefData> sects = FaultModels.FM3_1.fetchFaultSections();
+		for (int i=0; i<sects.size(); i++) {
+			FaultSectionPrefData sect = sects.get(i);
+			// hack needed to make it work with parent sections
+			sect.setParentSectionId(i);
+			sect.setSectionId(i);
+		}
+		populateMapInputFuncs(sects, inputFuncs, inputChars, Color.BLACK, Color.GRAY, Color.DARK_GRAY);
+		Region geomRegion = new Region(new Location(35.45, -117.3), new Location(36, -117.8));
+		
+		writeInputsPlot(paperDir, "input_events_faults", geomRegion, initialConfig, sevenDayConfig, inputFuncs, inputChars);
+		
+		lines.add("This plot shows the first few finite fault surfaces used");
+		lines.add("");
+		lines.add("![Map]("+paperDir.getName()+"/input_events_faults.png)");
+		
+		lines.add(heading+" Result Plots");
+		lines.add("");
+		
+		List<File> dirs = new ArrayList<>();
 
+		dirs.add(new File(gitDir, "2019_08_20-ComCatM6p4_ci38443183_PointSources-noSpont-full_td-scale1.14"));
+		dirs.add(new File(gitDir, "2019_09_24-ComCatM6p4_ci38443183_PointSources_NoFaults"));
+		dirs.add(new File(gitDir, "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces"));
+		dirs.add(new File(gitDir, "2019_08_20-ComCatM7p1_ci38457511_PointSources-noSpont-full_td-scale1.14"));
+		dirs.add(new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces"));
+		dirs.add(new File(gitDir, "2019_09_09-ComCatM7p1_ci38457511_7DaysAfter_PointSources"));
+		dirs.add(new File(gitDir, "2019_08_20-ComCatM7p1_ci38457511_ShakeMapSurfaces_NoFaults-noSpont-poisson-griddedOnly"));
+		dirs.add(new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces_NoFaults"));
+		dirs.add(new File(gitDir, "2019_08_30-ComCatM7p1_ci38457511_MainshockLog10_k_2p3_ShakeMapSurfaces_Log10_k_3p03_p1p15_c0p002"));
+		
+		CPT cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse();
+		Color dataColor = Color.CYAN;
+//		CPT cpt = null;
+//		Color dataColor = Color.BLACK;
+//		System.out.println(cpt);
+//		System.exit(0);
+		double minZ = 1e-4;
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.addLine("Simulation", "1-Month MND", "Comcat Mag/Num", "1-Month M&ge;3.7 Map", "M&ge;3.7 Time Func");
+		
+		ExecutorService exec = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+		
+		List<ETAS_Config> configs = new ArrayList<>();
+		MinMaxAveTracker latTrack = new MinMaxAveTracker();
+		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+		for (File dir : dirs) {
+			ETAS_Config config = ETAS_Config.readJSON(new File(dir, "config.json"));
+			configs.add(config);
+			Region reg = config.getComcatMetadata().region;
+			GriddedRegion gridReg = new GriddedRegion(reg, 0.02, GriddedRegion.ANCHOR_0_0);
+			latTrack.addValue(gridReg.getMaxGridLat());
+			latTrack.addValue(gridReg.getMinGridLat());
+			lonTrack.addValue(gridReg.getMaxGridLon());
+			lonTrack.addValue(gridReg.getMinGridLon());
+		}
+		
+		Region region = new Region(new Location(latTrack.getMin()-0.01, lonTrack.getMin()-0.01),
+				new Location(latTrack.getMax()+0.01, lonTrack.getMax()+0.01));
+		double magComplete = 3.5;
+		
+		for (int i=0; i<dirs.size(); i++) {
+			File dir = dirs.get(i);
+			ETAS_Config config = configs.get(i);
+			File subDir = new File(paperDir, dir.getName());
+			boolean plot = redoResultPlots || !subDir.exists();
+			System.out.println("Processing "+dir.getName());
+			File[] plotFiles = {
+					new File(subDir, "1mo_mag_num_cumulative_triggered.png"),
+					new File(subDir, "comcat_compare_mag_num.png"),
+					new File(subDir, "comcat_compare_prob_1mo_m"+(float)magComplete+".png"),
+					new File(subDir, "comcat_compare_cumulative_num_m"+(float)magComplete+".png"),
+			};
+			table.initNewLine();
+			table.addColumn("["+config.getSimulationName()+"](../"+dir.getName()+"/README.md)");
+			for (File plotFile : plotFiles) {
+				table.addColumn("![Plot]("+paperDir.getName()+"/"+dir.getName()+"/"+plotFile.getName()+")");
+				if (!plotFile.exists()) {
+					System.out.println("\twill update due to missing plot, "+plotFile.getName());
+					plot = true;
+				}
+			}
+			table.finalizeLine();
+			if (plot) {
+				Preconditions.checkState(subDir.exists() || subDir.mkdir());
+				ComcatMetadata meta = config.getComcatMetadata();
+				meta = new ComcatMetadata(region, meta.eventID, meta.minDepth, meta.maxDepth,
+						meta.minMag, meta.startTime, meta.endTime);
+				meta.magComplete = magComplete;
+				config.setComcatMetadata(meta);
+				System.out.println("Building result plots for "+config.getSimulationName());
+				ETAS_Launcher launcher = new ETAS_Launcher(config, false);
+				ETAS_MFD_Plot mfdPlot = new ETAS_MFD_Plot(config, launcher, "mag_num_cumulative", false, true);
+				mfdPlot.setHideTitles();
+				mfdPlot.setIncludeMedian(false);
+				mfdPlot.setIncludeMode(false);
+				mfdPlot.setIncludePrimary(false);
+				mfdPlot.setProbColor(Color.GRAY);
+				ETAS_ComcatComparePlot comcatPlot = new ETAS_ComcatComparePlot(config, launcher);
+				comcatPlot.setHideTitles();
+				comcatPlot.setMapCPT(cpt);
+				comcatPlot.setMapMinZ(minZ);
+				comcatPlot.setMapDataColor(dataColor);
+				comcatPlot.setDataColor(Color.GRAY);
+				comcatPlot.setPlotIncludeMedian(true);
+				comcatPlot.setPlotIncludeMean(false);
+				comcatPlot.setPlotIncludeMode(false);
+				
+				File inputFile = new File(config.getOutputDir(), "results_complete.bin");
+				processPlots(config, inputFile, subDir, fss, exec, mfdPlot, comcatPlot);
+			}
+		}
+		lines.addAll(table.build());
+		
+		lines.add(heading+" Preferred Model Individual Catalog Plots");
+		lines.add("");
+		
+		File modelDir = new File(gitDir, "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces");
+		File pOutDir = new File(paperDir, modelDir.getName());
+		double[] percentiles = { 50d, 97.5d, 99.999 };
+		File[] pFiles = new File[percentiles.length];
+		for (int p=0; p<percentiles.length; p++)
+			pFiles[p] = new File(pOutDir, "sim_catalog_map_p"+ETAS_SimulatedCatalogPlot.pDF.format(percentiles[p])+"_1mo.png");
+		boolean redoPrecentiles = redoResultPlots;
+		for (File pFile : pFiles) {
+			if (!pFile.exists()) {
+				System.out.println("Missing percentile file, redoing: "+pFile.getAbsolutePath());
+				redoPrecentiles = true;
+			}
+		}
+		
+		if (redoPrecentiles) {
+			ETAS_Config config = ETAS_Config.readJSON(new File(modelDir, "config.json"));
+			ETAS_Launcher launcher = new ETAS_Launcher(config, false);
+			
+			ETAS_SimulatedCatalogPlot plot = new ETAS_SimulatedCatalogPlot(config, launcher, "sim_catalog_map", percentiles);
+			plot.setHideTitles();
+			plot.setForceRegion(new Region(new Location(33d, -115.5d), new Location(36.5d, -120d)));
+			
+			File inputFile = new File(config.getOutputDir(), "results_complete.bin");
+			processPlots(config, inputFile, pOutDir, fss, exec, plot);
+		}
+		exec.shutdown();
+		
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		for (double percentile : percentiles)
+			table.addColumn("p"+ETAS_SimulatedCatalogPlot.pDF.format(percentile)+" %-ile Catalog");
+		table.finalizeLine();
+		table.initNewLine();
+		for (File pFile : pFiles)
+			table.addColumn("![Map]("+paperDir.getName()+"/"+pOutDir.getName()+"/"+pFile.getName()+")");
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+		
+		lines.add(heading+" Geometry Overlay Plots");
+		lines.add("");
+		
+		List<ETAS_Config> geomConfigs = new ArrayList<>();
+		List<PlotCurveCharacterstics> geomChars = new ArrayList<>();
+		List<String> geomNames = new ArrayList<>();
+		
+		geomConfigs.add(ETAS_Config.readJSON(new File(gitDir,
+				"2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces/config.json")));
+		geomChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, Color.BLACK));
+		geomNames.add("ShakeMap");
+		
+		geomConfigs.add(ETAS_Config.readJSON(new File(gitDir,
+				"2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-following-M7.1/config.json")));
+		geomChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 5f, Color.DARK_GRAY));
+		geomNames.add("First Finite");
+		
+		geomConfigs.add(ETAS_Config.readJSON(new File(gitDir,
+				"2019_07_11-ComCatM7p1_ci38457511_FiniteSurface-noSpont-full_td-scale1.14/config.json")));
+		geomChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, Color.GRAY));
+		geomNames.add("Second Finite");
+		
+		inputFuncs = new ArrayList<>();
+		inputChars = new ArrayList<>();
+		populateMapInputFuncs(sects, inputFuncs, inputChars, Color.BLACK, Color.GRAY, null);
+		
+		ComcatAccessor accessor = new ComcatAccessor();
+		ComcatMetadata meta = geomConfigs.get(0).getComcatMetadata();
+		ObsEqkRupList eqs = accessor.fetchEventList(null, meta.startTime, System.currentTimeMillis(),
+				meta.minDepth, meta.maxDepth, new ComcatRegionAdapter(geomRegion), false, false, 2d);
+		
+		String geomPrefix = "geom_compare_finite";
+		writeFiniteSurfacesPlot(paperDir, geomPrefix, geomRegion, geomConfigs, geomChars, geomNames,
+				inputFuncs, inputChars, eqs);
+		
+		lines.add("This plot shows the first few finite fault surfaces used");
+		lines.add("");
+		lines.add("![Map]("+paperDir.getName()+"/"+geomPrefix+".png)");
+		
+		geomConfigs.clear();
+		geomChars.clear();
+		geomNames.clear();
+		
+		geomConfigs.add(ETAS_Config.readJSON(new File(gitDir,
+				"2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces_CulledSurface/config.json")));
+		geomChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, Color.BLACK));
+		geomNames.add("Primary");
+		
+		geomConfigs.add(ETAS_Config.readJSON(new File(gitDir,
+				"2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces/config.json")));
+		geomChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, Color.GRAY));
+		geomNames.add("Parallel Strands");
+		
+		geomConfigs.add(ETAS_Config.readJSON(new File(gitDir,
+				"2019_09_03-ComCatM7p1_ci38457511_ShakeMapSurfaces_PlanarExtents/config.json")));
+		geomChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 5f, Color.DARK_GRAY));
+		geomNames.add("Extents");
+		
+		geomPrefix = "geom_compare_shakemap";
+		writeFiniteSurfacesPlot(paperDir, geomPrefix, geomRegion, geomConfigs, geomChars, geomNames,
+				inputFuncs, inputChars, eqs);
+
+		lines.add("");
+		lines.add("This plot shows different versions of the ShakeMap surface");
+		lines.add("");
+		lines.add("![Map]("+paperDir.getName()+"/"+geomPrefix+".png)");
+		
+		return lines;
+	}
+	
+	private static void processPlots(ETAS_Config config, File inputFile, File outputDir,
+			FaultSystemSolution fss, ExecutorService exec, ETAS_AbstractPlot... plots) throws IOException {
+		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
+			
+			@Override
+			public void processCatalog(List<ETAS_EqkRupture> catalog, int index) {
+				List<ETAS_EqkRupture> triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
+				for (ETAS_AbstractPlot plot : plots)
+					plot.processCatalog(catalog, triggeredOnlyCatalog, fss);
+			}
+		}, -1, 0d);
+		
+		System.out.println("Processed "+numProcessed+" catalogs");
+		List<Future<?>> futures = new ArrayList<>();
+		for (ETAS_AbstractPlot plot : plots) {
+			List<? extends Runnable> runs = plot.finalize(outputDir, fss);
+			if (runs != null)
+				for (Runnable run : runs)
+					futures.add(exec.submit(run));
+		}
+		
+		for (Future<?> f : futures) {
+			try {
+				f.get();
+			} catch (InterruptedException | ExecutionException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+	}
+	
+	private static void writeFiniteSurfacesPlot(File outputDir, String prefix, Region mapRegion,
+			List<ETAS_Config> geomConfigs, List<PlotCurveCharacterstics> geomChars, List<String> geomNames,
+			List<XY_DataSet> inputFuncs, List<PlotCurveCharacterstics> inputChars, List<? extends ObsEqkRupture> eqs)
+					throws IOException {
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		for (int i=0; i<geomConfigs.size(); i++) {
+			ETAS_Config config = geomConfigs.get(i);
+			RuptureSurface surf = null;
+			double maxMag = 0d;
+			for (TriggerRupture trigger : config.getTriggerRuptures()) {
+				ETAS_EqkRupture rup = trigger.buildRupture(
+						null, config.getSimulationStartTimeMillis(), null);
+				if (rup.getMag() > maxMag) {
+					maxMag = rup.getMag();
+					surf = rup.getRuptureSurface();
+				}
+			}
+			
+			PlotCurveCharacterstics geomChar = geomChars.get(i);
+			PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(
+					PlotLineType.DOTTED, 0.5f*geomChar.getLineWidth(), geomChar.getColor());
+			if (surf.getAveDip() < 89) {
+				List<XY_DataSet> outlines = ETAS_EventMapPlotUtils.getSurfOutlines(surf);
+				funcs.addAll(outlines);
+				for (int j=0; j<outlines.size(); j++)
+					chars.add(outlineChar);
+			}
+			List<XY_DataSet> traces = ETAS_EventMapPlotUtils.getSurfTraces(surf);
+			traces.get(0).setName(geomNames.get(i));
+			funcs.addAll(traces);
+			for (int j=0; j<traces.size(); j++)
+				chars.add(geomChar);
+		}
+		
+		funcs.addAll(inputFuncs);
+		chars.addAll(inputChars);
+		
+		if (eqs != null && eqs.size() > 0) {
+			XY_DataSet eqXY = new DefaultXY_DataSet();
+			double minMag = Double.POSITIVE_INFINITY;
+			for (ObsEqkRupture rup : eqs) {
+				Location loc = rup.getHypocenterLocation();
+				eqXY.set(loc.getLongitude(), loc.getLatitude());
+				minMag = Math.min(minMag, rup.getMag());
+			}
+			eqXY.setName("M≥"+(float)(Math.floor(minMag))+" Seismicity");
+			funcs.add(eqXY);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, 0.3f, Color.LIGHT_GRAY));
+		}
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Longitude", "Latitude");
+		spec.setLegendVisible(true);
+		
+		spec.setPlotAnnotations(buildFaultAnns());
+		
+		HeadlessGraphPanel gp = ETAS_AbstractPlot.buildGraphPanel();
+		double latSpan = mapRegion.getMaxLat() - mapRegion.getMinLat();
+		double lonSpan = mapRegion.getMaxLon() - mapRegion.getMinLon();
+		gp.setUserBounds(new Range(mapRegion.getMinLon(), mapRegion.getMaxLon()),
+				new Range(mapRegion.getMinLat(), mapRegion.getMaxLat()));
+
+		gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
+		gp.drawGraphPanel(spec, false, false);
+		
+		TickUnits tus = new TickUnits();
+		TickUnit tu;
+		if (lonSpan > 5)
+			tu = new NumberTickUnit(1d);
+		else if (lonSpan > 2)
+			tu = new NumberTickUnit(0.5);
+		else if (lonSpan > 1)
+			tu = new NumberTickUnit(0.25);
+		else
+			tu = new NumberTickUnit(0.1);
+		tus.add(tu);
+		
+		XYPlot plot = gp.getPlot();
+		plot.getRangeAxis().setStandardTickUnits(tus);
+		plot.getDomainAxis().setStandardTickUnits(tus);
+		int width = 800;
+		gp.getChartPanel().setSize(width, (int)((double)(width)*latSpan/lonSpan));
+		
+		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
+		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
+	}
+	
+	private static void writeInputsPlot(File outputDir, String prefix, Region mapRegion,
+			ETAS_Config initialConfig, ETAS_Config sevenDayConfig,
+			List<XY_DataSet> inputFuncs, List<PlotCurveCharacterstics> inputChars)
+					throws IOException {
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		List<ETAS_EqkRupture> sevenDayEvents = new ArrayList<>();
+		for (TriggerRupture rup : sevenDayConfig.getTriggerRuptures())
+			sevenDayEvents.add(rup.buildRupture(null, sevenDayConfig.getSimulationStartTimeMillis(), null));
+		for (ETAS_EqkRupture rup : sevenDayEvents)
+			rup.setRuptureSurface(null);
+		ETAS_EventMapPlotUtils.buildEventPlot(sevenDayEvents, funcs, chars, 7.1);
+		for (PlotCurveCharacterstics pChar : chars)
+			pChar.setColor(Color.LIGHT_GRAY);
+		for (XY_DataSet func : funcs)
+			func.setName(null);
+		
+		List<ETAS_EqkRupture> initialDayEvents = new ArrayList<>();
+		int initialStartIndex = funcs.size();
+		for (TriggerRupture rup : initialConfig.getTriggerRuptures())
+			initialDayEvents.add(rup.buildRupture(null, initialConfig.getSimulationStartTimeMillis(), null));
+		for (ETAS_EqkRupture rup : initialDayEvents)
+			rup.setRuptureSurface(null);
+		ETAS_EventMapPlotUtils.buildEventPlot(initialDayEvents, funcs, chars, 7.1);
+		for (int i=initialStartIndex; i<chars.size(); i++)
+			chars.get(i).setColor(Color.DARK_GRAY);
+		
+		funcs.addAll(0, inputFuncs);
+		chars.addAll(0, inputChars);
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Longitude", "Latitude");
+		spec.setLegendVisible(true);
+		
+		spec.setPlotAnnotations(buildFaultAnns());
+		
+		HeadlessGraphPanel gp = ETAS_AbstractPlot.buildGraphPanel();
+		double latSpan = mapRegion.getMaxLat() - mapRegion.getMinLat();
+		double lonSpan = mapRegion.getMaxLon() - mapRegion.getMinLon();
+		gp.setUserBounds(new Range(mapRegion.getMinLon(), mapRegion.getMaxLon()),
+				new Range(mapRegion.getMinLat(), mapRegion.getMaxLat()));
+
+		gp.drawGraphPanel(spec, false, false);
+		
+		TickUnits tus = new TickUnits();
+		TickUnit tu;
+		if (lonSpan > 5)
+			tu = new NumberTickUnit(1d);
+		else if (lonSpan > 2)
+			tu = new NumberTickUnit(0.5);
+		else if (lonSpan > 1)
+			tu = new NumberTickUnit(0.25);
+		else
+			tu = new NumberTickUnit(0.1);
+		tus.add(tu);
+		
+		XYPlot plot = gp.getPlot();
+		plot.getRangeAxis().setStandardTickUnits(tus);
+		plot.getDomainAxis().setStandardTickUnits(tus);
+		int width = 800;
+		gp.getChartPanel().setSize(width, (int)((double)(width)*latSpan/lonSpan));
+		
+		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
+		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
+	}
+	
+	private static List<XYTextAnnotation> buildFaultAnns() {
+		List<XYTextAnnotation> anns = new ArrayList<>();
+		
+		XYTextAnnotation gAnn = new XYTextAnnotation("Garlock Fault", -117.55, 35.4875);
+		gAnn.setRotationAngle(-Math.toRadians(16));
+		gAnn.setRotationAnchor(TextAnchor.BASELINE_CENTER);
+		gAnn.setTextAnchor(TextAnchor.BASELINE_CENTER);
+		gAnn.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+		anns.add(gAnn);
+		
+		XYTextAnnotation aAnn = new XYTextAnnotation("Airport Lake Fault", -117.76, 35.828);
+		aAnn.setRotationAngle(Math.toRadians(79.5));
+		aAnn.setRotationAnchor(TextAnchor.BASELINE_CENTER);
+		aAnn.setTextAnchor(TextAnchor.BASELINE_CENTER);
+		aAnn.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+		anns.add(aAnn);
+		
+		XYTextAnnotation lAnn = new XYTextAnnotation("Little Lake Fault", -117.703, 35.65);
+		lAnn.setRotationAngle(Math.toRadians(51.9));
+		lAnn.setRotationAnchor(TextAnchor.BASELINE_CENTER);
+		lAnn.setTextAnchor(TextAnchor.BASELINE_CENTER);
+		lAnn.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+		anns.add(lAnn);
+		
+		return anns;
+	}
+	
 }
