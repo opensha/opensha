@@ -742,11 +742,15 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	
 	public CPT asDiscrete(int num, boolean preserveEdges) {
 		CPT cpt = (CPT)clone();
-		cpt.clear();
-		
+		CPT orig = this;
 		double min = this.getMinValue();
 		double max = this.getMaxValue();
-		double delta = (max - min)/(num - 1d);
+		double delta = (max - min)/num;
+		if (preserveEdges) {
+			orig = (CPT)clone();
+			orig = orig.rescale(min+0.5*delta, max-0.5*delta);
+		}
+		cpt.clear();
 		
 		for (int i=0; i<num; i++) {
 			float start = (float)(min + i*delta);
@@ -757,7 +761,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 			else if (preserveEdges && i == num-1)
 				color = getMaxColor();
 			else
-				color = getColor((float)(0.5*(end + start)));
+				color = orig.getColor((float)(0.5*(end + start)));
 			cpt.add(new CPTVal(start, color, end, color));
 		}
 		

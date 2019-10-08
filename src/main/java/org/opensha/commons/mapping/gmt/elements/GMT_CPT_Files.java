@@ -51,7 +51,9 @@ public enum GMT_CPT_Files {
 	GMT_SEIS("GMT_seis.cpt"),
 	GMT_SPLIT("GMT_split.cpt"),
 //	GMT_TOPO("GMT_topo.cpt"),
-	GMT_WYSIWYG("GMT_wysiwyg.cpt");
+	GMT_WYSIWYG("GMT_wysiwyg.cpt"),
+	BLACK_RED_YELLOW_UNIFORM("CET-L4.cpt"),
+	RAINBOW_UNIFORM("CET-R1.cpt");
 	
 	private String fname;
 	

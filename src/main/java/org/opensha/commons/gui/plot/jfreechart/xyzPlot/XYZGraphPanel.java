@@ -487,6 +487,7 @@ public class XYZGraphPanel extends JPanel {
 		if (tickUnit > 0)
 			fakeZAxis.setTickUnit(new NumberTickUnit(tickUnit));
 		PaintScaleLegend legend = new PaintScaleLegend(scale, fakeZAxis);
+		legend.setSubdivisionCount(500);
 		if (position != null)
 			legend.setPosition(position);
 		if (legend.getPosition() == RectangleEdge.BOTTOM || legend.getPosition() == RectangleEdge.TOP)
