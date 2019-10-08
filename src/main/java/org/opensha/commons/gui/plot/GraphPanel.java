@@ -443,6 +443,12 @@ public class GraphPanel extends JSplitPane {
 						Preconditions.checkState(xRange.getLowerBound() > 0 && Double.isFinite(xRange.getUpperBound()),
 								"X is log spacing, but x range contains 0 or is infinite: [%s %s]",
 								xRange.getLowerBound(), xRange.getUpperBound());
+					Preconditions.checkState(xRange.getUpperBound() > xRange.getLowerBound(),
+							"X range upper bound is not above lower bound: [%s %s]",
+							xRange.getLowerBound(), xRange.getUpperBound());
+					Preconditions.checkState(Double.isFinite(xRange.getUpperBound()) && Double.isFinite(xRange.getLowerBound()),
+							"X range not finite: [%s %s]", xRange.getLowerBound(), xRange.getUpperBound());
+					
 				}
 
 			}catch(Exception e){
@@ -490,6 +496,11 @@ public class GraphPanel extends JSplitPane {
 						Preconditions.checkState(yRange.getLowerBound() > 0 && Double.isFinite(yRange.getUpperBound()),
 								"Y is log spacing, but y range contains 0 or is infinite: [%s %s]",
 								yRange.getLowerBound(), yRange.getUpperBound());
+					Preconditions.checkState(yRange.getUpperBound() > yRange.getLowerBound(),
+							"Y range upper bound is not above lower bound: [%s %s]",
+							yRange.getLowerBound(), yRange.getUpperBound());
+					Preconditions.checkState(Double.isFinite(yRange.getUpperBound()) && Double.isFinite(yRange.getLowerBound()),
+							"Y range not finite: [%s %s]", yRange.getLowerBound(), yRange.getUpperBound());
 				}
 
 			}catch(Exception e){
