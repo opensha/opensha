@@ -440,7 +440,7 @@ public class ETAS_Utils {
 	 * This provides a randomized ETAS K value assuming a log-normal distribution with a mean of 1.0
 	 * and a COV of 1.16 .
 	 * This COV value was recommended by Nicholas van der Elst. 
-	 * @return
+	 * @return randomized k value
 	 * @TODO the COV should be obtained as an element in ETAS_ParameterList
 	 */
 	public double getRandomETAS_k(double k) {
