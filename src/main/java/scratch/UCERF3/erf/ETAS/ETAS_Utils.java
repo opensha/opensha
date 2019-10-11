@@ -60,6 +60,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.dom4j.DocumentException;
 
 import com.google.common.base.Preconditions;
@@ -436,6 +437,22 @@ public class ETAS_Utils {
 	
 	
 	/**
+	 * This provides a randomized ETAS K value assuming a log-normal distribution with a mean of 1.0
+	 * and a COV of 1.16 .
+	 * This COV value was recommended by Nicholas van der Elst. 
+	 * @return
+	 * @TODO the COV should be obtained as an element in ETAS_ParameterList
+	 */
+	public double getRandomETAS_k(double k) {
+		double cov = 1.16;
+		double sigma = Math.sqrt(Math.log(cov*cov+1)); // sigma in ln space
+		double mean = -sigma*sigma/2;					// mean in ln space
+		double randGauss = randomDataGen.nextGaussian(mean, sigma);
+		return k*Math.exp(randGauss);
+	}
+	
+	
+	/**
 	 * This gives a random event time for an ETAS sequence.  This algorithm was provided by 
 	 * Karen Felzer (from her Matlab code).
 	 * @param c
@@ -501,6 +518,8 @@ public class ETAS_Utils {
 		double k = rup.getETAS_k(etasParams);
 		double p = rup.getETAS_p(etasParams);
 		double c = rup.getETAS_c(etasParams);
+		if(k == etasParams.get_k())	// override with randomized value if default @TODO need to fix this
+			k = getRandomETAS_k(k);
 		return getRandomEventTimes(k, p, magMain, magMin, c, tMinDays, tMaxDays);
 	}
 	
@@ -516,7 +535,8 @@ public class ETAS_Utils {
 	 * @return - event times in days since the main shock
 	 */
 	public double[] getRandomEventTimes(double k, double p, double magMain, double magMin, double c, double tMinDays, double tMaxDays) {
-		int numAft = getPoissonRandomNumber(getExpectedNumEvents(k, p, magMain, magMin, c, tMinDays, tMaxDays));
+		double randK = getRandomETAS_k(k);  // override with randomized value if default @TODO need to fix this
+		int numAft = getPoissonRandomNumber(getExpectedNumEvents(randK, p, magMain, magMin, c, tMinDays, tMaxDays));
 		double[] eventTimes = new double[numAft];
 		for(int i=0;i<numAft;i++)
 			eventTimes[i] = this.getRandomTimeOfEvent(c, p, tMinDays, tMaxDays);
@@ -1445,6 +1465,21 @@ public class ETAS_Utils {
 	
 	
 	public static void main(String[] args) {
+		
+		double[] valArray = new double[100000];
+		double k = ETAS_ProductivityParam_k.DEFAULT_VALUE;
+		ETAS_Utils utils = new ETAS_Utils();
+		double mean = 0;
+		for(int i=0;i<valArray.length;i++) {
+			valArray[i] = utils.getRandomETAS_k(k);
+			mean += valArray[i];
+		}
+		mean /= valArray.length;
+		StandardDeviation sd2 = new StandardDeviation();
+		double stdDev = sd2.evaluate(valArray);
+		System.out.println("orig="+k+"\nmean="+mean+"\nstdDev="+stdDev+"\ncov="+stdDev/mean);
+		System.exit(0);
+		
 		
 //		HaywiredGainVsTimeCalcs();
 		
