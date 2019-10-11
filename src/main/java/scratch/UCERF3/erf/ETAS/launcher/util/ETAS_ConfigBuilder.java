@@ -20,9 +20,13 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
+import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.SimpleFaultData;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -34,6 +38,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
+import scratch.UCERF3.erf.ETAS.launcher.util.KML_RuptureLoader.KML_Node;
 import scratch.UCERF3.utils.FaultSystemIO;
 
 class ETAS_ConfigBuilder {
@@ -148,6 +153,10 @@ class ETAS_ConfigBuilder {
 		cOption.setRequired(false);
 		ops.addOption(cOption);
 		
+		Option grOption = new Option("igr", "impose-gr", false, "If supplied, imposeGR will be set to true");
+		grOption.setRequired(false);
+		ops.addOption(grOption);
+		
 		/*
 		 * HPC options
 		 */
@@ -190,6 +199,8 @@ class ETAS_ConfigBuilder {
 			ops.add("p="+cmd.getOptionValue("etas-p"));
 		if (cmd.hasOption("etas-c"))
 			ops.add("c="+cmd.getOptionValue("etas-c"));
+		if (cmd.hasOption("impose-gr"))
+			ops.add("Impose G-R");
 		
 		if (fm != FM_DEFAULT)
 			ops.add(fm.getShortName());
@@ -283,6 +294,7 @@ class ETAS_ConfigBuilder {
 		config.setSimulationName(simulationName);
 		config.setProbModel(probModel);
 		config.setTotRateScaleFactor(scaleFactor);
+		config.setImposeGR(cmd.hasOption("impose-gr"));
 		long curTime = System.currentTimeMillis();
 		if (cmd.hasOption("random-seed"))
 			config.setRandomSeed(Long.parseLong(cmd.getOptionValue("random-seed")));
@@ -435,6 +447,91 @@ class ETAS_ConfigBuilder {
 	}
 	
 	static final DecimalFormat optionalDigitDF = new DecimalFormat("0.##");
+	
+	protected static void createKMLOptions(Options ops) {
+		Option kmlSurfOption = new Option("kml", "kml-surf", true, "KML/KMZ file from which to load rupture trace(s)");
+		kmlSurfOption.setRequired(false);
+		ops.addOption(kmlSurfOption);
+		
+		Option kmlUpperDepth = new Option("kud", "kml-surf-upper-depth", true,
+				"Upper depth (km) of the kml rupture surface (optional)");
+		kmlUpperDepth.setRequired(false);
+		ops.addOption(kmlUpperDepth);
+		
+		Option kmlLowerDepth = new Option("kld", "kml-surf-lower-depth", true,
+				"Lower depth (km) of the kml rupture surface (required if kml surface used)");
+		kmlLowerDepth.setRequired(false);
+		ops.addOption(kmlLowerDepth);
+		
+		Option kmlDipOption = new Option("kdip", "kml-surf-dip", true, "Dip (degrees) of the primary rupture's finite rupture "
+				+ "surface to be constructed by traces in a KML file (optional, otherwise assumes vertical)");
+		kmlDipOption.setRequired(false);
+		ops.addOption(kmlDipOption);
+		
+		Option kmlDipDirOption = new Option("kdd", "kml-surf-dip-dir", true,
+				"Dip direction (degrees) of the KML rupture surface (optional, otherwise assumes Aki&Richards convention)");
+		kmlDipDirOption.setRequired(false);
+		ops.addOption(kmlDipDirOption);
+		
+		Option kmlNameOption = new Option("kmln", "kml-surf-name", true,
+				"If supplied, only KML traces which are under an element with the specified name will be included. "
+				+ "Repeat this argument multiple times to include multiple possible names (logical OR). If the "
+				+ "--kml-surf-name-contains flag is supplied, then it need not be an exact match.");
+		kmlNameOption.setRequired(false);
+		ops.addOption(kmlNameOption);
+		
+		Option kmlNameContainsOption = new Option("kmlnc", "kml-surf-name-contains", false,
+				"If supplied, then --kml-surf-name option will apply to any KML element which contains the given name, "
+				+ "rather than an exact match");
+		kmlNameContainsOption.setRequired(false);
+		ops.addOption(kmlNameContainsOption);
+	}
+	
+	protected static SimpleFaultData[] loadKMLSurface(CommandLine cmd) {
+		if (!cmd.hasOption("kml-surf"))
+			return null;
+		File kmlFile = new File(cmd.getOptionValue("kml-surf"));
+		System.out.println("Loading KML/KMZ file from: "+kmlFile.getAbsolutePath());
+		Preconditions.checkArgument(kmlFile.exists(), "KML file doesn't exist!");
+		KML_Node node;
+		try {
+			node = KML_RuptureLoader.parseKML(kmlFile);
+		} catch (IOException | DocumentException e) {
+			throw new RuntimeException("Error loading KML/KML file", e);
+		}
+		List<FaultTrace> traces;
+		if (cmd.hasOption("kml-surf-name")) {
+			// we have a name filter
+			String[] names = cmd.getOptionValues("kml-surf-name");
+			for (String name : names)
+				System.out.println("\tfiltering by name: "+name);
+			boolean exactMatch = !cmd.hasOption("kml-surf-name-contains");
+			System.out.println("Name exact match? "+ exactMatch);
+			traces = KML_RuptureLoader.loadTracesByName(node, exactMatch, names);
+		} else {
+			traces = KML_RuptureLoader.loadTraces(node);
+		}
+		System.out.println("Loaded "+traces.size()+" traces");
+		Preconditions.checkState(!traces.isEmpty(),
+				"No traces found, which means no LineString elements found or filtering by name excluded all traces");
+		
+		Preconditions.checkArgument(cmd.hasOption("kml-surf-lower-depth"), "Must supply --kml-surf-lower-depth for KML surfaces");
+		double lowerDepth = doubleArgIfPresent(cmd, "kml-surf-lower-depth");
+		
+		Double upperDepth = doubleArgIfPresent(cmd, "kml-surf-upper-depth");
+		if (upperDepth == null)
+			upperDepth = Double.NaN;
+		
+		Double dip = doubleArgIfPresent(cmd, "kml-surf-dip");
+		if (dip == null)
+			dip = 90d;
+		
+		Double dipDir = doubleArgIfPresent(cmd, "kml-surf-dip-dir");
+		if (dipDir == null)
+			dipDir = Double.NaN;
+		
+		return KML_RuptureLoader.buildRuptureSFDs(traces, upperDepth, lowerDepth, dip, dipDir).toArray(new SimpleFaultData[0]);
+	}
 
 	public static void main(String[] args) {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {

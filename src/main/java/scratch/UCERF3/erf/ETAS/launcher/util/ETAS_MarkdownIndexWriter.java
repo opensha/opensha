@@ -145,24 +145,12 @@ public class ETAS_MarkdownIndexWriter {
 		File[] subDirArray = mainDir.listFiles();
 		Arrays.sort(subDirArray, new FileNameComparator());
 		
-		ExecutorService exec = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-		List<Future<SimulationDir>> futures = new ArrayList<>();
+		List<SimulationDir> sims = new ArrayList<>();
+		
 		for (File subDir : subDirArray) {
 			if (!subDir.isDirectory())
 				continue;
-			futures.add(exec.submit(new SimLoadCallable(subDir)));
-		};
-		
-		List<SimulationDir> sims = new ArrayList<>();
-		
-		for (Future<SimulationDir> future : futures) {
-			SimulationDir sim =  null;
-			try {
-				sim = future.get();
-			} catch (InterruptedException | ExecutionException e) {
-				e.printStackTrace();
-				System.exit(1);
-			}
+			SimulationDir sim = loadSimDir(subDir);
 			if (sim != null)
 				sims.add(sim);
 		}
@@ -380,20 +368,6 @@ public class ETAS_MarkdownIndexWriter {
 	}
 	
 	private static DateFormat outDateFormat = new SimpleDateFormat("yyyy/MM/dd");
-	
-	private static class SimLoadCallable implements Callable<SimulationDir> {
-		
-		private File simDir;
-
-		public SimLoadCallable(File simDir) {
-			this.simDir = simDir;
-		}
-
-		@Override
-		public SimulationDir call() throws Exception {
-			return loadSimDir(simDir);
-		}
-	}
 	
 	private static SimulationDir loadSimDir(File simDir) throws IOException {
 		ETAS_Config config = null;

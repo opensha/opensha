@@ -1,9 +1,12 @@
 package scratch.UCERF3.erf.ETAS.launcher;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
@@ -21,7 +24,6 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 
 import com.google.common.base.Preconditions;
-import com.google.common.io.Files;
 import com.google.common.primitives.Ints;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -30,8 +32,6 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
-import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -159,12 +159,15 @@ public class ETAS_Config {
 					new BinaryFilteredOutputConfig("results_triggered_descendants", null, null, true));
 	}
 	
-	private static Gson buildGson(boolean resolvePaths) {
+	private static Gson buildGson(boolean resolvePaths, boolean skipTriggers) {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 		builder.registerTypeAdapter(File.class, new FileTypeAdapter(resolvePaths).nullSafe());
 		builder.registerTypeAdapter(Location.class, new LocationTypeAdapter().nullSafe());
-		builder.registerTypeAdapter(TriggerRupture.class, new TriggerRuptureTypeAdapter().nullSafe());
+		if (skipTriggers)
+			builder.registerTypeAdapter(TriggerRupture.class, new SkipTriggerRuptureTypeAdapter().nullSafe());
+		else
+			builder.registerTypeAdapter(TriggerRupture.class, new TriggerRuptureTypeAdapter().nullSafe());
 		builder.registerTypeAdapter(Region.class, new RegionTypeAdapter().nullSafe());
 		Gson gson = builder.create();
 		return gson;
@@ -271,6 +274,23 @@ public class ETAS_Config {
 			in.endObject();
 
 			return new Location(lat, lon, depth);
+		}
+		
+	}
+	
+	private static class SkipTriggerRuptureTypeAdapter extends TypeAdapter<TriggerRupture> {
+
+		private boolean first = true;
+		@Override
+		public void write(JsonWriter out, TriggerRupture value) throws IOException {
+			if (first)
+				out.value("omitted due to length, see original input file");
+			first = false;
+		}
+
+		@Override
+		public TriggerRupture read(JsonReader in) throws IOException {
+			throw new UnsupportedOperationException();
 		}
 		
 	}
@@ -985,6 +1005,10 @@ public class ETAS_Config {
 	public void setGriddedOnly(boolean griddedOnly) {
 		this.griddedOnly = griddedOnly;
 	}
+	
+	public void setImposeGR(boolean imposeGR) {
+		this.imposeGR = imposeGR;
+	}
 
 	public boolean isImposeGR() {
 		return imposeGR;
@@ -1041,14 +1065,19 @@ public class ETAS_Config {
 	}
 	
 	public String toJSON() {
-		Gson gson = buildGson(true);
+		return toJSON(false);
+	}
+	
+	public String toJSON(boolean skipTriggers) {
+		Gson gson = buildGson(true, skipTriggers);
 		return gson.toJson(this);
 	}
 	
 	public void writeJSON(File jsonFile) throws IOException {
 		jsonFile = resolvePath(jsonFile);
 		FileWriter fw = new FileWriter(jsonFile);
-		fw.write(toJSON()+"\n");
+		fw.write(toJSON());
+		fw.write("\n");
 		fw.close();
 	}
 	
@@ -1057,14 +1086,8 @@ public class ETAS_Config {
 	}
 	
 	public static ETAS_Config readJSON(File jsonFile, boolean resolvePaths) throws IOException {
-		String json = null;
-		for (String line : Files.readLines(jsonFile, Charset.defaultCharset())) {
-			if (json == null)
-				json = line;
-			else
-				json += "\n"+line;
-		}
-		return readJSON(json, resolvePaths);
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		return readJSON(reader, resolvePaths);
 	}
 	
 	public static ETAS_Config readJSON(String json) {
@@ -1072,8 +1095,15 @@ public class ETAS_Config {
 	}
 	
 	public static ETAS_Config readJSON(String json, boolean resolvePaths) {
-		Gson gson = buildGson(resolvePaths);
+		return readJSON(new StringReader(json), resolvePaths);
+	}
+	
+	public static ETAS_Config readJSON(Reader json, boolean resolvePaths) {
+		Gson gson = buildGson(resolvePaths, false);
 		ETAS_Config conf = gson.fromJson(json, ETAS_Config.class);
+		try {
+			json.close();
+		} catch (IOException e) {}
 		return conf;
 	}
 	

@@ -272,7 +272,7 @@ public abstract class TriggerRupture {
 
 		@Override
 		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
-			System.out.println("Building rupture from "+outlines.length+" faults outlines, OT="+rupture.getOriginTime()+" and M="+(float)mag);
+			System.out.println("Building rupture from "+outlines.length+" fault outlines, OT="+rupture.getOriginTime()+" and M="+(float)mag);
 			
 			rupture.setMag(mag);
 			rupture.setHypocenterLocation(hypo);
