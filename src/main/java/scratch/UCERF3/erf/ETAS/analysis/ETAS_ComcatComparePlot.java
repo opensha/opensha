@@ -1430,7 +1430,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		lines.add("The following plots compare simulation results with ComCat data above a magnitude threshold. "
 				+ "Plots labeled as *M&ge;Mc(t)* use the time-dependent magnitude of completeness (Mc) "
 				+ "defined in Helmstetter et al. (2006), which is plotted below. In the case of multiple "
-				+ "M&ge"+optionalDigitDF.format(MAX_MAG_FOR_TD_MC)+" ruptures, either as input to the "
+				+ "M&ge;"+optionalDigitDF.format(MAX_MAG_FOR_TD_MC)+" ruptures, either as input to the "
 				+ "simulation or in the comparison data, the maximum calculated time-dependent Mc is used. "
 				+ "This time-dependent Mc function is plotted below.");
 		lines.add("");
