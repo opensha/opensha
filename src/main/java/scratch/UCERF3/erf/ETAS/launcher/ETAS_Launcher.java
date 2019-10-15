@@ -192,6 +192,11 @@ public class ETAS_Launcher {
 			debug(DebugLevel.INFO, "Setting custom k from Log10(k)="+(float)log10k+": "+k);
 			params.set_k(k);
 		}
+		if (config.getETAS_K_COV() != null) {
+			double kCOV = config.getETAS_K_COV();
+			debug(DebugLevel.INFO, "Setting k COV: "+(float)kCOV);
+			params.set_kCOV(kCOV);
+		}
 		params.setStatewideCompletenessModel(config.getCompletenessModel());
 		
 		lastEventData = LastEventData.load();
@@ -1027,9 +1032,11 @@ public class ETAS_Launcher {
 //			String argsStr = "--date-last-debug --threads 5 /tmp/etas_debug/landers.json";
 //			String argsStr = "--date-last-debug --threads 6 /tmp/config.json";
 //			String argsStr = "--date-last-debug --threads 6 /tmp/config_noreuse.json";
+//			String argsStr = "--threads 1 /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//					+ "2019_07_18-ComCatM7p1_ci38457511_InvertedSurface_ShakeMapSurface"
+//					+ "-noSpont-full_td-scale1.14/small/config.json";
 			String argsStr = "--threads 1 /home/kevin/OpenSHA/UCERF3/etas/simulations/"
-					+ "2019_07_18-ComCatM7p1_ci38457511_InvertedSurface_ShakeMapSurface"
-					+ "-noSpont-full_td-scale1.14/small/config.json";
+					+ "2019_10_15-Start2012_500yr_kCOV1p16_Spontaneous_HistoricalCatalog/config.json";
 			args = argsStr.split(" ");
 		}
 		System.setProperty("java.awt.headless", "true");

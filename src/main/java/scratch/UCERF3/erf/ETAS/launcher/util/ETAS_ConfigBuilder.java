@@ -36,7 +36,6 @@ import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
-import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.KML_RuptureLoader.KML_Node;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -96,10 +95,24 @@ class ETAS_ConfigBuilder {
 	public static Options getCommonOptions() {
 		Options ops = new Options();
 		
+		// IF YOU ADD A NEW OPTION, UPDATE DOCUMENTATION IN ucerf3-etas-launcher/CONFIGURING_SIMULATIONS.md
+		
+		Option numSimsOption = new Option("num", "num-simulations", true, "Number of ETAS simulations to perform, must be >0");
+		numSimsOption.setRequired(true);
+		ops.addOption(numSimsOption);
+		
 		Option outputDir = new Option("o", "output-dir", true, "Output dir to write results. If not supplied, directory name "
 				+ "will be built automatically with the date, simulation name, and parameters, and placed in $ETAS_SIM_DIR");
 		outputDir.setRequired(false);
 		ops.addOption(outputDir);
+		
+		Option nameOption = new Option("n", "name", true, "Simulation name");
+		nameOption.setRequired(false);
+		ops.addOption(nameOption);
+
+		Option nameAddOption = new Option("na", "name-add", true, "Custom addendum to automatically generated name");
+		nameAddOption.setRequired(false);
+		ops.addOption(nameAddOption);
 		
 		/*
 		 * Simulation parameters
@@ -108,11 +121,11 @@ class ETAS_ConfigBuilder {
 		seedOption.setRequired(false);
 		ops.addOption(seedOption);
 		
-		Option fmOption = new Option("fm", "fault-model", true, "Fault model (default: "+FM_DEFAULT.name()+")");
+		Option fmOption = new Option("fm", "fault-model", true, "Fault model, one of FM3_1 or FM3_2 (default: "+FM_DEFAULT.name()+")");
 		fmOption.setRequired(false);
 		ops.addOption(fmOption);
 		
-		Option spontOption = new Option("sp", "include-spontaneous", false, "If supplied, includeSpontaneous will be set to true");
+		Option spontOption = new Option("sp", "include-spontaneous", false, "If supplied, spontaneous ruptures will be enabled");
 		spontOption.setRequired(false);
 		ops.addOption(spontOption);
 		
@@ -120,15 +133,12 @@ class ETAS_ConfigBuilder {
 		histCatalogOption.setRequired(false);
 		ops.addOption(histCatalogOption);
 		
-		Option numSimsOption = new Option("num", "num-simulations", true, "Number of simulations");
-		numSimsOption.setRequired(true);
-		ops.addOption(numSimsOption);
-		
 		Option durationOption = new Option("dur", "duration-years", true, "Simulation duration (years, default: "+(float)DURATION_DEFAULT+")");
 		durationOption.setRequired(false);
 		ops.addOption(durationOption);
 		
-		Option probModelOption = new Option("prob", "prob-model", true, "Probability Model (default: "+PROB_MODEL_DEFAULT.name()+")");
+		Option probModelOption = new Option("prob", "prob-model", true,
+				"UCERF3-ETAS Probability Model, one of FULL_TD, NO_ERT, or POISSON (default: "+PROB_MODEL_DEFAULT.name()+")");
 		probModelOption.setRequired(false);
 		ops.addOption(probModelOption);
 		
@@ -153,6 +163,10 @@ class ETAS_ConfigBuilder {
 		cOption.setRequired(false);
 		ops.addOption(cOption);
 		
+		Option kCOVOption = new Option("ek", "etas-k-cov", true, "COV of ETAS productivity parameter parameter, k");
+		kCOVOption.setRequired(false);
+		ops.addOption(kCOVOption);
+		
 		Option grOption = new Option("igr", "impose-gr", false, "If supplied, imposeGR will be set to true");
 		grOption.setRequired(false);
 		ops.addOption(grOption);
@@ -164,19 +178,19 @@ class ETAS_ConfigBuilder {
 		hpcSite.setRequired(false);
 		ops.addOption(hpcSite);
 		
-		Option nodesOption = new Option("nds", "nodes", true, "Nodes for HPC configuration");
+		Option nodesOption = new Option("nds", "nodes", true, "Compute nodes to run on for HPC configuration");
 		nodesOption.setRequired(false);
 		ops.addOption(nodesOption);
 		
-		Option hoursOption = new Option("hrs", "hours", true, "Hours for HPC configuration");
+		Option hoursOption = new Option("hrs", "hours", true, "Wall-clock hours for HPC configuration");
 		hoursOption.setRequired(false);
 		ops.addOption(hoursOption);
 		
-		Option threadsOption = new Option("th", "threads", true, "Threads for HPC configuration");
+		Option threadsOption = new Option("th", "threads", true, "Threads per node for HPC configuration");
 		threadsOption.setRequired(false);
 		ops.addOption(threadsOption);
 		
-		Option queueOption = new Option("qu", "queue", true, "Queue for HPC configuration");
+		Option queueOption = new Option("qu", "queue", true, "Queue name for HPC configuration");
 		queueOption.setRequired(false);
 		ops.addOption(queueOption);
 		
@@ -199,6 +213,8 @@ class ETAS_ConfigBuilder {
 			ops.add("p="+cmd.getOptionValue("etas-p"));
 		if (cmd.hasOption("etas-c"))
 			ops.add("c="+cmd.getOptionValue("etas-c"));
+		if (cmd.hasOption("etas-k-cov"))
+			ops.add("kCOV="+cmd.getOptionValue("etas-k-cov"));
 		if (cmd.hasOption("impose-gr"))
 			ops.add("Impose G-R");
 		
@@ -249,9 +265,10 @@ class ETAS_ConfigBuilder {
 		File cacheDir = fmCacheDirMap.get(fm);
 		File fssFile = fmFSSfileMap.get(fm);
 		
-		Double log10k = cmd.hasOption("etas-k") ? Double.parseDouble(cmd.getOptionValue("etas-k")) : null;
-		Double c = cmd.hasOption("etas-c") ? Double.parseDouble(cmd.getOptionValue("etas-c")) : null;
-		Double p = cmd.hasOption("etas-p") ? Double.parseDouble(cmd.getOptionValue("etas-p")) : null;
+		Double log10k = doubleArgIfPresent(cmd, "etas-k");
+		Double c = doubleArgIfPresent(cmd, "etas-c");
+		Double p = doubleArgIfPresent(cmd, "etas-p");
+		Double kCOV = doubleArgIfPresent(cmd, "etas-k-cov");
 		
 		File outputDir;
 		if (cmd.hasOption("output-dir")) {
@@ -306,6 +323,7 @@ class ETAS_ConfigBuilder {
 		config.setETAS_Log10_K(log10k);
 		config.setETAS_C(c);
 		config.setETAS_P(p);
+		config.setETAS_K_COV(kCOV);
 		
 		return config;
 	}
@@ -398,18 +416,15 @@ class ETAS_ConfigBuilder {
 				+ "If not supplied, trigger rupture occurs immediately before simulation start");
 		triggerTimeOption.setRequired(false);
 		ops.addOption(triggerTimeOption);
-
-		Option nameOption = new Option("n", "name", true, "Simulation name");
-		nameOption.setRequired(false);
-		ops.addOption(nameOption);
-
-		Option nameAddOption = new Option("na", "name-add", true, "Custom addendum to automatically generated name");
-		nameAddOption.setRequired(false);
-		ops.addOption(nameAddOption);
 		
 		Option triggerFSSOption = new Option("fss", "fss-index", true, "Create a trigger rupture with the given FSS index");
 		triggerFSSOption.setRequired(false);
 		ops.addOption(triggerFSSOption);
+		
+		Option triggerSectsOption = new Option("fss", "fault-sections", true,
+				"Create a trigger rupture with the given UCERF3 fault section indexes (comma separated)");
+		triggerSectsOption.setRequired(false);
+		ops.addOption(triggerSectsOption);
 		
 		Option triggerMagOption = new Option("mag", "magnitude", true, "Magnitude for trigger event. Required if point source, "
 				+ "optional if FSS index (will override UCERF3 magnitude)");
@@ -543,13 +558,14 @@ class ETAS_ConfigBuilder {
 			argz += " --num-simulations 1000";
 			argz += " --duration-years 500";
 //			argz += " --gridded-only";
-			argz += " --prob-model NO_ERT";
+//			argz += " --prob-model NO_ERT";
 			argz += " --include-spontaneous";
 			argz += " --historical-catalog";
+			argz += " --etas-k-cov 1.16";
 			
 //			argz += " --etas-k -2.31 --etas-p 1.08 --etas-c 0.04";
 //			argz += " --scale-factor 1.1338";
-			argz += " --scale-factor 1.0";
+//			argz += " --scale-factor 1.0";
 //			argz += " --scale-factor 1.212";
 			
 //			argz += " --random-seed 123456789";

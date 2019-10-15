@@ -78,6 +78,7 @@ public class ETAS_Config {
 	private Double etas_p = null;
 	private Double etas_c = null;
 	private Double etas_log10_k = null;
+	private Double etas_k_cov = null;
 	
 	// metadata
 	private String configCommand = null;
@@ -972,6 +973,14 @@ public class ETAS_Config {
 	
 	public Double getETAS_Log10_K() {
 		return etas_log10_k;
+	}
+	
+	public void setETAS_K_COV(Double kCOV) {
+		this.etas_k_cov = kCOV;
+	}
+	
+	public Double getETAS_K_COV() {
+		return etas_k_cov;
 	}
 
 	public boolean isApplySubSeisForSupraNucl() {

@@ -526,6 +526,7 @@ public class ETAS_Utils {
 				rup.setETAS_k(etasParamList.get_k());	// set default
 			else
 				rup.setETAS_k(getRandomETAS_k(etasParamList.get_k(), etasParamList.get_kCOV()));	// randomized default value
+//			System.out.println("Set K value: "+rup.getETAS_k());
 		}
 	}
 	

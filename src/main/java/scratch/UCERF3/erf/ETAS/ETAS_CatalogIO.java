@@ -85,7 +85,7 @@ public class ETAS_CatalogIO {
 	}
 	
 	public static final String EVENT_FILE_HEADER = "Year\tMonth\tDay\tHour\tMinute\tSec\tLat\tLon\tDepth\tMagnitude\t"
-				+ "ID\tparID\tGen\tOrigTime\tdistToParent\tnthERFIndex\tFSS_ID\tGridNodeIndex";
+				+ "ID\tparID\tGen\tOrigTime\tdistToParent\tnthERFIndex\tFSS_ID\tGridNodeIndex\tETAS_k";
 
 	/**
 	 * This writes the given rupture to the given fileWriter
@@ -131,7 +131,8 @@ public class ETAS_CatalogIO {
 		sb.append((float)rup.getDistanceToParent()).append("\t");
 		sb.append(rup.getNthERF_Index()).append("\t");
 		sb.append(rup.getFSSIndex()).append("\t");
-		sb.append(rup.getGridNodeIndex());
+		sb.append(rup.getGridNodeIndex()).append("\t");
+		sb.append(rup.getETAS_k());
 		
 		return sb.toString();
 	}
@@ -146,12 +147,12 @@ public class ETAS_CatalogIO {
 		line = line.trim();
 
 		String[] split = line.split("\t");
-		Preconditions.checkState(split.length == 10 || split.length == 12 || split.length == 18,
-				"Line has unexpected number of items. Expected 10/12/18, got %s. Line: %s", split.length, line);
+		Preconditions.checkState(split.length == 10 || split.length == 12 || split.length == 18 || split.length == 19,
+				"Line has unexpected number of items. Expected 10/12/18/19, got %s. Line: %s", split.length, line);
 
 		int nthERFIndex, fssIndex, gridNodeIndex, id, parentID, gen;
 		long origTime;
-		double distToParent, mag, lat, lon, depth;
+		double distToParent, mag, lat, lon, depth, k;
 
 		if (split.length == 10 || split.length == 12) {
 			// old format
@@ -177,6 +178,7 @@ public class ETAS_CatalogIO {
 				fssIndex = -1;
 				gridNodeIndex = -1;
 			}
+			k = Double.NaN;
 		} else {
 			// new format
 
@@ -196,6 +198,10 @@ public class ETAS_CatalogIO {
 			nthERFIndex = Integer.parseInt(split[15]);
 			fssIndex = Integer.parseInt(split[16]);
 			gridNodeIndex = Integer.parseInt(split[17]);
+			if (split.length == 19)
+				k = Double.parseDouble(split[18]);
+			else
+				k = Double.NaN;
 		}
 
 		Location loc = new Location(lat, lon, depth);
@@ -212,6 +218,7 @@ public class ETAS_CatalogIO {
 		rup.setHypocenterLocation(loc);
 		rup.setFSSIndex(fssIndex);
 		rup.setGridNodeIndex(gridNodeIndex);
+		rup.setETAS_k(k);
 
 		return rup;
 	}
@@ -360,7 +367,7 @@ public class ETAS_CatalogIO {
 
 	public static void writeCatalogBinary(DataOutputStream out, List<ETAS_EqkRupture> catalog) throws IOException {
 		// write file version as short
-		out.writeShort(1);
+		out.writeShort(2);
 
 		// write catalog size as int
 		out.writeInt(catalog.size());
@@ -381,6 +388,7 @@ public class ETAS_CatalogIO {
 		// nth ERF index - int
 		// FSS index - int
 		// grid node index - int
+		// [version 2+] etas k - double
 
 		for (ETAS_EqkRupture rup : catalog) {
 			out.writeInt(rup.getID());
@@ -396,6 +404,7 @@ public class ETAS_CatalogIO {
 			out.writeInt(rup.getNthERF_Index());
 			out.writeInt(rup.getFSSIndex());
 			out.writeInt(rup.getGridNodeIndex());
+			out.writeDouble(rup.getETAS_k());
 		}
 	}
 
@@ -471,7 +480,7 @@ public class ETAS_CatalogIO {
 	private static List<ETAS_EqkRupture> doLoadCatalogBinary(DataInput in, double minMag) throws IOException {
 		short version = in.readShort();
 
-		Preconditions.checkState(version == 1, "Unknown binary file version: "+version);
+		Preconditions.checkState(version == 1 || version == 2, "Unknown binary file version: "+version);
 
 		int numRups = in.readInt();
 
@@ -501,6 +510,7 @@ public class ETAS_CatalogIO {
 			Preconditions.checkState(fssIndex >= -1, "Bad Grid Node Index: %s", fssIndex);
 			int gridNodeIndex = in.readInt();
 			Preconditions.checkState(gridNodeIndex >= -1, "Bad Grid Node Index: %s", gridNodeIndex);
+			double k = version >= 2 ? in.readDouble() : Double.NaN;
 
 			if (mag < minMag)
 				continue;
@@ -519,6 +529,7 @@ public class ETAS_CatalogIO {
 			rup.setHypocenterLocation(loc);
 			rup.setFSSIndex(fssIndex);
 			rup.setGridNodeIndex(gridNodeIndex);
+			rup.setETAS_k(k);
 
 			catalog.add(rup);
 		}

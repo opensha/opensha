@@ -64,14 +64,6 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 		Option idOption = new Option("id", "event-id", true, "Primary ComCat event ID of interest");
 		idOption.setRequired(true);
 		ops.addOption(idOption);
-
-		Option nameOption = new Option("n", "name", true, "Simulation name");
-		nameOption.setRequired(false);
-		ops.addOption(nameOption);
-
-		Option nameAddOption = new Option("na", "name-add", true, "Custom addendum to automatically generated name");
-		nameAddOption.setRequired(false);
-		ops.addOption(nameAddOption);
 		
 		/*
 		 * Fore/aftershock time and region options  
@@ -100,6 +92,13 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 				+ "specified with --event-id <id>) up to the current instant");
 		nowOption.setRequired(false);
 		ops.addOption(nowOption);
+		
+		Option regionOption = new Option("reg", "region", true, "Region to fetch events in the format lat1,lon1[,lat2,lon2]. "
+				+ "If only one location is supplied, then a circular region is built and you must also supply the --radius "
+				+ "argument. Otherwise, if two locations and the --radius option is supplied, a sausage region is drawn around "
+				+ "the line defined, otherwise a rectangular region is defined between the two points.");
+		regionOption.setRequired(false);
+		ops.addOption(regionOption);
 		
 		Option radiusOption = new Option("r", "radius", true, "Radius (km) about main event for avershock search. If not supplied, "
 				+ "W-C 1994 radius used");
@@ -247,8 +246,13 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 			String argz = "";
 
-//			argz += " --event-id ci38443183"; // 2019 Searles Valley M6.4
-			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
+////			argz += " --event-id ci38443183"; // 2019 Searles Valley M6.4
+//			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
+//			argz += " --mag-complete 3.7";
+			
+			argz += " --event-id nc73292360"; // 10/15/2019 Tres Pinos, CA M4.71
+			argz += " --region 38.5,-122.75,36.25,-120.5";
+			
 			argz += " --num-simulations 100000";
 //			argz += " --num-simulations 1000";
 			argz += " --days-before 7";
@@ -259,7 +263,6 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 //			argz += " --impose-gr";
 //			argz += " --prob-model NO_ERT";
 //			argz += " --include-spontaneous";
-			argz += " --mag-complete 3.7";
 //			argz += " --scale-factor 1.0";
 //			argz += " --name-add CulledSurface";
 //			argz += " --fault-model FM3_2";
@@ -285,7 +288,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 //			argz += " --etas-k -2.3856 --etas-p 1.2164 --etas-c 0.0068906";
 			// new again from Morgan by e-mail 9/30
 			// new again from Morgan by e-mail 9/30
-			argz += " --etas-k -2.5807 --etas-p 1.2481 --etas-c 0.0057006";
+//			argz += " --etas-k -2.5807 --etas-p 1.2481 --etas-c 0.0057006";
 			
 			// took these from first ComCat finite fault
 //			argz += " --finite-surf-dip 85";
@@ -300,8 +303,8 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 //			argz += " --finite-surf-inversion-min-slip 0.5";
 //			argz += " --finite-surf-inversion-min-mag 6";
 
-			argz += " --finite-surf-shakemap";
-			argz += " --finite-surf-shakemap-min-mag 5";
+//			argz += " --finite-surf-shakemap";
+//			argz += " --finite-surf-shakemap-min-mag 5";
 //			argz += " --finite-surf-shakemap-version 7";
 //			argz += " --finite-surf-shakemap-planar-extents";
 //			argz += " --finite-surf-shakemap-min-mag 7";
@@ -492,7 +495,41 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_ConfigBuilder {
 				System.out.println("W-C 1994 Radius: "+(float)radius);
 			}
 			Region region;
-			if (sfd != null) {
+			if (cmd.hasOption("region")) {
+				// use user defined region
+				String regStr = cmd.getOptionValue("region");
+				String[] regSplit = regStr.split(",");
+				Preconditions.checkArgument(regSplit.length == 2 || regSplit.length == 4,
+						"--region format: lat1,lon1[,lat2,lon2]");
+				double lat1 = Double.parseDouble(regSplit[0]);
+				double lon1 = Double.parseDouble(regSplit[1]);
+				Location loc1 = new Location(lat1, lon1);
+				Location loc2;
+				if (regSplit.length == 2) {
+					Preconditions.checkState(cmd.hasOption("region"),
+							"you only supplied one location for a region, but didn't supply a radius");
+					loc2 = null;
+				} else {
+					double lat2 = Double.parseDouble(regSplit[2]);
+					double lon2 = Double.parseDouble(regSplit[3]);
+					loc2 = new Location(lat2, lon2);
+				}
+				
+				if (cmd.hasOption("radius")) {
+					if (loc2 == null) {
+						// circle
+						region = new ETAS_Config.CircularRegion(loc1, radius);
+					} else {
+						// sausage
+						LocationList line = new LocationList();
+						line.add(loc1);
+						line.add(loc2);
+						region = new Region(line, radius);
+					}
+				} else {
+					region = new Region(loc1, loc2);
+				}
+			} else if (sfd != null) {
 				region = new Region(sfd.getFaultTrace(), radius); // sausage around fault trace
 			} else if (primaryFiniteFault != null) {
 				// create combined trace. a little messy for complex ruptures, but won't
