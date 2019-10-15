@@ -261,31 +261,48 @@ public class ETAS_EqkRupture extends ObsEqkRupture {
 	}
 	
 	/**
-	 * @param etasParams
-	 * @return k parameter for this rupture. If this rupture has it's own k value, that will be returned, 
-	 * otherwise the value from etasParams will be returned
+	 * @return k parameter for this rupture
 	 */
-	public double getETAS_k(ETAS_ParameterList etasParams) {
-		return Double.isFinite(k) ? k : etasParams.get_k();
+	public double getETAS_k() {
+		return k;
 	}
 
 	/**
-	 * @param etasParams
-	 * @return c parameter for this rupture. If this rupture has it's own c value, that will be returned, 
-	 * otherwise the value from etasParams will be returned
+	 * @return c parameter for this rupture. 
 	 */
-	public double getETAS_c(ETAS_ParameterList etasParams) {
-		return Double.isFinite(c) ? c : etasParams.get_c();
+	public double getETAS_c() {
+		return c;
 	}
 
 	/**
-	 * @param etasParams
-	 * @return p parameter for this rupture. If this rupture has it's own p value, that will be returned, 
-	 * otherwise the value from etasParams will be returned
+	 * @return p parameter for this rupture. 
 	 */
-	public double getETAS_p(ETAS_ParameterList etasParams) {
-		return Double.isFinite(p) ? p : etasParams.get_p();
+	public double getETAS_p() {
+		return p;
 	}
+	
+	/**
+	 * Set k parameter for this rupture
+	 */
+	public void setETAS_k(double k) {
+		this.k = k;
+	}
+
+	/**
+	 * Set c parameter for this rupture. 
+	 */
+	public void setETAS_c(double c) {
+		this.c = c;
+	}
+
+	/**
+	 * Set p parameter for this rupture. 
+	 */
+	public void setETAS_p(double p) {
+		this.p = p;
+	}
+
+	
 	
 	@Override
 	public Object clone() {

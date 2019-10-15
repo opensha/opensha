@@ -438,13 +438,12 @@ public class ETAS_Utils {
 	
 	/**
 	 * This provides a randomized ETAS K value assuming a log-normal distribution with a mean of 1.0
-	 * and a COV of 1.16 .
-	 * This COV value was recommended by Nicholas van der Elst. 
+	 * and a COV as given. 
 	 * @return randomized k value
-	 * @TODO the COV should be obtained as an element in ETAS_ParameterList
 	 */
-	public double getRandomETAS_k(double k) {
-		double cov = 1.16;
+	public double getRandomETAS_k(double k, double cov) {
+		if(cov==0)
+			return k;	// no variability
 		double sigma = Math.sqrt(Math.log(cov*cov+1)); // sigma in ln space
 		double mean = -sigma*sigma/2;					// mean in ln space
 		double randGauss = randomDataGen.nextGaussian(mean, sigma);
@@ -504,23 +503,30 @@ public class ETAS_Utils {
 	}
 	
 	/**
-	 * This gives a random set of primary aftershock event times for the given parameters
+	 * This sets the ETAS p, c, and k values in the given rupture.  If the value already exists therein,
+	 * this does nothing.  If values don't exist, c & p are set as the default values from the given
+	 * ETAS_ParameterList.  For k, the default value is set if kCOV in ETAS_ParameterList is zero,
+	 * and a randomized value is set otherwise. 
 	 * @param rup
-	 * @param etasParams
-	 * @param magMain
-	 * @param magMin
-	 * @param tMinDays
-	 * @param tMaxDays
-	 * @return - event times in days since the main shock
+	 * @param etasParamList
 	 */
-	public double[] getRandomEventTimes(ETAS_EqkRupture rup, ETAS_ParameterList etasParams,
-			double magMain, double magMin, double tMinDays, double tMaxDays) {
-		double k = rup.getETAS_k(etasParams);
-		double p = rup.getETAS_p(etasParams);
-		double c = rup.getETAS_c(etasParams);
-		if(k == etasParams.get_k())	// override with randomized value if default @TODO need to fix this
-			k = getRandomETAS_k(k);
-		return getRandomEventTimes(k, p, magMain, magMin, c, tMinDays, tMaxDays);
+	public void setETAS_ParamsForRupture(ETAS_EqkRupture rup, ETAS_ParameterList etasParamList) {
+		
+		// set p
+		if(Double.isNaN(rup.getETAS_p()))
+			rup.setETAS_p(etasParamList.get_p());
+		
+		// set c
+		if(Double.isNaN(rup.getETAS_c()))
+			rup.setETAS_c(etasParamList.get_c());
+		
+		// set k
+		if(Double.isNaN(rup.getETAS_k())) {
+			if(etasParamList.get_kCOV() == 0)
+				rup.setETAS_k(etasParamList.get_k());	// set default
+			else
+				rup.setETAS_k(getRandomETAS_k(etasParamList.get_k(), etasParamList.get_kCOV()));	// randomized default value
+		}
 	}
 	
 	/**
@@ -535,8 +541,7 @@ public class ETAS_Utils {
 	 * @return - event times in days since the main shock
 	 */
 	public double[] getRandomEventTimes(double k, double p, double magMain, double magMin, double c, double tMinDays, double tMaxDays) {
-		double randK = getRandomETAS_k(k);  // override with randomized value if default @TODO need to fix this
-		int numAft = getPoissonRandomNumber(getExpectedNumEvents(randK, p, magMain, magMin, c, tMinDays, tMaxDays));
+		int numAft = getPoissonRandomNumber(getExpectedNumEvents(k, p, magMain, magMin, c, tMinDays, tMaxDays));
 		double[] eventTimes = new double[numAft];
 		for(int i=0;i<numAft;i++)
 			eventTimes[i] = this.getRandomTimeOfEvent(c, p, tMinDays, tMaxDays);
@@ -1471,7 +1476,7 @@ public class ETAS_Utils {
 		ETAS_Utils utils = new ETAS_Utils();
 		double mean = 0;
 		for(int i=0;i<valArray.length;i++) {
-			valArray[i] = utils.getRandomETAS_k(k);
+			valArray[i] = utils.getRandomETAS_k(k, 1.16);
 			mean += valArray[i];
 		}
 		mean /= valArray.length;

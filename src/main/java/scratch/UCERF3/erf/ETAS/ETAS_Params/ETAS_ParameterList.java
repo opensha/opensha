@@ -24,6 +24,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	public static final String XML_METADATA_NAME = "ETAS_ParameterList";
 
 	ETAS_ProductivityParam_k kParam = new ETAS_ProductivityParam_k();
+	ETAS_ProductivityCOV_Param_kCOV kCOV_Param = new ETAS_ProductivityCOV_Param_kCOV();
 	ETAS_TemporalDecayParam_p pParam = new ETAS_TemporalDecayParam_p();
 	ETAS_MinTimeParam_c cParam = new ETAS_MinTimeParam_c();
 	ETAS_DistanceDecayParam_q qParam = new ETAS_DistanceDecayParam_q();
@@ -40,6 +41,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 
 	public ETAS_ParameterList() {
 		this.addParameter(kParam);
+		this.addParameter(kCOV_Param);
 		this.addParameter(pParam);
 		this.addParameter(cParam);
 		this.addParameter(qParam);
@@ -57,6 +59,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	}
 	
 	public double get_k() {return kParam.getValue();}
+	public double get_kCOV() {return kCOV_Param.getValue();}
 	public double get_p() {return pParam.getValue();}
 	public double get_c() {return cParam.getValue();}
 	public double get_q() {return qParam.getValue();}
@@ -73,6 +76,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	
 	
 	public void set_k(double k) {kParam.setValue(k);}
+	public void set_kCOV(double kCOV) {kCOV_Param.setValue(kCOV);}
 	public void set_p(double p) {pParam.setValue(p);}
 	public void set_c(double c) {cParam.setValue(c);}
 	public void set_q(double q) {qParam.setValue(q);}

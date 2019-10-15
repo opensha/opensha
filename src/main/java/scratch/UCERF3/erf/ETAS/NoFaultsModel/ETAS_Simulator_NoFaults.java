@@ -388,8 +388,13 @@ public class ETAS_Simulator_NoFaults {
 			long rupOT = parRup.getOriginTime();
 			double startDay = (double)(simStartTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;	// convert epoch to days from event origin time
 			double endDay = (double)(simEndTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
-			// get a list of random primary event times, in units of days since main shock
-			double[] randomAftShockTimes = etas_utils.getRandomEventTimes(parRup, etasParams, parRup.getMag(), ETAS_Utils.magMin_DEFAULT, startDay, endDay);
+			
+			// set the etas parameters for this rupture (if not already set), and randomize k if it's not already set and kCOV>0
+			etas_utils.setETAS_ParamsForRupture(parRup, etasParams);
+			
+			// get primary event times
+			double[] randomAftShockTimes = etas_utils.getRandomEventTimes(parRup.getETAS_k(), parRup.getETAS_p(), parRup.getMag(), ETAS_Utils.magMin_DEFAULT, parRup.getETAS_c(), startDay, endDay);
+
 			if (scenarioRupIDs != null) {
 				for (int i=0; i<scenarioRupIDs.length; i++)
 					if(parRup.getID() == scenarioRupIDs[i])
@@ -515,9 +520,9 @@ public class ETAS_Simulator_NoFaults {
 				
 				info_fr.write("\nMagnitude of Scenario: "+(float)scenarioRup.getMag()+"\n");
 				if (D) System.out.println("\nMagnitude of Scenario: "+(float)scenarioRup.getMag());
-				double k = scenarioRup.getETAS_k(etasParams);
-				double p = scenarioRup.getETAS_p(etasParams);
-				double c = scenarioRup.getETAS_c(etasParams);
+				double k = scenarioRup.getETAS_k();
+				double p = scenarioRup.getETAS_p();
+				double c = scenarioRup.getETAS_c();
 				if (k != etasParams.get_k()) {
 					info_fr.write("\tCustom k-value for Scenario: "+k+"\n");
 					if (D) System.out.println("\tCustom k-value for Scenario: "+k+"\n");
@@ -652,7 +657,13 @@ public class ETAS_Simulator_NoFaults {
 				double startDay = 0;	// starting at origin time since we're within the timespan
 				double endDay = (double)(simEndTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 //				double[] eventTimes = etas_utils.getDefaultRandomEventTimes(rup.getMag(), startDay, endDay);
-				double[] eventTimes = etas_utils.getRandomEventTimes(etasParams.get_k(), etasParams.get_p(), rup.getMag(), ETAS_Utils.magMin_DEFAULT, etasParams.get_c(), startDay, endDay);
+				
+				// set the etas parameters for this rupture (if not already set), and randomize k if it's not already set and kCOV>0
+				etas_utils.setETAS_ParamsForRupture(rup, etasParams);
+				
+				// get primary event times
+				double[] eventTimes = etas_utils.getRandomEventTimes(rup.getETAS_k(), rup.getETAS_p(), rup.getMag(), ETAS_Utils.magMin_DEFAULT, rup.getETAS_c(), startDay, endDay);
+
 				LocationList locList = null;
 				if(eventTimes.length>0) {
 					for(int i=0; i<eventTimes.length;i++) {
