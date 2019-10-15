@@ -646,6 +646,12 @@ public class ETAS_Simulator_NoFaults {
 			simulatedRupsQueue.add(rup);	// this storage does not take much memory during the simulations
 			numSimulatedEvents += 1;
 			
+			if (includeIndirectTriggering) {
+				// set the etas parameters for this rupture, randomizing k if kCOV>0
+				// do this before writing it to the file
+				etas_utils.setETAS_ParamsForRupture(rup, etasParams);
+			}
+			
 			ETAS_CatalogIO.writeEventToFile(simulatedEventsFileWriter, rup);
 			
 			long rupOT = rup.getOriginTime();
@@ -657,9 +663,6 @@ public class ETAS_Simulator_NoFaults {
 				double startDay = 0;	// starting at origin time since we're within the timespan
 				double endDay = (double)(simEndTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 //				double[] eventTimes = etas_utils.getDefaultRandomEventTimes(rup.getMag(), startDay, endDay);
-				
-				// set the etas parameters for this rupture (if not already set), and randomize k if it's not already set and kCOV>0
-				etas_utils.setETAS_ParamsForRupture(rup, etasParams);
 				
 				// get primary event times
 				double[] eventTimes = etas_utils.getRandomEventTimes(rup.getETAS_k(), rup.getETAS_p(), rup.getMag(), ETAS_Utils.magMin_DEFAULT, rup.getETAS_c(), startDay, endDay);
