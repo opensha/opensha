@@ -194,24 +194,26 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		this.duration = duration;
 		if(!upToDate) computeDistributions();
 		
-		if (interpolate) {
-			double p1 = cdf.getInterpolatedY(timeSinceLast);
-			double p2 = cdf.getInterpolatedY(timeSinceLast+duration);
-//			System.out.println("t1 and t2:\t"+timeSinceLast+"\t"+(timeSinceLast+duration));		
-//			System.out.println(timeSinceLast+"\t"+(p2-p1)+"\t"+(1.0-p1));
-			
-			return (p2-p1)/(1.0-p1);
-		} else {
-			int pt1 = (int)Math.round(timeSinceLast/deltaX);
-			int pt2 = (int)Math.round((timeSinceLast+duration)/deltaX);
-			double p2 = cdf.getY(pt2);
-			double p1 = cdf.getY(pt1);
-			double prob = (p2-p1)/(1.0-p1);
-			
-//			System.out.println("pt1 and pt2:\t"+pt1+"\t"+pt2+"\t"+cdf.getX(pt1)+"\t"+cdf.getX(pt2));
-//			System.out.println(cdf.getX(pt1)+"\t"+cdf.getX(pt2)+"\t"+cdf.getY(pt1)+"\t"+cdf.getY(pt2));
-			return prob;
+		boolean interpolate = this.interpolate;
+		int pt1 = 0, pt2 = 0;
+		if (!interpolate) {
+			pt1 = (int)Math.round(timeSinceLast/deltaX);
+			pt2 = (int)Math.round((timeSinceLast+duration)/deltaX);
+			if (pt1 == pt2)
+				// they're in the same bin, do interpolation to avoid zero values
+				interpolate = true;
 		}
+		
+		double p1, p2;
+		if (interpolate) {
+			p1 = cdf.getInterpolatedY(timeSinceLast);
+			p2 = cdf.getInterpolatedY(timeSinceLast+duration);
+		} else {
+			p2 = cdf.getY(pt2);
+			p1 = cdf.getY(pt1);
+		}
+		
+		return (p2-p1)/(1.0-p1);
 	}	
 
 	/**
