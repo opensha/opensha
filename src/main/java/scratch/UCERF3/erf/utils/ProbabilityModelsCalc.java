@@ -132,7 +132,10 @@ public class ProbabilityModelsCalc {
 
 	// for BPT reference calculator (200 year recurrence interval); this is used for efficiency
 	static double refRI = 1.0;
-	static double deltaT = 0.005;
+//	static double deltaT = 0.005;
+	static double deltaT = 0.0005; // set it smaller with interpolate=false
+	// true means interpolate CDFs, false is faster but requires smaller deltaT for accuracy
+	public static boolean interpolate = false;
 //	BPT_DistCalc refBPT_DistributionCalc;
 	BPT_DistCalc[] refBPT_CalcArray;
 	int numAperValues;
@@ -1009,9 +1012,10 @@ public class ProbabilityModelsCalc {
 	 * @return
 	 */
 	public double computeBPT_Prob(double aveRecurIntervalYears, double aveTimeSinceLastYears, double durationYears, double aperiodicity) {
-		double delta = aveRecurIntervalYears/200d;
+		double delta = interpolate ? aveRecurIntervalYears/2000d : aveRecurIntervalYears/200d;
 		int numPts = (int)Math.round((9*aveRecurIntervalYears)/delta);
 		BPT_DistCalc bptCalc = new BPT_DistCalc();
+		bptCalc.setInterpolate(interpolate);
 		bptCalc.setAll(aveRecurIntervalYears, aperiodicity, delta, numPts);
 		return bptCalc.getCondProb(aveTimeSinceLastYears, durationYears);
 	}
@@ -1036,9 +1040,10 @@ public class ProbabilityModelsCalc {
 	 * @return
 	 */
 	public double computeBPT_ProbForUnknownDateOfLast(double aveRecurIntervalYears, double histOpenIntervalYears, double durationYears, double aperiodicity) {
-		double delta = aveRecurIntervalYears/200d;
+		double delta = interpolate ? aveRecurIntervalYears/2000d : aveRecurIntervalYears/200d;
 		int numPts = (int)Math.round((9*aveRecurIntervalYears)/delta);
 		BPT_DistCalc bptCalc = new BPT_DistCalc();
+		bptCalc.setInterpolate(interpolate);
 		bptCalc.setAll(aveRecurIntervalYears, aperiodicity, delta, numPts, durationYears, histOpenIntervalYears);
 		return bptCalc.getCondProbForUnknownTimeSinceLastEvent();	 
 	}
@@ -1066,6 +1071,7 @@ public class ProbabilityModelsCalc {
 	protected static BPT_DistCalc getRef_BPT_DistCalc(double bpt_Aperiodicity) {
 		int numPts = (int)Math.round((9*refRI)/deltaT);
 		BPT_DistCalc bptCalc = new BPT_DistCalc();
+		bptCalc.setInterpolate(interpolate);
 		bptCalc.setAll(refRI, bpt_Aperiodicity, deltaT, numPts);
 		return bptCalc;
 	}
@@ -1085,6 +1091,7 @@ public class ProbabilityModelsCalc {
 		
 		for(int i=0;i<numAperValues;i++) {
 			BPT_DistCalc bptCalc = new BPT_DistCalc();
+			bptCalc.setInterpolate(interpolate);
 			bptCalc.setAll(refRI, aperValues[i], deltaT, numPts);
 			bptCalcArray[i]=bptCalc;			
 		}
