@@ -31,6 +31,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 /**
@@ -264,6 +265,17 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 					} else {
 						break;
 					}
+				}
+				ComcatMetadata cMeta = getConfig().getComcatMetadata();
+				if (cMeta != null && cMeta.region != null) {
+					Region cReg = getConfig().getComcatMetadata().region;
+					// make sure entire ComCat region is contained
+					double minLat = Math.min(mapRegion.getMinLat(), cReg.getMinLat());
+					double minLon = Math.min(mapRegion.getMinLon(), cReg.getMinLon());
+					double maxLat = Math.max(mapRegion.getMaxLat(), cReg.getMaxLat());
+					double maxLon = Math.max(mapRegion.getMaxLon(), cReg.getMaxLon());
+					mapRegion = new Region(new Location(minLat, minLon),
+							new Location(maxLat, maxLon));
 				}
 			} else {
 				mapRegion = forceRegion;

@@ -59,6 +59,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.io.Files;
 import com.google.common.primitives.Floats;
 
@@ -911,6 +912,7 @@ public class ETAS_Launcher {
 	}
 	
 	void calculate(int numThreads, int[] batch, ETAS_BinaryWriter binaryWriter) {
+		Stopwatch watch = Stopwatch.createStarted();
 		ArrayList<CalcRunnable> tasks = new ArrayList<>();
 		
 		if (batch != null && batch.length > 0) {
@@ -974,7 +976,19 @@ public class ETAS_Launcher {
 				}
 			}
 		}
-		debug("done with "+tasks.size()+" simulations");
+		
+		watch.stop();
+		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		double mins = secs / 60d;
+		double hours = mins / 60d;
+		String timeStr;
+		if (hours > 1.5d)
+			timeStr = (float)hours+" hours";
+		else if (mins > 1.5d)
+			timeStr = (float)mins+" minutes";
+		else
+			timeStr = (float)secs+" seconds";
+		debug("done with "+tasks.size()+" simulations in "+timeStr);
 	}
 	
 	private class FutureContainer {
@@ -1036,7 +1050,7 @@ public class ETAS_Launcher {
 //					+ "2019_07_18-ComCatM7p1_ci38457511_InvertedSurface_ShakeMapSurface"
 //					+ "-noSpont-full_td-scale1.14/small/config.json";
 			String argsStr = "--threads 1 /home/kevin/OpenSHA/UCERF3/etas/simulations/"
-					+ "2019_10_15-Start2012_500yr_kCOV1p16_Spontaneous_HistoricalCatalog/config.json";
+					+ "2019_10_16-Start1919_100yr_Spontaneous_HistoricalCatalog/config.json";
 			args = argsStr.split(" ");
 		}
 		System.setProperty("java.awt.headless", "true");

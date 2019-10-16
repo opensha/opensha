@@ -1342,7 +1342,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	
 	private void writeDepthPlots(File outputDir, String prefix) throws IOException {
 		for (int m=0; m<magBins.length; m++) {
-			if (magBins[m] < overallMc)
+			if (magBins[m] >= 0d && magBins[m] < simMc)
 				continue;
 			List<XY_DataSet> funcs = new ArrayList<>();
 			List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -1486,7 +1486,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		
 		List<Double> depthMags = new ArrayList<>();
 		for (double mag : magBins)
-			if (mag < 0 || mag >= overallMc)
+			if (mag < 0 || mag >= simMc)
 				depthMags.add(mag);
 		if (!depthMags.isEmpty()) {
 			lines.add(topLevelHeading+"# ComCat Depth Distribution");
