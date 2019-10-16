@@ -65,6 +65,7 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	protected EvenlyDiscretizedFunc pdf, cdf, integratedCDF, integratedOneMinusCDF;
 	protected double mean, aperiodicity, deltaX, duration, histOpenInterval;
 	protected int numPoints;
+	protected boolean interpolate = true;
 	public static final double DELTA_X_DEFAULT = 0.001;
 	protected boolean upToDate=false;
 	protected  String NAME;
@@ -176,8 +177,6 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		
 		return func;
 	}
-
-	
 	
 	/**
 	 * This computes the the probability of occurrence over the given duration conditioned 
@@ -194,24 +193,25 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	public double getCondProb(double timeSinceLast, double duration) {
 		this.duration = duration;
 		if(!upToDate) computeDistributions();
-		double p1 = cdf.getInterpolatedY(timeSinceLast);
-		double p2 = cdf.getInterpolatedY(timeSinceLast+duration);
-//		System.out.println("t1 and t2:\t"+timeSinceLast+"\t"+(timeSinceLast+duration));		
-//		System.out.println(timeSinceLast+"\t"+(p2-p1)+"\t"+(1.0-p1));
 		
-		return (p2-p1)/(1.0-p1);
-
-		
-		// non interpolated alternative:
-/*
-		int pt1 = (int)Math.round(timeSinceLast/deltaX);
-		int pt2 = (int)Math.round((timeSinceLast+duration)/deltaX);
-		double prob = (cdf.getY(pt2)-cdf.getY(pt1))/(1.0-cdf.getY(pt1));
-//		System.out.println("pt1 and pt2:\t"+pt1+"\t"+pt2+"\t"+cdf.getX(pt1)+"\t"+cdf.getX(pt2));
-//		System.out.println(cdf.getX(pt1)+"\t"+cdf.getX(pt2)+"\t"+cdf.getY(pt1)+"\t"+cdf.getY(pt2));
-		return prob;
-*/
-		
+		if (interpolate) {
+			double p1 = cdf.getInterpolatedY(timeSinceLast);
+			double p2 = cdf.getInterpolatedY(timeSinceLast+duration);
+//			System.out.println("t1 and t2:\t"+timeSinceLast+"\t"+(timeSinceLast+duration));		
+//			System.out.println(timeSinceLast+"\t"+(p2-p1)+"\t"+(1.0-p1));
+			
+			return (p2-p1)/(1.0-p1);
+		} else {
+			int pt1 = (int)Math.round(timeSinceLast/deltaX);
+			int pt2 = (int)Math.round((timeSinceLast+duration)/deltaX);
+			double p2 = cdf.getY(pt2);
+			double p1 = cdf.getY(pt1);
+			double prob = (p2-p1)/(1.0-p1);
+			
+//			System.out.println("pt1 and pt2:\t"+pt1+"\t"+pt2+"\t"+cdf.getX(pt1)+"\t"+cdf.getX(pt2));
+//			System.out.println(cdf.getX(pt1)+"\t"+cdf.getX(pt2)+"\t"+cdf.getY(pt1)+"\t"+cdf.getY(pt2));
+			return prob;
+		}
 	}	
 
 	/**
@@ -511,6 +511,14 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		upToDate=false;
 	}
 	
+	/**
+	 * Interpolation of the CDF is more accurate but can be slow, if numPoints is sufficiently high
+	 * you can speed things up by disabling interpolation
+	 * @param interpolate
+	 */
+	public void setInterpolate(boolean interpolate) {
+		this.interpolate = interpolate;
+	}
 	
 	/**
 	 * This method sets values in the Parameter objects (slower, but safe in terms of using
