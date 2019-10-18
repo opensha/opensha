@@ -324,13 +324,9 @@ public class XMLUtils {
 	}
 	
 	public static List<Element> getSubElementsList(Element parentEl, String subElName) {
-		Iterator<Element> it;
 		if (subElName != null && !subElName.isEmpty())
-			it = parentEl.elementIterator(subElName);
-		else
-			it = parentEl.elementIterator();
-		
-		return Lists.newArrayList(it);
+			return parentEl.elements(subElName);
+		return parentEl.elements();
 	}
 
 }

@@ -8,7 +8,7 @@ dependencies {
 
     compileAndResource 'com.google.guava:guava:26.0-jre'
     compileAndResource 'org.jfree:jfreechart:1.0.19'
-    compileAndResource 'dom4j:dom4j:1.6.1'
+    compileAndResource 'org.dom4j:dom4j:2.1.1'
     compileAndResource 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
     compileAndResource 'com.lowagie:itext:2.1.7'
     compileAndResource 'gov.nist.math:jama:1.0.3'
