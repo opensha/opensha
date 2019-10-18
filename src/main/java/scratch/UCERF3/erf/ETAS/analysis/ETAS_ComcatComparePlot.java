@@ -78,6 +78,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private ObsEqkRupList comcatEvents;
 	private double modalMag;
 	private double comcatMc;
+	private double comcatMaxMag;
 	private IncrementalMagFreqDist comcatMND;
 	private EvenlyDiscretizedFunc timeDiscretization;
 	private double simMc;
@@ -196,15 +197,15 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			System.out.println("No ComCat events found");
 			return;
 		}
-		double maxEventMag = 0d;
+		comcatMaxMag = 0d;
 		comcatMND = new IncrementalMagFreqDist(ETAS_MFD_Plot.mfdMinMag, ETAS_MFD_Plot.mfdNumMag, ETAS_MFD_Plot.mfdDelta);
 		for (ObsEqkRupture rup : comcatEvents) {
-			maxEventMag = Math.max(maxEventMag, rup.getMag());
+			comcatMaxMag = Math.max(comcatMaxMag, rup.getMag());
 			comcatMND.add(comcatMND.getClosestXIndex(rup.getMag()), 1d);
 		}
 		modalMag = comcatMND.getX(comcatMND.getXindexForMaxY())-0.5*comcatMND.getDelta();
 		System.out.println("Found "+comcatEvents.size()+" ComCat events in region. Max mag: "
-				+(float)maxEventMag+". Modal mag: "+(float)modalMag);
+				+(float)comcatMaxMag+". Modal mag: "+(float)modalMag);
 		if (comcatMeta.magComplete == null) {
 			System.out.println("Using default Mc = modalMag + 0.5");
 			comcatMc = modalMag + 0.5;
@@ -260,7 +261,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				comcatEventsFilteredTDMc.add(rup);
 		}
 		
-		double maxMag = Math.max(maxTriggerMag, maxEventMag);
+		double maxMag = Math.max(maxTriggerMag, comcatMaxMag);
 		double maxTestMag = Math.ceil(maxMag);
 		double magDelta = maxMag < 6 ? 0.5 : 1;
 		if (maxTestMag - maxMag < 0.5 && maxTestMag < 8)
@@ -277,7 +278,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		magBins = Doubles.toArray(mags);
 		// now mags for cumultative time func comparison
 		List<Double> timeMags = new ArrayList<>(mags);
-		double maxTimeFuncMag = Math.ceil(Math.max(comcatMc, maxEventMag)+1);
+		double maxTimeFuncMag = Math.ceil(Math.max(comcatMc, comcatMaxMag)+1);
 		for (int m=timeMags.size(); --m>=1;)
 			if (timeMags.get(m).floatValue() > (float)maxTimeFuncMag)
 				timeMags.remove(m);
@@ -1261,7 +1262,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				List<XY_DataSet> funcs = new ArrayList<>();
 				List<PlotCurveCharacterstics> chars = new ArrayList<>();
 				
-				ETAS_EventMapPlotUtils.buildEventPlot(catalogEvents, funcs, chars, magBins[magBins.length-1]);
+				ETAS_EventMapPlotUtils.buildEventPlot(catalogEvents, funcs, chars, comcatMaxMag);
 				for (PlotCurveCharacterstics pChar : chars)
 					pChar.setColor(mapDataColor);
 				
@@ -1538,8 +1539,9 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 //				+ "2019-06-05_M7.1_SearlesValley_Sequence_UpdatedMw_and_depth");
 //				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-start-noon");
 //				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-following-M7.1");
-//				+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
-				+ "2019_08_20-ComCatM6p4_ci38443183_PointSources-noSpont-full_td-scale1.14");
+				+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
+//				+ "2019_08_20-ComCatM6p4_ci38443183_PointSources-noSpont-full_td-scale1.14");
+//				+ "2019_10_15-ComCatM4p71_nc73292360_PointSources");
 		File configFile = new File(simDir, "config.json");
 		
 		try {

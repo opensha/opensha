@@ -36,6 +36,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.SimpleFault;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
@@ -199,6 +200,13 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		latTrack.addValue(mapRegion.getMinLat());
 		lonTrack.addValue(mapRegion.getMaxLon());
 		lonTrack.addValue(mapRegion.getMinLon());
+		ComcatMetadata meta = getConfig().getComcatMetadata();
+		if (meta != null && meta.region != null) {
+			latTrack.addValue(meta.region.getMinLat());
+			latTrack.addValue(meta.region.getMaxLat());
+			lonTrack.addValue(meta.region.getMinLon());
+			lonTrack.addValue(meta.region.getMaxLon());
+		}
 		Location maxLoc = new Location(latTrack.getMax(), lonTrack.getMax());
 		Location minLoc = new Location(latTrack.getMin(), lonTrack.getMin());
 		// buffer by 1.5*maxDist
@@ -213,8 +221,8 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 			if (contains)
 				nearSects.add(sect);
 		}
-		System.out.println("Will compute distances for "+nearSects.size()
-			+" nearby sections (of "+subSects.size()+" total)");
+		
+		boolean skip = nearSects.size() > 500 && triggers.size() > 500;
 		
 		Map<Integer, FaultDistStats> statsMap = new HashMap<>();
 		for (FaultSectionPrefData sect : nearSects) {
@@ -224,92 +232,102 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 			statsMap.get(parentID).addSubSect(sect, polyMgr.getPoly(sect.getSectionId()));
 		}
 		distStats = new ArrayList<>(statsMap.values());
-		System.out.println("Processing "+triggers.size()+" triggers");
-		for (int i = 0; i < triggers.size(); i++) {
-			ETAS_EqkRupture trigger = triggers.get(i);
-			hasFinite = hasFinite || !trigger.getRuptureSurface().isPointSurface();
-			LocationList surfLocs = triggerLocLists.get(i);
-			for (FaultDistStats stats : distStats)
-				stats.processTrigger(trigger, surfLocs);
-		}
-		Collections.sort(distStats);
 		
-		csv = new CSVFile<>(true);
-		List<String> header = new ArrayList<>();
-		header.add("Section Name");
-		header.add("Strike, Dip, Rake");
-		if (triggers.size() > 1) {
-			header.add("# Hypos In Poly");
-			header.add("Max Mag w/ Hypo In Poly");
-			header.add("# Surfs In Poly");
-			header.add("Max Mag w/ Surf In Poly");
-			header.add("Min Dist To Any (km)");
-			header.add("Min Poly Dist To Any (km)");
-			header.add("Min Dist To Largest (km)");
-			header.add("Min Poly Dist To Largest (km)");
-			if (hasFinite) {
-				header.add("Min Hypo Dist To Largest (km)");
-				header.add("Min Hypo Poly Dist To Largest (km)");
-			}
+		if (skip) {
+			System.out.println("Skipping distances as there are too many triggers ("+triggers.size()+")"
+					+ " and nearby sections ("+nearSects.size()+")");
 		} else {
-			header.add("Hypocenter In Polygon?");
-			header.add("Surface In Polygon?");
-			if (hasFinite) {
-				header.add("Minimum Surface Distance (km)");
-				header.add("Minimum Surface Poly Distance (km)");
-				header.add("Minimum Hypo Distance (km)");
-				header.add("Minimum Hypo Poly Distance (km)");
-			} else {
-				header.add("Minimum Distance (km)");
-				header.add("Minimum Poly Distance (km)");
+			System.out.println("Will compute distances for "+nearSects.size()
+				+" nearby sections (of "+subSects.size()+" total)");
+			
+			System.out.println("Processing "+triggers.size()+" triggers");
+			for (int i = 0; i < triggers.size(); i++) {
+				ETAS_EqkRupture trigger = triggers.get(i);
+				hasFinite = hasFinite || !trigger.getRuptureSurface().isPointSurface();
+				LocationList surfLocs = triggerLocLists.get(i);
+				for (FaultDistStats stats : distStats)
+					stats.processTrigger(trigger, surfLocs);
 			}
-		}
-		csv.addLine(header);
-		
-		for (FaultDistStats dists : distStats) {
-			List<String> line = new ArrayList<>();
-			line.add(dists.parentName);
-			List<Double> strikes = new ArrayList<>();
-			List<Double> dips = new ArrayList<>();
-			List<Double> rakes = new ArrayList<>();
-			for (FaultSectionPrefData sect : dists.subSects) {
-				strikes.add(sect.getFaultTrace().getAveStrike());
-				dips.add(sect.getAveDip());
-				rakes.add(sect.getAveRake());
-			}
-			double aveStrike = FaultUtils.getAngleAverage(strikes);
-			double aveDip = FaultUtils.getAngleAverage(dips);
-			double aveRake = FaultUtils.getInRakeRange(FaultUtils.getAngleAverage(rakes));
-			line.add(Math.round(aveStrike)+", "+Math.round(aveDip)+", "+Math.round(aveRake));
+			Collections.sort(distStats);
+
+			csv = new CSVFile<>(true);
+			List<String> header = new ArrayList<>();
+			header.add("Section Name");
+			header.add("Strike, Dip, Rake");
 			if (triggers.size() > 1) {
-				line.add(dists.numHyposInsidePolygon+"");
-				line.add(Double.isFinite(dists.maxMagHypoInsidePolygon) ? (float)dists.maxMagHypoInsidePolygon+"" : "");
-				line.add(dists.numSurfsInsidePolygon+"");
-				line.add(Double.isFinite(dists.maxMagSurfsInsidePolygon) ? (float)dists.maxMagSurfsInsidePolygon+"" : "");
-				line.add(distStr(dists.minDistToAny));
-				line.add(distStr(dists.minPolyDistToAny));
-				line.add(distStr(dists.minDistToMax));
-				line.add(distStr(dists.minPolyDistToMax));
+				header.add("# Hypos In Poly");
+				header.add("Max Mag w/ Hypo In Poly");
+				header.add("# Surfs In Poly");
+				header.add("Max Mag w/ Surf In Poly");
+				header.add("Min Dist To Any (km)");
+				header.add("Min Poly Dist To Any (km)");
+				header.add("Min Dist To Largest (km)");
+				header.add("Min Poly Dist To Largest (km)");
 				if (hasFinite) {
-					line.add(distStr(dists.minHypoDistToMax));
-					line.add(distStr(dists.minHypoPolyDistToMax));
+					header.add("Min Hypo Dist To Largest (km)");
+					header.add("Min Hypo Poly Dist To Largest (km)");
 				}
 			} else {
-				line.add(dists.numHyposInsidePolygon > 0 ? "true" : "false");
-				line.add(dists.numSurfsInsidePolygon > 0 ? "true" : "false");
-				line.add(distStr(dists.minDistToAny));
-				line.add(distStr(dists.minPolyDistToAny));
+				header.add("Hypocenter In Polygon?");
+				header.add("Surface In Polygon?");
 				if (hasFinite) {
-					line.add(distStr(dists.minHypoDistToMax));
-					line.add(distStr(dists.minHypoPolyDistToMax));
+					header.add("Minimum Surface Distance (km)");
+					header.add("Minimum Surface Poly Distance (km)");
+					header.add("Minimum Hypo Distance (km)");
+					header.add("Minimum Hypo Poly Distance (km)");
+				} else {
+					header.add("Minimum Distance (km)");
+					header.add("Minimum Poly Distance (km)");
 				}
 			}
-			csv.addLine(line);
+			csv.addLine(header);
+
+			for (FaultDistStats dists : distStats) {
+				List<String> line = new ArrayList<>();
+				line.add(dists.parentName);
+				List<Double> strikes = new ArrayList<>();
+				List<Double> dips = new ArrayList<>();
+				List<Double> rakes = new ArrayList<>();
+				for (FaultSectionPrefData sect : dists.subSects) {
+					strikes.add(sect.getFaultTrace().getAveStrike());
+					dips.add(sect.getAveDip());
+					rakes.add(sect.getAveRake());
+				}
+				double aveStrike = FaultUtils.getAngleAverage(strikes);
+				double aveDip = FaultUtils.getAngleAverage(dips);
+				double aveRake = FaultUtils.getInRakeRange(FaultUtils.getAngleAverage(rakes));
+				line.add(Math.round(aveStrike)+", "+Math.round(aveDip)+", "+Math.round(aveRake));
+				if (triggers.size() > 1) {
+					line.add(dists.numHyposInsidePolygon+"");
+					line.add(Double.isFinite(dists.maxMagHypoInsidePolygon) ? (float)dists.maxMagHypoInsidePolygon+"" : "");
+					line.add(dists.numSurfsInsidePolygon+"");
+					line.add(Double.isFinite(dists.maxMagSurfsInsidePolygon) ? (float)dists.maxMagSurfsInsidePolygon+"" : "");
+					line.add(distStr(dists.minDistToAny));
+					line.add(distStr(dists.minPolyDistToAny));
+					line.add(distStr(dists.minDistToMax));
+					line.add(distStr(dists.minPolyDistToMax));
+					if (hasFinite) {
+						line.add(distStr(dists.minHypoDistToMax));
+						line.add(distStr(dists.minHypoPolyDistToMax));
+					}
+				} else {
+					line.add(dists.numHyposInsidePolygon > 0 ? "true" : "false");
+					line.add(dists.numSurfsInsidePolygon > 0 ? "true" : "false");
+					line.add(distStr(dists.minDistToAny));
+					line.add(distStr(dists.minPolyDistToAny));
+					if (hasFinite) {
+						line.add(distStr(dists.minHypoDistToMax));
+						line.add(distStr(dists.minHypoPolyDistToMax));
+					}
+				}
+				csv.addLine(line);
+			}
+			csv.writeToFile(new File(outputDir, "trigger_rup_fault_distances.csv"));
 		}
-		csv.writeToFile(new File(outputDir, "trigger_rup_fault_distances.csv"));
 		
 		makeMapPlot(outputDir, "trigger_rup_fault_map", triggers, mapRegion);
-		makeDepthPlot(outputDir, "trigger_rup_depth_map", triggers);
+		if (!skip)
+			makeDepthPlot(outputDir, "trigger_rup_depth_map", triggers);
 		
 		return null;
 	}
@@ -426,6 +444,11 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 			lines.add("![Map]("+relativePathToOutputDir+"/trigger_rup_depth_map.png)");
 		}
 		
+		if (csv == null)
+			// we skipped distance calculation
+			return lines;
+		
+		lines.add("");
 		lines.add(topLevelHeading+" Fault Distances To Triggers");
 		lines.add(topLink); lines.add("");
 		

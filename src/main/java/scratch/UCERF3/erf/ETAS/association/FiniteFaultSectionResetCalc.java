@@ -1006,9 +1006,17 @@ public class FiniteFaultSectionResetCalc {
 	
 	public List<String> writeSectionResetMarkdown(File outputDir, String relativePathToOutputDir, String topLevelHeading,
 			String topLink, RuptureSurface surf, Location hypocenter) throws IOException {
+		return writeSectionResetMarkdown(outputDir, relativePathToOutputDir, topLevelHeading, topLink, surf, hypocenter, null);
+	}
+	
+	public List<String> writeSectionResetMarkdown(File outputDir, String relativePathToOutputDir, String topLevelHeading,
+			String topLink, RuptureSurface surf, Location hypocenter, String eventID) throws IOException {
 		List<String> lines = new ArrayList<>();
 		
-		lines.add(topLevelHeading+" Possible Finite Rupture Subsection Mappings");
+		if (eventID == null || eventID.isEmpty())
+			lines.add(topLevelHeading+" Possible Finite Rupture Subsection Mappings");
+		else
+			lines.add(topLevelHeading+" "+eventID+" Possible Finite Rupture Subsection Mappings");
 		lines.add(topLink); lines.add("");
 		
 		lines.add("This gives any possible finite rupture surface subsection mappings. In the plot below, potentially suggested "
@@ -1028,6 +1036,8 @@ public class FiniteFaultSectionResetCalc {
 		}
 		
 		String prefix = "finite_rup_subsection_mappings";
+		if (eventID != null && !eventID.isEmpty())
+			prefix += "_"+eventID;
 		double[] areas = getAreaInSectionPolygons(surf);
 		if (areas == null)
 			// force it not to be null as we want to include everything

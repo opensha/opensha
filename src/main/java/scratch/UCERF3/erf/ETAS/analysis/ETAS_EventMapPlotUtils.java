@@ -121,6 +121,16 @@ public class ETAS_EventMapPlotUtils {
 			if (!(maxMag > 0))
 				maxMag = magTrack.getMax();
 			double minFilledMag = 5d;
+			if (maxMag <= 3) {
+				magSizeFunc.scale(2d);
+				minFilledMag = 2;
+			} else if (maxMag <= 4) {
+				magSizeFunc.scale(1.5);
+				minFilledMag = 3;
+			} else if (maxMag <= 5) {
+				magSizeFunc.scale(1.25);
+				minFilledMag = 4;
+			}
 
 			magRanges = new ArrayList<>();
 			magChars = new ArrayList<>();

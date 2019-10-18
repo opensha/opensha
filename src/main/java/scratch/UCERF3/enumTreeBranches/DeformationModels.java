@@ -1,14 +1,23 @@
 package scratch.UCERF3.enumTreeBranches;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.dom4j.Document;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.XMLUtils;
+import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.utils.DeformationModelFetcher;
+import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> {
@@ -137,5 +146,55 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 	@Override
 	public String getBranchLevelName() {
 		return "Deformation Model";
+	}
+	
+	private static File getCacheDir() {
+		File scratchDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
+		if (scratchDir.exists()) {
+			// eclipse project
+			File dir = new File(scratchDir, "SubSections");
+			if (!dir.exists())
+				Preconditions.checkState(dir.mkdir());
+			return dir;
+		} else {
+			// use home dir
+			String path = System.getProperty("user.home");
+			File homeDir = new File(path);
+			Preconditions.checkState(homeDir.exists(), "user.home dir doesn't exist: "+path);
+			File openSHADir = new File(homeDir, ".opensha");
+			if (!openSHADir.exists())
+				Preconditions.checkState(openSHADir.mkdir(),
+						"Couldn't create OpenSHA store location: "+openSHADir.getAbsolutePath());
+			File uc3Dir = new File(openSHADir, "ucerf3_sub_sects");
+			if (!uc3Dir.exists())
+				Preconditions.checkState(uc3Dir.mkdir(),
+						"Couldn't create UCERF3 ERF store location: "+uc3Dir.getAbsolutePath());
+			return uc3Dir;
+		}
+	}
+	
+	public static List<FaultSectionPrefData> loadSubSects(FaultModels fm, DeformationModels dm) {
+		File cacheDir = getCacheDir();
+		File xmlFile = new File(cacheDir, fm.encodeChoiceString()+"_"+dm.encodeChoiceString()+"_sub_sects.xml");
+		if (xmlFile.exists()) {
+			try {
+				return FaultModels.loadStoredFaultSections(xmlFile);
+			} catch (Exception e) {
+				ExceptionUtils.throwAsRuntimeException(e);
+			}
+		}
+		System.out.println("No sub section cache exists for "+fm.getShortName()+", "+dm.getShortName());
+		List<FaultSectionPrefData> sects = new DeformationModelFetcher(
+				fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1).getSubSectionList();
+		// write to XML
+		Document doc = XMLUtils.createDocumentWithRoot();
+		FaultSystemIO.fsDataToXML(doc.getRootElement(), FaultModels.XML_ELEMENT_NAME, fm, null, sects);
+		try {
+			XMLUtils.writeDocumentToFile(xmlFile, doc);
+		} catch (IOException e) {
+			System.err.println("WARNING: Couldn't write cache file: "+xmlFile.getAbsolutePath());
+			e.printStackTrace();
+		}
+		return sects;
 	}
 }

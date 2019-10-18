@@ -128,7 +128,7 @@ public abstract class TriggerRupture {
 	
 	public static class SectionBased extends TriggerRupture {
 		
-		final int[] subSects;
+		public final int[] subSects;
 		final double mag;
 
 		public SectionBased(int[] subSects, Long customOccurrenceTime, double mag) {

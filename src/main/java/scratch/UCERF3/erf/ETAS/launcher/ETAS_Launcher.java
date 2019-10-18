@@ -116,6 +116,7 @@ public class ETAS_Launcher {
 	private long simulationOT;
 	private String simulationName;
 	private File fssFile;
+	private Map<TriggerRupture, ETAS_EqkRupture> triggerRupturesMap;
 	private List<ETAS_EqkRupture> triggerRuptures;
 	private List<ETAS_EqkRupture> histQkList;
 	
@@ -215,8 +216,10 @@ public class ETAS_Launcher {
 			FaultSystemRupSet rupSet = fss.getRupSet();
 			
 			triggerRuptures = new ArrayList<>();
+			triggerRupturesMap = new HashMap<>();
 			for (TriggerRupture triggerRup : triggerRuptureConfigs) {
 				ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT, params);
+				triggerRupturesMap.put(triggerRup, rup);
 				triggerRuptures.add(rup);
 				int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
 				if (rupturedSects != null && rupturedSects.length > 0) {
@@ -367,6 +370,10 @@ public class ETAS_Launcher {
 	
 	public List<ETAS_EqkRupture> getTriggerRuptures() {
 		return triggerRuptures;
+	}
+	
+	public ETAS_EqkRupture getRuptureForTrigger(TriggerRupture trigger) {
+		return triggerRupturesMap.get(trigger);
 	}
 
 	public List<ETAS_EqkRupture> getHistQkList() {
