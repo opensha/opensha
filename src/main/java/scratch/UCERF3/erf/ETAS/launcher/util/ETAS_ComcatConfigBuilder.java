@@ -29,17 +29,17 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 			String argz = "";
 			
-//			argz += " --start-after-historical";
-////			argz += " --end-now";
+			argz += " --start-after-historical";
+			argz += " --end-now";
 //			argz += " --end-date 2018-01-01";
-//			argz += " --historical-catalog";
-//			argz += " --include-spontaneous";
+			argz += " --historical-catalog";
+			argz += " --include-spontaneous";
 			
 			// 10/14-15/2019 bay area M4's
-			argz += " --start-at nc73291880";
-			argz += " --end-after nc73292360";
-//			argz += " --end-now";
-			argz += " --region 38.5,-122.75,36.25,-120.5";
+//			argz += " --start-at nc73291880";
+//			argz += " --end-after nc73292360";
+////			argz += " --end-now";
+//			argz += " --region 38.5,-122.75,36.25,-120.5";
 			
 			argz += " --num-simulations 10000";
 //			argz += " --num-simulations 1000";

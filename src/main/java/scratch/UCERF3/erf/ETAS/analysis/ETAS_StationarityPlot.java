@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
@@ -21,6 +22,7 @@ import org.opensha.commons.util.cpt.CPT;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator.PlotResult;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -72,7 +74,7 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		long simStartTime = getConfig().getSimulationStartTimeMillis();
 		
@@ -99,7 +101,8 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public List<Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		plotMinMag = totalCountHist.getX(numToTrim)-totalCountHist.getDelta();
 		

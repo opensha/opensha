@@ -45,11 +45,13 @@ import com.google.common.primitives.Doubles;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
@@ -120,22 +122,28 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		Preconditions.checkState(!triggerRups.isEmpty(), "No trigger ruptures?");
 		
 		triggerRegions = new ArrayList<>();
-		for (ETAS_EqkRupture rup : triggerRups) {
-			RuptureSurface surf = rup.getRuptureSurface();
-			if (surf == null || surf instanceof PointSurface) {
-				triggerRegions.add(new Region(rup.getHypocenterLocation(), radius));
-			} else if (surf instanceof CompoundSurface) {		
-				for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
-					LocationList upper;
-					try {
-						upper = subSurf.getUpperEdge();
-					} catch (Exception e) {
-						upper = subSurf.getEvenlyDiscritizedUpperEdge();
+		ComcatMetadata meta = config.getComcatMetadata();
+		if (meta != null && meta.region != null) {
+			System.out.println("Will compute hazard change in ComCat region");
+			triggerRegions.add(meta.region);
+		} else {
+			for (ETAS_EqkRupture rup : triggerRups) {
+				RuptureSurface surf = rup.getRuptureSurface();
+				if (surf == null || surf instanceof PointSurface) {
+					triggerRegions.add(new Region(rup.getHypocenterLocation(), radius));
+				} else if (surf instanceof CompoundSurface) {		
+					for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
+						LocationList upper;
+						try {
+							upper = subSurf.getUpperEdge();
+						} catch (Exception e) {
+							upper = subSurf.getEvenlyDiscritizedUpperEdge();
+						}
+						triggerRegions.add(new Region(upper, radius));
 					}
-					triggerRegions.add(new Region(upper, radius));
+				} else {
+					triggerRegions.add(new Region(surf.getUpperEdge(), radius));
 				}
-			} else {
-				triggerRegions.add(new Region(surf.getUpperEdge(), radius));
 			}
 		}
 		
@@ -189,7 +197,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		if (fssIndexesInside == null) {
 			FaultSystemRupSet rupSet = fss.getRupSet();
@@ -228,18 +236,19 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		if (tiFuncs != null)
 			return null;
 		System.out.println("Calculating hazard change for U3-TI");
-		tiFuncs = calcUCERF3(fss, true);
+		tiFuncs = calcUCERF3(fss, true, exec);
 		ArbitrarilyDiscretizedFunc[] addToSimFuncs;
 		if (getConfig().isTimeIndependentERF()) {
 			tdFuncs = null;
 			addToSimFuncs = tiFuncs;
 		} else {
 			System.out.println("Calculating hazard change for U3-TD");
-			tdFuncs = calcUCERF3(fss, false);
+			tdFuncs = calcUCERF3(fss, false, exec);
 			addToSimFuncs = tdFuncs;
 		}
 		
@@ -382,7 +391,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		return null;
 	}
 	
-	private ArbitrarilyDiscretizedFunc[] calcUCERF3(FaultSystemSolution fss, boolean timeIndep) {
+	private ArbitrarilyDiscretizedFunc[] calcUCERF3(FaultSystemSolution fss, boolean timeIndep, ExecutorService exec) {
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF_millis(fss, timeIndep, timeIndep ? 1d : u3TimesFunc.getMinX(), simOT);
 		erf.updateForecast();
 		
@@ -417,7 +426,6 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		int threads = Integer.min(Runtime.getRuntime().availableProcessors(), 10);
 		if (timeIndep || threads < 1)
 			threads = 1;
-		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		
 		List<Future<?>> futures = new ArrayList<>();
 		
@@ -431,8 +439,6 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
-		
-		exec.shutdown();
 		
 		// now smooth the coarse UCERF3 functions assuming an exponential form
 		HashSet<Double> smoothedXVals = new HashSet<>();

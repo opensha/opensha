@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.opensha.commons.calc.FractileCurveCalculator;
@@ -35,6 +36,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -131,7 +133,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
 		for (int i=0; i<durations.length; i++) {
 			long maxOT = getConfig().getSimulationStartTimeMillis() + (long)(ProbabilityModelsCalc.MILLISEC_PER_YEAR*durations[i]+0.5);
 			if (totalWithSpontStats != null) {
@@ -218,7 +220,8 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public List<Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		int numToTrim = calcNumToTrim();
 		
 		String title = getPlotTitle();

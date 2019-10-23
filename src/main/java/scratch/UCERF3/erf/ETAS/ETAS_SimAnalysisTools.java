@@ -72,6 +72,7 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -1986,24 +1987,28 @@ public class ETAS_SimAnalysisTools {
 	 * @param parentID
 	 * @return
 	 */
-	public static List<ETAS_EqkRupture> getChildrenFromCatalog(List<ETAS_EqkRupture> catalog, int... parentIDs) {
-		List<ETAS_EqkRupture> ret = Lists.newArrayList();
+	public static ETAS_Catalog getChildrenFromCatalog(List<ETAS_EqkRupture> catalog, int... parentIDs) {
+		ETAS_SimulationMetadata meta = catalog instanceof ETAS_Catalog ? ((ETAS_Catalog)catalog).getSimulationMetadata() : null;
+		ETAS_Catalog ret = new ETAS_Catalog(meta);
 		HashSet<Integer> parents = new HashSet<Integer>();
 		for (int parentID : parentIDs)
 			parents.add(parentID);
 		
 		for (ETAS_EqkRupture rup : catalog) {
-			if (parents.contains(rup.getParentID()) || parents.contains(rup.getID())) {
+			if (rup.getParentID() >= 0 && (parents.contains(rup.getParentID()) || parents.contains(rup.getID()))) {
 				// it's in the chain
 				ret.add(rup);
 				parents.add(rup.getID());
 			}
 		}
 		
+		if (meta != null)
+			ret.updateMetadataForCatalog();
+		
 		return ret;
 	}
 	
-	public static List<ETAS_EqkRupture> getAboveMagPreservingChain(List<ETAS_EqkRupture> catalog, double minMag) {
+	public static ETAS_Catalog getAboveMagPreservingChain(List<ETAS_EqkRupture> catalog, double minMag) {
 		Map<Integer, ETAS_EqkRupture> catalogMap = Maps.newHashMap();
 		int minID = Integer.MAX_VALUE;
 		for (ETAS_EqkRupture rup : catalog) {
@@ -2036,7 +2041,10 @@ public class ETAS_SimAnalysisTools {
 			}
 		}
 		
-		List<ETAS_EqkRupture> ret = Lists.newArrayList();
+		ETAS_SimulationMetadata meta = catalog instanceof ETAS_Catalog ? ((ETAS_Catalog)catalog).getSimulationMetadata() : null;
+		if (meta != null)
+			meta = meta.getModMinMag(minMag).getUpdatedForCatalog(catalogMap.values());
+		ETAS_Catalog ret = new ETAS_Catalog(meta);
 		
 		for (Integer id : idsForInclusion)
 			ret.add(catalogMap.get(id));

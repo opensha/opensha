@@ -1,6 +1,7 @@
 package scratch.UCERF3.erf.ETAS.launcher.util;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -83,6 +85,15 @@ public class ETAS_MarkdownIndexWriter {
 						+SimulationMarkdownGenerator.defaultNumThreads()+")");
 		threadsOption.setRequired(false);
 		ops.addOption(threadsOption);
+
+		Option updateFileOption = new Option("uf", "update-file", true,
+				"Path to an update file which lists the name of a sub-directory on each line for which to "
+				+ "force update. You can optionally append the class name(s) (need not be fully qualified) "
+				+ "of plots to update after the sub-directory name (space delimited) to only update certain "
+				+ "plots. Will not throw and error if the file doesn't exist. After a successful update, all "
+				+ "updated directories will be commented out in the update file.");
+		updateFileOption.setRequired(false);
+		ops.addOption(updateFileOption);
 		
 		return ops;
 	}
@@ -166,6 +177,7 @@ public class ETAS_MarkdownIndexWriter {
 		
 		boolean updatePlots = cmd.hasOption("update-plots");
 		boolean forceUpdate = cmd.hasOption("force-update");
+		
 		if (updatePlots || forceUpdate) {
 			boolean dryRun = cmd.hasOption("dry-run");
 			long forceBeforeTime = Long.MAX_VALUE;
@@ -189,12 +201,66 @@ public class ETAS_MarkdownIndexWriter {
 					System.out.println("Couldn't determine time associated with current ETAS_LAUNCHER git version, "
 							+ "check $ETAS_LAUNCHER environmental variable or use --force-update to update plots");
 			}
+			
+			File updateFile = cmd.hasOption("update-file") ?
+					new File(cmd.getOptionValue("update-file")) : null;
+			HashSet<String> updatedNames = new HashSet<>();
+			
+			List<SimulationDir> plotSims = sims;
+			if (updateFile != null && updateFile.exists()) {
+				System.out.println("Reading update file: "+updateFile.getAbsolutePath());
+				plotSims = new ArrayList<>(sims);
+				for (String line : Files.readLines(updateFile, Charset.defaultCharset())) {
+					line = line.trim();
+					if (line.isEmpty() || line.startsWith("#"))
+						continue;
+					String[] split = line.split(" ");
+					String dirName = split[0];
+					while (dirName.endsWith("/"))
+						dirName = dirName.substring(0, dirName.length()-1);
+					System.out.println("Looking to force-update: "+dirName);
+					for (int i=0; i<plotSims.size(); i++) {
+						SimulationDir dir = plotSims.get(i);
+						if (dir.simDir.getName().equals(dirName)) {
+							System.out.println("Found a match! Will update");
+							dir.forceUpdate = true;
+							if (dir.plotMetadata != null && dir.plotMetadata.plots != null) {
+								List<PlotResult> plots = dir.plotMetadata.plots;
+								if (split.length == 1) {
+									// update all, remove metadata
+									plots.clear();
+								} else {
+									for (int j=1; j<split.length; j++) {
+										String className = split[j].trim();
+										for (int k=plots.size(); --k>=0;) {
+											if (plots.get(k).className.endsWith(className)) {
+												System.out.println("Will redo plot: "+plots.get(k).className);
+												plots.remove(k);
+											}
+										}
+									}
+								}
+							}
+							if (i > 0) {
+								System.out.println("Moving to front of processing stack");
+								plotSims.remove(i);
+								plotSims.add(0, dir);
+							}
+						}
+					}
+				}
+			}
+			
 			System.out.println("Updating plots...");
-			for (SimulationDir sim : sims) {
+			for (SimulationDir sim : plotSims) {
 				System.out.println(sim.simDir.getName()+": "+sim.config.getSimulationName());
 				boolean update = false;
 				if (forceUpdate) {
 					System.out.println("\tupdating due to --force-update");
+					update = true;
+				}
+				if (sim.forceUpdate) {
+					System.out.println("\tupdating due to --update-file");
 					update = true;
 				}
 				if (sim.plotMetadata == null) {
@@ -280,11 +346,36 @@ public class ETAS_MarkdownIndexWriter {
 					}
 					try {
 						sim.plotMetadata = SimulationMarkdownGenerator.generateMarkdown(
-								sim.configFile, inputFile, sim.config, sim.simDir, false, -1, threads, forceUpdate, false);
+								sim.configFile, inputFile, sim.config, sim.simDir, false, -1,
+								threads, forceUpdate, false, sim.plotMetadata);
+						updatedNames.add(sim.simDir.getName());
 					} catch (Exception e) {
 						System.err.println("Error updating plots for "+sim.simDir.getName());
 						e.printStackTrace();
 					}
+				}
+			}
+			
+			if (updateFile != null && updateFile.exists() && !updatedNames.isEmpty()) {
+				System.out.println("Updating update-file to comment out updated simulations");
+				File newUpdateFile = new File(updateFile.getAbsolutePath()+".tmp");
+				try {
+					FileWriter fw = new FileWriter(newUpdateFile);
+					for (String line : Files.readLines(updateFile, Charset.defaultCharset())) {
+						if (!line.startsWith("#") && !line.isEmpty()) {
+							String trimmed = line.trim();
+							if (line.contains(" "))
+								trimmed = trimmed.substring(0, trimmed.indexOf(" "));
+							if (updatedNames.contains(trimmed))
+								line = "#"+line;
+						}
+						fw.write(line+"\n");
+					}
+					fw.close();
+					Files.move(newUpdateFile, updateFile);
+				} catch (Exception e) {
+					System.err.println("WARNING: error updating update-file");
+					e.printStackTrace();
 				}
 			}
 		}
@@ -430,6 +521,7 @@ public class ETAS_MarkdownIndexWriter {
 		File plotsDir;
 		PlotMetadata plotMetadata;
 		Date configDate;
+		boolean forceUpdate = false;
 		public SimulationDir(File simDir, File configFile, ETAS_Config config, File plotsDir, PlotMetadata plotMetadata,
 				Date configDate) {
 			super();

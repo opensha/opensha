@@ -1,22 +1,27 @@
 package scratch.UCERF3.erf.ETAS.launcher;
 
+import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.FileNameComparator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.BinarayCatalogsMetadataIterator;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
+import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 
@@ -31,6 +36,17 @@ class ETAS_BinaryWriter {
 		
 		for (BinaryFilteredOutputConfig binaryConfig : config.getBinaryOutputFilters())
 			writers.add(new InProgressWriter(outputDir, numCatalogs, config, binaryConfig));
+	}
+	
+	public HashSet<Integer> getDoneIndexes() {
+		HashSet<Integer> doneSet = null;
+		for (InProgressWriter writer : writers) {
+			if (doneSet == null)
+				doneSet = writer.doneSet;
+			else
+				doneSet.retainAll(writer.doneSet);
+		}
+		return doneSet;
 	}
 	
 	public void processCatalog(File catalogDir) throws IOException {
@@ -49,18 +65,23 @@ class ETAS_BinaryWriter {
 		else
 			throw new IllegalStateException("No ETAS catalogs found in "+catalogDir.getAbsolutePath());
 		
-		List<ETAS_EqkRupture> catalog;
+//		System.out.println("PROCESSING CATALOG FROM: "+catalogFile.getAbsolutePath());
+		ETAS_Catalog catalog;
 		try {
 			catalog = ETAS_CatalogIO.loadCatalog(catalogFile);
 		} catch (IllegalStateException e) {
 			throw new IllegalStateException("Exception processing catalog "+catalogFile.getAbsolutePath());
 		}
+//		System.out.println("PROCESSING WRITERS FOR: "+catalogFile.getAbsolutePath());
 		processCatalog(catalog);
+//		System.out.println("DONE PROCESSING WRITERS FOR: "+catalogFile.getAbsolutePath());
 	}
 	
-	public void processCatalog(List<ETAS_EqkRupture> catalog) throws IOException {
-		for (InProgressWriter writer : writers)
+	public void processCatalog(ETAS_Catalog catalog) throws IOException {
+		for (InProgressWriter writer : writers) {
+//			System.out.println("\tPROCESSING WRITER: "+writer.inProgressFile.getName());
 			writer.processCatalog(catalog);
+		}
 	}
 	
 	public void finalize() throws IOException {
@@ -77,6 +98,9 @@ class ETAS_BinaryWriter {
 		private int numCatalogs;
 		private BinaryFilteredOutputConfig binaryConf;
 		private ETAS_Config config;
+		
+		private HashSet<Integer> doneSet;
+		private boolean warnedNoMeta = false;
 
 		public InProgressWriter(File outputDir, int numCatalogs, ETAS_Config config, BinaryFilteredOutputConfig binaryConf) throws IOException {
 			this.numCatalogs = numCatalogs;
@@ -85,26 +109,84 @@ class ETAS_BinaryWriter {
 			
 			String prefix = binaryConf.getPrefix();
 			inProgressFile = new File(outputDir, prefix+"_partial.bin");
+			doneSet = new HashSet<>();
+			if (inProgressFile.exists() && inProgressFile.length() > 100l && !config.isForceRecalc()) {
+				System.out.println("Attempting to retstart, reading old "+inProgressFile.getName());
+				BinarayCatalogsMetadataIterator metadataIt = ETAS_CatalogIO.getBinaryCatalogsMetadataIterator(inProgressFile);
+				
+				long writePos = -1;
+				while (metadataIt.hasNext()) {
+					if (!metadataIt.isNextFullyWritten())
+						// partial, stop here
+						break;
+					long endIndex = metadataIt.getNextEndPos();
+					ETAS_SimulationMetadata meta = metadataIt.next();
+					if (meta != null && meta.catalogIndex >= 0) {
+						Preconditions.checkState(!doneSet.contains(meta.catalogIndex),
+								"Duplicate catalog index encountered: %s", meta.catalogIndex);
+						doneSet.add(meta.catalogIndex);
+						writePos = endIndex;
+					} else {
+						System.out.println("Old catalog format encountered without metadata, can't restart this (or subsequent) catalogs");
+						break;
+					}
+				}
+				metadataIt.close();
+				if (writePos > 0l) {
+					System.out.println("Will resume "+inProgressFile.getName()+" after "+doneSet.size()
+						+" catalogs (at pos="+writePos+")");
+					
+					@SuppressWarnings("resource") // will be closed by dOut.close()
+					RandomAccessFile raFile = new RandomAccessFile(inProgressFile, "rw");
+					long len = raFile.length();
+					Preconditions.checkState(writePos <= len, "bad writePos=%s with len=%s", writePos, len);
+					if (writePos < len) {
+						long overwrite = len - writePos;
+						System.out.println("Write position is before end, will overwrite "+overwrite+" bytes (current lengh="+len+")");
+					}
+					raFile.seek(writePos);
+					FileOutputStream fout = new FileOutputStream(raFile.getFD());
+					dOut = new DataOutputStream(new BufferedOutputStream(fout, ETAS_CatalogIO.buffer_len));
+				}
+			}
 			destFile = new File(outputDir, prefix+".bin");
 		}
 		
-		public synchronized void processCatalog(List<ETAS_EqkRupture> catalog) throws IOException {
+		public synchronized void processCatalog(ETAS_Catalog catalog) throws IOException {
 			if (dOut == null)
 				dOut = ETAS_CatalogIO.initCatalogsBinary(inProgressFile, numCatalogs);
 			if (binaryConf.isDescendantsOnly() && !catalog.isEmpty())
 				catalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
-			if (binaryConf.getMinMag() != null && binaryConf.getMinMag() > 0 && !catalog.isEmpty()) {
+			ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
+			if (meta== null) {
+				if (!warnedNoMeta) {
+					System.err.println("WARNING: catalog doesn't have metadata attached, old file version? future warnings supressed");
+					warnedNoMeta = true;
+				}
+			} else {
+				Preconditions.checkState(meta.catalogIndex >= 0, "Bad catalog index: %s", meta.catalogIndex);
+				if (doneSet.contains(meta.catalogIndex)) {
+					System.err.println("WARNING: already processed index "+meta.catalogIndex+", skipping");
+					return;
+				}
+			}
+			Double minMag = binaryConf.getMinMag();
+			if (minMag != null && minMag > 0 && !catalog.isEmpty()) {
 				if (binaryConf.isPreserveChainBelowMag()) {
-					catalog = ETAS_SimAnalysisTools.getAboveMagPreservingChain(catalog, binaryConf.getMinMag());
+					catalog = ETAS_SimAnalysisTools.getAboveMagPreservingChain(catalog, minMag);
 				} else {
-					List<ETAS_EqkRupture> filteredCatalog = new ArrayList<>();
+					ETAS_Catalog filteredCatalog = new ETAS_Catalog(meta == null ? null : meta.getModMinMag(minMag));
 					for (ETAS_EqkRupture rup : catalog)
 						if (rup.getMag() >= binaryConf.getMinMag())
 							filteredCatalog.add(rup);
+					if (filteredCatalog.getSimulationMetadata() != null)
+						filteredCatalog.updateMetadataForCatalog();
 					catalog = filteredCatalog;
 				}
 			}
 			ETAS_CatalogIO.writeCatalogBinary(dOut, catalog);
+			if (meta != null)
+				doneSet.add(meta.catalogIndex);
 			dOut.flush();
 		}
 		
@@ -139,7 +221,7 @@ class ETAS_BinaryWriter {
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(resultsDir, new ETAS_CatalogIteration.Callback() {
 			
 			@Override
-			public void processCatalog(List<ETAS_EqkRupture> catalog, int index) {
+			public void processCatalog(ETAS_Catalog catalog, int index) {
 				try {
 					writer.processCatalog(catalog);
 				} catch (IOException e) {

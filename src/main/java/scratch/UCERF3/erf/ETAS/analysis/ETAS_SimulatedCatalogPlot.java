@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.opensha.commons.data.function.XY_DataSet;
@@ -28,6 +29,7 @@ import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
@@ -92,7 +94,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		double myCount = completeCatalog.size();
 		smallest = Math.min(myCount, smallest);
@@ -137,7 +139,8 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public List<Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		List<XY_DataSet> inputFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> inputChars = new ArrayList<>();
 		
@@ -402,7 +405,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;
-			for (List<ETAS_EqkRupture> catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0d)) {
+			for (ETAS_Catalog catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0d)) {
 				if (processed % 1000 == 0)
 					System.out.println("Catalog "+processed);
 				plot.processCatalog(catalog, fss);

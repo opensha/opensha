@@ -309,7 +309,7 @@ public class HaywiredSRL_PaperCalc {
 				refSol = FaultSystemIO.loadSol(fssFile);
 			
 			double[] faultMinMags = { 0, 6.7, 7.8 };
-			List<List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogsBinary(faultM5File);
+			List<? extends List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogsBinary(faultM5File);
 			
 			CPT particCPT = CPT.loadFromFile(new File(faultParticDir, "faultPartRate.cpt"));
 			CPT particGainCPT = CPT.loadFromFile(new File(faultParticDir, "faultPartGain.cpt"));

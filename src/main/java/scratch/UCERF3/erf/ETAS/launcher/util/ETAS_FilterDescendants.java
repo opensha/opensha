@@ -14,6 +14,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
@@ -46,8 +47,8 @@ public class ETAS_FilterDescendants {
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
 			
 			@Override
-			public void processCatalog(List<ETAS_EqkRupture> catalog, int index) {
-				List<ETAS_EqkRupture> filtered = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
+			public void processCatalog(ETAS_Catalog catalog, int index) {
+				ETAS_Catalog filtered = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
 				try {
 					ETAS_CatalogIO.writeCatalogBinary(out, filtered);
 				} catch (IOException e) {

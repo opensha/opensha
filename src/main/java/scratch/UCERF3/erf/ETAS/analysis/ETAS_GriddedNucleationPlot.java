@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
@@ -25,6 +26,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
@@ -94,7 +96,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		if (hasSpont)
 			doProcessCatalog(completeCatalog, totalXYZs, null, totalIncrCounts);
@@ -128,7 +130,8 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		if (numRupsSkipped > 0)
 			System.out.println("GriddedNucleation: skipped "+numRupsSkipped+" ruptures outside of region");
 		

@@ -64,6 +64,7 @@ import com.google.common.base.Preconditions;
 import oracle.net.aso.r;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_ComcatComparePlot;
@@ -974,8 +975,8 @@ public class RidgecrestStatsCalc {
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
 			
 			@Override
-			public void processCatalog(List<ETAS_EqkRupture> catalog, int index) {
-				List<ETAS_EqkRupture> triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
+			public void processCatalog(ETAS_Catalog catalog, int index) {
+				ETAS_Catalog triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
 				for (ETAS_AbstractPlot plot : plots)
 					plot.processCatalog(catalog, triggeredOnlyCatalog, fss);
 			}
@@ -984,7 +985,7 @@ public class RidgecrestStatsCalc {
 		System.out.println("Processed "+numProcessed+" catalogs");
 		List<Future<?>> futures = new ArrayList<>();
 		for (ETAS_AbstractPlot plot : plots) {
-			List<? extends Runnable> runs = plot.finalize(outputDir, fss);
+			List<? extends Runnable> runs = plot.finalize(outputDir, fss, exec);
 			if (runs != null)
 				for (Runnable run : runs)
 					futures.add(exec.submit(run));

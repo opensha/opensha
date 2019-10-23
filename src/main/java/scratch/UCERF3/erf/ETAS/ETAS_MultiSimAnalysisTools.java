@@ -202,7 +202,7 @@ public class ETAS_MultiSimAnalysisTools {
 	public static double mfdMinY = 1e-4;
 	public static double mfdMaxY = 1e4;
 
-	static int calcNumMagToTrim(List<List<ETAS_EqkRupture>> catalogs) {
+	static int calcNumMagToTrim(List<? extends List<ETAS_EqkRupture>> catalogs) {
 		double minMag = mfdMinMag;
 		// double catMinMag = Double.POSITIVE_INFINITY;
 		HistogramFunction hist = new HistogramFunction(mfdMinMag, mfdNumMag, mfdDelta);
@@ -576,12 +576,12 @@ public class ETAS_MultiSimAnalysisTools {
 		return ret;
 	}
 
-	public static void plotMagNum(List<List<ETAS_EqkRupture>> catalogs, File outputDir, String name, String prefix,
+	public static void plotMagNum(List<? extends List<ETAS_EqkRupture>> catalogs, File outputDir, String name, String prefix,
 			TestScenario scenario, double expNumForM2p5, FaultSystemSolution fss) throws IOException {
 		plotMagNum(catalogs, outputDir, name, prefix, scenario, expNumForM2p5, fss, Long.MAX_VALUE);
 	}
 
-	public static void plotMagNum(List<List<ETAS_EqkRupture>> catalogs, File outputDir, String name, String prefix,
+	public static void plotMagNum(List<? extends List<ETAS_EqkRupture>> catalogs, File outputDir, String name, String prefix,
 			TestScenario scenario, double expNumForM2p5, FaultSystemSolution fss, long maxOT) throws IOException {
 		double minMag = mfdMinMag;
 		int numMag = mfdNumMag;
@@ -1125,7 +1125,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 	}
 
-	public static void plotSectRates(List<List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
+	public static void plotSectRates(List<? extends List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
 			double[] minMags, File outputDir, String titleAdd, String prefix, long maxOT,
 			FaultSystemSolution refSol, boolean addRefForRatio, CPT cpt, CPT logGainCPT)
 					throws IOException, GMT_MapException, RuntimeException {
@@ -1679,13 +1679,13 @@ public class ETAS_MultiSimAnalysisTools {
 
 	private static final double MILLIS_PER_YEAR = 365.25 * 24 * 60 * 60 * 1000;
 
-	public static void plotCubeNucleationRates(List<List<ETAS_EqkRupture>> catalogs, double duration, File outputDir,
+	public static void plotCubeNucleationRates(List<? extends List<ETAS_EqkRupture>> catalogs, double duration, File outputDir,
 			String name, String prefix, double[] mags) throws IOException, GMT_MapException {
 		plotCubeNucleationRates(catalogs, catalogs.size(), duration, Long.MAX_VALUE, outputDir, name, prefix, mags,
 				false);
 	}
 
-	public static void plotCubeNucleationRates(Iterable<List<ETAS_EqkRupture>> catalogs, int numCatalogs,
+	public static void plotCubeNucleationRates(Iterable<? extends List<ETAS_EqkRupture>> catalogs, int numCatalogs,
 			double duration, long maxOT, File outputDir, String name, String prefix, double[] mags, boolean downloadZip)
 			throws IOException, GMT_MapException {
 		double discr = 0.02;
@@ -1865,7 +1865,7 @@ public class ETAS_MultiSimAnalysisTools {
 		return ret;
 	}
 
-	private static void writeTimeFromPrevSupraHist(List<List<ETAS_EqkRupture>> catalogs, File outputDir)
+	private static void writeTimeFromPrevSupraHist(List<? extends List<ETAS_EqkRupture>> catalogs, File outputDir)
 			throws IOException {
 		HistogramFunction hist = HistogramFunction.getEncompassingHistogram(0d, 20d, 1d);
 
@@ -2037,7 +2037,7 @@ public class ETAS_MultiSimAnalysisTools {
 		}
 	}
 
-	public static void plotSectParticScatter(Iterable<List<ETAS_EqkRupture>> catalogs, double duration,
+	public static void plotSectParticScatter(Iterable<? extends List<ETAS_EqkRupture>> catalogs, double duration,
 			FaultSystemSolutionERF erf, File outputDir) throws IOException, GMT_MapException, RuntimeException {
 		double[] minMags = { 0d };
 
@@ -2257,7 +2257,7 @@ public class ETAS_MultiSimAnalysisTools {
 	 * @throws GMT_MapException
 	 * @throws RuntimeException
 	 */
-	public static void plotAndWriteSectProbOneOrMoreData(Iterable<List<ETAS_EqkRupture>> catalogs,
+	public static void plotAndWriteSectProbOneOrMoreData(Iterable<? extends List<ETAS_EqkRupture>> catalogs,
 			double durationForProb, FaultSystemSolutionERF erf, File outputDir)
 			throws IOException, GMT_MapException, RuntimeException {
 		double[] minMags = { 0d };
@@ -2631,7 +2631,7 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, prefix + ".txt").getAbsolutePath());
 	}
 
-	public static void calcSupraAncestorStats(Iterable<List<ETAS_EqkRupture>> catalogs, File outputDir)
+	public static void calcSupraAncestorStats(Iterable<? extends List<ETAS_EqkRupture>> catalogs, File outputDir)
 			throws IOException {
 		// total
 		long numSupra = 0;
@@ -2745,7 +2745,7 @@ public class ETAS_MultiSimAnalysisTools {
 		return ratio;
 	}
 
-	private static void plotGriddedNucleationScatter(List<List<ETAS_EqkRupture>> catalogs, double duration,
+	private static void plotGriddedNucleationScatter(List<? extends List<ETAS_EqkRupture>> catalogs, double duration,
 			FaultSystemSolutionERF erf, File outputDir) throws IOException, GMT_MapException {
 		double[] minMags = { 5d };
 
@@ -2915,7 +2915,7 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, prefix + ".txt").getAbsolutePath());
 	}
 
-	private static void plotStationarity(List<List<ETAS_EqkRupture>> catalogs, double duration, File outputDir)
+	private static void plotStationarity(List<? extends List<ETAS_EqkRupture>> catalogs, double duration, File outputDir)
 			throws IOException {
 		if (duration < 0) {
 			for (List<ETAS_EqkRupture> catalog : catalogs)
@@ -3038,7 +3038,7 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, prefix + ".txt").getAbsolutePath());
 	}
 
-	public static void plotSubSectRecurrenceHist(List<List<ETAS_EqkRupture>> catalogs, FaultSystemRupSet rupSet,
+	public static void plotSubSectRecurrenceHist(List<? extends List<ETAS_EqkRupture>> catalogs, FaultSystemRupSet rupSet,
 			int sectIndex, File outputDir, double targetRI) throws IOException {
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 
@@ -3255,7 +3255,7 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, prefix + ".txt").getAbsolutePath());
 	}
 
-	public static void plotSubSectRecurrenceIntervalVsTime(List<List<ETAS_EqkRupture>> catalogs,
+	public static void plotSubSectRecurrenceIntervalVsTime(List<? extends List<ETAS_EqkRupture>> catalogs,
 			FaultSystemRupSet rupSet, int sectIndex, File outputDir, double targetRI) throws IOException {
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 
@@ -3346,7 +3346,7 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, prefix + ".txt").getAbsolutePath());
 	}
 
-	public static void plotNormRecurrenceIntForAllSubSectHist(List<List<ETAS_EqkRupture>> catalogs,
+	public static void plotNormRecurrenceIntForAllSubSectHist(List<? extends List<ETAS_EqkRupture>> catalogs,
 			FaultSystemSolutionERF_ETAS erf, File outputDir) throws IOException {
 
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
@@ -3443,7 +3443,7 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, prefix + ".txt").getAbsolutePath());
 	}
 
-	public static void plotSubSectNuclMagFreqDist(List<List<ETAS_EqkRupture>> catalogs, FaultSystemSolutionERF_ETAS erf,
+	public static void plotSubSectNuclMagFreqDist(List<? extends List<ETAS_EqkRupture>> catalogs, FaultSystemSolutionERF_ETAS erf,
 			int sectIndex, File outputDir) throws IOException {
 
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
@@ -3530,7 +3530,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 	}
 
-	public static void plotSubSectPartMagFreqDist(List<List<ETAS_EqkRupture>> catalogs, FaultSystemSolutionERF_ETAS erf,
+	public static void plotSubSectPartMagFreqDist(List<? extends List<ETAS_EqkRupture>> catalogs, FaultSystemSolutionERF_ETAS erf,
 			int sectIndex, File outputDir) throws IOException {
 
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
@@ -3615,7 +3615,7 @@ public class ETAS_MultiSimAnalysisTools {
 	 * @param outputDir
 	 * @throws IOException
 	 */
-	public static void plotCumNumWithTimeForSection(List<List<ETAS_EqkRupture>> catalogs,
+	public static void plotCumNumWithTimeForSection(List<? extends List<ETAS_EqkRupture>> catalogs,
 			FaultSystemSolutionERF_ETAS erf, int sectIndex, File outputDir) throws IOException {
 
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
@@ -3687,7 +3687,7 @@ public class ETAS_MultiSimAnalysisTools {
 		// gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
 	}
 
-	public static void plotConditionalHypocenterDist(List<List<ETAS_EqkRupture>> catalogs, File outputDir,
+	public static void plotConditionalHypocenterDist(List<? extends List<ETAS_EqkRupture>> catalogs, File outputDir,
 			FaultSystemRupSet rupSet) throws IOException {
 		HistogramFunction hist = new HistogramFunction(0.025, 0.475, 10);
 
@@ -3770,8 +3770,8 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, "cond_hypo_dist.txt").getAbsolutePath());
 	}
 
-	public static void plotScalesOfHazardChange(List<List<ETAS_EqkRupture>> childrenCatalogs,
-			List<List<ETAS_EqkRupture>> catalogs, TestScenario scenario, long ot, FaultSystemSolutionERF erf,
+	public static void plotScalesOfHazardChange(List<? extends List<ETAS_EqkRupture>> childrenCatalogs,
+			List<? extends List<ETAS_EqkRupture>> catalogs, TestScenario scenario, long ot, FaultSystemSolutionERF erf,
 			File outputDir, String name, double inputDuration, boolean rates, boolean subSects) throws IOException {
 		// double[] mags = {0d, 6.7, 7d, 7.5d};
 		double[] mags = { 0d, 6.7 };
@@ -3780,8 +3780,8 @@ public class ETAS_MultiSimAnalysisTools {
 				rates, subSects, null, mags);
 	}
 
-	public static void plotScalesOfHazardChange(List<List<ETAS_EqkRupture>> childrenCatalogs,
-			List<List<ETAS_EqkRupture>> catalogs, List<List<ETAS_EqkRupture>> childrenCatalogs2, TestScenario scenario,
+	public static void plotScalesOfHazardChange(List<? extends List<ETAS_EqkRupture>> childrenCatalogs,
+			List<? extends List<ETAS_EqkRupture>> catalogs, List<? extends List<ETAS_EqkRupture>> childrenCatalogs2, TestScenario scenario,
 			long ot, FaultSystemSolutionERF erf, File outputDir, String name, double inputDuration, boolean rates,
 			boolean subSects, HashSet<Integer> sects, double[] mags) throws IOException {
 		// boolean containsSpontaneous = false;
@@ -4240,19 +4240,19 @@ public class ETAS_MultiSimAnalysisTools {
 		}
 	}
 
-	private static double calcETASPartic(List<List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
+	private static double calcETASPartic(List<? extends List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
 			HashSet<Integer> rups, boolean rates) {
 		return calcETASPartic(catalogs, ot, maxOT, rups, rates, null, 0d);
 	}
 
-	private static double calcETASPartic(List<List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
+	private static double calcETASPartic(List<? extends List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
 			HashSet<Integer> rups, boolean rates, Region region, double minMag) {
 		if (rates)
 			return calcETASParticRate(catalogs, ot, maxOT, rups, region, minMag);
 		return calcETASParticProb(catalogs, ot, maxOT, rups, region, minMag);
 	}
 
-	public static double calcETASParticProb(Iterable<List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
+	public static double calcETASParticProb(Iterable<? extends List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
 			HashSet<Integer> rups, Region region, double minMag) {
 		int numWith = 0;
 		int total = 0;
@@ -4287,7 +4287,7 @@ public class ETAS_MultiSimAnalysisTools {
 		return etasProb;
 	}
 
-	public static double calcETASParticRate(List<List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
+	public static double calcETASParticRate(List<? extends List<ETAS_EqkRupture>> catalogs, long ot, long maxOT,
 			HashSet<Integer> rups, Region region, double minMag) {
 		double rate = 0d;
 		double rateEach = 1d / catalogs.size();
@@ -4356,7 +4356,7 @@ public class ETAS_MultiSimAnalysisTools {
 		return closest;
 	}
 
-	static void plotRegionalMPDs(List<List<ETAS_EqkRupture>> catalogs, TestScenario scenario, long ot,
+	static void plotRegionalMPDs(List<? extends List<ETAS_EqkRupture>> catalogs, TestScenario scenario, long ot,
 			FaultSystemSolutionERF erf, File outputDir, String name, boolean rates) throws IOException {
 		Region region;
 		if (scenario == TestScenario.HAYWIRED_M7)
@@ -4375,7 +4375,7 @@ public class ETAS_MultiSimAnalysisTools {
 		plotRegionalMPDs(catalogs, null, scenario, region, ot, erf, outputDir, name, prefix, rates);
 	}
 
-	static void plotRegionalMPDs(List<List<ETAS_EqkRupture>> catalogs1, List<List<ETAS_EqkRupture>> catalogs2,
+	static void plotRegionalMPDs(List<? extends List<ETAS_EqkRupture>> catalogs1, List<? extends List<ETAS_EqkRupture>> catalogs2,
 			TestScenario scenario, Region region, long ot, FaultSystemSolutionERF erf, File outputDir, String name,
 			String prefix, boolean rates) throws IOException {
 		double fssMaxMag = erf.getSolution().getRupSet().getMaxMag();
@@ -4590,7 +4590,7 @@ public class ETAS_MultiSimAnalysisTools {
 		String dir = "/Users/field/Field_Other/CEA_WGCEP/UCERF3/UCERF3-ETAS/ResultsAndAnalysis/ScenarioSimulations";
 
 		System.out.println("Reading catalogs");
-		List<List<ETAS_EqkRupture>> catalogs = null;
+		List<? extends List<ETAS_EqkRupture>> catalogs = null;
 		try {
 			catalogs = ETAS_CatalogIO.loadCatalogsBinary(new File(dir + "/results_m4.bin"));
 		} catch (IOException e1) {
@@ -4690,7 +4690,7 @@ public class ETAS_MultiSimAnalysisTools {
 			// "2016_01_05-spontaneous-10000yr-mc10-applyGrGridded-full_td-noApplyLTR";
 
 			System.out.println("Reading catalogs");
-			List<List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO
+			List<? extends List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO
 					.loadCatalogsBinary(new File(dir + simName + "/results_m4.bin"));
 			System.out.println("catalogs.size()=" + catalogs.size());
 			// System.exit(-1);
@@ -4798,7 +4798,7 @@ public class ETAS_MultiSimAnalysisTools {
 			resultsFile = new File(
 					"/Users/field/Field_Other/CEA_WGCEP/UCERF3/UCERF3-ETAS/ResultsAndAnalysis/ScenarioSimulations/KevinsMultiSimRuns/2016_02_22-mojave_m7-10yr-BothModels/results_descendents_m5_preserve_merged_with_100k_full_td.bin");
 
-		List<List<ETAS_EqkRupture>> catalogs = null;
+		List<? extends List<ETAS_EqkRupture>> catalogs = null;
 		try {
 			catalogs = ETAS_CatalogIO.loadCatalogs(resultsFile, 6.7, true);
 		} catch (ZipException e) {
@@ -4951,7 +4951,7 @@ public class ETAS_MultiSimAnalysisTools {
 		File resultsFile = new File(
 				"/Users/field/Field_Other/CEA_WGCEP/UCERF3/UCERF3-ETAS/ResultsAndAnalysis/ScenarioSimulations/KevinsMultiSimRuns/2016_06_15-haywired_m7-10yr-BothModels/2016_06_15-haywired_m7-10yr-full_td-no_ert-combined-results_descendents_m5.bin");
 
-		List<List<ETAS_EqkRupture>> catalogs = null;
+		List<? extends List<ETAS_EqkRupture>> catalogs = null;
 		try {
 			catalogs = ETAS_CatalogIO.loadCatalogs(resultsFile, 6.7, true);
 		} catch (ZipException e) {
@@ -5502,7 +5502,7 @@ public class ETAS_MultiSimAnalysisTools {
 			// load the catalogs
 			System.out.println("Loading " + name + " from " + resultsFile.getAbsolutePath());
 			Stopwatch timer = Stopwatch.createStarted();
-			List<List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogs(resultsFile, minLoadMag, true);
+			List<? extends List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogs(resultsFile, minLoadMag, true);
 			timer.stop();
 			long secs = timer.elapsed(TimeUnit.SECONDS);
 			if (secs > 60)
@@ -5881,7 +5881,7 @@ public class ETAS_MultiSimAnalysisTools {
 	private static final int html_w_px = 800;
 
 	private static void writeHTML(File outputDir, TestScenario scenario, String scenName, ETAS_ParameterList params,
-			List<List<ETAS_EqkRupture>> catalogs, double inputDuration, MinMaxAveTracker durationTrack)
+			List<? extends List<ETAS_EqkRupture>> catalogs, double inputDuration, MinMaxAveTracker durationTrack)
 			throws IOException {
 		System.out.println("Writing HTML");
 
@@ -5957,7 +5957,7 @@ public class ETAS_MultiSimAnalysisTools {
 	}
 
 	private static void writeMetadataHTML(FileWriter fw, TestScenario scenario, ETAS_ParameterList params,
-			List<List<ETAS_EqkRupture>> catalogs, double inputDuration, MinMaxAveTracker durationTrack)
+			List<? extends List<ETAS_EqkRupture>> catalogs, double inputDuration, MinMaxAveTracker durationTrack)
 			throws IOException {
 		fw.write("<p style=\"font-family:'HelveticaNeue-Light', sans-serif; font-weight:normal; width:" + html_w_px
 				+ ";\">\n");
@@ -6037,7 +6037,7 @@ public class ETAS_MultiSimAnalysisTools {
 				inputDuration = 1d;
 			}
 
-			List<List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogsBinary(resultsFile, 4d);
+			List<? extends List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogsBinary(resultsFile, 4d);
 			MinMaxAveTracker durationTrack = new MinMaxAveTracker();
 			for (List<ETAS_EqkRupture> catalog : catalogs) {
 				if (catalog.isEmpty())
@@ -6094,7 +6094,7 @@ public class ETAS_MultiSimAnalysisTools {
 	}
 
 	private static void writePaperHTML(File origPlotDir, File outputDir, TestScenario scenario, String scenName,
-			ETAS_ParameterList params, List<List<ETAS_EqkRupture>> catalogs, double inputDuration,
+			ETAS_ParameterList params, List<? extends List<ETAS_EqkRupture>> catalogs, double inputDuration,
 			MinMaxAveTracker durationTrack) throws IOException {
 		System.out.println("Writing HTML");
 

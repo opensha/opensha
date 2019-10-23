@@ -57,6 +57,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --scale-factor 1.0";
 //			argz += " --name-add CulledSurface";
 //			argz += " --fault-model FM3_2";
+			argz += " --etas-k-cov 1.16";
 
 			// from Morgan by e-mail 8/26/19 for Ridgcrest from Nic's ETAS GUI
 //			argz += " --etas-k -3.03 --etas-p 1.15 --etas-c "+(float)+Math.pow(10, -3.33);

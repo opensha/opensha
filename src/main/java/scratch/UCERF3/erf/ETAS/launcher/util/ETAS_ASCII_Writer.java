@@ -18,6 +18,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 
 class ETAS_ASCII_Writer {
@@ -53,7 +54,7 @@ class ETAS_ASCII_Writer {
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
 			
 			@Override
-			public void processCatalog(List<ETAS_EqkRupture> catalog, int index) {
+			public void processCatalog(ETAS_Catalog catalog, int index) {
 				File catalogFile = new File(outputDir, "catalog_"+index+".txt");
 				try {
 					ETAS_CatalogIO.writeEventDataToFile(catalogFile, catalog);

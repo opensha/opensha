@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -21,6 +22,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator.PlotResult;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -84,15 +86,15 @@ public abstract class ETAS_AbstractPlot {
 		return false;
 	}
 	
-	public final void processCatalog(List<ETAS_EqkRupture> catalog, FaultSystemSolution fss) {
-		List<ETAS_EqkRupture> triggeredOnlyCatalog = null;
+	public final void processCatalog(ETAS_Catalog catalog, FaultSystemSolution fss) {
+		ETAS_Catalog triggeredOnlyCatalog = null;
 		if (isFilterSpontaneous())
 			triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
 		processCatalog(catalog, triggeredOnlyCatalog, fss);
 	}
 	
-	public final void processCatalog(List<ETAS_EqkRupture> completeCatalog,
-			List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
+	public final void processCatalog(ETAS_Catalog completeCatalog,
+			ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
 		processStopwatch.start();
 		try {
 			if (asyncManager == null)
@@ -110,8 +112,8 @@ public abstract class ETAS_AbstractPlot {
 		return processStopwatch.elapsed(TimeUnit.MILLISECONDS);
 	}
 	
-	protected abstract void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog,
-			List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss);
+	protected abstract void doProcessCatalog(ETAS_Catalog completeCatalog,
+			ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss);
 	
 	public ETAS_Config getConfig() {
 		return config;
@@ -130,20 +132,48 @@ public abstract class ETAS_AbstractPlot {
 	}
 	
 	/**
+	 * Called to build all plots from data gathered from each catalog.
+	 * @param outputDir
+	 * @param fss
+	 * @throws IOException
+	 */
+	public final void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+		int threads = Integer.min(8, Runtime.getRuntime().availableProcessors());
+		ExecutorService exec = Executors.newFixedThreadPool(threads);
+		List<? extends Runnable> runnables = finalize(outputDir, fss, exec);
+		if (runnables != null && !runnables.isEmpty()) {
+			List<Future<?>> futures = new ArrayList<>();
+			for (Runnable r : runnables)
+				futures.add(exec.submit(r));
+			for (Future<?> f : futures) {
+				try {
+					f.get();
+				} catch (InterruptedException | ExecutionException e) {
+					exec.shutdown();
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		}
+		exec.shutdown();
+	}
+	
+	/**
 	 * Called to build all plots from data gathered from each catalog. Can return a list
 	 * of Runnable instances to be executed in parallel before generateMarkdown is called.
 	 * @param outputDir
 	 * @param fss
+	 * @param exec
 	 * @return list of Runnable instances to be executed in parallel before generateMarkdown is called, or null
 	 * @throws IOException
 	 */
-	public final List<? extends Runnable> finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public final List<? extends Runnable> finalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		if (asyncManager != null)
 			asyncManager.waitOnFutures();
-		return doFinalize(outputDir, fss);
+		return doFinalize(outputDir, fss, exec);
 	}
 	
-	public abstract List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException;
+	protected abstract List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec) throws IOException;
 	
 	public abstract List<String> generateMarkdown(String relativePathToOutputDir, String topLevelHeading, String topLink) throws IOException;
 	
@@ -314,8 +344,8 @@ public abstract class ETAS_AbstractPlot {
 			futures = new ArrayList<>(config.getNumSimulations());
 		}
 		
-		public void processAsync(List<ETAS_EqkRupture> completeCatalog,
-			List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
+		public void processAsync(ETAS_Catalog completeCatalog,
+				ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
 			futures.add(exec.submit(new ProcessRunnable(completeCatalog, triggeredOnlyCatalog, fss)));
 		}
 		
@@ -331,11 +361,11 @@ public abstract class ETAS_AbstractPlot {
 	}
 	
 	private class ProcessRunnable implements Runnable {
-		private final List<ETAS_EqkRupture> completeCatalog;
-		private final List<ETAS_EqkRupture> triggeredOnlyCatalog;
+		private final ETAS_Catalog completeCatalog;
+		private final ETAS_Catalog triggeredOnlyCatalog;
 		private final FaultSystemSolution fss;
 		
-		public ProcessRunnable(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+		public ProcessRunnable(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 				FaultSystemSolution fss) {
 			this.completeCatalog = completeCatalog;
 			this.triggeredOnlyCatalog = triggeredOnlyCatalog;

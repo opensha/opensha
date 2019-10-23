@@ -51,6 +51,7 @@ import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
@@ -114,8 +115,9 @@ public class SimulationMarkdownGenerator {
 //					+ "2019_07_11-ComCatM7p1_ci38457511_5p9DaysAfter_FiniteSurface-noSpont-full_td-scale1.14");
 //					+ "2019_07_11-ComCatM7p1_ci38457511_FiniteSurface_NoFaults-noSpont-poisson-griddedOnly");
 //					+ "2019_07_16-ComCatM7p1_ci38457511_11DaysAfter_ShakeMapSurfaces-noSpont-full_td-scale1.14");
-					+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
+//					+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
 //					+ "2019_08_27-Start1919_100yr_Spontaneous-includeSpont-full_td-scale1.14");
+					+ "2019_08_20-ComCatM7p1_ci38457511_ShakeMapSurfaces_Spontaneous-includeSpont-full_td-scale1.14");
 			File configFile = new File(simDir, "config.json");
 //			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"
 //					+ "comcat-ridgecrest-m7.1-example/config.json");
@@ -125,8 +127,8 @@ public class SimulationMarkdownGenerator {
 //			System.out.println(gitHash);
 //			System.out.println(getGitCommitTime(gitHash));
 //			System.exit(0);
-//			args = new String[] { configFile.getAbsolutePath() };
-			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
+			args = new String[] { configFile.getAbsolutePath() };
+//			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
 		}
 		
 		// TODO optional second arg
@@ -191,7 +193,7 @@ public class SimulationMarkdownGenerator {
 					: defaultNumThreads();
 			boolean forcePlot = cmd.hasOption("force-update");
 			
-			generateMarkdown(configFile, inputFile, config, outputDir, skipMaps, maxCatalogs, threads, forcePlot, true);
+			generateMarkdown(configFile, inputFile, config, outputDir, skipMaps, maxCatalogs, threads, forcePlot, true, null);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(2);
@@ -285,7 +287,7 @@ public class SimulationMarkdownGenerator {
 			String cName = ClassUtils.getClassNameWithoutPackage(plot.getClass());
 			System.out.println("Finalizing "+cName);
 			finalizeSubWatch = Stopwatch.createStarted();
-			List<? extends Runnable> runnables = plot.finalize(plotsDir, fss);
+			List<? extends Runnable> runnables = plot.finalize(plotsDir, fss, exec);
 			finalizeSubWatch.stop();
 			
 			String finalStr = "Done finalizing "+cName+" in "+timeStr(finalizeSubWatch.elapsed(TimeUnit.MILLISECONDS));
@@ -339,7 +341,8 @@ public class SimulationMarkdownGenerator {
 	}
 
 	public static PlotMetadata generateMarkdown(File configFile, File inputFile, ETAS_Config config, File outputDir,
-			boolean skipMaps, int maxCatalogs, int threads, boolean forceUpdateAll, boolean forceUpdateEvaluation) throws IOException {
+			boolean skipMaps, int maxCatalogs, int threads, boolean forceUpdateAll, boolean forceUpdateEvaluation,
+			PlotMetadata meta) throws IOException {
 		long plotStartTime = System.currentTimeMillis();
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir(),
 				"Output dir doesn't exist and couldn't be created: %s", outputDir.getAbsolutePath());
@@ -403,9 +406,10 @@ public class SimulationMarkdownGenerator {
 		Map<ETAS_AbstractPlot, PlotResult> prevDoneResults = new HashMap<>();
 		
 		File metadataFile = new File(plotsDir, "metadata.json");
-		if (!forceUpdateAll && metadataFile.exists()) {
+		if (!forceUpdateAll && (meta != null || metadataFile.exists())) {
 			try {
-				PlotMetadata meta = readPlotMetadata(metadataFile);
+				if (meta == null)
+					meta = readPlotMetadata(metadataFile);
 				int compNumSims = config.getNumSimulations();
 				if (maxCatalogs > 0 && maxCatalogs < compNumSims)
 					compNumSims = maxCatalogs;
@@ -480,8 +484,8 @@ public class SimulationMarkdownGenerator {
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
 			
 			@Override
-			public void processCatalog(List<ETAS_EqkRupture> catalog, int index) {
-				List<ETAS_EqkRupture> triggeredOnlyCatalog = null;
+			public void processCatalog(ETAS_Catalog catalog, int index) {
+				ETAS_Catalog triggeredOnlyCatalog = null;
 				if (isFilterSpontaneous)
 					triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
 				for (ETAS_AbstractPlot plot : plots) {
@@ -620,7 +624,7 @@ public class SimulationMarkdownGenerator {
 		String gitHash = getGitHash();
 		Long gitTime = getGitCommitTime(gitHash);
 		
-		PlotMetadata meta = new PlotMetadata(plotStartTime, System.currentTimeMillis(),
+		meta = new PlotMetadata(plotStartTime, System.currentTimeMillis(),
 				numProcessed, inputFile, gitHash, gitTime, plotResults);
 		writePlotMetadata(meta, metadataFile);
 		

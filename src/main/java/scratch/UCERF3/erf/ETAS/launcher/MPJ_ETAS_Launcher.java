@@ -3,11 +3,13 @@ package scratch.UCERF3.erf.ETAS.launcher;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Collection;
 import java.util.Random;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.apache.commons.io.FileUtils;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 
@@ -23,6 +25,7 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 	private ETAS_Launcher launcher;
 	
 	private ETAS_BinaryWriter binaryWriter;
+	private boolean autoClean;
 
 	public MPJ_ETAS_Launcher(CommandLine cmd, ETAS_Config config) throws IOException {
 		super(cmd);
@@ -32,8 +35,8 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 		Long randSeed = config.getRandomSeed();
 		if (randSeed == null)
 			randSeed = System.nanoTime() + (long)(rank*new Random().nextInt());
-		boolean tmpLink = cmd.hasOption("temp-dir") && config.hasBinaryOutputFilters();
-		this.launcher = new ETAS_LauncherPrintWrapper(config, rank == 0 && !tmpLink, randSeed);
+		boolean scratchLink = cmd.hasOption("scratch-dir") && config.hasBinaryOutputFilters();
+		this.launcher = new ETAS_LauncherPrintWrapper(config, rank == 0 && !scratchLink, randSeed);
 		if (rank == 0)
 			this.launcher.setDebugLevel(DebugLevel.FINE);
 		else
@@ -43,31 +46,49 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 			binaryWriter = new ETAS_BinaryWriter(config.getOutputDir(), config);
 			
 			postBatchHook = new BinaryConsolidateHook();
+			autoClean = cmd.hasOption("clean");
 		}
-		if (tmpLink) {
+		if (scratchLink) {
 			File outputDir = config.getOutputDir();
 			if (rank == 0)
 				ETAS_Launcher.waitOnDirCreation(outputDir, 10, 2000);
 			
 			File scratchDir = new File(cmd.getOptionValue("scratch-dir"));
+			if (rank == 0)
+				ETAS_Launcher.waitOnDirCreation(scratchDir, 10, 2000);
 			File scratchSubDir = new File(scratchDir, outputDir.getName());
 			if (rank == 0)
 				ETAS_Launcher.waitOnDirCreation(scratchSubDir, 10, 2000);
 			
-			// build link to results dir in temp dir
+			// build link to results dir in scratch dir
 			File resultsDir = ETAS_Launcher.getResultsDir(outputDir);
 			
 			File scratchResultsDir = new File(scratchSubDir, "results");
 			if (rank == 0) {
 				ETAS_Launcher.waitOnDirCreation(scratchResultsDir, 10, 2000);
-				if (resultsDir.exists()) {
+				if (!resultsDir.exists()) {
 					debug("Creating link to scratch results dir: "
 							+scratchResultsDir.getAbsolutePath());
+					Files.createSymbolicLink(resultsDir.toPath(), scratchResultsDir.toPath());
 				}
-				Files.createSymbolicLink(resultsDir.toPath(), scratchResultsDir.toPath());
 			}
 		}
+		if (cmd.hasOption("temp-dir")) {
+			File tempDir = new File(cmd.getOptionValue("temp-dir"));
+			ETAS_Launcher.waitOnDirCreation(tempDir, 10, 2000);
+			File tempSubDir = new File(tempDir, config.getOutputDir().getName());
+			ETAS_Launcher.waitOnDirCreation(tempSubDir, 10, 2000);
+			launcher.setTempDir(tempSubDir);
+		}
 	}
+	
+	@Override
+	protected Collection<Integer> getDoneIndexes() {
+		if (binaryWriter != null)
+			return binaryWriter.getDoneIndexes();
+		return null;
+	}
+
 	
 	/**
 	 * Wrapper for ETAS_Launcher to re-route debug prints to the MPJTaskCalculator method
@@ -102,8 +123,20 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 				for (int index : batch) {
 					File catalogDir = launcher.getResultsDir(index);
 					binaryWriter.processCatalog(catalogDir);
+					if (autoClean) {
+						debug("removing completed directory: "+catalogDir.getAbsolutePath());
+						try {
+							FileUtils.deleteDirectory(catalogDir);
+						} catch (Exception e) {
+							debug("exception removing completed directory, skipping: "
+									+catalogDir.getAbsolutePath());
+							e.printStackTrace();
+						}
+					}
 				}
 			} catch (IOException e) {
+				System.err.println("Exception processing async!");
+				e.printStackTrace();
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 			debug("done running async post-batch hook for process "+processIndex+". "+getCountsString());
@@ -133,11 +166,23 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 	protected static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 
-		Option tmpDirOption = new Option("scratch", "scratch-dir", true,
+		Option scratchDirOption = new Option("scratch", "scratch-dir", true,
 				"Scratch directory. If supplied and binary output filters are enabled, the results directory will "
-				+ "be written here and symbolically lined back to the output directory.");
-		tmpDirOption.setRequired(false);
-		ops.addOption(tmpDirOption);
+				+ "be written here and symbolically linked back to the output directory.");
+		scratchDirOption.setRequired(false);
+		ops.addOption(scratchDirOption);
+
+		Option tempDirOption = new Option("temp", "temp-dir", true,
+				"Temp directory. If supplied, all in-progress simulations will be written here (can be node-local)"
+				+ " and copied to the output directory upon completion");
+		tempDirOption.setRequired(false);
+		ops.addOption(tempDirOption);
+
+		Option cleanOption = new Option("cl", "clean", false,
+				"Flag to automatically clean out finished directories after the results are consolidated into a "
+				+ "binary output file");
+		cleanOption.setRequired(false);
+		ops.addOption(cleanOption);
 		
 		return ops;
 	}

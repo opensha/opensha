@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
@@ -32,6 +33,7 @@ import org.opensha.sha.faultSurface.SimpleFaultData;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
@@ -169,13 +171,14 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		// do nothing
 	}
 
 	@Override
-	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		this.outputDir = outputDir;
 		List<FaultSectionPrefData> subSects = fss.getRupSet().getFaultSectionDataList();
 		FaultPolyMgr polyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);

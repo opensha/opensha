@@ -145,7 +145,7 @@ public class ETAS_Config {
 		double simulatedYears = numSimulations*duration;
 		binaryOutput = simulatedYears > 1000;
 		if (triggerCatalog != null)
-			this.treatTriggerCatalogAsSpontaneous = true;
+			this.treatTriggerCatalogAsSpontaneous = false;
 		buildDefaultBinaryOutputFilters();
 	}
 	
@@ -921,9 +921,13 @@ public class ETAS_Config {
 		return triggerCatalogSurfaceMappings;
 	}
 	
+	public void setTreatTriggerCatalogAsSpontaneous(boolean treatTriggerCatalogAsSpontaneous) {
+		this.treatTriggerCatalogAsSpontaneous = treatTriggerCatalogAsSpontaneous;
+	}
+	
 	public boolean isTreatTriggerCatalogAsSpontaneous() {
 		if (treatTriggerCatalogAsSpontaneous == null)
-			return true;
+			return false;
 		return treatTriggerCatalogAsSpontaneous;
 	}
 

@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
@@ -62,6 +63,7 @@ import com.google.common.primitives.Doubles;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
@@ -535,7 +537,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		if (comcatEvents.isEmpty())
 			return;
@@ -644,7 +646,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		if (comcatEvents.isEmpty())
 			return null;
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
@@ -1559,7 +1562,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;
-			for (List<ETAS_EqkRupture> catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0d)) {
+			for (ETAS_Catalog catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0d)) {
 				if (processed % 1000 == 0)
 					System.out.println("Catalog "+processed);
 				plot.processCatalog(catalog, fss);
@@ -1568,9 +1571,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 					break;
 			}
 			
-			List<? extends Runnable> runnables = plot.finalize(outputDir, launcher.checkOutFSS());
-			for (Runnable r : runnables)
-				r.run();
+			plot.finalize(outputDir, launcher.checkOutFSS());
 			
 			System.exit(0);
 		} catch (Throwable e) {

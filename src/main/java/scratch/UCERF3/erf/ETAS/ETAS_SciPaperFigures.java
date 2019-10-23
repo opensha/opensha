@@ -119,8 +119,8 @@ public class ETAS_SciPaperFigures {
 			File fig2Dir = new File(outputDir, "figure_2");
 			Preconditions.checkState(fig2Dir.exists() || fig2Dir.mkdir());
 			
-			List<List<ETAS_EqkRupture>> bbFullTD = ETAS_CatalogIO.loadCatalogsBinary(bbFullTD_desc);
-			List<List<ETAS_EqkRupture>> bbNoERT = ETAS_CatalogIO.loadCatalogsBinary(bbNoERT_desc);
+			List<? extends List<ETAS_EqkRupture>> bbFullTD = ETAS_CatalogIO.loadCatalogsBinary(bbFullTD_desc);
+			List<? extends List<ETAS_EqkRupture>> bbNoERT = ETAS_CatalogIO.loadCatalogsBinary(bbNoERT_desc);
 			plotMagNumWithConf(bbFullTD, bbNoERT, fig2Dir, "Bombay Beach M4.8", "bombay_beach_one_week_mfd", TestScenario.BOMBAY_BEACH_M4pt8,
 					expNumForM2p5, fss, otScenarioOneWeek);
 			
@@ -128,8 +128,8 @@ public class ETAS_SciPaperFigures {
 			bbNoERT = null;
 			System.gc();
 			
-			List<List<ETAS_EqkRupture>> sjFullTD = ETAS_CatalogIO.loadCatalogsBinary(sjFullTD_desc);
-			List<List<ETAS_EqkRupture>> sjNoERT = ETAS_CatalogIO.loadCatalogsBinary(sjNoERT_desc);
+			List<? extends List<ETAS_EqkRupture>> sjFullTD = ETAS_CatalogIO.loadCatalogsBinary(sjFullTD_desc);
+			List<? extends List<ETAS_EqkRupture>> sjNoERT = ETAS_CatalogIO.loadCatalogsBinary(sjNoERT_desc);
 			plotMagNumWithConf(sjFullTD, sjNoERT, fig2Dir, "San Jacinto M4.8", "san_jacinto_one_week_mfd", TestScenario.SAN_JACINTO_0_M4p8,
 					expNumForM2p5, fss, otScenarioOneWeek);
 		}
@@ -140,8 +140,8 @@ public class ETAS_SciPaperFigures {
 			File fig3Dir = new File(outputDir, "figure_3");
 			Preconditions.checkState(fig3Dir.exists() || fig3Dir.mkdir());
 			
-			List<List<ETAS_EqkRupture>> mojaveFullTD = ETAS_CatalogIO.loadCatalogsBinary(mojaveFullTD_desc);
-			List<List<ETAS_EqkRupture>> mojaveNoERT = ETAS_CatalogIO.loadCatalogsBinary(mojaveNoERT_desc);
+			List<? extends List<ETAS_EqkRupture>> mojaveFullTD = ETAS_CatalogIO.loadCatalogsBinary(mojaveFullTD_desc);
+			List<? extends List<ETAS_EqkRupture>> mojaveNoERT = ETAS_CatalogIO.loadCatalogsBinary(mojaveNoERT_desc);
 			plotMagNumWithConf(mojaveFullTD, mojaveNoERT, fig3Dir, "Mojave M7", "mojave_one_week_mfd", TestScenario.MOJAVE_M7,
 					expNumForM2p5, fss, otScenarioOneWeek);
 			
@@ -149,8 +149,8 @@ public class ETAS_SciPaperFigures {
 			mojaveNoERT = null;
 			System.gc();
 			
-			List<List<ETAS_EqkRupture>> haywiredFullTD = ETAS_CatalogIO.loadCatalogsBinary(haywiredFullTD_desc);
-			List<List<ETAS_EqkRupture>> haywiredNoERT = ETAS_CatalogIO.loadCatalogsBinary(haywiredNoERT_desc);
+			List<? extends List<ETAS_EqkRupture>> haywiredFullTD = ETAS_CatalogIO.loadCatalogsBinary(haywiredFullTD_desc);
+			List<? extends List<ETAS_EqkRupture>> haywiredNoERT = ETAS_CatalogIO.loadCatalogsBinary(haywiredNoERT_desc);
 			plotMagNumWithConf(haywiredFullTD, haywiredNoERT, fig3Dir, "Haywired M7", "haywired_one_week_mfd", TestScenario.HAYWIRED_M7,
 					expNumForM2p5, fss, otScenarioOneWeek);
 		}
@@ -161,8 +161,8 @@ public class ETAS_SciPaperFigures {
 			File fig4Dir = new File(outputDir, "figure_4");
 			Preconditions.checkState(fig4Dir.exists() || fig4Dir.mkdir());
 			
-			List<List<ETAS_EqkRupture>> mojaveFullTD = ETAS_CatalogIO.loadCatalogsBinary(mojaveFullTD_all);
-			List<List<ETAS_EqkRupture>> mojaveNoERT = ETAS_CatalogIO.loadCatalogsBinary(mojaveNoERT_all);
+			List<? extends List<ETAS_EqkRupture>> mojaveFullTD = ETAS_CatalogIO.loadCatalogsBinary(mojaveFullTD_all);
+			List<? extends List<ETAS_EqkRupture>> mojaveNoERT = ETAS_CatalogIO.loadCatalogsBinary(mojaveNoERT_all);
 			ETAS_MultiSimAnalysisTools.plotRegionalMPDs(mojaveFullTD, mojaveNoERT, TestScenario.MOJAVE_M7,
 					new CaliforniaRegions.LA_BOX(), otScenario, erf, fig4Dir, "Mojave M7", "mojave_one_week_mfd_la_box", true);
 			
@@ -170,8 +170,8 @@ public class ETAS_SciPaperFigures {
 			mojaveNoERT = null;
 			System.gc();
 			
-			List<List<ETAS_EqkRupture>> haywiredFullTD = ETAS_CatalogIO.loadCatalogsBinary(haywiredFullTD_all);
-			List<List<ETAS_EqkRupture>> haywiredNoERT = ETAS_CatalogIO.loadCatalogsBinary(haywiredNoERT_all);
+			List<? extends List<ETAS_EqkRupture>> haywiredFullTD = ETAS_CatalogIO.loadCatalogsBinary(haywiredFullTD_all);
+			List<? extends List<ETAS_EqkRupture>> haywiredNoERT = ETAS_CatalogIO.loadCatalogsBinary(haywiredNoERT_all);
 			ETAS_MultiSimAnalysisTools.plotRegionalMPDs(haywiredFullTD, haywiredNoERT, TestScenario.HAYWIRED_M7,
 					new CaliforniaRegions.SF_BOX(), otScenario, erf, fig4Dir, "Haywired M7", "haywired_one_week_mfd_sf_box", true);
 		}
@@ -189,8 +189,8 @@ public class ETAS_SciPaperFigures {
 			HashSet<Integer> sects = new HashSet<Integer>();
 			sects.add(295); // coachella
 			
-			List<List<ETAS_EqkRupture>> bbFullTD = ETAS_CatalogIO.loadCatalogsBinary(bbFullTD_desc);
-			List<List<ETAS_EqkRupture>> bbNoERT = ETAS_CatalogIO.loadCatalogsBinary(bbNoERT_desc);
+			List<? extends List<ETAS_EqkRupture>> bbFullTD = ETAS_CatalogIO.loadCatalogsBinary(bbFullTD_desc);
+			List<? extends List<ETAS_EqkRupture>> bbNoERT = ETAS_CatalogIO.loadCatalogsBinary(bbNoERT_desc);
 			File subDir = new File(fig5Dir, "bombay_4p8");
 			Preconditions.checkState(subDir.exists() || subDir.mkdir());
 			ETAS_MultiSimAnalysisTools.plotScalesOfHazardChange(bbFullTD, null, bbNoERT, TestScenario.BOMBAY_BEACH_M4pt8,
@@ -200,8 +200,8 @@ public class ETAS_SciPaperFigures {
 			bbNoERT = null;
 			System.gc();
 			
-			List<List<ETAS_EqkRupture>> bb2016FullTD = ETAS_CatalogIO.loadCatalogsBinary(bb2016FullTD_desc);
-			List<List<ETAS_EqkRupture>> bb2016NoERT = ETAS_CatalogIO.loadCatalogsBinary(bb2016NoERT_desc);
+			List<? extends List<ETAS_EqkRupture>> bb2016FullTD = ETAS_CatalogIO.loadCatalogsBinary(bb2016FullTD_desc);
+			List<? extends List<ETAS_EqkRupture>> bb2016NoERT = ETAS_CatalogIO.loadCatalogsBinary(bb2016NoERT_desc);
 			subDir = new File(fig5Dir, "bombay_2016");
 			Preconditions.checkState(subDir.exists() || subDir.mkdir());
 			// Scenario below is only used for finding nearby sects, so 4.8 scenario is fine. Mag is ignored
@@ -210,7 +210,7 @@ public class ETAS_SciPaperFigures {
 		}
 	}
 	
-	public static void plotMagNumWithConf(List<List<ETAS_EqkRupture>> fullTDCatalogs, List<List<ETAS_EqkRupture>> noERTCatalogs,
+	public static void plotMagNumWithConf(List<? extends List<ETAS_EqkRupture>> fullTDCatalogs, List<? extends List<ETAS_EqkRupture>> noERTCatalogs,
 			File outputDir, String name, String prefix, TestScenario scenario, double expNumForM2p5, FaultSystemSolution fss,
 			long maxOT) 	throws IOException {
 		double minMag = mfdMinMag;
@@ -229,7 +229,7 @@ public class ETAS_SciPaperFigures {
 		DiscretizedFunc noERTmean = null;
 		
 		for (int n=0; n<2; n++) {
-			List<List<ETAS_EqkRupture>> catalogs;
+			List<? extends List<ETAS_EqkRupture>> catalogs;
 			if (n == 0)
 				catalogs = fullTDCatalogs;
 			else

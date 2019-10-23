@@ -12,6 +12,7 @@ import java.util.Date;
 import java.util.Deque;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -69,11 +70,13 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_LocationWeightCalculator;
 import scratch.UCERF3.erf.ETAS.ETAS_PrimaryEventSampler;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
+import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
@@ -135,7 +138,8 @@ public class ETAS_Launcher {
 	
 	private GriddedRegion griddedRegion;
 	private ETAS_CubeDiscretizationParams cubeParams;
-	
+
+	private File tempResultsDir;
 	private File resultsDir;
 	
 	private long[] randSeeds;
@@ -460,7 +464,7 @@ public class ETAS_Launcher {
 				// skip all ruptures that occur after simulation start
 				if (numAfter < 10)
 					System.out.println("Skipping a M"+rup.getMag()+" after sim start ("
-							+rup.getOriginTime()+" > "+ot+"): "+rup);
+							+rup.getOriginTime()+" > "+ot+")");
 				numAfter++;
 				if (numAfter == 10)
 					System.out.println("(supressing future output on skipped ruptures)");
@@ -470,10 +474,10 @@ public class ETAS_Launcher {
 			if (etasRup.getFSSIndex() >= 0 && resetSubSectsMap != null) {
 				// reset times
 				List<Integer> sectIndexes = sol.getRupSet().getSectionsIndicesForRup(etasRup.getFSSIndex());
-				System.out.print("Resetting elastic rebound for historical rupture, ot="+etasRup.getOriginTime()+", sects=");
-				for (Integer sectIndex : sectIndexes)
-					System.out.print(sectIndex+" ");
-				System.out.println();
+//				System.out.print("Resetting elastic rebound for historical rupture, ot="+etasRup.getOriginTime()+", sects=");
+//				for (Integer sectIndex : sectIndexes)
+//					System.out.print(sectIndex+" ");
+//				System.out.println();
 				resetSubSectsMap.put(etasRup.getOriginTime(), sectIndexes);
 			}
 			etasRup.setID(Integer.parseInt(rup.getEventId()));
@@ -514,13 +518,25 @@ public class ETAS_Launcher {
 		}
 	}
 	
+	void setTempDir(File tempResultsDir) {
+		this.tempResultsDir = tempResultsDir;
+	}
+	
+	File getTempResultsDir(int index) {
+		return getResultsDir(tempResultsDir == null ? resultsDir : tempResultsDir, index);
+	}
+	
 	File getResultsDir(int index) {
+		return getResultsDir(resultsDir, index);
+	}
+	
+	File getResultsDir(File parentDir, int index) {
 		String runName = ""+index;
 		int desiredLen = ((config.getNumSimulations()-1)+"").length();
 		while (runName.length() < desiredLen)
 			runName = "0"+runName;
 		runName = "sim_"+runName;
-		return new File(resultsDir, runName);
+		return new File(parentDir, runName);
 	}
 	
 	/**
@@ -623,12 +639,12 @@ public class ETAS_Launcher {
 	}
 	
 	public static boolean isAlreadyDone(File resultsDir) {
+		return isAlreadyDoneASCII(resultsDir) || isAlreadyDoneBinary(resultsDir);
+	}
+	
+	public static boolean isAlreadyDoneASCII(File resultsDir) {
 		File infoFile = new File(resultsDir, "infoString.txt");
 		File eventsFile = new File(resultsDir, "simulatedEvents.txt");
-		if (!eventsFile.exists())
-			eventsFile = new File(resultsDir, "simulatedEvents.bin");
-		if (!eventsFile.exists())
-			eventsFile = new File(resultsDir, "simulatedEvents.bin.gz");
 		if (!infoFile.exists() || !eventsFile.exists() || eventsFile.length() == 0l)
 			return false;
 		try {
@@ -638,6 +654,15 @@ public class ETAS_Launcher {
 			}
 		} catch (IOException e) {}
 		return false;
+	}
+	
+	public static boolean isAlreadyDoneBinary(File resultsDir) {
+		File eventsFile = new File(resultsDir, "simulatedEvents.bin");
+		if (!eventsFile.exists())
+			eventsFile = new File(resultsDir, "simulatedEvents.bin.gz");
+		if (!eventsFile.exists() || eventsFile.length() == 0l)
+			return false;
+		return ETAS_CatalogIO.isBinaryCatalogFileComplete(eventsFile);
 	}
 	
 	private static Long getPrevRandSeed(File resultsDir) throws IOException {
@@ -698,8 +723,9 @@ public class ETAS_Launcher {
 		@Override
 		public Integer call() {
 //			System.gc();
-			
+
 			File resultsDir = getResultsDir(index);
+			File tempResultsDir = getTempResultsDir(index);
 			if (!config.isForceRecalc() && isAlreadyDone(resultsDir)) {
 				debug(index+" is already done: "+resultsDir.getName());
 				return index;
@@ -751,14 +777,14 @@ public class ETAS_Launcher {
 				// with many restarts (as shorter jobs more likely to finish before wall time is up).
 				Long prevRandSeed;
 				try {
-					prevRandSeed = getPrevRandSeed(resultsDir);
+					prevRandSeed = getPrevRandSeed(tempResultsDir);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 				
 				if (prevRandSeed != null) {
 					randSeed = prevRandSeed;
-					debug("Resuming old rand seed of "+randSeed+" for "+resultsDir.getName());
+					debug("Resuming old rand seed of "+randSeed+" for "+tempResultsDir.getName());
 				}
 			}
 			
@@ -772,23 +798,26 @@ public class ETAS_Launcher {
 			while (!success && attempts < retries) {
 				attempts++;
 				try {
+					ETAS_SimulationMetadata meta;
 					if (config.isGriddedOnly()) {
-						ETAS_Simulator_NoFaults.runETAS_Simulation(resultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
+						meta = ETAS_Simulator_NoFaults.runETAS_Simulation(tempResultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
 								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed, params, cubeParams);
 					} else {
 						checkLoadCaches();
-						ETAS_Simulator.runETAS_Simulation(resultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
+						meta = ETAS_Simulator.runETAS_Simulation(tempResultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
 								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed,
 								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, cubeParams);
 					}
+					meta = meta.getModCatalogIndex(index);
 					
 					debug("completed "+index);
+					File asciiFile = new File(tempResultsDir, "simulatedEvents.txt");
 					if (config.isBinaryOutput()) {
 						// convert to binary
-						File asciiFile = new File(resultsDir, "simulatedEvents.txt");
-						List<ETAS_EqkRupture> catalog = ETAS_CatalogIO.loadCatalog(asciiFile);
+						ETAS_Catalog catalog = ETAS_CatalogIO.loadCatalog(asciiFile);
+						catalog.setSimulationMetadata(meta);
 						File binaryFile = new File(resultsDir, "simulatedEvents.bin");
 						ETAS_CatalogIO.writeCatalogBinary(binaryFile, catalog);
 						// make sure that the binary file really succeeded before deleting ascii
@@ -797,6 +826,18 @@ public class ETAS_Launcher {
 						else
 							binaryFile.delete();
 						debug("completed binary output "+index);
+					} else if (!tempResultsDir.equals(resultsDir)) {
+						// copy ASCII over
+						File newAscii = new File(resultsDir, asciiFile.getName());
+						Files.copy(asciiFile, newAscii);
+						File infoString = new File(tempResultsDir, "infoString.txt");
+						if (infoString.exists())
+							Files.copy(infoString, new File(resultsDir, infoString.getName()));
+						// make sure that the binary file really succeeded before deleting ascii
+						if (newAscii.length() > 0l)
+							asciiFile.delete();
+						else
+							newAscii.delete();
 					}
 					success = true;
 				} catch (Throwable t) {
@@ -863,15 +904,27 @@ public class ETAS_Launcher {
 	
 	public void calculateAll(int numThreads) {
 		ETAS_BinaryWriter binaryWriter = null;
+		int[] batch = null;
 		if (config.hasBinaryOutputFilters()) {
 			debug(DebugLevel.FINE, "initializing binary filter writers");
 			try {
 				binaryWriter = new ETAS_BinaryWriter(config.getOutputDir(), config);
+				HashSet<Integer> doneSet = binaryWriter.getDoneIndexes();
+				if (doneSet != null && !doneSet.isEmpty()) {
+					// skip ones already done
+					List<Integer> indexes = new ArrayList<>();
+					for (int i=0; i<config.getNumSimulations(); i++)
+						if (!doneSet.contains(i))
+							indexes.add(i);
+					batch = new int[indexes.size()];
+					for (int i=0; i<batch.length; i++)
+						batch[i] = indexes.get(i);
+				}
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
-		calculate(numThreads, null, binaryWriter);
+		calculate(numThreads, batch, binaryWriter);
 		if (binaryWriter != null) {
 			try {
 				debug(DebugLevel.FINE, "finalizing");
@@ -1008,7 +1061,8 @@ public class ETAS_Launcher {
 		}
 	}
 	
-	public static List<ETAS_EqkRupture> getFilteredNoSpontaneous(ETAS_Config config, List<ETAS_EqkRupture> catalog) {
+	public static ETAS_Catalog getFilteredNoSpontaneous(ETAS_Config config, ETAS_Catalog catalog) {
+		ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
 		int numTriggerRuptures = config.getTriggerRuptures() == null ? 0 : config.getTriggerRuptures().size();
 		if (numTriggerRuptures == 0 && (config.getTriggerCatalogFile() == null || config.isTreatTriggerCatalogAsSpontaneous()))
 			// everything in this catalog is spontaneous, can't filter
@@ -1018,16 +1072,30 @@ public class ETAS_Launcher {
 		if (!config.isIncludeSpontaneous() && (config.getTriggerCatalogFile() == null || !config.isTreatTriggerCatalogAsSpontaneous()))
 			// does not include any spontaneous ruptures
 			return catalog;
-		int maxParentID;
-		if (config.getTriggerCatalogFile() != null && !config.isTreatTriggerCatalogAsSpontaneous())
-			// we have a trigger catalog, and want to include descendants of that catalog
-			maxParentID = catalog.get(0).getID()-1;
-		else
-			// only include descendants of the trigger ruptures
-			maxParentID = numTriggerRuptures-1;
-		int[] parentIDs = new int[maxParentID+1];
-		for (int i=0; i<=maxParentID; i++)
-			parentIDs[i] = i;
+		int[] parentIDs;
+		if (meta != null) {
+			List<Integer> ids = new ArrayList<>();
+			if (meta.rangeTriggerRupIDs != null)
+				for (int i=meta.rangeTriggerRupIDs.lowerEndpoint(); i<=meta.rangeTriggerRupIDs.upperEndpoint(); i++)
+					ids.add(i);
+			if (meta.rangeHistCatalogIDs != null && !config.isTreatTriggerCatalogAsSpontaneous())
+				for (int i=meta.rangeHistCatalogIDs.lowerEndpoint(); i<=meta.rangeHistCatalogIDs.upperEndpoint(); i++)
+					ids.add(i);
+			parentIDs = new int[ids.size()];
+			for (int i=0; i<parentIDs.length; i++)
+				parentIDs[i] = ids.get(i);
+		} else {
+			int maxParentID;
+			if (config.getTriggerCatalogFile() != null && !config.isTreatTriggerCatalogAsSpontaneous())
+				// we have a trigger catalog, and want to include descendants of that catalog
+				maxParentID = catalog.get(0).getID()-1;
+			else
+				// only include descendants of the trigger ruptures
+				maxParentID = numTriggerRuptures-1;
+			parentIDs = new int[maxParentID+1];
+			for (int i=0; i<=maxParentID; i++)
+				parentIDs[i] = i;
+		}
 		return ETAS_SimAnalysisTools.getChildrenFromCatalog(catalog, parentIDs);
 	}
 	

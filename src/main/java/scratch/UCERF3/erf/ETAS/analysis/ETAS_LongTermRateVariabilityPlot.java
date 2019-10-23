@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
@@ -34,6 +35,7 @@ import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -151,7 +153,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog, List<ETAS_EqkRupture> triggeredOnlyCatalog,
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
 		long simStartTime = getConfig().getSimulationStartTimeMillis();
 		double simDuration = getConfig().getDuration();
@@ -209,7 +211,8 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	public List<Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		
 		Map<Double, MFD_VarStats> durStatsMap = new HashMap<>();

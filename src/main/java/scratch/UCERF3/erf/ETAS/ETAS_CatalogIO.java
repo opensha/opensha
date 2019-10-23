@@ -3,6 +3,7 @@ package scratch.UCERF3.erf.ETAS;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -16,10 +17,12 @@ import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +45,8 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.PeekingIterator;
+import com.google.common.collect.Range;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Files;
@@ -64,6 +69,10 @@ public class ETAS_CatalogIO {
 	public static void writeEventDataToFile(File file, Collection<ETAS_EqkRupture> simulatedRupsQueue)
 			throws IOException {
 		FileWriter fw1 = new FileWriter(file);
+		if (simulatedRupsQueue instanceof ETAS_Catalog && ((ETAS_Catalog)simulatedRupsQueue).getSimulationMetadata() != null) {
+			writeMetadataToFile(fw1, ((ETAS_Catalog)simulatedRupsQueue).getSimulationMetadata());
+			fw1.write("% \n");
+		}
 		ETAS_CatalogIO.writeEventHeaderToFile(fw1);
 		for(ETAS_EqkRupture rup:simulatedRupsQueue) {
 			ETAS_CatalogIO.writeEventToFile(fw1, rup);
@@ -86,6 +95,27 @@ public class ETAS_CatalogIO {
 	
 	public static final String EVENT_FILE_HEADER = "Year\tMonth\tDay\tHour\tMinute\tSec\tLat\tLon\tDepth\tMagnitude\t"
 				+ "ID\tparID\tGen\tOrigTime\tdistToParent\tnthERFIndex\tFSS_ID\tGridNodeIndex\tETAS_k";
+	
+	public static void writeMetadataToFile(FileWriter fw, ETAS_SimulationMetadata meta) throws IOException {
+		fw.write("% ------------ METADATA -------------\n");
+		fw.write("% numRuptures = "+meta.totalNumRuptures+"\n");
+		fw.write("% randomSeed = "+meta.randomSeed+"\n");
+		if (meta.catalogIndex >= 0)
+			fw.write("% catalogIndex = "+meta.catalogIndex+"\n");
+		if (meta.rangeHistCatalogIDs != null)
+			fw.write("% rangeHistCatalogIDs = ["+meta.rangeHistCatalogIDs.lowerEndpoint()
+				+" "+meta.rangeHistCatalogIDs.upperEndpoint()+"]\n");
+		if (meta.rangeTriggerRupIDs != null)
+			fw.write("% triggerRupParentIDs = ["+meta.rangeTriggerRupIDs.lowerEndpoint()
+				+" "+meta.rangeTriggerRupIDs.upperEndpoint()+"]\n");
+		fw.write("% simulationStartTime = "+meta.simulationStartTime+"\n");
+		fw.write("% simulationEndTime = "+meta.simulationEndTime+"\n");
+		fw.write("% numSpontaneousRuptures = "+meta.numSpontaneousRuptures+"\n");
+		fw.write("% numSupraSeis = "+meta.numSupraSeis+"\n");
+		fw.write("% minMag = "+meta.minMag+"\n");
+		fw.write("% maxMag = "+meta.maxMag+"\n");
+		fw.write("% -----------------------------------\n");
+	}
 
 	/**
 	 * This writes the given rupture to the given fileWriter
@@ -230,7 +260,7 @@ public class ETAS_CatalogIO {
 	 * @return
 	 * @throws IOException
 	 */
-	public static List<ETAS_EqkRupture> loadCatalog(File catalogFile) throws IOException {
+	public static ETAS_Catalog loadCatalog(File catalogFile) throws IOException {
 		return ETAS_CatalogIO.loadCatalog(catalogFile, -10d);
 	}
 
@@ -250,19 +280,29 @@ public class ETAS_CatalogIO {
 	 * @return
 	 * @throws IOException
 	 */
-	public static List<ETAS_EqkRupture> loadCatalog(File catalogFile, double minMag) throws IOException {
+	public static ETAS_Catalog loadCatalog(File catalogFile, double minMag) throws IOException {
 		return loadCatalog(catalogFile, minMag, false);
 	}
 
-	public static List<ETAS_EqkRupture> loadCatalog(File catalogFile, double minMag, boolean ignoreFailure)
+	public static ETAS_Catalog loadCatalog(File catalogFile, double minMag, boolean ignoreFailure)
 			throws IOException {
 		if (isBinary(catalogFile))
 			return loadCatalogBinary(catalogFile, minMag);
-		List<ETAS_EqkRupture> catalog = Lists.newArrayList();
+		ETAS_Catalog catalog = new ETAS_Catalog(null);
+		Map<String, String> metaValues = new HashMap<>();
 		for (String line : Files.readLines(catalogFile, Charset.defaultCharset())) {
 			line = line.trim();
-			if (line.startsWith("%") || line.startsWith("#") || line.isEmpty())
+			if (line.startsWith("#") || line.isEmpty())
 				continue;
+			if (line.startsWith("%")) {
+				if (line.contains(" = ")) { // metadata line
+					String[] split = line.split(" = ");
+					if (split.length != 2)
+						System.err.println("Thought we had a metadata line but split.lengh="+split.length+" for: "+line);
+					metaValues.put(split[0].replaceAll("%", "").trim(), split[1].trim());
+				}
+				continue;
+			}
 			ETAS_EqkRupture rup;
 			try {
 				rup = loadRuptureFromFileLine(line);
@@ -276,7 +316,41 @@ public class ETAS_CatalogIO {
 			if (rup.getMag() >= minMag)
 				catalog.add(rup);
 		}
+		
+		if (!metaValues.isEmpty()) {
+			// load metadata
+			catalog.meta = loadMetadataASCII(metaValues);
+		}
 		return catalog;
+	}
+	
+	private static ETAS_SimulationMetadata loadMetadataASCII(Map<String, String> metaValues) {
+		int totalNumRuptures = metaValues.containsKey("totalNumRuptures") ? Integer.parseInt(metaValues.get("numRuptures")) : -1;
+		long randomSeed = metaValues.containsKey("randomSeed") ? Long.parseLong(metaValues.get("randomSeed")) : -1l;
+		int catalogIndex = metaValues.containsKey("catalogIndex") ? Integer.parseInt(metaValues.get("catalogIndex")) : -1;
+		Range<Integer> rangeHistCatalogIDs = metaValues.containsKey("rangeHistCatalogIDs")
+				? loadRangeASCII(metaValues.get("rangeHistCatalogIDs")) : null;
+		Range<Integer> rangeTriggerRupIDs = metaValues.containsKey("triggerRupParentIDs")
+				? loadRangeASCII(metaValues.get("triggerRupParentIDs")) : null;
+		long simulationStartTime = metaValues.containsKey("simulationStartTime")
+				? Long.parseLong(metaValues.get("simulationStartTime")) : -1l;
+		long simulationEndTime = metaValues.containsKey("simulationEndTime")
+				? Long.parseLong(metaValues.get("simulationEndTime")) : -1l;
+		int numSpontaneousRuptures = metaValues.containsKey("numSpontaneousRuptures")
+				? Integer.parseInt(metaValues.get("numSpontaneousRuptures")) : -1;
+		int numSupraSeis = metaValues.containsKey("numSupraSeis")
+				? Integer.parseInt(metaValues.get("numSupraSeis")) : -1;
+		double minMag = metaValues.containsKey("minMag") ? Double.parseDouble(metaValues.get("minMag")) : Double.NaN;
+		double maxMag = metaValues.containsKey("maxMag") ? Double.parseDouble(metaValues.get("maxMag")) : Double.NaN;
+		return ETAS_SimulationMetadata.instance(totalNumRuptures, randomSeed, catalogIndex, rangeHistCatalogIDs, rangeTriggerRupIDs,
+				simulationStartTime, simulationEndTime, numSpontaneousRuptures, numSupraSeis, minMag, maxMag);
+	}
+	
+	private static Range<Integer> loadRangeASCII(String valStr) {
+		Preconditions.checkState(valStr.startsWith("[") && valStr.endsWith("]"));
+		valStr = valStr.substring(1, valStr.length()-1);
+		String[] split = valStr.split(" ");
+		return Range.closed(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
 	}
 
 	/**
@@ -299,19 +373,29 @@ public class ETAS_CatalogIO {
 	 * @return
 	 * @throws IOException
 	 */
-	public static List<ETAS_EqkRupture> loadCatalog(InputStream catalogStream, double minMag) throws IOException {
+	public static ETAS_Catalog loadCatalog(InputStream catalogStream, double minMag) throws IOException {
 		return loadCatalog(	catalogStream, minMag, false);
 	}
 	
-	public static List<ETAS_EqkRupture> loadCatalog(InputStream catalogStream, double minMag, boolean ignoreFailure)
+	public static ETAS_Catalog loadCatalog(InputStream catalogStream, double minMag, boolean ignoreFailure)
 			throws IOException {
-		List<ETAS_EqkRupture> catalog = Lists.newArrayList();
+		ETAS_Catalog catalog = new ETAS_Catalog(null);
 		BufferedReader reader = new BufferedReader(new InputStreamReader(catalogStream));
 
+		Map<String, String> metaValues = new HashMap<>();
 		for (String line : CharStreams.readLines(reader)) {
 			line = line.trim();
-			if (line.startsWith("%") || line.startsWith("#") || line.isEmpty())
+			if (line.startsWith("#") || line.isEmpty())
 				continue;
+			if (line.startsWith("%")) {
+				if (line.contains(" = ")) { // metadata line
+					String[] split = line.split(" = ");
+					if (split.length != 2)
+						System.err.println("Thought we had a metadata line but split.lengh="+split.length+" for: "+line);
+					metaValues.put(split[0].replaceAll("%", "").trim(), split[1].trim());
+				}
+				continue;
+			}
 			try {
 				ETAS_EqkRupture rup = loadRuptureFromFileLine(line);
 				if (rup.getMag() >= minMag)
@@ -323,6 +407,11 @@ public class ETAS_CatalogIO {
 				}
 				else throw e;
 			}
+		}
+		
+		if (!metaValues.isEmpty()) {
+			// load metadata
+			catalog.meta = loadMetadataASCII(metaValues);
 		}
 		return catalog;
 	}
@@ -342,7 +431,7 @@ public class ETAS_CatalogIO {
 		out.close();
 	}
 
-	public static void writeCatalogsBinary(File file, List<List<ETAS_EqkRupture>> catalogs) throws IOException {
+	public static void writeCatalogsBinary(File file, List<? extends List<ETAS_EqkRupture>> catalogs) throws IOException {
 		Preconditions.checkNotNull(catalogs, "Catalog cannot be null!");
 
 		DataOutputStream out = initCatalogsBinary(file, catalogs.size());
@@ -357,18 +446,70 @@ public class ETAS_CatalogIO {
 		Preconditions.checkNotNull(file, "File cannot be null!");
 		Preconditions.checkArgument(numCatalogs > 0, "Must supply at least one catalog");
 		
-		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file), buffer_len));
+		FileOutputStream fout = new FileOutputStream(file);
+		Preconditions.checkArgument(numCatalogs > 0, "Must supply at least one catalog");
+		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(fout, buffer_len));
 
 		// write number of catalogs as int
 		out.writeInt(numCatalogs);
 		
 		return out;
 	}
+	
+	private static Map<Integer, Long> binaryVersionRuptureLengthMap;
+	private static Map<Integer, Long> binaryVersionHeaderLengthMap;
+	
+	static {
+		binaryVersionRuptureLengthMap = new HashMap<>();
+		binaryVersionRuptureLengthMap.put(1, 70l);
+		binaryVersionRuptureLengthMap.put(2, 78l);
+		binaryVersionRuptureLengthMap.put(3, 78l);
+		binaryVersionHeaderLengthMap = new HashMap<>();
+		binaryVersionHeaderLengthMap.put(1, 6l);
+		binaryVersionHeaderLengthMap.put(2, 6l);
+		binaryVersionHeaderLengthMap.put(3, 78l);
+	}
+	
+	public static long getCatalogLengthBytes(int numRuptures, int version, boolean includeHeader) {
+		long ret = (long)numRuptures*binaryVersionRuptureLengthMap.get(version);
+		if (includeHeader)
+			ret += binaryVersionHeaderLengthMap.get(version);
+		return ret;
+	}
 
 	public static void writeCatalogBinary(DataOutputStream out, List<ETAS_EqkRupture> catalog) throws IOException {
 		// write file version as short
-		out.writeShort(2);
-
+		if (catalog instanceof ETAS_Catalog && ((ETAS_Catalog)catalog).getSimulationMetadata() != null) {
+			// we have metadata
+			out.writeShort(3);
+			ETAS_SimulationMetadata meta = ((ETAS_Catalog)catalog).getSimulationMetadata();
+			out.writeInt(meta.totalNumRuptures);
+			out.writeLong(meta.randomSeed);
+			out.writeInt(meta.catalogIndex);
+			if (meta.rangeHistCatalogIDs == null) {
+				out.writeInt(-1);
+				out.writeInt(-1);
+			} else {
+				out.writeInt(meta.rangeHistCatalogIDs.lowerEndpoint());
+				out.writeInt(meta.rangeHistCatalogIDs.upperEndpoint());
+			}
+			if (meta.rangeTriggerRupIDs == null) {
+				out.writeInt(-1);
+				out.writeInt(-1);
+			} else {
+				out.writeInt(meta.rangeTriggerRupIDs.lowerEndpoint());
+				out.writeInt(meta.rangeTriggerRupIDs.upperEndpoint());
+			}
+			out.writeLong(meta.simulationStartTime);
+			out.writeLong(meta.simulationStartTime);
+			out.writeInt(meta.numSpontaneousRuptures);
+			out.writeInt(meta.numSupraSeis);
+			out.writeDouble(meta.minMag);
+			out.writeDouble(meta.maxMag);
+		} else {
+			// no metadata
+			out.writeShort(2);
+		}
 		// write catalog size as int
 		out.writeInt(catalog.size());
 
@@ -408,32 +549,32 @@ public class ETAS_CatalogIO {
 		}
 	}
 
-	public static List<ETAS_EqkRupture> loadCatalogBinary(File file) throws IOException {
+	public static ETAS_Catalog loadCatalogBinary(File file) throws IOException {
 		return loadCatalogBinary(file, -10d);
 	}
 
-	public static List<ETAS_EqkRupture> loadCatalogBinary(File file, double minMag) throws IOException {
+	public static ETAS_Catalog loadCatalogBinary(File file, double minMag) throws IOException {
 		return loadCatalogBinary(getIS(file), minMag);
 	}
 
-	public static List<ETAS_EqkRupture> loadCatalogBinary(InputStream is, double minMag) throws IOException {
+	public static ETAS_Catalog loadCatalogBinary(InputStream is, double minMag) throws IOException {
 		Preconditions.checkNotNull(is, "InputStream cannot be null!");
 		if (!(is instanceof BufferedInputStream))
 			is = new BufferedInputStream(is);
 		DataInputStream in = new DataInputStream(is);
 
-		List<ETAS_EqkRupture> catalog = doLoadCatalogBinary(in, minMag);
+		ETAS_Catalog catalog = doLoadCatalogBinary(in, minMag);
 
 		in.close();
 
 		return catalog;
 	}
 
-	public static List<List<ETAS_EqkRupture>> loadCatalogsBinary(File file) throws IOException {
+	public static List<ETAS_Catalog> loadCatalogsBinary(File file) throws IOException {
 		return loadCatalogsBinary(file, -10d);
 	}
 
-	public static List<List<ETAS_EqkRupture>> loadCatalogsBinary(File file, double minMag) throws IOException {
+	public static List<ETAS_Catalog> loadCatalogsBinary(File file, double minMag) throws IOException {
 		return loadCatalogsBinary(getIS(file), minMag);
 	}
 
@@ -450,13 +591,13 @@ public class ETAS_CatalogIO {
 		return new BufferedInputStream(fis, buffer_len);
 	}
 
-	public static List<List<ETAS_EqkRupture>> loadCatalogsBinary(InputStream is, double minMag) throws IOException {
+	public static List<ETAS_Catalog> loadCatalogsBinary(InputStream is, double minMag) throws IOException {
 		Preconditions.checkNotNull(is, "InputStream cannot be null!");
 		if (!(is instanceof BufferedInputStream) && !(is instanceof GZIPInputStream))
 			is = new BufferedInputStream(is);
 		DataInputStream in = new DataInputStream(is);
 
-		List<List<ETAS_EqkRupture>> catalogs = Lists.newArrayList();
+		List<ETAS_Catalog> catalogs = new ArrayList<>();
 
 		int numCatalogs = in.readInt();
 		int printMod = 1000;
@@ -476,17 +617,81 @@ public class ETAS_CatalogIO {
 
 		return catalogs;
 	}
+	
+	public static boolean isBinaryCatalogFileComplete(File eventsFile) {
+		try {
+			InputStream is = getIS(eventsFile);
+			DataInputStream in = new DataInputStream(is);
+			short version = in.readShort();
+			readBinaryMetadata(in, version);
+			int numRuptures = in.readInt();
+			if (is instanceof GZIPInputStream)
+				// assume that since it's gzipped and we got this far, we're good
+				return true;
+			long calcLen = getCatalogLengthBytes(numRuptures, version, true);
+			return eventsFile.length() == calcLen;
+		} catch (IOException e) {
+			System.err.println("Error reading binary file, assuming not complete: "+e.getMessage());
+		}
+		return false;
+	}
+	
+	public static ETAS_SimulationMetadata readBinaryMetadata(DataInput in, short version) throws IOException {
+		Preconditions.checkState(version >= 1 && version <= 3, "Bad version=%s", version);
+		if (version == 3) {
+			int totalNumRuptures = in.readInt();
+			Preconditions.checkState(totalNumRuptures >= -1, "Bad numRuptures=%s", totalNumRuptures);
+			long randomSeed = in.readLong();
+			int catalogIndex = in.readInt();
+			Preconditions.checkState(catalogIndex >= -1, "Bad catalogIndex=%s", catalogIndex);
+			Range<Integer> rangeHistCatalogIDs = null;
+			int startHistID = in.readInt();
+			Preconditions.checkState(startHistID >= -1, "Bad startHistID=%s", startHistID);
+			int endHistID = in.readInt();
+			Preconditions.checkState(endHistID >= startHistID, "Bad endHistID=%s", endHistID);
+			if (startHistID >= 0)
+				rangeHistCatalogIDs = Range.closed(startHistID, endHistID);
+			Range<Integer> rangeTriggerRupIDs = null;
+			int startTriggerID = in.readInt();
+			Preconditions.checkState(startTriggerID >= -1, "Bad startTriggerID=%s", startTriggerID);
+			int endTriggerID = in.readInt();
+			Preconditions.checkState(endTriggerID >= startTriggerID, "Bad endTriggerID=%s", endTriggerID);
+			if (startTriggerID >= 0)
+				rangeTriggerRupIDs = Range.closed(startTriggerID, endTriggerID);
+			long simulationStartTime= in.readLong();
+			Preconditions.checkState(simulationStartTime >= 0, "Bad simulationStartTime=%s", simulationStartTime);
+			long simulationEndTime= in.readLong();
+			Preconditions.checkState(simulationEndTime >= simulationStartTime, "Bad simulationEndTime=%s", simulationEndTime);
+			int numSpontaneousRuptures = in.readInt();
+			Preconditions.checkState(numSpontaneousRuptures >= 0, "Bad numSpontaneousRuptures=%s", numSpontaneousRuptures);
+			int numSupraSeis = in.readInt();
+			Preconditions.checkState(numSupraSeis >= 0, "Bad numSupraSeis=%s", numSupraSeis);
+			double minMag = in.readDouble();
+			double maxMag = in.readDouble();
+			return ETAS_SimulationMetadata.instance(totalNumRuptures, randomSeed, catalogIndex, rangeHistCatalogIDs, rangeTriggerRupIDs,
+					simulationStartTime, simulationEndTime, numSpontaneousRuptures, numSupraSeis, minMag, maxMag);
+		}
+		return null;
+	}
 
-	private static List<ETAS_EqkRupture> doLoadCatalogBinary(DataInput in, double minMag) throws IOException {
+	private static ETAS_Catalog doLoadCatalogBinary(DataInput in, double minMag) throws IOException {
 		short version = in.readShort();
 
-		Preconditions.checkState(version == 1 || version == 2, "Unknown binary file version: "+version);
+		Preconditions.checkState(version == 1 || version == 2 || version == 3, "Unknown binary file version: "+version);
+		
+		ETAS_SimulationMetadata meta = readBinaryMetadata(in, version);
+		if (meta != null) {
+			double metaMinMag = meta.minMag;
+			if (minMag > metaMinMag || (minMag > 0 && !Double.isFinite(metaMinMag)))
+				// if we're loading this in at a higher minMag, use that
+				meta = meta.getModMinMag(minMag);
+		}
 
 		int numRups = in.readInt();
 
 		Preconditions.checkState(numRups >= 0, "Bad num rups: "+numRups);
 
-		List<ETAS_EqkRupture> catalog = Lists.newArrayList();
+		ETAS_Catalog catalog = new ETAS_Catalog(meta);
 
 		for (int i=0; i<numRups; i++) {
 			int id = in.readInt();
@@ -537,22 +742,22 @@ public class ETAS_CatalogIO {
 		return catalog;
 	}
 
-	public static List<List<ETAS_EqkRupture>> loadCatalogs(File zipFile) throws ZipException, IOException {
+	public static List<ETAS_Catalog> loadCatalogs(File zipFile) throws ZipException, IOException {
 		return loadCatalogs(zipFile, -10);
 	}
 	
-	public static List<List<ETAS_EqkRupture>> loadCatalogs(File zipFile, double minMag)
+	public static List<ETAS_Catalog> loadCatalogs(File zipFile, double minMag)
 			throws ZipException, IOException {
 		return loadCatalogs(zipFile, minMag, false);
 	}
 
-	public static List<List<ETAS_EqkRupture>> loadCatalogs(File zipFile, double minMag, boolean ignoreFailure)
+	public static List<ETAS_Catalog> loadCatalogs(File zipFile, double minMag, boolean ignoreFailure)
 			throws ZipException, IOException {
 		if (isBinary(zipFile))
 			return loadCatalogsBinary(zipFile, minMag);
 		ZipFile zip = new ZipFile(zipFile);
 
-		List<List<ETAS_EqkRupture>> catalogs = Lists.newArrayList();
+		List<ETAS_Catalog> catalogs = new ArrayList<>();
 
 		for (ZipEntry entry : Collections.list(zip.entries())) {
 			if (!entry.isDirectory())
@@ -565,7 +770,7 @@ public class ETAS_CatalogIO {
 			//			System.out.println("Loading "+catEntry.getName());
 
 			try {
-				List<ETAS_EqkRupture> cat = loadCatalog(
+				ETAS_Catalog cat = loadCatalog(
 						zip.getInputStream(catEntry), minMag, ignoreFailure);
 
 				catalogs.add(cat);
@@ -604,7 +809,7 @@ public class ETAS_CatalogIO {
 		return new BinarayCatalogsIterable(binFile, minMag);
 	}
 	
-	public static class BinarayCatalogsIterable implements Iterable<List<ETAS_EqkRupture>> {
+	public static class BinarayCatalogsIterable implements Iterable<ETAS_Catalog> {
 		
 		private final File binFile;
 		private final double minMag;
@@ -619,7 +824,7 @@ public class ETAS_CatalogIO {
 		}
 		
 		@Override
-		public Iterator<List<ETAS_EqkRupture>> iterator() {
+		public Iterator<ETAS_Catalog> iterator() {
 			BinarayCatalogsListIterator ret = getIterator();
 			curIterator = null; // clear out so that next call gets a new iterator
 			return ret;
@@ -647,9 +852,7 @@ public class ETAS_CatalogIO {
 	
 	private static final int ITERABLE_PRELOAD_CAPACITY = 500; // catalogs
 	
-	private static class BinarayCatalogsListIterator implements Iterator<List<ETAS_EqkRupture>> {
-		
-		private double minMag;
+	private static class BinarayCatalogsListIterator implements Iterator<ETAS_Catalog> {
 		
 		private int numCatalogs;
 		private int retIndex;
@@ -658,13 +861,11 @@ public class ETAS_CatalogIO {
 		private Throwable exception;
 		
 		private Thread loadThread;
-		private LinkedBlockingDeque<List<ETAS_EqkRupture>> deque;
+		private LinkedBlockingDeque<ETAS_Catalog> deque;
 		
 		private DataInputStream in;
 		
 		private BinarayCatalogsListIterator(File binFile, double minMag) throws IOException {
-			this.minMag = minMag;
-			
 			InputStream is = getIS(binFile);
 			in = new DataInputStream(is);
 
@@ -700,7 +901,7 @@ public class ETAS_CatalogIO {
 		}
 
 		@Override
-		public List<ETAS_EqkRupture> next() {
+		public ETAS_Catalog next() {
 			waitUntilReady();
 			if (deque.isEmpty()) {
 				if (exception == null) {
@@ -711,7 +912,7 @@ public class ETAS_CatalogIO {
 					throw ExceptionUtils.asRuntimeException(exception);
 				}
 			}
-			List<ETAS_EqkRupture> catalog = deque.removeFirst();
+			ETAS_Catalog catalog = deque.removeFirst();
 			retIndex++;
 			return catalog;
 		}
@@ -732,6 +933,130 @@ public class ETAS_CatalogIO {
 //					ExceptionUtils.throwAsRuntimeException(e);
 //				}
 			}
+		}
+		
+	}
+	
+	public static BinarayCatalogsMetadataIterator getBinaryCatalogsMetadataIterator(File binFile) throws IOException {
+		return new BinarayCatalogsMetadataIterator(binFile);
+	}
+	
+	public static class BinarayCatalogsMetadataIterator implements PeekingIterator<ETAS_SimulationMetadata>, Closeable {
+
+		private RandomAccessFile ra;
+		private int numCatalogs;
+		
+		private int curIndex = -1;
+		private ETAS_SimulationMetadata current;
+		private short curVersion = -1;
+		private long curStartPos = -1;
+		private long curEndPos = -1;
+		private int curNumRuptures = -1;
+		private long length;
+		
+		private BinarayCatalogsMetadataIterator(File binFile) throws IOException {
+			ra = new RandomAccessFile(binFile, "r");
+			numCatalogs = ra.readInt();
+		}
+		
+		private void checkLoad() throws IOException {
+			if (curEndPos > curStartPos)
+				// already loaded
+				return;
+			current = null;
+			curEndPos = -1;
+			curNumRuptures = -1;
+			curVersion = -1;
+			
+			curIndex++;
+			ETAS_SimulationMetadata meta;
+			long headerStartPos = ra.getFilePointer();
+			try {
+				curVersion = ra.readShort();
+				meta = readBinaryMetadata(ra, curVersion);
+			} catch (Exception e) {
+				System.err.println("Error reading metadata for catalog "+curIndex+" at header pos="+headerStartPos
+						+", trucated? "+e.getMessage());
+				close();
+				return;
+			}
+			curNumRuptures = ra.readInt();
+			curStartPos = ra.getFilePointer();
+			curEndPos = ra.getFilePointer() + getCatalogLengthBytes(curNumRuptures, curVersion, false);
+			current = meta;
+			length = ra.length();
+			if (curEndPos >= length)
+				close();
+			else
+				ra.seek(curEndPos);
+		}
+
+		@Override
+		public synchronized boolean hasNext() {
+			if (curIndex >= numCatalogs)
+				return false;
+			try {
+				checkLoad();
+			} catch (IOException e) {
+				System.err.println("WARNING: truncated? "+e.getMessage());
+				return false;
+			}
+			return curEndPos > curStartPos;
+		}
+
+		@Override
+		public synchronized ETAS_SimulationMetadata next() {
+			ETAS_SimulationMetadata ret = peek();
+			current = null;
+			curVersion = -1;
+			curEndPos = -1;
+			curStartPos = -1;
+			curNumRuptures = -1;
+			return ret;
+		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException();
+		}
+		
+		public long getNextStartPos() {
+			peek();
+			return curStartPos;
+		}
+		
+		public long getNextEndPos() {
+			peek();
+			return curEndPos;
+		}
+		
+		public int getNextNumRuptures() {
+			peek();
+			return curNumRuptures;
+		}
+		
+		public short getNextFileVersion() {
+			peek();
+			return curVersion;
+		}
+		
+		public boolean isNextFullyWritten() {
+			return curEndPos > 0 && curEndPos <= length;
+		}
+
+		@Override
+		public synchronized ETAS_SimulationMetadata peek() {
+			try {
+				checkLoad();
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			return current;
+		}
+
+		@Override
+		public void close() throws IOException {
+			ra.close();
 		}
 		
 	}
@@ -912,7 +1237,7 @@ public class ETAS_CatalogIO {
 		Preconditions.checkArgument(inputFiles.length > 1);
 		
 		BinarayCatalogsIterable[] iterables = new BinarayCatalogsIterable[inputFiles.length];
-		List<Iterator<List<ETAS_EqkRupture>>> iterators = Lists.newArrayList();
+		List<Iterator<ETAS_Catalog>> iterators = new ArrayList<>();
 		for (int i=0; i<inputFiles.length; i++) {
 			iterables[i] = getBinaryCatalogsIterable(inputFiles[i], 0d);
 			iterators.add(iterables[i].iterator());
@@ -935,7 +1260,7 @@ public class ETAS_CatalogIO {
 			if (i % 1000 == 0)
 				System.out.println("Processing catalog "+i);
 			Map<Integer, ETAS_EqkRupture> catalogMap = Maps.newHashMap();
-			for (Iterator<List<ETAS_EqkRupture>> it : iterators) {
+			for (Iterator<ETAS_Catalog> it : iterators) {
 				List<ETAS_EqkRupture> catalog = it.next();
 				for (ETAS_EqkRupture rup : catalog) {
 					Integer id = rup.getID();
@@ -999,6 +1324,27 @@ public class ETAS_CatalogIO {
 		raFile.seek(0l);
 		raFile.writeInt(count);
 		raFile.close();
+	}
+	
+	public static class ETAS_Catalog extends ArrayList<ETAS_EqkRupture> {
+		
+		private ETAS_SimulationMetadata meta;
+
+		public ETAS_Catalog(ETAS_SimulationMetadata meta) {
+			this.meta = meta;
+		}
+
+		public ETAS_SimulationMetadata getSimulationMetadata() {
+			return meta;
+		}
+
+		public void setSimulationMetadata(ETAS_SimulationMetadata meta) {
+			this.meta = meta;
+		}
+		
+		public void updateMetadataForCatalog() {
+			meta = meta.getUpdatedForCatalog(this);
+		}
 	}
 
 	public static void main(String[] args) throws ZipException, IOException {

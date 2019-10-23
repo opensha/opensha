@@ -2,6 +2,7 @@ package scratch.UCERF3.erf.ETAS.launcher.util;
 
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.BinarayCatalogsIterable;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 
@@ -22,7 +23,7 @@ import com.google.common.base.Stopwatch;
 public class ETAS_CatalogIteration {
 	
 	public static interface Callback {
-		public void processCatalog(List<ETAS_EqkRupture> catalog, int index);
+		public void processCatalog(ETAS_Catalog catalog, int index);
 	}
 	
 	public static int processCatalogs(File catalogsFile, Callback callback) {
@@ -30,7 +31,7 @@ public class ETAS_CatalogIteration {
 	}
 	
 	public static int processCatalogs(File catalogsFile, Callback callback, int numToProcess, double minMag) {
-		Iterator<List<ETAS_EqkRupture>> catalogsIterator;
+		Iterator<ETAS_Catalog> catalogsIterator;
 		int totalNum;
 		if (catalogsFile.isDirectory()) {
 			catalogsIterator = new ETAS_ResultsDirIterator(catalogsFile, minMag);
@@ -74,7 +75,7 @@ public class ETAS_CatalogIteration {
 					modulus *= 10;
 			}
 			
-			List<ETAS_EqkRupture> catalog;
+			ETAS_Catalog catalog;
 			try {
 				catalog = catalogsIterator.next();
 			} catch (Exception e) {
@@ -96,7 +97,7 @@ public class ETAS_CatalogIteration {
 		return numProcessed;
 	}
 	
-	static class ETAS_ResultsDirIterator implements Iterator<List<ETAS_EqkRupture>> {
+	static class ETAS_ResultsDirIterator implements Iterator<ETAS_Catalog> {
 		
 		private LinkedList<File> files;
 		private double minMag;
@@ -118,7 +119,7 @@ public class ETAS_CatalogIteration {
 		}
 
 		@Override
-		public List<ETAS_EqkRupture> next() {
+		public ETAS_Catalog next() {
 			File simFile = getSimFile(files.removeFirst());
 			try {
 				return ETAS_CatalogIO.loadCatalog(simFile, minMag);

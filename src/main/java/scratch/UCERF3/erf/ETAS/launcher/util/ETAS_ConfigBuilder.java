@@ -133,6 +133,12 @@ class ETAS_ConfigBuilder {
 		histCatalogOption.setRequired(false);
 		ops.addOption(histCatalogOption);
 		
+		Option histCatalogAsSpontaneousOption = new Option("hcas", "historical-catalog-as-spontaneous", false,
+				"If supplied, aftershocks which descend from the historical catalog (enabled with --historical-catalog) will be treated "
+				+ "identically to spontaneous ruptures for the purposes of output plots and tables");
+		histCatalogAsSpontaneousOption.setRequired(false);
+		ops.addOption(histCatalogAsSpontaneousOption);
+		
 		Option durationOption = new Option("dur", "duration-years", true, "Simulation duration (years, default: "+(float)DURATION_DEFAULT+")");
 		durationOption.setRequired(false);
 		ops.addOption(durationOption);
@@ -312,6 +318,7 @@ class ETAS_ConfigBuilder {
 		config.setProbModel(probModel);
 		config.setTotRateScaleFactor(scaleFactor);
 		config.setImposeGR(cmd.hasOption("impose-gr"));
+		config.setTreatTriggerCatalogAsSpontaneous(histCatalog && cmd.hasOption("historical-catalog-as-spontaneous"));
 		long curTime = System.currentTimeMillis();
 		if (cmd.hasOption("random-seed"))
 			config.setRandomSeed(Long.parseLong(cmd.getOptionValue("random-seed")));
@@ -555,17 +562,19 @@ class ETAS_ConfigBuilder {
 //			argz += " --start-year 1919";
 			argz += " --start-year 2012";
 //			argz += " --num-simulations 100000";
-			argz += " --num-simulations 1000";
-			argz += " --duration-years 500";
+//			argz += " --num-simulations 1000";
+//			argz += " --duration-years 500";
+			argz += " --num-simulations 10000";
+			argz += " --duration-years 10";
 			
 //			argz += " --num-simulations 1";
 //			argz += " --duration-years 100";
 			
-			argz += " --gridded-only";
+//			argz += " --gridded-only";
 //			argz += " --prob-model NO_ERT";
 			argz += " --include-spontaneous";
-			argz += " --historical-catalog";
-			argz += " --etas-k-cov 1.16";
+//			argz += " --historical-catalog";
+//			argz += " --etas-k-cov 1.16";
 			
 //			argz += " --etas-k -2.31 --etas-p 1.08 --etas-c 0.04";
 //			argz += " --scale-factor 1.1338";

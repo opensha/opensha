@@ -80,7 +80,7 @@ public class ETAS_RuptureSearch {
 			cmd = parser.parse(options, args);
 		} catch (ParseException e) {
 			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(ETAS_Launcher.class),
+			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(ETAS_RuptureSearch.class),
 					options, true );
 			System.exit(2);
 			return;

@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.plot.DatasetRenderingOrder;
@@ -48,6 +49,7 @@ import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
@@ -149,8 +151,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected synchronized void doProcessCatalog(List<ETAS_EqkRupture> completeCatalog,
-			List<ETAS_EqkRupture> triggeredOnlyCatalog, FaultSystemSolution fss) {
+	protected synchronized void doProcessCatalog(ETAS_Catalog completeCatalog,
+			ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
 		if (subSectStats == null) {
 			System.out.println("Initializing section stats/mappings");
 			// initialize
@@ -454,7 +456,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	private Table<String, Double, String> faultMFDPrefixes;
 
 	@Override
-	public List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+			throws IOException {
 		if (!hasAny)
 			return null;
 		// calculate all stats
@@ -1056,7 +1059,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;
-			for (List<ETAS_EqkRupture> catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0d)) {
+			for (ETAS_Catalog catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(inputFile, 0d)) {
 				if (processed % 1000 == 0)
 					System.out.println("Catalog "+processed);
 				plot.processCatalog(catalog, fss);

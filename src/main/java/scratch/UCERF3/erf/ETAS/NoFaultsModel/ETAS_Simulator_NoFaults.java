@@ -96,6 +96,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
@@ -115,6 +116,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_LocationWeightCalculator;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
+import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
@@ -178,9 +180,10 @@ public class ETAS_Simulator_NoFaults {
 	 * @param simulationName
 	 * @param randomSeed - set for reproducibility, or set null if new seed desired
 	 * @param etasParams
+	 * @return simulation metadata object
 	 * @throws IOException
 	 */
-	public static void runETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
+	public static ETAS_SimulationMetadata runETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
 			GriddedRegion griddedRegion, ETAS_EqkRupture scenarioRup, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
 			Long randomSeed, ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams)
@@ -190,26 +193,25 @@ public class ETAS_Simulator_NoFaults {
 			scenarioRups = new ArrayList<>();
 			scenarioRups.add(scenarioRup);
 		}
-		runETAS_Simulation(resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
+		return runETAS_Simulation(resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
 				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed, etasParams, cubeParams);
 	}
 	
-	public static void runETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
+	public static ETAS_SimulationMetadata runETAS_Simulation(File resultsDir, AbstractNthRupERF erf,
 			GriddedRegion griddedRegion, List<ETAS_EqkRupture> scenarioRups, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
 			Long randomSeed, ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams)
 					throws IOException {
+		long simulationStartTime = System.currentTimeMillis();
 		
 		// etasParams.getU3ETAS_ProbModel() is ignored because no-faults assumes Poisson.
 		
 		boolean generateDiagnosticsForScenario = false;	// to be able to turn off even if in debug mode
 
 		// set the random seed for reproducibility
-		ETAS_Utils etas_utils;
-		if(randomSeed != null)
-			etas_utils = new ETAS_Utils(randomSeed);
-		else
-			etas_utils = new ETAS_Utils(System.currentTimeMillis());
+		if (randomSeed == null)
+			randomSeed = System.currentTimeMillis();
+		ETAS_Utils etas_utils = new ETAS_Utils(randomSeed);
 		
 		// this could be input value
 		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
@@ -253,6 +255,7 @@ public class ETAS_Simulator_NoFaults {
 		// Make the list of observed ruptures, plus scenario if that was included
 		ArrayList<ETAS_EqkRupture> obsEqkRuptureList = new ArrayList<ETAS_EqkRupture>();
 		
+		Range<Integer> rangeHistCatalogParentIDs = null;
 		if(histQkList != null) {
 			// now start at 1, zero is reserved for scenarios if included
 			int id;
@@ -260,6 +263,7 @@ public class ETAS_Simulator_NoFaults {
 				id = scenarioRups.size();
 			else
 				id = 1;
+			int startID = id;
 			for(ObsEqkRupture qk : histQkList) {
 				Location hyp = qk.getHypocenterLocation();
 				if(griddedRegion.contains(hyp) && hyp.getDepth() < 24.0) {	//TODO remove hard-coded 24.0 (get from depth dist)
@@ -274,6 +278,8 @@ public class ETAS_Simulator_NoFaults {
 					id+=1;
 				}
 			}
+			if (id > startID)
+				rangeHistCatalogParentIDs = Range.closed(startID, id-1);
 			System.out.println("histQkList.size()="+histQkList.size());
 			System.out.println("obsEqkRuptureList.size()="+obsEqkRuptureList.size());
 		}
@@ -281,6 +287,7 @@ public class ETAS_Simulator_NoFaults {
 		// add scenario rup to end of obsEqkRuptureList
 		int[] scenarioRupIDs = null;
 		double[] numPrimaryAshockForScenarios = null;
+		Range<Integer> rangeTriggerRupIDs = null;
 		if(scenarioRups != null && !scenarioRups.isEmpty()) {
 //			scenarioRupID = obsEqkRuptureList.size();
 			// zero is reserved for scenario rupture
@@ -297,6 +304,7 @@ public class ETAS_Simulator_NoFaults {
 							+scenarioRup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface().size());
 				}
 			}
+			rangeTriggerRupIDs = Range.closed(0, scenarioRups.size()-1);
 		}
 		
 		// this will store the simulated aftershocks & spontaneous events (in order of occurrence) - ObsEqkRuptureList? (they're added in order anyway)
@@ -786,9 +794,14 @@ public class ETAS_Simulator_NoFaults {
 		}
 		
 		info_fr.close();
+		ETAS_SimulationMetadata meta = ETAS_SimulationMetadata.instance(randomSeed, -1, rangeHistCatalogParentIDs, rangeTriggerRupIDs,
+				simulationStartTime, System.currentTimeMillis(), ETAS_Utils.magMin_DEFAULT, simulatedRupsQueue);
+		ETAS_CatalogIO.writeMetadataToFile(simulatedEventsFileWriter, meta);
 		simulatedEventsFileWriter.close();
 
 		ETAS_SimAnalysisTools.writeMemoryUse("Memory at end of simultation");
+		
+		return meta;
 	}
 	
 	
