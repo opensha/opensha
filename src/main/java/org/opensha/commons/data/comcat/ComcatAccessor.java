@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneOffset;
 import java.time.ZoneId;
+import java.util.Locale;
 
 import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
@@ -580,8 +581,8 @@ public class ComcatAccessor {
 			throw new IllegalArgumentException ("ComcatAccessor: Min depth must be less than max depth: minDepth = " + minDepth + ", maxDepth = " + maxDepth);
 		}
 		
-		query.setMinDepth(new BigDecimal(String.format("%.3f", minDepth)));
-		query.setMaxDepth(new BigDecimal(String.format("%.3f", maxDepth)));
+		query.setMinDepth(new BigDecimal(String.format(Locale.US, "%.3f", minDepth)));
+		query.setMaxDepth(new BigDecimal(String.format(Locale.US, "%.3f", maxDepth)));
 
 		// Insert time into query
 
@@ -612,18 +613,18 @@ public class ComcatAccessor {
 		// If the region is a circle, use Comcat's circle query
 
 		if (region.isCircular()) {
-			query.setLatitude(new BigDecimal(String.format("%.5f", region.getCircleCenterLat())));
-			query.setLongitude(new BigDecimal(String.format("%.5f", region.getCircleCenterLon())));
-			query.setMaxRadius(new BigDecimal(String.format("%.5f", region.getCircleRadiusDeg())));
+			query.setLatitude(new BigDecimal(String.format(Locale.US, "%.5f", region.getCircleCenterLat())));
+			query.setLongitude(new BigDecimal(String.format(Locale.US, "%.5f", region.getCircleCenterLon())));
+			query.setMaxRadius(new BigDecimal(String.format(Locale.US, "%.5f", region.getCircleRadiusDeg())));
 		}
 
 		// Otherwise, use Comcat's rectangle query to search the bounding box of the region
 
 		else {
-			query.setMinLatitude(new BigDecimal(String.format("%.5f", region.getMinLat())));
-			query.setMaxLatitude(new BigDecimal(String.format("%.5f", region.getMaxLat())));
-			query.setMinLongitude(new BigDecimal(String.format("%.5f", region.getMinLon())));
-			query.setMaxLongitude(new BigDecimal(String.format("%.5f", region.getMaxLon())));
+			query.setMinLatitude(new BigDecimal(String.format(Locale.US, "%.5f", region.getMinLat())));
+			query.setMaxLatitude(new BigDecimal(String.format(Locale.US, "%.5f", region.getMaxLat())));
+			query.setMinLongitude(new BigDecimal(String.format(Locale.US, "%.5f", region.getMinLon())));
+			query.setMaxLongitude(new BigDecimal(String.format(Locale.US, "%.5f", region.getMaxLon())));
 		}
 
 		// Set a flag to indicate if we need to do region filtering
@@ -637,7 +638,7 @@ public class ComcatAccessor {
 		// Insert minimum magnitude in the query
 
 		if (minMag >= -9.0) {
-			query.setMinMagnitude(new BigDecimal(String.format("%.3f", minMag)));
+			query.setMinMagnitude(new BigDecimal(String.format(Locale.US, "%.3f", minMag)));
 		}
 
 		// Insert product type in the query
