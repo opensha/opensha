@@ -41,6 +41,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileNameComparator;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -57,6 +58,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ComcatEventFetcher;
 
 public class SimulationMarkdownGenerator {
 	
@@ -88,6 +90,12 @@ public class SimulationMarkdownGenerator {
 				"Use directory which contains JSON input file as output dir (instead of output dir defined in JSON file)");
 		parentDirOption.setRequired(false);
 		ops.addOption(parentDirOption);
+
+		Option catalogFileOption = new Option("cc", "comcat-catalog", true,
+				"Path to ComCat catalog file generated with u3etas_comcat_catalog_fetcher.sh for ComCat plots, useful when "
+				+ "plotting on a compute node that can't access outside web services");
+		catalogFileOption.setRequired(false);
+		ops.addOption(catalogFileOption);
 		
 		return ops;
 	}
@@ -117,7 +125,8 @@ public class SimulationMarkdownGenerator {
 //					+ "2019_07_16-ComCatM7p1_ci38457511_11DaysAfter_ShakeMapSurfaces-noSpont-full_td-scale1.14");
 //					+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
 //					+ "2019_08_27-Start1919_100yr_Spontaneous-includeSpont-full_td-scale1.14");
-					+ "2019_08_20-ComCatM7p1_ci38457511_ShakeMapSurfaces_Spontaneous-includeSpont-full_td-scale1.14");
+//					+ "2019_08_20-ComCatM7p1_ci38457511_ShakeMapSurfaces_Spontaneous-includeSpont-full_td-scale1.14");
+					+ "2019_10_22-ComCatdata7p5yrbetweenhistoricaland20191022_Statewide_ShakeMapSurfaces_Spontaneous_Histor");
 			File configFile = new File(simDir, "config.json");
 //			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"
 //					+ "comcat-ridgecrest-m7.1-example/config.json");
@@ -127,11 +136,11 @@ public class SimulationMarkdownGenerator {
 //			System.out.println(gitHash);
 //			System.out.println(getGitCommitTime(gitHash));
 //			System.exit(0);
-			args = new String[] { configFile.getAbsolutePath() };
+//			args = new String[] { configFile.getAbsolutePath() };
+			args = new String[] { "--threads", "1", configFile.getAbsolutePath() };
+//			args = new String[] { "--force-update", configFile.getAbsolutePath() };
 //			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
 		}
-		
-		// TODO optional second arg
 		
 		try {
 			Options options = createOptions();
@@ -193,7 +202,15 @@ public class SimulationMarkdownGenerator {
 					: defaultNumThreads();
 			boolean forcePlot = cmd.hasOption("force-update");
 			
-			generateMarkdown(configFile, inputFile, config, outputDir, skipMaps, maxCatalogs, threads, forcePlot, true, null);
+			ObsEqkRupList comcatCatalog = null;
+			if (cmd.hasOption("comcat-catalog")) {
+				File comcatFile = new File(cmd.getOptionValue("comcat-catalog"));
+				System.out.println("Loading ComCat file from: "+comcatFile.getAbsolutePath());
+				comcatCatalog = ETAS_ComcatEventFetcher.loadCatalogFile(comcatFile);
+			}
+			
+			generateMarkdown(configFile, inputFile, config, outputDir, skipMaps, maxCatalogs, threads, forcePlot,
+					true, null, comcatCatalog);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(2);
@@ -229,6 +246,7 @@ public class SimulationMarkdownGenerator {
 				}
 			}
 			for (BinaryFilteredOutputConfig bin : binaryFilters) {
+				System.out.println("Looking for binary input files with prerfix: "+bin.getPrefix());
 				File binFile = new File(config.getOutputDir(), bin.getPrefix()+".bin");
 				if (binFile.exists()) {
 					inputFile = binFile;
@@ -342,7 +360,7 @@ public class SimulationMarkdownGenerator {
 
 	public static PlotMetadata generateMarkdown(File configFile, File inputFile, ETAS_Config config, File outputDir,
 			boolean skipMaps, int maxCatalogs, int threads, boolean forceUpdateAll, boolean forceUpdateEvaluation,
-			PlotMetadata meta) throws IOException {
+			PlotMetadata meta, ObsEqkRupList comcatCatalog) throws IOException {
 		long plotStartTime = System.currentTimeMillis();
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir(),
 				"Output dir doesn't exist and couldn't be created: %s", outputDir.getAbsolutePath());
@@ -385,7 +403,7 @@ public class SimulationMarkdownGenerator {
 			plots.add(new ETAS_SimulatedCatalogPlot(config, launcher, "sim_catalog_map", Doubles.toArray(percentiles)));
 			try {
 				if (config.getComcatMetadata() != null)
-					plots.add(new ETAS_ComcatComparePlot(config, launcher));
+					plots.add(new ETAS_ComcatComparePlot(config, launcher, comcatCatalog));
 			} catch (Exception e) {
 				System.err.println("Error building ComCat plot, skipping");
 				e.printStackTrace();
@@ -739,8 +757,8 @@ public class SimulationMarkdownGenerator {
 		public int compare(BinaryFilteredOutputConfig o1, BinaryFilteredOutputConfig o2) {
 			if (o1.isDescendantsOnly() != o2.isDescendantsOnly()) {
 				if (o1.isDescendantsOnly())
-					return -1;
-				return 1;
+					return 1;
+				return -1;
 			}
 			Double mag1 = o1.getMinMag();
 			Double mag2 = o2.getMinMag();

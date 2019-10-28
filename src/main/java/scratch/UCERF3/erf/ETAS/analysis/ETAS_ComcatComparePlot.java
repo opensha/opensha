@@ -75,6 +75,7 @@ import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	
+	private double minSpan;
 	private Region mapRegion;
 	private GriddedRegion gridRegion;
 	private ObsEqkRupList comcatEvents;
@@ -147,12 +148,16 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private static final int cpt_discretizations = 4;
 
 	public ETAS_ComcatComparePlot(ETAS_Config config, ETAS_Launcher launcher) {
+		this(config, launcher, null);
+	}
+
+	public ETAS_ComcatComparePlot(ETAS_Config config, ETAS_Launcher launcher, ObsEqkRupList inputEvents) {
 		super(config, launcher);
 		ComcatMetadata comcatMeta = config.getComcatMetadata();
 		Preconditions.checkNotNull(comcatMeta, "Must have ComCat metadata for ComCat Plot");
 		
 		mapRegion = ETAS_EventMapPlotUtils.getMapRegion(config, launcher);
-		double minSpan = Math.min(mapRegion.getMaxLat()-mapRegion.getMinLat(), mapRegion.getMaxLon()-mapRegion.getMinLon());
+		minSpan = Math.min(mapRegion.getMaxLat()-mapRegion.getMinLat(), mapRegion.getMaxLon()-mapRegion.getMinLon());
 		double spacing;
 		if (minSpan > 4)
 			spacing = 0.1;
@@ -184,21 +189,35 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			maxOTs[i] = startTime + (long)(ProbabilityModelsCalc.MILLISEC_PER_YEAR*durations[i]+0.5);
 		System.out.println("Max comcat compare duration: "+(float)durations[durations.length-1]);
 		
-		ComcatRegion cReg = mapRegion instanceof ComcatRegion ? (ComcatRegion)mapRegion : new ComcatRegionAdapter(mapRegion);
-		try {
-			ComcatAccessor accessor = new ComcatAccessor();
-			comcatEvents = accessor.fetchEventList(comcatMeta.eventID, config.getSimulationStartTimeMillis(), maxOTs[maxOTs.length-1],
-					comcatMeta.minDepth, comcatMeta.maxDepth, cReg, false, false, comcatMeta.minMag);
-		} catch (Exception e) {
-			System.err.println("Error fetching ComCat events, skipping");
-			e.printStackTrace();
-			comcatEvents = new ObsEqkRupList();
-			return;
+		if (inputEvents != null) {
+			this.comcatEvents = inputEvents;
+		} else {
+			try {
+				comcatEvents = loadComcatEvents(config, comcatMeta, mapRegion, maxOTs[maxOTs.length-1]);
+			} catch (Exception e) {
+				System.err.println("Error fetching ComCat events, skipping");
+				e.printStackTrace();
+				comcatEvents = new ObsEqkRupList();
+				return;
+			}
 		}
 		if (comcatEvents.isEmpty()) {
 			System.out.println("No ComCat events found");
 			return;
 		}
+	}
+	
+	public static ObsEqkRupList loadComcatEvents(ETAS_Config config, ComcatMetadata comcatMeta, Region mapRegion, long endTime) {
+		ComcatAccessor accessor = new ComcatAccessor();
+		ComcatRegion cReg = mapRegion instanceof ComcatRegion ? (ComcatRegion)mapRegion : new ComcatRegionAdapter(mapRegion);
+		return accessor.fetchEventList(comcatMeta.eventID, config.getSimulationStartTimeMillis(), endTime,
+				comcatMeta.minDepth, comcatMeta.maxDepth, cReg, false, false, comcatMeta.minMag);
+	}
+	
+	private void init() {
+		ETAS_Config config = getConfig();
+		ETAS_Launcher launcher = getLauncher();
+		ComcatMetadata comcatMeta = config.getComcatMetadata();
 		comcatMaxMag = 0d;
 		comcatMND = new IncrementalMagFreqDist(ETAS_MFD_Plot.mfdMinMag, ETAS_MFD_Plot.mfdNumMag, ETAS_MFD_Plot.mfdDelta);
 		for (ObsEqkRupture rup : comcatEvents) {
@@ -541,6 +560,10 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			FaultSystemSolution fss) {
 		if (comcatEvents.isEmpty())
 			return;
+		synchronized (this) {
+			if (comcatMND == null)
+				init();
+		}
 		short[][][] magGridCounts = new short[durations.length][magBins.length][];
 		IncrementalMagFreqDist catMFD = new IncrementalMagFreqDist(
 				totalCountHist.getMinX(), totalCountHist.getMaxX(), totalCountHist.size());

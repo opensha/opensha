@@ -347,7 +347,7 @@ public class ETAS_MarkdownIndexWriter {
 					try {
 						sim.plotMetadata = SimulationMarkdownGenerator.generateMarkdown(
 								sim.configFile, inputFile, sim.config, sim.simDir, false, -1,
-								threads, forceUpdate, false, sim.plotMetadata);
+								threads, forceUpdate, false, sim.plotMetadata, null);
 						updatedNames.add(sim.simDir.getName());
 					} catch (Exception e) {
 						System.err.println("Error updating plots for "+sim.simDir.getName());

@@ -43,21 +43,31 @@ import scratch.UCERF3.utils.FaultSystemIO;
 class ETAS_ConfigBuilder {
 	
 	public enum HPC_Sites {
-		USC_HPC("usc_hpcc_mpj_express.slurm"),
-		TACC_STAMPEDE2("tacc_stampede2_fastmpj.slurm");
-		
+		USC_HPC("usc_hpcc_mpj_express.slurm", "usc_hpcc_plot.slurm"),
+		TACC_STAMPEDE2("tacc_stampede2_fastmpj.slurm", "tacc_stampede2_plot.slurm");
+
+		private String plotFileName;
 		private String fileName;
 		
-		private HPC_Sites(String fileName) {
+		private HPC_Sites(String fileName, String plotFileName) {
 			this.fileName = fileName;
+			this.plotFileName = plotFileName;
 		}
 		
 		public String getSlurmFileName() {
 			return fileName;
 		}
 		
+		public String getSlurmPlotFileName() {
+			return plotFileName;
+		}
+		
 		public File getSlurmFile() {
 			return ETAS_Config.resolvePath("${ETAS_LAUNCHER}/parallel/mpj_examples/"+fileName);
+		}
+		
+		public File getSlurmPlotFile() {
+			return ETAS_Config.resolvePath("${ETAS_LAUNCHER}/parallel/mpj_examples/"+plotFileName);
 		}
 	}
 	
@@ -352,6 +362,14 @@ class ETAS_ConfigBuilder {
 		String queue = cmd.hasOption("queue") ? cmd.getOptionValue("queue") : null;
 		
 		updateSlurmScript(inputFile, outputFile, nodes, threads, hours, queue, configFile);
+		
+		File plotFile = site.getSlurmPlotFile();
+		if (plotFile.exists()) {
+			System.out.println("Building SLURM plot file for "+site.name());
+			outputFile = new File(outputDir, "plot_results.slurm");
+			
+			updateSlurmScript(plotFile, outputFile, null, null, null, queue, configFile);
+		}
 	}
 	
 	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer threads, Integer hours, String queue, File configFile)

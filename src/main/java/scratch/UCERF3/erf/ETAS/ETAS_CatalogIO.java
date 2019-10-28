@@ -967,6 +967,10 @@ public class ETAS_CatalogIO {
 			curEndPos = -1;
 			curNumRuptures = -1;
 			curVersion = -1;
+			if (curIndex >= numCatalogs-1) {
+				ra.close();
+				return;
+			}
 			
 			curIndex++;
 			ETAS_SimulationMetadata meta;

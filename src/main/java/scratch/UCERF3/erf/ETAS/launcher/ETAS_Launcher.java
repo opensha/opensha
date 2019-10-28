@@ -212,66 +212,13 @@ public class ETAS_Launcher {
 		// purge any last event data after OT
 		LastEventData.filterDataAfterTime(lastEventData, simulationOT);
 		
-		// load trigger ruptures
-		List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
-		if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
-			debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
-			FaultSystemSolution fss = checkOutFSS();
-			FaultSystemRupSet rupSet = fss.getRupSet();
-			
-			triggerRuptures = new ArrayList<>();
-			triggerRupturesMap = new HashMap<>();
-			for (TriggerRupture triggerRup : triggerRuptureConfigs) {
-				ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT, params);
-				triggerRupturesMap.put(triggerRup, rup);
-				triggerRuptures.add(rup);
-				int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
-				if (rupturedSects != null && rupturedSects.length > 0) {
-					long time = rup.getOriginTime();
-					List<Integer> sects = resetSubSectsMap.get(time);
-					if (sects == null) {
-						sects = new ArrayList<>();
-						resetSubSectsMap.put(time, sects);
-					}
-					for (int sect : rupturedSects)
-						sects.add(sect);
-				}
-			}
-			
-			checkInFSS(fss);
-			
-			if (!resetSubSectsMap.isEmpty()) {
-				debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
-				for (Long time : getSortedResetTimes())
-					debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
-			}
-		}
-		
-		// now load a trigger catalog
-		histQkList = new ArrayList<>();
-		if (config.getTriggerCatalogFile() != null) {
-			if (config.getCompletenessModel() == null)
-				debug(DebugLevel.INFO, "WARNING: statewide completeness model not specified, using default. "
-						+ "Specify with `catalogCompletenessModel` JSON parameter");
-			else
-				params.setStatewideCompletenessModel(config.getCompletenessModel());
-			FaultSystemSolution fss = checkOutFSS();
-			try {
-				histQkList.addAll(loadHistoricalCatalog(ETAS_Config.resolvePath(config.getTriggerCatalogFile()),
-						ETAS_Config.resolvePath(config.getTriggerCatalogSurfaceMappingsFile()),
-						fss, simulationOT, resetSubSectsMap, params.getStatewideCompletenessModel()));
-			} catch (DocumentException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-			checkInFSS(fss);
-		}
-		
-		Preconditions.checkState(config.isIncludeSpontaneous() || (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty())
-				|| !histQkList.isEmpty(), "Empty simulation! Must include spontaneous, trigger ruptures, and/or a trigger catalog");
+		Preconditions.checkState(config.isIncludeSpontaneous() || config.hasTriggers() || config.getTriggerCatalogFile() != null,
+				"Empty simulation! Must include spontaneous, trigger ruptures, and/or a trigger catalog");
 		
 		simulationName = config.getSimulationName();
 		if (simulationName == null || simulationName.isEmpty()) {
-			if (triggerRuptures != null) {
+			if (config.getTriggerRuptures() != null && !config.getTriggerRuptures().isEmpty()) {
+				List<ETAS_EqkRupture> triggerRuptures = getTriggerRuptures();
 				if (triggerRuptures.size() > 1) {
 					float[] mags = new float[triggerRuptures.size()];
 					float maxMag = Float.NEGATIVE_INFINITY;
@@ -287,12 +234,15 @@ public class ETAS_Launcher {
 				}
 			}
 			
-			if (!histQkList.isEmpty()) {
-				if (simulationName != null)
-					simulationName += ", ";
-				else
-					simulationName = "";
-				simulationName += histQkList.size()+" Hist EQs";
+			if (config.getTriggerCatalogFile() != null) {
+				List<ETAS_EqkRupture> histQkList = getHistQkList();
+				if (!histQkList.isEmpty()) {
+					if (simulationName != null)
+						simulationName += ", ";
+					else
+						simulationName = "";
+					simulationName += histQkList.size()+" Hist EQs";
+				}
 			}
 			
 			if (config.isIncludeSpontaneous()) {
@@ -372,15 +322,73 @@ public class ETAS_Launcher {
 		return times;
 	}
 	
-	public List<ETAS_EqkRupture> getTriggerRuptures() {
+	public synchronized List<ETAS_EqkRupture> getTriggerRuptures() {
+		if (triggerRuptures == null) {
+			// load trigger ruptures
+			List<TriggerRupture> triggerRuptureConfigs = config.getTriggerRuptures();
+			if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
+				debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
+				FaultSystemSolution fss = checkOutFSS();
+				FaultSystemRupSet rupSet = fss.getRupSet();
+				
+				triggerRuptures = new ArrayList<>();
+				triggerRupturesMap = new HashMap<>();
+				for (TriggerRupture triggerRup : triggerRuptureConfigs) {
+					ETAS_EqkRupture rup = triggerRup.buildRupture(rupSet, simulationOT, params);
+					triggerRupturesMap.put(triggerRup, rup);
+					triggerRuptures.add(rup);
+					int[] rupturedSects = triggerRup.getSectionsRuptured(rupSet);
+					if (rupturedSects != null && rupturedSects.length > 0) {
+						long time = rup.getOriginTime();
+						List<Integer> sects = resetSubSectsMap.get(time);
+						if (sects == null) {
+							sects = new ArrayList<>();
+							resetSubSectsMap.put(time, sects);
+						}
+						for (int sect : rupturedSects)
+							sects.add(sect);
+					}
+				}
+				
+				checkInFSS(fss);
+				
+				if (!resetSubSectsMap.isEmpty()) {
+					debug(DebugLevel.FINE, "The following subsections' time of occurrence will be reset:");
+					for (Long time : getSortedResetTimes())
+						debug(DebugLevel.FINE, "\t"+time+": "+Joiner.on(",").join(resetSubSectsMap.get(time)));
+				}
+			}
+		}
 		return triggerRuptures;
 	}
 	
 	public ETAS_EqkRupture getRuptureForTrigger(TriggerRupture trigger) {
+		getTriggerRuptures(); // force initialization
 		return triggerRupturesMap.get(trigger);
 	}
 
-	public List<ETAS_EqkRupture> getHistQkList() {
+	public synchronized List<ETAS_EqkRupture> getHistQkList() {
+		if (histQkList == null) {
+			// now load a trigger catalog
+			histQkList = new ArrayList<>();
+			if (config.getTriggerCatalogFile() != null) {
+				debug(DebugLevel.INFO, "Loading historical catalog: "+config.getTriggerCatalogFile().getName());
+				if (config.getCompletenessModel() == null)
+					debug(DebugLevel.INFO, "WARNING: statewide completeness model not specified, using default. "
+							+ "Specify with `catalogCompletenessModel` JSON parameter");
+				else
+					params.setStatewideCompletenessModel(config.getCompletenessModel());
+				FaultSystemSolution fss = checkOutFSS();
+				try {
+					histQkList.addAll(loadHistoricalCatalog(ETAS_Config.resolvePath(config.getTriggerCatalogFile()),
+							ETAS_Config.resolvePath(config.getTriggerCatalogSurfaceMappingsFile()),
+							fss, simulationOT, resetSubSectsMap, params.getStatewideCompletenessModel()));
+				} catch (DocumentException | IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				checkInFSS(fss);
+			}
+		}
 		return histQkList;
 	}
 
@@ -801,12 +809,12 @@ public class ETAS_Launcher {
 					ETAS_SimulationMetadata meta;
 					if (config.isGriddedOnly()) {
 						meta = ETAS_Simulator_NoFaults.runETAS_Simulation(tempResultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
-								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
+								getTriggerRuptures(), getHistQkList(), config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed, params, cubeParams);
 					} else {
 						checkLoadCaches();
 						meta = ETAS_Simulator.runETAS_Simulation(tempResultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
-								triggerRuptures, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
+								getTriggerRuptures(), getHistQkList(), config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed,
 								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, cubeParams);
 					}

@@ -142,7 +142,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 
 	@Override
 	public int getVersion() {
-		return 1;
+		return 2;
 	}
 
 	@Override
@@ -476,6 +476,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		writeFaultMFDs(outputDir, fss);
 		return null;
 	}
+	
+	private static boolean MAP_D = false;
 
 	private void writeMaps(File outputDir, FaultSystemSolution fss) throws IOException {
 		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
@@ -485,12 +487,19 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		for (int d=1; d<mapDurations.length; d++)
 			if (mapDurations[d] > mapDurations[maxDurationIndex])
 				maxDurationIndex = d;
+		FaultStats maxStat = null;
 		for (FaultStats stats : subSectStats) {
+			double statRate;
 			if (hasSpont)
-				maxRate = Math.max(maxRate, stats.spontCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex));
+				statRate = stats.spontCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex);
 			else
-				maxRate = Math.max(maxRate, stats.triggeredCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex));
+				statRate = stats.triggeredCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex);
+			if (statRate > maxRate) {
+				maxStat = stats;
+				maxRate = statRate;
+			}
 		}
+		System.out.println("Max rate: "+maxRate+" from "+maxStat.name);
 		double fractionalRate;
 		if (annualize)
 			fractionalRate = 1d / Math.max(1d, Math.round(catalogCount * getConfig().getDuration()));
@@ -524,8 +533,11 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		mapPlotPrefixes = HashBasedTable.create();
 		
 		for (int d=0; d<mapDurations.length; d++) {
+			double duration = mapDurations[d];
+			int statDurIndex = Arrays.binarySearch(durations, duration);
+			Preconditions.checkState(statDurIndex >= 0, "Couldn't locate duration index for %s", duration);
 			for (boolean spont : sponts) {
-				mapPlotPrefixes.put(mapDurations[d], spont, new String[plotMagBins.length]);
+				mapPlotPrefixes.put(duration, spont, new String[plotMagBins.length]);
 				for (int p=0; p<plotMagBins.length; p++) {
 					if (!hasMags[p])
 						continue;
@@ -537,13 +549,21 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					
 					for (int s=0; s<subSectStats.length; s++) {
 						if (spont) {
-							particRates[s] = subSectStats[s].spontCumulativeMNDs[d].getY(magIndex);
+							particRates[s] = subSectStats[s].spontCumulativeMNDs[statDurIndex].getY(magIndex);
 						} else {
-							particRates[s] = subSectStats[s].triggeredCumulativeMNDs[d].getY(magIndex);
+							particRates[s] = subSectStats[s].triggeredCumulativeMNDs[statDurIndex].getY(magIndex);
 							if (primaryRates != null)
-								primaryRates[s] = subSectStats[s].triggeredPrimaryCumulativeMNDs[d].getY(magIndex);
+								primaryRates[s] = subSectStats[s].triggeredPrimaryCumulativeMNDs[statDurIndex].getY(magIndex);
+						}
+						if (MAP_D) {
+							if (subSectStats[s].name.toLowerCase().contains("mojave"))
+								System.out.println("DEBUG: "+subSectStats[s].name+", spont?\t"+spont+"\trate: "+particRates[s]);
+							if (subSectStats[s].name == maxStat.name)
+								System.out.println("DEBUG: MAX "+subSectStats[s].name+", spont?\t"+spont+"\trate: "+particRates[s]);
 						}
 					}
+					if (MAP_D) System.out.println("Max calc rate for spont="+spont+", mag="+(float)plotMagBins[p]
+							+", duration="+(float)duration+": "+StatUtils.max(particRates));
 
 					String magStr;
 					String prefixAdd;
@@ -559,8 +579,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 						particTitle = "Log10" + magStr + " Participation Rate";
 					} else {
 						if (mapDurations.length > 1) {
-							prefixAdd = "_"+getTimeShortLabel(mapDurations[d]).replaceAll(" ", "")+prefixAdd;
-							particTitle = "Log10 "+getTimeShortLabel(mapDurations[d])+magStr+" Participation Exp. Num";
+							prefixAdd = "_"+getTimeShortLabel(duration).replaceAll(" ", "")+prefixAdd;
+							particTitle = "Log10 "+getTimeShortLabel(duration)+magStr+" Participation Exp. Num";
 						} else {
 							particTitle = "Log10"+magStr+" Participation Exp. Num";
 						}
@@ -571,7 +591,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 						prefixAdd += "_triggered";
 					}
 					
-					mapPlotPrefixes.get(mapDurations[d], spont)[p] = prefix+"_partic"+prefixAdd;
+					mapPlotPrefixes.get(duration, spont)[p] = prefix+"_partic"+prefixAdd;
 
 					try {
 						FaultBasedMapGen.makeFaultPlot(cpt, faults, FaultBasedMapGen.log10(particRates), region, outputDir,

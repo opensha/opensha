@@ -58,7 +58,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	private double[] percentiles;
 	private int percentileRecalcModulus = 1;
 	private String prefix;
-	private double maxMag = 0d;
+	private double maxMag = Double.NaN;
 	
 	private static final double[] default_map_durations = { 7d / 365.25, 30 / 365.25, 1d };
 	private double[] durations;
@@ -78,9 +78,6 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		if (!durations.contains(config.getDuration()))
 			durations.add(config.getDuration());
 		this.durations = Doubles.toArray(durations);
-		if (config.hasTriggers())
-			for (ETAS_EqkRupture trigger : launcher.getTriggerRuptures())
-				maxMag = Math.max(maxMag, trigger.getMag());
 	}
 
 	@Override
@@ -96,6 +93,12 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
+		if (Double.isNaN(maxMag)) {
+			maxMag = 0d;
+			if (getConfig().hasTriggers())
+				for (ETAS_EqkRupture trigger : getLauncher().getTriggerRuptures())
+					maxMag = Math.max(maxMag, trigger.getMag());
+		}
 		double myCount = completeCatalog.size();
 		smallest = Math.min(myCount, smallest);
 		largest = Math.max(myCount, largest);

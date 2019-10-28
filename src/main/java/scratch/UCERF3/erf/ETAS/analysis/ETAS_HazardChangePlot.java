@@ -23,6 +23,7 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
@@ -114,6 +115,17 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				u3TimesFunc.set(time, 0);
 		}
 		
+		catalogCounts = new ArrayList<>();
+		hasMags = new boolean[minMags.length];
+		for (int m=0; m<minMags.length; m++)
+			hasMags[m] = false;
+	}
+	
+	private synchronized void checkInitTriggerRegions() {
+		if (triggerRegions != null)
+			return;
+		ETAS_Launcher launcher = getLauncher();
+		ETAS_Config config = getConfig();
 		List<ETAS_EqkRupture> triggerRups = new ArrayList<>();
 		if (launcher.getTriggerRuptures() != null)
 			triggerRups.addAll(launcher.getTriggerRuptures());
@@ -162,11 +174,6 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				break;
 			}
 		}
-		
-		catalogCounts = new ArrayList<>();
-		hasMags = new boolean[minMags.length];
-		for (int m=0; m<minMags.length; m++)
-			hasMags[m] = false;
 	}
 
 	@Override
@@ -187,6 +194,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	}
 	
 	private boolean insideTriggerRegion(Location loc) {
+		checkInitTriggerRegions();
 		if (unionRegion == null) {
 			for (Region triggerRegion : triggerRegions)
 				if (triggerRegion.contains(loc))
@@ -562,8 +570,19 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		
 		lines.add(topLevelHeading+" "+title);
 		lines.add(topLink); lines.add("");
-		lines.add("These plots show how the probability of ruptures of various magnitudes within "
-				+optionalDigitDF.format(radius)+"km of any scenario rupture changes over time");
+		ComcatMetadata meta = getConfig().getComcatMetadata();
+		if (meta != null && meta.region != null) {
+			String str = "These plots show how the probability of ruptures of various magnitudes ";
+			if ((float)meta.region.getExtent() == (float)new CaliforniaRegions.RELM_TESTING().getExtent())
+				str += "statewide";
+			else
+				str += "within the region used to fetch ComCat trigger ruptures";
+			str += " changes over time";
+			lines.add(str);
+		} else {
+			lines.add("These plots show how the probability of ruptures of various magnitudes within "
+					+optionalDigitDF.format(radius)+"km of any scenario rupture changes over time");
+		}
 		lines.add("");
 		
 		for (int m=0; m<minMags.length; m++) {

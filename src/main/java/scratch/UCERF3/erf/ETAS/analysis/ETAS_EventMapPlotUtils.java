@@ -52,20 +52,22 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
  */
 public class ETAS_EventMapPlotUtils {
 	
-	static Region getMapRegion(ETAS_Config config, ETAS_Launcher launcher) {
+	public static Region getMapRegion(ETAS_Config config, ETAS_Launcher launcher) {
 		ComcatMetadata meta = config.getComcatMetadata();
 		Region mapRegion = meta == null ? null : meta.region;
-		List<ETAS_EqkRupture> triggerRups = launcher.getTriggerRuptures();
-		if (mapRegion == null && triggerRups != null && !triggerRups.isEmpty()) {
-			MinMaxAveTracker latTrack = new MinMaxAveTracker();
-			MinMaxAveTracker lonTrack = new MinMaxAveTracker();
-			for (ETAS_EqkRupture rup : triggerRups) {
-				for (Location loc : rup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface()) {
-					latTrack.addValue(loc.getLatitude());
-					lonTrack.addValue(loc.getLongitude());
+		if (mapRegion == null) {
+			List<ETAS_EqkRupture> triggerRups = launcher.getTriggerRuptures();
+			if (triggerRups != null && !triggerRups.isEmpty()) {
+				MinMaxAveTracker latTrack = new MinMaxAveTracker();
+				MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+				for (ETAS_EqkRupture rup : triggerRups) {
+					for (Location loc : rup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface()) {
+						latTrack.addValue(loc.getLatitude());
+						lonTrack.addValue(loc.getLongitude());
+					}
 				}
+				mapRegion = getMapRegion(latTrack, lonTrack);
 			}
-			mapRegion = getMapRegion(latTrack, lonTrack);
 		}
 		return mapRegion;
 	}

@@ -146,7 +146,10 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 					totalHist.add(xIndex, 1d);
 					// this is used to find the modal magnitude, which is used to trim plots for magnitude filtered catalogs
 					totalCountHist.add(xIndex, 1d);
-					spontaneousFound = spontaneousFound || rup.getGeneration() == 0;
+					if (!spontaneousFound && rup.getGeneration() == 0) {
+						System.out.println("Spontaneous rupture found, will include spont MFD plots");
+						spontaneousFound = true;
+					}
 					if (rup.getFSSIndex() > 0)
 						supraHist.add(xIndex, 1d);
 				}
