@@ -19,11 +19,15 @@
 
 package org.opensha.commons.gui.plot;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.Shape;
+import java.awt.Stroke;
+import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.PrinterException;
@@ -637,8 +641,22 @@ public class GraphPanel extends JSplitPane {
 			// add any legend
 			if (plotSpec.isLegendVisible()) {
 				LegendItemCollection subLegend = plotSpec.getCustomLegendCollection();
-				if (subLegend == null)
+				if (subLegend == null) {
 					subLegend = subPlot.getLegendItems();
+					for (int i=0; i<subLegend.getItemCount(); i++) {
+						LegendItem legend = subLegend.get(i);
+						Shape lineShape = legend.getLine();
+						Stroke stroke = legend.getLineStroke();
+						if (lineShape instanceof Line2D
+								&& stroke instanceof BasicStroke
+								&& ((BasicStroke)stroke).getEndCap() == BasicStroke.CAP_BUTT) {
+							// widen legends for dashed and dotted lines
+							Line2D line = (Line2D)lineShape;
+							line.setLine(line.getX1()*2d, line.getY1(),
+									line.getX2()*2d, line.getY2());
+						}
+					}
+				}
 				if (plotSpec.isLegendSkipBlank()) {
 					LegendItemCollection newLegend = new LegendItemCollection();
 					for (int i=0; i<subLegend.getItemCount(); i++) {
@@ -687,7 +705,6 @@ public class GraphPanel extends JSplitPane {
 				
 				@Override
 				public LegendItemCollection getLegendItems() {
-					// TODO Auto-generated method stub
 					return legendItemsFin;
 				}
 			});
