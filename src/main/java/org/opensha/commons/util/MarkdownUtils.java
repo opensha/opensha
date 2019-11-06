@@ -6,9 +6,14 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.text.StringEscapeUtils;
 import org.commonmark.Extension;
 import org.commonmark.ext.gfm.tables.TablesExtension;
 import org.commonmark.ext.heading.anchor.HeadingAnchorExtension;
@@ -331,6 +336,10 @@ public class MarkdownUtils {
 	
 	public static int MAX_WIDTH = 1000;
 	
+	private static final Pattern htmlEntityPattern = Pattern.compile(
+			"&(#[xX][a-fA-F0-9]{1,8}|#[0-9]{1,8}|[a-zA-Z][a-zA-Z0-9]{1,31});");
+
+	
 	/**
 	 * Converts the given Markdown to HTML and writes to a file
 	 * @param markdown
@@ -340,8 +349,20 @@ public class MarkdownUtils {
 	public static void writeHTML(String markdown, File outputFile) throws IOException {
 		List<Extension> extensions = Arrays.asList(TablesExtension.create(), HeadingAnchorExtension.create());
 		Parser parser = Parser.builder().extensions(extensions).build();
+		Map<String, String> htmlSymbols = new HashMap<>();
+		// track any html entities that were explicitly included, so that we can re-escape them after commonmark un-escapes them
+		Matcher symbolMatcher = htmlEntityPattern.matcher(markdown);
+		while (symbolMatcher.find()) {
+			String symbol = symbolMatcher.group();
+			if (!htmlSymbols.containsKey(symbol)) {
+				String concrete = StringEscapeUtils.unescapeHtml4(symbol);
+//				System.out.println(symbol+" => "+concrete);
+				htmlSymbols.put(symbol, concrete);
+			}
+		}
 		Node document = parser.parse(markdown);
 		HtmlRenderer renderer = HtmlRenderer.builder().extensions(extensions).build();
+		
 		
 		FileWriter fw = new FileWriter(outputFile);
 		fw.write("<!DOCTYPE html>\n");
@@ -367,10 +388,39 @@ public class MarkdownUtils {
 		fw.write("</style>\n");
 		fw.write("</head>\n");
 		fw.write("<body>\n");
-		renderer.render(document, fw);
+		String html = renderer.render(document);
+		for (String symbol : htmlSymbols.keySet())
+			html = html.replaceAll(htmlSymbols.get(symbol), symbol);
+//		renderer.render(document, fw);
+		fw.write(html);
 		fw.write("</body>\n");
 		fw.write("</html>\n");
 		fw.close();
+	}
+	
+	public static void main(String[] args) throws IOException {
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("");
+		lines.add("# Hello!");
+		lines.add("");
+		lines.add("# Heading 1");
+		lines.add("");
+		for (int i=0; i<50; i++)
+			lines.add("astdstdsggdsagsd\n");
+		lines.add("# Heading 2");
+		lines.add("");
+		lines.add("# Heading 3 test &ge;4");
+		lines.add("");
+		for (int i=0; i<50; i++)
+			lines.add("astdstdsggdsagsd\n");
+		lines.add("## Heading 3.1 &phi;&ge;&tau;");
+		lines.add("");
+		
+		lines.addAll(0, buildTOC(lines, 0));
+		File outputDir = new File("/tmp/html_test");
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		writeReadmeAndHTML(lines, outputDir);
 	}
 
 }
