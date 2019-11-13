@@ -42,10 +42,15 @@ import com.google.common.base.Preconditions;
 public class RSQSimSRFGenerator {
 	
 	public static enum SRFInterpolationMode {
-		NONE,
-		ADJ_VEL,
-		LIN_TAPER_VEL
+		NONE("None"),
+		ADJ_VEL("Adj. Velocity"),
+		LIN_TAPER_VEL("Linear Taper");
 //		CONST_VEL_ADJ_LEN
+		
+		private String name;
+		private SRFInterpolationMode(String name) {
+			this.name = name;
+		}
 	}
 	
 	public static List<SRF_PointData> buildSRF(RSQSimEventSlipTimeFunc func, List<SimulatorElement> patches,
@@ -174,7 +179,7 @@ public class RSQSimSRFGenerator {
 		// build actual funcs
 		int patchID = patch.getID();
 		PlotCurveCharacterstics actualChar = new PlotCurveCharacterstics(
-				PlotLineType.SOLID, 3f, PlotSymbol.FILLED_CIRCLE, 4f, Color.BLACK);
+				PlotLineType.SOLID, 4f, PlotSymbol.FILLED_CIRCLE, 5f, Color.BLACK);
 		DiscretizedFunc origSlipFunc = func.getSlipFunc(patchID);
 		DiscretizedFunc shiftedSlipFunc = new ArbitrarilyDiscretizedFunc();
 		for (Point2D pt : origSlipFunc)
@@ -198,12 +203,14 @@ public class RSQSimSRFGenerator {
 			velChars.add(actualChar);
 		}
 		
+		DecimalFormat slipDF = new DecimalFormat("0.000");
+		
 		List<XYTextAnnotation> slipAnns = new ArrayList<>();
 		double annX = 0.1;
 		double totSlip = func.getCumulativeEventSlip(patchID, func.getEndTime());
 		double slipMaxY = totSlip * 1.05;
-		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 18);
-		XYTextAnnotation totAnn = new XYTextAnnotation("Total Slip: "+(float)totSlip, annX, slipMaxY*(1d-0.05*slipFuncs.size()));
+		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 24);
+		XYTextAnnotation totAnn = new XYTextAnnotation("Total Slip: "+slipDF.format(totSlip), annX, slipMaxY*(1d-0.05*slipFuncs.size()));
 		totAnn.setTextAnchor(TextAnchor.TOP_LEFT);
 		totAnn.setFont(annFont);
 		slipAnns.add(totAnn);
@@ -218,20 +225,20 @@ public class RSQSimSRFGenerator {
 				c = Color.RED;
 				break;
 			case ADJ_VEL:
-				c = Color.GREEN;
+				c = Color.GRAY;
 				break;
 			case LIN_TAPER_VEL:
 				c = Color.CYAN;
 				break;
 //			case CONST_VEL_ADJ_LEN:
-//				c = Color.BLUE;
+//				c = Color.GREEN;
 //				break;
 
 			default:
 				throw new IllegalStateException("Unknown interpolation mode: "+mode);
 			}
 //			PlotCurveCharacterstics srfChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, PlotSymbol.CIRCLE, 4f, c);
-			PlotCurveCharacterstics srfChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, c);
+			PlotCurveCharacterstics srfChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, c);
 			
 			double[] slips = srf.getCumulativeSlips1();
 			double[] vels = srf.getVelocities1();
@@ -243,8 +250,8 @@ public class RSQSimSRFGenerator {
 			slipFuncs.add(slipFunc);
 			slipChars.add(srfChar);
 			
-			XYTextAnnotation srfAnn = new XYTextAnnotation("Interp "+mode+" Slip: "+(float)slipFunc.getMaxY(),
-					annX, slipMaxY*(1d-0.05*slipFuncs.size()));
+			XYTextAnnotation srfAnn = new XYTextAnnotation("Interp "+mode.name+" Slip: "+slipDF.format(slipFunc.getMaxY()),
+					annX, slipMaxY*(1d-0.06*slipFuncs.size()));
 			srfAnn.setTextAnchor(TextAnchor.TOP_LEFT);
 			srfAnn.setFont(annFont);
 			srfAnn.setPaint(c);
@@ -265,7 +272,7 @@ public class RSQSimSRFGenerator {
 		
 		String title = "SRF Validation";
 		String xAxisLabel = "Time (seconds)";
-		PlotSpec slipSpec = new PlotSpec(slipFuncs, slipChars, title, xAxisLabel, "Slip (m)");
+		PlotSpec slipSpec = new PlotSpec(slipFuncs, slipChars, title, xAxisLabel, "Cumulative Slip (m)");
 		slipSpec.setLegendVisible(true);
 		slipSpec.setPlotAnnotations(slipAnns);
 		
@@ -301,12 +308,12 @@ public class RSQSimSRFGenerator {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File catalogDir = new File("/data/kevin/simulators/catalogs/bruce/rundir2585");
+		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2585_1myr");
 		File geomFile = new File(catalogDir, "zfault_Deepen.in");
-		File transFile = new File(catalogDir, "trans..out");
+		File transFile = new File(catalogDir, "trans.rundir2585_1myrs.out");
 		boolean variableSlipSpeed = transFile.getName().startsWith("transV");
 		
-		int[] eventIDs = { 1670183 };
+		int[] eventIDs = { 9955310 };
 		
 //		File catalogDir = new File("/data/kevin/simulators/catalogs/JG_UCERF3_millionElement");
 //		File geomFile = new File(catalogDir, "UCERF3.D3.1.millionElements.flt");
@@ -320,7 +327,7 @@ public class RSQSimSRFGenerator {
 //		boolean[] velScales = { false, true };
 		
 		boolean plotIndividual = true;
-		int plotMod = 50;
+		int plotMod = 10;
 		boolean writeSRF = false;
 		
 		double slipVel = 1d;
@@ -352,7 +359,8 @@ public class RSQSimSRFGenerator {
 //		double[] dts = { 0.1, 0.05 };
 		SRFInterpolationMode[] modes = { SRFInterpolationMode.ADJ_VEL };
 //		double[] dts = { 0.05 };
-		double[] dts = {  };
+		double[] dts = { 1.0 };
+//		double[] dts = {  };
 		double srfVersion = 1.0;
 		
 		int patchDigits = (elements.size()+"").length();

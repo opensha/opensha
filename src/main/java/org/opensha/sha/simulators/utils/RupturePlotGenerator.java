@@ -134,6 +134,12 @@ public class RupturePlotGenerator {
 	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
 			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
+		writeSlipPlot(event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, false);
+	}
+	
+	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
+			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline, boolean grayscaleFriendly)
+					throws IOException {
 		System.out.println("Estimating DAS");
 		Location[] refFrame;
 		if (rectangle == null)
@@ -145,8 +151,23 @@ public class RupturePlotGenerator {
 		
 		boolean contourTimeCPT = false;
 		
-		CPT slipCPT = GMT_CPT_Files.GMT_HOT.instance().reverse().rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
-		CPT timeCPT = GMT_CPT_Files.GMT_WYSIWYG.instance().rescale(0d, func.getEndTime());
+		CPT slipCPT = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse();
+		slipCPT = slipCPT.rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
+		CPT timeCPT;
+		if (grayscaleFriendly) {
+			double endTime = func.getEndTime();
+			timeCPT = slipCPT.rescale(0d, endTime);
+			if (endTime > 45d)
+				timeCPT = timeCPT.asDiscrete(10d, true);
+			else if (endTime > 20d)
+				timeCPT = timeCPT.asDiscrete(5d, true);
+			else if (endTime > 10d)
+				timeCPT = timeCPT.asDiscrete(2d, true);
+			else
+				timeCPT = timeCPT.asDiscrete(10, true);
+		} else {
+			timeCPT = GMT_CPT_Files.GMT_WYSIWYG.instance().rescale(0d, func.getEndTime());
+		}
 		timeCPT.setAboveMaxColor(timeCPT.getMaxColor());
 		if (contourTimeCPT) {
 			CPT contourCPT = new CPT();
@@ -185,7 +206,8 @@ public class RupturePlotGenerator {
 			}
 		}
 		Stroke hypoStroke = new BasicStroke(1.5f);
-		XYPolygonAnnotation hypoPoly = new XYPolygonAnnotation(star(hypoDAS, hypoDepth, 1), hypoStroke, Color.WHITE, HYPO_COLOR);
+		XYPolygonAnnotation hypoPoly = new XYPolygonAnnotation(star(hypoDAS, hypoDepth, 1.6), hypoStroke, Color.WHITE,
+				grayscaleFriendly ? Color.BLUE : HYPO_COLOR);
 		slipPolys.add(hypoPoly);
 		firstPolys.add(hypoPoly);
 		lastPolys.add(hypoPoly);
@@ -232,7 +254,7 @@ public class RupturePlotGenerator {
 		if (rectHypo != null) {
 			double rectHypoDAS = SimulatorUtils.estimateDAS(refFrame[0], refFrame[1], rectHypo);
 			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
-					star(rectHypoDAS, rectHypo.getDepth(), 1), hypoStroke, Color.WHITE, RECT_HYPO_COLOR);
+					star(rectHypoDAS, rectHypo.getDepth(), 1d), hypoStroke, Color.WHITE, RECT_HYPO_COLOR);
 			slipPolys.add(rectHypoPoly);
 			firstPolys.add(rectHypoPoly);
 			lastPolys.add(rectHypoPoly);
@@ -299,7 +321,7 @@ public class RupturePlotGenerator {
 		
 		PlotPreferences prefs = gp.getPlotPrefs();
 		
-		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Slip (m)",
+		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
 		double timeInc;
 		if (func.getEndTime() > 20)
@@ -310,6 +332,8 @@ public class RupturePlotGenerator {
 			timeInc = 1;
 		PaintScaleLegend timeCPTbar = XYZGraphPanel.getLegendForCPT(timeCPT, "Time (s)",
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), timeInc, RectangleEdge.BOTTOM);
+		slipSpec.addSubtitle(slipCPTbar);
+		lastSpec.addSubtitle(timeCPTbar);
 		
 		List<Range> xRanges = new ArrayList<>();
 		List<Range> yRanges = new ArrayList<>();
@@ -319,8 +343,6 @@ public class RupturePlotGenerator {
 		
 		gp.setyAxisInverted(true);
 		gp.drawGraphPanel(specs, false, false, xRanges, yRanges);
-		gp.addSubtitle(slipCPTbar);
-		gp.addSubtitle(timeCPTbar);
 		
 		int bufferX = 113;
 		int bufferY = 332;
