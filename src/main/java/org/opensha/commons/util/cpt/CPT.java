@@ -765,7 +765,31 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 			cpt.add(new CPTVal(start, color, end, color));
 		}
 		
-//		System.out.print(cpt);
+		return cpt;
+	}
+	
+	public CPT asDiscrete(double delta, boolean preserveEdges) {
+		CPT cpt = (CPT)clone();
+		CPT orig = this;
+		double min = this.getMinValue();
+		double max = this.getMaxValue();
+		if (preserveEdges) {
+			orig = (CPT)clone();
+			orig = orig.rescale(min+0.5*delta, max-0.5*delta);
+		}
+		cpt.clear();
+		
+		for (double start = min; (float)start < (float)max; start += delta) {
+			double end = start + delta;
+			Color color;
+			if (preserveEdges && start == min)
+				color = getMinColor();
+			else if (preserveEdges && (float)end >= (float)max)
+				color = getMaxColor();
+			else
+				color = orig.getColor((float)(0.5*(end + start)));
+			cpt.add(new CPTVal((float)start, color, (float)end, color));
+		}
 		
 		return cpt;
 	}
