@@ -260,13 +260,14 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		
 		String title = getPlotTitle();
 		
+		List<ETAS_EqkRupture> triggerRups = getLauncher().getCombinedTriggers();
 		if (triggeredStats != null && !annualize && durations.length > 1) {
 			// do a summary table
 			lines.add(topLevelHeading+" Probabilities Summary Table");
 			lines.add(topLink); lines.add("");
 			
 			double maxTriggerMag = 0d;
-			for (ETAS_EqkRupture trigger : getLauncher().getTriggerRuptures())
+			for (ETAS_EqkRupture trigger : triggerRups)
 				maxTriggerMag = Math.max(maxTriggerMag, trigger.getMag());
 			
 			double modalMag = totalCountHist.getX(totalCountHist.getXindexForMaxY()) - 0.5*mfdDelta;
@@ -283,7 +284,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 					maxTriggerFound = true;
 				mags.add(mag);
 			}
-			if (!maxTriggerFound) {
+			if (!maxTriggerFound && maxTriggerMag > minTableMag) {
 				mags.add(maxTriggerMag);
 				Collections.sort(mags);
 			}
@@ -373,12 +374,20 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		for (double duration : durations)
 			table.addColumn(getTimeLabel(duration, false)+" Prob");
 		table.finalizeLine();
+		int numForConf = getNumProcessed();
 		for (double mag : mags) {
 			table.initNewLine();
 			table.addColumn("**M&ge;"+optionalDigitDF.format(mag)+"**");
 			for (int d=0; d<durations.length; d++) {
 				double val = stats[d].probFunc.getInterpolatedY(mag);
 				table.addColumn(getProbStr(val, true));
+			}
+			table.finalizeLine();
+			table.initNewLine();
+			table.addColumn("*95% Conf*");
+			for (int d=0; d<durations.length; d++) {
+				double val = stats[d].probFunc.getInterpolatedY(mag);
+				table.addColumn("*"+getConfString(val, numForConf, true)+"*");
 			}
 			table.finalizeLine();
 		}
@@ -462,7 +471,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			confFunc.setName("95% Conf");
 			funcs.add(confFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
-					new Color(probColor.getRed(), probColor.getGreen(), probColor.getBlue(), 30)));
+					new Color(probColor.getRed(), probColor.getGreen(), probColor.getBlue(), 60)));
 			if (supraProbFunc != null) {
 				supraProbFunc.setName("Supra");
 				funcs.add(supraProbFunc);
@@ -800,6 +809,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		builder.addColumn("Mode");
 		if (probFunc != null) {
 			builder.addColumn(getTimeShortLabel(duration)+" Probability");
+			builder.addColumn(getTimeShortLabel(duration)+" Prob 95% Conf");
 			if (supraProbFunc != null)
 				builder.addColumn(getTimeShortLabel(duration)+" Supra-Seis Prob");
 		}
@@ -812,6 +822,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		}
 		builder.finalizeLine();
 		
+		int numForConf = getNumProcessed();
 		for (int i=0; i<meanFunc.size(); i++) {
 			double mag = meanFunc.getX(i);
 			builder.initNewLine();
@@ -826,6 +837,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			builder.addColumn(getProbStr(modeFunc.getY(i)));
 			if (probFunc != null) {
 				builder.addColumn(getProbStr(probFunc.getY(i), true));
+				builder.addColumn(getConfString(probFunc.getY(i), numForConf, true));
 				if (supraProbFunc != null)
 					builder.addColumn(getProbStr(supraProbFunc.getY(i), true));
 			}

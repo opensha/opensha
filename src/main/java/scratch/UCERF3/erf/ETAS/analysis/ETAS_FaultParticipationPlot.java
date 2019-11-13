@@ -51,6 +51,7 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -499,7 +500,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				maxRate = statRate;
 			}
 		}
-		System.out.println("Max rate: "+maxRate+" from "+maxStat.name);
+		if (maxStat != null)
+			System.out.println("Max rate: "+maxRate+" from "+maxStat.name);
 		double fractionalRate;
 		if (annualize)
 			fractionalRate = 1d / Math.max(1d, Math.round(catalogCount * getConfig().getDuration()));
@@ -558,7 +560,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 						if (MAP_D) {
 							if (subSectStats[s].name.toLowerCase().contains("mojave"))
 								System.out.println("DEBUG: "+subSectStats[s].name+", spont?\t"+spont+"\trate: "+particRates[s]);
-							if (subSectStats[s].name == maxStat.name)
+							if (maxStat != null && subSectStats[s].name == maxStat.name)
 								System.out.println("DEBUG: MAX "+subSectStats[s].name+", spont?\t"+spont+"\trate: "+particRates[s]);
 						}
 					}
@@ -985,15 +987,29 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			
 			TableBuilder builder = MarkdownUtils.tableBuilder();
 			builder.initNewLine();
-			for (int col=1; col<parentCSV.getNumCols(); col++)
-				builder.addColumn(parentCSV.get(0, col));
+			for (int col=1; col<parentCSV.getNumCols(); col++) {
+				String header = parentCSV.get(0, col);
+				builder.addColumn(header);
+				if (header.contains("Prob"))
+					builder.addColumn(header.replaceAll("Prob", "95% Conf"));
+			}
 			builder.finalizeLine();
+			
+			int numForConf = getNumProcessed();
 
 			for (int i=0; i<numParentsToPlot; i++) {
 				int row = i+1;
 				builder.initNewLine();
-				for (int col=1; col<parentCSV.getNumCols(); col++)
-					builder.addColumn(parentCSV.get(row, col));
+				for (int col=1; col<parentCSV.getNumCols(); col++) {
+					String colStr = parentCSV.get(row, col);
+					if (parentCSV.get(0, col).contains("Prob")) {
+						double prob = Double.parseDouble(colStr);
+						builder.addColumn(getProbStr(prob, true));
+						builder.addColumn(getConfString(prob, numForConf, true));
+					} else {
+						builder.addColumn(colStr);
+					}
+				}
 				builder.finalizeLine();
 			}
 			
@@ -1015,7 +1031,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		
 		if (!annualize && hasTriggered) {
 			lines.add("");
-			lines.add(topLevelHeading+"# Fault Magnitude-Probability Distributions");
+			lines.add(topLevelHeading+" Fault Magnitude-Probability Distributions");
 			lines.add(topLink); lines.add("");
 			
 			Map<FaultStats, Integer> triggerParentStats = new HashMap<>();

@@ -391,6 +391,40 @@ public class ETAS_Launcher {
 		}
 		return histQkList;
 	}
+	
+	/**
+	 * @return list of all trigger ruptures, including historical catalog if such a catalog
+	 * is supplied and is not treated as spontaneous. Will never return null
+	 */
+	public List<ETAS_EqkRupture> getCombinedTriggers() {
+		List<ETAS_EqkRupture> rups = new ArrayList<>();
+		List<ETAS_EqkRupture> triggers = getTriggerRuptures();
+		if (triggers != null)
+			rups.addAll(triggers);
+		List<ETAS_EqkRupture> hist = getHistQkList();
+		if (hist != null && !config.isTreatTriggerCatalogAsSpontaneous())
+			rups.addAll(hist);
+		return rups;
+	}
+	
+	/**
+	 * If parameters are such that input events will be modified (e.g. kCOV) during simulation,
+	 * this will return a unique list of cloned ruptures which can be modified without affecting
+	 * the original values
+	 * @param inputEvents
+	 * @return
+	 */
+	private List<ETAS_EqkRupture> threadSafeInputs(List<ETAS_EqkRupture> inputEvents) {
+		if (inputEvents == null)
+			return null;
+		if (config.getETAS_K_COV() != null && config.getETAS_K_COV() > 0d) {
+			List<ETAS_EqkRupture> cloned = new ArrayList<>(inputEvents.size());
+			for (ETAS_EqkRupture input : inputEvents)
+				cloned.add((ETAS_EqkRupture)input.clone());
+			return cloned;
+		}
+		return inputEvents;
+	}
 
 	public FaultSystemSolution checkOutFSS() {
 		FaultSystemSolution fss = null;
@@ -806,15 +840,17 @@ public class ETAS_Launcher {
 			while (!success && attempts < retries) {
 				attempts++;
 				try {
+					List<ETAS_EqkRupture> histQkList = threadSafeInputs(getHistQkList());
+					List<ETAS_EqkRupture> triggers = threadSafeInputs(getTriggerRuptures());
 					ETAS_SimulationMetadata meta;
 					if (config.isGriddedOnly()) {
 						meta = ETAS_Simulator_NoFaults.runETAS_Simulation(tempResultsDir, (UCERF3_GriddedSeisOnlyERF_ETAS)erf, griddedRegion,
-								getTriggerRuptures(), getHistQkList(), config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
+								triggers, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed, params, cubeParams);
 					} else {
 						checkLoadCaches();
 						meta = ETAS_Simulator.runETAS_Simulation(tempResultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
-								getTriggerRuptures(), getHistQkList(), config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
+								triggers, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed,
 								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, cubeParams);
 					}

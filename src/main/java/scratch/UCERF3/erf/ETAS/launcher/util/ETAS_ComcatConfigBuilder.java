@@ -29,11 +29,11 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 			String argz = "";
 			
-			argz += " --start-after-historical";
-			argz += " --end-now";
-//			argz += " --end-date 2018-01-01";
-			argz += " --historical-catalog";
-			argz += " --include-spontaneous";
+//			argz += " --start-after-historical";
+//			argz += " --end-now";
+////			argz += " --end-date 2018-01-01";
+//			argz += " --historical-catalog";
+//			argz += " --include-spontaneous";
 			
 			// 10/14-15/2019 bay area M4's
 //			argz += " --start-at nc73291880";
@@ -41,7 +41,12 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 ////			argz += " --end-now";
 //			argz += " --region 38.5,-122.75,36.25,-120.5";
 			
-			argz += " --num-simulations 10000";
+			// 11/7-8/2019 Ventura M3's
+			argz += " --start-at ci38229234";
+			argz += " --end-now";
+			argz += " --region 34.4,-119.5,34.15,-119.1";
+			
+			argz += " --num-simulations 100000";
 //			argz += " --num-simulations 1000";
 			
 //			argz += " --gridded-only";
@@ -62,7 +67,7 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 			
 			// hpc options
 			argz += " --hpc-site USC_HPC";
-			argz += " --nodes 36";
+			argz += " --nodes 17";
 			argz += " --hours 24";
 //			argz += " --queue scec_hiprio";
 			argz += " --queue scec";

@@ -1,22 +1,27 @@
 package scratch.UCERF3.erf.ETAS.analysis;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
 import org.jfree.ui.RectangleEdge;
+import org.jfree.ui.TextAnchor;
 import org.opensha.commons.calc.FractileCurveCalculator;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.comcat.ComcatAccessor;
@@ -112,9 +117,12 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private String[][] mapProbPrefixes;
 	private String[][] mapMeanPrefixes;
 	private String[][] mapMedianPrefixes;
+	private double[][] catalogProbsSummary;
 	private double[][][] catalogProbs;
+	private double[][] catalogMeansSummary;
 	private double[][][] catalogMeans;
 	private double[][][] catalogMedians;
+	private int[][] comcatCountsSummary;
 	
 	private List<IncrementalMagFreqDist> catalogRegionMFDs;
 	private double[] timeFuncMcs;
@@ -133,6 +141,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private boolean plotIncludeMedian = true;
 	private boolean plotIncludeMode = true;
 	private Color dataColor = Color.RED;
+	private Double timeFuncMaxY = null;
+	private Map<Double, String> timeFuncAnns = null;
 	
 	private double[] durations;
 	private long[] maxOTs;
@@ -177,12 +187,13 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		System.out.println("Current duration from start time: "+(float)curDuration);
 		List<Double> durationsList = new ArrayList<>();
 		for (double duration : default_durations)
-			if (duration < curDuration && duration < config.getDuration())
+			if (duration < config.getDuration())
 				durationsList.add(duration);
 		if (curDuration < config.getDuration())
 			durationsList.add(curDuration);
 		else
 			durationsList.add(config.getDuration());
+		Collections.sort(durationsList);
 		durations = Doubles.toArray(durationsList);
 		maxOTs = new long[durations.length];
 		for (int i=0; i<durations.length; i++)
@@ -193,7 +204,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			this.comcatEvents = inputEvents;
 		} else {
 			try {
-				comcatEvents = loadComcatEvents(config, comcatMeta, mapRegion, maxOTs[maxOTs.length-1]);
+				comcatEvents = loadComcatEvents(config, comcatMeta, mapRegion, Long.min(curTime, maxOTs[maxOTs.length-1]));
 			} catch (Exception e) {
 				System.err.println("Error fetching ComCat events, skipping");
 				e.printStackTrace();
@@ -220,13 +231,18 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		ComcatMetadata comcatMeta = config.getComcatMetadata();
 		comcatMaxMag = 0d;
 		comcatMND = new IncrementalMagFreqDist(ETAS_MFD_Plot.mfdMinMag, ETAS_MFD_Plot.mfdNumMag, ETAS_MFD_Plot.mfdDelta);
-		for (ObsEqkRupture rup : comcatEvents) {
-			comcatMaxMag = Math.max(comcatMaxMag, rup.getMag());
-			comcatMND.add(comcatMND.getClosestXIndex(rup.getMag()), 1d);
+		if (comcatEvents.isEmpty()) {
+			modalMag = comcatMND.getX(0)-0.5*comcatMND.getDelta();
+			System.out.println("No ComCat events in region.");
+		} else {
+			for (ObsEqkRupture rup : comcatEvents) {
+				comcatMaxMag = Math.max(comcatMaxMag, rup.getMag());
+				comcatMND.add(comcatMND.getClosestXIndex(rup.getMag()), 1d);
+			}
+			modalMag = comcatMND.getX(comcatMND.getXindexForMaxY())-0.5*comcatMND.getDelta();
+			System.out.println("Found "+comcatEvents.size()+" ComCat events in region. Max mag: "
+					+(float)comcatMaxMag+". Modal mag: "+(float)modalMag);
 		}
-		modalMag = comcatMND.getX(comcatMND.getXindexForMaxY())-0.5*comcatMND.getDelta();
-		System.out.println("Found "+comcatEvents.size()+" ComCat events in region. Max mag: "
-				+(float)comcatMaxMag+". Modal mag: "+(float)modalMag);
 		if (comcatMeta.magComplete == null) {
 			System.out.println("Using default Mc = modalMag + 0.5");
 			comcatMc = modalMag + 0.5;
@@ -307,10 +323,14 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		
 		if (map_plot_medians)
 			catalogDurMagGridCounts = new ArrayList<>();
-		if (map_plot_probs)
+		if (map_plot_probs) {
 			catalogProbs = new double[durations.length][magBins.length][gridRegion.getNodeCount()];
-		if (map_plot_means)
+			catalogProbsSummary = new double[durations.length][magBins.length];
+		}
+		if (map_plot_means) {
 			catalogMeans = new double[durations.length][magBins.length][gridRegion.getNodeCount()];
+			catalogMeansSummary = new double[durations.length][magBins.length];
+		}
 		catalogRegionMFDs = new ArrayList<>();
 		catalogTimeFuncs = new ArrayList<>();
 		
@@ -456,7 +476,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return true;
 	}
 	
-	private static final int VERSION = 15;
+	private static final int VERSION = 16;
 
 	@Override
 	public int getVersion() {
@@ -558,8 +578,6 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
-		if (comcatEvents.isEmpty())
-			return;
 		synchronized (this) {
 			if (comcatMND == null)
 				init();
@@ -581,23 +599,26 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			Location hypo = rup.getHypocenterLocation();
 			if (!quickContains(hypo))
 				continue;
-			catMFD.add(mfdIndex, 1d);
 			double timeDepMc = calcTimeDepMc(rup);
-			if (mag < magBins[1] && mag < timeDepMc)
-				continue;
-			if (mag >= timeFuncMcs[0]) {
-				int timeIndex = getTimeFuncIndex(rup);
-				for (int m=0; m<timeFuncMcs.length; m++) {
-					if (isRupAboveMinMag(rup, timeFuncMcs[m], timeDepMc)) {
-						for (int i=timeIndex; i<timeFuncs[m].size(); i++)
-							timeFuncs[m].add(i, 1d);
+			if (ot <= curTime) {
+				// include in direct comparisons
+				catMFD.add(mfdIndex, 1d);
+				if (mag < magBins[1] && mag < timeDepMc)
+					continue;
+				if (mag >= timeFuncMcs[0]) {
+					int timeIndex = getTimeFuncIndex(rup);
+					for (int m=0; m<timeFuncMcs.length; m++) {
+						if (isRupAboveMinMag(rup, timeFuncMcs[m], timeDepMc)) {
+							for (int i=timeIndex; i<timeFuncs[m].size(); i++)
+								timeFuncs[m].add(i, 1d);
+						}
 					}
 				}
+				int depthIndex = catalogDepthDistributions[0].getClosestXIndex(hypo.getDepth());
+				for (int m=0; m<magBins.length; m++)
+					if (isRupAboveMinMag(rup, magBins[m], timeDepMc))
+						catalogDepthDistributions[m].add(depthIndex, 1d);
 			}
-			int depthIndex = catalogDepthDistributions[0].getClosestXIndex(hypo.getDepth());
-			for (int m=0; m<magBins.length; m++)
-				if (isRupAboveMinMag(rup, magBins[m], timeDepMc))
-					catalogDepthDistributions[m].add(depthIndex, 1d);
 			int gridNode = gridRegion.indexForLocation(hypo);
 			if (gridNode >= 0) {
 				for (int d=0; d<durations.length; d++) {
@@ -621,13 +642,19 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		if (map_plot_probs || map_plot_means) {
 			for (int d=0; d<durations.length; d++) {
 				for (int m=0; m<magBins.length; m++) {
+					double totCount = 0d;
 					for (int n=0; n<gridRegion.getNodeCount(); n++) {
 						short count = magGridCounts[d][m] == null ? 0 : magGridCounts[d][m][n];
+						totCount += count;
 						if (map_plot_probs && count > 0)
 							catalogProbs[d][m][n]++;
 						if (map_plot_means)
 							catalogMeans[d][m][n] += count;
 					}
+					if (map_plot_probs && totCount > 0)
+						catalogProbsSummary[d][m]++;
+					if (map_plot_means)
+						catalogMeansSummary[d][m] += totCount;
 				}
 			}
 		}
@@ -656,6 +683,14 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		this.dataColor = dataColor;
 	}
 	
+	public void setTimeFuncMaxY(Double timeFuncMaxY) {
+		this.timeFuncMaxY = timeFuncMaxY;
+	}
+	
+	public void setTimeFuncAnns(Map<Double, String> timeFuncAnns) {
+		this.timeFuncAnns = timeFuncAnns;
+	}
+	
 	private static String minMagPrefix(double mag) {
 		if (mag < 0)
 			return "td_mc";
@@ -667,19 +702,23 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			return "M≥Mc(t)";
 		return "M≥"+optionalDigitDF.format(mag);
 	}
+	
+	private boolean shouldIncludeMinMag(double minMag) {
+		boolean ret = ((float)minMag >= (float)simMc) || (minMag < 0 && (float)simMc <= (float)tdMinMag);
+//		System.out.println("should-include = "+ret+":\tminMag="+minMag+"\tsimMc="+simMc+"\ttdMinMag="+tdMinMag);
+		return ret;
+	}
 
 	@Override
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
-		if (comcatEvents.isEmpty())
-			return null;
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		simMc = totalCountHist.getX(numToTrim)-0.5*totalCountHist.getDelta();
 		System.out.println("Building ComCat time func plot runnables");
 		List<Runnable> runnables = new ArrayList<>();
 		overallMc = Math.max(comcatMc, simMc);
 		for (int m=0; m<timeFuncMcs.length; m++)
-			if (timeFuncMcs[m] < 0 || (float)timeFuncMcs[m] >= (float)simMc)
+			if (shouldIncludeMinMag(timeFuncMcs[m]))
 				runnables.add(new TimeFuncPlotRunnable(outputDir,
 						"comcat_compare_cumulative_num_"+minMagPrefix(timeFuncMcs[m]), m));
 		System.out.println("Writing ComCat Incremental MND");
@@ -700,6 +739,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		System.out.println("Calculating ComCat map data");
 		calcMapData();
 		System.out.println("Will write ComCat maps in parallel in background");
+		comcatCountsSummary = new int[durations.length][magBins.length];
 		if (map_plot_probs)
 			mapProbPrefixes = writeMapPlots(outputDir, "comcat_compare_prob", "Probability", catalogProbs, true, fss.getRupSet(), runnables);
 		if (map_plot_means)
@@ -802,10 +842,30 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		double maxMean = timeFractals.getMeanCurve().getMaxY();
 		double maxUpper = timeFractals.getFractile(0.975).getMaxY();
 		
-		double maxY = Math.max(2*maxData,
+		double maxY = timeFuncMaxY != null ? timeFuncMaxY : Math.max(2*maxData,
 				Math.max(Math.min(2*maxMean, 1.5*maxUpper), 1.25*maxMean));
 		if (maxY <= 1d || !Double.isFinite(maxY))
 			maxY = 1d;
+		
+		if (timeFuncAnns != null && !timeFuncAnns.isEmpty()) {
+			List<XYTextAnnotation> anns = new ArrayList<>();
+			Font font = new Font(Font.SANS_SERIF, Font.BOLD, 18);
+			for (double xVal : timeFuncAnns.keySet()) {
+				String label = timeFuncAnns.get(xVal);
+				if (!timeDays)
+					xVal /= 365.25;
+				DefaultXY_DataSet xy = new DefaultXY_DataSet();
+				xy.set(xVal, 0d);
+				xy.set(xVal, maxY);
+				funcs.add(xy);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.BLACK));
+				XYTextAnnotation ann = new XYTextAnnotation(" "+label, xVal, 0.025*maxY);
+				ann.setTextAnchor(TextAnchor.BASELINE_LEFT);
+				ann.setFont(font);
+				anns.add(ann);
+			}
+			spec.setPlotAnnotations(anns);
+		}
 		
 		HeadlessGraphPanel gp = buildGraphPanel();
 		gp.setLegendFontSize(18);
@@ -1044,10 +1104,10 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		maxCurve.setName(null);
 		
 		funcs.add(minCurve);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.GRAY));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.BLACK));
 
 		funcs.add(maxCurve);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.GRAY));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.BLACK));
 		
 		String fractileStr = null;
 		List<XY_DataSet> fractileFuncs = new ArrayList<>();
@@ -1157,6 +1217,10 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 					if (map_plot_means)
 						catalogMeans[d][m][n] *= scalar;
 				}
+				if (map_plot_probs)
+					catalogProbsSummary[d][m] *= scalar;
+				if (map_plot_means)
+					catalogMeansSummary[d][m] *= scalar;
 			}
 		}
 	}
@@ -1221,7 +1285,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			String durPrefix = (float)durations[d] == (float)curDuration ?
 					"current" : getTimeShortLabel(durations[d]).replace(" ", "");
 			for (int m=0; m<magBins.length; m++) {
-				if (magBins[m] >= 0d && magBins[m] < simMc)
+				if (!shouldIncludeMinMag(magBins[m]))
 					continue;
 				String myPrefix = prefix+"_"+durPrefix+"_"+minMagPrefix(magBins[m]);
 				prefixes[d][m] = myPrefix;
@@ -1231,12 +1295,18 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 					xyz.set(i, data[d][m][i]);
 				
 				List<ObsEqkRupture> catalogEvents = new ArrayList<>();
-				ObsEqkRupList comcatEvents = magBins[m] < 0 ? comcatEventsFilteredTDMc : this.comcatEvents;
-				for (ObsEqkRupture rup : comcatEvents)
-					if (rup.getMag() >= magBins[m] && rup.getOriginTime() <= maxOTs[d])
-						catalogEvents.add(rup);
+				String title = getTimeLabel(durations[d], false)+" "+minMagLabel(magBins[m]);
+				if (maxOTs[d] <= curTime) {
+					ObsEqkRupList comcatEvents = magBins[m] < 0 ? comcatEventsFilteredTDMc : this.comcatEvents;
+					for (ObsEqkRupture rup : comcatEvents)
+						if (rup.getMag() >= magBins[m] && rup.getOriginTime() <= maxOTs[d])
+							catalogEvents.add(rup);
+					comcatCountsSummary[d][m] = catalogEvents.size();
+					title += " Comparison";
+				} else {
+					title += " Forecast";
+				}
 				
-				String title = getTimeLabel(durations[d], false)+" "+minMagLabel(magBins[m])+" Comparison";
 //				String title = " ";
 				
 				String zLabel = zName+" "+minMagLabel(magBins[m])+", "+getTimeLabel(durations[d], false);
@@ -1369,7 +1439,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	
 	private void writeDepthPlots(File outputDir, String prefix) throws IOException {
 		for (int m=0; m<magBins.length; m++) {
-			if (magBins[m] >= 0d && magBins[m] < simMc)
+			if (!shouldIncludeMinMag(magBins[m]))
 				continue;
 			List<XY_DataSet> funcs = new ArrayList<>();
 			List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -1431,16 +1501,13 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		lines.add(topLevelHeading+" ComCat Data Comparisons");
 		lines.add(topLink); lines.add("");
 		
-		if (comcatEvents.isEmpty()) {
-			lines.add("No ComCat events found");
-			return lines;
-		}
-		
 		lines.add("These plots compare simulated sequences with data from ComCat. All plots only consider events with hypocenters "
 				+ "inside the ComCat region defined in the JSON input file.");
 		lines.add("");
 		lines.add("Last updated at "+SimulationMarkdownGenerator.df.format(new Date(curTime))
-			+", "+getTimeShortLabel(curDuration)+" after the simulation start time");
+			+", "+getTimeLabel(curDuration, true).toLowerCase()+" after the simulation start time.");
+		lines.add("");
+		lines.add("Total matching ComCat events found: "+comcatEvents.size());
 		lines.add("");
 		
 		lines.add(topLevelHeading+"# ComCat Magnitude-Number Distributions");
@@ -1452,21 +1519,23 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		lines.addAll(table.build());
 		lines.add("");
 		
-		lines.add(topLevelHeading+"# ComCat Time-Dependent Mc");
-		lines.add(topLink); lines.add("");
-		lines.add("The following plots compare simulation results with ComCat data above a magnitude threshold. "
-				+ "Plots labeled as *M&ge;Mc(t)* use the time-dependent magnitude of completeness (Mc) "
-				+ "defined in Helmstetter et al. (2006), which is plotted below. In the case of multiple "
-				+ "M&ge;"+optionalDigitDF.format(MAX_MAG_FOR_TD_MC)+" ruptures, either as input to the "
-				+ "simulation or in the comparison data, the maximum calculated time-dependent Mc is used. "
-				+ "This time-dependent Mc function is plotted below.");
-		lines.add("");
-		lines.add("![TD MC]("+relativePathToOutputDir+"/comcat_compare_td_mc.png)");
-		lines.add("");
+		if (shouldIncludeMinMag(-1)) {
+			lines.add(topLevelHeading+"# ComCat Time-Dependent Mc");
+			lines.add(topLink); lines.add("");
+			lines.add("The following plots compare simulation results with ComCat data above a magnitude threshold. "
+					+ "Plots labeled as *M&ge;Mc(t)* use the time-dependent magnitude of completeness (Mc) "
+					+ "defined in Helmstetter et al. (2006), which is plotted below. In the case of multiple "
+					+ "M&ge;"+optionalDigitDF.format(MAX_MAG_FOR_TD_MC)+" ruptures, either as input to the "
+					+ "simulation or in the comparison data, the maximum calculated time-dependent Mc is used. "
+					+ "This time-dependent Mc function is plotted below.");
+			lines.add("");
+			lines.add("![TD MC]("+relativePathToOutputDir+"/comcat_compare_td_mc.png)");
+			lines.add("");
+		}
 		
 		List<Double> timeFuncMags = new ArrayList<>();
 		for (double mag : timeFuncMcs)
-			if (mag < 0 || (float)mag >= (float)simMc)
+			if (shouldIncludeMinMag(mag))
 				timeFuncMags.add(mag);
 		if (!timeFuncMags.isEmpty()) {
 			lines.add(topLevelHeading+"# ComCat Cumulative Number Vs Time");
@@ -1490,30 +1559,46 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		lines.add("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num_percentile.png)");
 		lines.add("");
 		
+		String mapForecastLine = null;
+		if (curTime < maxOTs[maxOTs.length-1])
+			mapForecastLine = "*Note: maps labeled 'Forecast' are for a duration that extends into the future, "
+					+ "only forecasted values are plotted (ComCat data omitted)*";
 		if (map_plot_probs) {
 			lines.add(topLevelHeading+"# ComCat Probability Spatial Distribution");
 			lines.add(topLink); lines.add("");
-			lines.addAll(mapPlotTable(relativePathToOutputDir, mapProbPrefixes).build());
+			if (mapForecastLine != null) {
+				lines.add(mapForecastLine);
+				lines.add("");
+			}
+			lines.addAll(mapPlotTable(relativePathToOutputDir, mapProbPrefixes, catalogProbsSummary, true).build());
 			lines.add("");
 		}
 		
 		if (map_plot_means) {
 			lines.add(topLevelHeading+"# ComCat Mean Expectation Spatial Distribution");
 			lines.add(topLink); lines.add("");
-			lines.addAll(mapPlotTable(relativePathToOutputDir, mapMeanPrefixes).build());
+			if (mapForecastLine != null) {
+				lines.add(mapForecastLine);
+				lines.add("");
+			}
+			lines.addAll(mapPlotTable(relativePathToOutputDir, mapMeanPrefixes, catalogMeansSummary, false).build());
 			lines.add("");
 		}
 		
 		if (map_plot_medians) {
 			lines.add(topLevelHeading+"# ComCat Spatial Distribution, Median");
 			lines.add(topLink); lines.add("");
-			lines.addAll(mapPlotTable(relativePathToOutputDir, mapMedianPrefixes).build());
+			if (mapForecastLine != null) {
+				lines.add(mapForecastLine);
+				lines.add("");
+			}
+			lines.addAll(mapPlotTable(relativePathToOutputDir, mapMedianPrefixes, null, false).build());
 			lines.add("");
 		}
 		
 		List<Double> depthMags = new ArrayList<>();
 		for (double mag : magBins)
-			if (mag < 0 || mag >= simMc)
+			if (shouldIncludeMinMag(mag))
 				depthMags.add(mag);
 		if (!depthMags.isEmpty()) {
 			lines.add(topLevelHeading+"# ComCat Depth Distribution");
@@ -1534,25 +1619,44 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return lines;
 	}
 	
-	private TableBuilder mapPlotTable(String relativePathToOutputDir, String[][] prefixes) {
+	private TableBuilder mapPlotTable(String relativePathToOutputDir, String[][] prefixes,
+			double[][] valueSummaries, boolean prob) {
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
 		table.addColumn("");
 		for (double duration : durations) {
 			if ((float)duration == (float)curDuration)
 				table.addColumn("Current ("+getTimeLabel(duration, false)+")");
+			else if ((float)duration > (float)curDuration)
+				table.addColumn("Forecast: "+getTimeLabel(duration, false));
 			else
 				table.addColumn(getTimeLabel(duration, false));
 		}
 		table.finalizeLine();
 		for (int m=0; m<magBins.length; m++) {
-			if (magBins[m] >= 0 && magBins[m] < simMc)
+			if (!shouldIncludeMinMag(magBins[m]))
 				continue;
 			table.initNewLine();
 			table.addColumn("**"+minMagLabel(magBins[m]).replaceAll("≥", "&ge;")+"**");
 			for (int d=0; d<durations.length; d++)
 				table.addColumn("![Map]("+relativePathToOutputDir+"/"+prefixes[d][m]+".png)");
 			table.finalizeLine();
+			if (valueSummaries != null) {
+				table.initNewLine();
+				table.addColumn("");
+				for (int d=0; d<durations.length; d++) {
+					String col;
+					if (prob)
+						col = "Prob: "+percentProbDF.format(valueSummaries[d][m]);
+					else
+						col = "Mean: "+getProbStr(valueSummaries[d][m]);
+					if ((float)durations[d] <= (float)curDuration) {
+						col += ", Actual: "+comcatCountsSummary[d][m];
+					}
+					table.addColumn(col);
+				}
+				table.finalizeLine();
+			}
 		}
 		return table;
 	}

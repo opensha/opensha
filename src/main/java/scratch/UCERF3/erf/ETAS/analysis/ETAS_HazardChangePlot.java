@@ -126,11 +126,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			return;
 		ETAS_Launcher launcher = getLauncher();
 		ETAS_Config config = getConfig();
-		List<ETAS_EqkRupture> triggerRups = new ArrayList<>();
-		if (launcher.getTriggerRuptures() != null)
-			triggerRups.addAll(launcher.getTriggerRuptures());
-		if (!config.isTreatTriggerCatalogAsSpontaneous() && launcher.getHistQkList() != null)
-			triggerRups.addAll(launcher.getHistQkList());
+		List<ETAS_EqkRupture> triggerRups = launcher.getCombinedTriggers();
 		Preconditions.checkState(!triggerRups.isEmpty(), "No trigger ruptures?");
 		
 		triggerRegions = new ArrayList<>();

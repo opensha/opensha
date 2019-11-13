@@ -64,6 +64,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	private double[] durations;
 	
 	private boolean noTitles = false;
+	private boolean includeInputEvents = true;
 	private Region forceRegion = null;
 
 	public ETAS_SimulatedCatalogPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, double... percentiles) {
@@ -96,7 +97,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		if (Double.isNaN(maxMag)) {
 			maxMag = 0d;
 			if (getConfig().hasTriggers())
-				for (ETAS_EqkRupture trigger : getLauncher().getTriggerRuptures())
+				for (ETAS_EqkRupture trigger : getLauncher().getCombinedTriggers())
 					maxMag = Math.max(maxMag, trigger.getMag());
 		}
 		double myCount = completeCatalog.size();
@@ -136,6 +137,10 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	public void setHideTitles() {
 		this.noTitles = true;
 	}
+	
+	public void setHideInputEvents() {
+		this.includeInputEvents = false;
+	}
 
 	public void setForceRegion(Region forceRegion) {
 		this.forceRegion = forceRegion;
@@ -159,6 +164,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		PlotCurveCharacterstics faultTraceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.LIGHT_GRAY);
 		PlotCurveCharacterstics faultOutlineChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 1.5f, Color.LIGHT_GRAY);
 		
+		boolean first = true;
 		for (FaultSectionPrefData sect : fss.getRupSet().getFaultSectionDataList()) {
 			RuptureSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
 			List<XY_DataSet> outlines = ETAS_EventMapPlotUtils.getSurfOutlines(surf);
@@ -169,8 +175,10 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 			List<XY_DataSet> traces = ETAS_EventMapPlotUtils.getSurfTraces(surf);
 			for (int i=0; i<traces.size(); i++) {
 				XY_DataSet trace = traces.get(i);
-				if (i == 0)
+				if (first) {
 					trace.setName("Fault Traces");
+					first = false;
+				}
 				inputFuncs.add(trace);
 				inputChars.add(faultTraceChar);
 			}
@@ -179,8 +187,8 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		MinMaxAveTracker inputLatTrack = new MinMaxAveTracker();
 		MinMaxAveTracker inputLonTrack = new MinMaxAveTracker();
 		
-		if (getConfig().hasTriggers()) {
-			List<ETAS_EqkRupture> triggers = getLauncher().getTriggerRuptures();
+		if (getConfig().hasTriggers() && includeInputEvents) {
+			List<ETAS_EqkRupture> triggers = getLauncher().getCombinedTriggers();
 			ETAS_EventMapPlotUtils.buildEventPlot(triggers, inputFuncs, inputChars, maxMag);
 			for (ETAS_EqkRupture trigger : triggers) {
 				Location loc = trigger.getHypocenterLocation();
@@ -190,7 +198,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 				}
 			}
 			// reset color to gray
-			boolean first = true;
+			first = true;
 			for (int i=0; i<inputFuncs.size(); i++) {
 				if (first && inputChars.get(i).getSymbol() != null) {
 					inputFuncs.get(i).setName("Input Events");

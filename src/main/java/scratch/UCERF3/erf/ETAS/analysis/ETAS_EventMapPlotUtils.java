@@ -3,6 +3,7 @@ package scratch.UCERF3.erf.ETAS.analysis;
 import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,7 +57,7 @@ public class ETAS_EventMapPlotUtils {
 		ComcatMetadata meta = config.getComcatMetadata();
 		Region mapRegion = meta == null ? null : meta.region;
 		if (mapRegion == null) {
-			List<ETAS_EqkRupture> triggerRups = launcher.getTriggerRuptures();
+			List<ETAS_EqkRupture> triggerRups = launcher.getCombinedTriggers();
 			if (triggerRups != null && !triggerRups.isEmpty()) {
 				MinMaxAveTracker latTrack = new MinMaxAveTracker();
 				MinMaxAveTracker lonTrack = new MinMaxAveTracker();
@@ -165,7 +166,12 @@ public class ETAS_EventMapPlotUtils {
 				PlotCurveCharacterstics plotChar = new PlotCurveCharacterstics(symbol, (float)symbolWidth, color);
 				magChars.add(plotChar);
 				DefaultXY_DataSet xy = new DefaultXY_DataSet();
-				xy.setName("M"+(int)minMag);
+				if (minMag == magFloor && magTrack.getMin() >= minMag + 0.11) {
+					// special case for first bin if it starts at a fractional value
+					xy.setName("M"+optionalDigitDF.format(magTrack.getMin()));
+				} else {
+					xy.setName("M"+(int)minMag);
+				}
 				magXYs.add(xy);
 			}
 		} else {
@@ -255,6 +261,8 @@ public class ETAS_EventMapPlotUtils {
 		}
 	}
 	
+	private static final DecimalFormat optionalDigitDF = new DecimalFormat("0.#");
+	
 	public static List<XY_DataSet> getSurfTraces(RuptureSurface surf) {
 		List<RuptureSurface> allSurfs = new ArrayList<>();
 		if (surf instanceof CompoundSurface)
@@ -272,7 +280,13 @@ public class ETAS_EventMapPlotUtils {
 	}
 	
 	public static List<XY_DataSet> getSurfOutlines(RuptureSurface surf) {
-		double dip = surf.getAveDip();
+		double dip;
+		try {
+			dip = surf.getAveDip();
+		} catch (Exception e) {
+			// can fail for some implementations, default to not assuming SS
+			dip = 45;
+		}
 		List<RuptureSurface> allSurfs = new ArrayList<>();
 		if (surf instanceof CompoundSurface)
 			allSurfs.addAll(((CompoundSurface)surf).getSurfaceList());

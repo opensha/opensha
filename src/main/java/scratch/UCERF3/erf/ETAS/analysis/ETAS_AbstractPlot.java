@@ -24,9 +24,12 @@ import com.google.common.primitives.Doubles;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator.PlotResult;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration.Callback;
 
 public abstract class ETAS_AbstractPlot {
 	
@@ -36,6 +39,8 @@ public abstract class ETAS_AbstractPlot {
 	private Stopwatch processStopwatch;
 	
 	private AsyncManager asyncManager;
+	
+	private int numProcessed = 0;
 
 	protected ETAS_AbstractPlot(ETAS_Config config, ETAS_Launcher launcher) {
 		this.config = config;
@@ -86,6 +91,18 @@ public abstract class ETAS_AbstractPlot {
 		return false;
 	}
 	
+	protected void processCatalogsFile(File catalogsFile) {
+		FaultSystemSolution fss = getLauncher().checkOutFSS();
+		ETAS_CatalogIteration.processCatalogs(catalogsFile, new Callback() {
+			
+			@Override
+			public void processCatalog(ETAS_Catalog catalog, int index) {
+				ETAS_AbstractPlot.this.processCatalog(catalog, fss);
+			}
+		});
+		getLauncher().checkInFSS(fss);
+	}
+	
 	public final void processCatalog(ETAS_Catalog catalog, FaultSystemSolution fss) {
 		ETAS_Catalog triggeredOnlyCatalog = null;
 		if (isFilterSpontaneous())
@@ -106,6 +123,14 @@ public abstract class ETAS_AbstractPlot {
 		} finally {
 			processStopwatch.stop();
 		}
+		numProcessed++;
+	}
+	
+	/**
+	 * @return the number of catalogs processed, assuming that any asynchronous ones have already completed
+	 */
+	protected int getNumProcessed() {
+		return numProcessed;
 	}
 	
 	public long getProcessTimeMS() {
@@ -257,15 +282,19 @@ public abstract class ETAS_AbstractPlot {
 		return label;
 	}
 	
-	private static DecimalFormat normProbDF = new DecimalFormat("0.000");
-	private static DecimalFormat expProbDF = new DecimalFormat("0.00E0");
-	private static DecimalFormat percentProbDF = new DecimalFormat("0.00%");
+	protected static DecimalFormat normProbDF = new DecimalFormat("0.000");
+	protected static DecimalFormat expProbDF = new DecimalFormat("0.00E0");
+	protected static DecimalFormat percentProbDF = new DecimalFormat("0.00%");
 	
 	protected static String getProbStr(double prob) {
 		return getProbStr(prob, false);
 	}
 	
 	protected static String getProbStr(double prob, boolean includePercent) {
+		return getProbStr(prob, includePercent, -1);
+	}
+	
+	protected static String getProbStr(double prob, boolean includePercent, int numForConf) {
 		String ret;
 		if (prob < 0.01 && prob > 0)
 			ret = expProbDF.format(prob);
@@ -273,55 +302,64 @@ public abstract class ETAS_AbstractPlot {
 			ret = normProbDF.format(prob);
 		if (includePercent)
 			ret += " ("+percentProbDF.format(prob)+")";
+		if (numForConf > 0)
+			ret += ", <small>*CI<sup>95%</sup>="+getConfString(prob, numForConf, includePercent)+"*</small>";
 		return ret;
 	}
 	
-	public static void main(String[] args) {
-		List<Double> times = new ArrayList<>(Doubles.asList(ETAS_HazardChangePlot.times));
-		double month = 1d/12d;
-		double day = 1/365.25;
-		times.add(day / 24);
-		times.add(1.5 * day / 24);
-		times.add(2 * day / 24);
-		times.add(day * 1);
-		times.add(day * 2);
-		times.add(day * 3);
-		times.add(day * 4);
-		times.add(day * 5);
-		times.add(day * 6);
-		times.add(day * 7);
-		times.add(day * 14);
-		times.add(day * 21);
-		times.add(day * 28);
-		times.add(day * 30);
-		times.add(day * 31);
-		times.add(day * 35);
-		times.add(day * 60);
-		times.add(day * 61);
-		times.add(day * 62);
-		times.add(day * 90);
-		times.add(day * 91);
-		times.add(day * 92);
-		times.add(1.1);
-		times.add(month*1);
-		times.add(month*1.04);
-		times.add(month*1.05);
-		times.add(month*1.06);
-		times.add(month*1.94);
-		times.add(month*1.95);
-		times.add(month*1.96);
-		times.add(month*2);
-		times.add(month*2.04);
-		times.add(month*2.05);
-		times.add(month*2.06);
-		times.add(day*0.9);
-		times.add(day*0.95);
-		times.add(day*1.04);
-		times.add(day*1.1);
-		times.add(day*1.5);
-		for (double time : times)
-			System.out.println((float)time+" =>\t"+getTimeLabel(time, true)+"\t"+getTimeLabel(time, false)+"\t"+getTimeShortLabel(time));
+	protected static String getConfString(double prob, int num, boolean percent) {
+		double[] conf = ETAS_Utils.getBinomialProportion95confidenceInterval(prob, num);
+		if (percent)
+			return "["+percentProbDF.format(conf[0])+" "+percentProbDF.format(conf[1])+"]";
+		return "["+getProbStr(conf[0])+" "+getProbStr(conf[1])+"]";
 	}
+	
+//	public static void main(String[] args) {
+//		List<Double> times = new ArrayList<>(Doubles.asList(ETAS_HazardChangePlot.times));
+//		double month = 1d/12d;
+//		double day = 1/365.25;
+//		times.add(day / 24);
+//		times.add(1.5 * day / 24);
+//		times.add(2 * day / 24);
+//		times.add(day * 1);
+//		times.add(day * 2);
+//		times.add(day * 3);
+//		times.add(day * 4);
+//		times.add(day * 5);
+//		times.add(day * 6);
+//		times.add(day * 7);
+//		times.add(day * 14);
+//		times.add(day * 21);
+//		times.add(day * 28);
+//		times.add(day * 30);
+//		times.add(day * 31);
+//		times.add(day * 35);
+//		times.add(day * 60);
+//		times.add(day * 61);
+//		times.add(day * 62);
+//		times.add(day * 90);
+//		times.add(day * 91);
+//		times.add(day * 92);
+//		times.add(1.1);
+//		times.add(month*1);
+//		times.add(month*1.04);
+//		times.add(month*1.05);
+//		times.add(month*1.06);
+//		times.add(month*1.94);
+//		times.add(month*1.95);
+//		times.add(month*1.96);
+//		times.add(month*2);
+//		times.add(month*2.04);
+//		times.add(month*2.05);
+//		times.add(month*2.06);
+//		times.add(day*0.9);
+//		times.add(day*0.95);
+//		times.add(day*1.04);
+//		times.add(day*1.1);
+//		times.add(day*1.5);
+//		for (double time : times)
+//			System.out.println((float)time+" =>\t"+getTimeLabel(time, true)+"\t"+getTimeLabel(time, false)+"\t"+getTimeShortLabel(time));
+//	}
 	
 	private static final int GLOBAL_MAX_PRELOAD = 50;
 	private static final double MAX_PRELOAD_YEARS = 1000;

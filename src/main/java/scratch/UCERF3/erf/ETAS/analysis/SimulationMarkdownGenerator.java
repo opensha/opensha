@@ -137,8 +137,8 @@ public class SimulationMarkdownGenerator {
 //			System.out.println(getGitCommitTime(gitHash));
 //			System.exit(0);
 //			args = new String[] { configFile.getAbsolutePath() };
-			args = new String[] { "--threads", "1", configFile.getAbsolutePath() };
-//			args = new String[] { "--force-update", configFile.getAbsolutePath() };
+//			args = new String[] { "--threads", "1", configFile.getAbsolutePath() };
+			args = new String[] { "--force-update", configFile.getAbsolutePath() };
 //			args = new String[] { "--num-catalogs", "10000", configFile.getAbsolutePath() };
 		}
 		
@@ -378,7 +378,9 @@ public class SimulationMarkdownGenerator {
 		if (hasTriggers) {
 			plots.add(new ETAS_MFD_Plot(config, launcher, "mag_num_cumulative", annualizeMFDs, true));
 			plots.add(new ETAS_HazardChangePlot(config, launcher, "hazard_change_100km", 100d));
-			plots.add(new ETAS_TriggerRuptureFaultDistancesPlot(config, launcher, 20d));
+			if (config.getTriggerRuptures() != null && !config.getTriggerRuptures().isEmpty())
+				// don't do this for historical catalog
+				plots.add(new ETAS_TriggerRuptureFaultDistancesPlot(config, launcher, 20d));
 			List<Double> percentiles = new ArrayList<>();
 			percentiles.add(0d);
 			percentiles.add(25d);

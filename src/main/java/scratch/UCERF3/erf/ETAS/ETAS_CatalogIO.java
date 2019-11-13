@@ -960,14 +960,18 @@ public class ETAS_CatalogIO {
 		}
 		
 		private void checkLoad() throws IOException {
-			if (curEndPos > curStartPos)
+//			System.out.println("checkLoad()");
+			if (curEndPos > 0 && curEndPos >= curStartPos) {
 				// already loaded
+//				System.out.println("already loaded. curEndPos="+curEndPos+", curStartPos="+curStartPos);
 				return;
+			}
 			current = null;
 			curEndPos = -1;
 			curNumRuptures = -1;
 			curVersion = -1;
 			if (curIndex >= numCatalogs-1) {
+//				System.out.println("after end");
 				ra.close();
 				return;
 			}
@@ -997,6 +1001,8 @@ public class ETAS_CatalogIO {
 
 		@Override
 		public synchronized boolean hasNext() {
+//			System.out.println("BEGIN hasNext(): curIndex="+curIndex+", numCatalogs="+numCatalogs+", curEndPos="+curEndPos
+//					+", curStartPos="+curStartPos);
 			if (curIndex >= numCatalogs)
 				return false;
 			try {
@@ -1005,7 +1011,9 @@ public class ETAS_CatalogIO {
 				System.err.println("WARNING: truncated? "+e.getMessage());
 				return false;
 			}
-			return curEndPos > curStartPos;
+//			System.out.println("END hasNext(): curIndex="+curIndex+", numCatalogs="+numCatalogs+", curEndPos="+curEndPos
+//					+", curStartPos="+curStartPos);
+			return curEndPos > 0 && curEndPos >= curStartPos;
 		}
 
 		@Override

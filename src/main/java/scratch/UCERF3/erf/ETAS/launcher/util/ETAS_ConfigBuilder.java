@@ -580,10 +580,10 @@ class ETAS_ConfigBuilder {
 //			argz += " --start-year 1919";
 			argz += " --start-year 2012";
 //			argz += " --num-simulations 100000";
-//			argz += " --num-simulations 1000";
-//			argz += " --duration-years 500";
-			argz += " --num-simulations 10000";
-			argz += " --duration-years 10";
+			argz += " --num-simulations 1000";
+			argz += " --duration-years 500";
+//			argz += " --num-simulations 10000";
+//			argz += " --duration-years 10";
 			
 //			argz += " --num-simulations 1";
 //			argz += " --duration-years 100";
@@ -591,8 +591,9 @@ class ETAS_ConfigBuilder {
 //			argz += " --gridded-only";
 //			argz += " --prob-model NO_ERT";
 			argz += " --include-spontaneous";
-//			argz += " --historical-catalog";
-//			argz += " --etas-k-cov 1.16";
+			argz += " --historical-catalog";
+			argz += " --etas-k-cov 1.16";
+//			argz += " --etas-k-cov 1.5";
 			
 //			argz += " --etas-k -2.31 --etas-p 1.08 --etas-c 0.04";
 //			argz += " --scale-factor 1.1338";

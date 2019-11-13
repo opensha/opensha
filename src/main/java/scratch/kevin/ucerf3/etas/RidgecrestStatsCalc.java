@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -77,6 +79,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
+import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -87,7 +90,7 @@ public class RidgecrestStatsCalc {
 		File gitDir = new File("/home/kevin/git/ucerf3-etas-results");
 //		updateMagComplete(mainDir, "ci38457511", 3.5);
 //		System.exit(0);
-		boolean redoPaperFigs = true;
+		boolean redoPaperFigs = false;
 		
 		FaultSystemSolution fss = FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
@@ -307,7 +310,8 @@ public class RidgecrestStatsCalc {
 		// add faults to bottom of plot
 		List<XY_DataSet> inputFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> inputChars = new ArrayList<>();
-		populateMapInputFuncs(fss.getRupSet().getFaultSectionDataList(), inputFuncs, inputChars, Color.LIGHT_GRAY, Color.LIGHT_GRAY, null);
+		populateMapInputFuncs(fss.getRupSet().getFaultSectionDataList(), inputFuncs, inputChars,
+				Color.LIGHT_GRAY, Color.LIGHT_GRAY, null, false);
 		
 		for (int i=0; i<resultSets.size(); i++) {
 			CSVFile<String> summaryTable = new CSVFile<>(false);
@@ -471,7 +475,7 @@ public class RidgecrestStatsCalc {
 	}
 	
 	private static void populateMapInputFuncs(List<FaultSectionPrefData> sects, List<XY_DataSet> inputFuncs,
-			List<PlotCurveCharacterstics> inputChars, Color traceColor, Color outlineColor, Color polygonColor) {
+			List<PlotCurveCharacterstics> inputChars, Color traceColor, Color outlineColor, Color polygonColor, boolean cullSects) {
 		PlotCurveCharacterstics faultTraceChar = new PlotCurveCharacterstics(
 				PlotLineType.SOLID, polygonColor == null ? 2f : 4f, traceColor);
 		PlotCurveCharacterstics faultOutlineChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 1.5f, outlineColor);
@@ -486,11 +490,21 @@ public class RidgecrestStatsCalc {
 		}
 
 		boolean firstTrace = true;
+		boolean firstOutline = true;
 		boolean firstPoly = true;
 		for (FaultSectionPrefData sect : sects) {
+			String name = sect.getName();
+			boolean nameMatch = name.contains("Garlock") || name.contains("Airport Lake")
+					|| name.contains("Little Lake");
+			if (cullSects && !nameMatch)
+				continue;
 			RuptureSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
 			List<XY_DataSet> outlines = ETAS_EventMapPlotUtils.getSurfOutlines(surf);
 			for (XY_DataSet outline : outlines) {
+				if (firstOutline && !firstTrace) {
+					outline.setName("Down Dip");
+					firstOutline = false;
+				}
 				inputFuncs.add(outline);
 				inputChars.add(faultOutlineChar);
 			}
@@ -498,7 +512,7 @@ public class RidgecrestStatsCalc {
 			for (int i=0; i<traces.size(); i++) {
 				XY_DataSet trace = traces.get(i);
 				if (firstTrace) {
-					trace.setName("Fault Traces");
+					trace.setName("Traces");
 					firstTrace = false;
 				}
 				inputFuncs.add(trace);
@@ -750,7 +764,7 @@ public class RidgecrestStatsCalc {
 			sect.setParentSectionId(i);
 			sect.setSectionId(i);
 		}
-		populateMapInputFuncs(sects, inputFuncs, inputChars, Color.BLACK, Color.GRAY, Color.DARK_GRAY);
+		populateMapInputFuncs(sects, inputFuncs, inputChars, Color.BLACK, Color.GRAY, Color.DARK_GRAY, true);
 		Region geomRegion = new Region(new Location(35.45, -117.3), new Location(36, -117.8));
 		
 		writeInputsPlot(paperDir, "input_events_faults", geomRegion, initialConfig, sevenDayConfig, inputFuncs, inputChars);
@@ -851,6 +865,13 @@ public class RidgecrestStatsCalc {
 				comcatPlot.setPlotIncludeMedian(true);
 				comcatPlot.setPlotIncludeMean(false);
 				comcatPlot.setPlotIncludeMode(false);
+				comcatPlot.setTimeFuncMaxY(650d);
+				Map<Double, String> anns = new HashMap<>();
+				long fitDate = new GregorianCalendar(2019, 7, 26).getTimeInMillis(); // DOM is 0-based
+				double fitDays = (double)(fitDate - config.getSimulationStartTimeMillis())
+							/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
+				anns.put(fitDays, "Parameters fit on 8/26/2019");
+				comcatPlot.setTimeFuncAnns(anns);
 				
 				File inputFile = new File(config.getOutputDir(), "results_complete.bin");
 				processPlots(config, inputFile, subDir, fss, exec, mfdPlot, comcatPlot);
@@ -881,6 +902,7 @@ public class RidgecrestStatsCalc {
 			
 			ETAS_SimulatedCatalogPlot plot = new ETAS_SimulatedCatalogPlot(config, launcher, "sim_catalog_map", percentiles);
 			plot.setHideTitles();
+			plot.setHideInputEvents();
 			plot.setForceRegion(new Region(new Location(33d, -115.5d), new Location(36.5d, -120d)));
 			
 			File inputFile = new File(config.getOutputDir(), "results_complete.bin");
@@ -924,7 +946,7 @@ public class RidgecrestStatsCalc {
 		
 		inputFuncs = new ArrayList<>();
 		inputChars = new ArrayList<>();
-		populateMapInputFuncs(sects, inputFuncs, inputChars, Color.BLACK, Color.GRAY, null);
+		populateMapInputFuncs(sects, inputFuncs, inputChars, Color.BLACK, Color.GRAY, null, true);
 		
 		ComcatAccessor accessor = new ComcatAccessor();
 		ComcatMetadata meta = geomConfigs.get(0).getComcatMetadata();
@@ -1047,7 +1069,8 @@ public class RidgecrestStatsCalc {
 				eqXY.set(loc.getLongitude(), loc.getLatitude());
 				minMag = Math.min(minMag, rup.getMag());
 			}
-			eqXY.setName("M≥"+(float)(Math.floor(minMag))+" Seismicity");
+//			eqXY.setName("M≥"+(float)(Math.floor(minMag))+" Seismicity");
+			eqXY.setName("Seismicity");
 			funcs.add(eqXY);
 			chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, 0.3f, Color.LIGHT_GRAY));
 		}
