@@ -43,7 +43,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			
 //			argz += " --event-id nc73292360"; // 10/15/2019 Tres Pinos, CA M4.71
 //			argz += " --region 38.5,-122.75,36.25,-120.5";
-			
+
 			argz += " --num-simulations 100000";
 //			argz += " --num-simulations 1000";
 			argz += " --days-before 7";
@@ -58,7 +58,10 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --name-add SmallTest";
 //			argz += " --fault-model FM3_2";
 //			argz += " --etas-k-cov 1.16";
-			argz += " --etas-k-cov 1.5";
+//			argz += " --etas-k-cov 1.5";
+			
+//			argz += " --num-simulations 1000000";
+//			argz += " --fault-model FM2_1";
 
 			// from Morgan by e-mail 8/26/19 for Ridgcrest from Nic's ETAS GUI
 //			argz += " --etas-k -3.03 --etas-p 1.15 --etas-c "+(float)+Math.pow(10, -3.33);
