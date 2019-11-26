@@ -2,8 +2,13 @@ package scratch.UCERF3.erf.ETAS.launcher;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collection;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.cli.CommandLine;
@@ -44,9 +49,9 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 		
 		if (rank == 0 && config.hasBinaryOutputFilters()) {
 			binaryWriter = new ETAS_BinaryWriter(config.getOutputDir(), config);
-			
-			postBatchHook = new BinaryConsolidateHook();
+
 			autoClean = cmd.hasOption("clean");
+			postBatchHook = new BinaryConsolidateHook();
 		}
 		if (scratchLink) {
 			File outputDir = config.getOutputDir();
@@ -110,9 +115,13 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 	}
 	
 	private class BinaryConsolidateHook extends AsyncPostBatchHook {
+		
+		private BinaryCleanHook cleanHook;
 
 		public BinaryConsolidateHook() {
 			super(1);
+			if (autoClean)
+				cleanHook = new BinaryCleanHook();
 		}
 
 		@Override
@@ -122,24 +131,70 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 			try {
 				for (int index : batch) {
 					File catalogDir = launcher.getResultsDir(index);
-					binaryWriter.processCatalog(catalogDir);
-					if (autoClean) {
-						debug("removing completed directory: "+catalogDir.getAbsolutePath());
-						try {
-							FileUtils.deleteDirectory(catalogDir);
-						} catch (Exception e) {
-							debug("exception removing completed directory, skipping: "
-									+catalogDir.getAbsolutePath());
-							e.printStackTrace();
-						}
-					}
+					binaryWriter.processCatalog(index, catalogDir);
 				}
+				binaryWriter.flushWriters();
 			} catch (IOException e) {
 				System.err.println("Exception processing async!");
 				e.printStackTrace();
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 			debug("done running async post-batch hook for process "+processIndex+". "+getCountsString());
+			if (cleanHook != null)
+				cleanHook.batchProcessed(batch, processIndex);
+		}
+
+		@Override
+		public void shutdown() {
+			super.shutdown();
+			if (cleanHook != null) {
+				List<Runnable> awaiting = cleanHook.shutdownNow();
+				if (awaiting != null)
+					debug("Aborting cleanup before it's done. Batches: "+awaiting.size()
+						+". Estimates if allowed to continue: "+cleanHook.getCountsString());
+			}
+		}
+		
+	}
+	
+	private class BinaryCleanHook extends AsyncPostBatchHook {
+		
+		public BinaryCleanHook() {
+			super(1);
+			Preconditions.checkState(autoClean);
+		}
+		
+		private SimpleFileVisitor<Path> deleteVisitor = new SimpleFileVisitor<Path>() {
+		   @Override
+		   public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+		       Files.delete(file);
+		       return FileVisitResult.CONTINUE;
+		   }
+
+		   @Override
+		   public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+		       Files.delete(dir);
+		       return FileVisitResult.CONTINUE;
+		   }
+		};
+
+		@Override
+		protected void batchProcessedAsync(int[] batch, int processIndex) {
+			debug("running async cleanup hook for process "+processIndex+". "+getCountsString());
+			debug("cleanup async post-batch extimates: "+getRatesString());
+			for (int index : batch) {
+				File catalogDir = launcher.getResultsDir(index);
+				debug("removing completed directory: "+catalogDir.getAbsolutePath());
+				try {
+					Path directory = catalogDir.toPath();
+					Files.walkFileTree(directory, deleteVisitor);
+				} catch (Exception e) {
+					debug("exception removing completed directory, skipping: "
+							+catalogDir.getAbsolutePath());
+					e.printStackTrace();
+				}
+			}
+			debug("done running async cleanup post-batch hook for process "+processIndex+". "+getCountsString());
 		}
 		
 	}
@@ -151,7 +206,7 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
-		launcher.calculateBatch(getNumThreads(), batch);
+		launcher.calculate(getNumThreads(), batch, null, config.hasBinaryOutputFilters());
 	}
 
 	@Override

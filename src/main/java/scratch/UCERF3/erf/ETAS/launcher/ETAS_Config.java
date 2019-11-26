@@ -32,6 +32,10 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
+import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
+import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -801,6 +805,35 @@ public class ETAS_Config {
 
 		public boolean isDescendantsOnly() {
 			return descendantsOnly;
+		}
+		
+		public File getPreStagedCatalogFile(File catalogDir) {
+			if (!isDescendantsOnly() && getMinMag() == null) {
+				// it's complete
+				return new File(catalogDir, "simulatedEvents.bin");
+			}
+			return new File(catalogDir, "filtered_for_"+getPrefix()+".bin");
+		}
+		
+		public ETAS_Catalog filter(ETAS_Catalog catalog) {
+			if (isDescendantsOnly() && !catalog.isEmpty())
+				catalog = ETAS_Launcher.getFilteredNoSpontaneous(ETAS_Config.this, catalog);
+			ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
+			Double minMag = getMinMag();
+			if (minMag != null && minMag > 0 && !catalog.isEmpty()) {
+				if (isPreserveChainBelowMag()) {
+					catalog = ETAS_SimAnalysisTools.getAboveMagPreservingChain(catalog, minMag);
+				} else {
+					ETAS_Catalog filteredCatalog = new ETAS_Catalog(meta == null ? null : meta.getModMinMag(minMag));
+					for (ETAS_EqkRupture rup : catalog)
+						if (rup.getMag() >= getMinMag())
+							filteredCatalog.add(rup);
+					if (filteredCatalog.getSimulationMetadata() != null)
+						filteredCatalog.updateMetadataForCatalog();
+					catalog = filteredCatalog;
+				}
+			}
+			return catalog;
 		}
 	}
 	

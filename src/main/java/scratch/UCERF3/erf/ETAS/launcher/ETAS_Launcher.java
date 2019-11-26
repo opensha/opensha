@@ -85,6 +85,7 @@ import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator;
 import scratch.UCERF3.erf.ETAS.association.FiniteFaultMappingData;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -753,13 +754,15 @@ public class ETAS_Launcher {
 	
 	private class CalcRunnable implements Callable<Integer> {
 		
-		private int index;
+		private final int index;
 		private long randSeed;
+		private final boolean binaryPreStage;
 
-		public CalcRunnable(int index, long randSeed) {
+		public CalcRunnable(int index, long randSeed, boolean binaryPreStage) {
 			Preconditions.checkArgument(index >= 0);
 			this.index = index;
 			this.randSeed = randSeed;
+			this.binaryPreStage = binaryPreStage;
 		}
 
 		@Override
@@ -770,6 +773,26 @@ public class ETAS_Launcher {
 			File tempResultsDir = getTempResultsDir(index);
 			if (!config.isForceRecalc() && isAlreadyDone(resultsDir)) {
 				debug(index+" is already done: "+resultsDir.getName());
+				if (binaryPreStage && config.hasBinaryOutputFilters()) {
+					boolean alreadyStaged = true;
+					for (BinaryFilteredOutputConfig binaryConf : config.getBinaryOutputFilters()) {
+						if (!binaryConf.getPreStagedCatalogFile(resultsDir).exists()) {
+							alreadyStaged = false;
+							break;
+						}
+					}
+					if (!alreadyStaged) {
+						debug("loading "+index+" in order to pre-stage");
+						try {
+							File catalogFile = ETAS_BinaryWriter.locateCatalogFile(resultsDir);
+							ETAS_Catalog catalog = ETAS_CatalogIO.loadCatalog(catalogFile);
+							preStage(index, catalog, resultsDir);
+						} catch (Exception e) {
+							e.printStackTrace();
+							debug("exception pre-staging "+index+": "+e.getMessage());
+						}
+					}
+				}
 				return index;
 			}
 			
@@ -858,9 +881,10 @@ public class ETAS_Launcher {
 					
 					debug("completed "+index);
 					File asciiFile = new File(tempResultsDir, "simulatedEvents.txt");
+					ETAS_Catalog catalog = null;
 					if (config.isBinaryOutput()) {
 						// convert to binary
-						ETAS_Catalog catalog = ETAS_CatalogIO.loadCatalog(asciiFile);
+						catalog = ETAS_CatalogIO.loadCatalog(asciiFile);
 						catalog.setSimulationMetadata(meta);
 						File binaryFile = new File(resultsDir, "simulatedEvents.bin");
 						ETAS_CatalogIO.writeCatalogBinary(binaryFile, catalog);
@@ -882,6 +906,11 @@ public class ETAS_Launcher {
 							asciiFile.delete();
 						else
 							newAscii.delete();
+					}
+					if (binaryPreStage) {
+						if (catalog == null)
+							catalog = ETAS_CatalogIO.loadCatalog(asciiFile);
+						preStage(index, catalog, resultsDir);
 					}
 					success = true;
 				} catch (Throwable t) {
@@ -968,7 +997,7 @@ public class ETAS_Launcher {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
-		calculate(numThreads, batch, binaryWriter);
+		calculate(numThreads, batch, binaryWriter, false);
 		if (binaryWriter != null) {
 			try {
 				debug(DebugLevel.FINE, "finalizing");
@@ -981,7 +1010,7 @@ public class ETAS_Launcher {
 	}
 	
 	public void calculateBatch(int numThreads, int[] batch) {
-		calculate(numThreads, batch, null);
+		calculate(numThreads, batch, null, false);
 	}
 	
 	private void updateExecutorNumThreads(int numThreads) {
@@ -1015,17 +1044,17 @@ public class ETAS_Launcher {
 		}
 	}
 	
-	void calculate(int numThreads, int[] batch, ETAS_BinaryWriter binaryWriter) {
+	public void calculate(int numThreads, int[] batch, ETAS_BinaryWriter binaryWriter, boolean binaryPreStage) {
 		Stopwatch watch = Stopwatch.createStarted();
 		ArrayList<CalcRunnable> tasks = new ArrayList<>();
 		
 		if (batch != null && batch.length > 0) {
 			// we're doing a fixed index/batch
 			for (int index : batch)
-				tasks.add(new CalcRunnable(index, randSeeds[index]));
+				tasks.add(new CalcRunnable(index, randSeeds[index], binaryPreStage));
 		} else {
 			for (int index=0; index<config.getNumSimulations(); index++)
-				tasks.add(new CalcRunnable(index, randSeeds[index]));
+				tasks.add(new CalcRunnable(index, randSeeds[index], binaryPreStage));
 		}
 		
 		if (numThreads > threadLimit) {
@@ -1050,7 +1079,7 @@ public class ETAS_Launcher {
 					if (binaryWriter != null) {
 						debug(DebugLevel.FINE, "processing binary filter for "+index);
 						File resultsDir = getResultsDir(index);
-						binaryWriter.processCatalog(resultsDir);
+						binaryWriter.processCatalog(index, resultsDir);
 					}
 				} catch (InterruptedException | ExecutionException | IOException | OutOfMemoryError e) {
 					if (e instanceof ExecutionException && e.getCause() instanceof OutOfMemoryError || e instanceof OutOfMemoryError) {
@@ -1073,7 +1102,7 @@ public class ETAS_Launcher {
 				if (binaryWriter != null) {
 					File resultsDir = getResultsDir(index);
 					try {
-						binaryWriter.processCatalog(resultsDir);
+						binaryWriter.processCatalog(index, resultsDir);
 					} catch (IOException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
@@ -1093,6 +1122,20 @@ public class ETAS_Launcher {
 		else
 			timeStr = (float)secs+" seconds";
 		debug("done with "+tasks.size()+" simulations in "+timeStr);
+	}
+	
+	private void preStage(int index, ETAS_Catalog catalog, File resultsDir) throws IOException {
+		if (config.getBinaryOutputFilters() == null)
+			return;
+		debug("pre-staging catalog "+index);
+		for (BinaryFilteredOutputConfig binaryConf : config.getBinaryOutputFilters()) {
+			File stageFile = binaryConf.getPreStagedCatalogFile(resultsDir);
+			if (!stageFile.exists()) {
+				ETAS_Catalog filtered = binaryConf.filter(catalog);
+				ETAS_CatalogIO.writeCatalogBinary(stageFile, filtered);
+			}
+		}
+		debug("done pre-staging catalog "+index);
 	}
 	
 	private class FutureContainer {
