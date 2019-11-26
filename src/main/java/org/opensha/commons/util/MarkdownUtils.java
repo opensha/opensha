@@ -115,8 +115,9 @@ public class MarkdownUtils {
 			for (int i=0; i<lines.size(); i++) {
 				for (int c=0; c<curDataCols; c++) {
 					int row = i + (c/newDataCols)*lines.size();
-					int col = headerCols + c%newDataCols;
-					newLines.get(row)[col] = lines.get(i)[c];
+					int srcCol = headerCols + c;
+					int destCol = headerCols + c%newDataCols;
+					newLines.get(row)[destCol] = lines.get(i)[srcCol];
 				}
 			}
 			
