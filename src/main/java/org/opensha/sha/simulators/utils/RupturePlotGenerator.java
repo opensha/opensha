@@ -21,6 +21,7 @@ import java.util.Map;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYLineAnnotation;
 import org.jfree.chart.annotations.XYPolygonAnnotation;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
@@ -517,30 +518,30 @@ public class RupturePlotGenerator {
 		gifRender.finalizeAnimation();
 	}
 	
-	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+	public static PlotSpec writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix) throws IOException {
-		writeMapPlot(allElems, event, func, outputDir, prefix, null, null, null);
+		return writeMapPlot(allElems, event, func, outputDir, prefix, null, null, null);
 	}
 	
-	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+	public static PlotSpec writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
-		writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, null, null, null);
+		return writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, null, null, null);
 	}
 	
-	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+	public static PlotSpec writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
 			double[] eventElemScalars, CPT elemCPT, String scalarLabel) throws IOException {
-		writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, eventElemScalars, elemCPT, scalarLabel, null);
+		return writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, eventElemScalars, elemCPT, scalarLabel, null);
 	}
 	
-	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+	public static PlotSpec writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
 			double[] eventElemScalars, CPT elemCPT, String scalarLabel, List<XYAnnotation> anns) throws IOException {
-		writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, null,
+		return writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, null,
 				eventElemScalars, elemCPT, scalarLabel, anns);
 	}
 	
-	public static void writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+	public static PlotSpec writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
 			List<SimulatorElement> scaledElems, double[] customElemScalars, CPT elemCPT, String scalarLabel,
 			List<XYAnnotation> anns) throws IOException {
@@ -593,6 +594,9 @@ public class RupturePlotGenerator {
 						else
 							latTrack.addValue(poly[i]);
 					}
+				} else if (ann instanceof XYTextAnnotation) {
+					lonTrack.addValue(((XYTextAnnotation)ann).getX());
+					latTrack.addValue(((XYTextAnnotation)ann).getY());
 				}
 			}
 		}
@@ -750,38 +754,42 @@ public class RupturePlotGenerator {
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
 		spec.setPlotAnnotations(anns);
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(24);
-		gp.setPlotLabelFontSize(24);
-		gp.setBackgroundColor(Color.WHITE);
-		
-		gp.drawGraphPanel(spec, false, false, xRange, yRange);
-		
-		if (customElemScalars != null) {
-			PaintScaleLegend cptLegend = XYZGraphPanel.getLegendForCPT(elemCPT, scalarLabel, 24, 18, -1, RectangleEdge.BOTTOM);
-			gp.getChartPanel().getChart().addSubtitle(cptLegend);
+		if (outputDir != null) {
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setTickLabelFontSize(18);
+			gp.setAxisLabelFontSize(24);
+			gp.setPlotLabelFontSize(24);
+			gp.setBackgroundColor(Color.WHITE);
+			
+			gp.drawGraphPanel(spec, false, false, xRange, yRange);
+			
+			if (customElemScalars != null) {
+				PaintScaleLegend cptLegend = XYZGraphPanel.getLegendForCPT(elemCPT, scalarLabel, 24, 18, -1, RectangleEdge.BOTTOM);
+				gp.getChartPanel().getChart().addSubtitle(cptLegend);
+			}
+			
+			double tick;
+			if (maxDelta > 3d)
+				tick = 1d;
+			else if (maxDelta > 1.5d)
+				tick = 0.5;
+			else if (maxDelta > 0.8)
+				tick = 0.25;
+			else
+				tick = 0.1;
+			TickUnits tus = new TickUnits();
+			TickUnit tu = new NumberTickUnit(tick);
+			tus.add(tu);
+			gp.getXAxis().setStandardTickUnits(tus);
+			gp.getYAxis().setStandardTickUnits(tus);
+			
+			File file = new File(outputDir, prefix);
+			gp.getChartPanel().setSize(800, 800);
+			gp.saveAsPNG(file.getAbsolutePath()+".png");
+			gp.saveAsPDF(file.getAbsolutePath()+".pdf");
 		}
 		
-		double tick;
-		if (maxDelta > 3d)
-			tick = 1d;
-		else if (maxDelta > 1.5d)
-			tick = 0.5;
-		else if (maxDelta > 0.8)
-			tick = 0.25;
-		else
-			tick = 0.1;
-		TickUnits tus = new TickUnits();
-		TickUnit tu = new NumberTickUnit(tick);
-		tus.add(tu);
-		gp.getXAxis().setStandardTickUnits(tus);
-		gp.getYAxis().setStandardTickUnits(tus);
-		
-		File file = new File(outputDir, prefix);
-		gp.getChartPanel().setSize(800, 800);
-		gp.saveAsPNG(file.getAbsolutePath()+".png");
-		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+		return spec;
 	}
 	
 	public static void addElementOutline(List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
