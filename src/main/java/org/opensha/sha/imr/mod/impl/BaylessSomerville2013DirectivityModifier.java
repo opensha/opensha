@@ -251,7 +251,7 @@ public class BaylessSomerville2013DirectivityModifier extends
 //		return new DirectivityParams(1d, 1d, 1d, 1d);
 	}
 	
-	private class DirectivityParams {
+	public static class DirectivityParams {
 		private double fGeom, tCD, tMw, tAz;
 
 		public DirectivityParams(double fGeom, double tCD, double tMw,
@@ -288,7 +288,7 @@ public class BaylessSomerville2013DirectivityModifier extends
 	private static final ArbitrarilyDiscretizedFunc c1_dip_func =
 			buildCoeffsFunc(0.0, 0.0, 0.0, 0.0, 0.034, 0.093, 0.128, 0.150, 0.165, 0.179);
 	
-	private class Coeffs {
+	public static class Coeffs {
 		
 		private double c0, c1;
 		
