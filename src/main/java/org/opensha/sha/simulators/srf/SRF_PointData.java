@@ -148,6 +148,10 @@ public class SRF_PointData {
 		return cumSlips3;
 	}
 	
+	public double getTotalSlip() {
+		return Math.sqrt(totSlip1*totSlip1 + totSlip2*totSlip2 + totSlip3*totSlip3);
+	}
+	
 	public double[] getVelocities1() {
 		return slipVels1;
 	}
@@ -173,6 +177,10 @@ public class SRF_PointData {
 	}
 	
 	public SRF_PointData translated(Location newLocation) {
+		return translated(newLocation, focal);
+	}
+	
+	public SRF_PointData translated(Location newLocation, FocalMechanism focal) {
 		return new SRF_PointData(newLocation, focal, area, tInit, dt, totSlip1, slipVels1,
 				totSlip2, slipVels2, totSlip3, slipVels3);
 	}

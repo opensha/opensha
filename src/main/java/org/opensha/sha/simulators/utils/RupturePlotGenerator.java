@@ -612,23 +612,27 @@ public class RupturePlotGenerator {
 		DiscretizedFunc regThicknessFunc = buildRegionSizeThicknessFunc();
 		double minThickness = regThicknessFunc.getInterpolatedY(maxDelta);
 		
-		List<SimulatorElement> rupElems = event == null && customElemScalars != null ? scaledElems : event.getAllElements();
-		
-		double maxDepth;
-		if (allElems != null)
-			maxDepth = getMaxDepth(allElems);
-		else
-			maxDepth = getMaxDepth(rupElems);
-		
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		if (customElemScalars == null) {
-//			PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
-//			addElementOutline(funcs, chars, rupElems, eventChar, null);
-			double maxRupDepth = getMaxDepth(rupElems);
-			addDepthDepOutline(funcs, chars, rupElems, Color.BLACK, maxRupDepth, minThickness, 3d*minThickness);
-		} else {
-			addElementScalarOutline(funcs, chars, rupElems, customElemScalars, elemCPT, maxDepth, minThickness, 3d*minThickness);
+		
+		List<SimulatorElement> rupElems = null;
+		
+		if (event != null || customElemScalars != null) {
+			rupElems = event == null && customElemScalars != null ? scaledElems : event.getAllElements();
+			
+			double maxDepth;
+			if (allElems != null)
+				maxDepth = getMaxDepth(allElems);
+			else
+				maxDepth = getMaxDepth(rupElems);
+			if (customElemScalars == null) {
+//				PlotCurveCharacterstics eventChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK);
+//				addElementOutline(funcs, chars, rupElems, eventChar, null);
+				double maxRupDepth = getMaxDepth(rupElems);
+				addDepthDepOutline(funcs, chars, rupElems, Color.BLACK, maxRupDepth, minThickness, 3d*minThickness);
+			} else {
+				addElementScalarOutline(funcs, chars, rupElems, customElemScalars, elemCPT, maxDepth, minThickness, 3d*minThickness);
+			}
 		}
 //		for (SimulatorElement elem : rupElems) {
 //			Vertex[] vertexes = elem.getVertices();
@@ -960,7 +964,7 @@ public class RupturePlotGenerator {
 	private static final DecimalFormat keyDF = new DecimalFormat("0.000");
 	private static final DecimalFormat magDF = new DecimalFormat("0.00");
 	
-	private static double[] star(double x, double y, double radius) {
+	public static double[] star(double x, double y, double radius) {
 		double outerRatio = 2.618;
 		int num = 10;
 		double radsEach = Math.PI/5d;
