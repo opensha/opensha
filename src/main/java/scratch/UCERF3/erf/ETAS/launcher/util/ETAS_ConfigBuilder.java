@@ -40,11 +40,12 @@ import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.KML_RuptureLoader.KML_Node;
 import scratch.UCERF3.utils.FaultSystemIO;
 
-class ETAS_ConfigBuilder {
+public class ETAS_ConfigBuilder {
 	
 	public enum HPC_Sites {
 		USC_HPC("usc_hpcc_mpj_express.slurm", "usc_hpcc_plot.slurm"),
-		TACC_STAMPEDE2("tacc_stampede2_fastmpj.slurm", "tacc_stampede2_plot.slurm");
+		TACC_STAMPEDE2("tacc_stampede2_fastmpj.slurm", "tacc_stampede2_plot.slurm"),
+		TACC_FRONTERA("tacc_frontera_fastmpj.slurm", "tacc_frontera_plot.slurm");
 
 		private String plotFileName;
 		private String fileName;

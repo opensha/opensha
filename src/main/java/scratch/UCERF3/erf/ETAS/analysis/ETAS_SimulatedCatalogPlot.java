@@ -145,6 +145,10 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	public void setForceRegion(Region forceRegion) {
 		this.forceRegion = forceRegion;
 	}
+	
+	public void setMaxMag(double maxMag) {
+		this.maxMag = maxMag;
+	}
 
 	@Override
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -90,7 +91,7 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 			e.printStackTrace();
 			System.exit(1);
 		}
-		System.exit(0);
+//		System.exit(0);
 	}
 
 	public static Options createOptions() {
@@ -98,7 +99,7 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 		
 		/*
 		 * Time options
-		 */
+		 */		
 		Option startTimeOption = new Option("st", "start-time", true, "ComCat data start time in epoch milliseconds");
 		startTimeOption.setRequired(false);
 		ops.addOption(startTimeOption);
@@ -125,6 +126,10 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 		Option endTimeOption = new Option("et", "end-time", true, "ComCat data end time in epoch milliseconds");
 		endTimeOption.setRequired(false);
 		ops.addOption(endTimeOption);
+		
+		Option endYearOption = new Option("eyr", "end-year", true, "ComCat data end time expressed as a calendar year");
+		endYearOption.setRequired(false);
+		ops.addOption(endYearOption);
 		
 		Option endDateOption = new Option("ed", "end-date", true, "ComCat data end date in the format 'yyyy-MM-dd' "
 				+ "(e.g. 2019-01-01) or 'yyyy-MM-ddTHH:mm:ss' (e.g. 2019-01-01T01:23:45). All dates and times in UTC.");
@@ -272,6 +277,13 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 			if (cmd.hasOption("end-time")) {
 				comcatEndTime = Long.parseLong(cmd.getOptionValue("end-time"));
 				System.out.println("Will end ComCat data fetch at "+comcatEndTime);
+			} else if (cmd.hasOption("end-year")) {
+				int year = Integer.parseInt(cmd.getOptionValue("end-year"));
+				GregorianCalendar cal = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
+				cal.clear();
+				cal.set(year, 0, 1);
+				comcatEndTime = cal.getTimeInMillis();
+				System.out.println("Will end ComCat data fetch at "+comcatEndTime+", from year: "+year);
 			} else if (cmd.hasOption("end-date")) {
 				String dateStr = cmd.getOptionValue("end-date");
 				comcatEndTime = parseDateString(dateStr);

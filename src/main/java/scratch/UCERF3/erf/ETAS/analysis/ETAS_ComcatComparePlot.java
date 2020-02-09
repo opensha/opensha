@@ -252,10 +252,11 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		}
 		System.out.println("Mc="+(float)comcatMc);
 		timeDays = curDuration <= 1d;
+		double timeFuncDuration = Math.min(durations[durations.length-1], curDuration);
 		if (timeDays)
-			timeDiscretization = new EvenlyDiscretizedFunc(0d, durations[durations.length-1]*365.25, 500);
+			timeDiscretization = new EvenlyDiscretizedFunc(0d, timeFuncDuration*365.25, 500);
 		else
-			timeDiscretization = new EvenlyDiscretizedFunc(0d, durations[durations.length-1], 500);
+			timeDiscretization = new EvenlyDiscretizedFunc(0d, timeFuncDuration, 500);
 		
 		double maxTriggerMag = Double.NEGATIVE_INFINITY;
 		ETAS_EqkRupture maxMainshock = null;
@@ -476,7 +477,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return true;
 	}
 	
-	private static final int VERSION = 16;
+	private static final int VERSION = 18;
 
 	@Override
 	public int getVersion() {

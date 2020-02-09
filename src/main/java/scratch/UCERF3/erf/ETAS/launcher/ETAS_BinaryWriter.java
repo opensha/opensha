@@ -92,6 +92,10 @@ class ETAS_BinaryWriter {
 		} catch (IllegalStateException e) {
 			throw new IllegalStateException("Exception processing catalog "+catalogFile.getAbsolutePath());
 		}
+		ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
+		if (meta != null && meta.catalogIndex < 0)
+			// set the catalog index
+			catalog.setSimulationMetadata(meta.getModCatalogIndex(index));
 //		System.out.println("PROCESSING WRITERS FOR: "+catalogFile.getAbsolutePath());
 		processCatalog(catalog);
 //		System.out.println("DONE PROCESSING WRITERS FOR: "+catalogFile.getAbsolutePath());
@@ -184,7 +188,7 @@ class ETAS_BinaryWriter {
 			if (dOut == null)
 				dOut = ETAS_CatalogIO.initCatalogsBinary(inProgressFile, numCatalogs);
 			ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
-			if (meta== null) {
+			if (meta == null) {
 				if (!warnedNoMeta) {
 					System.err.println("WARNING: catalog doesn't have metadata attached, old file version? future warnings supressed");
 					warnedNoMeta = true;
@@ -196,7 +200,7 @@ class ETAS_BinaryWriter {
 					return;
 				}
 			}
-			catalog = binaryConf.filter(catalog);
+			catalog = binaryConf.filter(config, catalog);
 			ETAS_CatalogIO.writeCatalogBinary(dOut, catalog);
 			if (meta != null)
 				doneSet.add(meta.catalogIndex);

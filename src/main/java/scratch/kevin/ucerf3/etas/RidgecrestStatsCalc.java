@@ -40,6 +40,7 @@ import org.opensha.commons.data.comcat.ComcatRegionAdapter;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -77,6 +78,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration.Callback;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
@@ -105,6 +107,9 @@ public class RidgecrestStatsCalc {
 		
 		lines.add("This is a landing page for various Ridgecrest figures and tables. Click on the simulation names"
 				+ " in the tables below to see the details of each simulation, along with *many* plots.");
+		lines.add("");
+		lines.add("Download my [2019 AGU Fall Meeting poster here](Milner_2019_AGU_Poster.pdf), or "
+				+ "[read the abstract here](https://agu.confex.com/agu/fm19/meetingapp.cgi/Paper/590411).");
 		lines.add("");
 		lines.add("Download my [2019 SCEC Annual Meeting poster here](Milner_2019_SCEC_Poster.pdf), or "
 				+ "[read the abstract here](https://www.scec.org/publication/9401).");
@@ -886,6 +891,11 @@ public class RidgecrestStatsCalc {
 		File[] pFiles = new File[percentiles.length];
 		for (int p=0; p<percentiles.length; p++)
 			pFiles[p] = new File(pOutDir, "sim_catalog_map_p"+ETAS_SimulatedCatalogPlot.pDF.format(percentiles[p])+"_1mo.png");
+		File obsPOutDir = new File(paperDir, "observed_percentile");
+		Preconditions.checkState(obsPOutDir.exists() || obsPOutDir.mkdir());
+		double[] obsPercentileValues = { 50d, 97.5d };
+		File observedCatalogPercentilePlot = new File(obsPOutDir,
+				"obs_catalog_map_p"+ETAS_SimulatedCatalogPlot.pDF.format(obsPercentileValues[obsPercentileValues.length-1])+"_1mo.png");
 		boolean redoPrecentiles = redoResultPlots;
 		for (File pFile : pFiles) {
 			if (!pFile.exists()) {
@@ -894,6 +904,8 @@ public class RidgecrestStatsCalc {
 			}
 		}
 		
+		Region percentileRegion = new Region(new Location(33d, -115.5d), new Location(36.5d, -120d));
+		
 		if (redoPrecentiles) {
 			ETAS_Config config = ETAS_Config.readJSON(new File(modelDir, "config.json"));
 			ETAS_Launcher launcher = new ETAS_Launcher(config, false);
@@ -901,11 +913,61 @@ public class RidgecrestStatsCalc {
 			ETAS_SimulatedCatalogPlot plot = new ETAS_SimulatedCatalogPlot(config, launcher, "sim_catalog_map", percentiles);
 			plot.setHideTitles();
 			plot.setHideInputEvents();
-			plot.setForceRegion(new Region(new Location(33d, -115.5d), new Location(36.5d, -120d)));
+			plot.setForceRegion(percentileRegion);
 			
 			File inputFile = new File(config.getOutputDir(), "results_complete.bin");
 			processPlots(config, inputFile, pOutDir, fss, exec, plot);
 		}
+		
+		ComcatAccessor accessor = new ComcatAccessor();
+		ComcatMetadata meta = initialConfig.getComcatMetadata();
+		ObsEqkRupList obsPercentileRegionEQs = accessor.fetchEventList(meta.eventID, initialConfig.getSimulationStartTimeMillis(),
+				System.currentTimeMillis(), meta.minDepth, meta.maxDepth, new ComcatRegionAdapter(percentileRegion),
+				false, false, meta.minMag);
+		obsPercentileRegionEQs.sortByOriginTime();
+		
+		double[] obsPercentileMags = { 2.5d, 3.5d };
+		double[] obsPercentileDurations = { 1d/365.25, 7d/365.25, 30d/365.25 };
+		String percentileCSVPrefix = "percentiles";
+		File[] percentileCSVs = new File[obsPercentileMags.length];
+		boolean redoPercentileCSVs = false;
+		for (int i=0; i<percentileCSVs.length; i++) {
+			percentileCSVs[i] = new File(paperDir, percentileCSVPrefix+"_m"+(float)obsPercentileMags[i]+".csv");
+			redoPercentileCSVs = redoPercentileCSVs || !percentileCSVs[i].exists();
+		}
+		if (redoPercentileCSVs) {
+			File inputFile = new File(initialConfig.getOutputDir(), "results_complete.bin");
+			System.out.println("Writing percentile CSVs...");
+			writePercentilesCSV(initialConfig, paperDir, percentileCSVPrefix, inputFile, obsPercentileMags, obsPercentileDurations);
+		}
+		
+		if (!observedCatalogPercentilePlot.exists()) {
+			System.out.println("Writing observed map in percentiles region...");
+			ETAS_Config config = configs.get(0);
+			ETAS_Launcher launcher = new ETAS_Launcher(config, false);
+			
+			ETAS_SimulatedCatalogPlot plot = new ETAS_SimulatedCatalogPlot(config, launcher, "obs_catalog_map", obsPercentileValues);
+			plot.setHideTitles();
+			plot.setHideInputEvents();
+			plot.setMaxMag(8.1d);
+			plot.setForceRegion(percentileRegion);
+			
+			ETAS_Catalog catalog = new ETAS_Catalog(null);
+			
+			for (ObsEqkRupture rup : obsPercentileRegionEQs) {
+				ETAS_EqkRupture eRup = new ETAS_EqkRupture(rup);
+				eRup.setOriginTime(rup.getOriginTime());
+				catalog.add(eRup);
+			}
+
+			plot.processCatalog(catalog, fss);
+			plot.processCatalog(catalog, fss);
+			plot.processCatalog(catalog, fss);
+			plot.processCatalog(catalog, fss);
+			
+			plot.finalize(obsPOutDir, fss);
+		}
+		
 		exec.shutdown();
 		
 		table = MarkdownUtils.tableBuilder();
@@ -919,6 +981,54 @@ public class RidgecrestStatsCalc {
 		table.finalizeLine();
 		lines.addAll(table.build());
 		lines.add("");
+		
+		lines.add(heading+" Observed Event Plot (in percentile region and style)");
+		lines.add("");
+		lines.add("![Map]("+paperDir.getName()+"/"+obsPOutDir.getName()+"/"+observedCatalogPercentilePlot.getName()+")");
+		lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("");
+		for (double duration : obsPercentileDurations)
+			table.addColumn(ETAS_AbstractPlot.getTimeShortLabel(duration));
+		table.finalizeLine();
+		int[][] obsCounts = new int[obsPercentileMags.length][obsPercentileDurations.length];
+		double[][] obsPercentiles = new double[obsPercentileMags.length][obsPercentileDurations.length];
+		for (int m=0; m<obsPercentileMags.length; m++) {
+			float mag = (float)obsPercentileMags[m];
+			DiscretizedFunc[] pFuncs = loadPercentilesCSV(percentileCSVs[m]);
+			for (int d=0; d<obsPercentileDurations.length; d++) {
+				long maxOT = initialConfig.getSimulationStartTimeMillis()
+						+(long)(ProbabilityModelsCalc.MILLISEC_PER_YEAR*obsPercentileDurations[d]);
+				for (ObsEqkRupture rup : obsPercentileRegionEQs) {
+					if (rup.getOriginTime() > maxOT)
+						break;
+					if ((float)rup.getMag() >= mag)
+						obsCounts[m][d]++;
+				}
+				
+				if (obsCounts[m][d] < pFuncs[d].getMinY())
+					obsPercentiles[m][d] = 0d;
+				else if (obsCounts[m][d] >= pFuncs[d].getMaxY())
+					obsPercentiles[m][d] = 100d;
+				else
+					obsPercentiles[m][d] = pFuncs[d].getFirstInterpolatedX((double)obsCounts[m][d]);
+			}
+		}
+		for (int m=0; m<obsPercentileMags.length; m++) {
+			String magStr = "M&ge;"+(float)obsPercentileMags[m];
+			table.initNewLine();
+			table.addColumn(magStr+" observed count");
+			for (int d=0; d<obsPercentileDurations.length; d++)
+				table.addColumn(obsCounts[m][d]);
+			table.finalizeLine();
+			table.initNewLine();
+			table.addColumn(magStr+" observed percentile");
+			for (int d=0; d<obsPercentileDurations.length; d++)
+				table.addColumn((float)obsPercentiles[m][d]);
+			table.finalizeLine();
+		}
+		lines.addAll(table.build());
 		
 		lines.add(heading+" Geometry Overlay Plots");
 		lines.add("");
@@ -946,18 +1056,18 @@ public class RidgecrestStatsCalc {
 		inputChars = new ArrayList<>();
 		populateMapInputFuncs(sects, inputFuncs, inputChars, Color.BLACK, Color.GRAY, null, true);
 		
-		ComcatAccessor accessor = new ComcatAccessor();
-		ComcatMetadata meta = geomConfigs.get(0).getComcatMetadata();
 		ObsEqkRupList eqs = accessor.fetchEventList(null, meta.startTime, System.currentTimeMillis(),
 				meta.minDepth, meta.maxDepth, new ComcatRegionAdapter(geomRegion), false, false, 2d);
 		
 		String geomPrefix = "geom_compare_finite";
-		writeFiniteSurfacesPlot(paperDir, geomPrefix, geomRegion, geomConfigs, geomChars, geomNames,
-				inputFuncs, inputChars, eqs);
+		RuptureSurface[] surfs = writeFiniteSurfacesPlot(paperDir, geomPrefix, geomRegion, geomConfigs,
+				geomChars, geomNames, inputFuncs, inputChars, eqs);
 		
 		lines.add("This plot shows the first few finite fault surfaces used");
 		lines.add("");
 		lines.add("![Map]("+paperDir.getName()+"/"+geomPrefix+".png)");
+		lines.add("");
+		lines.addAll(buildSurfaceInfoTable(surfs, geomNames).build());
 		
 		geomConfigs.clear();
 		geomChars.clear();
@@ -979,15 +1089,31 @@ public class RidgecrestStatsCalc {
 		geomNames.add("Extents");
 		
 		geomPrefix = "geom_compare_shakemap";
-		writeFiniteSurfacesPlot(paperDir, geomPrefix, geomRegion, geomConfigs, geomChars, geomNames,
-				inputFuncs, inputChars, eqs);
+		surfs = writeFiniteSurfacesPlot(paperDir, geomPrefix, geomRegion, geomConfigs,
+				geomChars, geomNames, inputFuncs, inputChars, eqs);
 
 		lines.add("");
 		lines.add("This plot shows different versions of the ShakeMap surface");
 		lines.add("");
 		lines.add("![Map]("+paperDir.getName()+"/"+geomPrefix+".png)");
+		lines.add("");
+		lines.addAll(buildSurfaceInfoTable(surfs, geomNames).build());
 		
 		return lines;
+	}
+	
+	private static TableBuilder buildSurfaceInfoTable(RuptureSurface[] surfs, List<String> geomNames) {
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.addLine("Name", "Total Length (km)", "Total Area (km^2)", "# Points");
+		for (int i=0; i<surfs.length; i++) {
+			table.initNewLine();
+			table.addColumn(geomNames.get(i));
+			table.addColumn((float)surfs[i].getAveLength());
+			table.addColumn((float)surfs[i].getArea());
+			table.addColumn(surfs[i].getEvenlyDiscritizedListOfLocsOnSurface().size());
+			table.finalizeLine();
+		}
+		return table;
 	}
 	
 	private static void processPlots(ETAS_Config config, File inputFile, File outputDir,
@@ -1020,12 +1146,95 @@ public class RidgecrestStatsCalc {
 		}
 	}
 	
-	private static void writeFiniteSurfacesPlot(File outputDir, String prefix, Region mapRegion,
+	private static void writePercentilesCSV(ETAS_Config config, File outputDir, String prefix, File inputFile,
+			double[] mags, double[] durations)
+			throws IOException {
+		
+		long[] maxOTs = new long[durations.length];
+		
+		for (int i=0; i<durations.length; i++)
+			maxOTs[i] = config.getSimulationStartTimeMillis() + (long)(durations[i]*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+		
+		List<double[][]> durMagCounts = new ArrayList<>();
+		
+		ETAS_CatalogIteration.processCatalogs(inputFile, new Callback() {
+			
+			@Override
+			public void processCatalog(ETAS_Catalog catalog, int index) {
+				double[][] counts = new double[durations.length][mags.length];
+				for (ETAS_EqkRupture rup : catalog) {
+					long ot = rup.getOriginTime();
+					float mag = (float)rup.getMag();
+					for (int d=0; d<maxOTs.length; d++) {
+						if (ot > maxOTs[d])
+							continue;
+						for (int m=0; m<mags.length; m++)
+							if (mag >= (float)mags[m])
+								counts[d][m]++;
+					}
+				}
+				durMagCounts.add(counts);
+			}
+		});
+		
+		for (int m=0; m<mags.length; m++) {
+			CSVFile<String> csv = new CSVFile<>(true);
+			
+			List<String> header = new ArrayList<>();
+			header.add("Percentile");
+			for (double duration : durations)
+				header.add(ETAS_AbstractPlot.getTimeShortLabel(duration));
+			csv.addLine(header);
+			
+			List<double[]> arrays = new ArrayList<>();
+			for (int d=0; d<durations.length; d++) {
+				double[] array = new double[durMagCounts.size()];
+				for (int i=0; i<durMagCounts.size(); i++) {
+					double[][] counts = durMagCounts.get(i);
+					array[i] = counts[d][m];
+				}
+				arrays.add(array);
+			}
+			
+			for (double p=0d; p<=100d; p++) {
+				List<String> line = new ArrayList<>();
+				line.add("p"+(float)p);
+				for (double[] array : arrays) {
+					double value = p == 0d ? StatUtils.min(array) : StatUtils.percentile(array, p);
+					line.add((float)value+"");
+				}
+				csv.addLine(line);
+			}
+			
+			File outputFile = new File(outputDir, prefix+"_m"+(float)mags[m]+".csv");
+			csv.writeToFile(outputFile);
+		}
+	}
+	
+	private static DiscretizedFunc[] loadPercentilesCSV(File csvFile) throws IOException {
+		CSVFile<String> csv = CSVFile.readFile(csvFile, true);
+		DiscretizedFunc[] ret = new DiscretizedFunc[csv.getNumCols()-1];
+		for (int i=0; i<ret.length; i++)
+			ret[i] = new ArbitrarilyDiscretizedFunc();
+		for (int row=1; row<csv.getNumRows(); row++) {
+			double x = Double.parseDouble(csv.get(row, 0).replaceAll("p", ""));
+			for (int i=0; i<ret.length; i++) {
+				double y = csv.getDouble(row, i+1);
+				ret[i].set(x, y);
+			}
+		}
+		
+		return ret;
+	}
+	
+	private static RuptureSurface[] writeFiniteSurfacesPlot(File outputDir, String prefix, Region mapRegion,
 			List<ETAS_Config> geomConfigs, List<PlotCurveCharacterstics> geomChars, List<String> geomNames,
 			List<XY_DataSet> inputFuncs, List<PlotCurveCharacterstics> inputChars, List<? extends ObsEqkRupture> eqs)
 					throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		RuptureSurface[] surfs = new RuptureSurface[geomConfigs.size()];
 		
 		for (int i=0; i<geomConfigs.size(); i++) {
 			ETAS_Config config = geomConfigs.get(i);
@@ -1039,6 +1248,8 @@ public class RidgecrestStatsCalc {
 					surf = rup.getRuptureSurface();
 				}
 			}
+			
+			surfs[i] = surf;
 			
 			PlotCurveCharacterstics geomChar = geomChars.get(i);
 			PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(
@@ -1107,6 +1318,8 @@ public class RidgecrestStatsCalc {
 		
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
+		
+		return surfs;
 	}
 	
 	private static void writeInputsPlot(File outputDir, String prefix, Region mapRegion,

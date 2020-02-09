@@ -779,7 +779,8 @@ public class ETAS_Config {
 		private final Boolean preserveChainBelowMag;
 		private final boolean descendantsOnly;
 		
-		public BinaryFilteredOutputConfig(String prefix, Double minMag, Boolean preserveChainBelowMag, boolean descendantsOnly) {
+		private BinaryFilteredOutputConfig(String prefix, Double minMag, Boolean preserveChainBelowMag,
+				boolean descendantsOnly) {
 			this.prefix = prefix;
 			this.minMag = minMag;
 			if (minMag != null)
@@ -815,9 +816,9 @@ public class ETAS_Config {
 			return new File(catalogDir, "filtered_for_"+getPrefix()+".bin");
 		}
 		
-		public ETAS_Catalog filter(ETAS_Catalog catalog) {
+		public ETAS_Catalog filter(ETAS_Config config, ETAS_Catalog catalog) {
 			if (isDescendantsOnly() && !catalog.isEmpty())
-				catalog = ETAS_Launcher.getFilteredNoSpontaneous(ETAS_Config.this, catalog);
+				catalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
 			ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
 			Double minMag = getMinMag();
 			if (minMag != null && minMag > 0 && !catalog.isEmpty()) {

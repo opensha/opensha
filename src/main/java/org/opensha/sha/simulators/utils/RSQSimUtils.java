@@ -4,6 +4,7 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,6 +43,7 @@ import org.opensha.sha.simulators.utils.RSQSimSubSectionMapper.SubSectionMapping
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.Files;
 import com.google.common.io.LittleEndianDataOutputStream;
 
 import scratch.UCERF3.SlipEnabledRupSet;

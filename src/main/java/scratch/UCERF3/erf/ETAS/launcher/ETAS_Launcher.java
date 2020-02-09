@@ -1131,7 +1131,7 @@ public class ETAS_Launcher {
 		for (BinaryFilteredOutputConfig binaryConf : config.getBinaryOutputFilters()) {
 			File stageFile = binaryConf.getPreStagedCatalogFile(resultsDir);
 			if (!stageFile.exists()) {
-				ETAS_Catalog filtered = binaryConf.filter(catalog);
+				ETAS_Catalog filtered = binaryConf.filter(config, catalog);
 				ETAS_CatalogIO.writeCatalogBinary(stageFile, filtered);
 			}
 		}
@@ -1149,6 +1149,8 @@ public class ETAS_Launcher {
 	}
 	
 	public static ETAS_Catalog getFilteredNoSpontaneous(ETAS_Config config, ETAS_Catalog catalog) {
+		Preconditions.checkNotNull(catalog, "ETAS_Catalog is null");
+		Preconditions.checkNotNull(config, "ETAS_Config is null");
 		ETAS_SimulationMetadata meta = catalog.getSimulationMetadata();
 		int numTriggerRuptures = config.getTriggerRuptures() == null ? 0 : config.getTriggerRuptures().size();
 		if (numTriggerRuptures == 0 && (config.getTriggerCatalogFile() == null || config.isTreatTriggerCatalogAsSpontaneous()))

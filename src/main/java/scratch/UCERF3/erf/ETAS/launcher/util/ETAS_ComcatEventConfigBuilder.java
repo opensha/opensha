@@ -113,11 +113,15 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --random-seed 123456789";
 			
 			// hpc options
-			argz += " --hpc-site USC_HPC";
-			argz += " --nodes 36";
-			argz += " --hours 24";
-//			argz += " --queue scec_hiprio";
-			argz += " --queue scec";
+//			argz += " --hpc-site USC_HPC";
+//			argz += " --nodes 36";
+//			argz += " --hours 24";
+////			argz += " --queue scec_hiprio";
+//			argz += " --queue scec";
+			argz += " --hpc-site TACC_FRONTERA";
+			argz += " --nodes 20";
+			argz += " --hours 10";
+			argz += " --queue normal";
 			
 			args = argz.trim().split(" ");
 		}

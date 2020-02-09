@@ -471,7 +471,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			confFunc.setName("95% Conf");
 			funcs.add(confFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
-					new Color(probColor.getRed(), probColor.getGreen(), probColor.getBlue(), 60)));
+					new Color(probColor.getRed(), probColor.getGreen(), probColor.getBlue(), 90)));
 			if (supraProbFunc != null) {
 				supraProbFunc.setName("Supra");
 				funcs.add(supraProbFunc);
