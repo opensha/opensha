@@ -237,9 +237,9 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 		return aveWidth;
 	}
 	
-	private static class CompoundSurfaceDistances extends SurfaceDistances {
+	protected static class CompoundSurfaceDistances extends SurfaceDistances {
 
-		private final int distXIndex;
+		public final int distXIndex;
 		public CompoundSurfaceDistances(double distanceRup, double distanceJB,
 				double distanceSeis, int distXIndex) {
 			super(distanceRup, distanceJB, distanceSeis);
