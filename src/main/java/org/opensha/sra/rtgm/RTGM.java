@@ -58,7 +58,7 @@ public class RTGM implements Callable<RTGM> {
 	// Annual frequency of exceedance for Uniform-Hazard Ground Motion (UHGM)
 	// UHGM is both denominator of risk coefficient and initial guess for RTGM 
 	// 2% PE 50yrs
-	private static final double AFE4UHGM = -Math.log(1 - 0.02) / 50;
+	public static final double AFE4UHGM = -Math.log(1 - 0.02) / 50;
 	
 	// RTGM iteration limit
 	private static final int MAX_ITERATIONS = 6;
