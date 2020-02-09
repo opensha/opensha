@@ -12,13 +12,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
 import org.jfree.ui.TextAnchor;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
@@ -171,7 +174,7 @@ public class RSQSimSRFGenerator {
 		List<DiscretizedFunc> slipFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> slipChars = new ArrayList<>();
 		
-		List<DiscretizedFunc> velFuncs = new ArrayList<>();
+		List<XY_DataSet> velFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> velChars = new ArrayList<>();
 		
 		func = func.asRelativeTimeFunc();
@@ -188,20 +191,26 @@ public class RSQSimSRFGenerator {
 		slipFuncs.add(shiftedSlipFunc);
 		slipChars.add(actualChar);
 		
+		DefaultXY_DataSet actualVelFunc = new DefaultXY_DataSet();
+		
 		for (RSQSimStateTime trans : func.getTransitions(patchID)) {
 			double vel;
 			if (trans.getState() == RSQSimState.EARTHQUAKE_SLIP)
 				vel = func.getVelocity(trans);
 			else
 				vel = 0d;
-			DiscretizedFunc velFunc = new ArbitrarilyDiscretizedFunc();
-			if (velFuncs.isEmpty())
-				velFunc.setName("Actual");
-			velFunc.set(trans.getStartTime(), vel);
-			velFunc.set(trans.getEndTime(), vel);
-			velFuncs.add(velFunc);
-			velChars.add(actualChar);
+//			DiscretizedFunc velFunc = new ArbitrarilyDiscretizedFunc();
+//			if (velFuncs.isEmpty())
+//				velFunc.setName("Actual");
+//			velFunc.set(trans.getStartTime(), vel);
+//			velFunc.set(trans.getEndTime(), vel);
+//			velFuncs.add(velFunc);
+//			velChars.add(actualChar);
+			actualVelFunc.set(trans.getStartTime(), vel);
+			actualVelFunc.set(trans.getEndTime(), vel);
 		}
+		velFuncs.add(actualVelFunc);
+		velChars.add(actualChar);
 		
 		DecimalFormat slipDF = new DecimalFormat("0.000");
 		
@@ -225,7 +234,7 @@ public class RSQSimSRFGenerator {
 				c = Color.RED;
 				break;
 			case ADJ_VEL:
-				c = Color.GRAY;
+				c = Color.GREEN.darker();
 				break;
 			case LIN_TAPER_VEL:
 				c = Color.CYAN;
@@ -259,15 +268,24 @@ public class RSQSimSRFGenerator {
 			
 			eventLen = Math.max(eventLen, slipFunc.getMaxX());
 			
+			DefaultXY_DataSet velFunc = new DefaultXY_DataSet();
+			velFunc.setName(mode.toString());
 			for (int i=0; i<vels.length; i++) {
-				DiscretizedFunc velFunc = new ArbitrarilyDiscretizedFunc();
-				if (i == 0)
-					velFunc.setName(mode.toString());
 				velFunc.set(srf.getTime(i), vels[i]);
 				velFunc.set(srf.getTime(i+1), vels[i]);
-				velFuncs.add(velFunc);
-				velChars.add(srfChar);
 			}
+			velFuncs.add(velFunc);
+			velChars.add(srfChar);
+			
+//			for (int i=0; i<vels.length; i++) {
+//				DiscretizedFunc velFunc = new ArbitrarilyDiscretizedFunc();
+//				if (i == 0)
+//					velFunc.setName(mode.toString());
+//				velFunc.set(srf.getTime(i), vels[i]);
+//				velFunc.set(srf.getTime(i+1), vels[i]);
+//				velFuncs.add(velFunc);
+//				velChars.add(srfChar);
+//			}
 		}
 		
 		String title = "SRF Validation";
@@ -306,14 +324,137 @@ public class RSQSimSRFGenerator {
 		gp.saveAsPNG(file.getAbsolutePath()+".png");
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
 	}
+	
+	public static void plotSlip(File outputDir, String prefix, SRF_PointData patch, double maxTime)
+			throws IOException {
+		List<DiscretizedFunc> slipFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> slipChars = new ArrayList<>();
+		
+		List<XY_DataSet> velFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> velChars = new ArrayList<>();
+		
+		// build actual funcs
+		PlotCurveCharacterstics totalChar = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, 4f, PlotSymbol.FILLED_CIRCLE, 5f, Color.BLACK);
+		
+		PlotCurveCharacterstics comp1Char = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, 2f, Color.RED);
+		PlotCurveCharacterstics comp2Char = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, 2f, Color.GREEN);
+		PlotCurveCharacterstics comp3Char = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, 2f, Color.BLUE);
+		
+		double[] vels = patch.getTotalVelocities();
+		double[] slips = patch.getTotalCumulativeSlips();
+		
+//		boolean multiComp = (float)slips[slips.length-1] != (float)patch.getTotalSlip();
+		boolean multiComp = true;
+		
+		DiscretizedFunc totalSlipFunc = new ArbitrarilyDiscretizedFunc("Overall");
+		slipFuncs.add(totalSlipFunc);
+		slipChars.add(totalChar);
+		DiscretizedFunc comp1SlipFunc = null, comp2SlipFunc = null, comp3SlipFunc = null;
+		if (multiComp) {
+			comp1SlipFunc = new ArbitrarilyDiscretizedFunc("u1");
+			slipFuncs.add(comp1SlipFunc);
+			slipChars.add(comp1Char);
+			comp2SlipFunc = new ArbitrarilyDiscretizedFunc("u2");
+			slipFuncs.add(comp2SlipFunc);
+			slipChars.add(comp2Char);
+			comp3SlipFunc = new ArbitrarilyDiscretizedFunc("u3");
+			slipFuncs.add(comp3SlipFunc);
+			slipChars.add(comp3Char);
+		}
+		
+		for (int i=0; i<slips.length; i++) {
+			double time = patch.getTime(i);
+			totalSlipFunc.set(time, slips[i]);
+			if (multiComp) {
+				if (patch.getCumulativeSlips1().length > i)
+					comp1SlipFunc.set(time, patch.getCumulativeSlips1()[i]);
+				if (patch.getCumulativeSlips2().length > i)
+					comp2SlipFunc.set(time, patch.getCumulativeSlips2()[i]);
+				if (patch.getCumulativeSlips3().length > i)
+					comp3SlipFunc.set(time, patch.getCumulativeSlips3()[i]);
+			}
+		}
+		
+		DiscretizedFunc totalVelFunc = new ArbitrarilyDiscretizedFunc("Overall");
+		velFuncs.add(totalVelFunc);
+		velChars.add(totalChar);
+		DiscretizedFunc comp1VelFunc = null, comp2VelFunc = null, comp3VelFunc = null;
+		if (multiComp) {
+			comp1VelFunc = new ArbitrarilyDiscretizedFunc("u1");
+			velFuncs.add(comp1VelFunc);
+			velChars.add(comp1Char);
+			comp2VelFunc = new ArbitrarilyDiscretizedFunc("u2");
+			velFuncs.add(comp2VelFunc);
+			velChars.add(comp2Char);
+			comp3VelFunc = new ArbitrarilyDiscretizedFunc("u3");
+			velFuncs.add(comp3VelFunc);
+			velChars.add(comp3Char);
+		}
+		
+		for (int i=0; i<vels.length; i++) {
+			double time = patch.getTime(i);
+			totalVelFunc.set(time, vels[i]);
+			if (multiComp) {
+				if (patch.getVelocities1().length > i)
+					comp1VelFunc.set(time, patch.getVelocities1()[i]);
+				if (patch.getVelocities2().length > i)
+					comp2VelFunc.set(time, patch.getVelocities2()[i]);
+				if (patch.getVelocities3().length > i)
+					comp3VelFunc.set(time, patch.getVelocities3()[i]);
+			}
+		}
+		
+		String title = "SRF Patch History";
+		String xAxisLabel = "Time (seconds)";
+		PlotSpec slipSpec = new PlotSpec(slipFuncs, slipChars, title, xAxisLabel, "Cumulative Slip (m)");
+		slipSpec.setLegendVisible(true);
+		
+		PlotSpec velSpec = new PlotSpec(velFuncs, velChars, title, xAxisLabel, "Velocity (m/s)");
+		velSpec.setLegendVisible(false);
+		
+		List<PlotSpec> specs = new ArrayList<>();
+		specs.add(slipSpec);
+		specs.add(velSpec);
+		
+		Range xAxisRange = new Range(0, maxTime);
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setBackgroundColor(Color.WHITE);
+		
+		List<Range> xRanges = new ArrayList<>();
+		xRanges.add(xAxisRange);
+		
+		List<Range> yRanges = new ArrayList<>();
+		yRanges.add(new Range(0d, patch.getTotalSlip()));
+		yRanges.add(new Range(0d, StatUtils.max(patch.getTotalVelocities())*1.05));
+		
+		gp.drawGraphPanel(specs, false, false, xRanges, null);
+
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		File file = new File(outputDir, prefix);
+		gp.getChartPanel().setSize(1000, 1000);
+		gp.saveAsPNG(file.getAbsolutePath()+".png");
+		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+	}
 
 	public static void main(String[] args) throws IOException {
-		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2585_1myr");
+//		File catalogDir = new File("/data/kevin/simulators/catalogs/rundir2585_1myr");
+//		File geomFile = new File(catalogDir, "zfault_Deepen.in");
+//		File transFile = new File(catalogDir, "trans.rundir2585_1myrs.out");
+		File catalogDir = new File("/data/kevin/simulators/catalogs/bruce/rundir4841");
 		File geomFile = new File(catalogDir, "zfault_Deepen.in");
-		File transFile = new File(catalogDir, "trans.rundir2585_1myrs.out");
+		File transFile = new File(catalogDir, "transV..out");
+		
 		boolean variableSlipSpeed = transFile.getName().startsWith("transV");
 		
-		int[] eventIDs = { 9955310 };
+		int[] eventIDs = { 755070, 2441060 };
 		
 //		File catalogDir = new File("/data/kevin/simulators/catalogs/JG_UCERF3_millionElement");
 //		File geomFile = new File(catalogDir, "UCERF3.D3.1.millionElements.flt");

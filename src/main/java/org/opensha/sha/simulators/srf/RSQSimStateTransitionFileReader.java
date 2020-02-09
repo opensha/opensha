@@ -12,11 +12,13 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.RSQSimEvent;
 import org.opensha.sha.simulators.RSQSimEventRecord;
@@ -33,6 +35,7 @@ import org.opensha.sha.simulators.utils.SimulatorUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Range;
 
 public class RSQSimStateTransitionFileReader {
 	
@@ -188,6 +191,11 @@ public class RSQSimStateTransitionFileReader {
 				+" "+timeMarkers[timeMarkers.length-1]/SimulatorUtils.SECONDS_PER_YEAR+"]");
 	}
 	
+	private boolean retainNegatives = false;
+	public void setRetainNegativeSlips(boolean retainNegatives) {
+		this.retainNegatives = retainNegatives;
+	}
+	
 	private synchronized void read(long index, int num) throws IOException {
 //		System.out.println("index: "+index);
 		Preconditions.checkState(index >= 0, "Bad index: %s", index);
@@ -228,7 +236,7 @@ public class RSQSimStateTransitionFileReader {
 					System.arraycopy(buffer, srcPos, doubleBytes, 0, 8);
 					srcPos += 8;
 					curVels[i] = doubleBuff.get(0);
-					if (curVels[i] < 0 && curStates[i] == RSQSimState.EARTHQUAKE_SLIP) {
+					if (curVels[i] < 0 && curStates[i] == RSQSimState.EARTHQUAKE_SLIP && !retainNegatives) {
 						System.err.println("WARNING: Bad (negative) velocity, setting to 1e-6 as temporary fix");
 						curVels[i] = 1e-6;
 					}
@@ -374,6 +382,12 @@ public class RSQSimStateTransitionFileReader {
 		raFile.close();
 	}
 	
+	private boolean quiet;
+	
+	public void setQuiet(boolean quiet) {
+		this.quiet = quiet;
+	}
+	
 	/**
 	 * Reads the given transition into memory if necessary, then returns the index in the cur* arrays
 	 * of that transition
@@ -387,9 +401,9 @@ public class RSQSimStateTransitionFileReader {
 			// it's already in memory
 			return (int)arrayIndex;
 		// need to load it into memory
-		System.out.print("Caching "+transPerRead+" transisions at index "+index+"...");
+		if (!quiet) System.out.print("Caching "+transPerRead+" transisions at index "+index+"...");
 		read(index, transPerRead);
-		System.out.println("DONE");
+		if (!quiet) System.out.println("DONE");
 		return 0;
 	}
 	
@@ -415,13 +429,112 @@ public class RSQSimStateTransitionFileReader {
 		return trans;
 	}
 	
+	public synchronized Iterable<RSQSimStateTime> getTransitionsIterable(double startTime, double endTime) {
+		return getTransitionsIterable(Range.closed(startTime, endTime));
+	}
+	
+	public synchronized Iterable<RSQSimStateTime> getTransitionsIterable(Range<Double> timeRange) {
+		TransIterator it = new TransIterator(timeRange);
+		return new Iterable<RSQSimStateTime>() {
+			
+			@Override
+			public Iterator<RSQSimStateTime> iterator() {
+				return it;
+			}
+		};
+	}
+	
+	private class TransIterator implements Iterator<RSQSimStateTime> {
+		
+		private long index;
+		private Range<Double> timeRange;
+		private double startTime;
+		
+		public TransIterator(Range<Double> timeRange) {
+			this.timeRange = timeRange;
+			this.startTime = timeRange.lowerEndpoint();
+			if (startTime < timeMarkers[0])
+				index = 0;
+			else
+				index = getIndexBefore(startTime);
+		}
+
+		@Override
+		public synchronized boolean hasNext() {
+			if (index >= numTransitions)
+				return false;
+			try {
+				int arrayIndex = readTransition(index);
+				double time = curTimes[arrayIndex];
+				while (time <= startTime && !timeRange.contains(time)) {
+					index++;
+					if (index >= numTransitions)
+						return false;
+					arrayIndex = readTransition(index);
+					time = curTimes[arrayIndex];
+				}
+				
+				return timeRange.contains(time);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+
+		@Override
+		public synchronized RSQSimStateTime next() {
+			Preconditions.checkState(hasNext()); // will advance index if before startTime
+			int arrayIndex;
+			try {
+				arrayIndex = readTransition(index);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			index++;
+			int patchID = curPatchIDs[arrayIndex]+1; // these are zero based but in events it's 1-based
+			double time = curTimes[arrayIndex];
+			Preconditions.checkState(timeRange.contains(time));
+			double vel = transV ? curVels[arrayIndex] : Double.NaN;
+			return new RSQSimStateTime(patchID, time, curStates[arrayIndex], vel);
+		}
+		
+	}
+	
+	/**
+	 * Loads transitions for this event, binned by patch. Checks are made to ensure that each transition
+	 * is associated with this event by checking the next-slip-times of each patch (the time that they slip
+	 * in the next event).
+	 * @param event
+	 * @return
+	 * @throws IOException
+	 */
 	public Map<Integer, List<RSQSimStateTime>> getTransitions(RSQSimEvent event) throws IOException {
+		return getTransitions(event, null);
+	}
+	
+	/**
+	 * Loads transitions for this event, binned by patch. Checks are made to ensure that each transition
+	 * is associated with this event by checking the next-slip-times of each patch (the time that they slip
+	 * in the next event).
+	 * 
+	 * You can supply an empty list in order to get them back in order as well, not binned by patch
+	 * @param event
+	 * @param transList empty list to be filled in with related transitions, in order
+	 * @return
+	 * @throws IOException
+	 */
+	
+	public Map<Integer, List<RSQSimStateTime>> getTransitions(RSQSimEvent event, List<RSQSimStateTime> transList)
+			throws IOException {
 		Map<Integer, List<RSQSimStateTime>> patchTransitions = new HashMap<>();
 		
 		// this will store the time of the next event on this patch. so any transitions that happen on this patch
 		// with time >= startTime and time < patchEndTime are associated with this event
 		Map<Integer, Double> patchEndTimes = new HashMap<>();
 		double startTime = event.getTime();
+		
+		if (transList != null)
+			Preconditions.checkState(transList.isEmpty(),
+					"passed in transList should be empty (will be populated in order)");
 		
 		for (EventRecord rec : event) {
 			Preconditions.checkState(rec instanceof RSQSimEventRecord);
@@ -452,20 +565,42 @@ public class RSQSimStateTransitionFileReader {
 			if (!patchEndTimes.containsKey(patchID))
 				// it's for an unrelated patch
 				continue;
-			boolean thisEvent = time < patchEndTimes.get(patchID) ||
-					(curStates[arrayIndex] == RSQSimState.LOCKED && time == patchEndTimes.get(patchID));
+			List<RSQSimStateTime> patchTimes = patchTransitions.get(patchID);
+			double endTime = patchEndTimes.get(patchID);
+			RSQSimState prevState = patchTimes.isEmpty() ? null : patchTimes.get(patchTimes.size()-1).getState();
+			if (curStates[arrayIndex] == RSQSimState.LOCKED && (prevState == null || prevState == RSQSimState.LOCKED)) {
+				// either the first transition in this event is to LOCKED, or this is a duplicate LOCKED
+				// skip it as it's uneccesary, and could be during the next event
+				continue;
+			}
+			boolean thisEvent = time < endTime;
+//			if (patchID == 219277 && time >= 5.835340584208368E11 && time <= 5.83534058433055E11) {
+//				System.out.println("DEBUG: "+time+"\t"+patchID+"\t"+curStates[arrayIndex]);
+//				System.out.println("\t\tend time on this patch: "+patchEndTimes.get(patchID));
+//				System.out.println("\t\tprev trans on this patch: "+patchTimes.get(patchTimes.size()-1));
+//				System.out.flush();
+//			}
+			if (!thisEvent && curStates[arrayIndex] == RSQSimState.LOCKED && time == endTime) {
+				// it's exactly at the patch end time (first trans in next event), but this is setting it to the LOCKED state
+				// if we're not already LOCKED, keep this transition to close it out
+				thisEvent = !patchTimes.isEmpty() && prevState != RSQSimState.LOCKED;
+//				if (thisEvent)
+//					System.out.println("Kept a locking next-event transition on patch "+patchID+". Trans index "+(index-1));
+			}
 //			if (patchID == 193480)
 //				System.out.println("patch "+patchID+" t="+time+" ("+(time - startTime)+") "+curStates[arrayIndex].name()+" "+thisEvent);
 			if (thisEvent) {
 				// it's actually for this patch and event
-				List<RSQSimStateTime> patchTimes = patchTransitions.get(patchID);
 				if (!patchTimes.isEmpty()) {
 					// close out the previous one
 					RSQSimStateTime prev = patchTimes.get(patchTimes.size()-1);
 					prev.setEndTime(time);
 				}
 				double vel = transV ? curVels[arrayIndex] : Double.NaN;
-				patchTimes.add(new RSQSimStateTime(patchID, time, curStates[arrayIndex], vel));
+				RSQSimStateTime trans = new RSQSimStateTime(patchID, time, curStates[arrayIndex], vel);
+				patchTimes.add(trans);
+				if (transList != null)
+					transList.add(trans);
 			}
 		}
 		// now close each patch
@@ -483,7 +618,7 @@ public class RSQSimStateTransitionFileReader {
 		return patchTransitions;
 	}
 	
-	private long getIndexBefore(double time) {
+	public long getIndexBefore(double time) {
 		int index = Arrays.binarySearch(timeMarkers, time);
 		if (index < 0)
 			index = -index - 2; // -2 because we want before
@@ -535,6 +670,19 @@ public class RSQSimStateTransitionFileReader {
 	}
 	
 	public static void main(String[] args) throws IOException {
+//		File d = new File("/home/kevin/Simulators/catalogs/bruce/rundir4860");
+//		File tf = new File(d, "transV..out");
+//		
+//		RSQSimStateTransitionFileReader reader = new RSQSimStateTransitionFileReader(
+//				tf, ByteOrder.LITTLE_ENDIAN, true);
+//		List<RSQSimStateTime> myTrans = reader.getTransitions(5.835340584329015E11-60, 5.83534058433055E11);
+//		for (RSQSimStateTime t : myTrans) {
+//			double start = t.getStartTime();
+//			RSQSimState state = t.getState();
+//			if (t.getPatchID() == 219277)
+//				System.out.println("\t"+start+"\t"+t.getPatchID()+"\t"+state+"\t"+t.getVelocity());
+//		}
+//		System.exit(0);
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 //			File dir = new File("/data/kevin/simulators/catalogs/baseCatalogSW_10");
 //			File transFile = new File(dir, "trans.baseCatalogSW_10t.out");
@@ -543,17 +691,26 @@ public class RSQSimStateTransitionFileReader {
 //				+" 32777581 32777582 32777583 32777584 32777585 32777586 32777587 32777588 32777589 327775810";
 //			System.out.println("HARDCODED: "+str);
 //			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
-			File dir = new File("/home/kevin/Simulators/catalogs/bruce/rundir2829");
+			File dir = new File("/home/kevin/Simulators/catalogs/bruce/rundir4860");
+			File geomFile = new File(dir, "zfault_Deepen.in");
 			File transFile = new File(dir, "transV..out");
-//			int startIndex = 310432440;
+			long startIndex = 983197248;
+			int num = 100;
+//			File dir = new File("/home/kevin/Simulators/catalogs/test_double_4860");
+//			File transFile = new File(dir, "transV.combine.out");
+//			long startIndex = 2428679190l;
 //			int num = 10;
 //			int startIndex = 310068232;
 //			int num = 364216;
 //			int startIndex = 13007950;
 //			int num = 20;
-			int startIndex = 0;
-			int num = -1;
-			args = Iterables.toArray(Splitter.on(" ").split("--debug "+transFile.getAbsolutePath()+" "+startIndex+" "+num+" little"), String.class);
+//			int startIndex = 0;
+//			int num = -1;
+//			args = Iterables.toArray(Splitter.on(" ").split("--debug "+transFile.getAbsolutePath()+" "+startIndex+" "+num+" little"), String.class);
+
+			String str = "--print-rup "+transFile.getAbsolutePath()+" "+geomFile.getAbsolutePath()
+				+" 619852";
+			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
 		}
 		if (args.length > 0 && args[0].equals("--debug")) {
 			if (args.length != 5) {
@@ -562,7 +719,7 @@ public class RSQSimStateTransitionFileReader {
 			}
 			File file = new File(args[1]);
 			boolean transV = file.getName().startsWith("transV");
-			int startIndex = Integer.parseInt(args[2]);
+			long startIndex = Long.parseLong(args[2]);
 			int num = Integer.parseInt(args[3]);
 			ByteOrder byteOrder = null;
 			if (args[4].toLowerCase().startsWith("little"))
@@ -591,7 +748,7 @@ public class RSQSimStateTransitionFileReader {
 				System.exit(2);
 			}
 			File transFile = new File(args[1]).getAbsoluteFile();
-			boolean transV = args[1].startsWith("transV");
+			boolean transV = transFile.getName().startsWith("transV");
 			File catalogDir = transFile.getParentFile();
 			File geomFile = new File(args[2]);
 			int[] rupIDs = new int[args.length-3];

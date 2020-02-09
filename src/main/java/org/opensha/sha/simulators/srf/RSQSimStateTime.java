@@ -1,6 +1,6 @@
 package org.opensha.sha.simulators.srf;
 
-public class RSQSimStateTime {
+public class RSQSimStateTime implements Comparable<RSQSimStateTime> {
 	
 	private final int patchID;
 	private final double startTime;
@@ -63,6 +63,11 @@ public class RSQSimStateTime {
 			return "["+startTime+" => "+endTime+": "+state.name()+", vel="+velocity+"]";
 		else
 			return "["+startTime+" => "+endTime+": "+state.name()+"]";
+	}
+
+	@Override
+	public int compareTo(RSQSimStateTime o) {
+		return Double.compare(startTime, o.startTime);
 	}
 
 }

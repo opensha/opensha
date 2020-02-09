@@ -18,9 +18,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.DoubleBuffer;
 import java.nio.IntBuffer;
+import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -63,6 +65,7 @@ import org.opensha.sha.simulators.utils.SimulatorUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.Files;
 import com.google.common.io.LittleEndianDataInputStream;
 
 public class RSQSimFileReader {
@@ -1141,6 +1144,48 @@ public class RSQSimFileReader {
 			// it's within a minute, probably not an endianness issue
 			return true;
 		return false;
+	}
+	
+	public static File getParamFile(File catalogDir) throws IOException {
+		File bruceInFile = new File(catalogDir, "multiparam.in");
+		if (bruceInFile.exists())
+			return bruceInFile;
+		for (File file : catalogDir.listFiles()) {
+			String name = file.getName();
+			if (!name.endsWith(".in"))
+				continue;
+			if (isParamFile(file))
+				return file;
+		}
+		return null;
+	}
+	
+	private static boolean isParamFile(File file) throws IOException {
+		int max = 1000;
+		int count = 0;
+		for (String line : Files.readLines(file, Charset.defaultCharset())) {
+			line = line.trim();
+			if (line.startsWith("A_1"))
+				return true;
+			if (count++ > max)
+				return false;
+		}
+		return false;
+	}
+	
+	public static Map<String, String> readParams(File paramFile) throws IOException {
+		System.out.println("Loading params from "+paramFile.getAbsolutePath());
+		Map<String, String> params = new HashMap<>();
+		for (String line : Files.readLines(paramFile, Charset.defaultCharset())) {
+			line = line.trim();
+			if (line.contains("=")) {
+				int ind = line.indexOf("=");
+				String key = line.substring(0, ind).trim();
+				String val = line.substring(ind+1).trim();
+				params.put(key, val);
+			}
+		}
+		return params;
 	}
 
 }

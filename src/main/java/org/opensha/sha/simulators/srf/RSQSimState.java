@@ -47,6 +47,10 @@ public enum RSQSimState {
 		this.stateInt = stateInt;
 	}
 	
+	public int getStateInt() {
+		return stateInt;
+	}
+	
 	private static final Map<Integer, RSQSimState> statesMap;
 	static {
 		statesMap = new HashMap<>();

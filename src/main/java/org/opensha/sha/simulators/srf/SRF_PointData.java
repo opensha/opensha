@@ -148,6 +148,21 @@ public class SRF_PointData {
 		return cumSlips3;
 	}
 	
+	public double[] getTotalCumulativeSlips() {
+		double[] cumSlips = new double[cumSlips1.length];
+		for (int i=0; i<cumSlips.length; i++) {
+			double sum = 0d;
+			if (cumSlips1 != null && cumSlips1.length > i)
+				sum += cumSlips1[i]*cumSlips1[i];
+			if (cumSlips2 != null && cumSlips2.length > i)
+				sum += cumSlips2[i]*cumSlips2[i];
+			if (cumSlips3 != null && cumSlips3.length > i)
+				sum += cumSlips3[i]*cumSlips3[i];
+			cumSlips[i] = Math.sqrt(sum);
+		}
+		return cumSlips;
+	}
+	
 	public double getTotalSlip() {
 		return Math.sqrt(totSlip1*totSlip1 + totSlip2*totSlip2 + totSlip3*totSlip3);
 	}
@@ -162,6 +177,16 @@ public class SRF_PointData {
 	
 	public double[] getVelocities3() {
 		return slipVels3;
+	}
+	
+	public double[] getTotalVelocities() {
+		double[] cumSlips = getTotalCumulativeSlips();
+		double[] cumVels = new double[slipVels1.length];
+		for (int i=0; i<cumVels.length; i++) {
+			double slip = cumSlips[i+1] - cumSlips[i];
+			cumVels[i] = slip/dt;
+		}
+		return cumVels;
 	}
 	
 	public double getTime(int index) {

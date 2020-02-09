@@ -112,7 +112,7 @@ public class Vertex extends Location {
 	
 	@Override
 	/**
-	 * This returns true if the IDs are equale
+	 * This returns true if the IDs are equal
 	 */
 	public boolean equals(Object obj) {
 		if (this == obj) return true;
