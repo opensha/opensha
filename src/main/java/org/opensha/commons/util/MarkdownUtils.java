@@ -313,6 +313,18 @@ public class MarkdownUtils {
 				heading = heading.replace(symbol, "");
 			}
 		}
+		while (heading.contains("<") && heading.contains(">")) {
+			int indexStart = heading.indexOf("<");
+			int indexEnd = heading.indexOf(">");
+			if (indexStart < indexEnd) {
+				// remove html tag
+				String tag = heading.substring(indexStart, indexEnd+1);
+				heading = heading.replaceAll(tag, "");
+			} else {
+				// greater than sign? remove it
+				heading.replaceFirst(">", "");
+			}
+		}
 		heading = heading.trim();
 		return ALNUM.retainFrom(heading.toLowerCase().replaceAll(" ", "-")).toLowerCase();
 	}
