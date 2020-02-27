@@ -1267,6 +1267,8 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		return gmtCommandLines;
 	}
 	
+	private static final double max_height_in = 9;
+	
 	/**
 	 * This method generates a list of strings needed for the GMT script
 	 */
@@ -1328,14 +1330,23 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 		// plot size parameter
 		double plotWdth = 6.5;
+		double cosTerm = Math.cos(Math.PI*(maxLat+minLat)/(2*180));
+		double plotHght = ((maxLat-minLat)/(maxLon-minLon))*plotWdth/cosTerm;
+		System.out.println("calc height: "+plotHght);
+		if (plotHght > max_height_in) {
+			// maximum that looks good
+			plotHght = max_height_in;
+			plotWdth = plotHght * cosTerm * (maxLon-minLon)/(maxLat-minLat);
+		}
 		String projWdth = " -JM"+plotWdth+"i ";
-		double plotHght = ((maxLat-minLat)/(maxLon-minLon))*plotWdth/Math.cos(Math.PI*(maxLat+minLat)/(2*180));
 
 		double yOffset = 11 - plotHght - 0.5;
+		System.out.println("yOffset: "+yOffset+", height="+plotHght+", width="+plotWdth);
 		String yOff = " -Y" + yOffset + "i ";
 
-		// set x-axis offset to 1 inch
-		String xOff = " -X1.0i ";
+		// set x-axis offset to 1 inch, but adjust if we changed plotWidth above
+		double xOffset = 1d + 0.5*(6.5-plotWdth);
+		String xOff = " -X"+(float)xOffset+"i ";
 
 		gmtCommandLines.add("#!/bin/bash");
 		gmtCommandLines.add("");
@@ -1564,7 +1575,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 //		// This adds intermediate commands
 //		addIntermediateGMT_ScriptLines(gmtCommandLines);
 
-		addColorbarCommand(gmtCommandLines, map, colorScaleMin, colorScaleMax, cptFile, psFileName);
+		addColorbarCommand(gmtCommandLines, map, colorScaleMin, colorScaleMax, cptFile, psFileName, plotWdth);
 
 		// add the basemap
 		
@@ -1873,14 +1884,15 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	}
 	
 	public static void addColorbarCommand(ArrayList<String> gmtCommandLines, GMT_Map map,
-			double colorScaleMin, double colorScaleMax, String cptFile, String psFile) {
+			double colorScaleMin, double colorScaleMax, String cptFile, String psFile, double plotWidth) {
 		addColorbarCommand(gmtCommandLines, map.getCustomLabel(), map.isLogPlot(), colorScaleMin, colorScaleMax,
-				cptFile, psFile, map.isCPTEqualSpacing(), map.getCPTCustomInterval(), map.getLabelSize(), map.getLabelTickSize());
+				cptFile, psFile, map.isCPTEqualSpacing(), map.getCPTCustomInterval(),
+				map.getLabelSize(), map.getLabelTickSize(), plotWidth);
 	}
 	
 	public static void addColorbarCommand(ArrayList<String> gmtCommandLines, String scaleLabel, boolean isLog,
 			double colorScaleMin, double colorScaleMax, String cptFile, String psFile, boolean cptEqualSpacing,
-			Double customTickInterval, Integer fontSize, Integer tickFontSize) {
+			Double customTickInterval, Integer fontSize, Integer tickFontSize, double plotWidth) {
 		// add the color scale
 		DecimalFormat df2 = new DecimalFormat("0.E0");
 		Float tickInc;
@@ -1903,11 +1915,14 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 			String commandLine = "${GMT_PATH}set FONT_ANNOT_PRIMARY="+tickFontSize+"p,Helvetica,black";
 			gmtCommandLines.add(commandLine+"\n");
 		}
+		
+		float w = (float)Math.max(1d, plotWidth - 0.5);
+		float x = (float)(plotWidth/2);
 		if (cptEqualSpacing) {
-			String commandLine="${GMT_PATH}psscale -L -B+l"+scaleLabel+" -D3.25i/-0.5i/6i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
+			String commandLine="${GMT_PATH}psscale -L -B+l"+scaleLabel+" -D"+x+"i/-0.5i/"+w+"i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
 			gmtCommandLines.add(commandLine+"\n");
 		} else {
-			String commandLine="${GMT_PATH}psscale -Ba"+tickInc+":"+scaleLabel+": -D3.25i/-0.5i/6i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
+			String commandLine="${GMT_PATH}psscale -Ba"+tickInc+":"+scaleLabel+": -D"+x+"i/-0.5i/"+w+"i/0.3ih -C"+cptFile+" -O -K -N70 >> " + psFile;
 			gmtCommandLines.add(commandLine+"\n");
 		}
 	}
