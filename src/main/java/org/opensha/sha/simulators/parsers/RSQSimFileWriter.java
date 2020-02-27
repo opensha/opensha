@@ -610,21 +610,56 @@ public class RSQSimFileWriter {
 //		
 //		stitchCatalogs(outputDir, "extended", null, elements, input1, input2);
 		
-		File outputDir = new File(catalogsDir, "test_separate_combine");
+//		File outputDir = new File(catalogsDir, "test_separate_combine");
+//		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+//		File bruceDir = new File(catalogsDir, "bruce");
+//		File input1 = new File(bruceDir, "rundir4860");
+//		File input2 = new File(bruceDir, "rundir4860");
+//		File geomFile = new File(input1, "zfault_Deepen.in");
+//		
+//		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
+//		System.out.println("Loaded "+elements.size()+" elements");
+//		
+//		double skipYears = 5000;
+//		
+//		RuptureIdentifier filter = new MagRangeRuptureIdentifier(6.5d, Double.POSITIVE_INFINITY);
+//		
+//		combineSeparateCatalogs(outputDir, "combine", filter, elements, skipYears, input1, input2);
+		
+		File catDir = new File("/home/scec-00/rsqsim/catalogs/");
+		File bruceDir = new File(catDir, "shaw");
+		File meDir = new File(catDir, "kmilner");
+		
+		File outputDir = new File(meDir, "rundir4860_multi_combine");
+		
+		File[] inputDirs = new File[] {
+			new File(bruceDir, "rundir4860"),
+			new File(bruceDir, "rundir4860.01"),
+			new File(bruceDir, "rundir4910"),
+			new File(bruceDir, "rundir4911"),
+			new File(bruceDir, "rundir4912"),
+			new File(bruceDir, "rundir4913"),
+			new File(bruceDir, "rundir4915"),
+			new File(bruceDir, "rundir4916"),
+			new File(bruceDir, "rundir4917"),
+			new File(bruceDir, "rundir4918"),
+			new File(bruceDir, "rundir4919"),
+		};
+		
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		File bruceDir = new File(catalogsDir, "bruce");
-		File input1 = new File(bruceDir, "rundir4860");
-		File input2 = new File(bruceDir, "rundir4860");
-		File geomFile = new File(input1, "zfault_Deepen.in");
+		
+		for (File inputDir : inputDirs)
+			Preconditions.checkState(inputDir.exists());
+		
+		RuptureIdentifier filter = new MagRangeRuptureIdentifier(6.5d, Double.POSITIVE_INFINITY);
+		double skipYears = 5000;
+		
+		File geomFile = new File(inputDirs[0], "zfault_Deepen.in");
 		
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
 		System.out.println("Loaded "+elements.size()+" elements");
 		
-		double skipYears = 5000;
-		
-		RuptureIdentifier filter = new MagRangeRuptureIdentifier(6.5d, Double.POSITIVE_INFINITY);
-		
-		combineSeparateCatalogs(outputDir, "combine", filter, elements, skipYears, input1, input2);
+		combineSeparateCatalogs(outputDir, "combined", filter, elements, skipYears, inputDirs);
 	}
 
 }

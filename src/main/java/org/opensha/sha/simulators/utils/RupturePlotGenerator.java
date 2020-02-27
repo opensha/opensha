@@ -302,7 +302,7 @@ public class RupturePlotGenerator {
 		
 		String title = "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
 		
-		PlotSpec slipSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)", "Max Slip");
+		PlotSpec slipSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)", "Total Slip");
 		slipSpec.setPlotAnnotations(slipPolys);
 		specs.add(slipSpec);
 		

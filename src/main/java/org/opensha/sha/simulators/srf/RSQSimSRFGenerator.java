@@ -170,7 +170,8 @@ public class RSQSimSRFGenerator {
 	}
 	
 	public static void plotSlip(File outputDir, String prefix,
-			RSQSimEventSlipTimeFunc func, SimulatorElement patch, double dt, SRFInterpolationMode... modes) throws IOException {
+			RSQSimEventSlipTimeFunc func, SimulatorElement patch, double dt, boolean pub,
+			SRFInterpolationMode... modes) throws IOException {
 		List<DiscretizedFunc> slipFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> slipChars = new ArrayList<>();
 		
@@ -193,6 +194,9 @@ public class RSQSimSRFGenerator {
 		
 		DefaultXY_DataSet actualVelFunc = new DefaultXY_DataSet();
 		
+		double firstSlip = Double.NaN;
+		double lastSlip = 0d;
+		
 		for (RSQSimStateTime trans : func.getTransitions(patchID)) {
 			double vel;
 			if (trans.getState() == RSQSimState.EARTHQUAKE_SLIP)
@@ -206,9 +210,16 @@ public class RSQSimSRFGenerator {
 //			velFunc.set(trans.getEndTime(), vel);
 //			velFuncs.add(velFunc);
 //			velChars.add(actualChar);
+			if (actualVelFunc.size() == 0) {
+				// force it to start at zero
+				actualVelFunc.set(trans.getStartTime(), 0d);
+				firstSlip = trans.getStartTime();
+			}
 			actualVelFunc.set(trans.getStartTime(), vel);
 			actualVelFunc.set(trans.getEndTime(), vel);
+			lastSlip = trans.getEndTime();
 		}
+		actualVelFunc.set(actualVelFunc.getMaxX(), 0d);
 		velFuncs.add(actualVelFunc);
 		velChars.add(actualChar);
 		
@@ -229,22 +240,26 @@ public class RSQSimSRFGenerator {
 		for (SRFInterpolationMode mode : modes) {
 			SRF_PointData srf = buildSRF(func, patch, dt, mode);
 			Color c;
-			switch (mode) {
-			case NONE:
-				c = Color.RED;
-				break;
-			case ADJ_VEL:
-				c = Color.GREEN.darker();
-				break;
-			case LIN_TAPER_VEL:
-				c = Color.CYAN;
-				break;
-//			case CONST_VEL_ADJ_LEN:
-//				c = Color.GREEN;
-//				break;
+			if (pub) {
+				c = Color.GRAY;
+			} else {
+				switch (mode) {
+				case NONE:
+					c = Color.RED;
+					break;
+				case ADJ_VEL:
+					c = Color.GREEN.darker();
+					break;
+				case LIN_TAPER_VEL:
+					c = Color.CYAN;
+					break;
+//				case CONST_VEL_ADJ_LEN:
+//					c = Color.GREEN;
+//					break;
 
-			default:
-				throw new IllegalStateException("Unknown interpolation mode: "+mode);
+				default:
+					throw new IllegalStateException("Unknown interpolation mode: "+mode);
+				}
 			}
 //			PlotCurveCharacterstics srfChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, PlotSymbol.CIRCLE, 4f, c);
 			PlotCurveCharacterstics srfChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, c);
@@ -253,7 +268,7 @@ public class RSQSimSRFGenerator {
 			double[] vels = srf.getVelocities1();
 			
 			DiscretizedFunc slipFunc = new ArbitrarilyDiscretizedFunc();
-			slipFunc.setName(mode.toString());
+			slipFunc.setName(pub ? "Discretized" : mode.toString());
 			for (int i=0; i<slips.length; i++)
 				slipFunc.set(srf.getTime(i), slips[i]);
 			slipFuncs.add(slipFunc);
@@ -271,9 +286,12 @@ public class RSQSimSRFGenerator {
 			DefaultXY_DataSet velFunc = new DefaultXY_DataSet();
 			velFunc.setName(mode.toString());
 			for (int i=0; i<vels.length; i++) {
+				if (i == 0)
+					velFunc.set(srf.getTime(i), 0d);
 				velFunc.set(srf.getTime(i), vels[i]);
 				velFunc.set(srf.getTime(i+1), vels[i]);
 			}
+			velFunc.set(velFunc.getMaxX(), 0d);
 			velFuncs.add(velFunc);
 			velChars.add(srfChar);
 			
@@ -288,11 +306,12 @@ public class RSQSimSRFGenerator {
 //			}
 		}
 		
-		String title = "SRF Validation";
+		String title = pub ? null : "SRF Validation";
 		String xAxisLabel = "Time (seconds)";
 		PlotSpec slipSpec = new PlotSpec(slipFuncs, slipChars, title, xAxisLabel, "Cumulative Slip (m)");
 		slipSpec.setLegendVisible(true);
-		slipSpec.setPlotAnnotations(slipAnns);
+		if (!pub)
+			slipSpec.setPlotAnnotations(slipAnns);
 		
 		PlotSpec velSpec = new PlotSpec(velFuncs, velChars, title, xAxisLabel, "Velocity (m/s)");
 		velSpec.setLegendVisible(false);
@@ -302,6 +321,12 @@ public class RSQSimSRFGenerator {
 		specs.add(velSpec);
 		
 		Range xAxisRange = new Range(0, eventLen);
+		if (pub) {
+			// zoom in
+			double minX = Math.max(0, Math.floor(firstSlip-0.5));
+			double maxX = Math.min(eventLen, Math.ceil(lastSlip+0.5));
+			xAxisRange = new Range(minX, maxX);
+		}
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setTickLabelFontSize(18);
@@ -586,7 +611,7 @@ public class RSQSimSRFGenerator {
 								while (prefix.length() < patchDigits)
 									prefix = "0"+prefix;
 								prefix = "patch_"+prefix;
-								plotSlip(eventOutputDir, prefix, myFunc, patch, dt, modes);
+								plotSlip(eventOutputDir, prefix, myFunc, patch, dt, false, modes);
 							}
 						}
 						
