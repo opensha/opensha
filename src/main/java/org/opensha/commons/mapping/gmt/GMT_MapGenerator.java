@@ -1267,7 +1267,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		return gmtCommandLines;
 	}
 	
-	private static final double max_height_in = 8.5;
+	private static final double max_height_in = 8;
 	
 	/**
 	 * This method generates a list of strings needed for the GMT script
