@@ -197,7 +197,7 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
     }
     
     /**
-     * Calculates the sMPLE standard deviation for normalized distribution
+     * Calculates the standard deviation for normalized distribution (finite number of samples not accounted for)
      * 
      * @return
      */
@@ -210,7 +210,10 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
     		stdDev+=dev*dev*getY(i);
     		sumY+=getY(i);
     	}
-    	return Math.sqrt(stdDev/(sumY-1.0));
+    	// taking out the following minus 1 because sumY might be less than 1.0; we've also lost the true number 
+    	// of samples if multiple values got added to the same x-axis bin
+//    	return Math.sqrt(stdDev/(sumY-1.0)); 
+    	return Math.sqrt(stdDev/(sumY));
     }
 
     
