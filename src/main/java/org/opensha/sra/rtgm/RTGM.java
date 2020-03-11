@@ -404,6 +404,7 @@ public class RTGM implements Callable<RTGM> {
 		
 		RTGM rtgm = RTGM.create(f, Frequency.SA_1P00, 0.8);
 		System.out.println(rtgm.call());
+		System.out.println(rtgm.get());
 		System.out.println(rtgm.riskCoeff());
 		System.out.println(rtgm.rtgmIterations());
 		System.out.println(rtgm.riskIterations());
