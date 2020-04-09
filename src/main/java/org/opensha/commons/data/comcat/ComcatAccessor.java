@@ -114,6 +114,13 @@ public class ComcatAccessor {
 
 	protected JsonEvent last_geojson;
 
+	// Indicates if queries to a secondary id should be refetched using the primary id.
+	// Note: When an event has multiple ids, on rare occasions Comcat may return different
+	// responses for different ids.  An application that cares can set this to true, so
+	// that responses always come from queries on the primary id.  (Default is false.)
+
+	protected boolean refetch_secondary;
+
 
 
 
@@ -170,6 +177,8 @@ public class ComcatAccessor {
 		local_http_status = -1;
 
 		last_geojson = null;
+
+		refetch_secondary = false;
 	}
 
 
@@ -364,6 +373,64 @@ public class ComcatAccessor {
 		}
 		
 		JsonEvent event = events.get(0);
+
+		// If we are refetching events following query on a secondary id ...
+
+		if (refetch_secondary) {
+
+			// Get the authoritative event id
+
+			String auth_id = null;
+			try {
+				auth_id = event.getEventId().toString();
+			} catch (Exception e) {
+				auth_id = null;
+			}
+
+			if (auth_id == null || auth_id.isEmpty()) {
+				return null;	// treat as not-found if there is no authoritative id
+			}
+
+			// If the authoritative id is not our query id ...
+
+			if (!( auth_id.equals (eventID) )) {
+			
+				// Set up query on event id
+
+				query = new ComcatEventQuery();
+				query.setEventId(auth_id);
+
+				// Ask for superseded and deletion products if desired
+
+				if (superseded) {
+					query.setIncludeSuperseded (true);
+				}
+
+				// Call Comcat to get the list of events satisfying the query
+
+				events = getEventsFromComcat (query);
+
+				// If no events received, then not found
+
+				if (events.isEmpty()) {
+					return null;
+				}
+
+				// Error if more than one event was returned
+
+				if (events.size() != 1) {
+					reportQueryError          ("ComcatAccessor: Received more than one match, count = " + events.size(), null);
+					throw new ComcatException ("ComcatAccessor: Received more than one match, count = " + events.size());
+				}
+		
+				event = events.get(0);
+
+				// At this point we need to check that eventID is one of the ids returned in the geojson.
+				// Fortunately, eventToObsRup() will perform the check.
+			}
+		}
+
+		// Save the geojson so that the caller can retrieve it
 
 		last_geojson = event;
 
@@ -1161,6 +1228,16 @@ public class ComcatAccessor {
 
 	public JsonEvent get_last_geojson () {
 		return last_geojson;
+	}
+
+
+
+
+	// Set the flag that controls whether queries to a secondary id are refetched using the primary id.
+
+	public void set_refetch_secondary (boolean f_refetch_secondary) {
+		refetch_secondary = f_refetch_secondary;
+		return;
 	}
 
 
