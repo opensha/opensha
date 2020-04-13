@@ -127,4 +127,9 @@ public class Portfolio {
 	public File getPortfolioFile() {
 		return portfolioFile;
 	}
+	
+	public static void main(String[] args) throws IOException {
+//		createPortfolio(new File("/home/kevin/OpenSHA/UCERF3/eal/Porter-24May2017-CA-RES1-2017-Wills2015.csv"));
+		createPortfolio(new File("/home/kevin/OpenSHA/UCERF3/eal/Porter-09-Feb-2020-CEA-100-pct-procy-portfolio.csv"));
+	}
 }

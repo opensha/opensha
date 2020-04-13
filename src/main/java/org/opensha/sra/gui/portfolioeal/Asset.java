@@ -132,10 +132,12 @@ public class Asset implements Cloneable {
 	 * @see ParameterParser
 	 */
 	private AbstractParameter createParameter( String paramName ) {
+		paramName = paramName.trim();
 		AbstractParameter param = null;
 		ParameterParser parameterParser = ParameterParser.getParameterParser();
 		Class<?> c = null;
 		try {
+//			System.out.println("Creating parameter for: "+paramName);
 			String className = "org.opensha.commons.param.impl." + parameterParser.getParameterType(paramName);
 			c = Class.forName( className );
 			Class<?>[] paramTypes = {String.class};
