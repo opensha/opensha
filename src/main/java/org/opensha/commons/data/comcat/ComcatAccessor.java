@@ -181,7 +181,12 @@ public class ComcatAccessor {
 		refetch_secondary = false;
 	}
 
-
+	/**
+	 * @return EventWebService if intialized, otherwise null
+	 */
+	public EventWebService getEventWebService() {
+		return service;
+	}
 
 
 	// The number of milliseconds in a day.
