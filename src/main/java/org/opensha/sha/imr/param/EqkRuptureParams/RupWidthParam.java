@@ -32,7 +32,7 @@ public class RupWidthParam extends WarningDoubleParameter {
 	public final static String UNITS = "km";
 	public final static String INFO = "Down-dip width of the rupture";
 	public final static Double MIN = new Double(0.0);
-	public final static Double MAX = new Double(100.0);
+	public final static Double MAX = new Double(200.0);
 	// warning values are set in subclasses
 
 	/**
@@ -40,7 +40,7 @@ public class RupWidthParam extends WarningDoubleParameter {
 	 *  as given, and leaves the parameter as non editable.
 	 */
 	public RupWidthParam(double minWarning, double maxWarning, double defaultWidth) {
-		super(NAME, new DoubleConstraint(MIN, MAX));
+		super(NAME, new DoubleConstraint(Math.min(MIN, minWarning), Math.max(MAX, maxWarning)));
 		getConstraint().setNonEditable();
 		DoubleConstraint warn = new DoubleConstraint(minWarning,maxWarning);
 		warn.setNonEditable();
