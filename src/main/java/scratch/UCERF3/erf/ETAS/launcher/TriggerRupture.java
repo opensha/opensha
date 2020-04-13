@@ -73,6 +73,8 @@ public abstract class TriggerRupture {
 		ETAS_EqkRupture rupture = new ETAS_EqkRupture();
 		long ot = getOccurrenceTime(simulationStartTime);
 		rupture.setOriginTime(ot);
+		if (comcatEventID != null)
+			rupture.setEventId(comcatEventID);
 		Double k = null;
 		if (etas_log10_k != null) {
 			// convert k to UCERF3-ETAS units
@@ -84,6 +86,12 @@ public abstract class TriggerRupture {
 	}
 	
 	protected abstract void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture);
+	
+	/**
+	 * @param rupSet
+	 * @return magnitude of this rupture, or null if dependent on rupture set and rupSet not supplied
+	 */
+	public abstract Double getMag(FaultSystemRupSet rupSet);
 	
 	public abstract int[] getSectionsRuptured(FaultSystemRupSet rupSet);
 	
@@ -122,6 +130,15 @@ public abstract class TriggerRupture {
 		@Override
 		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
 			return Ints.toArray(rupSet.getSectionsIndicesForRup(fssIndex));
+		}
+
+		@Override
+		public Double getMag(FaultSystemRupSet rupSet) {
+			if (overrideMag != null && overrideMag > 0)
+				return overrideMag;
+			if (rupSet != null)
+				rupSet.getMagForRup(fssIndex);
+			return null;
 		}
 		
 	}
@@ -169,6 +186,11 @@ public abstract class TriggerRupture {
 		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
 			return subSects;
 		}
+
+		@Override
+		public Double getMag(FaultSystemRupSet rupSet) {
+			return mag;
+		}
 		
 	}
 	
@@ -202,6 +224,11 @@ public abstract class TriggerRupture {
 		@Override
 		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
 			return sectsReset;
+		}
+
+		@Override
+		public Double getMag(FaultSystemRupSet rupSet) {
+			return mag;
 		}
 		
 	}
@@ -247,6 +274,11 @@ public abstract class TriggerRupture {
 		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
 			return sectsReset;
 		}
+
+		@Override
+		public Double getMag(FaultSystemRupSet rupSet) {
+			return mag;
+		}
 		
 	}
 	
@@ -290,6 +322,11 @@ public abstract class TriggerRupture {
 		@Override
 		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
 			return sectsReset;
+		}
+
+		@Override
+		public Double getMag(FaultSystemRupSet rupSet) {
+			return mag;
 		}
 		
 	}

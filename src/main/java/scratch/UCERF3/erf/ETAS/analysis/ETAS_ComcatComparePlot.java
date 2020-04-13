@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
@@ -27,9 +28,11 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.comcat.ComcatAccessor;
 import org.opensha.commons.data.comcat.ComcatRegion;
 import org.opensha.commons.data.comcat.ComcatRegionAdapter;
+import org.opensha.commons.data.comcat.plot.ComcatDataPlotter;
 import org.opensha.commons.data.function.AbstractXY_DataSet;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.UncertainArbDiscDataset;
@@ -55,9 +58,11 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
+import org.opensha.sha.earthquake.observedEarthquake.magComplete.Helmstetter2006_TimeDepMc;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -76,6 +81,7 @@ import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator.PlotResult;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
@@ -86,19 +92,16 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private ObsEqkRupList comcatEvents;
 	private double modalMag;
 	private double comcatMc;
+	private double comcatMinMag;
 	private double comcatMaxMag;
-	private IncrementalMagFreqDist comcatMND;
-	private EvenlyDiscretizedFunc timeDiscretization;
 	private double simMc;
 	private double overallMc;
+	private boolean smallSequence; // if true, will plot data below M2.5
 	
 	// for T-D Mc
 	private static final double CISN_MC = 2.3;
 	private static double MAX_MAG_FOR_TD_MC = 5;
-	private double tdMinMag;
-	private List<ObsEqkRupture> mainshocksForTimeDepMc;
-	private EvenlyDiscretizedFunc timeDepMcFunc;
-	private ObsEqkRupList comcatEventsFilteredTDMc;
+	private Helmstetter2006_TimeDepMc timeDepMc;
 	
 	private double innerBoxMinLat;
 	private double innerBoxMaxLat;
@@ -124,25 +127,31 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private double[][][] catalogMedians;
 	private int[][] comcatCountsSummary;
 	
+	// mag-time funcs
+	private EvenlyDiscretizedFunc magTimeYAxis;
+	private double magTimeXAxisFullMax;
+	private EvenlyDiscretizedFunc magTimeXAxisFull;
+	private double magTimeXAxisWeekMax;
+	private EvenlyDiscretizedFunc magTimeXAxisWeek;
+	private double magTimeXAxisMonthMax;
+	private EvenlyDiscretizedFunc magTimeXAxisMonth;
+	private double[][] magTimeProbsFull;
+	private double[][] magTimeProbsWeek;
+	private double[][] magTimeProbsMonth;
+	
 	private List<IncrementalMagFreqDist> catalogRegionMFDs;
 	private double[] timeFuncMcs;
 	private List<EvenlyDiscretizedFunc[]> catalogTimeFuncs;
 	private EvenlyDiscretizedFunc[] catalogDepthDistributions;
 	private HistogramFunction totalCountHist;
 	
+	private ComcatDataPlotter plotter;
+	
 	private static double[] default_durations = { 1d / 365.25, 7d / 365.25, 30 / 365.25, 1d };
-	private static double[] fractiles = {0.025, 0.16, 0.84, 0.975};
 
 	private static final boolean map_plot_probs = true;
 	private static final boolean map_plot_means = true;
 	private static final boolean map_plot_medians = false;
-
-	private boolean plotIncludeMean = true;
-	private boolean plotIncludeMedian = true;
-	private boolean plotIncludeMode = true;
-	private Color dataColor = Color.RED;
-	private Double timeFuncMaxY = null;
-	private Map<Double, String> timeFuncAnns = null;
 	
 	private double[] durations;
 	private long[] maxOTs;
@@ -154,7 +163,6 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private CPT baseCPT = null;
 	private Double minZ = null;
 	private Color mapDataColor = Color.CYAN;
-	private boolean noTitles = false;
 	private static final int cpt_discretizations = 4;
 
 	public ETAS_ComcatComparePlot(ETAS_Config config, ETAS_Launcher launcher) {
@@ -216,33 +224,81 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			System.out.println("No ComCat events found");
 			return;
 		}
+		// see if it's a small sequence
+		smallSequence = false;
+		double minMag = Double.POSITIVE_INFINITY;
+		for (ObsEqkRupture comcatEvent : comcatEvents) {
+			if (comcatEvent.getMag() < comcatMeta.minMag)
+				smallSequence = true;
+			minMag = Math.min(comcatEvent.getMag(), minMag);
+		}
+		System.out.println("Min ComCat mag: "+minMag);
+	}
+	
+	public static boolean isSmallSequence(ETAS_Config config) {
+		List<TriggerRupture> triggers = config.getTriggerRuptures();
+		if (triggers == null)
+			return false;
+		for (TriggerRupture trigger : triggers) {
+			Double mag = trigger.getMag(null);
+			if (mag == null)
+				// FSS rupture, must be big
+				return false;
+			else if (mag >= 6d)
+				return false;
+		}
+		return true;
+	}
+	
+	public synchronized ComcatDataPlotter getPlotter() {
+		if (plotter == null)
+			init();
+		return plotter;
 	}
 	
 	public static ObsEqkRupList loadComcatEvents(ETAS_Config config, ComcatMetadata comcatMeta, Region mapRegion, long endTime) {
 		ComcatAccessor accessor = new ComcatAccessor();
 		ComcatRegion cReg = mapRegion instanceof ComcatRegion ? (ComcatRegion)mapRegion : new ComcatRegionAdapter(mapRegion);
+		boolean smallSequence = isSmallSequence(config);
+		if (smallSequence)
+			System.out.println("Small sequence, will plot below minMag");
+		double minMag = smallSequence ? 0d : comcatMeta.minMag;
 		return accessor.fetchEventList(comcatMeta.eventID, config.getSimulationStartTimeMillis(), endTime,
-				comcatMeta.minDepth, comcatMeta.maxDepth, cReg, false, false, comcatMeta.minMag);
+				comcatMeta.minDepth, comcatMeta.maxDepth, cReg, false, false, minMag);
 	}
 	
 	private void init() {
 		ETAS_Config config = getConfig();
 		ETAS_Launcher launcher = getLauncher();
 		ComcatMetadata comcatMeta = config.getComcatMetadata();
-		comcatMaxMag = 0d;
-		comcatMND = new IncrementalMagFreqDist(ETAS_MFD_Plot.mfdMinMag, ETAS_MFD_Plot.mfdNumMag, ETAS_MFD_Plot.mfdDelta);
-		if (comcatEvents.isEmpty()) {
-			modalMag = comcatMND.getX(0)-0.5*comcatMND.getDelta();
-			System.out.println("No ComCat events in region.");
-		} else {
-			for (ObsEqkRupture rup : comcatEvents) {
-				comcatMaxMag = Math.max(comcatMaxMag, rup.getMag());
-				comcatMND.add(comcatMND.getClosestXIndex(rup.getMag()), 1d);
+		
+		double maxTriggerMag = Double.NEGATIVE_INFINITY;
+		ETAS_EqkRupture maxMainshock = null;
+		List<ETAS_EqkRupture> inputRups = new ArrayList<>();
+		ETAS_EqkRupture inputMS = null;
+		for (ETAS_EqkRupture rup : launcher.getTriggerRuptures()) {
+			if (rup.getMag() > maxTriggerMag) {
+				maxMainshock = rup;
+				maxTriggerMag = rup.getMag();
 			}
-			modalMag = comcatMND.getX(comcatMND.getXindexForMaxY())-0.5*comcatMND.getDelta();
-			System.out.println("Found "+comcatEvents.size()+" ComCat events in region. Max mag: "
-					+(float)comcatMaxMag+". Modal mag: "+(float)modalMag);
+			if (rup.getEventId() != null && rup.getEventId().equals(comcatMeta.eventID))
+				inputMS = rup;
+			else
+				inputRups.add(rup);
 		}
+		long plotOT = inputMS == null ? startTime : inputMS.getOriginTime();
+		long plotET = Long.max(curTime, startTime + 7l*ProbabilityModelsCalc.MILLISEC_PER_DAY);
+		plotter = new ComcatDataPlotter(inputMS, plotOT, plotET, inputRups, comcatEvents);
+		
+		if (smallSequence)
+			comcatMinMag = 0.05;
+		else
+			comcatMinMag = ETAS_Utils.minDist_DEFAULT;
+		
+		comcatMaxMag = plotter.getMaxAftershockMag();
+		modalMag = plotter.calcModalMag(comcatMinMag, false, false);
+		System.out.println("Found "+comcatEvents.size()+" ComCat events in region. Max mag: "
+				+(float)comcatMaxMag+". Modal mag: "+(float)modalMag);
 		if (comcatMeta.magComplete == null) {
 			System.out.println("Using default Mc = modalMag + 0.5");
 			comcatMc = modalMag + 0.5;
@@ -251,23 +307,9 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			comcatMc = comcatMeta.magComplete;
 		}
 		System.out.println("Mc="+(float)comcatMc);
-		timeDays = curDuration <= 1d;
-		double timeFuncDuration = Math.min(durations[durations.length-1], curDuration);
-		if (timeDays)
-			timeDiscretization = new EvenlyDiscretizedFunc(0d, timeFuncDuration*365.25, 500);
-		else
-			timeDiscretization = new EvenlyDiscretizedFunc(0d, timeFuncDuration, 500);
+		timeDays = curDuration <= 2d;
 		
-		double maxTriggerMag = Double.NEGATIVE_INFINITY;
-		ETAS_EqkRupture maxMainshock = null;
-		for (ETAS_EqkRupture rup : launcher.getTriggerRuptures()) {
-			if (rup.getMag() > maxTriggerMag) {
-				maxMainshock = rup;
-				maxTriggerMag = rup.getMag();
-			}
-		}
-		
-		mainshocksForTimeDepMc = new ArrayList<>();
+		List<ObsEqkRupture> mainshocksForTimeDepMc = new ArrayList<>();
 		mainshocksForTimeDepMc.add(maxMainshock);
 		for (ObsEqkRupture rup : comcatEvents)
 			if (rup.getMag() >= MAX_MAG_FOR_TD_MC)
@@ -275,29 +317,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		for (ETAS_EqkRupture rup : launcher.getTriggerRuptures())
 			if (rup != maxMainshock && rup.getMag() >= MAX_MAG_FOR_TD_MC)
 				mainshocksForTimeDepMc.add(rup);
-		
-		timeDepMcFunc = new EvenlyDiscretizedFunc(timeDiscretization.getMinX(),
-				timeDiscretization.getMaxX(), timeDiscretization.size());
-		tdMinMag = Math.max(ETAS_Utils.magMin_DEFAULT, CISN_MC);
-		if (timeDays) {
-			for (int i=0; i<timeDepMcFunc.size(); i++) {
-				double days = timeDepMcFunc.getX(i);
-				long time = (long)(startTime + days*ProbabilityModelsCalc.MILLISEC_PER_DAY);
-				timeDepMcFunc.set(i, calcTimeDepMc(mainshocksForTimeDepMc, time, tdMinMag));
-			}
-		} else {
-			for (int i=0; i<timeDepMcFunc.size(); i++) {
-				double years = timeDepMcFunc.getX(i);
-				long time = (long)(startTime + years*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
-				timeDepMcFunc.set(i, calcTimeDepMc(mainshocksForTimeDepMc, time, tdMinMag));
-			}
-		}
-		comcatEventsFilteredTDMc = new ObsEqkRupList();
-		for (ObsEqkRupture rup : comcatEvents) {
-			double timeDepMc = calcTimeDepMc(rup);
-			if (rup.getMag() >= timeDepMc)
-				comcatEventsFilteredTDMc.add(rup);
-		}
+		timeDepMc = new Helmstetter2006_TimeDepMc(mainshocksForTimeDepMc, Math.max(ETAS_Utils.magMin_DEFAULT, CISN_MC));
 		
 		double maxMag = Math.max(maxTriggerMag, comcatMaxMag);
 		double maxTestMag = Math.ceil(maxMag);
@@ -335,7 +355,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		catalogRegionMFDs = new ArrayList<>();
 		catalogTimeFuncs = new ArrayList<>();
 		
-		totalCountHist = new HistogramFunction(comcatMND.getMinX(), comcatMND.getMaxX(), comcatMND.size());
+		totalCountHist = new HistogramFunction(ETAS_MFD_Plot.mfdMinMag, ETAS_MFD_Plot.mfdNumMag, ETAS_MFD_Plot.mfdDelta);
 		
 		catalogDepthDistributions = new EvenlyDiscretizedFunc[magBins.length];
 		double minDepthBin = 0.5;
@@ -343,6 +363,28 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		int numDepth = (int)Math.ceil(ETAS_CubeDiscretizationParams.DEFAULT_MAX_DEPTH);
 		for (int i=0; i<magBins.length; i++)
 			catalogDepthDistributions[i] = new EvenlyDiscretizedFunc(minDepthBin, numDepth, deltaDepth);
+		
+		// set up mag/time dists
+		// mag bins are 0.5
+		magTimeYAxis = new EvenlyDiscretizedFunc(0.25+totalCountHist.getMinX()-0.5*totalCountHist.getDelta(), 13, 0.5);
+		if (timeDays) {
+			double delta = curDuration*365.25/15d;
+			magTimeXAxisFull = new EvenlyDiscretizedFunc(0.5*delta, 15, delta);
+			magTimeXAxisWeek = new EvenlyDiscretizedFunc(0.25, 14, 0.5);
+			magTimeXAxisMonth = new EvenlyDiscretizedFunc(1d, 15, 2d);
+		} else {
+			double delta = curDuration/15d;
+			magTimeXAxisFull = new EvenlyDiscretizedFunc(0.5*delta, 15, delta);
+			double yearScalar = 1d/365.25;
+			magTimeXAxisWeek = new EvenlyDiscretizedFunc(yearScalar*0.25, 14, yearScalar*0.5);
+			magTimeXAxisMonth = new EvenlyDiscretizedFunc(yearScalar*1d, 15, yearScalar*2d);
+		}
+		magTimeProbsFull = new double[magTimeXAxisFull.size()][magTimeYAxis.size()];
+		magTimeXAxisFullMax = magTimeXAxisFull.getMaxX() + 0.5*magTimeXAxisFull.getDelta();
+		magTimeProbsWeek = new double[magTimeXAxisWeek.size()][magTimeYAxis.size()];
+		magTimeXAxisWeekMax = magTimeXAxisWeek.getMaxX() + 0.5*magTimeXAxisWeek.getDelta();
+		magTimeProbsMonth = new double[magTimeXAxisMonth.size()][magTimeYAxis.size()];
+		magTimeXAxisMonthMax = magTimeXAxisMonth.getMaxX() + 0.5*magTimeXAxisMonth.getDelta();
 		
 		// figure out the largest rectangle that fits inside the region
 		// that will allow quickContains to work
@@ -545,31 +587,6 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return mapRegion.contains(hypocenter);
 	}
 	
-	private double calcTimeDepMc(ObsEqkRupture rup) {
-		return calcTimeDepMc(mainshocksForTimeDepMc, rup.getOriginTime(), tdMinMag);
-	}
-	
-	private static double calcTimeDepMc(List<? extends ObsEqkRupture> mainshocks, long time, double minMag) {
-		double maxMc = minMag;
-		for (ObsEqkRupture mainshock : mainshocks) {
-			double myMc = calcTimeDepMc(mainshock, time, minMag);
-			if (Double.isFinite(myMc))
-				maxMc = Math.max(maxMc, myMc);
-		}
-		return maxMc;
-	}
-	
-	private static double calcTimeDepMc(ObsEqkRupture mainshock, long time, double minMag) {
-		if (time <= mainshock.getOriginTime())
-			return Double.NaN;
-		double daysSinceMainshock = (double)(time - mainshock.getOriginTime())/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
-		return calcTimeDepMc(mainshock.getMag(), daysSinceMainshock, minMag);
-	}
-	
-	private static double calcTimeDepMc(double mainshockMag, double daysSinceMainshock, double minMag) {
-		return Math.max(minMag, mainshockMag - 4.5 - 0.75*Math.log10(daysSinceMainshock));
-	}
-	
 	private boolean isRupAboveMinMag(ObsEqkRupture rup, double minMag, double timeDepMc) {
 		if (minMag < 0)
 			return rup.getMag() >= timeDepMc;
@@ -579,17 +596,16 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
 			FaultSystemSolution fss) {
-		synchronized (this) {
-			if (comcatMND == null)
-				init();
-		}
+		getPlotter(); // will initialize if not done yet
 		short[][][] magGridCounts = new short[durations.length][magBins.length][];
 		IncrementalMagFreqDist catMFD = new IncrementalMagFreqDist(
 				totalCountHist.getMinX(), totalCountHist.getMaxX(), totalCountHist.size());
 		EvenlyDiscretizedFunc[] timeFuncs = new EvenlyDiscretizedFunc[timeFuncMcs.length];
 		for (int i=0; i<timeFuncs.length; i++)
-			timeFuncs[i] = new EvenlyDiscretizedFunc(timeDiscretization.getMinX(),
-					timeDiscretization.getMaxX(), timeDiscretization.size());
+			timeFuncs[i] = plotter.getTimeFuncDiscretization().deepClone();
+		boolean[][] magTimesFull = new boolean[magTimeProbsFull.length][magTimeProbsFull[0].length];
+		boolean[][] magTimesWeek = new boolean[magTimeProbsWeek.length][magTimeProbsWeek[0].length];
+		boolean[][] magTimesMonth = new boolean[magTimeProbsMonth.length][magTimeProbsMonth[0].length];
 		for (ETAS_EqkRupture rup : completeCatalog) {
 			double mag = rup.getMag();
 			int mfdIndex = totalCountHist.getClosestXIndex(mag);
@@ -600,25 +616,25 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			Location hypo = rup.getHypocenterLocation();
 			if (!quickContains(hypo))
 				continue;
-			double timeDepMc = calcTimeDepMc(rup);
+			double timeDepMc = this.timeDepMc.calcTimeDepMc(rup);
 			if (ot <= curTime) {
 				// include in direct comparisons
 				catMFD.add(mfdIndex, 1d);
 				if (mag < magBins[1] && mag < timeDepMc)
 					continue;
-				if (mag >= timeFuncMcs[0]) {
-					int timeIndex = getTimeFuncIndex(rup);
-					for (int m=0; m<timeFuncMcs.length; m++) {
-						if (isRupAboveMinMag(rup, timeFuncMcs[m], timeDepMc)) {
-							for (int i=timeIndex; i<timeFuncs[m].size(); i++)
-								timeFuncs[m].add(i, 1d);
-						}
-					}
-				}
 				int depthIndex = catalogDepthDistributions[0].getClosestXIndex(hypo.getDepth());
 				for (int m=0; m<magBins.length; m++)
 					if (isRupAboveMinMag(rup, magBins[m], timeDepMc))
 						catalogDepthDistributions[m].add(depthIndex, 1d);
+			}
+			if (ot <= plotter.getEndTime() && mag >= timeFuncMcs[0]) {
+				int timeIndex = this.plotter.getTimeFuncIndex(rup);
+				for (int m=0; m<timeFuncMcs.length; m++) {
+					if (isRupAboveMinMag(rup, timeFuncMcs[m], timeDepMc)) {
+						for (int i=timeIndex; i<timeFuncs[m].size(); i++)
+							timeFuncs[m].add(i, 1d);
+					}
+				}
 			}
 			int gridNode = gridRegion.indexForLocation(hypo);
 			if (gridNode >= 0) {
@@ -637,9 +653,35 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 					}
 				}
 			}
+			int magTimeY = magTimeYAxis.getClosestXIndex(mag);
+			double magTimeX = (double)(ot - startTime)/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+			if (timeDays)
+				magTimeX *= 365.25;
+			if (magTimeX <= magTimeXAxisFullMax)
+				magTimesFull[magTimeXAxisFull.getClosestXIndex(magTimeX)][magTimeY] = true;
+			if (magTimeX <= magTimeXAxisWeekMax)
+				magTimesWeek[magTimeXAxisWeek.getClosestXIndex(magTimeX)][magTimeY] = true;
+			if (magTimeX <= magTimeXAxisMonthMax)
+				magTimesMonth[magTimeXAxisMonth.getClosestXIndex(magTimeX)][magTimeY] = true;
 		}
 		if (map_plot_medians)
 			catalogDurMagGridCounts.add(magGridCounts);
+		for (int x=0; x<magTimesFull.length; x++)
+			for (int y=0; y<magTimesFull[0].length; y++)
+				if (magTimesFull[x][y])
+					magTimeProbsFull[x][y]++;
+		if (magTimesWeek != null) {
+			for (int x=0; x<magTimesWeek.length; x++)
+				for (int y=0; y<magTimesWeek[0].length; y++)
+					if (magTimesWeek[x][y])
+						magTimeProbsWeek[x][y]++;
+		}
+		if (magTimesMonth != null) {
+			for (int x=0; x<magTimesMonth.length; x++)
+				for (int y=0; y<magTimesMonth[0].length; y++)
+					if (magTimesMonth[x][y])
+						magTimeProbsMonth[x][y]++;
+		}
 		if (map_plot_probs || map_plot_means) {
 			for (int d=0; d<durations.length; d++) {
 				for (int m=0; m<magBins.length; m++) {
@@ -664,34 +706,6 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		catalogsProcessed++;
 	}
 	
-	public void setHideTitles() {
-		this.noTitles = true;
-	}
-
-	public void setPlotIncludeMean(boolean plotIncludeMean) {
-		this.plotIncludeMean = plotIncludeMean;
-	}
-
-	public void setPlotIncludeMedian(boolean plotIncludeMedian) {
-		this.plotIncludeMedian = plotIncludeMedian;
-	}
-
-	public void setPlotIncludeMode(boolean plotIncludeMode) {
-		this.plotIncludeMode = plotIncludeMode;
-	}
-
-	public void setDataColor(Color dataColor) {
-		this.dataColor = dataColor;
-	}
-	
-	public void setTimeFuncMaxY(Double timeFuncMaxY) {
-		this.timeFuncMaxY = timeFuncMaxY;
-	}
-	
-	public void setTimeFuncAnns(Map<Double, String> timeFuncAnns) {
-		this.timeFuncAnns = timeFuncAnns;
-	}
-	
 	private static String minMagPrefix(double mag) {
 		if (mag < 0)
 			return "td_mc";
@@ -705,7 +719,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	}
 	
 	private boolean shouldIncludeMinMag(double minMag) {
-		boolean ret = ((float)minMag >= (float)simMc) || (minMag < 0 && (float)simMc <= (float)tdMinMag);
+		boolean ret = ((float)minMag >= (float)simMc) ||
+				(minMag < 0 && (float)simMc <= (float)timeDepMc.getMinMagThreshold());
 //		System.out.println("should-include = "+ret+":\tminMag="+minMag+"\tsimMc="+simMc+"\ttdMinMag="+tdMinMag);
 		return ret;
 	}
@@ -715,6 +730,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			throws IOException {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		simMc = totalCountHist.getX(numToTrim)-0.5*totalCountHist.getDelta();
+		System.out.println("Simulation Mc: "+simMc);
 		System.out.println("Building ComCat time func plot runnables");
 		List<Runnable> runnables = new ArrayList<>();
 		overallMc = Math.max(comcatMc, simMc);
@@ -722,20 +738,35 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			if (shouldIncludeMinMag(timeFuncMcs[m]))
 				runnables.add(new TimeFuncPlotRunnable(outputDir,
 						"comcat_compare_cumulative_num_"+minMagPrefix(timeFuncMcs[m]), m));
+		
 		System.out.println("Writing ComCat Incremental MND");
-		writeMagNumPlot(outputDir, "comcat_compare_mag_num", catalogRegionMFDs, comcatMND, "Incremental Number");
+		FractileCurveCalculator incrMNDCalc = buildFractileCalc(catalogRegionMFDs);
+		plotter.plotMagNumPlot(outputDir, "comcat_compare_mag_num", false, comcatMinMag, comcatMc,
+				false, false, incrMNDCalc);
+		
 		System.out.println("Calculating Catalog Cumulative MNDs");
 		List<EvenlyDiscretizedFunc> cumulativeMNDs = new ArrayList<>();
 		for (IncrementalMagFreqDist incr : catalogRegionMFDs)
 			cumulativeMNDs.add(incr.getCumRateDistWithOffset());
-		EvenlyDiscretizedFunc comcatCumulativeMND = comcatMND.getCumRateDistWithOffset();
+		FractileCurveCalculator cumMNDCalc = buildFractileCalc(cumulativeMNDs);
 		System.out.println("Writing ComCat Cumulative MND");
-		writeMagNumPlot(outputDir, "comcat_compare_mag_num_cumulative", cumulativeMNDs, comcatCumulativeMND, "Cumulative Number");
+		plotter.plotMagNumPlot(outputDir, "comcat_compare_mag_num_cumulative", true, comcatMinMag, comcatMc,
+				false, false, cumMNDCalc);
+		
 		System.out.println("Writing ComCat Percentile Cumulative Plot");
-		writeMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile", cumulativeMNDs, comcatCumulativeMND);
+		writeMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile", cumulativeMNDs);
+		
+		System.out.println("Writing ComCat Mag-Time plots");
+		calcMagTimeProbs();
+		plotMagTimeFunc(magTimeProbsFull, magTimeXAxisFull, "Current Magnitude vs Time",
+				outputDir, "mag_time_full");
+		plotMagTimeFunc(magTimeProbsWeek, magTimeXAxisWeek, "First Week Magnitude vs Time",
+					outputDir, "mag_time_week");
+		plotMagTimeFunc(magTimeProbsMonth, magTimeXAxisMonth, "First Month Magnitude vs Time",
+					outputDir, "mag_time_month");
 		
 		System.out.println("Writing time-dep Mc plot");
-		writeTimeDepMcPlot(outputDir, "comcat_compare_td_mc");
+		plotter.plotTimeDepMcPlot(outputDir, "comcat_compare_td_mc", timeDepMc);
 		
 		System.out.println("Calculating ComCat map data");
 		calcMapData();
@@ -763,30 +794,6 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return new FractileCurveCalculator(functionList, relativeWts);
 	}
 	
-	private FractileCurveCalculator buildFractileCalc(List<? extends EvenlyDiscretizedFunc[]> funcs, int index) {
-		XY_DataSetList functionList = new XY_DataSetList();
-		List<Double> relativeWts = new ArrayList<>();
-		for (EvenlyDiscretizedFunc[] func : funcs) {
-			functionList.add(func[index]);
-			relativeWts.add(1d);
-		}
-		return new FractileCurveCalculator(functionList, relativeWts);
-	}
-	
-	private int getTimeFuncIndex(ObsEqkRupture rup) {
-		double relTime = rup.getOriginTime() - startTime;
-		if (timeDays)
-			relTime /= ProbabilityModelsCalc.MILLISEC_PER_DAY;
-		else
-			relTime /= ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-		int timeIndex = timeDiscretization.getClosestXIndex(relTime);
-		// this is the closest index, we need the first index that time is <= to
-		if (relTime > timeDiscretization.getX(timeIndex))
-			timeIndex++;
-		Preconditions.checkState(timeIndex == timeDiscretization.size() || relTime <= timeDiscretization.getX(timeIndex));
-		return timeIndex;
-	}
-	
 	private class TimeFuncPlotRunnable implements Runnable {
 		
 		private final File outputDir;
@@ -803,7 +810,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		@Override
 		public void run() {
 			try {
-				writeTimeFuncPlot(outputDir, prefix, magIndex);
+				plotTimeFuncPlot(outputDir, prefix, magIndex);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -811,206 +818,49 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		
 	}
 	
-	private void writeTimeFuncPlot(File outputDir, String prefix, int magIndex) throws IOException {
-		List<XY_DataSet> funcs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
-		FractileCurveCalculator timeFractals = buildFractileCalc(catalogTimeFuncs, magIndex);
-		
+	private void plotTimeFuncPlot(File outputDir, String prefix, int magIndex) throws IOException {
 		double mc = timeFuncMcs[magIndex];
+		String magLabel = minMagLabel(mc);
+		EvenlyDiscretizedFunc timeFunc;
+		if (mc < 0)
+			timeFunc = plotter.calcCumulativeTimeFunc(timeDepMc);
+		else
+			timeFunc = plotter.calcCumulativeTimeFunc(mc);
+		double simStartX = (startTime - plotter.getOriginTime())/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+		if (timeDays)
+			simStartX *= 365.25;
+//		System.out.println("SimStartX: "+simStartX);
+		double simShiftY = timeFunc.getInterpolatedY(simStartX);
+//		System.out.println("SimShiftY: "+simShiftY);
 		
-		EvenlyDiscretizedFunc comcatCumulativeTimeFunc = new EvenlyDiscretizedFunc(timeDiscretization.getMinX(),
-				timeDiscretization.getMaxX(), timeDiscretization.size());
-		
-		ObsEqkRupList comcatEvents = mc < 0 ? comcatEventsFilteredTDMc : this.comcatEvents;
-		for (ObsEqkRupture rup : comcatEvents) {
-			if (rup.getMag() < mc)
-				continue;
-			int timeIndex = getTimeFuncIndex(rup);
-			for (int i=timeIndex; i<comcatCumulativeTimeFunc.size(); i++)
-				comcatCumulativeTimeFunc.add(i, 1d);
-		}
-		
-		String xAxisLabel = timeDays ? "Time (days)" : "Time (years)";
-		CSVFile<String> csv = buildSimFractalFuncs(timeFractals, funcs, chars, comcatCumulativeTimeFunc, false, xAxisLabel);
-		csv.writeToFile(new File(outputDir, prefix+".csv"));
-		
-		PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : "Cumulative Number Comparison, "+minMagLabel(mc),
-				xAxisLabel, "Cumulative Num Earthquakes "+minMagLabel(mc));
-		spec.setLegendVisible(true);
-		
-		double maxData = comcatCumulativeTimeFunc.getMaxY();
-		double maxMean = timeFractals.getMeanCurve().getMaxY();
-		double maxUpper = timeFractals.getFractile(0.975).getMaxY();
-		
-		double maxY = timeFuncMaxY != null ? timeFuncMaxY : Math.max(2*maxData,
-				Math.max(Math.min(2*maxMean, 1.5*maxUpper), 1.25*maxMean));
-		if (maxY <= 1d || !Double.isFinite(maxY))
-			maxY = 1d;
-		
-		if (timeFuncAnns != null && !timeFuncAnns.isEmpty()) {
-			List<XYTextAnnotation> anns = new ArrayList<>();
-			Font font = new Font(Font.SANS_SERIF, Font.BOLD, 18);
-			for (double xVal : timeFuncAnns.keySet()) {
-				String label = timeFuncAnns.get(xVal);
-				if (!timeDays)
-					xVal /= 365.25;
-				DefaultXY_DataSet xy = new DefaultXY_DataSet();
-				xy.set(xVal, 0d);
-				xy.set(xVal, maxY);
-				funcs.add(xy);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.BLACK));
-				XYTextAnnotation ann = new XYTextAnnotation(" "+label, xVal, 0.025*maxY);
-				ann.setTextAnchor(TextAnchor.BASELINE_LEFT);
-				ann.setFont(font);
-				anns.add(ann);
+		XY_DataSetList functionList = new XY_DataSetList();
+		List<Double> relativeWts = new ArrayList<>();
+		for (EvenlyDiscretizedFunc[] func : catalogTimeFuncs) {
+			EvenlyDiscretizedFunc myFunc = func[magIndex];
+			if (simStartX != 0d || simShiftY != 0d) {
+				int minIndex = 0;
+				for (int i=0; i<myFunc.size(); i++) {
+					if (myFunc.getX(i) < simStartX)
+						minIndex++;
+					else
+						break;
+				}
+				EvenlyDiscretizedFunc shift = new EvenlyDiscretizedFunc(
+						myFunc.getX(minIndex), myFunc.size()-minIndex, myFunc.getDelta());
+				for (int i=0; i<shift.size(); i++)
+					shift.set(i, myFunc.getY(i+minIndex)+simShiftY);
+				myFunc = shift;
 			}
-			spec.setPlotAnnotations(anns);
+			functionList.add(myFunc);
+			relativeWts.add(1d);
 		}
+		FractileCurveCalculator timeFractals = new FractileCurveCalculator(functionList, relativeWts);
 		
-		HeadlessGraphPanel gp = buildGraphPanel();
-		gp.setLegendFontSize(18);
-		double maxX = Math.max(1d, comcatCumulativeTimeFunc.getMaxX());
-//		System.out.println("Drawing with bounds: "+maxX+", "+maxY);
-		gp.setUserBounds(0d, maxX, 0d, maxY);
-
-		gp.drawGraphPanel(spec, false, false);
-		gp.getChartPanel().setSize(800, 600);
-		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
-		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
-//		gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
-	}
-	
-	private void writeTimeDepMcPlot(File outputDir, String prefix) throws IOException {
-		List<XY_DataSet> funcs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
-		ArbitrarilyDiscretizedFunc totalFunc = new ArbitrarilyDiscretizedFunc("Time-Dep Mc");
-		funcs.add(totalFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
-		
-		ArbitrarilyDiscretizedFunc mainshockFunc = new ArbitrarilyDiscretizedFunc("Mainshock Mc");
-		funcs.add(mainshockFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
-		
-		List<ArbitrarilyDiscretizedFunc> otherEventFuncs = new ArrayList<>();
-		for (int i=1; i<mainshocksForTimeDepMc.size(); i++) {
-			ArbitrarilyDiscretizedFunc func = new ArbitrarilyDiscretizedFunc(i == 1 ? "Other Event Mcs" : null);
-			otherEventFuncs.add(func);
-			funcs.add(func);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GRAY));
-		}
-		
-		ArbitrarilyDiscretizedFunc threshFunc = new ArbitrarilyDiscretizedFunc("Minimum Mc Threshold");
-		threshFunc.set(0d, tdMinMag);
-		threshFunc.set(timeDepMcFunc.getMaxX(), tdMinMag);
-		funcs.add(threshFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Color.GRAY));
-		
-		long simStart = getConfig().getSimulationStartTimeMillis();
-		for (int i=0; i<timeDiscretization.size(); i++) {
-			double x = timeDiscretization.getX(i);
-			long time;
-			if (timeDays)
-				time = simStart + (long)(x*(double)ProbabilityModelsCalc.MILLISEC_PER_DAY);
-			else
-				time = simStart + (long)(x*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
-			double maxMc = tdMinMag;
-			for (int j=0; j<mainshocksForTimeDepMc.size(); j++) {
-				double myMc = calcTimeDepMc(mainshocksForTimeDepMc.get(j), time, 0);
-				if (Double.isNaN(myMc))
-					continue;
-				maxMc = Math.max(maxMc, myMc);
-				if (j == 0)
-					mainshockFunc.set(x, myMc);
-				else
-					otherEventFuncs.get(j-1).set(x, myMc);
-			}
-			totalFunc.set(x, maxMc);
-		}
-		
-		String xAxisLabel = timeDays ? "Time (days)" : "Time (years)";
-		
-		PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : "Time Dependent Mc",
-				xAxisLabel, "Magnitude of Completeness");
-		spec.setLegendVisible(true);
-		
-		double maxY = 5d;
-		for (ObsEqkRupture rup : mainshocksForTimeDepMc)
-			maxY = Math.max(maxY, rup.getMag());
-		double minY = 2d;
-		
-		HeadlessGraphPanel gp = buildGraphPanel();
-		gp.setLegendFontSize(18);
-		double maxX = Math.max(1d, timeDiscretization.getMaxX());
-//		System.out.println("Drawing with bounds: "+maxX+", "+maxY);
-		gp.setUserBounds(0d, maxX, minY, maxY);
-		gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
-		gp.drawGraphPanel(spec, false, false);
-		gp.getChartPanel().setSize(800, 500);
-		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
-		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
-//		gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
-	}
-	
-	private XY_DataSet notAsIncr(XY_DataSet xy) {
-		if (xy instanceof IncrementalMagFreqDist) {
-			EvenlyDiscretizedFunc func =
-					new EvenlyDiscretizedFunc(xy.getMinX(), xy.getMaxX(), xy.size());
-			for (int i=0; i<func.size(); i++)
-				func.set(i, xy.getY(i));
-			return func;
-		}
-		return xy;
-	}
-	
-	private void writeMagNumPlot(File outputDir, String prefix, List<? extends EvenlyDiscretizedFunc> mnds,
-			EvenlyDiscretizedFunc dataMND, String yAxisLabel) throws IOException {
-		List<XY_DataSet> funcs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
-		FractileCurveCalculator calc = buildFractileCalc(mnds);
-		
-		CSVFile<String> csv = buildSimFractalFuncs(calc, funcs, chars, dataMND, true, "Magnitude");
-		csv.writeToFile(new File(outputDir, prefix+".csv"));
-		
-		MinMaxAveTracker nonZeroRange = new MinMaxAveTracker();
-		for (XY_DataSet func : funcs)
-			for (Point2D pt : func)
-				if (pt.getY() > 0)
-					nonZeroRange.addValue(pt.getY());
-		double maxY = Math.pow(10, Math.ceil(Math.log10(nonZeroRange.getMax())));
-		double minY = Math.pow(10, Math.floor(Math.log10(nonZeroRange.getMin())));
-		if (minY >= maxY)
-			minY--;
-		
-		if ((float)comcatMc > (float)simMc) {
-			XY_DataSet mcFunc = new DefaultXY_DataSet();
-			mcFunc.set(comcatMc, minY);
-			mcFunc.set(comcatMc, maxY);
-			mcFunc.setName("Mc");
-			funcs.add(mcFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, dataColor));
-		}
-		
-		PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : "Magnitude Distribution Comparison",
-				"Magnitude", yAxisLabel);
-		spec.setLegendVisible(true);
-		
-		HeadlessGraphPanel gp = buildGraphPanel();
-		gp.setLegendFontSize(18);
-		gp.setUserBounds(simMc, comcatMND.getMaxX(), minY, maxY);
-
-		gp.drawGraphPanel(spec, false, true);
-		gp.getChartPanel().setSize(800, 600);
-		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
-		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
-//		gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
+		plotter.plotTimeFuncPlot(outputDir, prefix, magLabel, timeFunc, timeFractals);
 	}
 	
 	private void writeMagPercentileCumulativeNumPlot(File outputDir, String prefix,
-			List<EvenlyDiscretizedFunc> cumulativeMNDs, EvenlyDiscretizedFunc comcatCumulativeMND)
-			throws IOException {
+			List<EvenlyDiscretizedFunc> cumulativeMNDs) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
@@ -1024,8 +874,19 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		
 		EvenlyDiscretizedFunc dataFunc = new EvenlyDiscretizedFunc(magFunc.getMinX(),
 				magFunc.getMaxX(), magFunc.size());
+
+		EvenlyDiscretizedFunc comcatCumulativeMND = plotter.calcIncrementalMagNum(
+				comcatMinMag, false, false).getCumRateDistWithOffset();
 		
-		for (int i=0; i<magFunc.size(); i++) {
+		int dataOffset = 0;
+		if (comcatCumulativeMND.size() > magFunc.size()) {
+			while ((float)comcatCumulativeMND.getX(dataOffset) < (float)magFunc.getX(0))
+				dataOffset++;
+		} else {
+			Preconditions.checkState(comcatCumulativeMND.size() == magFunc.size());
+		}
+		
+		for (int i=0; i<magFunc.size() && i+dataOffset<comcatCumulativeMND.size(); i++) {
 			double mag = magFunc.getX(i);
 			upper95.set(mag, 97.5);
 			lower95.set(mag, 2.5);
@@ -1037,8 +898,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			for (int j=0; j<counts.length; j++)
 				counts[j] = cumulativeMNDs.get(j).getY(i);
 			Arrays.sort(counts);
-			Preconditions.checkState(mag == comcatCumulativeMND.getX(i));
-			double dataVal = comcatCumulativeMND.getY(i);
+			Preconditions.checkState((float)mag == (float)comcatCumulativeMND.getX(i+dataOffset));
+			double dataVal = comcatCumulativeMND.getY(i+dataOffset);
 			int index = Arrays.binarySearch(counts, dataVal);
 			if (index < 0) {
 				// convert to insertion index
@@ -1075,20 +936,21 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			mcFunc.set(comcatMc, maxY);
 			mcFunc.setName("Mc");
 			funcs.add(mcFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, dataColor));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, plotter.getDataColor()));
 		}
 		
 		dataFunc.setName("ComCat Data Num≥M");
 		funcs.add(dataFunc);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		
-		PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : "Cumulative Count Data Percentile Comparison",
+		PlotSpec spec = new PlotSpec(funcs, chars, plotter.isNoTitles() ?
+				" " : "Cumulative Count Data Percentile Comparison",
 				"Minimum Magnitude", "Simulation Percentile");
 		spec.setLegendVisible(true);
 		
 		HeadlessGraphPanel gp = buildGraphPanel();
 		gp.setLegendFontSize(18);
-		gp.setUserBounds(simMc, comcatMND.getMaxX(), minY, maxY);
+		gp.setUserBounds(simMc, comcatCumulativeMND.getMaxX(), minY, maxY);
 
 		gp.drawGraphPanel(spec, false, false);
 		gp.getChartPanel().setSize(800, 600);
@@ -1097,103 +959,34 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 //		gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
 	}
 	
-	private CSVFile<String> buildSimFractalFuncs(FractileCurveCalculator calc, List<XY_DataSet> funcs,
-			List<PlotCurveCharacterstics> chars, XY_DataSet dataFunc, boolean dataAsHist, String xAxisName) {
-		XY_DataSet minCurve = notAsIncr(calc.getMinimumCurve());
-		minCurve.setName("Extrema");
-		XY_DataSet maxCurve = notAsIncr(calc.getMaximumCurve());
-		maxCurve.setName(null);
+	private void calcMagTimeProbs() {
+		double scalar = 1d/(double)catalogsProcessed;
+		for (double[] column : magTimeProbsFull)
+			for (int i=0; i<column.length; i++)
+				column[i] *= scalar;
+		if (magTimeProbsWeek != null)
+			for (double[] column : magTimeProbsWeek)
+				for (int i=0; i<column.length; i++)
+					column[i] *= scalar;
+		if (magTimeProbsMonth != null)
+			for (double[] column : magTimeProbsMonth)
+				for (int i=0; i<column.length; i++)
+					column[i] *= scalar;
+	}
+	
+	private void plotMagTimeFunc(double[][] magTimeProbs, EvenlyDiscretizedFunc magTimeXAxis, String title,
+			File outputDir, String prefix) throws IOException {
+		double timeOffset = (startTime - plotter.getOriginTime())/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+		if (timeDays)
+			timeOffset *= 365.25;
 		
-		funcs.add(minCurve);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.BLACK));
-
-		funcs.add(maxCurve);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.BLACK));
+		EvenlyDiscrXYZ_DataSet xyz = new EvenlyDiscrXYZ_DataSet(magTimeXAxis.size(), magTimeYAxis.size(),
+				timeOffset+magTimeXAxis.getMinX(), magTimeYAxis.getMinX(), magTimeXAxis.getDelta(), magTimeYAxis.getDelta());
+		for (int x=0; x<magTimeProbs.length; x++)
+			for (int y=0; y<magTimeProbs[x].length; y++)
+				xyz.set(x, y, magTimeProbs[x][y]);
 		
-		String fractileStr = null;
-		List<XY_DataSet> fractileFuncs = new ArrayList<>();
-		for (double fractile : fractiles) {
-			if (fractileStr == null)
-				fractileStr = "";
-			else
-				fractileStr += ",";
-			fractileStr += "p"+optionalDigitDF.format(fractile*100);
-			fractileFuncs.add(notAsIncr(calc.getFractile(fractile)));
-		}
-		
-		for (int i=0; i<fractileFuncs.size(); i++) {
-			XY_DataSet func = fractileFuncs.get(i);
-			if (i==0)
-				func.setName(fractileStr);
-			else
-				func.setName(null);
-			funcs.add(func);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
-		}
-
-		AbstractXY_DataSet modeFunc = new ArbitrarilyDiscretizedFunc();
-		for (int i=0; i<minCurve.size(); i++)
-			modeFunc.set(minCurve.getX(i), calc.getEmpiricalDist(i).getMostCentralMode());
-		if (plotIncludeMode) {
-			modeFunc.setName("Mode");
-			funcs.add(modeFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.CYAN.darker()));
-		}
-
-		AbstractXY_DataSet medianFunc = calc.getFractile(0.5);
-		if (plotIncludeMedian) {
-			medianFunc.setName("Median");
-			funcs.add(medianFunc);
-			if (plotIncludeMean)
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
-			else
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
-		}
-		
-		AbstractXY_DataSet meanFunc = calc.getMeanCurve();
-		if (plotIncludeMean) {
-			meanFunc.setName("Mean");
-			funcs.add(meanFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
-		}
-
-		dataFunc.setName("ComCat Data");
-		if (dataAsHist) {
-			funcs.add(dataFunc);
-			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 4f, dataColor));
-		} else {
-			funcs.add(dataFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, dataColor));
-		}
-		
-		// build CSV
-		CSVFile<String> csv = new CSVFile<>(true);
-		List<String> header = new ArrayList<>();
-		header.add(xAxisName);
-		header.add("ComCat Data");
-		header.add("Simulation Mean");
-		header.add("Simulation Median");
-		header.add("Simulation Mode");
-		header.add("Simulation Minimum");
-		header.add("Simulation Maximum");
-		for (double fractile : fractiles)
-			header.add(optionalDigitDF.format(fractile*100d)+" %-ile");
-		csv.addLine(header);
-		Preconditions.checkState(dataFunc.size() == meanFunc.size());
-		for (int i=0; i<dataFunc.size(); i++) {
-			List<String> line = new ArrayList<>();
-			line.add((float)dataFunc.getX(i)+"");
-			line.add((float)dataFunc.getY(i)+"");
-			line.add((float)meanFunc.getY(i)+"");
-			line.add((float)medianFunc.getY(i)+"");
-			line.add((float)modeFunc.getY(i)+"");
-			line.add((float)minCurve.getY(i)+"");
-			line.add((float)maxCurve.getY(i)+"");
-			for (XY_DataSet fractileFunc : fractileFuncs)
-				line.add((float)fractileFunc.getY(i)+"");
-			csv.addLine(line);
-		}
-		return csv;
+		plotter.plotMagTimeFunc(outputDir, prefix, title, null, xyz.getMaxX()+0.5*xyz.getGridSpacingX(), xyz);
 	}
 	
 	private void calcMapData() {
@@ -1298,7 +1091,9 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				List<ObsEqkRupture> catalogEvents = new ArrayList<>();
 				String title = getTimeLabel(durations[d], false)+" "+minMagLabel(magBins[m]);
 				if (maxOTs[d] <= curTime) {
-					ObsEqkRupList comcatEvents = magBins[m] < 0 ? comcatEventsFilteredTDMc : this.comcatEvents;
+					// TODO update
+					ObsEqkRupList comcatEvents = magBins[m] < 0 ?
+							timeDepMc.getFiltered(this.comcatEvents) : this.comcatEvents;
 					for (ObsEqkRupture rup : comcatEvents)
 						if (rup.getMag() >= magBins[m] && rup.getOriginTime() <= maxOTs[d])
 							catalogEvents.add(rup);
@@ -1389,7 +1184,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				
 				xyz.log10();
 				
-				XYZPlotSpec spec = new XYZPlotSpec(xyz, myCPT, noTitles ? " " : title, "Longitude", "Latitude", "Log10 "+zLabel);
+				XYZPlotSpec spec = new XYZPlotSpec(xyz, myCPT, plotter.isNoTitles() ? " " : title, "Longitude", "Latitude", "Log10 "+zLabel);
 				
 				spec.setXYElems(funcs);
 				spec.setXYChars(chars);
@@ -1442,55 +1237,11 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		for (int m=0; m<magBins.length; m++) {
 			if (!shouldIncludeMinMag(magBins[m]))
 				continue;
-			List<XY_DataSet> funcs = new ArrayList<>();
-			List<PlotCurveCharacterstics> chars = new ArrayList<>();
-			
+			String myPrefix = prefix+"_"+minMagPrefix(magBins[m]);
 			EvenlyDiscretizedFunc catalogFunc = catalogDepthDistributions[m];
 			catalogFunc.scale(1d/(double)catalogsProcessed);
-			EvenlyDiscretizedFunc inputFunc = new EvenlyDiscretizedFunc(catalogFunc.getMinX(), catalogFunc.getMaxX(), catalogFunc.size());
-			for (ETAS_EqkRupture rup : getLauncher().getTriggerRuptures()) {
-				if (magBins[m] < 0 && rup.getMag() < calcTimeDepMc(rup))
-					continue;
-				if (rup.getMag() >= magBins[m] && mapRegion.contains(rup.getHypocenterLocation()))
-					inputFunc.add(inputFunc.getClosestXIndex(rup.getHypocenterLocation().getDepth()), 1d);
-			}
-			EvenlyDiscretizedFunc dataFunc = new EvenlyDiscretizedFunc(catalogFunc.getMinX(), catalogFunc.getMaxX(), catalogFunc.size());
-			ObsEqkRupList comcatEvents = magBins[m] < 0 ? comcatEventsFilteredTDMc : this.comcatEvents;
-			for (ObsEqkRupture rup : comcatEvents)
-				if (rup.getMag() >= magBins[m] && mapRegion.contains(rup.getHypocenterLocation()))
-					dataFunc.add(dataFunc.getClosestXIndex(rup.getHypocenterLocation().getDepth()), 1d);
-			
-			XY_DataSet catalogXY = getDepthXY(catalogFunc);
-			catalogXY.setName("Simulation");
-			funcs.add(catalogXY);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
-			
-			XY_DataSet dataXY = getDepthXY(dataFunc);
-			dataXY.setName("ComCat Data");
-			funcs.add(dataXY);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, dataColor));
-			
-			XY_DataSet inputXY = getDepthXY(inputFunc);
-			inputXY.setName("Input Events");
-			funcs.add(inputXY);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.GRAY));
-			
-			PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : "Depth Distribution Comparison, "+minMagLabel(magBins[m]),
-					"Fraction", "Depth (km)");
-			spec.setLegendVisible(true);
-			
-			HeadlessGraphPanel gp = buildGraphPanel();
-			gp.setLegendFontSize(18);
-			gp.setUserBounds(0d, 1d, 0d, dataFunc.getMaxX()+0.5*dataFunc.getDelta());
-			gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
-
-			gp.drawGraphPanel(spec, false, false);
-			gp.setyAxisInverted(true);
-			gp.getChartPanel().setSize(600, 800);
-			String myPrefix = prefix+"_"+minMagPrefix(magBins[m]);
-			gp.saveAsPNG(new File(outputDir, myPrefix+".png").getAbsolutePath());
-			gp.saveAsPDF(new File(outputDir, myPrefix+".pdf").getAbsolutePath());
-//			gp.saveAsTXT(new File(outputDir, prefix+".txt").getAbsolutePath());
+			plotter.plotMagDepthPlot(outputDir, myPrefix,
+					magBins[m] > 0 ? null : timeDepMc, magBins[m], catalogFunc);
 		}
 	}
 
@@ -1517,6 +1268,31 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		table.addLine("Incremental MND", "Cumulative MND");
 		table.addLine("![Incremental MND]("+relativePathToOutputDir+"/comcat_compare_mag_num.png)",
 				"![Cumi MND]("+relativePathToOutputDir+"/comcat_compare_mag_num_cumulative.png)");
+		lines.addAll(table.build());
+		lines.add("");
+		
+		lines.add(topLevelHeading+"# ComCat Magnitude-Time Functions");
+		lines.add(topLink); lines.add("");
+		String line = "These plots show the show the magnitude versus time probability function since simulation start. "
+				+ "Observed event data lie on top, with those input to the simulation plotted as green circles and those"
+				+ "that occurred after the simulation start time as cyan circles. Time is relative to ";
+		if (plotter.getMainshock() == null) {
+			line += "the simulation start time.";
+		} else {
+			ObsEqkRupture mainshock = plotter.getMainshock();
+			Double mag = mainshock.getMag();
+			line += "the mainshock (M"+optionalDigitDF.format(mag)+", "+mainshock.getEventId()+").";
+		}
+		line += " Probabilities are only shown above the minimum simulated magnitude, M="+optionalDigitDF.format(simMc)+".";
+		lines.add(line);
+		table = MarkdownUtils.tableBuilder();
+		
+		if (magTimeProbsWeek != null)
+			table.addLine("![One Week]("+relativePathToOutputDir+"/mag_time_week.png)");
+		if (magTimeProbsMonth != null)
+			table.addLine("![One Month]("+relativePathToOutputDir+"/mag_time_month.png)");
+		table.addLine("![Full Mag/Time]("+relativePathToOutputDir+"/mag_time_full.png)");
+		lines.add("");
 		lines.addAll(table.build());
 		lines.add("");
 		
@@ -1670,9 +1446,12 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 //				+ "2019-06-05_M7.1_SearlesValley_Sequence_UpdatedMw_and_depth");
 //				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-start-noon");
 //				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-following-M7.1");
-				+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
+//				+ "2019_07_16-ComCatM7p1_ci38457511_ShakeMapSurfaces-noSpont-full_td-scale1.14");
 //				+ "2019_08_20-ComCatM6p4_ci38443183_PointSources-noSpont-full_td-scale1.14");
 //				+ "2019_10_15-ComCatM4p71_nc73292360_PointSources");
+//				+ "2020_04_08-ComCatM4p87_ci39126079_PointSource_kCOV1p5");
+				+ "2020_04_08-ComCatM4p87_ci39126079_4p7DaysAfter_PointSources_kCOV1p5");
+//				+ "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces");
 		File configFile = new File(simDir, "config.json");
 		
 		try {
@@ -1682,7 +1461,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			int maxNumCatalogs = 0;
 //			int maxNumCatalogs = 20000;
 			
-			ETAS_ComcatComparePlot plot = new ETAS_ComcatComparePlot(config, launcher);
+			ETAS_AbstractPlot plot = new ETAS_ComcatComparePlot(config, launcher);
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
@@ -1700,6 +1479,10 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			}
 			
 			plot.finalize(outputDir, launcher.checkOutFSS());
+			
+			List<String> lines = plot.generateMarkdown(outputDir.getName(), "##", "*(top)*");
+			
+			MarkdownUtils.writeReadmeAndHTML(lines, simDir);
 			
 			System.exit(0);
 		} catch (Throwable e) {

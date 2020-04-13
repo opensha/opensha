@@ -37,6 +37,7 @@ import org.jfree.ui.TextAnchor;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.comcat.ComcatAccessor;
 import org.opensha.commons.data.comcat.ComcatRegionAdapter;
+import org.opensha.commons.data.comcat.plot.ComcatDataPlotter;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -860,21 +861,22 @@ public class RidgecrestStatsCalc {
 				mfdPlot.setIncludePrimary(false);
 				mfdPlot.setProbColor(Color.GRAY);
 				ETAS_ComcatComparePlot comcatPlot = new ETAS_ComcatComparePlot(config, launcher);
-				comcatPlot.setHideTitles();
+				ComcatDataPlotter plotter = comcatPlot.getPlotter();
+				plotter.setNoTitles(true);
 				comcatPlot.setMapCPT(cpt);
 				comcatPlot.setMapMinZ(minZ);
 				comcatPlot.setMapDataColor(dataColor);
-				comcatPlot.setDataColor(Color.GRAY);
-				comcatPlot.setPlotIncludeMedian(true);
-				comcatPlot.setPlotIncludeMean(false);
-				comcatPlot.setPlotIncludeMode(false);
-				comcatPlot.setTimeFuncMaxY(650d);
+				plotter.setDataColor(Color.GRAY);
+				plotter.setPlotIncludeMedian(true);
+				plotter.setPlotIncludeMean(false);
+				plotter.setPlotIncludeMode(false);
+				plotter.setTimeFuncMaxY(650d);
 				Map<Double, String> anns = new HashMap<>();
 				long fitDate = new GregorianCalendar(2019, 7, 26).getTimeInMillis(); // DOM is 0-based
 				double fitDays = (double)(fitDate - config.getSimulationStartTimeMillis())
 							/(double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 				anns.put(fitDays, "Parameters fit on 8/26/2019");
-				comcatPlot.setTimeFuncAnns(anns);
+				plotter.setTimeFuncAnns(anns);
 				
 				File inputFile = new File(config.getOutputDir(), "results_complete.bin");
 				processPlots(config, inputFile, subDir, fss, exec, mfdPlot, comcatPlot);

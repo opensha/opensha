@@ -579,10 +579,10 @@ public class ETAS_ConfigBuilder {
 			String argz = "";
 
 //			argz += " --start-year 1919";
-			argz += " --start-year 2012";
+			argz += " --start-year 2020";
 //			argz += " --num-simulations 100000";
-			argz += " --num-simulations 1000";
-			argz += " --duration-years 500";
+			argz += " --num-simulations 25000";
+			argz += " --duration-years 1";
 //			argz += " --num-simulations 10000";
 //			argz += " --duration-years 10";
 			
@@ -591,9 +591,9 @@ public class ETAS_ConfigBuilder {
 			
 //			argz += " --gridded-only";
 //			argz += " --prob-model NO_ERT";
-			argz += " --include-spontaneous";
-			argz += " --historical-catalog";
-			argz += " --etas-k-cov 1.16";
+//			argz += " --include-spontaneous";
+//			argz += " --historical-catalog";
+//			argz += " --etas-k-cov 1.16";
 //			argz += " --etas-k-cov 1.5";
 			
 //			argz += " --etas-k -2.31 --etas-p 1.08 --etas-c 0.04";
@@ -601,7 +601,15 @@ public class ETAS_ConfigBuilder {
 //			argz += " --scale-factor 1.0";
 //			argz += " --scale-factor 1.212";
 			
-			argz += " --random-seed 123456789";
+//			argz += " --random-seed 123456789";
+			
+			argz += " --magnitude 7";
+			argz += " --latitude 34.695";
+			argz += " --depth 5";
+//			argz += " --longitude -118.5";
+//			argz += " --name M7OnSAF";
+			argz += " --longitude -117.7";
+			argz += " --name M7AwaySAF";
 			
 			// hpc options
 			argz += " --hpc-site USC_HPC";

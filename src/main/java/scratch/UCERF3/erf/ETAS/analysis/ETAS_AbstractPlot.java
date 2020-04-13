@@ -215,7 +215,7 @@ public abstract class ETAS_AbstractPlot {
 	protected static final DecimalFormat optionalDigitDF = new DecimalFormat("0.##");
 	private static final DecimalFormat optionalSingleDigitDF = new DecimalFormat("0.#");
 	
-	protected static String getTimeLabel(double years, boolean plural) {
+	public static String getTimeLabel(double years, boolean plural) {
 		double fractionalDays = years * 365.25;
 		if (fractionalDays < 0.99) {
 			double hours = fractionalDays * 24;

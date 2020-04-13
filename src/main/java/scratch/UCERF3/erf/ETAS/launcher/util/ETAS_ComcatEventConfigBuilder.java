@@ -38,8 +38,11 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			String argz = "";
 
 //			argz += " --event-id ci38443183"; // 2019 Searles Valley M6.4
-			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
-			argz += " --mag-complete 3.5";
+//			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
+//			argz += " --event-id nn00719663"; // 3/20/2020 Lake Tahoe area M5
+			argz += " --event-id ci39126079"; // 4/4/2020 SJC Anza M4.9
+			argz += " --radius 10";
+			argz += " --mag-complete 2.5";
 			
 //			argz += " --event-id nc73292360"; // 10/15/2019 Tres Pinos, CA M4.71
 //			argz += " --region 38.5,-122.75,36.25,-120.5";
@@ -58,7 +61,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --name-add SmallTest";
 //			argz += " --fault-model FM3_2";
 //			argz += " --etas-k-cov 1.16";
-//			argz += " --etas-k-cov 1.5";
+			argz += " --etas-k-cov 1.5";
 			
 //			argz += " --num-simulations 1000000";
 //			argz += " --fault-model FM2_1";
@@ -99,7 +102,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --finite-surf-inversion-min-mag 6";
 
 			argz += " --finite-surf-shakemap";
-			argz += " --finite-surf-shakemap-min-mag 5";
+			argz += " --finite-surf-shakemap-min-mag 4.5";
 //			argz += " --finite-surf-shakemap-version 10";
 //			argz += " --finite-surf-shakemap-planar-extents";
 //			argz += " --finite-surf-shakemap-min-mag 7";
@@ -113,15 +116,15 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --random-seed 123456789";
 			
 			// hpc options
-//			argz += " --hpc-site USC_HPC";
-//			argz += " --nodes 36";
-//			argz += " --hours 24";
+			argz += " --hpc-site USC_HPC";
+			argz += " --nodes 32";
+			argz += " --hours 24";
 ////			argz += " --queue scec_hiprio";
 //			argz += " --queue scec";
-			argz += " --hpc-site TACC_FRONTERA";
-			argz += " --nodes 20";
-			argz += " --hours 10";
-			argz += " --queue normal";
+//			argz += " --hpc-site TACC_FRONTERA";
+//			argz += " --nodes 20";
+//			argz += " --hours 10";
+//			argz += " --queue normal";
 			
 			args = argz.trim().split(" ");
 		}
