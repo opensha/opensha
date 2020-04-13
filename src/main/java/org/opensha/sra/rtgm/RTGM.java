@@ -402,7 +402,8 @@ public class RTGM implements Callable<RTGM> {
 			f.set(xs[i], ys[i]);
 		}
 		
-		RTGM rtgm = RTGM.create(f, Frequency.SA_1P00, 0.8);
+//		RTGM rtgm = RTGM.create(f, Frequency.SA_1P00, 0.8);
+		RTGM rtgm = RTGM.create(f, null, null);	// this reproduces what's given by the USGS on-line calculator
 		System.out.println(rtgm.call());
 		System.out.println(rtgm.get());
 		System.out.println(rtgm.riskCoeff());
