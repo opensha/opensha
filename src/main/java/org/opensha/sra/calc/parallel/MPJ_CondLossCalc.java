@@ -631,7 +631,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		return file.getName().toLowerCase().endsWith(".gz");
 	}
 	
-	private static InputStream getInputStream(File file) throws IOException {
+	public static InputStream getInputStream(File file) throws IOException {
 		FileInputStream fis = new FileInputStream(file);
 		if (isGZIP(file))
 			return new GZIPInputStream(fis, buffer_len);
