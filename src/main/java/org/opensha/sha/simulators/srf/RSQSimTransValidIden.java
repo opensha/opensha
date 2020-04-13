@@ -1,6 +1,7 @@
 package org.opensha.sha.simulators.srf;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.util.DataUtils;
@@ -33,15 +34,15 @@ public class RSQSimTransValidIden extends AbstractRuptureIdentifier {
 		double eventStart = event.getTime();
 		if (eventStart < firstTrans || eventStart > lastTrans)
 			return false;
-		if (lastTrans - eventStart < 1000) {
+		if (lastTrans - eventStart < 3600) {
 			// check ends
 			RSQSimEventSlipTimeFunc slipTime = null;
+			double nextEventTime = ((RSQSimEvent)event).getNextEventTime();
 			for (EventRecord rec : event) {
 				RSQSimEventRecord rRec = (RSQSimEventRecord)rec;
-				double[] nextSlipTimes = rRec.getNextSlipTimes();
-				for (int i=0; i<nextSlipTimes.length; i++) {
-					double nextTime = nextSlipTimes[i];
-					if (!Double.isFinite(nextTime)) {
+				int[] ids = rRec.getElementIDs();
+				for (int i=0; i<ids.length; i++) {
+					if (!Double.isFinite(nextEventTime)) {
 						// check that it finished
 						if (slipTime == null) {
 							try {
@@ -52,14 +53,14 @@ public class RSQSimTransValidIden extends AbstractRuptureIdentifier {
 							} catch (IllegalStateException e) {
 								return false;
 							}
-							int patchID = rRec.getElementIDs()[i];
-							double slip = slipTime.getCumulativeEventSlip(patchID, slipTime.getEndTime());
-							double pDiff = DataUtils.getPercentDiff(slip, rRec.getElementSlips()[i]);
-							if (pDiff > 1)
-								return false;
 						}
+						int patchID = rRec.getElementIDs()[i];
+						double slip = slipTime.getCumulativeEventSlip(patchID, slipTime.getEndTime());
+						double pDiff = DataUtils.getPercentDiff(slip, rRec.getElementSlips()[i]);
+						if (pDiff > 1)
+							return false;
 					} else {
-						if (nextTime > lastTrans)
+						if (nextEventTime > lastTrans)
 							return false;
 					}
 				}

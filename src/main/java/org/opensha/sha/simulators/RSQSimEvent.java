@@ -6,6 +6,7 @@ import java.util.List;
 public class RSQSimEvent extends SimulatorEvent {
 	
 	private List<RSQSimEventRecord> records;
+	private double nextEventTime = Double.NaN;
 
 	public RSQSimEvent(List<RSQSimEventRecord> records) {
 		super(records);
@@ -35,6 +36,14 @@ public class RSQSimEvent extends SimulatorEvent {
 			index += recTimes.length;
 		}
 		return times;
+	}
+	
+	public void setNextEventTime(double time) {
+		this.nextEventTime = time;
+	}
+	
+	public double getNextEventTime() {
+		return nextEventTime;
 	}
 
 }

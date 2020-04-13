@@ -17,10 +17,10 @@ public class RSQSimEventRecord extends EventRecord {
 	
 	private int firstPatchID = -1;
 	
-	// keeps track of the next time this element slipped (in another event).
-	// used to associate transitions with specific events when reading the transitions file, so that all transitions
-	// for thie element that are >= the event time and <nextSlipTime are associated with this event
-	private double[] nextSlipTimes;
+//	// keeps track of the next time this element slipped (in another event).
+//	// used to associate transitions with specific events when reading the transitions file, so that all transitions
+//	// for this element that are >= the event time and <nextSlipTime are associated with this event
+//	private double[] nextSlipTimes;
 
 	public RSQSimEventRecord(List<SimulatorElement> rectElementsList) {
 		super(rectElementsList);
@@ -79,37 +79,37 @@ public class RSQSimEventRecord extends EventRecord {
 		return moment;
 	}
 	
-	public void setNextSlipTime(int patchID, double time) {
-		int[] elemIDs = getElementIDs();
-		checkInitNextSlipTimes();
-		for (int i=0; i<elemIDs.length; i++) {
-			int elemID = elemIDs[i];
-			if (elemID == patchID) {
-				nextSlipTimes[i] = time;
-				return;
-			}
-		}
-		throw new IllegalStateException("Patch not found in event record: "+patchID);
-	}
-	
-	private synchronized void checkInitNextSlipTimes() {
-		if (nextSlipTimes == null) {
-			nextSlipTimes = new double[getElementIDs().length];
-			for (int i=0; i<nextSlipTimes.length; i++)
-				nextSlipTimes[i] = Double.POSITIVE_INFINITY;
-		}
-	}
-	
-	public void setNextSlipTimes(double[] nextSlipTimes) {
-		getElementIDs(); // initialize a trim if needed
-		Preconditions.checkState(nextSlipTimes.length == elementIDs.length,
-				"Bad next slip time length. nextSlipTimes.length=%s != elementIDs.length=%s", nextSlipTimes.length, elementIDs.length);
-		this.nextSlipTimes = nextSlipTimes;
-	}
-	
-	public double[] getNextSlipTimes() {
-		checkInitNextSlipTimes();
-		return nextSlipTimes;
-	}
+//	public void setNextSlipTime(int patchID, double time) {
+//		int[] elemIDs = getElementIDs();
+//		checkInitNextSlipTimes();
+//		for (int i=0; i<elemIDs.length; i++) {
+//			int elemID = elemIDs[i];
+//			if (elemID == patchID) {
+//				nextSlipTimes[i] = time;
+//				return;
+//			}
+//		}
+//		throw new IllegalStateException("Patch not found in event record: "+patchID);
+//	}
+//	
+//	private synchronized void checkInitNextSlipTimes() {
+//		if (nextSlipTimes == null) {
+//			nextSlipTimes = new double[getElementIDs().length];
+//			for (int i=0; i<nextSlipTimes.length; i++)
+//				nextSlipTimes[i] = Double.POSITIVE_INFINITY;
+//		}
+//	}
+//	
+//	public void setNextSlipTimes(double[] nextSlipTimes) {
+//		getElementIDs(); // initialize a trim if needed
+//		Preconditions.checkState(nextSlipTimes.length == elementIDs.length,
+//				"Bad next slip time length. nextSlipTimes.length=%s != elementIDs.length=%s", nextSlipTimes.length, elementIDs.length);
+//		this.nextSlipTimes = nextSlipTimes;
+//	}
+//	
+//	public double[] getNextSlipTimes() {
+//		checkInitNextSlipTimes();
+//		return nextSlipTimes;
+//	}
 
 }

@@ -658,12 +658,16 @@ public class RSQSimFileReader {
 		
 		int numNegSlips = 0;
 		
+		RSQSimEvent prevEvent = null;
+		
 		while (true) {
 			try {
 				eventID = eIn.readInt(); // 1-based, keep as is for now as it shouldn't matter
 				patchID = pIn.readInt(); // 1-based, which matches readGeometry
 				slip = dIn.readDouble(); // in meters
 				time = tIn.readDouble(); // in seconds
+				if (prevEvent != null && time < prevEvent.getNextEventTime())
+					prevEvent.setNextEventTime(time);
 				
 				if (slip < 0) {
 					if (numNegSlips == 0)
@@ -685,25 +689,35 @@ public class RSQSimFileReader {
 				elementMoment = FaultMomentCalc.getMoment(element.getArea(), slip);
 				
 				if (eventID != curEventID) {
+					// we have a new event
+					if (prevEvent != null && events instanceof BlockingDeque) {
+						try {
+							// put the PREVIOUS event to be sure that the next event time has
+							// been filled in
+							// block until space is available
+							((BlockingDeque<RSQSimEvent>)events).putLast(prevEvent);
+						} catch (InterruptedException e) {
+							ExceptionUtils.throwAsRuntimeException(e);
+						}
+					}
+					
 					if (!curRecordMap.isEmpty()) {
 						Preconditions.checkState(!eventIDsLoaded.contains(curEventID),
 								"Duplicate eventID found, file is out of order or corrupt: %s", curEventID);
 						eventIDsLoaded.add(curEventID);
 						RSQSimEvent event = buildEvent(curEventID, curRecordMap, rupIdens);
 						if (event != null) {
+							event.setNextEventTime(time);
 							// can be null if filters were supplied
-							if (events instanceof BlockingDeque) {
-								// block until space is available
-								try {
-									((BlockingDeque<RSQSimEvent>)events).putLast(event);
-								} catch (InterruptedException e) {
-									ExceptionUtils.throwAsRuntimeException(e);
-								}
-							} else {
+							if (!(events instanceof BlockingDeque)) {
 								events.add(event);
 							}
+							prevEvent = event;
 						} else {
+							prevEvent = null;
 							// it wasn't at match, see if we can bail (e.g. if we're only loading the first x years)
+							// it is important to do this check AFTER a failure to ensure that next event time is 
+							// loaded into the previous event and accurate
 							boolean possible = false;
 							for (RuptureIdentifier iden : rupIdens) {
 								if (iden.furtherMatchesPossible()) {
@@ -721,11 +735,11 @@ public class RSQSimFileReader {
 					curEventID = eventID;
 				}
 				
-				RSQSimEventRecord prevEventRecord = patchToPrevRecordMap.get(patchID);
-				if (prevEventRecord != null && !skipSlipsAndTimes)
-					// tell the previous event that this is the next time this patch ruptured
-					// used for mapping transition information to specific events
-					prevEventRecord.setNextSlipTime(patchID, time);
+//				RSQSimEventRecord prevEventRecord = patchToPrevRecordMap.get(patchID);
+//				if (prevEventRecord != null && !skipSlipsAndTimes)
+//					// tell the previous event that this is the next time this patch ruptured
+//					// used for mapping transition information to specific events
+//					prevEventRecord.setNextSlipTime(patchID, time);
 				
 				// EventRecord for this individual fault section in this event
 				RSQSimEventRecord event = curRecordMap.get(element.getSectionID());
@@ -755,12 +769,22 @@ public class RSQSimFileReader {
 		}
 		if (numNegSlips > 0)
 			System.err.println("WARNING: found "+numNegSlips+" total negative slips!");
+		if (prevEvent != null && events instanceof BlockingDeque) {
+			// need to add the last event as well
+			// block until space is available
+			try {
+				((BlockingDeque<RSQSimEvent>)events).putLast(prevEvent);
+			} catch (InterruptedException e) {
+				ExceptionUtils.throwAsRuntimeException(e);
+			}
+		}
 		if (!curRecordMap.isEmpty()) {
 			Preconditions.checkState(!eventIDsLoaded.contains(curEventID),
 					"Duplicate eventID found, file is out of order or corrupt: %s", curEventID);
 			eventIDsLoaded.add(curEventID);
 			RSQSimEvent event = buildEvent(curEventID, curRecordMap, rupIdens);
 			if (event != null) {
+				event.setNextEventTime(Double.POSITIVE_INFINITY);
 				// can be null if filters were supplied
 				if (events instanceof BlockingDeque) {
 					// block until space is available

@@ -415,16 +415,21 @@ public class RSQSimStateTransitionFileReader {
 			index = 0;
 		else
 			index = getIndexBefore(startTime);
+		Map<Integer, RSQSimStateTime> prevPatchTrans = new HashMap<>();
 		while (index < numTransitions) {
 			int arrayIndex = readTransition(index++);
 			double time = curTimes[arrayIndex];
 			int patchID = curPatchIDs[arrayIndex]+1; // these are zero based but in events it's 1-based
+			if (prevPatchTrans.containsKey(patchID))
+				prevPatchTrans.get(patchID).setEndTime(time);
 			if (time < startTime)
 				continue;
 			if (time > endTime)
 				break;
 			double vel = transV ? curVels[arrayIndex] : Double.NaN;
-			trans.add(new RSQSimStateTime(patchID, time, curStates[arrayIndex], vel));
+			RSQSimStateTime myTrans = new RSQSimStateTime(patchID, time, curStates[arrayIndex], vel);
+			prevPatchTrans.put(patchID, myTrans);
+			trans.add(myTrans);
 		}
 		return trans;
 	}
@@ -527,10 +532,9 @@ public class RSQSimStateTransitionFileReader {
 			throws IOException {
 		Map<Integer, List<RSQSimStateTime>> patchTransitions = new HashMap<>();
 		
-		// this will store the time of the next event on this patch. so any transitions that happen on this patch
-		// with time >= startTime and time < patchEndTime are associated with this event
-		Map<Integer, Double> patchEndTimes = new HashMap<>();
 		double startTime = event.getTime();
+		double nextEventTime = event.getNextEventTime();
+		Preconditions.checkState(!Double.isNaN(nextEventTime));
 		
 		if (transList != null)
 			Preconditions.checkState(transList.isEmpty(),
@@ -541,12 +545,8 @@ public class RSQSimStateTransitionFileReader {
 			RSQSimEventRecord rsRecord = (RSQSimEventRecord)rec;
 			int[] recPatchIDs = rsRecord.getElementIDs();
 			Preconditions.checkNotNull(recPatchIDs);
-			double[] nextSlipTimes = rsRecord.getNextSlipTimes();
-			Preconditions.checkNotNull(nextSlipTimes);
-			for (int i=0; i<recPatchIDs.length; i++) {
+			for (int i=0; i<recPatchIDs.length; i++)
 				patchTransitions.put(recPatchIDs[i], new ArrayList<>());
-				patchEndTimes.put(recPatchIDs[i], nextSlipTimes[i]);
-			}
 		}
 		
 		double maxEndTime = startTime + max_event_time_s;
@@ -562,25 +562,27 @@ public class RSQSimStateTransitionFileReader {
 				// after the possible transition times for any patch in this event
 				break;
 			int patchID = curPatchIDs[arrayIndex]+1; // these are zero based but in events it's 1-based
-			if (!patchEndTimes.containsKey(patchID))
+			if (!patchTransitions.containsKey(patchID))
 				// it's for an unrelated patch
 				continue;
 			List<RSQSimStateTime> patchTimes = patchTransitions.get(patchID);
-			double endTime = patchEndTimes.get(patchID);
 			RSQSimState prevState = patchTimes.isEmpty() ? null : patchTimes.get(patchTimes.size()-1).getState();
 			if (curStates[arrayIndex] == RSQSimState.LOCKED && (prevState == null || prevState == RSQSimState.LOCKED)) {
 				// either the first transition in this event is to LOCKED, or this is a duplicate LOCKED
-				// skip it as it's uneccesary, and could be during the next event
+				// skip it as it's unnecessary, and could be during the next event
 				continue;
 			}
-			boolean thisEvent = time < endTime;
+			boolean thisEvent = time < nextEventTime;
 //			if (patchID == 219277 && time >= 5.835340584208368E11 && time <= 5.83534058433055E11) {
 //				System.out.println("DEBUG: "+time+"\t"+patchID+"\t"+curStates[arrayIndex]);
 //				System.out.println("\t\tend time on this patch: "+patchEndTimes.get(patchID));
 //				System.out.println("\t\tprev trans on this patch: "+patchTimes.get(patchTimes.size()-1));
 //				System.out.flush();
 //			}
-			if (!thisEvent && curStates[arrayIndex] == RSQSimState.LOCKED && time == endTime) {
+//			if (patchID == 432203 && event.getID() == 163607)
+//				System.out.println(time+" (rel: "+(time-startTime)+"): "+curStates[arrayIndex]
+//						+" (next time: "+nextEventTime+", delta="+(time-nextEventTime)+")");
+			if (!thisEvent && curStates[arrayIndex] == RSQSimState.LOCKED && time == nextEventTime) {
 				// it's exactly at the patch end time (first trans in next event), but this is setting it to the LOCKED state
 				// if we're not already LOCKED, keep this transition to close it out
 				thisEvent = !patchTimes.isEmpty() && prevState != RSQSimState.LOCKED;
@@ -610,7 +612,7 @@ public class RSQSimStateTransitionFileReader {
 				RSQSimStateTime patchTime = patchTimes.get(patchTimes.size()-1);
 				Preconditions.checkState(patchTime.getState() != RSQSimState.NUCLEATING_SLIP && patchTime.getState() != RSQSimState.EARTHQUAKE_SLIP,
 						"Event %s, patch %s ended in non-locked state! Entered %s at relative t=%s. Relative next time: %s",
-						event.getID(), patchID, patchTime.getState(), patchTime.getStartTime()-startTime, patchEndTimes.get(patchID) - startTime);
+						event.getID(), patchID, patchTime.getState(), patchTime.getStartTime()-startTime, nextEventTime - startTime);
 				patchTimes.remove(patchTimes.size()-1);
 			}
 		}
@@ -670,19 +672,19 @@ public class RSQSimStateTransitionFileReader {
 	}
 	
 	public static void main(String[] args) throws IOException {
-//		File d = new File("/home/kevin/Simulators/catalogs/bruce/rundir4860");
-//		File tf = new File(d, "transV..out");
-//		
-//		RSQSimStateTransitionFileReader reader = new RSQSimStateTransitionFileReader(
-//				tf, ByteOrder.LITTLE_ENDIAN, true);
-//		List<RSQSimStateTime> myTrans = reader.getTransitions(5.835340584329015E11-60, 5.83534058433055E11);
-//		for (RSQSimStateTime t : myTrans) {
-//			double start = t.getStartTime();
-//			RSQSimState state = t.getState();
-//			if (t.getPatchID() == 219277)
-//				System.out.println("\t"+start+"\t"+t.getPatchID()+"\t"+state+"\t"+t.getVelocity());
-//		}
-//		System.exit(0);
+		File d = new File("/home/kevin/Simulators/catalogs/bruce/rundir4860");
+		File tf = new File(d, "transV..out");
+		
+		RSQSimStateTransitionFileReader reader = new RSQSimStateTransitionFileReader(
+				tf, ByteOrder.LITTLE_ENDIAN, true);
+		List<RSQSimStateTime> myTrans = reader.getTransitions(5.835340584329015E11-60, 5.83534058433055E11);
+		for (RSQSimStateTime t : myTrans) {
+			double start = t.getStartTime();
+			RSQSimState state = t.getState();
+			if (t.getPatchID() == 219277)
+				System.out.println("\t"+start+"\t"+t.getPatchID()+"\t"+state+"\t"+t.getVelocity());
+		}
+		System.exit(0);
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 //			File dir = new File("/data/kevin/simulators/catalogs/baseCatalogSW_10");
 //			File transFile = new File(dir, "trans.baseCatalogSW_10t.out");

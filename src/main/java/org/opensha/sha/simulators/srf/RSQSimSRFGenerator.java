@@ -169,7 +169,7 @@ public class RSQSimSRFGenerator {
 		return new SRF_PointData(loc, focal, patch.getArea(), tStart, dt, totSlip, slipVels);
 	}
 	
-	public static void plotSlip(File outputDir, String prefix,
+	public static void plotSlip(File outputDir, String prefix, RSQSimEvent event,
 			RSQSimEventSlipTimeFunc func, SimulatorElement patch, double dt, boolean pub,
 			SRFInterpolationMode... modes) throws IOException {
 		List<DiscretizedFunc> slipFuncs = new ArrayList<>();
@@ -236,6 +236,37 @@ public class RSQSimSRFGenerator {
 		slipAnns.add(totAnn);
 		
 		double eventLen = func.getEndTime();
+		
+		if (event != null) {
+			double eventTime = event.getTime();
+			int[] ids = event.getAllElementIDs();
+			double[] slips = event.getAllElementSlips();
+			double[] times = event.getAllElementTimes();
+			
+			for (int i=0; i<ids.length; i++) {
+				if (ids[i] == patch.getID()) {
+					double deltaT = times[i] - eventTime;
+					DiscretizedFunc listFunc = new ArbitrarilyDiscretizedFunc();
+					listFunc.setName("List File Slip");
+					listFunc.set(deltaT, slips[i]);
+					listFunc.set(eventLen, slips[i]);
+					
+					slipFuncs.add(listFunc);
+					if (pub) {
+						slipChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.LIGHT_GRAY));
+					} else {
+						slipChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GREEN.darker()));
+						XYTextAnnotation listAnn = new XYTextAnnotation("List File Slip: "+slipDF.format(slips[i]),
+								annX, slipMaxY*(1d-0.06*slipFuncs.size()));
+						listAnn.setTextAnchor(TextAnchor.TOP_LEFT);
+						listAnn.setFont(annFont);
+						listAnn.setPaint(Color.GREEN.darker());
+						slipAnns.add(listAnn);
+					}
+					break;
+				}
+			}
+		}
 		
 		for (SRFInterpolationMode mode : modes) {
 			SRF_PointData srf = buildSRF(func, patch, dt, mode);
@@ -350,7 +381,7 @@ public class RSQSimSRFGenerator {
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
 	}
 	
-	public static void plotSlip(File outputDir, String prefix, SRF_PointData patch, double maxTime)
+	public static void plotSlip(File outputDir, String prefix, SRF_PointData patch, double maxTime, boolean zoom)
 			throws IOException {
 		List<DiscretizedFunc> slipFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> slipChars = new ArrayList<>();
@@ -446,6 +477,12 @@ public class RSQSimSRFGenerator {
 		specs.add(velSpec);
 		
 		Range xAxisRange = new Range(0, maxTime);
+		if (zoom) {
+			// zoom in
+			double minX = Math.max(0, Math.floor(totalSlipFunc.getMinX()-0.5));
+			double maxX = Math.min(maxTime, Math.ceil(totalSlipFunc.getMaxX()+0.5));
+			xAxisRange = new Range(minX, maxX);
+		}
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setTickLabelFontSize(18);
@@ -611,7 +648,7 @@ public class RSQSimSRFGenerator {
 								while (prefix.length() < patchDigits)
 									prefix = "0"+prefix;
 								prefix = "patch_"+prefix;
-								plotSlip(eventOutputDir, prefix, myFunc, patch, dt, false, modes);
+								plotSlip(eventOutputDir, prefix, event, myFunc, patch, dt, false, modes);
 							}
 						}
 						
