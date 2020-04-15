@@ -188,6 +188,11 @@ Named,java.io.Serializable{
 		return getFirstInterpolatedX(y, true, true);
 	}
 	
+	public double getFirstInterpolatedX_inLogYDomain(double y) {
+		return getFirstInterpolatedX(y, false, true);
+	}
+
+	
 	private double getFirstInterpolatedX(double y, boolean logX, boolean logY) {
 		double y1=Double.NaN;
 		double y2=Double.NaN;
