@@ -28,6 +28,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -57,7 +58,7 @@ import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 
 public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
-	private static final boolean D = false;
+	private static final boolean D = true;
 	
 	public static final String XML_METADATA_NAME= "ThreadedSimulatedAnnealing";
 	
@@ -220,6 +221,12 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public void setPerturbationFunc(GenerationFunctionType perturbationFunc) {
 		for (SerialSimulatedAnnealing sa : sas)
 			sa.setPerturbationFunc(perturbationFunc);
+	}
+
+	@Override
+	public void setRuptureSampler(IntegerPDF_FunctionSampler rupSampler) {
+		for (SerialSimulatedAnnealing sa : sas)
+			sa.setRuptureSampler(rupSampler);
 	}
 	
 	@Override

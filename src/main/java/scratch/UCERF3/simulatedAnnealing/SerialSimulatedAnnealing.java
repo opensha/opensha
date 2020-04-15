@@ -8,6 +8,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.util.DataUtils;
 
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
@@ -51,6 +52,9 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private static GenerationFunctionType PERTURB_FUNC_DEFAULT = GenerationFunctionType.UNIFORM_NO_TEMP_DEPENDENCE;
 	private GenerationFunctionType perturbationFunc = PERTURB_FUNC_DEFAULT;
+	
+	// this provides and alternative way of random sampling ruptures to perturb (i.e., for a non-uniform districtuion)
+	private IntegerPDF_FunctionSampler rupSampler = null;
 	
 	/**
 	 * If true, the current model will always be kept as the best model instead of the best model seen. This allows
@@ -188,6 +192,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	@Override
 	public void setPerturbationFunc(GenerationFunctionType perturbationFunc) {
 		this.perturbationFunc = perturbationFunc;
+	}
+	
+	@Override
+	public void setRuptureSampler(IntegerPDF_FunctionSampler rupSampler) {
+		this.rupSampler = rupSampler;
 	}
 	
 	public void setVariablePerturbationBasis(double[] variablePerturbBasis) {
@@ -435,7 +444,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			}
 
 			// Index of model to randomly perturb
-			index = (int)(r.nextDouble() * (double)nCol); // casting as int takes the floor
+			if(rupSampler == null)
+				index = (int)(r.nextDouble() * (double)nCol); // casting as int takes the floor
+			else
+				index = rupSampler.getRandomInt();
 
 
 			// How much to perturb index (some perturbation functions are a function of T)	
@@ -625,7 +637,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		
 		// Preferred model is best model seen during annealing process
 		if(D) {
-			System.out.println("Annealing schedule completed.");
+			System.out.println("Annealing schedule completed. Ebest = "+Doubles.join(", ", Ebest));
 			double runSecs = watch.getTime() / 1000d;
 			System.out.println("Done with Inversion after " + runSecs + " seconds.");
 		}

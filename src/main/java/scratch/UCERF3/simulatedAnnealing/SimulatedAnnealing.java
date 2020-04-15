@@ -1,5 +1,7 @@
 package scratch.UCERF3.simulatedAnnealing;
 
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.params.CoolingScheduleType;
 import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
@@ -25,6 +27,8 @@ public interface SimulatedAnnealing {
 	public void setPerturbationFunc(GenerationFunctionType perturbationFunc);
 	
 	public void setVariablePerturbationBasis(double[] variablePerturbBasis);
+	
+	public void setRuptureSampler(IntegerPDF_FunctionSampler rupSampler);
 
 	public double[] getBestSolution();
 
