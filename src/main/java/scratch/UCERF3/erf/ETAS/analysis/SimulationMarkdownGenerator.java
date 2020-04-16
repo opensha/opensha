@@ -129,7 +129,9 @@ public class SimulationMarkdownGenerator {
 //					+ "2019_10_22-ComCatdata7p5yrbetweenhistoricaland20191022_Statewide_ShakeMapSurfaces_Spontaneous_Histor");
 //					+ "2020_03_03-M6p5AwaySAF");
 //					+ "2020_03_03-M6p5OnSAF");
-					+ "2020_03_07-ComCatM6p4_ci38443183_PointSources");
+//					+ "2020_03_07-ComCatM6p4_ci38443183_PointSources");
+					+ "2019_11_05-Start2012_500yr_kCOV1p5_Spontaneous_HistoricalCatalog");
+//					+ "2019_10_11-Start2012_500yr_Spontaneous_HistoricalCatalog");			
 			File configFile = new File(simDir, "config.json");
 //			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"
 //					+ "comcat-ridgecrest-m7.1-example/config.json");
@@ -375,15 +377,25 @@ public class SimulationMarkdownGenerator {
 		
 		ETAS_Launcher launcher = new ETAS_Launcher(config, false);
 		
-		boolean hasTriggers = config.hasTriggers();
+		boolean hasAnyTriggers = config.hasTriggers();
+		boolean hasNonHistCatalogTriggers = config.getTriggerRuptures() != null && !config.getTriggerRuptures().isEmpty();
 		
-		boolean annualizeMFDs = !hasTriggers;
-		if (hasTriggers) {
+		boolean annualizeMFDs = !hasAnyTriggers || (config.getDuration() > 10d && !hasNonHistCatalogTriggers);
+		System.out.println("Has any triggers? "+hasAnyTriggers+"\tHas non-hist triggers? "+hasNonHistCatalogTriggers
+				+"\tAnnualize MFD? "+annualizeMFDs);
+		if (annualizeMFDs) {
+			plots.add(new ETAS_MFD_Plot(config, launcher, "mfd", annualizeMFDs, true));
+			if (config.getDuration() > 50)
+				plots.add(new ETAS_LongTermRateVariabilityPlot(config, launcher, "long_term_var"));
+			if (config.getDuration() >= ETAS_StationarityPlot.MIN_SIM_DURATION)
+				plots.add(new ETAS_StationarityPlot(config, launcher, "stationarity"));
+		} else {
 			plots.add(new ETAS_MFD_Plot(config, launcher, "mag_num_cumulative", annualizeMFDs, true));
+		}
+		if (hasNonHistCatalogTriggers) {
+			// don't do these for just historical catalog
 			plots.add(new ETAS_HazardChangePlot(config, launcher, "hazard_change_100km", 100d));
-			if (config.getTriggerRuptures() != null && !config.getTriggerRuptures().isEmpty())
-				// don't do this for historical catalog
-				plots.add(new ETAS_TriggerRuptureFaultDistancesPlot(config, launcher, 20d));
+			plots.add(new ETAS_TriggerRuptureFaultDistancesPlot(config, launcher, 20d));
 			List<Double> percentiles = new ArrayList<>();
 			percentiles.add(0d);
 			percentiles.add(25d);
@@ -413,12 +425,6 @@ public class SimulationMarkdownGenerator {
 				System.err.println("Error building ComCat plot, skipping");
 				e.printStackTrace();
 			}
-		} else {
-			plots.add(new ETAS_MFD_Plot(config, launcher, "mfd", annualizeMFDs, true));
-			if (config.getDuration() > 50)
-				plots.add(new ETAS_LongTermRateVariabilityPlot(config, launcher, "long_term_var"));
-			if (config.getDuration() >= ETAS_StationarityPlot.MIN_SIM_DURATION)
-				plots.add(new ETAS_StationarityPlot(config, launcher, "stationarity"));
 		}
 		if (!config.isGriddedOnly())
 			plots.add(new ETAS_FaultParticipationPlot(config, launcher, "fault_participation", annualizeMFDs, skipMaps));

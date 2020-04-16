@@ -323,11 +323,15 @@ public class ETAS_EventMapPlotUtils {
 					}
 					ret.add(topXY); ret.add(botXY); ret.add(leftXY); ret.add(rightXY);
 				} else {
-					XY_DataSet surfXY = new DefaultXY_DataSet();
-					for (Location loc : subSurf.getPerimeter())
-						surfXY.set(loc.getLongitude(), loc.getLatitude());
-					surfXY.set(surfXY.get(0));
-					ret.add(surfXY);
+					try {
+						XY_DataSet surfXY = new DefaultXY_DataSet();
+						for (Location loc : subSurf.getPerimeter())
+							surfXY.set(loc.getLongitude(), loc.getLatitude());
+						surfXY.set(surfXY.get(0));
+						ret.add(surfXY);
+					} catch (UnsupportedOperationException e) {
+						System.err.println("Skipping surface in map, cannot get perimeter: "+e.getMessage());
+					}
 				}
 			}
 		}

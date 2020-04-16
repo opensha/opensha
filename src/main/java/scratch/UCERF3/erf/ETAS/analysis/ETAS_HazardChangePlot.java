@@ -83,7 +83,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	private ArbitrarilyDiscretizedFunc[] simUpperFuncs;
 	private ArbitrarilyDiscretizedFunc[] simOnlyFuncs;
 
-	protected ETAS_HazardChangePlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, double radius) {
+	public ETAS_HazardChangePlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, double radius) {
 		super(config, launcher);
 		this.prefix = prefix;
 		this.radius = radius;

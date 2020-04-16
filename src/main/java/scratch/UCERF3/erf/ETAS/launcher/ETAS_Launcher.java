@@ -36,6 +36,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.math3.random.RandomDataGenerator;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
@@ -391,6 +392,10 @@ public class ETAS_Launcher {
 			}
 		}
 		return histQkList;
+	}
+	
+	public Region getRegion() {
+		return griddedRegion;
 	}
 	
 	/**

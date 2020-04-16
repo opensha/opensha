@@ -88,7 +88,8 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 		this.fixedDurations = fixedDurations;
 		
 		Preconditions.checkState(config.isIncludeSpontaneous(), "Long term variability requires spontaneous ruptures");
-		Preconditions.checkState(!config.hasTriggers(), "Long term variability plot not applicable to aftershock catalogs");
+		// no longer true
+//		Preconditions.checkState(config.hasTriggers(), "Long term variability plot not applicable to aftershock catalogs");
 		
 		double totDuration = config.getDuration();
 		

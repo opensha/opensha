@@ -4,7 +4,10 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 import org.opensha.commons.data.region.CaliforniaRegions;
@@ -24,12 +27,16 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
+import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
 
 public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	
@@ -87,7 +94,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 
 	@Override
 	public int getVersion() {
-		return 1;
+		return 2;
 	}
 
 	@Override
@@ -128,6 +135,8 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 			}
 		}
 	}
+	
+	private boolean ratio_spread_across_poly = false;
 
 	@Override
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
@@ -136,10 +145,54 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 			System.out.println("GriddedNucleation: skipped "+numRupsSkipped+" ruptures outside of region");
 		
 		double scalar;
-		if (annualize)
+		GriddedGeoDataSet[] fssXYZs = null;
+		if (annualize) {
 			scalar = 1d/(getConfig().getDuration()*numCatalogs);
-		else
+			
+			GridSourceProvider gridProv = fss.getGridSourceProvider();
+			if (gridProv != null) {
+				fssXYZs = new GriddedGeoDataSet[totalXYZs.length];
+				System.out.println("Calculating FSS mfds");
+				GriddedRegion gridReg = gridProv.getGriddedRegion();
+				FaultSystemRupSet rupSet = fss.getRupSet();
+				FaultPolyMgr polyMGR = null;
+				if (ratio_spread_across_poly)
+					polyMGR = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+				Map<Integer, HashSet<Integer>> rupToGridNodes = new HashMap<>();
+				for (int r=0; r<rupSet.getNumRuptures(); r++) {
+					HashSet<Integer> nodes = new HashSet<>();
+					for (Location l : rupSet.getSurfaceForRupupture(r, 1d, false).getEvenlyDiscritizedListOfLocsOnSurface()) {
+						int node = gridReg.indexForLocation(l);
+						if (node >= 0)
+							nodes.add(node);
+					}
+					if (ratio_spread_across_poly)
+						for (int sect : rupSet.getSectionsIndicesForRup(r))
+							nodes.addAll(polyMGR.getNodeFractions(sect).keySet());
+					rupToGridNodes.put(r, nodes);
+				}
+				for (int i=0; i<mags.length; i++) {
+					if (mags[i] >= modalMag && mags[i] >= 5d) {
+						fssXYZs[i] = new GriddedGeoDataSet(gridReg, false);
+						for (int j=0; j<gridProv.size(); j++) {
+							IncrementalMagFreqDist mfd = gridProv.getNodeMFD(j);
+							for (int k=0; k<mfd.size(); k++)
+								if (mfd.getX(k) >= mags[i])
+									fssXYZs[i].set(j, fssXYZs[i].get(j)+mfd.getY(k));
+						}
+						for (int r=0; r<rupSet.getNumRuptures(); r++) {
+							if (rupSet.getMagForRup(r) >= mags[i]) {
+								double rate = fss.getRateForRup(r);
+								for (int node : rupToGridNodes.get(r))
+									fssXYZs[i].set(node, fssXYZs[i].get(node)+rate);
+							}
+						}
+					}
+				}
+			}
+		} else {
 			scalar = 1d/numCatalogs;
+		}
 		
 		int modalIndex = totalIncrCounts.getXindexForMaxY();
 		modalMag = totalIncrCounts.getX(modalIndex)-0.5*totalIncrCounts.getDelta();
@@ -148,7 +201,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		
 		List<Runnable> runnables = new ArrayList<>();
 		if (hasSpont)
-			runnables.add(new MapRunnable(totalXYZs, modalMag, scalar, outputDir, prefix));
+			runnables.add(new MapRunnable(totalXYZs, fssXYZs, modalMag, scalar, outputDir, prefix));
 		if (hasTriggered) {
 			runnables.add(new MapRunnable(triggeredXYZs, modalMag, scalar, outputDir, prefix+"_triggered"));
 			runnables.add(new MapRunnable(triggeredPrimaryXYZs, modalMag, scalar, outputDir, prefix+"_triggered_primary"));
@@ -158,13 +211,20 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	
 	private class MapRunnable implements Runnable {
 		private GriddedGeoDataSet[] xyzs;
+		private GriddedGeoDataSet[] fssXYZs;
 		private double modalMag;
 		private double scalar;
 		private File outputDir;
 		private String prefix;
 
 		public MapRunnable(GriddedGeoDataSet[] xyzs, double modalMag, double scalar, File outputDir, String prefix) {
+			this(xyzs, null, modalMag, scalar, outputDir, prefix);
+		}
+
+		public MapRunnable(GriddedGeoDataSet[] xyzs, GriddedGeoDataSet[] fssXYZs, double modalMag,
+				double scalar, File outputDir, String prefix) {
 			this.xyzs = xyzs;
+			this.fssXYZs = fssXYZs;
 			this.modalMag = modalMag;
 			this.scalar = scalar;
 			this.outputDir = outputDir;
@@ -175,14 +235,15 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		public void run() {
 			try {
 				// now log10 and scale
-				for (GriddedGeoDataSet xyz : xyzs) {
+				for (GriddedGeoDataSet xyz : xyzs)
 					xyz.scale(scalar);
-					xyz.log10();
-				}
 
 				CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
 				cpt.setNanColor(Color.GRAY);
 				cpt.setBelowMinColor(Color.BLUE);
+				
+				CPT ratioCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-2, 2);
+				ratioCPT.setNanColor(Color.GRAY);
 
 				Region plotReg = new Region(new Location(reg.getMinGridLat(), reg.getMinGridLon()),
 						new Location(reg.getMaxGridLat(), reg.getMaxGridLon()));
@@ -194,6 +255,23 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 						continue;
 					
 					GriddedGeoDataSet xyz = xyzs[i];
+					
+					GriddedGeoDataSet ratio = null;
+					if (fssXYZs != null && fssXYZs[i] != null) {
+						ratio = new GriddedGeoDataSet(fssXYZs[i].getRegion(), false);
+						GriddedGeoDataSet rescaled = new GriddedGeoDataSet(ratio.getRegion(), false);
+						for (int n=0; n<xyz.size(); n++) {
+							Location loc = xyz.getLocation(n);
+							int index = rescaled.getRegion().indexForLocation(loc);
+							if (index >= 0)
+								rescaled.set(index, rescaled.get(index)+xyz.get(n));
+						}
+						for (int n=0; n<ratio.size(); n++)
+							ratio.set(n, rescaled.get(n)/fssXYZs[i].get(n));
+						ratio.log10();
+					}
+					
+					xyz.log10();
 					
 					double maxZ = Math.ceil(xyz.getMaxZ());
 					if (xyz.getMaxZ() == Double.NEGATIVE_INFINITY)
@@ -217,9 +295,15 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 					GMT_Map map = FaultBasedMapGen.buildMap(cpt.rescale(minZ, maxZ), null, null,
 							xyzs[i], discr, plotReg, false, label);
 					map.setCPTCustomInterval(1d);
-					String baseURL = FaultBasedMapGen.plotMap(outputDir, myPrefix, false, map);
-//				if (downloadZip)
-//					FileUtils.downloadURL(baseURL + "/allFiles.zip", new File(outputDir, myPrefix + ".zip"));
+					FaultBasedMapGen.plotMap(outputDir, myPrefix, false, map);
+					
+					if (ratio != null) {
+						myPrefix += "_ratio";
+						map = FaultBasedMapGen.buildMap(ratioCPT, null, null,
+								ratio, ratio.getRegion().getSpacing(), plotReg, false, label+" Ratio");
+						map.setCPTCustomInterval(1d);
+						FaultBasedMapGen.plotMap(outputDir, myPrefix, false, map);
+					}
 				}
 			} catch (IOException | GMT_MapException e) {
 				throw ExceptionUtils.asRuntimeException(e);
@@ -240,8 +324,11 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		
 		builder.initNewLine();
 		builder.addColumn("Min Mag");
-		if (hasSpont)
+		if (hasSpont) {
 			builder.addColumn("Complete Catalog (including spontaneous)");
+			if (annualize)
+				builder.addColumn("Ratio WRT Long-Term Model");
+		}
 		if (hasTriggered) {
 			builder.addColumn("Triggered Ruptures (no spontaneous)");
 			builder.addColumn("Triggered Ruptures (primary aftershocks only)");
@@ -255,6 +342,8 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 			String magStr = "_m"+(float)mags[i];
 			if (hasSpont) {
 				builder.addColumn("![Nucleation Plot]("+relativePathToOutputDir+"/"+prefix+magStr+".png)");
+				if (annualize)
+					builder.addColumn("![Nucleation Plot]("+relativePathToOutputDir+"/"+prefix+magStr+"_ratio.png)");
 			}
 			if (hasTriggered) {
 				builder.addColumn("![Nucleation Plot]("+relativePathToOutputDir+"/"+prefix+"_triggered"+magStr+".png)");

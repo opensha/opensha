@@ -1,6 +1,7 @@
 package scratch.UCERF3.erf.ETAS.analysis;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -39,6 +41,7 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 	
 	private EvenlyDiscretizedFunc xVals;
 	private List<EvenlyDiscretizedFunc[]> simFuncs;
+	private List<EvenlyDiscretizedFunc> simMomFuncs;
 	
 	private double[] mags = { 2.5d, 5d, 6d, 7d };
 	private double plotMinMag;
@@ -51,7 +54,8 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 		super(config, launcher);
 		this.prefix = prefix;
 		
-		Preconditions.checkState(!config.hasTriggers(), "Stationarity plot not applicable to aftershock catalogs");
+		// no longer true
+//		Preconditions.checkState(!config.hasTriggers(), "Stationarity plot not applicable to aftershock catalogs");
 		
 		double totDuration = config.getDuration();
 		
@@ -59,13 +63,14 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 		
 		xVals = new EvenlyDiscretizedFunc(0.5*YEARS_PER_BIN, numX, YEARS_PER_BIN);
 		simFuncs = new ArrayList<>();
+		simMomFuncs = new ArrayList<>();
 		
 		totalCountHist = new HistogramFunction(ETAS_MFD_Plot.mfdMinMag, ETAS_MFD_Plot.mfdNumMag, ETAS_MFD_Plot.mfdDelta);
 	}
 
 	@Override
 	public int getVersion() {
-		return 1;
+		return 2;
 	}
 
 	@Override
@@ -82,6 +87,8 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 		for (int m=0; m<mags.length; m++)
 			magFuncs[m] = new EvenlyDiscretizedFunc(xVals.getMinX(), xVals.getMaxX(), xVals.size());
 		
+		EvenlyDiscretizedFunc momFunc = new EvenlyDiscretizedFunc(xVals.getMinX(), xVals.getMaxX(), xVals.size());
+		
 		double maxX = xVals.getMaxX() + 0.5*xVals.getDelta();
 		
 		for (ETAS_EqkRupture rup : completeCatalog) {
@@ -95,9 +102,12 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 			for (int m=0; m<mags.length; m++)
 				if (rup.getMag() >= mags[m])
 					magFuncs[m].add(timeX, 1d);
+			
+			momFunc.add(timeX, MagUtils.magToMoment(rup.getMag()));
 		}
 		
 		simFuncs.add(magFuncs);
+		simMomFuncs.add(momFunc);
 	}
 
 	@Override
@@ -179,6 +189,59 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 		gp.getChartPanel().setSize(1000, 700);
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
+		
+		// now moment
+		
+		funcs = new ArrayList<>();
+		chars = new ArrayList<>();
+		
+		EvenlyDiscretizedFunc momFunc = xVals.deepClone();
+		for (EvenlyDiscretizedFunc simMomFunc : simMomFuncs)
+			for (int i=0; i<momFunc.size(); i++)
+				momFunc.add(i, simMomFunc.getY(i));
+		momFunc.scale(1d/simMomFuncs.size());
+		maxY = momFunc.getMaxY();
+		minNonZeroY = Double.POSITIVE_INFINITY;
+		double mean = 0d;
+		for (Point2D pt : momFunc) {
+			if (pt.getY() > 0)
+				minNonZeroY = Math.min(minNonZeroY, pt.getY());
+			mean += pt.getY();
+		}
+		mean /= momFunc.size();
+		
+		XY_DataSet xy = new DefaultXY_DataSet();
+		for (int x=0; x<momFunc.size(); x++) {
+			double y = momFunc.getY(x);
+			if (y > 0) {
+				maxY = Math.max(y, maxY);
+				minNonZeroY = Math.min(y, minNonZeroY);
+				double middle = momFunc.getX(x);
+				xy.set(middle-halfDelta, y);
+				xy.set(middle+halfDelta, y);
+			}
+		}
+		funcs.add(xy);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+		
+		xy.setName("Mean="+(float)mean);
+		XY_DataSet meanXY = new DefaultXY_DataSet();
+		meanXY.set(0d, mean);
+		meanXY.set(maxX, mean);
+		funcs.add(meanXY);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
+		
+		spec = new PlotSpec(funcs, chars, title, "Simulated Years", "Annual Moment Rate");
+		spec.setLegendVisible(true);
+		
+		System.out.println("Y range: "+minNonZeroY+" "+maxY);
+		yRange = getYRange(minNonZeroY, maxY);
+
+		gp.drawGraphPanel(spec, false, true, xRange, yRange);
+		gp.getChartPanel().setSize(1000, 700);
+		gp.saveAsPNG(new File(outputDir, prefix+"_mom.png").getAbsolutePath());
+		gp.saveAsPDF(new File(outputDir, prefix+"_mom.pdf").getAbsolutePath());
+		
 		return null;
 	}
 	
@@ -203,6 +266,9 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 		lines.add(topLink); lines.add("");
 		
 		lines.add("![Stationarity Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
+		lines.add("");
+		
+		lines.add("![Moment Rate Plot]("+relativePathToOutputDir+"/"+prefix+"_mom.png)");
 		lines.add("");
 		
 		return lines;

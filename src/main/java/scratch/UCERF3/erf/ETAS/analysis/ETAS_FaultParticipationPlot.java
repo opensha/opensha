@@ -95,7 +95,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	
 	private TD_CalcThread tdCalcThread;
 
-	protected ETAS_FaultParticipationPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, boolean annualize, boolean skipMaps) {
+	public ETAS_FaultParticipationPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, boolean annualize, boolean skipMaps) {
 		super(config, launcher);
 		this.prefix = prefix;
 		this.annualize = annualize;
@@ -143,7 +143,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 
 	@Override
 	public int getVersion() {
-		return 2;
+		return 3;
 	}
 
 	@Override
@@ -233,6 +233,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		private EvenlyDiscretizedFunc[] spontCumulativeProbs;
 		private IncrementalMagFreqDist[] triggeredIncrProbs;
 		private EvenlyDiscretizedFunc[] triggeredCumulativeProbs;
+		
+		private IncrementalMagFreqDist fssIncrMFD;
 		
 		private int totTriggerCount = 0;
 		
@@ -365,9 +367,25 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				}
 			}
 		}
+		
+		public IncrementalMagFreqDist getFSS_IncrMFD(FaultSystemSolution fss) {
+			if (fssIncrMFD == null) {
+				IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDeltaMag);
+				
+				FaultSystemRupSet rupSet = fss.getRupSet();
+				for (int rup : allRupIDs) {
+					double mag = rupSet.getMagForRup(rup);
+					double rate = fss.getRateForRup(rup);
+					mfd.add(mfd.getClosestXIndex(mag), rate);
+				}
+				
+				fssIncrMFD = mfd;
+			}
+			return fssIncrMFD;
+		}
 	}
 	
-	private CSVFile<String> buildCSV(FaultStats[] stats, boolean parents, double minMag) {
+	private CSVFile<String> buildCSV(FaultStats[] stats, boolean parents, double minMag, FaultSystemSolution fss) {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
@@ -401,6 +419,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					header.add("Triggered "+getTimeLabel(duration, false)+" Prob");
 				header.add("Triggered Primary Mean Annual Rate");
 			}
+			header.add("Long-Term Fault System Solution Rate");
 		} else {
 			if (hasSpont) {
 				header.add("Total "+getTimeLabel(calcDuration, false)+" Mean Count");
@@ -432,6 +451,10 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				for (int d=0; d<durations.length; d++)
 					line.add((float)stat.triggeredCumulativeProbs[d].getY(magIndex)+"");
 				line.add((float)stat.triggeredPrimaryCumulativeMNDs[durations.length-1].getY(magIndex)+"");
+			}
+			if (annualize) {
+				EvenlyDiscretizedFunc fssMFD = stat.getFSS_IncrMFD(fss).getCumRateDistWithOffset();
+				line.add((float)fssMFD.getY(magIndex)+"");
 			}
 			csv.addLine(line);
 		}
@@ -468,7 +491,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			stats.calcStats(catalogCount);
 		
 		// build CSVs
-		writeCSVs(outputDir);
+		writeCSVs(outputDir, fss);
 		
 		// plot
 		if (!skipMaps)
@@ -482,6 +505,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 
 	private void writeMaps(File outputDir, FaultSystemSolution fss) throws IOException {
 		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
+		CPT ratioCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
+		ratioCPT.setNanColor(Color.GRAY);
 		double maxRate = 0;
 		int minPlotMagIndex = getMFD_magIndex(StatUtils.min(plotMagBins));
 		int maxDurationIndex = 0;
@@ -548,6 +573,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					double[] primaryRates = null;
 					if (!spont && d == maxDurationIndex)
 						primaryRates = new double[subSectStats.length];
+					double[] fssRates = annualize ? new double[subSectStats.length] : null;
 					
 					for (int s=0; s<subSectStats.length; s++) {
 						if (spont) {
@@ -557,6 +583,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 							if (primaryRates != null)
 								primaryRates[s] = subSectStats[s].triggeredPrimaryCumulativeMNDs[statDurIndex].getY(magIndex);
 						}
+						if (annualize)
+							fssRates[s] = subSectStats[s].getFSS_IncrMFD(fss).getCumRateDistWithOffset().getY(magIndex);
 						if (MAP_D) {
 							if (subSectStats[s].name.toLowerCase().contains("mojave"))
 								System.out.println("DEBUG: "+subSectStats[s].name+", spont?\t"+spont+"\trate: "+particRates[s]);
@@ -605,12 +633,26 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					} catch (GMT_MapException | RuntimeException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
+					
+					if (spont && annualize) {
+						// now do ratio
+						double[] ratios = new double[fssRates.length];
+						for (int i=0; i<ratios.length; i++)
+							ratios[i] = particRates[i]/fssRates[i];
+						String title = "Log10" + magStr + " Participation Rate/FSS Ratio";
+						try {
+							FaultBasedMapGen.makeFaultPlot(ratioCPT, faults, FaultBasedMapGen.log10(ratios), region, outputDir,
+									prefix+"_partic"+prefixAdd+"_ratio", false, false, title);
+						} catch (GMT_MapException | RuntimeException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
+					}
 				}
 			}
 		}
 	}
 
-	private void writeCSVs(File outputDir) throws IOException {
+	private void writeCSVs(File outputDir, FaultSystemSolution fss) throws IOException {
 		sectionCSVs = new HashMap<>();
 		parentCSVs = new HashMap<>();
 		FaultStats[] parentStatsArray = new ArrayList<>(parentSectStats.values()).toArray(new FaultStats[0]);
@@ -630,11 +672,11 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 //			if (!hasMag)
 //				continue;
 			
-			CSVFile<String> sectionCSV = buildCSV(subSectStats, false, plotMinMag);
+			CSVFile<String> sectionCSV = buildCSV(subSectStats, false, plotMinMag, fss);
 			sectionCSVs.put(plotMinMag, sectionCSV);
 			sectionCSV.writeToFile(new File(outputDir, prefix+"_"+magStr+"_sub_sects.csv"));
 			
-			CSVFile<String> parentCSV = buildCSV(parentStatsArray, true, plotMinMag);
+			CSVFile<String> parentCSV = buildCSV(parentStatsArray, true, plotMinMag, fss);
 			parentCSVs.put(plotMinMag, parentCSV);
 			parentCSV.writeToFile(new File(outputDir, prefix+"_"+magStr+"_parent_sects.csv"));
 		}
@@ -751,7 +793,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		header.add("Magnitude");
 		if (annualize) {
 			Preconditions.checkState(mpdDurations.length == 1);
-			Preconditions.checkState(!hasTriggered);
+//			Preconditions.checkState(!hasTriggered); // TODO no longer true, any reprocussions?
 			header.add("UCERF3-TI Prob");
 			header.add("UCERF3-TD Prob");
 			header.add("UCERF3-ETAS Prob");
@@ -823,7 +865,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				}
 			}
 			
-			if (hasTriggered) {
+			if (hasTriggered && !annualize) {
 				EvenlyDiscretizedFunc triggeredOnlyFunc = stats.triggeredCumulativeProbs[durationIndex];
 				
 				EvenlyDiscretizedFunc triggeredPlusTDFunc = new EvenlyDiscretizedFunc(triggeredOnlyFunc.getMinX(),
@@ -920,8 +962,11 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			builder.addColumn("Min Mag");
 			for (int d=0; d<mapDurations.length; d++) {
 				String label = annualize ? "" : getTimeShortLabel(mapDurations[d])+" ";
-				if (hasSpont)
+				if (hasSpont) {
 					builder.addColumn(label+"Complete Catalog (including spontaneous)");
+					if (annualize)
+						builder.addColumn("Ratio WRT Long-Term Model");
+				}
 				if (hasTriggered) {
 					builder.addColumn(label+"Triggered Ruptures (no spontaneous)");
 				}
@@ -946,6 +991,9 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					if (hasSpont) {
 						String prefix = mapPlotPrefixes.get(mapDurations[d], true)[i];
 						builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+".png)");
+						if (annualize) {
+							builder.addColumn("![Participation Plot]("+relativePathToOutputDir+"/"+prefix+"_ratio.png)");
+						}
 					}
 					if (hasTriggered) {
 						String prefix = mapPlotPrefixes.get(mapDurations[d], false)[i];

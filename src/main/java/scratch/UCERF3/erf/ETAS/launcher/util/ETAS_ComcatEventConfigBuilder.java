@@ -52,7 +52,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			argz += " --days-before 7";
 //			argz += " --days-after 7";
 //			argz += " --hours-after 33.75";
-//			argz += " --end-now";
+			argz += " --end-now";
 //			argz += " --gridded-only";
 //			argz += " --impose-gr";
 //			argz += " --prob-model NO_ERT";

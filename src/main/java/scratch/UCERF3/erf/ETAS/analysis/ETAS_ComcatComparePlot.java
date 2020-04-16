@@ -293,7 +293,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		if (smallSequence)
 			comcatMinMag = 0.05;
 		else
-			comcatMinMag = ETAS_Utils.minDist_DEFAULT;
+			comcatMinMag = ETAS_Utils.magMin_DEFAULT;
 		
 		comcatMaxMag = plotter.getMaxAftershockMag();
 		modalMag = plotter.calcModalMag(comcatMinMag, false, false);
@@ -519,7 +519,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return true;
 	}
 	
-	private static final int VERSION = 18;
+	private static final int VERSION = 19;
 
 	@Override
 	public int getVersion() {
@@ -754,15 +754,15 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				false, false, cumMNDCalc);
 		
 		System.out.println("Writing ComCat Percentile Cumulative Plot");
-		writeMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile", cumulativeMNDs);
+		plotMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile", cumulativeMNDs);
 		
 		System.out.println("Writing ComCat Mag-Time plots");
 		calcMagTimeProbs();
-		plotMagTimeFunc(magTimeProbsFull, magTimeXAxisFull, "Current Magnitude vs Time",
+		plotMagTimeFunc(magTimeProbsFull, magTimeXAxisFull, "To Date Magnitude vs Time",
 				outputDir, "mag_time_full");
-		plotMagTimeFunc(magTimeProbsWeek, magTimeXAxisWeek, "First Week Magnitude vs Time",
+		plotMagTimeFunc(magTimeProbsWeek, magTimeXAxisWeek, "One Week Magnitude vs Time Forecast",
 					outputDir, "mag_time_week");
-		plotMagTimeFunc(magTimeProbsMonth, magTimeXAxisMonth, "First Month Magnitude vs Time",
+		plotMagTimeFunc(magTimeProbsMonth, magTimeXAxisMonth, "One Month Magnitude vs Time Forecast",
 					outputDir, "mag_time_month");
 		
 		System.out.println("Writing time-dep Mc plot");
@@ -859,7 +859,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		plotter.plotTimeFuncPlot(outputDir, prefix, magLabel, timeFunc, timeFractals);
 	}
 	
-	private void writeMagPercentileCumulativeNumPlot(File outputDir, String prefix,
+	private void plotMagPercentileCumulativeNumPlot(File outputDir, String prefix,
 			List<EvenlyDiscretizedFunc> cumulativeMNDs) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -878,15 +878,24 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		EvenlyDiscretizedFunc comcatCumulativeMND = plotter.calcIncrementalMagNum(
 				comcatMinMag, false, false).getCumRateDistWithOffset();
 		
-		int dataOffset = 0;
-		if (comcatCumulativeMND.size() > magFunc.size()) {
-			while ((float)comcatCumulativeMND.getX(dataOffset) < (float)magFunc.getX(0))
-				dataOffset++;
-		} else {
-			Preconditions.checkState(comcatCumulativeMND.size() == magFunc.size());
+		if ((float)comcatCumulativeMND.getMinX() != (float)magFunc.getMinX()
+				|| comcatCumulativeMND.size() != magFunc.size()) {
+			// re-align them
+//			System.out.println("re-aligning! comcat min="+comcatCumulativeMND.getMinX()+" size="+comcatCumulativeMND.size());
+//			System.out.println("\tdata min="+magFunc.getMinX()+" size="+magFunc.size());
+			EvenlyDiscretizedFunc comcatAligned = new EvenlyDiscretizedFunc(
+					magFunc.getMinX(), magFunc.getMaxX(), magFunc.size());
+			double minX = magFunc.getMinX()-0.5*magFunc.getDelta();
+			double maxX = magFunc.getMaxX()+0.5*magFunc.getDelta();
+			for (Point2D pt : comcatCumulativeMND) {
+				if ((float)pt.getX() < (float)minX || (float)pt.getX() > (float)maxX)
+					continue;
+				comcatAligned.add(magFunc.getClosestXIndex(pt.getX()), pt.getY());
+			}
+			comcatCumulativeMND = comcatAligned;
 		}
 		
-		for (int i=0; i<magFunc.size() && i+dataOffset<comcatCumulativeMND.size(); i++) {
+		for (int i=0; i<magFunc.size(); i++) {
 			double mag = magFunc.getX(i);
 			upper95.set(mag, 97.5);
 			lower95.set(mag, 2.5);
@@ -898,8 +907,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			for (int j=0; j<counts.length; j++)
 				counts[j] = cumulativeMNDs.get(j).getY(i);
 			Arrays.sort(counts);
-			Preconditions.checkState((float)mag == (float)comcatCumulativeMND.getX(i+dataOffset));
-			double dataVal = comcatCumulativeMND.getY(i+dataOffset);
+			Preconditions.checkState((float)mag == (float)comcatCumulativeMND.getX(i));
+			double dataVal = comcatCumulativeMND.getY(i);
 			int index = Arrays.binarySearch(counts, dataVal);
 			if (index < 0) {
 				// convert to insertion index
@@ -1256,8 +1265,14 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		lines.add("These plots compare simulated sequences with data from ComCat. All plots only consider events with hypocenters "
 				+ "inside the ComCat region defined in the JSON input file.");
 		lines.add("");
-		lines.add("Last updated at "+SimulationMarkdownGenerator.df.format(new Date(curTime))
-			+", "+getTimeLabel(curDuration, true).toLowerCase()+" after the simulation start time.");
+		String line = "Last updated at "+SimulationMarkdownGenerator.df.format(new Date(curTime))
+			+", "+getTimeLabel(curDuration, true).toLowerCase()+" after the simulation start time";
+		if (plotter.getMainshock() != null && startTime-plotter.getOriginTime() > 1000l) {
+			double msDuration = curDuration + (startTime-plotter.getOriginTime())/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+			line += " and "+getTimeLabel(msDuration, true)+" after the mainshock";
+		}
+		line += ".";
+		lines.add(line);
 		lines.add("");
 		lines.add("Total matching ComCat events found: "+comcatEvents.size());
 		lines.add("");
@@ -1273,15 +1288,15 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		
 		lines.add(topLevelHeading+"# ComCat Magnitude-Time Functions");
 		lines.add(topLink); lines.add("");
-		String line = "These plots show the show the magnitude versus time probability function since simulation start. "
-				+ "Observed event data lie on top, with those input to the simulation plotted as green circles and those"
+		line = "These plots show the show the magnitude versus time probability function since simulation start. "
+				+ "Observed event data lie on top, with those input to the simulation plotted as magenta circles and those "
 				+ "that occurred after the simulation start time as cyan circles. Time is relative to ";
 		if (plotter.getMainshock() == null) {
 			line += "the simulation start time.";
 		} else {
 			ObsEqkRupture mainshock = plotter.getMainshock();
 			Double mag = mainshock.getMag();
-			line += "the mainshock (M"+optionalDigitDF.format(mag)+", "+mainshock.getEventId()+").";
+			line += "the mainshock (M"+optionalDigitDF.format(mag)+", "+mainshock.getEventId()+", plotted as a brown circle).";
 		}
 		line += " Probabilities are only shown above the minimum simulated magnitude, M="+optionalDigitDF.format(simMc)+".";
 		lines.add(line);
@@ -1450,8 +1465,10 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 //				+ "2019_08_20-ComCatM6p4_ci38443183_PointSources-noSpont-full_td-scale1.14");
 //				+ "2019_10_15-ComCatM4p71_nc73292360_PointSources");
 //				+ "2020_04_08-ComCatM4p87_ci39126079_PointSource_kCOV1p5");
-				+ "2020_04_08-ComCatM4p87_ci39126079_4p7DaysAfter_PointSources_kCOV1p5");
+//				+ "2020_04_08-ComCatM4p87_ci39126079_4p7DaysAfter_PointSources_kCOV1p5");
 //				+ "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces");
+//				+ "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces");
+				+ "2019_09_12-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces");
 		File configFile = new File(simDir, "config.json");
 		
 		try {

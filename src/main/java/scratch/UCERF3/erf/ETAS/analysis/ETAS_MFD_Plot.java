@@ -23,6 +23,7 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -42,6 +43,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
+import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 
 public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	
@@ -64,6 +66,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	private MFD_Stats[] triggeredStats;
 	private MFD_Stats[] triggeredSupraStats;
 	private MFD_Stats[] triggeredPrimaryStats;
+	private EvenlyDiscretizedFunc fssMFD;
 	
 	private HistogramFunction totalCountHist;
 	
@@ -116,7 +119,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 
 	@Override
 	public int getVersion() {
-		return 2;
+		return 3;
 	}
 	
 	private MFD_Stats[] buildStats() {
@@ -226,6 +229,9 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		int numToTrim = calcNumToTrim();
+		
+		if (annualize)
+			fssMFD = calcFSS(fss);
 		
 		String title = getPlotTitle();
 		for (int i=0; i<durations.length; i++) {
@@ -401,6 +407,26 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		return Joiner.on(",").join(percents);
 	}
 	
+	private EvenlyDiscretizedFunc calcFSS(FaultSystemSolution fss) {
+		Region region = getLauncher().getRegion();
+		IncrementalMagFreqDist fssIncrMFD = fss.calcNucleationMFD_forRegion(region, 5.05, 8.95, 0.1, true);
+		GridSourceProvider gridProv = fss.getGridSourceProvider();
+		if (gridProv != null) {
+			double minMag = 5d;
+			for (int i=0; i<gridProv.size(); i++) {
+				IncrementalMagFreqDist nodeMFD = gridProv.getNodeMFD(i);
+				for (int j=0; j<nodeMFD.size(); j++) {
+					double x = nodeMFD.getX(j);
+					if (x >= minMag)
+						fssIncrMFD.add(fssIncrMFD.getClosestXIndex(x), nodeMFD.getY(j));
+				}
+			}
+		}
+		if (cumulative)
+			return fssIncrMFD.getCumRateDistWithOffset();
+		return fssIncrMFD;
+	}
+	
 	private void plot(File outputDir, String prefix, String title, MFD_Stats stats, MFD_Stats primaryStats, MFD_Stats supraStats,
 			int numToTrim, FaultSystemSolution fss, double duration) throws IOException {
 		stats.calcStats(annualize, getConfig());
@@ -442,6 +468,12 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		if (includeMode) {
 			funcs.add(modeFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.CYAN.darker()));
+		}
+		
+		if (fssMFD != null) {
+			fssMFD.setName("FSS");
+			funcs.add(fssMFD);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, new Color(86, 44, 0))); // brown
 		}
 		
 		if (probFunc != null) {
@@ -527,6 +559,8 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			header.add(optionalDigitDF.format(fractile*100d)+" %ile");
 		header.add("Median");
 		header.add("Mode");
+		if (fssMFD != null)
+			header.add("Fault System Solution");
 		if (probFunc != null) {
 			header.add(getTimeShortLabel(duration)+" Probability");
 			if (supraProbFunc != null)
@@ -550,6 +584,12 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 				line.add((float)fractileFunc.getY(i)+"");
 			line.add((float)medianFunc.getY(i)+"");
 			line.add((float)modeFunc.getY(i)+"");
+			if (fssMFD != null) {
+				if ((float)mag < (float)fssMFD.getMinX())
+					line.add("");
+				else
+					line.add((float)fssMFD.getY(fssMFD.getClosestXIndex(mag))+"");
+			}
 			if (probFunc != null) {
 				line.add((float)probFunc.getY(i)+"");
 				if (supraProbFunc != null)
@@ -778,6 +818,8 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			lines.add("* **Mode** (thin cyan line): modal "+quantity+" across all "+numCatalogs+" catalogs (scaled to annualized value)");
 		else
 			lines.add("* **Mode** (thin cyan line): modal "+quantity+" across all "+numCatalogs+" catalogs");
+		if (annualize)
+			lines.add("* **Fault System Solution** (brown line): long-term MFD from the UCERF3 fault system solution");
 		lines.add("* **"+getTimeShortLabel(duration)+" Probability** (thin red line): "
 			+getTimeLabel(duration, false).toLowerCase()+" probability calculated as the fraction of catalogs with at least 1 occurrence");
 		lines.add("* **"+getTimeShortLabel(duration)+" Supraseismogenic Probability** (thin dashed red line): same as above, but only for "
@@ -807,6 +849,8 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 			builder.addColumn(optionalDigitDF.format(fractile*100d)+" %ile");
 		builder.addColumn("Median");
 		builder.addColumn("Mode");
+		if (fssMFD != null)
+			builder.addColumn("Long-Term Fault System Solution");
 		if (probFunc != null) {
 			builder.addColumn(getTimeShortLabel(duration)+" Probability");
 			builder.addColumn(getTimeShortLabel(duration)+" Prob 95% Conf");
@@ -835,6 +879,12 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 				builder.addColumn(getProbStr(fractileFunc.getY(i)));
 			builder.addColumn(getProbStr(medianFunc.getY(i)));
 			builder.addColumn(getProbStr(modeFunc.getY(i)));
+			if (fssMFD != null) {
+				if ((float)mag < (float)fssMFD.getMinX())
+					builder.addColumn("");
+				else
+					builder.addColumn(getProbStr(fssMFD.getY(fssMFD.getClosestXIndex(mag))));
+			}
 			if (probFunc != null) {
 				builder.addColumn(getProbStr(probFunc.getY(i), true));
 				builder.addColumn(getConfString(probFunc.getY(i), numForConf, true));
