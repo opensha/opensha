@@ -27,6 +27,9 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
+import org.opensha.commons.data.xyz.GeoDataSet;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -35,6 +38,7 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
+import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -74,11 +78,19 @@ public class ComcatDataPlotter {
 	private CPT baseCPT;
 	private Double minPlotProb;
 	
+	private Color foreshockColor = Color.MAGENTA.darker();
+	private Color mainshockColor = new Color(86, 44, 0); // brown
+	private Color aftershockColor = Color.CYAN.darker();
+	
 	private static double[] fractiles = {0.025, 0.16, 0.84, 0.975};
 	
+	// sim-data plot fractile params
 	private boolean plotIncludeMean = true;
 	private boolean plotIncludeMedian = true;
 	private boolean plotIncludeMode = true;
+	
+	// map plot params
+	private boolean mapDrawCA = true;
 	
 	public ComcatDataPlotter(ObsEqkRupture mainshock, List<? extends ObsEqkRupture> foreshocks,
 			List<? extends ObsEqkRupture> aftershocks) {
@@ -304,6 +316,7 @@ public class ComcatDataPlotter {
 		}
 		if (maxY <= 1d || !Double.isFinite(maxY))
 			maxY = 1d;
+		double maxX = Math.max(1d, comcatCumulativeTimeFunc.getMaxX());
 		
 		List<XYTextAnnotation> anns = null;
 		
@@ -318,8 +331,12 @@ public class ComcatDataPlotter {
 				
 				anns = new ArrayList<>();
 				Font font = new Font(Font.SANS_SERIF, Font.BOLD, 18);
-				XYTextAnnotation ann = new XYTextAnnotation(" Simulation Start", meanCurve.getMinX(), 0.975*maxY);
-				ann.setTextAnchor(TextAnchor.TOP_LEFT);
+				double annY = 0.975*maxY;
+				double annX = meanCurve.getMinX()+0.02*maxX;
+				XYTextAnnotation ann = new XYTextAnnotation("Simulation Start", annX, annY);
+				ann.setTextAnchor(TextAnchor.BOTTOM_LEFT);
+				ann.setRotationAnchor(TextAnchor.BOTTOM_LEFT);
+				ann.setRotationAngle(0.5*Math.PI);
 				ann.setFont(font);
 				anns.add(ann);
 			}
@@ -350,7 +367,6 @@ public class ComcatDataPlotter {
 		
 		HeadlessGraphPanel gp = buildGraphPanel();
 		gp.setLegendFontSize(18);
-		double maxX = Math.max(1d, comcatCumulativeTimeFunc.getMaxX());
 //		System.out.println("Drawing with bounds: "+maxX+", "+maxY);
 		gp.setUserBounds(0d, maxX, 0d, maxY);
 
@@ -457,6 +473,8 @@ public class ComcatDataPlotter {
 		// make sure the incremental bin is 0.5*delta above minX, e.g. 2.55 for minX=2.5
 		double minIncr = minX + 0.5*deltaMag;
 		
+//		System.out.println("MFD: minMag="+minMag+", minX="+minX+", minIncr="+minIncr);
+		
 		int numMag = (int)((maxX - minIncr)/deltaMag) + 1;
 		IncrementalMagFreqDist incrMND = new IncrementalMagFreqDist(minIncr, numMag, deltaMag);
 		double thresholdMag = minMag - 0.5*deltaMag;
@@ -514,6 +532,7 @@ public class ComcatDataPlotter {
 		CSVFile<String> csv = buildSimFractalFuncsCSV(modelCalc, funcs, chars, dataMND, "Magnitude", true);
 		csv.writeToFile(new File(outputDir, prefix+".csv"));
 		
+		dataMND.setName("ComCat Data");
 		funcs.add(dataMND);
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 4f, dataColor));
 		
@@ -534,7 +553,9 @@ public class ComcatDataPlotter {
 //		System.out.println("maxY="+maxY);
 //		System.out.println("nonZeroRange="+nonZeroRange);
 		if (minY >= maxY)
-			Math.pow(10, Math.log10(maxY)-1);
+			minY = Math.pow(10, Math.log10(maxY)-1);
+		if (minY == 1d)
+			minY = 0.9;
 		maxX = Math.min(maxX, Math.max(Math.ceil(maxNonZeroX), 5d));
 		
 		if ((float)mc > (float)minMag) {
@@ -553,8 +574,12 @@ public class ComcatDataPlotter {
 		HeadlessGraphPanel gp = buildGraphPanel();
 		gp.setLegendFontSize(18);
 		gp.setUserBounds(minX, maxX, minY, maxY);
+		TickUnits tus = new TickUnits();
+		TickUnit tu = new NumberTickUnit(0.5);
+		tus.add(tu);
 
 		gp.drawGraphPanel(spec, false, true);
+		gp.getXAxis().setStandardTickUnits(tus);
 		gp.getChartPanel().setSize(800, 600);
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
@@ -829,12 +854,14 @@ public class ComcatDataPlotter {
 		if (modelXYZ != null)
 			minMag = Math.min(minMag, modelXYZ.getMinY()-0.5*modelXYZ.getGridSpacingY());
 		
+		EvenlyDiscretizedFunc magSizeFunc = getMagSizeFunc(minMag);
+		
 		if (foreshocksFunc != null && foreshocksFunc.size() > 0)
-			addInputFuncs(foreshocksFunc, funcs, chars, Color.GREEN.darker(), minMag);
+			addGroupedInputFuncs(foreshocksFunc, funcs, chars, foreshockColor, magSizeFunc);
 		if (mainshockFunc != null)
-			addInputFuncs(mainshockFunc, funcs, chars, new Color(86, 44, 0), minMag); //  brown
+			addGroupedInputFuncs(mainshockFunc, funcs, chars, mainshockColor, magSizeFunc);
 		if (aftershocksFunc.size() > 0)
-			addInputFuncs(aftershocksFunc, funcs, chars, Color.CYAN.darker(), minMag);
+			addGroupedInputFuncs(aftershocksFunc, funcs, chars, aftershockColor, magSizeFunc);
 		
 		String xAxisLabel = timeDays ? "Days" : "Years";
 		if (mainshock != null)
@@ -847,9 +874,39 @@ public class ComcatDataPlotter {
 		Range xRange = new Range(minTime, maxTime);
 		Range yRange = new Range(minMag, maxMag);
 		
+		List<XYTextAnnotation> anns = null;
+		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 18);
+		PlotCurveCharacterstics markerChar = new PlotCurveCharacterstics(
+				PlotLineType.DASHED, 2f, new Color (127, 127, 127, 127));
+		double annBuffX = 0.015*xRange.getLength();
+		double annBuffY = 0.02*yRange.getLength();
+		
+		double dataEndTime = (endTime - originTime)/MILLISEC_PER_YEAR;
+		if (timeDays)
+			dataEndTime *= 365.25;
+		
+		if ((float)dataEndTime < maxTime.floatValue()) {
+			anns = new ArrayList<>();
+			double x = dataEndTime+annBuffX;
+			double y = maxMag-annBuffY;
+			XYTextAnnotation ann = new XYTextAnnotation("Time Updated", x, y);
+			ann.setFont(annFont);
+			ann.setTextAnchor(TextAnchor.BOTTOM_LEFT);
+			ann.setRotationAnchor(TextAnchor.BOTTOM_LEFT);
+			ann.setRotationAngle(0.5*Math.PI);
+			anns.add(ann);
+
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			xy.set(dataEndTime, minMag);
+			xy.set(dataEndTime, maxMag);
+			funcs.add(xy);
+			chars.add(markerChar);
+		}
+		
 		if (modelXYZ == null) {
 			PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : title, xAxisLabel, "Magnitude");
 			spec.setLegendVisible(true);
+			spec.setPlotAnnotations(anns);
 			
 			HeadlessGraphPanel gp = buildGraphPanel();
 			gp.setLegendFontSize(18);
@@ -862,6 +919,47 @@ public class ComcatDataPlotter {
 		} else {
 			XYZPlotSpec spec = new XYZPlotSpec(modelXYZ, cpt, noTitles ? " " : title, xAxisLabel,
 					"Magnitude", "Log10(Probability)");
+			
+			// add annotations
+			double modelStart = modelXYZ.getMinX()-0.5*modelXYZ.getGridSpacingX();
+			double modelMinMag = modelXYZ.getMinY()-0.5*modelXYZ.getGridSpacingY();
+
+			if ((float)modelStart > 0f) {
+				if (anns == null)
+					anns = new ArrayList<>();
+				double x = modelStart + annBuffX;
+				double y = maxMag - annBuffY;
+				XYTextAnnotation startAnn = new XYTextAnnotation("Simulation Start", x, y);
+				startAnn.setFont(annFont);
+				startAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
+				startAnn.setRotationAnchor(TextAnchor.BOTTOM_LEFT);
+				startAnn.setRotationAngle(0.5*Math.PI);
+				anns.add(startAnn);
+
+				DefaultXY_DataSet xy = new DefaultXY_DataSet();
+				xy.set(modelStart, minMag);
+				xy.set(modelStart, maxMag);
+				funcs.add(xy);
+				chars.add(markerChar);
+			}
+
+			if ((float)modelMinMag > (float)minMag) {
+				if (anns == null)
+					anns = new ArrayList<>();
+				double x = maxTime-annBuffX;
+				double y = modelMinMag+annBuffY;
+				XYTextAnnotation startAnn = new XYTextAnnotation("Simulation Min Mag", x, y);
+				startAnn.setFont(annFont);
+				startAnn.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
+				anns.add(startAnn);
+
+				DefaultXY_DataSet xy = new DefaultXY_DataSet();
+				xy.set(minTime, modelMinMag);
+				xy.set(maxTime, modelMinMag);
+				funcs.add(xy);
+				chars.add(markerChar);
+			}
+			spec.setPlotAnnotations(anns);
 			
 			spec.setXYElems(funcs);
 			spec.setXYChars(chars);
@@ -878,12 +976,16 @@ public class ComcatDataPlotter {
 		}
 	}
 	
-	private void addInputFuncs(XY_DataSet func, List<XY_DataSet> funcs,
-			List<PlotCurveCharacterstics> chars, Color color, double minMag) {
+	private EvenlyDiscretizedFunc getMagSizeFunc(double minMag) {
 		EvenlyDiscretizedFunc magSizeFunc = HistogramFunction.getEncompassingHistogram(
 				minMag, 8.95, 0.1);
 		for (int i=0; i<magSizeFunc.size(); i++)
-			magSizeFunc.set(i, 1d + 1.5*(magSizeFunc.getX(i)-magSizeFunc.getMinX()));
+			magSizeFunc.set(i, 1d + 2d*(magSizeFunc.getX(i)-magSizeFunc.getMinX()));
+		return magSizeFunc;
+	}
+	
+	private void addGroupedInputFuncs(XY_DataSet func, List<XY_DataSet> funcs,
+			List<PlotCurveCharacterstics> chars, Color color, EvenlyDiscretizedFunc magSizeFunc) {
 		XY_DataSet[] subFuncs = new XY_DataSet[magSizeFunc.size()];
 		for (Point2D pt : func) {
 			int magIndex = magSizeFunc.getClosestXIndex(pt.getY());
@@ -912,6 +1014,143 @@ public class ComcatDataPlotter {
 				first = false;
 			}
 		}
+	}
+	
+	private EvenlyDiscretizedFunc getMapMagSizeFunc(double minMag) {
+//		EvenlyDiscretizedFunc magSizeFunc = HistogramFunction.getEncompassingHistogram(
+//				minMag, 8.95, 0.1);
+//		double minSize = 1d;
+//		double maxSize = 8d;
+//		for (int i=0; i<magSizeFunc.size(); i++)
+////			magSizeFunc.set(i, Math.exp(magSizeFunc.getX(i) - Math.exp(magSizeFunc.getMinX())));
+//			magSizeFunc.set(i, Math.pow(1.05, magSizeFunc.getX(i)));
+////			magSizeFunc.set(i, i == 0 ? 1d : 1.1 * magSizeFunc.getY(i-1));
+//		double origMin = magSizeFunc.getY(0);
+//		for (int i=0; i<magSizeFunc.size(); i++)
+//			magSizeFunc.add(i, -origMin);
+//		magSizeFunc.scale((maxSize-minSize)/magSizeFunc.getMaxY());
+//		for (int i=0; i<magSizeFunc.size(); i++)
+//			magSizeFunc.add(i, minSize);
+//		System.out.println(magSizeFunc);
+//		return magSizeFunc;
+		return getMagSizeFunc(minMag);
+	}
+	
+	private void addMapInputFuncs(List<? extends ObsEqkRupture> ruptures, double minMag, String label, Color color,
+			EvenlyDiscretizedFunc magSizeFunc, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars) {
+		// label the largest one
+		DefaultXY_DataSet largest = null;
+		double maxMag = minMag;
+		
+		Color outlineColor = new Color(0, 0, 0, 127);
+		
+		for (ObsEqkRupture rup : ruptures) {
+			double mag = rup.getMag();
+			if (mag >= minMag) {
+				DefaultXY_DataSet xy = new DefaultXY_DataSet();
+				if (mag > maxMag) {
+					maxMag = mag;
+					largest = xy;
+				}
+				Location loc = rup.getHypocenterLocation();
+				xy.set(loc.getLongitude(), loc.getLatitude());
+				
+				funcs.add(xy);
+				float magSize = (float)magSizeFunc.getInterpolatedY(mag);
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, magSize, color));
+				
+				if (outlineColor != null) {
+					if (largest == xy) {
+						XY_DataSet copy = xy.deepClone();
+						copy.setName(null);
+						funcs.add(copy);
+					} else {
+						funcs.add(xy);
+					}
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, magSize, outlineColor));
+				}
+			}
+		}
+		
+		if (largest != null)
+			largest.setName(label);
+	}
+	
+	public void plotMap(File outputDir, String prefix, String title, Region mapRegion, double minMag)
+			throws IOException {
+		List<XY_DataSet> funcs = null;
+		List<PlotCurveCharacterstics> chars = null;
+		
+		plotMap(outputDir, prefix, title, mapRegion, aftershocks, minMag, funcs, chars);
+	}
+	
+	public void plotMap(File outputDir, String prefix, String title, Region mapRegion,
+			List<? extends ObsEqkRupture> events, double minMag, List<? extends XY_DataSet> inputFuncs,
+			List<PlotCurveCharacterstics> inputChars) throws IOException {
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		if (mapDrawCA) {
+			for (XY_DataSet caBoundary : PoliticalBoundariesData.loadCAOutlines()) {
+				funcs.add(caBoundary);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
+			}
+		}
+		
+		if (inputFuncs != null) {
+			Preconditions.checkNotNull(inputChars, "must also give input chars");
+			funcs.addAll(inputFuncs);
+			chars.addAll(inputChars);
+		}
+		
+		EvenlyDiscretizedFunc magSizeFunc = getMapMagSizeFunc(minMag);
+		if ((foreshocks != null && !foreshocks.isEmpty()) || mainshock != null) {
+			if (foreshocks != null && !foreshocks.isEmpty())
+				addMapInputFuncs(foreshocks, minMag, "Foreshocks", foreshockColor, magSizeFunc, funcs, chars);
+			
+			if (mainshock != null) {
+				List<ObsEqkRupture> rups = new ArrayList<>();
+				rups.add(mainshock);
+				
+				addMapInputFuncs(rups, minMag, "Mainshock", mainshockColor, magSizeFunc, funcs, chars);
+			}
+		}
+		
+		addMapInputFuncs(events, minMag, "Aftershocks", aftershockColor, magSizeFunc, funcs, chars);
+		
+		double latSpan = mapRegion.getMaxLat() - mapRegion.getMinLat();
+		double lonSpan = mapRegion.getMaxLon() - mapRegion.getMinLon();
+		
+		double tickUnit;
+		if (lonSpan > 5)
+			tickUnit = 1d;
+		else if (lonSpan > 2)
+			tickUnit = 0.5;
+		else if (lonSpan > 1)
+			tickUnit = 0.25;
+		else
+			tickUnit = 0.1;
+		
+		TickUnits tus = new TickUnits();
+		TickUnit tu = new NumberTickUnit(tickUnit);
+		tus.add(tu);
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
+		spec.setLegendVisible(true);
+		
+		HeadlessGraphPanel gp = buildGraphPanel();
+		gp.setUserBounds(mapRegion.getMinLon(), mapRegion.getMaxLon(), mapRegion.getMinLat(), mapRegion.getMaxLat());
+
+		gp.drawGraphPanel(spec, false, false);
+		gp.getXAxis().setStandardTickUnits(tus);
+		gp.getYAxis().setStandardTickUnits(tus);
+		
+		int width = 800;
+		int height = (int)((double)(width)*latSpan/lonSpan);
+		
+		gp.getChartPanel().setSize(width, height);
+		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
+		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
 	}
 	
 	private static HeadlessGraphPanel buildGraphPanel() {
@@ -1038,11 +1277,11 @@ public class ComcatDataPlotter {
 							"No overlap between data and sim funcs");
 					maxIndex = Integer.max(minCurve.size(), dataFunc.size()-dataOffset)-1;
 				}
-				System.out.println("Data func: start="+dataFunc.getX(0)
-					+"\tsize="+dataFunc.size()+"\toffset="+dataOffset);
-				System.out.println("Sim func: start="+minCurve.getX(0)
-					+"\tsize="+minCurve.size()+"\toffset="+simOffset);
-				System.out.println("MaxIndex="+maxIndex);
+//				System.out.println("Data func: start="+dataFunc.getX(0)
+//					+"\tsize="+dataFunc.size()+"\toffset="+dataOffset);
+//				System.out.println("Sim func: start="+minCurve.getX(0)
+//					+"\tsize="+minCurve.size()+"\toffset="+simOffset);
+//				System.out.println("MaxIndex="+maxIndex);
 			} else {
 				maxIndex = Math.max(minCurve.size(), dataFunc.size())-1;
 			}
