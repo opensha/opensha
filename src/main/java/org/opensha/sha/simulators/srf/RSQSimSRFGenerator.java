@@ -38,6 +38,7 @@ import org.opensha.sha.simulators.SimulatorEvent;
 import org.opensha.sha.simulators.iden.EventIDsRupIden;
 import org.opensha.sha.simulators.iden.RuptureIdentifier;
 import org.opensha.sha.simulators.parsers.RSQSimFileReader;
+import org.opensha.sha.simulators.srf.RSQSimStateTransitionFileReader.TransVersion;
 import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
@@ -112,11 +113,11 @@ public class RSQSimSRFGenerator {
 		if (mode == SRFInterpolationMode.LIN_TAPER_VEL) {
 			tapers = new ArrayList<>();
 			for (RSQSimStateTime trans : func.getTransitions(patchID)) {
-				if (trans.getState() != RSQSimState.EARTHQUAKE_SLIP)
+				if (trans.state != RSQSimState.EARTHQUAKE_SLIP)
 					continue;
-				double s = trans.getStartTime();
-				double e = trans.getEndTime();
-				double d = e - s;
+				double s = trans.absoluteTime;
+				double d = trans.getDuration();
+				double e = s + d;
 				double taperLen = d*0.1;
 				double upTaperStart = s - 0.5*taperLen;
 				double upTaperEnd = s + 0.5*taperLen;
@@ -199,7 +200,7 @@ public class RSQSimSRFGenerator {
 		
 		for (RSQSimStateTime trans : func.getTransitions(patchID)) {
 			double vel;
-			if (trans.getState() == RSQSimState.EARTHQUAKE_SLIP)
+			if (trans.state == RSQSimState.EARTHQUAKE_SLIP)
 				vel = func.getVelocity(trans);
 			else
 				vel = 0d;
@@ -212,12 +213,13 @@ public class RSQSimSRFGenerator {
 //			velChars.add(actualChar);
 			if (actualVelFunc.size() == 0) {
 				// force it to start at zero
-				actualVelFunc.set(trans.getStartTime(), 0d);
-				firstSlip = trans.getStartTime();
+				actualVelFunc.set(trans.absoluteTime, 0d);
+				firstSlip = trans.absoluteTime;
 			}
-			actualVelFunc.set(trans.getStartTime(), vel);
-			actualVelFunc.set(trans.getEndTime(), vel);
-			lastSlip = trans.getEndTime();
+			actualVelFunc.set(trans.absoluteTime, vel);
+			double endTime = trans.absoluteTime + trans.getDuration();
+			actualVelFunc.set(endTime, vel);
+			lastSlip = endTime;
 		}
 		actualVelFunc.set(actualVelFunc.getMaxX(), 0d);
 		velFuncs.add(actualVelFunc);
@@ -514,7 +516,8 @@ public class RSQSimSRFGenerator {
 		File geomFile = new File(catalogDir, "zfault_Deepen.in");
 		File transFile = new File(catalogDir, "transV..out");
 		
-		boolean variableSlipSpeed = transFile.getName().startsWith("transV");
+		TransVersion version = transFile.getName().toLowerCase().contains("transv")
+				? TransVersion.TRANSV : TransVersion.CONSOLIDATED_RELATIVE;
 		
 		int[] eventIDs = { 755070, 2441060 };
 		
@@ -556,7 +559,7 @@ public class RSQSimSRFGenerator {
 		Preconditions.checkState(events.size() == eventIDs.length);
 
 		RSQSimStateTransitionFileReader transReader = new RSQSimStateTransitionFileReader(
-				transFile, elements, variableSlipSpeed);
+				transFile, elements, version);
 		
 //		SRFInterpolationMode[] modes = SRFInterpolationMode.values();
 //		double[] dts = { 0.1, 0.05 };
@@ -575,7 +578,7 @@ public class RSQSimSRFGenerator {
 			Map<Integer, Double> slipVels = new HashMap<>();
 			for (int elemID : event.getAllElementIDs())
 				slipVels.put(elemID, slipVel);
-			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event), slipVels, variableSlipSpeed);
+			RSQSimEventSlipTimeFunc func = new RSQSimEventSlipTimeFunc(transReader.getTransitions(event));
 			String eventStr = "event_"+eventID;
 			
 			SummaryStatistics patchSlipEventDurations = new SummaryStatistics();
@@ -588,7 +591,7 @@ public class RSQSimSRFGenerator {
 				int count = 0;
 				double totSlippingDuration = 0d;
 				for (RSQSimStateTime state : patchTrans) {
-					if (state.getState() == RSQSimState.EARTHQUAKE_SLIP) {
+					if (state.state == RSQSimState.EARTHQUAKE_SLIP) {
 						count++;
 						double duration = state.getDuration();
 						patchSlipEventDurations.addValue(duration);

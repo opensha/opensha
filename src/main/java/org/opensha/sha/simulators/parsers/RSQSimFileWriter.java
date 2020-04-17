@@ -26,6 +26,7 @@ import org.opensha.sha.simulators.iden.SkipYearsLoadIden;
 import org.opensha.sha.simulators.srf.RSQSimStateTime;
 import org.opensha.sha.simulators.srf.RSQSimStateTransitionFileReader;
 import org.opensha.sha.simulators.srf.RSQSimTransValidIden;
+import org.opensha.sha.simulators.srf.RSQSimStateTransitionFileReader.TransVersion;
 import org.opensha.sha.simulators.utils.SimulatorUtils;
 
 import com.google.common.base.Preconditions;
@@ -45,10 +46,11 @@ public class RSQSimFileWriter {
 	private DataOutput transOut;
 	
 	public RSQSimFileWriter(File outputDir, String prefix, boolean bigEndian) throws IOException {
-		this(outputDir, prefix, bigEndian, false, false);
+		this(outputDir, prefix, bigEndian, false, null);
 	}
 	
-	public RSQSimFileWriter(File outputDir, String prefix, boolean bigEndian, boolean writeTrans, boolean transV)
+	public RSQSimFileWriter(File outputDir, String prefix, boolean bigEndian, boolean writeTrans,
+			TransVersion transVersion)
 			throws IOException {
 		BufferedOutputStream dListStream = new BufferedOutputStream(
 				new FileOutputStream(new File(outputDir, prefix+".dList")));
@@ -60,7 +62,7 @@ public class RSQSimFileWriter {
 				new FileOutputStream(new File(outputDir, prefix+".tList")));
 		BufferedOutputStream transStream = null;
 		if (writeTrans) {
-			String name = transV ? "transV."+prefix+".out" : "trans."+prefix+".out";
+			String name = transVersion == TransVersion.TRANSV ? "transV."+prefix+".out" : "trans."+prefix+".out";
 			transStream = new BufferedOutputStream(new FileOutputStream(new File(outputDir, name)));
 		}
 		if (bigEndian) {
@@ -149,25 +151,30 @@ public class RSQSimFileWriter {
 	private double prevTransTime = Double.NEGATIVE_INFINITY;
 	public synchronized double writeTransitions(RSQSimEvent event,
 			RSQSimStateTransitionFileReader transReader, double timeOffset) throws IOException {
+		return writeTransitions(event, event.getID(), transReader, timeOffset);
+	}
+	
+	public synchronized double writeTransitions(RSQSimEvent event, int eventID,
+			RSQSimStateTransitionFileReader transReader, double timeOffset) throws IOException {
 		
-		boolean transV = transReader.isVariableSlipSpeed();
+		TransVersion version = transReader.getVersion();
 		
 		List<RSQSimStateTime> allTrans = new ArrayList<>();
 		transReader.getTransitions(event, allTrans);
 		
 		for (int i=0; i<allTrans.size(); i++) {
 			RSQSimStateTime trans = allTrans.get(i);
-			double transTime = trans.getStartTime();
+			double transTime = trans.absoluteTime;
 			if (Double.isFinite(timeOffset) && timeOffset != 0d)
 				transTime += timeOffset;
 			if (transTime < prevTransTime) {
 				String error = "Transitions are out of order! Working on transition "
 						+i+" for event "+event.getID();
-				error += "\n\tOriginal trans time: "+trans.getStartTime();
+				error += "\n\tOriginal trans time: "+trans.absoluteTime;
 				error += "\n\tOriginal event time: "+event.getTime();
 				error += "\n\tOffset write trans time: "+transTime
 						+" ("+(float)(transTime/SimulatorUtils.SECONDS_PER_YEAR)+" yr)";
-				error += "\n\tOriginal trans index before: "+transReader.getIndexBefore(trans.getStartTime());
+				error += "\n\tOriginal trans index before: "+transReader.getIndexBefore(trans.absoluteTime);
 				error += "\n\tOffset event time: "+(event.getTime()+timeOffset);
 				error += "\n\tPrevious transitions time: "+prevTransTime
 						+" ("+(float)(prevTransTime/SimulatorUtils.SECONDS_PER_YEAR)+" yr)";
@@ -180,20 +187,32 @@ public class RSQSimFileWriter {
 				error += "\n\t\tlast trans time: "+prevTransEventLastTransTime;
 				error += "\n\t\tduration: "+(prevTransEventLastTransTime-prevTransEventFirstTransTime);
 				error += "\n\t\tevent ID: "+prevTransEventID;
-				error += "\n\tprev transition patch: "+prevTrans.getPatchID();
+				error += "\n\tprev transition patch: "+prevTrans.patchID;
 				error += "\n\tprev transition: "+prevTrans;
 				throw new IllegalStateException(error);
 			}
 			prevTransTime = transTime;
-			transOut.writeDouble(transTime);
-			transOut.writeInt(trans.getPatchID()-1); // trans file patches are 0-based
-			transOut.writeByte(trans.getState().getStateInt());
-			if (transV)
-				transOut.writeDouble(trans.getVelocity());
+			if (version == TransVersion.ORIGINAL || version == TransVersion.TRANSV) {
+				transOut.writeDouble(transTime);
+				transOut.writeInt(trans.patchID-1); // trans file patches are 0-based
+				transOut.writeByte(trans.state.getStateInt());
+				if (version == TransVersion.TRANSV)
+					transOut.writeDouble(trans.velocity);
+			} else if (version == TransVersion.CONSOLIDATED_RELATIVE) {
+				transOut.writeDouble(transTime);
+				transOut.writeFloat(trans.relativeTime);
+				transOut.writeInt(eventID-1); // trans file events are 0-based
+				transOut.writeInt(trans.patchID-1); // trans file patches are 0-based
+				transOut.writeByte(trans.state.getStateInt());
+				transOut.writeFloat(trans.velocity);
+			} else {
+				throw new IllegalStateException("Cannot yet write transition version: "+version);
+			}
+			
 		}
 		
 		prevTransEventTime = event.getTime()+timeOffset;
-		prevTransEventFirstTransTime = allTrans.get(0).getStartTime()+timeOffset;
+		prevTransEventFirstTransTime = allTrans.get(0).absoluteTime+timeOffset;
 		prevTransEventLastTransTime = prevTransTime;
 		prevTransEventID = event.getID();
 		prevTrans = allTrans.get(allTrans.size()-1);
@@ -202,15 +221,15 @@ public class RSQSimFileWriter {
 	}
 	
 	public void copyTransitions(RSQSimStateTransitionFileReader transReader, Range<Double> transRange,
-			double timeOffset) throws IOException {
+			double timeOffset, int evenIDOffset) throws IOException {
 		int written = 0;
 		double firstTime = Double.NaN;
 		double lastTime = Double.NaN;
 		
-		boolean transV = transReader.isVariableSlipSpeed();
+		TransVersion version = transReader.getVersion();
 		
 		for (RSQSimStateTime trans : transReader.getTransitionsIterable(transRange)) {
-			double transTime = trans.getStartTime();
+			double transTime = trans.absoluteTime;
 			if (written == 0)
 				firstTime = transTime;
 			written++;
@@ -219,11 +238,23 @@ public class RSQSimFileWriter {
 			if (Double.isFinite(timeOffset) && timeOffset != 0d)
 				transTime += timeOffset;
 			
-			transOut.writeDouble(transTime);
-			transOut.writeInt(trans.getPatchID()-1); // trans file patches are 0-based
-			transOut.writeByte(trans.getState().getStateInt());
-			if (transV)
-				transOut.writeDouble(trans.getVelocity());
+			if (version == TransVersion.ORIGINAL || version == TransVersion.TRANSV) {
+				transOut.writeDouble(transTime);
+				transOut.writeInt(trans.patchID-1); // trans file patches are 0-based
+				transOut.writeByte(trans.state.getStateInt());
+				if (version == TransVersion.TRANSV)
+					transOut.writeDouble(trans.velocity);
+			} else if (version == TransVersion.CONSOLIDATED_RELATIVE) {
+				transOut.writeDouble(transTime);
+				transOut.writeFloat(trans.relativeTime);
+				int eventID = trans.eventID >= 0 ? trans.eventID + evenIDOffset : trans.eventID;
+				transOut.writeInt(eventID);
+				transOut.writeInt(trans.patchID-1); // trans file patches are 0-based
+				transOut.writeByte(trans.state.getStateInt());
+				transOut.writeFloat(trans.velocity);
+			} else {
+				throw new IllegalStateException("Cannot yet write transition version: "+version);
+			}
 		}
 		
 		System.out.println("wrote "+written+" transitions from time range ["+firstTime+","+lastTime+"]");
@@ -250,15 +281,19 @@ public class RSQSimFileWriter {
 	
 	public static void stitchCatalogs(File outputDir, String outputPrefix, RuptureIdentifier filter,
 			List<SimulatorElement> elements, File... inputDirs) throws IOException {
+		stitchCatalogs(outputDir, outputPrefix, filter, elements, null, inputDirs);
+	}
+	
+	public static void stitchCatalogs(File outputDir, String outputPrefix, RuptureIdentifier filter,
+			List<SimulatorElement> elements, TransVersion version, File... inputDirs) throws IOException {
 		Preconditions.checkState(inputDirs.length > 1, "Must supply at least 2 output directories");
 		boolean bigEndian = RSQSimFileReader.isBigEndian(inputDirs[0], elements);
 		
-		RSQSimStateTransitionFileReader[] transReaders = loadTransReaders(inputDirs, bigEndian);
-		
-		boolean transV = transReaders == null ? false : transReaders[0].isVariableSlipSpeed();
+		RSQSimStateTransitionFileReader[] transReaders = version == null ? null :
+			loadTransReaders(inputDirs, bigEndian, version);
 		
 		RSQSimFileWriter writer = new RSQSimFileWriter(outputDir, outputPrefix, bigEndian,
-				transReaders != null, transV);
+				transReaders != null, version);
 		
 		List<PeekingIterator<RSQSimEvent>> iterators = new ArrayList<>();
 		RSQSimEvent prevLastEvent = null;
@@ -289,6 +324,9 @@ public class RSQSimFileWriter {
 			int numOverlap = 0;
 			int totalNum = 0;
 			double firstTime = Double.NaN;
+			
+			int eventIDOffset = 0;
+			
 			while (it.hasNext()) {
 				totalNum++;
 				RSQSimEvent event = it.next();
@@ -296,6 +334,7 @@ public class RSQSimFileWriter {
 					firstTime = event.getTime();
 					System.out.println("Catalog "+i+" starts at t="+firstTime
 							+" s ("+event.getTimeInYears()+" yrs), first ID="+event.getID());
+					eventIDOffset = currentID - event.getID();
 					if (prevLastEvent != null) {
 						double deltaSecs = firstTime - prevLastEvent.getTime();
 						System.out.println("\t"+deltaSecs+" s ("+(deltaSecs/SimulatorUtils.SECONDS_PER_YEAR)
@@ -342,7 +381,7 @@ public class RSQSimFileWriter {
 					// end immediately before nextEvent
 					transRange = Range.closedOpen(transRange.lowerEndpoint(), nextEvent.getTime());
 				System.out.println("Copying transitions for range: "+transRange);
-				writer.copyTransitions(transReaders[i], transRange, 0d);
+				writer.copyTransitions(transReaders[i], transRange, 0d, eventIDOffset);
 			}
 		}
 		System.out.println("Copying inputs");
@@ -351,8 +390,8 @@ public class RSQSimFileWriter {
 		writer.close();
 	}
 	
-	private static RSQSimStateTransitionFileReader[] loadTransReaders(File[] inputDirs, boolean bigEndian)
-			throws IOException {
+	private static RSQSimStateTransitionFileReader[] loadTransReaders(File[] inputDirs, boolean bigEndian,
+			TransVersion version) throws IOException {
 		File[] transFiles = new File[inputDirs.length];
 		for (int i=0; i<inputDirs.length; i++) {
 			// look for trans file, prioritizing transV
@@ -380,18 +419,10 @@ public class RSQSimFileWriter {
 		} else {
 			System.out.println("Have transition files, initializing");
 			ByteOrder byteOrder = bigEndian ? ByteOrder.BIG_ENDIAN : ByteOrder.LITTLE_ENDIAN;
-			boolean transV = false;
 			transReaders = new RSQSimStateTransitionFileReader[transFiles.length];
 			for (int i=0; i<transReaders.length; i++) {
-				boolean myTransV = transFiles[i].getName().toLowerCase().startsWith("transv");
-				if (i == 0) {
-					transV = myTransV;
-					System.out.println("\ttransV? "+transV);
-				} else {
-					Preconditions.checkState(transV == myTransV,
-					"some catalogs have transV files and some do not, can't combine");
-				}
-				transReaders[i] = new RSQSimStateTransitionFileReader(transFiles[i], byteOrder, transV);
+				
+				transReaders[i] = new RSQSimStateTransitionFileReader(transFiles[i], byteOrder, version);
 				transReaders[i].setQuiet(true);
 			}
 		}
@@ -400,25 +431,26 @@ public class RSQSimFileWriter {
 	
 	public static void combineSeparateCatalogs(File outputDir, String outputPrefix, RuptureIdentifier filter,
 			List<SimulatorElement> elements, double skipYears, File... inputDirs) throws IOException {
+		combineSeparateCatalogs(outputDir, outputPrefix, filter, elements, skipYears, null, inputDirs);
+	}
+	
+	public static void combineSeparateCatalogs(File outputDir, String outputPrefix, RuptureIdentifier filter,
+			List<SimulatorElement> elements, double skipYears, TransVersion version, File... inputDirs)
+					throws IOException {
 		Preconditions.checkState(inputDirs.length > 1, "Must supply at least 2 output directories");
 		boolean bigEndian = RSQSimFileReader.isBigEndian(inputDirs[0], elements);
 		
-		RSQSimStateTransitionFileReader[] transReaders = loadTransReaders(inputDirs, bigEndian);
+		RSQSimStateTransitionFileReader[] transReaders = version == null ? null :
+			loadTransReaders(inputDirs, bigEndian, version);
 		RSQSimTransValidIden[] transValidIdens = null;
-		boolean transV = false;
 		if (transReaders != null) {
-			transV = transReaders[0].isVariableSlipSpeed();
 			transValidIdens = new RSQSimTransValidIden[transReaders.length];
-			Map<Integer, Double> slipVels = new HashMap<>();
-			for (SimulatorElement elem : elements)
-				// value doesn't matter here, not actually using velocities, jsut making sure transitions exist
-				slipVels.put(elem.getID(), 1d);
 			for (int i=0; i<transReaders.length; i++)
-				transValidIdens[i] = new RSQSimTransValidIden(transReaders[i], slipVels);
+				transValidIdens[i] = new RSQSimTransValidIden(transReaders[i]);
 		}
 		
 		RSQSimFileWriter writer = new RSQSimFileWriter(outputDir, outputPrefix, bigEndian,
-				transReaders != null, transV);
+				transReaders != null, version);
 		
 		Random r = new Random(elements.size());
 		
@@ -484,7 +516,7 @@ public class RSQSimFileWriter {
 				writer.writeEvent(event, currentID++, timeOffset);
 				curTime = event.getTime()+timeOffset;
 				if (transReaders != null) {
-					double lastTime = writer.writeTransitions(event, transReaders[i], timeOffset);
+					double lastTime = writer.writeTransitions(event, currentID-1, transReaders[i], timeOffset);
 					Preconditions.checkState(lastTime >= curTime);
 					curTime = lastTime;
 				}
