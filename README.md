@@ -17,7 +17,7 @@ All users will need to clone the top level commons project, as well as any addit
 
 ### Requirements
 
-* Java 8 JDK: [Oracle](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or [OpenJDK](http://openjdk.java.net/install/)
+* Java 8 JDK or later, 64-bit: [Oracle](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or [OpenJDK](http://openjdk.java.net/install/)
 * [Git](https://git-scm.com/downloads)
     - Git is included in the macOS [developer tools](https://developer.apple.com/xcode/).
     - Windows users may want to consider [Git for Windows](https://git-for-windows.github.io), which includes a linux-like terminal (Git BASH) in which subsequent commands listed here will work.
