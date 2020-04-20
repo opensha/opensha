@@ -19,6 +19,13 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 
+/**
+ * Example main class showing how to set up the various required objects, change parameter values,
+ * and compute a hazard curve.
+ * 
+ * @author kevin
+ *
+ */
 public class HazardCurveCalcExample {
 
 	public static void main(String[] args) {
