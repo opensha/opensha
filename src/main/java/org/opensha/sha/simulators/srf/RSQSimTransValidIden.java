@@ -17,13 +17,11 @@ import com.google.common.base.Preconditions;
 public class RSQSimTransValidIden extends AbstractRuptureIdentifier {
 	
 	private RSQSimStateTransitionFileReader trans;
-	private Map<Integer, Double> slipVels;
 	private double firstTrans;
 	private double lastTrans;
 	
-	public RSQSimTransValidIden(RSQSimStateTransitionFileReader trans, Map<Integer, Double> slipVels) throws IOException {
+	public RSQSimTransValidIden(RSQSimStateTransitionFileReader trans) throws IOException {
 		this.trans = trans;
-		this.slipVels = slipVels;
 		firstTrans = trans.getFirstTransitionTime();
 		lastTrans = trans.getLastTransitionTime();
 	}
@@ -46,8 +44,7 @@ public class RSQSimTransValidIden extends AbstractRuptureIdentifier {
 						// check that it finished
 						if (slipTime == null) {
 							try {
-								slipTime = new RSQSimEventSlipTimeFunc(trans.getTransitions((RSQSimEvent)event), slipVels,
-										trans.isVariableSlipSpeed());
+								slipTime = new RSQSimEventSlipTimeFunc(trans.getTransitions((RSQSimEvent)event));
 							} catch (IOException e) {
 								throw ExceptionUtils.asRuntimeException(e);
 							} catch (IllegalStateException e) {

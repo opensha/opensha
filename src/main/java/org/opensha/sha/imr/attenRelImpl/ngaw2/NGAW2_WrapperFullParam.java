@@ -168,15 +168,15 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		magParam.setValue(eqkRupture.getMag());
 		rakeParam.setValue(eqkRupture.getAveRake());
 		dipParam.setValueIgnoreWarning(surf.getAveDip());
-		rupWidthParam.setValueIgnoreWarning(surf.getAveWidth());
+		double width = Double.max(surf.getAveWidth(), 0.1); // must be positive
+		rupWidthParam.setValueIgnoreWarning(width);
 		rupTopDepthParam.setValueIgnoreWarning(surf.getAveRupTopDepth());
 		double zHyp;
 		if (eqkRupture.getHypocenterLocation() != null) {
 			zHyp = eqkRupture.getHypocenterLocation().getDepth();
 		} else {
 			zHyp = surf.getAveRupTopDepth() +
-				Math.sin(surf.getAveDip() * TO_RAD) * surf.getAveWidth() /
-				2.0;
+				Math.sin(surf.getAveDip() * TO_RAD) * width/2.0;
 		}
 		focalDepthParam.setValueIgnoreWarning(zHyp);
 		

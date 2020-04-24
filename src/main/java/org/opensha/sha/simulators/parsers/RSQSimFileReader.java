@@ -574,9 +574,8 @@ public class RSQSimFileReader {
 			raFile.seek(pos);
 			raFile.read(recordBuffer);
 			
-			// IDs in this file are 1-based, convert to 0-based by subtracting one
-			int littleEndianID = littleRecord.get(0) - 1;
-			int bigEndianID = bigRecord.get(0) - 1;
+			int littleEndianID = littleRecord.get(0);
+			int bigEndianID = bigRecord.get(0);
 			
 			bigEndian = bigEndian && isValidPatchID(bigEndianID, elements);
 			littleEndian = littleEndian && isValidPatchID(littleEndianID, elements);
@@ -589,8 +588,10 @@ public class RSQSimFileReader {
 		return bigEndian;
 	}
 	
-	private static boolean isValidPatchID(int patchID, List<SimulatorElement> elements) {
-		return patchID > 0 && patchID <= elements.size();
+	public static boolean isValidPatchID(int patchID, List<SimulatorElement> elements) {
+		int minID = elements.get(0).getID();
+		int maxID = elements.get(elements.size()-1).getID();
+		return patchID >= minID && patchID <= maxID;
 	}
 	
 	/**
@@ -689,6 +690,7 @@ public class RSQSimFileReader {
 				elementMoment = FaultMomentCalc.getMoment(element.getArea(), slip);
 				
 				if (eventID != curEventID) {
+//					System.out.println("Next event: "+eventID+", closing old: "+curEventID);
 					// we have a new event
 					if (prevEvent != null && events instanceof BlockingDeque) {
 						try {
@@ -703,7 +705,9 @@ public class RSQSimFileReader {
 					
 					if (!curRecordMap.isEmpty()) {
 						Preconditions.checkState(!eventIDsLoaded.contains(curEventID),
-								"Duplicate eventID found, file is out of order or corrupt: %s", curEventID);
+								"Duplicate eventID found, file is out of order or corrupt. Trying to process "
+								+ "new event with ID %s, but that ID has already been processed. Next eventID=%s",
+								curEventID, eventID);
 						eventIDsLoaded.add(curEventID);
 						RSQSimEvent event = buildEvent(curEventID, curRecordMap, rupIdens);
 						if (event != null) {
@@ -732,6 +736,7 @@ public class RSQSimFileReader {
 						}
 					}
 					curRecordMap.clear();
+//					System.out.println("Processed event "+curEventID);
 					curEventID = eventID;
 				}
 				

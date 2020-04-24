@@ -16,9 +16,9 @@ import com.google.common.base.Preconditions;
 
 public class RSQSimEventSlipTimeFunc {
 	
-	private Map<Integer, Double> slipVels;
 	private Map<Integer,  List<RSQSimStateTime>> patchTransitions;
 	private Map<Integer, DiscretizedFunc> slipFuncs = new HashMap<>();
+	private Map<Integer, DiscretizedFunc> relSlipFuncs = new HashMap<>();
 	
 	private double minTime;
 	private double maxTime;
@@ -26,19 +26,14 @@ public class RSQSimEventSlipTimeFunc {
 	private double minVel;
 	private double maxVel;
 	
-	private boolean variableSlipSpeed;
-	
 	/**
 	 * @param patchTransitions state transitions for this event
 	 * @param slipVels patch slip velocities in m/s (used if variableSlipSpeed == false)
 	 * @param variableSlipSpeed flag for variable slip speed (from RSQSimStateTime instances)
 	 */
-	public RSQSimEventSlipTimeFunc(Map<Integer, List<RSQSimStateTime>> patchTransitions, Map<Integer, Double> slipVels,
-			boolean variableSlipSpeed) {
-		if (variableSlipSpeed)
-			// make sure we don't accidentally use this
-			slipVels = null;
+	public RSQSimEventSlipTimeFunc(Map<Integer, List<RSQSimStateTime>> patchTransitions) {
 		Map<Integer, DiscretizedFunc> slipFuncs = new HashMap<>();
+		Map<Integer, DiscretizedFunc> relSlipFuncs = new HashMap<>();
 		double minTime = Double.POSITIVE_INFINITY;
 		double maxTime = Double.NEGATIVE_INFINITY;
 		double minVel = Double.POSITIVE_INFINITY;
@@ -48,67 +43,63 @@ public class RSQSimEventSlipTimeFunc {
 			if (patchTrans.isEmpty())
 				continue;
 			DiscretizedFunc slipFunc = new ArbitrarilyDiscretizedFunc();
+			DiscretizedFunc relSlipFunc = new ArbitrarilyDiscretizedFunc();
 			double curSlip = 0d;
-			for (RSQSimStateTime stateTime : patchTrans) {
-				if (stateTime.getState() == RSQSimState.EARTHQUAKE_SLIP) {
+			for (RSQSimStateTime trans : patchTrans) {
+				if (trans.state == RSQSimState.EARTHQUAKE_SLIP) {
 					// slipping
-					slipFunc.set(stateTime.getStartTime(), curSlip);
-					double slipVel;
-					if (variableSlipSpeed) {
-						slipVel = stateTime.getVelocity();
-						Preconditions.checkState(Double.isFinite(slipVel),"Bad slip velocity with variableSlipSpeed=true. "
-								+ "Did we read in a regular transitions file instead? SlipVel=%s", slipVel);
-					} else {
-						slipVel = slipVels.get(patchID);
-					}
+					slipFunc.set(trans.absoluteTime, curSlip);
+					Preconditions.checkState(Double.isFinite(trans.relativeTime));
+					relSlipFunc.set(trans.relativeTime, curSlip);
+					double slipVel = trans.velocity;
 					minVel = Math.min(minVel, slipVel);
 					maxVel = Math.max(maxVel, slipVel);
-					double slip = slipVel * stateTime.getDuration();
+					Preconditions.checkState(trans.hasDuration(), "EQ slip and we don't have a duration!");
+					double slip = slipVel * trans.getDuration();
 					curSlip += slip;
-					slipFunc.set(stateTime.getEndTime(), curSlip);
+					slipFunc.set(trans.absoluteTime+trans.getDuration(), curSlip);
+					relSlipFunc.set(trans.relativeTime+trans.getDuration(), curSlip);
 				}
 			}
 			slipFuncs.put(patchID, slipFunc);
-			minTime = Math.min(minTime, patchTrans.get(0).getStartTime());
-			maxTime = Math.max(maxTime, patchTrans.get(patchTrans.size()-1).getEndTime());
+			relSlipFuncs.put(patchID, relSlipFunc);
+			minTime = Math.min(minTime, slipFunc.getMinX());
+			maxTime = Math.max(maxTime, slipFunc.getMaxX());
 		}
-		init(patchTransitions, slipVels, slipFuncs, minTime, maxTime, minVel, maxVel, variableSlipSpeed);
+		init(patchTransitions, slipFuncs, relSlipFuncs, minTime, maxTime, minVel, maxVel);
 	}
 	
-	private RSQSimEventSlipTimeFunc(Map<Integer, List<RSQSimStateTime>> patchTransitions, Map<Integer, Double> slipVels,
-			Map<Integer, DiscretizedFunc> slipFuncs, double minTime, double maxTime, double minVel, double maxVel,
-			boolean variableSlipSpeed) {
-		init(patchTransitions, slipVels, slipFuncs, minTime, maxTime, minVel, maxVel, variableSlipSpeed);
+	private RSQSimEventSlipTimeFunc(Map<Integer, List<RSQSimStateTime>> patchTransitions,
+			Map<Integer, DiscretizedFunc> slipFuncs, Map<Integer, DiscretizedFunc> relSlipFuncs,
+			double minTime, double maxTime, double minVel, double maxVel) {
+		init(patchTransitions, slipFuncs, relSlipFuncs, minTime, maxTime, minVel, maxVel);
 	}
 	
-	private void init(Map<Integer, List<RSQSimStateTime>> patchTransitions, Map<Integer, Double> slipVels,
-			Map<Integer, DiscretizedFunc> slipFuncs, double minTime, double maxTime,
-			double minVel, double maxVel, boolean variableSlipSpeed) {
-		this.slipVels = slipVels;
+	private void init(Map<Integer, List<RSQSimStateTime>> patchTransitions,
+			Map<Integer, DiscretizedFunc> slipFuncs, Map<Integer, DiscretizedFunc> relSlipFuncs,
+			double minTime, double maxTime, double minVel, double maxVel) {
 		this.patchTransitions = patchTransitions;
 		this.slipFuncs = slipFuncs;
+		this.relSlipFuncs = relSlipFuncs;
 		this.minTime = minTime;
 		this.maxTime = maxTime;
 		this.minVel = minVel;
 		this.maxVel = maxVel;
-		this.variableSlipSpeed = variableSlipSpeed;
 	}
 	
 	public RSQSimStateTime getStateTime(int patchID, double time) {
 		if (patchTransitions.containsKey(patchID)) {
-			for (RSQSimStateTime stateTimes : patchTransitions.get(patchID))
-				if (stateTimes.containsTime(time))
-					return stateTimes;
+			for (RSQSimStateTime trans : patchTransitions.get(patchID))
+				if (time >= trans.absoluteTime && time < trans.absoluteTime+trans.getDuration())
+					return trans;
 		}
 		return null;
 	}
 	
 	public RSQSimState getState(int patchID, double time) {
-		if (patchTransitions.containsKey(patchID)) {
-			for (RSQSimStateTime stateTimes : patchTransitions.get(patchID))
-				if (stateTimes.containsTime(time))
-					return stateTimes.getState();
-		}
+		RSQSimStateTime stateTime = getStateTime(patchID, time);
+		if (stateTime != null)
+			return stateTime.state;
 		return null;
 	}
 	
@@ -129,17 +120,8 @@ public class RSQSimEventSlipTimeFunc {
 	}
 	
 	public double getVelocity(RSQSimStateTime stateTime) {
-		if (stateTime.getState() == RSQSimState.EARTHQUAKE_SLIP) {
-			double slipVel;
-			if (variableSlipSpeed) {
-				slipVel = stateTime.getVelocity();
-				Preconditions.checkState(Double.isFinite(slipVel),"Bad slip velocity with variableSlipSpeed=true. "
-						+ "Did we read in a regular transitions file instead? SlipVel=%s", slipVel);
-			} else {
-				slipVel = slipVels.get(stateTime.getPatchID());
-			}
-			return slipVel;
-		}
+		if (stateTime.state == RSQSimState.EARTHQUAKE_SLIP)
+			return stateTime.velocity;
 		return 0d;
 	}
 	
@@ -163,9 +145,8 @@ public class RSQSimEventSlipTimeFunc {
 	 */
 	public double getTimeOfFirstSlip(int patchID) {
 		for (RSQSimStateTime trans : patchTransitions.get(patchID))
-			if (trans.getState() == RSQSimState.EARTHQUAKE_SLIP || trans.getState() == RSQSimState.NUCLEATING_SLIP)
-				// TODO nucleating slip?
-				return trans.getStartTime();
+			if (trans.state == RSQSimState.EARTHQUAKE_SLIP)
+				return trans.absoluteTime;
 		return Double.NaN;
 	}
 	
@@ -177,9 +158,8 @@ public class RSQSimEventSlipTimeFunc {
 		List<RSQSimStateTime> patchTrans = patchTransitions.get(patchID);
 		for (int i=patchTrans.size(); --i>=0;) {
 			RSQSimStateTime trans = patchTrans.get(i);
-			if (trans.getState() == RSQSimState.EARTHQUAKE_SLIP || trans.getState() == RSQSimState.NUCLEATING_SLIP)
-				// TODO nucleating slip?
-				return trans.getEndTime();
+			if (trans.state == RSQSimState.EARTHQUAKE_SLIP)
+				return trans.absoluteTime+trans.getDuration();
 		}
 		return Double.NaN;
 	}
@@ -251,60 +231,54 @@ public class RSQSimEventSlipTimeFunc {
 			Map<Integer, List<RSQSimStateTime>> relPatchTransitions = new HashMap<>();
 			for (Integer patchID : patchTransitions.keySet()) {
 				List<RSQSimStateTime> relTrans = new ArrayList<>();
-				for (RSQSimStateTime trans : patchTransitions.get(patchID))
-					relTrans.add(new RSQSimStateTime(patchID, trans.getStartTime()-minTime, trans.getEndTime()-minTime,
-							trans.getState(), trans.getVelocity()));
+				for (RSQSimStateTime trans : patchTransitions.get(patchID)) {
+					RSQSimStateTime rTrans = new RSQSimStateTime((double)trans.relativeTime, trans.relativeTime,
+							trans.eventID, patchID, trans.state, trans.velocity);
+					rTrans.setDuration(trans.getDuration());
+					relTrans.add(rTrans);
+				}
 				relPatchTransitions.put(patchID, relTrans);
 			}
-			Map<Integer, DiscretizedFunc> relSlipFuncs = new HashMap<>();
-			for (Integer patchID : slipFuncs.keySet()) {
-				DiscretizedFunc slipFunc = slipFuncs.get(patchID);
-				DiscretizedFunc relSlipFunc = new ArbitrarilyDiscretizedFunc();
-				for (Point2D pt : slipFunc)
-					relSlipFunc.set(pt.getX()-minTime, pt.getY());
-				relSlipFuncs.put(patchID, relSlipFunc);
-			}
-			relative = new RSQSimEventSlipTimeFunc(relPatchTransitions, slipVels, relSlipFuncs, 0, maxTime-minTime,
-					minVel, maxVel, variableSlipSpeed);
+			double maxRelTime = 0d;
+			for (DiscretizedFunc relSlipFunc : relSlipFuncs.values())
+				maxRelTime = Math.max(maxRelTime, relSlipFunc.getMaxX());
+			relative = new RSQSimEventSlipTimeFunc(relPatchTransitions,
+					relSlipFuncs, relSlipFuncs, 0, maxRelTime, minVel, maxVel);
 		}
 		return relative;
 	}
 	
 	public RSQSimEventSlipTimeFunc getTimeScaledFunc(double timeScalar, boolean scaleVelocities) {
-		Map<Integer, Double> slipVels;
-		if (scaleVelocities && !variableSlipSpeed) {
-			slipVels = new HashMap<>(this.slipVels);
-			for (Integer patchID : slipVels.keySet())
-				slipVels.put(patchID, slipVels.get(patchID)*timeScalar);
-		} else {
-			slipVels = this.slipVels;
-		}
 		Map<Integer, List<RSQSimStateTime>> scaledPatchTransitions = new HashMap<>();
 		for (Integer patchID : patchTransitions.keySet()) {
-			double patchRelStart = getTimeOfFirstSlip(patchID) - minTime;
+			List<RSQSimStateTime> patchTransList = patchTransitions.get(patchID);
+			double patchRelStart = patchTransList.get(0).absoluteTime;
 			double newPatchRelStart = patchRelStart/timeScalar;
 			double offsetForNoScale = patchRelStart - newPatchRelStart;
 //			double newPatchStart = minTime + patchRelStart/timeScalar;
 			List<RSQSimStateTime> scaledTrans = new ArrayList<>();
-			for (RSQSimStateTime trans : patchTransitions.get(patchID)) {
-				double relStart = trans.getStartTime() - minTime;
-				double relEnd = trans.getEndTime() - minTime;
-				double newStart, newEnd;
-				double slipVel = trans.getVelocity();
+			for (RSQSimStateTime trans : patchTransList) {
+				double relStart = trans.relativeTime;
+				double duration = trans.getDuration();
+				double newStart, newRelStart;
+				double slipVel = trans.velocity;
 				if (scaleVelocities) {
-					newStart = minTime + relStart/timeScalar;
-					newEnd = minTime + relEnd/timeScalar;
-					if (variableSlipSpeed)
-						slipVel *= timeScalar;
+					newRelStart = relStart/timeScalar;
+					newStart = minTime + newRelStart;
+					duration /= timeScalar;
+					slipVel *= timeScalar;
 				} else {
-					newStart = trans.getStartTime() - offsetForNoScale;
-					newEnd = newStart + (relEnd - relStart);
+					newStart = trans.absoluteTime - offsetForNoScale;
+					newRelStart = trans.relativeTime - offsetForNoScale;
 				}
-				scaledTrans.add(new RSQSimStateTime(patchID, newStart, newEnd, trans.getState(), slipVel));
+				RSQSimStateTime newTrans = new RSQSimStateTime(newStart, (float)newRelStart, trans.eventID,
+						patchID, trans.state, (float)slipVel);
+				newTrans.setDuration(duration);
+				scaledTrans.add(newTrans);
 			}
 			scaledPatchTransitions.put(patchID, scaledTrans);
 		}
-		return new RSQSimEventSlipTimeFunc(scaledPatchTransitions, slipVels, variableSlipSpeed);
+		return new RSQSimEventSlipTimeFunc(scaledPatchTransitions);
 	}
 
 }
