@@ -3,6 +3,7 @@ package org.opensha.commons.util;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -54,14 +55,35 @@ public class ServerPrefUtils {
 	/**
 	 * This is the URL to the production OpenSHA servlets.
 	 */
-	static final String OPENSHA_SERVLET_PRODUCTION_URL =
-		"http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA/";
+	static final String OPENSHA_SERVLET_PRODUCTION_URL;
 	
 	/**
 	 * This is the URL to the development OpenSHA servlets
 	 */
-	static final String OPENSHA_SERVLET_DEV_URL =
-		"http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
+	static final String OPENSHA_SERVLET_DEV_URL;
+	
+	static {
+		String hostName;
+		try {
+			hostName = InetAddress.getLocalHost().getHostName().toLowerCase().trim();
+		} catch (Exception e) {
+			hostName = null;
+		}
+		if (hostName != null && !hostName.isEmpty()) {
+			// see if we should use localhost for servlets
+			OPENSHA_SERVLET_PRODUCTION_URL =
+					"http://"+OPENSHA_SERVER_PRODUCTION_HOST.replaceAll(hostName, "localhost")+":8080/OpenSHA/";
+			
+			OPENSHA_SERVLET_DEV_URL =
+					"http://"+OPENSHA_SERVER_DEV_HOST.replaceAll(hostName, "localhost")+":8080/OpenSHA_master/";
+		} else {
+			OPENSHA_SERVLET_PRODUCTION_URL =
+					"http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA/";
+			
+			OPENSHA_SERVLET_DEV_URL =
+					"http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
+		}
+	}
 	
 	/**
 	 * This is the preferences enum for OpenSHA...it should always be link to the production prefs
