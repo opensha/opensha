@@ -41,11 +41,6 @@ public class LightFixedXFunc extends AbstractDiscretizedFunc {
 		int ind = Arrays.binarySearch(xVals, x);
 		return yVals[ind];
 	}
-
-	@Override
-	public double getFirstInterpolatedX(double y) {
-		throw new UnsupportedOperationException("Not yet implemented");
-	}
 	
 	@Override
 	public int getXIndexBefore(double x) {

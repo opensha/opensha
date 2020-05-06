@@ -206,7 +206,7 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 	 * @return
 	 */
 	public static HistogramFunction getEncompassingHistogram(double minValue, double maxValue, double delta) {
-		Preconditions.checkState(minValue < maxValue);
+		Preconditions.checkState(minValue < maxValue, "Min val (%s) must be below max val (%s)", minValue, maxValue);
 		double halfDelta = 0.5*delta;
 		double numBinsAwayFromZero = Math.floor(minValue / delta);
 		double minX = numBinsAwayFromZero * delta + halfDelta;

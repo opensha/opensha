@@ -143,7 +143,7 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 
     @Override
     public double getAveWidth() {
-      return getGridSpacingDownDip() * (getNumRows()-1);
+    	return getGridSpacingDownDip() * (getNumRows()-1);
     }
     
 
