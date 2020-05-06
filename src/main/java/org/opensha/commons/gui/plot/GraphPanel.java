@@ -25,6 +25,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.awt.Shape;
 import java.awt.Stroke;
 import java.awt.geom.Line2D;
@@ -871,6 +872,12 @@ public class GraphPanel extends JSplitPane {
 		plot.setRangeCrosshairLockedOnData(false);
 		plot.setRangeCrosshairVisible(false);
 		plot.setInsets(new RectangleInsets(10, 0, 0, tickFontSize+15));
+		
+		plot.setDomainGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
+		plot.setDomainGridlinePaint(new Color(225,225,225));
+		plot.setRangeGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
+		plot.setRangeGridlinePaint(new Color(225,225,225));
+
 	}
 
 	/**

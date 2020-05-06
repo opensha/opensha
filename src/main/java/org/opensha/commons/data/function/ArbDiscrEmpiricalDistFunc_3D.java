@@ -164,7 +164,21 @@ public class ArbDiscrEmpiricalDistFunc_3D implements Serializable {
     }
 
 
-    
+    /**
+     * This returns a curve for Mean + x*StdDev
+     * @param x
+     * @return
+     */
+    public EvenlyDiscretizedFunc getMeanPlusXstdDevCurve(double x) {
+        EvenlyDiscretizedFunc mean = getMeanCurve();
+        EvenlyDiscretizedFunc stdDev = getStdDevCurve();
+        EvenlyDiscretizedFunc func = getBaseXaxisFunc();
+        for(int i=0; i<func.size(); i++) {
+      	  func.set(i,mean.getY(i)+x*stdDev.getY(i));
+        }
+        return func;
+    }
+
     
     /**
      * calculates the mean curve for normalized distribution (done simply as a weight average)
