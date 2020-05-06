@@ -100,6 +100,7 @@ import org.opensha.sha.gui.util.IconFetcher;
 import org.opensha.sha.imr.attenRelImpl.AS_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.AS_2008_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.Abrahamson_2000_AttenRel;
+import org.opensha.sha.imr.attenRelImpl.AfshariStewart_2016_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.BA_2006_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.BC_2004_AttenRel;
@@ -328,6 +329,8 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 		attenRelClasses.add(BommerEtAl_2009_AttenRel.class.getName());
 		imNames.add(NonErgodicSiteResponseGMPE.NAME);
 		attenRelClasses.add(NonErgodicSiteResponseGMPE.class.getName());
+		imNames.add(AfshariStewart_2016_AttenRel.NAME);
+		attenRelClasses.add(AfshariStewart_2016_AttenRel.class.getName());
 
 		//imNames.add( DAHLE_NAME, DAHLE_CLASS_NAME );
 
