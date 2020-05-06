@@ -11,9 +11,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import javax.imageio.ImageIO;
 
@@ -36,6 +41,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
@@ -51,13 +57,21 @@ import com.google.common.collect.Lists;
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
 import gov.usgs.earthquake.event.JsonEvent;
+import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
+import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_ComcatComparePlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_FaultParticipationPlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_HazardChangePlot;
+import scratch.UCERF3.erf.ETAS.analysis.ETAS_MFD_Plot;
+import scratch.UCERF3.erf.ETAS.analysis.ETAS_MFD_Plot.MFD_Stats;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 
 public class ComcatReportPageGen {
@@ -213,7 +227,8 @@ public class ComcatReportPageGen {
 //		"Last updated at "+df.format(new Date(curTime))
 //		+", "+getTimeLabel(curDuration, true).toLowerCase()+" after the simulation start time."
 //		lines.add()
-		String line = "These plots show the aftershock sequence. They were last updated at "
+		String line = "These plots show the aftershock sequence, using data sourced from "
+				+ "[ComCat](https://earthquake.usgs.gov/data/comcat/). They were last updated at "
 				+df.format(new Date(plotter.getEndTime()))+", ";
 		long deltaMillis = plotter.getEndTime() - originTime;
 		double deltaSecs = (double)deltaMillis/1000d;
@@ -294,6 +309,48 @@ public class ComcatReportPageGen {
 			lines.add("");
 			lines.addAll(table.build());
 			
+			lines.add("### Magnitude Vs. Time Plot");
+			lines.add(topLink); lines.add("");
+			line = "This plot shows the magnitude vs. time evolution of the sequence. The mainshock is ploted "
+					+ "as a brown circle";
+			if (plotter.getForeshocks() != null && !plotter.getForeshocks().isEmpty())
+				line += ", foreshocks are plotted as magenta circles";
+			line += ", and aftershocks are plotted as cyan circles.";
+			lines.add(line);
+			lines.add("");
+			
+			List<String> magTimeTitles = new ArrayList<>();
+			List<String> magTimePrefixes = new ArrayList<>();
+			if (deltaDays > 7d) {
+				magTimeTitles.add("First Week");
+				String prefix = "aftershocks_mag_vs_time_week";
+				magTimePrefixes.add(prefix);
+				plotter.plotMagTimeFunc(resourcesDir, prefix, "Magnitude Vs. Time", null, 7d, null);
+			}
+			if (deltaDays > 30d) {
+				magTimeTitles.add("First Month");
+				String prefix = "aftershocks_mag_vs_time_month";
+				magTimePrefixes.add(prefix);
+				plotter.plotMagTimeFunc(resourcesDir, prefix, "Magnitude Vs. Time", null, 30d, null);
+			}
+			magTimeTitles.add("To Date");
+			String fullPrefix = "aftershocks_mag_vs_time";
+			magTimePrefixes.add(fullPrefix);
+			plotter.plotMagTimeFunc(resourcesDir, fullPrefix, "Magnitude Vs. Time", null, deltaDays, null);
+			
+			if (magTimeTitles.size() > 1) {
+				table = MarkdownUtils.tableBuilder();
+				table.addLine(magTimeTitles);
+				table.initNewLine();
+				for (String prefix : magTimePrefixes)
+					table.addColumn("![Mag vs Time Plot](resources/"+prefix+".png)");
+				table.finalizeLine();
+				lines.addAll(table.build());
+			} else {
+				lines.add("![Mag vs Time Plot](resources/"+fullPrefix+".png)");
+			}
+			lines.add("");
+			
 			lines.add("### Aftershock Locations");
 			lines.add(topLink); lines.add("");
 			line = "Map view of the aftershock sequence, plotted as cyan circles. The mainshock ";
@@ -330,48 +387,6 @@ public class ComcatReportPageGen {
 			}
 			lines.add("");
 			
-			lines.add("### Magnitude vs Time Plot");
-			lines.add(topLink); lines.add("");
-			line = "This plot shows the magnitude vs time evolution of the sequence. The mainshock is ploted "
-					+ "as brown a brown circle";
-			if (plotter.getForeshocks() != null && !plotter.getForeshocks().isEmpty())
-				line += ", foreshocks are plotted as magenta circles";
-			line += ", and aftershocks are plotted as cyan circles.";
-			lines.add(line);
-			lines.add("");
-			
-			List<String> magTimeTitles = new ArrayList<>();
-			List<String> magTimePrefixes = new ArrayList<>();
-			if (deltaDays > 7d) {
-				magTimeTitles.add("First Week");
-				String prefix = "aftershocks_mag_vs_time_week";
-				magTimePrefixes.add(prefix);
-				plotter.plotMagTimeFunc(resourcesDir, prefix, "Magnitude vs Time", null, 7d, null);
-			}
-			if (deltaDays > 30d) {
-				magTimeTitles.add("First Month");
-				String prefix = "aftershocks_mag_vs_time_month";
-				magTimePrefixes.add(prefix);
-				plotter.plotMagTimeFunc(resourcesDir, prefix, "Magnitude vs Time", null, 30d, null);
-			}
-			magTimeTitles.add("To Date");
-			String fullPrefix = "aftershocks_mag_vs_time";
-			magTimePrefixes.add(fullPrefix);
-			plotter.plotMagTimeFunc(resourcesDir, fullPrefix, "Magnitude vs Time", null, deltaDays, null);
-			
-			if (magTimeTitles.size() > 1) {
-				table = MarkdownUtils.tableBuilder();
-				table.addLine(magTimeTitles);
-				table.initNewLine();
-				for (String prefix : magTimePrefixes)
-					table.addColumn("![Mag vs Time Plot](resources/"+prefix+".png)");
-				table.finalizeLine();
-				lines.addAll(table.build());
-			} else {
-				lines.add("![Mag vs Time Plot](resources/"+fullPrefix+".png)");
-			}
-			lines.add("");
-			
 			lines.add("### Cumulative Number Plot");
 			lines.add(topLink); lines.add("");
 			lines.add("This plot shows the cumulative number of M&ge;"+optionalDigitDF.format(minFetchMag)
@@ -381,12 +396,11 @@ public class ComcatReportPageGen {
 			lines.add("![Time Func](resources/aftershocks_vs_time.png)");
 			lines.add("");
 			
-			lines.add("### Magnitude-Number Distributions");
+			lines.add("### Magnitude-Number Distributions (MNDs)");
 			lines.add(topLink); lines.add("");
-			lines.add("These plot shows the magnitude-number distrubtion of the aftershock sequence thus far. "
+			lines.add("These plot shows the magnitude-number distribution of the aftershock sequence thus far. "
 					+ "The left plot gives an incremental distribution (the count in each magnitude bin), and the "
-					+ "right plot a cumulative distribution (the count in or above each magnitude bin). The y-axis "
-					+ "is logarithmic.");
+					+ "right plot a cumulative distribution (the count in or above each magnitude bin).");
 			lines.add("");
 			plotter.plotMagNumPlot(resourcesDir, "aftershocks_mag_num_incremental", false, minFetchMag,
 					minFetchMag, false, false, null);
@@ -444,11 +458,8 @@ public class ComcatReportPageGen {
 			lines.add("");
 		}
 		
-		List<String> extras = getExtraLines(resourcesDir, topLink);
-		if (extras != null && !extras.isEmpty()) {
-			lines.add("");
-			lines.addAll(extras);
-		}
+		if (etasRun != null)
+			lines.addAll(generateETASLines(etasRun, true, resourcesDir, "#", topLink));
 		
 		List<String> tocLines = new ArrayList<>();
 		tocLines.add("## Table Of Contents");
@@ -458,10 +469,6 @@ public class ComcatReportPageGen {
 		lines.addAll(tocIndex, tocLines);
 		
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
-	}
-	
-	protected List<String> getExtraLines(File resourcesDir, String topLink) {
-		return null;
 	}
 	
 	private List<String> generateDetailLines(ObsEqkRupture event, File resourcesDir, String curHeading, String topLink)
@@ -816,14 +823,9 @@ public class ComcatReportPageGen {
 		plotter.plotMap(resourcesDir, prefix, title, mapRegion, events, minFetchMag, inputFuncs, inputChars);
 	}
 	
-	private List<String> generateETASLines(ETAS_Config config, File resourcesDir,
+	private List<String> generateETASLines(ETAS_Config config, boolean snapToNow, File resourcesDir,
 			String curHeading, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
-		
-		long deltaMillis = config.getSimulationStartTimeMillis()-originTime;
-		Preconditions.checkState(deltaMillis >= 0l, "ETAS forecast starts before mainshock");
-		double deltaDays = (double)deltaMillis/(double)ComcatDataPlotter.MILLISEC_PER_DAY;
-		double deltaYears = (double)deltaMillis/ComcatDataPlotter.MILLISEC_PER_YEAR;
 		
 		String title = "UCERF3-ETAS Forecast";
 //		String shortTitle = "ETAS "
@@ -831,11 +833,30 @@ public class ComcatReportPageGen {
 				+ "This model is described in [Field et al. (2017)]"
 				+ "(http://bssa.geoscienceworld.org/lookup/doi/10.1785/0120160173), and computes probabilities "
 				+ "of this sequence triggering subsequent aftershocks, including events on known faults.";
-		String deltaStr = ETAS_AbstractPlot.getTimeLabel(deltaYears, true);
+		long deltaMillis = config.getSimulationStartTimeMillis()-originTime;
+		Preconditions.checkState(deltaMillis >= 0l, "ETAS forecast starts before mainshock");
+		double deltaDays = (double)deltaMillis/(double)ComcatDataPlotter.MILLISEC_PER_DAY;
+		double deltaYears = (double)deltaMillis/ComcatDataPlotter.MILLISEC_PER_YEAR;
+		String deltaStr = ETAS_AbstractPlot.getTimeLabel(deltaYears, true).toLowerCase();
+		
+		SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss z");
+//		df.setTimeZone(TimeZone.getTimeZone("UTC"));
+		
+		if (snapToNow) {
+			config.setStartTimeMillis(plotter.getEndTime());
+			
+			String date = df.format(new Date(plotter.getEndTime()));
+			
+			description += "\n\nProbabilities are inherantly time-dependent. Those stated here are for time "
+					+ "periods beginning the instant when this report was generated, "+date+".";
+		} else {
+			String date = df.format(new Date(config.getSimulationStartTimeMillis()));
+			description += "\n\nProbabilities are inherantly time-dependent. Those stated here are for time "
+					+ "periods beginning when the model was run, "+date+".";
+		}
 		if (deltaDays > 1/24d) {
-			title += ", udated "+deltaStr+" after mainshock";
 			description += " The model was updated with all observed aftershcoks up to "+deltaStr+" after the mainshock, "
-					+ "and may be out of date, especially if large aftershock have occurred subsequently or "
+					+ "and may be out of date, especially if large aftershocks have occurred subsequently or "
 					+ "a significant amount of time has passed since the last update.";
 		} else {
 			description += " The model has not been updated with any observed aftershocks and may be out of date, "
@@ -857,17 +878,226 @@ public class ComcatReportPageGen {
 		oMeta.magComplete = oMeta.magComplete;
 		config.setComcatMetadata(oMeta);
 		
+		File inputFile = null;
+		for (BinaryFilteredOutputConfig filter : config.getBinaryOutputFilters()) {
+			File file = new File(config.getOutputDir(), filter.getPrefix()+".bin");
+			if (file.exists()) {
+				inputFile = file;
+				System.out.println("Simulation input file: "+inputFile);
+				break;
+			}
+		}
+		Preconditions.checkNotNull(inputFile, "input not found");
+		
 		ETAS_Launcher launcher = new ETAS_Launcher(config, false);
 		
+		FaultSystemSolution fss = launcher.checkOutFSS();
+		
+		List<ETAS_AbstractPlot> plots = new ArrayList<>();
+		
 		ETAS_ComcatComparePlot comcatPlot = new ETAS_ComcatComparePlot(config, launcher);
+		plots.add(comcatPlot);
 		
-		String hazChangePrefix = "etas_hazard_change";
-		ETAS_HazardChangePlot hazChangePlot = new ETAS_HazardChangePlot(config, launcher, hazChangePrefix, radius);
+//		String hazChangePrefix = "etas_hazard_change";
+//		ETAS_HazardChangePlot hazChangePlot = new ETAS_HazardChangePlot(
+//				config, launcher, hazChangePrefix, radius);
+//		plots.add(hazChangePlot);
 		
-//		ETAS_FaultParticipationPlot faultPlot = new ETAS_FaultParticipationPlot(config, launcher, prefix, annualize, skipMaps)
+		String mfdPrefix = "etas_mfd";
+		ETAS_MFD_Plot mfdPlot = new ETAS_MFD_Plot(config, launcher, mfdPrefix, false, true);
+		plots.add(mfdPlot);
+		
+//		String faultPrefix = "etas_fault_prefix";
+//		ETAS_FaultParticipationPlot faultPlot = new ETAS_FaultParticipationPlot(
+//				config, launcher, faultPrefix, false, true);
+//		plots.add(faultPlot);
+		
+		boolean filterSpontaneous = false;
+		for (ETAS_AbstractPlot plot : plots)
+			filterSpontaneous = filterSpontaneous || plot.isFilterSpontaneous();
+		
+		final boolean isFilterSpontaneous = filterSpontaneous;
+		
+		System.out.println("Processing "+config.getSimulationName());
+		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
+			
+			@Override
+			public void processCatalog(ETAS_Catalog catalog, int index) {
+				if (snapToNow) {
+					// delete all ruptures before now
+					long minOT = config.getSimulationStartTimeMillis();
+					ETAS_Catalog modCatalog = new ETAS_Catalog(catalog.getSimulationMetadata());
+					for (int i=0; i<catalog.size(); i++) {
+						ETAS_EqkRupture rup = catalog.get(i);
+						if (catalog.get(i).getOriginTime() >= minOT)
+							modCatalog.add(rup);
+					}
+					catalog = modCatalog;
+				}
+				ETAS_Catalog triggeredOnlyCatalog = null;
+				if (isFilterSpontaneous)
+					triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
+				for (ETAS_AbstractPlot plot : plots) {
+					plot.processCatalog(catalog, triggeredOnlyCatalog, fss);
+				}
+			}
+		}, -1, 0d);
+		System.out.println("Processed "+numProcessed+" catalogs");
+		
+		ExecutorService exec = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+		List<Future<?>> futures = new ArrayList<>();
+		
+		System.out.println("Finalizing plots...");
+		for (ETAS_AbstractPlot plot : plots) {
+			List<? extends Runnable> runnables = plot.finalize(resourcesDir, fss, exec);
+			if (runnables != null)
+				for (Runnable r : runnables)
+					futures.add(exec.submit(r));
+		}
+
+		System.out.println("Waiting on "+futures.size()+" futures...");
+		for (Future<?> f : futures) {
+			try {
+				f.get();
+			} catch (InterruptedException | ExecutionException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		System.out.println("DONE finalizing");
+		exec.shutdown();
+		
+		launcher.checkInFSS(fss);
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		double[] mfdDurations = mfdPlot.getDurations();
+		MFD_Stats[] mfdStats = mfdPlot.getFullStats();
+		
+		HashSet<Double> mfdIncludeDurations = new HashSet<>();
+		mfdIncludeDurations.add(7d/365.25);
+		mfdIncludeDurations.add(30d/365.25);
+		
+		table.initNewLine();
+		table.addColumn("");
+		for (double duration : mfdDurations)
+			if (mfdIncludeDurations.contains(duration))
+				table.addColumn(ETAS_MFD_Plot.getTimeLabel(duration, false));
+		table.finalizeLine();
+		
+		EvenlyDiscretizedFunc mfdMagFunc = mfdStats[0].getProbFunc(0);
+		for (int m=0; m<mfdMagFunc.size(); m++) {
+			double mag = mfdMagFunc.getX(m);
+			if (mag == Math.floor(mag)) {
+				// include it
+				table.initNewLine();
+				table.addColumn("**M&ge;"+optionalDigitDF.format(mag)+"**");
+				double maxProb = 0d;
+				for (int d=0; d<mfdDurations.length; d++) {
+					double duration = mfdDurations[d];
+					if (mfdIncludeDurations.contains(duration)) {
+						double prob = mfdStats[d].getProbFunc(0).getY(m);
+						maxProb = Math.max(prob, maxProb);
+						table.addColumn(percentProbDF.format(prob));
+					}
+				}
+				table.finalizeLine();
+				if (maxProb < 1e-4)
+					break;
+			}
+		}
+		lines.add("");
+		lines.add("This table gives forecasted one week and one month probabilities.");
+		lines.add("");
+		lines.addAll(table.build());
+		
+		lines.add("");
+		lines.add(curHeading+"## ETAS Forecasted Magnitude Vs. Time");
+		lines.add(topLink); lines.add("");
+		String line = "These plots show the show the magnitude versus time probability function since simulation start. "
+				+ "Observed event data lie on top, with those input to the simulation plotted as magenta circles and those "
+				+ "that occurred after the simulation start time as cyan circles. Time is relative to ";
+		if (plotter.getMainshock() == null) {
+			line += "the simulation start time.";
+		} else {
+			ObsEqkRupture mainshock = plotter.getMainshock();
+			Double mag = mainshock.getMag();
+			line += "the mainshock (M"+optionalDigitDF.format(mag)+", "+mainshock.getEventId()+", plotted as a brown circle).";
+		}
+		line += " Probabilities are only shown above the minimum simulated magnitude, M=2.5."; // TODO dynamic?
+		lines.add(line);
+		table = MarkdownUtils.tableBuilder();
+		
+		Map<String[], Double> magTimeDurations = new HashMap<>();
+		if (!snapToNow)
+			magTimeDurations.put(new String[] {"To Date", "mag_time_full.png"}, comcatPlot.getCurDuration());
+		magTimeDurations.put(new String[] {"One Week", "mag_time_week.png"}, 7d/365.25);
+		magTimeDurations.put(new String[] {"One Month", "mag_time_month.png"}, 30d/365.25);
+		List<String[]> sortedDurations = ComparablePairing.getSortedData(magTimeDurations);
+		
+		table.initNewLine();
+		for (String[] label : sortedDurations)
+				table.addColumn(label[0]);
+		table.finalizeLine();
+		table.initNewLine();
+		for (String[] fName : sortedDurations)
+			table.addColumn("![Mag-time plot](resources/"+fName[1]+")");
+		table.finalizeLine();
+		lines.add("");
+		lines.addAll(table.build());
+		
+		lines.add("");
+		lines.add(curHeading+"## ETAS Spatial Distribution Forecast");
+		lines.add(topLink); lines.add("");
+		lines.add("These plots show the predicted spatial distribution of aftershocks above the given "
+				+ "magnitude threshold and for the given time period. The 'Current' plot shows the forecasted "
+				+ "spatial distribution to date, along with as any observed aftershocks overlaid with "
+				+ "cyan circles. Observed aftershocks will be included in the week/month plots as well if "
+				+ "the forecasted time window has elapsed.");
+		lines.add("");
+		
+		table = MarkdownUtils.tableBuilder();
+		
+		HashSet<Double> includeDurations = new HashSet<>();
+		includeDurations.add(7d/365.25);
+		includeDurations.add(30d/365.25);
+		if (!snapToNow)
+			includeDurations.add(comcatPlot.getCurDuration());
+		
+		table.initNewLine();
+		table.addColumn("");
+		for (double duration : comcatPlot.getDurations())
+			if (includeDurations.contains(duration))
+				table.addColumn(comcatPlot.getMapTableLabel(duration));
+		table.finalizeLine();
+
+		double[] durations = comcatPlot.getDurations();
+		double[] minMags = comcatPlot.getMinMags();
+		
+		HashSet<Double> includeMags = new HashSet<>();
+		double minAboveZero = Double.POSITIVE_INFINITY;;
+		for (double mag : minMags)
+			if (mag > 0)
+				minAboveZero = Math.min(minAboveZero, mag);
+		includeMags.add(minAboveZero);
+		includeMags.add(5d);
+		String[][] mapPrefixes = comcatPlot.getMapProbPrefixes();
+		for (int m=0; m<minMags.length; m++) {
+			double mag = minMags[m];
+			if (includeMags.contains(mag)) {
+				table.initNewLine();
+				table.addColumn("**M&ge;"+optionalDigitDF.format(mag)+"**");
+				for (int d=0; d<durations.length; d++)
+					if (includeDurations.contains(durations[d]))
+						table.addColumn("![Map](resources/"+mapPrefixes[d][m]+".png)");
+				table.finalizeLine();
+			}
+		}
+		lines.addAll(table.build());
 		
 		return lines;
 	}
+	
+
+	private static DecimalFormat percentProbDF = new DecimalFormat("0.00%");
 	
 	private static final DecimalFormat optionalDigitDF = new DecimalFormat("0.##");
 
@@ -878,16 +1108,24 @@ public class ComcatReportPageGen {
 //		double radius = 0d;
 //		double minFetchMag = 0d;
 //		double daysBefore = 3d;
+//		File etasDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//				+ "2020_04_13-ComCatM4p87_ci39126079_9p9DaysAfter_PointSources_kCOV1p5");
+		
+		String eventID = "ci39400304";
+		double radius = 0d;
+		double minFetchMag = 0d;
+		double daysBefore = 3d;
+		File etasDir = null;
 		
 //		String eventID = "ci38457511";
 //		double radius = 0d;
 //		double minFetchMag = 2d;
 //		double daysBefore = 3d;
 		
-		String eventID = "ci38443183";
-		double radius = 0d;
-		double minFetchMag = 2d;
-		double daysBefore = 3d;
+//		String eventID = "ci38443183";
+//		double radius = 0d;
+//		double minFetchMag = 2d;
+//		double daysBefore = 3d;
 		
 		ComcatReportPageGen pageGen;
 		if (radius > 0)
@@ -898,6 +1136,11 @@ public class ComcatReportPageGen {
 		File outputDir = new File(mainDir, pageGen.generateDirName());
 		System.out.println("Output dir: "+outputDir.getAbsolutePath());
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		
+		if (etasDir != null) {
+			ETAS_Config config = ETAS_Config.readJSON(new File(etasDir, "config.json"));
+			pageGen.addETAS(config);
+		}
 		
 		pageGen.generateReport(outputDir, null);
 	}

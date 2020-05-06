@@ -45,6 +45,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.RunScript;
+import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.commons.util.ServerPrefs;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
@@ -957,27 +959,27 @@ public class FaultBasedMapGen {
 			if (saveDir != null) {
 				if (map.getPNGFileName() != null) {
 					File pngFile = new File(saveDir, prefix+".png");
-					FileUtils.downloadURL(baseURL+"map.png", pngFile);
+					checkLocalDownloadOpenSHA(baseURL+"map.png", pngFile);
 				}
 				
 				if (map.getPDFFileName() != null) {
 					File pdfFile = new File(saveDir, prefix+".pdf");
-					FileUtils.downloadURL(baseURL+"map.pdf", pdfFile);
+					checkLocalDownloadOpenSHA(baseURL+"map.pdf", pdfFile);
 				}
 				
 				if (SAVE_PS) {
 					File psFile = new File(saveDir, prefix+".ps");
-					FileUtils.downloadURL(baseURL+"map.ps", psFile);
+					checkLocalDownloadOpenSHA(baseURL+"map.ps", psFile);
 				}
 				
 				if (map.isGenerateKML()) {
 					File kmzFile = new File(saveDir, prefix+".kmz");
-					FileUtils.downloadURL(baseURL+"map.kmz", kmzFile);
+					checkLocalDownloadOpenSHA(baseURL+"map.kmz", kmzFile);
 				}
 				
 				if (SAVE_ZIPS) {
 					File zipFile = new File(saveDir, prefix+".zip");
-					FileUtils.downloadURL(baseURL+"allFiles.zip", zipFile);
+					checkLocalDownloadOpenSHA(baseURL+"allFiles.zip", zipFile);
 				}
 			}
 //			File zipFile = new File(downloadDir, "allFiles.zip");
@@ -992,6 +994,14 @@ public class FaultBasedMapGen {
 		}
 		
 		return baseURL;
+	}
+	
+	private static void checkLocalDownloadOpenSHA(String url, File destFile) throws IOException {
+		File file = new File(ServerPrefUtils.SERVER_PREFS.getTempDir(), url.substring(url.indexOf("gmtData")));
+		if (file.exists())
+			Files.copy(file, destFile);
+		else
+			FileUtils.downloadURL(url, destFile);
 	}
 	
 	public static void makeFaultKML(CPT cpt, List<LocationList> faults, double[] values,

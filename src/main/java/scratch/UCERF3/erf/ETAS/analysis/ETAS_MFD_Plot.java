@@ -770,6 +770,16 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		return calcNumToTrim(totalCountHist);
 	}
 	
+	public double[] getDurations() {
+		return durations;
+	}
+	
+	public MFD_Stats[] getFullStats() {
+		if (totalWithSpontStats != null)
+			return totalWithSpontStats;
+		return triggeredStats;
+	}
+	
 	static int calcNumToTrim(HistogramFunction totalCountHist) {
 		// now trim
 		double minMag = mfdMinMag;

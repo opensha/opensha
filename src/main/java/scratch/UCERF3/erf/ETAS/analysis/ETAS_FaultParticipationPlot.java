@@ -150,6 +150,10 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	public boolean isFilterSpontaneous() {
 		return hasTriggered;
 	}
+	
+	public Map<Integer, FaultStats> getParentSectStats() {
+		return parentSectStats;
+	}
 
 	@Override
 	protected synchronized void doProcessCatalog(ETAS_Catalog completeCatalog,
@@ -207,7 +211,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		}
 	}
 	
-	private class FaultStats {
+	public class FaultStats {
 		private int id;
 		private String name;
 		

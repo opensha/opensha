@@ -256,6 +256,22 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return plotter;
 	}
 	
+	public double[] getDurations() {
+		return durations;
+	}
+	
+	public double getCurDuration() {
+		return curDuration;
+	}
+	
+	public double[] getMinMags() {
+		return magBins;
+	}
+	
+	public String[][] getMapProbPrefixes() {
+		return mapProbPrefixes;
+	}
+	
 	public static ObsEqkRupList loadComcatEvents(ETAS_Config config, ComcatMetadata comcatMeta, Region mapRegion, long endTime) {
 		ComcatAccessor accessor = new ComcatAccessor();
 		ComcatRegion cReg = mapRegion instanceof ComcatRegion ? (ComcatRegion)mapRegion : new ComcatRegionAdapter(mapRegion);
@@ -721,23 +737,30 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private boolean shouldIncludeMinMag(double minMag) {
 		boolean ret = ((float)minMag >= (float)simMc) ||
 				(minMag < 0 && (float)simMc <= (float)timeDepMc.getMinMagThreshold());
-//		System.out.println("should-include = "+ret+":\tminMag="+minMag+"\tsimMc="+simMc+"\ttdMinMag="+tdMinMag);
+//		System.out.println("should-include = "+ret+":\tminMag="+minMag+"\tsimMc="+simMc
+//				+"\ttdMinMag="+timeDepMc.getMinMagThreshold());
 		return ret;
 	}
+	
+	boolean forecastOnly;
 
 	@Override
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
+		forecastOnly = getConfig().getSimulationStartTimeMillis() <= plotter.getEndTime()+6000l;
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		simMc = totalCountHist.getX(numToTrim)-0.5*totalCountHist.getDelta();
 		System.out.println("Simulation Mc: "+simMc);
-		System.out.println("Building ComCat time func plot runnables");
+		
 		List<Runnable> runnables = new ArrayList<>();
-		overallMc = Math.max(comcatMc, simMc);
-		for (int m=0; m<timeFuncMcs.length; m++)
-			if (shouldIncludeMinMag(timeFuncMcs[m]))
-				runnables.add(new TimeFuncPlotRunnable(outputDir,
-						"comcat_compare_cumulative_num_"+minMagPrefix(timeFuncMcs[m]), m));
+		if (!forecastOnly) {
+			System.out.println("Building ComCat time func plot runnables");
+			overallMc = Math.max(comcatMc, simMc);
+			for (int m=0; m<timeFuncMcs.length; m++)
+				if (shouldIncludeMinMag(timeFuncMcs[m]))
+					runnables.add(new TimeFuncPlotRunnable(outputDir,
+							"comcat_compare_cumulative_num_"+minMagPrefix(timeFuncMcs[m]), m));
+		}
 		
 		System.out.println("Writing ComCat Incremental MND");
 		FractileCurveCalculator incrMNDCalc = buildFractileCalc(catalogRegionMFDs);
@@ -753,13 +776,16 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		plotter.plotMagNumPlot(outputDir, "comcat_compare_mag_num_cumulative", true, comcatMinMag, comcatMc,
 				false, false, cumMNDCalc);
 		
-		System.out.println("Writing ComCat Percentile Cumulative Plot");
-		plotMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile", cumulativeMNDs);
+		if (!forecastOnly) {
+			System.out.println("Writing ComCat Percentile Cumulative Plot");
+			plotMagPercentileCumulativeNumPlot(outputDir, "comcat_compare_cumulative_num_percentile", cumulativeMNDs);
+		}
 		
 		System.out.println("Writing ComCat Mag-Time plots");
 		calcMagTimeProbs();
-		plotMagTimeFunc(magTimeProbsFull, magTimeXAxisFull, "To Date Magnitude vs Time",
-				outputDir, "mag_time_full");
+		if (!forecastOnly)
+			plotMagTimeFunc(magTimeProbsFull, magTimeXAxisFull, "To Date Magnitude vs Time",
+					outputDir, "mag_time_full");
 		plotMagTimeFunc(magTimeProbsWeek, magTimeXAxisWeek, "One Week Magnitude vs Time Forecast",
 					outputDir, "mag_time_week");
 		plotMagTimeFunc(magTimeProbsMonth, magTimeXAxisMonth, "One Month Magnitude vs Time Forecast",
@@ -1269,7 +1295,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			+", "+getTimeLabel(curDuration, true).toLowerCase()+" after the simulation start time";
 		if (plotter.getMainshock() != null && startTime-plotter.getOriginTime() > 1000l) {
 			double msDuration = curDuration + (startTime-plotter.getOriginTime())/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
-			line += " and "+getTimeLabel(msDuration, true)+" after the mainshock";
+			line += " and "+getTimeLabel(msDuration, true).toLowerCase()+" after the mainshock";
 		}
 		line += ".";
 		lines.add(line);
@@ -1306,7 +1332,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			table.addLine("![One Week]("+relativePathToOutputDir+"/mag_time_week.png)");
 		if (magTimeProbsMonth != null)
 			table.addLine("![One Month]("+relativePathToOutputDir+"/mag_time_month.png)");
-		table.addLine("![Full Mag/Time]("+relativePathToOutputDir+"/mag_time_full.png)");
+		if (!forecastOnly)
+			table.addLine("![Full Mag/Time]("+relativePathToOutputDir+"/mag_time_full.png)");
 		lines.add("");
 		lines.addAll(table.build());
 		lines.add("");
@@ -1325,31 +1352,33 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			lines.add("");
 		}
 		
-		List<Double> timeFuncMags = new ArrayList<>();
-		for (double mag : timeFuncMcs)
-			if (shouldIncludeMinMag(mag))
-				timeFuncMags.add(mag);
-		if (!timeFuncMags.isEmpty()) {
-			lines.add(topLevelHeading+"# ComCat Cumulative Number Vs Time");
+		if (!forecastOnly) {
+			List<Double> timeFuncMags = new ArrayList<>();
+			for (double mag : timeFuncMcs)
+				if (shouldIncludeMinMag(mag))
+					timeFuncMags.add(mag);
+			if (!timeFuncMags.isEmpty()) {
+				lines.add(topLevelHeading+"# ComCat Cumulative Number Vs Time");
+				lines.add(topLink); lines.add("");
+				table = MarkdownUtils.tableBuilder();
+				table.initNewLine();
+				for (double mag : timeFuncMags)
+					table.addColumn(minMagLabel(mag).replaceAll("≥", "&ge;"));
+				table.finalizeLine();
+				table.initNewLine();
+				for (double mag : timeFuncMags)
+					table.addColumn("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num_"
+							+minMagPrefix(mag)+".png)");
+				table.finalizeLine();
+				lines.addAll(table.build());
+				lines.add("");
+			}
+			
+			lines.add(topLevelHeading+"# ComCat Cumulative Number Simulation Percentiles");
 			lines.add(topLink); lines.add("");
-			table = MarkdownUtils.tableBuilder();
-			table.initNewLine();
-			for (double mag : timeFuncMags)
-				table.addColumn(minMagLabel(mag).replaceAll("≥", "&ge;"));
-			table.finalizeLine();
-			table.initNewLine();
-			for (double mag : timeFuncMags)
-				table.addColumn("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num_"
-						+minMagPrefix(mag)+".png)");
-			table.finalizeLine();
-			lines.addAll(table.build());
+			lines.add("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num_percentile.png)");
 			lines.add("");
 		}
-		
-		lines.add(topLevelHeading+"# ComCat Cumulative Number Simulation Percentiles");
-		lines.add(topLink); lines.add("");
-		lines.add("![MND]("+relativePathToOutputDir+"/comcat_compare_cumulative_num_percentile.png)");
-		lines.add("");
 		
 		String mapForecastLine = null;
 		if (curTime < maxOTs[maxOTs.length-1])
@@ -1411,19 +1440,22 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		return lines;
 	}
 	
+	public String getMapTableLabel(double duration) {
+		if ((float)duration == (float)curDuration)
+			return "Current ("+getTimeLabel(duration, false)+")";
+		else if ((float)duration > (float)curDuration)
+			return "Forecast: "+getTimeLabel(duration, false);
+		else
+			return getTimeLabel(duration, false);
+	}
+	
 	private TableBuilder mapPlotTable(String relativePathToOutputDir, String[][] prefixes,
 			double[][] valueSummaries, boolean prob) {
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
 		table.addColumn("");
-		for (double duration : durations) {
-			if ((float)duration == (float)curDuration)
-				table.addColumn("Current ("+getTimeLabel(duration, false)+")");
-			else if ((float)duration > (float)curDuration)
-				table.addColumn("Forecast: "+getTimeLabel(duration, false));
-			else
-				table.addColumn(getTimeLabel(duration, false));
-		}
+		for (double duration : durations)
+			table.addColumn(getMapTableLabel(duration));
 		table.finalizeLine();
 		for (int m=0; m<magBins.length; m++) {
 			if (!shouldIncludeMinMag(magBins[m]))
