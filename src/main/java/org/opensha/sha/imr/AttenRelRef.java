@@ -31,6 +31,7 @@ import org.opensha.sha.imr.attenRelImpl.AS_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.AS_2005_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.AS_2008_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.Abrahamson_2000_AttenRel;
+import org.opensha.sha.imr.attenRelImpl.AfshariStewart_2016_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.BA_2006_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.BC_2004_AttenRel;
@@ -225,6 +226,8 @@ public enum AttenRelRef implements Named {
 	MOD_ATTEN_REL(ModAttenuationRelationship.class, ModAttenuationRelationship.NAME, ModAttenuationRelationship.SHORT_NAME, EXPERIMENTAL),
 	
 	NON_ERGODIC_2016(NonErgodicSiteResponseGMPE.class, NonErgodicSiteResponseGMPE.NAME, NonErgodicSiteResponseGMPE.SHORT_NAME, EXPERIMENTAL),
+	
+	AFSHARI_STEWART_2016(AfshariStewart_2016_AttenRel.class, AfshariStewart_2016_AttenRel.NAME, AfshariStewart_2016_AttenRel.SHORT_NAME, EXPERIMENTAL),
 
 	// DEPRECATED
 

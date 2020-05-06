@@ -49,6 +49,7 @@ import org.opensha.sha.imr.attenRelImpl.SEA_1999_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.SadighEtAl_1997_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.USGS_Combined_2004_AttenRel;
+import org.opensha.sha.imr.attenRelImpl.ZhaoEtAl_2006_AttenRel;
 import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
@@ -137,6 +138,7 @@ implements java.io.Serializable {
 		map.addMapping(SiteData.TYPE_WILLS_CLASS,	CB_2003_AttenRel.SITE_TYPE_NAME);
 		map.addMapping(SiteData.TYPE_VS30,			CS_2005_AttenRel.SOFT_SOIL_NAME);
 		map.addMapping(SiteData.TYPE_WILLS_CLASS,	CS_2005_AttenRel.SOFT_SOIL_NAME);
+		map.addMapping(SiteData.TYPE_VS30,			ZhaoEtAl_2006_AttenRel.SITE_TYPE_NAME);
 		
 		/*				params that can be set from Depth to Vs = 2.5 KM/sec			*/
 		map.addMapping(SiteData.TYPE_DEPTH_TO_2_5,	DepthTo2pt5kmPerSecParam.NAME);
@@ -216,6 +218,8 @@ implements java.io.Serializable {
 				return setWillsSiteTypeName(param, datas);
 			} else if (paramName.equals(CS_2005_AttenRel.SOFT_SOIL_NAME)){
 				return setCS05SoftSoil(param, datas);
+			} else if (paramName.equals(ZhaoEtAl_2006_AttenRel.SITE_TYPE_NAME)){
+				return setZhao06SiteType(param, datas);
 			}
 			
 			// BASIN Depth
@@ -837,6 +841,62 @@ implements java.io.Serializable {
 				else
 					param.setValue(new Boolean(false));
 				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * 
+	 * Set Campbell & Bozorgnia 2003 Site Type parameter.
+	 * 
+	 * If using a Wills class, set it as follows:
+	 * 
+	 * <UL>
+	 * <LI> NA 						if E
+	 * <LI> Firm-Soil				if DE, or D
+	 * <LI> Very-Firm-Soil			if CD
+	 * <LI> BC-Boundary				if BC
+	 * <LI> Soft-Rock				if C
+	 * <LI> Hard-Rock				if B
+	 * </UL>
+	 * 
+	 * Otherwise if using a Vs30 value:
+	 * 
+	 * <UL>
+	 * <LI> NA 						if Vs30 <= 180
+	 * <LI> Firm-Soil				if 180 > Vs30 <= 300
+	 * <LI> Very-Firm-Soil			if 300 > Vs30 <= 400
+	 * <LI> Soft-Rock				if 400 > Vs30 <= 500
+	 * <LI> Hard-Rock				if 500 > Vs30
+	 * </UL>
+	 * 
+	 * @param param
+	 * @param datas
+	 * @return
+	 */
+	public boolean setZhao06SiteType(Parameter param, Collection<SiteDataValue<?>> datas) {
+		// iterate over the data finding the first one (highest priority) you can use
+		for (SiteDataValue<?> data : datas) {
+			if (data.getDataType().equals(SiteData.TYPE_VS30)) {
+				Double vsVal = (Double)data.getValue();
+				if (vsVal <= 200) {
+					param.setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_SOFT_SOIL);
+					return true;
+				} else if (vsVal <= 300) {
+					param.setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_MEDIUM_SOIL);
+					return true;
+				} else if (vsVal <= 600) {
+					param.setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_HARD_SOIL);
+					return true;
+				} else if (vsVal <= 1100) {
+					param.setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_ROCK);
+					return true;
+				} else {
+					param.setValue(ZhaoEtAl_2006_AttenRel.SITE_TYPE_HARD_ROCK);
+					return true;
+				}
 			}
 		}
 		
