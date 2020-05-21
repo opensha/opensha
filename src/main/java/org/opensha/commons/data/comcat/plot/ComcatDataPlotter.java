@@ -293,9 +293,11 @@ public class ComcatDataPlotter {
 				comcatCumulativeTimeFunc, xAxisLabel, false);
 		csv.writeToFile(new File(outputDir, prefix+".csv"));
 		
-		comcatCumulativeTimeFunc.setName("ComCat Data");
-		funcs.add(comcatCumulativeTimeFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, dataColor));
+		if (comcatCumulativeTimeFunc.size() > 0 && Double.isFinite(comcatCumulativeTimeFunc.getY(0))) {
+			comcatCumulativeTimeFunc.setName("ComCat Data");
+			funcs.add(comcatCumulativeTimeFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, dataColor));
+		}
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : "Cumulative Number Comparison, "+magLabel,
 				xAxisLabel, "Cumulative Num Earthquakes "+magLabel);
@@ -333,7 +335,7 @@ public class ComcatDataPlotter {
 				Font font = new Font(Font.SANS_SERIF, Font.BOLD, 18);
 				double annY = 0.975*maxY;
 				double annX = meanCurve.getMinX()+0.02*maxX;
-				XYTextAnnotation ann = new XYTextAnnotation("Simulation Start", annX, annY);
+				XYTextAnnotation ann = new XYTextAnnotation("Model Start", annX, annY);
 				ann.setTextAnchor(TextAnchor.BOTTOM_LEFT);
 				ann.setRotationAnchor(TextAnchor.BOTTOM_LEFT);
 				ann.setRotationAngle(0.5*Math.PI);
@@ -368,6 +370,7 @@ public class ComcatDataPlotter {
 		HeadlessGraphPanel gp = buildGraphPanel();
 		gp.setLegendFontSize(18);
 //		System.out.println("Drawing with bounds: "+maxX+", "+maxY);
+//		System.out.println("start="+originTime+", end="+endTime);
 		gp.setUserBounds(0d, maxX, 0d, maxY);
 
 		gp.drawGraphPanel(spec, false, false);
@@ -782,20 +785,23 @@ public class ComcatDataPlotter {
 			cpt.setNanColor(belowColor);
 		}
 		
-		XY_DataSet aftershocksFunc = new DefaultXY_DataSet();
-		aftershocksFunc.setName("Observed Aftershocks");
-		if (maxTime == null) {
-			maxTime = timeDiscretization.getMaxX() + 0.5*timeDiscretization.getDelta();
-			if (modelXYZ != null)
-				maxTime = Math.max(maxTime, modelXYZ.getMaxX()+0.5*modelXYZ.getGridSpacingX());
-		}
-		
-		for (ObsEqkRupture e : aftershocks) {
-			double time = (double)(e.getOriginTime() - originTime)/MILLISEC_PER_YEAR;
-			if (timeDays)
-				time *= 365.25;
-			if (time <= maxTime)
-				aftershocksFunc.set(time, e.getMag());
+		XY_DataSet aftershocksFunc = null;
+		if (!aftershocks.isEmpty()) {
+			aftershocksFunc = new DefaultXY_DataSet();
+			aftershocksFunc.setName("Observed Aftershocks");
+			if (maxTime == null) {
+				maxTime = timeDiscretization.getMaxX() + 0.5*timeDiscretization.getDelta();
+				if (modelXYZ != null)
+					maxTime = Math.max(maxTime, modelXYZ.getMaxX()+0.5*modelXYZ.getGridSpacingX());
+			}
+			
+			for (ObsEqkRupture e : aftershocks) {
+				double time = (double)(e.getOriginTime() - originTime)/MILLISEC_PER_YEAR;
+				if (timeDays)
+					time *= 365.25;
+				if (time <= maxTime)
+					aftershocksFunc.set(time, e.getMag());
+			}
 		}
 		
 		// now input events
@@ -830,8 +836,14 @@ public class ComcatDataPlotter {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
-		double minDataMag = aftershocksFunc.getMinY();
-		double maxDataMag = aftershocksFunc.getMaxY();
+		
+		double minDataMag = Double.POSITIVE_INFINITY;
+		double maxDataMag = Double.NEGATIVE_INFINITY;
+		
+		if (aftershocksFunc != null) {
+			minDataMag = Math.min(minDataMag, aftershocksFunc.getMinY());
+			maxDataMag = Math.max(maxDataMag, aftershocksFunc.getMaxY());
+		}
 		if (foreshocksFunc != null) {
 			minDataMag = Math.min(minDataMag, foreshocksFunc.getMinY());
 			maxDataMag = Math.max(maxDataMag, foreshocksFunc.getMaxY());
@@ -860,7 +872,7 @@ public class ComcatDataPlotter {
 			addGroupedInputFuncs(foreshocksFunc, funcs, chars, foreshockColor, magSizeFunc);
 		if (mainshockFunc != null)
 			addGroupedInputFuncs(mainshockFunc, funcs, chars, mainshockColor, magSizeFunc);
-		if (aftershocksFunc.size() > 0)
+		if (aftershocksFunc != null)
 			addGroupedInputFuncs(aftershocksFunc, funcs, chars, aftershockColor, magSizeFunc);
 		
 		String xAxisLabel = timeDays ? "Days" : "Years";
@@ -882,10 +894,16 @@ public class ComcatDataPlotter {
 		double annBuffY = 0.02*yRange.getLength();
 		
 		double dataEndTime = (endTime - originTime)/MILLISEC_PER_YEAR;
-		if (timeDays)
+		double dataDeltaDays;
+		if (timeDays) {
 			dataEndTime *= 365.25;
+			dataDeltaDays = dataEndTime;
+		} else {
+			dataDeltaDays = dataEndTime*365.25;
+		}
 		
-		if ((float)dataEndTime < maxTime.floatValue()) {
+		if ((float)dataEndTime < maxTime.floatValue() && dataDeltaDays > 1d/24d
+				&& endTime <= System.currentTimeMillis()) {
 			anns = new ArrayList<>();
 			double x = dataEndTime+annBuffX;
 			double y = maxMag-annBuffY;
@@ -906,7 +924,8 @@ public class ComcatDataPlotter {
 		if (modelXYZ == null) {
 			PlotSpec spec = new PlotSpec(funcs, chars, noTitles ? " " : title, xAxisLabel, "Magnitude");
 			spec.setLegendVisible(true);
-			spec.setPlotAnnotations(anns);
+			if (anns != null)
+				spec.setPlotAnnotations(anns);
 			
 			HeadlessGraphPanel gp = buildGraphPanel();
 			gp.setLegendFontSize(18);
@@ -924,12 +943,12 @@ public class ComcatDataPlotter {
 			double modelStart = modelXYZ.getMinX()-0.5*modelXYZ.getGridSpacingX();
 			double modelMinMag = modelXYZ.getMinY()-0.5*modelXYZ.getGridSpacingY();
 
-			if ((float)modelStart > 0f) {
+			if ((float)modelStart > 0.01f) {
 				if (anns == null)
 					anns = new ArrayList<>();
 				double x = modelStart + annBuffX;
 				double y = maxMag - annBuffY;
-				XYTextAnnotation startAnn = new XYTextAnnotation("Simulation Start", x, y);
+				XYTextAnnotation startAnn = new XYTextAnnotation("Model Start", x, y);
 				startAnn.setFont(annFont);
 				startAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
 				startAnn.setRotationAnchor(TextAnchor.BOTTOM_LEFT);
@@ -959,7 +978,8 @@ public class ComcatDataPlotter {
 				funcs.add(xy);
 				chars.add(markerChar);
 			}
-			spec.setPlotAnnotations(anns);
+			if (anns != null)
+				spec.setPlotAnnotations(anns);
 			
 			spec.setXYElems(funcs);
 			spec.setXYChars(chars);

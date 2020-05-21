@@ -75,7 +75,7 @@ public class RSQSimStateTime implements Comparable<RSQSimStateTime> {
 	}
 	
 	public double getDuration() {
-		Preconditions.checkState(Double.isFinite(duration), "duration has not been set for this event");
+		Preconditions.checkState(Double.isFinite(duration), "duration has not been set for this transition");
 		return duration;
 	}
 	

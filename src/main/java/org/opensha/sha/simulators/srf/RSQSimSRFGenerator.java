@@ -217,9 +217,13 @@ public class RSQSimSRFGenerator {
 				firstSlip = trans.absoluteTime;
 			}
 			actualVelFunc.set(trans.absoluteTime, vel);
-			double endTime = trans.absoluteTime + trans.getDuration();
-			actualVelFunc.set(endTime, vel);
-			lastSlip = endTime;
+			if (trans.hasDuration()) {
+				double endTime = trans.absoluteTime + trans.getDuration();
+				actualVelFunc.set(endTime, vel);
+				lastSlip = endTime;
+			} else {
+				lastSlip = trans.absoluteTime;
+			}
 		}
 		actualVelFunc.set(actualVelFunc.getMaxX(), 0d);
 		velFuncs.add(actualVelFunc);
@@ -245,7 +249,7 @@ public class RSQSimSRFGenerator {
 			double[] slips = event.getAllElementSlips();
 			double[] times = event.getAllElementTimes();
 			
-			for (int i=0; i<ids.length; i++) {
+			for (int i=0; i<ids.length && !pub; i++) {
 				if (ids[i] == patch.getID()) {
 					double deltaT = times[i] - eventTime;
 					DiscretizedFunc listFunc = new ArbitrarilyDiscretizedFunc();
@@ -254,17 +258,13 @@ public class RSQSimSRFGenerator {
 					listFunc.set(eventLen, slips[i]);
 					
 					slipFuncs.add(listFunc);
-					if (pub) {
-						slipChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.LIGHT_GRAY));
-					} else {
-						slipChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GREEN.darker()));
-						XYTextAnnotation listAnn = new XYTextAnnotation("List File Slip: "+slipDF.format(slips[i]),
-								annX, slipMaxY*(1d-0.06*slipFuncs.size()));
-						listAnn.setTextAnchor(TextAnchor.TOP_LEFT);
-						listAnn.setFont(annFont);
-						listAnn.setPaint(Color.GREEN.darker());
-						slipAnns.add(listAnn);
-					}
+					slipChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GREEN.darker()));
+					XYTextAnnotation listAnn = new XYTextAnnotation("List File Slip: "+slipDF.format(slips[i]),
+							annX, slipMaxY*(1d-0.06*slipFuncs.size()));
+					listAnn.setTextAnchor(TextAnchor.TOP_LEFT);
+					listAnn.setFont(annFont);
+					listAnn.setPaint(Color.GREEN.darker());
+					slipAnns.add(listAnn);
 					break;
 				}
 			}

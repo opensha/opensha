@@ -11,6 +11,7 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PGD_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_InterpolatedParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.imr.param.IntensityMeasureParams.SignificantDurationParam;
 
 /**
  * <p>
@@ -71,6 +72,12 @@ public final class IMT_Info {
 	public final static double NUM_IA = 51;
 	public final static double DEFAULT_IA = 0.1;
 
+	// Default values for the SA and PGA
+	public final static double MIN_DUR = .01;
+	public final static double MAX_DUR = 1000;
+	public final static double NUM_DUR = 51;
+	public final static double DEFAULT_DUR = 0.1;
+
 	public double discretization_pga;
 	public double discretization_sa;
 	public double discretization_pgv;
@@ -78,6 +85,7 @@ public final class IMT_Info {
 	public double discretization_fault_displ;
 	public double discretization_mmi;
 	public double discretization_ia;
+	public double discretization_dur;
 
 	public IMT_Info() {
 		discretization_pga = (Math.log(MAX_PGA) - Math.log(MIN_PGA)) /
@@ -93,7 +101,9 @@ public final class IMT_Info {
 		discretization_mmi = (Math.log(MAX_MMI) - Math.log(MIN_MMI)) /
 			(NUM_MMI - 1);
 		discretization_ia = (Math.log(MAX_IA) - Math.log(MIN_IA)) /
-			(NUM_IA - 1);
+				(NUM_IA - 1);
+		discretization_dur = (Math.log(MAX_DUR) - Math.log(MIN_DUR)) /
+			(NUM_DUR - 1);
 	}
 
 	/**
@@ -153,6 +163,13 @@ public final class IMT_Info {
 			for (int i = 0; i < NUM_IA; ++i) {
 				double xVal = Precision.round(
 					Math.exp(Math.log(MIN_IA) + i * discretization_ia), 5);
+				function.set(xVal, 1.0);
+			}
+			return function;
+		} else if (imtName.equals(SignificantDurationParam.NAME)) {
+			for (int i = 0; i < NUM_DUR; ++i) {
+				double xVal = Precision.round(
+					Math.exp(Math.log(MIN_DUR) + i * discretization_dur), 5);
 				function.set(xVal, 1.0);
 			}
 			return function;

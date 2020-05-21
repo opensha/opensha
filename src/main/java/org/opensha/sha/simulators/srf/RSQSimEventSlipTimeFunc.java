@@ -90,7 +90,8 @@ public class RSQSimEventSlipTimeFunc {
 	public RSQSimStateTime getStateTime(int patchID, double time) {
 		if (patchTransitions.containsKey(patchID)) {
 			for (RSQSimStateTime trans : patchTransitions.get(patchID))
-				if (time >= trans.absoluteTime && time < trans.absoluteTime+trans.getDuration())
+				if (time >= trans.absoluteTime && trans.hasDuration()
+					&& time < trans.absoluteTime+trans.getDuration())
 					return trans;
 		}
 		return null;
@@ -234,7 +235,8 @@ public class RSQSimEventSlipTimeFunc {
 				for (RSQSimStateTime trans : patchTransitions.get(patchID)) {
 					RSQSimStateTime rTrans = new RSQSimStateTime((double)trans.relativeTime, trans.relativeTime,
 							trans.eventID, patchID, trans.state, trans.velocity);
-					rTrans.setDuration(trans.getDuration());
+					if (trans.hasDuration())
+						rTrans.setDuration(trans.getDuration());
 					relTrans.add(rTrans);
 				}
 				relPatchTransitions.put(patchID, relTrans);
@@ -259,7 +261,7 @@ public class RSQSimEventSlipTimeFunc {
 			List<RSQSimStateTime> scaledTrans = new ArrayList<>();
 			for (RSQSimStateTime trans : patchTransList) {
 				double relStart = trans.relativeTime;
-				double duration = trans.getDuration();
+				double duration = trans.hasDuration() ? trans.getDuration() : Double.NaN;
 				double newStart, newRelStart;
 				double slipVel = trans.velocity;
 				if (scaleVelocities) {
@@ -273,7 +275,8 @@ public class RSQSimEventSlipTimeFunc {
 				}
 				RSQSimStateTime newTrans = new RSQSimStateTime(newStart, (float)newRelStart, trans.eventID,
 						patchID, trans.state, (float)slipVel);
-				newTrans.setDuration(duration);
+				if (trans.hasDuration())
+					newTrans.setDuration(duration);
 				scaledTrans.add(newTrans);
 			}
 			scaledPatchTransitions.put(patchID, scaledTrans);
