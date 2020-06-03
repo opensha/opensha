@@ -134,6 +134,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 			param.setValueAsDefault();
 		for (Parameter<?> param : otherParams)
 			param.setValueAsDefault();
+		setIntensityMeasure(SA_Param.NAME);
 	}
 
 	@Override
