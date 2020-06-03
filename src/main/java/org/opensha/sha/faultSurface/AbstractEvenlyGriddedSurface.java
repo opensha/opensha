@@ -168,6 +168,17 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 		return get(row, column);
 	}
 
+	@Override
+	public int getEvenlyDiscretizedNumLocs() {
+		return (int)size();
+	}
+
+	@Override
+	public Location getEvenlyDiscretizedLocation(int index) {
+		int row = index / numCols;
+		int col = index % numCols;
+		return get(row, col);
+	}
 
 	@Override
 	public ListIterator<Location> getLocationsIterator() {

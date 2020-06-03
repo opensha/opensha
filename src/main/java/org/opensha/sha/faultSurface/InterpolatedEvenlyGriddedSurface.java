@@ -14,7 +14,7 @@ import com.google.common.cache.LoadingCache;
 
 /**
  * This is an EvenlyGriddedSurface that is interpolated to become a higher resolution
- * version a given surface.
+ * version a given surface. Interpolations are done on the fly, but the most recent 5000 are cached
  * @author kevin
  *
  */
@@ -22,31 +22,43 @@ public class InterpolatedEvenlyGriddedSurface extends
 		AbstractEvenlyGriddedSurface {
 	
 	private EvenlyGriddedSurface loResSurf;
-	private int discrPnts;
+	private int discrRowPnts;
+	private int discrColPnts;
 	
 	private static final int maxCacheSize = 5000;
 	private LoadingCache<IDPairing, Location> locCache;
 	
 	public InterpolatedEvenlyGriddedSurface(EvenlyGriddedSurface loResSurf, double hiResSpacing) {
-		Preconditions.checkState(loResSurf.isGridSpacingSame());
-		Preconditions.checkArgument(loResSurf.getGridSpacingAlongStrike() > hiResSpacing);
-		
+		this(loResSurf, hiResSpacing, hiResSpacing);
+	}
+	
+	public InterpolatedEvenlyGriddedSurface(EvenlyGriddedSurface loResSurf,
+			double hiResRowSpacing, double hiResColSpacing) {
+//		Preconditions.checkState(loResSurf.isGridSpacingSame());
 		this.loResSurf = loResSurf;
-		double discrPntsDouble = loResSurf.getGridSpacingAlongStrike()/hiResSpacing;
+		
+		Preconditions.checkArgument((float)loResSurf.getGridSpacingAlongStrike() > (float)hiResColSpacing);
+		double discrPntsDouble = loResSurf.getGridSpacingAlongStrike()/hiResColSpacing;
 		Preconditions.checkState((float)discrPntsDouble == (float)Math.floor(discrPntsDouble),
 				"can't evenly divide los res spacing by high res spacing");
-		discrPnts = (int)discrPntsDouble;
+		discrColPnts = (int)discrPntsDouble;
+		
+		Preconditions.checkArgument((float)loResSurf.getGridSpacingDownDip() >= (float)hiResRowSpacing);
+		discrPntsDouble = loResSurf.getGridSpacingDownDip()/hiResRowSpacing;
+		Preconditions.checkState((float)discrPntsDouble == (float)Math.floor(discrPntsDouble),
+				"can't evenly divide los res spacing by high res spacing");
+		discrRowPnts = (int)discrPntsDouble;
 		
 		int origRows = loResSurf.getNumRows();
 		int origCols = loResSurf.getNumCols();
-		this.numRows = (origRows-1)*discrPnts+1;
-		this.numCols = (origCols-1)*discrPnts+1;
+		this.numRows = (origRows-1)*discrRowPnts+1;
+		this.numCols = (origCols-1)*discrColPnts+1;
 		
 		size = ( long ) numRows * ( long ) numCols;
 		data = null;
-		gridSpacingAlong = hiResSpacing;
-		gridSpacingDown = hiResSpacing;
-		sameGridSpacing = true;
+		gridSpacingAlong = hiResColSpacing;
+		gridSpacingDown = hiResRowSpacing;
+		sameGridSpacing = (float)hiResColSpacing == (float)hiResRowSpacing;
 		
 		locCache = CacheBuilder.newBuilder().maximumSize(maxCacheSize).build(new LocCacheLoader());
 	}
@@ -91,10 +103,10 @@ public class InterpolatedEvenlyGriddedSurface extends
 			int row = pair.getID1();
 			int column = pair.getID2();
 			
-			int origRow = row/discrPnts;
-			int origCol = column/discrPnts;
-			int rowI = row % discrPnts;
-			int colI = column % discrPnts;
+			int origRow = row/discrRowPnts;
+			int origCol = column/discrColPnts;
+			int rowI = row % discrRowPnts;
+			int colI = column % discrColPnts;
 			
 //			System.out.println("Interp get: row="+row+", origRow="+origRow+", rowI="+rowI);
 //			System.out.println("\tcol="+column+", origCol="+origCol+", colI="+colI);
@@ -124,8 +136,8 @@ public class InterpolatedEvenlyGriddedSurface extends
 				depthDelta = botLeftLoc.getDepth()-topLeftLoc.getDepth();
 			}
 			
-			double relativeVertPos = (double)rowI/(double)discrPnts;
-			double relativeHorzPos = (double)colI/(double)discrPnts;
+			double relativeVertPos = (double)rowI/(double)discrRowPnts;
+			double relativeHorzPos = (double)colI/(double)discrColPnts;
 			
 			// start top left
 			Location loc = topLeftLoc;

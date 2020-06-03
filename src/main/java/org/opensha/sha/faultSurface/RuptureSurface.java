@@ -54,6 +54,14 @@ public interface RuptureSurface extends Surface3D {
      */
     public double getAreaInsideRegion(Region region);
     
+    public default int getEvenlyDiscretizedNumLocs() {
+    	return getEvenlyDiscritizedListOfLocsOnSurface().size();
+    }
+    
+    public default Location getEvenlyDiscretizedLocation(int index) {
+    	return getEvenlyDiscritizedListOfLocsOnSurface().get(index);
+    }
+    
 	/**
 	 * This returns a list of locations that are evenly spread (at least 
 	 * approximately) over the rupture surface, with a spacing given by
