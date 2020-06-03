@@ -549,12 +549,21 @@ public class ComcatDataPlotter {
 				}
 			}
 		}
-		double maxY = Math.pow(10, Math.ceil(Math.log10(nonZeroRange.getMax())));
-		double minY = Math.pow(10, Math.floor(Math.log10(nonZeroRange.getMin())));
+		double minY, maxY;
+		if (nonZeroRange.getNum() == 0) {
+			minY = 0.1;
+			maxY = 100;
+		} else {
+			maxY = Math.pow(10, Math.ceil(Math.log10(nonZeroRange.getMax())));
+			minY = Math.pow(10, Math.floor(Math.log10(nonZeroRange.getMin())));
+		}
+		
 //		System.out.println(incrMND);
+//		System.out.println(dataMND);
 //		System.out.println("minY="+minY);
 //		System.out.println("maxY="+maxY);
 //		System.out.println("nonZeroRange="+nonZeroRange);
+//		System.out.println("times: "+getOriginTime()+" "+getEndTime());
 		if (minY >= maxY)
 			minY = Math.pow(10, Math.log10(maxY)-1);
 		if (minY == 1d)
@@ -860,6 +869,8 @@ public class ComcatDataPlotter {
 			if (mainshock != null)
 				minTime = Math.min(minTime, mainshockFunc.getMinX()-0.1);
 		}
+		
+		Preconditions.checkState(Double.isFinite(minDataMag), "Min data mag is non-finite: %s", minDataMag);
 		
 		double minMag = Math.floor(minDataMag*10d)/10d;
 		double maxMag = Math.ceil(Math.max(maxDataMag, minMag + 3.75d));
