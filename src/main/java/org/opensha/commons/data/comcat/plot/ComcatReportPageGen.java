@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -22,11 +23,19 @@ import java.util.concurrent.Future;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.MissingOptionException;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.comcat.ComcatAccessor;
 import org.opensha.commons.data.comcat.ComcatRegion;
 import org.opensha.commons.data.comcat.ComcatRegionAdapter;
@@ -52,7 +61,9 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
+import com.google.common.io.Files;
 
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
@@ -61,18 +72,17 @@ import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
-import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_ComcatComparePlot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_FaultParticipationPlot;
-import scratch.UCERF3.erf.ETAS.analysis.ETAS_HazardChangePlot;
+import scratch.UCERF3.erf.ETAS.analysis.ETAS_FaultParticipationPlot.FaultStats;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_MFD_Plot;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_MFD_Plot.MFD_Stats;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
-import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
-import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
+import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 
 public class ComcatReportPageGen {
 	
@@ -81,6 +91,9 @@ public class ComcatReportPageGen {
 	private Region region;
 	private double minFetchMag;
 	private double daysBefore;
+	
+	private static final double MIN_FETCH_MAG_DEFAULT = 0d;
+	private static final double DAYS_BEFORE_DEFAULT = 3;
 	
 	private static final double min_radius = 10;
 	private double radius;
@@ -97,6 +110,7 @@ public class ComcatReportPageGen {
 	private Collection<FaultSectionPrefData> faults;
 	
 	private ETAS_Config etasRun;
+	private File etasOutputDir;
 
 	public ComcatReportPageGen(String eventID, Region region, double minFetchMag, double daysBefore) {
 		ComcatAccessor accessor = new ComcatAccessor();
@@ -122,15 +136,56 @@ public class ComcatReportPageGen {
 		
 		ObsEqkRupture mainshock = accessor.fetchEvent(eventID, false, true);
 		
-		this.radius = new WC1994_MagLengthRelationship().getMedianLength(mainshock.getMag());
+		this.radius = getDefaultRadius(mainshock.getMag());
+		Region region = new Region(mainshock.getHypocenterLocation(), radius);
+		
+		init(accessor, mainshock, region, minFetchMag, daysBefore);
+	}
+	
+	public ComcatReportPageGen(CommandLine cmd) throws IOException {
+		ComcatAccessor accessor = new ComcatAccessor();
+		
+		String eventID = cmd.getOptionValue("event-id");
+		
+		ObsEqkRupture mainshock = accessor.fetchEvent(eventID, false, true);
+		
+		if (cmd.hasOption("radius"))
+			this.radius = Double.parseDouble(cmd.getOptionValue("radius"));
+		else
+			this.radius = getDefaultRadius(mainshock.getMag());
+		Region region = new Region(mainshock.getHypocenterLocation(), radius);
+		
+		double minFetchMag = cmd.hasOption("min-mag")
+				? Double.parseDouble(cmd.getOptionValue("min-mag")) : MIN_FETCH_MAG_DEFAULT;
+		
+		double daysBefore = cmd.hasOption("days-before")
+				? Double.parseDouble(cmd.getOptionValue("days-before")) : DAYS_BEFORE_DEFAULT;
+		
+		init(accessor, mainshock, region, minFetchMag, daysBefore);
+		
+		if (cmd.hasOption("etas-dir")) {
+			File etasDir = new File(cmd.getOptionValue("etas-dir"));
+			System.out.println("Loading UCERF3-ETAS from: "+etasDir.getAbsolutePath());
+			ETAS_Config config = ETAS_Config.readJSON(new File(etasDir, "config.json"));
+			addETAS(config);
+			if (cmd.hasOption("etas-output-dir")) {
+				etasOutputDir = new File(cmd.getOptionValue("etas-output-dir"));
+				Preconditions.checkState(etasOutputDir.exists() || etasOutputDir.mkdir());
+				etasOutputDir = new File(etasOutputDir, eventID);
+				Preconditions.checkState(etasOutputDir.exists() || etasOutputDir.mkdir());
+			}
+		}
+	}
+	
+	private static double getDefaultRadius(double mag) {
+		double radius = new WC1994_MagLengthRelationship().getMedianLength(mag);
 		System.out.println("WC 1994 Radius: "+(float)radius);
+		radius *= 2;
 		if (radius < min_radius) {
 			System.out.println("Reverting to min radius of "+(float)min_radius);
 			radius = min_radius;
 		}
-		Region region = new Region(mainshock.getHypocenterLocation(), radius);
-		
-		init(accessor, mainshock, region, minFetchMag, daysBefore);
+		return radius;
 	}
 	
 	private void init(ComcatAccessor accessor, ObsEqkRupture mainshock, Region region,
@@ -258,6 +313,7 @@ public class ComcatReportPageGen {
 		lines.add("");
 		
 		if (aftershocks.size() > 0) {
+			writeEventCSV(aftershocks, new File(resourcesDir, "aftershocks.csv"));
 			double maxAftershock = minFetchMag;
 			for (ObsEqkRupture rup : aftershocks)
 				maxAftershock = Math.max(maxAftershock, rup.getMag());
@@ -414,7 +470,7 @@ public class ComcatReportPageGen {
 			lines.add("");
 		}
 		
-		double sigMag = Math.min(6d, mainshock.getMag()-1d);
+		double sigMag = Math.max(4d, Math.min(6d, mainshock.getMag()-1d));
 		if (foreshocks != null) {
 			List<ObsEqkRupture> sigForeshocks = new ArrayList<>();
 			for (ObsEqkRupture foreshock : foreshocks) {
@@ -422,6 +478,7 @@ public class ComcatReportPageGen {
 				if (mag >= sigMag)
 					sigForeshocks.add(foreshock);
 			}
+			writeEventCSV(foreshocks, new File(resourcesDir, "foreshocks.csv"));
 			if (!sigForeshocks.isEmpty()) {
 				lines.add("## Significant Foreshocks");
 				lines.add(topLink); lines.add("");
@@ -471,6 +528,19 @@ public class ComcatReportPageGen {
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 	}
 	
+	private void writeEventCSV(List<ObsEqkRupture> events, File csvFile) throws IOException {
+		CSVFile<String> csv = new CSVFile<>(true);
+		
+		csv.addLine("Origin Time (epoch ms)", "ComCat Event ID", "Magnitude", "Latitude", "Longitude", "Depth (km)");
+		for (ObsEqkRupture event : events) {
+			Location hypo = event.getHypocenterLocation();
+			csv.addLine(event.getOriginTime()+"", event.getEventId(), (float)event.getMag()+"",
+					(float)hypo.getLatitude()+"", (float)hypo.getLongitude()+"", (float)hypo.getDepth()+"");
+		}
+		
+		csv.writeToFile(csvFile);
+	}
+	
 	private List<String> generateDetailLines(ObsEqkRupture event, File resourcesDir, String curHeading, String topLink)
 			throws IOException {
 		String eventID = event.getEventId();
@@ -495,7 +565,7 @@ public class ComcatReportPageGen {
 		
 		
 		JSONObject prop = (JSONObject) obj.get("properties");
-		printJSON(prop);
+//		printJSON(prop);
 		JSONObject prods = (JSONObject) prop.get("products");
 		
 		List<String> lines = new ArrayList<>();
@@ -736,7 +806,7 @@ public class ComcatReportPageGen {
 				String str = val.toString();
 				try {
 					val = new JSONParser().parse(str.substring(1, str.length()-1));
-				} catch (ParseException e) {
+				} catch (Exception e) {
 //					e.printStackTrace();
 				}
 			}
@@ -907,10 +977,10 @@ public class ComcatReportPageGen {
 		ETAS_MFD_Plot mfdPlot = new ETAS_MFD_Plot(config, launcher, mfdPrefix, false, true);
 		plots.add(mfdPlot);
 		
-//		String faultPrefix = "etas_fault_prefix";
-//		ETAS_FaultParticipationPlot faultPlot = new ETAS_FaultParticipationPlot(
-//				config, launcher, faultPrefix, false, true);
-//		plots.add(faultPlot);
+		String faultPrefix = "etas_fault_prefix";
+		ETAS_FaultParticipationPlot faultPlot = new ETAS_FaultParticipationPlot(
+				config, launcher, faultPrefix, false, true);
+		plots.add(faultPlot);
 		
 		boolean filterSpontaneous = false;
 		for (ETAS_AbstractPlot plot : plots)
@@ -996,7 +1066,7 @@ public class ComcatReportPageGen {
 					if (mfdIncludeDurations.contains(duration)) {
 						double prob = mfdStats[d].getProbFunc(0).getY(m);
 						maxProb = Math.max(prob, maxProb);
-						table.addColumn(percentProbDF.format(prob));
+						table.addColumn(getProbStr(prob));
 					}
 				}
 				table.finalizeLine();
@@ -1005,7 +1075,8 @@ public class ComcatReportPageGen {
 			}
 		}
 		lines.add("");
-		lines.add("This table gives forecasted one week and one month probabilities.");
+		lines.add("This table gives forecasted one week and one month probabilities for events triggered by this sequence;"
+				+ " it does not include the long-term probability of such events.");
 		lines.add("");
 		lines.addAll(table.build());
 		
@@ -1032,6 +1103,14 @@ public class ComcatReportPageGen {
 		magTimeDurations.put(new String[] {"One Week", "mag_time_week.png"}, 7d/365.25);
 		magTimeDurations.put(new String[] {"One Month", "mag_time_month.png"}, 30d/365.25);
 		List<String[]> sortedDurations = ComparablePairing.getSortedData(magTimeDurations);
+		
+		File etasResourcesDir = null;
+		if (etasOutputDir != null) {
+			etasResourcesDir = new File(etasOutputDir, "resources");
+			Preconditions.checkState(etasResourcesDir.exists() || etasResourcesDir.mkdir());
+			for (String[] key : magTimeDurations.keySet())
+				Files.copy(new File(resourcesDir, key[1]), new File(etasResourcesDir, key[1]));
+		}
 		
 		table.initNewLine();
 		for (String[] label : sortedDurations)
@@ -1085,64 +1164,270 @@ public class ComcatReportPageGen {
 			if (includeMags.contains(mag)) {
 				table.initNewLine();
 				table.addColumn("**M&ge;"+optionalDigitDF.format(mag)+"**");
-				for (int d=0; d<durations.length; d++)
-					if (includeDurations.contains(durations[d]))
+				for (int d=0; d<durations.length; d++) {
+					if (includeDurations.contains(durations[d])) {
 						table.addColumn("![Map](resources/"+mapPrefixes[d][m]+".png)");
+						if (etasResourcesDir != null)
+							Files.copy(new File(resourcesDir, mapPrefixes[d][m]+".png"),
+									new File(etasResourcesDir, mapPrefixes[d][m]+".png"));
+					}
+				}
 				table.finalizeLine();
 			}
 		}
 		lines.addAll(table.build());
 		
+		lines.add("");
+		lines.add(curHeading+"## ETAS Fault Trigger Probabilities");
+		lines.add(topLink); lines.add("");
+		lines.add("The table below summarizes the probabilities of this sequence triggering "
+				+ "large supra-seismogenic aftershocks on nearby known active faults.");
+		lines.add("");
+		
+		table = MarkdownUtils.tableBuilder();
+		
+		double[] faultMags = { 0d, 7d };
+		
+		table.initNewLine();
+		table.addColumn("Fault Section");
+		double[] faultDurations = faultPlot.getDurations();
+		for (double mag : faultMags) {
+			String magStr = mag > 0 ? "M&ge;"+optionalDigitDF.format(mag) : "supra-seis";
+			for (double duration : faultDurations) {
+				if (!includeDurations.contains(duration))
+					continue;
+				String durStr = ETAS_AbstractPlot.getTimeShortLabel(duration);
+				table.addColumn(durStr+" "+magStr+" prob");
+			}
+		}
+		table.finalizeLine();
+		
+		Map<Integer, FaultStats> faultStats = faultPlot.getParentSectStats();
+		List<Integer> sortedIDs = ComparablePairing.getSortedData(faultStats);
+		if (sortedIDs.size() > 10)
+			sortedIDs = sortedIDs.subList(0, 10);
+		for (int parentID : sortedIDs) {
+			FaultStats stats = faultStats.get(parentID);
+			stats.getTriggeredCumulativeMPDs();
+			table.initNewLine();
+			table.addColumn("**"+stats.getName()+"**");
+			EvenlyDiscretizedFunc[] mpds = stats.getTriggeredCumulativeMPDs();
+			for (double mag : faultMags) {
+				for (int d=0; d<mpds.length; d++) {
+					if (!includeDurations.contains(faultDurations[d]))
+						continue;
+					double prob = mag > 0 ? mpds[d].getInterpolatedY(mag) : mpds[d].getY(0);
+					table.addColumn(getProbStr(prob));
+				}
+			}
+			table.finalizeLine();
+		}
+		lines.addAll(table.build());
+		
+		if (etasOutputDir != null)
+			MarkdownUtils.writeReadmeAndHTML(lines, etasOutputDir);
+		
 		return lines;
 	}
 	
 
-	private static DecimalFormat percentProbDF = new DecimalFormat("0.00%");
+	private static DecimalFormat percentProbDF = new DecimalFormat("0.000%");
+	
+	private static String getProbStr(double prob) {
+		if (prob*100d < 0.0005)
+			return "<0.001%";
+		return percentProbDF.format(prob);
+	}
 	
 	private static final DecimalFormat optionalDigitDF = new DecimalFormat("0.##");
+	
+	private static Options createOptions() {
+		Options ops = new Options();
+		
+		Option event = new Option("e", "event-id", true, "ComCat event id, e.g. 'ci39126079'");
+		event.setRequired(true);
+		ops.addOption(event);
+		
+		Option minMag = new Option("m", "min-mag", true,
+				"Minimum magnitude of events to fetch (default: "+(float)MIN_FETCH_MAG_DEFAULT+")");
+		minMag.setRequired(false);
+		ops.addOption(minMag);
+		
+		Option daysBefore = new Option("d", "days-before", true,
+				"Number of days of events before the mainshock to fetch (default: "
+		+(int)DAYS_BEFORE_DEFAULT+")");
+		daysBefore.setRequired(false);
+		ops.addOption(daysBefore);
+		
+		Option radius = new Option("r", "radius", true,
+				"Search radius around mainshock for aftershocks. Default is the greater of "
+				+(float)min_radius+" km and twice the Wells & Coppersmith (1994) median rupture length "
+				+ "for the mainshock magnitude");
+		radius.setRequired(false);
+		ops.addOption(radius);
+		
+		Option etas = new Option("etas", "etas-dir", true,
+				"Path to a UCERF3-ETAS simulation directory");
+		etas.setRequired(false);
+		ops.addOption(etas);
+		
+		Option etasOutput = new Option("eod", "etas-output-dir", true,
+				"If supplied, ETAS only results will also be written to <path>/<event-id>");
+		etasOutput.setRequired(false);
+		ops.addOption(etasOutput);
+		
+		Option outputDir = new Option("o", "output-dir", true,
+				"Output dirctory. Must supply either this or --output-parent-dir");
+		outputDir.setRequired(false);
+		ops.addOption(outputDir);
+		
+		Option outputParentDir = new Option("opd", "output-parent-dir", true,
+				"Output parent dirctory. The directory name will be generated automatically from the "
+				+ "event name, date, and magnitude. Must supply either this or --output-dir");
+		outputParentDir.setRequired(false);
+		ops.addOption(outputParentDir);
+		
+		Option help = new Option("?", "help", false, "Display this message");
+		help.setRequired(false);
+		ops.addOption(help);
+		
+		return ops;
+	}
+	
+	public static void printHelp(Options options, String appName) {
+		HelpFormatter formatter = new HelpFormatter();
+		formatter.printHelp(120, appName, null, options, null, true);
+//		formatter.printhelp
+		System.exit(2);
+	}
+	
+	public static void printUsage(Options options, String appName) {
+		HelpFormatter formatter = new HelpFormatter();
+		PrintWriter pw = new PrintWriter(System.out);
+		formatter.printUsage(pw, 120, appName, options);
+		pw.flush();
+		System.exit(2);
+	}
 
 	public static void main(String[] args) throws IOException {
-		File mainDir = new File("/home/kevin/git/event-reports");
-		
-//		String eventID = "ci39126079";
-//		double radius = 0d;
-//		double minFetchMag = 0d;
-//		double daysBefore = 3d;
-//		File etasDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
-//				+ "2020_04_13-ComCatM4p87_ci39126079_9p9DaysAfter_PointSources_kCOV1p5");
-		
-		String eventID = "ci39400304";
-		double radius = 0d;
-		double minFetchMag = 0d;
-		double daysBefore = 3d;
-		File etasDir = null;
-		
-//		String eventID = "ci38457511";
-//		double radius = 0d;
-//		double minFetchMag = 2d;
-//		double daysBefore = 3d;
-		
-//		String eventID = "ci38443183";
-//		double radius = 0d;
-//		double minFetchMag = 2d;
-//		double daysBefore = 3d;
-		
-		ComcatReportPageGen pageGen;
-		if (radius > 0)
-			pageGen = new ComcatReportPageGen(eventID, radius, minFetchMag, daysBefore);
-		else
-			pageGen = new ComcatReportPageGen(eventID, minFetchMag, daysBefore);
-		
-		File outputDir = new File(mainDir, pageGen.generateDirName());
-		System.out.println("Output dir: "+outputDir.getAbsolutePath());
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		
-		if (etasDir != null) {
-			ETAS_Config config = ETAS_Config.readJSON(new File(etasDir, "config.json"));
-			pageGen.addETAS(config);
+		if (args.length == 1 && args[0].equals("--hardcoded")) {
+			File mainDir = new File("/home/kevin/git/event-reports");
+			
+//			String eventID = "ci39126079";
+//			double radius = 0d;
+//			double minFetchMag = 0d;
+//			double daysBefore = 3d;
+//			File etasDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//					+ "2020_04_13-ComCatM4p87_ci39126079_9p9DaysAfter_PointSources_kCOV1p5");
+			
+//			String eventID = "ci39400304";
+//			double radius = 0d;
+//			double minFetchMag = 0d;
+//			double daysBefore = 3d;
+//			File etasDir = null;
+			
+//			String eventID = "ci38457511";
+//			double radius = 0d;
+//			double minFetchMag = 2d;
+//			double daysBefore = 3d;
+			
+//			String eventID = "ci38443183";
+//			double radius = 0d;
+//			double minFetchMag = 2d;
+//			double daysBefore = 3d;
+			
+//			String eventID = "ci38488354";
+//			double radius = 0d;
+//			double minFetchMag = 0d;
+//			double daysBefore = 3d;
+//			File etasDir = null;
+			
+			String argStr = "--event-id ci38488354";
+			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+					+ "2020_05_22-ComCatM4p54_ci38488354_12DaysAfter_PointSources";
+			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
+			
+//			String argStr = "--event-id ci38457511 --min-mag 2";
+//			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+//			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//					+ "2020_05_28-ComCatM7p1_ci38457511_327p6DaysAfter_ShakeMapSurfaces";
+//			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
+			
+//			String argStr = "--event-id ci38457511 --min-mag 2d";
+//			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+//			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//					+ "2020_04_27-ComCatM7p1_ci38457511_296p8DaysAfter_ShakeMapSurfaces";
+			
+//			String argStr = "--event-id nn00725272 --min-mag 0d";
+//			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+			
+			args = Splitter.on(" ").splitToList(argStr).toArray(new String[0]);
 		}
 		
-		pageGen.generateReport(outputDir, null);
+		try {
+			Options options = createOptions();
+			
+			String appName = ClassUtils.getClassNameWithoutPackage(ComcatReportPageGen.class);
+			
+			CommandLineParser parser = new DefaultParser();
+			
+			if (args.length == 0) {
+				printUsage(options, appName);
+			}
+			
+			try {
+				CommandLine cmd = parser.parse( options, args);
+				
+				if (cmd.hasOption("help") || cmd.hasOption("?")) {
+					printHelp(options, appName);
+				}
+				
+				ComcatReportPageGen pageGen = new ComcatReportPageGen(cmd);
+				
+				File outputDir = null;
+				if (cmd.hasOption("output-dir")) {
+					Preconditions.checkArgument(!cmd.hasOption("output-parent-dir"),
+							"Can't supply both --output-dir and --output-parent-dir");
+					outputDir = new File(cmd.getOptionValue("output-dir"));
+				} else if (cmd.hasOption("output-parent-dir")) {
+					Preconditions.checkArgument(!cmd.hasOption("output-dir"),
+							"Can't supply both --output-dir and --output-parent-dir");
+					File parentDir = new File(cmd.getOptionValue("output-parent-dir"));
+					Preconditions.checkState(parentDir.exists() || parentDir.mkdir(),
+							"Output parent dir doesn't exist and can't be created: %s", parentDir.getAbsolutePath());
+					outputDir = new File(parentDir, pageGen.generateDirName());
+				} else {
+					System.err.println("Must supply either --output-dir or --output-parent-dir");
+					printUsage(options, appName);
+				}
+				System.out.println("Output dir: "+outputDir.getAbsolutePath());
+				Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+				
+				pageGen.generateReport(outputDir, null);
+			} catch (MissingOptionException e) {
+				Options helpOps = new Options();
+				helpOps.addOption(new Option("h", "help", false, "Display this message"));
+				try {
+					CommandLine cmd = parser.parse( helpOps, args);
+					
+					if (cmd.hasOption("help")) {
+						printHelp(options, appName);
+					}
+				} catch (ParseException e1) {}
+				System.err.println(e.getMessage());
+				printUsage(options, appName);
+			} catch (ParseException e) {
+				e.printStackTrace();
+				printUsage(options, appName);
+			}
+			
+			System.out.println("Done!");
+			System.exit(0);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 
 }
