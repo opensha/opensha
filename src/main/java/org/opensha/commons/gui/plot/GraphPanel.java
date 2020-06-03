@@ -509,7 +509,7 @@ public class GraphPanel extends JSplitPane {
 				}
 
 			}catch(Exception e){
-				//e.printStackTrace();
+				e.printStackTrace();
 				JOptionPane.showMessageDialog(this,e.getMessage(),"Y-Plot Error",JOptionPane.OK_OPTION);
 				graphOn=false;
 				yLog = false;
@@ -873,6 +873,7 @@ public class GraphPanel extends JSplitPane {
 		plot.setRangeCrosshairVisible(false);
 		plot.setInsets(new RectangleInsets(10, 0, 0, tickFontSize+15));
 		
+		// TODO make this selectable?
 		plot.setDomainGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
 		plot.setDomainGridlinePaint(new Color(225,225,225));
 		plot.setRangeGridlineStroke(new BasicStroke(0.5f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0.0f));
