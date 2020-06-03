@@ -3,9 +3,11 @@ package scratch.UCERF3.erf.ETAS.NoFaultsModel;
 import java.awt.Color;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -220,8 +222,9 @@ public class ETAS_Simulator_NoFaults {
 		if(!resultsDir.exists()) resultsDir.mkdir();
 		
 		// set file for writing simulation info & write some preliminary stuff to it
-		FileWriter info_fr = new FileWriter(new File(resultsDir, "infoString.txt"));	// TODO this is closed below; why the warning?
-		FileWriter simulatedEventsFileWriter = new FileWriter(new File(resultsDir, "simulatedEvents.txt"));
+		int bufferSize = 1000000;
+		Writer info_fr = new BufferedWriter(new FileWriter(new File(resultsDir, "infoString.txt")), bufferSize);
+		Writer simulatedEventsFileWriter = new BufferedWriter(new FileWriter(new File(resultsDir, "simulatedEvents.txt")), bufferSize);
 		ETAS_CatalogIO.writeEventHeaderToFile(simulatedEventsFileWriter);
 
 		info_fr.write(simulationName+"\n");
@@ -250,7 +253,7 @@ public class ETAS_Simulator_NoFaults {
 			if(D) System.out.println("\t"+param.getName()+" = "+param.getValue());
 		}
 		
-		info_fr.flush();	// this writes the above out now in case of crash
+		if (D) info_fr.flush();	// this writes the above out now in case of crash
 		
 		// Make the list of observed ruptures, plus scenario if that was included
 		ArrayList<ETAS_EqkRupture> obsEqkRuptureList = new ArrayList<ETAS_EqkRupture>();
@@ -286,13 +289,13 @@ public class ETAS_Simulator_NoFaults {
 		
 		// add scenario rup to end of obsEqkRuptureList
 		int[] scenarioRupIDs = null;
-		double[] numPrimaryAshockForScenarios = null;
+		Map<Integer, Integer> numPrimaryAshockForScenarios = null;
 		Range<Integer> rangeTriggerRupIDs = null;
 		if(scenarioRups != null && !scenarioRups.isEmpty()) {
 //			scenarioRupID = obsEqkRuptureList.size();
 			// zero is reserved for scenario rupture
 			scenarioRupIDs = new int[scenarioRups.size()];
-			numPrimaryAshockForScenarios = new double[scenarioRups.size()];
+			numPrimaryAshockForScenarios = new HashMap<>();
 			
 			for (int i=0; i<scenarioRups.size(); i++) {
 				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
@@ -344,7 +347,7 @@ public class ETAS_Simulator_NoFaults {
 		}
 		if (D) System.out.println("\torigTotRate="+(float)origTotRate+"; that took (sec): "+(float)(System.currentTimeMillis()-st)/1000f);
 		info_fr.write("\nExpected mean annual rate over timeSpan (per year) = "+(float)origTotRate+"\n");
-		info_fr.flush();
+//		info_fr.flush();
 		
 		
 		// TODO This loop is redundant with that above; combine
@@ -382,7 +385,7 @@ public class ETAS_Simulator_NoFaults {
 				null, etasParams, etas_utils);  // latter three may be null
 		if(D) System.out.println("ETAS_PrimaryEventSampler creation took "+(float)(System.currentTimeMillis()-st)/60000f+ " min");
 		info_fr.write("\nMaking ETAS_PrimaryEventSampler took "+(System.currentTimeMillis()-st)/60000+ " min");
-		info_fr.flush();
+//		info_fr.flush();
 		
 		// Make list of primary aftershocks for given list of obs quakes 
 		// (filling in origin time ID, parentID, and location on parent that does triggering, with the rest to be filled in later)
@@ -403,11 +406,8 @@ public class ETAS_Simulator_NoFaults {
 			// get primary event times
 			double[] randomAftShockTimes = etas_utils.getRandomEventTimes(parRup.getETAS_k(), parRup.getETAS_p(), parRup.getMag(), ETAS_Utils.magMin_DEFAULT, parRup.getETAS_c(), startDay, endDay);
 
-			if (scenarioRupIDs != null) {
-				for (int i=0; i<scenarioRupIDs.length; i++)
-					if(parRup.getID() == scenarioRupIDs[i])
-						numPrimaryAshockForScenarios[i] = randomAftShockTimes.length;
-			}
+			if (scenarioRupIDs != null && rangeTriggerRupIDs.contains(parRup.getID()))
+				numPrimaryAshockForScenarios.put(parRup.getID(), randomAftShockTimes.length);
 			LocationList locList = null;
 			if(randomAftShockTimes.length>0) {
 				for(int i=0; i<randomAftShockTimes.length;i++) {
@@ -445,7 +445,7 @@ public class ETAS_Simulator_NoFaults {
 		}
 		if (D) System.out.println("The "+obsEqkRuptureList.size()+" input events produced "+eventsToProcess.size()+" primary aftershocks");
 		info_fr.write("\nThe "+obsEqkRuptureList.size()+" input observed events produced "+eventsToProcess.size()+" primary aftershocks\n");
-		info_fr.flush();
+//		info_fr.flush();
 
 		
 		// make the list of spontaneous events, filling in only event IDs and origin times for now
@@ -513,7 +513,7 @@ public class ETAS_Simulator_NoFaults {
 					"\t(sample num over total expected num)"+"\n\tnumSpontEventsSampled="+spontEventTimes.length+"\n";
 			if(D) System.out.println(spEvStringInfo);
 			info_fr.write("\n"+spEvStringInfo);
-			info_fr.flush();
+//			info_fr.flush();
 		}
 		
 
@@ -522,7 +522,11 @@ public class ETAS_Simulator_NoFaults {
 		if(scenarioRups !=null && !scenarioRups.isEmpty()) {
 			for (int i=0; i<scenarioRups.size(); i++) {
 				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
+				boolean scenWrite = (D || scenarioRups.size() < 100 || scenarioRup.getMag() >= 5d);
+				if (!scenWrite)
+					continue;
 				long rupOT = scenarioRup.getOriginTime();
+				
 				double startDay = (double)(simStartTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;	// convert epoch to days from event origin time
 				double endDay = (double)(simEndTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;
 				
@@ -545,10 +549,11 @@ public class ETAS_Simulator_NoFaults {
 				}
 				double expNum = ETAS_Utils.getExpectedNumEvents(k, p, scenarioRup.getMag(), ETAS_Utils.magMin_DEFAULT, c, startDay, endDay);
 				info_fr.write("Expected number of primary events for Scenario: "+expNum+"\n");
-				info_fr.write("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+				int numPrimaryAftershocks = numPrimaryAshockForScenarios.get(scenarioRup.getID());
+				info_fr.write("Observed number of primary events for Scenario: "+numPrimaryAftershocks+"\n");
 				if (D) {
 					System.out.println("Expected number of primary events for Scenario: "+expNum);
-					System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+					System.out.println("Observed number of primary events for Scenario: "+numPrimaryAftershocks+"\n");
 				}
 
 				if(D && generateDiagnosticsForScenario) {
@@ -557,10 +562,12 @@ public class ETAS_Simulator_NoFaults {
 					expectedPrimaryMFDsForScenarioList = etas_PrimEventSampler.generateRuptureDiagnostics(scenarioRup, expNum, "Scenario", resultsDir,info_fr);
 					float timeMin = ((float)(System.currentTimeMillis()-timeMillis))/(1000f*60f);
 					System.out.println("Computing Scenario Diagnostics took (min): "+timeMin);
-					if (exit_after_scenario_diagnostics)
+					if (exit_after_scenario_diagnostics) {
+						info_fr.close();
 						System.exit(0);
+					}
 				}
-				info_fr.flush();
+//				info_fr.flush();
 			}
 		}
 		
@@ -580,7 +587,7 @@ public class ETAS_Simulator_NoFaults {
 		}
 		
 		if (D) System.out.println("Looping over eventsToProcess (initial num = "+eventsToProcess.size()+")...\n");
-		info_fr.flush();
+		if (D) info_fr.flush();
 
 		st = System.currentTimeMillis();
 		
@@ -601,7 +608,7 @@ public class ETAS_Simulator_NoFaults {
 			}
 		}
 		
-		info_fr.flush();	// this writes the above out now in case of crash
+		if (D) info_fr.flush();	// this writes the above out now in case of crash
 		
 		while(eventsToProcess.size()>0) {
 			
@@ -712,7 +719,7 @@ public class ETAS_Simulator_NoFaults {
 			
 			
 
-			info_fr.flush();	// this writes the above out now in case of crash
+			if (D) info_fr.flush();	// this writes the above out now in case of crash
 
 		}
 		

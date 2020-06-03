@@ -75,6 +75,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_LocationWeightCalculator;
+import scratch.UCERF3.erf.ETAS.ETAS_LongTermMFDs;
 import scratch.UCERF3.erf.ETAS.ETAS_PrimaryEventSampler;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
@@ -140,6 +141,7 @@ public class ETAS_Launcher {
 	
 	private GriddedRegion griddedRegion;
 	private ETAS_CubeDiscretizationParams cubeParams;
+	private ETAS_LongTermMFDs longTermMFDs;
 
 	private File tempResultsDir;
 	private File resultsDir;
@@ -298,7 +300,7 @@ public class ETAS_Launcher {
 		}
 	}
 	
-	void setRandomSeeds(long[] randSeeds) {
+	public void setRandomSeeds(long[] randSeeds) {
 		Preconditions.checkState(randSeeds.length == config.getNumSimulations());
 		this.randSeeds = randSeeds;
 	}
@@ -727,7 +729,7 @@ public class ETAS_Launcher {
 		return null;
 	}
 	
-	private synchronized void checkLoadCaches() throws IOException {
+	private synchronized void checkLoadCaches(FaultSystemSolutionERF_ETAS erf) throws IOException {
 		if (fractionSrcAtPointList == null) {
 			File cacheDir = config.getCacheDir();
 			File fractionSrcAtPointListFile = new File(cacheDir, "sectDistForCubeCache");
@@ -746,6 +748,11 @@ public class ETAS_Launcher {
 			debug("loading cache from "+srcAtPointListFile.getAbsolutePath()+" ("+getMemoryDebug()+")");
 			isCubeInsideFaultPolygon = MatrixIO.intArrayFromFile(isCubeInsideFaultPolygonFile);
 			debug("done loading caches ("+getMemoryDebug()+")");
+		}
+		if (longTermMFDs == null) {
+			debug("building long-term MFDs...");
+			longTermMFDs = new ETAS_LongTermMFDs(erf, params.getApplySubSeisForSupraNucl());
+			debug("done building long-term MFDs");
 		}
 	}
 	
@@ -801,7 +808,9 @@ public class ETAS_Launcher {
 				return index;
 			}
 			
-			waitOnDirCreation(resultsDir, 5, 2000);
+			if (!resultsDir.exists())
+				resultsDir.mkdir();
+			waitOnDirCreation(tempResultsDir, 5, 2000);
 			
 			debug("calculating "+index);
 
@@ -876,17 +885,18 @@ public class ETAS_Launcher {
 								triggers, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed, params, cubeParams);
 					} else {
-						checkLoadCaches();
+						checkLoadCaches((FaultSystemSolutionERF_ETAS)erf);
 						meta = ETAS_Simulator.runETAS_Simulation(tempResultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion,
 								triggers, histQkList, config.isIncludeSpontaneous(), config.isIncludeIndirectTriggering(),
 								config.getGridSeisDiscr(), simulationName, randSeed,
-								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, cubeParams);
+								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, cubeParams, longTermMFDs);
 					}
 					meta = meta.getModCatalogIndex(index);
 					
-					debug("completed "+index);
+					debug("completed "+index+" ("+meta.totalNumRuptures+" ruptures)");
 					File asciiFile = new File(tempResultsDir, "simulatedEvents.txt");
 					ETAS_Catalog catalog = null;
+					waitOnDirCreation(resultsDir, 5, 2000);
 					if (config.isBinaryOutput()) {
 						// convert to binary
 						catalog = ETAS_CatalogIO.loadCatalog(asciiFile);
@@ -1037,7 +1047,7 @@ public class ETAS_Launcher {
 			debug(DebugLevel.DEBUG, "building new executor for numThreads="+numThreads);
 			exec = new ThreadPoolExecutor(numThreads, numThreads,
                     0L, TimeUnit.MILLISECONDS,
-                    new LinkedBlockingQueue<Runnable>());Executors.newFixedThreadPool(numThreads);
+                    new LinkedBlockingQueue<Runnable>());
 		}
 		return exec;
 	}
@@ -1066,6 +1076,8 @@ public class ETAS_Launcher {
 			debug("reducing thread count to previously encountered limit of "+threadLimit);
 			numThreads = threadLimit;
 		}
+		
+		System.gc();
 		
 		debug("starting "+tasks.size()+" simulations with "+numThreads+" threads");
 		

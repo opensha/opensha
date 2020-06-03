@@ -246,7 +246,7 @@ public class StandaloneCalc {
 		} else {
 			ETAS_Simulator.runETAS_Simulation(outputDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, triggerRup,
 					histQkList, includeSpontEvents, includeIndirectTriggering, gridSeisDiscr, simulationName, randSeed,
-					fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, null);
+					fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, null, null);
 		}
 		
 		System.out.println("DONE");

@@ -50,7 +50,9 @@ import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.InterpolatedEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
@@ -1723,6 +1725,8 @@ public class ETAS_Utils {
 
 	public static final SimpleDateFormat cat_df = new SimpleDateFormat("yyyy MM dd HH mm ss");
 	
+	private static final double min_spacing = 0.5; // below this will be interpolated
+	
 	/**
 	 * This provides a rupture surface where there is no creep/aseismicity reduction
 	 * @param fssRupIndex
@@ -1736,8 +1740,27 @@ public class ETAS_Utils {
 			for(FaultSectionPrefData fltData: erf.getSolution().getRupSet().getFaultSectionDataForRupture(fssRupIndex))
 				rupSurfs.add(fltData.getQuadSurface(false, gridSpacing));
 		} else {
-			for(FaultSectionPrefData fltData: erf.getSolution().getRupSet().getFaultSectionDataForRupture(fssRupIndex))
-				rupSurfs.add(fltData.getStirlingGriddedSurface(gridSpacing, false, false));
+			for(FaultSectionPrefData fltData: erf.getSolution().getRupSet().getFaultSectionDataForRupture(fssRupIndex)) {
+				RuptureSurface subSurf;
+				if (gridSpacing < min_spacing) {
+					StirlingGriddedSurface lowRes = fltData.getStirlingGriddedSurface(min_spacing, false, false);
+					if (lowRes.getAveGridSpacing() <= gridSpacing) {
+						// already high res enough
+						subSurf = lowRes;
+					} else {
+						double targetColSpacing = lowRes.getGridSpacingAlongStrike();
+						while (targetColSpacing > gridSpacing)
+							targetColSpacing *= 0.5;
+						double targetRowSpacing = lowRes.getGridSpacingDownDip();
+						while (targetRowSpacing > gridSpacing)
+							targetRowSpacing *= 0.5;
+						subSurf = new InterpolatedEvenlyGriddedSurface(lowRes, targetRowSpacing, targetColSpacing);
+					}
+				} else {
+					subSurf = fltData.getStirlingGriddedSurface(gridSpacing, false, false);
+				}
+				rupSurfs.add(subSurf);
+			}
 		}
 		if (rupSurfs.size() == 1)
 			return rupSurfs.get(0);
@@ -1799,8 +1822,9 @@ public class ETAS_Utils {
 			return loc;
 		}
 		else {
-			LocationList locList = parRup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface();
-			return locList.get(getRandomInt(locList.size()-1));
+			RuptureSurface surf = parRup.getRuptureSurface();
+			int index = getRandomInt(surf.getEvenlyDiscretizedNumLocs()-1);
+			return surf.getEvenlyDiscretizedLocation(index);
 		}
 	}
 	

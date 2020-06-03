@@ -563,19 +563,21 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		double daysSinceStartTime = (double)millisSinceStartTime/mpd;
 		double threshold;
 		if (daysSinceStartTime < 1d)
-			threshold = 1d/48d; // 30m
+			threshold = 1d/48d; // first day, every 30m
 		else if (daysSinceStartTime < 2d)
-			threshold = 1d/24d; // 1h
+			threshold = 1d/24d; // second day, hourly
 		else if (daysSinceStartTime < 7d)
-			threshold = 6d/24d; // 6h
+			threshold = 6d/24d; // rest of first week, 6h
 		else if (daysSinceStartTime < 14d)
-			threshold = 0.5d; // 12h
+			threshold = 0.5d; // second week, 12h
 		else if (daysSinceStartTime < 31)
-			threshold = 1d; // 1d
-		else if (daysSinceStartTime < 365)
-			threshold = 7d; // 1wk
+			threshold = 1d; // rest of first month, daily
+		else if (daysSinceStartTime < 90)
+			threshold = 7d; // second and third months, weekly
+		else if (daysSinceStartTime < 182.5)
+			threshold = 14d; // months 4-6, biweekly
 		else
-			threshold = 30d; // 1mo
+			threshold = 30d; // greater than 6 months, update monthly
 		
 		// randomly wait up to 10% longer than the threshold in order to get plots to spread
 		// out a bit and not all replot at the same time
@@ -747,7 +749,11 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	@Override
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
-		forecastOnly = getConfig().getSimulationStartTimeMillis() <= plotter.getEndTime()+6000l;
+//		forecastOnly = getConfig().getSimulationStartTimeMillis() <= plotter.getEndTime()+60000l;
+		// if the simulation is less than 5 minutes old, don't bother with comparison plots
+		forecastOnly = getConfig().getSimulationStartTimeMillis() >= System.currentTimeMillis()-(5*1000l*60l);
+		if (forecastOnly)
+			System.out.println("Will only make ComCat forecast plots");
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		simMc = totalCountHist.getX(numToTrim)-0.5*totalCountHist.getDelta();
 		System.out.println("Simulation Mc: "+simMc);
@@ -1500,7 +1506,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 //				+ "2020_04_08-ComCatM4p87_ci39126079_4p7DaysAfter_PointSources_kCOV1p5");
 //				+ "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces");
 //				+ "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces");
-				+ "2019_09_12-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces");
+//				+ "2019_09_12-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces");
+				+ "2020_04_27-ComCatM7p1_ci38457511_296p8DaysAfter_ShakeMapSurfaces");
 		File configFile = new File(simDir, "config.json");
 		
 		try {
@@ -1508,7 +1515,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			ETAS_Launcher launcher = new ETAS_Launcher(config, false);
 			
 			int maxNumCatalogs = 0;
-//			int maxNumCatalogs = 20000;
+//			int maxNumCatalogs = 1000;
 			
 			ETAS_AbstractPlot plot = new ETAS_ComcatComparePlot(config, launcher);
 			File outputDir = new File(simDir, "plots");

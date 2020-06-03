@@ -117,6 +117,11 @@ public class ETAS_ConfigBuilder {
 		outputDir.setRequired(false);
 		ops.addOption(outputDir);
 		
+		Option parentDir = new Option("pdir", "parent-dir", true, "Parent directory to write results. Directory name "
+				+ "will be built automatically with the date, simulation name, and parameters, and placed in this directory.");
+		parentDir.setRequired(false);
+		ops.addOption(parentDir);
+		
 		Option nameOption = new Option("n", "name", true, "Simulation name");
 		nameOption.setRequired(false);
 		ops.addOption(nameOption);
@@ -289,21 +294,12 @@ public class ETAS_ConfigBuilder {
 		
 		File outputDir;
 		if (cmd.hasOption("output-dir")) {
-			outputDir = new File(cmd.getOptionValue("output-dir")).getAbsoluteFile();
+			Preconditions.checkArgument(!cmd.hasOption("parent-dir"),
+					"cannot specify both output and parent dirs");
+			outputDir = new File(cmd.getOptionValue("output-dir"));
 		} else {
 			String dirName = df.format(new Date())+"-";
-			String namePrefix = simulationName.replaceAll("\\.", "p");
-			namePrefix = namePrefix.replaceAll("\\(", "_");
-			namePrefix = namePrefix.replaceAll("\\)", "_");
-			namePrefix = namePrefix.replaceAll(",", "_");
-			namePrefix = namePrefix.replaceAll("\\W+", "");
-			while (namePrefix.startsWith("_"))
-				namePrefix = namePrefix.substring(1);
-			while (namePrefix.endsWith("_"))
-				namePrefix = namePrefix.substring(0, namePrefix.length()-1);
-			while (namePrefix.contains("__"))
-				namePrefix = namePrefix.replaceAll("__", "_");
-			dirName += namePrefix;
+			dirName += getNamePrefix(simulationName);
 			if (dirName.length() > 100)
 				dirName = dirName.substring(0, 100);
 //			if (includeSpontaneous)
@@ -319,7 +315,10 @@ public class ETAS_ConfigBuilder {
 //				dirName += "-modParams";
 //			if (griddedOnly)
 //				dirName += "-griddedOnly";
-			outputDir = new File("${ETAS_SIM_DIR}/"+dirName); 
+			if (cmd.hasOption("parent-dir"))
+				outputDir = new File(cmd.getOptionValue("parent-dir")+"/"+dirName);
+			else
+				outputDir = new File("${ETAS_SIM_DIR}/"+dirName);
 //			System.out.println("Determined output dir: "+outputDir.getPath());
 		}
 		
@@ -344,6 +343,21 @@ public class ETAS_ConfigBuilder {
 		config.setETAS_K_COV(kCOV);
 		
 		return config;
+	}
+	
+	public static String getNamePrefix(String simulationName) {
+		String namePrefix = simulationName.replaceAll("\\.", "p");
+		namePrefix = namePrefix.replaceAll("\\(", "_");
+		namePrefix = namePrefix.replaceAll("\\)", "_");
+		namePrefix = namePrefix.replaceAll(",", "_");
+		namePrefix = namePrefix.replaceAll("\\W+", "");
+		while (namePrefix.startsWith("_"))
+			namePrefix = namePrefix.substring(1);
+		while (namePrefix.endsWith("_"))
+			namePrefix = namePrefix.substring(0, namePrefix.length()-1);
+		while (namePrefix.contains("__"))
+			namePrefix = namePrefix.replaceAll("__", "_");
+		return namePrefix;
 	}
 	
 	public static void checkWriteHPC(ETAS_Config config, File configFile, CommandLine cmd) throws IOException {
@@ -375,6 +389,11 @@ public class ETAS_ConfigBuilder {
 	
 	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer threads, Integer hours, String queue, File configFile)
 			throws IOException {
+		updateSlurmScript(inputFile, outputFile, nodes, threads, hours, queue, configFile.getPath());
+	}
+	
+	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer threads, Integer hours, String queue, String configFile)
+			throws IOException {
 		List<String> lines = new ArrayList<>();
 		
 		boolean nodeLineFound = true;
@@ -400,7 +419,7 @@ public class ETAS_ConfigBuilder {
 			}
 			
 			if (tline.startsWith("ETAS_CONF_JSON="))
-				line = "ETAS_CONF_JSON="+configFile.getPath();
+				line = "ETAS_CONF_JSON=\""+configFile+"\"";
 			
 			if (tline.startsWith("#SBATCH"))
 				lastIndexSBATCH = lines.size();

@@ -517,7 +517,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 					} else {
 						ETAS_Simulator.runETAS_Simulation(resultsDir, (FaultSystemSolutionERF_ETAS)erf, griddedRegion, triggerRup,
 								histQkList, includeSpontEvents, includeIndirectTriggering, gridSeisDiscr, simulationName, randSeed,
-								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, null);
+								fractionSrcAtPointList, srcAtPointList, isCubeInsideFaultPolygon, params, null, null);
 					}
 					
 					debug("completed "+index);

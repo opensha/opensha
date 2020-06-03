@@ -211,7 +211,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		}
 	}
 	
-	public class FaultStats {
+	public class FaultStats implements Comparable<FaultStats> {
 		private int id;
 		private String name;
 		
@@ -232,11 +232,14 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		// binned as [durationIndex][magIndex]
 		private List<boolean[][]> spontAnyList;
 		private List<boolean[][]> triggeredAnyList;
+		private List<boolean[][]> triggeredPrimaryList;
 		
 		private IncrementalMagFreqDist[] spontIncrProbs;
 		private EvenlyDiscretizedFunc[] spontCumulativeProbs;
 		private IncrementalMagFreqDist[] triggeredIncrProbs;
 		private EvenlyDiscretizedFunc[] triggeredCumulativeProbs;
+		private IncrementalMagFreqDist[] triggeredPrimaryIncrProbs;
+		private EvenlyDiscretizedFunc[] triggeredPrimaryCumulativeProbs;
 		
 		private IncrementalMagFreqDist fssIncrMFD;
 		
@@ -260,20 +263,23 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					triggeredPrimaryMNDs[i] = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDeltaMag);
 				}
 				this.triggeredAnyList = new ArrayList<>();
+				this.triggeredPrimaryList = new ArrayList<>();
 			}
 		}
 		
 		public void processCatalog(List<ETAS_EqkRupture> catalog, List<ETAS_EqkRupture> triggeredOnlyCatalog) {
 			Preconditions.checkState(spontIncrProbs == null && triggeredIncrProbs == null);
 			if (hasSpont)
-				doProcessCatalog(catalog, spontMNDs, null, spontAnyList);
+				doProcessCatalog(catalog, spontMNDs, null, spontAnyList, null);
 			if (hasTriggered)
-				totTriggerCount += doProcessCatalog(triggeredOnlyCatalog, triggeredMNDs, triggeredPrimaryMNDs, triggeredAnyList);
+				totTriggerCount += doProcessCatalog(triggeredOnlyCatalog, triggeredMNDs, triggeredPrimaryMNDs,
+						triggeredAnyList, triggeredPrimaryList);
 		}
 		
 		private int doProcessCatalog(List<ETAS_EqkRupture> catalog, IncrementalMagFreqDist[] mnds,
-				IncrementalMagFreqDist[] primaryMNDs, List<boolean[][]> anyList) {
+				IncrementalMagFreqDist[] primaryMNDs, List<boolean[][]> anyList, List<boolean[][]> anyPrimaryList) {
 			boolean[][] myAny = null;
+			boolean[][] myAnyPrimary = null;
 			int myCount = 0;
 			for (ETAS_EqkRupture rup : catalog) {
 				int fssIndex = rup.getFSSIndex();
@@ -282,8 +288,11 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				// it's on this fault
 				double mag = rup.getMag();
 				int magIndex = mnds[0].getClosestXIndex(mag);
-				if (myAny == null)
+				if (myAny == null) {
 					myAny = new boolean[durations.length][mfdNumMag];
+					if (anyPrimaryList != null)
+						myAnyPrimary = new boolean[durations.length][mfdNumMag];
+				}
 				boolean primary = rup.getGeneration() == 1;
 				for (int d=0; d<durations.length; d++) {
 					if (rup.getOriginTime() > maxOTs[d])
@@ -292,10 +301,14 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					if (primary && primaryMNDs != null)
 						primaryMNDs[d].add(magIndex, 1d);
 					myAny[d][magIndex] = true;
+					if (primary && anyPrimaryList != null)
+						myAnyPrimary[d][magIndex] = true;
 				}
 				myCount++;
 			}
 			anyList.add(myAny);
+			if (anyPrimaryList != null)
+				anyPrimaryList.add(myAnyPrimary);
 			return myCount;
 		}
 		
@@ -316,6 +329,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				triggeredPrimaryCumulativeMNDs = new EvenlyDiscretizedFunc[durations.length];
 				triggeredIncrProbs = new IncrementalMagFreqDist[durations.length];
 				triggeredCumulativeProbs = new EvenlyDiscretizedFunc[durations.length];
+				triggeredPrimaryIncrProbs = new IncrementalMagFreqDist[durations.length];
+				triggeredPrimaryCumulativeProbs = new EvenlyDiscretizedFunc[durations.length];
 			}
 
 			for (int d=0; d<durations.length; d++) {
@@ -331,6 +346,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					triggeredPrimaryMNDs[d].scale(durScalar);
 					triggeredPrimaryCumulativeMNDs[d] = triggeredPrimaryMNDs[d].getCumRateDistWithOffset();
 					calcProbs(triggeredAnyList, triggeredIncrProbs, triggeredCumulativeProbs, numCatalogs);
+					calcProbs(triggeredPrimaryList, triggeredPrimaryIncrProbs, triggeredPrimaryCumulativeProbs,
+							numCatalogs);
 				}
 			}
 		}
@@ -386,6 +403,23 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 				fssIncrMFD = mfd;
 			}
 			return fssIncrMFD;
+		}
+
+		@Override
+		public int compareTo(FaultStats o) {
+			return -Integer.compare(totTriggerCount, o.totTriggerCount);
+		}
+		
+		public EvenlyDiscretizedFunc[] getTriggeredCumulativeMPDs() {
+			return triggeredCumulativeProbs;
+		}
+		
+		public EvenlyDiscretizedFunc[] getSpontCumulativeMPDs() {
+			return spontCumulativeProbs;
+		}
+		
+		public String getName() {
+			return name;
 		}
 	}
 	
@@ -520,10 +554,17 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		FaultStats maxStat = null;
 		for (FaultStats stats : subSectStats) {
 			double statRate;
-			if (hasSpont)
-				statRate = stats.spontCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex);
-			else
-				statRate = stats.triggeredCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex);
+			if (annualize) {
+				if (hasSpont)
+					statRate = stats.spontCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex);
+				else
+					statRate = stats.triggeredCumulativeMNDs[maxDurationIndex].getY(minPlotMagIndex);
+			} else {
+				if (hasSpont)
+					statRate = stats.spontCumulativeProbs[maxDurationIndex].getY(minPlotMagIndex);
+				else
+					statRate = stats.triggeredCumulativeProbs[maxDurationIndex].getY(minPlotMagIndex);
+			}
 			if (statRate > maxRate) {
 				maxStat = stats;
 				maxRate = statRate;
@@ -538,6 +579,8 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			fractionalRate = 1d / catalogCount;
 		double cptMin = Math.min(-3, Math.log10(fractionalRate));
 		double cptMax = Math.max(-1, Math.ceil(Math.log10(maxRate)));
+		if (!annualize)
+			cptMax = Math.min(1d, cptMax);
 		System.out.println("CPT Range: "+cptMin+"\t"+cptMax);
 		if (!Doubles.isFinite(cptMin) || !Doubles.isFinite(cptMax))
 			return;
@@ -580,15 +623,26 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					double[] fssRates = annualize ? new double[subSectStats.length] : null;
 					
 					for (int s=0; s<subSectStats.length; s++) {
-						if (spont) {
-							particRates[s] = subSectStats[s].spontCumulativeMNDs[statDurIndex].getY(magIndex);
+						if (annualize) {
+							if (spont) {
+								particRates[s] = subSectStats[s].spontCumulativeMNDs[statDurIndex].getY(magIndex);
+							} else {
+								particRates[s] = subSectStats[s].triggeredCumulativeMNDs[statDurIndex].getY(magIndex);
+								if (primaryRates != null)
+									primaryRates[s] = subSectStats[s].triggeredPrimaryCumulativeMNDs[statDurIndex].getY(magIndex);
+							}
+							if (annualize)
+								fssRates[s] = subSectStats[s].getFSS_IncrMFD(fss).getCumRateDistWithOffset().getY(magIndex);
 						} else {
-							particRates[s] = subSectStats[s].triggeredCumulativeMNDs[statDurIndex].getY(magIndex);
-							if (primaryRates != null)
-								primaryRates[s] = subSectStats[s].triggeredPrimaryCumulativeMNDs[statDurIndex].getY(magIndex);
+							if (spont) {
+								particRates[s] = subSectStats[s].spontCumulativeProbs[statDurIndex].getY(magIndex);
+							} else {
+								particRates[s] = subSectStats[s].triggeredCumulativeProbs[statDurIndex].getY(magIndex);
+								if (primaryRates != null)
+									primaryRates[s] = subSectStats[s].triggeredPrimaryCumulativeProbs[statDurIndex].getY(magIndex);
+							}
 						}
-						if (annualize)
-							fssRates[s] = subSectStats[s].getFSS_IncrMFD(fss).getCumRateDistWithOffset().getY(magIndex);
+						
 						if (MAP_D) {
 							if (subSectStats[s].name.toLowerCase().contains("mojave"))
 								System.out.println("DEBUG: "+subSectStats[s].name+", spont?\t"+spont+"\trate: "+particRates[s]);
@@ -614,9 +668,9 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 					} else {
 						if (mapDurations.length > 1) {
 							prefixAdd = "_"+getTimeShortLabel(duration).replaceAll(" ", "")+prefixAdd;
-							particTitle = "Log10 "+getTimeShortLabel(duration)+magStr+" Participation Exp. Num";
+							particTitle = "Log10 "+getTimeShortLabel(duration)+magStr+" Participation Prob";
 						} else {
-							particTitle = "Log10"+magStr+" Participation Exp. Num";
+							particTitle = "Log10"+magStr+" Participation Prob";
 						}
 					}
 					
@@ -711,17 +765,27 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		
 	}
 	
+	public Table<Integer, Double, EvenlyDiscretizedFunc> getTDCumulativeMPDs() {
+		if (tdCalcThread.isAlive()) {
+			try {
+				tdCalcThread.join();
+			} catch (InterruptedException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		return tdCalcThread.tdFuncs;
+	}
+	
+	public double[] getDurations() {
+		return durations;
+	}
+	
 	private void writeFaultMFDs(File outputDir, FaultSystemSolution fss) throws IOException {
 		faultMFDPrefixes = HashBasedTable.create();
 		File subDir = new File(outputDir, "parent_sect_mpds");
 		Preconditions.checkState(subDir.exists() || subDir.mkdir());
 		
-		try {
-			tdCalcThread.join();
-		} catch (InterruptedException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-		Table<Integer, Double, EvenlyDiscretizedFunc> tdFuncs = tdCalcThread.tdFuncs;
+		Table<Integer, Double, EvenlyDiscretizedFunc> tdFuncs = getTDCumulativeMPDs();
 		
 		List<String> lines = new ArrayList<>();
 		lines.add("# Parent Section Magnitude-Probability Distributions");
@@ -1129,17 +1193,18 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 //				+ "2019-06-05_M7.1_SearlesValley_Sequence_UpdatedMw_and_depth");
 //				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-start-noon");
 //				+ "2019_07_06-SearlessValleySequenceFiniteFault-noSpont-full_td-10yr-following-M7.1");
-				+ "2019_07_11-ComCatM7p1_ci38457511_FiniteSurface-noSpont-full_td-scale1.14");
+//				+ "2019_07_11-ComCatM7p1_ci38457511_FiniteSurface-noSpont-full_td-scale1.14");
+				+ "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces");
 		File configFile = new File(simDir, "config.json");
 		
 		try {
 			ETAS_Config config = ETAS_Config.readJSON(configFile);
 			ETAS_Launcher launcher = new ETAS_Launcher(config, false);
 			
-			int maxNumCatalogs = 1000;
+			int maxNumCatalogs = -1;
 			
 			ETAS_FaultParticipationPlot plot = new ETAS_FaultParticipationPlot(config, launcher, "fault_participation",
-					false, true);
+					false, false);
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			

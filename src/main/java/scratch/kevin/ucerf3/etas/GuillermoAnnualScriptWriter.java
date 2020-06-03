@@ -21,8 +21,8 @@ public class GuillermoAnnualScriptWriter {
 		
 //		String kCOV = "1.5";
 		String kCOV = null;
-//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
-		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
+		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
+//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
 		
 		DecimalFormat optionalDigitDF = new DecimalFormat("0.##");
 		

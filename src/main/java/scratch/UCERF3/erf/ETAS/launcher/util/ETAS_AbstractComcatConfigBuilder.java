@@ -27,6 +27,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
@@ -73,6 +74,10 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 		Option minMagOption = new Option("minm", "min-mag", true, "Minimum magnitude event from ComCat (default: 2.5)");
 		minMagOption.setRequired(false);
 		ops.addOption(minMagOption);
+		
+		Option comcatFileOption = new Option("ccfile", "comcat-file", true, "Comcat file to use instead of accessing ComCat directly");
+		comcatFileOption.setRequired(false);
+		ops.addOption(comcatFileOption);
 		
 		/*
 		 * finite surface from ShakeMap options
@@ -171,6 +176,10 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 		Option mcOption = new Option("mc", "mag-complete", true, "Magnitude of Completeness for evaluation plots");
 		mcOption.setRequired(false);
 		ops.addOption(mcOption);
+		
+		Option skipPlotsOption = new Option("skpl", "skip-input-plots", false, "Flag to skip input plots");
+		skipPlotsOption.setRequired(false);
+		ops.addOption(skipPlotsOption);
 		
 		return ops;
 	}
@@ -510,6 +519,25 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 			Preconditions.checkState(primaryRupture != null, "ComCat start and end times are identical (%s), but no primary "
 					+ "rupture supplied!", comcatStartTime);
 			comcatEvents = new ObsEqkRupList();
+		} else if (cmd.hasOption("comcat-file")) {
+			ObsEqkRupList allComcatEvents;
+			try {
+				allComcatEvents = ETAS_ComcatEventFetcher.loadCatalogFile(ETAS_Config.resolvePath(cmd.getOptionValue("comcat-file")));
+			} catch (Exception e) {
+				if (e instanceof IOException)
+					throw (IOException)e;
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			comcatEvents = new ObsEqkRupList();
+			for (ObsEqkRupture rup : allComcatEvents) {
+				if (rup.getOriginTime() < comcatStartTime)
+					continue;
+				else if (rup.getOriginTime() > comcatEndTime)
+					continue;
+				else
+					comcatEvents.add(rup);
+			}
+			System.out.println("Retained "+comcatEvents.size()+" of "+allComcatEvents.size()+" events from input file");
 		} else {
 			ComcatRegion cReg = region instanceof ComcatRegion ? (ComcatRegion)region : new ComcatRegionAdapter(region);
 			comcatEvents = accessor.fetchEventList(primaryEventID, comcatStartTime, comcatEndTime, minDepth, maxDepth, cReg,
@@ -650,9 +678,14 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 		
 		checkWriteHPC(config, relativeConfigFile, cmd);
 	}
+	
+	public static boolean CACHE_TRIGGER_RUPS = false;
+	private static HashMap<String, TriggerRupture> triggerRupCache = new HashMap<>();
 
 	TriggerRupture buildRupture(Map<String, Double> modMags, Map<String, Double> modK, Map<String, Double> modP,
 			Map<String, Double> modC, Map<String, int[]> resetSectsMap, ObsEqkRupture eq) {
+		if (CACHE_TRIGGER_RUPS && triggerRupCache.containsKey(eq.getEventId()))
+			return triggerRupCache.get(eq.getEventId());
 		if (modMags != null && modMags.containsKey(eq.getEventId())) {
 			double mag = modMags.get(eq.getEventId());
 			System.out.println("Overriding magnitude of "+eq.getEventId()+" from "+(float)eq.getMag()+" to "+(float)mag);
@@ -677,10 +710,14 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 			triggerRup.setETAS_Params(etasK, etasP, etasC);
 		}
 		triggerRup.setComcatEventID(eq.getEventId());
+		if (CACHE_TRIGGER_RUPS)
+			triggerRupCache.put(eq.getEventId(), triggerRup);
 		return triggerRup;
 	}
 	
 	public void buildInputPlots() throws IOException {
+		if (cmd.hasOption("skip-input-plots"))
+			return;
 		// now write plots
 		File plotDir = new File(outputDir, "config_input_plots");
 		System.out.println();

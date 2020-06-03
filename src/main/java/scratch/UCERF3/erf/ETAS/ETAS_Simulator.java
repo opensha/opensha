@@ -3,9 +3,11 @@ package scratch.UCERF3.erf.ETAS;
 import java.awt.Color;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -164,7 +166,8 @@ public class ETAS_Simulator {
 			GriddedRegion griddedRegion, ETAS_EqkRupture scenarioRup, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
 			Long randomSeed, List<float[]> fractionSrcInCubeList, List<int[]> srcInCubeList, int[] inputIsCubeInsideFaultPolygon, 
-			ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams) throws IOException {
+			ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams, ETAS_LongTermMFDs longTermMFDs)
+					throws IOException {
 		List<ETAS_EqkRupture> scenarioRups = null;
 		if (scenarioRup != null) {
 			scenarioRups = new ArrayList<>();
@@ -173,7 +176,8 @@ public class ETAS_Simulator {
 		return runETAS_Simulation(
 				resultsDir, erf, griddedRegion, scenarioRups, histQkList, includeSpontEvents,
 				includeIndirectTriggering, gridSeisDiscr, simulationName, randomSeed,
-				fractionSrcInCubeList, srcInCubeList, inputIsCubeInsideFaultPolygon, etasParams, cubeParams);
+				fractionSrcInCubeList, srcInCubeList, inputIsCubeInsideFaultPolygon, etasParams,
+				cubeParams, longTermMFDs);
 	}
 	
 	
@@ -219,7 +223,7 @@ public class ETAS_Simulator {
 			GriddedRegion griddedRegion, List<ETAS_EqkRupture> scenarioRups, List<? extends ObsEqkRupture> histQkList, boolean includeSpontEvents,
 			boolean includeIndirectTriggering, double gridSeisDiscr, String simulationName,
 			Long randomSeed, List<float[]> fractionSrcInCubeList, List<int[]> srcInCubeList, int[] inputIsCubeInsideFaultPolygon, 
-			ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams) throws IOException {
+			ETAS_ParameterList etasParams, ETAS_CubeDiscretizationParams cubeParams, ETAS_LongTermMFDs longTermMFDs) throws IOException {
 		long simulationStartTime = System.currentTimeMillis();
 		
 		// Overide to Poisson if needed
@@ -256,8 +260,10 @@ public class ETAS_Simulator {
 		if(!resultsDir.exists()) resultsDir.mkdir();
 		
 		// set file for writing simulation info & write some preliminary stuff to it
-		FileWriter info_fr = new FileWriter(new File(resultsDir, "infoString.txt"));	// TODO this is closed below; why the warning?
-		FileWriter simulatedEventsFileWriter = new FileWriter(new File(resultsDir, "simulatedEvents.txt"));
+		// TODO this is closed below; why the warning?
+		int bufferSize = 1000000;
+		Writer info_fr = new BufferedWriter(new FileWriter(new File(resultsDir, "infoString.txt")), bufferSize);
+		Writer simulatedEventsFileWriter = new BufferedWriter(new FileWriter(new File(resultsDir, "simulatedEvents.txt")), bufferSize);
 		ETAS_CatalogIO.writeEventHeaderToFile(simulatedEventsFileWriter);
 
 		info_fr.write(simulationName+"\n");
@@ -322,13 +328,13 @@ public class ETAS_Simulator {
 		
 		// add scenario rup to beginning of obsEqkRuptureList
 		int[] scenarioRupIDs = null;
-		double[] numPrimaryAshockForScenarios = null;
+		Map<Integer, Integer> numPrimaryAshockForScenarios = null;
 		Range<Integer> rangeTriggerRupIDs = null;
 		if(scenarioRups != null && !scenarioRups.isEmpty()) {
 //			scenarioRupID = obsEqkRuptureList.size();
 			// zero is reserved for scenario rupture
 			scenarioRupIDs = new int[scenarioRups.size()];
-			numPrimaryAshockForScenarios = new double[scenarioRups.size()];
+			numPrimaryAshockForScenarios = new HashMap<>();
 			
 			for (int i=0; i<scenarioRups.size(); i++) {
 				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
@@ -395,7 +401,7 @@ public class ETAS_Simulator {
 			}
 		}
 		info_fr.write("\nExpected mean annual rate over timeSpan (per year) = "+(float)origTotRate+"\n");
-		info_fr.flush();
+//		info_fr.flush();
 		if(D) System.out.println("\tspontaneousRupSampler.calcSumOfY_Vals()="+(float)spontaneousRupSampler.calcSumOfY_Vals() +
 				"; that took (sec): "+(float)(System.currentTimeMillis()-st)/1000f);
 		
@@ -406,11 +412,13 @@ public class ETAS_Simulator {
 		// Create the ETAS_PrimaryEventSampler
 		if (cubeParams == null)
 			cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
-		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, sourceRates, null, etasParams,
+		if (longTermMFDs == null)
+			longTermMFDs = new ETAS_LongTermMFDs(fssERF, etasParams.getApplySubSeisForSupraNucl());
+		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, longTermMFDs, sourceRates, null, etasParams,
 				etas_utils, fractionSrcInCubeList, srcInCubeList, inputIsCubeInsideFaultPolygon);
 		if(D) System.out.println("ETAS_PrimaryEventSampler creation took "+(float)(System.currentTimeMillis()-st)/60000f+ " min");
 		info_fr.write("\nMaking ETAS_PrimaryEventSampler took "+(System.currentTimeMillis()-st)/60000+ " min");
-		info_fr.flush();
+//		info_fr.flush();
 		
 		
 		
@@ -436,12 +444,9 @@ public class ETAS_Simulator {
 			// get the random direct aftershock times
 			double[] randomAftShockTimes = etas_utils.getRandomEventTimes(parRup.getETAS_k(), parRup.getETAS_p(), parRup.getMag(), ETAS_Utils.magMin_DEFAULT, parRup.getETAS_c(), startDay, endDay);
 
-			if (scenarioRupIDs != null) {
-				for (int i=0; i<scenarioRupIDs.length; i++)
-					if(parRup.getID() == scenarioRupIDs[i])
-						numPrimaryAshockForScenarios[i] = randomAftShockTimes.length;
-			}
-			LocationList locList = null;
+			if (scenarioRupIDs != null && rangeTriggerRupIDs.contains(parRup.getID()))
+				numPrimaryAshockForScenarios.put(parRup.getID(), randomAftShockTimes.length);
+			RuptureSurface surf = null;
 			if(randomAftShockTimes.length>0) {
 				for(int i=0; i<randomAftShockTimes.length;i++) {
 					long ot = rupOT +  (long)(randomAftShockTimes[i]*(double)ProbabilityModelsCalc.MILLISEC_PER_DAY);	// convert to milliseconds
@@ -455,11 +460,10 @@ public class ETAS_Simulator {
 //						Location tempLoc = etas_utils.getRandomLocationOnRupSurface(parRup);
 						
 						// for no creep/aseis reduction:
-						if(locList==null) {	// make reusable location list
-							RuptureSurface surf = etas_utils.getRuptureSurfaceWithNoCreepReduction(parRup.getFSSIndex(), fssERF, 0.05);
-							locList = surf.getEvenlyDiscritizedListOfLocsOnSurface();							
-						}
-						Location tempLoc = locList.get(etas_utils.getRandomInt(locList.size()-1));
+						if(surf == null) // make reusable surface
+							surf = etas_utils.getRuptureSurfaceWithNoCreepReduction(parRup.getFSSIndex(), fssERF, 0.05);
+						int tempIndex = etas_utils.getRandomInt(surf.getEvenlyDiscretizedNumLocs()-1);
+						Location tempLoc = surf.getEvenlyDiscretizedLocation(tempIndex);
 						
 						if(tempLoc.getDepth()>etas_PrimEventSampler.maxDepth) {
 							Location newLoc = new Location(tempLoc.getLatitude(),tempLoc.getLongitude(), etas_PrimEventSampler.maxDepth);
@@ -478,7 +482,7 @@ public class ETAS_Simulator {
 		}
 		if (D) System.out.println("The "+obsEqkRuptureList.size()+" input events produced "+eventsToProcess.size()+" primary aftershocks");
 		info_fr.write("\nThe "+obsEqkRuptureList.size()+" input observed events produced "+eventsToProcess.size()+" primary aftershocks\n");
-		info_fr.flush();
+//		info_fr.flush();
 
 		
 		// make the list of spontaneous events, filling in only event IDs and origin times for now
@@ -591,7 +595,7 @@ public class ETAS_Simulator {
 					"\t(sample num over total expected num)"+"\n\tnumSpontEventsSampled="+spontEventTimes.length+"\n";
 			if(D) System.out.println(spEvStringInfo);
 			info_fr.write("\n"+spEvStringInfo);
-			info_fr.flush();
+//			info_fr.flush();
 		}
 		
 
@@ -600,6 +604,9 @@ public class ETAS_Simulator {
 		if(scenarioRups !=null) {
 			for (int i=0; i<scenarioRups.size(); i++) {
 				ETAS_EqkRupture scenarioRup = scenarioRups.get(i);
+				boolean scenWrite = (D || scenarioRups.size() < 100 || scenarioRup.getMag() >= 5d);
+				if (!scenWrite)
+					continue;
 				long rupOT = scenarioRup.getOriginTime();
 				
 				double startDay = (double)(simStartTimeMillis-rupOT) / (double)ProbabilityModelsCalc.MILLISEC_PER_DAY;	// convert epoch to days from event origin time
@@ -624,12 +631,13 @@ public class ETAS_Simulator {
 				}
 				double expNum = ETAS_Utils.getExpectedNumEvents(k, p, scenarioRup.getMag(), ETAS_Utils.magMin_DEFAULT, c, startDay, endDay);
 				info_fr.write("Expected number of primary events for Scenario: "+expNum+"\n");
-				info_fr.write("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+				int numPrimaryAftershocks = numPrimaryAshockForScenarios.get(scenarioRup.getID());
+				info_fr.write("Observed number of primary events for Scenario: "+numPrimaryAftershocks+"\n");
 				if (D) {
 					System.out.println("Expected number of primary events for Scenario: "+expNum);
-					System.out.println("Observed number of primary events for Scenario: "+numPrimaryAshockForScenarios[i]+"\n");
+					System.out.println("Observed number of primary events for Scenario: "+numPrimaryAftershocks+"\n");
 				}
-				info_fr.flush();
+//				info_fr.flush();
 			}
 		}
 		
@@ -653,7 +661,7 @@ public class ETAS_Simulator {
 		if (D) System.out.println("Looping over eventsToProcess (initial num = "+eventsToProcess.size()+")...\n");
 		if (D) System.out.println("\tFault system ruptures triggered (date\tmag\tname\tnthRup,src,rupInSrc,fltSysRup):");
 		info_fr.write("\nFault system ruptures triggered (date\tmag\tname\tnthRup,src,rupInSrc,fltSysRup):\n");
-		info_fr.flush();
+//		info_fr.flush();
 
 		st = System.currentTimeMillis();
 		
@@ -674,7 +682,7 @@ public class ETAS_Simulator {
 			}
 		}
 		
-		info_fr.flush();	// this writes the above out now in case of crash
+		if (D) info_fr.flush();	// this writes the above out now in case of crash
 		
 		while(eventsToProcess.size()>0) {
 			
@@ -757,7 +765,7 @@ public class ETAS_Simulator {
 				// get primary aftershock event times
 				double[] eventTimes = etas_utils.getRandomEventTimes(rup.getETAS_k(), rup.getETAS_p(), rup.getMag(), ETAS_Utils.magMin_DEFAULT, rup.getETAS_c(), startDay, endDay);
 
-				LocationList locList = null;
+				RuptureSurface surf = null;
 				if(eventTimes.length>0) {
 					for(int i=0; i<eventTimes.length;i++) {
 						long ot = rupOT +  (long)(eventTimes[i]*(double)ProbabilityModelsCalc.MILLISEC_PER_DAY);
@@ -771,11 +779,10 @@ public class ETAS_Simulator {
 //							Location tempLoc = etas_utils.getRandomLocationOnRupSurface(rup);
 							
 							// for no creep/aseis reduction:
-							if(locList==null) {	// make reusable location list
-								RuptureSurface surf = etas_utils.getRuptureSurfaceWithNoCreepReduction(rup.getFSSIndex(), fssERF, 0.05);
-								locList = surf.getEvenlyDiscritizedListOfLocsOnSurface();							
-							}
-							Location tempLoc = locList.get(etas_utils.getRandomInt(locList.size()-1));
+							if(surf == null) // make reusable surface
+								surf = etas_utils.getRuptureSurfaceWithNoCreepReduction(rup.getFSSIndex(), fssERF, 0.05);
+							int tempIndex = etas_utils.getRandomInt(surf.getEvenlyDiscretizedNumLocs()-1);
+							Location tempLoc = surf.getEvenlyDiscretizedLocation(tempIndex);
 							
 							if(tempLoc.getDepth()>etas_PrimEventSampler.maxDepth) {
 								Location newLoc = new Location(tempLoc.getLatitude(),tempLoc.getLongitude(), etas_PrimEventSampler.maxDepth);
@@ -869,7 +876,7 @@ public class ETAS_Simulator {
 				}
 			}
 			
-			info_fr.flush();	// this writes the above out now in case of crash
+			if (D) info_fr.flush();	// this writes the above out now in case of crash
 
 		}
 		
@@ -1565,7 +1572,7 @@ public class ETAS_Simulator {
 			String dirNameForSavingFiles = "U3_ETAS_"+simulationName+"/";
 			File resultsDir = new File(dirNameForSavingFiles);
 			runETAS_Simulation(resultsDir, erf, griddedRegion, scenarioList, histCat,  includeSpontEvents,
-					includeIndirectTriggering, gridSeisDiscr, simulationName, seed, null, null, null, params, null);
+					includeIndirectTriggering, gridSeisDiscr, simulationName, seed, null, null, null, params, null, null);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

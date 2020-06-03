@@ -318,6 +318,16 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 	}
 
 	@Override
+	public int getEvenlyDiscretizedNumLocs() {
+		return locs.size();
+	}
+
+	@Override
+	public Location getEvenlyDiscretizedLocation(int index) {
+		return locs.get(index);
+	}
+
+	@Override
 	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
 		return locs;
 	}

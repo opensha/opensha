@@ -42,6 +42,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			argz += " --mag-complete 3.5";
 //			argz += " --event-id nn00719663"; // 3/20/2020 Lake Tahoe area M5
 //			argz += " --event-id ci39126079"; // 4/4/2020 SJC Anza M4.9
+//			argz += " --event-id ci38488354"; // 4/4/2020 SJC Anza M4.9
 //			argz += " --radius 10";
 //			argz += " --mag-complete 2.5";
 			

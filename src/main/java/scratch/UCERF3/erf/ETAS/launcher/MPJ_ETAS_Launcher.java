@@ -15,6 +15,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.io.FileUtils;
+import org.netlib.util.intW;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 
@@ -22,6 +23,9 @@ import com.google.common.base.Preconditions;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.BinarayCatalogsMetadataIterator;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher.DebugLevel;
 
 public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
@@ -253,19 +257,62 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 			
 			args = cmd.getArgs();
 			
-			if (args.length != 1) {
+			if (args.length < 1) {
 				System.err.println("USAGE: "+ClassUtils.getClassNameWithoutPackage(MPJ_ETAS_Launcher.class)
-						+" [options] <conf-file.json>");
+						+" [options] <conf-file.json> [...<config-file-N.json>]");
 				abortAndExit(2);
 			}
 			
-			File confFile = new File(args[0]);
-			Preconditions.checkArgument(confFile.exists(),
-					"configuration file doesn't exist: "+confFile.getAbsolutePath());
-			ETAS_Config config = ETAS_Config.readJSON(confFile);
-			
-			MPJ_ETAS_Launcher driver = new MPJ_ETAS_Launcher(cmd, config);
-			driver.run();
+			for (String arg : args) {
+				File confFile = new File(arg);
+				System.out.println("Processing configuration: "+arg);
+				Preconditions.checkArgument(confFile.exists(),
+						"configuration file doesn't exist: "+confFile.getAbsolutePath());
+				ETAS_Config config = ETAS_Config.readJSON(confFile);
+				
+				File outputDir = config.getOutputDir();
+				List<BinaryFilteredOutputConfig> outputFilters = config.getBinaryOutputFilters();
+				if (outputFilters != null && !outputFilters.isEmpty() && !config.isForceRecalc()) {
+					// see if this one is already done
+					boolean allDone = true;
+					for (BinaryFilteredOutputConfig filter : outputFilters) {
+						File binFile = new File(outputDir, filter.getPrefix()+".bin");
+						allDone = allDone && binFile.exists() && binFile.length() > 0l;
+//						if (binFile.exists()) {
+//							System.out.println("Previous output file exists, checking if we're already done: "
+//									+binFile.getAbsolutePath());
+//							BinarayCatalogsMetadataIterator metadataIt =
+//									ETAS_CatalogIO.getBinaryCatalogsMetadataIterator(
+//											binFile);
+//							int doneCount = 0;
+//							try {
+//								while (metadataIt.hasNext()) {
+//									metadataIt.next();
+//									doneCount++;
+//								}
+//								System.out.println("\t"+doneCount+"/"+config.getNumSimulations()+" are done");
+//								allDone = allDone && doneCount == config.getNumSimulations();
+//							} catch (Exception e) {
+//								System.out.println("\tException reading previous output file");
+//								e.printStackTrace();
+//								allDone = false;
+//							}
+//						} else {
+//							allDone = false;
+//						}
+						if (!allDone)
+							break;
+					}
+					if (allDone) {
+						System.out.println("Already done, will skip "+arg);
+						continue;
+					}
+				}
+				
+				System.gc();
+				MPJ_ETAS_Launcher driver = new MPJ_ETAS_Launcher(cmd, config);
+				driver.run();
+			}
 			
 			finalizeMPJ();
 			

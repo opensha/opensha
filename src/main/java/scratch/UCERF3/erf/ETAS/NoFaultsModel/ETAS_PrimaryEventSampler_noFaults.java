@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -1622,7 +1623,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 	
 	
 		
-	public List<EvenlyDiscretizedFunc> generateRuptureDiagnostics(ETAS_EqkRupture rupture, double expNum, String rupInfo, File resultsDir, FileWriter info_fileWriter) throws IOException {
+	public List<EvenlyDiscretizedFunc> generateRuptureDiagnostics(ETAS_EqkRupture rupture, double expNum, String rupInfo, File resultsDir, Writer info_fileWriter) throws IOException {
 		
 		if(D) System.out.println("Starting generateRuptureDiagnostics");
 		

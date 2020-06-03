@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -148,10 +149,8 @@ public class ETAS_PrimaryEventSampler {
 	double totSectNuclRateArray[];
 	double totalSectRateInCubeArray[];
 	SectionSourceNuclRates[] srcNuclRateOnSects;
-	SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray;
-	List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList;
-	double[] totLongTermSubSeisRateOnSectArray;
-	SummedMagFreqDist longTermTotalERF_MFD;
+	
+	private ETAS_LongTermMFDs longTermMFDs;
 
 	
 	// this stores the rates of erf ruptures that go unassigned (outside the region here)
@@ -219,11 +218,12 @@ public class ETAS_PrimaryEventSampler {
 	 * @param inputSectInCubeList
 	 * @param inputIsCubeInsideFaultPolygon
 	 */
-	public ETAS_PrimaryEventSampler(ETAS_CubeDiscretizationParams cubeParams, AbstractNthRupERF erf, double sourceRates[],
-			String outputFileNameWithPath, ETAS_ParameterList etasParams, ETAS_Utils etas_utils,
+	public ETAS_PrimaryEventSampler(ETAS_CubeDiscretizationParams cubeParams, AbstractNthRupERF erf, ETAS_LongTermMFDs longTermMFDs,
+			double sourceRates[], String outputFileNameWithPath, ETAS_ParameterList etasParams, ETAS_Utils etas_utils,
 			List<float[]> inputSectDistForCubeList, List<int[]> inputSectInCubeList,  int[] inputIsCubeInsideFaultPolygon) {
 		this.cubeParams = cubeParams;
 		this.etasParams = etasParams;
+		this.longTermMFDs = longTermMFDs;
 
 		this.applyGR_Corr = etasParams.getImposeGR();
 		this.probModel = etasParams.getU3ETAS_ProbModel();
@@ -391,10 +391,7 @@ public class ETAS_PrimaryEventSampler {
 				cubesForSectionList.get(s).add(c);
 				cubeDistsForSectionList.get(s).add(dist);
 			}
-		}	
-		
-		// TODO already called above when making GR corr values
-		makeLongTermSectMFDs();
+		}
 		
 		// make temporary list of fraction hash maps
 		ArrayList<HashMap<Integer,Float>> hashMapForSectList = new ArrayList<HashMap<Integer,Float>>();
@@ -481,6 +478,8 @@ public class ETAS_PrimaryEventSampler {
 		}
 		//
 		double[] sectNormTimeSince = fssERF.getNormTimeSinceLastForSections();
+		
+		double[] totLongTermSubSeisRateOnSectArray = longTermMFDs.getTotLongTermSubSeisRateOnSectArray();
 			
 		for(int src=0; src<numFltSystSources; src++) {
 			int fltSysRupIndex = fssERF.getFltSysRupIndexForSource(src);
@@ -842,7 +841,7 @@ public class ETAS_PrimaryEventSampler {
 		
 		double charFactor = charFactorForSectArray[sectionIndex]*grCorrFactorForSectArray[sectionIndex];
 		double distThresh = 10f; // where it goes from ramp to water level
-		double totalRate = longTermSupraSeisMFD_OnSectArray[sectionIndex].getTotalIncrRate();
+		double totalRate = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray()[sectionIndex].getTotalIncrRate();
 		double cubeRateBeyondDistThresh = totalRate/(charFactor*numCubes);
 		double totalRateBeyondDistThresh = 0.0;
 		double numCubesWithinDistThresh = 0.0;
@@ -2165,6 +2164,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 //System.out.println("HERE isCubeInsideFaultPolygon[cubeRegIndex]="+isCubeInsideFaultPolygon[cubeRegIndex]);
 			
 			double minVal = Double.MAX_VALUE, maxVal = -Double.MAX_VALUE;
+			
+			SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
 
 			// Data for squares on the EW trending vertical face
 			double lat = startCubeLat;
@@ -2529,9 +2530,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		List<FaultSectionPrefData> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 		double[] values = new double[faults.size()];
 		
-		// Make sure long-term MFDs are created
-		makeLongTermSectMFDs();
-		
 		FileWriter fileWriter = new FileWriter(new File(resultsDir, dirName+".csv"));
 		fileWriter.write("SectID,CharFactorSupraRates,CharFactorNumPrimary,CharFactorMoRate,subRate,supraRate,minSupraMag,MoRate,SectName,SubSect\n");
 
@@ -2558,7 +2556,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		ArbDiscrEmpiricalDistFunc charValSupraRatesDistSupraRateWted = new ArbDiscrEmpiricalDistFunc();
 		DefaultXY_DataSet charValSupraRatesVsMomentRateData = new DefaultXY_DataSet();
 		DefaultXY_DataSet charValSupraRatesVsSupraRateData = new DefaultXY_DataSet();
-
+		
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
+		
 		int numPts=0;
 		for(int sectIndex=0;sectIndex<values.length;sectIndex++) {
 			double valNumPrimary, valSupraRates, valMoRate;
@@ -2795,9 +2796,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		List<FaultSectionPrefData> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 		double[] values = new double[faults.size()];
 		
-		// Make sure long-term MFDs are created
-		makeLongTermSectMFDs();
-		
 		FileWriter fileWriter = new FileWriter(new File(resultsDir, "FaultSubsectionCharFactorData.csv"));
 		fileWriter.write("SectID,CharFactorSupraRates,CharFactorNumPrimary,supraRate,MoRate,SectName\n");
 
@@ -2824,7 +2822,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		ArbDiscrEmpiricalDistFunc charValSupraRatesDistSupraRateWted = new ArbDiscrEmpiricalDistFunc();
 		DefaultXY_DataSet charValSupraRatesVsMomentRateData = new DefaultXY_DataSet();
 		DefaultXY_DataSet charValSupraRatesVsSupraRateData = new DefaultXY_DataSet();
-
+		
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
+		
 		int numPts=0;
 		for(int sectIndex=0;sectIndex<values.length;sectIndex++) {
 			double valNumPrimary, valSupraRates, valMoRate;
@@ -3053,10 +3054,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		
 		DefaultXY_DataSet logCharFactorNumPrimaryVsLogSupraRate = new DefaultXY_DataSet();
 		DefaultXY_DataSet logCharFactorSupraSeisVsLogSupraRate = new DefaultXY_DataSet();
-
-		
-		// Make sure long-term MFDs are created
-		makeLongTermSectMFDs();
 		
 		SummedMagFreqDist totSubMFD = new SummedMagFreqDist(2.55, 8.95, 65);
 		SummedMagFreqDist totSupraMFD = new SummedMagFreqDist(2.55, 8.95, 65);
@@ -3076,6 +3073,9 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 //		FileWriter fileWriterGMT = new FileWriter(new File(resultsDir, "GRcorrStatsData.csv"));
 //		fileWriterGMT.write("sectID,1.0/GRcor1.0/GRcorrSupraRates,tsectName\n");
 
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
+		
 		for(int sectIndex=0;sectIndex<charFactorNumPrimaryArray.length;sectIndex++) {
 			if (longTermSupraSeisMFD_OnSectArray[sectIndex].getMaxY() == 0d ||  longTermSubSeisMFD_OnSectList.get(sectIndex).getMaxY() == 0d) {
 				charFactorNumPrimaryArray[sectIndex] = Double.NaN;
@@ -3302,10 +3302,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		
 		DefaultXY_DataSet logCharFactorNumPrimaryVsLogMomentRate = new DefaultXY_DataSet();
 		DefaultXY_DataSet logCharFactorSupraSeisVsLogMomentRate = new DefaultXY_DataSet();
-
-		
-		// Make sure long-term MFDs are created
-		makeLongTermSectMFDs();
 		
 		SummedMagFreqDist totSubMFD = new SummedMagFreqDist(2.55, 8.95, 65);
 		SummedMagFreqDist totSupraMFD = new SummedMagFreqDist(2.55, 8.95, 65);
@@ -3325,6 +3321,9 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 //		FileWriter fileWriterGMT = new FileWriter(new File(resultsDir, "GRcorrStatsData.csv"));
 //		fileWriterGMT.write("sectID,1.0/GRcor1.0/GRcorrSupraRates,tsectName\n");
 
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
+		
 		for(int sectIndex=0;sectIndex<charFactorNumPrimaryArray.length;sectIndex++) {
 			charFactorNumPrimaryArray[sectIndex] = Math.log10(1.0/ETAS_Utils.getScalingFactorToImposeGR_numPrimary(longTermSupraSeisMFD_OnSectArray[sectIndex], longTermSubSeisMFD_OnSectList.get(sectIndex), false));
 			charFactorSupraRatesArray[sectIndex] = Math.log10(1.0/ETAS_Utils.getScalingFactorToImposeGR_supraRates(longTermSupraSeisMFD_OnSectArray[sectIndex], longTermSubSeisMFD_OnSectList.get(sectIndex), false));
@@ -4467,6 +4466,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	 * @return
 	 */
 	public double getGridSourcRateInCube(int cubeIndex, boolean debug) {
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		
 		int griddeSeisRegionIndex = origGriddedRegion.indexForLocation(getCubeLocationForIndex(cubeIndex));
 		if(griddeSeisRegionIndex != -1) {
@@ -4595,144 +4595,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			}
 		}
 	}
-
-	
-	/**
-	 * This creates the long-term (time independent) supra- and sub-seismo MFDs for each section (if they don't already exist) held in
-	 * longTermSupraSeisMFD_OnSectArray and longTermSubSeisMFD_OnSectList.
-	 */
-	private void makeLongTermSectMFDs() {
-		
-		if(longTermSupraSeisMFD_OnSectArray == null || longTermSubSeisMFD_OnSectList == null) {
-			
-			// here are the sub-seis MFDs
-			longTermSubSeisMFD_OnSectList = fssERF.getSolution().getSubSeismoOnFaultMFD_List();
-			
-			totLongTermSubSeisRateOnSectArray = new double[longTermSubSeisMFD_OnSectList.size()];
-			for(int s=0;s<totLongTermSubSeisRateOnSectArray.length;s++) {
-				if(longTermSubSeisMFD_OnSectList.get(s) != null)
-					totLongTermSubSeisRateOnSectArray[s] = longTermSubSeisMFD_OnSectList.get(s).getCumRate(2.55);
-				else
-					totLongTermSubSeisRateOnSectArray[s] = longTermSubSeisMFD_OnSectList.get(s).getCumRate(2.55);
-			}
-			
-			// can't get supra-seism MFDs from fault-system-solution becuase some rups are zeroed out and there may 
-			// be aleatory mag-area variability added in the ERF, so compute from ERF.
-			
-			// temporarily change the erf to Poisson to get long-term section MFDs (and test the parameter values are the same after)
-			ProbabilityModelOptions probModel = (ProbabilityModelOptions)erf.getParameter(ProbabilityModelParam.NAME).getValue();
-			ArrayList paramValueList = new ArrayList();
-			for(Parameter param : erf.getAdjustableParameterList()) {
-				paramValueList.add(param.getValue());
-			}
-			TimeSpan tsp = erf.getTimeSpan();
-			double duration = tsp.getDuration();
-			String startTimeString = tsp.getStartTimeMonth()+"/"+tsp.getStartTimeDay()+"/"+tsp.getStartTimeYear()+"; hr="+tsp.getStartTimeHour()+"; min="+tsp.getStartTimeMinute()+"; sec="+tsp.getStartTimeSecond();
-			paramValueList.add(startTimeString);
-			paramValueList.add(duration);
-			int numParams = paramValueList.size();
-
-			// now set ERF to poisson:
-			erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
-			erf.updateForecast();
-			// get what we need
-			if(wtSupraNuclBySubSeisRates) {
-				longTermSupraSeisMFD_OnSectArray = calcNucleationMFDForAllSectsWtedBySubSeisRates(2.55, 8.95, 65);
-			}
-			else {
-				longTermSupraSeisMFD_OnSectArray = FaultSysSolutionERF_Calc.calcNucleationMFDForAllSects(fssERF, 2.55, 8.95, 65);
-			}
-						
-			longTermTotalERF_MFD = ERF_Calculator.getTotalMFD_ForERF(erf, 2.55, 8.45, 60, true);		
-
-			
-			// set it back and test param values
-			erf.getParameter(ProbabilityModelParam.NAME).setValue(probModel);
-			erf.updateForecast();
-			
-			int testNum = erf.getAdjustableParameterList().size()+2;
-			if(numParams != testNum) {
-				throw new RuntimeException("PROBLEM: num parameters changed:\t"+numParams+"\t"+testNum);
-			}
-			int i=0;
-			for(Parameter param : erf.getAdjustableParameterList()) {
-				if(param.getValue() != paramValueList.get(i))
-					throw new RuntimeException("PROBLEM: "+param.getValue()+"\t"+paramValueList.get(i));
-				i+=1;
-			}
-			TimeSpan tsp2 = erf.getTimeSpan();
-			double duration2 = tsp2.getDuration();
-			String startTimeString2 = tsp2.getStartTimeMonth()+"/"+tsp2.getStartTimeDay()+"/"+tsp2.getStartTimeYear()+"; hr="+tsp2.getStartTimeHour()+"; min="+tsp2.getStartTimeMinute()+"; sec="+tsp2.getStartTimeSecond();
-			if(!startTimeString2.equals(startTimeString))
-				throw new RuntimeException("PROBLEM: "+startTimeString2+"\t"+startTimeString2);
-			if(duration2 != duration)
-				throw new RuntimeException("PROBLEM Duration: "+duration2+"\t"+duration);
-		}
-
-	}
-	
-	
-	
-	/**
-	 * This computes fault section nuclation MFD, accounting for any applied time dependence, aleatory mag-area 
-	 * uncertainty, and smaller ruptures set to zero in the ERF (which is how this differs from 
-	 * InversionFaultSystemSolution.calcNucleationRateForAllSects(*)), and assuming a uniform distribution
-	 * of nucleations over the rupture surface.
-	 * @param erf
-	 * @param min, max, and num (MFD discretization values)
-	 * @return
-	 */
-	private  SummedMagFreqDist[] calcNucleationMFDForAllSectsWtedBySubSeisRates(double min,double max,int num) {
-		FaultSystemRupSet rupSet = fssERF.getSolution().getRupSet();
-		
-		SummedMagFreqDist[] mfdArray = new SummedMagFreqDist[rupSet.getNumSections()];
-		for(int i=0;i<mfdArray.length;i++) {
-			mfdArray[i] = new SummedMagFreqDist(min,max,num);
-		}
-		double duration = erf.getTimeSpan().getDuration();
-		
-		for(int s=0; s<fssERF.getNumFaultSystemSources();s++) {
-			SummedMagFreqDist srcMFD = ERF_Calculator.getTotalMFD_ForSource(fssERF.getSource(s), duration, min, max, num, true);
-			int fssRupIndex = fssERF.getFltSysRupIndexForSource(s);
-			List<Integer> sectIndexList = rupSet.getSectionsIndicesForRup(fssRupIndex);
-
-			int numSubRates=0;
-			double aveSubRates=0;	// this will be used where there are no subseis ruptures
-			for(int sectIndex:sectIndexList) {
-				if(totLongTermSubSeisRateOnSectArray[sectIndex]>0) {
-					numSubRates+=1;
-					aveSubRates+=totLongTermSubSeisRateOnSectArray[sectIndex];
-				}
-			}
-			if(aveSubRates==0)	// all were outside relm region; give all the same weight
-				aveSubRates=1;
-			else
-				aveSubRates /= numSubRates;
-
-			double sectWt;
-			double totWt=0;
-			for(int sectIndex : sectIndexList) {
-				if(totLongTermSubSeisRateOnSectArray[sectIndex] != 0)
-					sectWt = totLongTermSubSeisRateOnSectArray[sectIndex];
-				else
-					sectWt = aveSubRates;
-				totWt += sectWt;
-			}
-			for(int sectIndex : sectIndexList) {
-				if(totLongTermSubSeisRateOnSectArray[sectIndex] != 0)
-					sectWt = totLongTermSubSeisRateOnSectArray[sectIndex];
-				else
-					sectWt = aveSubRates;
-				for(int i=0;i<num;i++) {
-					mfdArray[sectIndex].add(i,srcMFD.getY(i)*sectWt/totWt);
-				}
-			}
-		}
-		return mfdArray;
-	}
-
-	
-	
 	
 	/**
 	 * This computes a scale factor for each fault section, whereby multiplying the associate supra-seismogenic MFD
@@ -4748,8 +4610,9 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		grCorrFactorForSectArray = new double[rupSet.getNumSections()];
 		charFactorForSectArray = new double[rupSet.getNumSections()];
 
-		// Make sure long-term MFDs are created
-		makeLongTermSectMFDs();
+		
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 
 		//System.out.println("GR Correction Factors:");
 
@@ -5041,6 +4904,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	 */
 	public void testAltSubseisOnFaultMFD_Representations() {
 		System.out.println("Starting testSubseisOnFaultMFDs()");
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		for(int srcID=numFltSystSources;srcID<fssERF.getNumSources();srcID++) {
 			SummedMagFreqDist mfd = mfdForSrcSubSeisOnlyArray[srcID];
 			if(mfd != null) {
@@ -5079,6 +4943,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	 */
 	public void testSubseisOnFaultMFDs() {
 		System.out.println("Starting testSubseisOnFaultMFDs()");
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		for(int srcID=numFltSystSources;srcID<fssERF.getNumSources();srcID++) {
 			SummedMagFreqDist mfd = mfdForSrcSubSeisOnlyArray[srcID];
 			if(mfd != null) {
@@ -5457,7 +5322,6 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	public void testFaultPolyMgr() {
 		
 		computeMFD_ForSrcArrays(2.05, 8.95, 70);
-		makeLongTermSectMFDs();
 		
 		// This shouldn't work because sub-seis fault section rates have been mapped back to grid nodes evenly rather than weighed by original grid-node rate
 //		for(int i=0;i<faultPolyMgr.getRegion().getNumLocations();i++) {
@@ -5516,7 +5380,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 //			}
 //
 //		}
-
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		
 		// This tests whether we can recover the subseismo section rates from the rates on grid nodes;  It works in all but a few cases,
 		// which are sections right on the edge of the RELM region, plus Rose Canyon subsection 0 had a norm diff of 0.001 that I can't explain
@@ -5695,7 +5559,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 //		mfd1.setInfo("This is known to be wrong");
 		
 		
-		
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		// This is the correct way to recover the the fault section MFD from that at grid nodes
 		Map<Integer, Double> nodeFracMap = faultPolyMgr.getNodeFractions(sectIndex); // the fraction of the fault polygon occupied by each node, where fractions sum to 1.0
 		double targetRate=0;
@@ -5813,6 +5678,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		totMFD_Supra.setName("totMFD_Supra");
 		SummedMagFreqDist totMFD_Sub =  new SummedMagFreqDist(minMag, maxMag, numMag);
 		totMFD_Sub.setName("totMFD_Sub");
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		for(int s=0;s<rupSet.getNumSections();s++) {
 			if(longTermSubSeisMFD_OnSectList.get(s) != null) {
 				totMFD_Sub.addIncrementalMagFreqDist(longTermSubSeisMFD_OnSectList.get(s));
@@ -5854,6 +5721,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		totMFD_Supra.setName("totMFD_Supra");
 		SummedMagFreqDist totMFD_Sub =  new SummedMagFreqDist(minMag, maxMag, numMag);
 		totMFD_Sub.setName("totMFD_Sub");
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		for(int s=0;s<rupSet.getNumSections();s++) {
 			if(longTermSubSeisMFD_OnSectList.get(s) != null) {
 				totMFD_Sub.addIncrementalMagFreqDist(longTermSubSeisMFD_OnSectList.get(s));
@@ -5941,7 +5810,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	 */
 	public void plotMFDsForSubSect(int sectIndex) {
 		String name = rupSet.getFaultSectionData(sectIndex).getName();
-		makeLongTermSectMFDs();
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		IncrementalMagFreqDist subSeisMFD = longTermSubSeisMFD_OnSectList.get(sectIndex);
 		subSeisMFD.setName(subSeisMFD+" for "+name);
 		IncrementalMagFreqDist supraSeisMFD = longTermSupraSeisMFD_OnSectArray[sectIndex];
@@ -6102,6 +5972,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 
 	public  void writeTotSubSeisRateForSections(int firstSubSectID, int lastSubSectID) {
 		double totRate=0;
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		System.out.println("\nM≥2.5 Subseis Rates for Subsections\n");
 			for(int i=firstSubSectID; i<=lastSubSectID;i++) {
 				String name = rupSet.getFaultSectionData(i).getName();
@@ -6113,7 +5984,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	}
 	
 	public SummedMagFreqDist getLongTermTotalERF_MFD() {
-		return longTermTotalERF_MFD;
+		return longTermMFDs.getLongTermTotalERF_MFD();
 	}
 	
 	
@@ -6359,7 +6230,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		
 		ETAS_CubeDiscretizationParams cubeParams = new ETAS_CubeDiscretizationParams(griddedRegion);
 		
-		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, sourceRates,
+		ETAS_LongTermMFDs longTermMFDs = new ETAS_LongTermMFDs(erf, etasParams.getApplySubSeisForSupraNucl());
+		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, longTermMFDs, sourceRates,
 				null, etasParams, new ETAS_Utils(), null, null, null);
 		
 //		etas_PrimEventSampler.plotExpectedLongTermMFDs();
@@ -6567,7 +6439,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	
 	
 		
-	public List<EvenlyDiscretizedFunc> generateRuptureDiagnostics(ETAS_EqkRupture rupture, double expNum, String rupInfo, File resultsDir, FileWriter info_fileWriter) throws IOException {
+	public List<EvenlyDiscretizedFunc> generateRuptureDiagnostics(ETAS_EqkRupture rupture, double expNum, String rupInfo, File resultsDir, Writer info_fileWriter) throws IOException {
 		
 		if(D) System.out.println("Starting generateRuptureDiagnostics");
 		
@@ -6835,8 +6707,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		}
 		
 		// Make sure long-term MFDs are created
-		makeLongTermSectMFDs();
 		SummedMagFreqDist mfd2 = new SummedMagFreqDist(2.05, 8.95, 70);
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		for(IncrementalMagFreqDist mfd:longTermSubSeisMFD_OnSectList) {
 			if(mfd != null)
 				mfd2.addIncrementalMagFreqDist(mfd);
@@ -6889,6 +6761,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		double rate1=0;
 		double rate2=0;
 		double rate3=0;
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		for(int sectID: sectInCubeList.get(cubeIndex)) {
 			System.out.println("\n"+rupSet.getFaultSectionData(sectID).getName());
 			int numCubesInsideFaultPolygon = numCubesInsideFaultPolygonArray[sectID];
@@ -6926,6 +6800,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		if(fracArray.length==0) { // no sections in cube
 			return getTrulyOffFaultGR_Corr(false);
 		}
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		for(int i=0;i<sectArray.length;i++) {
 			int sectID=sectArray[i];
 			IncrementalMagFreqDist supraMFD = longTermSupraSeisMFD_OnSectArray[sectID].deepClone();
@@ -6953,12 +6829,11 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		if(mfdForSrcArray == null) {
 			computeMFD_ForSrcArrays(2.05, 8.95, 70);
 		}
-		
-		makeLongTermSectMFDs();
 
 		Region faultPolygon = faultPolyMgr.getPoly(sectID);
 		System.out.println("Section Polygon for "+rupSet.getFaultSectionData(sectID).getName()+"\n"+faultPolygon.getBorder().toString());
-		
+		SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray = longTermMFDs.getLongTermSupraSeisMFD_OnSectArray();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = longTermMFDs.getLongTermSubSeisMFD_OnSectList();
 		double sectCorr = ETAS_Utils.getScalingFactorToImposeGR_supraRates(longTermSupraSeisMFD_OnSectArray[sectID], longTermSubSeisMFD_OnSectList.get(sectID), false);
 		System.out.println("sect grCorr = "+sectCorr);
 	

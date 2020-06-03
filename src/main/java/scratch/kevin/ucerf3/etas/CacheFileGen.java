@@ -26,6 +26,7 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
+import scratch.UCERF3.erf.ETAS.ETAS_LongTermMFDs;
 import scratch.UCERF3.erf.ETAS.ETAS_PrimaryEventSampler;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
@@ -235,7 +236,7 @@ public class CacheFileGen {
 		
 		ETAS_Simulator.runETAS_Simulation(resultsDir, erf, reg, mainshockRup, histQkList, includeSpontEvents,
 				includeIndirectTriggering, gridSeisDiscr, null, randSeed,
-				null, null, null, params, null);
+				null, null, null, params, null, null);
 
 		
 		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
@@ -254,7 +255,8 @@ public class CacheFileGen {
 		}
 
 		ETAS_CubeDiscretizationParams cubeParams = new ETAS_CubeDiscretizationParams(reg);
-		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, sourceRates, 
+		ETAS_LongTermMFDs longTermMFDs = new ETAS_LongTermMFDs(erf, params.getApplySubSeisForSupraNucl());
+		ETAS_PrimaryEventSampler etas_PrimEventSampler = new ETAS_PrimaryEventSampler(cubeParams, erf, longTermMFDs, sourceRates, 
 				null, params, new ETAS_Utils(),null,null,null);
 		
 		etas_PrimEventSampler.getExpectedAfterShockRateInGridCellsFromSupraRates(10d, new ETAS_ParameterList(), 2.0, null);

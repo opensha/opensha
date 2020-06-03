@@ -283,7 +283,7 @@ public class ETAS_SimulationGUI extends JFrame implements ParameterChangeListene
 		ETAS_Simulator.runETAS_Simulation(outputDir, erf, griddedRegion, scenarioRup, histQkList,
 				includeSpontEventsParam.getValue(), includeIndirectTriggeringParam.getValue(),
 				griddedRegion.getLatSpacing(), null, randomSeed, fractionSectInCubeCache, sectInCubeCache,
-				cubeInsidePolyCache, etasParams, null);
+				cubeInsidePolyCache, etasParams, null, null);
 		
 		System.out.println("Done calculating");
 	}

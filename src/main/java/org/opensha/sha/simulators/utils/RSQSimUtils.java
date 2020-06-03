@@ -642,7 +642,7 @@ public class RSQSimUtils {
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
 		System.out.println("Loaded "+elements.size()+" elements");
 		
-		File stlFile = new File("/home/kevin/git/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
+		File stlFile = new File("/home/kevin/markdown/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
 		writeSTLFile(elements, stlFile);
 		System.exit(0);
 //		for (Location loc : elements.get(0).getVertices())

@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -85,7 +86,7 @@ public class ETAS_CatalogIO {
 	 * @param fileWriter
 	 * @throws IOException
 	 */
-	public static void writeEventHeaderToFile(FileWriter fileWriter) throws IOException {
+	public static void writeEventHeaderToFile(Writer fileWriter) throws IOException {
 		// OLD FORMAT
 		//		fileWriter.write("# nthERFIndex\tID\tparID\tGen\tOrigTime\tdistToParent\tMag\tLat\tLon\tDep\tFSS_ID\tGridNodeIndex\n");
 		// NEW FORMAT: Year Month Day Hour Minute Sec Lat Long Depth Magnitude id parentID gen origTime
@@ -96,7 +97,7 @@ public class ETAS_CatalogIO {
 	public static final String EVENT_FILE_HEADER = "Year\tMonth\tDay\tHour\tMinute\tSec\tLat\tLon\tDepth\tMagnitude\t"
 				+ "ID\tparID\tGen\tOrigTime\tdistToParent\tnthERFIndex\tFSS_ID\tGridNodeIndex\tETAS_k";
 	
-	public static void writeMetadataToFile(FileWriter fw, ETAS_SimulationMetadata meta) throws IOException {
+	public static void writeMetadataToFile(Writer fw, ETAS_SimulationMetadata meta) throws IOException {
 		fw.write("% ------------ METADATA -------------\n");
 		fw.write("% numRuptures = "+meta.totalNumRuptures+"\n");
 		fw.write("% randomSeed = "+meta.randomSeed+"\n");
@@ -123,7 +124,7 @@ public class ETAS_CatalogIO {
 	 * @param rup
 	 * @throws IOException
 	 */
-	public static void writeEventToFile(FileWriter fileWriter, ETAS_EqkRupture rup) throws IOException {
+	public static void writeEventToFile(Writer fileWriter, ETAS_EqkRupture rup) throws IOException {
 		fileWriter.write(getEventFileLine(rup)+"\n");
 	}
 	
