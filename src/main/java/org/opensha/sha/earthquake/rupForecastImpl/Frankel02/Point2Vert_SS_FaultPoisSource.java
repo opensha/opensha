@@ -74,6 +74,8 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 	private double magCutOff;
 	private PointSurface ptSurface;
 	private FrankelGriddedSurface finiteFault;
+	
+	private Location loc;
 
 	// to hold the non-zero mags, rates, and rupture surfaces
 	//  ArrayList mags, rates, rupSurfaces;
@@ -160,6 +162,7 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 		this.duration = duration;
 		this.magFreqDist = magFreqDist;
 		this.magLengthRelationship = magLengthRelationship;
+		this.loc = loc;
 
 		// make the point surface
 		ptSurface = new PointSurface(loc);
@@ -296,6 +299,10 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 		 */
 		return LocationUtils.horzDistance(
 				site.getLocation(),ptSurface.getLocation());
+	}
+	
+	public Location getLocation() {
+		return loc;
 	}
 
 	/**
