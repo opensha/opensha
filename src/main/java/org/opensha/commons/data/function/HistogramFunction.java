@@ -212,9 +212,9 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 		double minX = numBinsAwayFromZero * delta + halfDelta;
 		// handle edge cases
 		if (minValue < minX-halfDelta)
-			minValue -= delta;
+			minX -= delta;
 		else if (minValue > minX+halfDelta)
-			minValue += delta;
+			minX += delta;
 		Preconditions.checkState(minValue <= minX + halfDelta && minValue >= minX - halfDelta);
 		
 		double maxDelta = maxValue - minX;
