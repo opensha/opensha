@@ -274,15 +274,15 @@ public class ComcatDataPlotter {
 	
 	public void plotTimeFuncPlot(File outputDir, String prefix, double mc) throws IOException {
 		plotTimeFuncPlot(outputDir, prefix, "M≥"+optionalDigitDF.format(mc),
-				calcCumulativeTimeFunc(mc), null);
+				calcCumulativeTimeFunc(mc), null, null);
 	}
 	
 	public void plotTimeFuncPlot(File outputDir, String prefix, TimeDepMagComplete tdMc) throws IOException {
-		plotTimeFuncPlot(outputDir, prefix, "M≥Mc(t)", calcCumulativeTimeFunc(tdMc), null);
+		plotTimeFuncPlot(outputDir, prefix, "M≥Mc(t)", calcCumulativeTimeFunc(tdMc), null, null);
 	}
 	
 	public void plotTimeFuncPlot(File outputDir, String prefix, String magLabel,
-			EvenlyDiscretizedFunc comcatCumulativeTimeFunc, FractileCurveCalculator modelCalc)
+			EvenlyDiscretizedFunc comcatCumulativeTimeFunc, Double minTime, FractileCurveCalculator modelCalc)
 					throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -371,7 +371,9 @@ public class ComcatDataPlotter {
 		gp.setLegendFontSize(18);
 //		System.out.println("Drawing with bounds: "+maxX+", "+maxY);
 //		System.out.println("start="+originTime+", end="+endTime);
-		gp.setUserBounds(0d, maxX, 0d, maxY);
+		if (minTime == null)
+			minTime = 0d;
+		gp.setUserBounds(minTime, maxX, 0d, maxY);
 
 		gp.drawGraphPanel(spec, false, false);
 		gp.getChartPanel().setSize(800, 600);

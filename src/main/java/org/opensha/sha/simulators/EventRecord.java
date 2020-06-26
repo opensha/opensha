@@ -152,6 +152,10 @@ public abstract class EventRecord {
 		return elementTimeFirstSlips;
 	}
 	
+	public void setElementTimeFirstSlips(double[] elementTimeFirstSlips) {
+		this.elementTimeFirstSlips = elementTimeFirstSlips;
+	}
+	
 	public boolean hasElementSlipsAndIDs() {
 		return numElements > 0;
 	}

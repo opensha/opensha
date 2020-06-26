@@ -110,7 +110,7 @@ public class HelpMenuBuilder implements ActionListener {
 				BrowserUtils.launch(new URL(OPENSHA_CONTACT_URL));
 			} else if (e.getSource() == submitBugItem) {
 				BugReport bug = new BugReport(null, null, appShortName, appVersion, application);
-				BrowserUtils.launch(bug.buildTracURL());
+				BrowserUtils.launch(bug.buildIssueURL());
 			} else if (guideItem != null && e.getSource() == guideItem) {
 				BrowserUtils.launch(new URL(guideURL));
 			} else if (tutorialItem != null && e.getSource() == tutorialItem) {
