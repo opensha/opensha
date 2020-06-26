@@ -48,7 +48,7 @@ public class SimpleBugMessagePanel extends JPanel implements ActionListener {
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		try {
-			BrowserUtils.launch(bug.buildTracURL());
+			BrowserUtils.launch(bug.buildIssueURL());
 		} catch (MalformedURLException e1) {
 			e1.printStackTrace();
 		}

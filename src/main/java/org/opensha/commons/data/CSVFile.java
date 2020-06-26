@@ -228,20 +228,24 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	}
 	
 	public void writeToFile(File file) throws IOException {
-		writeWriter(new FileWriter(file));
+		FileWriter fw = new FileWriter(file);
+		writeWriter(fw);
+		fw.close();
 	}
 	
+	/**
+	 * Writes the CSV file to the given output stream. The stream will not be closed.
+	 * @param stream
+	 * @throws IOException
+	 */
 	public void writeToStream(OutputStream stream) throws IOException {
 		writeWriter(new OutputStreamWriter(stream));
-		
-		stream.close();
 	}
 	
 	private void writeWriter(Writer w) throws IOException {
 		for (int i=0; i<getNumRows(); i++) {
 			w.write(getLineStr(i) + "\n");
 		}
-		w.close();
 	}
 	
 	public void writeToTabSeparatedFile(File file, int headerLines) throws IOException {

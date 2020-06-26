@@ -195,6 +195,10 @@ public class UserAuthDialog extends JDialog implements ActionListener {
 		usernameText.requestFocusInWindow();
 	}
 	
+	public void setUsername(String username) {
+		usernameText.setText(username);;
+	}
+	
 	public String getUsername() {
 		return usernameText.getText();
 	}

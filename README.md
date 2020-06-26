@@ -11,7 +11,7 @@ OpenSHA is split into multiple projects with the following dependencies:
 | ucerf3     | core       | UCERF3 model code and data                       |
 | apps       | ucerf3     | GUI applications                                 |
 | dev        | apps       | Development sandbox for shared prototyping       |
-| cybershake | apps       | CyberShake interface code and calculators        |
+| cybershake | dev        | CyberShake interface code and calculators        |
 
 All users will need to clone the top level commons project, as well as any additional projects of interest. For example, if you need ucerf3 code, you will need to check out ucerf3, core, and commons (ucerf3 depends on core, which in turn depends on commons). Many users will need all projects (except CyberShake).
 

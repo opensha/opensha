@@ -13,6 +13,9 @@ public class USC_HPCC_ScriptWriter extends BatchScriptWriter {
 //	public static final File JAVA_BIN = new File("/usr/usc/jdk/default/jre/bin/java");
 	public static final File JAVA_BIN = new File("/usr/usc/jdk/1.8.0_45/bin/java");
 	
+	public static final String SHARED_SCRATCH_DIR = "/scratch2";
+	public static final String NODE_TEMP_DIR = "${TMPDIR}";
+	
 	private String nodesAddition;
 //	private int perNodeMemGB = -1;
 	private boolean skipRootNode = false;

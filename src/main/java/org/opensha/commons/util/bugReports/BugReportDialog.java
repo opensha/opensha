@@ -63,7 +63,6 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 			"submit a report.</font></b><br><font size=-1>(will open in web browser)</center></html>";
 	private JButton submitBugButton = new JButton(submitButtonTextDefault);
 	private JButton technicalButton = new JButton("View Techical Details");
-	private JTextField emailField = new JTextField("", 100);
 	
 	private boolean canIgnore = false;
 	
@@ -235,10 +234,10 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 		text += "<br><br>";
 		if (knownBug == null) {
 			text += "You can help to improve OpenSHA by submitting a bug report to our " +
-					"<a href=\""+BugReport.TRAC_URL+"\">Trac Site</a>. Click the button below which " +
-					"will launch your web browser, allowing you to submit the bug. Information on " +
-					"the bug will automatically be included. To view that information, click " +
-					"\"View Technical Details\". Note that this requires an internet connection.";
+					"<a href=\""+BugReport.GITHUB_ISSUES_URL+"\">GitHub site</a> (account required). " +
+					"Click the button below which will launch your web browser, allowing you to submit " +
+					"the bug. Information on the bug will automatically be included. To view that information, " +
+					"click \"View Technical Details\". Note that this requires an internet connection.";
 		} else {
 			submitBugButton.setText(submitButtonTextKnownBug);
 			text += knownBug.getKnownBugDescription();
@@ -260,16 +259,6 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 		bottomCenter.add(wrapInPanel(submitBugButton, mainColor));
 		bottomCenter.setBackground(mainColor);
 		submitBugButton.addActionListener(this);
-		
-		JLabel emailLabel = new JLabel("Your E-mail Address (optional): ");
-		JPanel emailPanel = new JPanel();
-		emailPanel.setLayout(new BoxLayout(emailPanel, BoxLayout.X_AXIS));
-		emailPanel.add(emailLabel);
-		emailPanel.add(emailField);
-		emailPanel.setPreferredSize(new Dimension(400, 20));
-		emailPanel.setBackground(mainColor);
-		emailPanel.setMaximumSize(new Dimension(400, 20));
-		bottomCenter.add(wrapInPanel(emailPanel, mainColor));
 		
 		centerPanel.add(wrapInPanel(bottomCenter, mainColor));
 		
@@ -306,16 +295,13 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 			this.setVisible(false);
 			this.dispose();
 		} else if (e.getSource() == submitBugButton) {
-			String email = emailField.getText();
-			if (email.length() > 2)
-				bug.setReporter(email);
 			URL url = null;
 			try {
-				url = bug.buildTracURL();
+				url = bug.buildIssueURL();
 			} catch (MalformedURLException e2) {
 				e2.printStackTrace();
 				String text = "We couldn't automatically generate a bug report. Please manually submit " +
-						"one at " + BugReport.TRAC_NEW_TICKET_URL;
+						"one at " + BugReport.GITHUB_NEW_ISSUE_URL;
 				JOptionPane.showMessageDialog(this, text, "Could geneate bug report", JOptionPane.ERROR_MESSAGE);
 				return;
 			}

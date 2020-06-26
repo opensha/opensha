@@ -12,14 +12,13 @@ import org.opensha.commons.util.ServerPrefUtils;
 
 public class BugReport {
 
-	public static String TRAC_URL = "http://opensha.org/trac";
-	public static String TRAC_NEW_TICKET_URL = TRAC_URL+"/newticket";
+	public static String GITHUB_ISSUES_URL = "https://github.com/opensha/opensha-apps/issues";
+	public static String GITHUB_NEW_ISSUE_URL = GITHUB_ISSUES_URL+"/new";
 	private static String enc = "UTF-8";
 	
 	public enum Type {
-		DEFECT("defect"),
-		ENHANCEMENT("enhancement"),
-		TASK("task");
+		BUG("bug"),
+		ENHANCEMENT("enhancement");
 		
 		private String typeStr;
 		
@@ -77,7 +76,6 @@ public class BugReport {
 	private String summary;
 	private String description;
 	private Type type;
-	private String reporter;
 	private Component component;
 	private String keywords;
 	private Throwable t;
@@ -141,7 +139,7 @@ public class BugReport {
 		description += ", version: "+System.getProperty("os.version")+")";
 		
 		if (t != null) {
-			description += "\n\nException:\n{{{\n" + getStackTrace(t)+"\n}}}\n";
+			description += "\n\nException:\n```\n" + getStackTrace(t)+"\n```\n";
 		}
 		if (metadata != null && metadata.length() > 0) {
 			description += "\n\nMetadata:\n" + metadata;
@@ -153,22 +151,21 @@ public class BugReport {
 		else
 			component = Component.fromClass(buggyComp.getClass());
 		String keywords = appName;
-		Type type = Type.DEFECT;
+		Type type = Type.BUG;
 		
-		init(summary, description, type, null, component, keywords);
+		init(summary, description, type, component, keywords);
 	}
 	
 	public BugReport(String summary, String description, Type type,
-			String reporter, Component component, String keywords) {
-		init(summary, description, type, reporter, component, keywords);
+			Component component, String keywords) {
+		init(summary, description, type, component, keywords);
 	}
 	
 	private void init(String summary, String description, Type type,
-			String reporter, Component component, String keywords) {
+			Component component, String keywords) {
 		this.summary = summary;
 		this.description = description;
 		this.type = type;
-		this.reporter = reporter;
 		this.component = component;
 		this.keywords = keywords;
 	}
@@ -197,14 +194,6 @@ public class BugReport {
 		this.type = type;
 	}
 
-	public String getReporter() {
-		return reporter;
-	}
-
-	public void setReporter(String reporter) {
-		this.reporter = reporter;
-	}
-
 	public Component getComponent() {
 		return component;
 	}
@@ -221,25 +210,24 @@ public class BugReport {
 		this.keywords = keywords;
 	}
 	
-	public URL buildTracURL() throws MalformedURLException {
-		String link = TRAC_NEW_TICKET_URL;
+	public URL buildIssueURL() throws MalformedURLException {
+		String link = GITHUB_NEW_ISSUE_URL;
 		
 		try {
 			ArrayList<String> args = new ArrayList<String>();
 			if (summary != null)
-				args.add("summary="+URLEncoder.encode(summary, enc));
+				args.add("title="+URLEncoder.encode(summary, enc));
 			if (type != null)
-				args.add("type="+URLEncoder.encode(type.toString(), enc));
-			if (reporter != null)
-				args.add("reporter="+URLEncoder.encode(reporter, enc));
-			if (component != null)
-				args.add("component="+URLEncoder.encode(component.toString(), enc));
-			if (keywords != null)
-				args.add("keywords="+URLEncoder.encode(keywords, enc));
-			if (appVersion != null)
-				args.add("version="+URLEncoder.encode(appVersion.toString(), enc));
+				args.add("labels="+URLEncoder.encode(type.toString(), enc));
+			// TODO
+//			if (component != null)
+//				args.add("component="+URLEncoder.encode(component.toString(), enc));
+//			if (keywords != null)
+//				args.add("keywords="+URLEncoder.encode(keywords, enc));
+//			if (appVersion != null)
+//				args.add("version="+URLEncoder.encode(appVersion.toString(), enc));
 			if (description != null)
-				args.add("description="+URLEncoder.encode(description, enc));
+				args.add("body="+URLEncoder.encode(description, enc));
 			
 			for (int i=0; i<args.size(); i++) {
 				if (i == 0)
@@ -248,6 +236,7 @@ public class BugReport {
 					link += "&";
 				link += args.get(i);
 			}
+			System.out.println(link);
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);
 		}
