@@ -951,6 +951,8 @@ public class ComcatReportPageGen {
 		File inputFile = null;
 		for (BinaryFilteredOutputConfig filter : config.getBinaryOutputFilters()) {
 			File file = new File(config.getOutputDir(), filter.getPrefix()+".bin");
+			if (!file.exists())
+				file = new File(config.getOutputDir(), filter.getPrefix()+"_partial.bin");
 			if (file.exists()) {
 				inputFile = file;
 				System.out.println("Simulation input file: "+inputFile);
@@ -1342,11 +1344,11 @@ public class ComcatReportPageGen {
 //			double daysBefore = 3d;
 //			File etasDir = null;
 			
-			String argStr = "--event-id ci38488354";
-			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
-			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
-					+ "2020_05_22-ComCatM4p54_ci38488354_12DaysAfter_PointSources";
-			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
+//			String argStr = "--event-id ci38488354";
+//			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+//			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//					+ "2020_05_22-ComCatM4p54_ci38488354_12DaysAfter_PointSources";
+//			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
 			
 //			String argStr = "--event-id ci38457511 --min-mag 2";
 //			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
@@ -1359,8 +1361,23 @@ public class ComcatReportPageGen {
 //			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
 //					+ "2020_04_27-ComCatM7p1_ci38457511_296p8DaysAfter_ShakeMapSurfaces";
 			
+//			String argStr = "--event-id ci39462536 --min-mag 2d --radius 40";
+//			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+//			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//					+ "2020_06_03-ComCatM7p1_ci38457511_334DaysAfter_ShakeMapSurfaces";
+//			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
+			
 //			String argStr = "--event-id nn00725272 --min-mag 0d";
 //			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+			
+//			String argStr = "--event-id ci39462920";
+//			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+			
+			String argStr = "--event-id ci39493944 --min-mag 2d --radius 30";
+			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+					+ "2020_06_24-ComCatM5p81_ci39493944_PointSources";
+			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
 			
 			args = Splitter.on(" ").splitToList(argStr).toArray(new String[0]);
 		}

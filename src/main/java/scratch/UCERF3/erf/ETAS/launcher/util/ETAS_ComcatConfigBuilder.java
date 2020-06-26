@@ -251,25 +251,6 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 		
 		return comcatStartTime;
 	}
-	
-	private long parseDateString(String dateStr) {
-		try {
-			if (dateStr.contains("T"))
-				return argDateTimeFormat.parse(dateStr).getTime();
-			return argDateFormat.parse(dateStr).getTime();
-		} catch (ParseException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-	}
-	
-	private static String historicalEndDate = "2012-04-24T19:44:19";
-	private static SimpleDateFormat argDateFormat = new SimpleDateFormat("yyyy-MM-dd");
-	private static SimpleDateFormat argDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-	static {
-		TimeZone utc = TimeZone.getTimeZone("UTC");
-		argDateFormat.setTimeZone(utc);
-		argDateTimeFormat.setTimeZone(utc);
-	}
 
 	@Override
 	protected long getComCatEndTime() {

@@ -1101,7 +1101,20 @@ public class ETAS_Launcher {
 				} catch (InterruptedException | ExecutionException | IOException | OutOfMemoryError e) {
 					if (e instanceof ExecutionException && e.getCause() instanceof OutOfMemoryError || e instanceof OutOfMemoryError) {
 						// we ran out of memory and already reduced thread count
-						Preconditions.checkState(threadLimit == 1 || threadLimit < numThreads);
+						if (numThreads <= 1) {
+							// we were already at 1 thread and failed, bail
+							System.err.println("Ran out of memory and can't further reduce thread count (already at 1 thread)");
+							exec.shutdownNow();
+							if (e instanceof ExecutionException)
+								throw ExceptionUtils.asRuntimeException(e.getCause());
+							throw ExceptionUtils.asRuntimeException(e);
+						}
+						synchronized (exec) {
+							if (numThreads <= threadLimit)
+								threadLimit = numThreads-1;
+						}
+						Preconditions.checkState(threadLimit < numThreads,
+								"Ran out of memory but can't reduce thread count further as we're already at 1 thread.");
 						CalcRunnable task = future.task;
 						debug("Resubmitting task "+task.index+" with threadLimit="+threadLimit);
 						futures.add(new FutureContainer(task, exec.submit(task)));

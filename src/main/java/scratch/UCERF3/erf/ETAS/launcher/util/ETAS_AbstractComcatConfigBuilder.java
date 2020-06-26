@@ -2,12 +2,14 @@ package scratch.UCERF3.erf.ETAS.launcher.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.TimeZone;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -54,6 +56,25 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 	
 	protected static double SHAKEMAP_MIN_MAG_DEFAULT = 5d;
 	protected static double INVERSION_MIN_MAG_DEFAULT = 5d;
+	
+	protected long parseDateString(String dateStr) {
+		try {
+			if (dateStr.contains("T"))
+				return argDateTimeFormat.parse(dateStr).getTime();
+			return argDateFormat.parse(dateStr).getTime();
+		} catch (java.text.ParseException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+	}
+	
+	protected static String historicalEndDate = "2012-04-24T19:44:19";
+	protected static SimpleDateFormat argDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+	protected static SimpleDateFormat argDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+	static {
+		TimeZone utc = TimeZone.getTimeZone("UTC");
+		argDateFormat.setTimeZone(utc);
+		argDateTimeFormat.setTimeZone(utc);
+	}
 
 	public static Options getCommonOptions() {
 		Options ops = ETAS_ConfigBuilder.getCommonOptions();

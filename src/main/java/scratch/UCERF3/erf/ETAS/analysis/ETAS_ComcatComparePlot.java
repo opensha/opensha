@@ -89,6 +89,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	private double minSpan;
 	private Region mapRegion;
 	private GriddedRegion gridRegion;
+	private long fetchEndTime;
 	private ObsEqkRupList comcatEvents;
 	private double modalMag;
 	private double comcatMc;
@@ -209,10 +210,12 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		System.out.println("Max comcat compare duration: "+(float)durations[durations.length-1]);
 		
 		if (inputEvents != null) {
+			fetchEndTime = System.currentTimeMillis();
 			this.comcatEvents = inputEvents;
 		} else {
+			fetchEndTime = Long.min(curTime, maxOTs[maxOTs.length-1]);
 			try {
-				comcatEvents = loadComcatEvents(config, comcatMeta, mapRegion, Long.min(curTime, maxOTs[maxOTs.length-1]));
+				comcatEvents = loadComcatEvents(config, comcatMeta, mapRegion, fetchEndTime);
 			} catch (Exception e) {
 				System.err.println("Error fetching ComCat events, skipping");
 				e.printStackTrace();
@@ -323,7 +326,37 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			comcatMc = comcatMeta.magComplete;
 		}
 		System.out.println("Mc="+(float)comcatMc);
-		timeDays = curDuration <= 2d;
+		timeDays = plotter.isTimeDays();
+		// time between the simulation start time and mainshock time, in days
+		double maxCurTimeFunc = (config.getSimulationStartTimeMillis() - plotOT)/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+		if (maxCurTimeFunc > 1d/(24d*60d)) {
+			// override the time func so that the a point lands directly on the simulation start time
+			// this is important, as we grab the value at this point as the startY for the simulated
+			// distributions
+			double maxPlotTimeFunc = (plotET - plotOT)/ProbabilityModelsCalc.MILLISEC_PER_YEAR;
+			if (timeDays) {
+				maxCurTimeFunc *= 365.25;
+				maxPlotTimeFunc *= 365.25;
+			}
+			double origDelta = maxPlotTimeFunc/500d;
+//			System.out.println("Original delta: "+origDelta);
+			int partialNum = (int)Math.ceil(maxCurTimeFunc/origDelta);
+//			System.out.println("numForPartial: "+partialNum);
+			partialNum = Math.max(partialNum, 5);
+			EvenlyDiscretizedFunc timeFunc = new EvenlyDiscretizedFunc(0d, maxCurTimeFunc, partialNum);
+//			System.out.println("First past discr: "+timeFunc.size());
+//			// make sure discretization is at least 30s
+//			while (timeFunc.getDelta() < 30d/(24d*60d*60d) && timeFunc.size() >= 50)
+//				timeFunc = new EvenlyDiscretizedFunc(0d, maxCurTimeFunc, timeFunc.size()/2);
+//			System.out.println("Mod past discr: "+timeFunc.size());
+			int extraNum = (int)Math.round((maxPlotTimeFunc - maxCurTimeFunc)/timeFunc.getDelta());
+//			System.out.println("ETRA NUM: "+extraNum+" for maxCur="+maxCurTimeFunc+", maxPlot="+maxPlotTimeFunc+", delta="+timeFunc.getDelta());
+			timeFunc = new EvenlyDiscretizedFunc(0d, timeFunc.size()+extraNum, timeFunc.getDelta());
+//			System.exit(0);
+			
+			plotter.setTimeFuncDiscretization(timeFunc);
+		}
+		System.out.println("Time function has "+plotter.getTimeFuncDiscretization().size()+" points");
 		
 		List<ObsEqkRupture> mainshocksForTimeDepMc = new ArrayList<>();
 		mainshocksForTimeDepMc.add(maxMainshock);
@@ -750,8 +783,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 //		forecastOnly = getConfig().getSimulationStartTimeMillis() <= plotter.getEndTime()+60000l;
-		// if the simulation is less than 5 minutes old, don't bother with comparison plots
-		forecastOnly = getConfig().getSimulationStartTimeMillis() >= System.currentTimeMillis()-(5*1000l*60l);
+		// if the simulation is less than 10 minutes old, don't bother with comparison plots
+		forecastOnly = getConfig().getSimulationStartTimeMillis() >= fetchEndTime-(10*1000l*60l);
 		if (forecastOnly)
 			System.out.println("Will only make ComCat forecast plots");
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
@@ -865,6 +898,15 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		double simShiftY = timeFunc.getInterpolatedY(simStartX);
 //		System.out.println("SimShiftY: "+simShiftY);
 		
+		Double minTime = null;
+		if (timeDays) {
+			if (simStartX > 60d)
+				minTime = simStartX - 60d;
+		} else {
+			if (simStartX > 60d/365.25)
+				minTime = simStartX - 60d/365.25;
+		}
+		
 		XY_DataSetList functionList = new XY_DataSetList();
 		List<Double> relativeWts = new ArrayList<>();
 		for (EvenlyDiscretizedFunc[] func : catalogTimeFuncs) {
@@ -888,7 +930,23 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		}
 		FractileCurveCalculator timeFractals = new FractileCurveCalculator(functionList, relativeWts);
 		
-		plotter.plotTimeFuncPlot(outputDir, prefix, magLabel, timeFunc, timeFractals);
+		plotter.plotTimeFuncPlot(outputDir, prefix, magLabel, timeFunc, minTime, timeFractals);
+	}
+	
+	public static double invPercentile(double[] counts, double dataVal) {
+		Arrays.sort(counts);
+		int index = Arrays.binarySearch(counts, dataVal);
+		if (index < 0) {
+			// convert to insertion index
+			index = -(index + 1);
+		} else {
+			// it's an exact match, place it at the min index as per definition of percentile
+			// (the percentage of values that lie below)
+			while (index > 0 && (float)counts[index-1] == (float)dataVal)
+				index--;
+		}
+		double numBelow = index;
+		return 100d*numBelow/(double)counts.length;
 	}
 	
 	private void plotMagPercentileCumulativeNumPlot(File outputDir, String prefix,
@@ -938,21 +996,9 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			double[] counts = new double[cumulativeMNDs.size()];
 			for (int j=0; j<counts.length; j++)
 				counts[j] = cumulativeMNDs.get(j).getY(i);
-			Arrays.sort(counts);
 			Preconditions.checkState((float)mag == (float)comcatCumulativeMND.getX(i));
 			double dataVal = comcatCumulativeMND.getY(i);
-			int index = Arrays.binarySearch(counts, dataVal);
-			if (index < 0) {
-				// convert to insertion index
-				index = -(index + 1);
-			} else {
-				// it's an exact match, place it at the min index as per definition of percentile
-				// (the percentage of values that lie below)
-				while (index > 0 && (float)counts[index-1] == (float)dataVal)
-					index--;
-			}
-			double numBelow = index;
-			double percentile = 100d*numBelow/(double)counts.length;
+			double percentile = invPercentile(counts, dataVal);
 //			System.out.println("M="+(float)mag+"\tdataVal="+(float)dataVal+"\tindex="+index
 //					+"\tcounts[index]="+(float)counts[index]);
 			dataFunc.set(i, percentile);
@@ -1027,7 +1073,17 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			for (int y=0; y<magTimeProbs[x].length; y++)
 				xyz.set(x, y, magTimeProbs[x][y]);
 		
-		plotter.plotMagTimeFunc(outputDir, prefix, title, null, xyz.getMaxX()+0.5*xyz.getGridSpacingX(), xyz);
+		Double minTime = null;
+		double xyzMinTime = xyz.getMinX() - 0.5*xyz.getGridSpacingX();
+		if (timeDays) {
+			if (xyzMinTime > 60d)
+				minTime = xyzMinTime - 60d;
+		} else {
+			if (xyzMinTime > 60d/365.25)
+				minTime = xyzMinTime - 60d/365.25;
+		}
+		
+		plotter.plotMagTimeFunc(outputDir, prefix, title, minTime, xyz.getMaxX()+0.5*xyz.getGridSpacingX(), xyz);
 	}
 	
 	private void calcMapData() {
@@ -1503,11 +1559,12 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 //				+ "2019_08_20-ComCatM6p4_ci38443183_PointSources-noSpont-full_td-scale1.14");
 //				+ "2019_10_15-ComCatM4p71_nc73292360_PointSources");
 //				+ "2020_04_08-ComCatM4p87_ci39126079_PointSource_kCOV1p5");
-//				+ "2020_04_08-ComCatM4p87_ci39126079_4p7DaysAfter_PointSources_kCOV1p5");
+				+ "2020_04_08-ComCatM4p87_ci39126079_4p7DaysAfter_PointSources_kCOV1p5");
 //				+ "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces");
 //				+ "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces");
 //				+ "2019_09_12-ComCatM7p1_ci38457511_28DaysAfter_ShakeMapSurfaces");
-				+ "2020_04_27-ComCatM7p1_ci38457511_296p8DaysAfter_ShakeMapSurfaces");
+//				+ "2020_04_27-ComCatM7p1_ci38457511_296p8DaysAfter_ShakeMapSurfaces");
+//				+ "2020_06_03-ComCatM7p1_ci38457511_334DaysAfter_ShakeMapSurfaces");
 		File configFile = new File(simDir, "config.json");
 		
 		try {

@@ -131,7 +131,7 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 		@Override
 		protected void batchProcessedAsync(int[] batch, int processIndex) {
 			debug("running async post-batch hook for process "+processIndex+". "+getCountsString());
-			debug("async post-batch extimates: "+getRatesString());
+			debug("async post-batch estimates: "+getRatesString());
 			try {
 				for (int index : batch) {
 					File catalogDir = launcher.getResultsDir(index);
@@ -185,7 +185,7 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 		@Override
 		protected void batchProcessedAsync(int[] batch, int processIndex) {
 			debug("running async cleanup hook for process "+processIndex+". "+getCountsString());
-			debug("cleanup async post-batch extimates: "+getRatesString());
+			debug("cleanup async post-batch estimates: "+getRatesString());
 			for (int index : batch) {
 				File catalogDir = launcher.getResultsDir(index);
 				debug("removing completed directory: "+catalogDir.getAbsolutePath());

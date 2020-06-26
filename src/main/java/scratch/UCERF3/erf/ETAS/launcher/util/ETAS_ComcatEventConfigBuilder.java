@@ -3,6 +3,8 @@ package scratch.UCERF3.erf.ETAS.launcher.util;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -38,12 +40,14 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			String argz = "";
 
 //			argz += " --event-id ci38443183"; // 2019 Searles Valley M6.4
-			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
+//			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
+//			argz += " --event-id ci39462536"; // 2020 Ridgecrest M5.5
 			argz += " --mag-complete 3.5";
 //			argz += " --event-id nn00719663"; // 3/20/2020 Lake Tahoe area M5
 //			argz += " --event-id ci39126079"; // 4/4/2020 SJC Anza M4.9
 //			argz += " --event-id ci38488354"; // 4/4/2020 SJC Anza M4.9
-//			argz += " --radius 10";
+			argz += " --event-id ci39493944"; // 6/24/2020 Long Pine M5.8
+			argz += " --radius 30";
 //			argz += " --mag-complete 2.5";
 			
 //			argz += " --event-id nc73292360"; // 10/15/2019 Tres Pinos, CA M4.71
@@ -54,7 +58,9 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			argz += " --days-before 7";
 //			argz += " --days-after 7";
 //			argz += " --hours-after 33.75";
-			argz += " --end-now";
+//			argz += " --end-now";
+//			argz += " --end-time 1591234330000";
+//			argz += " --name-add Before-M5.5";
 //			argz += " --gridded-only";
 //			argz += " --impose-gr";
 //			argz += " --prob-model NO_ERT";
@@ -183,6 +189,24 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				+ "specified with --event-id <id>) up to the current instant");
 		nowOption.setRequired(false);
 		ops.addOption(nowOption);
+		
+		Option startTimeOption = new Option("st", "start-time", true, "ComCat data start time in epoch milliseconds");
+		startTimeOption.setRequired(false);
+		ops.addOption(startTimeOption);
+		
+		Option startDateOption = new Option("sd", "start-date", true, "ComCat data start date in the format 'yyyy-MM-dd' "
+				+ "(e.g. 2019-01-01) or 'yyyy-MM-ddTHH:mm:ss' (e.g. 2019-01-01T01:23:45). All dates and times in UTC");
+		startDateOption.setRequired(false);
+		ops.addOption(startDateOption);
+		
+		Option endTimeOption = new Option("et", "end-time", true, "ComCat data end time in epoch milliseconds");
+		endTimeOption.setRequired(false);
+		ops.addOption(endTimeOption);
+		
+		Option endDateOption = new Option("ed", "end-date", true, "ComCat data end date in the format 'yyyy-MM-dd' "
+				+ "(e.g. 2019-01-01) or 'yyyy-MM-ddTHH:mm:ss' (e.g. 2019-01-01T01:23:45). All dates and times in UTC.");
+		endDateOption.setRequired(false);
+		ops.addOption(endDateOption);
 		
 		Option regionOption = new Option("reg", "region", true, "Region to fetch events in the format lat1,lon1[,lat2,lon2]. "
 				+ "If only one location is supplied, then a circular region is built and you must also supply the --radius "
@@ -473,6 +497,15 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			System.out.println("\tComCat start time: "+beforeStartMillis+" ("+(float)daysBefore+" days before primary)");
 			
 			return beforeStartMillis;
+		} else if (cmd.hasOption("start-time")) {
+			long comcatStartTime = Long.parseLong(cmd.getOptionValue("start-time"));
+			System.out.println("Will start ComCat data fetch at "+comcatStartTime);
+			return comcatStartTime;
+		} else if (cmd.hasOption("start-date")) {
+			String dateStr = cmd.getOptionValue("start-date");
+			long comcatStartTime = parseDateString(dateStr);
+			System.out.println("Will start ComCat data fetch at "+comcatStartTime+", from date: "+dateStr);
+			return comcatStartTime;
 		} else {
 			return primaryRupture.getOriginTime();
 		}
@@ -500,6 +533,21 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			System.out.println("\tEnd time: "+afterEndMillis+" ("+(float)daysAfter+" days after primary)");
 			
 			return afterEndMillis;
+		} else if (cmd.hasOption("end-time")) {
+			long comcatEndTime = Long.parseLong(cmd.getOptionValue("end-time"));
+			System.out.println("Will end ComCat data fetch at "+comcatEndTime);
+			Preconditions.checkArgument(comcatEndTime >= primaryRupture.getOriginTime(),
+					"End time is before primary rupture origin time");
+			daysAfter = (double)(comcatEndTime - primaryRupture.getOriginTime()) / ProbabilityModelsCalc.MILLISEC_PER_DAY;
+			return comcatEndTime;
+		} else if (cmd.hasOption("end-date")) {
+			String dateStr = cmd.getOptionValue("end-date");
+			long comcatEndTime = parseDateString(dateStr);
+			System.out.println("Will end ComCat data fetch at "+comcatEndTime+", from date: "+dateStr);
+			Preconditions.checkArgument(comcatEndTime >= primaryRupture.getOriginTime(),
+					"End time is before primary rupture origin time");
+			daysAfter = (double)(comcatEndTime - primaryRupture.getOriginTime()) / ProbabilityModelsCalc.MILLISEC_PER_DAY;
+			return comcatEndTime;
 		} else {
 			return primaryRupture.getOriginTime();
 		}

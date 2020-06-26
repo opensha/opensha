@@ -121,7 +121,10 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	public double[] loadDoubleArray(LogicTreeBranch branch, String fileName) {
 		try {
 			Map<String, String> nameRemappings = getRemappings(branch);
-			ZipEntry ratesEntry = zip.getEntry(nameRemappings.get(fileName));
+			String remapped = nameRemappings.get(fileName);
+			if (remapped == null)
+				remapped = branch.buildFileName()+"_"+fileName;
+			ZipEntry ratesEntry = zip.getEntry(remapped);
 			return MatrixIO.doubleArrayFromInputStream(
 					new BufferedInputStream(zip.getInputStream(ratesEntry)), ratesEntry.getSize());
 		} catch (IOException e) {
