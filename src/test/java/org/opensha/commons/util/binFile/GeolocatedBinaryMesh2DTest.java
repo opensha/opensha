@@ -45,7 +45,7 @@ public class GeolocatedBinaryMesh2DTest {
 		Location locForPt = calc.getLocationForPoint(correctX, correctY);
 		Location closestLoc = calc.calcClosestLocation(loc);
 		assertEquals("getLocationForPoint and calcClosestLocation inconsistant!", locForPt, closestLoc);
-		double halfSpacing = calc.getGridSpacing() * 0.5;
+		double halfSpacing = calc.getGridSpacingX() * 0.5;
 		double lat1 = loc.getLatitude();
 		double lat2 = locForPt.getLatitude();
 		while (calc.isWrapLat() && Math.abs(lat1 - lat2) >= (180d-halfSpacing)) {

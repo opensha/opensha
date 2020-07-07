@@ -44,6 +44,7 @@ import org.opensha.commons.data.siteData.impl.SRTM30PlusTopoSlope;
 import org.opensha.commons.data.siteData.impl.SRTM30PlusTopography;
 import org.opensha.commons.data.siteData.impl.SRTM30TopoSlope;
 import org.opensha.commons.data.siteData.impl.SRTM30Topography;
+import org.opensha.commons.data.siteData.impl.ThompsonVs30_2018;
 import org.opensha.commons.data.siteData.impl.USGSBayAreaBasinDepth;
 import org.opensha.commons.data.siteData.impl.WaldAllenGlobalVs30;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
@@ -388,7 +389,12 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+		/*		Thompson 2018		*/
+		try {
+			providers.add(new ThompsonVs30_2018());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		/*		Wills 2006			*/
 		try {
 			providers.add(new WillsMap2006());

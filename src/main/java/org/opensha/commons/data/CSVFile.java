@@ -246,6 +246,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		for (int i=0; i<getNumRows(); i++) {
 			w.write(getLineStr(i) + "\n");
 		}
+		w.flush();
 	}
 	
 	public void writeToTabSeparatedFile(File file, int headerLines) throws IOException {

@@ -38,7 +38,8 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 	private double maxLat;
 	private double minLon;
 	private double maxLon;
-	private double gridSpacing;
+	private double gridSpacingX;
+	private double gridSpacingY;
 	
 	private boolean startBottom;
 	private boolean startLeft;
@@ -79,27 +80,48 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 	 */
 	public GeolocatedRectangularBinaryMesh2DCalculator(DataType numType, int nx, int ny,
 			double startLat, double startLon, boolean startBottom, boolean startLeft, double gridSpacing) {
+		this(numType, nx, ny, startLat, startLon, startBottom, startLeft, gridSpacing, gridSpacing);
+	}
+
+	/**
+	 * Creates a new GeolocatedRectangularBinaryMesh2DCalculator assuming that the data starts at the bottom left
+	 * corner of the region (at minLat, minLon) and is ordered fast-X-Y.
+	 * 
+	 * TODO update documentation
+	 * 
+	 * @param numType
+	 * @param nx
+	 * @param ny
+	 * @param minLat
+	 * @param minLon
+	 * @param gridSpacingX
+	 * @param gridSpacingY
+	 */
+	public GeolocatedRectangularBinaryMesh2DCalculator(DataType numType, int nx, int ny,
+			double startLat, double startLon, boolean startBottom, boolean startLeft,
+			double gridSpacingX, double gridSpacingY) {
 		super(numType, nx, ny);
 		
 		if (startBottom) {
 			minLat = startLat;
-			maxLat = startLat + gridSpacing * (ny-1);
+			maxLat = startLat + gridSpacingY * (ny-1);
 		} else {
 			maxLat = startLat;
-			minLat = startLat - gridSpacing * (ny-1);
+			minLat = startLat - gridSpacingY * (ny-1);
 		}
 		
 		if (startLeft) {
 			minLon = startLon;
-			maxLon = startLon + gridSpacing * (nx-1);
+			maxLon = startLon + gridSpacingX * (nx-1);
 		} else {
 			maxLon = startLon;
-			minLon = startLon - gridSpacing * (nx-1);
+			minLon = startLon - gridSpacingX * (nx-1);
 		}
 		
 		this.startBottom = startBottom;
 		this.startLeft = startLeft;
-		this.gridSpacing = gridSpacing;
+		this.gridSpacingX = gridSpacingX;
+		this.gridSpacingY = gridSpacingY;
 		
 		if (minLon >= 0)
 			allLonPos = true;
@@ -109,11 +131,11 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 			System.out.println("minLon: " + minLon + ", maxLon: " + maxLon);
 		}
 		
-		if ((minLat + 180) == (maxLat + gridSpacing)) {
+		if ((minLat + 180) == (maxLat + gridSpacingY)) {
 			if (D) System.out.println("Wrapping Y!");
 			wrapY = true;
 		}
-		if ((minLon + 360) == (maxLon + gridSpacing)) {
+		if ((minLon + 360) == (maxLon + gridSpacingX)) {
 			if (D) System.out.println("Wrapping X!");
 			wrapX = true;
 		}
@@ -256,14 +278,14 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 	public Location getLocationForPoint(long x, long y) {
 		double lat;
 		if (startBottom)
-			lat = minLat + y * gridSpacing;
+			lat = minLat + y * gridSpacingY;
 		else
-			lat = maxLat - y * gridSpacing;
+			lat = maxLat - y * gridSpacingY;
 		double lon;
 		if (startLeft)
-			lon = minLon + x * gridSpacing;
+			lon = minLon + x * gridSpacingX;
 		else
-			lon = maxLon - x * gridSpacing;
+			lon = maxLon - x * gridSpacingX;
 		
 		return new Location(lat, lon);
 	}
@@ -286,16 +308,16 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 		if (allLonPos && lon < 0)
 			lon += 360;
 		if (startLeft)
-			return ((long)((lon - minLon) / gridSpacing + 0.5));
+			return ((long)((lon - minLon) / gridSpacingX + 0.5));
 		else
-			return (long)((maxLon - lon) / gridSpacing + 0.5);
+			return (long)((maxLon - lon) / gridSpacingX + 0.5);
 	}
 	
 	private long calcY(double lat) {
 		if (startBottom)
-			return ((long)((lat - minLat) / gridSpacing + 0.5));
+			return ((long)((lat - minLat) / gridSpacingY + 0.5));
 		else
-			return ((long)((maxLat - lat) / gridSpacing + 0.5));
+			return ((long)((maxLat - lat) / gridSpacingY + 0.5));
 	}
 
 	public double getMinLat() {
@@ -314,8 +336,12 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 		return maxLon;
 	}
 
-	public double getGridSpacing() {
-		return gridSpacing;
+	public double getGridSpacingX() {
+		return gridSpacingX;
+	}
+
+	public double getGridSpacingY() {
+		return gridSpacingY;
 	}
 
 	public boolean isStartBottom() {

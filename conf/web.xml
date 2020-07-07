@@ -502,6 +502,22 @@
     <url-pattern>/SiteData/Wills2015</url-pattern>
   </servlet-mapping>
 
+  <!-- * Thompson 2018 * -->
+  <servlet>
+    <servlet-name>Thompson2018</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.ThompsonVs30_2018Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>Thompson2018</servlet-name>
+    <url-pattern>/SiteData/Thompson2018</url-pattern>
+  </servlet-mapping>
+
   <!-- * Wills 2006 * -->
   <servlet>
     <servlet-name>Wills2006</servlet-name>
