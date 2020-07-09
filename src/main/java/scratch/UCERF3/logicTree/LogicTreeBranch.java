@@ -598,7 +598,15 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 		for (int i=0; i<size; i++) {
 			LogicTreeBranchNode<?> val = getValue(i);
 			LogicTreeBranchNode<?> oval = o.getValue(i);
-			int cmp = val.getShortName().compareTo(oval.getShortName());
+			int cmp;
+			if (val == null || oval == null) {
+				if (val == null)
+					cmp = oval == null ? 0 : -1;
+				else
+					cmp = 1;
+			} else {
+				cmp = val.getShortName().compareTo(oval.getShortName());
+			}
 			if (cmp != 0)
 				return cmp;
 		}
