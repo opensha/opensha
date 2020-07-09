@@ -102,6 +102,7 @@ public class FullModelCSVWriter {
 			
 			out.putNextEntry(new ZipEntry(csvName));
 			csv.writeToStream(out);
+			out.flush();
 			
 			// Close the current entry
 			out.closeEntry();
