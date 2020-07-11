@@ -38,7 +38,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF
 import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.erf.FaultSystemSolutionPoissonERF;
 import scratch.UCERF3.erf.UCERF3_CompoundSol_ERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.utils.ModUCERF2.ModMeanUCERF2_FM2pt1;
