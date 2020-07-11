@@ -11,6 +11,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
@@ -118,11 +119,11 @@ public class MiniSectRecurrenceGen {
 	
 	public static Map<Integer, List<List<Integer>>> buildSubSectMappings(
 			Map<Integer, DeformationSection> origDM,
-			List<FaultSectionPrefData> subSectsList) {
-		Map<Integer, List<FaultSectionPrefData>> sectsMap = Maps.newHashMap();
-		for (FaultSectionPrefData sect : subSectsList) {
+			List<? extends FaultSection> subSectsList) {
+		Map<Integer, List<FaultSection>> sectsMap = Maps.newHashMap();
+		for (FaultSection sect : subSectsList) {
 			Integer parentID = sect.getParentSectionId();
-			List<FaultSectionPrefData> sects = sectsMap.get(parentID);
+			List<FaultSection> sects = sectsMap.get(parentID);
 			if (sects == null) {
 				sects = Lists.newArrayList();
 				sectsMap.put(parentID, sects);
@@ -134,7 +135,7 @@ public class MiniSectRecurrenceGen {
 		subSectsList = Lists.newArrayList(subSectsList);
 		for (Integer parentID : sectsMap.keySet()) {
 			if (!origDM.containsKey(parentID)) {
-				for (FaultSectionPrefData sect : sectsMap.get(parentID))
+				for (FaultSection sect : sectsMap.get(parentID))
 					subSectsList.remove(sect);
 			}
 		}
@@ -147,7 +148,7 @@ public class MiniSectRecurrenceGen {
 			List<List<Integer>> mappingsLists = Lists.newArrayList();
 			mappings.put(parentID, mappingsLists);
 			
-			List<FaultSectionPrefData> sects = sectsMap.get(parentID);
+			List<FaultSection> sects = sectsMap.get(parentID);
 			
 //			FaultTrace trace = sect.getFaultTrace();
 			
@@ -164,7 +165,7 @@ public class MiniSectRecurrenceGen {
 //				List<Double> lengths = Lists.newArrayList();
 //				List<Double> rates = Lists.newArrayList();
 				
-				for (FaultSectionPrefData sect : sects) {
+				for (FaultSection sect : sects) {
 					Location sectStart = sect.getFaultTrace().get(0);
 					Location sectEnd = sect.getFaultTrace().get(sect.getFaultTrace().size()-1);
 					

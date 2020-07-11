@@ -106,6 +106,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeDependentEpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeIndependentEpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
@@ -870,7 +871,7 @@ public class FaultSysSolutionERF_Calc {
 			
 			double rupArea = rupSet.getAreaForRup(fssRupIndex);
 			double rupAreaOnParent = 0d;
-			for(FaultSectionPrefData sect : rupSet.getFaultSectionDataForRupture(fssRupIndex)) {
+			for(FaultSection sect : rupSet.getFaultSectionDataForRupture(fssRupIndex)) {
 				if (sect.getParentSectionId() == parentID)
 					rupAreaOnParent += rupSet.getAreaForSection(sect.getSectionId());
 			}
@@ -1808,7 +1809,7 @@ public class FaultSysSolutionERF_Calc {
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		HashSet<Integer> parentIDs = new HashSet<Integer>();
-		for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList())
+		for (FaultSection sect : rupSet.getFaultSectionDataList())
 			parentIDs.add(sect.getParentSectionId());
 		
 		// create a list of all rupture probs for each parent section
@@ -1893,7 +1894,7 @@ public class FaultSysSolutionERF_Calc {
 		CPT ratioCPT = getScaledLinearRatioCPT(0.02);
 		
 		List<LocationList> faults = Lists.newArrayList();
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			faults.add(sect.getFaultTrace());
 		
 		Region region = new CaliforniaRegions.RELM_COLLECTION();
@@ -1957,7 +1958,7 @@ public class FaultSysSolutionERF_Calc {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		double[] partRates = sol.calcTotParticRateForAllSects();
 		for (int i=0; i<normTimeSinceLast.length; i++) {
-			FaultSectionPrefData sect = rupSet.getFaultSectionData(i);
+			FaultSection sect = rupSet.getFaultSectionData(i);
 			long dateLast = sect.getDateOfLastEvent();
 			if (dateLast == Long.MIN_VALUE) {
 				normTimeSinceLast[i] = Double.NaN;
@@ -2053,7 +2054,7 @@ public class FaultSysSolutionERF_Calc {
 		CPT ratioCPT = getScaledLinearRatioCPT(0.02);
 		
 		List<LocationList> faults = Lists.newArrayList();
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			faults.add(sect.getFaultTrace());
 		
 		Region region = new CaliforniaRegions.RELM_COLLECTION();
@@ -2191,7 +2192,7 @@ public class FaultSysSolutionERF_Calc {
 		FaultSystemSolution sol = erf.getSolution();
 		
 		List<LocationList> faults = Lists.newArrayList();
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			faults.add(sect.getFaultTrace());
 		
 		Region region = new CaliforniaRegions.RELM_COLLECTION();
@@ -2467,7 +2468,7 @@ public class FaultSysSolutionERF_Calc {
 		HashSet<String> namesSet = new HashSet<String>();
 		Map<String, Integer> nameIDMap = Maps.newHashMap();
 		Map<Integer, List<Long>> parentLastEventMap = Maps.newHashMap();
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList()) {
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
 			if (parent) {
 				int parentID = sect.getParentSectionId();
 				String parentName = sect.getParentSectionName();
@@ -3023,7 +3024,7 @@ public class FaultSysSolutionERF_Calc {
 			Map<FaultTraceComparable, Integer> fmIndexMap = Maps.newHashMap();
 			fmIndexMaps.put(fm, fmIndexMap);
 			
-			ArrayList<FaultSectionPrefData> subSects = new DeformationModelFetcher(
+			List<? extends FaultSection> subSects = new DeformationModelFetcher(
 					fm, DeformationModels.GEOLOGIC,
 					UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1d).getSubSectionList();
 			LastEventData.populateSubSects(subSects, LastEventData.load());
@@ -3037,9 +3038,9 @@ public class FaultSysSolutionERF_Calc {
 			
 			if (parents) {
 				// average open intervals 
-				Map<Integer, List<FaultSectionPrefData>> subSectsMap = Maps.newHashMap();
-				for (FaultSectionPrefData sect : subSects) {
-					List<FaultSectionPrefData> subSectsForParent = subSectsMap.get(sect.getParentSectionId());
+				Map<Integer, List<FaultSection>> subSectsMap = Maps.newHashMap();
+				for (FaultSection sect : subSects) {
+					List<FaultSection> subSectsForParent = subSectsMap.get(sect.getParentSectionId());
 					if (subSectsForParent == null) {
 						subSectsForParent = Lists.newArrayList();
 						subSectsMap.put(sect.getParentSectionId(), subSectsForParent);
@@ -3047,19 +3048,19 @@ public class FaultSysSolutionERF_Calc {
 					subSectsForParent.add(sect);
 				}
 				
-				List<FaultSectionPrefData> parentSects = fm.fetchFaultSections();
+				List<? extends FaultSection> parentSects = fm.fetchFaultSections();
 				Collections.sort(parentSects, new NamedComparator());
 				for (int i = 0; i < parentSects.size(); i++) {
-					FaultSectionPrefData sect = parentSects.get(i);
+					FaultSection sect = parentSects.get(i);
 					FaultTraceComparable comp = new FaultTraceComparable(
 							sect.getName(), sect.getSectionId(), sect.getFaultTrace());
 					tracesSet.add(comp);
 					fmIndexMap.put(comp, i);
 					
 					Integer parentID = sect.getSectionId();
-					List<FaultSectionPrefData> sects = subSectsMap.get(parentID);
+					List<FaultSection> sects = subSectsMap.get(parentID);
 					List<Long> lastDates = Lists.newArrayList();
-					for (FaultSectionPrefData subSect : sects)
+					for (FaultSection subSect : sects)
 						if (subSect.getDateOfLastEvent() > Long.MIN_VALUE)
 							lastDates.add(subSect.getDateOfLastEvent());
 					double oi;
@@ -3080,7 +3081,7 @@ public class FaultSysSolutionERF_Calc {
 				}
 			} else {
 				for (int i = 0; i < subSects.size(); i++) {
-					FaultSectionPrefData sect = subSects.get(i);
+					FaultSection sect = subSects.get(i);
 					FaultTraceComparable comp = new FaultTraceComparable(
 							sect.getName(), sect.getParentSectionId(), sect.getFaultTrace());
 					tracesSet.add(comp);
@@ -4571,7 +4572,7 @@ public class FaultSysSolutionERF_Calc {
 				int prevParent = -1;
 				int indexInParent = -1;
 				List<LocationList> faults = Lists.newArrayList();
-				for (FaultSectionPrefData sect : meanSol.getRupSet().getFaultSectionDataList())
+				for (FaultSection sect : meanSol.getRupSet().getFaultSectionDataList())
 					faults.add(sect.getFaultTrace());
 				for (int k=0; k<ratios.length; k++) {
 					double baProb = branchAvgResults[k].getY(0);
@@ -4854,7 +4855,7 @@ public class FaultSysSolutionERF_Calc {
 		// debugging: http://opensha.usc.edu/ftp/kmilner/ucerf3/TimeDependent_preview/m6.7_30yr/
 		// 		OtherSensitivityTests/AveragingMethods/30.0yr_6.7+_AveRate_AveNormTS_vs_AveRI_AveTS.pdf
 		int subSectIndex = -1;
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList()) {
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
 			if (sect.getName().contains("Mojave")) {
 				subSectIndex = sect.getSectionId();
 				break;
@@ -4975,7 +4976,7 @@ public class FaultSysSolutionERF_Calc {
 		CPT ratioCPT = getScaledLinearRatioCPT(0.02);
 		
 		List<LocationList> faults = Lists.newArrayList();
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			faults.add(sect.getFaultTrace());
 		
 		Region region = new CaliforniaRegions.RELM_COLLECTION();
@@ -5132,7 +5133,7 @@ public class FaultSysSolutionERF_Calc {
 		CPT ratioCPT = getScaledLinearRatioCPT(0.02);
 		
 		List<LocationList> faults = Lists.newArrayList();
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			faults.add(sect.getFaultTrace());
 		
 		Region region = new CaliforniaRegions.RELM_COLLECTION();

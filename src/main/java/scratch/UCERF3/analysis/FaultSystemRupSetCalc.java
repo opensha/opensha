@@ -28,6 +28,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -330,7 +331,7 @@ public class FaultSystemRupSetCalc {
 	
 	public static void listAllParentSectionNames(FaultSystemRupSet faultSystemRupSet) {
 		ArrayList<String> parNames = new ArrayList<String>();
-		for(FaultSectionPrefData data : faultSystemRupSet.getFaultSectionDataList()) {
+		for(FaultSection data : faultSystemRupSet.getFaultSectionDataList()) {
 			if(!parNames.contains(data.getParentSectionName())) {
 				parNames.add(data.getParentSectionName());
 			}
@@ -475,11 +476,11 @@ public class FaultSystemRupSetCalc {
 	 */
 	public static ArrayList<GutenbergRichterMagFreqDist> calcImpliedGR_NuclMFD_ForEachSection(FaultSystemRupSet faultSysRupSet,
 			double minMag, int numMag, double deltaMag) {
-		List<FaultSectionPrefData> sectDataList = faultSysRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectDataList = faultSysRupSet.getFaultSectionDataList();
 		ArrayList<GutenbergRichterMagFreqDist> mfds = new ArrayList<GutenbergRichterMagFreqDist>();
 		GutenbergRichterMagFreqDist tempGR = new GutenbergRichterMagFreqDist(minMag, numMag, deltaMag);
 		for(int i=0; i< sectDataList.size();i++) {
-			FaultSectionPrefData sectData = sectDataList.get(i);
+			FaultSection sectData = sectDataList.get(i);
 			int mMaxIndex = tempGR.getClosestXIndex(faultSysRupSet.getMaxMagForSection(i));
 			double mMax = tempGR.getX(mMaxIndex);
 			double moRate = sectData.calcMomentRate(true);
@@ -643,7 +644,7 @@ public class FaultSystemRupSetCalc {
 		// get fault moment rate and mMax for faultSysRupSet
 		double onFaultOrigMoRate=0;
 		double mMaxInRegion=0;
-		List<FaultSectionPrefData> sectDataList = faultSysRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectDataList = faultSysRupSet.getFaultSectionDataList();
 		for(int i=0; i<sectDataList.size();i++) {
 			double mMax = (double)Math.round(10*(faultSysRupSet.getMaxMagForSection(i)-0.05))/10.0 +0.05;
 			double moRate = sectDataList.get(i).calcMomentRate(true);
@@ -1712,7 +1713,7 @@ if(mMax<5.85)
 		String prevParSectName="junk";
 		double minSectMag=-1, maxSectMag=-1, minParSectMag=-1, maxParSectMag=-1;
 		ArrayList<Double> sectMagList=null;
-		List<FaultSectionPrefData> sectDataList = faultSystemRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectDataList = faultSystemRupSet.getFaultSectionDataList();
 		for(int s=0; s< sectDataList.size();s++) {
 			String parSectName = sectDataList.get(s).getParentSectionName();
 			minSectMag = faultSystemRupSet.getOrigMinMagForSection(s);
@@ -1771,7 +1772,7 @@ if(mMax<5.85)
 		String prevParSectName="junk";
 		double minSectArea=1e10, maxSectArea=0, aveArea=0;
 		int numArea=0;
-		List<FaultSectionPrefData> sectDataList = faultSystemRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectDataList = faultSystemRupSet.getFaultSectionDataList();
 		for(int s=0; s< sectDataList.size();s++) {
 			String parSectName = sectDataList.get(s).getParentSectionName();
 			double area = sectDataList.get(s).getReducedDownDipWidth()*sectDataList.get(s).getTraceLength();
@@ -1807,7 +1808,7 @@ if(mMax<5.85)
 		double cumSectArea=0, firstArea=0, firstWidth=0;
 		ScalingRelationships scalingRel = faultSystemRupSet.getLogicTreeBranch().getValue(ScalingRelationships.class);
 		System.out.println("scalingRel="+scalingRel);
-		List<FaultSectionPrefData> sectDataList = faultSystemRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectDataList = faultSystemRupSet.getFaultSectionDataList();
 		for(int s=0; s< sectDataList.size();s++) {
 			String parSectName = sectDataList.get(s).getParentSectionName();
 			double width = sectDataList.get(s).getReducedDownDipWidth();
@@ -1870,7 +1871,7 @@ if(mMax<5.85)
 	public static double[] computeMinSeismoMagForSections(FaultSystemRupSet fltSystRupSet, double systemWideMinSeismoMag) {
 		double[] minMagForSect = new double[fltSystRupSet.getNumSections()];
 		String prevParSectName = "junk";
-		List<FaultSectionPrefData> sectDataList = fltSystRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectDataList = fltSystRupSet.getFaultSectionDataList();
 		
 		// lets first compute the average magnitude for Parkfield events
 		double aveParkfieldMag=0;
@@ -2004,7 +2005,7 @@ if(mMax<5.85)
 				
 		
 		for(int s=0;s <fltSystRupSet.getNumSections(); s++) {
-			FaultSectionPrefData data = fltSystRupSet.getFaultSectionData(s);
+			FaultSection data = fltSystRupSet.getFaultSectionData(s);
 			double minMag = fltSystRupSet.getFinalMinMagForSection(s);
 			double maxMag = fltSystRupSet.getMaxMagForSection(s);
 			double moRate = fltSystRupSet.getReducedMomentRate(s); 	// reduced for creep and subseismo ruptures
@@ -2097,7 +2098,7 @@ if(mMax<5.85)
 			if(!name1.equals(name2)) {
 				throw new RuntimeException("Problem - names differ");
 			}
-			FaultSectionPrefData data = fltSystRupSet.getFaultSectionData(s);
+			FaultSection data = fltSystRupSet.getFaultSectionData(s);
 			if(data.getParentSectionId() != lastParentIndex) {
 				if(lastParentIndex != -1) {	// if it's not the first
 					numSectMap.put(lastParentIndex, numSubSec);
@@ -2134,7 +2135,7 @@ if(mMax<5.85)
 		ScalingRelationships scalingRel = fltSystRupSet.getLogicTreeBranch().getValue(ScalingRelationships.class);
 		
 		for(int s=0;s <fltSystRupSet.getNumSections(); s++) {
-			FaultSectionPrefData data = fltSystRupSet.getFaultSectionData(s);
+			FaultSection data = fltSystRupSet.getFaultSectionData(s);
 			
 //			System.out.println(s+"\t"+data.getSectionName());
 			
@@ -2412,7 +2413,7 @@ if(mMax<5.85)
 				InversionModels.CHAR_CONSTRAINED, ScalingRelationships.SHAW_2009_MOD, SlipAlongRuptureModels.TAPERED, 
 				TotalMag5Rate.RATE_7p9, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3);
 		HashMap<Integer,String> parNameFromID_Map = new HashMap<Integer,String>();
-		for(FaultSectionPrefData subSectData : fltSystRupSet.getFaultSectionDataList())
+		for(FaultSection subSectData : fltSystRupSet.getFaultSectionDataList())
 			if(!parNameFromID_Map.keySet().contains(subSectData.getParentSectionId()))
 				parNameFromID_Map.put(subSectData.getParentSectionId(),subSectData.getParentSectionName());
 		

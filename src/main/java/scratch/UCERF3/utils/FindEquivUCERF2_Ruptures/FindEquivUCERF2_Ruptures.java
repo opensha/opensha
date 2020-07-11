@@ -12,6 +12,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -46,7 +47,7 @@ public abstract class FindEquivUCERF2_Ruptures {
 	
 	protected UCERF2_FaultModel ucerf2_fm;
 	
-	protected List<FaultSectionPrefData> faultSectionData;
+	protected List<? extends FaultSection> faultSectionData;
 	
 	protected FaultSystemRupSet faultSysRupSet;
 	
@@ -95,7 +96,7 @@ public abstract class FindEquivUCERF2_Ruptures {
 
 		if(subsectsForSect == null) {
 			subsectsForSect = new Hashtable<String,ArrayList<String>>();
-			for(FaultSectionPrefData data : faultSectionData) {
+			for(FaultSection data : faultSectionData) {
 				if(subsectsForSect.containsKey(data.getParentSectionName())) {
 					subsectsForSect.get(data.getParentSectionName()).add(data.getSectionName());
 				}
@@ -107,7 +108,7 @@ public abstract class FindEquivUCERF2_Ruptures {
 			}			
 		}
 		
-		FaultSectionPrefData sectData = faultSectionData.get(sectIndex);
+		FaultSection sectData = faultSectionData.get(sectIndex);
 		ArrayList<String> subSectList = subsectsForSect.get(sectData.getParentSectionName());
 		String firstName = subSectList.get(0);
 		String lastName = subSectList.get(subSectList.size()-1);

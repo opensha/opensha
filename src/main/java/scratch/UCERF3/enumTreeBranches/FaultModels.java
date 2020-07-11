@@ -20,6 +20,7 @@ import org.opensha.refFaultParamDb.dao.db.DB_ConnectionPool;
 import org.opensha.refFaultParamDb.dao.db.FaultModelDB_DAO;
 import org.opensha.refFaultParamDb.dao.db.PrefFaultSectionDataDB_DAO;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
@@ -99,32 +100,32 @@ public enum FaultModels implements LogicTreeBranchNode<FaultModels> {
 		}
 	}
 	
-	public static ArrayList<FaultSectionPrefData> loadStoredFaultSections(File fmStoreFile)
+	public static ArrayList<FaultSection> loadStoredFaultSections(File fmStoreFile)
 			throws MalformedURLException, DocumentException {
 		System.out.println("Loading fault model from: "+fmStoreFile.getAbsolutePath());
 		Document doc = XMLUtils.loadDocument(fmStoreFile);
 		return loadStoredFaultSections(doc);
 	}
 	
-	public static ArrayList<FaultSectionPrefData> loadStoredFaultSections(Document doc) {
+	public static ArrayList<FaultSection> loadStoredFaultSections(Document doc) {
 		Element root = doc.getRootElement();
 		return FaultSystemIO.fsDataFromXML(root.element("FaultModel"));
 	}
 	
-	public Map<Integer, FaultSectionPrefData> fetchFaultSectionsMap() {
-		Map<Integer, FaultSectionPrefData> map = Maps.newHashMap();
+	public Map<Integer, FaultSection> fetchFaultSectionsMap() {
+		Map<Integer, FaultSection> map = Maps.newHashMap();
 		
-		for (FaultSectionPrefData sect : fetchFaultSections())
+		for (FaultSection sect : fetchFaultSections())
 			map.put(sect.getSectionId(), sect);
 		
 		return map;
 	}
 	
-	public ArrayList<FaultSectionPrefData> fetchFaultSections() {
+	public ArrayList<FaultSection> fetchFaultSections() {
 		return fetchFaultSections(false);
 	}
 	
-	public ArrayList<FaultSectionPrefData> fetchFaultSections(boolean ignoreCache) {
+	public ArrayList<FaultSection> fetchFaultSections(boolean ignoreCache) {
 		if (!ignoreCache) {
 			// this lets us load the FM from XML if we're on the cluster
 			String fmFileName = getShortName()+".xml";
@@ -161,8 +162,8 @@ public enum FaultModels implements LogicTreeBranchNode<FaultModels> {
 		FaultModelDB_DAO fm2db = new FaultModelDB_DAO(db);
 		ArrayList<Integer> faultSectionIds = fm2db.getFaultSectionIdList(id);
 
-		ArrayList<FaultSectionPrefData> faultModel = new ArrayList<FaultSectionPrefData>();
-		for (FaultSectionPrefData data : datas) {
+		ArrayList<FaultSection> faultModel = new ArrayList<FaultSection>();
+		for (FaultSection data : datas) {
 			if (!faultSectionIds.contains(data.getSectionId()))
 				continue;
 			faultModel.add(data);

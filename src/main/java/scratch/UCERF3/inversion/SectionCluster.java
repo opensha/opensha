@@ -12,6 +12,7 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -37,7 +38,7 @@ public class SectionCluster extends ArrayList<Integer> {
 
 	protected final static boolean D = false;  // for debugging
 
-	List<FaultSectionPrefData> sectionDataList;
+	List<? extends FaultSection> sectionDataList;
 	ArrayList<Integer> allSectionsIdList = null;
 	List<List<Integer>> sectionConnectionsListList;
 	ArrayList<ArrayList<Integer>> rupListIndices;			// elements here are section IDs (same as indices in sectonDataList)
@@ -61,7 +62,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	 * @param maxRakeDiff
 	 */
 	@Deprecated
-	public SectionCluster(List<FaultSectionPrefData> sectionDataList, int minNumSectInRup, 
+	public SectionCluster(List<? extends FaultSection> sectionDataList, int minNumSectInRup, 
 			List<List<Integer>> sectionConnectionsListList, Map<IDPairing, Double> subSectionAzimuths,
 			Map<Integer, Double> rakesMap, double maxAzimuthChange, double maxTotAzimuthChange, 
 			double maxRakeDiff, Map<IDPairing, Double> subSectionDistances, double maxCumJumpDist) {
@@ -81,7 +82,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	 * @param maxTotAzimuthChange
 	 * @param maxRakeDiff
 	 */
-	public SectionCluster(LaughTestFilter laughTestFilter, List<FaultSectionPrefData> sectionDataList,
+	public SectionCluster(LaughTestFilter laughTestFilter, List<? extends FaultSection> sectionDataList,
 			List<List<Integer>> sectionConnectionsListList, Map<IDPairing, Double> subSectionAzimuths,
 			Map<Integer, Double> rakesMap, Map<IDPairing, Double> subSectionDistances, CoulombRates coulombRates) {
 		this.sectionDataList = sectionDataList;
@@ -152,8 +153,8 @@ public class SectionCluster extends ArrayList<Integer> {
 	int rupCounterProgress =100000;
 	int rupCounterProgressIncrement = 100000;
 	
-	private void addRuptures(FaultSectionPrefData sect, List<AbstractLaughTest> laughTests) {
-		List<FaultSectionPrefData> rupture = Lists.newArrayList(sect);
+	private void addRuptures(FaultSection sect, List<AbstractLaughTest> laughTests) {
+		List<? extends FaultSection> rupture = Lists.newArrayList(sect);
 		List<Integer> junctionIndexes = Lists.newArrayList();
 		List<IDPairing> pairings = Lists.newArrayList();
 		
@@ -167,7 +168,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	private FailureHandler failHandle;
 	
 	public static interface FailureHandler {
-		public void ruptureFailed(List<FaultSectionPrefData> rupture, boolean continuable);
+		public void ruptureFailed(List<FaultSection> rupture, boolean continuable);
 	}
 	
 	public void setFailureHandler(FailureHandler failHandle) {
@@ -184,10 +185,10 @@ public class SectionCluster extends ArrayList<Integer> {
 	 * @param idsList
 	 * @param idsSet
 	 */
-	private void addRuptures(List<FaultSectionPrefData> rupture, List<IDPairing> pairings,
+	private void addRuptures(List<? extends FaultSection> rupture, List<IDPairing> pairings,
 			List<Integer> junctionIndexes, List<AbstractLaughTest> tests,
 			List<Integer> idsList, HashSet<Integer> idsSet) {
-		FaultSectionPrefData currentLastSect = rupture.get(rupture.size()-1);
+		FaultSection currentLastSect = rupture.get(rupture.size()-1);
 		
 		List<Integer> branches = sectionConnectionsListList.get(currentLastSect.getSectionId());
 		
@@ -206,9 +207,9 @@ public class SectionCluster extends ArrayList<Integer> {
 //			boolean debugMatch = idsList.get(idsList.size()-1) == 2351 && candidateIndex == 208
 //					|| idsList.get(idsList.size()-1) == 208 && candidateIndex == 2351;
 			
-			FaultSectionPrefData candidateLastSect = sectionDataList.get(candidateIndex);
+			FaultSection candidateLastSect = sectionDataList.get(candidateIndex);
 			
-			List<FaultSectionPrefData> candidateRupture = Lists.newArrayList(rupture);
+			List<FaultSection> candidateRupture = Lists.newArrayList(rupture);
 			candidateRupture.add(candidateLastSect);
 			
 			List<Integer> candidateJunctionIndexes = Lists.newArrayList(junctionIndexes);

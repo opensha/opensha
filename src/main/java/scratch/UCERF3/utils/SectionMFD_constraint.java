@@ -13,6 +13,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -211,10 +212,10 @@ public class SectionMFD_constraint {
 		this.maxMag=0; // computed below
 		
 		ArrayList<Integer> allSubsectIndicesForParent = new ArrayList<Integer>();
-		List<FaultSectionPrefData> sectDataList = rupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectDataList = rupSet.getFaultSectionDataList();
 		int parIndex = sectDataList.get(subSectIndex).getParentSectionId();
 		double totParSectArea = 0;
-		for(FaultSectionPrefData sectData : sectDataList) {
+		for(FaultSection sectData : sectDataList) {
 			if(sectData.getParentSectionId() == parIndex) {
 				allSubsectIndicesForParent.add(sectData.getSectionId());
 				totParSectArea += sectData.getReducedDownDipWidth()*sectData.getTraceLength();

@@ -55,6 +55,9 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -647,7 +650,7 @@ public class ETAS_PrimaryEventSampler {
 	private HashMap<Integer,Double> getCubesAndDistancesInsideSectionPolygon(int sectionIndex) {
 		HashMap<Integer,Double> cubeDistMap = new HashMap<Integer,Double>();
 		Region faultPolygon = faultPolyMgr.getPoly(sectionIndex);
-		StirlingGriddedSurface surface = rupSet.getFaultSectionData(sectionIndex).getStirlingGriddedSurface(0.25, false, true);
+		RuptureSurface surface = rupSet.getFaultSectionData(sectionIndex).getFaultSurface(0.25, false, true);
 		for(int i=0; i<numCubes;i++) {
 			Location cubeLoc = getCubeLocationForIndex(i);
 			if(faultPolygon.contains(cubeLoc)) {
@@ -671,11 +674,12 @@ public class ETAS_PrimaryEventSampler {
 			double dist = LocationUtils.linearDistanceFast(cubeLoc, rupSet.getFaultSectionData(s).getFaultTrace().get(0));
 			if(dist>32)	// section too far away
 				continue;
-			StirlingGriddedSurface surface = rupSet.getFaultSectionData(s).getStirlingGriddedSurface(0.25, false, true);
-			double wt = 1.0/(surface.getNumCols()*surface.getNumRows());
-			ListIterator<Location> iterator = surface.getLocationsIterator();
-			while(iterator.hasNext()) {
-				if(this.getCubeIndexForLocation(iterator.next()) == cubeIndex) {
+			RuptureSurface surface = rupSet.getFaultSectionData(s).getFaultSurface(0.25, false, true);
+			int numLocs = surface.getEvenlyDiscretizedNumLocs();
+			double wt = 1.0/(double)numLocs;
+			for (int i=0; i<numLocs; i++) {
+				Location loc = surface.getEvenlyDiscretizedLocation(i);
+				if(this.getCubeIndexForLocation(loc) == cubeIndex) {
 					if(!sectFracMap.containsKey(s))
 						sectFracMap.put(s, 0.0);
 					double newWt = wt + sectFracMap.get(s);
@@ -749,7 +753,7 @@ public class ETAS_PrimaryEventSampler {
 	 * This computes the half width of the fault-section polygon (perpendicular to the strike) in a
 	 * somewhat weird way.
 	 * 
-	 * TODO Remove?
+	 * TODO Remove? not used
 	 * 
 	 * @param sectionIndex
 	 * @param cubeList
@@ -758,7 +762,9 @@ public class ETAS_PrimaryEventSampler {
 	private double getFaultSectionPolygonHalfWidth(int sectionIndex, Set<Integer> cubeList) {
 		
 		// get the surface and find the row index corresponding to depthKm
-		StirlingGriddedSurface surface = rupSet.getFaultSectionData(sectionIndex).getStirlingGriddedSurface(1.0, false, false);
+		RuptureSurface surface = rupSet.getFaultSectionData(sectionIndex).getFaultSurface(1.0, false, false);
+		Preconditions.checkState(surface instanceof EvenlyGriddedSurface);
+		EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surface;
 		
 //System.out.println("Surface Dip: "+surface.getAveDip());
 //System.out.println("Surface:");
@@ -774,8 +780,8 @@ public class ETAS_PrimaryEventSampler {
 //	System.out.println(loc.getLongitude()+"\t"+loc.getLatitude()+"\t"+loc.getDepth());
 //}
 
-		int rowIndexHalfWayDown = surface.getNumRows()/2;
-		double depthHalfWayDown = surface.getLocation(rowIndexHalfWayDown,0).getDepth();
+		int rowIndexHalfWayDown = gridSurf.getNumRows()/2;
+		double depthHalfWayDown = gridSurf.getLocation(rowIndexHalfWayDown,0).getDepth();
 		// get the cube depth index for depthKm 
 		int cubeDepthIndex = getCubeDepthIndex(depthHalfWayDown);
 		
@@ -787,8 +793,8 @@ public class ETAS_PrimaryEventSampler {
 				continue;	// skip those that aren't at depthKm
 			// find the min dist to the line on the surface 
 			double minDist = Double.MAX_VALUE;
-			for(int c=0; c<surface.getNumCols();c++) {
-				Location surfLoc= surface.getLocation(rowIndexHalfWayDown, c);
+			for(int c=0; c<gridSurf.getNumCols();c++) {
+				Location surfLoc= gridSurf.getLocation(rowIndexHalfWayDown, c);
 				double dist = LocationUtils.linearDistanceFast(cubeLoc, surfLoc);
 				if(dist<minDist)
 					minDist = dist;
@@ -1287,7 +1293,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			System.out.print(cubeIndex+"\t"+totCubeProb[cubeIndex]+"\t"+aveSampler.getY(cubeIndex)+"\t"+gridSeisRateInCube+"\t"+fltNuclRate[cubeIndex]+
 					"\t"+loc.getLongitude()+"\t"+loc.getLatitude()+"\t"+loc.getDepth());
 			
-			List<FaultSectionPrefData> fltDataList = ((FaultSystemSolutionERF)erf).getSolution().getRupSet().getFaultSectionDataList();
+			List<? extends FaultSection> fltDataList = ((FaultSystemSolutionERF)erf).getSolution().getRupSet().getFaultSectionDataList();
 			for(int s=0;s<sectInCube.length;s++) {
 				int sectIndex = sectInCube[s];
 				double sectRate = totSectNuclRateArray[sectIndex]*fractInCube[s];
@@ -1833,7 +1839,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			min = -5;
 			max = 0;
 			CPT cpt = FaultBasedMapGen.getParticipationCPT().rescale(min, max);;
-			List<FaultSectionPrefData> faults = rupSet.getFaultSectionDataList();
+			List<? extends FaultSection> faults = rupSet.getFaultSectionDataList();
 
 			//			// now log space
 			double[] values = FaultBasedMapGen.log10(sectProbArray);
@@ -1867,7 +1873,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			// list top sections
 			int[] topValueIndices = ETAS_SimAnalysisTools.getIndicesForHighestValuesInArray(sectProbArray, numToList);
 			info += "\nThe following sections are most likely to be triggered:\n\n";
-			List<FaultSectionPrefData> fltDataList = tempERF.getSolution().getRupSet().getFaultSectionDataList();
+			List<? extends FaultSection> fltDataList = tempERF.getSolution().getRupSet().getFaultSectionDataList();
 			for(int sectIndex : topValueIndices) {
 				info += "\t"+sectProbArray[sectIndex]+"\t"+sectIndex+"\t"+fltDataList.get(sectIndex).getName()+"\n";
 			}
@@ -2527,7 +2533,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		if(!resultsDir.exists())
 			resultsDir.mkdir();
 		
-		List<FaultSectionPrefData> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 		double[] values = new double[faults.size()];
 		
 		FileWriter fileWriter = new FileWriter(new File(resultsDir, dirName+".csv"));
@@ -2793,7 +2799,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		if(!resultsDir.exists())
 			resultsDir.mkdir();
 		
-		List<FaultSectionPrefData> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 		double[] values = new double[faults.size()];
 		
 		FileWriter fileWriter = new FileWriter(new File(resultsDir, "FaultSubsectionCharFactorData.csv"));
@@ -3047,7 +3053,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		if(!resultsDir.exists())
 			resultsDir.mkdir();
 		
-		List<FaultSectionPrefData> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 		double[] charFactorNumPrimaryArray = new double[faults.size()];
 		double[] charFactorSupraRatesArray = new double[faults.size()];
 		double[] supraRatesArray = new double[faults.size()];
@@ -3295,7 +3301,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		if(!resultsDir.exists())
 			resultsDir.mkdir();
 		
-		List<FaultSectionPrefData> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 		double[] charFactorNumPrimaryArray = new double[faults.size()];
 		double[] charFactorSupraRatesArray = new double[faults.size()];
 		double[] momentRates = new double[faults.size()];
@@ -3810,14 +3816,14 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			Location loc = mainshock.getRuptureSurface().getFirstLocOnUpperEdge();
 			double minDist = 100000;
 			int sectIndex = -1;
-			for(FaultSectionPrefData fltData:rupSet.getFaultSectionDataList()) {
-				double dist = LocationUtils.distanceToSurfFast(loc, fltData.getStirlingGriddedSurface(1.0, false, true));
+			for(FaultSection fltData:rupSet.getFaultSectionDataList()) {
+				double dist = LocationUtils.distanceToSurfFast(loc, fltData.getFaultSurface(1.0, false, true));
 				if(dist<minDist) {
 					minDist = dist;
 					sectIndex = fltData.getSectionId();
 				}
 			}
-			StirlingGriddedSurface surf = rupSet.getFaultSectionData(sectIndex).getStirlingGriddedSurface(1.0, false, true);
+			RuptureSurface surf = rupSet.getFaultSectionData(sectIndex).getFaultSurface(1.0, false, true);
 			firstLocOnMainTr = surf.getFirstLocOnUpperEdge();
 			lastLocOnMainTr = surf.getLastLocOnUpperEdge();
 			offsetAimuth = LocationUtils.azimuth(firstLocOnMainTr, lastLocOnMainTr) + 90.; // direction to offset rupture traces					
@@ -3959,8 +3965,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			}
 			
 			
-			CPT cpt = FaultBasedMapGen.getParticipationCPT().rescale(-5, 0);;
-			List<FaultSectionPrefData> faults = rupSet.getFaultSectionDataList();
+			CPT cpt = FaultBasedMapGen.getParticipationCPT().rescale(-5, 0);
+			List<? extends FaultSection> faults = rupSet.getFaultSectionDataList();
 
 //			// now log space
 			double[] values = FaultBasedMapGen.log10(sectProbArray);
@@ -4020,7 +4026,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			// list top fault section participations
 			topValueIndices = ETAS_SimAnalysisTools.getIndicesForHighestValuesInArray(sectProbArray, numToList);
 			info += "\nThe following sections are most likely to participate in a triggered event:\n\n";
-			List<FaultSectionPrefData> fltDataList = fssERF.getSolution().getRupSet().getFaultSectionDataList();
+			List<? extends FaultSection> fltDataList = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 			for(int sectIndex :topValueIndices) {
 				info += "\t"+sectProbArray[sectIndex]+"\t"+sectIndex+"\t"+fltDataList.get(sectIndex).getName()+"\n";
 			}
@@ -5301,8 +5307,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		double prob=0;
 		IntegerPDF_FunctionSampler aveSampler = getAveSamplerForRupture(mainshock);
 		ArrayList<Integer> usedCubesIndices = new ArrayList<Integer>();
-		FaultSectionPrefData fltSectData = rupSet.getFaultSectionData(sectIndex);
-		for(Location loc: fltSectData.getStirlingGriddedSurface(1, false, true).getEvenlyDiscritizedListOfLocsOnSurface()) {
+		FaultSection fltSectData = rupSet.getFaultSectionData(sectIndex);
+		for(Location loc: fltSectData.getFaultSurface(1, false, true).getEvenlyDiscritizedListOfLocsOnSurface()) {
 			int cubeIndex = getCubeIndexForLocation(loc);
 			if(!usedCubesIndices.contains(cubeIndex)) {
 				prob += aveSampler.getY(cubeIndex);

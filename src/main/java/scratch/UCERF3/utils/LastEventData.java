@@ -21,6 +21,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -165,17 +166,17 @@ public class LastEventData {
 	 * @param sects
 	 * @param datas
 	 */
-	public static void populateSubSects(List<FaultSectionPrefData> sects,
+	public static void populateSubSects(List<? extends FaultSection> sects,
 			Map<Integer, List<LastEventData>> datas) {
 		// clear any old last event data
-		for (FaultSectionPrefData sect : sects)
+		for (FaultSection sect : sects)
 			sect.setDateOfLastEvent(Long.MIN_VALUE);
 		
 		int populated = 0;
 		int duplicates = 0;
 		// start/end location tolerance (km)
 		HashSet<LastEventData> usedDatas = new HashSet<LastEventData>();
-		for (FaultSectionPrefData sect : sects) {
+		for (FaultSection sect : sects) {
 			int parentID = sect.getParentSectionId();
 			List<LastEventData> parentDatas = datas.get(parentID);
 			if (parentDatas == null)
@@ -287,7 +288,7 @@ public class LastEventData {
 		return eventDate;
 	}
 	
-	public boolean matchesLocation(FaultSectionPrefData sect, double toleranceKM) {
+	public boolean matchesLocation(FaultSection sect, double toleranceKM) {
 		Location sectStartLoc = sect.getFaultTrace().first();
 		Location sectEndLoc = sect.getFaultTrace().last();
 		
@@ -310,10 +311,10 @@ public class LastEventData {
 				"Open Interval (years)", "Paleo Obs. RI", "OI/Paleo RI");
 		
 		Map<Integer, List<LastEventData>> datas = load(UCERF3_DataUtils.locateResourceAsStream(SUB_DIR, FILE_NAME), sheets);
-		List<FaultSectionPrefData> fsd = sol.getRupSet().getFaultSectionDataList();
-		Map<Integer, List<FaultSectionPrefData>> fsdByParent = Maps.newHashMap();
-		for (FaultSectionPrefData sect : fsd) {
-			List<FaultSectionPrefData> parentSects = fsdByParent.get(sect.getParentSectionId());
+		List<? extends FaultSection> fsd = sol.getRupSet().getFaultSectionDataList();
+		Map<Integer, List<FaultSection>> fsdByParent = Maps.newHashMap();
+		for (FaultSection sect : fsd) {
+			List<FaultSection> parentSects = fsdByParent.get(sect.getParentSectionId());
 			if (parentSects == null) {
 				parentSects = Lists.newArrayList();
 				fsdByParent.put(sect.getParentSectionId(), parentSects);
@@ -334,9 +335,9 @@ public class LastEventData {
 		for (String parentName : parentNames) {
 			Integer parentID = parentNamesMap.get(parentName);
 			List<LastEventData> eventData = datas.get(parentID);
-			List<FaultSectionPrefData> sects = fsdByParent.get(parentID);
+			List<FaultSection> sects = fsdByParent.get(parentID);
 			
-			for (FaultSectionPrefData sect : sects) {
+			for (FaultSection sect : sects) {
 				for (LastEventData data : eventData) {
 					if (data.matchesLocation(sect, MATCH_LOCATION_TOLERANCE)) {
 						double paleoObsRate = sol.calcTotPaleoVisibleRateForSect(sect.getSectionId(), paleoProbModel);

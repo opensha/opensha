@@ -50,6 +50,8 @@ import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.InterpolatedEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -1736,31 +1738,31 @@ public class ETAS_Utils {
 	 */
 	public RuptureSurface getRuptureSurfaceWithNoCreepReduction(int fssRupIndex, FaultSystemSolutionERF erf, double gridSpacing) {
 		List<RuptureSurface> rupSurfs = Lists.newArrayList();
-		if ((Boolean)erf.getParameter(FaultSystemSolutionERF.QUAD_SURFACES_PARAM_NAME).getValue()) {
-			for(FaultSectionPrefData fltData: erf.getSolution().getRupSet().getFaultSectionDataForRupture(fssRupIndex))
-				rupSurfs.add(fltData.getQuadSurface(false, gridSpacing));
-		} else {
-			for(FaultSectionPrefData fltData: erf.getSolution().getRupSet().getFaultSectionDataForRupture(fssRupIndex)) {
-				RuptureSurface subSurf;
-				if (gridSpacing < min_spacing) {
-					StirlingGriddedSurface lowRes = fltData.getStirlingGriddedSurface(min_spacing, false, false);
+		for(FaultSection fltData: erf.getSolution().getRupSet().getFaultSectionDataForRupture(fssRupIndex)) {
+			RuptureSurface subSurf;
+			if (gridSpacing < min_spacing) {
+				RuptureSurface lowRes = fltData.getFaultSurface(min_spacing, false, false);
+				if (lowRes instanceof EvenlyGriddedSurface) {
+					EvenlyGriddedSurface gridLowRes = (EvenlyGriddedSurface)lowRes;
 					if (lowRes.getAveGridSpacing() <= gridSpacing) {
 						// already high res enough
 						subSurf = lowRes;
 					} else {
-						double targetColSpacing = lowRes.getGridSpacingAlongStrike();
+						double targetColSpacing = gridLowRes.getGridSpacingAlongStrike();
 						while (targetColSpacing > gridSpacing)
 							targetColSpacing *= 0.5;
-						double targetRowSpacing = lowRes.getGridSpacingDownDip();
+						double targetRowSpacing = gridLowRes.getGridSpacingDownDip();
 						while (targetRowSpacing > gridSpacing)
 							targetRowSpacing *= 0.5;
-						subSurf = new InterpolatedEvenlyGriddedSurface(lowRes, targetRowSpacing, targetColSpacing);
+						subSurf = new InterpolatedEvenlyGriddedSurface(gridLowRes, targetRowSpacing, targetColSpacing);
 					}
 				} else {
-					subSurf = fltData.getStirlingGriddedSurface(gridSpacing, false, false);
+					subSurf = fltData.getFaultSurface(gridSpacing, false, false);
 				}
-				rupSurfs.add(subSurf);
+			} else {
+				subSurf = fltData.getFaultSurface(gridSpacing, false, false);
 			}
+			rupSurfs.add(subSurf);
 		}
 		if (rupSurfs.size() == 1)
 			return rupSurfs.get(0);
@@ -2202,7 +2204,7 @@ public class ETAS_Utils {
 		
 		double[] sectionArea = new double[subSeisMFD_list.size()];
 		for(int s=0;s<subSeisMFD_list.size();s++) {
-			FaultSectionPrefData sectData = fssERF.getSolution().getRupSet().getFaultSectionData(s);
+			FaultSection sectData = fssERF.getSolution().getRupSet().getFaultSectionData(s);
 			sectionArea[s]= sectData.getTraceLength()*sectData.getReducedDownDipWidth();
 		}
 		
@@ -2265,7 +2267,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 		if(!resultsDir.exists())
 			resultsDir.mkdir();
 		
-		List<FaultSectionPrefData> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = fssERF.getSolution().getRupSet().getFaultSectionDataList();
 		double[] values = ETAS_Utils.getFractSubseisTriggeredBySupra(fssERF, etasParams);
 		for(int i=0;i<values.length;i++)
 			values[i]=Math.log10(values[i]);

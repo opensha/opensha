@@ -25,12 +25,17 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+
+import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
 import scratch.UCERF3.FaultSystemRupSet;
@@ -244,7 +249,7 @@ public class FaultSystemSolutionCalc {
 		
 		// loop over each
 		for(int s=0; s<subSeisMFD_List.size(); s++ ) {
-			LocationList locList = invSol.getRupSet().getFaultSectionData(s).getStirlingGriddedSurface(1.0, false, true).getEvenlyDiscritizedListOfLocsOnSurface();
+			LocationList locList = invSol.getRupSet().getFaultSectionData(s).getFaultSurface(1.0, false, true).getEvenlyDiscritizedListOfLocsOnSurface();
 			GutenbergRichterMagFreqDist sectMFD = subSeisMFD_List.get(s);
 			sectMFD.scale(1.0/(double)locList.size());
 			for(Location loc: locList) {
@@ -295,7 +300,7 @@ public class FaultSystemSolutionCalc {
 		
 		// loop over each
 		for(int s=0; s<supraSeisMFD_List.size(); s++ ) {
-			LocationList locList = invSol.getRupSet().getFaultSectionData(s).getStirlingGriddedSurface(1.0, false, true).getEvenlyDiscritizedListOfLocsOnSurface();
+			LocationList locList = invSol.getRupSet().getFaultSectionData(s).getFaultSurface(1.0, false, true).getEvenlyDiscritizedListOfLocsOnSurface();
 			IncrementalMagFreqDist sectMFD = supraSeisMFD_List.get(s);
 			sectMFD.scale(1.0/(double)locList.size());
 			for(Location loc: locList) {
@@ -392,15 +397,17 @@ public class FaultSystemSolutionCalc {
 		ArrayList<String> lineList = new ArrayList<String>();
 
 		for(int s=0;s<rupSet.getNumSections();s++) {
-			FaultSectionPrefData data = rupSet.getFaultSectionData(s);
+			FaultSection data = rupSet.getFaultSectionData(s);
 			double partRate = fss.calcParticRateForSect(s, 0, 10);
 			lineList.add("> -Z"+(float)Math.log10(partRate));
-			StirlingGriddedSurface surf = data.getStirlingGriddedSurface(1.0, false, false);
+			RuptureSurface surf = data.getFaultSurface(1.0, false, false);
+			Preconditions.checkState(surf instanceof EvenlyGriddedSurface);
+			EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surf;
 			ArrayList<Location> locList = new ArrayList<Location>();
-			locList.add(surf.getLocation(0, 0));
-			locList.add(surf.getLocation(0, surf.getNumCols()-1));
-			locList.add(surf.getLocation(surf.getNumRows()-1,surf.getNumCols()-1));
-			locList.add(surf.getLocation(surf.getNumRows()-1, 0));
+			locList.add(gridSurf.getLocation(0, 0));
+			locList.add(gridSurf.getLocation(0, gridSurf.getNumCols()-1));
+			locList.add(gridSurf.getLocation(gridSurf.getNumRows()-1, gridSurf.getNumCols()-1));
+			locList.add(gridSurf.getLocation(gridSurf.getNumRows()-1, 0));
 			for(Location loc:locList) {
 				lineList.add((float)loc.getLatitude()+"\t"+(float)loc.getLongitude()+"\t"+(float)-loc.getDepth());
 			}			

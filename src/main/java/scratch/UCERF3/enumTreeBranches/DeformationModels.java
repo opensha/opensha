@@ -11,6 +11,7 @@ import org.dom4j.Document;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -173,7 +174,7 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 		}
 	}
 	
-	public static List<FaultSectionPrefData> loadSubSects(FaultModels fm, DeformationModels dm) {
+	public static List<? extends FaultSection> loadSubSects(FaultModels fm, DeformationModels dm) {
 		File cacheDir = getCacheDir();
 		File xmlFile = new File(cacheDir, fm.encodeChoiceString()+"_"+dm.encodeChoiceString()+"_sub_sects.xml");
 		if (xmlFile.exists()) {
@@ -184,7 +185,7 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 			}
 		}
 		System.out.println("No sub section cache exists for "+fm.getShortName()+", "+dm.getShortName());
-		List<FaultSectionPrefData> sects = new DeformationModelFetcher(
+		List<? extends FaultSection> sects = new DeformationModelFetcher(
 				fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1).getSubSectionList();
 		// write to XML
 		Document doc = XMLUtils.createDocumentWithRoot();

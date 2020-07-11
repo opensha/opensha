@@ -16,6 +16,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -111,8 +112,8 @@ public class ETAS_SectionSearch {
 		if (cmd.hasOption("name"))
 			name = cmd.getOptionValue("name").trim();
 		
-		List<FaultSectionPrefData> sects = fss.getRupSet().getFaultSectionDataList();
-		for (FaultSectionPrefData sect : sects) {
+		List<? extends FaultSection> sects = fss.getRupSet().getFaultSectionDataList();
+		for (FaultSection sect : sects) {
 			if (searchReg != null) {
 				boolean match = false;
 				for (Location loc : sect.getFaultTrace()) {
@@ -129,7 +130,7 @@ public class ETAS_SectionSearch {
 			
 			System.out.println(sect.getSectionId()+": "+sect.getName());
 			if (searchReg != null) {
-				double dist = sect.getStirlingGriddedSurface(0.1, false, true).getDistanceJB(centerLoc);
+				double dist = sect.getFaultSurface(0.1, false, true).getDistanceJB(centerLoc);
 				System.out.println("\thorizontal distance to search location: "+(float)dist);
 			}
 			System.out.println("\tupper depth: "+(float)sect.getReducedAveUpperDepth());

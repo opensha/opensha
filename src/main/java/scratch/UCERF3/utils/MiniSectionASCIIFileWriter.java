@@ -12,6 +12,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
 import com.google.common.base.Preconditions;
@@ -57,22 +58,22 @@ public class MiniSectionASCIIFileWriter {
 		File avgOutputFile = new File(outputDir, prefix+"_avg.txt");
 		
 		// load FM
-		List<FaultSectionPrefData> fmSects = fm.fetchFaultSections();
+		List<FaultSection> fmSects = fm.fetchFaultSections();
 		// load DM
 		Map<Integer, DeformationSection> dmSects = DeformationModelFileParser.load(dm.getDataFileURL(fm));
 		// compute moment reductions for DMs
 		DeformationModelFileParser.applyMomentReductions(
 				dmSects, DeformationModelFetcher.MOMENT_REDUCTION_MAX);
 		
-		List<FaultSectionPrefData> miniSects = Lists.newArrayList();
+		List<FaultSection> miniSects = Lists.newArrayList();
 		
-		List<FaultSectionPrefData> avgSects = Lists.newArrayList();
+		List<FaultSection> avgSects = Lists.newArrayList();
 		
 		int index = 0;
 		
 		double defaultAseismicityValue = InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE;
 		
-		for (FaultSectionPrefData parentSect : fmSects) {
+		for (FaultSection parentSect : fmSects) {
 			Integer parentID = parentSect.getSectionId();
 			DeformationSection dmSect = dmSects.get(parentID);
 			Preconditions.checkNotNull(dmSect);
@@ -85,7 +86,7 @@ public class MiniSectionASCIIFileWriter {
 			double avgRake = FaultUtils.getLengthBasedAngleAverage(
 					parentSect.getFaultTrace(), dmSect.getRakes());
 			
-			FaultSectionPrefData avgSect = parentSect.clone();
+			FaultSection avgSect = parentSect.clone();
 			avgSect.setAveSlipRate(avgSlip);
 			avgSect.setAveRake(avgRake);
 			avgSects.add(avgSect);
@@ -98,7 +99,7 @@ public class MiniSectionASCIIFileWriter {
 				
 				String name = parentSect.getName()+", Minisection "+i;
 				
-				FaultSectionPrefData newSect = parentSect.clone();
+				FaultSection newSect = parentSect.clone();
 				newSect.setParentSectionId(parentID);
 				newSect.setParentSectionName(parentSect.getName());
 				newSect.setSectionId(index++);
@@ -135,7 +136,7 @@ public class MiniSectionASCIIFileWriter {
 				FaultTrace miniTrace = new FaultTrace(name);
 				miniTrace.add(loc1);
 				miniTrace.add(loc2);
-				newSect.setFaultTrace(miniTrace);
+				((FaultSectionPrefData)newSect).setFaultTrace(miniTrace);
 				
 				miniSects.add(newSect);
 			}

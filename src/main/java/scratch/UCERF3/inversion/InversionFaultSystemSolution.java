@@ -22,6 +22,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.commons.gui.plot.GraphWindow;
@@ -882,7 +883,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	public void plotSlipRates() {
 		int numSections = rupSet.getNumSections();
 		int numRuptures = rupSet.getNumRuptures();
-		List<FaultSectionPrefData> faultSectionData = rupSet.getFaultSectionDataList();
+		List<? extends FaultSection> faultSectionData = rupSet.getFaultSectionDataList();
 
 		ArrayList funcs2 = new ArrayList();		
 		EvenlyDiscretizedFunc syn = new EvenlyDiscretizedFunc(0,(double)numSections-1,numSections);

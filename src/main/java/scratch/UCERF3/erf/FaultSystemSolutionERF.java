@@ -45,6 +45,7 @@ import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
 
 import scratch.UCERF3.FaultSystemRupSet;
@@ -120,9 +121,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	protected ApplyGardnerKnopoffAftershockFilterParam applyAftershockFilterParam;
 	protected IncludeBackgroundParam bgIncludeParam;
 	protected BackgroundRupParam bgRupTypeParam;
-	public static final String QUAD_SURFACES_PARAM_NAME = "Use Quad Surfaces (otherwise gridded)";
-	public static final boolean QUAD_SURFACES_PARAM_DEFAULT = false;
-	private BooleanParameter quadSurfacesParam;
 	private ProbabilityModelParam probModelParam;
 //	private BPT_AperiodicityParam bpt_AperiodicityParam;
 	private MagDependentAperiodicityParam magDepAperiodicityParam;
@@ -136,7 +134,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	protected boolean applyAftershockFilter = false;
 	protected IncludeBackgroundOption bgInclude = IncludeBackgroundOption.INCLUDE;
 	protected BackgroundRupType bgRupType = BackgroundRupType.POINT;
-	private boolean quadSurfaces = false;
 	protected ProbabilityModelOptions probModel = ProbabilityModelOptions.POISSON;
 //	private double bpt_Aperiodicity=0.3;
 	private MagDependentAperiodicityOptions magDepAperiodicity = MagDependentAperiodicityOptions.MID_VALUES;
@@ -313,7 +310,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		applyAftershockFilterParam= new ApplyGardnerKnopoffAftershockFilterParam();  // default is false
 		bgIncludeParam = new IncludeBackgroundParam();
 		bgRupTypeParam = new BackgroundRupParam();
-		quadSurfacesParam = new BooleanParameter(QUAD_SURFACES_PARAM_NAME, QUAD_SURFACES_PARAM_DEFAULT);
 		probModelParam = new ProbabilityModelParam();
 //		bpt_AperiodicityParam = new BPT_AperiodicityParam();
 		magDepAperiodicityParam = new MagDependentAperiodicityParam();
@@ -328,7 +324,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		applyAftershockFilterParam.addParameterChangeListener(this);
 		bgIncludeParam.addParameterChangeListener(this);
 		bgRupTypeParam.addParameterChangeListener(this);
-		quadSurfacesParam.addParameterChangeListener(this);
 		probModelParam.addParameterChangeListener(this);
 //		bpt_AperiodicityParam.addParameterChangeListener(this);
 		magDepAperiodicityParam.addParameterChangeListener(this);
@@ -343,7 +338,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		applyAftershockFilterParam.setValue(applyAftershockFilter);
 		bgIncludeParam.setValue(bgInclude);
 		bgRupTypeParam.setValue(bgRupType);
-		quadSurfacesParam.setValue(quadSurfaces);
 		probModelParam.setValue(probModel);
 //		bpt_AperiodicityParam.setValue(bpt_Aperiodicity);
 		magDepAperiodicityParam.setValue(magDepAperiodicity);
@@ -367,10 +361,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		if(!bgIncludeParam.getValue().equals(IncludeBackgroundOption.EXCLUDE)) {
 			adjustableParams.addParameter(bgRupTypeParam);
 		}
-		adjustableParams.addParameter(quadSurfacesParam);
-		if(quadSurfacesParam.getValue().equals(false)) {
-			adjustableParams.addParameter(faultGridSpacingParam);
-		}
+		adjustableParams.addParameter(faultGridSpacingParam);
 		adjustableParams.addParameter(probModelParam);
 		if(!probModelParam.getValue().equals(ProbabilityModelOptions.POISSON)) {
 			if(!probModelParam.getValue().equals(ProbabilityModelOptions.U3_PREF_BLEND))
@@ -434,7 +425,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			prefBlendProbModelsCalc = null;
 			if(probModel != ProbabilityModelOptions.POISSON) {
 				boolean hasTD = false;
-				for (FaultSectionPrefData sect : faultSysSolution.getRupSet().getFaultSectionDataList()) {
+				for (FaultSection sect : faultSysSolution.getRupSet().getFaultSectionDataList()) {
 					if (sect.getDateOfLastEvent() > Long.MIN_VALUE) {
 						hasTD = true;
 						break;
@@ -550,10 +541,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		} else if (paramName.equalsIgnoreCase(bgRupTypeParam.getName())) {
 			bgRupType = bgRupTypeParam.getValue();
 			bgRupTypeChanged = true;
-		} else if (paramName.equals(QUAD_SURFACES_PARAM_NAME)) {
-			quadSurfaces = quadSurfacesParam.getValue();
-			quadSurfacesChanged = true;
-			createParamList();
 		} else if (paramName.equals(probModelParam.getName())) {
 			probModel = probModelParam.getValue();
 			probModelChanged = true;
@@ -915,7 +902,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 					prob = 1-Math.exp(-aftRateCorr*probGain*faultSysSolution.getRateForRup(fltSystRupIndex)*duration);
 
 				src = new FaultRuptureSource(meanMag, 
-						rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing, quadSurfaces), 
+						rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing), 
 						rupSet.getAveRakeForRup(fltSystRupIndex), prob, isPoisson);
 			} else {
 					// apply aftershock and/or gain corrections
@@ -934,7 +921,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 					
 				// this set the source as Poisson for U3; does this matter? TODO
 				src = new FaultRuptureSource(rupMFDcorrected, 
-						rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing, quadSurfaces),
+						rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing),
 						rupSet.getAveRakeForRup(fltSystRupIndex), timeSpan.getDuration());
 			}
 		} else {
@@ -951,7 +938,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			GaussianMagFreqDist srcMFD = new GaussianMagFreqDist(5.05,8.65,37,meanMag,myAleatoryMagAreaStdDev,totMoRate,2.0,2);
 			// this also sets the source as Poisson for U3; does this matter? TODO
 			src = new FaultRuptureSource(srcMFD, 
-					rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing, quadSurfaces),
+					rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing),
 					rupSet.getAveRakeForRup(fltSystRupIndex), timeSpan.getDuration());
 			Preconditions.checkState(src.getNumRuptures() > 0,
 					"Source has zero rups! Mag="+meanMag+", aleatoryMagAreaStdDev="+myAleatoryMagAreaStdDev
@@ -959,7 +946,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 					+", probGain="+probGain+", mft.getNum()="+srcMFD.size());
 		}
 		// make and set the name
-		List<FaultSectionPrefData> data = rupSet.getFaultSectionDataForRupture(fltSystRupIndex);
+		List<FaultSection> data = rupSet.getFaultSectionDataForRupture(fltSystRupIndex);
 		String name = data.size()+" SECTIONS BETWEEN "+data.get(0).getName()+" AND "+data.get(data.size()-1).getName();
 		src.setName("Inversion Src #"+fltSystRupIndex+"; "+name);
 		return src;
@@ -1134,7 +1121,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			readFaultSysSolutionFromFile();
 		}
 		long startTime = getTimeSpan().getStartTimeInMillis();
-		for(FaultSectionPrefData fltData : faultSysSolution.getRupSet().getFaultSectionDataList()) {
+		for(FaultSection fltData : faultSysSolution.getRupSet().getFaultSectionDataList()) {
 			if(fltData.getDateOfLastEvent() > startTime) {
 				if(D) {
 					double dateOfLast = 1970+fltData.getDateOfLastEvent()/ProbabilityModelsCalc.MILLISEC_PER_YEAR;

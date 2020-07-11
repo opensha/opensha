@@ -58,6 +58,7 @@ import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -820,11 +821,11 @@ public class ETAS_Launcher {
 			
 			if (index == 0 && dateLastDebug && sol != null) {
 				debug(DebugLevel.INFO, "Date of last event information:");
-				Map<Long, List<FaultSectionPrefData>> lastEventSects = new HashMap<>();
-				for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList()) {
+				Map<Long, List<FaultSection>> lastEventSects = new HashMap<>();
+				for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
 					Long dateLast = sect.getDateOfLastEvent();
 					if (dateLast > Long.MIN_VALUE) {
-						List<FaultSectionPrefData> sects = lastEventSects.get(dateLast);
+						List<FaultSection> sects = lastEventSects.get(dateLast);
 						if (sects == null) {
 							sects = new ArrayList<>();
 							lastEventSects.put(dateLast, sects);
@@ -843,7 +844,7 @@ public class ETAS_Launcher {
 					String timeStr = df.format(cal.getTime());
 					debug(DebugLevel.INFO, time+": "+timeStr+" ("
 							+ETAS_AbstractPlot.getTimeShortLabel(timeDeltaYears)+" before simulation start)");
-					for (FaultSectionPrefData sect: lastEventSects.get(time))
+					for (FaultSection sect : lastEventSects.get(time))
 						debug(DebugLevel.INFO, "\t"+sect.getName());
 				}
 				debug(DebugLevel.INFO, "Sim start: "+simulationOT+": "+df.format(new Date(simulationOT)));

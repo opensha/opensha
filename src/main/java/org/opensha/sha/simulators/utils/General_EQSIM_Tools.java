@@ -57,6 +57,7 @@ import org.opensha.sha.earthquake.calc.recurInterval.LognormalDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.WeibullDistCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.DeformationModelPrefDataFinal;
 import org.opensha.sha.faultSurface.EvenlyGridCenteredSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
@@ -161,7 +162,7 @@ public class General_EQSIM_Tools {
 	 * @param aseisReducesArea whether or not to reduce area (otherwise reduces slip rate?)
 	 * @param maxDiscretization the maximum element size
 	 */
-	public General_EQSIM_Tools(List<FaultSectionPrefData> faultSections, boolean aseisReducesArea,
+	public General_EQSIM_Tools(List<? extends FaultSection> faultSections, boolean aseisReducesArea,
 			double maxDiscretization) {
 		init(RectElemFromPrefDataBuilder.build(faultSections, aseisReducesArea, maxDiscretization));
 	}

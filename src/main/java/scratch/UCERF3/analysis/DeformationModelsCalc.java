@@ -37,9 +37,10 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.cpt.CPT;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
@@ -87,7 +88,7 @@ import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
 
 public class DeformationModelsCalc {
 	
-	public static void plotDDW_AndLowerSeisDepthDistributions(List<FaultSectionPrefData> subsectData, String plotTitle) {
+	public static void plotDDW_AndLowerSeisDepthDistributions(List<FaultSection> subsectData, String plotTitle) {
 		
 		HistogramFunction origDepthsHist = new HistogramFunction(0.5, 70, 1.0);
 		HistogramFunction reducedDDW_Hist = new HistogramFunction(0.5, 70, 1.0);
@@ -101,7 +102,7 @@ public class DeformationModelsCalc {
 		int num=0;
 		
 		double totWt=0;
-		for(FaultSectionPrefData data : subsectData) {
+		for(FaultSection data : subsectData) {
 			if(data.getAveLowerDepth()>25.0) {
 //				System.out.println(data.toString());
 				String info = data.getParentSectionName()+"\tLowSeisDep = "+Math.round(data.getAveLowerDepth());
@@ -170,9 +171,9 @@ public class DeformationModelsCalc {
 	 * @param creepReduced
 	 * @return
 	 */
-	public static double calculateTotalMomentRate(List<FaultSectionPrefData> sectData, boolean creepReduced) {
+	public static double calculateTotalMomentRate(List<? extends FaultSection> sectData, boolean creepReduced) {
 		double totMoRate=0;
-		for(FaultSectionPrefData data : sectData) {
+		for(FaultSection data : sectData) {
 			double moRate = data.calcMomentRate(creepReduced);
 			if(!Double.isNaN(moRate))
 				totMoRate += moRate;
@@ -189,13 +190,13 @@ public class DeformationModelsCalc {
 	 */
 	public static void testFaultZonePolygons(FaultModels faultModel) {
 		
-//		ArrayList<FaultSectionPrefData> sectData =  FaultModels.FM3_1.fetchFaultSections();
+//		ArrayList<FaultSection> sectData =  FaultModels.FM3_1.fetchFaultSections();
 //		sectData.addAll(FaultModels.FM3_2.fetchFaultSections());
 		
 		double sectLen = 7d;
-		List<FaultSectionPrefData> faultData =  faultModel.fetchFaultSections();
-		List<FaultSectionPrefData> sectData  = Lists.newArrayList();
-		for (FaultSectionPrefData fault : faultData) {
+		List<? extends FaultSection> faultData =  faultModel.fetchFaultSections();
+		List<FaultSection> sectData  = Lists.newArrayList();
+		for (FaultSection fault : faultData) {
 			sectData.addAll(fault.getSubSectionsList(sectLen));
 		}
 		FaultPolyMgr polyMgr = FaultPolyMgr.create(faultModel, null, sectLen);
@@ -204,7 +205,7 @@ public class DeformationModelsCalc {
 		ArrayList<String> outsideZoneNames = new ArrayList<String>();
 		ArrayList<String> goodZoneNames = new ArrayList<String>();
 
-		for(FaultSectionPrefData data: sectData){
+		for(FaultSection data: sectData){
 //			Region zone = data.getZonePolygon();
 			Region zone = polyMgr.getPoly(data.getSectionId());
 			
@@ -213,7 +214,7 @@ public class DeformationModelsCalc {
 					nullNames.add(data.getSectionName());
 			}
 			else {
-				LocationList surfLocs = data.getStirlingGriddedSurface(1.0, false, false).getEvenlyDiscritizedListOfLocsOnSurface();
+				LocationList surfLocs = data.getFaultSurface(1.0, false, false).getEvenlyDiscritizedListOfLocsOnSurface();
 				boolean good = true;
 				for(Location loc : surfLocs) {
 					if(!zone.contains(loc)) {
@@ -306,8 +307,8 @@ public class DeformationModelsCalc {
 		
 		// now get moment rate of new faults only
 		ArrayList<String> getEquivUCERF2_SectionNames = FindEquivUCERF2_FM3_Ruptures.getAllSectionNames(fm);
-		ArrayList<FaultSectionPrefData> newSectionData = new ArrayList<FaultSectionPrefData>();
-		for(FaultSectionPrefData data:defFetch.getSubSectionList())
+		ArrayList<FaultSection> newSectionData = new ArrayList<FaultSection>();
+		for(FaultSection data:defFetch.getSubSectionList())
 			if (!getEquivUCERF2_SectionNames.contains(data.getParentSectionName()))
 				newSectionData.add(data);
 		double newFaultMoRate = calculateTotalMomentRate(newSectionData,true);
@@ -339,8 +340,8 @@ public class DeformationModelsCalc {
 				if(fm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED) > 0 && dm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED) > 0) {
 					defFetch = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
 					System.out.println(fm+"\t"+fm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED)+"\t"+dm+"\t"+dm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED));
-					for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
-						StirlingGriddedSurface surf = data.getStirlingGriddedSurface(1.0);
+					for(FaultSection data : defFetch.getSubSectionList()) {
+						RuptureSurface surf = data.getFaultSurface(1.0);
 						double frcInside = surf.getFractionOfSurfaceInRegion(region);
 						if(frcInside > 1e-4) {
 							double moRate = frcInside*data.calcMomentRate(true)*fm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED)*dm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED);
@@ -383,8 +384,8 @@ public class DeformationModelsCalc {
 		ArrayList<String> u2_SectNameInside = new ArrayList<String>();
 		for(int i=0; i<u2_dm_array.length;i++) {
 			int dmID = u2_dm_array[i];
-			for(FaultSectionPrefData data : DeformationModelFetcher.getAll_UCERF2Sections(false, dmID)) {
-				StirlingGriddedSurface surf = data.getStirlingGriddedSurface(1.0);
+			for(FaultSection data : DeformationModelFetcher.getAll_UCERF2Sections(false, dmID)) {
+				RuptureSurface surf = data.getFaultSurface(1.0);
 				double frcInside = surf.getFractionOfSurfaceInRegion(region);
 				if(frcInside > 1e-4) {
 					double moRate = frcInside*data.calcMomentRate(true)*u2_dm_wts_array[i];
@@ -464,8 +465,8 @@ public class DeformationModelsCalc {
 			for(DeformationModels dm:dm_array) {
 				if(fm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED) > 0 && dm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED) > 0) {
 					defFetch = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-					for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
-						StirlingGriddedSurface surf = data.getStirlingGriddedSurface(1.0);
+					for(FaultSection data : defFetch.getSubSectionList()) {
+						RuptureSurface surf = data.getFaultSurface(1.0);
 						double distJB = surf.getDistanceJB(loc);
 						if(distJB <= 200) {
 							double moRate = data.calcMomentRate(true)*fm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED)*dm.getRelativeWeight(InversionModels.CHAR_CONSTRAINED);
@@ -531,8 +532,8 @@ public class DeformationModelsCalc {
 		ArrayList<String> u2_SectName = new ArrayList<String>();
 		for(int i=0; i<u2_dm_array.length;i++) {
 			int dmID = u2_dm_array[i];
-			for(FaultSectionPrefData data : DeformationModelFetcher.getAll_UCERF2Sections(false, dmID)) {
-				StirlingGriddedSurface surf = data.getStirlingGriddedSurface(1.0);
+			for(FaultSection data : DeformationModelFetcher.getAll_UCERF2Sections(false, dmID)) {
+				RuptureSurface surf = data.getFaultSurface(1.0);
 				double distJB = surf.getDistanceJB(loc);
 				if(distJB <= 200) {
 					double moRate = data.calcMomentRate(true)*u2_dm_wts_array[i];
@@ -588,7 +589,7 @@ public class DeformationModelsCalc {
 		
 		// loop over fault model 3.1
 		DeformationModelFetcher defFetch = new DeformationModelFetcher(FaultModels.FM3_1, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(!fm3_sectionNamesList.contains(data.getParentSectionName())) {
 				fm3_sectionNamesList.add(data.getParentSectionName());
 				fm3_sectionIDsList.add(data.getParentSectionId());
@@ -596,7 +597,7 @@ public class DeformationModelsCalc {
 		}
 		// add those from FM 3.2
 		defFetch = new DeformationModelFetcher(FaultModels.FM3_2, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(!fm3_sectionNamesList.contains(data.getParentSectionName())) {
 				fm3_sectionNamesList.add(data.getParentSectionName());
 				fm3_sectionIDsList.add(data.getParentSectionId());
@@ -711,7 +712,7 @@ public class DeformationModelsCalc {
 		
 		// loop over fault model 3.1
 		DeformationModelFetcher defFetch = new DeformationModelFetcher(FaultModels.FM3_1, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(!fm3_sectionNamesList.contains(data.getParentSectionName())) {
 				fm3_sectionNamesList.add(data.getParentSectionName());
 				fm3_sectionIDsList.add(data.getParentSectionId());
@@ -719,7 +720,7 @@ public class DeformationModelsCalc {
 		}
 		// add those from FM 3.2
 		defFetch = new DeformationModelFetcher(FaultModels.FM3_2, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(!fm3_sectionNamesList.contains(data.getParentSectionName())) {
 				fm3_sectionNamesList.add(data.getParentSectionName());
 				fm3_sectionIDsList.add(data.getParentSectionId());
@@ -735,7 +736,7 @@ public class DeformationModelsCalc {
 		for(int s=0; s<fm3_sectionIDsList.size();s++) {
 			sectionDone[s]=false;
 			int parSectID = fm3_sectionIDsList.get(s);
-			for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+			for(FaultSection data : defFetch.getSubSectionList()) {
 				if(data.getParentSectionId() == parSectID) {
 					fm3_sectionLengthList[s] += data.getTraceLength();
 					fm3_sectionOrigAreaList[s] += data.getOrigDownDipWidth()*data.getTraceLength();
@@ -750,7 +751,7 @@ public class DeformationModelsCalc {
 			if(sectionDone[s])
 				continue;
 			int parSectID = fm3_sectionIDsList.get(s);
-			for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+			for(FaultSection data : defFetch.getSubSectionList()) {
 				if(data.getParentSectionId() == parSectID) {
 					fm3_sectionLengthList[s] += data.getTraceLength();
 					fm3_sectionOrigAreaList[s] += data.getOrigDownDipWidth()*data.getTraceLength();
@@ -957,10 +958,10 @@ public class DeformationModelsCalc {
 
 	
 	
-	private static HashMap<String,Double> getMoRateHashtable(ArrayList<FaultSectionPrefData> faultSectDataList, boolean creepReduced) {
+	private static HashMap<String,Double> getMoRateHashtable(ArrayList<? extends FaultSection> faultSectDataList, boolean creepReduced) {
 		
 		HashMap<String,Double> hashtable = new HashMap<String,Double>();
-		for(FaultSectionPrefData data:faultSectDataList) {
+		for(FaultSection data:faultSectDataList) {
 			hashtable.put(data.getName(), data.calcMomentRate(creepReduced));
 		}
 		
@@ -968,25 +969,25 @@ public class DeformationModelsCalc {
 	}
 	
 	
-	private static HashMap<String,Double> getOrigSlipRateHashtable(ArrayList<FaultSectionPrefData> faultSectDataList) {
+	private static HashMap<String,Double> getOrigSlipRateHashtable(ArrayList<? extends FaultSection> faultSectDataList) {
 		HashMap<String,Double> hashtable = new HashMap<String,Double>();
-		for(FaultSectionPrefData data:faultSectDataList) {
+		for(FaultSection data:faultSectDataList) {
 			hashtable.put(data.getName(), data.getOrigAveSlipRate());
 		}
 		return hashtable;
 	}
 
-	private static HashMap<String,Double> getAseisHashtable(ArrayList<FaultSectionPrefData> faultSectDataList) {
+	private static HashMap<String,Double> getAseisHashtable(ArrayList<? extends FaultSection> faultSectDataList) {
 		HashMap<String,Double> hashtable = new HashMap<String,Double>();
-		for(FaultSectionPrefData data:faultSectDataList) {
+		for(FaultSection data:faultSectDataList) {
 			hashtable.put(data.getName(), data.getAseismicSlipFactor());
 		}
 		return hashtable;
 	}
 	
-	private static HashMap<String,Double> getCouplingCoeffHashtable(ArrayList<FaultSectionPrefData> faultSectDataList) {
+	private static HashMap<String,Double> getCouplingCoeffHashtable(ArrayList<? extends FaultSection> faultSectDataList) {
 		HashMap<String,Double> hashtable = new HashMap<String,Double>();
-		for(FaultSectionPrefData data:faultSectDataList) {
+		for(FaultSection data:faultSectDataList) {
 			hashtable.put(data.getName(), data.getCouplingCoeff());
 		}
 		return hashtable;
@@ -997,9 +998,9 @@ public class DeformationModelsCalc {
 	 * @param faultSectDataList
 	 * @return
 	 */
-	private static HashMap<String,Double> getOrigAreaHashtable(ArrayList<FaultSectionPrefData> faultSectDataList) {
+	private static HashMap<String,Double> getOrigAreaHashtable(ArrayList<? extends FaultSection> faultSectDataList) {
 		HashMap<String,Double> hashtable = new HashMap<String,Double>();
-		for(FaultSectionPrefData data:faultSectDataList) {
+		for(FaultSection data:faultSectDataList) {
 			hashtable.put(data.getName(), data.getOrigDownDipWidth()*data.getTraceLength());
 		}
 		return hashtable;
@@ -1010,9 +1011,9 @@ public class DeformationModelsCalc {
 	 * @param faultSectDataList
 	 * @return
 	 */
-	private static HashMap<String,Double> getLengthHashtable(ArrayList<FaultSectionPrefData> faultSectDataList) {
+	private static HashMap<String,Double> getLengthHashtable(ArrayList<? extends FaultSection> faultSectDataList) {
 		HashMap<String,Double> hashtable = new HashMap<String,Double>();
-		for(FaultSectionPrefData data:faultSectDataList) {
+		for(FaultSection data:faultSectDataList) {
 			hashtable.put(data.getName(), data.getTraceLength());
 		}
 		return hashtable;
@@ -1028,7 +1029,7 @@ public class DeformationModelsCalc {
 		Integer lastID = -100;
 		double moRate=0;
 
-		for(FaultSectionPrefData data:defFetch.getSubSectionList()) {
+		for(FaultSection data:defFetch.getSubSectionList()) {
 			if(data.getParentSectionName().equals(lastName)) {
 				moRate += data.calcMomentRate(creepReduced);
 			}
@@ -1066,7 +1067,7 @@ public class DeformationModelsCalc {
 		double totOrigArea=0;
 		double totReducedArea=0;
 
-		for(FaultSectionPrefData data:defFetch.getSubSectionList()) {
+		for(FaultSection data:defFetch.getSubSectionList()) {
 			if(data.getParentSectionName().equals(lastName)) {
 				totOrigArea += data.getOrigDownDipWidth()*data.getTraceLength();
 				totReducedArea += data.getReducedDownDipWidth()*data.getTraceLength();
@@ -1106,7 +1107,7 @@ public class DeformationModelsCalc {
 		double totOrigArea=0;
 		double aveCC =0;
 
-		for(FaultSectionPrefData data:defFetch.getSubSectionList()) {
+		for(FaultSection data:defFetch.getSubSectionList()) {
 			if(data.getParentSectionName().equals(lastName)) {
 				double area = data.getOrigDownDipWidth()*data.getTraceLength();
 				totOrigArea += area;
@@ -1173,7 +1174,7 @@ public class DeformationModelsCalc {
 		double origAreaSum=0;
 //		double reducedAreaSum=0;
 
-		for(FaultSectionPrefData data:defFetch.getSubSectionList()) {
+		for(FaultSection data:defFetch.getSubSectionList()) {
 			if(data.getParentSectionName().equals(lastName)) {
 				double origArea = data.getOrigDownDipWidth()*data.getTraceLength();
 				double reducedArea = data.getReducedDownDipWidth()*data.getTraceLength();
@@ -1228,7 +1229,7 @@ public class DeformationModelsCalc {
 		double origAreaSum=0;
 		double reducedAreaSum=0;
 
-		for(FaultSectionPrefData data:defFetch.getSubSectionList()) {
+		for(FaultSection data:defFetch.getSubSectionList()) {
 			if(data.getParentSectionId()==651) {
 				if(data.getParentSectionName().equals(lastName)) {
 					double origArea = data.getOrigDownDipWidth()*data.getTraceLength();
@@ -1274,7 +1275,7 @@ public class DeformationModelsCalc {
 		double moRateReduced=0, moRateNotReduced=0;
 		System.out.println("Sect Name\t"+"moRateReduced\tmoRateNotReduced\tIn UCERF2?");
 
-		for(FaultSectionPrefData data:defFetch.getSubSectionList())
+		for(FaultSection data:defFetch.getSubSectionList())
 			if(data.getParentSectionName().equals(lastName)) {
 				moRateReduced += data.calcMomentRate(true);
 				moRateNotReduced += data.calcMomentRate(false);
@@ -1304,7 +1305,7 @@ public class DeformationModelsCalc {
 		int numSubSect =0;
 
 		System.out.println("Sect Name\tSlipRate\tAsiesFactor");
-		for(FaultSectionPrefData data:defFetch.getSubSectionList())
+		for(FaultSection data:defFetch.getSubSectionList())
 			if(data.getParentSectionName().equals(lastName)) {
 				slipRate += data.getReducedAveSlipRate();
 				aseisFact += data.getAseismicSlipFactor();
@@ -1333,7 +1334,7 @@ public class DeformationModelsCalc {
 		DeformationModelFetcher defFetch = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
 		
 		System.out.println("Sect Name\tSlipRate\tAveDip\tAsiesFactor\tOrigUpperDepth+\tLowerDepth\tOrigDDW\tReducedDDW\tCouplingCoeff");
-		for(FaultSectionPrefData data:defFetch.getSubSectionList())
+		for(FaultSection data:defFetch.getSubSectionList())
 			if(data.getParentSectionName().equals(parentSectionName)) {
 				System.out.println(data.getName()+"\t"+(float)data.getReducedAveSlipRate()+"\t"+(float)data.getAveDip()+
 						"\t"+(float)data.getAseismicSlipFactor()+"\t"+(float)data.getOrigAveUpperDepth()+
@@ -1351,11 +1352,11 @@ public class DeformationModelsCalc {
 		System.out.println(region.getName()+"\nSect Name\tFractionInside\tMoRateInside");
 		double numInside=0, totNum=0, moRateInside=0;
 
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(data.getParentSectionName().equals(lastName)) {
-				StirlingGriddedSurface surf = data.getStirlingGriddedSurface(1.0);
+				RuptureSurface surf = data.getFaultSurface(1.0);
 				double frcInside = surf.getFractionOfSurfaceInRegion(region);
-				int numPts = surf.getNumCols()*surf.getNumRows();
+				int numPts = surf.getEvenlyDiscretizedNumLocs();
 				numInside += frcInside*numPts;
 				totNum += numPts;
 				moRateInside += frcInside*data.calcMomentRate(true);
@@ -1366,9 +1367,9 @@ public class DeformationModelsCalc {
 					if(frac > 0.3)
 						System.out.println(lastName+"\t"+(float)frac+"\t"+(float)moRateInside);
 				}
-				StirlingGriddedSurface surf = data.getStirlingGriddedSurface(1.0);
+				RuptureSurface surf = data.getFaultSurface(1.0);
 				double frcInside = surf.getFractionOfSurfaceInRegion(region);
-				int numPts = surf.getNumCols()*surf.getNumRows();
+				int numPts = surf.getEvenlyDiscretizedNumLocs();
 				numInside = frcInside*numPts;
 				totNum = numPts;
 				moRateInside = frcInside*data.calcMomentRate(true);
@@ -1415,12 +1416,12 @@ public class DeformationModelsCalc {
 		// get section name from FM 3.1
 		ArrayList<String> fm3_sectionNamesList = new ArrayList<String>();
 		DeformationModelFetcher defFetch = new DeformationModelFetcher(FaultModels.FM3_1, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList())
+		for(FaultSection data : defFetch.getSubSectionList())
 			if(!fm3_sectionNamesList.contains(data.getParentSectionName()))
 				fm3_sectionNamesList.add(data.getParentSectionName());
 		// add those from FM 3.2
 		defFetch = new DeformationModelFetcher(FaultModels.FM3_2, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList())
+		for(FaultSection data : defFetch.getSubSectionList())
 			if(!fm3_sectionNamesList.contains(data.getParentSectionName()))
 				fm3_sectionNamesList.add(data.getParentSectionName());
 		
@@ -1455,7 +1456,7 @@ public class DeformationModelsCalc {
 		
 		// get section name from FM 3.1
 		DeformationModelFetcher defFetch = new DeformationModelFetcher(FaultModels.FM3_1, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(newParSectionNames.contains(data.getParentSectionName())) { // check that it's a new section
 				faults.add(data.getFaultTrace());
 				valsList.add(data.getReducedAveSlipRate());
@@ -1463,7 +1464,7 @@ public class DeformationModelsCalc {
 		}
 		// this will plot any duplicate over each other
 		defFetch = new DeformationModelFetcher(FaultModels.FM3_2, DeformationModels.GEOLOGIC, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(newParSectionNames.contains(data.getParentSectionName())) { 
 				faults.add(data.getFaultTrace());
 				valsList.add(data.getReducedAveSlipRate());
@@ -1508,7 +1509,7 @@ public class DeformationModelsCalc {
 		double straightAve=0;
 		ArrayList<String> parantNamesOfReduced = new ArrayList<String>();
 		int numReduced=0, numNotReduced=0;
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			double ratio = data.calcMomentRate(true)/data.calcMomentRate(false);
 			if(!Double.isNaN(ratio)) {
 				moRateReductionHist.add(ratio, 1.0);
@@ -1975,9 +1976,9 @@ public class DeformationModelsCalc {
 //		System.out.println("relmGrid.getNodeCount()="+relmGrid.getNodeCount());
 
 		DeformationModelFetcher defFetch = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			double mr = data.calcMomentRate(true);
-			LocationList locList = data.getStirlingGriddedSurface(1.0).getEvenlyDiscritizedListOfLocsOnSurface();
+			LocationList locList = data.getFaultSurface(1.0).getEvenlyDiscritizedListOfLocsOnSurface();
 			mr /= (double)locList.size();
 			for(Location loc: locList) {
 				int index = relmGrid.indexForLocation(loc);
@@ -2132,20 +2133,20 @@ public class DeformationModelsCalc {
 
 	}
 	
-	public static List<FaultSectionPrefData> getIsolatedEndpoints(
-			List<FaultSectionPrefData> subSects, Map<IDPairing, Double> distances, int maxAwayFromEnd) {
-		List<FaultSectionPrefData> isolated = Lists.newArrayList();
+	public static List<FaultSection> getIsolatedEndpoints(
+			List<? extends FaultSection> subSects, Map<IDPairing, Double> distances, int maxAwayFromEnd) {
+		List<FaultSection> isolated = Lists.newArrayList();
 		
-		Map<Integer, FaultSectionPrefData> subSectsMap = Maps.newHashMap();
-		for (FaultSectionPrefData sect : subSects)
+		Map<Integer, FaultSection> subSectsMap = Maps.newHashMap();
+		for (FaultSection sect : subSects)
 			subSectsMap.put(sect.getSectionId(), sect);
 		
-		Map<Integer, List<FaultSectionPrefData>> parentSects = Maps.newHashMap();
+		Map<Integer, List<FaultSection>> parentSects = Maps.newHashMap();
 		
 		for (int sectIndex=0; sectIndex<subSects.size(); sectIndex++) {
-			FaultSectionPrefData sect = subSects.get(sectIndex);
+			FaultSection sect = subSects.get(sectIndex);
 			int parentID = sect.getParentSectionId();
-			List<FaultSectionPrefData> parentSectsList = parentSects.get(parentID);
+			List<FaultSection> parentSectsList = parentSects.get(parentID);
 			if (parentSectsList == null) {
 				parentSectsList = Lists.newArrayList();
 				parentSects.put(parentID, parentSectsList);
@@ -2154,12 +2155,12 @@ public class DeformationModelsCalc {
 			parentSectsList.add(sect);
 		}
 		
-		Map<Integer, List<FaultSectionPrefData>> sectPairings = Maps.newHashMap();
+		Map<Integer, List<FaultSection>> sectPairings = Maps.newHashMap();
 		
 		for (IDPairing pairing : distances.keySet()) {
 			Integer id = pairing.getID1(); // only need to do for ID1 since the reversed pairing will also appear in this list
 			
-			List<FaultSectionPrefData> pairings = sectPairings.get(id);
+			List<FaultSection> pairings = sectPairings.get(id);
 			if (pairings == null) {
 				pairings = Lists.newArrayList();
 				sectPairings.put(id, pairings);
@@ -2170,7 +2171,7 @@ public class DeformationModelsCalc {
 		}
 		
 		for (int parentID : parentSects.keySet()) {
-			List<FaultSectionPrefData> sects = parentSects.get(parentID);
+			List<FaultSection> sects = parentSects.get(parentID);
 			
 			int myMaxAwayFromEnd = maxAwayFromEnd;
 			if (myMaxAwayFromEnd >= sects.size())
@@ -2193,12 +2194,12 @@ public class DeformationModelsCalc {
 	 * @param sectPairings
 	 * @return
 	 */
-	private static boolean isConnected(List<FaultSectionPrefData> sects, Map<Integer, List<FaultSectionPrefData>> sectPairings) {
-		for (FaultSectionPrefData sect : sects) {
+	private static boolean isConnected(List<FaultSection> sects, Map<Integer, List<FaultSection>> sectPairings) {
+		for (FaultSection sect : sects) {
 			// look for a pairing that is within the distance cutoff and has a different parent
-			List<FaultSectionPrefData> pairings = sectPairings.get(sect.getSectionId());
+			List<FaultSection> pairings = sectPairings.get(sect.getSectionId());
 			
-			for (FaultSectionPrefData pairing : pairings) {
+			for (FaultSection pairing : pairings) {
 				if (pairing.getParentSectionId() != sect.getParentSectionId())
 					return true;
 			}
@@ -2214,7 +2215,7 @@ public class DeformationModelsCalc {
 	 * @return
 	 */
 //	public static double getFractSpatialPDF_InsideSectionPolygons(
-//			List<FaultSectionPrefData> fltSectPrefDataList, 
+//			List<FaultSection> fltSectPrefDataList, 
 //			SpatialSeisPDF spatialSeisPDF) {
 //		double sum = 0;
 //		GriddedSeisUtils gsu = new GriddedSeisUtils(fltSectPrefDataList, spatialSeisPDF, 12.0);
@@ -2227,7 +2228,7 @@ public class DeformationModelsCalc {
 		DeformationModelFetcher defFetch = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
 		
 		ArrayList<String> parNameList = new ArrayList<String>();
-		for(FaultSectionPrefData data : defFetch.getSubSectionList()) {
+		for(FaultSection data : defFetch.getSubSectionList()) {
 			if(UCERF2_A_FaultMapper.wasUCERF2_TypeAFault(data.getParentSectionId())) {
 				String parName = data.getParentSectionName();
 				if(!parNameList.contains(parName))
@@ -2285,9 +2286,9 @@ public class DeformationModelsCalc {
 			File faultNamesFile = new File(dir, fm.encodeChoiceString()+"_fault_names.txt");
 			FileWriter namesFW = new FileWriter(faultNamesFile);
 			namesFW.write("# Fault ID\tFault Name\n");
-			List<FaultSectionPrefData> parentSects = fm.fetchFaultSections();
+			List<FaultSection> parentSects = fm.fetchFaultSections();
 			Collections.sort(parentSects, new NamedComparator());
-			for (FaultSectionPrefData sect : parentSects)
+			for (FaultSection sect : parentSects)
 				namesFW.write(sect.getSectionId()+"\t"+sect.getSectionName()+"\n");
 			namesFW.close();
 			dmFileNames.add(faultNamesFile.getName());
@@ -2384,7 +2385,7 @@ public class DeformationModelsCalc {
 		for (FaultModels fm : FaultModels.values()) {
 			if (fm.getRelativeWeight(null) == 0)
 				continue;
-			ArrayList<FaultSectionPrefData> sects = fm.fetchFaultSections();
+			ArrayList<? extends FaultSection> sects = fm.fetchFaultSections();
 			File fmFile = new File(dir, dateStr+"-"+fm.getShortName()+"-sections.txt");
 			List<String> metaData = Lists.newArrayList();
 			metaData.add("Fault Sections file generated on "+dateStr+" by "+methodName);
@@ -2468,7 +2469,7 @@ public class DeformationModelsCalc {
 		for(DeformationModels dm : dm_list) {
 			if (fm == FaultModels.FM2_1) {
 				DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1);
-				for (FaultSectionPrefData fault : dmFetch.getSubSectionList()) {
+				for (FaultSection fault : dmFetch.getSubSectionList()) {
 					histogram.add(Math.log10(fault.getOrigAveSlipRate()), 1.0);
 				}
 			} else {

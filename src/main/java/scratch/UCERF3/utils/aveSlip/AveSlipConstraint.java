@@ -19,6 +19,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
 import com.google.common.base.Joiner;
@@ -121,7 +122,7 @@ public class AveSlipConstraint implements Serializable {
 				+ lowerUncertaintyBound + "]";
 	}
 
-	public static List<AveSlipConstraint> load(List<FaultSectionPrefData> subSectData) throws IOException {
+	public static List<AveSlipConstraint> load(List<? extends FaultSection> subSectData) throws IOException {
 		List<AveSlipConstraint> aveSlipData =
 			load(UCERF3_DataUtils.locateResourceAsStream(DIR_NAME, TABLE_5_FILE_NAME), subSectData);
 		aveSlipData.addAll(
@@ -130,17 +131,17 @@ public class AveSlipConstraint implements Serializable {
 	}
 	
 	public static List<AveSlipConstraint> load(
-			InputStream is, List<FaultSectionPrefData> subSectData) throws IOException {
+			InputStream is, List<? extends FaultSection> subSectData) throws IOException {
 		return load(is, subSectData, -1, null);
 	}
 	
 	private static List<AveSlipConstraint> load(
-			InputStream is, List<FaultSectionPrefData> subSectData,
+			InputStream is, List<? extends FaultSection> subSectData,
 			int mappingCol, File mappingFile) throws IOException {
-		Map<Integer, List<FaultSectionPrefData>> parentSectsMap = Maps.newHashMap();
-		for (FaultSectionPrefData data : subSectData) {
+		Map<Integer, List<FaultSection>> parentSectsMap = Maps.newHashMap();
+		for (FaultSection data : subSectData) {
 			Integer parentID = data.getParentSectionId();
-			List<FaultSectionPrefData> subSectsForParent = parentSectsMap.get(parentID);
+			List<FaultSection> subSectsForParent = parentSectsMap.get(parentID);
 			if (subSectsForParent == null) {
 				subSectsForParent = Lists.newArrayList();
 				parentSectsMap.put(parentID, subSectsForParent);
@@ -185,13 +186,13 @@ public class AveSlipConstraint implements Serializable {
 			
 			boolean blindThrustHack = faultName.startsWith("Compton") || faultName.startsWith("Puente Hills");
 			
-			FaultSectionPrefData matchSect = null;
+			FaultSection matchSect = null;
 			double minDist = Double.POSITIVE_INFINITY;
 			for (Integer parentID : parentIDs) {
-				List<FaultSectionPrefData> subSects = parentSectsMap.get(parentID);
+				List<FaultSection> subSects = parentSectsMap.get(parentID);
 				if (subSects == null)
 					continue;
-				for (FaultSectionPrefData subSect : subSects) {
+				for (FaultSection subSect : subSects) {
 					FaultTrace trace = FaultUtils.resampleTrace(subSect.getFaultTrace(), 11);
 					for (Location traceLoc : trace) {
 						double dist = LocationUtils.horzDistanceFast(loc, traceLoc);
@@ -250,7 +251,7 @@ public class AveSlipConstraint implements Serializable {
 		File tableR6File = new File(dir, TABLE_6_FILE_NAME);
 		for (FaultModels fm : FaultModels.values()) {
 			DeformationModels dm = DeformationModels.forFaultModel(fm).get(0);
-			List<FaultSectionPrefData> subSects = new DeformationModelFetcher(
+			List<? extends FaultSection> subSects = new DeformationModelFetcher(
 					fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1d).getSubSectionList();
 			load(new FileInputStream(tableR5File), subSects, mappingCol, tableR5File);
 			load(new FileInputStream(tableR6File), subSects, mappingCol, tableR6File);

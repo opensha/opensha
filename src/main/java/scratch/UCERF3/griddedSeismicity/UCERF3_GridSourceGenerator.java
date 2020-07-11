@@ -11,6 +11,7 @@ import org.opensha.commons.util.DataUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -104,7 +105,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 				ifss.getFinalSubSeismoOnFaultMFD_List();
 
 		sectSubSeisMFDs = Maps.newHashMap();
-		List<FaultSectionPrefData> faults = ifss.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = ifss.getRupSet().getFaultSectionDataList();
 		for (int i = 0; i < faults.size(); i++) {
 			sectSubSeisMFDs.put(
 				faults.get(i).getSectionId(),
@@ -119,7 +120,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 */
 	private void initNodeMFDs(InversionFaultSystemSolution ifss) {
 		nodeSubSeisMFDs = Maps.newHashMap();
-		for (FaultSectionPrefData sect : ifss.getRupSet().getFaultSectionDataList()) {
+		for (FaultSection sect : ifss.getRupSet().getFaultSectionDataList()) {
 			int id = sect.getSectionId();
 			IncrementalMagFreqDist sectSubSeisMFD = sectSubSeisMFDs.get(id);
 			Map<Integer, Double> nodeFractions = polyMgr.getNodeFractions(id);

@@ -9,8 +9,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -26,11 +29,11 @@ public class FaultModelsCalc {
 	 */
 	public static void writeSectionsForEachNamedFault(FaultModels fm) {
 		Map<Integer, List<Integer>> namedMap = fm.getNamedFaultsMap();
-		ArrayList<FaultSectionPrefData> sects = fm.fetchFaultSections();
+		ArrayList<FaultSection> sects = fm.fetchFaultSections();
 
 		HashMap<Integer,String> idNameMap = new HashMap<Integer,String>();
 
-		for(FaultSectionPrefData data:sects) {
+		for(FaultSection data:sects) {
 			idNameMap.put(data.getSectionId(), data.getName());
 		}
 		
@@ -60,11 +63,11 @@ public class FaultModelsCalc {
 	 */
 	public static void writeSectionsForEachNamedFaultAlt(FaultModels fm) {
 		Map<String, List<Integer>> namedMap = fm.getNamedFaultsMapAlt();
-		ArrayList<FaultSectionPrefData> sects = fm.fetchFaultSections();
+		ArrayList<FaultSection> sects = fm.fetchFaultSections();
 
 		HashMap<Integer,String> idNameMap = new HashMap<Integer,String>();
 
-		for(FaultSectionPrefData data:sects) {
+		for(FaultSection data:sects) {
 			idNameMap.put(data.getSectionId(), data.getName());
 		}
 		
@@ -82,8 +85,8 @@ public class FaultModelsCalc {
 	 * @param fm
 	 */
 	public static void writeSectionsNamesAndSomeAttributes(FaultModels fm, boolean includeTrace) {
-		ArrayList<FaultSectionPrefData> sects = fm.fetchFaultSections();
-		for(FaultSectionPrefData data : fm.fetchFaultSections()) {
+		ArrayList<FaultSection> sects = fm.fetchFaultSections();
+		for(FaultSection data : fm.fetchFaultSections()) {
 			System.out.print(data.getName()+"\t"+(float)data.getOrigDownDipWidth()+"\t"+(float)data.getReducedDownDipWidth()+
 					"\t"+(float)data.getFaultTrace().getTraceLength()+"\t"+(float)data.getAseismicSlipFactor()+"\t"+
 					data.getAveLowerDepth()+"\t"+data.getOrigAveUpperDepth());
@@ -112,15 +115,15 @@ public class FaultModelsCalc {
 		HashMap<Integer,Boolean> inFM3pt1 = new HashMap<Integer,Boolean>();
 		HashMap<Integer,Boolean> inFM3pt2 = new HashMap<Integer,Boolean>();
 
-		ArrayList<FaultSectionPrefData> fm1_data = FaultModels.FM3_1.fetchFaultSections();
-		ArrayList<FaultSectionPrefData> fm2_data = FaultModels.FM3_2.fetchFaultSections();
+		ArrayList<FaultSection> fm1_data = FaultModels.FM3_1.fetchFaultSections();
+		ArrayList<FaultSection> fm2_data = FaultModels.FM3_2.fetchFaultSections();
 
-		for(FaultSectionPrefData data:fm1_data) {
+		for(FaultSection data:fm1_data) {
 			nameList.put(data.getSectionId(),data.getName());
 			inFM3pt1.put(data.getSectionId(),true);
 			inFM3pt2.put(data.getSectionId(),false);
 		}
-		for(FaultSectionPrefData data:fm2_data) {
+		for(FaultSection data:fm2_data) {
 			if(inFM3pt1.keySet().contains(data.getSectionId())) {	// already in list, override default inFM3pt2
 				inFM3pt2.put(data.getSectionId(),true);
 			}
@@ -131,7 +134,7 @@ public class FaultModelsCalc {
 		}
 
 
-		for(FaultSectionPrefData data:fm1_data) {
+		for(FaultSection data:fm1_data) {
 			String line = data.getName()+"\t"+data.getSectionId()+"\t"+true+"\t"+inFM3pt2.get(data.getSectionId())+"\t"+data.getAveDip()+"\t"+data.getOrigAveUpperDepth()+
 					"\t"+data.getAveLowerDepth()+"\t"+data.getTraceLength();
 			for(Location loc:data.getFaultTrace()) {
@@ -139,7 +142,7 @@ public class FaultModelsCalc {
 			}
 			lineList.add(line);
 		}
-		for(FaultSectionPrefData data:fm2_data) {
+		for(FaultSection data:fm2_data) {
 			if(!inFM3pt1.get(data.getSectionId())) { // in not in fault model 3.1
 				String line = data.getName()+"\t"+data.getSectionId()+"\t"+false+"\t"+true+"\t"+data.getAveDip()+"\t"+data.getOrigAveUpperDepth()+
 						"\t"+data.getAveLowerDepth()+"\t"+data.getTraceLength();
@@ -172,16 +175,16 @@ public class FaultModelsCalc {
 	 * @param fm
 	 */
 	public static void writeSectionOutlineForGMT(FaultModels fm, String fileName) {
-		ArrayList<FaultSectionPrefData> fm_data = fm.fetchFaultSections();
+		ArrayList<FaultSection> fm_data = fm.fetchFaultSections();
 		ArrayList<String> lineList = new ArrayList<String>();
-		for(FaultSectionPrefData data:fm_data) {
+		for(FaultSection data:fm_data) {
 			lineList.add("> "+data.getName());
-			StirlingGriddedSurface surface = data.getStirlingGriddedSurface(1.0, false, false);
-			FaultTrace upperEdge = surface.getRowAsTrace(0);
+			RuptureSurface surface = data.getFaultSurface(1.0, false, false);
+			FaultTrace upperEdge = surface.getEvenlyDiscritizedUpperEdge();
 			for(Location loc:upperEdge) {
 				lineList.add((float)loc.getLatitude()+"\t"+(float)loc.getLongitude()+"\t"+(float)loc.getDepth());
 			}
-			FaultTrace lowerEdge = surface.getRowAsTrace(surface.getNumRows()-1);
+			LocationList lowerEdge = surface.getEvenlyDiscritizedLowerEdge();
 			lowerEdge.reverse();
 			for(Location loc:lowerEdge) {
 				lineList.add((float)loc.getLatitude()+"\t"+(float)loc.getLongitude()+"\t"+(float)loc.getDepth());

@@ -42,6 +42,7 @@ import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -225,7 +226,7 @@ public class RidgecrestGarlockPlotGen {
 						int fssIndex = rup.getFSSIndex();
 						if (fssIndex >= 0) {
 							Preconditions.checkState(rup.getMag() >= minMag);
-							for (FaultSectionPrefData sect : rupSet.getFaultSectionDataForRupture(fssIndex)) {
+							for (FaultSection sect : rupSet.getFaultSectionDataForRupture(fssIndex)) {
 								if (sect.getParentSectionId() == targetSectID) {
 									hasMatch = true;
 									break;

@@ -19,6 +19,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
@@ -116,9 +117,9 @@ public class ETAS_RuptureSearch {
 		double maxMag = Double.parseDouble(cmd.getOptionValue("max-mag"));
 		
 		FaultSystemRupSet rupSet = fss.getRupSet();
-		List<FaultSectionPrefData> sects = rupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sects = rupSet.getFaultSectionDataList();
 		HashSet<Integer> rupsForSects = new HashSet<>();
-		for (FaultSectionPrefData sect : sects) {
+		for (FaultSection sect : sects) {
 			boolean match = false;
 			for (Location loc : sect.getFaultTrace()) {
 				if (searchReg.contains(loc)) {
@@ -138,14 +139,14 @@ public class ETAS_RuptureSearch {
 			if (mag < minMag || mag > maxMag)
 				continue;
 			
-			RuptureSurface surf = rupSet.getSurfaceForRupupture(r, 1d, false);
+			RuptureSurface surf = rupSet.getSurfaceForRupupture(r, 1d);
 			
 			System.out.println("Rupture "+r+", M="+(float)mag);
 			double dist = surf.getDistanceJB(centerLoc);
 			System.out.println("\thorizontal distance to search location: "+(float)dist);
 			System.out.println("\tSubsections:");
 			for (int s : rupSet.getSectionsIndicesForRup(r)) {
-				FaultSectionPrefData sect = rupSet.getFaultSectionData(s);
+				FaultSection sect = rupSet.getFaultSectionData(s);
 				System.out.println("\t\t"+sect.getSectionId()+". "+sect.getSectionName());
 			}
 			System.out.println("\tupper depth: "+(float)surf.getAveRupTopDepth());

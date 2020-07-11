@@ -27,6 +27,7 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 
@@ -64,8 +65,8 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 	
 	private class FaultDistStats implements Comparable<FaultDistStats> {
 		private String parentName;
-		private List<FaultSectionPrefData> subSects;
-		private List<EvenlyGriddedSurface> subSectSurfs;
+		private List<FaultSection> subSects;
+		private List<RuptureSurface> subSectSurfs;
 		private List<LocationList> sectLocs;
 		private List<Region> polys;
 		
@@ -91,9 +92,9 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 			this.polys = new ArrayList<>();
 		}
 		
-		public void addSubSect(FaultSectionPrefData sect, Region poly) {
+		public void addSubSect(FaultSection sect, Region poly) {
 			this.subSects.add(sect);
-			EvenlyGriddedSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
+			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
 			this.subSectSurfs.add(surf);
 			this.sectLocs.add(surf.getEvenlyDiscritizedListOfLocsOnSurface());
 			this.polys.add(poly);
@@ -180,7 +181,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		this.outputDir = outputDir;
-		List<FaultSectionPrefData> subSects = fss.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> subSects = fss.getRupSet().getFaultSectionDataList();
 		FaultPolyMgr polyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);
 		System.out.println("Building polygons");
 		
@@ -216,8 +217,8 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		maxLoc = LocationUtils.location(maxLoc, Math.PI/4d, maxDist*1.5);
 		minLoc = LocationUtils.location(minLoc, 5d*Math.PI/4d, maxDist*1.5);
 		Region totSurfRegion = new Region(maxLoc, minLoc);
-		List<FaultSectionPrefData> nearSects = new ArrayList<>();
-		for (FaultSectionPrefData sect : subSects) {
+		List<FaultSection> nearSects = new ArrayList<>();
+		for (FaultSection sect : subSects) {
 			boolean contains = false;
 			for (Location loc : sect.getFaultTrace())
 				contains = contains || totSurfRegion.contains(loc);
@@ -228,7 +229,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 		boolean skip = nearSects.size() > 500 && triggers.size() > 500;
 		
 		Map<Integer, FaultDistStats> statsMap = new HashMap<>();
-		for (FaultSectionPrefData sect : nearSects) {
+		for (FaultSection sect : nearSects) {
 			Integer parentID = sect.getParentSectionId();
 			if (!statsMap.containsKey(parentID))
 				statsMap.put(parentID, new FaultDistStats(sect.getParentSectionName()));
@@ -291,7 +292,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 				List<Double> strikes = new ArrayList<>();
 				List<Double> dips = new ArrayList<>();
 				List<Double> rakes = new ArrayList<>();
-				for (FaultSectionPrefData sect : dists.subSects) {
+				for (FaultSection sect : dists.subSects) {
 					strikes.add(sect.getFaultTrace().getAveStrike());
 					dips.add(sect.getAveDip());
 					rakes.add(sect.getAveRake());

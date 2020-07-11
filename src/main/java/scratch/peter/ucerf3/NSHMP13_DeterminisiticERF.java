@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Joiner;
@@ -77,7 +78,7 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 		SHAW_2009_MOD, HANKS_BAKUN_08, ELLSWORTH_B);
 	
 	// reference data map
-	private static Map<DeformationModels, Map<Integer, List<FaultSectionPrefData>>> faultSectionMaps;
+	private static Map<DeformationModels, Map<Integer, List<FaultSection>>> faultSectionMaps;
 
 	// source data maps
 	private static Map<Integer, String> faultNameMap;
@@ -222,17 +223,17 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 		areaMap = Maps.newHashMap();
 		for (DeformationModels dm : DMs) {
 			
-			Map<Integer, List<FaultSectionPrefData>> sectMap = Maps.newHashMap();
+			Map<Integer, List<FaultSection>> sectMap = Maps.newHashMap();
 			for (FaultModels fm : FMs) {
-				Map<Integer, List<FaultSectionPrefData>> fmSectMap = Maps.newHashMap();
+				Map<Integer, List<FaultSection>> fmSectMap = Maps.newHashMap();
 				DeformationModelFetcher defFetch = new DeformationModelFetcher(
 					fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
 					InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE);
 				
 				
-				for (FaultSectionPrefData data : defFetch.getSubSectionList()) {
+				for (FaultSection data : defFetch.getSubSectionList()) {
 					int id = data.getParentSectionId();
-					List<FaultSectionPrefData> sects = fmSectMap.get(id);
+					List<FaultSection> sects = fmSectMap.get(id);
 					if (sects == null) {
 						sects = Lists.newArrayList();
 						fmSectMap.put(id, sects);
@@ -244,8 +245,8 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 				
 				// mine slips from GEOLOGIC DM, merging FM31 and FM32
 				if (dm == GEOLOGIC) {
-					List<FaultSectionPrefData> fspds = defFetch.getParentSectionList();
-					for (FaultSectionPrefData fspd : fspds) {
+					List<? extends FaultSection> fspds = defFetch.getParentSectionList();
+					for (FaultSection fspd : fspds) {
 						slipMap.put(fspd.getSectionId(), fspd.getOrigAveSlipRate());
 						areaMap.put(fspd.getSectionId(),
 							fspd.getReducedDownDipWidth() *
@@ -260,9 +261,9 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 	// init source names from GEOLOGIC def model sections
 	private static void initNamesMap() {
 		faultNameMap = Maps.newTreeMap();
-		for (List<FaultSectionPrefData> sections : faultSectionMaps.get(
+		for (List<FaultSection> sections : faultSectionMaps.get(
 			GEOLOGIC).values()) {
-			FaultSectionPrefData sect0 = sections.get(0);
+			FaultSection sect0 = sections.get(0);
 			faultNameMap.put(sect0.getParentSectionId(),
 				sect0.getParentSectionName());
 		}
@@ -293,11 +294,10 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 	private static void initSurfaceMap() {
 		surfaceMap = Maps.newHashMap();
 		for (Integer id : faultSectionMaps.get(GEOLOGIC).keySet()) {
-			List<FaultSectionPrefData> sects = faultSectionMaps.get(GEOLOGIC)
-				.get(id);
+			List<FaultSection> sects = faultSectionMaps.get(GEOLOGIC).get(id);
 			List<RuptureSurface> surfs = Lists.newArrayList();
-			for (FaultSectionPrefData sect : sects) {
-				surfs.add(sect.getStirlingGriddedSurface(SPACING, false, true));
+			for (FaultSection sect : sects) {
+				surfs.add(sect.getFaultSurface(SPACING, false, true));
 			}
 			surfaceMap.put(id, (surfs.size() == 1) ? surfs.get(0)
 				: new CompoundSurface(surfs));
@@ -321,8 +321,8 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 				double totalLength = 0.0;
 				double totalOriginalArea = 0.0;
 				double totalReducedArea = 0.0;
-				List<FaultSectionPrefData> sects = faultSectionMaps.get(dm).get(id);
-				for (FaultSectionPrefData sect : sects) {
+				List<FaultSection> sects = faultSectionMaps.get(dm).get(id);
+				for (FaultSection sect : sects) {
 					double length = sect.getTraceLength() * 1e3;
 					totalLength += length;
 					double reducedArea = length * sect.getReducedDownDipWidth() * 1e3;
@@ -441,8 +441,8 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 			
 			// update reference data map with big rup fault data lists
 			for (DeformationModels dm : DMs) {
-				Map<Integer, List<FaultSectionPrefData>> dmFaultData = faultSectionMaps.get(dm);
-				List<FaultSectionPrefData> sects = Lists.newArrayList();
+				Map<Integer, List<FaultSection>> dmFaultData = faultSectionMaps.get(dm);
+				List<FaultSection> sects = Lists.newArrayList();
 				for (Integer sectID : permutation) {
 					sects.addAll(sectID < 0 ?
 						Lists.reverse(dmFaultData.get(abs(sectID))) :
@@ -545,9 +545,9 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 
 	private static void printSectionTraces(int id) {
 		
-		List<FaultSectionPrefData> sects = faultSectionMaps.get(GEOLOGIC).get(id);
+		List<FaultSection> sects = faultSectionMaps.get(GEOLOGIC).get(id);
 		System.out.println(faultNameMap.get(abs(id)));
-		for (FaultSectionPrefData sect : sects) {
+		for (FaultSection sect : sects) {
 			System.out.println(sect.getFaultTrace());
 		}
 	}

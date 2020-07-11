@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_Tim
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UnsegmentedSource;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.A_Faults.A_FaultSegmentedSourceGenerator;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -345,7 +346,7 @@ public class UCERF2_Section_MFDsCalc {
 		
 		// get list of parent section IDs
 		ArrayList<Integer> u2_parIds = new ArrayList<Integer>();
-		for(FaultSectionPrefData data : fltSysSol.getRupSet().getFaultSectionDataList()) {
+		for(FaultSection data : fltSysSol.getRupSet().getFaultSectionDataList()) {
 			int parID = data.getParentSectionId();
 			if(!u2_parIds.contains(parID)) {
 				// check that we have this one here
@@ -919,9 +920,9 @@ public class UCERF2_Section_MFDsCalc {
 			
 			// now get UCERF3 IDs for mapping
 			HashMap<String, Integer> ucerf3SectNamesToIDsMap = Maps.newHashMap();
-			for (FaultSectionPrefData sect : FaultModels.FM3_1.fetchFaultSections())
+			for (FaultSection sect : FaultModels.FM3_1.fetchFaultSections())
 				ucerf3SectNamesToIDsMap.put(sect.getName(), sect.getSectionId());
-			for (FaultSectionPrefData sect : FaultModels.FM3_2.fetchFaultSections())
+			for (FaultSection sect : FaultModels.FM3_2.fetchFaultSections())
 				if (!ucerf3SectNamesToIDsMap.containsKey(sect.getSectionName()))
 					ucerf3SectNamesToIDsMap.put(sect.getName(), sect.getSectionId());
 			

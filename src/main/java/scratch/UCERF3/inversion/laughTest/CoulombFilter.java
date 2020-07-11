@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -32,7 +33,7 @@ public class CoulombFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		if (rupture.size() < 2 || (isApplyJunctionsOnly() && junctionIndexes.isEmpty()))
 			return true;

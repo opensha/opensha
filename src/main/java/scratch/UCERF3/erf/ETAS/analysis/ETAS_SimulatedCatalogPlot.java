@@ -22,6 +22,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
@@ -169,8 +170,8 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		PlotCurveCharacterstics faultOutlineChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 1.5f, Color.LIGHT_GRAY);
 		
 		boolean first = true;
-		for (FaultSectionPrefData sect : fss.getRupSet().getFaultSectionDataList()) {
-			RuptureSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
+		for (FaultSection sect : fss.getRupSet().getFaultSectionDataList()) {
+			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
 			List<XY_DataSet> outlines = ETAS_EventMapPlotUtils.getSurfOutlines(surf);
 			for (XY_DataSet outline : outlines) {
 				inputFuncs.add(outline);
@@ -239,7 +240,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 				catalogLocs.add(hypo);
 				// populate the surface
 				if (rup.getFSSIndex() >= 0) {
-					RuptureSurface surf = fss.getRupSet().getSurfaceForRupupture(rup.getFSSIndex(), 1d, false);
+					RuptureSurface surf = fss.getRupSet().getSurfaceForRupupture(rup.getFSSIndex(), 1d);
 					rup.setRuptureSurface(surf);
 //					catalogLocs.addAll(surf.getEvenlyDiscritizedListOfLocsOnSurface());
 				}

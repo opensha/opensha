@@ -11,6 +11,7 @@ import java.util.Map;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -33,7 +34,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	private LaughTestFilter filter;
 	private DeformationModels defModel;
 	private FaultModels faultModel;
-	private List<FaultSectionPrefData> faultSectionData;
+	private List<? extends FaultSection> faultSectionData;
 	private CoulombRates coulombRates;
 	
 	private Map<IDPairing, Double> subSectionDistances;
@@ -52,20 +53,20 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	}
 	
 	public SectionClusterList(FaultModels faultModel, DeformationModels defModel, LaughTestFilter filter,
-			List<FaultSectionPrefData> faultSectionData, Map<IDPairing, Double> subSectionDistances, Map<IDPairing, Double> subSectionAzimuths) {
+			List<? extends FaultSection> faultSectionData, Map<IDPairing, Double> subSectionDistances, Map<IDPairing, Double> subSectionAzimuths) {
 		init(faultModel, defModel, filter, faultSectionData,
 				subSectionDistances, subSectionAzimuths);
 	}
 	
 	public SectionClusterList(FaultModels faultModel, DeformationModels defModel, LaughTestFilter filter, CoulombRates coulombRates,
-			List<FaultSectionPrefData> faultSectionData, Map<IDPairing, Double> subSectionDistances, Map<IDPairing, Double> subSectionAzimuths) {
+			List<? extends FaultSection> faultSectionData, Map<IDPairing, Double> subSectionDistances, Map<IDPairing, Double> subSectionAzimuths) {
 		init(faultModel, defModel, filter, coulombRates, faultSectionData,
 				subSectionDistances, subSectionAzimuths);
 	}
 
 	private void init(FaultModels faultModel, DeformationModels defModel,
 			LaughTestFilter filter,
-			List<FaultSectionPrefData> faultSectionData,
+			List<? extends FaultSection> faultSectionData,
 			Map<IDPairing, Double> subSectionDistances,
 			Map<IDPairing, Double> subSectionAzimuths) {
 		
@@ -84,7 +85,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	private void init(FaultModels faultModel, DeformationModels defModel,
 			LaughTestFilter filter,
 			CoulombRates coulombRates,
-			List<FaultSectionPrefData> faultSectionData,
+			List<? extends FaultSection> faultSectionData,
 			Map<IDPairing, Double> subSectionDistances,
 			Map<IDPairing, Double> subSectionAzimuths) {
 		this.faultModel = faultModel;
@@ -95,7 +96,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		
 		this.faultSectionData = faultSectionData;
 		Map<Integer, Double> rakesMap = new HashMap<Integer, Double>();
-		for (FaultSectionPrefData data : faultSectionData)
+		for (FaultSection data : faultSectionData)
 			rakesMap.put(data.getSectionId(), data.getAveRake());
 		
 		// check that indices are same as sectionIDs (this is assumed here)
@@ -127,7 +128,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		if (filter.getParentSectsToIgnore() != null) {
 			HashSet<Integer> parentSectsToIgnore = filter.getParentSectsToIgnore();
 			subSectsToIgnore = new HashSet<Integer>();
-			for (FaultSectionPrefData sect : faultSectionData)
+			for (FaultSection sect : faultSectionData)
 				if (parentSectsToIgnore.contains(sect.getParentSectionId()))
 					subSectsToIgnore.add(sect.getSectionId());
 			for (int i=0; i<sectionConnectionsListList.size(); i++) {
@@ -195,7 +196,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	 * and closely space faults from having connections back and forth all the way down the section.
 	 */
 	public static List<List<Integer>> computeCloseSubSectionsListList(
-			List<FaultSectionPrefData> faultSectionData,
+			List<? extends FaultSection> faultSectionData,
 			Map<IDPairing, Double> subSectionDistances,
 			double maxJumpDist) {
 		return computeCloseSubSectionsListList(faultSectionData, subSectionDistances, maxJumpDist, null);
@@ -210,7 +211,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	 * and closely space faults from having connections back and forth all the way down the section.
 	 */
 	public static List<List<Integer>> computeCloseSubSectionsListList(
-			List<FaultSectionPrefData> faultSectionData,
+			List<? extends FaultSection> faultSectionData,
 			Map<IDPairing, Double> subSectionDistances,
 			double maxJumpDist, CoulombRates coulombRates) {
 
@@ -220,14 +221,14 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 
 		// in case the sections here are subsections of larger sections, create a subSectionDataListList where each
 		// ArrayList<FaultSectionPrefData> is a list of subsections from the parent section
-		ArrayList<ArrayList<FaultSectionPrefData>> subSectionDataListList = new ArrayList<ArrayList<FaultSectionPrefData>>();
+		ArrayList<ArrayList<FaultSection>> subSectionDataListList = new ArrayList<>();
 		int lastID=-1;
-		ArrayList<FaultSectionPrefData> newList = new ArrayList<FaultSectionPrefData>();
+		ArrayList<FaultSection> newList = new ArrayList<>();
 		for(int i=0; i<faultSectionData.size();i++) {
-			FaultSectionPrefData subSect = faultSectionData.get(i);
+			FaultSection subSect = faultSectionData.get(i);
 			int parentID = subSect.getParentSectionId();
 			if(parentID != lastID || parentID == -1) { // -1 means there is no parent
-				newList = new ArrayList<FaultSectionPrefData>();
+				newList = new ArrayList<>();
 				subSectionDataListList.add(newList);
 				lastID = subSect.getParentSectionId();
 			}
@@ -238,7 +239,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		// First, if larger sections have been sub-sectioned, fill in neighboring subsection connections
 		// (using the other algorithm below might lead to subsections being skipped if their width is < maxJumpDist) 
 		for(int i=0; i<subSectionDataListList.size(); ++i) {
-			ArrayList<FaultSectionPrefData> subSectList = subSectionDataListList.get(i);
+			ArrayList<FaultSection> subSectList = subSectionDataListList.get(i);
 			int numSubSect = subSectList.size();
 			for(int j=0;j<numSubSect;j++) {
 				// get index of section
@@ -253,17 +254,17 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 
 		// now add subsections on other sections, keeping only one connection between each section (the closest)
 		for(int i=0; i<subSectionDataListList.size(); ++i) {
-			ArrayList<FaultSectionPrefData> sect1_List = subSectionDataListList.get(i);
+			ArrayList<FaultSection> sect1_List = subSectionDataListList.get(i);
 			for(int j=i+1; j<subSectionDataListList.size(); ++j) {
-				ArrayList<FaultSectionPrefData> sect2_List = subSectionDataListList.get(j);
+				ArrayList<FaultSection> sect2_List = subSectionDataListList.get(j);
 				double minDist=Double.MAX_VALUE;
 				int subSectIndex1 = -1;
 				int subSectIndex2 = -1;
 				// find the closest pair
 				for(int k=0;k<sect1_List.size();k++) {
 					for(int l=0;l<sect2_List.size();l++) {
-						FaultSectionPrefData data1 = sect1_List.get(k);
-						FaultSectionPrefData data2 = sect2_List.get(l);
+						FaultSection data1 = sect1_List.get(k);
+						FaultSection data2 = sect2_List.get(l);
 						IDPairing ind = new IDPairing(data1.getSectionId(), data2.getSectionId());
 						if (subSectionDistances.containsKey(ind)) {
 							double dist = subSectionDistances.get(ind);
@@ -330,7 +331,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		return faultModel;
 	}
 
-	public List<FaultSectionPrefData> getFaultSectionData() {
+	public List<? extends FaultSection> getFaultSectionData() {
 		return faultSectionData;
 	}
 

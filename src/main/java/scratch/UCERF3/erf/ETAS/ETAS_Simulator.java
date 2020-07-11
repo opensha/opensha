@@ -87,6 +87,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -1146,7 +1147,7 @@ public class ETAS_Simulator {
 		
 		// reset sections that ruptured after the origin time
 		int numSectsReset = 0;
-		for (FaultSectionPrefData sect : fss.getRupSet().getFaultSectionDataList()) {
+		for (FaultSection sect : fss.getRupSet().getFaultSectionDataList()) {
 			if (sect.getDateOfLastEvent() > startTimeMillis) {
 				numSectsReset++;
 //				System.out.println(sect.getName()+"\t\t"+yearOfLast);
@@ -1223,7 +1224,7 @@ public class ETAS_Simulator {
 		}
 		
 		if(plotRateRatio) {
-			List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+			List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 			String name = "SubSeisRateChange";
 			String title = "SubSeisRateChange";
 			CPT cpt= FaultBasedMapGen.getLinearRatioCPT().rescale(0, 10);
@@ -1346,9 +1347,9 @@ public class ETAS_Simulator {
 		
 		public void relocatePtAwayFromFault(FaultSystemRupSet rupSet, double distAway) {
 			// find closest subsection
-			FaultSectionPrefData closest = null;
+			FaultSection closest = null;
 			double closestDist = Double.MAX_VALUE;
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				// just use fault trace for efficiency
 				for (Location loc : sect.getFaultTrace()) {
 					double dist = LocationUtils.horzDistanceFast(loc, this.loc);
@@ -1364,7 +1365,7 @@ public class ETAS_Simulator {
 			relocatePtAwayFromFault(closest, distAway);
 		}
 		
-		public void relocatePtAwayFromFault(FaultSectionPrefData closestSect, double distAway) {
+		public void relocatePtAwayFromFault(FaultSection closestSect, double distAway) {
 			double strike = closestSect.getFaultTrace().getAveStrike();
 			double strikeRad = Math.toRadians(strike);
 			
@@ -1373,7 +1374,7 @@ public class ETAS_Simulator {
 			
 			Location newLoc = LocationUtils.location(loc, azimuth, distAway);
 			
-			StirlingGriddedSurface surf = closestSect.getStirlingGriddedSurface(0.1d);
+			RuptureSurface surf = closestSect.getFaultSurface(0.1d);
 			double origDist = Double.POSITIVE_INFINITY;
 			double newDist = Double.POSITIVE_INFINITY;
 			for (Location surfLoc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {

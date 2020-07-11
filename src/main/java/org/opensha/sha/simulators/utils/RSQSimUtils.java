@@ -23,9 +23,9 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.XMLUtils;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle;
 import org.opensha.sha.simulators.EventRecord;
@@ -78,7 +78,7 @@ public class RSQSimUtils {
 		if (rake > 180)
 			rake -= 360;
 
-		List<FaultSectionPrefData> rupSects = new ArrayList<>();
+		List<FaultSection> rupSects = new ArrayList<>();
 		for (List<SubSectionMapping> bundle : mappings)
 			for (SubSectionMapping mapping : bundle)
 				rupSects.add(mapping.getSubSect());
@@ -88,8 +88,8 @@ public class RSQSimUtils {
 		double gridSpacing = 1d;
 
 		List<RuptureSurface> rupSurfs = new ArrayList<>();
-		for (FaultSectionPrefData sect : rupSects)
-			rupSurfs.add(sect.getStirlingGriddedSurface(gridSpacing, false, false));
+		for (FaultSection sect : rupSects)
+			rupSurfs.add(sect.getFaultSurface(gridSpacing, false, false));
 
 		RuptureSurface surf;
 		if (rupSurfs.size() == 1)
@@ -124,7 +124,7 @@ public class RSQSimUtils {
 	
 	private static boolean warned = false;
 	
-	public static int getSubSectIndexOffset(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
+	public static int getSubSectIndexOffset(List<SimulatorElement> elements, List<? extends FaultSection> subSects) {
 		int minElemSectID = Integer.MAX_VALUE;
 		int maxElemSectID = -1;
 		HashSet<Integer> sectsFound = new HashSet<>();
@@ -161,23 +161,23 @@ public class RSQSimUtils {
 		return minElemSectID;
 	}
 	
-	public static void populateFaultIDWithParentIDs(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
+	public static void populateFaultIDWithParentIDs(List<SimulatorElement> elements, List<? extends FaultSection> subSects) {
 		int offset = getSubSectIndexOffset(elements, subSects);
 		for (SimulatorElement elem : elements)
 			elem.setFaultID(subSects.get(elem.getSectionID()-offset).getParentSectionId());
 	}
 	
-	public static void populateSubSectionNames(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
+	public static void populateSubSectionNames(List<SimulatorElement> elements, List<? extends FaultSection> subSects) {
 		int offset = getSubSectIndexOffset(elements, subSects);
 		for (SimulatorElement elem : elements)
 			elem.setSectionName(subSects.get(elem.getSectionID()-offset).getName());
 	}
 
-	public static List<FaultSectionPrefData> getUCERF3SubSectsForComparison(FaultModels fm, DeformationModels dm) {
+	public static List<? extends FaultSection> getUCERF3SubSectsForComparison(FaultModels fm, DeformationModels dm) {
 		return DeformationModels.loadSubSects(fm, dm);
 	}
 	
-	public static Map<Integer, Double> calcSubSectAreas(List<SimulatorElement> elements, List<FaultSectionPrefData> subSects) {
+	public static Map<Integer, Double> calcSubSectAreas(List<SimulatorElement> elements, List<? extends FaultSection> subSects) {
 		int offset = getSubSectIndexOffset(elements, subSects);
 		Map<Integer, Double> subSectAreas = new HashMap<>();
 		for (SimulatorElement elem : elements) {
@@ -187,15 +187,13 @@ public class RSQSimUtils {
 			subSectAreas.put(elem.getSectionID()-offset, prevArea + elem.getArea());
 		}
 		
-		for (FaultSectionPrefData sect : subSects) {
+		for (FaultSection sect : subSects) {
 			Integer id = sect.getSectionId();
 			if (!subSectAreas.containsKey(id))
 				// this subsection is skipped
 				continue;
 			double simSectArea = subSectAreas.get(id);
-			double sectLen = sect.getTraceLength()*1000d; // km to m
-			double sectWidth = sect.getOrigDownDipWidth()*1000d; // km to m
-			double fsdArea = sectLen * sectWidth;
+			double fsdArea = sect.getArea(false);
 			if (fsdArea < simSectArea)
 				subSectAreas.put(id, fsdArea);
 		}
@@ -209,12 +207,12 @@ public class RSQSimUtils {
 		
 		private final int minElemSectID;
 		
-		private RSQSimFaultSystemRupSet(List<FaultSectionPrefData> subSects,
+		private RSQSimFaultSystemRupSet(List<? extends FaultSection> subSects,
 				List<SimulatorElement> elements, List<RSQSimEvent> events) {
 			this(subSects, elements, events, 0d);
 		}
 		
-		private RSQSimFaultSystemRupSet(List<FaultSectionPrefData> subSects,
+		private RSQSimFaultSystemRupSet(List<? extends FaultSection> subSects,
 				List<SimulatorElement> elements, List<RSQSimEvent> events, double minFractForInclusion) {
 			this.elements = elements;
 			this.events = events;
@@ -246,7 +244,7 @@ public class RSQSimUtils {
 				List<Integer> rupSectIndexes = Lists.newArrayList();
 				for (List<SubSectionMapping> bundle : mappings) {
 					for (SubSectionMapping mapping : bundle) {
-						FaultSectionPrefData subSect = mapping.getSubSect();
+						FaultSection subSect = mapping.getSubSect();
 						rupSectIndexes.add(subSect.getSectionId());
 						rakes.add(subSect.getAveRake());
 					}
@@ -266,7 +264,7 @@ public class RSQSimUtils {
 			double[] sectAreas = new double[subSects.size()];
 
 			for (int s=0; s<subSects.size(); s++) {
-				FaultSectionPrefData sect = subSects.get(s);
+				FaultSection sect = subSects.get(s);
 				sectSlipRates[s] = sect.getReducedAveSlipRate()/1e3; // in meters
 				sectAreas[s] = sect.getReducedDownDipWidth()*sect.getTraceLength()*1e6; // in meters
 			}
@@ -386,12 +384,12 @@ public class RSQSimUtils {
 		
 	}
 	
-	public static SlipEnabledSolution buildFaultSystemSolution(List<FaultSectionPrefData> subSects,
+	public static SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
 			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag) {
 		return buildFaultSystemSolution(subSects, elements, events, minMag, 0d);
 	}
 
-	public static SlipEnabledSolution buildFaultSystemSolution(List<FaultSectionPrefData> subSects,
+	public static SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
 			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag, double minFractForInclusion) {
 		
 		if (minMag > 0)
@@ -464,13 +462,13 @@ public class RSQSimUtils {
 		System.out.println("DONE");
 	}
 	
-	public static void cleanVertFocalMechs(List<SimulatorElement> elems, List<FaultSectionPrefData> subSects) {
+	public static void cleanVertFocalMechs(List<SimulatorElement> elems, List<? extends FaultSection> subSects) {
 		int offset = getSubSectIndexOffset(elems, subSects);
 		
 		for (SimulatorElement elem : elems) {
 			FocalMechanism mech = elem.getFocalMechanism();
 			if (mech.getDip() == 90 && (mech.getRake() == -180 || mech.getRake() == 180 || mech.getRake() == 0)) {
-				FaultSectionPrefData sect = subSects.get(elem.getSectionID()-offset);
+				FaultSection sect = subSects.get(elem.getSectionID()-offset);
 				mech.setRake(sect.getAveRake());
 				double strike = mech.getStrike();
 				double sectStrike = sect.getFaultTrace().getAveStrike();

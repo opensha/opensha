@@ -48,6 +48,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -1087,7 +1088,7 @@ public class CommandLineInversionRunner {
 		InversionFaultSystemRupSet rupSet = sol.getRupSet();
 
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
-			FaultSectionPrefData sect = rupSet.getFaultSectionData(sectIndex);
+			FaultSection sect = rupSet.getFaultSectionData(sectIndex);
 			int parent = sect.getParentSectionId();
 			if (!map.containsKey(parent)) {
 				String name = sect.getName();
@@ -1159,7 +1160,7 @@ public class CommandLineInversionRunner {
 		if (!nuclCmlSubDir.exists())
 			nuclCmlSubDir.mkdir();
 
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			if (!parentSects.containsKey(sect.getParentSectionId()))
 				parentSects.put(sect.getParentSectionId(), sect.getParentSectionName());
 

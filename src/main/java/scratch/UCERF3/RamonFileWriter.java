@@ -4,10 +4,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -19,11 +21,11 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
 public class RamonFileWriter {
 	
 	private static void write(File file, FaultModels fm, DeformationModels dm) throws IOException {
-		ArrayList<FaultSectionPrefData> subSects =
+		List<? extends FaultSection> subSects =
 				new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
 		FileWriter fw = new FileWriter(file);
 		
-		for (FaultSectionPrefData subSect : subSects) {
+		for (FaultSection subSect : subSects) {
 			fw.write("#"+subSect.getName()+"\n");
 			fw.write(""+subSect.getFaultTrace().size()+"\n");
 			for (Location loc : subSect.getFaultTrace()) {
@@ -33,14 +35,14 @@ public class RamonFileWriter {
 	}
 	
 	private static void writeTimFile(File file, FaultModels fm, DeformationModels dm) throws IOException {
-		ArrayList<FaultSectionPrefData> subSects =
+		List<? extends FaultSection> subSects =
 				new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
 		CSVFile<String> csv = new CSVFile<String>(true);
 		csv.addLine("Fault Name", "Fault ID", "Subsection Index", "Subsection # In Fault", "Lat1", "Lon1", "Lat2", "Lon2");
 		
 		int cntForParent = 0;
 		int parentID = -1;
-		for (FaultSectionPrefData subSect : subSects) {
+		for (FaultSection subSect : subSects) {
 			if (subSect.getParentSectionId() != parentID) {
 				parentID = subSect.getParentSectionId();
 				cntForParent = 0;

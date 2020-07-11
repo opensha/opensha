@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
@@ -21,25 +22,25 @@ public class GriddedSeisUtils {
 	
 	
 	/**
-	 * Create an instance of this ustility class.
+	 * Create an instance of this utility class.
 	 * @param fsrs
 	 * @param pdf
 	 */
-	public GriddedSeisUtils(List<FaultSectionPrefData> fltSectPrefDataList, 
+	public GriddedSeisUtils(List<? extends FaultSection> fltSectList, 
 			SpatialSeisPDF pdf, double buf) {
-		polyMgr = FaultPolyMgr.create(fltSectPrefDataList, buf);
+		polyMgr = FaultPolyMgr.create(fltSectList, buf);
 		this.pdf = pdf.getPDF();
 	}
 	
 	
 	/**
-	 * Create an instance of this ustility class.
+	 * Create an instance of this utility class.
 	 * @param fsrs
 	 * @param pdf - double array here
 	 */
-	public GriddedSeisUtils(List<FaultSectionPrefData> fltSectPrefDataList, 
+	public GriddedSeisUtils(List<? extends FaultSection> fltSectList, 
 			double[] pdf, double buf) {
-		polyMgr = FaultPolyMgr.create(fltSectPrefDataList, buf);
+		polyMgr = FaultPolyMgr.create(fltSectList, buf);
 		this.pdf = pdf;
 	}
 	

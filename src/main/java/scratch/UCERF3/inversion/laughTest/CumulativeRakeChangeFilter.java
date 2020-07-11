@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 /**
  * This filter keeps track of the cumulative rake changes along a rupture and stops the
@@ -24,7 +25,7 @@ public class CumulativeRakeChangeFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		double cmlRakeChange = 0;
 //		for (int junctionIndex : junctionIndexes) {
@@ -42,7 +43,7 @@ public class CumulativeRakeChangeFilter extends AbstractLaughTest {
 		return cmlRakeChange <= maxCmlRakeChange;
 	}
 	
-	private double getRake(FaultSectionPrefData sect) {
+	private double getRake(FaultSection sect) {
 		if (rakesMap == null)
 			return sect.getAveRake();
 		return rakesMap.get(sect.getSectionId());

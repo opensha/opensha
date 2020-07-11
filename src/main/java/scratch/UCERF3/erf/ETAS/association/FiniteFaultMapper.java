@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Joiner;
@@ -71,10 +72,10 @@ public class FiniteFaultMapper {
 	
 	private static final boolean use_sq_dist = true;
 	
-	private Map<Integer, List<FaultSectionPrefData>> parentSectsMap;
+	private Map<Integer, List<FaultSection>> parentSectsMap;
 	
 	// sorted with most recent first
-	private List<FaultSectionPrefData> sectsWithDate;
+	private List<FaultSection> sectsWithDate;
 	private List<Long> dates;
 	
 	public FiniteFaultMapper(FaultSystemRupSet rupSet, boolean filterLastEventParents, boolean matchLastEventExactly) {
@@ -87,13 +88,13 @@ public class FiniteFaultMapper {
 		
 		for (int i=0; i<rupSet.getNumRuptures(); i++) {
 			lengths[i] = rupSet.getLengthForRup(i)/1000d; // convert to km
-			surfs[i] = rupSet.getSurfaceForRupupture(i, surfSpacing, false);
+			surfs[i] = rupSet.getSurfaceForRupupture(i, surfSpacing);
 			centers[i] = calcCenter(surfs[i]);
 		}
 		
 		parentSectsMap = Maps.newHashMap();
-		for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
-			List<FaultSectionPrefData> sects = parentSectsMap.get(sect.getParentSectionId());
+		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+			List<FaultSection> sects = parentSectsMap.get(sect.getParentSectionId());
 			if (sects == null) {
 				sects = Lists.newArrayList();
 				parentSectsMap.put(sect.getParentSectionId(), sects);
@@ -124,7 +125,7 @@ public class FiniteFaultMapper {
 		sectsWithDate = Lists.newArrayList();
 		dates = Lists.newArrayList();
 		
-		for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 			long date = sect.getDateOfLastEvent();
 			if (date == Long.MIN_VALUE)
 				continue;
@@ -133,14 +134,14 @@ public class FiniteFaultMapper {
 		}
 		
 		// now sort by epoch time decreasing
-		List<ComparablePairing<Long, FaultSectionPrefData>> comps = ComparablePairing.build(dates, sectsWithDate);
+		List<ComparablePairing<Long, FaultSection>> comps = ComparablePairing.build(dates, sectsWithDate);
 		Collections.sort(comps);
 		Collections.reverse(comps);
 		
 		sectsWithDate = Lists.newArrayList();
 		dates = Lists.newArrayList();
 		
-		for (ComparablePairing<Long, FaultSectionPrefData> comp : comps) {
+		for (ComparablePairing<Long, FaultSection> comp : comps) {
 			sectsWithDate.add(comp.getData());
 			dates.add(comp.getComparable());
 		}
@@ -332,7 +333,7 @@ public class FiniteFaultMapper {
 			
 			List<String> parents = Lists.newArrayList();
 			
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataForRupture(rupIndex)) {
+			for (FaultSection sect : rupSet.getFaultSectionDataForRupture(rupIndex)) {
 				String parentName = sect.getParentSectionName();
 				if (parents.isEmpty() || !parents.get(parents.size()-1).equals(parentName))
 					parents.add(parentName);
@@ -362,14 +363,14 @@ public class FiniteFaultMapper {
 		
 		if (matchLastEventExactly) {
 			if (D) System.out.println("Adjusting to match date of last event data exactly");
-			List<FaultSectionPrefData> subSectsWithData = Lists.newArrayList();
+			List<FaultSection> subSectsWithData = Lists.newArrayList();
 			
 			long closestDateToEvent = -1;
 			long closestDelta = Long.MAX_VALUE;
 			
-			List<FaultSectionPrefData> sectsForRup = rupSet.getFaultSectionDataForRupture(rupIndex);
+			List<FaultSection> sectsForRup = rupSet.getFaultSectionDataForRupture(rupIndex);
 			
-			for (FaultSectionPrefData sect : sectsForRup) {
+			for (FaultSection sect : sectsForRup) {
 				if (sect.getDateOfLastEvent() != Long.MIN_VALUE) {
 					long delta = rup.getOriginTime() - sect.getDateOfLastEvent();
 					if (delta < 0l)
@@ -381,7 +382,7 @@ public class FiniteFaultMapper {
 				}
 			}
 			
-			for (FaultSectionPrefData sect : sectsForRup)
+			for (FaultSection sect : sectsForRup)
 				if (sect.getDateOfLastEvent() >= closestDateToEvent)
 					subSectsWithData.add(sect);
 			
@@ -389,15 +390,15 @@ public class FiniteFaultMapper {
 					+" sects without data (or with earlier date). Date: "+new Date(closestDateToEvent));
 			
 			HashSet<Integer> sectsToInclude = new HashSet<Integer>();
-			for (FaultSectionPrefData sect : subSectsWithData)
+			for (FaultSection sect : subSectsWithData)
 				sectsToInclude.add(sect.getSectionId());
 			
 			// now look for others that were excluded, but only if the rupture isn't completely masked
 			if (closestDelta < 2l*ProbabilityModelsCalc.MILLISEC_PER_YEAR) {
 				List<String> newNames = Lists.newArrayList();
-				for (FaultSectionPrefData sect : subSectsWithData) {
+				for (FaultSection sect : subSectsWithData) {
 					// now look at others on same parent
-					for (FaultSectionPrefData oSect : parentSectsMap.get(sect.getParentSectionId())) {
+					for (FaultSection oSect : parentSectsMap.get(sect.getParentSectionId())) {
 						if (sectsToInclude.contains(oSect.getSectionId()))
 							continue;
 						if (oSect.getDateOfLastEvent() == closestDateToEvent) {

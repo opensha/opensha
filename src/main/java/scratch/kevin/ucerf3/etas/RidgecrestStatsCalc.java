@@ -60,6 +60,7 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
@@ -478,7 +479,7 @@ public class RidgecrestStatsCalc {
 		return lines;
 	}
 	
-	private static void populateMapInputFuncs(List<FaultSectionPrefData> sects, List<XY_DataSet> inputFuncs,
+	private static void populateMapInputFuncs(List<? extends FaultSection> sects, List<XY_DataSet> inputFuncs,
 			List<PlotCurveCharacterstics> inputChars, Color traceColor, Color outlineColor, Color polygonColor, boolean cullSects) {
 		PlotCurveCharacterstics faultTraceChar = new PlotCurveCharacterstics(
 				PlotLineType.SOLID, polygonColor == null ? 2f : 4f, traceColor);
@@ -496,13 +497,13 @@ public class RidgecrestStatsCalc {
 		boolean firstTrace = true;
 		boolean firstOutline = true;
 		boolean firstPoly = true;
-		for (FaultSectionPrefData sect : sects) {
+		for (FaultSection sect : sects) {
 			String name = sect.getName();
 			boolean nameMatch = name.contains("Garlock") || name.contains("Airport Lake")
 					|| name.contains("Little Lake");
 			if (cullSects && !nameMatch)
 				continue;
-			RuptureSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
+			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
 			List<XY_DataSet> outlines = ETAS_EventMapPlotUtils.getSurfOutlines(surf);
 			for (XY_DataSet outline : outlines) {
 				if (firstOutline && !firstTrace) {
@@ -761,9 +762,9 @@ public class RidgecrestStatsCalc {
 		FaultSystemSolution fss = initialConfig.loadFSS();
 		ETAS_Config sevenDayConfig = ETAS_Config.readJSON(
 				new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces/config.json"));
-		List<FaultSectionPrefData> sects = FaultModels.FM3_1.fetchFaultSections();
+		List<? extends FaultSection> sects = FaultModels.FM3_1.fetchFaultSections();
 		for (int i=0; i<sects.size(); i++) {
-			FaultSectionPrefData sect = sects.get(i);
+			FaultSection sect = sects.get(i);
 			// hack needed to make it work with parent sections
 			sect.setParentSectionId(i);
 			sect.setSectionId(i);

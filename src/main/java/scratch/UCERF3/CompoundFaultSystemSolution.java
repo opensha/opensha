@@ -28,6 +28,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -162,12 +163,17 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		return loadDoubleArray(branch, "rup_lengths.bin");
 	}
 	
-	public List<FaultSectionPrefData> getSubSects(LogicTreeBranch branch) throws DocumentException, IOException {
+	public List<FaultSection> getSubSects(LogicTreeBranch branch) throws DocumentException, IOException {
 		Map<String, String> nameRemappings = getRemappings(branch);
 		ZipEntry fsdEntry = zip.getEntry(nameRemappings.get("fault_sections.xml"));
 		Document doc = XMLUtils.loadDocument(
 				new BufferedInputStream(zip.getInputStream(fsdEntry)));
-		Element fsEl = doc.getRootElement().element(FaultSectionPrefData.XML_METADATA_NAME+"List");
+		Element fsEl = doc.getRootElement().element(FaultSystemIO.FAULT_SECTIONS_LIST_XML_METADATA_NAME);
+		if (fsEl == null) {
+			// try old version
+			fsEl = doc.getRootElement().element(FaultSectionPrefData.XML_METADATA_NAME+"List");
+			Preconditions.checkNotNull(fsEl, "Fault sections element not found");
+		}
 		return FaultSystemIO.fsDataFromXML(fsEl);
 	}
 	

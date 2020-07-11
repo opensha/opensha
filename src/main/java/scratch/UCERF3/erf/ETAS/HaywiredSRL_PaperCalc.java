@@ -24,6 +24,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -84,7 +85,7 @@ public class HaywiredSRL_PaperCalc {
 		for (int s=0; s<rupSet.getNumSections(); s++) {
 			Map<Integer, Double> sectFractNodesMap = new HashMap<>();
 			sectFractNodesMaps.add(sectFractNodesMap);
-			StirlingGriddedSurface surf = rupSet.getFaultSectionData(s).getStirlingGriddedSurface(1d);
+			RuptureSurface surf = rupSet.getFaultSectionData(s).getFaultSurface(1d);
 			LocationList locs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
 			double fractEach = 1d/locs.size();
 			for (Location loc : locs) {

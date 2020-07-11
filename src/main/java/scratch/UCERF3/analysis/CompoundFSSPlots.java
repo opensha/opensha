@@ -100,6 +100,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_Tim
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeIndependentEpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RupInRegionCache;
 import org.opensha.sha.faultSurface.RupNodesCache;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -2090,7 +2091,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						Map<Integer, HashSet<Integer>> newParentRups = Maps.newHashMap();
 						Map<Integer, String> parentNames = Maps.newHashMap();
 						
-						for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+						for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 							Integer parentID = sect.getParentSectionId();
 							if (!parentNames.containsKey(parentID)) {
 								parentNames.put(parentID, sect.getParentSectionName());
@@ -4007,9 +4008,9 @@ public abstract class CompoundFSSPlots implements Serializable {
 				.newHashMap();
 		private Map<FaultModels, List<AveSlipConstraint>> slipConstraintMaps = Maps
 				.newHashMap();
-		private Map<FaultModels, Map<Integer, List<FaultSectionPrefData>>> allParentsMaps = Maps
+		private Map<FaultModels, Map<Integer, List<FaultSection>>> allParentsMaps = Maps
 				.newHashMap();
-		private Map<FaultModels, List<FaultSectionPrefData>> fsdsMap = Maps
+		private Map<FaultModels, List<? extends FaultSection>> fsdsMap = Maps
 				.newHashMap();
 
 		// results
@@ -4084,7 +4085,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						.getNamedFaultConstraintsMap(paleoRateConstraints,
 								rupSet.getFaultSectionDataList(), namedFaultsMap);
 
-				Map<Integer, List<FaultSectionPrefData>> allParentsMap = allParentsMaps.get(fm);
+				Map<Integer, List<FaultSection>> allParentsMap = allParentsMaps.get(fm);
 
 				double weight = weightProvider.getWeight(branch);
 
@@ -4171,7 +4172,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 				List<DataForPaleoFaultPlots> datas = datasMap.get(fm);
 
-				Map<Integer, List<FaultSectionPrefData>> allParentsMap = allParentsMaps
+				Map<Integer, List<FaultSection>> allParentsMap = allParentsMaps
 						.get(fm);
 
 				Map<String, PlotSpec[]> specsMap = PaleoFitPlotter
@@ -4721,7 +4722,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				// first call for the FM, setup caches
 				parentIDs = new HashSet<Integer>();
 				for (int sectIndex = 0; sectIndex < rupSet.getNumSections(); sectIndex++) {
-					FaultSectionPrefData sect = rupSet.getFaultSectionData(sectIndex);
+					FaultSection sect = rupSet.getFaultSectionData(sectIndex);
 					Integer parentID = sect.getParentSectionId();
 					if (!parentIDs.contains(parentID)) {
 						parentIDs.add(parentID);
@@ -5170,7 +5171,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private Table<FaultModels, Double, List<double[]>> results;
 		private Map<FaultModels, List<EvenlyDiscretizedFunc[]>> mfdResults;
 		private Map<FaultModels, List<Double>> weights;
-		private Map<FaultModels, List<FaultSectionPrefData>> fmSectsMap;
+		private Map<FaultModels, List<? extends FaultSection>> fmSectsMap;
 		
 		private Table<FaultModels, Double, CSVFile<String>> csvTable;
 		private Map<FaultModels, CSVFile<String>> mfdCSVs;
@@ -5264,7 +5265,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				
 				int numSects = fmResults.get(minMags[0]).get(0).length;
 				
-				List<FaultSectionPrefData> subSects = fmSectsMap.get(fm);
+				List<? extends FaultSection> subSects = fmSectsMap.get(fm);
 				Preconditions.checkState(numSects == subSects.size());
 				
 				// mag specific results
@@ -5289,7 +5290,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						for (int i=0; i<ris.size(); i++)
 							dist.set(ris.get(i)[s], fmWeights.get(i)); // this actually adds if already present
 						
-						FaultSectionPrefData sect = subSects.get(s);
+						FaultSection sect = subSects.get(s);
 						
 						List<String> line = Lists.newArrayList(sect.getSectionId()+"", sect.getParentSectionId()+"",
 								sect.getSectionName());
@@ -5317,7 +5318,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 					for (int i=0; i<solMFDs.size(); i++)
 						sectMFDs.add(solMFDs.get(i)[s]);
 					DiscretizedFunc meanMFD = getFractiles(sectMFDs, fmWeights, "", new double[] {}).get(0);
-					FaultSectionPrefData sect = subSects.get(s);
+					FaultSection sect = subSects.get(s);
 					List<String> line = Lists.newArrayList(sect.getSectionId()+"", sect.getParentSectionId()+"",
 							sect.getSectionName());
 					for (int i=0; i<meanMFD.size(); i++)
@@ -6388,7 +6389,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private transient BranchWeightProvider weightProvider;
 
-		private ConcurrentMap<FaultModels, List<FaultSectionPrefData>> sectDatasMap = Maps
+		private ConcurrentMap<FaultModels, List<? extends FaultSection>> sectDatasMap = Maps
 				.newConcurrentMap();
 		private ConcurrentMap<FaultModels, Map<String, List<Integer>>> parentSectsMap = Maps.newConcurrentMap();
 		private Map<FaultModels, List<double[]>> solSlipsMap = Maps.newHashMap();
@@ -6532,7 +6533,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			boolean skipNans = false;
 
 			for (FaultModels fm : sectDatasMap.keySet()) {
-				List<FaultSectionPrefData> sectDatas = sectDatasMap.get(fm);
+				List<? extends FaultSection> sectDatas = sectDatasMap.get(fm);
 				List<LocationList> faults = FaultBasedMapGen.getTraces(sectDatas);
 				List<double[]> solSlipsList = solSlipsMap.get(fm);
 				List<double[]> targetsList = targetSlipsMap.get(fm);
@@ -6570,7 +6571,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				subSectCSVs.put(fm, subSectCSV);
 				CSVFile<String> parentSectCSV = new CSVFile<String>(true);
 				Map<Integer, String> parentNamesMap = Maps.newHashMap();
-				for (FaultSectionPrefData sect : sectDatas)
+				for (FaultSection sect : sectDatas)
 					parentNamesMap.put(sect.getParentSectionId(), sect.getParentSectionName());
 				List<Integer> parentIDs = Lists.newArrayList(parentNamesMap.keySet());
 				Collections.sort(parentIDs);
@@ -6900,7 +6901,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 						sectsByParents = Maps.newHashMap();
 						HashSet<Integer> parentsSet = new HashSet<Integer>();
-						for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+						for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 							parentsSet.add(sect.getParentSectionId());
 							parentNamesMap.putIfAbsent(
 									sect.getParentSectionId(),
@@ -7062,7 +7063,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				List<Double> weightsList = weightsMap.get(fm);
 				Map<Integer, int[]> sectsByParents = sectsByParentsMap.get(fm);
 
-				Map<Integer, FaultSectionPrefData> parentSectsMap = fm
+				Map<Integer, FaultSection> parentSectsMap = fm
 						.fetchFaultSectionsMap();
 
 				for (Integer parentID : ratesList.get(0).keySet()) {

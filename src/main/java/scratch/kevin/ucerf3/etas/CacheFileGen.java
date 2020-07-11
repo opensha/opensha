@@ -17,6 +17,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -57,7 +58,7 @@ public class CacheFileGen {
 		FaultSystemRupSet origRupSet = origFSS.getRupSet();
 		for (int r=0; r<origRupSet.getNumRuptures(); r++) {
 			boolean match = true;
-			for (FaultSectionPrefData sect : origRupSet.getFaultSectionDataForRupture(r)) {
+			for (FaultSection sect : origRupSet.getFaultSectionDataForRupture(r)) {
 				if (!parentIDs.contains(sect.getParentSectionId())) {
 					match = false;
 					break;
@@ -67,10 +68,10 @@ public class CacheFileGen {
 				validRupIDs.add(r);
 		}
 		System.out.println("We have "+validRupIDs.size()+" ruptures");
-		List<FaultSectionPrefData> subSects = new ArrayList<>();
+		List<FaultSection> subSects = new ArrayList<>();
 		Map<Integer, Integer> sectID_oldToNew = new HashMap<>();
 		Map<Integer, Integer> sectID_newToOld = new HashMap<>();
-		for (FaultSectionPrefData sect : origRupSet.getFaultSectionDataList()) {
+		for (FaultSection sect : origRupSet.getFaultSectionDataList()) {
 			if (parentIDs.contains(sect.getParentSectionId())) {
 				int newID = subSects.size();
 				sectID_oldToNew.put(sect.getSectionId(), newID);
@@ -131,7 +132,7 @@ public class CacheFileGen {
 		
 		// only include grid sources within 100km of the given sections
 		Region regionForGridded = null;
-		for (FaultSectionPrefData sect : subSects) {
+		for (FaultSection sect : subSects) {
 			for (Location loc : new Location[] {sect.getFaultTrace().first(), sect.getFaultTrace().last()}) {
 				if (regionForGridded == null)
 					regionForGridded = new Region(loc, 100d);

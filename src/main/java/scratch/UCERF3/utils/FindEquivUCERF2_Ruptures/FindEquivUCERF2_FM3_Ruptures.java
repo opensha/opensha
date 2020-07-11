@@ -35,7 +35,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -249,7 +251,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 			
 			// find fault sections that are not used by UCERF2 (the new ones in UCERF3)
 			ArrayList<String> allParentSectionNames = new ArrayList<String>();
-			for(FaultSectionPrefData data :faultSysRupSet.getFaultSectionDataList()){
+			for(FaultSection data : faultSysRupSet.getFaultSectionDataList()){
 				if(!allParentSectionNames.contains(data.getParentSectionName()))
 					allParentSectionNames.add(data.getParentSectionName());
 			}
@@ -680,18 +682,18 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 	private int findClosestInvRupToUCERF2_Rup(int iInvRup1, int iInvRup2, int ucerf2_iRup) {
 		FaultTrace targetTrace = modifiedUCERF2.getSource(srcIndexOfUCERF2_Rup[ucerf2_iRup]).getRupture(rupIndexOfUCERF2_Rup[ucerf2_iRup]).getRuptureSurface().getEvenlyDiscritizedUpperEdge();
 		
-		List<FaultSectionPrefData> sectData1 = faultSysRupSet.getFaultSectionDataForRupture(iInvRup1);
+		List<? extends FaultSection> sectData1 = faultSysRupSet.getFaultSectionDataForRupture(iInvRup1);
 		double rms_dist1=0;
-		for(FaultSectionPrefData data:sectData1) {
+		for(FaultSection data:sectData1) {
 			for(Location loc:data.getFaultTrace()) {
 				double dist = targetTrace.minDistToLocation(loc);
 				rms_dist1 += dist*dist;
 			}
 		}
 		
-		List<FaultSectionPrefData> sectData2 = faultSysRupSet.getFaultSectionDataForRupture(iInvRup2);
+		List<? extends FaultSection> sectData2 = faultSysRupSet.getFaultSectionDataForRupture(iInvRup2);
 		double rms_dist2=0;
-		for(FaultSectionPrefData data:sectData2) {
+		for(FaultSection data:sectData2) {
 			for(Location loc:data.getFaultTrace()) {
 				double dist = targetTrace.minDistToLocation(loc);
 				rms_dist2 += dist*dist;
@@ -859,9 +861,9 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 		for(int ur=0; ur<rateOfUCERF2_Rup.length;ur++) {
 			int ir = invRupIndexForUCERF2_Rup[ur];	// get inversion rupture index of the ucerf2 rup
 			if(ir>=0) {
-				ArrayList<EvenlyGriddedSurface> surfaces = new ArrayList<EvenlyGriddedSurface>();
-				for(FaultSectionPrefData fltData: faultSysRupSet.getFaultSectionDataForRupture(ir)) {
-					surfaces.add(fltData.getStirlingGriddedSurface(1.0, false, true));
+				ArrayList<RuptureSurface> surfaces = new ArrayList<>();
+				for(FaultSection fltData: faultSysRupSet.getFaultSectionDataForRupture(ir)) {
+					surfaces.add(fltData.getFaultSurface(1.0, false, true));
 				}
 				CompoundSurface compSurf = new CompoundSurface(surfaces);
 				LocationList surfLocs = compSurf.getEvenlyDiscritizedListOfLocsOnSurface();
@@ -890,9 +892,9 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 		for(int ur=0; ur<rateOfUCERF2_Rup.length;ur++) {
 			int ir = invRupIndexForUCERF2_Rup[ur];	// get inversion rupture index of the ucerf2 rup
 			if(ir>=0) {
-				ArrayList<EvenlyGriddedSurface> surfaces = new ArrayList<EvenlyGriddedSurface>();
-				for(FaultSectionPrefData fltData: faultSysRupSet.getFaultSectionDataForRupture(ir)) {
-					surfaces.add(fltData.getStirlingGriddedSurface(1.0, false, true));
+				ArrayList<RuptureSurface> surfaces = new ArrayList<>();
+				for(FaultSection fltData: faultSysRupSet.getFaultSectionDataForRupture(ir)) {
+					surfaces.add(fltData.getFaultSurface(1.0, false, true));
 				}
 				CompoundSurface compSurf = new CompoundSurface(surfaces);
 				LocationList surfLocs = compSurf.getEvenlyDiscritizedListOfLocsOnSurface();
@@ -1139,13 +1141,13 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 		int clostestSect=-1, secondClosestSect=-1;
 		for(int i=0; i<faultSectionData.size(); i++) {
 
-			FaultSectionPrefData sectionData = faultSectionData.get(i);
+			FaultSection sectionData = faultSectionData.get(i);
 			
 			if(!parentSectionNames.contains(sectionData.getParentSectionName()))
 				continue;
 
 			// TODO: should aseis be false instead of true?
-			FaultTrace sectionTrace = sectionData.getStirlingGriddedSurface(1.0, false, true).getRowAsTrace(0);
+			FaultTrace sectionTrace = sectionData.getFaultSurface(1.0, false, true).getEvenlyDiscritizedUpperEdge();
 			dist = sectionTrace.minDistToLocation(rupEndLoc);
 			if(dist<closestDist) {
 				secondClosestDist=closestDist;
@@ -1164,9 +1166,9 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 					"\tclostestSectName="+faultSectionData.get(clostestSect).getName());
 			System.out.println("secondClosestDist="+(float)secondClosestDist+"\tsecondClosestSect="+secondClosestSect+
 					"\tsecondClosestSectName="+faultSectionData.get(secondClosestSect).getName());
-			FaultSectionPrefData closestData = faultSectionData.get(clostestSect);
-			System.out.println("Closest section trace:\n"+closestData.getStirlingGriddedSurface(1.0, false, true).getRowAsTrace(0));
-			System.out.println("Closest section trace:\n"+closestData.getStirlingGriddedSurface(1.0, false, true).toString());
+			FaultSection closestData = faultSectionData.get(clostestSect);
+			System.out.println("Closest section trace:\n"+closestData.getFaultSurface(1.0, false, true).getEvenlyDiscritizedUpperEdge());
+			System.out.println("Closest section trace:\n"+closestData.getFaultSurface(1.0, false, true).toString());
 			System.out.println(closestData.toString());
 		}
 		
@@ -1176,7 +1178,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 			
 		// now see if both ends of closest section are within half the section length
 		// TODO: should aseis be false instead of true?
-		FaultTrace sectionTrace = faultSectionData.get(clostestSect).getStirlingGriddedSurface(1.0, false, true).getRowAsTrace(0);
+		FaultTrace sectionTrace = faultSectionData.get(clostestSect).getFaultSurface(1.0, false, true).getEvenlyDiscritizedUpperEdge();
 		double sectHalfLength = 0.5*sectionTrace.getTraceLength()+0.5; 
 		Location sectEnd1 = sectionTrace.get(0);
 		Location sectEnd2 = sectionTrace.get(sectionTrace.size()-1);
@@ -1197,7 +1199,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 		double maxDistSecondClosest=Double.NaN;
 		if(targetSection == -1) {	// check the second closest if the above failed
 			// TODO: should aseis be false instead of true?
-			sectionTrace = faultSectionData.get(secondClosestSect).getStirlingGriddedSurface(1.0, false, true).getRowAsTrace(0);
+			sectionTrace = faultSectionData.get(secondClosestSect).getFaultSurface(1.0, false, true).getEvenlyDiscritizedUpperEdge();
 			sectHalfLength = 0.5*sectionTrace.getTraceLength()+0.5; 
 			sectEnd1 = sectionTrace.get(0);
 			sectEnd2 = sectionTrace.get(sectionTrace.size()-1);
