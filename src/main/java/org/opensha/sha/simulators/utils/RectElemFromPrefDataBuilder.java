@@ -19,6 +19,9 @@ import org.opensha.commons.geo.PlaneUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.faultSurface.EvenlyGridCenteredSurface;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.RectangularElement;
 import org.opensha.sha.simulators.SimulatorElement;
@@ -34,12 +37,12 @@ public class RectElemFromPrefDataBuilder {
 	
 	private static final boolean D = false;
 
-	public static List<SimulatorElement> build(List<FaultSectionPrefData> allFaultSectionPrefData,
+	public static List<SimulatorElement> build(List<? extends FaultSection> allFaultSectionPrefData,
 			boolean aseisReducesArea, double maxDiscretization) {
 		return build(allFaultSectionPrefData, aseisReducesArea, maxDiscretization, null);
 	}
 	
-	public static List<SimulatorElement> build(List<FaultSectionPrefData> allFaultSectionPrefData,
+	public static List<SimulatorElement> build(List<? extends FaultSection> allFaultSectionPrefData,
 			boolean aseisReducesArea, double maxDiscretization, Map<Integer, Integer> parentSectToFaultIDMap) {
 		// put in new list since we're about to sort
 		allFaultSectionPrefData = Lists.newArrayList(allFaultSectionPrefData);
@@ -82,15 +85,16 @@ public class RectElemFromPrefDataBuilder {
 			ArrayList<SimulatorElement> sectionElementsList = new ArrayList<SimulatorElement>();
 			ArrayList<Vertex> sectionVertexList = new ArrayList<Vertex>();
 			sectionNumber +=1; // starts from 1, not zero
-			FaultSectionPrefData faultSectionPrefData = allFaultSectionPrefData.get(i);
-			StirlingGriddedSurface surface = new StirlingGriddedSurface(
-					faultSectionPrefData.getSimpleFaultData(aseisReducesArea), maxDiscretization, maxDiscretization);
-			EvenlyGridCenteredSurface gridCenteredSurf = new EvenlyGridCenteredSurface(surface);
+			FaultSection faultSectionPrefData = allFaultSectionPrefData.get(i);
+			RuptureSurface surface = faultSectionPrefData.getFaultSurface(maxDiscretization, false, aseisReducesArea);
+			Preconditions.checkState(surface instanceof EvenlyGriddedSurface);
+			EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surface;
+			EvenlyGridCenteredSurface gridCenteredSurf = new EvenlyGridCenteredSurface(gridSurf);
 			double elementLength = gridCenteredSurf.getGridSpacingAlongStrike();
 			double elementDDW = gridCenteredSurf.getGridSpacingDownDip(); // down dip width
 			if (i == 256)
 				System.out.println("Detected len="+elementLength+", ddw="+elementDDW);
-			boolean adjustedLenghts = true && faultSectionPrefData.getAveDip() < 90d && surface.getNumCols()>1;
+			boolean adjustedLenghts = true && faultSectionPrefData.getAveDip() < 90d && gridSurf.getNumCols()>1;
 			boolean doColSpecific = true;
 			double[] colSpecificDDW = null;
 			
@@ -113,15 +117,15 @@ public class RectElemFromPrefDataBuilder {
 				//						for (int j=0; j<gridCenteredSurf.getNumCols(); j++) {
 				//							Location testPt = gridCenteredSurf.get(1, j);
 				List<Double> candidates = Lists.newArrayList();
-				for (int j=0; j<surface.getNumCols()-1; j++) {
-					Location t1 = surface.get(1, j);
-					Location t2 = surface.get(1, j+1);
+				for (int j=0; j<gridSurf.getNumCols()-1; j++) {
+					Location t1 = gridSurf.get(1, j);
+					Location t2 = gridSurf.get(1, j+1);
 					Location testPt = new Location((t1.getLatitude()+t2.getLatitude())/2d, (t1.getLongitude()+t2.getLongitude())/2d, (t1.getDepth()+t2.getDepth())/2d);
 					//							Location testPt = t1;
 					double myMinDDW = Double.POSITIVE_INFINITY;
-					for (int k=0; k<surface.getNumCols()-1; k++) {
-						Location topL = surface.get(0, k);
-						Location topR = surface.get(0, k+1);
+					for (int k=0; k<gridSurf.getNumCols()-1; k++) {
+						Location topL = gridSurf.get(0, k);
+						Location topR = gridSurf.get(0, k+1);
 
 						if (doColSpecific) {
 							// just use that column
@@ -190,9 +194,9 @@ public class RectElemFromPrefDataBuilder {
 					elementID +=1; // starts from 1, not zero
 					numberDownDip = row+1;
 					Location centerLoc = gridCenteredSurf.get(row, col);
-					Location top1 = surface.get(row, col);
-					Location top2 = surface.get(row, col+1);
-					Location bot1 = surface.get(row+1, col);
+					Location top1 = gridSurf.get(row, col);
+					Location top2 = gridSurf.get(row, col+1);
+					Location bot1 = gridSurf.get(row+1, col);
 					double[] strikeAndDip = PlaneUtils.getStrikeAndDip(top1, top2, bot1);
 					elementStrike = strikeAndDip[0];
 					elementDip = strikeAndDip[1];	
@@ -313,12 +317,12 @@ public class RectElemFromPrefDataBuilder {
 		return rectElementsList;
 	}
 	
-	private static class SubSectNameComparator implements Comparator<FaultSectionPrefData> {
+	private static class SubSectNameComparator implements Comparator<FaultSection> {
 		
 		private NamedComparator nameComp = new NamedComparator();
 
 		@Override
-		public int compare(FaultSectionPrefData o1, FaultSectionPrefData o2) {
+		public int compare(FaultSection o1, FaultSection o2) {
 			if (o1.getParentSectionId() != o2.getParentSectionId())
 				return nameComp.compare(o1, o2);
 			return new Integer(o1.getSectionId()).compareTo(o2.getSectionId());

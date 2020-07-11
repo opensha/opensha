@@ -10,6 +10,7 @@ import org.dom4j.Attribute;
 import org.dom4j.Element;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.XMLSaveable;
@@ -25,7 +26,7 @@ import org.opensha.sha.faultSurface.SimpleFaultData;
  * 
  *
  */
-public class FaultSectionPrefData implements FaultSection, java.io.Serializable, Cloneable {
+public class FaultSectionPrefData implements FaultSection, java.io.Serializable, Cloneable, ShortNamed {
 
 	/**
 	 * 
@@ -73,12 +74,16 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		return this.shortName;
 	}
 
-	public void setFaultSectionPrefData(FaultSectionPrefData faultSectionPrefData) {
+	public void setFaultSectionPrefData(FaultSection faultSectionPrefData) {
 		sectionId = faultSectionPrefData.getSectionId();
 		sectionName= faultSectionPrefData.getSectionName();
 		parentSectionId = faultSectionPrefData.getParentSectionId();
 		parentSectionName = faultSectionPrefData.getParentSectionName();
-		shortName= faultSectionPrefData.getShortName();
+		if (faultSectionPrefData instanceof ShortNamed) {
+			shortName = ((ShortNamed)faultSectionPrefData).getShortName();
+		} else {
+			shortName = faultSectionPrefData.getName();
+		}
 		aveLongTermSlipRate= faultSectionPrefData.getOrigAveSlipRate();
 		slipRateStdDev=faultSectionPrefData.getOrigSlipRateStdDev();
 		aveDip= faultSectionPrefData.getAveDip();
@@ -507,6 +512,16 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		return new SimpleFaultData(getAveDip(), getAveLowerDepth(), upperDepth, getFaultTrace(), getDipDirection());
 	}
 	
+	public StirlingGriddedSurface getFaultSurface(double gridSpacing) {
+		return getStirlingGriddedSurface(gridSpacing, true, true);
+	}
+	
+	public StirlingGriddedSurface getFaultSurface(
+			double gridSpacing, boolean preserveGridSpacingExactly,
+			boolean aseisReducesArea) {
+		return getStirlingGriddedSurface(gridSpacing, preserveGridSpacingExactly, aseisReducesArea);
+	}
+	
 	/**
 	 * This returns a StirlingGriddedSurface with the specified grid spacing, where aseismicSlipFactor
 	 * is applied as a reduction of down-dip-width (an increase of the upper seis depth).
@@ -610,6 +625,8 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 
 			traceEl = loc.toXMLMetadata(traceEl);
 		}
+		
+		el.addAttribute("class", FaultSectionPrefData.class.getCanonicalName());
 
 		return root;
 	}
