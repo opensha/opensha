@@ -312,10 +312,10 @@ public final class LocationUtils {
 	 *         <code>Location</code>
 	 */
 	public static double distanceToSurf(Location loc,
-			AbstractEvenlyGriddedSurface rupSurf) {
+			RuptureSurface rupSurf) {
 		double minDistance = Double.MAX_VALUE;
 		double horzDist, vertDist, totalDist;
-		for (Location loc2 : rupSurf) {
+		for (Location loc2 : rupSurf.getEvenlyDiscritizedListOfLocsOnSurface()) {
 			horzDist = horzDistance(loc, loc2);
 			vertDist = vertDistance(loc, loc2);
 			totalDist = horzDist * horzDist + vertDist * vertDist;

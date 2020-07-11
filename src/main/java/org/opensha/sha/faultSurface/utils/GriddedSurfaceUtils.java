@@ -14,6 +14,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -534,6 +535,30 @@ public class GriddedSurfaceUtils {
 		int startRow = 0;
 		int startCol = numFromStart;
 		return new GriddedSubsetSurface(numRows, numCols, startRow, startCol, gridSurf);
+	}
+	
+	/**
+	 * Gents the center location of this surface. If it implements EvenlyGriddedSurface and has 3 or more
+	 * rows and columns, the center is directly retrieved. Otherwise the arithmetic average location of 
+	 * the evenly discretized location list is computed.
+	 * @param surf
+	 * @return center location
+	 */
+	public static Location getSurfaceMiddleLoc(RuptureSurface surf) {
+		if (surf instanceof EvenlyGriddedSurface) {
+			EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surf;
+			if (gridSurf.getNumRows() > 2 && gridSurf.getNumCols() > 2)
+				return gridSurf.getLocation(gridSurf.getNumRows()/2, gridSurf.getNumCols()/2);
+		}
+		MinMaxAveTracker latTrack = new MinMaxAveTracker();
+		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+		MinMaxAveTracker depthTrack = new MinMaxAveTracker();
+		for (Location loc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
+			latTrack.addValue(loc.getLatitude());
+			lonTrack.addValue(loc.getLongitude());
+			depthTrack.addValue(loc.getDepth());
+		}
+		return new Location(latTrack.getAverage(), lonTrack.getAverage(), depthTrack.getAverage());
 	}
 
 }

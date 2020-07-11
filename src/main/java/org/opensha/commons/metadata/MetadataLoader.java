@@ -21,15 +21,37 @@ package org.opensha.commons.metadata;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 
+import org.dom4j.Element;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
-//import org.opensha.sha.calc.hazardMap.old.HazardMapJob;
 
 public class MetadataLoader implements ParameterChangeWarningListener {
 
 	public MetadataLoader() {
+	}
+	
+	/**
+	 * Calls the static fromXMLMetadata(Element) method on the given class
+	 * @param el
+	 * @param className
+	 * @return
+	 * @throws ClassNotFoundException
+	 * @throws NoSuchMethodException
+	 * @throws SecurityException
+	 * @throws IllegalAccessException
+	 * @throws IllegalArgumentException
+	 * @throws InvocationTargetException
+	 */
+	public static Object loadXMLwithReflection(Element el, String className)
+			throws ClassNotFoundException, NoSuchMethodException, SecurityException,
+			IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+		Class<?> clazz = Class.forName(className);
+		
+		Method method = clazz.getMethod("fromXMLMetadata", Element.class);
+		return method.invoke(null, el);
 	}
 
 	/**

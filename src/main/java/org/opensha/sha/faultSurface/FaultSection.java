@@ -8,7 +8,14 @@ import org.opensha.commons.data.Named;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.XMLSaveable;
 
-public interface FaultSection extends Named, XMLSaveable {
+/**
+ * Top level interface for a fault section. This was extracted from the FaultSectionPrefData
+ * object, which is the primary implementation.
+ * 
+ * @author kevin
+ *
+ */
+public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	
 	/**
 	 * This returns the date of last event in UTC milliseconds from the epoch
@@ -26,6 +33,20 @@ public interface FaultSection extends Named, XMLSaveable {
 	public void setDateOfLastEvent(long dateOfLastEventMillis);
 	
 	/**
+	 * Amount of slip (m) on this section in the last event
+	 * @param slipInLastEvent - in meters
+	 */
+	public void setSlipInLastEvent(double slipInLastEvent);
+	
+	
+	/**
+	 * Amount of slip (m) on this section in the last event.  A value of 
+	 * Double.NaN means it is not available (the default).
+	 * @return slip in meters
+	 */
+	public double getSlipInLastEvent();
+	
+	/**
 	 * Defined as a reduction of area between the upper and lower seismogenic depths
 	 * @return
 	 */
@@ -35,7 +56,19 @@ public interface FaultSection extends Named, XMLSaveable {
 	 * Defined as a reduction of area between the upper and lower seismogenic depths
 	 * @return
 	 */
+	public void setAseismicSlipFactor(double aseismicSlipFactor);
+	
+	/**
+	 * Defined as a reduction of area between the upper and lower seismogenic depths
+	 * @return
+	 */
 	public double getCouplingCoeff();
+
+	/**
+	 * Defined as a reduction of area between the upper and lower seismogenic depths
+	 * @return
+	 */
+	public void setCouplingCoeff(double couplingCoeff);
 	
 	/**
 	 * This returns the average dip (degrees)
@@ -48,6 +81,13 @@ public interface FaultSection extends Named, XMLSaveable {
 	 * @return
 	 */
 	public double getOrigAveSlipRate();
+	
+	/**
+	 * This sets the aveLongTermSlipRate (mm/yr), which should not already by modified by any
+	 * non-unit coupling coefficient.
+	 * @param aveLongTermSlipRate
+	 */
+	public void setAveSlipRate(double aveLongTermSlipRate);
 	
 	/**
 	 * This returns the product of the slip rate (mm/yr) times the coupling coefficient
@@ -68,6 +108,12 @@ public interface FaultSection extends Named, XMLSaveable {
 	 * @return
 	 */
 	public double getAveRake();
+	
+	/**
+	 * This sets the average rake in degrees
+	 * @return
+	 */
+	public void setAveRake(double aveRake);
 	
 	/**
 	 * This returns the upper seismogenic (km) depth that has not been modified
@@ -103,6 +149,25 @@ public interface FaultSection extends Named, XMLSaveable {
 	 * @return
 	 */
 	public int getSectionId();
+
+	/**
+	 * This sets the section ID 
+	 * @return
+	 */
+	public void setSectionId(int sectID);
+	
+	/**
+	 * this returns the name (string) of the section
+	 * @return
+	 */
+	public default String getSectionName() {
+		return getName();
+	}
+	
+	/**
+	 * this sets the name (string) of the section
+	 */
+	public void setSectionName(String sectName);
 	
 	/**
 	 * This is the ID of the parent section if this is a subsection
@@ -110,9 +175,19 @@ public interface FaultSection extends Named, XMLSaveable {
 	public int getParentSectionId();
 	
 	/**
+	 * This is the ID of the parent section if this is a subsection
+	 */
+	public void setParentSectionId(int parentSectionId);
+	
+	/**
 	 * This is the name of the parent section if this is a subsection (null otherwise)
 	 */
 	public String getParentSectionName();
+	
+	/**
+	 * This is the name of the parent section if this is a subsection
+	 */
+	public void setParentSectionName(String parentSectionName);
 	
 	/**
 	 * this returns the length of the trace in km.
@@ -213,4 +288,34 @@ public interface FaultSection extends Named, XMLSaveable {
 			
 		return FaultMomentCalc.getMoment(area, slipRate*1e-3);
 	}
+	
+	/**
+	 * This returns a RuptureSurface with the specified grid spacing (if applicable), where aseismicSlipFactor
+	 * is applied as a reduction of down-dip-width (an increase of the upper seis depth).
+	 * @param gridSpacing grid spacing in km (if applicable)
+	 * @return
+	 */
+	public RuptureSurface getFaultSurface(double gridSpacing);
+	
+	/**
+	 * This returns a RuptureSurface with the specified grid spacing (if applicable), where aseismicSlipFactor
+	 * is optionally applied as a reduction of down-dip-width (an increase of the upper seis depth).
+	 * @param gridSpacing grid spacing in km (if applicable)
+	 * @param preserveGridSpacingExactly - if false, this will increase the grid spacing to fit the length 
+	 * and ddw exactly (otherwise trimming occurs)
+	 * @param aseisRecudesArea - flag to reduce area by aseismic slip factor
+	 * @return
+	 */
+	public RuptureSurface getFaultSurface(double gridSpacing, boolean preserveGridSpacingExactly,
+			boolean aseisReducesArea);
+	
+	/**
+	 * This returns a simple fault data object
+	 *
+	 * @param faultSection
+	 * @return
+	 */
+	public SimpleFaultData getSimpleFaultData(boolean aseisReducesArea);
+	
+	public FaultSection clone();
 }
