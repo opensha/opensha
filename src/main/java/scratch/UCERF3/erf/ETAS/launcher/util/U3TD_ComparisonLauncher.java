@@ -227,7 +227,7 @@ public class U3TD_ComparisonLauncher {
 					etasRups.add(etasRup);
 				} else {
 					Preconditions.checkState(fssIndex >= 0 && fssIndex < rupSet.getNumRuptures(), "bad FSS index=%s", fssIndex);
-					LocationList rupLocs = rupSet.getSurfaceForRupupture(fssIndex, 1d, false).getEvenlyDiscritizedListOfLocsOnSurface();
+					LocationList rupLocs = rupSet.getSurfaceForRupupture(fssIndex, 1d).getEvenlyDiscritizedListOfLocsOnSurface();
 					Location hypoLoc = rupLocs.get(r.nextInt(rupLocs.size()));
 					
 					ObsEqkRupture rup = new ObsEqkRupture(id+"", epochMillis, hypoLoc, rupSet.getMagForRup(fssIndex));

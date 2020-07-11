@@ -14,6 +14,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 
@@ -176,7 +177,7 @@ public class FaultPolyMgr implements Iterable<Area> {
 	 *        km on either side of fault; may be {@code null}
 	 * @return a reference to the newly minted manager
 	 */
-	public static FaultPolyMgr create(List<FaultSectionPrefData> fspd, Double buf) {
+	public static FaultPolyMgr create(List<? extends FaultSection> fspd, Double buf) {
 		FaultPolyMgr mgr = new FaultPolyMgr();
 		if (log) System.out.println("Building poly mgr...");
 		if (log) System.out.println("   section polygons");
@@ -198,7 +199,7 @@ public class FaultPolyMgr implements Iterable<Area> {
 		FaultPolyMgr mgr = new FaultPolyMgr();
 		if (log) System.out.println("Building poly mgr...");
 		if (log) System.out.println("   getting faults from model");
-		List<FaultSectionPrefData> faults = fm.fetchFaultSections();
+		List<FaultSection> faults = fm.fetchFaultSections();
 		if (log) System.out.println("   subsection polygons");
 		mgr.polys = SectionPolygons.create(faults, buf, len);
 		mgr.init();

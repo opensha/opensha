@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -55,7 +56,7 @@ public class AzimuthChangeFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings,
 			List<Integer> junctionIndexes) {
 		// there must be at least 4 sections and at least one junction

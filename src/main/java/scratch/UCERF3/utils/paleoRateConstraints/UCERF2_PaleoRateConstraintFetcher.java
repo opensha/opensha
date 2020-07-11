@@ -24,6 +24,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import com.google.common.base.Preconditions;
@@ -40,7 +41,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 
 	protected final static boolean D = true;  // for debugging
 
-	public static ArrayList<PaleoRateConstraint> getConstraints(List<FaultSectionPrefData> faultSectionData)
+	public static ArrayList<PaleoRateConstraint> getConstraints(List<? extends FaultSection> faultSectionData)
 	throws IOException {
 
 		ArrayList<PaleoRateConstraint> paleoRateConstraints   = new ArrayList<PaleoRateConstraint>();
@@ -107,7 +108,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 			"num sections is inconsistant between solutions!");
 		}
 
-		List<FaultSectionPrefData> datas = solutions.get(0).getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> datas = solutions.get(0).getRupSet().getFaultSectionDataList();
 
 		ArrayList<DiscretizedFunc> funcs = new ArrayList<DiscretizedFunc>();
 		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
@@ -135,7 +136,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 			int sectID = constr.getSectionIndex();
 			int parentID = -1;
 			String name = null;
-			for (FaultSectionPrefData data : datas) {
+			for (FaultSection data : datas) {
 				if (data.getSectionId() == sectID) {
 					if (data.getParentSectionId() < 0)
 						throw new IllegalStateException("parent ID isn't populated for solution!");
@@ -151,7 +152,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 
 			int minSect = Integer.MAX_VALUE;
 			int maxSect = -1;
-			for (FaultSectionPrefData data : datas) {
+			for (FaultSection data : datas) {
 				if (data.getParentSectionId() == parentID) {
 					int mySectID = data.getSectionId();
 					if (mySectID < minSect)

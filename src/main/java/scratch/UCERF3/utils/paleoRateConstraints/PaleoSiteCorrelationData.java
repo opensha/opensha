@@ -31,6 +31,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
@@ -214,7 +215,7 @@ public class PaleoSiteCorrelationData implements Serializable {
 
 	public static Map<String, Table<String, String, PaleoSiteCorrelationData>> loadPaleoCorrelationData(
 			InputStream dataIS, InversionFaultSystemSolution sol, File outputFile) throws IOException {
-		List<FaultSectionPrefData> faultSectionData = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faultSectionData = sol.getRupSet().getFaultSectionDataList();
 
 		PaleoProbabilityModel paleoProb = UCERF3_PaleoProbabilityModel.load();
 
@@ -271,7 +272,7 @@ public class PaleoSiteCorrelationData implements Serializable {
 				int closestFaultSectionIndex=-1;
 
 				for(int sectionIndex=0; sectionIndex<faultSectionData.size(); ++sectionIndex) {
-					FaultSectionPrefData data = faultSectionData.get(sectionIndex);
+					FaultSection data = faultSectionData.get(sectionIndex);
 					if (parentOverrides != null && !parentOverrides.contains(data.getParentSectionId()))
 						continue;
 

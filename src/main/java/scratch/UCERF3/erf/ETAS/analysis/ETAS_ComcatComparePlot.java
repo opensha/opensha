@@ -63,6 +63,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.magComplete.Helmstetter2006_TimeDepMc;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -1145,8 +1146,8 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 		
 		PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.GRAY);
 		PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY);
-		for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
-			RuptureSurface surf = sect.getStirlingGriddedSurface(1d, false, false);
+		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
 			for (XY_DataSet xy : ETAS_EventMapPlotUtils.getSurfOutlines(surf)) {
 				faultFuncs.add(xy);
 				faultChars.add(outlineChar);

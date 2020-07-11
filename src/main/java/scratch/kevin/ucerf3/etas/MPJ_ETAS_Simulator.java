@@ -27,6 +27,7 @@ import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -262,7 +263,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 //			mainshockRup.setRuptureSurface(rupFromERF.getRuptureSurface());
 			mainshockRup.setAveRake(rupSet.getAveRakeForRup(fssScenarioRupID));
 			mainshockRup.setMag(rupSet.getMagForRup(fssScenarioRupID));
-			mainshockRup.setRuptureSurface(rupSet.getSurfaceForRupupture(fssScenarioRupID, 1d, false));
+			mainshockRup.setRuptureSurface(rupSet.getSurfaceForRupupture(fssScenarioRupID, 1d));
 			mainshockRup.setID(0);
 			mainshockRup.setFSSIndex(fssScenarioRupID);
 //			debug("test Mainshock: "+erf.getSource(srcID).getName());
@@ -433,7 +434,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 
 				// reset date of last event
 				if (timeIndep) {
-					for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+					for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 						sect.setDateOfLastEvent(Long.MIN_VALUE);
 				} else {
 					LastEventData.populateSubSects(sol.getRupSet().getFaultSectionDataList(), lastEventData);

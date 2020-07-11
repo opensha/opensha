@@ -23,6 +23,7 @@ import org.opensha.sha.earthquake.param.MagDependentAperiodicityOptions;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -86,7 +87,7 @@ public class TimeDepRateExtractor {
 		binary = cmd.hasOption("binary");
 		ignoreNoDateLast = cmd.hasOption("ignore-no-date-last");
 		
-		for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList())
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			if (sect.getDateOfLastEvent() > Long.MIN_VALUE)
 				numSectsWithDateLast++;
 	}

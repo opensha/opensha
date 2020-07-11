@@ -51,6 +51,7 @@ import org.opensha.commons.util.XMLUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -196,7 +197,7 @@ public class FaultBasedMapGen {
 	public static void plotOrigNonReducedSlipRates(FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] values = new double[faults.size()];
 		for (int i=0; i<faults.size(); i++)
 			values[i] = faults.get(i).getOrigAveSlipRate();
@@ -207,7 +208,7 @@ public class FaultBasedMapGen {
 	public static void plotOrigCreepReducedSlipRates(FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] values = new double[faults.size()];
 		for (int i=0; i<faults.size(); i++)
 			values[i] = faults.get(i).getReducedAveSlipRate();
@@ -218,7 +219,7 @@ public class FaultBasedMapGen {
 	public static void plotTargetSlipRates(FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] values = scale(sol.getRupSet().getSlipRateForAllSections(), 1e3); // to mm
 		
 		makeFaultPlot(cpt, getTraces(faults), values, region, saveDir, prefix+"_target_slip", display, false, "Target Slip Rate (mm/yr)");
@@ -227,7 +228,7 @@ public class FaultBasedMapGen {
 	public static void plotSolutionSlipRates(SlipEnabledSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] values = scale(sol.calcSlipRateForAllSects(), 1e3); // to mm
 		
 		makeFaultPlot(cpt, getTraces(faults), values, region, saveDir, prefix+"_solution_slip", display, false, "Solution Slip Rate (mm/yr)");
@@ -254,7 +255,7 @@ public class FaultBasedMapGen {
 	public static void plotBulgeFromFirstGenAftershocksMap(InversionFaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display, boolean logRatio) 
 			throws GMT_MapException, RuntimeException, IOException {
 
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 
 		List<GutenbergRichterMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
 		List<IncrementalMagFreqDist> supraSeisMFD_List = sol.getFinalSupraSeismoOnFaultMFD_List(5.05, 8.95, 40);
@@ -286,7 +287,7 @@ public class FaultBasedMapGen {
 			throws GMT_MapException, RuntimeException, IOException {
 
 		double mag = 6.75;
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 
 		List<GutenbergRichterMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
 		List<IncrementalMagFreqDist> supraSeisMFD_List = sol.getFinalSupraSeismoOnFaultMFD_List(5.05, 8.95, 40);
@@ -342,7 +343,7 @@ public class FaultBasedMapGen {
 	
 	public static void plotSolutionSlipMisfit(SlipEnabledSolution sol, Region region, File saveDir, String prefix, boolean display, boolean logRatio)
 			throws GMT_MapException, RuntimeException, IOException {
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] solSlips = sol.calcSlipRateForAllSects();
 		double[] targetSlips = sol.getRupSet().getSlipRateForAllSections();
 		double[] values = new double[faults.size()];
@@ -374,7 +375,7 @@ public class FaultBasedMapGen {
 			double minMag, double maxMag)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getParticipationCPT();
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] values = sol.calcParticRateForAllSects(minMag, maxMag);
 		
 		// now log space
@@ -400,7 +401,7 @@ public class FaultBasedMapGen {
 			String prefix, boolean display, double minMag, double maxMag)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getParticipationCPT();
-		List<FaultSectionPrefData> faults = rupSet.getFaultSectionDataList();
+		List<? extends FaultSection> faults = rupSet.getFaultSectionDataList();
 		
 		double[] stdDevs = new double[partRates.length];
 		double[] mean = new double[partRates.length];
@@ -460,7 +461,7 @@ public class FaultBasedMapGen {
 	public static void plotSolutionSlipRateStdDevs(FaultSystemRupSet rupSet, double[][] slipRates, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getParticipationCPT().rescale(-4, 1);
-		List<FaultSectionPrefData> faults = rupSet.getFaultSectionDataList();
+		List<? extends FaultSection> faults = rupSet.getFaultSectionDataList();
 		
 		double[] stdDev = new double[slipRates.length];
 		double[] mean = new double[slipRates.length];
@@ -488,7 +489,7 @@ public class FaultBasedMapGen {
 			File saveDir, String prefix, boolean display, double minMag, double maxMag, boolean omitInfinites)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getLogRatioCPT();
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] newVals = sol.calcParticRateForAllSects(minMag, maxMag);
 		double[] refVals = referenceSol.calcParticRateForAllSects(minMag, maxMag);
 		Preconditions.checkState(newVals.length == refVals.length, "solution rupture counts are incompatible!");
@@ -520,7 +521,7 @@ public class FaultBasedMapGen {
 			throws GMT_MapException, RuntimeException, IOException {
 //		CPT cpt = getLinearRatioCPT().rescale(-3, 3);
 		CPT cpt = getLinearRatioCPT().rescale(-0.005, 0.005);
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] newVals = sol.calcParticRateForAllSects(minMag, maxMag);
 		double[] refVals = referenceSol.calcParticRateForAllSects(minMag, maxMag);
 		Preconditions.checkState(newVals.length == refVals.length, "solution rupture counts are incompatible!");
@@ -552,7 +553,7 @@ public class FaultBasedMapGen {
 	public static void plotSectionPairRates(FaultSystemSolution sol, Region region,
 			File saveDir, String prefix, boolean display) throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getNormalizedPairRatesCPT();
-		List<FaultSectionPrefData> faults = sol.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[][] rates = sol.getSectionPairRupRates();
 		
 		ArrayList<LocationList> lines = new ArrayList<LocationList>();
@@ -599,18 +600,18 @@ public class FaultBasedMapGen {
 		
 		CPT cpt = getNormalizedPairRatesCPT();
 		
-		List<FaultSectionPrefData> faults = rupSet.getFaultSectionDataList();
-		Map<Integer, FaultSectionPrefData> faultsMap = Maps.newHashMap();
-		for (FaultSectionPrefData fault : faults)
+		List<FaultSection> faults = new ArrayList<>(rupSet.getFaultSectionDataList());
+		Map<Integer, FaultSection> faultsMap = Maps.newHashMap();
+		for (FaultSection fault : faults)
 			faultsMap.put(fault.getSectionId(), fault);
 		ArrayList<Integer> ends = Lists.newArrayList();
 		
-		Map<Integer, List<FaultSectionPrefData>> parentsMap = Maps.newHashMap();
+		Map<Integer, List<FaultSection>> parentsMap = Maps.newHashMap();
 		
 		int prevParent = -2;
-		List<FaultSectionPrefData> curSectsForParentList = null;
+		List<FaultSection> curSectsForParentList = null;
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
-			FaultSectionPrefData fault = rupSet.getFaultSectionData(sectIndex);
+			FaultSection fault = rupSet.getFaultSectionData(sectIndex);
 			int parent = fault.getParentSectionId();
 			
 			if (prevParent != parent) {
@@ -627,8 +628,8 @@ public class FaultBasedMapGen {
 			prevParent = parent;
 		}
 		
-		List<FaultSectionPrefData> visibleFaults = Lists.newArrayList();
-		List<FaultSectionPrefData> visibleNanFaults = Lists.newArrayList();
+		List<FaultSection> visibleFaults = Lists.newArrayList();
+		List<FaultSection> visibleNanFaults = Lists.newArrayList();
 		List<Double> valsList = Lists.newArrayList();
 		
 		// this will color ends by the rate of all ruptures ending at this section divided by
@@ -657,7 +658,7 @@ public class FaultBasedMapGen {
 				visibleFaults.add(faultsMap.get(sect));
 				
 				// now add the "middle" faults for this section
-				List<FaultSectionPrefData> sects = parentsMap.get(
+				List<FaultSection> sects = parentsMap.get(
 						rupSet.getFaultSectionData(sect).getParentSectionId());
 				if (sect == sects.get(0).getSectionId()) {
 					// only add for the first section of each parent to avoid duplication
@@ -753,7 +754,7 @@ public class FaultBasedMapGen {
 		
 		if (fm == FaultModels.FM2_1) {
 			DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1);
-			for (FaultSectionPrefData fault : dmFetch.getSubSectionList()) {
+			for (FaultSection fault : dmFetch.getSubSectionList()) {
 				faults.add(fault.getFaultTrace());
 				valsList.add(fault.getOrigAveSlipRate());
 			}
@@ -800,11 +801,11 @@ public class FaultBasedMapGen {
 		if (fm == FaultModels.FM2_1) {
 			DeformationModelFetcher dmFetch1 = new DeformationModelFetcher(fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1);
 			DeformationModelFetcher dmFetch2 = new DeformationModelFetcher(fm, ref, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1);
-			ArrayList<FaultSectionPrefData> sects1 = dmFetch1.getSubSectionList();
-			ArrayList<FaultSectionPrefData> sects2 = dmFetch2.getSubSectionList();
+			List<? extends FaultSection> sects1 = dmFetch1.getSubSectionList();
+			List<? extends FaultSection> sects2 = dmFetch2.getSubSectionList();
 			for (int i=0; i<sects1.size(); i++) {
-				FaultSectionPrefData fault1 = sects1.get(i);
-				FaultSectionPrefData fault2 = sects2.get(i);
+				FaultSection fault1 = sects1.get(i);
+				FaultSection fault2 = sects2.get(i);
 				faults.add(fault1.getFaultTrace());
 				valsList.add(fault1.getOrigAveSlipRate() / fault2.getOrigAveSlipRate());
 			}
@@ -833,7 +834,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, faults, values, region, saveDir, prefix, display, false, "Log10(Slip Rate Ratio, "+str+")");
 	}
 	
-	private static Location getTraceMidpoint(FaultSectionPrefData fault) {
+	private static Location getTraceMidpoint(FaultSection fault) {
 		return FaultUtils.resampleTrace(fault.getFaultTrace(), 10).get(5);
 	}
 	
@@ -851,9 +852,9 @@ public class FaultBasedMapGen {
 		return ret;
 	}
 	
-	public static ArrayList<LocationList> getTraces(List<FaultSectionPrefData> faults) {
+	public static ArrayList<LocationList> getTraces(List<? extends FaultSection> faults) {
 		ArrayList<LocationList> faultTraces = new ArrayList<LocationList>();
-		for (FaultSectionPrefData fault : faults)
+		for (FaultSection fault : faults)
 			faultTraces.add(fault.getFaultTrace());
 		return faultTraces;
 	}

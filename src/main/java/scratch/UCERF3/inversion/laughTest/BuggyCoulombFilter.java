@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -23,11 +24,11 @@ public class BuggyCoulombFilter extends AbstractLaughTest {
 	private CoulombRates rates;
 	private CoulombRatesTester tester;
 	private boolean minEqualsAvg;
-	private List<FaultSectionPrefData> sectionDataList;
+	private List<? extends FaultSection> sectionDataList;
 	private List<List<Integer>> sectionConnectionsListList;
 	
 	public BuggyCoulombFilter(CoulombRates rates, CoulombRatesTester tester,
-			List<FaultSectionPrefData> sectionDataList, List<List<Integer>> sectionConnectionsListList) {
+			List<? extends FaultSection> sectionDataList, List<List<Integer>> sectionConnectionsListList) {
 		this.rates = rates;
 		this.tester = tester;
 		this.minEqualsAvg = tester.getMinAverageProb() <= tester.getMinIndividualProb();
@@ -36,13 +37,13 @@ public class BuggyCoulombFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		if (rupture.size() < 2 || junctionIndexes.isEmpty())
 			return true;
 		
 		List<Integer> rupIndexes = Lists.newArrayList();
-		for (FaultSectionPrefData sect : rupture)
+		for (FaultSection sect : rupture)
 			rupIndexes.add(sect.getSectionId());
 		
 		List<CoulombRatesRecord> forwardRates = Lists.newArrayList();

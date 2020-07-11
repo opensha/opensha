@@ -79,7 +79,7 @@ public class FiniteFaultMappingData implements XMLSaveable {
 		if (mappings != null) {
 			Integer rupIndex = mappings.get(fm);
 			Preconditions.checkNotNull(rupIndex, "No mapping exists for "+fm.name());
-			return rupSet.getSurfaceForRupupture(rupIndex, 1d, false);
+			return rupSet.getSurfaceForRupupture(rupIndex, 1d);
 		}
 		RuptureSurface external = mappedSurfaces.get(index);
 		Preconditions.checkNotNull(external);

@@ -15,6 +15,7 @@ import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -321,7 +322,7 @@ public class InversionInputGenerator {
 			}
 			// Get list of parent sections
 			ArrayList<Integer> parentIDs = new ArrayList<Integer>();
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				int parentID = sect.getParentSectionId();
 				if (!parentIDs.contains(parentID))
 					parentIDs.add(parentID);
@@ -329,7 +330,7 @@ public class InversionInputGenerator {
 			for (int parentID: parentIDs) {
 				// Get list of subsections for parent 
 				ArrayList<Integer> sectsForParent = new ArrayList<Integer>();
-				for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+				for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 					int sectParentID = sect.getParentSectionId();
 					if (sectParentID == parentID)
 						sectsForParent.add(sect.getSectionId());
@@ -366,7 +367,7 @@ public class InversionInputGenerator {
 		}
 		if (config.getEventRateSmoothnessWt() > 0.0) {
 			ArrayList<Integer> parentIDs = new ArrayList<Integer>();
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				int parentID = sect.getParentSectionId();
 				if (!parentIDs.contains(parentID))
 					parentIDs.add(parentID);
@@ -912,10 +913,10 @@ public class InversionInputGenerator {
 			
 			
 			// Get list of parent IDs
-			Map<Integer, List<FaultSectionPrefData>> parentSectsMap = Maps.newHashMap();
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+			Map<Integer, List<FaultSection>> parentSectsMap = Maps.newHashMap();
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				Integer parentID = sect.getParentSectionId();
-				List<FaultSectionPrefData> parentSects = parentSectsMap.get(parentID);
+				List<FaultSection> parentSects = parentSectsMap.get(parentID);
 				if (parentSects == null) {
 					parentSects = Lists.newArrayList();
 					parentSectsMap.put(parentID, parentSects);
@@ -942,7 +943,7 @@ public class InversionInputGenerator {
 			for (int s=0; s<rupSet.getNumSections(); s++)
 				sectRupsHashes.add(new HashSet<Integer>(rupSet.getRupturesForSection(s)));
 
-			for (List<FaultSectionPrefData> sectsForParent : parentSectsMap.values()) {		
+			for (List<FaultSection> sectsForParent : parentSectsMap.values()) {		
 				
 				// Does this parent sect have a paleo constraint?
 				boolean parentSectIsPaleo=false;
@@ -1112,7 +1113,7 @@ public class InversionInputGenerator {
 			
 			// Get list of parent IDs
 			List<Integer> parentIDs = new ArrayList<Integer>();
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				int parentID = sect.getParentSectionId();
 				if (!parentIDs.contains(parentID))
 					parentIDs.add(parentID);
@@ -1122,7 +1123,7 @@ public class InversionInputGenerator {
 		
 				// Find subsection IDs for given parent section
 				ArrayList<Integer> sectsForParent = new ArrayList<Integer>();
-				for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+				for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 					int sectParentID = sect.getParentSectionId();
 					if (sectParentID == parentID)
 						sectsForParent.add(sect.getSectionId());
@@ -1235,7 +1236,7 @@ public class InversionInputGenerator {
 			rupHashList.add(new HashSet<Integer>(rupSet.getSectionsIndicesForRup(r)));
 			// build the hashSet of parents
 			HashSet<Integer> parentIDs = new HashSet<Integer>();
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataForRupture(r))
+			for (FaultSection sect : rupSet.getFaultSectionDataForRupture(r))
 				parentIDs.add(sect.getParentSectionId());	// this won't have duplicates since it's a hash set
 			rupParentsHashList.add(parentIDs);
 			// now add this rupture to the list of ruptures that involve this set of parents
@@ -1300,12 +1301,12 @@ public class InversionInputGenerator {
 	 * @return
 	 */
 	public static double getDistanceAlongRupture(
-			List<FaultSectionPrefData> sectsInRup, int targetSectIndex) {
+			List<FaultSection> sectsInRup, int targetSectIndex) {
 		return getDistanceAlongRupture(sectsInRup, targetSectIndex, null);
 	}
 	
 	public static double getDistanceAlongRupture(
-			List<FaultSectionPrefData> sectsInRup, int targetSectIndex,
+			List<FaultSection> sectsInRup, int targetSectIndex,
 			Map<Integer, Double> traceLengthCache) {
 		double distanceAlongRup = 0;
 		
@@ -1315,7 +1316,7 @@ public class InversionInputGenerator {
 		
 		// Find total length (km) of fault trace and length (km) from one end to the paleo trench location
 		for (int i=0; i<sectsInRup.size(); i++) {
-			FaultSectionPrefData sect = sectsInRup.get(i);
+			FaultSection sect = sectsInRup.get(i);
 			int sectIndex = sect.getSectionId();
 			Double sectLength = null;
 			if (traceLengthCache != null) {

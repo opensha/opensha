@@ -5,6 +5,7 @@ import java.util.List;
 import org.opensha.commons.geo.Location;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.simulators.RSQSimEvent;
 
@@ -13,10 +14,10 @@ public class RSQSimSubSectEqkRupture extends EqkRupture {
 	private int eventID;
 	private double timeSeconds;
 	private RSQSimEvent event;
-	private List<FaultSectionPrefData> subSections;
+	private List<? extends FaultSection> subSections;
 	
 	public RSQSimSubSectEqkRupture(double mag, double aveRake, RuptureSurface ruptureSurface, Location hypocenterLocation,
-			int eventID, double timeSeconds, List<FaultSectionPrefData> subSections) {
+			int eventID, double timeSeconds, List<? extends FaultSection> subSections) {
 		super(mag, aveRake, ruptureSurface, hypocenterLocation);
 		
 		this.eventID = eventID;
@@ -25,7 +26,7 @@ public class RSQSimSubSectEqkRupture extends EqkRupture {
 	}
 	
 	public RSQSimSubSectEqkRupture(double mag, double aveRake, RuptureSurface ruptureSurface, Location hypocenterLocation,
-			RSQSimEvent event, List<FaultSectionPrefData> subSections) {
+			RSQSimEvent event, List<? extends FaultSection> subSections) {
 		super(mag, aveRake, ruptureSurface, hypocenterLocation);
 		
 		this.event = event;
@@ -46,7 +47,7 @@ public class RSQSimSubSectEqkRupture extends EqkRupture {
 		return timeSeconds;
 	}
 
-	public List<FaultSectionPrefData> getSubSections() {
+	public List<? extends FaultSection> getSubSections() {
 		return subSections;
 	}
 

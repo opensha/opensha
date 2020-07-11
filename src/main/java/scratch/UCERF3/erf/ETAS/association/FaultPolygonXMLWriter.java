@@ -9,6 +9,7 @@ import org.dom4j.Element;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -27,7 +28,7 @@ public class FaultPolygonXMLWriter {
 		DeformationModels dm = DeformationModels.GEOLOGIC;
 		
 		for (FaultModels fm : fms) {
-			List<FaultSectionPrefData> sects = new DeformationModelFetcher(
+			List<? extends FaultSection> sects = new DeformationModelFetcher(
 					fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1).getSubSectionList();
 			
 			for (double buffer : buffers) {
@@ -36,7 +37,7 @@ public class FaultPolygonXMLWriter {
 				Document doc = XMLUtils.createDocumentWithRoot();
 				Element root = doc.getRootElement();
 				
-				for (FaultSectionPrefData sect : sects) {
+				for (FaultSection sect : sects) {
 					Region poly = polyMgr.getPoly(sect.getSectionId());
 					Preconditions.checkNotNull(poly, "Null poly for sect %s", sect);
 					poly.setName(sect.getName());
@@ -51,7 +52,7 @@ public class FaultPolygonXMLWriter {
 			Document doc = XMLUtils.createDocumentWithRoot();
 			Element root = doc.getRootElement();
 			
-			for (FaultSectionPrefData sect : sects) {
+			for (FaultSection sect : sects) {
 				Region poly = sect.getZonePolygon();
 				if (poly == null) {
 					System.out.println("WARNING: no polygon for section "+sect.getName());

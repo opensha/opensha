@@ -9,6 +9,7 @@ import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.Lists;
 
@@ -126,7 +127,7 @@ public class LaughTestFilter implements XMLSaveable {
 			CoulombRates coulombRates,
 			boolean applyGarlockPintoMtnFix,
 			List<List<Integer>> sectionConnectionsListList,
-			List<FaultSectionPrefData> subSectData) {
+			List<? extends FaultSection> subSectData) {
 		List<AbstractLaughTest> tests = Lists.newArrayList();
 		
 		if (minNumSectInRup > 0) {

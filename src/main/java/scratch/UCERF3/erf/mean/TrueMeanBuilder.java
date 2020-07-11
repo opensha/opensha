@@ -26,6 +26,7 @@ import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -148,9 +149,9 @@ public class TrueMeanBuilder {
 		private double aveLowerDepth;
 		
 		// not part of unique checks
-		private FaultSectionPrefData sect;
+		private FaultSection sect;
 
-		public UniqueSection(FaultSectionPrefData sect, int globalID) {
+		public UniqueSection(FaultSection sect, int globalID) {
 			super();
 			this.id = globalID;
 			this.aveDip = sect.getAveDip();
@@ -263,7 +264,7 @@ public class TrueMeanBuilder {
 			fmGlobalRupIDsMaps.put(fm, globalRupIDsMap);
 			for (int r=0; r<rupSet.getNumRuptures(); r++) {
 				HashSet<String> sectNames = new HashSet<String>();
-				for (FaultSectionPrefData sect : rupSet.getFaultSectionDataForRupture(r))
+				for (FaultSection sect : rupSet.getFaultSectionDataForRupture(r))
 					sectNames.add(sect.getSectionName());
 				Integer globalID = rupSectNamesToGlobalIDMap.get(sectNames);
 				if (globalID == null) {
@@ -345,7 +346,7 @@ public class TrueMeanBuilder {
 
 			double scaledWt = weightProvider.getWeight(branch) / totWeight;
 
-			List<FaultSectionPrefData> fsd = null;
+			List<? extends FaultSection> fsd = null;
 			InversionFaultSystemRupSet rupSet = null;
 			
 			LogicTreeBranch fmDmScaleBranch = (LogicTreeBranch) branch.clone();
@@ -477,13 +478,13 @@ public class TrueMeanBuilder {
 		// first build FSD list
 		// IDs are not sorted and are somewhat arbitrary
 		int fsdIndex = 0;
-		List<FaultSectionPrefData> faultSectionData = Lists.newArrayList();
+		List<FaultSection> faultSectionData = Lists.newArrayList();
 		Map<UniqueSection, Integer> uniqueSectIndexMap = Maps.newHashMap();
 		for (Map<UniqueSection, UniqueSection> uniqueSects : uniqueSectionsList) {
 			int indexInSect = 0;
 			
 			for (UniqueSection sect : uniqueSects.keySet()) {
-				FaultSectionPrefData fsd = sect.sect;
+				FaultSection fsd = sect.sect;
 				fsd.setSectionId(fsdIndex);
 				fsd.setSectionName(fsd.getSectionName()+" (instance "+(indexInSect++)+")");
 				fsd.setAveRake(Double.NaN);

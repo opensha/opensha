@@ -25,6 +25,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
@@ -80,7 +81,7 @@ public class RuptureCombiner {
 		// old sect => new sect (if upper depth combining, else null)
 		Map<Integer, Integer> sectIndexMapping = null;
 		
-		List<FaultSectionPrefData> combinedSects;
+		List<? extends FaultSection> combinedSects;
 		List<List<Integer>> mappedSectionsForRups;
 		if (upperDepthTol <= 0) {
 			if (D) System.out.println("Skipping upper depth combine");
@@ -89,10 +90,10 @@ public class RuptureCombiner {
 		} else {
 			if (D) System.out.println("Combining upper depths with tol="+upperDepthTol);
 			// common name => sects that share that name
-			Map<String, List<FaultSectionPrefData>> origSectsMap = Maps.newHashMap();
-			for (FaultSectionPrefData sect : origRupSet.getFaultSectionDataList()) {
+			Map<String, List<FaultSection>> origSectsMap = Maps.newHashMap();
+			for (FaultSection sect : origRupSet.getFaultSectionDataList()) {
 				String name = getStrippedName(sect.getName());
-				List<FaultSectionPrefData> sects = origSectsMap.get(name);
+				List<FaultSection> sects = origSectsMap.get(name);
 				if (sects == null) {
 					sects = Lists.newArrayList();
 					origSectsMap.put(name, sects);
@@ -103,11 +104,11 @@ public class RuptureCombiner {
 			System.out.println("Found "+origSectsMap.size()+"/"+origRupSet.getNumSections()+" unique sections");
 			
 			// old sect => new sect
-			Map<FaultSectionPrefData, FaultSectionPrefData> sectMapping = Maps.newHashMap();
+			Map<FaultSection, FaultSection> sectMapping = Maps.newHashMap();
 			for (String name : origSectsMap.keySet()) {
-				List<FaultSectionPrefData> sects = origSectsMap.get(name);
+				List<FaultSection> sects = origSectsMap.get(name);
 				int origNum = sects.size();
-				List<FaultSectionPrefData> newCombinedSects = Lists.newArrayList();
+				List<FaultSection> newCombinedSects = Lists.newArrayList();
 				Collections.sort(sects, upperDepthCompare);
 				while (sects.size() > 1) {
 					// find largest available grouping that is within tolerance
@@ -129,7 +130,7 @@ public class RuptureCombiner {
 							}
 						}
 					}
-					List<FaultSectionPrefData> sectsToCombine = Lists.newArrayList();
+					List<FaultSection> sectsToCombine = Lists.newArrayList();
 					
 					if (upperDepthTol > 30 && indexes.size() != sects.size()) {
 						System.out.println("Weird...depth huge but not all within!");
@@ -144,15 +145,15 @@ public class RuptureCombiner {
 					
 					if (sectsToCombine.size() == 1) {
 						// simple case, just maps to itself
-						FaultSectionPrefData newSect = sectsToCombine.get(0).clone();
+						FaultSection newSect = sectsToCombine.get(0).clone();
 						sectMapping.put(sectsToCombine.get(0), newSect);
 						newCombinedSects.add(newSect);
 					} else {
 						// combine them
-						FaultSectionPrefData combined = sectsToCombine.get(0).clone();
+						FaultSection combined = sectsToCombine.get(0).clone();
 						double[] aseisVals = new double[sectsToCombine.size()];
 						for (int i=0; i<sectsToCombine.size(); i++) {
-							FaultSectionPrefData sect = sectsToCombine.get(i);
+							FaultSection sect = sectsToCombine.get(i);
 							aseisVals[i] = sect.getAseismicSlipFactor();
 							sectMapping.put(sect, combined);
 						}
@@ -168,7 +169,7 @@ public class RuptureCombiner {
 				}
 				if (!sects.isEmpty()) {
 					// simple case, just maps to itself
-					FaultSectionPrefData newSect = sects.get(0).clone();
+					FaultSection newSect = sects.get(0).clone();
 					sectMapping.put(sects.get(0), newSect);
 					newCombinedSects.add(newSect);
 				}
@@ -185,21 +186,21 @@ public class RuptureCombiner {
 			Preconditions.checkState(sectMapping.size() == origRupSet.getNumSections());
 			// create list and take care of IDs
 			// pass through a HashSet to remove duplicates
-			combinedSects = Lists.newArrayList(new HashSet<FaultSectionPrefData>(sectMapping.values()));
+			combinedSects = Lists.newArrayList(new HashSet<FaultSection>(sectMapping.values()));
 			for (int i=0; i<combinedSects.size(); i++)
 				combinedSects.get(i).setSectionId(i);
 			
 			// create index mapping for later
 			// old sect -> new sect
 			sectIndexMapping = Maps.newHashMap();
-			for (FaultSectionPrefData key : sectMapping.keySet())
+			for (FaultSection key : sectMapping.keySet())
 				sectIndexMapping.put(key.getSectionId(), sectMapping.get(key).getSectionId());
 			
 			// now fix IDs for each rupture
-			List<FaultSectionPrefData> origSects = origRupSet.getFaultSectionDataList();
+			List<? extends FaultSection> origSects = origRupSet.getFaultSectionDataList();
 			Map<Integer, Integer> sectIDsMap = Maps.newHashMap();
-			for (FaultSectionPrefData sect : origSects) {
-				FaultSectionPrefData mappedSect = sectMapping.get(sect);
+			for (FaultSection sect : origSects) {
+				FaultSection mappedSect = sectMapping.get(sect);
 				Preconditions.checkNotNull(mappedSect);
 				sectIDsMap.put(sect.getSectionId(), mappedSect.getSectionId());
 			}
@@ -250,7 +251,7 @@ public class RuptureCombiner {
 					for (int rupID : matches) {
 						HashSet<String> subSectNames = new HashSet<String>();
 						for (int s : mappedSectionsForRups.get(rupID))
-							subSectNames.add(combinedSects.get(s).getSectionName());
+							subSectNames.add(combinedSects.get(s).getName());
 						if (subSectNamesSet.isEmpty())
 							subSectNamesSet.add(subSectNames);
 						else if (!subSectNamesSet.contains(subSectNames)) {
@@ -290,7 +291,7 @@ public class RuptureCombiner {
 					// use supplied rake
 					HashSet<String> subsectNames = new HashSet<String>();
 					for (int s : sectIDs)
-						subsectNames.add(getStrippedName(combinedSects.get(s).getSectionName()));
+						subsectNames.add(getStrippedName(combinedSects.get(s).getName()));
 					Double suppliedRake = rakesBasis.get(subsectNames);
 					Preconditions.checkNotNull(suppliedRake, "Rake not found!");
 					newRake = suppliedRake;
@@ -514,7 +515,7 @@ public class RuptureCombiner {
 	}
 	
 	private static boolean areAllUpperDepthsWithinTolOfMean(
-			List<FaultSectionPrefData> fsd, List<Integer> indexes, double upperDepthTol) {
+			List<FaultSection> fsd, List<Integer> indexes, double upperDepthTol) {
 		double mean = 0d;
 		for (int i : indexes)
 			mean += fsd.get(i).getReducedAveUpperDepth();
@@ -545,10 +546,10 @@ public class RuptureCombiner {
 		return true;
 	}
 	
-	private static final Comparator<FaultSectionPrefData> upperDepthCompare = new Comparator<FaultSectionPrefData>() {
+	private static final Comparator<FaultSection> upperDepthCompare = new Comparator<FaultSection>() {
 		
 		@Override
-		public int compare(FaultSectionPrefData o1, FaultSectionPrefData o2) {
+		public int compare(FaultSection o1, FaultSection o2) {
 			return Double.compare(o1.getReducedAveUpperDepth(), o2.getReducedAveUpperDepth());
 		}
 	};
@@ -582,7 +583,7 @@ public class RuptureCombiner {
 			InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(fm, dm);
 			for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
 				HashSet<String> sectNames = new HashSet<String>();
-				for (FaultSectionPrefData sect : rupSet.getFaultSectionDataForRupture(rupIndex))
+				for (FaultSection sect : rupSet.getFaultSectionDataForRupture(rupIndex))
 					sectNames.add(sect.getName());
 				if (!rakeBasis.containsKey(sectNames))
 					rakeBasis.put(sectNames, rupSet.getAveRakeForRup(rupIndex));
@@ -761,16 +762,16 @@ public class RuptureCombiner {
 		// check sections
 		Map<String, Integer> rupSet2SectsToIndexesMap = Maps.newHashMap();
 		for (int s=0; s<rupSet2.getNumSections(); s++) {
-			String name = rupSet2.getFaultSectionData(s).getSectionName();
+			String name = rupSet2.getFaultSectionData(s).getName();
 			Preconditions.checkState(!rupSet2SectsToIndexesMap.containsKey(name), "Duplicate sect found in rups2!");
 			rupSet2SectsToIndexesMap.put(name, s);
 		}
 		for (int s=0; s<rupSet1.getNumSections(); s++) {
-			FaultSectionPrefData sect1 = rupSet1.getFaultSectionData(s);
-			String name = sect1.getSectionName();
+			FaultSection sect1 = rupSet1.getFaultSectionData(s);
+			String name = sect1.getName();
 			Integer index = rupSet2SectsToIndexesMap.get(name);
 			Preconditions.checkNotNull(index, "No mapping for sect "+s+" ("+name+") found in sol2");
-			FaultSectionPrefData sect2 = rupSet2.getFaultSectionData(index);
+			FaultSection sect2 = rupSet2.getFaultSectionData(index);
 			
 			// check orig upper depth
 			checkFloatTolerance(sect1.getOrigAveUpperDepth(), sect2.getOrigAveUpperDepth(),

@@ -35,6 +35,7 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -169,7 +170,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			fssIndexToStatsMap = new HashMap<>();
 			
 			for (int s=0; s<rupSet.getNumSections(); s++) {
-				FaultSectionPrefData sect = rupSet.getFaultSectionData(s);
+				FaultSection sect = rupSet.getFaultSectionData(s);
 				HashSet<Integer> rupIDs = new HashSet<>(rupSet.getRupturesForSection(s));
 				subSectStats[s] = new FaultStats(s, sect.getName(), rupIDs);
 				mapRupturesToStat(subSectStats[s]);

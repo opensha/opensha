@@ -7,6 +7,7 @@ import java.util.List;
 import org.dom4j.DocumentException;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -209,7 +210,7 @@ public class InversionFaultSystemRupSetFactory {
 //		System.out.println("Creating clusters with filter basis: "+filterBasis+", Fault Model: "+faultModel);
 		SectionClusterList clusters = new SectionClusterList(filterBasisFetcher, laughTest);
 		
-		List<FaultSectionPrefData> faultSectionData;
+		List<? extends FaultSection> faultSectionData;
 		if (filterBasis == deformationModel) {
 			faultSectionData = clusters.getFaultSectionData();
 		} else {

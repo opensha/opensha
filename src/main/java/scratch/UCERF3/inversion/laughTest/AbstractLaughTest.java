@@ -5,6 +5,7 @@ import java.util.List;
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.Lists;
 
@@ -16,14 +17,14 @@ public abstract class AbstractLaughTest implements ShortNamed {
 	 * @param junctionIndexes
 	 * @return
 	 */
-	public boolean doesRupturePass(List<FaultSectionPrefData> rupture) {
-		List<FaultSectionPrefData> subRup = Lists.newArrayList();
+	public boolean doesRupturePass(List<? extends FaultSection> rupture) {
+		List<FaultSection> subRup = Lists.newArrayList();
 		List<Integer> subJunctions = Lists.newArrayList();
 		List<IDPairing> pairings = Lists.newArrayList();
 		
 		boolean pass = true;
 		for (int i=0; i<rupture.size(); i++) {
-			FaultSectionPrefData sect = rupture.get(i);
+			FaultSection sect = rupture.get(i);
 			subRup.add(sect);
 			if (i > 0)
 				pairings.add(new IDPairing(rupture.get(i-1).getSectionId(),
@@ -53,7 +54,7 @@ public abstract class AbstractLaughTest implements ShortNamed {
 	 * parent section ID than the previous section.
 	 * @return
 	 */
-	public abstract boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+	public abstract boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes);
 	
 	/**

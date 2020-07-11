@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 /**
  * This filter keeps track of the cumulative jump distance along a rupture and stops the
@@ -24,7 +25,7 @@ public class CumulativeJumpDistFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		double dist = 0;
 		for (int junctionIndex : junctionIndexes) {

@@ -34,6 +34,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.StatUtil;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
 
@@ -110,7 +111,7 @@ public class PaleoFitPlotter {
 			
 			boolean plotAveSlipBars = true;
 			
-			List<FaultSectionPrefData> datas = rupSet.getFaultSectionDataList();
+			List<? extends FaultSection> datas = rupSet.getFaultSectionDataList();
 			
 			ArrayList<DiscretizedFunc> funcs = new ArrayList<DiscretizedFunc>();
 			Map<Integer, DiscretizedFunc> funcParentsMap = Maps.newHashMap();
@@ -186,7 +187,7 @@ public class PaleoFitPlotter {
 				int sectID = constr.getSectionIndex();
 				int parentID = -1;
 				String name = null;
-				for (FaultSectionPrefData data : datas) {
+				for (FaultSection data : datas) {
 					if (data.getSectionId() == sectID) {
 						if (data.getParentSectionId() < 0)
 							throw new IllegalStateException("parent ID isn't populated for solution!");
@@ -202,7 +203,7 @@ public class PaleoFitPlotter {
 				
 				int minSect = Integer.MAX_VALUE;
 				int maxSect = -1;
-				for (FaultSectionPrefData data : datas) {
+				for (FaultSection data : datas) {
 					if (data.getParentSectionId() == parentID) {
 						int mySectID = data.getSectionId();
 						if (mySectID < minSect)
@@ -395,7 +396,7 @@ public class PaleoFitPlotter {
 				SlipEnabledSolution sol,
 				Map<String, List<Integer>> namedFaultsMap,
 				Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap,
-				Map<Integer, List<FaultSectionPrefData>> allParentsMap,
+				Map<Integer, List<FaultSection>> allParentsMap,
 				PaleoProbabilityModel paleoProbModel,
 				double weight) {
 //			double[] aveSlips = new double[sol.getNumSections()];
@@ -413,7 +414,7 @@ public class PaleoFitPlotter {
 				SlipEnabledSolution sol,
 				Map<String, List<Integer>> namedFaultsMap,
 				Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap,
-				Map<Integer, List<FaultSectionPrefData>> allParentsMap,
+				Map<Integer, List<FaultSection>> allParentsMap,
 				PaleoProbabilityModel paleoProbModel,
 				double weight,
 				double[] aveSlipsData,
@@ -432,7 +433,7 @@ public class PaleoFitPlotter {
 				List<Integer> parentIDs = namedFaultsMap.get(name);
 				
 				for (Integer parentID : parentIDs) {
-					List<FaultSectionPrefData> sects = allParentsMap.get(parentID);
+					List<FaultSection> sects = allParentsMap.get(parentID);
 					int numSects = sects.size();
 					
 					double[] origSlips = new double[numSects];
@@ -445,7 +446,7 @@ public class PaleoFitPlotter {
 					double[] avePaleoSlips = new double[numSects];
 					
 					for (int s=0; s<numSects; s++) {
-						FaultSectionPrefData sect = sects.get(s);
+						FaultSection sect = sects.get(s);
 						int mySectID = sect.getSectionId();
 						paleoWatch.start();
 						paleoRates[s] = getPaleoRateForSect(sol, mySectID, paleoProbModel);
@@ -528,7 +529,7 @@ public class PaleoFitPlotter {
 		Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap =
 			 getNamedFaultConstraintsMap(paleoRateConstraint, rupSet.getFaultSectionDataList(), namedFaultsMap);
 		
-		Map<Integer, List<FaultSectionPrefData>> allParentsMap =
+		Map<Integer, List<FaultSection>> allParentsMap =
 			getAllParentsMap(rupSet.getFaultSectionDataList());
 		
 		List<DataForPaleoFaultPlots> datas = Lists.newArrayList();
@@ -550,12 +551,12 @@ public class PaleoFitPlotter {
 	
 	public static Map<String, List<PaleoRateConstraint>> getNamedFaultConstraintsMap(
 			List<PaleoRateConstraint> paleoRateConstraint,
-			List<FaultSectionPrefData> fsd,
+			List<? extends FaultSection> fsd,
 			Map<String, List<Integer>> namedFaultsMap) {
 		Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap = Maps.newHashMap();
 		
 		for (PaleoRateConstraint constr : paleoRateConstraint) {
-			FaultSectionPrefData sect = fsd.get(constr.getSectionIndex());
+			FaultSection sect = fsd.get(constr.getSectionIndex());
 			Integer parentID = sect.getParentSectionId();
 			String name = null;
 			for (String faultName : namedFaultsMap.keySet()) {
@@ -582,11 +583,11 @@ public class PaleoFitPlotter {
 		return namedFaultConstraintsMap;
 	}
 	
-	public static Map<Integer, List<FaultSectionPrefData>> getAllParentsMap(
-			List<FaultSectionPrefData> fsd) {
-		Map<Integer, List<FaultSectionPrefData>> allParentsMap = Maps.newHashMap();
-		for (FaultSectionPrefData sect : fsd) {
-			List<FaultSectionPrefData> parentSects = allParentsMap.get(sect.getParentSectionId());
+	public static Map<Integer, List<FaultSection>> getAllParentsMap(
+			List<? extends FaultSection> fsd) {
+		Map<Integer, List<FaultSection>> allParentsMap = Maps.newHashMap();
+		for (FaultSection sect : fsd) {
+			List<FaultSection> parentSects = allParentsMap.get(sect.getParentSectionId());
 			if (parentSects == null) {
 				parentSects = Lists.newArrayList();
 				allParentsMap.put(sect.getParentSectionId(), parentSects);
@@ -720,7 +721,7 @@ public class PaleoFitPlotter {
 			Map<String, List<Integer>> namedFaultsMap,
 			Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap,
 			List<DataForPaleoFaultPlots> datas,
-			Map<Integer, List<FaultSectionPrefData>> allParentsMap) {
+			Map<Integer, List<FaultSection>> allParentsMap) {
 		
 		Color origColor = Color.BLACK;
 		Color aveSlipColor = new Color(10, 100, 55);
@@ -773,14 +774,14 @@ public class PaleoFitPlotter {
 			
 			double maxSlip = 0d;
 			
-			Map<Integer, List<FaultSectionPrefData>> sectionsForFault = Maps.newHashMap();
+			Map<Integer, List<FaultSection>> sectionsForFault = Maps.newHashMap();
 			
 			for (Integer parentID : namedFaults) {
-				List<FaultSectionPrefData> sectionsForParent = allParentsMap.get(parentID);
+				List<FaultSection> sectionsForParent = allParentsMap.get(parentID);
 				if (sectionsForParent == null)
 					continue;
 				
-				for (FaultSectionPrefData sect : sectionsForParent) {
+				for (FaultSection sect : sectionsForParent) {
 					for (Location loc : sect.getFaultTrace()) {
 						double lat = loc.getLatitude();
 						double lon = loc.getLongitude();
@@ -817,7 +818,7 @@ public class PaleoFitPlotter {
 			// find common prefix if any
 			List<String> parentNames = Lists.newArrayList();
 			for (Integer parentID : namedFaults) {
-				List<FaultSectionPrefData> sectionsForParent = sectionsForFault.get(parentID);
+				List<FaultSection> sectionsForParent = sectionsForFault.get(parentID);
 				if (sectionsForParent == null)
 					continue;
 				String parentName = sectionsForParent.get(0).getParentSectionName();
@@ -835,7 +836,7 @@ public class PaleoFitPlotter {
 			int actualCount = 0;
 			for (int i=0; i<namedFaults.size(); i++) {
 				Integer parentID = namedFaults.get(i);
-				List<FaultSectionPrefData> sectionsForParent = sectionsForFault.get(parentID);
+				List<FaultSection> sectionsForParent = sectionsForFault.get(parentID);
 				if (sectionsForParent == null)
 					continue;
 				String parentName = sectionsForParent.get(0).getParentSectionName();
@@ -939,9 +940,9 @@ public class PaleoFitPlotter {
 				
 				// we want to map the constraint to the closest part on the fault trace as we're plotting traces
 				// first find the FaultSectionPrefData for the subSect
-				FaultSectionPrefData mappedSect = null;
+				FaultSection mappedSect = null;
 				for (Integer parentID : namedFaults) {
-					for (FaultSectionPrefData sect : allParentsMap.get(parentID)) {
+					for (FaultSection sect : allParentsMap.get(parentID)) {
 						if (sect.getSectionId() == constr.getSectionIndex()) {
 							mappedSect = sect;
 							break;

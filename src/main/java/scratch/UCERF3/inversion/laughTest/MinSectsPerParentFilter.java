@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.Maps;
 
@@ -26,7 +27,7 @@ public class MinSectsPerParentFilter {
 		}
 		
 		@Override
-		public boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+		public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 				List<IDPairing> pairings, List<Integer> junctionIndexes) {
 			int numJunctions = junctionIndexes.size();
 			
@@ -78,7 +79,7 @@ public class MinSectsPerParentFilter {
 		private List<List<Integer>> sectionConnectionsListList;
 		private Map<Integer, Collection<Integer>> parentSectConnectionsMap;
 		public CleanupFilter(int minSectsPerParent, boolean allowIfOnlyPath,
-				List<List<Integer>> sectionConnectionsListList, List<FaultSectionPrefData> subSectData) {
+				List<List<Integer>> sectionConnectionsListList, List<? extends FaultSection> subSectData) {
 			this.minSectsPerParent = minSectsPerParent;
 			this.allowIfOnlyPath = allowIfOnlyPath;
 			if (allowIfOnlyPath) {
@@ -100,7 +101,7 @@ public class MinSectsPerParentFilter {
 		}
 		
 		@Override
-		public boolean doesLastSectionPass(List<FaultSectionPrefData> rupture,
+		public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
 				List<IDPairing> pairings, List<Integer> junctionIndexes) {
 			int numJunctions = junctionIndexes.size();
 			// this will be called on new junctions only. we must make sure that this isn't

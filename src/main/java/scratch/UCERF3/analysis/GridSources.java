@@ -26,6 +26,7 @@ import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.param.impl.CPTParameter;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
@@ -67,15 +68,15 @@ public class GridSources {
 			.forBranch(FaultModels.FM3_1, DeformationModels.GEOLOGIC,
 				ScalingRelationships.ELLSWORTH_B, SlipAlongRuptureModels.TAPERED, InversionModels.GR_CONSTRAINED);
 
-		FaultSectionPrefData f = faultSysRupSet.getFaultSectionData(603);
+		FaultSection f = faultSysRupSet.getFaultSectionData(603);
 		System.out.println(f.getSectionId());
 		System.out.println(f.getSectionName());		
 		System.out.println(f.getZonePolygon().getBorder());
 		
 		int pID = f.getParentSectionId();
-		List<FaultSectionPrefData> ps = faultSysRupSet.getFaultModel().fetchFaultSections();
-		FaultSectionPrefData p = null;
-		for (FaultSectionPrefData pps : ps) {
+		List<? extends FaultSection> ps = faultSysRupSet.getFaultModel().fetchFaultSections();
+		FaultSection p = null;
+		for (FaultSection pps : ps) {
 			if (pps.getSectionId() == pID) p = pps;
 		}
 		System.out.println(pID);

@@ -11,6 +11,7 @@ import java.util.zip.ZipException;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -119,7 +120,7 @@ public class RupSetDownsampler {
 	
 	private int getNumSectsOnParent(int rupIndex, int parentID) {
 		int count = 0;
-		for (FaultSectionPrefData sect : rupSet.getFaultSectionDataForRupture(rupIndex))
+		for (FaultSection sect : rupSet.getFaultSectionDataForRupture(rupIndex))
 			if (sect.getParentSectionId() == parentID)
 				count++;
 		return count;

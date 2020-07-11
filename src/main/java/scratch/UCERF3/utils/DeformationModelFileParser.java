@@ -39,6 +39,7 @@ import org.opensha.refFaultParamDb.dao.db.PrefFaultSectionDataDB_DAO;
 import org.opensha.refFaultParamDb.vo.FaultModelSummary;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.PrefFaultSectionDataFinal;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -350,13 +351,13 @@ public class DeformationModelFileParser {
 	}
 	
 	private static void fixForRevisedFM(Map<Integer, DeformationSection> sects, FaultModels fm) {
-		ArrayList<FaultSectionPrefData> datas = fm.fetchFaultSections(true);
-		HashMap<Integer, FaultSectionPrefData> fmMap = Maps.newHashMap();
-		for (FaultSectionPrefData data : datas)
+		ArrayList<? extends FaultSection> datas = fm.fetchFaultSections(true);
+		HashMap<Integer, FaultSection> fmMap = Maps.newHashMap();
+		for (FaultSection data : datas)
 			fmMap.put(data.getSectionId(), data);
 		
 		// fix 667. Almanor 2011 CFM:
-		FaultSectionPrefData data = fmMap.get(667);
+		FaultSection data = fmMap.get(667);
 		FaultTrace trace = data.getFaultTrace();
 		DeformationSection sect = sects.get(667);
 		sect.add(getFromEnd(trace, 1), getFromEnd(trace, 0), getFromEnd(sect.getSlips(), 0), getFromEnd(sect.getRakes(), 0));
@@ -656,7 +657,7 @@ public class DeformationModelFileParser {
 		List<Map<Integer, DeformationSection>> sectsList = Lists.newArrayList();
 		
 		final Map<Integer, String> namesMap = Maps.newHashMap();
-		for (FaultSectionPrefData sect : fm.fetchFaultSections())
+		for (FaultSection sect : fm.fetchFaultSections())
 			namesMap.put(sect.getSectionId(), sect.getSectionName());
 		
 		for (int i=0; i<dms.size(); i++) {
@@ -743,7 +744,7 @@ public class DeformationModelFileParser {
 		List<Map<Integer, DeformationSection>> sectsList = Lists.newArrayList();
 		
 		final Map<Integer, String> namesMap = Maps.newHashMap();
-		for (FaultSectionPrefData sect : fm.fetchFaultSections())
+		for (FaultSection sect : fm.fetchFaultSections())
 			namesMap.put(sect.getSectionId(), sect.getSectionName());
 		
 		for (int i=0; i<dms.size(); i++) {

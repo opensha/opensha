@@ -28,8 +28,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.cpt.CPT;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -54,7 +54,7 @@ import scratch.kevin.simulators.erf.SimulatorFaultSystemSolution;
 
 public class RSQSimSubSectionMapper {
 	
-	private List<FaultSectionPrefData> subSects;
+	private List<? extends FaultSection> subSects;
 	private List<SimulatorElement> elements;
 	private Map<Integer, Double> subSectAreas;
 	private Map<IDPairing, Double> distsCache;
@@ -99,13 +99,13 @@ public class RSQSimSubSectionMapper {
 	}
 	
 	private int minElemSectID;
-	private Map<SimulatorElement, FaultSectionPrefData> elemToSectsMap;
-	private Map<FaultSectionPrefData, HashSet<SimulatorElement>> sectsToElemsMap;
+	private Map<SimulatorElement, FaultSection> elemToSectsMap;
+	private Map<FaultSection, HashSet<SimulatorElement>> sectsToElemsMap;
 	
 	// for slip on sections
-	private Map<SimulatorElement, FaultSectionPrefData> slipElemsToSectsMap;
-	private Map<FaultSectionPrefData, HashSet<SimulatorElement>> slipSectsToElemsMap;
-	private Map<FaultSectionPrefData, double[]> sectMidDepthConstraints;
+	private Map<SimulatorElement, FaultSection> slipElemsToSectsMap;
+	private Map<FaultSection, HashSet<SimulatorElement>> slipSectsToElemsMap;
+	private Map<FaultSection, double[]> sectMidDepthConstraints;
 	
 	private LoadingCache<SimulatorEvent, List<List<SubSectionMapping>>> mappingsCache;
 
@@ -146,11 +146,11 @@ public class RSQSimSubSectionMapper {
 		}
 	}
 
-	public RSQSimSubSectionMapper(List<FaultSectionPrefData> subSects, List<SimulatorElement> elements, double minFractForInclusion) {
+	public RSQSimSubSectionMapper(List<? extends FaultSection> subSects, List<SimulatorElement> elements, double minFractForInclusion) {
 		this(subSects, elements, minFractForInclusion, RSQSimUtils.calcSubSectAreas(elements, subSects), new HashMap<>());
 	}
 	
-	public RSQSimSubSectionMapper(List<FaultSectionPrefData> subSects, List<SimulatorElement> elements, double minFractForInclusion,
+	public RSQSimSubSectionMapper(List<? extends FaultSection> subSects, List<SimulatorElement> elements, double minFractForInclusion,
 			Map<Integer, Double> subSectAreas, Map<IDPairing, Double> distsCache) {
 		this.subSects = subSects;
 		this.elements = elements;
@@ -169,7 +169,7 @@ public class RSQSimSubSectionMapper {
 			int sectID = elem.getSectionID() - minElemSectID;
 			Preconditions.checkState(sectID >= 0 && sectID <= subSects.size(), "Bad section id. origID=%s, minID=%s, index=%s, numSects=%s",
 					elem.getSectionID(), minElemSectID, sectID, subSects.size());
-			FaultSectionPrefData sect = subSects.get(sectID);
+			FaultSection sect = subSects.get(sectID);
 			elemToSectsMap.put(elem, sect);
 			HashSet<SimulatorElement> sectElems = sectsToElemsMap.get(sect);
 			if (sectElems == null) {
@@ -182,7 +182,7 @@ public class RSQSimSubSectionMapper {
 		// now compute DAS for each element
 		elemSectDASs = new HashMap<>();
 		elemRawDASs = new HashMap<>();
-		for (FaultSectionPrefData sect : subSects) {
+		for (FaultSection sect : subSects) {
 			if (!sectsToElemsMap.containsKey(sect))
 				continue;
 			Preconditions.checkState(subSectAreas.containsKey(sect.getSectionId()), "No area found for section %s, %s, with %s mapped elements",
@@ -434,19 +434,19 @@ public class RSQSimSubSectionMapper {
 		return ret;
 	}
 	
-	public List<FaultSectionPrefData> getSubSections() {
+	public List<? extends FaultSection> getSubSections() {
 		return subSects;
 	}
 	
-	public boolean isMapped(FaultSectionPrefData sect) {
+	public boolean isMapped(FaultSection sect) {
 		return sectsToElemsMap.containsKey(sect) && !sectsToElemsMap.get(sect).isEmpty();
 	}
 	
-	public FaultSectionPrefData getMappedSection(SimulatorElement element) {
+	public FaultSection getMappedSection(SimulatorElement element) {
 		return elemToSectsMap.get(element);
 	}
 	
-	public Collection<SimulatorElement> getElementsForSection(FaultSectionPrefData sect) {
+	public Collection<SimulatorElement> getElementsForSection(FaultSection sect) {
 		return sectsToElemsMap.get(sect);
 	}
 	
@@ -532,7 +532,7 @@ public class RSQSimSubSectionMapper {
 		
 		for (SimulatorElement elem : elements) {
 			int sectID = elem.getSectionID() - minElemSectID;
-			FaultSectionPrefData subSect = subSects.get(sectID);
+			FaultSection subSect = subSects.get(sectID);
 			
 			double myMinDepth = minDepth;
 			double myMaxDepth = maxDepth;
@@ -560,7 +560,7 @@ public class RSQSimSubSectionMapper {
 				elemsForSect.add(elem);
 			}
 		}
-		for (FaultSectionPrefData subSect : subSects) {
+		for (FaultSection subSect : subSects) {
 			if (!slipSectsToElemsMap.containsKey(subSect) ) {
 //				System.out.println("WARNING: no slip elements for section: "+subSect.getName());
 				slipSectsToElemsMap.put(subSect, new HashSet<>());
@@ -580,12 +580,12 @@ public class RSQSimSubSectionMapper {
 		return faultDownDipBuffer;
 	}
 
-	public double[] getSlipOnSectionDepthConstraints(FaultSectionPrefData sect) {
+	public double[] getSlipOnSectionDepthConstraints(FaultSection sect) {
 		Preconditions.checkNotNull(sectMidDepthConstraints, "Must enable slip on section tracking first");
 		return sectMidDepthConstraints.get(sect);
 	}
 	
-	public HashSet<SimulatorElement> getSlipSectionsForSect(FaultSectionPrefData sect) {
+	public HashSet<SimulatorElement> getSlipSectionsForSect(FaultSection sect) {
 		Preconditions.checkNotNull(sectMidDepthConstraints, "Must enable slip on section tracking first");
 		return slipSectsToElemsMap.get(sect);
 	}
@@ -649,7 +649,7 @@ public class RSQSimSubSectionMapper {
 	private List<List<SubSectionMapping>> loadSubSectionMappings(SimulatorEvent event) {
 		List<SubSectionMapping> mappings = new ArrayList<>();
 		
-		Map<FaultSectionPrefData, SubSectionMapping> sectMap = new HashMap<>();
+		Map<FaultSection, SubSectionMapping> sectMap = new HashMap<>();
 		
 		List<SimulatorElement> elems = event.getAllElements();
 		double[] slips = event.getAllElementSlips();
@@ -660,7 +660,7 @@ public class RSQSimSubSectionMapper {
 			double slip = slips.length > 0 ? slips[i] : Double.MIN_VALUE;
 //			Preconditions.checkState(slip >= 0, "Bad slip=%s on element %s, event %s",
 //					slip, elem.getID(), event.getID());
-			FaultSectionPrefData sect = elemToSectsMap.get(elem);
+			FaultSection sect = elemToSectsMap.get(elem);
 			Preconditions.checkNotNull(sect, "No section mapping for element %s with section named: %s", elem.getID(), elem.getSectionName());
 			SubSectionMapping mapping = sectMap.get(sect);
 			if (mapping == null) {
@@ -672,11 +672,11 @@ public class RSQSimSubSectionMapper {
 		}
 		
 		// bundle by parent section id
-		Map<Integer, List<FaultSectionPrefData>> rupSectsBundled = Maps.newHashMap();
+		Map<Integer, List<FaultSection>> rupSectsBundled = Maps.newHashMap();
 		for (SubSectionMapping mapping : mappings) {
 			// convert to 0-based
 			int parentID = mapping.subSect.getParentSectionId();
-			List<FaultSectionPrefData> sects = rupSectsBundled.get(parentID);
+			List<FaultSection> sects = rupSectsBundled.get(parentID);
 			if (sects == null) {
 				sects = new ArrayList<>();
 				rupSectsBundled.put(parentID, sects);
@@ -685,22 +685,22 @@ public class RSQSimSubSectionMapper {
 		}
 		
 		// sort each bundle my section index
-		List<List<FaultSectionPrefData>> rupSectsListBundled = Lists.newArrayList();
-		for (List<FaultSectionPrefData> sects : rupSectsBundled.values()) {
+		List<List<FaultSection>> rupSectsListBundled = Lists.newArrayList();
+		for (List<FaultSection> sects : rupSectsBundled.values()) {
 			Collections.sort(sects, sectIDCompare);
 			rupSectsListBundled.add(sects);
 		}
 
 		// sort bundles (put faults in order from one end to the other)
-		HashSet<FaultSectionPrefData> reversedSections = new HashSet<>();
+		HashSet<FaultSection> reversedSections = new HashSet<>();
 		if (rupSectsListBundled.size() > 1)
 			rupSectsListBundled = SimulatorFaultSystemSolution.sortRupture(subSects, rupSectsListBundled, distsCache, reversedSections);
 		
 		// build return list
 		List<List<SubSectionMapping>> ret = new ArrayList<>();
-		for (List<FaultSectionPrefData> bundle : rupSectsListBundled) {
+		for (List<FaultSection> bundle : rupSectsListBundled) {
 			List<SubSectionMapping> bundleMappings = new ArrayList<>();
-			for (FaultSectionPrefData sect : bundle) {
+			for (FaultSection sect : bundle) {
 				SubSectionMapping mapping = sectMap.get(sect);
 				mapping.setReversed(reversedSections.contains(sect));
 				bundleMappings.add(mapping);
@@ -711,16 +711,16 @@ public class RSQSimSubSectionMapper {
 		return Collections.unmodifiableList(ret);
 	}
 	
-	private static Comparator<FaultSectionPrefData> sectIDCompare = new Comparator<FaultSectionPrefData>() {
+	private static Comparator<FaultSection> sectIDCompare = new Comparator<FaultSection>() {
 
 		@Override
-		public int compare(FaultSectionPrefData o1, FaultSectionPrefData o2) {
+		public int compare(FaultSection o1, FaultSection o2) {
 			return new Integer(o1.getSectionId()).compareTo(o2.getSectionId());
 		}
 	};
 	
 	public class SubSectionMapping {
-		private FaultSectionPrefData subSect;
+		private FaultSection subSect;
 		private double areaSlipped;
 		private double subSectArea;
 		private double momentOnSect;
@@ -737,7 +737,7 @@ public class RSQSimSubSectionMapper {
 		
 		private boolean reversed;
 		
-		private SubSectionMapping(FaultSectionPrefData subSect) {
+		private SubSectionMapping(FaultSection subSect) {
 			this.subSect = subSect;
 			this.subSectArea = subSectAreas.get(subSect.getSectionId());
 			
@@ -783,7 +783,7 @@ public class RSQSimSubSectionMapper {
 			}
 		}
 
-		public FaultSectionPrefData getSubSect() {
+		public FaultSection getSubSect() {
 			return subSect;
 		}
 
@@ -883,9 +883,9 @@ public class RSQSimSubSectionMapper {
 	}
 	
 	private void debugPlotDAS(File outputDir, int parentSectID) throws IOException {
-		List<FaultSectionPrefData> parentSects = new ArrayList<>();
+		List<FaultSection> parentSects = new ArrayList<>();
 		String parentName = null;
-		for (FaultSectionPrefData sect : subSects) {
+		for (FaultSection sect : subSects) {
 			if (sect.getParentSectionId() == parentSectID) {
 				parentSects.add(sect);
 				parentName = sect.getParentSectionName();
@@ -895,9 +895,9 @@ public class RSQSimSubSectionMapper {
 		List<SimulatorElement> mappedElements = new ArrayList<>();
 		List<RuptureSurface> sectSurfs = new ArrayList<>();
 		List<Double> mappedIDs = new ArrayList<>();
-		for (FaultSectionPrefData sect : parentSects) {
+		for (FaultSection sect : parentSects) {
 			mappedElements.addAll(sectsToElemsMap.get(sect));
-			sectSurfs.add(sect.getStirlingGriddedSurface(1d, false, false));
+			sectSurfs.add(sect.getFaultSurface(1d, false, false));
 			for (int i=0; i<sectsToElemsMap.get(sect).size(); i++)
 				mappedIDs.add((double)sect.getSectionId());
 		}
@@ -940,7 +940,7 @@ public class RSQSimSubSectionMapper {
 //		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir3165");
 		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
-		List<FaultSectionPrefData> subSects = RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
+		List<? extends FaultSection> subSects = RSQSimUtils.getUCERF3SubSectsForComparison(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
 		RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements, 0.2);
 		mapper.debugPlotDAS(new File("/tmp"), 142);
 		mapper.debugPlotDAS(new File("/tmp"), 151);

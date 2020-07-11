@@ -12,6 +12,9 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 
 import com.google.common.base.Preconditions;
@@ -55,19 +58,21 @@ public class SubSectSurfaceWriter {
 				System.out.println("Writing to: "+outputDir.getAbsolutePath());
 				Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 				for (int s=0; s<rupSet.getNumSections(); s++) {
-					FaultSectionPrefData fsd = rupSet.getFaultSectionData(s);
-					StirlingGriddedSurface surf = fsd.getStirlingGriddedSurface(gridSpacing, false, reduce);
+					FaultSection fsd = rupSet.getFaultSectionData(s);
+					RuptureSurface surf = fsd.getFaultSurface(gridSpacing, false, reduce);
+					Preconditions.checkState(surf instanceof EvenlyGriddedSurface);
+					EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surf;
 					FileWriter fw = new FileWriter(new File(outputDir, s+".txt"));
 					CSVFile<String> csv = new CSVFile<>(true);
 					csv.addLine(header);
 					fw.write("# "+fsd.getName()+"\n");
-					fw.write("# rows: "+surf.getNumRows()+"\n");
-					fw.write("# columns: "+surf.getNumCols()+"\n");
-					fw.write("# points: "+surf.size()+"\n");
+					fw.write("# rows: "+gridSurf.getNumRows()+"\n");
+					fw.write("# columns: "+gridSurf.getNumCols()+"\n");
+					fw.write("# points: "+gridSurf.size()+"\n");
 					fw.write("# <row> <column> <latitude> <longitude> <depth>\n");
-					for (int row=0; row<surf.getNumRows(); row++) {
-						for (int col=0; col<surf.getNumCols(); col++) {
-							Location loc = surf.get(row, col);
+					for (int row=0; row<gridSurf.getNumRows(); row++) {
+						for (int col=0; col<gridSurf.getNumCols(); col++) {
+							Location loc = gridSurf.get(row, col);
 							fw.write(row+" "+col+" "+loc.getLatitude()+" "+loc.getLongitude()+" "+loc.getDepth()+"\n");
 							List<String> line = new ArrayList<>();
 							line.add(row+"");

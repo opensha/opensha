@@ -10,6 +10,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -118,7 +119,7 @@ public abstract class TriggerRupture {
 			
 			rupture.setAveRake(rupSet.getAveRakeForRup(fssIndex));
 			rupture.setMag(origMag);
-			rupture.setRuptureSurface(rupSet.getSurfaceForRupupture(fssIndex, 1d, false));
+			rupture.setRuptureSurface(rupSet.getSurfaceForRupupture(fssIndex, 1d));
 			rupture.setFSSIndex(fssIndex);
 			
 			if (overrideMag != null && overrideMag > 0) {
@@ -168,10 +169,10 @@ public abstract class TriggerRupture {
 			for (int sectIndex : subSects) {
 				Preconditions.checkState(sectIndex >= 0 && sectIndex < rupSet.getNumSections(),
 						"Bad subsection index. %s is outside of bounts [0, %s]", sectIndex, rupSet.getNumSections()-1);
-				FaultSectionPrefData fltData = rupSet.getFaultSectionData(sectIndex);
+				FaultSection fltData = rupSet.getFaultSectionData(sectIndex);
 				rakes.add(fltData.getAveRake());
 				areas.add(fltData.getReducedDownDipWidth()*fltData.getTraceLength());
-				rupSurfs.add(fltData.getStirlingGriddedSurface(gridSpacing, false, true));
+				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, true));
 			}
 			if (rupSurfs.size() == 1) {
 				rupture.setAveRake(rakes.get(0));

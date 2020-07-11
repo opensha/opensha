@@ -55,6 +55,7 @@ import org.opensha.sha.earthquake.calc.recurInterval.LognormalDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.WeibullDistCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.DeformationModelPrefDataFinal;
 import org.opensha.sha.faultSurface.EvenlyGridCenteredSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
@@ -3311,7 +3312,10 @@ if(norm_tpInterval1 < 0  && goodSample) {
 		double maxDiscretization = 4.0; // TODO
 		DateFormat df = new SimpleDateFormat("MMM d, yyyy");
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, scratchDir, defaultAseisVal);
-		OldGeneral_EQSIM_Tools tools = new OldGeneral_EQSIM_Tools(dmFetch.getSubSectionList(), aseisReducesArea, maxDiscretization);
+		List<FaultSectionPrefData> sects = new ArrayList<>();
+		for (FaultSection sect : dmFetch.getSubSectionList())
+			sects.add((FaultSectionPrefData)sect);
+		OldGeneral_EQSIM_Tools tools = new OldGeneral_EQSIM_Tools(sects, aseisReducesArea, maxDiscretization);
 		File outputFile = new File(outputDir, fm.encodeChoiceString()+"_"+dm.encodeChoiceString()+"_EQSIM.txt");
 		tools.writeTo_EQSIM_V04_GeometryFile(outputFile.getAbsolutePath(), null,
 				fm.name()+", "+dm.name()+" output", "Kevin Milner", df.format(new Date()));

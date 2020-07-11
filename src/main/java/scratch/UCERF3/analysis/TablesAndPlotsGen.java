@@ -41,6 +41,7 @@ import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
@@ -97,7 +98,7 @@ public class TablesAndPlotsGen {
 		dms.add(DeformationModels.ZENGBB);
 		
 		Map<FaultModels, List<AveSlipConstraint>> aveSlipConstraints = Maps.newHashMap();
-		Map<FaultModels, List<FaultSectionPrefData>> subSectDatasMap = Maps.newHashMap();
+		Map<FaultModels, List<? extends FaultSection>> subSectDatasMap = Maps.newHashMap();
 		
 		List<double[]> dmReducedSlipRates = Lists.newArrayList();
 		
@@ -240,7 +241,7 @@ public class TablesAndPlotsGen {
 		for (int rup : rups) {
 			List<String> line = Lists.newArrayList();
 			
-			List<FaultSectionPrefData> sects = aveSol.getRupSet().getFaultSectionDataForRupture(rup);
+			List<? extends FaultSection> sects = aveSol.getRupSet().getFaultSectionDataForRupture(rup);
 			
 			double[] rates = aveSol.getRatesForAllSols(rup);
 			
@@ -758,10 +759,10 @@ public class TablesAndPlotsGen {
 		
 		if (u2SkipParentIDs != null && !u2SkipParentIDs.isEmpty()) {
 			u2SkipTraces = Lists.newArrayList();
-			List<FaultSectionPrefData> u2SubSects = new DeformationModelFetcher(
+			List<? extends FaultSection> u2SubSects = new DeformationModelFetcher(
 					FaultModels.FM2_1, DeformationModels.UCERF2_ALL,
 					UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1).getSubSectionList();
-			for (FaultSectionPrefData subSect : u2SubSects) {
+			for (FaultSection subSect : u2SubSects) {
 				if (u2SkipParentIDs.contains(subSect.getParentSectionId()))
 					u2SkipTraces.add(subSect.getFaultTrace());
 			}
@@ -1091,7 +1092,7 @@ public class TablesAndPlotsGen {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		for (int i=0; i<particRates.length; i++) {
-			FaultSectionPrefData subsect = rupSet.getFaultSectionData(i);
+			FaultSection subsect = rupSet.getFaultSectionData(i);
 			
 			double minMag = Double.POSITIVE_INFINITY;
 			for (int r : rupSet.getRupturesForSection(i)) {

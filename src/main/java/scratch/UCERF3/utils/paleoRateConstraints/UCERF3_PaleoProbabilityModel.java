@@ -15,6 +15,7 @@ import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -37,7 +38,7 @@ public class UCERF3_PaleoProbabilityModel extends PaleoProbabilityModel {
 	}
 	
 	@Override
-	public double getProbPaleoVisible(double mag, List<FaultSectionPrefData> rupSects, int sectIndex) {
+	public double getProbPaleoVisible(double mag, List<FaultSection> rupSects, int sectIndex) {
 		return getProbPaleoVisible(mag, getDistAlongRup(rupSects, sectIndex));
 	}
 

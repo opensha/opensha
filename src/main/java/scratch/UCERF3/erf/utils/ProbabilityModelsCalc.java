@@ -65,6 +65,7 @@ import org.opensha.sha.earthquake.param.MagDependentAperiodicityOptions;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -314,7 +315,7 @@ public class ProbabilityModelsCalc {
 		sectionArea = new double[numSections];
 		dateOfLastForSect = new long[numSections];
 		for(int s=0;s<numSections;s++) {
-			FaultSectionPrefData sectData = this.fltSysRupSet.getFaultSectionData(s);
+			FaultSection sectData = this.fltSysRupSet.getFaultSectionData(s);
 			sectionArea[s]= sectData.getTraceLength()*sectData.getReducedDownDipWidth();
 			dateOfLastForSect[s] = sectData.getDateOfLastEvent();
 		}
@@ -337,9 +338,9 @@ public class ProbabilityModelsCalc {
 		// now make aveCondRecurIntervalForFltSysRups[]
 		double[] aveCondRecurIntervalForFltSysRups = new double[numRupsInFaultSystem];
 		for(int r=0;r<numRupsInFaultSystem; r++) {
-			List<FaultSectionPrefData> fltData = fltSysRupSet.getFaultSectionDataForRupture(r);
+			List<FaultSection> fltData = fltSysRupSet.getFaultSectionDataForRupture(r);
 			double ave=0, totArea=0, maxRI=0;
-			for(FaultSectionPrefData data:fltData) {
+			for(FaultSection data:fltData) {
 				int sectID = data.getSectionId();
 				double area = sectionArea[sectID];
 				totArea += area;
@@ -499,10 +500,10 @@ public class ProbabilityModelsCalc {
 	
 
 	public int writeSectionsWithDateOfLastEvent() {
-		List<FaultSectionPrefData> fltData = fltSysRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> fltData = fltSysRupSet.getFaultSectionDataList();
 		int numWith=0;
 		System.out.println("Sections With Date of Last Event Data (timeSinceLastYears, dateOfLastMillis, sectName):");
-		for(FaultSectionPrefData data:fltData) {
+		for(FaultSection data:fltData) {
 			long dateOfLastMillis = data.getDateOfLastEvent();
 			if(dateOfLastMillis != Long.MIN_VALUE) {
 				System.out.println(dateOfLastMillis+"\t"+data.getName());
@@ -1677,7 +1678,7 @@ public class ProbabilityModelsCalc {
 					if(firstEvent) {
 						for(int s=0;s<fltSysRupSet.getNumSections();s++) {
 							double tenPercentRI = 0.1/longTermPartRateForSectArray[s];
-							FaultSectionPrefData sectData= fltSysRupSet.getFaultSectionData(s);
+							FaultSection sectData= fltSysRupSet.getFaultSectionData(s);
 							if(sectData.getParentSectionName().contains("San Andreas")) {
 								ArbitrarilyDiscretizedFunc newFunc = new ArbitrarilyDiscretizedFunc();
 								newFunc.set(sectData.getFaultTrace().first().getLatitude(),tenPercentRI);
@@ -2167,7 +2168,7 @@ public class ProbabilityModelsCalc {
 			eventRates_fr = new FileWriter(dirNameForSavingFiles+"/obsVsImposedSectionPartRates.txt");
 			eventRates_fr.write("sectID\timposedRate\tsimulatedRate\tsimOverImpRateRatio\thasDateOfLast\tsectName\n");
 			for(int i=0;i<fltSysRupSet.getNumSections();i++) {
-				FaultSectionPrefData fltData = fltSysRupSet.getFaultSectionData(i);
+				FaultSection fltData = fltSysRupSet.getFaultSectionData(i);
 				double ratio = obsSectRateArray[i]/longTermPartRateForSectArray[i];
 				boolean hasDateOfLast=false;
 				if(fltData.getDateOfLastEvent() != Long.MIN_VALUE)
@@ -3083,7 +3084,7 @@ public class ProbabilityModelsCalc {
 			eventRates_fr = new FileWriter(dirNameForSavingFiles+"/obsVsImposedSectionPartRates.txt");
 			eventRates_fr.write("sectID\timposedRate\tsimulatedRate\tsimOverImpRateRatio\thasDateOfLast\tsectName\n");
 			for(int i=0;i<fltSysRupSet.getNumSections();i++) {
-				FaultSectionPrefData fltData = fltSysRupSet.getFaultSectionData(i);
+				FaultSection fltData = fltSysRupSet.getFaultSectionData(i);
 				double ratio = obsSectRateArray[i]/longTermPartRateForSectArray[i];
 				boolean hasDateOfLast=false;
 				if(fltData.getDateOfLastEvent() != Long.MIN_VALUE)
@@ -3615,7 +3616,7 @@ public class ProbabilityModelsCalc {
 				eventRates_fr = new FileWriter(new File(resultsDir,"obsVsTargetSectionPartRates.txt"));
 				eventRates_fr.write("sectID\tlongTermRate\ttargetRate\tsimulatedRate\tsimOverTargetRateRatio\taveSectGain\thasDateOfLast\tnormTimeSince\tsectName\n");
 				for(int i=0;i<fltSysRupSet.getNumSections();i++) {
-					FaultSectionPrefData fltData = fltSysRupSet.getFaultSectionData(i);
+					FaultSection fltData = fltSysRupSet.getFaultSectionData(i);
 					double ratio = obsSectRateArray[i]/targetRateOfSection[i];
 					boolean hasDateOfLast=false;
 					if(fltData.getDateOfLastEvent() != Long.MIN_VALUE)
@@ -3834,7 +3835,7 @@ public class ProbabilityModelsCalc {
 							if(max<gain) max=gain;
 						}
 					}
-					List<FaultSectionPrefData> data = fltSysRupSet.getFaultSectionDataForRupture(fltSystRupIndex);
+					List<FaultSection> data = fltSysRupSet.getFaultSectionDataForRupture(fltSystRupIndex);
 					String name = data.size()+" SECTIONS BETWEEN "+data.get(0).getName()+" AND "+data.get(data.size()-1).getName();
 					boolean sigDiff = (max/min > 1.1 && max-min > 0.1);
 					double rupMag=fltSysRupSet.getMagForRup(fltSystRupIndex);
@@ -3867,7 +3868,7 @@ public class ProbabilityModelsCalc {
 		info += "Index\tRI\tRate\tTimeSince\tNormTimeSince\tArea\tName\n";
 		List<Integer> sectIndicesList = fltSysRupSet.getSectionsIndicesForRup(fltSystRupIndex);
 		for(int sectIndex:sectIndicesList) {
-			FaultSectionPrefData fltData = fltSysRupSet.getFaultSectionData(sectIndex);
+			FaultSection fltData = fltSysRupSet.getFaultSectionData(sectIndex);
 			long dateOfLastMillis = fltData.getDateOfLastEvent();
 			double yrsSinceLast = Double.NaN;
 			if(dateOfLastMillis != Long.MIN_VALUE)

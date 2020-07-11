@@ -6,6 +6,7 @@ import java.util.List;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.RegionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -171,7 +172,7 @@ public class InversionTargetMFDs {
 		if(dm == DeformationModels.UCERF2_BAYAREA || dm == DeformationModels.UCERF2_NCAL)
 			throw new RuntimeException("Error - "+dm+" not yet supported by InversionMFD");
 		
-		List<FaultSectionPrefData> faultSectionData =  invRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> faultSectionData =  invRupSet.getFaultSectionDataList();
 		
 		gridSeisUtils = new GriddedSeisUtils(faultSectionData, spatialSeisPDFforOnFaultRates, FAULT_BUFFER);
 		
@@ -308,7 +309,7 @@ public class InversionTargetMFDs {
 				subSeisGR.scaleToIncrRate(0, rateAtZeroMagBin);
 				subSeismoOnFaultMFD_List.add(subSeisGR);
 				totalSubSeismoOnFaultMFD.addIncrementalMagFreqDist(subSeisGR);
-				FaultTrace sectTrace = faultSectionData.get(s).getStirlingGriddedSurface(1.0).getRowAsTrace(0);
+				FaultTrace sectTrace = faultSectionData.get(s).getFaultSurface(1.0).getEvenlyDiscritizedUpperEdge();
 				double fractSectInSoCal = RegionUtils.getFractionInside(soCalGrid, sectTrace);
 				for(int i=minSupraMagIndex;i<grNuclMFD.size();i++) {
 					targetOnFaultSupraSeisMFD.add(i, grNuclMFD.getY(i)*tempCoupCoeff);

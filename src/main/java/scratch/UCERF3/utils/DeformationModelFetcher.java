@@ -29,8 +29,11 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.DeformationModelPrefDataFinal;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.PrefFaultSectionDataFinal;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -94,9 +97,9 @@ public class DeformationModelFetcher {
 	
 	public static final String SUB_DIR_NAME = "FaultSystemRupSets";
 
-	ArrayList<FaultSectionPrefData> faultSectPrefDataList;
-	ArrayList<FaultSectionPrefData> faultSubSectPrefDataList;
-	HashMap<Integer, FaultSectionPrefData> faultSubSectPrefDataIDMap;
+	List<FaultSection> faultSectPrefDataList;
+	List<FaultSection> faultSubSectPrefDataList;
+	HashMap<Integer, FaultSection> faultSubSectPrefDataIDMap;
 
 	/** Set the UCERF2 deformation model ID
 	 * D2.1 = 82
@@ -187,15 +190,15 @@ public class DeformationModelFetcher {
 			if (defaultAseismicityValue > 0) {
 				Preconditions.checkState(defaultAseismicityValue < 1, "asesimicity values must be in the range (0,1)");
 				if (D) System.out.println("Applying default aseismicity value of: "+defaultAseismicityValue);
-				for (FaultSectionPrefData data : faultSubSectPrefDataList) {
+				for (FaultSection data : faultSubSectPrefDataList) {
 					if (data.getAseismicSlipFactor() == 0)
 						data.setAseismicSlipFactor(defaultAseismicityValue);
 				}
 			}
 		}
 
-		faultSubSectPrefDataIDMap = new HashMap<Integer, FaultSectionPrefData>();
-		for (FaultSectionPrefData data : faultSubSectPrefDataList) {
+		faultSubSectPrefDataIDMap = new HashMap<Integer, FaultSection>();
+		for (FaultSection data : faultSubSectPrefDataList) {
 			int id = data.getSectionId();
 			Preconditions.checkState(!faultSubSectPrefDataIDMap.containsKey(id),
 					"multiple sub sections exist with ID: "+id);
@@ -223,11 +226,11 @@ public class DeformationModelFetcher {
 		return polyMgr;
 	}
 
-	public ArrayList<FaultSectionPrefData> getSubSectionList() {
+	public List<? extends FaultSection> getSubSectionList() {
 		return faultSubSectPrefDataList;
 	}
 
-	public ArrayList<FaultSectionPrefData> getParentSectionList() {
+	public List<? extends FaultSection> getParentSectionList() {
 		return faultSectPrefDataList;
 	}
 
@@ -238,17 +241,17 @@ public class DeformationModelFetcher {
 	 * @param maxSubSectionLength - in units of seismogenic thickness
 	 * 
 	 */
-	private ArrayList<FaultSectionPrefData> createAll_UCERF2_SubSections(boolean includeSectionsWithNaN_slipRates, double maxSubSectionLength) {
+	private List<FaultSection> createAll_UCERF2_SubSections(boolean includeSectionsWithNaN_slipRates, double maxSubSectionLength) {
 
 		// fetch the sections
 		DeformationModelPrefDataFinal deformationModelPrefDB = new DeformationModelPrefDataFinal();
-		ArrayList<FaultSectionPrefData> allFaultSectionPrefData = getAll_UCERF2Sections(includeSectionsWithNaN_slipRates);
+		List<FaultSection> allFaultSectionPrefData = getAll_UCERF2Sections(includeSectionsWithNaN_slipRates);
 
 		// make subsection data
-		ArrayList<FaultSectionPrefData> subSectionPrefDataList = new ArrayList<FaultSectionPrefData>();
+		List<FaultSection> subSectionPrefDataList = new ArrayList<>();
 		int subSectionIndex=0;
 		for(int i=0; i<allFaultSectionPrefData.size(); ++i) {
-			FaultSectionPrefData faultSectionPrefData = (FaultSectionPrefData)allFaultSectionPrefData.get(i);
+			FaultSection faultSectionPrefData = (FaultSectionPrefData)allFaultSectionPrefData.get(i);
 			String name = faultSectionPrefData.getName();
 			
 //			if(name.equals("Mendocino") ||
@@ -261,7 +264,7 @@ public class DeformationModelFetcher {
 //			}
 			
 			double maxSectLength = faultSectionPrefData.getOrigDownDipWidth()*maxSubSectionLength;
-			ArrayList<FaultSectionPrefData> subSectData = faultSectionPrefData.getSubSectionsList(maxSectLength, subSectionIndex);
+			List<? extends FaultSection> subSectData = faultSectionPrefData.getSubSectionsList(maxSectLength, subSectionIndex);
 			subSectionIndex += subSectData.size();
 			subSectionPrefDataList.addAll(subSectData);
 		}
@@ -281,17 +284,17 @@ public class DeformationModelFetcher {
 	 * @param includeSectionsWithNaN_slipRates
 	 * @param maxSubSectionLength - in units of seismogenic thickness
 	 */
-	private ArrayList<FaultSectionPrefData>  createNorthCal_UCERF2_SubSections(boolean includeSectionsWithNaN_slipRates, double maxSubSectionLength) {
+	private List<FaultSection>  createNorthCal_UCERF2_SubSections(boolean includeSectionsWithNaN_slipRates, double maxSubSectionLength) {
 
 		// fetch the sections
 		DeformationModelPrefDataFinal deformationModelPrefDB = new DeformationModelPrefDataFinal();
-		ArrayList<FaultSectionPrefData> allFaultSectionPrefData = getAll_UCERF2Sections(includeSectionsWithNaN_slipRates);
+		List<FaultSection> allFaultSectionPrefData = getAll_UCERF2Sections(includeSectionsWithNaN_slipRates);
 
 		// remove those that don't have at least one trace end-point in in the N Cal RELM region
 		Region relm_nocal_reg = new CaliforniaRegions.RELM_NOCAL();
 		Region mod_relm_nocal_reg = new Region(relm_nocal_reg.getBorder(), BorderType.GREAT_CIRCLE); // needed to exclude Parkfield
-		ArrayList<FaultSectionPrefData> nCalFaultSectionPrefData = new ArrayList<FaultSectionPrefData>();
-		for(FaultSectionPrefData sectData:allFaultSectionPrefData) {
+		ArrayList<FaultSection> nCalFaultSectionPrefData = new ArrayList<>();
+		for(FaultSection sectData:allFaultSectionPrefData) {
 			FaultTrace trace = sectData.getFaultTrace();
 			Location endLoc1 = trace.get(0);
 			Location endLoc2 = trace.get(trace.size()-1);
@@ -309,12 +312,12 @@ public class DeformationModelFetcher {
 		}
 
 		// make subsection data
-		ArrayList<FaultSectionPrefData> subSectionPrefDataList = new ArrayList<FaultSectionPrefData>();
+		ArrayList<FaultSection> subSectionPrefDataList = new ArrayList<>();
 		int subSectionIndex=0;
 		for(int i=0; i<nCalFaultSectionPrefData.size(); ++i) {
-			FaultSectionPrefData faultSectionPrefData = nCalFaultSectionPrefData.get(i);
+			FaultSection faultSectionPrefData = nCalFaultSectionPrefData.get(i);
 			double maxSectLength = faultSectionPrefData.getOrigDownDipWidth()*maxSubSectionLength;
-			ArrayList<FaultSectionPrefData> subSectData = faultSectionPrefData.getSubSectionsList(maxSectLength, subSectionIndex);
+			List<? extends FaultSection> subSectData = faultSectionPrefData.getSubSectionsList(maxSectLength, subSectionIndex);
 			subSectionIndex += subSectData.size();
 			subSectionPrefDataList.addAll(subSectData);
 		}		
@@ -338,7 +341,7 @@ public class DeformationModelFetcher {
 	 * D2.6 = 87
 
 	 */
-	private ArrayList<FaultSectionPrefData> getAll_UCERF2Sections(boolean includeSectionsWithNaN_slipRates) {
+	private List<FaultSection> getAll_UCERF2Sections(boolean includeSectionsWithNaN_slipRates) {
 
 		// fetch the sections
 		DeformationModelPrefDataFinal deformationModelPrefDB = new DeformationModelPrefDataFinal();
@@ -347,7 +350,7 @@ public class DeformationModelFetcher {
 		//		ArrayList<FaultSectionPrefData> allFaultSectionPrefData=prelimFaultSectionPrefData;
 
 		// ****  Make a revised list, replacing step over sections on Elsinore and San Jacinto with the combined sections
-		ArrayList<FaultSectionPrefData> allFaultSectionPrefData= new ArrayList<FaultSectionPrefData>();
+		ArrayList<FaultSection> allFaultSectionPrefData= new ArrayList<>();
 
 		FaultSectionPrefData glenIvyStepoverfaultSectionPrefData=null,temeculaStepoverfaultSectionPrefData=null,anzaStepoverfaultSectionPrefData=null,valleyStepoverfaultSectionPrefData=null;
 
@@ -517,7 +520,7 @@ public class DeformationModelFetcher {
 	 * 
 	 * @param maxSubSectionLength - in units of seismogenic thickness
 	 */
-	private ArrayList<FaultSectionPrefData> createBayAreaSubSections(double maxSubSectionLength) {
+	private List<FaultSection> createBayAreaSubSections(double maxSubSectionLength) {
 
 		DeformationModelPrefDataFinal deformationModelPrefDB = new DeformationModelPrefDataFinal();	
 
@@ -543,7 +546,7 @@ public class DeformationModelFetcher {
 		faultSectionIds.add(2);  //  Mount Diablo Thrust
 
 
-		ArrayList<FaultSectionPrefData> subSectionPrefDataList = new ArrayList<FaultSectionPrefData>();
+		ArrayList<FaultSection> subSectionPrefDataList = new ArrayList<>();
 		int subSectIndex = 0;
 		faultSectPrefDataList = Lists.newArrayList();
 		for (int i = 0; i < faultSectionIds.size(); ++i) {
@@ -560,8 +563,8 @@ public class DeformationModelFetcher {
 	
 	public static boolean IMPERIAL_DDW_HACK = false;
 
-	private static ArrayList<FaultSectionPrefData> buildSubSections(
-			FaultSectionPrefData section, double maxSubSectionLength, int subSectIndex) {
+	private static List<? extends FaultSection> buildSubSections(
+			FaultSection section, double maxSubSectionLength, int subSectIndex) {
 		double ddw = section.getOrigDownDipWidth();
 		if (IMPERIAL_DDW_HACK & section.getSectionId() == 97) {
 			// TODO fix this
@@ -829,15 +832,15 @@ public class DeformationModelFetcher {
 	 * @return
 	 * @throws IOException
 	 */
-	private ArrayList<FaultSectionPrefData> loadUCERF3DefModel(
-			List<FaultSectionPrefData> sections, Map<Integer,DeformationSection> model, double maxSubSectionLength,
+	private ArrayList<FaultSection> loadUCERF3DefModel(
+			List<? extends FaultSection> sections, Map<Integer,DeformationSection> model, double maxSubSectionLength,
 			Map<Integer,DeformationSection> rakesModel, double defaultAseismicityValue)
 					throws IOException {
 		final boolean DD = D && false;
 
-		ArrayList<FaultSectionPrefData> subSections = new ArrayList<FaultSectionPrefData>();
+		ArrayList<FaultSection> subSections = new ArrayList<>();
 		int subSectIndex = 0;
-		for (FaultSectionPrefData section : sections) {
+		for (FaultSection section : sections) {
 
 			if (DD) System.out.println("Working on section "+section.getSectionId()+". "+section.getSectionName());
 
@@ -854,7 +857,7 @@ public class DeformationModelFetcher {
 
 			// split it into subsections
 			if (DD) System.out.println("Building sub sections.");
-			ArrayList<FaultSectionPrefData> subSectData = buildSubSections(
+			List<? extends FaultSection> subSectData = buildSubSections(
 					section, maxSubSectionLength, subSectIndex);
 
 			List<Double> slips = def.getSlips();
@@ -871,7 +874,7 @@ public class DeformationModelFetcher {
 			for (int s=0; s<subSectData.size(); s++) {
 				// the point of this code is to find out which minisections are contained in this subsection
 				
-				FaultSectionPrefData subSect = subSectData.get(s);
+				FaultSection subSect = subSectData.get(s);
 				FaultTrace subTrace = subSect.getFaultTrace();
 				Preconditions.checkState(subTrace.size()>1, "sub section trace only has one point!!!!");
 				Location subStart = subTrace.get(0);
@@ -1150,7 +1153,7 @@ public class DeformationModelFetcher {
 			
 			double taperLen = LocationUtils.horzDistanceFast(taperLocs[0], taperLocs[1]);
 			
-			for (FaultSectionPrefData sect : faultSubSectPrefDataList) {
+			for (FaultSection sect : faultSubSectPrefDataList) {
 				if (sect.getParentSectionId() != parentID)
 					continue;
 				
@@ -1221,7 +1224,7 @@ public class DeformationModelFetcher {
 		file_output.close ();
 	}
 
-	public static void writePairingsTextFile(File file, List<FaultSectionPrefData> faultSubSections,
+	public static void writePairingsTextFile(File file, List<? extends FaultSection> faultSubSections,
 			Map<IDPairing, Double> distances, double maxJumpDist) throws IOException {
 		
 		List<List<Integer>> connections = SectionClusterList.computeCloseSubSectionsListList(faultSubSections, distances, maxJumpDist);
@@ -1350,7 +1353,7 @@ public class DeformationModelFetcher {
 	}
 
 	public static Map<IDPairing, Double> calculateDistances(
-			double maxDistance, List<FaultSectionPrefData> subSections) {
+			double maxDistance, List<? extends FaultSection> subSections) {
 		Map<IDPairing, Double> distances = new HashMap<IDPairing, Double>();
 		
 		// this is the threshold for which if the corners/midpoints of the section aren't within this distance, we don't
@@ -1369,15 +1372,15 @@ public class DeformationModelFetcher {
 				progress += progressInterval;
 			}
 			//				StirlingGriddedSurface surf1 = new StirlingGriddedSurface(subSectionPrefDataList.get(a).getSimpleFaultData(false), 2.0);
-			FaultSectionPrefData data1 = subSections.get(a);
-			StirlingGriddedSurface surf1 = data1.getStirlingGriddedSurface(1.0, false, false);
+			FaultSection data1 = subSections.get(a);
+			RuptureSurface surf1 = data1.getFaultSurface(1.0, false, false);
 			//				StirlingGriddedSurface surf1 = new StirlingGriddedSurface(data1.getSimpleFaultData(false), 1.0, 1.0);
 
 			for(int b=a+1;b<numSubSections;b++) { // a+1 because array is initialized to zero
 				//					StirlingGriddedSurface surf2 = new StirlingGriddedSurface(subSectionPrefDataList.get(b).getSimpleFaultData(false), 2.0);
-				FaultSectionPrefData data2 = subSections.get(b);
+				FaultSection data2 = subSections.get(b);
 				//					StirlingGriddedSurface surf2 = new StirlingGriddedSurface(data2.getSimpleFaultData(false), 1.0, 1.0);
-				StirlingGriddedSurface surf2 = data2.getStirlingGriddedSurface(1.0, false, false);
+				RuptureSurface surf2 = data2.getFaultSurface(1.0, false, false);
 				//					double minDist = surf1.getMinDistance(surf2);
 				//					subSectionDistances[a][b] = minDist;
 				//					subSectionDistances[b][a] = minDist;
@@ -1402,7 +1405,7 @@ public class DeformationModelFetcher {
 		return getSubSectionAzimuthMap(indices, faultSubSectPrefDataList);
 	}
 	
-	public static Map<IDPairing, Double> getSubSectionAzimuthMap(Set<IDPairing> indices, List<FaultSectionPrefData> subSections) {
+	public static Map<IDPairing, Double> getSubSectionAzimuthMap(Set<IDPairing> indices, List<? extends FaultSection> subSections) {
 
 		Map<IDPairing, Double> azimuths;
 
@@ -1437,12 +1440,10 @@ public class DeformationModelFetcher {
 				progress += progressInterval;
 			}
 			cnt++;
-			FaultSectionPrefData data1 = subSections.get(ind.getID1());
-			StirlingGriddedSurface surf1 =  data1.getStirlingGriddedSurface(1.0, false, false);
-			Location loc1 = surf1.getLocation(surf1.getNumRows()/2, surf1.getNumCols()/2);
-			FaultSectionPrefData data2 = subSections.get(ind.getID2());
-			StirlingGriddedSurface surf2 =  data2.getStirlingGriddedSurface(1.0, false, false);
-			Location loc2 = surf2.getLocation((int)(surf2.getNumRows()/2), (int)(surf2.getNumCols()/2));
+			FaultSection data1 = subSections.get(ind.getID1());
+			Location loc1 = GriddedSurfaceUtils.getSurfaceMiddleLoc(data1.getFaultSurface(1d, false, false));
+			FaultSection data2 = subSections.get(ind.getID2());
+			Location loc2 = GriddedSurfaceUtils.getSurfaceMiddleLoc(data2.getFaultSurface(1d, false, false));
 			azimuths.put(ind, LocationUtils.azimuth(loc1, loc2));
 			//			}
 			//			// Now save to a binary file
@@ -1465,7 +1466,7 @@ public class DeformationModelFetcher {
 		int num=0;
 		int totNum=0;
 		ArrayList<String> parentNames = new ArrayList<String>();
-		for(FaultSectionPrefData data:getSubSectionList()) {
+		for(FaultSection data:getSubSectionList()) {
 			if(!parentNames.contains(data.getParentSectionName())) {
 				totNum += 1;
 				if(data.getAseismicSlipFactor() > 0)

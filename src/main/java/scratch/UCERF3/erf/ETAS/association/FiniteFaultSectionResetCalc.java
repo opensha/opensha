@@ -54,6 +54,7 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -80,7 +81,7 @@ public class FiniteFaultSectionResetCalc {
 	
 	private Region[] polygons;
 	private double[] sectAreas;
-	private EvenlyGriddedSurface[] sectSurfaces;
+	private RuptureSurface[] sectSurfaces;
 	private XY_DataSet[] sectPolygonXYs;
 	
 	private Table<EvenlyGriddedSurface, Region, Double> rupSetAreaInPolysCache = HashBasedTable.create();
@@ -124,11 +125,11 @@ public class FiniteFaultSectionResetCalc {
 		this.minFractionalAreaInPolygon = minFractionalAreaInPolygon;
 	}
 	
-	private synchronized EvenlyGriddedSurface getSectSurface(int index) {
+	private synchronized RuptureSurface getSectSurface(int index) {
 		if (sectSurfaces == null)
 			sectSurfaces = new EvenlyGriddedSurface[rupSet.getNumSections()];
 		if (sectSurfaces[index] == null)
-			sectSurfaces[index] = rupSet.getFaultSectionData(index).getStirlingGriddedSurface(1d);
+			sectSurfaces[index] = rupSet.getFaultSectionData(index).getFaultSurface(1d);
 		return sectSurfaces[index];
 	}
 	
@@ -189,7 +190,7 @@ public class FiniteFaultSectionResetCalc {
 		return dists;
 	}
 
-	public List<FaultSectionPrefData> getMatchingSections(RuptureSurface surf) {
+	public List<FaultSection> getMatchingSections(RuptureSurface surf) {
 		double[] areas = getAreaInSectionPolygons(surf);
 		SectRupDistances[] dists = removeOverlapsWithDist ? getSectRupDistances(surf, areas) : null;
 		return getMatchingSections(surf, areas, dists);
@@ -200,7 +201,7 @@ public class FiniteFaultSectionResetCalc {
 		final double maxDist;
 		final double meanDist;
 		
-		private SectRupDistances(EvenlyGriddedSurface sectSurf, RuptureSurface rupSurf) {
+		private SectRupDistances(RuptureSurface sectSurf, RuptureSurface rupSurf) {
 			double minDist = Double.POSITIVE_INFINITY;
 			double maxDist = 0d;
 			double meanDist = 0d;
@@ -237,11 +238,11 @@ public class FiniteFaultSectionResetCalc {
 	
 	private class DistSortableSections implements Comparable<DistSortableSections> {
 		private final int index;
-		private final FaultSectionPrefData sect;
+		private final FaultSection sect;
 		private final SectRupDistances dist;
 		private List<Region> polygons;
 		private double area;
-		public DistSortableSections(int index, FaultSectionPrefData sect, SectRupDistances dist, Region polygon,
+		public DistSortableSections(int index, FaultSection sect, SectRupDistances dist, Region polygon,
 				double area) {
 			super();
 			this.index = index;
@@ -258,14 +259,14 @@ public class FiniteFaultSectionResetCalc {
 	}
 	
 	public class FaultSectionDataMappingResult {
-		public final FaultSectionPrefData sect;
+		public final FaultSection sect;
 		public final SectRupDistances dist;
 		public final double areaInPoly;
 		public final double sectArea;
 		public final double fractOfSurfInPoly;
 		public final boolean match;
 		
-		public FaultSectionDataMappingResult(FaultSectionPrefData sect, SectRupDistances dist, double areaInPoly,
+		public FaultSectionDataMappingResult(FaultSection sect, SectRupDistances dist, double areaInPoly,
 				double sectArea) {
 			this.sect = sect;
 			this.dist = dist;
@@ -276,7 +277,7 @@ public class FiniteFaultSectionResetCalc {
 		}
 	}
 
-	public List<FaultSectionPrefData> getMatchingSections(RuptureSurface surf, double[] areas, SectRupDistances[] dists) {
+	public List<FaultSection> getMatchingSections(RuptureSurface surf, double[] areas, SectRupDistances[] dists) {
 		if (areas == null)
 			return null;
 		FaultSectionDataMappingResult[] results = getMappingResults(surf, areas, dists);
@@ -300,8 +301,8 @@ public class FiniteFaultSectionResetCalc {
 		return ret;
 	}
 
-	private List<FaultSectionPrefData> getMatchingSections(FaultSectionDataMappingResult[] results) {
-		List<FaultSectionPrefData> sects = new ArrayList<>();
+	private List<FaultSection> getMatchingSections(FaultSectionDataMappingResult[] results) {
+		List<FaultSection> sects = new ArrayList<>();
 		for (FaultSectionDataMappingResult result : results)
 			if (result.match)
 				sects.add(result.sect);
@@ -480,8 +481,8 @@ public class FiniteFaultSectionResetCalc {
 							noOverlapAreas[sect.index] = sect.area;
 					}
 				}
-				List<FaultSectionPrefData> matches = getMatchingSections(surf, areas, dists);
-				List<FaultSectionPrefData> fssSects = fssIndex < 0 ? null : rupSet.getFaultSectionDataForRupture(fssIndex);
+				List<FaultSection> matches = getMatchingSections(surf, areas, dists);
+				List<? extends FaultSection> fssSects = fssIndex < 0 ? null : rupSet.getFaultSectionDataForRupture(fssIndex);
 				
 				String prefix = fileDateFormat.format(date)+"_m"+optionalDigitDF.format(rup.getMag());
 				if (replot || !new File(resourcesDir, prefix+".png").exists())
@@ -509,7 +510,7 @@ public class FiniteFaultSectionResetCalc {
 				table.finalizeLine();
 				boolean matchesU3 = true;
 				for (int index=0; index<rupSet.getNumSections(); index++) {
-					FaultSectionPrefData sect = rupSet.getFaultSectionData(index);
+					FaultSection sect = rupSet.getFaultSectionData(index);
 					double area = areas == null ? 0 : areas[index];
 					boolean match = matches != null && matches.contains(sect);
 					boolean fssMatch = fssSects != null && fssSects.contains(sect);
@@ -613,7 +614,7 @@ public class FiniteFaultSectionResetCalc {
 	}
 	
 	private void plotMatchingSections(File outputDir, String prefix, RuptureSurface surf, String title,
-			Collection<FaultSectionPrefData> externalMatches, String externalName, FaultSectionDataMappingResult[] results,
+			Collection<? extends FaultSection> externalMatches, String externalName, FaultSectionDataMappingResult[] results,
 			List<DistSortableSections> sectsNoOverlap, Location hypocenter, boolean annotateIndices) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -679,15 +680,29 @@ public class FiniteFaultSectionResetCalc {
 		
 		if (sectsNoOverlap != null) {
 			for (DistSortableSections sectNoOverlap : sectsNoOverlap) {
-				FaultSectionPrefData sect = sectNoOverlap.sect;
+				FaultSection sect = sectNoOverlap.sect;
 				
 				int index = sectNoOverlap.index;
 				boolean hasArea = results != null && results[index].areaInPoly > 0d;
 				boolean match = results != null && results[index].match;
 				
+				RuptureSurface sectSurface = getSectSurface(index);
+				
 				if (annotateIndices && hasArea) {
-					Location center = sectSurfaces[index].get(sectSurfaces[index].getNumRows()/2,
-							sectSurfaces[index].getNumCols()/2);
+					Location center;
+					if (sectSurface instanceof EvenlyGriddedSurface) {
+						EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)sectSurface;
+						center = gridSurf.get(gridSurf.getNumRows()/2,
+								gridSurf.getNumCols()/2);
+					} else {
+						MinMaxAveTracker latTrack = new MinMaxAveTracker();
+						MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+						for (Location loc : sectSurface.getEvenlyDiscritizedListOfLocsOnSurface()) {
+							latTrack.addValue(loc.getLatitude());
+							lonTrack.addValue(loc.getLongitude());
+						}
+						center = new Location(latTrack.getAverage(), lonTrack.getAverage());
+					}
 					double x = center.getLongitude();
 					double y = center.getLatitude();
 					XYTextAnnotation ann = new XYTextAnnotation(index+"", x, y);
@@ -745,7 +760,7 @@ public class FiniteFaultSectionResetCalc {
 		List<Integer> noAreaIndexes = new ArrayList<>();
 		
 		for (int index=0; index<rupSet.getNumSections(); index++) {
-			FaultSectionPrefData sect = rupSet.getFaultSectionData(index);
+			FaultSection sect = rupSet.getFaultSectionData(index);
 			
 			boolean hasArea = results != null && results[index].areaInPoly > 0d;
 			boolean match = results != null && results[index].match;
@@ -847,7 +862,7 @@ public class FiniteFaultSectionResetCalc {
 		
 		// add any no-area surfaces within the region
 		for (int index : noAreaIndexes) {
-			EvenlyGriddedSurface sectSurface = getSectSurface(index);
+			RuptureSurface sectSurface = getSectSurface(index);
 			if (sectSurface.getAveDip() == 90d)
 				addSurface(sectSurface.getEvenlyDiscritizedUpperEdge(), noAreaXY, plotReg);
 			else
@@ -969,14 +984,14 @@ public class FiniteFaultSectionResetCalc {
 					continue;
 				SectRupDistances[] dists = removeOverlap ? calc.getSectRupDistances(surfs[r], areas) : null;
 				FaultSectionDataMappingResult[] results = calc.getMappingResults(surfs[r], areas, dists);
-				List<FaultSectionPrefData> sects = rupSet.getFaultSectionDataForRupture(r);
+				List<? extends FaultSection> sects = rupSet.getFaultSectionDataForRupture(r);
 				for (int i=0; i<matchRates.length; i++) {
 					calc.minFractionalAreaInPolygon = fractAreas.getX(i);
-					List<FaultSectionPrefData> matches = calc.getMatchingSections(results);
+					List<FaultSection> matches = calc.getMatchingSections(results);
 					if (matches != null && matches.size() == sects.size()) {
 						// potential match
 						boolean match = true;
-						for (FaultSectionPrefData sect : sects) {
+						for (FaultSection sect : sects) {
 							if (!matches.contains(sect)) {
 								match = false;
 								break;
@@ -1078,7 +1093,7 @@ public class FiniteFaultSectionResetCalc {
 					|| (pointSource && result.dist != null && result.dist.minDist < 25);
 			if (!include)
 				continue;
-			FaultSectionPrefData sect = rupSet.getFaultSectionData(s);
+			FaultSection sect = rupSet.getFaultSectionData(s);
 			table.initNewLine();
 			table.addColumn(s);
 			table.addColumn(sect.getSectionName());
@@ -1118,7 +1133,7 @@ public class FiniteFaultSectionResetCalc {
 		RuptureSurface[] surfs = new RuptureSurface[rupSet.getNumRuptures()];
 		double totRate = sol.getTotalRateForAllFaultSystemRups();
 		for (int r=0; r<rupSet.getNumRuptures(); r++)
-			surfs[r] = rupSet.getSurfaceForRupupture(r, 1d, false);
+			surfs[r] = rupSet.getSurfaceForRupupture(r, 1d);
 		
 		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		

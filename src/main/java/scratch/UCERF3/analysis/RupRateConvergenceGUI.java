@@ -34,6 +34,7 @@ import org.opensha.commons.param.impl.FileParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -341,7 +342,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		parentIDs = Lists.newArrayList(-1);
 		if (sol != null) {
 			int prevParentID = -2;
-			for (FaultSectionPrefData sect : sol.getRupSet().getFaultSectionDataList()) {
+			for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
 				int parentID = sect.getParentSectionId();
 				
 				if (parentID != prevParentID) {
@@ -595,7 +596,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		int lastParentID = -2;
 		
 		for (int ind : inds) {
-			FaultSectionPrefData sect = sol.getRupSet().getFaultSectionData(ind);
+			FaultSection sect = sol.getRupSet().getFaultSectionData(ind);
 			int parent = sect.getParentSectionId();
 			if (parent != lastParentID) {
 				parentNames.add(sect.getParentSectionName());

@@ -8,6 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -56,7 +57,7 @@ public class TestIncrementalVsFullTests implements FailureHandler {
 		
 		// now test that every included rupture should indeed be included
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
-			List<FaultSectionPrefData> rupture = rupSet.getFaultSectionDataForRupture(r);
+			List<? extends FaultSection> rupture = rupSet.getFaultSectionDataForRupture(r);
 			for (AbstractLaughTest test : laughTest.getLaughTests())
 				assertTrue("Rupture included but fails "+ClassUtils.getClassNameWithoutPackage(test.getClass()),
 						test.doesRupturePass(rupture));
@@ -68,7 +69,7 @@ public class TestIncrementalVsFullTests implements FailureHandler {
 
 
 	@Override
-	public void ruptureFailed(List<FaultSectionPrefData> rupture,
+	public void ruptureFailed(List<FaultSection> rupture,
 			boolean continuable) {
 		// make sure that is really does fail
 		boolean pass = true;

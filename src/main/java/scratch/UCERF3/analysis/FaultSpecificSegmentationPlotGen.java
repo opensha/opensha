@@ -30,6 +30,7 @@ import org.opensha.commons.gui.plot.PlotMultiDataLayer;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
 
@@ -83,11 +84,11 @@ public class FaultSpecificSegmentationPlotGen {
 			CSVFile<String> csv) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		// first assemble subsections by parent
-		Map<Integer, List<FaultSectionPrefData>> subSectsByParent = Maps.newHashMap();
+		Map<Integer, List<FaultSection>> subSectsByParent = Maps.newHashMap();
 		int prevParentID = -2;
-		List<FaultSectionPrefData> curSects = null;
+		List<FaultSection> curSects = null;
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
-			FaultSectionPrefData sect = rupSet.getFaultSectionData(sectIndex);
+			FaultSection sect = rupSet.getFaultSectionData(sectIndex);
 			int parent = sect.getParentSectionId();
 			if (parent != prevParentID) {
 				prevParentID = parent;
@@ -99,7 +100,7 @@ public class FaultSpecificSegmentationPlotGen {
 		
 		// now look for places where the connection point is elsewhere on the parent section (other than the end)
 		for (Integer parentID : subSectsByParent.keySet()) {
-			List<FaultSectionPrefData> subSects = subSectsByParent.get(parentID);
+			List<FaultSection> subSects = subSectsByParent.get(parentID);
 			int num = subSects.size();
 			if (num % 2 > 0)
 				num--;
@@ -149,7 +150,7 @@ public class FaultSpecificSegmentationPlotGen {
 		
 		// now we find all the the stopping points (location inbetween two subsections)
 		for (Integer parent : parentSects) {
-			List<FaultSectionPrefData> sects = subSectsByParent.get(parent);
+			List<FaultSection> sects = subSectsByParent.get(parent);
 			
 			if (sects == null)
 				continue;
@@ -162,7 +163,7 @@ public class FaultSpecificSegmentationPlotGen {
 			
 			List<Location> sectStoppingPoints = Lists.newArrayList();
 			for (int i=0; i<sects.size(); i++) {
-				FaultSectionPrefData sect = sects.get(i);
+				FaultSection sect = sects.get(i);
 				FaultTrace trace = sect.getFaultTrace();
 				sectStoppingPoints.add(trace.get(0));
 				
@@ -454,7 +455,7 @@ public class FaultSpecificSegmentationPlotGen {
 	}
 	
 	private static boolean hasConnectionOnOtherParent(List<Integer> parents,
-			FaultSectionPrefData subSect, FaultSystemSolution sol) {
+			FaultSection subSect, FaultSystemSolution sol) {
 		Collection<Integer> connections;
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		if (rupSet instanceof InversionFaultSystemRupSet) {

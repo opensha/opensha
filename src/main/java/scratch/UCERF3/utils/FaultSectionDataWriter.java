@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.opensha.refFaultParamDb.gui.infotools.GUI_Utils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
 import com.google.common.collect.Lists;
@@ -34,7 +35,7 @@ public class FaultSectionDataWriter {
 	 * @param filePathAndName
 	 * @throws IOException 
 	 */
-	public final static void writeSectionsToFile(List<FaultSectionPrefData> subSectionPrefDataList, 
+	public final static void writeSectionsToFile(List<? extends FaultSection> subSectionPrefDataList, 
 			List<String> metaData, String filePathAndName) throws IOException {
 		writeSectionsToFile(subSectionPrefDataList, metaData, new File(filePathAndName), false);
 	}
@@ -45,7 +46,7 @@ public class FaultSectionDataWriter {
 	 * @param metaData - each String in this list will have a "# " and "\n" added to the beginning and ending, respectively
 	 * @param file
 	 */
-	public final static void writeSectionsToFile(List<FaultSectionPrefData> subSectionPrefDataList, 
+	public final static void writeSectionsToFile(List<? extends FaultSection> subSectionPrefDataList, 
 			List<String> metaData, File file, boolean applyReductions) throws IOException {
 		FileWriter fw = new FileWriter(file);
 		fw.write(getSectionsASCII(subSectionPrefDataList, metaData, applyReductions).toString());
@@ -58,7 +59,7 @@ public class FaultSectionDataWriter {
 	 * @param metaData - each String in this list will have a "# " and "\n" added to the beginning and ending, respectively
 	 * @param filePathAndName
 	 */
-	public final static StringBuffer getSectionsASCII(List<FaultSectionPrefData> subSectionPrefDataList, 
+	public final static StringBuffer getSectionsASCII(List<? extends FaultSection> subSectionPrefDataList, 
 			List<String> metaData, boolean applyReductions) {
 		StringBuffer buff = new StringBuffer();
 		if (metaData != null && !metaData.isEmpty()) {
@@ -93,7 +94,7 @@ public class FaultSectionDataWriter {
 				"# ********************************\n";
 		buff.append(header2);
 		for(int i=0; i<subSectionPrefDataList.size(); i++) {
-			FaultSectionPrefData sectData = subSectionPrefDataList.get(i);
+			FaultSection sectData = subSectionPrefDataList.get(i);
 			FaultTrace faultTrace = sectData.getFaultTrace(); 
 			String str =  sectData.getSectionId()+"\n"+sectData.getSectionName()+"\n"+
 					getValue(sectData.getParentSectionId())+"\n"+

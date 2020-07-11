@@ -35,6 +35,9 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -231,9 +234,14 @@ public class MiscInfoAndPlotsCalc {
 	 */
 	public static void writeLocationAtCenterOfSectionSurf(FaultSystemSolutionERF erf, int sectID) {
 		String name = erf.getSolution().getRupSet().getFaultSectionData(sectID).getName();
-		StirlingGriddedSurface surf = erf.getSolution().getRupSet().getFaultSectionData(sectID).getStirlingGriddedSurface(1.0, false, true);
-		Location loc = surf.getLocation(surf.getNumRows()/2, surf.getNumCols()/2);
-		System.out.println("Locationat center of "+name+"\t"+loc.getLatitude()+", "+loc.getLongitude()+", "+loc.getDepth());
+		RuptureSurface surf = erf.getSolution().getRupSet().getFaultSectionData(sectID).getFaultSurface(1.0, false, true);
+		if (surf instanceof EvenlyGriddedSurface) {
+			EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surf;
+			Location loc = gridSurf.getLocation(gridSurf.getNumRows()/2, gridSurf.getNumCols()/2);
+			System.out.println("Locationat center of "+name+"\t"+loc.getLatitude()+", "+loc.getLongitude()+", "+loc.getDepth());
+		} else {
+			System.out.println("Not evenly gridded");
+		}
 	}
 
 
@@ -241,24 +249,24 @@ public class MiscInfoAndPlotsCalc {
 
 	
 	public static void writeInfoAboutClosestSectionToLoc(FaultSystemSolutionERF erf, Location loc) {
-		List<FaultSectionPrefData> fltDataList = erf.getSolution().getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> fltDataList = erf.getSolution().getRupSet().getFaultSectionDataList();
 		double minDist = Double.MAX_VALUE;
 		int index=-1;
 		CalcProgressBar progressBar = new CalcProgressBar("Fault data to process", "junk");
 		progressBar.showProgress(true);
 		int counter=0;
 
-		for(FaultSectionPrefData fltData:fltDataList) {
+		for(FaultSection fltData:fltDataList) {
 			progressBar.updateProgress(counter, fltDataList.size());
 			counter+=1;
-			double dist = LocationUtils.distanceToSurf(loc, fltData.getStirlingGriddedSurface(1.0, false, true));
+			double dist = LocationUtils.distanceToSurf(loc, fltData.getFaultSurface(1.0, false, true));
 			if(minDist>dist) {
 				minDist=dist;
 				index = fltData.getSectionId();
 			}
 		}
 		progressBar.showProgress(false);
-		minDist = LocationUtils.distanceToSurf(loc, fltDataList.get(index).getStirlingGriddedSurface(0.01, false, true));
+		minDist = LocationUtils.distanceToSurf(loc, fltDataList.get(index).getFaultSurface(0.01, false, true));
 		System.out.println(index+"\tdist="+(float)minDist+"\tfor\t"+fltDataList.get(index).getName());
 	}
 
@@ -396,7 +404,7 @@ public class MiscInfoAndPlotsCalc {
 
 		for(int i=1042;i<=1056;i++) {
 			DefaultXY_DataSet lagunaSaladaPolygonsXYdata = new DefaultXY_DataSet();
-			FaultSectionPrefData fltData = rupSet.getFaultSectionData(i);
+			FaultSection fltData = rupSet.getFaultSectionData(i);
 			System.out.println(fltData.getName());
 			Region polyReg = faultPolyMgr.getPoly(i);
 			for(Location loc : polyReg.getBorder()) {

@@ -16,11 +16,13 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -48,7 +50,7 @@ import scratch.UCERF3.analysis.DeformationModelsCalc;
 public class FaultSystemRupSet implements Serializable {
 	
 	// data arrays/lists
-	private List<FaultSectionPrefData> faultSectionData;
+	private List<? extends FaultSection> faultSectionData;
 	private double[] mags;
 	private double[] sectSlipRates;
 	private double[] sectSlipRateStdDevs;
@@ -78,7 +80,7 @@ public class FaultSystemRupSet implements Serializable {
 	 * @param info metadata string
 	 */
 	public FaultSystemRupSet(
-			List<FaultSectionPrefData> faultSectionData,
+			List<? extends FaultSection> faultSectionData,
 			double[] sectSlipRates,
 			double[] sectSlipRateStdDevs,
 			double[] sectAreas,
@@ -127,7 +129,7 @@ public class FaultSystemRupSet implements Serializable {
 	 * @param info metadata string
 	 */
 	protected void init(
-			List<FaultSectionPrefData> faultSectionData,
+			List<? extends FaultSection> faultSectionData,
 			double[] sectSlipRates,
 			double[] sectSlipRateStdDevs,
 			double[] sectAreas,
@@ -322,7 +324,7 @@ public class FaultSystemRupSet implements Serializable {
 	 * rupture reductions) for a fault subsection
 	 */
 	public double getOrigMomentRate(int sectIndex) {
-		FaultSectionPrefData sectData = getFaultSectionData(sectIndex);
+		FaultSection sectData = getFaultSectionData(sectIndex);
 		double moRate = sectData.calcMomentRate(true);
 		if (Double.isNaN(moRate))
 			return 0;
@@ -469,7 +471,7 @@ public class FaultSystemRupSet implements Serializable {
 	 * This returns a list of all fault-section data
 	 * @return
 	 */
-	public List<FaultSectionPrefData> getFaultSectionDataList() {
+	public List<? extends FaultSection> getFaultSectionDataList() {
 		return faultSectionData;
 	}
 	
@@ -478,7 +480,7 @@ public class FaultSystemRupSet implements Serializable {
 	 * @param sectIndex
 	 * @return
 	 */
-	public FaultSectionPrefData getFaultSectionData(int sectIndex) {
+	public FaultSection getFaultSectionData(int sectIndex) {
 		return faultSectionData.get(sectIndex);
 	}
 	
@@ -487,16 +489,15 @@ public class FaultSystemRupSet implements Serializable {
 	 * @param rupIndex
 	 * @return
 	 */
-	public List<FaultSectionPrefData> getFaultSectionDataForRupture(int rupIndex) {
+	public List<FaultSection> getFaultSectionDataForRupture(int rupIndex) {
 		List<Integer> inds = getSectionsIndicesForRup(rupIndex);
-		ArrayList<FaultSectionPrefData> datas = new ArrayList<FaultSectionPrefData>();
+		ArrayList<FaultSection> datas = new ArrayList<FaultSection>();
 		for (int ind : inds)
 			datas.add(getFaultSectionData(ind));
 		return datas;
 	}
 	
 	private transient double prevGridSpacing = Double.NaN;
-	private transient boolean prevQuadSurface = false;
 	private transient Map<Integer, RuptureSurface> rupSurfaceCache = Maps.newHashMap();
 	
 	/**
@@ -505,26 +506,19 @@ public class FaultSystemRupSet implements Serializable {
 	 * no cut-off ends (but variable grid spacing)
 	 * @param rupIndex
 	 * @param gridSpacing
-	 * @param quadRupSurface use quad surfaces (otherwise evenly gridded)
 	 * @return
 	 */
-	public synchronized RuptureSurface getSurfaceForRupupture(int rupIndex, double gridSpacing, boolean quadRupSurface) {
-		if (prevGridSpacing != gridSpacing || prevQuadSurface != quadRupSurface) {
+	public synchronized RuptureSurface getSurfaceForRupupture(int rupIndex, double gridSpacing) {
+		if (prevGridSpacing != gridSpacing) {
 			rupSurfaceCache.clear();
 			prevGridSpacing = gridSpacing;
-			prevQuadSurface = quadRupSurface;
 		}
 		RuptureSurface surf = rupSurfaceCache.get(rupIndex);
 		if (surf != null)
 			return surf;
 		List<RuptureSurface> rupSurfs = Lists.newArrayList();
-		if (quadRupSurface) {
-			for(FaultSectionPrefData fltData: getFaultSectionDataForRupture(rupIndex))
-				rupSurfs.add(fltData.getQuadSurface(true, gridSpacing));
-		} else {
-			for(FaultSectionPrefData fltData: getFaultSectionDataForRupture(rupIndex))
-				rupSurfs.add(fltData.getStirlingGriddedSurface(gridSpacing, false, true));
-		}
+		for (FaultSection fltData : getFaultSectionDataForRupture(rupIndex))
+			rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, true));
 		if (rupSurfs.size() == 1)
 			surf = rupSurfs.get(0);
 		else
@@ -630,14 +624,15 @@ public class FaultSystemRupSet implements Serializable {
 			int numRuptures = getNumRuptures();
 			
 			for(int s=0;s<getNumSections(); s++) {
-				StirlingGriddedSurface surf = getFaultSectionData(s).getStirlingGriddedSurface(gridSpacing, false, true);
+				RuptureSurface surf = getFaultSectionData(s).getFaultSurface(gridSpacing, false, true);
 				if (traceOnly) {
-					FaultTrace trace = surf.getRowAsTrace(0);
+					FaultTrace trace = surf.getEvenlyDiscritizedUpperEdge();
 					numPtsInSection[s] = trace.size();
 					fractSectsInside[s] = RegionUtils.getFractionInside(region, trace);
 				} else {
-					numPtsInSection[s] = surf.getNumCols()*surf.getNumRows();
-					fractSectsInside[s] = RegionUtils.getFractionInside(region, surf.getEvenlyDiscritizedListOfLocsOnSurface());
+					LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+					numPtsInSection[s] = surfLocs.size();
+					fractSectsInside[s] = RegionUtils.getFractionInside(region, surfLocs);
 				}
 			}
 			

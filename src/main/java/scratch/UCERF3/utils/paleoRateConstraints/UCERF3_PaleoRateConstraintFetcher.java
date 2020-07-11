@@ -20,7 +20,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
@@ -41,7 +41,7 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	protected final static boolean D = false;  // for debugging
 	
 	public static ArrayList<PaleoRateConstraint> getConstraints(
-			List<FaultSectionPrefData> faultSectionData) throws IOException {
+			List<? extends FaultSection> faultSectionData) throws IOException {
 		return getConstraints(faultSectionData, -1);
 	}
 	
@@ -53,7 +53,7 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	 * @throws IOException
 	 */
 	private static ArrayList<PaleoRateConstraint> getConstraints(
-			List<FaultSectionPrefData> faultSectionData, int mappingCol) throws IOException {
+			List<? extends FaultSection> faultSectionData, int mappingCol) throws IOException {
 		
 		ArrayList<PaleoRateConstraint> paleoRateConstraints   = new ArrayList<PaleoRateConstraint>();
 		if(D) System.out.println("Reading Paleo Seg Rate Data from "+PALEO_DATA_FILE_NAME);
@@ -125,7 +125,7 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			boolean safOffshoreHack = siteName.equals("N. San Andreas -Offshore Noyo");
 			
 			for(int sectionIndex=0; sectionIndex<faultSectionData.size(); ++sectionIndex) {
-				FaultSectionPrefData data = faultSectionData.get(sectionIndex);
+				FaultSection data = faultSectionData.get(sectionIndex);
 				// TODO this is a hack for blind thrust faults
 				if (blindThrustHack && !data.getSectionName().contains(siteName))
 					continue;
@@ -274,11 +274,11 @@ public class UCERF3_PaleoRateConstraintFetcher {
 //		System.exit(0);
 		
 		FaultModels fm = FaultModels.FM3_1;
-		List<FaultSectionPrefData> datas = new DeformationModelFetcher(
+		List<? extends FaultSection> datas = new DeformationModelFetcher(
 				fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
 				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
 		HashSet<Integer> parentIDs = new HashSet<>();
-		for (FaultSectionPrefData data : datas)
+		for (FaultSection data : datas)
 			parentIDs.add(data.getParentSectionId());
 		ArrayList<PaleoRateConstraint> constrs = UCERF3_PaleoRateConstraintFetcher.getConstraints(datas);
 		System.out.println("Loaded "+constrs.size()+" constraints");

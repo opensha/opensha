@@ -78,6 +78,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -1136,10 +1137,10 @@ public class ETAS_MultiSimAnalysisTools {
 		for (int i = 0; i < minMags.length; i++)
 			triggerRatesList.add(new double[rupSet.getNumSections()]);
 		List<Map<Integer, Double>> parentParticRatesList = Lists.newArrayList();
-		List<FaultSectionPrefData> sects = rupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sects = rupSet.getFaultSectionDataList();
 		for (int i = 0; i < minMags.length; i++) {
 			HashMap<Integer, Double> parentMap = new HashMap<>();
-			for (FaultSectionPrefData sect : sects)
+			for (FaultSection sect : sects)
 				if (!parentMap.containsKey(sect.getParentSectionId()))
 					parentMap.put(sect.getParentSectionId(), 0d);
 			parentParticRatesList.add(parentMap);
@@ -1246,8 +1247,8 @@ public class ETAS_MultiSimAnalysisTools {
 						List<Location> surfLocs = locsForSectsMap.get(sectIndex);
 						if (surfLocs == null) {
 							// first time we have encountered this section
-							FaultSectionPrefData sect = rupSet.getFaultSectionData(sectIndex);
-							surfLocs = sect.getStirlingGriddedSurface(1d, false, true).getEvenlyDiscritizedPerimeter();
+							FaultSection sect = rupSet.getFaultSectionData(sectIndex);
+							surfLocs = sect.getFaultSurface(1d, false, true).getEvenlyDiscritizedPerimeter();
 							locsForSectsMap.put(sectIndex, surfLocs);
 						}
 
@@ -1281,7 +1282,7 @@ public class ETAS_MultiSimAnalysisTools {
 			for (int i = 0; i < minMags.length; i++) {
 				refParticRatesList.add(new double[rupSet.getNumSections()]);
 				HashMap<Integer, Double> parentMap = new HashMap<>();
-				for (FaultSectionPrefData sect : sects)
+				for (FaultSection sect : sects)
 					if (!parentMap.containsKey(sect.getParentSectionId()))
 						parentMap.put(sect.getParentSectionId(), 0d);
 				refParentParticRatesList.add(parentMap);
@@ -1299,7 +1300,7 @@ public class ETAS_MultiSimAnalysisTools {
 				List<Integer> parentIDs = refRupSet.getParentSectionsForRup(r);
 				for (int i=0; i<minMags.length; i++) {
 					if (mag >= minMags[i]) {
-						for (FaultSectionPrefData sect : refRupSet.getFaultSectionDataForRupture(r)) {
+						for (FaultSection sect : refRupSet.getFaultSectionDataForRupture(r)) {
 							int sectIndex = sect.getSectionId();
 							refParticRatesList.get(i)[sectIndex] += rate;
 						}
@@ -1375,7 +1376,7 @@ public class ETAS_MultiSimAnalysisTools {
 		triggerCSV.addLine(triggerHeader);
 		
 		Map<String, Integer> parentNamesToIDs = new HashMap<>();
-		for (FaultSectionPrefData sect : sects)
+		for (FaultSection sect : sects)
 			parentNamesToIDs.put(sect.getParentSectionName(), sect.getParentSectionId());
 		List<String> parentNames = new ArrayList<>();
 		parentNames.addAll(parentNamesToIDs.keySet());
@@ -2051,7 +2052,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		// filter out results outside of RELM region
 		List<Integer> sectsToInclude = Lists.newArrayList();
-		for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 			for (Location loc : sect.getFaultTrace()) {
 				if (!regionFilter || region.contains(loc)) {
 					sectsToInclude.add(sect.getSectionId());
@@ -2219,7 +2220,7 @@ public class ETAS_MultiSimAnalysisTools {
 				// if(i>=1268 && i<=1282) // filter out Mendocino off shore
 				// subsect
 				// continue;
-				FaultSectionPrefData sect = rupSet.getFaultSectionData(sectsToInclude.get(i));
+				FaultSection sect = rupSet.getFaultSectionData(sectsToInclude.get(i));
 				String sectName = sect.getSectionName().replace(",", "_");
 				List<String> line = Lists.newArrayList(i + "", sectName, catalogVals[i] + "", subSectVals[i] + "",
 						ratio[i] + "", diff[i] + "", fractTriggeredForSection[i] + "");
@@ -2272,7 +2273,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		// filter out results outside of RELM region
 		List<Integer> sectsToInclude = Lists.newArrayList();
-		for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 			for (Location loc : sect.getFaultTrace()) {
 				if (!regionFilter || region.contains(loc)) {
 					sectsToInclude.add(sect.getSectionId());
@@ -2500,7 +2501,7 @@ public class ETAS_MultiSimAnalysisTools {
 				// if(i>=1268 && i<=1282) // filter out Mendocino off shore
 				// subsect
 				// continue;
-				FaultSectionPrefData sect = rupSet.getFaultSectionData(sectsToInclude.get(i));
+				FaultSection sect = rupSet.getFaultSectionData(sectsToInclude.get(i));
 				String sectName = sect.getSectionName().replace(",", "_");
 				List<String> line = Lists.newArrayList(i + "", sectName, catalogVals[i] + "", subSectExpVals[i] + "",
 						ratio[i] + "", diff[i] + "", fractTriggeredForSection[i] + "", catalogValsStdom[i] + "",
@@ -3478,7 +3479,7 @@ public class ETAS_MultiSimAnalysisTools {
 				// set supraMFD based on nucleation spread over rup surface
 				if (rup.getFSSIndex() >= 0 && ruptures.contains(rup.getFSSIndex())) {
 					List<Integer> sectionList = rupSet.getSectionsIndicesForRup(rup.getFSSIndex());
-					FaultSectionPrefData sectData = rupSet.getFaultSectionData(sectIndex);
+					FaultSection sectData = rupSet.getFaultSectionData(sectIndex);
 					double sectArea = sectData.getTraceLength() * sectData.getReducedDownDipWidth();
 					double rupArea = 0;
 					for (int sectID : sectionList) {
@@ -3702,7 +3703,7 @@ public class ETAS_MultiSimAnalysisTools {
 				// FaultSectionPrefData last = sectData.get(sectData.size()-1);
 				// Location start = first.getFaultTrace().first();
 				// Location end = last.getFaultTrace().last();
-				RuptureSurface surf = rupSet.getSurfaceForRupupture(rup.getFSSIndex(), 1d, false);
+				RuptureSurface surf = rupSet.getSurfaceForRupupture(rup.getFSSIndex(), 1d);
 				Location hypo = rup.getHypocenterLocation();
 				// Location start = surf.getFirstLocOnUpperEdge();
 				// Location end = surf.getLastLocOnUpperEdge();
@@ -3859,10 +3860,10 @@ public class ETAS_MultiSimAnalysisTools {
 			sects = new HashSet<Integer>();
 			List<Location> scenarioLocs = Lists.newArrayList();
 			if (scenario.getFSS_Index() >= 0)
-				scenarioLocs.addAll(rupSet.getSurfaceForRupupture(scenario.getFSS_Index(), 1d, false).getUpperEdge());
+				scenarioLocs.addAll(rupSet.getSurfaceForRupupture(scenario.getFSS_Index(), 1d).getUpperEdge());
 			else
 				scenarioLocs.add(scenario.getLocation());
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				for (Location loc : sect.getFaultTrace()) {
 					for (Location scenarioLoc : scenarioLocs) {
 						if (LocationUtils.horzDistanceFast(scenarioLoc, loc) < minDist) {
@@ -3886,7 +3887,7 @@ public class ETAS_MultiSimAnalysisTools {
 				for (int sect : sects)
 					sectNamesMap.put(sect, rupSet.getFaultSectionData(sect).getName());
 			} else {
-				for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList())
+				for (FaultSection sect : rupSet.getFaultSectionDataList())
 					if (sects.contains(sect.getParentSectionId()))
 						sectNamesMap.put(sect.getParentSectionId(), sect.getParentSectionName());
 			}
@@ -5426,7 +5427,7 @@ public class ETAS_MultiSimAnalysisTools {
 			else if (scenario.getLocation() != null)
 				surf = new PointSurface(scenario.getLocation());
 			else
-				surf = fss.getRupSet().getSurfaceForRupupture(scenario.getFSS_Index(), 1d, false);
+				surf = fss.getRupSet().getSurfaceForRupupture(scenario.getFSS_Index(), 1d);
 
 			File parentDir = resultsFile.getParentFile();
 

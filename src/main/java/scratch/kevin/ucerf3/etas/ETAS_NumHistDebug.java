@@ -24,6 +24,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -142,7 +143,7 @@ public class ETAS_NumHistDebug extends ETAS_AbstractPlot {
 		if (garlockRups == null) {
 			garlockRups = new HashSet<>();
 			FaultSystemRupSet rupSet = fss.getRupSet();
-			for (FaultSectionPrefData sect : rupSet.getFaultSectionDataList()) {
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				if (sect.getName().startsWith("Garlock"))
 					garlockRups.addAll(rupSet.getRupturesForSection(sect.getSectionId()));
 			}

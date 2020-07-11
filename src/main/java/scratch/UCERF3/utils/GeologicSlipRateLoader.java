@@ -21,6 +21,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 
@@ -125,7 +126,7 @@ public class GeologicSlipRateLoader {
 		ArrayList<GeologicSlipRate> rates = loadExcelFile(UCERF3_DataUtils.locateResourceAsStream("DeformationModels",
 				"geologic_slip_rate_sites_2012_07_11.xls"));
 		
-		Map<Integer, FaultSectionPrefData> sects = fm.fetchFaultSectionsMap();
+		Map<Integer, FaultSection> sects = fm.fetchFaultSectionsMap();
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
 		
@@ -135,7 +136,7 @@ public class GeologicSlipRateLoader {
 		for (GeologicSlipRate r : rates) {
 			Location loc = r.getLocation();
 			
-			FaultSectionPrefData sect = sects.get(r.getSectID());
+			FaultSection sect = sects.get(r.getSectID());
 			
 			if (sect == null) {
 				System.out.println("No section ID found with ID: "+r.getSectID());

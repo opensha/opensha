@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import java.awt.geom.Area;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +18,7 @@ import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -59,7 +61,7 @@ class SectionPolygons {
 	// parent reference maps
 	private Map<Integer, String> parentNameMap;
 	private Map<Integer, Area> parentAreaMap;
-	private Map<Integer, List<FaultSectionPrefData>> parentSubSectionMap;
+	private Map<Integer, List<FaultSection>> parentSubSectionMap;
 	
 	private SectionPolygons() {};
 	
@@ -72,7 +74,7 @@ class SectionPolygons {
 	 * creating polygons for faults where non existed (e.g. seismicity trends,
 	 * stepovers/connectors).
 	 */
-	static SectionPolygons create(List<FaultSectionPrefData> srcList, Double buf, Double len) {
+	static SectionPolygons create(List<? extends FaultSection> srcList, Double buf, Double len) {
 		SectionPolygons fp = new SectionPolygons();
 		fp.parentAreaMap = Maps.newHashMap();
 		fp.parentSubSectionMap = Maps.newHashMap();
@@ -92,15 +94,15 @@ class SectionPolygons {
 	}
 	
 	private static void initFSRS(SectionPolygons fp,
-			List<FaultSectionPrefData> sects) {
-		for (FaultSectionPrefData sect : sects) {
+			List<? extends FaultSection> sects) {
+		for (FaultSection sect : sects) {
 			int pID = sect.getParentSectionId();
 			if (!fp.parentAreaMap.containsKey(pID)) {
 				Region r = sect.getZonePolygon();
 				Area a = (r != null) ? r.getShape() : null;
 				fp.parentAreaMap.put(pID, a);
 			}
-			List<FaultSectionPrefData> fSects = fp.parentSubSectionMap.get(pID);
+			List<FaultSection> fSects = fp.parentSubSectionMap.get(pID);
 			if (fSects == null) {
 				fSects = Lists.newArrayList();
 				fp.parentSubSectionMap.put(pID, fSects);
@@ -113,13 +115,13 @@ class SectionPolygons {
 	}
 	
 	private static void initFM(SectionPolygons fp,
-			List<FaultSectionPrefData> faults, double len) {
-		for (FaultSectionPrefData fault : faults) {
+			List<? extends FaultSection> faults, double len) {
+		for (FaultSection fault : faults) {
 			int id = fault.getSectionId();
 			Region r = fault.getZonePolygon(); // may be null
 			Area a = (r != null) ? r.getShape() : null;
 			fp.parentAreaMap.put(id, a);
-			fp.parentSubSectionMap.put(id, fault.getSubSectionsList(len));
+			fp.parentSubSectionMap.put(id, new ArrayList<>(fault.getSubSectionsList(len)));
 			fp.parentNameMap.put(id, fault.getName());
 		}
 	}
@@ -153,9 +155,9 @@ class SectionPolygons {
 	 */
 	private void applyBuffer(double buf) {
 		for (Integer pID : parentSubSectionMap.keySet()) {
-			List<FaultSectionPrefData> sects = parentSubSectionMap.get(pID);
+			List<FaultSection> sects = parentSubSectionMap.get(pID);
 			LocationList trace = new LocationList();
-			for (FaultSectionPrefData sect : sects) {
+			for (FaultSection sect : sects) {
 				trace.addAll(sect.getFaultTrace());
 			}
 			trace = removeDupes(trace);
@@ -250,8 +252,8 @@ class SectionPolygons {
 	
 	/* Populate subsections with null parent poly */
 	private void initNullPolys(int pID) {
-		List<FaultSectionPrefData> subSecs = parentSubSectionMap.get(pID);
-		for (FaultSectionPrefData sec : subSecs) {
+		List<FaultSection> subSecs = parentSubSectionMap.get(pID);
+		for (FaultSection sec : subSecs) {
 			int id = sec.getSectionId();
 			polyMap.put(id, null);
 		}
@@ -266,9 +268,9 @@ class SectionPolygons {
 	private void initPolys(int pID) {
 		// loop subsections creating polys and modding parent poly
 		Area fPoly = parentAreaMap.get(pID); // parent poly
-		List<FaultSectionPrefData> subSecs = parentSubSectionMap.get(pID);
+		List<FaultSection> subSecs = parentSubSectionMap.get(pID);
 		for (int i=0; i<subSecs.size(); i++) {
-			FaultSectionPrefData ss1 = subSecs.get(i);
+			FaultSection ss1 = subSecs.get(i);
 			int id = ss1.getSectionId();
 			
 			// if only 1 segment
@@ -307,7 +309,7 @@ class SectionPolygons {
 				break;
 			}
 			
-			FaultSectionPrefData ss2 = subSecs.get(i + 1);
+			FaultSection ss2 = subSecs.get(i + 1);
 			LocationList envelope = createSubSecEnvelope(ss1, ss2);
 			
 			// intersect with copy of parent
@@ -383,7 +385,7 @@ class SectionPolygons {
 	 * bisector if the two supplied subsections.
 	 */
 	private static LocationList createSubSecEnvelope(
-			FaultSectionPrefData sec1, FaultSectionPrefData sec2) {
+			FaultSection sec1, FaultSection sec2) {
 
 		FaultTrace t1 = sec1.getFaultTrace();
 		FaultTrace t2 = sec2.getFaultTrace();
@@ -616,10 +618,10 @@ class SectionPolygons {
 	 */
 	private void mergeDownDip() {
 		for (Integer pID : parentSubSectionMap.keySet()) {
-			List<FaultSectionPrefData> subSecs = parentSubSectionMap.get(pID);
+			List<FaultSection> subSecs = parentSubSectionMap.get(pID);
 			int numSubSecs = subSecs.size();
 			for (int i=0; i<numSubSecs; i++) {
-				FaultSectionPrefData subSec = subSecs.get(i);
+				FaultSection subSec = subSecs.get(i);
 				int id = subSec.getSectionId();
 				Area zone = polyMap.get(id);
 				Area dd = createDownDipPoly(subSec);
@@ -645,8 +647,8 @@ class SectionPolygons {
 	}
 	
 	/* Creates the down dip polygon from the border of a fault surface */
-	private static Area createDownDipPoly(FaultSectionPrefData f) {
-		RuptureSurface surf = f.getStirlingGriddedSurface(1, false, false);
+	private static Area createDownDipPoly(FaultSection f) {
+		RuptureSurface surf = f.getFaultSurface(1, false, false);
 		LocationList perimeter = surf.getPerimeter();
 		return new Area(perimeter.toPath());
 	}

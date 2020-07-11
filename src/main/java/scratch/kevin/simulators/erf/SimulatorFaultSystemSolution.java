@@ -18,8 +18,8 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.simulators.SimulatorEvent;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.SimulatorElement;
 import org.opensha.sha.simulators.iden.ElementMagRangeDescription;
@@ -119,7 +119,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 	
 	static FaultSystemRupSet buildRupSet(List<SimulatorElement> elements, List<? extends SimulatorEvent> events,
 			double durationYears, SubSectionBiulder subSectBuilder) {
-		List<FaultSectionPrefData> fsd = subSectBuilder.getSubSectsList();
+		List<? extends FaultSection> fsd = subSectBuilder.getSubSectsList();
 		Map<Integer, Integer> elemIDsMap = subSectBuilder.getElemIDToSubSectsMap();
 		System.out.println("DONE.");
 		
@@ -130,10 +130,10 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		double[] rupLengths = new double[events.size()];
 		List<List<Integer>> sectionForRups = Lists.newArrayList();
 		
-		Comparator<FaultSectionPrefData> fsdIndexSorter = new Comparator<FaultSectionPrefData>() {
+		Comparator<FaultSection> fsdIndexSorter = new Comparator<FaultSection>() {
 
 			@Override
-			public int compare(FaultSectionPrefData o1, FaultSectionPrefData o2) {
+			public int compare(FaultSection o1, FaultSection o2) {
 				return new Integer(o1.getSectionId()).compareTo(new Integer(o2.getSectionId()));
 			}
 		};
@@ -170,10 +170,10 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			rupLengths[i] = e.getLength();
 			
 			// build rupture sections list
-			List<List<FaultSectionPrefData>> subSectsForFaults = Lists.newArrayList();
+			List<List<FaultSection>> subSectsForFaults = Lists.newArrayList();
 			for (EventRecord rec : e) {
-				List<FaultSectionPrefData> subSectsForFault = Lists.newArrayList();
-				HashSet<FaultSectionPrefData> subSectsForFaultSet = new HashSet<FaultSectionPrefData>();
+				List<FaultSection> subSectsForFault = Lists.newArrayList();
+				HashSet<FaultSection> subSectsForFaultSet = new HashSet<>();
 				for (int elemID : rec.getElementIDs()) {
 					Preconditions.checkState(elemIDsMap.get(elemID) != null,
 							"No mapping for "+elemID+"...map size: "+elemIDsMap.size());
@@ -192,8 +192,8 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			
 			List<Double> rakes = Lists.newArrayList();
 			List<Integer> rupSectIndexes = Lists.newArrayList();
-			for (List<FaultSectionPrefData> faultList : subSectsForFaults) {
-				for (FaultSectionPrefData subSect : faultList) {
+			for (List<FaultSection> faultList : subSectsForFaults) {
+				for (FaultSection subSect : faultList) {
 					rupSectIndexes.add(subSect.getSectionId());
 					rakes.add(subSect.getAveRake());
 				}
@@ -213,7 +213,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		double[] sectAreas = new double[fsd.size()];
 		
 		for (int s=0; s<fsd.size(); s++) {
-			FaultSectionPrefData sect = fsd.get(s);
+			FaultSection sect = fsd.get(s);
 			sectSlipRates[s] = sect.getReducedAveSlipRate();
 			sectAreas[s] = sect.getReducedDownDipWidth()*sect.getTraceLength()*1e6; // in meters
 		}
@@ -237,7 +237,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		return rates;
 	}
 	
-	private static double calcDistance(List<FaultSectionPrefData> fsd, IDPairing pairing, Map<IDPairing, Double> distsCache) {
+	private static double calcDistance(List<? extends FaultSection> fsd, IDPairing pairing, Map<IDPairing, Double> distsCache) {
 		Double cachedDist = distsCache.get(pairing);
 		if (cachedDist != null)
 			return cachedDist;
@@ -254,17 +254,17 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		return minDist;
 	}
 	
-	public static List<List<FaultSectionPrefData>> sortRupture(
-			List<FaultSectionPrefData> fsd,
-			List<List<FaultSectionPrefData>> subSectsForFaults,
+	public static List<List<FaultSection>> sortRupture(
+			List<? extends FaultSection> fsd,
+			List<List<FaultSection>> subSectsForFaults,
 			Map<IDPairing, Double> distsCache) {
 		return sortRupture(fsd, subSectsForFaults, distsCache, null);
 	}
 	
-	public static List<List<FaultSectionPrefData>> sortRupture(
-			List<FaultSectionPrefData> fsd,
-			List<List<FaultSectionPrefData>> subSectsForFaults,
-			Map<IDPairing, Double> distsCache, Collection<FaultSectionPrefData> reversedSections) {
+	public static List<List<FaultSection>> sortRupture(
+			List<? extends FaultSection> fsd,
+			List<List<FaultSection>> subSectsForFaults,
+			Map<IDPairing, Double> distsCache, Collection<FaultSection> reversedSections) {
 		// select the most isolated endpoint as the starting point
 		double isolatedMaxDist = 0;
 		int isolatedFaultIndex = -1;
@@ -273,7 +273,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		// make sure that each list is actually a different fault
 		HashSet<Integer> parents = new HashSet<Integer>();
 		for (int i=0; i<subSectsForFaults.size(); i++) {
-			List<FaultSectionPrefData> subSects = subSectsForFaults.get(i);
+			List<FaultSection> subSects = subSectsForFaults.get(i);
 			int parent = subSects.get(0).getParentSectionId();
 			for (int j=1; j<subSects.size(); j++)
 				Preconditions.checkState(parent == subSects.get(j).getParentSectionId());
@@ -282,7 +282,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		}
 		
 		for (int j=0; j<subSectsForFaults.size(); j++) {
-			List<FaultSectionPrefData> subSects1 = subSectsForFaults.get(j);
+			List<FaultSection> subSects1 = subSectsForFaults.get(j);
 			int startID1 = subSects1.get(0).getSectionId();
 			int endID1 = subSects1.get(subSects1.size()-1).getSectionId();
 			
@@ -291,7 +291,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			for (int k=0; k<subSectsForFaults.size(); k++) {
 				if (j == k)
 					continue;
-				List<FaultSectionPrefData> subSects2 = subSectsForFaults.get(k);
+				List<FaultSection> subSects2 = subSectsForFaults.get(k);
 				int startID2 = subSects2.get(0).getSectionId();
 				int endID2 = subSects2.get(subSects2.size()-1).getSectionId();
 				
@@ -354,9 +354,9 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			isolatedFaultStart = true;
 		}
 		
-		List<List<FaultSectionPrefData>> sortedFaults = Lists.newArrayList();
+		List<List<FaultSection>> sortedFaults = Lists.newArrayList();
 		// add the first fault
-		List<FaultSectionPrefData> curFault = subSectsForFaults.remove(isolatedFaultIndex);
+		List<FaultSection> curFault = subSectsForFaults.remove(isolatedFaultIndex);
 		if (!isolatedFaultStart) {
 			// this means we're starting on the end of this one, reverse it
 			Collections.reverse(curFault);
@@ -373,7 +373,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			boolean closestAtStart = false;
 			
 			for (int i=0; i<subSectsForFaults.size(); i++) {
-				List<FaultSectionPrefData> faultSects = subSectsForFaults.get(i);
+				List<FaultSection> faultSects = subSectsForFaults.get(i);
 				double startDist = calcDistance(fsd, new IDPairing(curEndID,
 						faultSects.get(0).getSectionId()), distsCache);
 				double endDist = calcDistance(fsd, new IDPairing(curEndID,

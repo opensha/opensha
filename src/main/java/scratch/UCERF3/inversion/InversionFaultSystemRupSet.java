@@ -23,6 +23,7 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -92,6 +93,8 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 	private double mMaxOffFault;
 	private boolean applyImpliedCouplingCoeff;
 	private SpatialSeisPDF spatialSeisPDF;
+	
+	private List<? extends FaultSection> faultSectionData;
 
 	private LogicTreeBranch logicTreeBranch;
 
@@ -139,7 +142,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 	 * @param faultSectionData
 	 */
 	public InversionFaultSystemRupSet(LogicTreeBranch branch, SectionClusterList sectionClusterList,
-			List<FaultSectionPrefData> faultSectionData) {
+			List<? extends FaultSection> faultSectionData) {
 
 		Preconditions.checkNotNull(branch, "LogicTreeBranch cannot be null!");
 		Preconditions.checkArgument(branch.isFullySpecified(), "LogicTreeBranch must be fully specified.");
@@ -147,6 +150,8 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 		if (faultSectionData == null)
 			// default to using the fault section data from the clusters
 			faultSectionData = sectionClusterList.getFaultSectionData();
+		
+		this.faultSectionData = faultSectionData;
 
 		this.logicTreeBranch = branch;
 		setParamsFromBranch(branch);
@@ -211,7 +216,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 		// can be null
 		this.clusterSects = clusterSects;
 	}
-	
+
 	private void setParamsFromBranch(LogicTreeBranch branch) {
 		if (branch.hasNonNullValue(FaultModels.class))
 			this.faultModel = branch.getValue(FaultModels.class);
@@ -264,7 +269,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 	/**
 	 * This computes mag and various other attributes of the ruptures
 	 */
-	private void calcRuptureAttributes(List<FaultSectionPrefData> faultSectionData, SectionClusterList sectionClusterList) {
+	private void calcRuptureAttributes(List<? extends FaultSection> faultSectionData, SectionClusterList sectionClusterList) {
 
 		String infoString = "FaultSystemRupSet Parameter Settings:\n\n";
 		infoString += "\tfaultModel = " +faultModel+ "\n";
@@ -281,7 +286,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 		double[] sectAreasReduced = new double[numSections];
 		double[] sectAreasOrig = new double[numSections];
 		for (int sectIndex=0; sectIndex<numSections; sectIndex++) {
-			FaultSectionPrefData sectData = faultSectionData.get(sectIndex);
+			FaultSection sectData = faultSectionData.get(sectIndex);
 			// aseismicity reduces area; km --> m on length & DDW
 			sectAreasReduced[sectIndex] = sectData.getTraceLength()*1e3*sectData.getReducedDownDipWidth()*1e3;
 			// km --> m on length & DDW
@@ -519,7 +524,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 			double area = getAreaForRup(rthRup);
 			double length = getLengthForRup(rthRup);
 			double totOrigArea = 0d;
-			for (FaultSectionPrefData sect : getFaultSectionDataForRupture(rthRup))
+			for (FaultSection sect : getFaultSectionDataForRupture(rthRup))
 				totOrigArea += sect.getTraceLength()*1e3*sect.getOrigDownDipWidth()*1e3;
 			double origDDW = totOrigArea/length;
 			aveSlip = scalingRelationship.getAveSlip(area, length, origDDW);

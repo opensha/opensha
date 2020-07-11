@@ -15,6 +15,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.dao.db.FaultSectionVer2_DB_DAO;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.refFaultParamDb.vo.FaultSectionSummary;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -65,10 +66,10 @@ public class UCERF2_A_FaultMapper {
 		List<String> segLines = FileUtils.readLines(segFile);
 		
 		for (FaultModels fm : FaultModels.values()) {
-			Map<Integer, FaultSectionPrefData> sects = fm.fetchFaultSectionsMap();
+			Map<Integer, FaultSection> sects = fm.fetchFaultSectionsMap();
 			
 			Map<String, Integer> sectsByName = Maps.newHashMap();
-			for (FaultSectionPrefData sect : sects.values())
+			for (FaultSection sect : sects.values())
 				sectsByName.put(sect.getSectionName().trim(), sect.getSectionId());
 			
 			for (String line : segLines) {
@@ -164,7 +165,7 @@ public class UCERF2_A_FaultMapper {
 		
 		DeformationModelFetcher fetcher = new DeformationModelFetcher(FaultModels.FM2_1, DeformationModels.UCERF2_ALL, null, 0.0);
 				
-		for (FaultSectionPrefData sect : fetcher.getParentSectionList()) {
+		for (FaultSection sect : fetcher.getParentSectionList()) {
 //			if (wasUCERF2_TypeAFault(sect.getSectionId()))
 //				System.out.println("A Fault: "+sect.getSectionId()+". "+sect.getSectionName());
 			System.out.println(sect.getSectionId()+"\t"+sect.getSectionName()+"\t"+wasUCERF2_TypeAFault(sect.getSectionId()));

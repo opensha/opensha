@@ -58,6 +58,8 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 
 import com.google.common.base.Preconditions;
@@ -107,7 +109,7 @@ public class ComcatReportPageGen {
 	
 	private EventWebService service;
 	
-	private Collection<FaultSectionPrefData> faults;
+	private Collection<FaultSection> faults;
 	
 	private ETAS_Config etasRun;
 	private File etasOutputDir;
@@ -689,8 +691,8 @@ public class ComcatReportPageGen {
 		Map<String, Double> faultDists = new HashMap<>();
 //		List<String> names 
 //		ComparablePairing.getso
-		for (FaultSectionPrefData fault : getU3Faults()) {
-			StirlingGriddedSurface surf = fault.getStirlingGriddedSurface(1d);
+		for (FaultSection fault : getU3Faults()) {
+			RuptureSurface surf = fault.getFaultSurface(1d);
 			double minDist = Double.POSITIVE_INFINITY;
 			for (Location loc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
 				double dist = LocationUtils.linearDistanceFast(loc, hypo);
@@ -823,9 +825,9 @@ public class ComcatReportPageGen {
 		}
 	}
 	
-	private synchronized Collection<FaultSectionPrefData> getU3Faults() {
+	private synchronized Collection<FaultSection> getU3Faults() {
 		if (faults == null) {
-			Map<Integer, FaultSectionPrefData> map = FaultModels.FM3_1.fetchFaultSectionsMap();
+			Map<Integer, FaultSection> map = FaultModels.FM3_1.fetchFaultSectionsMap();
 			map = new HashMap<>(map);
 			map.putAll(FaultModels.FM3_2.fetchFaultSectionsMap());
 			faults = map.values();
@@ -867,7 +869,7 @@ public class ComcatReportPageGen {
 		// add ucerf3 faults
 		PlotCurveCharacterstics faultChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY);
 		boolean firstFault = true;
-		for (FaultSectionPrefData fault : getU3Faults()) {
+		for (FaultSection fault : getU3Faults()) {
 			DefaultXY_DataSet xy = new DefaultXY_DataSet();
 			for (Location loc : fault.getFaultTrace())
 				xy.set(loc.getLongitude(), loc.getLatitude());

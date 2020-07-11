@@ -12,6 +12,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RupInRegionCache;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -84,8 +85,8 @@ public class FSSRupsInRegionCache implements RupInRegionCache {
 				FaultSystemRupSet rupSet = sol.getRupSet();
 				boolean[] sects = new boolean[rupSet.getNumSections()];
 				for (int i=0; i<sects.length; i++) {
-					FaultSectionPrefData sect = rupSet.getFaultSectionData(i);
-					StirlingGriddedSurface surf = sect.getStirlingGriddedSurface(surfGridSpacing, false, true);
+					FaultSection sect = rupSet.getFaultSectionData(i);
+					RuptureSurface surf = sect.getFaultSurface(surfGridSpacing, false, true);
 					boolean inside = false;
 					for (Location loc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
 						if (region.contains(loc)) {

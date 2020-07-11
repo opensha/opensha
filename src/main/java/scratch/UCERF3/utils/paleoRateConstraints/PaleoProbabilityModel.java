@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.Maps;
 
@@ -22,11 +23,11 @@ public abstract class PaleoProbabilityModel {
 	
 	public abstract double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex, int sectIndex);
 	
-	public abstract double getProbPaleoVisible(double mag, List<FaultSectionPrefData> rupSections, int sectIndex);
+	public abstract double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex);
 	
 	public abstract double getProbPaleoVisible(double mag, double distAlongRup);
 	
-	double getDistAlongRup(List<FaultSectionPrefData> rupSections, int sectIndex) {
+	double getDistAlongRup(List<FaultSection> rupSections, int sectIndex) {
 		return InversionInputGenerator.getDistanceAlongRupture(
 				rupSections, sectIndex, traceLengthCache);
 	}

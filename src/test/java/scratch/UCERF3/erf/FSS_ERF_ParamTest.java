@@ -42,6 +42,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -123,8 +124,6 @@ public class FSS_ERF_ParamTest {
 				Lists.newArrayList(EnumSet.allOf(IncludeBackgroundOption.class)));
 		paramsOptionsMap.put(BackgroundRupParam.NAME,
 				Lists.newArrayList(EnumSet.allOf(BackgroundRupType.class)));
-		paramsOptionsMap.put(FaultSystemSolutionERF.QUAD_SURFACES_PARAM_NAME,
-				Lists.newArrayList(true, false));
 		paramsOptionsMap.put(ProbabilityModelParam.NAME,
 				Lists.newArrayList(EnumSet.allOf(ProbabilityModelOptions.class)));
 		paramsOptionsMap.put(MagDependentAperiodicityParam.NAME,
@@ -135,23 +134,23 @@ public class FSS_ERF_ParamTest {
 	public static InversionFaultSystemRupSet buildSmallTestRupSet() {
 		LogicTreeBranch branch = LogicTreeBranch.UCERF2;
 		// this list will store our subsections
-		List<FaultSectionPrefData> subSections = Lists.newArrayList();
+		List<FaultSection> subSections = Lists.newArrayList();
 		
 		FaultModels fm = branch.getValue(FaultModels.class);
-		List<FaultSectionPrefData> fsd = fm.fetchFaultSections();
+		List<? extends FaultSection> fsd = fm.fetchFaultSections();
 		double maxSubSectionLength = 0.5;
 		double maxDistance = 5d;
 		
 		// build the subsections
 		int sectIndex = 0;
-		for (FaultSectionPrefData parentSect : fsd) {
+		for (FaultSection parentSect : fsd) {
 			if (parentSect.getSectionId() != 301)
 				// only one fault, Mojave S
 				continue;
 			double ddw = parentSect.getOrigDownDipWidth();
 			double maxSectLength = ddw*maxSubSectionLength;
 			// the "2" here sets a minimum number of sub sections
-			List<FaultSectionPrefData> newSubSects = parentSect.getSubSectionsList(maxSectLength, sectIndex, 2);
+			List<? extends FaultSection> newSubSects = parentSect.getSubSectionsList(maxSectLength, sectIndex, 2);
 			subSections.addAll(newSubSects);
 			sectIndex += newSubSects.size();
 		}
@@ -391,8 +390,6 @@ public class FSS_ERF_ParamTest {
 		paramsMap.put(IncludeBackgroundParam.NAME, erf.getParameter(IncludeBackgroundParam.NAME).getValue());
 		if (erf.getParameter(IncludeBackgroundParam.NAME).getValue() != IncludeBackgroundOption.EXCLUDE)
 			paramsMap.put(BackgroundRupParam.NAME, erf.getParameter(BackgroundRupParam.NAME).getValue());
-		paramsMap.put(FaultSystemSolutionERF.QUAD_SURFACES_PARAM_NAME,
-				erf.getParameter(FaultSystemSolutionERF.QUAD_SURFACES_PARAM_NAME).getValue());
 		
 		return paramsMap;
 	}
@@ -442,16 +439,12 @@ public class FSS_ERF_ParamTest {
 		boolean timeDep = probModel != ProbabilityModelOptions.POISSON;
 		
 		if (paramName.equals(FaultGridSpacingParam.NAME)) {
-			boolean quad = (Boolean) erf.getParameter(
-					FaultSystemSolutionERF.QUAD_SURFACES_PARAM_NAME).getValue();
 			double spacing = (Double)paramVal;
-			assertTrue("Not a quad surface and no grid spacing param!", quad || containsParam);
-			if (quad && !containsParam)
-				return;
+			assertTrue("Nno grid spacing param", containsParam);
 			// first check directly
 			assertEquals(setMessage,
 					spacing, (Double)erf.getParameter(paramName).getValue(), 1e-14);
-			for (int i=0; i<10 && numFaultSources > 0 && !quad; i++) {
+			for (int i=0; i<10 && numFaultSources > 0; i++) {
 				int srcID = rand.nextInt(numFaultSources);
 				ProbEqkSource source = erf.getSource(srcID);
 				double myGridSpacing = source.getRupture(0).getRuptureSurface().getAveGridSpacing();
@@ -585,22 +578,6 @@ public class FSS_ERF_ParamTest {
 					}
 				}
 			}
-		} else if (paramName.equals(FaultSystemSolutionERF.QUAD_SURFACES_PARAM_NAME)) {
-			boolean quad = (Boolean)paramVal;
-			// first check directly
-			assertEquals(setMessage,
-					quad, (Boolean)erf.getParameter(paramName).getValue());
-			for (int i=0; i<10 && numFaultSources > 0; i++) {
-				int srcID = rand.nextInt(numFaultSources);
-				ProbEqkSource source = erf.getSource(srcID);
-				CompoundSurface surf = (CompoundSurface)source.getRupture(0).getRuptureSurface();
-				for (RuptureSurface subSurf : surf.getSurfaceList()) {
-					if (quad)
-						assertTrue(applyMessage, subSurf instanceof QuadSurface);
-					else
-						assertFalse(applyMessage, subSurf instanceof QuadSurface);
-				}
-			}
 		} else if (paramName.equals(ProbabilityModelParam.NAME)) {
 			// first check directly
 			assertEquals(setMessage,
@@ -619,7 +596,7 @@ public class FSS_ERF_ParamTest {
 				if (timeDep) {
 					// if none of the sections have last event data, skip source
 					boolean hasLast = false;
-					for (FaultSectionPrefData sectData : rupSet.getFaultSectionDataForRupture(invRup)) {
+					for (FaultSection sectData : rupSet.getFaultSectionDataForRupture(invRup)) {
 						if (sectData.getDateOfLastEvent() != Long.MIN_VALUE) {
 							hasLast = true;
 							break;
