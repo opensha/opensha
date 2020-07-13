@@ -168,12 +168,8 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		ZipEntry fsdEntry = zip.getEntry(nameRemappings.get("fault_sections.xml"));
 		Document doc = XMLUtils.loadDocument(
 				new BufferedInputStream(zip.getInputStream(fsdEntry)));
-		Element fsEl = doc.getRootElement().element(FaultSystemIO.FAULT_SECTIONS_LIST_XML_METADATA_NAME);
-		if (fsEl == null) {
-			// try old version
-			fsEl = doc.getRootElement().element(FaultSectionPrefData.XML_METADATA_NAME+"List");
-			Preconditions.checkNotNull(fsEl, "Fault sections element not found");
-		}
+		Element fsEl = doc.getRootElement().element(FaultSectionPrefData.XML_METADATA_NAME+"List");
+		Preconditions.checkNotNull(fsEl, "Fault sections element not found");
 		return FaultSystemIO.fsDataFromXML(fsEl);
 	}
 	

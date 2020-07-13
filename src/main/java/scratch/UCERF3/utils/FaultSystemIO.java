@@ -422,78 +422,44 @@ public class FaultSystemIO {
 		return rupSet;
 	}
 	
-	private static Comparator<FaultSection> sectIDComparator = new Comparator<FaultSection>() {
-
-		@Override
-		public int compare(FaultSection o1, FaultSection o2) {
-			return Integer.compare(o1.getSectionId(), o2.getSectionId());
-		}
-	};
-	
 	public static ArrayList<FaultSection> fsDataFromXML(Element el) {
 		ArrayList<FaultSection> list = new ArrayList<>();
 		
-		if (el.getName().equals(FaultSectionPrefData.XML_METADATA_NAME+"List")) {
-			// old style
-			for (int i=0; i<el.elements().size(); i++) {
-				Element subEl = el.element("i"+i);
-				list.add(FaultSectionPrefData.fromXMLMetadata(subEl));
-			}
-		} else {
-			for (Element subEl : el.elements()) {
-				String name = subEl.getName();
-				if (name.startsWith("i")) {
-					// see if it's an i<num> old style
-					String subName = name.substring(1);
-					try {
-						Integer.parseInt(subName);
-						// if we got here, it's an old style FaultSectionPrefData
-						name = FaultSectionPrefData.XML_METADATA_NAME;
-					} catch (Exception e) {
-						// do nothing
-					}
+		for (int i=0; i<el.elements().size(); i++) {
+			Element subEl = el.element("i"+i);
+			
+			Attribute classAt = subEl.attribute("class");
+			FaultSection sect;
+			if (classAt == null || classAt.getValue().equals(FaultSectionPrefData.class.getCanonicalName())) {
+				// default to FaultSectionPrefData
+				sect = FaultSectionPrefData.fromXMLMetadata(subEl);
+			} else {
+				// use reflection
+				String className = classAt.getValue();
+				Object sectObj;
+				try {
+					sectObj = MetadataLoader.loadXMLwithReflection(subEl, className);
+				} catch (ClassNotFoundException e) {
+					throw new IllegalStateException(
+							"Defined fault section class not found, cannot load from XML: "+className, e);
+				} catch (NoSuchMethodException e) {
+					throw new IllegalStateException(
+							"Defined fault section class does not contain static "
+							+ "fromXMLMetadata(Element) method, cannot load from XML: "+className, e);
+				} catch (IllegalArgumentException e) {
+					throw new IllegalStateException(
+							"Defined fault section class does has unexpected method signature for "
+							+ "fromXMLMetadata(Element) method, cannot load from XML: "+className, e);
+				} catch (Exception e) {
+					throw new IllegalStateException(
+							"Other error loading fault section class from XML via reflection: "+className, e);
 				}
-				
-				FaultSection sect;
-				switch (name) {
-				case FaultSectionPrefData.XML_METADATA_NAME:
-					sect = FaultSectionPrefData.fromXMLMetadata(subEl);
-					break;
-
-				default:
-					// try reflection
-					Attribute classAt = subEl.attribute("class");
-					Preconditions.checkState(classAt != null,
-							"Fault Section type '%s' must define class XML attribute for "
-							+ "instantiation from XML", name);
-					String className = classAt.getValue();
-					Object sectObj;
-					try {
-						sectObj = MetadataLoader.loadXMLwithReflection(subEl, className);
-					} catch (ClassNotFoundException e) {
-						throw new IllegalStateException(
-								"Defined fault section class not found, cannot load from XML: "+className, e);
-					} catch (NoSuchMethodException e) {
-						throw new IllegalStateException(
-								"Defined fault section class does not contain static "
-								+ "fromXMLMetadata(Element) method, cannot load from XML: "+className, e);
-					} catch (IllegalArgumentException e) {
-						throw new IllegalStateException(
-								"Defined fault section class does has unexpected method signature for "
-								+ "fromXMLMetadata(Element) method, cannot load from XML: "+className, e);
-					} catch (Exception e) {
-						throw new IllegalStateException(
-								"Other error loading fault section class from XML via reflection: "+className, e);
-					}
-					Preconditions.checkState(sectObj instanceof FaultSection,
-							"Fault section could be instantiated from XML, "
-							+ "but does not implement FaultSection: %s", className);
-					sect = (FaultSection)sectObj;
-					break;
-				}
-				list.add(sect);
+				Preconditions.checkState(sectObj instanceof FaultSection,
+						"Fault section could be instantiated from XML, "
+						+ "but does not implement FaultSection: %s", className);
+				sect = (FaultSection)sectObj;
 			}
-			Collections.sort(list, sectIDComparator);
+			list.add(sect);
 		}
 		
 		return list;
@@ -708,8 +674,6 @@ public class FaultSystemIO {
 		if (D) System.out.println("Done saving!");
 	}
 	
-	public static final String FAULT_SECTIONS_LIST_XML_METADATA_NAME = "FaultSectionsList";
-	
 	public static void writeRupSetFilesForZip(FaultSystemRupSet rupSet, File tempDir,
 			HashSet<String> zipFileNames, Map<String, String> nameRemappings) throws IOException {
 		// first save fault section data as XML
@@ -718,7 +682,7 @@ public class FaultSystemIO {
 		if (!zipFileNames.contains(fsdFile.getName())) {
 			Document doc = XMLUtils.createDocumentWithRoot();
 			Element root = doc.getRootElement();
-			fsDataToXML(root, FAULT_SECTIONS_LIST_XML_METADATA_NAME, rupSet);
+			fsDataToXML(root, FaultSectionPrefData.XML_METADATA_NAME+"List", rupSet);
 			XMLUtils.writeDocumentToFile(fsdFile, doc);
 			zipFileNames.add(fsdFile.getName());
 		}
@@ -900,7 +864,7 @@ public class FaultSystemIO {
 		
 		for (int i=0; i<fsd.size(); i++) {
 			FaultSection data = fsd.get(i);
-			data.toXMLMetadata(el);
+			data.toXMLMetadata(el, "i"+i);
 		}
 	}
 	

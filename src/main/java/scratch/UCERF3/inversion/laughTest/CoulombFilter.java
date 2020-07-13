@@ -55,9 +55,17 @@ public class CoulombFilter extends AbstractLaughTest {
 				IDPairing pair = pairings.get(junctionIndex-1);
 				if (missingAsFail && rates.get(pair) == null)
 					return false;
+//				System.out.println(pair);
+//				FaultSection sect1 = rupture.get(junctionIndex-1);
+//				FaultSection sect2 = rupture.get(junctionIndex);
+//				System.out.println("\t"+sect1.getSectionId()+": "+sect1.getSectionName());
+//				System.out.println("\t"+sect2.getSectionId()+": "+sect2.getSectionName());
+				
 				forwardRates.add(rates.get(pair));
-				Preconditions.checkNotNull(rates.get(pair), "No coulomb for: "+pair);
-				Preconditions.checkNotNull(rates.get(pair.getReversed()), "No coulomb for: "+pair.getReversed());
+				Preconditions.checkNotNull(rates.get(pair),
+						"No coulomb for: %s, have %s pairings in total", pair, rates.size());
+				Preconditions.checkNotNull(rates.get(pair.getReversed()),
+						"No coulomb for: %s, have %s pairings in total", pair.getReversed(), rates.size());
 				backwardRates.add(0, rates.get(pair.getReversed()));
 			}
 		} else {
