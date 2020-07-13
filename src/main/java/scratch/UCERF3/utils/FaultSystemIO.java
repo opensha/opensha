@@ -442,6 +442,17 @@ public class FaultSystemIO {
 		} else {
 			for (Element subEl : el.elements()) {
 				String name = subEl.getName();
+				if (name.startsWith("i")) {
+					// see if it's an i<num> old style
+					String subName = name.substring(1);
+					try {
+						Integer.parseInt(subName);
+						// if we got here, it's an old style FaultSectionPrefData
+						name = FaultSectionPrefData.XML_METADATA_NAME;
+					} catch (Exception e) {
+						// do nothing
+					}
+				}
 				
 				FaultSection sect;
 				switch (name) {
@@ -483,12 +494,6 @@ public class FaultSystemIO {
 				list.add(sect);
 			}
 			Collections.sort(list, sectIDComparator);
-			// check to make sure that it is in order and complete
-			for (int i=0; i<list.size(); i++) {
-				int id = list.get(i).getSectionId();
-				Preconditions.checkState(i == id,
-						"Section ID mismatch. Value at index %s has ID %s (should be equal)", i, id);
-			}
 		}
 		
 		return list;
