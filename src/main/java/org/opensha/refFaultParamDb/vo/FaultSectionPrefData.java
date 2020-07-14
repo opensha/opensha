@@ -10,9 +10,11 @@ import org.dom4j.Attribute;
 import org.dom4j.Element;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.XMLSaveable;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -24,7 +26,7 @@ import org.opensha.sha.faultSurface.SimpleFaultData;
  * 
  *
  */
-public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSaveable, Cloneable {
+public class FaultSectionPrefData implements FaultSection, java.io.Serializable, Cloneable, ShortNamed {
 
 	/**
 	 * 
@@ -72,12 +74,16 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 		return this.shortName;
 	}
 
-	public void setFaultSectionPrefData(FaultSectionPrefData faultSectionPrefData) {
+	public void setFaultSectionPrefData(FaultSection faultSectionPrefData) {
 		sectionId = faultSectionPrefData.getSectionId();
 		sectionName= faultSectionPrefData.getSectionName();
 		parentSectionId = faultSectionPrefData.getParentSectionId();
 		parentSectionName = faultSectionPrefData.getParentSectionName();
-		shortName= faultSectionPrefData.getShortName();
+		if (faultSectionPrefData instanceof ShortNamed) {
+			shortName = ((ShortNamed)faultSectionPrefData).getShortName();
+		} else {
+			shortName = faultSectionPrefData.getName();
+		}
 		aveLongTermSlipRate= faultSectionPrefData.getOrigAveSlipRate();
 		slipRateStdDev=faultSectionPrefData.getOrigSlipRateStdDev();
 		aveDip= faultSectionPrefData.getAveDip();
@@ -222,15 +228,6 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 	public double getOrigAveSlipRate() {
 		return aveLongTermSlipRate;
 	}
-	
-	
-	/**
-	 * This returns the product of the slip rate (mm/yr) times the coupling coefficient
-	 * @return
-	 */
-	public double getReducedAveSlipRate() {
-		return aveLongTermSlipRate*couplingCoeff;
-	}
 
 	
 	/**
@@ -290,16 +287,6 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 	 */
 	public void setAveUpperDepth(double aveUpperDepth) {
 		this.aveUpperDepth = aveUpperDepth;
-	}
-	
-	/**
-	 * This returns the upper seismogenic (km) depth that has been modified
-	 * by the aseismicity factor
-	 * @return
-	 */
-	public double getReducedAveUpperDepth() {
-		double depthToReduce = aseismicSlipFactor*(getAveLowerDepth() - getOrigAveUpperDepth());
-		return getOrigAveUpperDepth() + depthToReduce;
 	}
 	
 	/**
@@ -393,31 +380,6 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 	public void setParentSectionName(String parentSectionName) {
 		this.parentSectionName = parentSectionName;
 	}
-	
-	/**
-	 * this returns the length of the trace in km.
-	 * @return
-	 */
-	public double getTraceLength() {
-		return this.faultTrace.getTraceLength();
-	}
-	
-	/**
-	 * This returns the original down dip width in km (unmodified by the aseismicity factor)
-	 * @return
-	 */
-	public double getOrigDownDipWidth() {
-		return (getAveLowerDepth()-getOrigAveUpperDepth())/Math.sin(getAveDip()*Math.PI/ 180);
-	}
-
-	
-	/**
-	 * This returns the down-dip width (km) reduced by the aseismicity factor
-	 * @return
-	 */
-	public double getReducedDownDipWidth() {
-		return getOrigDownDipWidth()*(1.0-aseismicSlipFactor);
-	}
 
 	/**
 	 * Get a list of all sub sections.  This version makes the subsection names the same as the parent plus " Subsection: #+1" and
@@ -427,19 +389,7 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 	 * @return
 	 */
 	public ArrayList<FaultSectionPrefData> getSubSectionsList(double maxSubSectionLen) {
-		ArrayList<FaultTrace> equalLengthSubsTrace = FaultUtils.getEqualLengthSubsectionTraces(this.faultTrace, maxSubSectionLen);
-		ArrayList<FaultSectionPrefData> subSectionList = new ArrayList<FaultSectionPrefData>();
-		for(int i=0; i<equalLengthSubsTrace.size(); ++i) {
-			FaultSectionPrefData subSection = new FaultSectionPrefData();
-			subSection.setFaultSectionPrefData(this);
-			subSection.setFaultTrace(equalLengthSubsTrace.get(i));
-			subSection.setSectionId(sectionId*1000+i);
-			subSection.setSectionName(sectionName+", Subsection "+(i));
-			subSection.setParentSectionId(sectionId);
-			subSection.setParentSectionName(sectionName);
-			subSectionList.add(subSection);
-		}
-		return subSectionList;
+		return getSubSectionsList(maxSubSectionLen, 1000*sectionId);
 	}
 	
 	/**
@@ -547,7 +497,6 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 		}
 	}
 	
-
 	/**
 	 * This returns a simple fault data object.  This version applies aseismicity as in increase of the
 	 * upper-lower seismogenic depth only (no change to lower seismogenic depth)
@@ -562,8 +511,16 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 		}
 		return new SimpleFaultData(getAveDip(), getAveLowerDepth(), upperDepth, getFaultTrace(), getDipDirection());
 	}
-
 	
+	public StirlingGriddedSurface getFaultSurface(double gridSpacing) {
+		return getStirlingGriddedSurface(gridSpacing, true, true);
+	}
+	
+	public StirlingGriddedSurface getFaultSurface(
+			double gridSpacing, boolean preserveGridSpacingExactly,
+			boolean aseisReducesArea) {
+		return getStirlingGriddedSurface(gridSpacing, preserveGridSpacingExactly, aseisReducesArea);
+	}
 	
 	/**
 	 * This returns a StirlingGriddedSurface with the specified grid spacing, where aseismicSlipFactor
@@ -668,6 +625,8 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 
 			traceEl = loc.toXMLMetadata(traceEl);
 		}
+		
+		el.addAttribute("class", FaultSectionPrefData.class.getCanonicalName());
 
 		return root;
 	}
@@ -753,27 +712,6 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 
 		return data;
 	}
-	
-	
-	/**
-	 * This calculates the moment rate of this fault section
-	 * @param creepReduced - whether or not to apply aseismicity and coupling coefficient
-	 * @return moment rate in SI units (Newton-Meters/year)
-	 */
-	public double calcMomentRate(boolean creepReduced) {
-		double area, slipRate;
-		if(creepReduced) {
-			area = this.getReducedDownDipWidth()*this.getTraceLength()*1e6;
-			slipRate = this.getReducedAveSlipRate();
-		}
-		else {
-			area = this.getOrigDownDipWidth()*this.getTraceLength()*1e6;
-			slipRate = this.getOrigAveSlipRate();
-		}
-			
-		return FaultMomentCalc.getMoment(area, slipRate*1e-3);
-	}
-	
 
 	public FaultSectionPrefData clone() {
 
@@ -782,5 +720,11 @@ public class FaultSectionPrefData  implements Named, java.io.Serializable, XMLSa
 		section.setFaultSectionPrefData(this);
 
 		return section;
+	}
+
+	@Override
+	public double getArea(boolean creepReduced) {
+		double ddw = creepReduced ? getReducedDownDipWidth() : getOrigDownDipWidth();
+		return ddw * getTraceLength() * 1e6;
 	}
 }

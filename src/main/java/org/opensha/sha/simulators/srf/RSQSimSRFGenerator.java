@@ -183,8 +183,13 @@ public class RSQSimSRFGenerator {
 		
 		// build actual funcs
 		int patchID = patch.getID();
-		PlotCurveCharacterstics actualChar = new PlotCurveCharacterstics(
-				PlotLineType.SOLID, 4f, PlotSymbol.FILLED_CIRCLE, 5f, Color.BLACK);
+		PlotCurveCharacterstics actualChar;
+		if (pub)
+			actualChar = new PlotCurveCharacterstics(
+					PlotLineType.DASHED, 3f, PlotSymbol.FILLED_CIRCLE, 5f, Color.GRAY);
+		else
+			actualChar = new PlotCurveCharacterstics(
+					PlotLineType.SOLID, 4f, PlotSymbol.FILLED_CIRCLE, 5f, Color.BLACK);
 		DiscretizedFunc origSlipFunc = func.getSlipFunc(patchID);
 		DiscretizedFunc shiftedSlipFunc = new ArbitrarilyDiscretizedFunc();
 		for (Point2D pt : origSlipFunc)
@@ -274,7 +279,7 @@ public class RSQSimSRFGenerator {
 			SRF_PointData srf = buildSRF(func, patch, dt, mode);
 			Color c;
 			if (pub) {
-				c = Color.GRAY;
+				c = Color.BLACK;
 			} else {
 				switch (mode) {
 				case NONE:

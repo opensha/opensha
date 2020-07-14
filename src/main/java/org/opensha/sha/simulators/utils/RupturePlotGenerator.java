@@ -127,6 +127,7 @@ public class RupturePlotGenerator {
 	public static PlotLineType OTHER_SURF_STROKE = PlotLineType.DASHED;
 	
 	public static Color HYPO_COLOR = new Color(255, 0, 0, 122);
+	public static double HYPO_RADIUS = 0.02;
 	public static Color RECT_HYPO_COLOR = new Color(0, 255, 0, 122);
 	
 	public static Color CA_OUTLINE_COLOR = Color.DARK_GRAY;
@@ -652,7 +653,6 @@ public class RupturePlotGenerator {
 		BasicStroke hypoStroke = new BasicStroke(1f);
 		if (anns == null)
 			anns = new ArrayList<>();
-		double hypoRadius = 0.02;
 		
 		if (func != null) {
 			double firstElemTime = Double.POSITIVE_INFINITY;
@@ -665,13 +665,15 @@ public class RupturePlotGenerator {
 				}
 			}
 			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
-					star(hypoLoc.getLongitude(), hypoLoc.getLatitude(), hypoRadius), hypoStroke, Color.BLACK, HYPO_COLOR);
+					star(hypoLoc.getLongitude(), hypoLoc.getLatitude(), HYPO_RADIUS), hypoStroke, Color.BLACK, HYPO_COLOR);
 			anns.add(rectHypoPoly);
 		} else if (event != null) {
 			double firstElemTime = Double.POSITIVE_INFINITY;
 			Location hypoLoc = null;
 			for (EventRecord rec : event) {
 				double[] times = rec.getElementTimeFirstSlips();
+				if (times == null)
+					break;
 				List<SimulatorElement> elems = rec.getElements();
 				for (int i=0; i<times.length; i++) {
 					if (times[i] < firstElemTime) {
@@ -680,9 +682,11 @@ public class RupturePlotGenerator {
 					}
 				}
 			}
-			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
-					star(hypoLoc.getLongitude(), hypoLoc.getLatitude(), hypoRadius), hypoStroke, Color.BLACK, HYPO_COLOR);
-			anns.add(rectHypoPoly);
+			if (hypoLoc != null) {
+				XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
+						star(hypoLoc.getLongitude(), hypoLoc.getLatitude(), HYPO_RADIUS), hypoStroke, Color.BLACK, HYPO_COLOR);
+				anns.add(rectHypoPoly);
+			}
 		}
 		
 		if (rectangle != null) {
@@ -702,7 +706,7 @@ public class RupturePlotGenerator {
 		
 		if (rectHypo != null) {
 			XYPolygonAnnotation rectHypoPoly = new XYPolygonAnnotation(
-					star(rectHypo.getLongitude(), rectHypo.getLatitude(), hypoRadius), hypoStroke, Color.BLACK, RECT_HYPO_COLOR);
+					star(rectHypo.getLongitude(), rectHypo.getLatitude(), HYPO_RADIUS), hypoStroke, Color.BLACK, RECT_HYPO_COLOR);
 			anns.add(rectHypoPoly);
 		}
 		

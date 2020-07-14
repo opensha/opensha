@@ -185,7 +185,7 @@ public class Asset implements Cloneable {
 	 * @throws InstantiationException
 	 * @throws IllegalAccessException
 	 */
-	private Vulnerability getVulnModel() throws ClassNotFoundException,
+	public Vulnerability getVulnModel() throws ClassNotFoundException,
 	InstantiationException,
 	IllegalAccessException {
 		String vulnName = getVulnModelName();
