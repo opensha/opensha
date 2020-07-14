@@ -247,7 +247,13 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 			} else {
 				System.out.println("Looking for ShakeMap version "+version+" for "+rup.getEventId()+", M"+(float)rup.getMag());
 			}
-			LocationList[] outlines = smAccessor.fetchShakemapSourceOutlines(rup.getEventId(), version);
+			LocationList[] outlines;
+			try {
+				outlines = smAccessor.fetchShakemapSourceOutlines(rup.getEventId(), version);
+			} catch (Exception e) {
+				e.printStackTrace();
+				return null;
+			}
 			if (outlines == null)
 				return null;
 			numProcessed++;
