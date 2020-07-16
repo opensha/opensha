@@ -585,6 +585,17 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 	
 	@Override
+	public double getQuickDistance(Location siteLoc) {
+		return cache.getQuickDistance(siteLoc);
+	}	
+
+	@Override
+	public double calcQuickDistance(Location siteLoc) {
+		// just use DistanceRup
+		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
+	}
+	
+	@Override
 	public synchronized double calcDistanceX(Location siteLoc) {
 		// this is Peter's implementation, but it doesn't perform as well in tests
 //		if (1d < 2d) {

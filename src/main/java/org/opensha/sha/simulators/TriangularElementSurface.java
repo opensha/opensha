@@ -137,6 +137,11 @@ class TriangularElementSurface implements RuptureSurface {
 	}
 
 	@Override
+	public double getQuickDistance(Location siteLoc) {
+		return getDistanceRup(siteLoc);
+	}
+
+	@Override
 	public double getDistanceJB(Location siteLoc) {
 		throw new UnsupportedOperationException("Not yet implemented");
 	}
