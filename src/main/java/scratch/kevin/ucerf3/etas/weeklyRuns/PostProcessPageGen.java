@@ -72,10 +72,12 @@ public class PostProcessPageGen {
 //		int maxNum = 100;
 		int maxNum = Integer.MAX_VALUE;
 		File outputParentDir = new File("/home/kevin/git/ucerf3-etas-results/2020-weekly-runs");
+		
+		int[] highlightYears = { 1992, 1999, 2010, 2019 };
 
 		File dataDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
-//				+ "2020_05_14-weekly-1986-present-full_td-kCOV1.5");
-				+ "2020_05_25-weekly-1986-present-no_ert-kCOV1.5");
+				+ "2020_05_14-weekly-1986-present-full_td-kCOV1.5");
+//				+ "2020_05_25-weekly-1986-present-no_ert-kCOV1.5");
 		File outputDir = new File(outputParentDir, dataDir.getName());
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 
@@ -832,6 +834,35 @@ public class PostProcessPageGen {
 				spec.addPlotAnnotation(ann);
 				
 				specs.add(spec);
+				
+				if (highlightYears != null) {
+					int yearInt = (int)year;
+					for (int highlightYear : highlightYears) {
+						if (yearInt == highlightYear) {
+							System.out.println("Writing out highlight plot for "+yearInt);
+							HeadlessGraphPanel gp = new HeadlessGraphPanel();
+							gp.setTickLabelFontSize(18);
+							gp.setAxisLabelFontSize(24);
+							gp.setPlotLabelFontSize(24);
+							gp.setLegendFontSize(18);
+							gp.setBackgroundColor(Color.WHITE);
+							//					gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
+
+							Range xRange = new Range(0d, 365d);
+
+							boolean wasLegend = spec.isLegendVisible();
+							spec.setLegendVisible(true);
+							gp.drawGraphPanel(spec, false, true, xRange, yRange);
+							spec.setLegendVisible(wasLegend);
+
+							String prefix = "daily_"+type.name()+"_"+yearInt;
+							File file = new File(resourcesDir, prefix);
+							gp.getChartPanel().setSize(1000, 650);
+							gp.saveAsPNG(file.getAbsolutePath()+".png");
+//							gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+						}
+					}
+				}
 			}
 			
 			HeadlessGraphPanel gp = new HeadlessGraphPanel();

@@ -41,26 +41,36 @@ public class WeeklyScriptWriter {
 		GregorianCalendar endDate = new GregorianCalendar(startDate.getTimeZone());
 		int deltaDays = 7;
 		
-		int batchSize = 50;
-		int batchNodes = 40;
-		int batchHours = 14;
+//		int batchSize = 50;
+//		int batchNodes = 40;
+//		int batchHours = 14;
+		int batchSize = 80;
+		int batchNodes = 30;
+		int batchHours = 15;
 		int batchThreads = 20;
-		// stitched jobs can longer
-		int comcatBatchNodes = 40;
-		int comcatBatchHours = 20;
 		
 		double duration = 1d;
 		int numCatalogs = 10000;
 		
 		DecimalFormat batchDF = new DecimalFormat("000");
 		
-		String kCOV = "1.5";
 //		String kCOV = null;
-//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
-		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
 		
+//		String kCOV = "1.5";
+//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
 //		String parentDir = "${ETAS_SIM_DIR}/2020_05_14-weekly-1986-present-full_td-kCOV1.5";
-		String parentDir = "${ETAS_SIM_DIR}/2020_05_25-weekly-1986-present-no_ert-kCOV1.5";
+//		boolean griddedOnly = false;
+		
+//		String kCOV = "1.5";
+//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
+//		String parentDir = "${ETAS_SIM_DIR}/2020_05_25-weekly-1986-present-no_ert-kCOV1.5";
+//		boolean griddedOnly = false;
+		
+		String kCOV = "1.5";
+		U3ETAS_ProbabilityModelOptions probModel = null;
+		String parentDir = "${ETAS_SIM_DIR}/2020_07_13-weekly-1986-present-gridded-kCOV1.5";
+		boolean griddedOnly = true;
+		
 		File resolvedParentDir = ETAS_Config.resolvePath(parentDir);
 		Preconditions.checkState(resolvedParentDir.exists() || resolvedParentDir.mkdir());
 		
@@ -121,7 +131,10 @@ public class WeeklyScriptWriter {
 				name += ", kCOV="+kCOV;
 			if (comcat)
 				name += ", ComCat Stitch";
-			if (probModel != U3ETAS_ProbabilityModelOptions.FULL_TD) {
+			if (griddedOnly) {
+				name += ", Gridded Only";
+				argz.add("--gridded-only");
+			} else if (probModel != U3ETAS_ProbabilityModelOptions.FULL_TD) {
 				name += ", "+probModel.toString();
 				argz.add("--prob-model"); argz.add(probModel.name());
 			}
@@ -158,10 +171,7 @@ public class WeeklyScriptWriter {
 			curBatch.add(outputDir+"/config.json");
 			if (curBatch.size() == batchSize) {
 				File outputFile = new File(batchDir, curBatchName+".slurm");
-				if (comcat)
-					writeBatch(curBatch, outputFile, comcatBatchNodes, comcatBatchHours, batchThreads, "skx-normal");
-				else
-					writeBatch(curBatch, outputFile, batchNodes, batchHours, batchThreads, "skx-normal");
+				writeBatch(curBatch, outputFile, batchNodes, batchHours, batchThreads, "skx-normal");
 				curBatch.clear();
 				batchNum++;
 				curBatchName = "batch_"+batchDF.format(batchNum);
@@ -175,7 +185,7 @@ public class WeeklyScriptWriter {
 		}
 		if (!curBatch.isEmpty()) {
 			File outputFile = new File(batchDir, curBatchName+".slurm");
-			writeBatch(curBatch, outputFile, comcatBatchNodes, comcatBatchHours, batchThreads, "skx-normal");
+			writeBatch(curBatch, outputFile, batchNodes, batchHours, batchThreads, "skx-normal");
 		}
 	}
 	

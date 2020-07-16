@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.zip.Deflater;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
@@ -17,6 +18,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.utils.MatrixIO;
 
 public class FullModelCSVWriter {
 
@@ -25,6 +27,9 @@ public class FullModelCSVWriter {
 		CompoundFaultSystemSolution cfss = CompoundFaultSystemSolution.fromZipFile(new File(
 				"/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/data/scratch/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_WITH_IND_RUNS.zip"));
+		
+		ZipFile binsZip = new ZipFile("/home/kevin/OpenSHA/UCERF3/"
+				+ "2013_05_10-ucerf3p3-production-10runs-bins.zip");
 		
 		int numRuns = 10;
 		
@@ -35,6 +40,7 @@ public class FullModelCSVWriter {
 		header.add("rupID");
 		header.add("mag");
 		header.add("mean annual rate");
+		header.add("water level rate");
 		for (int i=0; i<numRuns; i++)
 			header.add("solution "+i+" annaul rate");
 		
@@ -78,11 +84,23 @@ public class FullModelCSVWriter {
 			for (int i=0; i<numRuns; i++)
 				subRates.add(cfss.loadDoubleArray(branch, "rates_"+i+".bin"));
 			
+			// get waterlevel rates
+			String entryPrefix = branch.buildFileName()+"_run0/"+branch.buildFileName()+"_run0";
+			ZipEntry run0Entry = binsZip.getEntry(entryPrefix+".bin");
+			double[] run0Rates = MatrixIO.doubleArrayFromInputStream(
+					binsZip.getInputStream(run0Entry), run0Entry.getSize());
+			ZipEntry run0RawEntry = binsZip.getEntry(entryPrefix+"_noMinRates.bin");
+			double[] run0RawRates = MatrixIO.doubleArrayFromInputStream(
+					binsZip.getInputStream(run0RawEntry), run0RawEntry.getSize());
+			Preconditions.checkState(run0Rates.length == rates.length);
+			Preconditions.checkState(run0Rates.length == run0RawRates.length);
+			
 			for (int r=0; r<mags.length; r++) {
 				List<String> line = new ArrayList<>();
 				line.add(r+"");
 				line.add(mags[r]+"");
 				line.add(rates[r]+"");
+				line.add((run0Rates[r]-run0RawRates[r])+"");
 				double avgRate = 0d;
 				for (int i=0; i<numRuns; i++) {
 					double rate = subRates.get(i)[r];
@@ -97,6 +115,9 @@ public class FullModelCSVWriter {
 				csv.addLine(line);
 			}
 			String csvName = branch.buildFileName()+".csv";
+			if (weightCSV.getNumRows() == 2)
+				// first one
+				csv.writeToFile(new File("/tmp/"+csvName));
 			
 			System.out.println("Writing "+csvName);
 			
