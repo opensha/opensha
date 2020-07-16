@@ -98,6 +98,15 @@ public interface RuptureSurface extends Surface3D {
 	 * @return
 	 */
 	public double getAveGridSpacing();
+	
+	/**
+	 * This returns a quick but inaccurate distance (km) between the site location and 
+	 * this surface. Implementation details vary by source, but this is typically the
+	 * minimum distance to the corners or midpoint of the surface.
+	 * @param siteLoc
+	 * @return
+	 */
+	public double getQuickDistance(Location siteLoc);
 		
 	/**
 	 * This returns rupture distance (kms to closest point on the 

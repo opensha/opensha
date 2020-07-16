@@ -28,6 +28,7 @@ import org.opensha.commons.data.Window2D;
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
@@ -271,6 +272,16 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	public SurfaceDistances calcDistances(Location loc) {
 		double[] dCalc = GriddedSurfaceUtils.getPropagationDistances(this, loc);
 		return new SurfaceDistances(dCalc[0], dCalc[1], dCalc[2]);
+	}
+	
+	@Override
+	public double getQuickDistance(Location siteLoc) {
+		return cache.getQuickDistance(siteLoc);
+	}
+
+	@Override
+	public double calcQuickDistance(Location siteLoc) {
+		return GriddedSurfaceUtils.getCornerMidpointDistance(this, siteLoc);
 	}
 
 	@Override

@@ -30,4 +30,9 @@ class DisabledDistanceCache implements SurfaceDistanceCache {
 		// do nothing
 	}
 
+	@Override
+	public double getQuickDistance(Location loc) {
+		return surf.calcQuickDistance(loc);
+	}
+
 }

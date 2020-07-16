@@ -3,6 +3,7 @@ package org.opensha.sha.faultSurface.utils;
 import java.awt.Color;
 import java.awt.geom.Area;
 import java.awt.geom.Path2D;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
@@ -538,7 +539,36 @@ public class GriddedSurfaceUtils {
 	}
 	
 	/**
-	 * Gents the center location of this surface. If it implements EvenlyGriddedSurface and has 3 or more
+	 * Calculates a quick the distance to the this surface by taking the minimum distance
+	 * to the corners, middle of the upper and lower traces, and overall center point
+	 * @param surf
+	 * @param siteLoc
+	 * @return
+	 */
+	public static double getCornerMidpointDistance(EvenlyGriddedSurface surf, Location siteLoc) {
+		double minDist = Double.POSITIVE_INFINITY;
+		
+		int numRows = surf.getNumRows();
+		int numCols = surf.getNumCols();
+		
+		List<Location> quickLocs = new ArrayList<>();
+		quickLocs.add(surf.get(0, 0));
+		quickLocs.add(surf.get(numRows-1, 0));
+		quickLocs.add(surf.get(0, numCols-1));
+		quickLocs.add(surf.get(numRows-1, numCols-1));
+		if (numCols > 2) {
+			quickLocs.add(surf.get(0, numCols/2));
+			quickLocs.add(surf.get(numRows-1, numCols/2));
+		}
+		quickLocs.add(getSurfaceMiddleLoc(surf));
+		
+		for (Location loc : quickLocs)
+			minDist = Math.min(minDist, LocationUtils.linearDistanceFast(siteLoc, loc));
+		return minDist;
+	}
+	
+	/**
+	 * Gets the center location of this surface. If it implements EvenlyGriddedSurface and has 3 or more
 	 * rows and columns, the center is directly retrieved. Otherwise the arithmetic average location of 
 	 * the evenly discretized location list is computed.
 	 * @param surf

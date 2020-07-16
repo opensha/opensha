@@ -291,6 +291,20 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	public double getDistanceRup(Location siteLoc) {
 		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
 	}
+	
+	@Override
+	public double getQuickDistance(Location siteLoc) {
+		return cache.getQuickDistance(siteLoc);
+	}
+
+
+	@Override
+	public double calcQuickDistance(Location siteLoc) {
+		double minDist = Double.POSITIVE_INFINITY;
+		for (RuptureSurface surf : surfaces)
+			minDist = Math.min(minDist, surf.getQuickDistance(siteLoc));
+		return minDist;
+	}
 
 	@Override
 	public double getDistanceSeis(Location siteLoc) {
