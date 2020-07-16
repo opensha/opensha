@@ -139,11 +139,12 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	private MagDependentAperiodicityOptions magDepAperiodicity = MagDependentAperiodicityOptions.MID_VALUES;
 	private double histOpenInterval=0;
 
-	// Parameter change flags: (none for bgIncludeParam) 
+	// Parameter change flags:
 	protected boolean fileParamChanged=false;	// set as false since most subclasses ignore this parameter
 	protected boolean faultGridSpacingChanged=true;
 	protected boolean aleatoryMagAreaStdDevChanged=true;
 	protected boolean applyAftershockFilterChanged=true;
+	protected boolean bgIncludeChanged=true;
 	protected boolean bgRupTypeChanged=true;
 	protected boolean quadSurfacesChanged=true;
 	protected boolean probModelChanged=true;
@@ -172,7 +173,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	private FaultSystemSolution faultSysSolution;		// the FFS for the ERF
 	private boolean cacheGridSources = false;			// if true, grid sources are cached instead of build on the fly
 	private ProbEqkSource[] gridSourceCache = null;
-	private GridSourceProvider gridSources;				// grid sources from the FSS
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
 	int totNumRupsFromFaultSystem;						// the sum of all nth ruptures that come from fault system sources (and not equal to faultSysSolution.getNumRuptures())
 	
@@ -407,7 +407,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		
 		// update other sources if needed
 		boolean numOtherRupsChanged=false;	// this is needed below
-		if(bgRupTypeChanged || timeSpanChangeFlag) {
+		if(bgIncludeChanged || bgRupTypeChanged || timeSpanChangeFlag) {
 			numOtherRupsChanged = initOtherSources();	// these are created even if not used; this sets numOtherSources
 			gridSourceCache = null;
 		}
@@ -485,6 +485,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingChanged = false;
 		aleatoryMagAreaStdDevChanged = false;
 		applyAftershockFilterChanged = false;
+		bgIncludeChanged = false;
 		bgRupTypeChanged = false;			
 		quadSurfacesChanged= false;
 		probModelChanged = false;
@@ -538,6 +539,9 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		} else if (paramName.equalsIgnoreCase(bgIncludeParam.getName())) {
 			bgInclude = bgIncludeParam.getValue();
 			createParamList();
+			bgIncludeChanged = true;
+			if (bgInclude != EXCLUDE && numOtherSources == 0)
+				bgRupTypeChanged = true;
 		} else if (paramName.equalsIgnoreCase(bgRupTypeParam.getName())) {
 			bgRupType = bgRupTypeParam.getValue();
 			bgRupTypeChanged = true;
@@ -704,10 +708,6 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	
 	private void setSolution(FaultSystemSolution sol, boolean clearFileParam) {
 		this.faultSysSolution = sol;
-		if (sol == null)
-			this.gridSources = null;
-		else
-			this.gridSources = sol.getGridSourceProvider();
 		if (clearFileParam) {
 			// this means that the method was called manually, clear the file param so that
 			// any subsequent sets to the file parameter trigger an update and override this
@@ -719,6 +719,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			}
 		}
 		faultSysSolutionChanged = true;
+		bgIncludeChanged = true;
 		bgRupTypeChanged = true;  // because the background ruptures come from the FSS
 		// have to set fileParamChanged to false in case you set the file param and then call
 		// setSolution manually before doing an update forecast
@@ -767,6 +768,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	 * @return
 	 */
 	public ProbEqkSource getSourceSubSeisOnly(int iSource) {
+		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 		
 		if (bgInclude.equals(ONLY)) {
 			if (gridSources == null)
@@ -796,6 +798,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	 * @return
 	 */
 	public ProbEqkSource getSourceTrulyOffOnly(int iSource) {
+		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 		
 		if (bgInclude.equals(ONLY)) {
 			if (gridSources == null)
@@ -978,6 +981,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	 * @return
 	 */
 	protected ProbEqkSource getOtherSource(int iSource) {
+		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 		if (gridSources == null)
 			return null;
 		if (cacheGridSources) {
@@ -1008,17 +1012,22 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	 * number of ruptures changes.
 	 */
 	protected boolean initOtherSources() {
-		if(bgRupTypeChanged) {
+		if (bgIncludeChanged && bgInclude == EXCLUDE) {
+			// we don't need to erase previously generated ones, but don't bother calling
+			// getGridSourceProvider() below if we're not going to use them
+			return false;
+		}
+		if(bgRupTypeChanged || bgIncludeChanged) {
+			int prevOther = numOtherSources;
+			GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 			if (gridSources == null) {
-				int prevOther = numOtherSources;
 				numOtherSources = 0;
 				// return true only if we used to have grid sources but now don't
 				return prevOther > 0;
 			}
 			numOtherSources = gridSources.size();
 			return true;
-		}
-		else {
+		} else {
 			return false;
 		}
 	}
@@ -1136,7 +1145,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	
 	
 	public GridSourceProvider getGridSourceProvider() {
-		return gridSources;
+		return faultSysSolution.getGridSourceProvider();
 	}
 
 
