@@ -2,7 +2,6 @@ package org.opensha.sra;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
-import org.opensha.commons.util.InterpolateTests;
 import org.opensha.sra.rtgm.RTGM_Tests;
 
 @RunWith(Suite.class)
