@@ -1,4 +1,8 @@
 language: java
 
+before_script:
+  - cd ../
+  - git clone https://github.com/opensha/opensha-commons.git
+  - cd opensha-core
 script:
-  - echo "running standard tests"; ./gradlew test
+  - ./gradlew test
