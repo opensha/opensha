@@ -523,6 +523,17 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 
 		return new SurfaceDistances(distRup, distJB, distSeis);
 	}
+	
+	@Override
+	public double getQuickDistance(Location siteLoc) {
+		return cache.getQuickDistance(siteLoc);
+	}	
+
+	@Override
+	public double calcQuickDistance(Location siteLoc) {
+		// just use DistanceRup
+		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
+	}
 
 	@Override
 	public Iterator<Location> iterator() {
