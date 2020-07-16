@@ -1,8 +1,6 @@
 language: java
 
-before_script:
-  - cd ../
-  - git clone https://github.com/opensha/opensha-commons.git
-  - cd opensha-core
+before_install:
+  - git clone --depth=50 --branch=master https://github.com/opensha/opensha-commons.git opensha/opensha-commons
 script:
   - ./gradlew test
