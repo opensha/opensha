@@ -56,6 +56,7 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -151,6 +152,11 @@ public class FSS_ERF_ParamTest {
 			double maxSectLength = ddw*maxSubSectionLength;
 			// the "2" here sets a minimum number of sub sections
 			List<? extends FaultSection> newSubSects = parentSect.getSubSectionsList(maxSectLength, sectIndex, 2);
+			// set random time of last event
+			double yearsAgo = 200d*Math.random();
+			long epochTime = System.currentTimeMillis() - (long)(yearsAgo*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+			for (FaultSection sect : newSubSects)
+				sect.setDateOfLastEvent(epochTime);
 			subSections.addAll(newSubSects);
 			sectIndex += newSubSects.size();
 		}
