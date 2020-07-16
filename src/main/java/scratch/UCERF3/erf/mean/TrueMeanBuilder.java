@@ -5,6 +5,7 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,6 +25,7 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -150,6 +152,7 @@ public class TrueMeanBuilder {
 		
 		// not part of unique checks
 		private FaultSection sect;
+		private Map<LogicTreeBranch, FaultSection> branchSects;
 
 		public UniqueSection(FaultSection sect, int globalID) {
 			super();
@@ -158,6 +161,12 @@ public class TrueMeanBuilder {
 			this.aveUpperDepth = sect.getReducedAveUpperDepth();
 			this.aveLowerDepth = sect.getAveLowerDepth();
 			this.sect = sect.clone();
+			
+			branchSects = new HashMap<>();
+		}
+		
+		public void addBranch(LogicTreeBranch branch, FaultSection sect) {
+			branchSects.put(branch, sect);
 		}
 
 		@Override
@@ -203,7 +212,13 @@ public class TrueMeanBuilder {
 	 * @throws DocumentException 
 	 */
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
-		File invDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions");
+//		File invDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions");
+//		File outputDir = invDir;
+		
+		File invDir = new File("/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/"
+				+ "data/scratch/InversionSolutions");
+		File outputDir = new File("/tmp/true_mean");
+		
 		File compoundFile = new File(invDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL.zip");
 		CompoundFaultSystemSolution cfss = CompoundFaultSystemSolution.fromZipFile(compoundFile);
 		cfss.setCacheCopying(false);
@@ -414,13 +429,15 @@ public class TrueMeanBuilder {
 						// this will add new UniqueSections to the list if there are upper depth
 						// changes
 						int globalSectID = globalSectIDsMap.get(ind);
-						UniqueSection sect = new UniqueSection(fsd.get(ind), globalSectID);
+						FaultSection sectFSD = fsd.get(ind);
+						UniqueSection sect = new UniqueSection(sectFSD, globalSectID);
 						UniqueSection matchedSect = uniqueSectionsList.get(globalSectID).get(sect);
 						if (matchedSect == null) {
 							matchedSect = sect;
 							uniqueSectionsList.get(globalSectID).put(sect, sect);
 							uniqueSectCount++;
 						}
+						matchedSect.addBranch(branch, sectFSD);
 						rupSects.add(matchedSect);
 					}
 					rup.sects = rupSects;
@@ -487,7 +504,15 @@ public class TrueMeanBuilder {
 				FaultSection fsd = sect.sect;
 				fsd.setSectionId(fsdIndex);
 				fsd.setSectionName(fsd.getSectionName()+" (instance "+(indexInSect++)+")");
-				fsd.setAveRake(Double.NaN);
+				// compute average rake
+				List<Double> myRakes = new ArrayList<>();
+				List<Double> myWeights = new ArrayList<>();
+				for (LogicTreeBranch  branch : sect.branchSects.keySet()) {
+					myRakes.add(sect.branchSects.get(branch).getAveRake());
+					myWeights.add(weightProvider.getWeight(branch));
+				}
+				double avgRake = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(myWeights, myRakes));
+				fsd.setAveRake(avgRake);
 				fsd.setAveSlipRate(Double.NaN);
 				faultSectionData.add(fsd);
 				uniqueSectIndexMap.put(sect, fsdIndex);
@@ -580,7 +605,7 @@ public class TrueMeanBuilder {
 		sol.setRupMagDists(mfds);
 		
 		String outputFilePrefix = compoundFile.getName().replaceAll(".zip", "")+nameAdd+"_TRUE_HAZARD_MEAN_SOL";
-		File outputFile = new File(invDir, outputFilePrefix+".zip");
+		File outputFile = new File(outputDir, outputFilePrefix+".zip");
 		FaultSystemIO.writeSol(sol, outputFile);
 		
 		// write branch specific data
@@ -661,7 +686,7 @@ public class TrueMeanBuilder {
 		File branchIDsFile = new File(tempDir, "branch_ids.bin");
 		MatrixIO.intListListToFile(branchRupsMapping, branchIDsFile);
 		fileNames.add(branchIDsFile.getName());
-		outputFile = new File(invDir, outputFilePrefix+"_WITH_MAPPING.zip");
+		outputFile = new File(outputDir, outputFilePrefix+"_WITH_MAPPING.zip");
 		FileUtils.createZipFile(outputFile.getAbsolutePath(), tempDir.getAbsolutePath(), fileNames);
 		FileUtils.deleteRecursive(tempDir);
 	}
