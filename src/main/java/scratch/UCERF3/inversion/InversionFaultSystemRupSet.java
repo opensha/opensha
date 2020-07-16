@@ -188,6 +188,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 			List<List<Integer>> clusterRups,
 			List<List<Integer>> clusterSects) {
 		setParamsFromBranch(branch);
+		this.logicTreeBranch = branch;
 		init(rupSet);
 		
 		int numSects = rupSet.getNumSections();
@@ -201,7 +202,6 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 		Preconditions.checkNotNull(branch, "LogicTreeBranch cannot be null");
 		if (!branch.isFullySpecified())
 			System.err.println("WARNING: LogicTreeBranch not fully specified");
-		this.logicTreeBranch = branch;
 		
 		// can be null
 		this.filter = filter;
@@ -458,12 +458,24 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 	public void copyCacheFrom(FaultSystemRupSet rupSet) {
 		super.copyCacheFrom(rupSet);
 		if (rupSet instanceof InversionFaultSystemRupSet) {
+			FaultModels myFM = getFaultModel();
+			DeformationModels myDM = getDeformationModel();
+			LogicTreeBranch branch = getLogicTreeBranch();
+			ScalingRelationships myScale = branch.getValue(ScalingRelationships.class);
+			SlipAlongRuptureModels mySlipAlong = branch.getValue(SlipAlongRuptureModels.class);
+			
 			InversionFaultSystemRupSet invRupSet = (InversionFaultSystemRupSet)rupSet;
-			if (invRupSet.getSlipAlongRuptureModel() == getSlipAlongRuptureModel()
-					&& invRupSet.getDeformationModel() == getDeformationModel()
-					&& invRupSet.getLogicTreeBranch().getValue(ScalingRelationships.class)
-						== getLogicTreeBranch().getValue(ScalingRelationships.class))
-				rupSectionSlipsCache = invRupSet.rupSectionSlipsCache;
+			LogicTreeBranch oBranch = invRupSet.getLogicTreeBranch();
+			FaultModels oFM = invRupSet.getFaultModel();
+			DeformationModels oDM = invRupSet.getDeformationModel();
+			ScalingRelationships oScale = oBranch.getValue(ScalingRelationships.class);
+			SlipAlongRuptureModels oSlipAlong = oBranch.getValue(SlipAlongRuptureModels.class);
+			if (myFM == oFM && myDM == oDM && myScale == oScale) {
+				surfCache = invRupSet.surfCache;
+//				System.out.println("Copying surface cache!");
+				if (mySlipAlong == oSlipAlong)
+					rupSectionSlipsCache = invRupSet.rupSectionSlipsCache;
+			}
 		}
 	}
 	
