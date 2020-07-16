@@ -43,6 +43,18 @@ public class HybridDistanceCache implements SurfaceDistanceCache {
 	}
 
 	@Override
+	public double getQuickDistance(Location loc) {
+		Double quickDist = singleCache.getQuickDistanceIfPresent(loc);
+		if (quickDist != null)
+			return quickDist;
+		// not in single cache, get from multi cache (load if necessary)
+		quickDist = multiCache.getQuickDistance(loc);
+		// put in single cache
+		singleCache.putQuickDistance(loc, quickDist);
+		return quickDist;
+	}
+
+	@Override
 	public double getDistanceX(Location loc) {
 		Double distX = singleCache.getDistanceXIfPresent(loc);
 		if (distX != null)

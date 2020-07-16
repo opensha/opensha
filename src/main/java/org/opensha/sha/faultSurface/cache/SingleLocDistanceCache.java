@@ -15,6 +15,9 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 	private Location siteLocForDistCalcs;
 	private SurfaceDistances surfDists;
 	
+	private Location siteLocForQuickDistCalc;
+	private double quickDist;
+	
 	private Location siteLocForDistXCalc;
 	private double distX;
 	
@@ -32,6 +35,15 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 	}
 
 	@Override
+	public synchronized double getQuickDistance(Location loc) {
+		if (siteLocForQuickDistCalc == null || !siteLocForQuickDistCalc.equals(loc)) {
+			quickDist = surf.calcQuickDistance(loc);
+			siteLocForQuickDistCalc = loc;
+		}
+		return quickDist;
+	}
+
+	@Override
 	public synchronized double getDistanceX(Location loc) {
 		if (siteLocForDistXCalc == null || !siteLocForDistXCalc.equals(loc)) {
 			distX = surf.calcDistanceX(loc);
@@ -46,6 +58,12 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 		return null;
 	}
 	
+	synchronized Double getQuickDistanceIfPresent(Location loc) {
+		if (loc.equals(siteLocForQuickDistCalc))
+			return quickDist;
+		return null;
+	}
+	
 	synchronized Double getDistanceXIfPresent(Location loc) {
 		if (loc.equals(siteLocForDistXCalc))
 			return distX;
@@ -55,6 +73,11 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 	synchronized void putSurfaceDistances(Location loc, SurfaceDistances dists) {
 		this.siteLocForDistCalcs = loc;
 		this.surfDists = dists;
+	}
+	
+	synchronized void putQuickDistance(Location loc, double quickDistance) {
+		this.siteLocForQuickDistCalc = loc;
+		this.quickDist = quickDistance;
 	}
 	
 	synchronized void putDistanceX(Location loc, double distX) {
@@ -68,6 +91,8 @@ public class SingleLocDistanceCache implements SurfaceDistanceCache {
 		this.surfDists = null;
 		this.siteLocForDistXCalc = null;
 		this.distX = Double.NaN;
+		siteLocForQuickDistCalc = null;
+		this.quickDist = Double.NaN;
 	}
 
 }

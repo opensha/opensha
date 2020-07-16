@@ -244,6 +244,16 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	}
 	
 	@Override
+	public double getQuickDistance(Location siteLoc) {
+		return cache.getQuickDistance(siteLoc);
+	}
+
+	@Override
+	public double calcQuickDistance(Location siteLoc) {
+		return GriddedSurfaceUtils.getCornerMidpointDistance(this, siteLoc);
+	}
+
+	@Override
 	public double calcDistanceX(Location siteLoc) {
 		return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), siteLoc);
 	}

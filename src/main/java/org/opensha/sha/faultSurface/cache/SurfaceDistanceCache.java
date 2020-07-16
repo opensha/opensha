@@ -23,6 +23,14 @@ public interface SurfaceDistanceCache {
 	public SurfaceDistances getSurfaceDistances(Location loc);
 	
 	/**
+	 * Returns the quick distance for the given location, either from the cache or via calculation.
+	 * 
+	 * @param loc
+	 * @return
+	 */
+	public double getQuickDistance(Location loc);
+	
+	/**
 	 * Returns the distance X value for the given location, either from the cache or via calculation.
 	 * 
 	 * @param loc

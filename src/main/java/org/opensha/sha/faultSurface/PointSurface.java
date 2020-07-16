@@ -306,6 +306,11 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		double djb = getDistanceJB(siteLoc);
 		return Math.sqrt(depth * depth + djb * djb);
 	}
+	
+	@Override
+	public double getQuickDistance(Location siteLoc) {
+		return getDistanceRup(siteLoc);
+	}
 
 	/**
 	 * This returns distance X (the shortest distance in km to the rupture 
