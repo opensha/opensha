@@ -112,6 +112,7 @@ public class FaultSystemRupSet implements Serializable {
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
 				rupSet.getAreaForAllRups(), rupSet.getLengthForAllRups(), rupSet.getInfoString());
+		copyCacheFrom(rupSet);
 	}
 	
 	/**
@@ -497,34 +498,46 @@ public class FaultSystemRupSet implements Serializable {
 		return datas;
 	}
 	
-	private transient double prevGridSpacing = Double.NaN;
-	private transient Map<Integer, RuptureSurface> rupSurfaceCache = Maps.newHashMap();
+	private class RupSurfaceCache {
+		private double prevGridSpacing = Double.NaN;
+		private Map<Integer, RuptureSurface> rupSurfaceCache;
+		
+		private RupSurfaceCache() {
+			rupSurfaceCache = new HashMap<>();
+		}
+		
+		private synchronized RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing) {
+			if (prevGridSpacing != gridSpacing) {
+				rupSurfaceCache.clear();
+				prevGridSpacing = gridSpacing;
+			}
+			RuptureSurface surf = rupSurfaceCache.get(rupIndex);
+			if (surf != null)
+				return surf;
+			List<RuptureSurface> rupSurfs = Lists.newArrayList();
+			for (FaultSection fltData : getFaultSectionDataForRupture(rupIndex))
+				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, true));
+			if (rupSurfs.size() == 1)
+				surf = rupSurfs.get(0);
+			else
+				surf = new CompoundSurface(rupSurfs);
+			rupSurfaceCache.put(rupIndex, surf);
+			return surf;
+		}
+	}
+	
+	protected transient RupSurfaceCache surfCache = new RupSurfaceCache();
 	
 	/**
 	 * This creates a CompoundGriddedSurface for the specified rupture.  This applies aseismicity as
-	 * a reduction of area and sets preserveGridSpacingExactly=false (for evenly gridded) so there are
-	 * no cut-off ends (but variable grid spacing)
+	 * a reduction of area and sets preserveGridSpacingExactly=false so there are no cut-off ends
+	 * (but variable grid spacing)
 	 * @param rupIndex
 	 * @param gridSpacing
 	 * @return
 	 */
-	public synchronized RuptureSurface getSurfaceForRupupture(int rupIndex, double gridSpacing) {
-		if (prevGridSpacing != gridSpacing) {
-			rupSurfaceCache.clear();
-			prevGridSpacing = gridSpacing;
-		}
-		RuptureSurface surf = rupSurfaceCache.get(rupIndex);
-		if (surf != null)
-			return surf;
-		List<RuptureSurface> rupSurfs = Lists.newArrayList();
-		for (FaultSection fltData : getFaultSectionDataForRupture(rupIndex))
-			rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, true));
-		if (rupSurfs.size() == 1)
-			surf = rupSurfs.get(0);
-		else
-			surf = new CompoundSurface(rupSurfs);
-		rupSurfaceCache.put(rupIndex, surf);
-		return surf;
+	public RuptureSurface getSurfaceForRupupture(int rupIndex, double gridSpacing) {
+		return surfCache.getSurfaceForRupture(rupIndex, gridSpacing);
 	}
 	
 	/**
