@@ -39,6 +39,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.UCERF3_CompoundSol_ERF;
+import scratch.UCERF3.erf.epistemic.UCERF3EpistemicListERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.utils.ModUCERF2.ModMeanUCERF2_FM2pt1;
 
@@ -143,6 +144,9 @@ public enum ERF_Ref {
 	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, true),
 	
 	// DEVELOPMENT
+	
+	/** WGCEP UCERF3 Epistemic List */
+	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, DEVELOPMENT, true),
 	
 	/** NSHMP CEUS 2008 ERF */
 	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, DEVELOPMENT, false),

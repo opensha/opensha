@@ -98,8 +98,8 @@ import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
-import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.ERF_Ref;
+import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.BaseERF;
@@ -1216,7 +1216,7 @@ ScalarIMRChangeListener {
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 			bugDialog.setVisible(true);
 		}
-		if (forecast instanceof AbstractEpistemicListERF && !isDeterministicCurve) {
+		if (forecast instanceof EpistemicListERF && !isDeterministicCurve) {
 			// if add on top get the name of ERF List forecast
 			if (addData)
 				prevSelectedERF_List = forecast.getName();
@@ -1591,7 +1591,7 @@ ScalarIMRChangeListener {
 			Map<TectonicRegionType, ScalarIMR> imrMap,
 			BaseERF eqkRupForecast) {
 
-		AbstractEpistemicListERF erfList = (AbstractEpistemicListERF) eqkRupForecast;
+		EpistemicListERF erfList = (EpistemicListERF) eqkRupForecast;
 
 		numERFsInEpistemicList = erfList.getNumERFs(); // get the num of ERFs in
 		// the list

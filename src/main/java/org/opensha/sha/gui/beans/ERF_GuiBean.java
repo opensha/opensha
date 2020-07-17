@@ -58,6 +58,7 @@ import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.SimpleBugMessagePanel;
 import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.ERF_Ref;
+import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.param.MagFreqDistParameter;
@@ -387,7 +388,7 @@ ParameterChangeListener{
 	public boolean isEpistemicList() {
 		try{
 			BaseERF eqkRupForecast = getSelectedERF_Instance();
-			if(eqkRupForecast instanceof AbstractEpistemicListERF)
+			if(eqkRupForecast instanceof EpistemicListERF)
 				return true;
 		}catch(Exception e){
 			e.printStackTrace();

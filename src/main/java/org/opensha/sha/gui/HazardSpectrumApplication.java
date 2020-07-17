@@ -46,8 +46,8 @@ import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
 import org.opensha.sha.calc.SpectrumCalculator;
 import org.opensha.sha.calc.SpectrumCalculatorAPI;
-import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.ERF;
+import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.gui.beans.IMLorProbSelectorGuiBean;
@@ -268,7 +268,7 @@ extends HazardCurveApplication {
 			}
 		});
 
-		if (forecast instanceof AbstractEpistemicListERF && isProbabilisticCurve) {
+		if (forecast instanceof EpistemicListERF && isProbabilisticCurve) {
 			//if add on top get the name of ERF List forecast
 			if (addData)
 				prevSelectedERF_List = forecast.getName();
@@ -544,7 +544,7 @@ extends HazardCurveApplication {
 			BaseERF forecast,
 			double imlProbValue) {
 
-		AbstractEpistemicListERF erfList = (AbstractEpistemicListERF) forecast;
+		EpistemicListERF erfList = (EpistemicListERF) forecast;
 
 		numERFsInEpistemicList = erfList.getNumERFs(); // get the num of ERFs in the list
 
