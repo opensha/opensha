@@ -97,7 +97,7 @@ public class US_3secTopography extends AbstractSiteData<Double> {
 		
 		calc = new GeolocatedRectangularBinaryMesh2DCalculator(
 				DataType.FLOAT, nx, ny, minLat, minLon, spacing);
-		System.out.println("Max pos: "+calc.getMaxFilePos()+" (spacing="+spacing+")");
+//		System.out.println("Max pos: "+calc.getMaxFilePos()+" (spacing="+spacing+")");
 		
 		calc.setStartBottom(true);
 		calc.setStartLeft(true);
