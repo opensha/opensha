@@ -19,7 +19,7 @@ import com.google.common.base.Preconditions;
  * @author kevin
  *
  */
-public class AzimuthChangeFilter extends AbstractLaughTest {
+public class AzimuthChangeFilter extends AbstractPlausibilityFilter {
 	
 	private boolean applyGarlockPintoMtnFix;
 	private HashSet<Integer> leftLateralFixParents;
@@ -56,12 +56,12 @@ public class AzimuthChangeFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+	public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings,
 			List<Integer> junctionIndexes) {
 		// there must be at least 4 sections and at least one junction
 		if (rupture.size() < 4 || junctionIndexes.isEmpty())
-			return true;
+			return PlausibilityResult.PASS;
 		
 		int lastIndexInRup = rupture.size()-1;
 		
@@ -76,7 +76,7 @@ public class AzimuthChangeFilter extends AbstractLaughTest {
 		
 		if (!testLast && !testTotal)
 			// if we're not testing anything, go ahead and pass
-			return true;
+			return PlausibilityResult.PASS;
 		
 		// this is the first section, used for total azimuth change checks
 		IDPairing firstPairing = pairings.get(0);
@@ -96,16 +96,18 @@ public class AzimuthChangeFilter extends AbstractLaughTest {
 //			System.out.flush();
 //		}
 		
-		if (testLast && !testAzimuth(prevSectPairing, prevSectParent, newSectPairing, newSectParent, maxAzimuthChange))
-			return false;
+		if (!Double.isNaN(maxAzimuthChange) && testLast &&
+				!testAzimuth(prevSectPairing, prevSectParent, newSectPairing, newSectParent, maxAzimuthChange))
+			return PlausibilityResult.FAIL_HARD_STOP;
 		
 		if (totAzChangeAtJunctionsOnly && leftLateralFixParents != null
 				&& leftLateralFixParents.contains(firstSectParent)) // this keeps UCERF3.2 compatability
 			firstPairing = firstPairing.getReversed();
-		if (testTotal && !testAzimuth(firstPairing, firstSectParent, newSectPairing, newSectParent, maxTotAzimuthChange))
-			return false;
+		if (!Double.isNaN(maxTotAzimuthChange) && testTotal &&
+				!testAzimuth(firstPairing, firstSectParent, newSectPairing, newSectParent, maxTotAzimuthChange))
+			return PlausibilityResult.FAIL_HARD_STOP;
 		
-		return true;
+		return PlausibilityResult.PASS;
 	}
 	
 	private boolean testAzimuth(IDPairing pairing1, int parent1, IDPairing pairing2, int parent2, double threshold) {
@@ -123,11 +125,6 @@ public class AzimuthChangeFilter extends AbstractLaughTest {
 		double az2 = sectionAzimuths.get(pairing2);
 		
 		return Math.abs(getAzimuthDifference(az1, az2)) <= threshold;
-	}
-
-	@Override
-	public boolean isContinueOnFaulure() {
-		return false;
 	}
 
 	@Override

@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.dom4j.DocumentException;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -19,7 +20,8 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.coulomb.CoulombRates;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
@@ -110,7 +112,7 @@ public class InversionFaultSystemRupSetFactory {
 			}
 		}
 		// this means the file didn't exist, we had an error loading it, or we're forcing a rebuild
-		InversionFaultSystemRupSet rupSet = forBranch(LaughTestFilter.getDefault(), DEFAULT_ASEIS_VALUE, branch);
+		InversionFaultSystemRupSet rupSet = forBranch(UCERF3PlausibilityConfig.getDefault(), DEFAULT_ASEIS_VALUE, branch);
 		System.out.println("Caching rup set to file: "+file.getAbsolutePath());
 		if (!directory.exists())
 			directory.mkdir();
@@ -127,7 +129,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @return
 	 */
 	public static InversionFaultSystemRupSet forBranch(LogicTreeBranchNode<?>... branchesChoices) {
-		return forBranch(LaughTestFilter.getDefault(), DEFAULT_ASEIS_VALUE, branchesChoices);
+		return forBranch(UCERF3PlausibilityConfig.getDefault(), DEFAULT_ASEIS_VALUE, branchesChoices);
 	}
 	
 	/**
@@ -139,7 +141,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @return
 	 */
 	public static InversionFaultSystemRupSet forBranch(LogicTreeBranch branch) {
-		return forBranch(LaughTestFilter.getDefault(), DEFAULT_ASEIS_VALUE, branch);
+		return forBranch(UCERF3PlausibilityConfig.getDefault(), DEFAULT_ASEIS_VALUE, branch);
 	}
 	
 	/**
@@ -152,7 +154,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @return
 	 */
 	public static InversionFaultSystemRupSet forBranch(
-			LaughTestFilter laughTest,
+			UCERF3PlausibilityConfig laughTest,
 			double defaultAseismicityValue,
 			LogicTreeBranchNode<?>... branchesChoices) {
 		LogicTreeBranch branch = LogicTreeBranch.fromValues(branchesChoices);
@@ -168,7 +170,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @return
 	 */
 	public static InversionFaultSystemRupSet forBranch(
-			LaughTestFilter laughTest,
+			UCERF3PlausibilityConfig laughTest,
 			double defaultAseismicityValue,
 			LogicTreeBranch branch) {
 		return forBranch(laughTest, defaultAseismicityValue, branch, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR);
@@ -184,7 +186,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @return
 	 */
 	public static InversionFaultSystemRupSet forBranch(
-			LaughTestFilter laughTest,
+			UCERF3PlausibilityConfig laughTest,
 			double defaultAseismicityValue,
 			LogicTreeBranch branch,
 			File scratchDir) {
@@ -207,8 +209,20 @@ public class InversionFaultSystemRupSetFactory {
 		}
 		DeformationModelFetcher filterBasisFetcher = new DeformationModelFetcher(faultModel, filterBasis,
 				scratchDir, defaultAseismicityValue);
+		CoulombRates coulombRates = null;
+		if (laughTest.getCoulombFilter() != null) {
+			try {
+				coulombRates = CoulombRates.loadUCERF3CoulombRates(faultModel);
+			} catch (IOException e) {
+				ExceptionUtils.throwAsRuntimeException(e);
+			}
+		}
+		SectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
+				laughTest.getMaxAzimuthChange(), coulombRates);
+		laughTest.setCoulombRates(coulombRates);
 //		System.out.println("Creating clusters with filter basis: "+filterBasis+", Fault Model: "+faultModel);
-		SectionClusterList clusters = new SectionClusterList(filterBasisFetcher, laughTest);
+//		SectionClusterList clusters = new SectionClusterList(filterBasisFetcher, laughTest);
+		SectionClusterList clusters = new SectionClusterList(filterBasisFetcher, connectionStrategy, laughTest);
 		
 		List<? extends FaultSection> faultSectionData;
 		if (filterBasis == deformationModel) {
@@ -254,7 +268,7 @@ public class InversionFaultSystemRupSetFactory {
 			ScalingRelationships.ELLSWORTH_B, SlipAlongRuptureModels.TAPERED, InversionModels.GR_CONSTRAINED, TotalMag5Rate.RATE_9p6,
 			MaxMagOffFault.MAG_7p3, MomentRateFixes.NONE, SpatialSeisPDF.UCERF2);
 			
-			LaughTestFilter filter = LaughTestFilter.getDefault();
+			UCERF3PlausibilityConfig filter = UCERF3PlausibilityConfig.getDefault();
 //			LaughTestFilter filter = LaughTestFilter.getUCERF3p2Filter();
 //			filter.setCoulombFilter(new CoulombRatesTester(TestType.COULOMB_STRESS, 0.05, 0.05, 1.25, true));
 			FaultSystemRupSet rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_1));
@@ -265,7 +279,7 @@ public class InversionFaultSystemRupSetFactory {
 			// test loading
 			InversionFaultSystemRupSet invRupSet = FaultSystemIO.loadInvRupSet(new File("/tmp/mean_rupSet.zip"));
 			System.out.println(invRupSet.getLogicTreeBranch());
-			System.out.println(invRupSet.getLaughTestFilter());
+			System.out.println(invRupSet.getPlausibilityConfiguration());
 			System.exit(0);
 //			new SimpleFaultSystemRupSet(rupSet).toZipFile(new File("/tmp/rup_set_0.05_1.25.zip"));
 //			filter.setAllowSingleSectDuringJumps(false);

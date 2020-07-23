@@ -9,7 +9,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.Lists;
 
-public abstract class AbstractLaughTest implements ShortNamed {
+public abstract class AbstractPlausibilityFilter implements ShortNamed {
 	
 	/**
 	 * This can be used on an entire candidate rupture to see if it passes (this is slow, however).
@@ -17,12 +17,12 @@ public abstract class AbstractLaughTest implements ShortNamed {
 	 * @param junctionIndexes
 	 * @return
 	 */
-	public boolean doesRupturePass(List<? extends FaultSection> rupture) {
+	public PlausibilityResult apply(List<? extends FaultSection> rupture) {
 		List<FaultSection> subRup = Lists.newArrayList();
 		List<Integer> subJunctions = Lists.newArrayList();
 		List<IDPairing> pairings = Lists.newArrayList();
 		
-		boolean pass = true;
+		PlausibilityResult result = PlausibilityResult.PASS;
 		for (int i=0; i<rupture.size(); i++) {
 			FaultSection sect = rupture.get(i);
 			subRup.add(sect);
@@ -36,11 +36,11 @@ public abstract class AbstractLaughTest implements ShortNamed {
 			else if (isApplyJunctionsOnly())
 				continue;
 			
-			pass = doesLastSectionPass(subRup, pairings, subJunctions);
-			if (!pass && !isContinueOnFaulure())
-				return false;
+			result = applyLastSection(subRup, pairings, subJunctions);
+			if (!result.canContinue())
+				break;
 		}
-		return pass;
+		return result;
 	}
 	
 	/**
@@ -54,15 +54,8 @@ public abstract class AbstractLaughTest implements ShortNamed {
 	 * parent section ID than the previous section.
 	 * @return
 	 */
-	public abstract boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+	public abstract PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes);
-	
-	/**
-	 * This determines if a rupture should continue to be built without actually adding it upon a failure.
-	 * This is needed if a rupture doesn't pass as is, but adding another section could change that.
-	 * @return
-	 */
-	public abstract boolean isContinueOnFaulure();
 	
 	/**
 	 * This determines if the filter should only be applied when the most recently added section is a

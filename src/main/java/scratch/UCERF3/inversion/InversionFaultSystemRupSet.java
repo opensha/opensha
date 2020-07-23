@@ -45,7 +45,8 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
+import scratch.UCERF3.inversion.laughTest.PlausibilityConfiguration;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
@@ -98,7 +99,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 
 	private LogicTreeBranch logicTreeBranch;
 
-	private LaughTestFilter filter;
+	private PlausibilityConfiguration filter;
 
 	// rupture attributes (all in SI units)
 	final static double MIN_MO_RATE_REDUCTION = 0.1;
@@ -119,19 +120,6 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 	public final static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6.0;
 	private double[] minMagForSectArray;
 	private boolean[] isRupBelowMinMagsForSects;
-
-	/**
-	 * This generates a new InversionFaultSystemRupSet for the given fault/deformation mode and all other branch
-	 * parameters.
-	 * 
-	 * @param branch
-	 * @param precomputedDataDir
-	 * @param filter
-	 */
-	public InversionFaultSystemRupSet(LogicTreeBranch branch, File precomputedDataDir, LaughTestFilter filter) {
-		this(branch, new SectionClusterList(branch.getValue(FaultModels.class),
-				branch.getValue(DeformationModels.class), precomputedDataDir, filter), null);
-	}
 
 	/**
 	 * This creates a new InversionFaultSystemRupSet for the given cluster list, which may or may have been
@@ -155,7 +143,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 
 		this.logicTreeBranch = branch;
 		setParamsFromBranch(branch);
-		this.filter = sectionClusterList.getFilter();
+		this.filter = sectionClusterList.getPlausibilityConfiguration();
 		this.subSectionDistances = sectionClusterList.getSubSectionDistances();
 		this.sectionConnectionsListList = sectionClusterList.getSectionConnectionsListList();
 
@@ -182,7 +170,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 	public InversionFaultSystemRupSet(
 			FaultSystemRupSet rupSet,
 			LogicTreeBranch branch,
-			LaughTestFilter filter,
+			PlausibilityConfiguration filter,
 			double[] rupAveSlips,
 			List<List<Integer>> sectionConnectionsListList,
 			List<List<Integer>> clusterRups,
@@ -274,8 +262,8 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 		String infoString = "FaultSystemRupSet Parameter Settings:\n\n";
 		infoString += "\tfaultModel = " +faultModel+ "\n";
 		infoString += "\tdefModName = " +defModName+ "\n";
-		infoString += "\tdefMod filter basis = " +sectionClusterList.getDefModel()+ "\n";
-		infoString += "\t" +sectionClusterList.getFilter()+ "\n";
+		infoString += "\tdefMod filter basis = " +faultModel.getFilterBasis()+ "\n";
+		infoString += "\t" +sectionClusterList.getPlausibilityConfiguration()+ "\n";
 		infoString += "\tscalingRelationship = " +scalingRelationship+ "\n";
 		infoString += "\tinversionModel = " +inversionModel+ "\n";
 		infoString += "\tslipModelType = " +slipModelType+ "\n";
@@ -727,7 +715,7 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 	 * 
 	 * @return
 	 */
-	public LaughTestFilter getLaughTestFilter() {
+	public PlausibilityConfiguration getPlausibilityConfiguration() {
 		return filter;
 	}
 

@@ -18,7 +18,8 @@ import com.google.common.base.Preconditions;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
+import scratch.UCERF3.inversion.laughTest.PlausibilityConfiguration;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 
 public class SectionClusterList extends ArrayList<SectionCluster> {
@@ -31,73 +32,41 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	public static final boolean D = false;
 	
 	private List<List<Integer>> sectionConnectionsListList;
-	private LaughTestFilter filter;
-	private DeformationModels defModel;
-	private FaultModels faultModel;
+	private PlausibilityConfiguration plausibility;
 	private List<? extends FaultSection> faultSectionData;
-	private CoulombRates coulombRates;
 	
 	private Map<IDPairing, Double> subSectionDistances;
 	
 	public SectionClusterList(FaultModels faultModel, DeformationModels defModel, File precomputedDataDir,
-			LaughTestFilter filter) {
-		this(new DeformationModelFetcher(faultModel, defModel, precomputedDataDir, InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE), filter);
+			SectionConnectionStrategy connectionStrategy, PlausibilityConfiguration plausibility) {
+		this(new DeformationModelFetcher(faultModel, defModel, precomputedDataDir,
+				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE), connectionStrategy, plausibility);
 	}
 	
-	public SectionClusterList(DeformationModelFetcher defModelFetcher, LaughTestFilter filter) {
+	public SectionClusterList(DeformationModelFetcher defModelFetcher, SectionConnectionStrategy connectionStrategy,
+			PlausibilityConfiguration plausibility) {
 		faultSectionData = defModelFetcher.getSubSectionList();
-		Map<IDPairing, Double> subSectionDistances = defModelFetcher.getSubSectionDistanceMap(filter.getMaxJumpDist());
+		Map<IDPairing, Double> subSectionDistances = defModelFetcher.getSubSectionDistanceMap(plausibility.getMaxJumpDist());
 		Map<IDPairing, Double> subSectionAzimuths = defModelFetcher.getSubSectionAzimuthMap(subSectionDistances.keySet());
-		init(defModelFetcher.getFaultModel(), defModelFetcher.getDeformationModel(),
-				filter, faultSectionData, subSectionDistances, subSectionAzimuths);
+		init(connectionStrategy, plausibility, faultSectionData, subSectionDistances, subSectionAzimuths);
 	}
 	
-	public SectionClusterList(FaultModels faultModel, DeformationModels defModel, LaughTestFilter filter,
-			List<? extends FaultSection> faultSectionData, Map<IDPairing, Double> subSectionDistances, Map<IDPairing, Double> subSectionAzimuths) {
-		init(faultModel, defModel, filter, faultSectionData,
-				subSectionDistances, subSectionAzimuths);
-	}
-	
-	public SectionClusterList(FaultModels faultModel, DeformationModels defModel, LaughTestFilter filter, CoulombRates coulombRates,
-			List<? extends FaultSection> faultSectionData, Map<IDPairing, Double> subSectionDistances, Map<IDPairing, Double> subSectionAzimuths) {
-		init(faultModel, defModel, filter, coulombRates, faultSectionData,
+	public SectionClusterList(SectionConnectionStrategy connectionStrategy, PlausibilityConfiguration plausibility,
+			List<? extends FaultSection> faultSectionData, Map<IDPairing, Double> subSectionDistances,
+			Map<IDPairing, Double> subSectionAzimuths) {
+		init(connectionStrategy, plausibility, faultSectionData,
 				subSectionDistances, subSectionAzimuths);
 	}
 
-	private void init(FaultModels faultModel, DeformationModels defModel,
-			LaughTestFilter filter,
+	private void init(SectionConnectionStrategy connectionStrategy,
+			PlausibilityConfiguration plausibility,
 			List<? extends FaultSection> faultSectionData,
 			Map<IDPairing, Double> subSectionDistances,
 			Map<IDPairing, Double> subSectionAzimuths) {
-		
-		CoulombRates coulombRates = null;
-		if (filter.getCoulombFilter() != null) {
-			try {
-				coulombRates = CoulombRates.loadUCERF3CoulombRates(faultModel);
-			} catch (IOException e) {
-				ExceptionUtils.throwAsRuntimeException(e);
-			}
-		}
-		
-		init(faultModel, defModel, filter, coulombRates, faultSectionData, subSectionDistances, subSectionAzimuths);
-	}
-
-	private void init(FaultModels faultModel, DeformationModels defModel,
-			LaughTestFilter filter,
-			CoulombRates coulombRates,
-			List<? extends FaultSection> faultSectionData,
-			Map<IDPairing, Double> subSectionDistances,
-			Map<IDPairing, Double> subSectionAzimuths) {
-		this.faultModel = faultModel;
-		this.defModel = defModel;
-		this.filter = filter;
-		this.coulombRates = coulombRates;
+		this.plausibility = plausibility;
 		this.subSectionDistances = subSectionDistances;
 		
 		this.faultSectionData = faultSectionData;
-		Map<Integer, Double> rakesMap = new HashMap<Integer, Double>();
-		for (FaultSection data : faultSectionData)
-			rakesMap.put(data.getSectionId(), data.getAveRake());
 		
 		// check that indices are same as sectionIDs (this is assumed here)
 		for(int i=0; i<faultSectionData.size();i++)
@@ -107,26 +76,25 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		// make the list of SectionCluster objects 
 		// (each represents a set of nearby sections and computes the possible
 		//  "ruptures", each defined as a list of sections in that rupture)
-		makeClusterList(subSectionAzimuths,subSectionDistances, rakesMap);
+		makeClusterList(connectionStrategy, subSectionAzimuths,subSectionDistances);
 		
-		filter.buildLaughTests(
-				subSectionAzimuths, subSectionDistances, rakesMap, coulombRates,
-				true, sectionConnectionsListList, faultSectionData);
+		plausibility.buildPlausibilityFilters(subSectionAzimuths, subSectionDistances,
+				sectionConnectionsListList, faultSectionData);
 	}
 	
 	private void makeClusterList(
+			SectionConnectionStrategy connectionStrategy,
 			Map<IDPairing, Double> subSectionAzimuths,
-			Map<IDPairing, Double> subSectionDistances,
-			Map<Integer, Double> rakesMap) {
+			Map<IDPairing, Double> subSectionDistances) {
 		
 		// make the list of nearby sections for each section (branches)
 		if(D) System.out.println("Making sectionConnectionsListList");
-		sectionConnectionsListList = computeCloseSubSectionsListList(subSectionDistances);
+		sectionConnectionsListList = connectionStrategy.computeCloseSubSectionsListList(faultSectionData, subSectionDistances);
 		if(D) System.out.println("Done making sectionConnectionsListList");
 		
 		HashSet<Integer> subSectsToIgnore = null;
-		if (filter.getParentSectsToIgnore() != null) {
-			HashSet<Integer> parentSectsToIgnore = filter.getParentSectsToIgnore();
+		if (plausibility.getParentSectsToIgnore() != null) {
+			HashSet<Integer> parentSectsToIgnore = plausibility.getParentSectsToIgnore();
 			subSectsToIgnore = new HashSet<Integer>();
 			for (FaultSection sect : faultSectionData)
 				if (parentSectsToIgnore.contains(sect.getParentSectionId()))
@@ -150,8 +118,8 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		while(availableSections.size()>0) {
 			if (D) System.out.println("WORKING ON CLUSTER #"+(size()+1));
 			int firstSubSection = availableSections.get(0);
-			SectionCluster newCluster = new SectionCluster(filter, faultSectionData,sectionConnectionsListList,
-					subSectionAzimuths, rakesMap, subSectionDistances, coulombRates);
+			SectionCluster newCluster = new SectionCluster(plausibility, faultSectionData,sectionConnectionsListList,
+					subSectionAzimuths, subSectionDistances);
 			newCluster.add(firstSubSection);
 			if (D) System.out.println("\tfirst is "+faultSectionData.get(firstSubSection).getName());
 			addClusterLinks(firstSubSection, newCluster, sectionConnectionsListList);
@@ -174,142 +142,6 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 			}
 		}
 	}
-	
-	/**
-	 * For each section, create a list of sections that are within maxJumpDist.  
-	 * This generates an ArrayList of ArrayLists (named sectionConnectionsList).  
-	 * Reciprocal duplicates are not filtered out.
-	 * If sections are actually subsections (meaning getParentSectionId() != -1), then each parent section can only
-	 * have one connection to another parent section (whichever subsections are closest).  This prevents parallel 
-	 * and closely space faults from having connections back and forth all the way down the section.
-	 */
-	private List<List<Integer>> computeCloseSubSectionsListList(Map<IDPairing, Double> subSectionDistances) {
-		return computeCloseSubSectionsListList(faultSectionData, subSectionDistances, filter.getMaxJumpDist(), coulombRates);
-	}
-	
-	/**
-	 * For each section, create a list of sections that are within maxJumpDist.  
-	 * This generates an ArrayList of ArrayLists (named sectionConnectionsList).  
-	 * Reciprocal duplicates are not filtered out.
-	 * If sections are actually subsections (meaning getParentSectionId() != -1), then each parent section can only
-	 * have one connection to another parent section (whichever subsections are closest).  This prevents parallel 
-	 * and closely space faults from having connections back and forth all the way down the section.
-	 */
-	public static List<List<Integer>> computeCloseSubSectionsListList(
-			List<? extends FaultSection> faultSectionData,
-			Map<IDPairing, Double> subSectionDistances,
-			double maxJumpDist) {
-		return computeCloseSubSectionsListList(faultSectionData, subSectionDistances, maxJumpDist, null);
-	}
-	
-	/**
-	 * For each section, create a list of sections that are within maxJumpDist.  
-	 * This generates an ArrayList of ArrayLists (named sectionConnectionsList).  
-	 * Reciprocal duplicates are not filtered out.
-	 * If sections are actually subsections (meaning getParentSectionId() != -1), then each parent section can only
-	 * have one connection to another parent section (whichever subsections are closest).  This prevents parallel 
-	 * and closely space faults from having connections back and forth all the way down the section.
-	 */
-	public static List<List<Integer>> computeCloseSubSectionsListList(
-			List<? extends FaultSection> faultSectionData,
-			Map<IDPairing, Double> subSectionDistances,
-			double maxJumpDist, CoulombRates coulombRates) {
-
-		ArrayList<List<Integer>> sectionConnectionsListList = new ArrayList<List<Integer>>();
-		for(int i=0;i<faultSectionData.size();i++)
-			sectionConnectionsListList.add(new ArrayList<Integer>());
-
-		// in case the sections here are subsections of larger sections, create a subSectionDataListList where each
-		// ArrayList<FaultSectionPrefData> is a list of subsections from the parent section
-		ArrayList<ArrayList<FaultSection>> subSectionDataListList = new ArrayList<>();
-		int lastID=-1;
-		ArrayList<FaultSection> newList = new ArrayList<>();
-		for(int i=0; i<faultSectionData.size();i++) {
-			FaultSection subSect = faultSectionData.get(i);
-			int parentID = subSect.getParentSectionId();
-			if(parentID != lastID || parentID == -1) { // -1 means there is no parent
-				newList = new ArrayList<>();
-				subSectionDataListList.add(newList);
-				lastID = subSect.getParentSectionId();
-			}
-			newList.add(subSect);
-		}
-
-
-		// First, if larger sections have been sub-sectioned, fill in neighboring subsection connections
-		// (using the other algorithm below might lead to subsections being skipped if their width is < maxJumpDist) 
-		for(int i=0; i<subSectionDataListList.size(); ++i) {
-			ArrayList<FaultSection> subSectList = subSectionDataListList.get(i);
-			int numSubSect = subSectList.size();
-			for(int j=0;j<numSubSect;j++) {
-				// get index of section
-				int sectIndex = subSectList.get(j).getSectionId();
-				List<Integer> sectionConnections = sectionConnectionsListList.get(sectIndex);
-				if(j != 0) // skip the first one since it has no previous subsection
-					sectionConnections.add(subSectList.get(j-1).getSectionId());
-				if(j != numSubSect-1) // the last one has no subsequent subsection
-					sectionConnections.add(subSectList.get(j+1).getSectionId());
-			}
-		}
-
-		// now add subsections on other sections, keeping only one connection between each section (the closest)
-		for(int i=0; i<subSectionDataListList.size(); ++i) {
-			ArrayList<FaultSection> sect1_List = subSectionDataListList.get(i);
-			for(int j=i+1; j<subSectionDataListList.size(); ++j) {
-				ArrayList<FaultSection> sect2_List = subSectionDataListList.get(j);
-				double minDist=Double.MAX_VALUE;
-				int subSectIndex1 = -1;
-				int subSectIndex2 = -1;
-				// find the closest pair
-				for(int k=0;k<sect1_List.size();k++) {
-					for(int l=0;l<sect2_List.size();l++) {
-						FaultSection data1 = sect1_List.get(k);
-						FaultSection data2 = sect2_List.get(l);
-						IDPairing ind = new IDPairing(data1.getSectionId(), data2.getSectionId());
-						if (subSectionDistances.containsKey(ind)) {
-							double dist = subSectionDistances.get(ind);
-							if(dist < minDist || (float)dist == (float)minDist) {
-								if ((float)dist == (float)minDist) {
-									// this 2nd check in floating point precision gets around an issue where the distance is identical
-									// within floating point precision for 2 sub sections on the same section. if we don't do this check
-									// than the actual "closer" section could vary depending on the machine/os used. in this case, just
-									// use the one that's in coulomb. If neither are in coulomb, then keep the first occurrence (lower ID)
-									
-									boolean prevValCoulomb = false;
-									boolean curValCoulomb = false;
-									if (coulombRates != null) {
-										prevValCoulomb = coulombRates.containsKey(new IDPairing(subSectIndex1, subSectIndex2));
-										curValCoulomb = coulombRates.containsKey(new IDPairing(data1.getSectionId(), data2.getSectionId()));
-									}
-//									System.out.println("IT HAPPENED!!!!!! "+subSectIndex1+"=>"+subSectIndex2+" vs "
-//													+data1.getSectionId()+"=>"+data2.getSectionId());
-//									System.out.println("prevValCoulomb="+prevValCoulomb+"\tcurValCoulomb="+curValCoulomb);
-									if (prevValCoulomb)
-										// this means that the previous value is in coulomb, use that!
-										continue;
-									if (!curValCoulomb) {
-										// this means that either no coulomb values were supplied, or neither choice is in coulomb. lets use
-										// the first one for consistency
-										continue;
-									}
-//									System.out.println("Sticking with the latter, "+data2.getSectionId()+" (coulomb="+curValCoulomb+")");
-								}
-								minDist = dist;
-								subSectIndex1 = data1.getSectionId();
-								subSectIndex2 = data2.getSectionId();
-							}	
-						}		  
-					}
-				}
-				// add to lists for each subsection
-				if (minDist<maxJumpDist) {
-					sectionConnectionsListList.get(subSectIndex1).add(subSectIndex2);
-					sectionConnectionsListList.get(subSectIndex2).add(subSectIndex1);  // reciprocal of the above
-				}
-			}
-		}
-		return sectionConnectionsListList;
-	}
 
 	public static boolean isD() {
 		return D;
@@ -319,16 +151,8 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		return sectionConnectionsListList;
 	}
 
-	public LaughTestFilter getFilter() {
-		return filter;
-	}
-
-	public DeformationModels getDefModel() {
-		return defModel;
-	}
-
-	public FaultModels getFaultModel() {
-		return faultModel;
+	public PlausibilityConfiguration getPlausibilityConfiguration() {
+		return plausibility;
 	}
 
 	public List<? extends FaultSection> getFaultSectionData() {

@@ -15,7 +15,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
@@ -32,11 +32,11 @@ public class BranchAveragedFSSBuilder {
 	@Deprecated
 	public static InversionFaultSystemSolution build(FaultSystemSolutionFetcher fetch,
 			BranchWeightProvider weightProvider, FaultModels fm, List<String> branchNames) {
-		return build(fetch, LaughTestFilter.getDefault(), weightProvider, fm, branchNames);
+		return build(fetch, UCERF3PlausibilityConfig.getDefault(), weightProvider, fm, branchNames);
 	}
 	
 	@Deprecated
-	public static InversionFaultSystemSolution build(FaultSystemSolutionFetcher fetch, LaughTestFilter laughTest,
+	public static InversionFaultSystemSolution build(FaultSystemSolutionFetcher fetch, UCERF3PlausibilityConfig laughTest,
 			BranchWeightProvider weightProvider, FaultModels fm, List<String> branchNames) {
 		
 		Preconditions.checkState(weightProvider instanceof APrioriBranchWeightProvider, "Currenlty only a priori branch weights" +
@@ -175,7 +175,7 @@ public class BranchAveragedFSSBuilder {
 		FaultSystemSolutionFetcher fetcher = CompoundFaultSystemSolution.fromZipFile(file);
 //		FaultSystemSolutionFetcher fetcher = new Compou(new ZipFile(file));
 		BranchWeightProvider weightProvider = new APrioriBranchWeightProvider();
-		LaughTestFilter laughTest = LaughTestFilter.getUCERF3p2Filter(); // TODO will need to switch eventually
+		UCERF3PlausibilityConfig laughTest = UCERF3PlausibilityConfig.getUCERF3p2Filter(); // TODO will need to switch eventually
 		FaultModels fm = null;
 		if (branchNames != null) {
 			for (String branchName : branchNames) {

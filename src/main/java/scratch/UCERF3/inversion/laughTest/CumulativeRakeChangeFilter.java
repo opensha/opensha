@@ -14,7 +14,7 @@ import org.opensha.sha.faultSurface.FaultSection;
  * @author kevin
  *
  */
-public class CumulativeRakeChangeFilter extends AbstractLaughTest {
+public class CumulativeRakeChangeFilter extends AbstractPlausibilityFilter {
 	
 	private Map<Integer, Double> rakesMap;
 	private double maxCmlRakeChange;
@@ -25,7 +25,7 @@ public class CumulativeRakeChangeFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+	public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		double cmlRakeChange = 0;
 //		for (int junctionIndex : junctionIndexes) {
@@ -40,18 +40,15 @@ public class CumulativeRakeChangeFilter extends AbstractLaughTest {
 				rakeDiff = 360-rakeDiff; // Deal with branch cut (180deg = -180deg)
 			cmlRakeChange += rakeDiff;
 		}
-		return cmlRakeChange <= maxCmlRakeChange;
+		if (cmlRakeChange <= maxCmlRakeChange)
+			return PlausibilityResult.PASS;
+		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
 	private double getRake(FaultSection sect) {
 		if (rakesMap == null)
 			return sect.getAveRake();
 		return rakesMap.get(sect.getSectionId());
-	}
-
-	@Override
-	public boolean isContinueOnFaulure() {
-		return false;
 	}
 
 	@Override

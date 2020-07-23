@@ -142,9 +142,9 @@ public class TestCoulombFilter {
 		CoulombFilter filter = new CoulombFilter(rates, tester);
 		
 		if (expected)
-			assertTrue(failMessage, filter.doesRupturePass(rupture));
+			assertTrue(failMessage, filter.apply(rupture).isPass());
 		else
-			assertFalse(failMessage, filter.doesRupturePass(rupture));
+			assertFalse(failMessage, filter.apply(rupture).isPass());
 	}
 
 	@Test

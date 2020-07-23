@@ -62,7 +62,7 @@ import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
@@ -295,11 +295,11 @@ public class CommandLineInversionRunner {
 				subDir.mkdir();
 
 			// Laugh Test Filter for rup set creation
-			LaughTestFilter laughTest;
+			UCERF3PlausibilityConfig laughTest;
 			if (cmd.hasOption(InversionOptions.UCERF3p2.argName))
-				laughTest = LaughTestFilter.getUCERF3p2Filter();
+				laughTest = UCERF3PlausibilityConfig.getUCERF3p2Filter();
 			else
-				laughTest = LaughTestFilter.getDefault();
+				laughTest = UCERF3PlausibilityConfig.getDefault();
 			
 			// Option for overriding default Coulomb PDCFF threshold
 			if (cmd.hasOption(InversionOptions.COULOMB.argName)) {
@@ -1932,7 +1932,7 @@ public class CommandLineInversionRunner {
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
 		
-		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getLaughTestFilter(), rupAveSlips,
+		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
 	}
 	
@@ -1975,7 +1975,7 @@ public class CommandLineInversionRunner {
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
 		
-		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getLaughTestFilter(), rupAveSlips,
+		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
 	}
 	
@@ -2003,7 +2003,7 @@ public class CommandLineInversionRunner {
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
 		
-		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getLaughTestFilter(), rupAveSlips,
+		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
 	}
 	

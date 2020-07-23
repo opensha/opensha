@@ -26,7 +26,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
@@ -61,7 +61,7 @@ public class UCERF2_ComparisonSolutionFetcher {
 			else
 				dm = DeformationModels.GEOLOGIC;
 			InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(
-					LaughTestFilter.getDefault(), 0, fm, dm, ScalingRelationships.AVE_UCERF2,
+					UCERF3PlausibilityConfig.getDefault(), 0, fm, dm, ScalingRelationships.AVE_UCERF2,
 					slipModel, InversionModels.CHAR_CONSTRAINED, SpatialSeisPDF.UCERF2);
 
 			sol = getUCERF2Solution(rupSet);
@@ -94,7 +94,7 @@ public class UCERF2_ComparisonSolutionFetcher {
 		}
 
 		InversionFaultSystemRupSet modRupSet = new InversionFaultSystemRupSet(rupSet, rupSet.getLogicTreeBranch(),
-				rupSet.getLaughTestFilter(), aveSlips, rupSet.getCloseSectionsListList(),
+				rupSet.getPlausibilityConfiguration(), aveSlips, rupSet.getCloseSectionsListList(),
 				rupSet.getRupturesForClusters(), rupSet.getSectionsForClusters());
 
 		modRupSet.setMagForallRups(mags);

@@ -38,7 +38,7 @@ import scratch.UCERF3.FileBasedFSSIterator;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
@@ -472,7 +472,7 @@ public class BatchPlotGen {
 				Map<IDPairing, Double> distsMap = new DeformationModelFetcher(
 						sol.getRupSet().getFaultModel(), dm,
 						UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1).getSubSectionDistanceMap(
-								LaughTestFilter.getDefault().getMaxJumpDist());
+								UCERF3PlausibilityConfig.getDefault().getMaxJumpDist());
 				CommandLineInversionRunner.writeJumpPlots(sol, distsMap, dir, prefix);
 			} catch (Exception e) {
 				e.printStackTrace();

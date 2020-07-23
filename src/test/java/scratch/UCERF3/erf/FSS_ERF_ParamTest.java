@@ -62,7 +62,9 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.inversion.SectionClusterList;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.SectionConnectionStrategy;
+import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -161,7 +163,7 @@ public class FSS_ERF_ParamTest {
 			sectIndex += newSubSects.size();
 		}
 				
-		LaughTestFilter laughTest = LaughTestFilter.getDefault();
+		UCERF3PlausibilityConfig laughTest = UCERF3PlausibilityConfig.getDefault();
 		laughTest.setCoulombFilter(null);
 		
 		// calculate distances between each subsection
@@ -176,8 +178,11 @@ public class FSS_ERF_ParamTest {
 		Map<IDPairing, Double> subSectionAzimuths = DeformationModelFetcher.getSubSectionAzimuthMap(
 				subSectionDistances.keySet(), subSections);
 		
-		SectionClusterList clusters = new SectionClusterList(
-				fm, DeformationModels.GEOLOGIC, laughTest, null, subSections, subSectionDistances, subSectionAzimuths);
+		SectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
+				laughTest.getMaxJumpDist(), null);
+		
+		SectionClusterList clusters = new SectionClusterList(connectionStrategy,
+				laughTest, subSections, subSectionDistances, subSectionAzimuths);
 		
 		List<List<Integer>> ruptures = Lists.newArrayList();
 		for (SectionCluster cluster : clusters) {

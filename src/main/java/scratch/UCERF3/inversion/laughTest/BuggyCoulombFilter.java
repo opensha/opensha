@@ -19,7 +19,7 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
  * @author kevin
  *
  */
-public class BuggyCoulombFilter extends AbstractLaughTest {
+public class BuggyCoulombFilter extends AbstractPlausibilityFilter {
 	
 	private CoulombRates rates;
 	private CoulombRatesTester tester;
@@ -37,10 +37,10 @@ public class BuggyCoulombFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+	public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		if (rupture.size() < 2 || junctionIndexes.isEmpty())
-			return true;
+			return PlausibilityResult.PASS;
 		
 		List<Integer> rupIndexes = Lists.newArrayList();
 		for (FaultSection sect : rupture)
@@ -71,7 +71,9 @@ public class BuggyCoulombFilter extends AbstractLaughTest {
 //			System.out.println("Rup: "+Joiner.on(", ").join(rupIndexes));
 //			printDebugRates(rupIndexes, forwardRates, backwardRates);
 //		}
-		return tester.doesRupturePass(forwardRates, backwardRates);
+		if (tester.doesRupturePass(forwardRates, backwardRates))
+			return PlausibilityResult.PASS;
+		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
 	public static void printDebugRates(List<Integer> rupIndexes,
@@ -98,11 +100,6 @@ public class BuggyCoulombFilter extends AbstractLaughTest {
 		}
 		System.out.println("Forward: "+Joiner.on("; ").join(fwStrings));
 		System.out.println("Backward: "+Joiner.on("; ").join(bwStrings));
-	}
-
-	@Override
-	public boolean isContinueOnFaulure() {
-		return false;
 	}
 
 	@Override

@@ -14,7 +14,7 @@ import org.opensha.sha.faultSurface.FaultSection;
  * @author kevin
  *
  */
-public class CumulativeJumpDistFilter extends AbstractLaughTest {
+public class CumulativeJumpDistFilter extends AbstractPlausibilityFilter {
 	
 	private Map<IDPairing, Double> distances;
 	private double maxCmlJumpDist;
@@ -25,7 +25,7 @@ public class CumulativeJumpDistFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+	public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		double dist = 0;
 		for (int junctionIndex : junctionIndexes) {
@@ -33,12 +33,9 @@ public class CumulativeJumpDistFilter extends AbstractLaughTest {
 			IDPairing pair = pairings.get(junctionIndex+1);
 			dist += distances.get(pair);
 		}
-		return dist <= maxCmlJumpDist;
-	}
-
-	@Override
-	public boolean isContinueOnFaulure() {
-		return false;
+		if (dist <= maxCmlJumpDist)
+			return PlausibilityResult.PASS;
+		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 
 	@Override

@@ -18,7 +18,7 @@ import com.google.common.base.Preconditions;
  * @author kevin
  *
  */
-public class CumulativeAzimuthChangeFilter extends AbstractLaughTest {
+public class CumulativeAzimuthChangeFilter extends AbstractPlausibilityFilter {
 	
 	private boolean USE_BUGGY_AZ_CHANGE = false;
 	
@@ -38,7 +38,7 @@ public class CumulativeAzimuthChangeFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+	public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		double cmlAzimuthChange = 0;
 		for (int i=1; i<pairings.size(); i++) {
@@ -50,12 +50,9 @@ public class CumulativeAzimuthChangeFilter extends AbstractLaughTest {
 				cmlAzimuthChange += Math.abs(AzimuthChangeFilter.getAzimuthDifference(
 						newAzimuth, prevAzimuth));
 		}
-		return cmlAzimuthChange <= maxCmlAzimuthChange;
-	}
-
-	@Override
-	public boolean isContinueOnFaulure() {
-		return false;
+		if (cmlAzimuthChange <= maxCmlAzimuthChange)
+			return PlausibilityResult.PASS;
+		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 
 	@Override

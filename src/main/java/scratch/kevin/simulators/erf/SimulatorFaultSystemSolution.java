@@ -286,8 +286,8 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 			int startID1 = subSects1.get(0).getSectionId();
 			int endID1 = subSects1.get(subSects1.size()-1).getSectionId();
 			
-			double myStartMaxDist = Double.POSITIVE_INFINITY;
-			double myEndMaxDist = Double.POSITIVE_INFINITY;
+//			double myStartMaxDist = Double.POSITIVE_INFINITY;
+//			double myEndMaxDist = Double.POSITIVE_INFINITY;
 			for (int k=0; k<subSectsForFaults.size(); k++) {
 				if (j == k)
 					continue;

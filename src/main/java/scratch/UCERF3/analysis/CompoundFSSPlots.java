@@ -136,7 +136,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
@@ -6029,7 +6029,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			String prefix) throws IOException {
 		System.out.println("Making mean solutions!");
 		
-		LaughTestFilter laughTest = LaughTestFilter.getDefault();
+		UCERF3PlausibilityConfig laughTest = UCERF3PlausibilityConfig.getDefault();
 		
 		GriddedRegion region = plot.region;
 
@@ -6058,7 +6058,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			
 			if (rates.length == 229104 || rates.length == 249656) {
 				System.err.println("WARNING: Using UCERF3.2 laugh test filter!");
-				laughTest = LaughTestFilter.getUCERF3p2Filter();
+				laughTest = UCERF3PlausibilityConfig.getUCERF3p2Filter();
 				DeformationModelFetcher.IMPERIAL_DDW_HACK = true;
 			}
 			

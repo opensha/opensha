@@ -1,35 +1,38 @@
 package scratch.UCERF3.inversion.laughTest;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.dom4j.Attribute;
 import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.IDPairing;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 
-public class LaughTestFilter implements XMLSaveable {
+public class UCERF3PlausibilityConfig implements PlausibilityConfiguration {
 	
 	public static final String XML_METADATA_NAME = "LaughTestFilter";
 	
 	private double maxJumpDist, maxAzimuthChange, maxTotAzimuthChange,
 	maxCmlJumpDist, maxCmlRakeChange, maxCmlAzimuthChange;
 	private int minNumSectInRup;
-	private CoulombRatesTester coulombFilter;
+	private CoulombRates coulombRates;
+	private CoulombRatesTester coulombTester;
+	private boolean applyGarlockPintoMtnFix;
 	private HashSet<Integer> parentSectsToIgnore;
 	private boolean allowSingleSectDuringJumps;
 	
-	private List<AbstractLaughTest> laughTests;
+	private List<AbstractPlausibilityFilter> laughTests;
 	
 	private boolean ucerf3p2Filter = false;
 	
@@ -38,7 +41,7 @@ public class LaughTestFilter implements XMLSaveable {
 	 * 
 	 * @return
 	 */
-	public static LaughTestFilter getUCERF3p2Filter() {
+	public static UCERF3PlausibilityConfig getUCERF3p2Filter() {
 		System.err.println("*** WARNING ***");
 		System.err.println("UCERF3.2 and before laugh test bugs have been enabled for " +
 				"backwards compatibility. This should be disabled before future production runs!");
@@ -57,15 +60,16 @@ public class LaughTestFilter implements XMLSaveable {
 		// if true the coulomb filter will only be applied at branch points
 		boolean applyBranchesOnly = true;
 		boolean allowAnyWay = false;
-		
-		CoulombRatesTester coulombFilter = new CoulombRatesTester(
+
+		CoulombRatesTester coulombTester = new CoulombRatesTester(
 				TestType.COULOMB_STRESS, minAverageProb, minIndividualProb,
 				minimumStressExclusionCeiling, applyBranchesOnly, allowAnyWay);
-		coulombFilter.setBuggyMinStress(true);
+		coulombTester.setBuggyMinStress(true);
+		boolean applyGarlockPintoMtnFix = true;
 		
-		LaughTestFilter filter =  new LaughTestFilter(maxJumpDist, maxAzimuthChange,
+		UCERF3PlausibilityConfig filter =  new UCERF3PlausibilityConfig(maxJumpDist, maxAzimuthChange,
 				maxTotAzimuthChange, maxCumJumpDist, maxCmlRakeChange, maxCmlAzimuthChange,
-				minNumSectInRup, allowSingleSectDuringJumps, coulombFilter);
+				minNumSectInRup, allowSingleSectDuringJumps, coulombTester, applyGarlockPintoMtnFix);
 		filter.ucerf3p2Filter = true;
 		return filter;
 	}
@@ -75,7 +79,7 @@ public class LaughTestFilter implements XMLSaveable {
 	 * 
 	 * @return
 	 */
-	public static LaughTestFilter getDefault() {
+	public static UCERF3PlausibilityConfig getDefault() {
 		double maxAzimuthChange = 60;
 		double maxJumpDist = 5d;
 		double maxCumJumpDist = Double.POSITIVE_INFINITY;
@@ -91,20 +95,21 @@ public class LaughTestFilter implements XMLSaveable {
 		boolean applyBranchesOnly = true;
 		boolean allowAnyWay = true;
 		
-		CoulombRatesTester coulombFilter = new CoulombRatesTester(
+		CoulombRatesTester coulombTester = new CoulombRatesTester(
 				TestType.COULOMB_STRESS, minAverageProb, minIndividualProb,
 				minimumStressExclusionCeiling, applyBranchesOnly, allowAnyWay);
+		boolean applyGarlockPintoMtnFix = true;
 		
-		return new LaughTestFilter(maxJumpDist, maxAzimuthChange, maxTotAzimuthChange,
+		return new UCERF3PlausibilityConfig(maxJumpDist, maxAzimuthChange, maxTotAzimuthChange,
 				maxCumJumpDist, maxCmlRakeChange, maxCmlAzimuthChange, minNumSectInRup,
-				allowSingleSectDuringJumps, coulombFilter);
+				allowSingleSectDuringJumps, coulombTester, applyGarlockPintoMtnFix);
 	}
 	
-	public LaughTestFilter(double maxJumpDist, double maxAzimuthChange,
+	public UCERF3PlausibilityConfig(double maxJumpDist, double maxAzimuthChange,
 			double maxTotAzimuthChange,
 			double maxCumJumpDist, double maxCmlRakeChange,
 			double maxCmlAzimuthChange, int minNumSectInRup, boolean allowSingleSectDuringJumps,
-			CoulombRatesTester coulombFilter) {
+			CoulombRatesTester coulombTester, boolean applyGarlockPintoMtnFix) {
 		this.maxJumpDist = maxJumpDist;
 		this.maxAzimuthChange = maxAzimuthChange;
 		this.maxTotAzimuthChange = maxTotAzimuthChange;
@@ -113,22 +118,24 @@ public class LaughTestFilter implements XMLSaveable {
 		this.maxCmlAzimuthChange = maxCmlAzimuthChange;
 		this.minNumSectInRup = minNumSectInRup;
 		this.allowSingleSectDuringJumps = allowSingleSectDuringJumps;
-		this.coulombFilter = coulombFilter;
+		this.coulombTester = coulombTester;
+		this.applyGarlockPintoMtnFix = applyGarlockPintoMtnFix;
+	}
+	
+	public void setCoulombRates(CoulombRates coulombRates) {
+		this.coulombRates = coulombRates;
 	}
 	
 	public void clearLaughTests() {
 		this.laughTests = null;
 	}
 	
-	public synchronized List<AbstractLaughTest> buildLaughTests(
+	public synchronized List<AbstractPlausibilityFilter> buildPlausibilityFilters(
 			Map<IDPairing, Double> azimuths,
 			Map<IDPairing, Double> distances,
-			Map<Integer, Double> rakesMap,
-			CoulombRates coulombRates,
-			boolean applyGarlockPintoMtnFix,
 			List<List<Integer>> sectionConnectionsListList,
 			List<? extends FaultSection> subSectData) {
-		List<AbstractLaughTest> tests = Lists.newArrayList();
+		List<AbstractPlausibilityFilter> tests = Lists.newArrayList();
 		
 		if (minNumSectInRup > 0) {
 			tests.add(new MinSectsPerParentFilter.ContinualFilter(minNumSectInRup));
@@ -136,24 +143,30 @@ public class LaughTestFilter implements XMLSaveable {
 					allowSingleSectDuringJumps, sectionConnectionsListList, subSectData));
 		}
 		
-		tests.add(new AzimuthChangeFilter(maxAzimuthChange, maxTotAzimuthChange,
-				applyGarlockPintoMtnFix, azimuths));
+		if (!isNaNInfinite(maxAzimuthChange) || !isNaNInfinite(maxTotAzimuthChange))
+			tests.add(new AzimuthChangeFilter(maxAzimuthChange, maxTotAzimuthChange,
+					applyGarlockPintoMtnFix, azimuths));
 		
 		if (!isNaNInfinite(maxCmlJumpDist))
 			tests.add(new CumulativeJumpDistFilter(distances, maxCmlJumpDist));
 		
-		if (!isNaNInfinite(maxCmlRakeChange))
+		if (!isNaNInfinite(maxCmlRakeChange)) {
+			Map<Integer, Double> rakesMap = new HashMap<Integer, Double>();
+			for (FaultSection data : subSectData)
+				rakesMap.put(data.getSectionId(), data.getAveRake());
 			tests.add(new CumulativeRakeChangeFilter(rakesMap, maxCmlRakeChange));
+		}
 		
 		if (!isNaNInfinite(maxCmlAzimuthChange))
 			tests.add(new CumulativeAzimuthChangeFilter(azimuths, maxCmlAzimuthChange));
 		
-		if (coulombFilter != null) {
+		if (coulombTester != null) {
+			Preconditions.checkNotNull(coulombRates, "Coulomb filter enabled but Coulomb rates not set");
 			if (ucerf3p2Filter)
-				tests.add(new BuggyCoulombFilter(coulombRates, coulombFilter,
+				tests.add(new BuggyCoulombFilter(coulombRates, coulombTester,
 						subSectData, sectionConnectionsListList));
 			else
-				tests.add(new CoulombFilter(coulombRates, coulombFilter));
+				tests.add(new CoulombFilter(coulombRates, coulombTester));
 		}
 		
 		this.laughTests = tests;
@@ -172,7 +185,7 @@ public class LaughTestFilter implements XMLSaveable {
 	 * 
 	 * @return list of laugh tests, or null if not yet built
 	 */
-	public List<AbstractLaughTest> getLaughTests() {
+	public List<AbstractPlausibilityFilter> getPlausibilityFilters() {
 		return laughTests;
 	}
 	
@@ -183,10 +196,10 @@ public class LaughTestFilter implements XMLSaveable {
 	 * not yet built.
 	 */
 	@SuppressWarnings("unchecked")
-	public <E extends AbstractLaughTest> E getLaughTest(Class<E> clazz) {
+	public <E extends AbstractPlausibilityFilter> E getLaughTest(Class<E> clazz) {
 		if (laughTests == null)
 			return null;
-		for (AbstractLaughTest test : laughTests) {
+		for (AbstractPlausibilityFilter test : laughTests) {
 			if (clazz.isInstance(test))
 				return (E)test;
 		}
@@ -268,11 +281,11 @@ public class LaughTestFilter implements XMLSaveable {
 	}
 
 	public CoulombRatesTester getCoulombFilter() {
-		return coulombFilter;
+		return coulombTester;
 	}
 
 	public void setCoulombFilter(CoulombRatesTester coulombFilter) {
-		this.coulombFilter = coulombFilter;
+		this.coulombTester = coulombFilter;
 	}
 
 	public HashSet<Integer> getParentSectsToIgnore() {
@@ -292,7 +305,7 @@ public class LaughTestFilter implements XMLSaveable {
 				+ ", maxCmlRakeChange=" + maxCmlRakeChange
 				+ ", maxCmlAzimuthChange=" + maxCmlAzimuthChange
 				+ ", minNumSectInRup=" + minNumSectInRup
-				+ ", coulombFilter=" + coulombFilter+ "]";
+				+ ", coulombFilter=" + coulombTester+ "]";
 	}
 
 	@Override
@@ -307,12 +320,13 @@ public class LaughTestFilter implements XMLSaveable {
 		el.addAttribute("maxCmlAzimuthChange", maxCmlAzimuthChange+"");
 		el.addAttribute("minNumSectInRup", minNumSectInRup+"");
 		el.addAttribute("allowSingleSectDuringJumps", allowSingleSectDuringJumps+"");
+		el.addAttribute("applyGarlockPintoMtnFix", applyGarlockPintoMtnFix+"");
 		if (ucerf3p2Filter)
 			el.addAttribute("ucerf3p2Filter", ucerf3p2Filter+"");
 		
 		// coulomb
-		if (coulombFilter != null) {
-			coulombFilter.toXMLMetadata(el);
+		if (coulombTester != null) {
+			coulombTester.toXMLMetadata(el);
 		}
 		
 		// parent sects to ignore
@@ -327,7 +341,7 @@ public class LaughTestFilter implements XMLSaveable {
 		return root;
 	}
 	
-	public static LaughTestFilter fromXMLMetadata(Element laughEl) {
+	public static UCERF3PlausibilityConfig fromXMLMetadata(Element laughEl) {
 		double maxJumpDist = Double.parseDouble(laughEl.attributeValue("maxJumpDist"));
 		double maxAzimuthChange = Double.parseDouble(laughEl.attributeValue("maxAzimuthChange"));
 		double maxTotAzimuthChange = Double.parseDouble(laughEl.attributeValue("maxTotAzimuthChange"));
@@ -336,6 +350,8 @@ public class LaughTestFilter implements XMLSaveable {
 		double maxCmlAzimuthChange = Double.parseDouble(laughEl.attributeValue("maxCmlAzimuthChange"));
 		int minNumSectInRup = Integer.parseInt(laughEl.attributeValue("minNumSectInRup"));
 		boolean allowSingleSectDuringJumps = Boolean.parseBoolean(laughEl.attributeValue("allowSingleSectDuringJumps"));
+		Attribute fixAtt = laughEl.attribute("applyGarlockPintoMtnFix");
+		boolean applyGarlockPintoMtnFix = fixAtt == null ? true : Boolean.parseBoolean(fixAtt.getValue());
 		
 		// coulomb filter
 		CoulombRatesTester coulombFilter = null;
@@ -343,8 +359,9 @@ public class LaughTestFilter implements XMLSaveable {
 		if (coulombEl != null)
 			coulombFilter = CoulombRatesTester.fromXMLMetadata(coulombEl);
 		
-		LaughTestFilter filter = new LaughTestFilter(maxJumpDist, maxAzimuthChange, maxTotAzimuthChange,
-				maxCmlJumpDist, maxCmlRakeChange, maxCmlAzimuthChange, minNumSectInRup, allowSingleSectDuringJumps, coulombFilter);
+		UCERF3PlausibilityConfig filter = new UCERF3PlausibilityConfig(maxJumpDist, maxAzimuthChange, maxTotAzimuthChange,
+				maxCmlJumpDist, maxCmlRakeChange, maxCmlAzimuthChange, minNumSectInRup, allowSingleSectDuringJumps,
+				coulombFilter, applyGarlockPintoMtnFix);
 		
 		// sections to ignore
 		Element ignoresEl = laughEl.element("IgnoredParents");

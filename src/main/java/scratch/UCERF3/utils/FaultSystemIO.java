@@ -50,7 +50,8 @@ import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.InversionConfiguration;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.laughTest.LaughTestFilter;
+import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
+import scratch.UCERF3.inversion.laughTest.PlausibilityConfiguration;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 
 public class FaultSystemIO {
@@ -288,7 +289,7 @@ public class FaultSystemIO {
 		if (DD) System.out.println("loading inv matadata");
 		ZipEntry invXMLEntry = zip.getEntry(getRemappedName("inv_rup_set_metadata.xml", nameRemappings));
 		LogicTreeBranch branch = null;
-		LaughTestFilter filter = null;
+		UCERF3PlausibilityConfig filter = null;
 		if (invXMLEntry != null) {
 			Document invDoc = XMLUtils.loadDocument(zip.getInputStream(invXMLEntry));
 			Element invRoot = invDoc.getRootElement().element("InversionFaultSystemRupSet");
@@ -297,9 +298,9 @@ public class FaultSystemIO {
 			if (branchEl != null)
 				branch = LogicTreeBranch.fromXMLMetadata(branchEl);
 			
-			Element filterEl = invRoot.element(LaughTestFilter.XML_METADATA_NAME);
+			Element filterEl = invRoot.element(UCERF3PlausibilityConfig.XML_METADATA_NAME);
 			if (filterEl != null)
-				filter = LaughTestFilter.fromXMLMetadata(filterEl);
+				filter = UCERF3PlausibilityConfig.fromXMLMetadata(filterEl);
 		}
 		
 		// try to load the logic tree branch via other means for legacy files
@@ -877,7 +878,7 @@ public class FaultSystemIO {
 			branch.toXMLMetadata(el);
 		
 		// add LaughTestFilter
-		LaughTestFilter filter = invRupSet.getLaughTestFilter();
+		PlausibilityConfiguration filter = invRupSet.getPlausibilityConfiguration();
 		if (filter != null)
 			filter.toXMLMetadata(el);
 	}

@@ -21,7 +21,7 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
  * @author kevin
  *
  */
-public class CoulombFilter extends AbstractLaughTest {
+public class CoulombFilter extends AbstractPlausibilityFilter {
 	
 	private CoulombRates rates;
 	private CoulombRatesTester tester;
@@ -33,10 +33,10 @@ public class CoulombFilter extends AbstractLaughTest {
 	}
 
 	@Override
-	public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+	public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 			List<IDPairing> pairings, List<Integer> junctionIndexes) {
 		if (rupture.size() < 2 || (isApplyJunctionsOnly() && junctionIndexes.isEmpty()))
-			return true;
+			return PlausibilityResult.PASS;
 		
 		List<CoulombRatesRecord> forwardRates = Lists.newArrayList();
 		List<CoulombRatesRecord> backwardRates = Lists.newArrayList();
@@ -54,7 +54,7 @@ public class CoulombFilter extends AbstractLaughTest {
 				// junctionIndex-1 here  because junctions point forwards, but pairings start one back
 				IDPairing pair = pairings.get(junctionIndex-1);
 				if (missingAsFail && rates.get(pair) == null)
-					return false;
+					return PlausibilityResult.FAIL_HARD_STOP;
 //				System.out.println(pair);
 //				FaultSection sect1 = rupture.get(junctionIndex-1);
 //				FaultSection sect2 = rupture.get(junctionIndex);
@@ -71,17 +71,14 @@ public class CoulombFilter extends AbstractLaughTest {
 		} else {
 			for (IDPairing pair : pairings) {
 				if (missingAsFail && rates.get(pair) == null)
-					return false;
+					return PlausibilityResult.FAIL_HARD_STOP;
 				forwardRates.add(rates.get(pair));
 				backwardRates.add(0, rates.get(pair.getReversed()));
 			}
 		}
-		return tester.doesRupturePass(forwardRates, backwardRates);
-	}
-
-	@Override
-	public boolean isContinueOnFaulure() {
-		return false;
+		if (tester.doesRupturePass(forwardRates, backwardRates))
+			return PlausibilityResult.PASS;
+		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 
 	@Override

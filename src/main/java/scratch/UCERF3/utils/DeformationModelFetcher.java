@@ -40,6 +40,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.SectionClusterList;
+import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.utils.DeformationModelFileParser.DeformationSection;
 
 import com.google.common.base.Preconditions;
@@ -1227,7 +1228,7 @@ public class DeformationModelFetcher {
 	public static void writePairingsTextFile(File file, List<? extends FaultSection> faultSubSections,
 			Map<IDPairing, Double> distances, double maxJumpDist) throws IOException {
 		
-		List<List<Integer>> connections = SectionClusterList.computeCloseSubSectionsListList(faultSubSections, distances, maxJumpDist);
+		List<List<Integer>> connections = UCERF3SectionConnectionStrategy.computeCloseSubSectionsListList(faultSubSections, distances, maxJumpDist, null);
 		
 		FileWriter fw = new FileWriter(file);
 		
@@ -1393,6 +1394,7 @@ public class DeformationModelFetcher {
 				}
 			}
 		}
+		System.out.println();
 		return distances;
 	}
 

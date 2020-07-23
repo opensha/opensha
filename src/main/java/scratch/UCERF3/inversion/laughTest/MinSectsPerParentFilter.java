@@ -19,7 +19,7 @@ public class MinSectsPerParentFilter {
 	 * @author kevin
 	 *
 	 */
-	public static class ContinualFilter extends AbstractLaughTest {
+	public static class ContinualFilter extends AbstractPlausibilityFilter {
 		
 		private int minSectsPerParent;
 		public ContinualFilter(int minSectsPerParent) {
@@ -27,24 +27,20 @@ public class MinSectsPerParentFilter {
 		}
 		
 		@Override
-		public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+		public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 				List<IDPairing> pairings, List<Integer> junctionIndexes) {
 			int numJunctions = junctionIndexes.size();
 			
 			// make sure we aren't starting with a junction before minSectsPerParent
 			if (rupture.size() >= minSectsPerParent && numJunctions > 0
 					&& junctionIndexes.get(0) < minSectsPerParent)
-				return false;
+				return PlausibilityResult.FAIL_HARD_STOP;
 			
 			// passes if there are at least n sections and the last section is not a junction
-			return rupture.size() >= minSectsPerParent && (numJunctions == 0
-					|| junctionIndexes.get(numJunctions-1) < (rupture.size()-minSectsPerParent+1));
-		}
-
-		@Override
-		public boolean isContinueOnFaulure() {
-			// the next section could cause this to pass so continue, but don't add the rupture
-			return true;
+			if (rupture.size() >= minSectsPerParent && (numJunctions == 0
+					|| junctionIndexes.get(numJunctions-1) < (rupture.size()-minSectsPerParent+1)))
+				return PlausibilityResult.PASS;
+			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 		}
 
 		@Override
@@ -72,11 +68,10 @@ public class MinSectsPerParentFilter {
 	 * @author kevin
 	 *
 	 */
-	public static class CleanupFilter extends AbstractLaughTest {
+	public static class CleanupFilter extends AbstractPlausibilityFilter {
 		
 		private int minSectsPerParent;
 		private boolean allowIfOnlyPath;
-		private List<List<Integer>> sectionConnectionsListList;
 		private Map<Integer, Collection<Integer>> parentSectConnectionsMap;
 		public CleanupFilter(int minSectsPerParent, boolean allowIfOnlyPath,
 				List<List<Integer>> sectionConnectionsListList, List<? extends FaultSection> subSectData) {
@@ -97,11 +92,10 @@ public class MinSectsPerParentFilter {
 					}
 				}
 			}
-			this.sectionConnectionsListList = sectionConnectionsListList;
 		}
 		
 		@Override
-		public boolean doesLastSectionPass(List<? extends FaultSection> rupture,
+		public PlausibilityResult applyLastSection(List<? extends FaultSection> rupture,
 				List<IDPairing> pairings, List<Integer> junctionIndexes) {
 			int numJunctions = junctionIndexes.size();
 			// this will be called on new junctions only. we must make sure that this isn't
@@ -110,11 +104,11 @@ public class MinSectsPerParentFilter {
 			
 			if (rupture.size() < (minSectsPerParent+1))
 				// +1 here because the sect on the new parent has been added
-				return false;
+				return PlausibilityResult.FAIL_HARD_STOP;
 			
 			if (numJunctions < 2)
 				// this is the first junction and it has enough sections so we're good
-				return true;
+				return PlausibilityResult.PASS;
 			
 			// make sure that the previous junction is at least minSectsPerParent before
 			// this new junction
@@ -132,15 +126,11 @@ public class MinSectsPerParentFilter {
 				// want the second section at that junction (section C)
 				int toID = rupture.get(junctionIndexes.get(numJunctions-1)).getParentSectionId();
 				// return a pass if there is no direct connection from A to C
-				return !parentSectConnectionsMap.get(fromID).contains(toID);
-//				return !sectionConnectionsListList.get(fromID).contains(toID);
+				if (parentSectConnectionsMap.get(fromID).contains(toID))
+					return PlausibilityResult.FAIL_HARD_STOP;
+				return PlausibilityResult.PASS;
 			}
-			return pass;
-		}
-
-		@Override
-		public boolean isContinueOnFaulure() {
-			return false;
+			return PlausibilityResult.PASS;
 		}
 
 		@Override

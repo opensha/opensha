@@ -684,7 +684,7 @@ public class RSQSimSubSectionMapper {
 			sects.add(mapping.subSect);
 		}
 		
-		// sort each bundle my section index
+		// sort each bundle by section index
 		List<List<FaultSection>> rupSectsListBundled = Lists.newArrayList();
 		for (List<FaultSection> sects : rupSectsBundled.values()) {
 			Collections.sort(sects, sectIDCompare);

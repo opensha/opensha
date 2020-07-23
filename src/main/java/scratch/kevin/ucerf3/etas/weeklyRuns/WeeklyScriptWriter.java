@@ -41,12 +41,12 @@ public class WeeklyScriptWriter {
 		GregorianCalendar endDate = new GregorianCalendar(startDate.getTimeZone());
 		int deltaDays = 7;
 		
-//		int batchSize = 50;
-//		int batchNodes = 40;
-//		int batchHours = 14;
-		int batchSize = 80;
-		int batchNodes = 30;
-		int batchHours = 15;
+		int batchSize = 50;
+		int batchNodes = 40;
+		int batchHours = 14;
+//		int batchSize = 80;
+//		int batchNodes = 30;
+//		int batchHours = 15;
 		int batchThreads = 20;
 		
 		double duration = 1d;
@@ -61,15 +61,20 @@ public class WeeklyScriptWriter {
 //		String parentDir = "${ETAS_SIM_DIR}/2020_05_14-weekly-1986-present-full_td-kCOV1.5";
 //		boolean griddedOnly = false;
 		
+		String kCOV = null;
+		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
+		String parentDir = "${ETAS_SIM_DIR}/2020_07_22-weekly-1986-present-full_td";
+		boolean griddedOnly = false;
+		
 //		String kCOV = "1.5";
 //		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
 //		String parentDir = "${ETAS_SIM_DIR}/2020_05_25-weekly-1986-present-no_ert-kCOV1.5";
 //		boolean griddedOnly = false;
 		
-		String kCOV = "1.5";
-		U3ETAS_ProbabilityModelOptions probModel = null;
-		String parentDir = "${ETAS_SIM_DIR}/2020_07_13-weekly-1986-present-gridded-kCOV1.5";
-		boolean griddedOnly = true;
+//		String kCOV = "1.5";
+//		U3ETAS_ProbabilityModelOptions probModel = null;
+//		String parentDir = "${ETAS_SIM_DIR}/2020_07_13-weekly-1986-present-gridded-kCOV1.5";
+//		boolean griddedOnly = true;
 		
 		File resolvedParentDir = ETAS_Config.resolvePath(parentDir);
 		Preconditions.checkState(resolvedParentDir.exists() || resolvedParentDir.mkdir());
