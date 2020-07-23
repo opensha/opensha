@@ -122,7 +122,7 @@ public class FaultTrace extends LocationList implements Named {
 	/**
 	 * This returns the dip direction (between 0 and 360 degrees) defined by stike direction + 90.
 	 * 
-	 * @return dip direction
+	 * @return dip direction in degrees
 	 * @see getStrikeDirection
 	 */
 	public double getDipDirection() {
