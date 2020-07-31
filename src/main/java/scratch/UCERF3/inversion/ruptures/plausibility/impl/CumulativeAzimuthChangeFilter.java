@@ -1,5 +1,8 @@
 package scratch.UCERF3.inversion.ruptures.plausibility.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -9,99 +12,112 @@ import scratch.UCERF3.inversion.ruptures.ClusterRupture;
 import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
 import scratch.UCERF3.inversion.ruptures.Jump;
 import scratch.UCERF3.inversion.ruptures.plausibility.PlausibilityFilter;
+import scratch.UCERF3.inversion.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 
 public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 	
-	private SectionDistanceAzimuthCalculator calc;
-	private double threshold;
-	private boolean flipLeftLateral;
-	private boolean applyAtJumpsOnly;
+	private AzimuthCalc calc;
+	private float threshold;
 
-	public CumulativeAzimuthChangeFilter(SectionDistanceAzimuthCalculator calc,
-			double threshold, boolean flipLeftLateral, boolean applyAtJumpsOnly) {
+	public CumulativeAzimuthChangeFilter(AzimuthCalc calc, float threshold) {
 		this.calc = calc;
 		this.threshold = threshold;
-		this.flipLeftLateral = flipLeftLateral;
-		this.applyAtJumpsOnly = applyAtJumpsOnly;
 	}
 
 	@Override
-	public PlausibilityResult apply(ClusterRupture rupture) {
-		double tot = calcForRup(rupture);
-		if (Double.isNaN(tot))
-			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
-		if (tot < threshold)
+	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
+		if (rupture.getTotalNumSects() < 3) {
+			if (verbose)
+				System.out.println(getShortName()+": passing with <3 sects");
 			return PlausibilityResult.PASS;
+		}
+		double tot = calc(rupture, rupture.clusters[0].firstSect, null, null, verbose);
+		if ((float)tot <= threshold) {
+			if (verbose)
+				System.out.println(getShortName()+": passing with tot="+tot);
+			return PlausibilityResult.PASS;
+		}
+		if (verbose)
+			System.out.println(getShortName()+": failing with tot="+tot);
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 
-	public double calcForRup(ClusterRupture rupture) {
-		double tot = 0d;
-		for (Jump jump : rupture.jumps) {
-			tot += calcForJump(jump);
-			if (Double.isNaN(tot) || tot > threshold)
-				// stop;
-				return tot;
+	@Override
+	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
+		if (rupture.getTotalNumSects() < 2) {
+			// need at least 2 sections on the first cluster
+			if (verbose)
+				System.out.println(getShortName()+": failing with <2 sects on first cluster");
+			return PlausibilityResult.FAIL_HARD_STOP;
 		}
-		if (!applyAtJumpsOnly) {
-			for (FaultSubsectionCluster cluster : rupture.primaryStrand) {
-				tot += calcForCluster(cluster);
-				if (Double.isNaN(tot) || tot > threshold)
-					// stop;
-					return tot;
+		double tot = calc(rupture, rupture.clusters[0].firstSect, null, null, verbose);
+		if ((float)tot < threshold || verbose) {
+			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
+			subSects.add(rupture.sectPredecessorsMap.get(newJump.fromSection));
+			subSects.add(newJump.fromSection);
+			subSects.addAll(newJump.toCluster.subSects);
+			for (int i=0; i<subSects.size()-2; i++) {
+				tot += doCalc(subSects.get(i), subSects.get(i+1), subSects.get(i+2));
+				if ((float)tot > threshold && !verbose)
+					return PlausibilityResult.FAIL_HARD_STOP;
 			}
 		}
-		Preconditions.checkState(Double.isFinite(tot));
-		return tot;
-	}
-
-	@Override
-	public PlausibilityResult test(ClusterRupture rupture, Jump jump) {
-		double tot = calcForRup(rupture);
-		tot += calcForJump(jump);
-		if (Double.isNaN(tot))
-			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
-		if (tot < threshold)
+		if ((float)tot <= threshold) {
+			if (verbose)
+				System.out.println(getShortName()+".testJump: passing with tot="+tot);
 			return PlausibilityResult.PASS;
+		}
+		if (verbose)
+			System.out.println(getShortName()+".testJump: failing with tot="+tot);
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
-	private double calcForCluster(FaultSubsectionCluster cluster) {
-		Preconditions.checkState(!applyAtJumpsOnly);
-		double tot = 0d;
-		for (int i=1; i<cluster.subSects.size()-1; i++) {
-			FaultSection s0 = cluster.subSects.get(i-1);
-			FaultSection s1 = cluster.subSects.get(i);
-			FaultSection s2 = cluster.subSects.get(i+1);
-			double az1 = JumpAzimuthChangeFilter.calcAzimuth(calc, s0, s1, flipLeftLateral);
-			double az2 = JumpAzimuthChangeFilter.calcAzimuth(calc, s1, s2, flipLeftLateral);
-			tot += Math.abs(JumpAzimuthChangeFilter.getAzimuthDifference(az1, az2));
+	private double calc(ClusterRupture rupture, FaultSection sect1, FaultSection sect2,
+			FaultSection sect3, boolean verbose) {
+		Preconditions.checkNotNull(sect1);
+		if (sect2 == null) {
+			double tot = 0d;
+			for (FaultSection descendent : rupture.sectDescendentsMap.get(sect1)) {
+				tot += calc(rupture, sect1, descendent, null, verbose);
+			}
+			return tot;
 		}
-		Preconditions.checkState(Double.isFinite(tot));
+		if (sect3 == null) {
+			double tot = 0d;
+			for (FaultSection descendent : rupture.sectDescendentsMap.get(sect2)) {
+				tot += calc(rupture, sect1, sect2, descendent, verbose);
+				if ((float)tot > threshold && !verbose)
+					return tot;
+			}
+			return tot;
+		}
+		double tot = doCalc(sect1, sect2, sect3);
+		if ((float)tot > threshold)
+			return tot;
+		for (FaultSection descendent : rupture.sectDescendentsMap.get(sect3)) {
+			tot += calc(rupture, sect2, sect3, descendent, verbose);
+			if ((float)tot > threshold && !verbose)
+				return tot;
+		}
 		return tot;
 	}
 	
-	private double calcForJump(Jump jump) {
-		Preconditions.checkNotNull(jump.leadingSections, "Jump doesn't have leading sections populated");
-		if (jump.leadingSections.size() < 2)
-			// fewer than 2 sections before the first jump, will never work
-			return Double.POSITIVE_INFINITY;
-		if (jump.toCluster.subSects.size() < 2)
-			// can't evaluate now, but could be a single section connection to another fault
-			return Double.NaN;
+	private double doCalc(FaultSection sect1, FaultSection sect2, FaultSection sect3) {
+		double beforeAz = calc.calcAzimuth(sect1, sect2);
+		double afterAz = calc.calcAzimuth(sect2, sect3);
 		
-		FaultSection before1 = jump.leadingSections.get(jump.leadingSections.size()-2);
-		FaultSection before2 = jump.leadingSections.get(jump.leadingSections.size()-1);
-		Preconditions.checkState(before2.equals(jump.fromSection));
-		double beforeAz = JumpAzimuthChangeFilter.calcAzimuth(calc, before1, before2, flipLeftLateral);
-		
-		FaultSection after1 = jump.toCluster.subSects.get(0);
-		Preconditions.checkState(after1.equals(jump.toSection));
-		FaultSection after2 = jump.toCluster.subSects.get(1);
-		double afterAz = JumpAzimuthChangeFilter.calcAzimuth(calc, after1, after2, flipLeftLateral);
-		
-		return JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
+		return Math.abs(JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz));
+	}
+
+	@Override
+	public String getShortName() {
+		return "CumAzimuth";
+	}
+
+	@Override
+	public String getName() {
+		return "Cumulative Azimuth Filter";
 	}
 
 }

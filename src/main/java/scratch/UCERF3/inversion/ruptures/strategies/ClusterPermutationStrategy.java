@@ -11,6 +11,4 @@ public interface ClusterPermutationStrategy {
 	
 	public List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
 			FaultSection firstSection);
-	
-	public boolean arePermutationsIncremental();
 }

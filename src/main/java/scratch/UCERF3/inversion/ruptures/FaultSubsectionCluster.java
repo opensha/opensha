@@ -2,6 +2,7 @@ package scratch.UCERF3.inversion.ruptures;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -91,6 +92,16 @@ public class FaultSubsectionCluster {
 			str.append(sect.getSectionId());
 		}
 		return str.append("]").toString();
+	}
+	
+	public FaultSubsectionCluster reversed() {
+		List<FaultSection> sects = new ArrayList<>(subSects);
+		Collections.reverse(sects);
+		FaultSubsectionCluster reversed = new FaultSubsectionCluster(sects);
+		for (Jump jump : possibleJumps)
+			reversed.addConnection(new Jump(jump.fromSection, reversed,
+					jump.toSection, jump.toCluster, jump.distance));
+		return reversed;
 	}
 
 }

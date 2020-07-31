@@ -1,14 +1,28 @@
 package scratch.UCERF3.inversion.ruptures.plausibility;
 
+import org.opensha.commons.data.ShortNamed;
+
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.inversion.ruptures.ClusterRupture;
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
 import scratch.UCERF3.inversion.ruptures.Jump;
 
-public interface PlausibilityFilter {
+public interface PlausibilityFilter extends ShortNamed {
 	
-	public PlausibilityResult apply(ClusterRupture rupture);
+	/**
+	 * Apply the plausibility filter to the entire rupture
+	 * @param rupture
+	 * @param verbose
+	 * @return
+	 */
+	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose);
 	
-	public PlausibilityResult test(ClusterRupture rupture, Jump jump);
+	/**
+	 * Apply the plausibility filter to the given jump, assuming that existing rupture already passes
+	 * @param rupture
+	 * @param newJump
+	 * @param verbose
+	 * @return
+	 */
+	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose);
 
 }

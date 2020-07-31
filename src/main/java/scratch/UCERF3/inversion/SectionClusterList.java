@@ -118,7 +118,8 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		while(availableSections.size()>0) {
 			if (D) System.out.println("WORKING ON CLUSTER #"+(size()+1));
 			int firstSubSection = availableSections.get(0);
-			SectionCluster newCluster = new SectionCluster(plausibility, faultSectionData,sectionConnectionsListList,
+			SectionCluster newCluster = new SectionCluster(plausibility, faultSectionData,
+					connectionStrategy, sectionConnectionsListList,
 					subSectionAzimuths, subSectionDistances);
 			newCluster.add(firstSubSection);
 			if (D) System.out.println("\tfirst is "+faultSectionData.get(firstSubSection).getName());

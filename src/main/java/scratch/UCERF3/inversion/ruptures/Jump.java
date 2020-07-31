@@ -7,30 +7,16 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 public class Jump {
 	
-	public final List<FaultSection> leadingSections;
 	public final FaultSection fromSection;
 	public final FaultSubsectionCluster fromCluster;
 	public final FaultSection toSection;
 	public final FaultSubsectionCluster toCluster;
 	public final double distance;
 	
-	public Jump(List<FaultSection> leadingSections, FaultSubsectionCluster fromCluster,
-			FaultSection toSection, FaultSubsectionCluster toCluster, double distance) {
-		this(leadingSections, leadingSections.get(leadingSections.size()-1), fromCluster,
-				toSection, toCluster, distance);
-	}
-	
 	public Jump(FaultSection fromSection, FaultSubsectionCluster fromCluster, FaultSection toSection,
 			FaultSubsectionCluster toCluster, double distance) {
-		this(null, fromSection, fromCluster, toSection, toCluster, distance);
-	}
-	
-	private Jump(List<FaultSection> leadingSections, FaultSection fromSection,
-			FaultSubsectionCluster fromCluster, FaultSection toSection, FaultSubsectionCluster toCluster,
-			double distance) {
 		if (fromSection == null || fromCluster == null || toSection == null || toCluster == null)
 			throw new IllegalArgumentException("Nulls not allowed in Jump constructor");
-		this.leadingSections = leadingSections;
 		this.fromSection = fromSection;
 		this.fromCluster = fromCluster;
 		this.toSection = toSection;

@@ -60,9 +60,4 @@ public class UCERF3ClusterPermuationStrategy extends CachedClusterPermutationStr
 		return permutation;
 	}
 
-	@Override
-	public boolean arePermutationsIncremental() {
-		return true;
-	}
-
 }
