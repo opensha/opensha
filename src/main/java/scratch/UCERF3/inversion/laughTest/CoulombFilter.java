@@ -27,6 +27,8 @@ public class CoulombFilter extends AbstractPlausibilityFilter {
 	private CoulombRatesTester tester;
 	private boolean missingAsFail = false;
 	
+	private static final boolean D = false;
+	
 	public CoulombFilter(CoulombRates rates, CoulombRatesTester tester) {
 		this.rates = rates;
 		this.tester = tester;
@@ -55,11 +57,11 @@ public class CoulombFilter extends AbstractPlausibilityFilter {
 				IDPairing pair = pairings.get(junctionIndex-1);
 				if (missingAsFail && rates.get(pair) == null)
 					return PlausibilityResult.FAIL_HARD_STOP;
-//				System.out.println(pair);
-//				FaultSection sect1 = rupture.get(junctionIndex-1);
-//				FaultSection sect2 = rupture.get(junctionIndex);
-//				System.out.println("\t"+sect1.getSectionId()+": "+sect1.getSectionName());
-//				System.out.println("\t"+sect2.getSectionId()+": "+sect2.getSectionName());
+				if (D) {
+					System.out.println(pair);
+					System.out.println("\tForward: "+rates.get(pair));
+					System.out.println("\tBackward: "+rates.get(pair.getReversed()));
+				}
 				
 				forwardRates.add(rates.get(pair));
 				Preconditions.checkNotNull(rates.get(pair),
@@ -76,7 +78,9 @@ public class CoulombFilter extends AbstractPlausibilityFilter {
 				backwardRates.add(0, rates.get(pair.getReversed()));
 			}
 		}
-		if (tester.doesRupturePass(forwardRates, backwardRates))
+		boolean pass = tester.doesRupturePass(forwardRates, backwardRates);
+		if (D) System.out.println("Testing with "+forwardRates.size()+" junctions: "+pass);
+		if (pass)
 			return PlausibilityResult.PASS;
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}

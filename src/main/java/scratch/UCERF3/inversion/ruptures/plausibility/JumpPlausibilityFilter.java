@@ -13,14 +13,20 @@ public abstract class JumpPlausibilityFilter implements PlausibilityFilter {
 			if (!result.canContinue())
 				return result;
 			result = result.logicalAnd(testJump(rupture, jump, verbose));
+//			if (verbose)
+//				System.out.println("\t"+getShortName()+" applied at jump: "+jump+", result="+result);
 		}
 		for (Jump jump : rupture.splays.keySet()) {
 			if (!result.canContinue())
 				return result;
 			result = result.logicalAnd(testJump(rupture, jump, verbose));
+//			if (verbose)
+//				System.out.println("\t"+getShortName()+" applied at splay jump: "+jump+", result="+result);
 			if (!result.canContinue())
 				return result;
 			result = result.logicalAnd(apply(rupture.splays.get(jump), verbose));
+//			if (verbose)
+//				System.out.println("\t"+getShortName()+" applied to splay from "+jump+", result="+result);
 		}
 		return result;
 	}

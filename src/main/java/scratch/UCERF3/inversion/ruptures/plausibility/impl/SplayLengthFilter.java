@@ -1,0 +1,147 @@
+package scratch.UCERF3.inversion.ruptures.plausibility.impl;
+
+import org.opensha.sha.faultSurface.FaultSection;
+
+import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
+import scratch.UCERF3.inversion.ruptures.ClusterRupture;
+import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
+import scratch.UCERF3.inversion.ruptures.Jump;
+import scratch.UCERF3.inversion.ruptures.plausibility.PlausibilityFilter;
+
+public class SplayLengthFilter implements PlausibilityFilter {
+	
+	private double maxLen;
+	private boolean isFractOfMain;
+	private boolean totalAcrossSplays;
+
+	/**
+	 * 
+	 * @param maxLen maximum splay length
+	 * @param isFractOfMain if true, maxLen is a fractional length of the primary rupture
+	 * @param totalAcrossSplays if true, maxLen is applied as a sum of all splays
+	 */
+	public SplayLengthFilter(double maxLen, boolean isFractOfMain, boolean totalAcrossSplays) {
+		this.maxLen = maxLen;
+		this.isFractOfMain = isFractOfMain;
+		this.totalAcrossSplays = totalAcrossSplays;
+	}
+
+	@Override
+	public String getShortName() {
+		return "StrandLen";
+	}
+
+	@Override
+	public String getName() {
+		return "Strand Length";
+	}
+
+	@Override
+	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
+		if (rupture.splays.isEmpty())
+			return PlausibilityResult.PASS;
+		double maxLen = isFractOfMain ? this.maxLen*calcLen(rupture, null, false) : this.maxLen;
+		if (verbose)
+			System.out.println(getShortName()+": maxLen="+maxLen);
+		double totSplay = 0d;
+		for (ClusterRupture splay : rupture.splays.values()) {
+			double splayLen = calcLen(splay, null, true);
+			if (verbose)
+				System.out.println(getShortName()+": splay with length="+splayLen);
+			if (totalAcrossSplays) {
+				totSplay += splayLen;
+				if ((float)totSplay > (float)maxLen) {
+					if (verbose)
+						System.out.println(getShortName()+": failing with cumulative length="+totSplay);
+					return PlausibilityResult.FAIL_HARD_STOP;
+				}
+			} else {
+				if ((float)splayLen > (float)maxLen) {
+					if (verbose)
+						System.out.println(getShortName()+": failing");
+					return PlausibilityResult.FAIL_HARD_STOP;
+				}
+			}
+		}
+		return PlausibilityResult.PASS;
+	}
+	
+	private static double calcLen(ClusterRupture rupture, FaultSubsectionCluster addition, boolean takeSplays) {
+		double len = 0d;
+		if (rupture != null)
+			for (FaultSubsectionCluster cluster : rupture.clusters)
+				for (FaultSection sect : cluster.subSects)
+					len += sect.getTraceLength();
+		if (addition != null)
+			for (FaultSection sect : addition.subSects)
+				len += sect.getTraceLength();
+		if (takeSplays && rupture != null)
+			for (ClusterRupture splay : rupture.splays.values())
+				len += calcLen(splay, null, true);
+		return len;
+	}
+
+	@Override
+	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
+		boolean isSplayJump = newJump.fromSection != rupture.clusters[rupture.clusters.length-1].lastSect;
+		if (rupture.splays.isEmpty() && !isSplayJump)
+			return PlausibilityResult.PASS;
+		if (verbose)
+			System.out.println(getShortName()+": isSplayJump="+isSplayJump);
+		double maxLen = isFractOfMain ?
+				this.maxLen*calcLen(rupture, isSplayJump ? null : newJump.toCluster, false) : this.maxLen;
+		if (verbose)
+			System.out.println(getShortName()+": maxLen="+maxLen);
+		double totSplay = 0d;
+		boolean jumpFound = false;
+		for (ClusterRupture splay : rupture.splays.values()) {
+			double splayLen;
+			if (splay.contains(newJump.fromSection)) {
+				jumpFound = true;
+				splayLen = calcLen(splay, newJump.toCluster, true);
+				if (verbose)
+					System.out.println(getShortName()+": jump located on splay with length="+splayLen);
+			} else {
+				splayLen = calcLen(splay, null, true);
+				if (verbose)
+					System.out.println(getShortName()+": splay with length="+splayLen);
+			}
+			if (totalAcrossSplays) {
+				totSplay += splayLen;
+				if ((float)totSplay > (float)maxLen) {
+					if (verbose)
+						System.out.println(getShortName()+": failing with cumulative length="+totSplay);
+					return PlausibilityResult.FAIL_HARD_STOP;
+				}
+			} else {
+				if ((float)splayLen > (float)maxLen) {
+					if (verbose)
+						System.out.println(getShortName()+": failing");
+					return PlausibilityResult.FAIL_HARD_STOP;
+				}
+			}
+		}
+		if (!jumpFound) {
+			// it's a new splay
+			double splayLen = calcLen(null, newJump.toCluster, true);
+			if (verbose)
+				System.out.println(getShortName()+": jump is new splay with length="+splayLen);
+			if (totalAcrossSplays) {
+				totSplay += splayLen;
+				if ((float)totSplay > (float)maxLen) {
+					if (verbose)
+						System.out.println(getShortName()+": failing with cumulative length="+totSplay);
+					return PlausibilityResult.FAIL_HARD_STOP;
+				}
+			} else {
+				if ((float)splayLen > (float)maxLen) {
+					if (verbose)
+						System.out.println(getShortName()+": failing");
+					return PlausibilityResult.FAIL_HARD_STOP;
+				}
+			}
+		}
+		return PlausibilityResult.PASS;
+	}
+
+}

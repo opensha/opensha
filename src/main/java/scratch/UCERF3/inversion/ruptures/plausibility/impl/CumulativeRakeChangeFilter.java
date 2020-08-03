@@ -9,12 +9,15 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.inversion.ruptures.ClusterRupture;
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
 import scratch.UCERF3.inversion.ruptures.Jump;
 import scratch.UCERF3.inversion.ruptures.plausibility.PlausibilityFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
-import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 
+/**
+ * Cumulative rake change filter which is applied at the subsection level.
+ * 
+ * @author kevin
+ *
+ */
 public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 	
 	private float threshold;
@@ -95,7 +98,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 		return tot;
 	}
 	
-	public static double rakeDiff(double rake1, double rake2) {
+	static double rakeDiff(double rake1, double rake2) {
 		double rakeDiff = Math.abs(rake1 - rake2);
 		if (rakeDiff > 180)
 			rakeDiff = 360-rakeDiff; // Deal with branch cut (180deg = -180deg)

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 
 import org.opensha.commons.data.CSVFile;
@@ -117,11 +118,19 @@ public class SectionDistanceAzimuthCalculator {
 		}
 	}
 	
+	public ConcurrentMap<IDPairing, Double> getCachedDistances() {
+		return distCache.asMap();
+	}
+	
+	public ConcurrentMap<IDPairing, Double> getCachedAzimuths() {
+		return distCache.asMap();
+	}
+	
 	public void writeCacheFile(File cacheFile) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		csv.addLine("ID1", "ID2", "Distance", "Azimuth");
-		Set<IDPairing> distPairings = distCache.asMap().keySet();
-		Set<IDPairing> azPairings = azCache.asMap().keySet();
+		Set<IDPairing> distPairings = getCachedDistances().keySet();
+		Set<IDPairing> azPairings = getCachedAzimuths().keySet();
 		HashSet<IDPairing> combPairings = new HashSet<>();
 		combPairings.addAll(distPairings);
 		combPairings.addAll(azPairings);

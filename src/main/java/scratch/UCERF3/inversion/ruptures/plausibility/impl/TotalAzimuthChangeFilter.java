@@ -17,11 +17,14 @@ public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 	private AzimuthCalc calc;
 	private float threshold;
 	private boolean multiFaultOnly;
+	private boolean testFullEnd;
 
-	public TotalAzimuthChangeFilter(AzimuthCalc calc, float threshold, boolean multiFaultOnly) {
+	public TotalAzimuthChangeFilter(AzimuthCalc calc, float threshold, boolean multiFaultOnly,
+			boolean testFullEnd) {
 		this.calc = calc;
 		this.threshold = threshold;
 		this.multiFaultOnly = multiFaultOnly;
+		this.testFullEnd = testFullEnd;
 	}
 
 	@Override
@@ -59,16 +62,24 @@ public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 		FaultSection before2 = startCluster.subSects.get(1);
 		double beforeAz = calc.calcAzimuth(before1, before2);
 		
-		FaultSection after1 = endCluster.subSects.get(endCluster.subSects.size()-2);
-		FaultSection after2 = endCluster.subSects.get(endCluster.subSects.size()-1);
-		double afterAz = calc.calcAzimuth(after1, after2);
-		
-		double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
-//		System.out.println(beforeAz+" => "+afterAz+" = "+diff);
-		if ((float)Math.abs(diff) <= threshold)
+		int startIndex = testFullEnd ? 0 : endCluster.subSects.size()-2;
+		double maxDiff = 0d;
+		for (int i=startIndex; i<endCluster.subSects.size()-1; i++) {
+			FaultSection after1 = endCluster.subSects.get(i);
+			FaultSection after2 = endCluster.subSects.get(i+1);
+			double afterAz = calc.calcAzimuth(after1, after2);
+			
+			double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
+//			System.out.println(beforeAz+" => "+afterAz+" = "+diff);
+			if (verbose)
+				System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
+						+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
+			maxDiff = Math.max(Math.abs(diff), maxDiff);
+		}
+		if ((float)maxDiff <= threshold)
 			return PlausibilityResult.PASS;
 		if (verbose)
-			System.out.println(getShortName()+": failing with diff="+diff);
+			System.out.println(getShortName()+": failing with diff="+maxDiff);
 		
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
