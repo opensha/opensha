@@ -1,13 +1,12 @@
-package scratch.UCERF3.inversion.ruptures.strategies;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
-
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
-import scratch.UCERF3.inversion.ruptures.Jump;
-import scratch.UCERF3.inversion.ruptures.strategies.ClusterConnectionStrategy;
-import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 
 public class DistCutoffClosestSectClusterConnectionStrategy implements ClusterConnectionStrategy {
 	

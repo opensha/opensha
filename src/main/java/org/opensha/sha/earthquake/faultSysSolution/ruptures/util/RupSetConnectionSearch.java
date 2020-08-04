@@ -1,4 +1,4 @@
-package scratch.UCERF3.inversion.ruptures.util;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -37,6 +37,11 @@ import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
@@ -47,11 +52,6 @@ import com.google.common.collect.Multimap;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.inversion.ruptures.ClusterRupture;
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
-import scratch.UCERF3.inversion.ruptures.Jump;
-import scratch.UCERF3.inversion.ruptures.strategies.ClusterConnectionStrategy;
-import scratch.UCERF3.inversion.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import scratch.UCERF3.utils.FaultSystemIO;
 
 public class RupSetConnectionSearch {

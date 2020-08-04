@@ -1,9 +1,9 @@
-package scratch.UCERF3.inversion.ruptures.strategies;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.List;
 
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
-import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 
 /**
  * This interface defines cluster connections. The addConnections method will be called in order to 

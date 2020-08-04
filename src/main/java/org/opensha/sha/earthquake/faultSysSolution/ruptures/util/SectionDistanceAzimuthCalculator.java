@@ -1,4 +1,4 @@
-package scratch.UCERF3.inversion.ruptures.util;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import java.io.File;
 import java.io.IOException;

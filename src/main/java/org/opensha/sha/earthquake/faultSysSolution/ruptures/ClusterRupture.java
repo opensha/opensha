@@ -1,4 +1,4 @@
-package scratch.UCERF3.inversion.ruptures;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -17,8 +18,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
-
-import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 
 /**
  * Rupture which is constructed as a set of connected FaultSubsectionCluster's. Jump's occur

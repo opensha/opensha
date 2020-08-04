@@ -1,4 +1,4 @@
-package scratch.UCERF3.inversion.ruptures;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
 import java.text.DecimalFormat;
 import java.util.List;

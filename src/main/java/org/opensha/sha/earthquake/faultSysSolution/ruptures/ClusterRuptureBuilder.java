@@ -1,4 +1,4 @@
-package scratch.UCERF3.inversion.ruptures;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +8,22 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.dom4j.DocumentException;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CoulombJunctionFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeRakeChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpCumulativeRakeChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayLengthFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterPermuationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -20,22 +36,6 @@ import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.inversion.ruptures.plausibility.PlausibilityFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.CoulombJunctionFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.CumulativeRakeChangeFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.MinSectsPerParentFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.SplayLengthFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
-import scratch.UCERF3.inversion.ruptures.plausibility.impl.JumpCumulativeRakeChangeFilter;
-import scratch.UCERF3.inversion.ruptures.strategies.ClusterConnectionStrategy;
-import scratch.UCERF3.inversion.ruptures.strategies.ClusterPermutationStrategy;
-import scratch.UCERF3.inversion.ruptures.strategies.UCERF3ClusterConnectionStrategy;
-import scratch.UCERF3.inversion.ruptures.strategies.UCERF3ClusterPermuationStrategy;
-import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSystemIO;
 

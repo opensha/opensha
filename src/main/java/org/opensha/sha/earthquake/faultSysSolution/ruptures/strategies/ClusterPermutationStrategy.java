@@ -1,10 +1,9 @@
-package scratch.UCERF3.inversion.ruptures.strategies;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.faultSurface.FaultSection;
-
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
 
 /**
  * Cluster permutation strategy which defines all viable unique combinations of subsections within

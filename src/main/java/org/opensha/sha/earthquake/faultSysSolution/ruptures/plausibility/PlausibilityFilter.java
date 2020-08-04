@@ -1,10 +1,10 @@
-package scratch.UCERF3.inversion.ruptures.plausibility;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility;
 
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.inversion.ruptures.ClusterRupture;
-import scratch.UCERF3.inversion.ruptures.Jump;
 
 public interface PlausibilityFilter extends ShortNamed {
 	

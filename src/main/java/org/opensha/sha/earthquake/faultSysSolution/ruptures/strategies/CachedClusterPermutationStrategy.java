@@ -1,13 +1,12 @@
-package scratch.UCERF3.inversion.ruptures.strategies;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
 
 /**
  * Utility class to cache viable cluster permutations for faster rupture building

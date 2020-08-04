@@ -1,16 +1,15 @@
-package scratch.UCERF3.inversion.ruptures.strategies;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
-
-import scratch.UCERF3.inversion.ruptures.ClusterRupture;
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
-import scratch.UCERF3.inversion.ruptures.Jump;
 
 /**
  * UCERF3 rupture permutations, which assumes that subsections are listed in order and connections

@@ -1,8 +1,12 @@
-package scratch.UCERF3.inversion.ruptures.plausibility.impl;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
 import java.util.Collection;
 import java.util.HashSet;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -10,10 +14,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.inversion.ruptures.ClusterRupture;
-import scratch.UCERF3.inversion.ruptures.Jump;
-import scratch.UCERF3.inversion.ruptures.plausibility.JumpPlausibilityFilter;
-import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 
 public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 	

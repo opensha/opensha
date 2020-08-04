@@ -1,12 +1,12 @@
-package scratch.UCERF3.inversion.ruptures.plausibility.impl;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.inversion.ruptures.ClusterRupture;
-import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
-import scratch.UCERF3.inversion.ruptures.Jump;
-import scratch.UCERF3.inversion.ruptures.plausibility.PlausibilityFilter;
 
 public class SplayLengthFilter implements PlausibilityFilter {
 	
