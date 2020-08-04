@@ -302,8 +302,8 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 		int rupIndex=-1;
 		for(int c=0;c<sectionClusterList.size();c++) {
 			SectionCluster cluster = sectionClusterList.get(c);
-			ArrayList<ArrayList<Integer>> clusterRupSects = cluster.getSectionIndicesForRuptures();
-			ArrayList<Integer> clusterRupIndexes = new ArrayList<Integer>(clusterRups.size());
+			List<List<Integer>> clusterRupSects = cluster.getSectionIndicesForRuptures();
+			List<Integer> clusterRupIndexes = new ArrayList<Integer>(clusterRups.size());
 			this.clusterRups.add(clusterRupIndexes);
 			this.clusterSects.add(cluster.getAllSectionsIdList());
 			for(int r=0;r<clusterRupSects.size();r++) {
@@ -314,10 +314,10 @@ public class InversionFaultSystemRupSet extends SlipEnabledRupSet {
 				double totArea=0;
 				double totOrigArea=0;
 				double totLength=0;
-				ArrayList<Integer> sectsInRup = clusterRupSects.get(r);
+				List<Integer> sectsInRup = clusterRupSects.get(r);
 				sectionsForRups.add(sectsInRup);
-				ArrayList<Double> areas = new ArrayList<Double>();
-				ArrayList<Double> rakes = new ArrayList<Double>();
+				List<Double> areas = new ArrayList<Double>();
+				List<Double> rakes = new ArrayList<Double>();
 				for(Integer sectID:sectsInRup) {
 					double length = faultSectionData.get(sectID).getTraceLength()*1e3;	// km --> m
 					totLength += length;

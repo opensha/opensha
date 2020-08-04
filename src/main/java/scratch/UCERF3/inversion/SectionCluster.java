@@ -40,20 +40,22 @@ public class SectionCluster extends ArrayList<Integer> {
 
 	public static boolean D = false;  // for debugging
 
-	List<? extends FaultSection> sectionDataList;
-	ArrayList<Integer> allSectionsIdList = null;
-	List<List<Integer>> sectionConnectionsListList;
+	private List<? extends FaultSection> sectionDataList;
+	private ArrayList<Integer> allSectionsIdList = null;
 	
 	// these are for tracking duplicate ruptures
-	int duplicateRups;
-	HashSet<UniqueRupture> processedRuptures;
+	private int duplicateRups;
+	private HashSet<UniqueRupture> processedRuptures;
 	
 	// elements here are section IDs (same as indices in sectonDataList)
-	ArrayList<ArrayList<Integer>> rupListIndices;
-	int numRupsAdded;
-	PlausibilityConfiguration plausibility;
-	Map<IDPairing, Double> sectionAzimuths;
-	Map<IDPairing, Double> subSectionDistances;
+	private List<List<Integer>> rupListIndices;
+	private int numRupsAdded;
+	private PlausibilityConfiguration plausibility;
+	private Map<IDPairing, Double> sectionAzimuths;
+	private Map<IDPairing, Double> subSectionDistances;
+	
+	private List<List<Integer>> sectionConnectionsListList;
+	private SectionConnectionStrategy connStrategy;
 
 	/**
 	 * 
@@ -66,13 +68,14 @@ public class SectionCluster extends ArrayList<Integer> {
 	 * @param maxRakeDiff
 	 */
 	public SectionCluster(PlausibilityConfiguration plausibility, List<? extends FaultSection> sectionDataList,
-			List<List<Integer>> sectionConnectionsListList, Map<IDPairing, Double> subSectionAzimuths,
+			SectionConnectionStrategy connStrategy, List<List<Integer>> sectionConnectionsListList, Map<IDPairing, Double> subSectionAzimuths,
 			Map<IDPairing, Double> subSectionDistances) {
 		this.sectionDataList = sectionDataList;
 		this.plausibility = plausibility;
-		this.sectionConnectionsListList = sectionConnectionsListList;
+		this.connStrategy = connStrategy;
 		this.sectionAzimuths = subSectionAzimuths;
 		this.subSectionDistances = subSectionDistances;
+		this.sectionConnectionsListList = sectionConnectionsListList;
 	}
 
 
@@ -89,7 +92,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	 * This returns a list of the IDs of all  sections in the cluster
 	 * @return
 	 */
-	public ArrayList<Integer> getAllSectionsIdList() {
+	public List<Integer> getAllSectionsIdList() {
 		if(allSectionsIdList==null) computeAllSectionsIdList();
 		return allSectionsIdList;
 	}
@@ -108,14 +111,14 @@ public class SectionCluster extends ArrayList<Integer> {
 	}
 
 
-	public ArrayList<ArrayList<Integer>> getSectionIndicesForRuptures() {
+	public List<List<Integer>> getSectionIndicesForRuptures() {
 		if(rupListIndices== null)
 			computeRupList();
 		return rupListIndices;
 	}
 
 
-	public ArrayList<Integer> getSectionIndicesForRupture(int rthRup) {
+	public List<Integer> getSectionIndicesForRupture(int rthRup) {
 		if(rupListIndices== null)
 			computeRupList();
 		return rupListIndices.get(rthRup);
@@ -217,9 +220,6 @@ public class SectionCluster extends ArrayList<Integer> {
 	private void addRuptures(List<? extends FaultSection> rupture, List<IDPairing> pairings,
 			List<Integer> junctionIndexes, List<AbstractPlausibilityFilter> tests,
 			UniqueRupture uniqueRupture, HashSet<Integer> idsSet) {
-		FaultSection currentLastSect = rupture.get(rupture.size()-1);
-		
-		List<Integer> branches = sectionConnectionsListList.get(currentLastSect.getSectionId());
 		
 		// this is for enabling debugging to figure out why a certain rupture is included
 //		boolean debugMatch = idsList.size() > 1 && idsList.get(0) == 1 && idsList.get(1) == 1;
@@ -228,62 +228,64 @@ public class SectionCluster extends ArrayList<Integer> {
 //		final boolean debugMatch = idsList.get(0) == 24;
 //		boolean debugMatch = idsList.contains(613) && idsList.contains(1495);
 		
-		for (int candidateIndex : branches) {
-			// avoid looping back on self or to previous section
-			if (idsSet.contains(candidateIndex))
-				continue;
-			UniqueRupture candidateUnique = uniqueRupture.takeBranch(candidateIndex);
-			
-//			boolean debugMatch = idsList.get(idsList.size()-1) == 2351 && candidateIndex == 208
-//					|| idsList.get(idsList.size()-1) == 208 && candidateIndex == 2351;
-			
-			FaultSection candidateLastSect = sectionDataList.get(candidateIndex);
-			
-			List<FaultSection> candidateRupture = Lists.newArrayList(rupture);
-			candidateRupture.add(candidateLastSect);
-			
-			List<Integer> candidateJunctionIndexes = Lists.newArrayList(junctionIndexes);
-			
-			boolean junction = currentLastSect.getParentSectionId() !=
-					candidateLastSect.getParentSectionId();
-			if (junction)
-				// this equals candidateRupture.size() - 1, but one less arithmetic operation
-				candidateJunctionIndexes.add(rupture.size());
-			
+		candidateLoop:
+		for (List<FaultSection> possibleRupture : connStrategy.getNextPossibleRuptures(
+				rupture, idsSet, sectionConnectionsListList.get(rupture.get(rupture.size()-1).getSectionId()),
+				sectionDataList)) {
+			Preconditions.checkState(possibleRupture.size() > rupture.size());
+			UniqueRupture candidateUnique = uniqueRupture;
+			List<FaultSection> candidateRupture = new ArrayList<>(rupture);
+			List<Integer> candidateJunctionIndexes = new ArrayList<>(junctionIndexes);
 			List<IDPairing> candidatePairings = Lists.newArrayList(pairings);
-			candidatePairings.add(new IDPairing(currentLastSect.getSectionId(), candidateIndex));
 			
-			PlausibilityResult candidateResult = PlausibilityResult.PASS;
-			
-			for (AbstractPlausibilityFilter test : tests) {
-				if (!junction && test.isApplyJunctionsOnly())
-					continue;
+			// process each additional section that was just added one at a time
+			PlausibilityResult candidateResult = null;
+			for (int i=rupture.size(); i<possibleRupture.size(); i++) {
+				FaultSection currentLastSect = candidateRupture.get(candidateRupture.size()-1);
+				FaultSection candidateLastSect = possibleRupture.get(i);
+				int candidateIndex = candidateLastSect.getSectionId();
+				candidateUnique = candidateUnique.takeBranch(candidateIndex);
 				
-				PlausibilityResult result = test.applyLastSection(
-						candidateRupture, candidatePairings, candidateJunctionIndexes);
-				candidateResult = candidateResult.logicalAnd(result);
+				candidateRupture.add(candidateLastSect);
 				
-				if (debugMatch && !result.isPass())
-					System.out.println("Failed: "+
-						ClassUtils.getClassNameWithoutPackage(test.getClass())
-						+" ("+Joiner.on(",").join(uniqueRupture.sectIndexes)+","+candidateIndex+")");
+				boolean junction = currentLastSect.getParentSectionId() !=
+						candidateLastSect.getParentSectionId();
+				if (junction)
+					// this equals candidateRupture.size() - 1, but one less arithmetic operation
+					candidateJunctionIndexes.add(rupture.size());
+				
+				candidatePairings.add(new IDPairing(currentLastSect.getSectionId(), candidateIndex));
+				
+				candidateResult = PlausibilityResult.PASS;
+				
+				for (AbstractPlausibilityFilter test : tests) {
+					if (!junction && test.isApplyJunctionsOnly())
+						continue;
+					
+					PlausibilityResult result = test.applyLastSection(
+							candidateRupture, candidatePairings, candidateJunctionIndexes);
+					candidateResult = candidateResult.logicalAnd(result);
+					
+					if (debugMatch && !result.isPass())
+						System.out.println("Failed: "+
+							ClassUtils.getClassNameWithoutPackage(test.getClass())
+							+" ("+Joiner.on(",").join(uniqueRupture.sectIndexes)+","+candidateIndex+")");
+					
+					if (!candidateResult.canContinue())
+						break;
+				}
+				
+				// this is for debugging
+				if (failHandle != null && !candidateResult.isPass())
+					failHandle.ruptureFailed(candidateRupture, candidateResult.canContinue());
 				
 				if (!candidateResult.canContinue())
-					break;
+					// this means we failed a non-continuation test
+					continue candidateLoop;
 			}
 			
-			// this is for debugging
-			if (failHandle != null && !candidateResult.isPass())
-				failHandle.ruptureFailed(candidateRupture, candidateResult.canContinue());
-			
-			if (!candidateResult.canContinue())
-				// this means we failed a non-continuation test
-				continue;
-			
-			ArrayList<Integer> candidateIDList = new ArrayList<>(uniqueRupture.sectIndexes);
-			candidateIDList.add(candidateIndex);
-			HashSet<Integer> candidateIDSet = new HashSet<Integer>(idsSet);
-			candidateIDSet.add(candidateIndex);
+			List<Integer> candidateIDList = candidateUnique.sectIndexes;
+			HashSet<Integer> candidateIDSet = new HashSet<Integer>(candidateIDList);
 			if (processedRuptures.contains(candidateUnique)) {
 				// duplicate, don't add
 				duplicateRups++;
@@ -314,7 +316,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	private void computeRupList() {
 		//		if(D) System.out.println("Computing Rupture List in SectionCluster");
 		//		System.out.println("Cluster: "+this);
-		rupListIndices = new ArrayList<ArrayList<Integer>>();
+		rupListIndices = new ArrayList<>();
 		
 		duplicateRups = 0;
 		processedRuptures = new HashSet<>();
@@ -344,7 +346,7 @@ public class SectionCluster extends ArrayList<Integer> {
 
 
 	public void writeRuptureSectionNames(int index) {
-		ArrayList<Integer> rupture = rupListIndices.get(index);
+		List<Integer> rupture = rupListIndices.get(index);
 		System.out.println("Rutpure "+index);
 		for(int i=0; i<rupture.size(); i++ ) {
 			System.out.println("\t"+this.sectionDataList.get(rupture.get(i)).getName());

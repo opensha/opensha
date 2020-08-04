@@ -50,6 +50,7 @@ public class CumulativeAzimuthChangeFilter extends AbstractPlausibilityFilter {
 				cmlAzimuthChange += Math.abs(AzimuthChangeFilter.getAzimuthDifference(
 						newAzimuth, prevAzimuth));
 		}
+//		System.out.println(cmlAzimuthChange);
 		if (cmlAzimuthChange <= maxCmlAzimuthChange)
 			return PlausibilityResult.PASS;
 		return PlausibilityResult.FAIL_HARD_STOP;

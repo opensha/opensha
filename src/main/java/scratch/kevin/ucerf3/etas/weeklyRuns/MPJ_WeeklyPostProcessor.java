@@ -111,6 +111,9 @@ public class MPJ_WeeklyPostProcessor extends MPJTaskCalculator {
 		public void run() {
 			File configFile = configFiles.get(index);
 			File resultsFile = new File(configFile.getParentFile(), "results_complete.bin");
+			if (!resultsFile.exists())
+				// try gzipped version
+				resultsFile = new File(configFile.getParentFile(), "results_complete.bin.gz");
 			File simDir = configFile.getParentFile();
 			if (!resultsFile.exists()) {
 				debug(simDir.getName()+" is not yet done, skipping");

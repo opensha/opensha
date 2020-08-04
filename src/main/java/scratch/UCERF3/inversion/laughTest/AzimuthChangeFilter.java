@@ -5,10 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.util.IDPairing;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
-
-import com.google.common.base.Preconditions;
 
 /**
  * This restricts the maximum azimuth change of any junction in the rupture. Azimuth
@@ -123,8 +120,11 @@ public class AzimuthChangeFilter extends AbstractPlausibilityFilter {
 		
 		double az1 = sectionAzimuths.get(pairing1);
 		double az2 = sectionAzimuths.get(pairing2);
+		double diff = Math.abs(getAzimuthDifference(az1, az2));
+//		System.out.println("AzTest: ["+pairing1.getID1()+","+pairing1.getID2()+"]="+az1
+//				+" => ["+pairing2.getID1()+","+pairing2.getID2()+"]"+az2+" = "+diff);
 		
-		return Math.abs(getAzimuthDifference(az1, az2)) <= threshold;
+		return diff <= threshold;
 	}
 
 	@Override
