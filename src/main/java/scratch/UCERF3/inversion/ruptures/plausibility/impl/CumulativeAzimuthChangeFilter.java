@@ -32,7 +32,7 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": passing with <3 sects");
 			return PlausibilityResult.PASS;
 		}
-		double tot = calc(rupture, rupture.clusters[0].firstSect, null, null, verbose);
+		double tot = calc(rupture, rupture.clusters[0].startSect, null, null, verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -51,7 +51,7 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": failing with <2 sects on first cluster");
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
-		double tot = calc(rupture, rupture.clusters[0].firstSect, null, null, verbose);
+		double tot = calc(rupture, rupture.clusters[0].startSect, null, null, verbose);
 		if ((float)tot < threshold || verbose) {
 			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
 			subSects.add(rupture.sectPredecessorsMap.get(newJump.fromSection));
@@ -78,14 +78,14 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 		Preconditions.checkNotNull(sect1);
 		if (sect2 == null) {
 			double tot = 0d;
-			for (FaultSection descendent : rupture.sectDescendentsMap.get(sect1)) {
+			for (FaultSection descendent : rupture.sectDescendantsMap.get(sect1)) {
 				tot += calc(rupture, sect1, descendent, null, verbose);
 			}
 			return tot;
 		}
 		if (sect3 == null) {
 			double tot = 0d;
-			for (FaultSection descendent : rupture.sectDescendentsMap.get(sect2)) {
+			for (FaultSection descendent : rupture.sectDescendantsMap.get(sect2)) {
 				tot += calc(rupture, sect1, sect2, descendent, verbose);
 				if ((float)tot > threshold && !verbose)
 					return tot;
@@ -95,7 +95,7 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 		double tot = doCalc(sect1, sect2, sect3);
 		if ((float)tot > threshold)
 			return tot;
-		for (FaultSection descendent : rupture.sectDescendentsMap.get(sect3)) {
+		for (FaultSection descendent : rupture.sectDescendantsMap.get(sect3)) {
 			tot += calc(rupture, sect2, sect3, descendent, verbose);
 			if ((float)tot > threshold && !verbose)
 				return tot;

@@ -83,7 +83,7 @@ public class SplayLengthFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		boolean isSplayJump = newJump.fromSection != rupture.clusters[rupture.clusters.length-1].lastSect;
+		boolean isSplayJump = !rupture.clusters[rupture.clusters.length-1].endSects.contains(newJump.toSection);
 		if (rupture.splays.isEmpty() && !isSplayJump)
 			return PlausibilityResult.PASS;
 		if (verbose)

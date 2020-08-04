@@ -40,8 +40,8 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 				System.out.println(getShortName()+": passing with <2 sects");
 			return PlausibilityResult.PASS;
 		}
-		FaultSection stopAt = rupture.clusters[rupture.clusters.length-1].firstSect;
-		double tot = calc(rupture, rupture.clusters[0].firstSect, stopAt, 0d, verbose);
+		FaultSection stopAt = rupture.clusters[rupture.clusters.length-1].startSect;
+		double tot = calc(rupture, rupture.clusters[0].startSect, stopAt, 0d, verbose);
 		if (tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -60,7 +60,7 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 	private double calc(ClusterRupture rupture, FaultSection sect1, FaultSection stopAt,
 			double tot, boolean verbose) {
 		double rake1 = sect1.getAveRake();
-		for (FaultSection sect2 : rupture.sectDescendentsMap.get(sect1)) {
+		for (FaultSection sect2 : rupture.sectDescendantsMap.get(sect1)) {
 			double rake2 = sect2.getAveRake();
 			double diff = rakeDiff(rake1, rake2);
 			tot += diff;

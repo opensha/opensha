@@ -9,6 +9,12 @@ import com.google.common.collect.Table;
 
 import scratch.UCERF3.inversion.ruptures.FaultSubsectionCluster;
 
+/**
+ * Utility class to cache viable cluster permutations for faster rupture building
+ * 
+ * @author kevin
+ *
+ */
 public abstract class CachedClusterPermutationStrategy implements ClusterPermutationStrategy {
 	
 	private Table<FaultSubsectionCluster, FaultSection, List<FaultSubsectionCluster>> cacheTable;

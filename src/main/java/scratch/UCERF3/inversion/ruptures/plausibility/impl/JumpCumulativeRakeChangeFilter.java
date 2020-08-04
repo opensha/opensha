@@ -54,18 +54,11 @@ public class JumpCumulativeRakeChangeFilter implements PlausibilityFilter {
 	
 	private double calc(ClusterRupture rupture, boolean verbose) {
 		double tot = 0d;
-		for (Jump jump : rupture.internalJumps) {
+		for (Jump jump : rupture.getJumpsIterable()) {
 			double diff = calc(jump, verbose);
 			tot += diff;
 			if ((float)tot > threshold && !verbose)
 				return tot;
-		}
-		for (Jump jump : rupture.splays.keySet()) {
-			double diff = calc(jump, verbose);
-			tot += diff;
-			if ((float)tot > threshold && !verbose)
-				return tot;
-			tot += calc(rupture.splays.get(jump), verbose);
 		}
 		return tot;
 	}

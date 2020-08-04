@@ -5,14 +5,48 @@ import java.util.List;
 
 import org.opensha.sha.faultSurface.FaultSection;
 
+/**
+ * Jump from one FaultSubsectionCluster to another. This is used both when defining all possible jumps
+ * between clusters, and to enumerate the individual jumps taken within a ClusterRupture.
+ * 
+ * hashCode() and equals() only take into account the IDs of the jumping sections, the parent section IDs
+ * of the clusters involved, and the direction of the jump
+ * 
+ * @author kevin
+ *
+ */
 public class Jump {
 	
+	/**
+	 * Section on fromCluster which is the jumping point
+	 */
 	public final FaultSection fromSection;
+	/**
+	 * The cluster which we are jumping from
+	 */
 	public final FaultSubsectionCluster fromCluster;
+	/**
+	 * Section on toCluster which is the jumping point
+	 */
 	public final FaultSection toSection;
+	/**
+	 * The cluster which we are jumping to
+	 */
 	public final FaultSubsectionCluster toCluster;
+	/**
+	 * Distance in km between fromSection and toSection
+	 */
 	public final double distance;
 	
+	/**
+	 * Create a new jump
+	 * 
+	 * @param fromSection Section on fromCluster which is the jumping point
+	 * @param fromCluster The cluster which we are jumping from
+	 * @param toSection Section on toCluster which is the jumping point
+	 * @param toCluster The cluster which we are jumping to
+	 * @param distance Distance in km between fromSection and toSection
+	 */
 	public Jump(FaultSection fromSection, FaultSubsectionCluster fromCluster, FaultSection toSection,
 			FaultSubsectionCluster toCluster, double distance) {
 		if (fromSection == null || fromCluster == null || toSection == null || toCluster == null)
@@ -37,6 +71,9 @@ public class Jump {
 		return str.toString();
 	}
 	
+	/**
+	 * @return reversed view of this jump
+	 */
 	public Jump reverse() {
 		return new Jump(toSection, toCluster, fromSection, fromCluster, distance);
 	}

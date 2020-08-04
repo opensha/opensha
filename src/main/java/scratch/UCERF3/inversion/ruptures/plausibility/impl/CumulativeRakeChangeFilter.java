@@ -33,7 +33,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": passing with <3 sects");
 			return PlausibilityResult.PASS;
 		}
-		double tot = calc(rupture, rupture.clusters[0].firstSect, verbose);
+		double tot = calc(rupture, rupture.clusters[0].startSect, verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -46,7 +46,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		double tot = calc(rupture, rupture.clusters[0].firstSect, verbose);
+		double tot = calc(rupture, rupture.clusters[0].startSect, verbose);
 		if ((float)tot <= threshold || verbose) {
 			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
 			subSects.add(newJump.fromSection);
@@ -66,7 +66,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 	private double calc(ClusterRupture rupture, FaultSection sect1, boolean verbose) {
 		double tot = 0d;
 		double rake1 = sect1.getAveRake();
-		for (FaultSection sect2 : rupture.sectDescendentsMap.get(sect1)) {
+		for (FaultSection sect2 : rupture.sectDescendantsMap.get(sect1)) {
 			double rake2 = sect2.getAveRake();
 			double diff = rakeDiff(rake1, rake2);
 			if (verbose && diff != 0d)

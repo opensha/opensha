@@ -14,23 +14,65 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
 
 import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 
+/**
+ * Rupture which is constructed as a set of connected FaultSubsectionCluster's. Jump's occur
+ * between each cluster, and multiple splays are possible. Each rupture has a primary
+ * strand defined by the clusters listed below in the 'clusters' array. Additional
+ * splays off of that primary strand are contained in the splays map. These ruptures are recursive
+ * in nature: splays can have splays. The key contract is that sections only exist once in the
+ * rupture, and although each section can have multiple descendcents (sections directly downstream
+ * of that section), there can only be one predecessor (section directly upstream of that section).
+ * 
+ * Build ruptures by starting with an initial cluster and calling the public constructor, and then
+ * take jumps to each additional cluster via the 'take(Jump)' method, which will return a new rupture
+ * each time 'take(Jump)' is called.
+ * 
+ * All visible fields are final and immutable, and are thus safe for direct access.
+ * 
+ * @author kevin
+ *
+ */
 public class ClusterRupture {
 	
+	/**
+	 * Clusters for this rupture's primary strand, in order. The first section of this rupture
+	 * is clusters[0].startSect
+	 */
 	public final FaultSubsectionCluster[] clusters;
+	/**
+	 * Jumps internal to the primary strand, between the primary clusters
+	 */
 	public final ImmutableSet<Jump> internalJumps;
+	/**
+	 * Jumps to each splay sub-rupture
+	 */
 	public final ImmutableMap<Jump, ClusterRupture> splays;
 	
 	// these are for navigating the rupture section tree
-	public final ImmutableMultimap<FaultSection, FaultSection> sectDescendentsMap;
+	/**
+	 * Multimap from each fault section to each descendant (sections immediately downstream) of 
+	 * that section. If jumps occur anywhere before the last subsection in a cluster, then multiple 
+	 * descendants are possible for a single parent
+	 */
+	public final ImmutableMultimap<FaultSection, FaultSection> sectDescendantsMap;
+	/**
+	 * Map from each fault section to the predecessor (section immediately upstream) of that section
+	 */
 	public final ImmutableMap<FaultSection, FaultSection> sectPredecessorsMap;
 	
 	private final Set<FaultSection> internalSects;
 	
+	/**
+	 * Initiate a ClusterRupture with the given starting cluster. You can grow it later with the
+	 * take(Jump) method
+	 * @param cluster
+	 */
 	public ClusterRupture(FaultSubsectionCluster cluster) {
 		this(new FaultSubsectionCluster[] {cluster}, ImmutableSet.of(),
 				ImmutableMap.of(), initialDescendentsMap(cluster), initialPredecessorsMap(cluster));
@@ -60,7 +102,7 @@ public class ClusterRupture {
 		this.clusters = clusters;
 		this.internalJumps = internalJumps;
 		this.splays = splays;
-		this.sectDescendentsMap = sectDescendentsMap;
+		this.sectDescendantsMap = sectDescendentsMap;
 		this.sectPredecessorsMap = sectPredecessorsMap;
 		
 		internalSects = new HashSet<>();
@@ -73,6 +115,10 @@ public class ClusterRupture {
 				"Duplicate subsections. Have %s unique, %s total", internalSects.size(), sectCount);
 	}
 	
+	/**
+	 * @param sect
+	 * @return true if this rupture or any splays contains the given section
+	 */
 	public boolean contains(FaultSection sect) {
 		if (internalSects.contains(sect))
 			return true;
@@ -82,6 +128,10 @@ public class ClusterRupture {
 		return false;
 	}
 	
+	/**
+	 * 
+	 * @return total number of sections across this and any splays
+	 */
 	public int getTotalNumSects() {
 		int tot = internalSects.size();
 		for (ClusterRupture splay : splays.values())
@@ -89,10 +139,18 @@ public class ClusterRupture {
 		return tot;
 	}
 	
+	/**
+	 * 
+	 * @return the number of sections on the primary strand of this rupture
+	 */
 	public int getNumInternalSects() {
 		return internalSects.size();
 	}
 	
+	/**
+	 * 
+	 * @return the total number of jumps (including to and within any splays) of this rupture
+	 */
 	public int getTotalNumJumps() {
 		int tot = internalJumps.size();
 		for (ClusterRupture splay : splays.values())
@@ -100,6 +158,12 @@ public class ClusterRupture {
 		return tot;
 	}
 	
+	/**
+	 * Creates and returns a new rupture which has taken the given jump. The jump can be from any section
+	 * on any splay, so long as the toCluster does not contain any sections already included in this rupture
+	 * @param jump
+	 * @return new rupture which has taken this jump
+	 */
 	public ClusterRupture take(Jump jump) {
 		Preconditions.checkState(contains(jump.fromSection),
 				"Cannot take jump because this rupture doesn't have the fromSection: %s", jump);
@@ -109,14 +173,25 @@ public class ClusterRupture {
 		predecessorBuilder.putAll(sectPredecessorsMap);
 		predecessorBuilder.put(jump.toSection, jump.fromSection);
 		ImmutableMultimap.Builder<FaultSection, FaultSection> descendentsBuilder = ImmutableMultimap.builder();
-		descendentsBuilder.putAll(sectDescendentsMap);
+		descendentsBuilder.putAll(sectDescendantsMap);
 		descendentsBuilder.put(jump.fromSection, jump.toSection);
-		for (int i=0; i<jump.toCluster.subSects.size()-1; i++) {
+		
+		int toIndex = jump.toCluster.subSects.indexOf(jump.toSection);
+		Preconditions.checkState(toIndex >= 0, "toSection not found in toCluster subsection list");
+		// build in both direction from toIndex
+		for (int i=toIndex; i<jump.toCluster.subSects.size()-1; i++) {
 			FaultSection sect1 = jump.toCluster.subSects.get(i);
 			FaultSection sect2 = jump.toCluster.subSects.get(i+1);
 			descendentsBuilder.put(sect1, sect2);
 			predecessorBuilder.put(sect2, sect1);
 		}
+		for (int i=toIndex; --i>=0;) {
+			FaultSection sect1 = jump.toCluster.subSects.get(i+1);
+			FaultSection sect2 = jump.toCluster.subSects.get(i);
+			descendentsBuilder.put(sect1, sect2);
+			predecessorBuilder.put(sect2, sect1);
+		}
+		
 		ImmutableMultimap<FaultSection, FaultSection> newDescendentsMap = descendentsBuilder.build();
 		ImmutableMap<FaultSection, FaultSection> newPredecessorMap = predecessorBuilder.build();
 		if (internalSects.contains(jump.fromSection)) {
@@ -125,7 +200,7 @@ public class ClusterRupture {
 			FaultSubsectionCluster[] newClusters;
 			ImmutableMap<Jump, ClusterRupture> newSplays;
 			ImmutableSet<Jump> newInternalJumps;
-			if (jump.fromSection.equals(lastCluster.lastSect)) {
+			if (lastCluster.endSects.contains(jump.fromSection)) {
 				// regular jump from the end
 				newClusters = Arrays.copyOf(clusters, clusters.length+1);
 				newClusters[clusters.length] = jump.toCluster;
@@ -152,7 +227,7 @@ public class ClusterRupture {
 			ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
 			for (Jump splayJump : splays.keySet()) {
 				ClusterRupture splay = splays.get(splayJump);
-				if (splay.clusters[splay.clusters.length-1].lastSect.equals(jump.fromSection)) {
+				if (splay.contains(jump.fromSection)) {
 					Preconditions.checkState(!found);
 					found = true;
 					splayBuilder.put(splayJump, splay.take(jump));
@@ -162,12 +237,16 @@ public class ClusterRupture {
 				}
 			}
 			Preconditions.checkState(found,
-					"Jump would be a splay off of an existing splay, which is not allowed: %s", jump);
+					"From section for jump not found in rupture (including splays): %s", jump);
 			return new ClusterRupture(clusters, internalJumps, splayBuilder.build(),
 					newDescendentsMap, newPredecessorMap);
 		}
 	}
 	
+	/**
+	 * @return list of fault sections included in this rupture (including all splays) in order. Splays
+	 * are always taken immediately, before continuing on the current strand 
+	 */
 	public List<FaultSection> buildOrderedSectionList() {
 		Multimap<FaultSection, ClusterRupture> splayBranchPoints = HashMultimap.create();
 		for (Jump splayJump : splays.keySet()) {
@@ -184,13 +263,18 @@ public class ClusterRupture {
 		return ret;
 	}
 	
+	/**
+	 * @return a reversed view of this rupture. must be a simple, non-splayed rupture
+	 * @throws IllegalStateException if rupture is splayed or contains jumps from anywhere 
+	 * but the last section of a cluster
+	 */
 	public ClusterRupture reversed() {
 		Preconditions.checkState(splays.isEmpty(), "Can't reverse a splayed rupture");
 		
 		ImmutableMultimap.Builder<FaultSection, FaultSection> descendentsBuilder = ImmutableMultimap.builder();
 		ImmutableMap.Builder<FaultSection, FaultSection> predecessorsBuilder = ImmutableMap.builder();
-		for (FaultSection sect1 : sectDescendentsMap.keys())
-			for (FaultSection sect2 : sectDescendentsMap.get(sect1))
+		for (FaultSection sect1 : sectDescendantsMap.keys())
+			for (FaultSection sect2 : sectDescendantsMap.get(sect1))
 				predecessorsBuilder.put(sect1, sect2);
 		for (FaultSection sect1 : sectPredecessorsMap.keySet())
 			descendentsBuilder.put(sect1, sectPredecessorsMap.get(sect1));
@@ -199,14 +283,19 @@ public class ClusterRupture {
 		for (int i=clusters.length; --i>=0;)
 			clusterList.add(clusters[i].reversed());
 		Table<FaultSection, FaultSection, Jump> jumpsTable = HashBasedTable.create();
-		for (Jump jump : internalJumps)
+		for (Jump jump : internalJumps) {
+			Preconditions.checkState(
+					jump.fromSection == jump.fromCluster.subSects.get(jump.fromCluster.subSects.size()-1),
+					"Can't reverse a ClusterRupture which contains a non-splay jump from a subsection "
+					+ "which is not the last subsection on that cluster");
 			jumpsTable.put(jump.fromSection, jump.toSection, jump);
+		}
 		ImmutableSet.Builder<Jump> jumpsBuilder = ImmutableSet.builder();
 		for (int i=1; i<clusterList.size(); i++) {
 			FaultSubsectionCluster fromCluster = clusterList.get(i-1);
-			FaultSection fromSection = fromCluster.lastSect;
+			FaultSection fromSection = fromCluster.subSects.get(fromCluster.subSects.size()-1);
 			FaultSubsectionCluster toCluster = clusterList.get(i);
-			FaultSection toSection = toCluster.firstSect;
+			FaultSection toSection = toCluster.startSect;
 			Jump jump = jumpsTable.get(toSection, fromSection); // get old, non-reversed jump
 			jumpsBuilder.add(new Jump(fromSection, fromCluster, toSection, toCluster, jump.distance));
 		}
@@ -215,6 +304,12 @@ public class ClusterRupture {
 				ImmutableMap.of(), descendentsBuilder.build(), predecessorsBuilder.build());
 	}
 	
+	/**
+	 * Constructs a ClusterRupture from a simple, single-strand section list
+	 * @param sects
+	 * @param distCalc
+	 * @return
+	 */
 	public static ClusterRupture forOrderedSingleStrandRupture(List<? extends FaultSection> sects,
 			SectionDistanceAzimuthCalculator distCalc) {
 		List<FaultSubsectionCluster> clusterList = new ArrayList<>();
@@ -245,9 +340,9 @@ public class ClusterRupture {
 		ImmutableSet.Builder<Jump> jumpsBuilder = ImmutableSet.builder();
 		for (int i=1; i<clusters.length; i++) {
 			FaultSubsectionCluster fromCluster = clusters[i-1];
-			FaultSection fromSect = fromCluster.lastSect;
+			FaultSection fromSect = fromCluster.subSects.get(fromCluster.subSects.size()-1);
 			FaultSubsectionCluster toCluster = clusters[i];
-			FaultSection toSect = toCluster.firstSect;
+			FaultSection toSect = toCluster.startSect;
 			double distance = distCalc == null ? Double.NaN : distCalc.getDistance(fromSect, toSect);
 			Jump jump = new Jump(fromSect, fromCluster, toSect, toCluster, distance);
 			jumpsBuilder.add(jump);
@@ -267,9 +362,24 @@ public class ClusterRupture {
 		for (Jump jump : splays.keySet()) {
 			ClusterRupture splay = splays.get(jump);
 			str.append("\n\t--splay from [").append(jump.fromCluster.parentSectionID);
-			str.append(jump.fromSection.getSectionId()).append("]");
+			str.append(":").append(jump.fromSection.getSectionId()).append("]: "+splay);
 		}
 		return str.toString();
+	}
+	
+	/**
+	 * 
+	 * @return Iterable over all Jumps in this rupture and it's splays
+	 */
+	public Iterable<Jump> getJumpsIterable() {
+		if (splays.isEmpty())
+			return internalJumps;
+		List<Iterable<Jump>> iterables = new ArrayList<>();
+		iterables.add(internalJumps);
+		iterables.add(splays.keySet());
+		for (ClusterRupture splay : splays.values())
+			iterables.add(splay.getJumpsIterable());
+		return Iterables.concat(iterables);
 	}
 
 }

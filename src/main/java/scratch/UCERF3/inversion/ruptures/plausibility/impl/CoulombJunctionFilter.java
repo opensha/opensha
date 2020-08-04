@@ -35,18 +35,18 @@ public class CoulombJunctionFilter implements PlausibilityFilter {
 			return PlausibilityResult.PASS;
 		
 		List<List<IDPairing>> paths = new ArrayList<>();
-		findPaths(rupture.sectDescendentsMap, paths, new ArrayList<>(), rupture.clusters[0].firstSect);
+		findPaths(rupture.sectDescendantsMap, paths, new ArrayList<>(), rupture.clusters[0].startSect);
 		
 		return testPaths(paths, verbose);
 	}
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		Multimap<FaultSection, FaultSection> descendentsMap = HashMultimap.create(rupture.sectDescendentsMap);
+		Multimap<FaultSection, FaultSection> descendentsMap = HashMultimap.create(rupture.sectDescendantsMap);
 		descendentsMap.put(newJump.fromSection, newJump.toSection);
 
 		List<List<IDPairing>> paths = new ArrayList<>();
-		findPaths(descendentsMap, paths, new ArrayList<>(), rupture.clusters[0].firstSect);
+		findPaths(descendentsMap, paths, new ArrayList<>(), rupture.clusters[0].startSect);
 		
 		return testPaths(paths, verbose);
 	}

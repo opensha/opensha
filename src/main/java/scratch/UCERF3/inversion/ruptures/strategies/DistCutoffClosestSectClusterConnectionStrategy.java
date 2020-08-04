@@ -9,11 +9,11 @@ import scratch.UCERF3.inversion.ruptures.Jump;
 import scratch.UCERF3.inversion.ruptures.strategies.ClusterConnectionStrategy;
 import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 
-public class DistCutoffSingleConnectionClusterConnectionStrategy implements ClusterConnectionStrategy {
+public class DistCutoffClosestSectClusterConnectionStrategy implements ClusterConnectionStrategy {
 	
 	private double maxJumpDist;
 
-	public DistCutoffSingleConnectionClusterConnectionStrategy(double maxJumpDist) {
+	public DistCutoffClosestSectClusterConnectionStrategy(double maxJumpDist) {
 		this.maxJumpDist = maxJumpDist;
 	}
 

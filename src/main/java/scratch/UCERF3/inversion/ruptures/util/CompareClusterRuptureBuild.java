@@ -40,7 +40,7 @@ import scratch.UCERF3.inversion.ruptures.plausibility.impl.MinSectsPerParentFilt
 import scratch.UCERF3.inversion.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
 import scratch.UCERF3.inversion.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
 import scratch.UCERF3.inversion.ruptures.strategies.ClusterConnectionStrategy;
-import scratch.UCERF3.inversion.ruptures.strategies.DistCutoffSingleConnectionClusterConnectionStrategy;
+import scratch.UCERF3.inversion.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import scratch.UCERF3.utils.FaultSystemIO;
 
 public class CompareClusterRuptureBuild {
@@ -57,7 +57,7 @@ public class CompareClusterRuptureBuild {
 		FaultModels fm = FaultModels.FM3_1;
 		List<FaultSection> parentSects = fm.fetchFaultSections();
 		List<? extends FaultSection> subSects = clusterRupSet.getFaultSectionDataList();
-		ClusterConnectionStrategy connectionStrategy = new DistCutoffSingleConnectionClusterConnectionStrategy(5d);
+		ClusterConnectionStrategy connectionStrategy = new DistCutoffClosestSectClusterConnectionStrategy(5d);
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
 		File cacheFile = new File("/tmp/dist_az_cache_"+fm.encodeChoiceString()+"_"+subSects.size()
 			+"_sects_"+parentSects.size()+"_parents.csv");

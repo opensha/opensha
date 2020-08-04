@@ -58,7 +58,7 @@ public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 			return PlausibilityResult.FAIL_HARD_STOP;
 		if (endCluster.subSects.size() < 2)
 			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
-		FaultSection before1 = startCluster.firstSect;
+		FaultSection before1 = startCluster.startSect;
 		FaultSection before2 = startCluster.subSects.get(1);
 		double beforeAz = calc.calcAzimuth(before1, before2);
 		

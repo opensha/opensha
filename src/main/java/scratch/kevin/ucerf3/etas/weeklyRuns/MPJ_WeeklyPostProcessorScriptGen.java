@@ -22,7 +22,8 @@ public class MPJ_WeeklyPostProcessorScriptGen {
 		File localSimsDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations");
 		
 //		String batchName = "2020_05_14-weekly-1986-present-full_td-kCOV1.5";
-		String batchName = "2020_05_25-weekly-1986-present-no_ert-kCOV1.5";
+//		String batchName = "2020_05_25-weekly-1986-present-no_ert-kCOV1.5";
+		String batchName = "2020_07_13-weekly-1986-present-gridded-kCOV1.5";
 		
 		File localBatchDir = new File(localSimsDir, batchName);
 		Preconditions.checkState(localBatchDir.exists());

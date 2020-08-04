@@ -39,6 +39,11 @@ import scratch.UCERF3.inversion.ruptures.util.SectionDistanceAzimuthCalculator;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSystemIO;
 
+/**
+ * Code to recursively build ClusterRuptures, applying any rupture plausibility filters
+ * @author kevin
+ *
+ */
 public class ClusterRuptureBuilder {
 	
 	private List<FaultSubsectionCluster> clusters;
@@ -48,12 +53,27 @@ public class ClusterRuptureBuilder {
 	private RupDebugCriteria debugCriteria;
 	private boolean stopAfterDebugMatch;
 	
+	/**
+	 * Constructor which builds clusters from the given parent sections
+	 * @param subSections sub section list
+	 * @param connectionStrategy connection strategy which defines cluster connection points
+	 * @param distAzCalc distance/azimuth calculator
+	 * @param filters list of plausibility filters
+	 * @param maxNumSplays the maximum number of splays per rupture (use 0 to disable splays)
+	 */
 	public ClusterRuptureBuilder(List<? extends FaultSection> subSections,
 			ClusterConnectionStrategy connectionStrategy, SectionDistanceAzimuthCalculator distAzCalc,
 			List<PlausibilityFilter> filters, int maxNumSplays) {
 		this(buildClusters(subSections, connectionStrategy, distAzCalc), filters, maxNumSplays);
 	}
 	
+	/**
+	 * 
+	 * @param subSections sub section list
+	 * @param connectionStrategy connection strategy which defines cluster connection points
+	 * @param distAzCalc distance/azimuth calculator
+	 * @return Cluster list (with connections added) binned by parent-section ID
+	 */
 	public static List<FaultSubsectionCluster> buildClusters(List<? extends FaultSection> subSections,
 			ClusterConnectionStrategy connectionStrategy, SectionDistanceAzimuthCalculator distAzCalc) {
 		List<FaultSubsectionCluster> clusters = new ArrayList<>();
@@ -83,6 +103,12 @@ public class ClusterRuptureBuilder {
 		return clusters;
 	}
 	
+	/**
+	 * Constructor which uses previously built clusters (with connections added)
+	 * @param clusters list of clusters
+	 * @param filters list of plausibility filters
+	 * @param maxNumSplays the maximum number of splays per rupture (use 0 to disable splays)
+	 */
 	public ClusterRuptureBuilder(List<FaultSubsectionCluster> clusters,
 			List<PlausibilityFilter> filters, int maxNumSplays) {
 		this.clusters = clusters;
@@ -90,6 +116,13 @@ public class ClusterRuptureBuilder {
 		this.maxNumSplays = maxNumSplays;
 	}
 	
+	/**
+	 * This allows you to debug the rupture building process. It will print out a lot of details
+	 * if the given criteria are satisfied.
+	 * 
+	 * @param debugCriteria criteria for which to print debug information
+	 * @param stopAfterMatch if true, building will cease immediately after a match is found 
+	 */
 	public void setDebugCriteria(RupDebugCriteria debugCriteria, boolean stopAfterMatch) {
 		this.debugCriteria = debugCriteria;
 		this.stopAfterDebugMatch = stopAfterMatch;
@@ -98,6 +131,13 @@ public class ClusterRuptureBuilder {
 	private int largestRup = 0;
 	private int largestRupPrintMod = 10;
 	
+	/**
+	 * This builds ruptures using the given cluster permutation strategy
+	 * 
+	 * @param permutationStrategy strategy for determining unique & viable subsection permutations 
+	 * for each cluster 
+	 * @return list of unique ruptures which were build
+	 */
 	public List<ClusterRupture> build(ClusterPermutationStrategy permutationStrategy) {
 		List<ClusterRupture> rups = new ArrayList<>();
 		HashSet<UniqueRupture> uniques = new HashSet<>();
@@ -181,16 +221,17 @@ public class ClusterRuptureBuilder {
 			ClusterRupture currentRupture, ClusterRupture currentStrand, boolean testJumpOnly,
 			ClusterPermutationStrategy permutationStrategy) {
 		FaultSubsectionCluster lastCluster = currentStrand.clusters[currentStrand.clusters.length-1];
-		FaultSection firstSection = currentStrand.clusters[0].firstSect;
-		FaultSection lastSection = lastCluster.lastSect;
+		FaultSection firstSection = currentStrand.clusters[0].startSect;
 
 		// try to grow this strand first
-		for (Jump jump : lastCluster.getConnections(lastSection)) {
-			if (!currentRupture.contains(jump.toSection)) {
-				boolean canContinue = addJumpPermutations(rups, uniques, currentRupture, currentStrand,
-						testJumpOnly, permutationStrategy, jump);
-				if (!canContinue)
-					return false;
+		for (FaultSection endSection : lastCluster.endSects) {
+			for (Jump jump : lastCluster.getConnections(endSection)) {
+				if (!currentRupture.contains(jump.toSection)) {
+					boolean canContinue = addJumpPermutations(rups, uniques, currentRupture, currentStrand,
+							testJumpOnly, permutationStrategy, jump);
+					if (!canContinue)
+						return false;
+				}
 			}
 		}
 		
@@ -201,7 +242,7 @@ public class ClusterRuptureBuilder {
 					if (section.equals(firstSection))
 						// can't jump from the first section of the rupture
 						continue;
-					if (section.equals(lastSection))
+					if (lastCluster.endSects.contains(section))
 						// this would be a continuation of the main rupture, not a splay
 						break;
 					for (Jump jump : cluster.getConnections(section)) {
@@ -220,6 +261,7 @@ public class ClusterRuptureBuilder {
 
 	private boolean addJumpPermutations(List<ClusterRupture> rups, HashSet<UniqueRupture> uniques, ClusterRupture currentRupture,
 			ClusterRupture currentStrand, boolean testJumpOnly, ClusterPermutationStrategy permutationStrategy, Jump jump) {
+		Preconditions.checkNotNull(jump);
 		for (FaultSubsectionCluster permutation : permutationStrategy.getPermutations(
 				jump.toCluster, jump.toSection)) {
 			boolean hasLoopback = false;
@@ -232,7 +274,7 @@ public class ClusterRuptureBuilder {
 			}
 			if (hasLoopback)
 				continue;
-			Preconditions.checkState(permutation.firstSect.equals(jump.toSection));
+			Preconditions.checkState(permutation.startSect.equals(jump.toSection));
 			Jump testJump = new Jump(jump.fromSection, jump.fromCluster,
 					jump.toSection, permutation, jump.distance);
 			ClusterRupture candidateRupture = null;
@@ -294,8 +336,8 @@ public class ClusterRuptureBuilder {
 					}
 				}
 				Preconditions.checkNotNull(newCurrentStrand);
-				FaultSection newLast = newCurrentStrand.clusters[newCurrentStrand.clusters.length-1].lastSect;
-				Preconditions.checkState(newLast.equals(permutation.lastSect));
+				FaultSection newLastStart = newCurrentStrand.clusters[newCurrentStrand.clusters.length-1].startSect;
+				Preconditions.checkState(newLastStart.equals(permutation.startSect));
 			}
 			boolean canContinue = addRuptures(rups, uniques, candidateRupture, newCurrentStrand,
 					result.isPass(), permutationStrategy);
@@ -374,18 +416,21 @@ public class ClusterRuptureBuilder {
 
 		@Override
 		public boolean isMatch(ClusterRupture rup) {
-			if (startSect >= 0 && !isMatch(rup.clusters[0].firstSect, startSect))
+			if (startSect >= 0 && !isMatch(rup.clusters[0].startSect, startSect))
 				return false;
-			if (endSect >= 0 && !isMatch(rup.clusters[rup.clusters.length-1].lastSect, endSect))
+			FaultSubsectionCluster lastCluster = rup.clusters[rup.clusters.length-1];
+			if (endSect >= 0 && !isMatch(
+					lastCluster.subSects.get(lastCluster.subSects.size()-1), endSect))
 				return false;
 			return true;
 		}
 
 		@Override
 		public boolean isMatch(ClusterRupture rup, Jump newJump) {
-			if (startSect >= 0 && !isMatch(rup.clusters[0].firstSect, startSect))
+			if (startSect >= 0 && !isMatch(rup.clusters[0].startSect, startSect))
 				return false;
-			if (endSect >= 0 && !isMatch(newJump.toCluster.lastSect, endSect))
+			if (endSect >= 0 && !isMatch(
+					newJump.toCluster.subSects.get(newJump.toCluster.subSects.size()-1), endSect))
 				return false;
 			return true;
 		}
@@ -645,7 +690,7 @@ public class ClusterRuptureBuilder {
 				TestType.COULOMB_STRESS, 0.04, 0.04, 1.25d, true, true);
 		filters.add(new CoulombJunctionFilter(coulombTester, coulombRates));
 		
-		int maxNumSplays = 1;
+		int maxNumSplays = 0;
 		if (maxNumSplays > 0)
 			filters.add(new SplayLengthFilter(0.2, true, maxNumSplays > 1));
 		

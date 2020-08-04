@@ -42,7 +42,7 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 		if (rupture.contains(after1)) {
 			// this is a preexisting jump and can be a fork with multiple second sections after the jump
 			// we will pass only if they all pass
-			after2s = rupture.sectDescendentsMap.get(after1);
+			after2s = rupture.sectDescendantsMap.get(after1);
 		} else {
 			// we're testing a new possible jump
 			if (jump.toCluster.subSects.size() < 2) {
