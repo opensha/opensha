@@ -1,7 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
 import java.text.DecimalFormat;
-import java.util.List;
+import java.util.Comparator;
 
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -108,5 +108,35 @@ public class Jump {
 			return false;
 		return true;
 	}
+	
+	public static final Comparator<Jump> id_comparator = new Comparator<Jump>() {
+
+		@Override
+		public int compare(Jump o1, Jump o2) {
+			int cmp = compareIDs(o1.fromCluster, o1.fromSection, o2.fromCluster, o2.fromSection);
+			if (cmp == 0)
+				cmp = compareIDs(o1.toCluster, o1.toSection, o2.toCluster, o2.toSection);
+			return cmp;
+		}
+	};
+	
+	private static int compareIDs(FaultSubsectionCluster cluster1, FaultSection jumpSect1,
+			FaultSubsectionCluster cluster2, FaultSection jumpSect2) {
+		int cmp = Integer.compare(cluster1.parentSectionID, cluster2.parentSectionID);
+		if (cmp != 0)
+			return cmp;
+		cmp = Integer.compare(jumpSect1.getSectionId(), jumpSect2.getSectionId());
+		if (cmp != 0)
+			return cmp;
+		return cluster1.compareTo(cluster2);
+	}
+	
+	public static final Comparator<Jump> dist_comparator = new Comparator<Jump>() {
+
+		@Override
+		public int compare(Jump o1, Jump o2) {
+			return Double.compare(o1.distance, o2.distance);
+		}
+	};
 
 }

@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.zip.ZipException;
 
@@ -47,8 +48,11 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Table;
+import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
@@ -379,6 +383,10 @@ public class RupSetConnectionSearch {
 			List<Jump> jumps, final boolean debug) {
 		
 		Multimap<FaultSubsectionCluster, Jump> jumpsFromMap = HashMultimap.create();
+		if (debug) {
+			Collections.sort(jumps, Jump.id_comparator);
+			Collections.sort(rupClusters);
+		}
 		for (Jump jump : jumps) {
 			jumpsFromMap.put(jump.fromCluster, jump);
 			Jump reversed = jump.reverse();
@@ -411,19 +419,79 @@ public class RupSetConnectionSearch {
 			startCluster = rupClusters.get(0);
 		}
 		
-		
-		ClusterRupture rupture = new ClusterRupture(startCluster);
 		HashSet<FaultSubsectionCluster> availableClusters = new HashSet<>(rupClusters);
+		
+		if (rupClusters.size() > 1) {
+			// see if we should reverse the starting cluster
+			Preconditions.checkState(jumpsFromMap.containsKey(startCluster),
+					"No jumps from starting cluster %s, but have %s clusters in total",
+					startCluster, rupClusters.size());
+			int minJumpSectIndex = Integer.MAX_VALUE;
+			int maxJumpSectIndex = 0;
+			for (Jump jump : jumpsFromMap.get(startCluster)) {
+				int ind = startCluster.subSects.indexOf(jump.fromSection);
+				minJumpSectIndex = Integer.min(minJumpSectIndex, ind);
+				maxJumpSectIndex = Integer.max(maxJumpSectIndex, ind);
+			}
+			if (minJumpSectIndex < (startCluster.subSects.size()-(maxJumpSectIndex+1))) {
+				// jump is closer to the start than the end
+				if (debug)
+					System.out.println("Reversing startCluster as minJumpSectIndex="+minJumpSectIndex
+							+", maxJumpSectIndex="+maxJumpSectIndex+", and size="+startCluster.subSects.size());
+				startCluster = reverseCluster(startCluster, availableClusters, jumpsFromMap);
+			}
+		}
+		
 		Preconditions.checkState(availableClusters.remove(startCluster));
 		
+		ClusterRupture rupture = new ClusterRupture(startCluster);
+		
 		rupture = buildRupture(rupture, rupture, availableClusters, jumpsFromMap, debug);
-		if (debug) System.out.println("Final rupture:\n"+rupture);
+		if (debug) {
+			System.out.println("Final rupture:\n"+rupture);
+			System.out.flush();
+		}
 		Preconditions.checkState(availableClusters.isEmpty(),
 				"Didn't use all available clusters when building rupture, have %s left."
 				+ "\n\tRupture: %s\n\tAvailable clusters: %s",
 				availableClusters.size(), rupture, availableClusters);
 		
 		return rupture;
+	}
+	
+	private static FaultSubsectionCluster reverseCluster(FaultSubsectionCluster cluster,
+			HashSet<FaultSubsectionCluster> availableClusters,
+			Multimap<FaultSubsectionCluster, Jump> jumpsFromMap) {
+		FaultSubsectionCluster reversed = cluster.reversed();
+		if (availableClusters.contains(cluster)) {
+			availableClusters.remove(cluster);
+			availableClusters.add(reversed);
+		}
+		if (jumpsFromMap.containsKey(cluster)) {
+			jumpsFromMap.putAll(reversed, jumpsFromMap.get(cluster));
+			jumpsFromMap.removeAll(cluster);
+		}
+		Table<FaultSubsectionCluster, Jump, Jump> replaceTable = HashBasedTable.create();
+		for (Entry<FaultSubsectionCluster, Jump> entry : jumpsFromMap.entries()) {
+			Jump jump = entry.getValue();
+			if (jump.fromCluster == cluster) {
+				Jump newJump = new Jump(jump.fromSection, reversed,
+						jump.toSection, jump.toCluster, jump.distance);
+				replaceTable.put(entry.getKey(), jump, newJump);
+			} else if (jump.toCluster == cluster) {
+				Jump newJump = new Jump(jump.fromSection, jump.fromCluster,
+						jump.toSection, reversed, jump.distance);
+				replaceTable.put(entry.getKey(), jump, newJump);
+			}
+		}
+		for (Cell<FaultSubsectionCluster, Jump, Jump> cell : replaceTable.cellSet()) {
+			FaultSubsectionCluster fromCluster = cell.getRowKey();
+			Jump oldJump = cell.getColumnKey();
+			Jump newJump = cell.getValue();
+			Preconditions.checkNotNull(jumpsFromMap.remove(fromCluster, oldJump));
+			jumpsFromMap.put(fromCluster, newJump);
+		}
+		return reversed;
 	}
 	
 	private ClusterRupture buildRupture(ClusterRupture rupture, ClusterRupture currentStrand,
@@ -434,15 +502,28 @@ public class RupSetConnectionSearch {
 		while (true) {
 			boolean extended = false;
 			FaultSubsectionCluster lastCluster = currentStrand.clusters[currentStrand.clusters.length-1];
-			for (Jump jump : jumpsFromMap.get(lastCluster)) {
+			// wrap in an arraylist here to avoid concurrent modification exception if we reverse a toCluster
+			// the update won't actually affect this list, as that toCluster will already have been processed
+			// and can't occur again
+			for (Jump jump : new ArrayList<>(jumpsFromMap.get(lastCluster))) {
 				if (!availableClusters.contains(jump.toCluster))
 					// already taken this jump
 					continue;
+				int sectIndex = jump.toCluster.subSects.indexOf(jump.toSection);
+				if (sectIndex > (jump.toCluster.subSects.size() - (sectIndex + 1))) {
+					if (debug) System.out.println("Reversing toCluster with sectIndex="+sectIndex
+							+" and size="+jump.toCluster.subSects.size());
+					FaultSubsectionCluster toCluster = reverseCluster(
+							jump.toCluster, availableClusters, jumpsFromMap);
+					jump = new Jump(jump.fromSection, jump.fromCluster, jump.toSection,
+							toCluster, jump.distance);
+				}
 				if (debug) System.out.println("\tTaking jump: "+jump);
 				rupture = rupture.take(jump);
 				availableClusters.remove(jump.toCluster);
 				// current strand has now been replaced, find the new one
 				currentStrand = splaySearchRecursive(rupture, currentStrand.clusters[0]);
+				if (debug) System.out.println("Current strand after jump: "+currentStrand);
 				Preconditions.checkNotNull(currentStrand, "current strand could not be found after taking jump");
 				extended = true;
 			}
@@ -450,8 +531,10 @@ public class RupSetConnectionSearch {
 				break;
 		}
 		// now build out each splay from this strand
-		for (ClusterRupture splay : currentStrand.splays.values())
+		for (ClusterRupture splay : currentStrand.splays.values()) {
+			
 			rupture = buildRupture(rupture, splay, availableClusters, jumpsFromMap, debug);
+		}
 		return rupture;
 	}
 	

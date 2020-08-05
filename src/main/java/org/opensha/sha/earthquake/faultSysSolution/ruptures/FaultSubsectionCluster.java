@@ -21,7 +21,7 @@ import com.google.common.collect.Multimap;
  * @author kevin
  *
  */
-public class FaultSubsectionCluster {
+public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster> {
 
 	/**
 	 * Parent fault section ID
@@ -148,6 +148,22 @@ public class FaultSubsectionCluster {
 			reversed.addConnection(new Jump(jump.fromSection, reversed,
 					jump.toSection, jump.toCluster, jump.distance));
 		return reversed;
+	}
+
+	@Override
+	public int compareTo(FaultSubsectionCluster o) {
+		int cmp = Integer.compare(parentSectionID, o.parentSectionID);
+		if (cmp != 0)
+			return cmp;
+		cmp = Integer.compare(subSects.size(), o.subSects.size());
+		if (cmp != 0)
+			return cmp;
+		for (int i=0; i<subSects.size(); i++) {
+			cmp = Integer.compare(subSects.get(i).getSectionId(), o.subSects.get(i).getSectionId());
+			if (cmp != 0)
+				return cmp;
+		}
+		return 0;
 	}
 
 }

@@ -193,12 +193,10 @@ public class ClusterRupture {
 			predecessorBuilder.put(sect2, sect1);
 		}
 		
-		HashSet<FaultSection> newInternalSects = new HashSet<>(internalSects);
-		int sectCount = internalSects.size() + jump.toCluster.subSects.size();
-		newInternalSects.addAll(jump.toCluster.subSects);
-		Preconditions.checkState(sectCount == newInternalSects.size(),
-				"Duplicate subsections. Have %s unique, %s total", newInternalSects.size(), sectCount);
 		UniqueRupture newUnique = new UniqueRupture(this.unique, jump.toCluster);
+		int expectedCount = this.unique.size() + jump.toCluster.subSects.size();
+		Preconditions.checkState(newUnique.size() == expectedCount,
+				"Duplicate subsections. Have %s unique, %s total", newUnique.size(), expectedCount);
 		
 		ImmutableMultimap<FaultSection, FaultSection> newDescendentsMap = descendentsBuilder.build();
 		ImmutableMap<FaultSection, FaultSection> newPredecessorMap = predecessorBuilder.build();
@@ -208,8 +206,10 @@ public class ClusterRupture {
 			FaultSubsectionCluster[] newClusters;
 			ImmutableMap<Jump, ClusterRupture> newSplays;
 			ImmutableSet<Jump> newInternalJumps;
+			HashSet<FaultSection> newInternalSects;
 			if (lastCluster.endSects.contains(jump.fromSection)) {
 				// regular jump from the end
+//				System.out.println("Taking a regular jump to extend a strand");
 				newClusters = Arrays.copyOf(clusters, clusters.length+1);
 				newClusters[clusters.length] = jump.toCluster;
 				newSplays = splays;
@@ -218,14 +218,18 @@ public class ClusterRupture {
 				internalJumpBuild.addAll(internalJumps);
 				internalJumpBuild.add(jump);
 				newInternalJumps = internalJumpBuild.build();
+				newInternalSects = new HashSet<>(internalSects);
+				newInternalSects.addAll(jump.toCluster.subSects);
 			} else {
 				// it's a new splay
+//				System.out.println("it's a new splay!");
 				newClusters = clusters;
 				ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
 				splayBuilder.putAll(splays);
 				splayBuilder.put(jump, new ClusterRupture(jump.toCluster));
 				newSplays = splayBuilder.build();
 				newInternalJumps = internalJumps;
+				newInternalSects = new HashSet<>(internalSects);
 			}
 			return new ClusterRupture(newClusters, newInternalJumps, newSplays,
 					newDescendentsMap, newPredecessorMap, newInternalSects, newUnique);
@@ -238,7 +242,9 @@ public class ClusterRupture {
 				if (splay.contains(jump.fromSection)) {
 					Preconditions.checkState(!found);
 					found = true;
-					splayBuilder.put(splayJump, splay.take(jump));
+					ClusterRupture newSplay = splay.take(jump);
+//					System.out.println("Extended a splay! newSplay: "+newSplay);
+					splayBuilder.put(splayJump, newSplay);
 				} else {
 					// unmodified
 					splayBuilder.put(splayJump, splay);
@@ -247,7 +253,7 @@ public class ClusterRupture {
 			Preconditions.checkState(found,
 					"From section for jump not found in rupture (including splays): %s", jump);
 			return new ClusterRupture(clusters, internalJumps, splayBuilder.build(),
-					newDescendentsMap, newPredecessorMap, newInternalSects, newUnique);
+					newDescendentsMap, newPredecessorMap, internalSects, newUnique);
 		}
 	}
 	

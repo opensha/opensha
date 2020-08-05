@@ -31,6 +31,10 @@ public class UniqueRupture {
 		for (FaultSection sect : addition.subSects)
 			sectIDs.add(sect.getSectionId());
 	}
+	
+	public int size() {
+		return sectIDs.size();
+	}
 
 	@Override
 	public int hashCode() {
