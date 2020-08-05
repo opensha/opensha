@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -65,6 +66,12 @@ public class ClusterRupture {
 	 */
 	public final ImmutableMap<FaultSection, FaultSection> sectPredecessorsMap;
 	
+	/**
+	 * UniqueRupture instance, useful for determining if this rupture has already been built and included
+	 * in a rupture set (as defined by the set of subsection IDs included, regardless of order)
+	 */
+	public final UniqueRupture unique;
+	
 	private final Set<FaultSection> internalSects;
 	
 	/**
@@ -74,7 +81,8 @@ public class ClusterRupture {
 	 */
 	public ClusterRupture(FaultSubsectionCluster cluster) {
 		this(new FaultSubsectionCluster[] {cluster}, ImmutableSet.of(),
-				ImmutableMap.of(), initialDescendentsMap(cluster), initialPredecessorsMap(cluster));
+				ImmutableMap.of(), initialDescendentsMap(cluster), initialPredecessorsMap(cluster),
+				new HashSet<>(cluster.subSects), new UniqueRupture(cluster));
 	}
 	
 	private static ImmutableMultimap<FaultSection, FaultSection> initialDescendentsMap(
@@ -96,22 +104,16 @@ public class ClusterRupture {
 	private ClusterRupture(FaultSubsectionCluster[] clusters, ImmutableSet<Jump> internalJumps,
 			ImmutableMap<Jump, ClusterRupture> splays,
 			ImmutableMultimap<FaultSection, FaultSection> sectDescendentsMap,
-			ImmutableMap<FaultSection, FaultSection> sectPredecessorsMap) {
+			ImmutableMap<FaultSection, FaultSection> sectPredecessorsMap,
+			Set<FaultSection> internalSects, UniqueRupture unique) {
 		super();
 		this.clusters = clusters;
 		this.internalJumps = internalJumps;
 		this.splays = splays;
 		this.sectDescendantsMap = sectDescendentsMap;
 		this.sectPredecessorsMap = sectPredecessorsMap;
-		
-		internalSects = new HashSet<>();
-		int sectCount = 0;
-		for (FaultSubsectionCluster cluster : clusters) {
-			sectCount += cluster.subSects.size();
-			internalSects.addAll(cluster.subSects);
-		}
-		Preconditions.checkState(sectCount == internalSects.size(),
-				"Duplicate subsections. Have %s unique, %s total", internalSects.size(), sectCount);
+		this.internalSects = internalSects;
+		this.unique = unique;
 	}
 	
 	/**
@@ -191,6 +193,13 @@ public class ClusterRupture {
 			predecessorBuilder.put(sect2, sect1);
 		}
 		
+		HashSet<FaultSection> newInternalSects = new HashSet<>(internalSects);
+		int sectCount = internalSects.size() + jump.toCluster.subSects.size();
+		newInternalSects.addAll(jump.toCluster.subSects);
+		Preconditions.checkState(sectCount == newInternalSects.size(),
+				"Duplicate subsections. Have %s unique, %s total", newInternalSects.size(), sectCount);
+		UniqueRupture newUnique = new UniqueRupture(this.unique, jump.toCluster);
+		
 		ImmutableMultimap<FaultSection, FaultSection> newDescendentsMap = descendentsBuilder.build();
 		ImmutableMap<FaultSection, FaultSection> newPredecessorMap = predecessorBuilder.build();
 		if (internalSects.contains(jump.fromSection)) {
@@ -219,7 +228,7 @@ public class ClusterRupture {
 				newInternalJumps = internalJumps;
 			}
 			return new ClusterRupture(newClusters, newInternalJumps, newSplays,
-					newDescendentsMap, newPredecessorMap);
+					newDescendentsMap, newPredecessorMap, newInternalSects, newUnique);
 		} else {
 			// it's on a splay, grow that
 			boolean found = false;
@@ -238,7 +247,7 @@ public class ClusterRupture {
 			Preconditions.checkState(found,
 					"From section for jump not found in rupture (including splays): %s", jump);
 			return new ClusterRupture(clusters, internalJumps, splayBuilder.build(),
-					newDescendentsMap, newPredecessorMap);
+					newDescendentsMap, newPredecessorMap, newInternalSects, newUnique);
 		}
 	}
 	
@@ -300,7 +309,7 @@ public class ClusterRupture {
 		}
 		
 		return new ClusterRupture(clusterList.toArray(new FaultSubsectionCluster[0]), jumpsBuilder.build(),
-				ImmutableMap.of(), descendentsBuilder.build(), predecessorsBuilder.build());
+				ImmutableMap.of(), descendentsBuilder.build(), predecessorsBuilder.build(), internalSects, unique);
 	}
 	
 	/**
@@ -314,6 +323,7 @@ public class ClusterRupture {
 		List<FaultSubsectionCluster> clusterList = new ArrayList<>();
 		List<FaultSection> curSects = null;
 		int curParent = -2;
+		HashSet<Integer> sectIDs = new HashSet<>();
 		for (FaultSection sect : sects) {
 			if (sect.getParentSectionId() != curParent) {
 				if (curSects != null)
@@ -322,6 +332,7 @@ public class ClusterRupture {
 				curParent = sect.getParentSectionId();
 			}
 			curSects.add(sect);
+			sectIDs.add(sect.getSectionId());
 		}
 		clusterList.add(new FaultSubsectionCluster(curSects));
 		
@@ -350,7 +361,8 @@ public class ClusterRupture {
 		}
 		
 		return new ClusterRupture(clusters, jumpsBuilder.build(), ImmutableMap.of(),
-				descendentsBuilder.build(), predecessorsBuilder.build());
+				descendentsBuilder.build(), predecessorsBuilder.build(),
+				new HashSet<>(sects), new UniqueRupture(sectIDs));
 	}
 	
 	@Override

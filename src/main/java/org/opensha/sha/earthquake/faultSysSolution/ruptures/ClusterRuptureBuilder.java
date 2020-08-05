@@ -24,6 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPe
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterPermuationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -161,10 +162,9 @@ public class ClusterRuptureBuilder {
 						continue;
 					if (result.isPass()) {
 						// passes as is, add it if it's new
-						UniqueRupture unique = new UniqueRupture(rup);
-						if (!uniques.contains(unique)) {
+						if (!uniques.contains(rup.unique)) {
 							rups.add(rup);
-							uniques.add(unique);
+							uniques.add(rup.unique);
 							int count = rup.getTotalNumSects();
 							if (count > largestRup) {
 								largestRup = count;
@@ -308,10 +308,9 @@ public class ClusterRuptureBuilder {
 				candidateRupture = currentRupture.take(testJump);
 			if (result.isPass()) {
 				// passes as is, add it if it's new
-				UniqueRupture unique = new UniqueRupture(candidateRupture);
-				if (!uniques.contains(unique)) {
+				if (!uniques.contains(candidateRupture.unique)) {
 					rups.add(candidateRupture);
-					uniques.add(unique);
+					uniques.add(candidateRupture.unique);
 				}
 				int count = candidateRupture.getTotalNumSects();
 				if (count > largestRup) {
@@ -345,53 +344,6 @@ public class ClusterRuptureBuilder {
 				return false;
 		}
 		return true;
-	}
-	
-	public static class UniqueRupture {
-		private List<Integer> sectsSorted;
-		public UniqueRupture(ClusterRupture rup) {
-			sectsSorted = new ArrayList<>();
-			for (FaultSection sect : rup.buildOrderedSectionList())
-				sectsSorted.add(sect.getSectionId());
-			Collections.sort(sectsSorted);
-		}
-		public UniqueRupture(ClusterRupture rup, Jump jump) {
-			sectsSorted = new ArrayList<>();
-			for (FaultSection sect : rup.buildOrderedSectionList())
-				sectsSorted.add(sect.getSectionId());
-			for (FaultSection sect : jump.toCluster.subSects)
-				sectsSorted.add(sect.getSectionId());
-			Collections.sort(sectsSorted);
-		}
-		public UniqueRupture(List<Integer> rupSects) {
-			sectsSorted = new ArrayList<>();
-			for (int sect : rupSects)
-				sectsSorted.add(sect);
-			Collections.sort(sectsSorted);
-		}
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + ((sectsSorted == null) ? 0 : sectsSorted.hashCode());
-			return result;
-		}
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			UniqueRupture other = (UniqueRupture) obj;
-			if (sectsSorted == null) {
-				if (other.sectsSorted != null)
-					return false;
-			} else if (!sectsSorted.equals(other.sectsSorted))
-				return false;
-			return true;
-		}
 	}
 	
 	public static interface RupDebugCriteria {
@@ -587,12 +539,12 @@ public class ClusterRuptureBuilder {
 
 		@Override
 		public boolean isMatch(ClusterRupture rup) {
-			return !uniques.contains(new UniqueRupture(rup));
+			return !uniques.contains(rup.unique);
 		}
 
 		@Override
 		public boolean isMatch(ClusterRupture rup, Jump newJump) {
-			return !uniques.contains(new UniqueRupture(rup, newJump));
+			return !uniques.contains(new UniqueRupture(rup.unique, newJump.toCluster));
 		}
 
 		@Override
@@ -614,12 +566,12 @@ public class ClusterRuptureBuilder {
 
 		@Override
 		public boolean isMatch(ClusterRupture rup) {
-			return uniques.contains(new UniqueRupture(rup));
+			return uniques.contains(rup.unique);
 		}
 
 		@Override
 		public boolean isMatch(ClusterRupture rup, Jump newJump) {
-			return uniques.contains(new UniqueRupture(rup, newJump));
+			return uniques.contains(new UniqueRupture(rup.unique, newJump.toCluster));
 		}
 
 		@Override
