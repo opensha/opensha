@@ -124,6 +124,15 @@ public class BA_2008_AttenRel extends AttenuationRelationship implements
 	protected double v1 = 180; // m/s
 	protected double v2 = 300; // m/s
 	protected double v_ref = 760; // m/s
+	/*
+	 * Note that these values below have been updated according to the errata posted here:
+	 * http://www.daveboore.com/pubs_online.html
+	 * 
+	 * ERRATUM: 27 August 2008. Tom Blake pointed out that the caption to Table 6 should read
+	 * "Distance-scaling coefficients (Mref=4.5 and Rref=1.0 km for all periods)".
+	 * 
+	 * (the original article had different r_ref and m_ref values for pga4nl)
+	 */
 	protected double m_ref = 4.5;
 	protected double r_ref = 1; //km
 
