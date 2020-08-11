@@ -139,7 +139,14 @@ public class BugReport {
 		description += ", version: "+System.getProperty("os.version")+")";
 		
 		if (t != null) {
-			description += "\n\nException:\n```\n" + getStackTrace(t)+"\n```\n";
+			if (t.getCause() != null) {
+				Throwable rootCause = t.getCause();
+				while (rootCause.getCause() != null)
+					rootCause = rootCause.getCause();
+				description += "\n\nRoot cause exception:\n```\n"
+					+getStackTrace(rootCause)+"\n```\n";
+			}
+			description += "\n\nException:\n```\n"+getStackTrace(t)+"\n```\n";
 		}
 		if (metadata != null && metadata.length() > 0) {
 			description += "\n\nMetadata:\n" + metadata;
