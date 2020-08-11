@@ -7,6 +7,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import javax.swing.JOptionPane;
@@ -592,10 +593,54 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		return checkDownload(file, ignoreErrors);
 	}
 	
+	/**
+	 * This downloads the selected file from the OpenSHA server if not already cached locally
+	 * 
+	 * @param fName
+	 */
 	public static File checkDownload(File file, boolean ignoreErrors) {
 		// TODO allow some sort of server side versioning so that clients know to update
-		if (file.exists())
-			return file;
+		if (file.exists()) {
+			if (!ignoreErrors) {
+				// check to make sure that it isn't corrupted
+				ZipFile zip = null;
+				try {
+					zip = new ZipFile(file);
+					Preconditions.checkState(zip.entries().hasMoreElements());
+					zip.close();
+					return file;
+				} catch (Exception e) {
+					e.printStackTrace();
+					if (zip != null) {
+						try {
+							zip.close();
+						} catch (IOException e1) {}
+					}
+					Throwable cause = e;
+					while (cause.getCause() != null)
+						cause = cause.getCause();
+					String title = "Corrupted UCERF3 data file detected. Re-download?";
+					String message = "The UCERF3 model downloads data files upon first run.\n"
+							+ "The following file was downlaoded previously but appears\n"
+							+ "to be corrupted:\n\n"
+							+ file.getAbsolutePath()+"\n\n"
+							+ "Would you like to delete and re-download the file?";
+					int choice = JOptionPane.showConfirmDialog(null, message, title,
+							JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE);
+					if (choice == JOptionPane.YES_OPTION) {
+						if (!file.delete()) {
+							JOptionPane.showMessageDialog(null, "Error deleting",
+									"Could not delete the corrupted file. Delte it manually and then "
+									+ "re-run the application:\n\n"+file.getAbsolutePath(),
+									JOptionPane.ERROR_MESSAGE);
+						}
+					}
+				}
+			} else {
+				// don't test for errors
+				return file;
+			}
+		}
 		String fName = file.getName();
 		CalcProgressBar progress = null;
 		// try to show progress bar
