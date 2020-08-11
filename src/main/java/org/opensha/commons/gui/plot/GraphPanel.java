@@ -360,6 +360,20 @@ public class GraphPanel extends JSplitPane {
 	 */
 	public void drawGraphPanel(List<PlotSpec> specs, boolean xLog, boolean yLog,
 			List<Range> xRanges, List<Range> yRanges) {
+		drawGraphPanel(specs, Lists.newArrayList(xLog), Lists.newArrayList(yLog), xRanges, yRanges);
+	}
+	
+	/**
+	 * Draw the graph with support for multiple subplots
+	 * 
+	 * @param specs	list of PlotSpec instances
+	 * @param xLog	if true, log X axis
+	 * @param yLog	if true, log Y axis
+	 * @param xRanges	X axis ranges for each subplot. If non null size > 1, combined plots will share a Y axis
+	 * @param yRanges	X axis ranges for each subplot. If non null size > 1, combined plots will share an X axis
+	 */
+	public void drawGraphPanel(List<PlotSpec> specs, List<Boolean> xLogs, List<Boolean> yLogs,
+			List<Range> xRanges, List<Range> yRanges) {
 		// Starting
 		String S = "drawGraphPanel(): ";
 
@@ -395,6 +409,9 @@ public class GraphPanel extends JSplitPane {
 		
 		for (int i=0; i<specs.size(); i++) {
 			PlotSpec spec = specs.get(i);
+			
+			boolean xLog = xLogs.size() > 1 ? xLogs.get(i) : xLogs.get(0);
+			boolean yLog = yLogs.size() > 1 ? yLogs.get(i) : yLogs.get(0);
 			
 			ValueAxis xAxis, yAxis;
 			try{
@@ -585,6 +602,9 @@ public class GraphPanel extends JSplitPane {
 			} else {
 				subPlot = plot;
 			}
+			
+			boolean xLog = xLogs.size() > 1 ? xLogs.get(p) : xLogs.get(0);
+			boolean yLog = yLogs.size() > 1 ? yLogs.get(p) : yLogs.get(0);
 			
 			//secondary dataset index keeps track where do we have to add the secondary data set in plot
 			for(int j=0,dataIndex=0; j < numFuncs; ++j,++dataIndex){
@@ -851,9 +871,9 @@ public class GraphPanel extends JSplitPane {
 		graphOn=false;
 
 		//Check to see if there is no log Error and only  xLog or yLog are selected
-		if(!logErrorFlag && !xLog)
+		if(!logErrorFlag && !xLogs.get(0))
 			prevXAxis = xAxis;
-		if(!logErrorFlag && !yLog)
+		if(!logErrorFlag && !yLogs.get(0))
 			prevYAxis = yAxis;
 
 		//setting the info in the
