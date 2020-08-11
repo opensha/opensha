@@ -36,7 +36,6 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
-import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -55,7 +54,6 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.utils.FaultSystemIO;
 
 public class RupSetConnectionSearch {
@@ -90,7 +88,7 @@ public class RupSetConnectionSearch {
 		this.cumulativeJumps = cumulativeJumps;
 	}
 	
-	private List<FaultSubsectionCluster> calcClusters(List<FaultSection> sects, final boolean debug) {
+	public List<FaultSubsectionCluster> calcClusters(List<FaultSection> sects, final boolean debug) {
 		List<FaultSubsectionCluster> clusters = new ArrayList<>();
 		
 		Map<Integer, List<FaultSection>> parentsMap = new HashMap<>();
@@ -139,7 +137,7 @@ public class RupSetConnectionSearch {
 		}
 	};
 	
-	private class ClusterPath {
+	private class ClusterPath implements Comparable<ClusterPath> {
 		private final FaultSubsectionCluster start;
 		private final FaultSubsectionCluster target;
 		
@@ -148,19 +146,19 @@ public class RupSetConnectionSearch {
 		private final FaultSubsectionCluster[] path;
 		private final Jump[] jumps;
 		
-		private double dist;
+		private final double maxJumpDist;
+		private final double cmlJumpDist;
 
 		public ClusterPath(FaultSubsectionCluster start, FaultSubsectionCluster target,
 				HashSet<FaultSubsectionCluster> availableClusters) {
 			this(start, target, availableClusters,
 					new FaultSubsectionCluster[] {start}, // path starts with just this cluster
-					new Jump[0], // no jumps yet
-					0d); // start at zero dist (no jumps yet)
+					new Jump[0], 0d, 0d); // no jumps yet
 		}
 		
 		public ClusterPath(FaultSubsectionCluster start, FaultSubsectionCluster target,
 				HashSet<FaultSubsectionCluster> availableClusters,
-				FaultSubsectionCluster[] path, Jump[] jumps, double dist) {
+				FaultSubsectionCluster[] path, Jump[] jumps, double maxJumpDist, double cmlJumpDist) {
 			this.start = start;
 			this.target = target;
 			this.availableClusters = new HashSet<>(availableClusters);
@@ -168,8 +166,8 @@ public class RupSetConnectionSearch {
 			this.path = path;
 			Preconditions.checkState(jumps.length == path.length-1);
 			this.jumps = jumps;
-			
-			this.dist = dist;
+			this.maxJumpDist = maxJumpDist;
+			this.cmlJumpDist = cmlJumpDist;
 		}
 		
 		public ClusterPath take(FaultSubsectionCluster to) {
@@ -189,13 +187,10 @@ public class RupSetConnectionSearch {
 			Jump[] newJumps = Arrays.copyOf(jumps, jumps.length+1);
 			newJumps[jumps.length] = jump;
 			
-			double newDist;
-			if (cumulativeJumps)
-				newDist = dist + jump.distance;
-			else
-				newDist = Math.max(dist, jump.distance);
+			double newMax = Math.max(maxJumpDist, jump.distance);
+			double newCml = cmlJumpDist + jump.distance;
 			
-			return new ClusterPath(start, target, newAvailClusters, newPath, newJumps, newDist);
+			return new ClusterPath(start, target, newAvailClusters, newPath, newJumps, newMax, newCml);
 		}
 		
 		public boolean isComplete() {
@@ -204,7 +199,6 @@ public class RupSetConnectionSearch {
 		
 		public String toString() {
 			String str = "";
-			double myDist = 0;
 			for (int p=0; p<path.length; p++) {
 				if (p == 0)
 					str += "[";
@@ -213,21 +207,61 @@ public class RupSetConnectionSearch {
 					Jump jump = jumps[p-1];
 					int exitID = jump.fromSection.getSectionId();
 					int entryID = jump.toSection.getSectionId();
-					if (cumulativeJumps)
-						myDist += jump.distance;
-					else
-						myDist = jump.distance;
-					str += "; "+exitID+"] => ["+entryID+"; R="+distDF.format(myDist)+"; ";
+					str += "; "+exitID+"] => ["+entryID+"; R="+distDF.format(jump.distance)+"; ";
 				}
 				str += path[p].parentSectionName;
 			}
 			str += "]";
 			
 			if (isComplete())
-				str += " COMPLETE R="+distDF.format(dist);
+				str += " COMPLETE Rmax="+distDF.format(maxJumpDist)+", Rcml="+distDF.format(cmlJumpDist);
 			else
-				str += " INCOMPLETE (target: "+target.parentSectionName+") R="+distDF.format(dist);
+				str += " INCOMPLETE (target: "+target.parentSectionName+") Rmax="
+						+distDF.format(maxJumpDist)+", Rcml="+distDF.format(cmlJumpDist);
+//			str += "\t"+maxJumpDist+"\t"+cmlJumpDist;
 			return str;
+		}
+		
+		private double maxDistBefore(double maxDist) {
+			double curMax = 0d;
+			for (Jump jump : jumps) {
+				if (jump.distance == maxDist)
+					break;
+				curMax = Math.max(curMax, jump.distance);
+			}
+			return curMax;
+		}
+
+		@Override
+		public int compareTo(ClusterPath o) {
+			if (cumulativeJumps) {
+				return Double.compare(cmlJumpDist, o.cmlJumpDist);
+			}
+			int cmp = Double.compare(maxJumpDist, o.maxJumpDist);
+			if (cmp != 0)
+				return cmp;
+			// we have the same max, but there could be multiple non-equal paths leading
+			// to that maximum jump. choose the better one with the smallest max leading to
+			// the max jump
+			
+			double myMaxDist = maxJumpDist;
+			double oMaxDist = o.maxJumpDist;
+			
+//			System.out.println("max dists are equal ("+maxJumpDist+"), checking pre-max max dists");
+			while (myMaxDist > 0 || oMaxDist > 0) {
+				myMaxDist = maxDistBefore(myMaxDist);
+				oMaxDist = o.maxDistBefore(oMaxDist);
+				
+//				System.out.println("myPrevMax="+myMaxDist+"\toPrevMax="+oMaxDist);
+				cmp = Double.compare(myMaxDist, oMaxDist);
+				if (cmp != 0) {
+//					System.out.println("returning cmp="+cmp);
+					return cmp;
+				}
+			}
+			
+			// if we're here then the previous max was equal between the two, so return the shortest path
+			return Integer.compare(jumps.length, o.jumps.length);
 		}
 	}
 	
@@ -239,18 +273,25 @@ public class RupSetConnectionSearch {
 		
 		private void addPath(ClusterPath path, final boolean debug) {
 			Preconditions.checkState(path.isComplete());
-			if (shortestPaths == null || (float)shortestPaths[0].dist > (float)path.dist) {
+			if (shortestPaths == null) {
 				if (debug)
-					System.out.println("\t\t\t\tNew shortest with R="
-							+distDF.format(path.dist)+": "+path);
+					System.out.println("\t\t\t\tNew shortest (first): "+path);
 				shortestPaths = new ClusterPath[] { path };
-			} else if ((float)shortestPaths[0].dist == (float)path.dist
-					&& shortestPaths[0].path[1] != path.path[1]) {
-				if (debug)
-					System.out.println("\t\t\t\tIt's a tie! Additional shortest with R="
-							+distDF.format(path.dist)+": "+path);
-				shortestPaths = Arrays.copyOf(shortestPaths, shortestPaths.length+1);
-				shortestPaths[shortestPaths.length-1] = path;
+			} else {
+				// we already have one, compare them
+				int cmp = path.compareTo(shortestPaths[0]);
+//				System.out.println("Compared to shortest: "+cmp);
+				if (cmp < 0) {
+					// we're new shortest path
+					if (debug)
+						System.out.println("\t\t\t\tNew shortest (better): "+path);
+					shortestPaths = new ClusterPath[] { path };
+				} else if (cmp == 0) {
+					if (debug)
+						System.out.println("\t\t\t\tIt's a tie! Additional shortest: "+path);
+					shortestPaths = Arrays.copyOf(shortestPaths, shortestPaths.length+1);
+					shortestPaths[shortestPaths.length-1] = path;
+				}
 			}
 			completePathCount++;
 		}
@@ -265,9 +306,13 @@ public class RupSetConnectionSearch {
 //		for (FaultSubsectionCluster to : from.sortedConnections) {
 //			if (!basePath.availableClusters.contains(to))
 //				continue;
-		for (FaultSubsectionCluster to : from.getConnectedClusters()) {
-			if (!basePath.availableClusters.contains(to))
+		for (FaultSubsectionCluster to : from.getDistSortedConnectedClusters()) {
+			if (!basePath.availableClusters.contains(to)) {
+				if (debug)
+					System.out.println("\t\t\t\tCan't try because not available: ["
+							+to.parentSectionName+"; "+to.parentSectionID+"]");
 				continue;
+			}
 			ClusterPath path = basePath.take(to);
 			if (debug)
 				System.out.println("\t\t\t"+path);
@@ -276,9 +321,12 @@ public class RupSetConnectionSearch {
 			if (path.isComplete()) {
 				result.addPath(path, debug);
 			} else {
-				if (result.shortestPaths != null && path.dist >= result.shortestPaths[0].dist)
+				if (result.shortestPaths != null && path.compareTo(result.shortestPaths[0]) > 0) {
 					// already worse than our current best, stop here
+					if (debug)
+						System.out.println("\t\t\t\tStopping this search as we're worse than the shortest");
 					continue;
+				}
 				pathSearch(path, result, debug);
 			}
 		}
@@ -307,6 +355,14 @@ public class RupSetConnectionSearch {
 		return new IDPairing(id2, id1);
 	}
 	
+	/**
+	 * Calculates all of the possible jumps between the given clusters. Jumps are not duplicated
+	 * or included in both directions. Each jump will be ordered such that fromSection has a smaller
+	 * subsection ID than toSection.
+	 * @param rupClusters
+	 * @param debug
+	 * @return
+	 */
 	public List<Jump> calcRuptureJumps(List<FaultSubsectionCluster> rupClusters, final boolean debug) {
 		List<Jump> jumps = new ArrayList<>();
 		
@@ -321,7 +377,17 @@ public class RupSetConnectionSearch {
 			HashSet<FaultSubsectionCluster> availableClusters = new HashSet<>(rupClusters);
 			availableClusters.remove(from);
 			
-			if (debug) System.out.println("\tFrom cluster "+0+", "+from.parentSectionName);
+			if (debug) {
+				System.out.println("\tFrom cluster "+0+", "+from.parentSectionName);
+				System.out.println("\t\tAvailable direct jumps:");
+				for (FaultSubsectionCluster to : from.getDistSortedConnectedClusters()) {
+					double minDist = Double.POSITIVE_INFINITY;
+					for (Jump jump : from.getConnectionsTo(to))
+						minDist = Math.min(minDist, jump.distance);
+					System.out.println("\t\t\t["+to.parentSectionID+"; "+to.parentSectionName
+							+"] R="+distDF.format(minDist));
+				}
+			}
 			
 			// TODO: add check for no connections possible?
 			
@@ -343,7 +409,11 @@ public class RupSetConnectionSearch {
 						Jump jump = shortest.jumps[0];
 						IDPairing pair = jumpPair(jump);
 						if (!uniques.contains(pair)) {
-							jumps.add(jump);
+							// always add it with the lower section ID first
+							if (jump.fromSection.getSectionId() < jump.toSection.getSectionId())
+								jumps.add(jump);
+							else
+								jumps.add(jump.reverse());
 							uniques.add(pair);
 						}
 						if (debug) System.out.println("\t\t\tShortest path: "+shortest+" (of "+result.completePathCount+")");
@@ -410,6 +480,16 @@ public class RupSetConnectionSearch {
 				if (score < minClusterScore) {
 					startCluster = cluster;
 					minClusterScore = score;
+				} else if (score == minClusterScore) {
+					// go by number of isolated end sections
+					int prevIsolatedSects = calcNumIsolatedEndSubsections(startCluster);
+					int myIsolatedSects = calcNumIsolatedEndSubsections(cluster);
+					if (debug) System.out.println("\t\tTie. I have "+myIsolatedSects
+							+" isolated sects, prev has "+prevIsolatedSects);
+					if (myIsolatedSects > prevIsolatedSects) {
+						startCluster = cluster;
+						minClusterScore = score;
+					}
 				}
 			}
 			
@@ -502,13 +582,29 @@ public class RupSetConnectionSearch {
 		while (true) {
 			boolean extended = false;
 			FaultSubsectionCluster lastCluster = currentStrand.clusters[currentStrand.clusters.length-1];
+			if (debug)
+				System.out.println("Looking for jumps off of end, from "+lastCluster);
 			// wrap in an arraylist here to avoid concurrent modification exception if we reverse a toCluster
 			// the update won't actually affect this list, as that toCluster will already have been processed
 			// and can't occur again
-			for (Jump jump : new ArrayList<>(jumpsFromMap.get(lastCluster))) {
+			List<Jump> jumpsFromList = new ArrayList<>(jumpsFromMap.get(lastCluster));
+			Collections.sort(jumpsFromList, Jump.dist_comparator);
+			for (Jump jump : jumpsFromList) {
 				if (!availableClusters.contains(jump.toCluster))
 					// already taken this jump
 					continue;
+				// see if this is the shortest jump to this cluster or if there is a better alternative
+				// from our current rupture
+				for (FaultSubsectionCluster cluster : rupture.clusters) {
+					for (Jump oJump : jumpsFromMap.get(cluster)) {
+						if (oJump.toCluster == jump.toCluster && oJump.distance < jump.distance) {
+							if (debug)
+								System.out.println("Was going to take "+jump
+										+", but will instead take shorter "+oJump);
+							jump = oJump;
+						}
+					}
+				}
 				int sectIndex = jump.toCluster.subSects.indexOf(jump.toSection);
 				if (sectIndex > (jump.toCluster.subSects.size() - (sectIndex + 1))) {
 					if (debug) System.out.println("Reversing toCluster with sectIndex="+sectIndex
@@ -564,16 +660,39 @@ public class RupSetConnectionSearch {
 		return tot;
 	}
 	
+	private static int calcNumIsolatedEndSubsections(FaultSubsectionCluster cluster) {
+		int max = 0;
+		// search increasing index
+		for (int i=0; i<cluster.subSects.size(); i++) {
+			if (cluster.getConnections(cluster.subSects.get(i)).isEmpty())
+				max = i;
+			else
+				break;
+		}
+		// search decreasing index
+		for (int i=0; i<cluster.subSects.size(); i++) {
+			int ind = (cluster.subSects.size()-1)-i;
+			if (cluster.getConnections(cluster.subSects.get(ind)).isEmpty())
+				max = i;
+			else
+				break;
+		}
+		return max;
+	}
+	
 	public void plotConnections(File outputDir, String prefix, int rupIndex) throws IOException {
 		plotConnections(outputDir, prefix, rupIndex, null, null);
 	}
 	
 	public void plotConnections(File outputDir, String prefix, int rupIndex,
-			Set<IDPairing> highlightConn, String highlightName) throws IOException {
+			Set<Jump> highlightConn, String highlightName) throws IOException {
 //		HashSet<IDPairing> connections = calcConnections(rupIndex, true);
 		List<FaultSection> sects = rupSet.getFaultSectionDataForRupture(rupIndex);
 		List<FaultSubsectionCluster> clusters = calcClusters(sects, true);
-		List<Jump> jumps = calcRuptureJumps(clusters, true);
+//		List<Jump> jumps = calcRuptureJumps(clusters, true);
+		List<Jump> jumps = new ArrayList<>();
+		for (Jump jump : buildClusterRupture(rupIndex, true).getJumpsIterable())
+			jumps.add(jump);
 
 		HashSet<Integer> parentIDs = new HashSet<>();
 		for (FaultSection sect : sects)
@@ -623,7 +742,7 @@ public class RupSetConnectionSearch {
 		
 		boolean first = true;
 		double maxDist = 0d;
-		HashSet<IDPairing> connections = new HashSet<>();
+		HashSet<Jump> connections = new HashSet<>();
 		for (Jump jump : jumps) {
 			DefaultXY_DataSet xy = new DefaultXY_DataSet();
 			maxDist = Math.max(maxDist, jump.distance);
@@ -633,7 +752,10 @@ public class RupSetConnectionSearch {
 				first = false;
 			}
 			
-			connections.add(jumpPair(jump));
+			if (jump.fromSection.getSectionId() < jump.toSection.getSectionId())
+				connections.add(jump);
+			else
+				connections.add(jump.reverse());
 			Location loc1 = middles.get(jump.fromSection.getSectionId());
 			Location loc2 = middles.get(jump.toSection.getSectionId());
 			
@@ -646,7 +768,7 @@ public class RupSetConnectionSearch {
 		
 		if (highlightConn != null) {
 			boolean firstHighlight = true;
-			for (IDPairing connection : connections) {
+			for (Jump connection : connections) {
 				if (!highlightConn.contains(connection))
 					continue;
 				DefaultXY_DataSet xy = new DefaultXY_DataSet();
@@ -655,8 +777,8 @@ public class RupSetConnectionSearch {
 					firstHighlight = false;
 				}
 				
-				Location loc1 = middles.get(connection.getID1());
-				Location loc2 = middles.get(connection.getID2());
+				Location loc1 = middles.get(connection.fromSection.getSectionId());
+				Location loc2 = middles.get(connection.toSection.getSectionId());
 				
 				xy.set(loc1.getLongitude(), loc1.getLatitude());
 				xy.set(loc2.getLongitude(), loc2.getLatitude());
@@ -744,7 +866,8 @@ public class RupSetConnectionSearch {
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		File fssFile = new File("/home/kevin/Simulators/catalogs/rundir4983_stitched/fss/"
 				+ "rsqsim_sol_m6.5_skip5000_sectArea0.2.zip");
-//		int[] plotIndexes = { 1001, 27845, 173243, 193669 };
+//		int[] plotIndexes = { 302, 462, 97810, 132521 };
+////		int[] plotIndexes = { 132521 };
 //		double debugDist = Double.POSITIVE_INFINITY;
 		int[] plotIndexes = {  };
 		double debugDist = 30d;
@@ -783,7 +906,13 @@ public class RupSetConnectionSearch {
 					System.out.println("Calculating for rupture "+r+"/"+rupSet.getNumRuptures()
 						+" ("+allConnections.size()+" connections found so far)");
 //				HashSet<IDPairing> rupConnections = search.calcConnections(r);
-				ClusterRupture rup = search.buildClusterRupture(r, false);
+				ClusterRupture rup = null;
+				try {
+					rup = search.buildClusterRupture(r, false);
+				} catch (Exception e) {
+					System.out.println("detected an exception with "+r+", will redo with debugging enabled");
+					rup = search.buildClusterRupture(r, true);
+				}
 				boolean debug = false;
 				for (Jump jump : rup.getJumpsIterable()) {
 					IDPairing pair = jumpPair(jump);

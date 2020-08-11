@@ -140,7 +140,7 @@ public class MinSectsPerParentFilter implements PlausibilityFilter {
 
 	@Override
 	public String getShortName() {
-		return "MinSectsPerParent";
+		return "SectsPerParent";
 	}
 
 	@Override

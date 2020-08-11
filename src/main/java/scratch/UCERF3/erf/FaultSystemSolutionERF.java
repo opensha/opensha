@@ -981,6 +981,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 	 * @return
 	 */
 	protected ProbEqkSource getOtherSource(int iSource) {
+		Preconditions.checkNotNull(faultSysSolution, "Fault system solution is null");
 		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 		if (gridSources == null)
 			return null;

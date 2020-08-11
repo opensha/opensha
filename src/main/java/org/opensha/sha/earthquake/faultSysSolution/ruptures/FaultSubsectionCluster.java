@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -64,6 +65,8 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	 */
 	private final Multimap<FaultSubsectionCluster, Jump> jumpsToCluster;
 	
+	private final ClusterJumpDistComparator clusterDistComparator;
+	
 	public FaultSubsectionCluster(List<FaultSection> subSects) {
 		this(subSects, null);
 	}
@@ -97,6 +100,7 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		jumpsForSection = HashMultimap.create();
 		jumpsToCluster = HashMultimap.create();
 		this.possibleJumps = new ArrayList<>();
+		this.clusterDistComparator = new ClusterJumpDistComparator();
 	}
 	
 	public void addConnection(Jump jump) {
@@ -113,6 +117,28 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	
 	public Set<FaultSubsectionCluster> getConnectedClusters() {
 		return jumpsToCluster.keySet();
+	}
+	
+	public List<FaultSubsectionCluster> getDistSortedConnectedClusters() {
+		List<FaultSubsectionCluster> sorted = new ArrayList<>(jumpsToCluster.keySet());
+		Collections.sort(sorted, clusterDistComparator);
+		Preconditions.checkState(sorted.size() == jumpsToCluster.keySet().size());
+		return sorted;
+	}
+	
+	private class ClusterJumpDistComparator implements Comparator<FaultSubsectionCluster> {
+
+		@Override
+		public int compare(FaultSubsectionCluster o1, FaultSubsectionCluster o2) {
+			double minDist1 = Double.POSITIVE_INFINITY;
+			double minDist2 = Double.POSITIVE_INFINITY;
+			for (Jump jump : jumpsToCluster.get(o1))
+				minDist1 = Math.min(minDist1, jump.distance);
+			for (Jump jump : jumpsToCluster.get(o2))
+				minDist2 = Math.min(minDist2, jump.distance);
+			return Double.compare(minDist1, minDist2);
+		}
+		
 	}
 	
 	public Collection<Jump> getConnectionsTo(FaultSubsectionCluster cluster) {

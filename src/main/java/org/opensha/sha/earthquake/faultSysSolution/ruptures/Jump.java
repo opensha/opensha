@@ -100,11 +100,11 @@ public class Jump {
 		Jump other = (Jump) obj;
 		if (fromCluster.parentSectionID != other.fromCluster.parentSectionID)
 			return false;
-		if (!fromSection.equals(other.fromSection))
+		if (fromSection.getSectionId() != other.fromSection.getSectionId())
 			return false;
 		if (toCluster.parentSectionID != other.toCluster.parentSectionID)
 			return false;
-		if (!toSection.equals(other.toSection))
+		if (toSection.getSectionId() != other.toSection.getSectionId())
 			return false;
 		return true;
 	}

@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
 
@@ -118,10 +119,18 @@ public class ClusterRupture {
 	
 	/**
 	 * @param sect
+	 * @return true if the primary strand of this rupture contains the given section
+	 */
+	public boolean containsInternal(FaultSection sect) {
+		return internalSects.contains(sect);
+	}
+	
+	/**
+	 * @param sect
 	 * @return true if this rupture or any splays contains the given section
 	 */
 	public boolean contains(FaultSection sect) {
-		if (internalSects.contains(sect))
+		if (containsInternal(sect))
 			return true;
 		for (ClusterRupture splay : splays.values())
 			if (splay.contains(sect))
@@ -386,7 +395,7 @@ public class ClusterRupture {
 	
 	/**
 	 * 
-	 * @return Iterable over all Jumps in this rupture and it's splays
+	 * @return Iterable over all Jumps in this rupture and its splays
 	 */
 	public Iterable<Jump> getJumpsIterable() {
 		if (splays.isEmpty())
@@ -396,6 +405,20 @@ public class ClusterRupture {
 		iterables.add(splays.keySet());
 		for (ClusterRupture splay : splays.values())
 			iterables.add(splay.getJumpsIterable());
+		return Iterables.concat(iterables);
+	}
+	
+	/**
+	 * 
+	 * @return Iterable over all clusters in this rupture and its splays
+	 */
+	public Iterable<FaultSubsectionCluster> getClustersIterable() {
+		if (splays.isEmpty())
+			return Lists.newArrayList(clusters);
+		List<Iterable<FaultSubsectionCluster>> iterables = new ArrayList<>();
+		iterables.add(Lists.newArrayList(clusters));
+		for (ClusterRupture splay : splays.values())
+			iterables.add(splay.getClustersIterable());
 		return Iterables.concat(iterables);
 	}
 

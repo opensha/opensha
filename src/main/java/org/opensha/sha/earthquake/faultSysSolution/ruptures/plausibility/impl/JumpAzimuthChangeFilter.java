@@ -82,7 +82,7 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 	 * The output is between -180 and 180 degrees.
 	 * @return
 	 */
-	static double getAzimuthDifference(double azimuth1, double azimuth2) {
+	public static double getAzimuthDifference(double azimuth1, double azimuth2) {
 		double diff = azimuth2 - azimuth1;
 		if(diff>180)
 			return diff-360;

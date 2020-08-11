@@ -112,7 +112,7 @@ public class SimulationMarkdownGenerator {
 			//		inputFile = new File(simDir, "results_complete.bin");
 			////		inputFile = new File(simDir, "results_complete_partial.bin");
 
-//			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+			File simDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
 //					+ "2019_06_05-Spontaneous-includeSpont-historicalCatalog-full_td-1000yr");
 //					+ "2019_06_05-Spontaneous-includeSpont-historicalCatalog-no_ert-1000yr");
 //					+ "2019_07_04-SearlesValleyM64-includeSpont-full_td-10yr");
@@ -132,7 +132,8 @@ public class SimulationMarkdownGenerator {
 //					+ "2020_03_07-ComCatM6p4_ci38443183_PointSources");
 //					+ "2019_11_05-Start2012_500yr_kCOV1p5_Spontaneous_HistoricalCatalog");
 //					+ "2019_10_11-Start2012_500yr_Spontaneous_HistoricalCatalog");	
-			File simDir = new File("/tmp/scott/ridgecrest-m7.1");
+					+ "2020_08_10-ComCatM4p61_ci39338407_0DaysAfter_PointSources");	
+//			File simDir = new File("/tmp/scott/ridgecrest-m7.1");
 			File configFile = new File(simDir, "config.json");
 //			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"
 //					+ "comcat-ridgecrest-m7.1-example/config.json");

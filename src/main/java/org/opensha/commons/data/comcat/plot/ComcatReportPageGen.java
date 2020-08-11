@@ -1375,10 +1375,16 @@ public class ComcatReportPageGen {
 //			String argStr = "--event-id ci39462920";
 //			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
 			
-			String argStr = "--event-id ci39493944 --min-mag 2d --radius 30";
+//			String argStr = "--event-id ci39493944 --min-mag 2d --radius 30";
+//			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
+//			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
+//					+ "2020_06_24-ComCatM5p81_ci39493944_PointSources";
+//			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
+			
+			String argStr = "--event-id ci39338407 --min-mag 0d --radius 50";
 			argStr += " --output-parent-dir "+mainDir.getAbsolutePath();
 			argStr += " --etas-dir /home/kevin/OpenSHA/UCERF3/etas/simulations/"
-					+ "2020_06_24-ComCatM5p81_ci39493944_PointSources";
+					+ "2020_08_10-ComCatM4p61_ci39338407_0DaysAfter_PointSources";
 			argStr += " --etas-output-dir "+mainDir.getAbsolutePath()+"/ucerf3-etas";
 			
 			args = Splitter.on(" ").splitToList(argStr).toArray(new String[0]);

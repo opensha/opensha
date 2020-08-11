@@ -95,7 +95,9 @@ public class CoulombJunctionFilter implements PlausibilityFilter {
 			
 			for (IDPairing pair : path) {
 				CoulombRatesRecord forwardRate = coulombRates.get(pair);
+				Preconditions.checkNotNull(forwardRate, "No coulomb rates for %s", pair);
 				CoulombRatesRecord backwardRate = coulombRates.get(pair.getReversed());
+				Preconditions.checkNotNull(backwardRate, "No coulomb rates for reversed %s", pair);
 				if (verbose) {
 					System.out.println(getShortName()+": "+pair.getID1()+" => "+pair.getID2());
 					System.out.println("\tForward rate: "+forwardRate);
@@ -116,7 +118,7 @@ public class CoulombJunctionFilter implements PlausibilityFilter {
 
 	@Override
 	public String getShortName() {
-		return "JumpCoulomb";
+		return "Coulomb";
 	}
 
 	@Override
