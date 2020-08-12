@@ -148,13 +148,13 @@ public enum ERF_Ref {
 	/** WGCEP UCERF3 Epistemic List */
 	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, DEVELOPMENT, true),
 	
-	/** NSHMP CEUS 2008 ERF */
-	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, DEVELOPMENT, false),
-	
 	/** STEP Alaska Forecast */
-	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false);
+	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
 		
 	// EXPERIMENTAL
+	
+	/** NSHMP CEUS 2008 ERF */
+	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, EXPERIMENTAL, false);
 		
 //	TEST_ETAS1_ERF(TestModel1_ERF.class, TestModel1_ERF.NAME, EXPERIMENTAL, false);
 
