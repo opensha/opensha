@@ -16,10 +16,11 @@ sourceSets {
             srcDirs = ['src']
             exclude '**/*.java'
             exclude 'resources/data/ngaWest'
-            exclude 'resources/data/site/**/*.bin'
+            exclude 'resources/data/site/'
             exclude 'resources/data/site/Wills2000'
             exclude 'scratch/UCERF3/data/scratch'
             exclude 'scratch/ned'
+            exclude 'org/opensha/sha/earthquake/rupForecastImpl/NSHMP_CEUS08'
         }
     }
     test {
