@@ -21,6 +21,7 @@ package org.opensha.sha.gui.beans;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Font;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -42,6 +43,8 @@ import javax.swing.JScrollPane;
 import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 
+import org.opensha.commons.exceptions.ConstraintException;
+import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.constraint.ParameterConstraint;
@@ -94,6 +97,8 @@ ParameterChangeListener{
 	StringParameter erfSelectionParam;
 	// boolean for telling whether to show a progress bar
 	boolean showProgressBar = true;
+	
+	private BaseERF fallbackERF;
 
 	//instance of the selected ERF
 	BaseERF eqkRupForecast = null;
@@ -162,6 +167,8 @@ ParameterChangeListener{
 		init_erf_IndParamListAndEditor();
 		// forecast 1  is selected initially
 		setParamsInForecast();
+		
+		fallbackERF = eqkRupForecast;
 	}
 
 	private BaseERF getERFInstance(ERF_Ref erfRef) {
@@ -372,7 +379,35 @@ ParameterChangeListener{
 			//progress.displayProgressBar();
 		}
 		// update the forecast
-		eqkRupForecast.updateForecast();
+		WeakReference<BaseERF> ref = new WeakReference<BaseERF>(eqkRupForecast);
+		try {
+			eqkRupForecast.updateForecast();
+		} catch (OutOfMemoryError e) {
+			// try to recover
+			eqkRupForecast = null;
+			erfInstanceMap.clear();
+			int count = 0;
+			while (ref.get() != null) {
+				System.gc();
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e1) {}
+				count++;
+				if (count == 10)
+					break;
+			}
+			
+			try {
+				isNewERF_Instance = false;
+				ERF_Ref fallbackRef = erfRefs.get(0);
+				if (fallbackERF != null && fallbackERF.getName().equals(fallbackRef.toString()))
+					erfInstanceMap.put(fallbackRef, fallbackERF);
+				System.gc();
+				erfSelectionParam.setValue(fallbackRef.toString());
+				erfSelectionParam.getEditor().refreshParamEditor();
+			} catch (Exception e1) {}
+			throw e;
+		}
 		if (showProgressBar) {
 			progress.dispose();
 			progress = null;
