@@ -4,6 +4,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 
 import org.opensha.commons.util.ApplicationVersion;
@@ -126,30 +127,44 @@ public class BugReport {
 		this.appVersion = appVersion;
 		
 		String summary = "Bug in " + appName;
-		String description = "Steps to reproduce: (PLEASE FILL IN)\n\n" +
-						"Other info: (PLEASE FILL IN)\n\n" +
-						"Application: " + appName + "\n" +
-						"Version: " + appVersion + "\n" +
-						"Bulid Type: " + ServerPrefUtils.SERVER_PREFS.getBuildType();
+		StringBuilder descBuild = new StringBuilder();
+		descBuild.append("Steps to reproduce: (PLEASE FILL IN)\n\n");
+		descBuild.append("Other info: (PLEASE FILL IN)\n\n");
+		descBuild.append("Application: ").append(appName).append("\n");
+		descBuild.append("Version: ").append(appVersion).append("\n");
+		descBuild.append("Bulid Type: ").append(ServerPrefUtils.SERVER_PREFS.getBuildType());
 		
-		description += "\nJava Version: "+System.getProperty("java.version");
-		description += " ("+System.getProperty("java.vendor")+")";
-		description += "\nOperating System: "+System.getProperty("os.name");
-		description += " (arch: "+System.getProperty("os.arch");
-		description += ", version: "+System.getProperty("os.version")+")";
+		descBuild.append("\nJava Version: ").append(System.getProperty("java.version"));
+		descBuild.append(" (").append(System.getProperty("java.vendor")).append(")");
+		descBuild.append("\nOperating System: ").append(System.getProperty("os.name"));
+		descBuild.append(" (arch: ").append(System.getProperty("os.arch"));
+		descBuild.append(", version: ").append(System.getProperty("os.version")+")");
+		
+		Runtime runtime = Runtime.getRuntime();
+
+	    NumberFormat format = NumberFormat.getInstance();
+
+	    long bytesPerMB = 1024*1014;
+	    long maxMemory = runtime.maxMemory() / bytesPerMB;
+	    long allocatedMemory = runtime.totalMemory() / bytesPerMB;
+	    long freeMemory = runtime.freeMemory() / bytesPerMB;
+	    
+		descBuild.append("\nJVM Memory (MB): limit=").append(format.format(maxMemory));
+		descBuild.append(", allocated=").append(format.format(allocatedMemory));
+		descBuild.append(", free=").append(format.format(freeMemory));
 		
 		if (t != null) {
 			if (t.getCause() != null) {
 				Throwable rootCause = t.getCause();
 				while (rootCause.getCause() != null)
 					rootCause = rootCause.getCause();
-				description += "\n\nRoot cause exception:\n```\n"
-					+getStackTrace(rootCause)+"\n```\n";
+				descBuild.append("\n\nRoot cause exception:\n```\n");
+				descBuild.append(getStackTrace(rootCause)+"\n```\n");
 			}
-			description += "\n\nException:\n```\n"+getStackTrace(t)+"\n```\n";
+			descBuild.append("\n\nException:\n```\n").append(getStackTrace(t)).append("\n```\n");
 		}
 		if (metadata != null && metadata.length() > 0) {
-			description += "\n\nMetadata:\n" + metadata;
+			descBuild.append("\n\nMetadata:\n").append(metadata);
 		}
 		
 		Component component;
@@ -160,7 +175,7 @@ public class BugReport {
 		String keywords = appName;
 		Type type = Type.BUG;
 		
-		init(summary, description, type, component, keywords);
+		init(summary, descBuild.toString(), type, component, keywords);
 	}
 	
 	public BugReport(String summary, String description, Type type,

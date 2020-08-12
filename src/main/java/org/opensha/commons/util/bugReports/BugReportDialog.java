@@ -79,12 +79,6 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 				" of downtown Los Angeles, CA, USA, here is the correct number representation:" +
 				"<br><br>Latitude: 34.053 Longitude: -118.243" +
 				"<br><br>If you still think that this is a bug, you may submit a report by clicking below.", false));
-		knownBugDetectors.add(new ExceptionTypeKnownBugDetector(java.rmi.ConnectException.class,
-				"<b>This is most likely a firewall issue!</b> Either your computer cannot connect" +
-				" to our server, or our server is temporarily down. Make sure that you have an" +
-				" internet connection and that your firewall allows connections to ports 40000-40500" +
-				" on opensha.usc.edu. If you are still having problems, try back later, as the server" +
-				" might just be down.", false));
 		knownBugDetectors.add(new ExceptionTypeKnownBugDetector(java.net.ConnectException.class,
 				"<b>This is most likely a firewall issue!</b> Either your computer cannot connect" +
 				" to our server, or our server is temporarily down. Make sure that you have an " +
@@ -106,16 +100,16 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 		knownBugDetectors.add(new ExceptionTypeKnownBugDetector(java.lang.OutOfMemoryError.class,
 				"<b>You ran out of memory!</b>" +
 				" Java requires that you specify the maximum amount of memory needed before running" +
-				" an application. If this limit is too high, however, the application won't start. If"+
-				" you are running via web start from our website, you will need to download the jar files"+
-				" and run manually. For example, to run with 4GB of memory: java -Xmx4G -jar [jar-file-name]", false));
+				" an application. If this limit is too high, however, the application won't start."+
+				" Try re-running the application from the command line with a higher memoryh limit."+
+				" For example, to run with 4GB of memory:\n\njava -Xmx4G -jar [jar-file-name]", false));
 		knownBugDetectors.add(new ExceptionTypeKnownBugDetector(NullPointerException.class, FlowView.class, "layoutRow",
 				null, "<b>This is an inconsequential Java Bug<b>"+
 				" No further action is required as this in an internal Java Swing bug that won't affect"+
 				" the operation of this application. No bug report is necessary.", true));
 		knownBugDetectors.add(new ExceptionTypeKnownBugDetector(null, "javax.swing", null,
-				null, "<b>This is an inconsequential Java Bug<b>"+
-				" No further action is required as this in an internal Java Swing bug that won't affect"+
+				null, "<b>This is an inconsequential Java Swing Bug<b>"+
+				" No further action is required as this in an internal Java Swing bug that shouldn't affect"+
 				" the operation of this application. No bug report is necessary.", true));
 	}
 	
