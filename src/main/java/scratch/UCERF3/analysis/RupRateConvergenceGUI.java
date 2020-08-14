@@ -38,7 +38,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.inversion.InversionConfiguration;
+import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.FindEquivUCERF2_Ruptures.FindEquivUCERF2_FM2pt1_Ruptures;
@@ -317,7 +317,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 			sdomNParam.setValue(sol.getNumSolutions());
 			sdomNParam.getEditor().refreshParamEditor();
 			
-			ArrayList<double[]> ucerf2_magsAndRates = InversionConfiguration.getUCERF2MagsAndrates(sol.getRupSet());
+			ArrayList<double[]> ucerf2_magsAndRates = UCERF3InversionConfiguration.getUCERF2MagsAndrates(sol.getRupSet());
 			
 			for (int r=0; r<numRups; r++) {
 				double mean = sol.getRateForRup(r);

@@ -43,7 +43,7 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
-import scratch.UCERF3.inversion.InversionConfiguration.SlipRateConstraintWeightingType;
+import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -77,7 +77,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * Inversion constraint weights and such. Note that this won't include the initial rup model or
 	 * target MFDs and cannot be used as input to InversionInputGenerator.
 	 */
-	private InversionConfiguration inversionConfiguration;
+	private UCERF3InversionConfiguration inversionConfiguration;
 	
 	private Map<String, Double> energies;
 	private Map<String, Double> misfits;
@@ -101,7 +101,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * @param energies can be null
 	 */
 	public InversionFaultSystemSolution(InversionFaultSystemRupSet rupSet, double[] rates,
-			InversionConfiguration config, Map<String, Double> energies) {
+			UCERF3InversionConfiguration config, Map<String, Double> energies) {
 		super();
 		
 		init(rupSet, rates, config, energies);
@@ -171,7 +171,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	}
 	
 	protected void init(InversionFaultSystemRupSet rupSet, double[] rates,
-			InversionConfiguration config, Map<String, Double> energies) {
+			UCERF3InversionConfiguration config, Map<String, Double> energies) {
 		super.init(rupSet, rates, rupSet.getInfoString(), null);
 		this.rupSet = rupSet;
 		this.branch = rupSet.getLogicTreeBranch();
@@ -383,7 +383,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		if (props.containsKey("minimumRuptureRateFraction"))
 			minimumRuptureRateFraction = Double.parseDouble(props.get("minimumRuptureRateFraction"));
 		
-		inversionConfiguration = new InversionConfiguration(
+		inversionConfiguration = new UCERF3InversionConfiguration(
 				slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, slipRateWeighting, paleoRateConstraintWt, paleoSlipConstraintWt,
 				magnitudeEqualityConstraintWt, magnitudeInequalityConstraintWt, rupRateConstraintWt,
 				participationSmoothnessConstraintWt, participationConstraintMagBinSize, nucleationMFDConstraintWt,
@@ -423,7 +423,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	}
 	
 	public static Map<String, Double> getMisfits(
-			Map<String, Double> energies, InversionConfiguration inversionConfiguration) {
+			Map<String, Double> energies, UCERF3InversionConfiguration inversionConfiguration) {
 		Map<String, Double> misfits = Maps.newHashMap();
 		
 		if (energies == null)
@@ -511,7 +511,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * target MFDs and cannot be used as input to InversionInputGenerator.
 	 * @return
 	 */
-	public InversionConfiguration getInversionConfiguration() {
+	public UCERF3InversionConfiguration getInversionConfiguration() {
 		return inversionConfiguration;
 	}
 

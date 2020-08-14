@@ -1,46 +1,28 @@
 package scratch.UCERF3.inversion;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.dom4j.Element;
-import org.opensha.commons.calc.FaultMomentCalc;
-import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.region.CaliforniaRegions;
-import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
-import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+
 import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.analysis.DeformationModelsCalc;
-import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.inversion.CommandLineInversionRunner.InversionOptions;
-import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
-import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
-import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.OLD_UCERF3_MFD_ConstraintFetcher;
-import scratch.UCERF3.utils.OLD_UCERF3_MFD_ConstraintFetcher.TimeAndRegion;
 import scratch.UCERF3.utils.FindEquivUCERF2_Ruptures.FindEquivUCERF2_FM2pt1_Ruptures;
 import scratch.UCERF3.utils.FindEquivUCERF2_Ruptures.FindEquivUCERF2_FM3_Ruptures;
 import scratch.UCERF3.utils.FindEquivUCERF2_Ruptures.FindEquivUCERF2_Ruptures;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 
 /**
  * This represents all of the inversion configuration parameters specific to an individual model
@@ -50,7 +32,7 @@ import com.google.common.collect.Lists;
  * @author Kevin
  *
  */
-public class InversionConfiguration implements XMLSaveable {
+public class UCERF3InversionConfiguration implements XMLSaveable {
 	
 	public static final String XML_METADATA_NAME = "InversionConfiguration";
 	
@@ -85,9 +67,16 @@ public class InversionConfiguration implements XMLSaveable {
 	private double eventRateSmoothnessWt; // parent section event-rate smoothing
 	protected final static boolean D = true;  // for debugging
 	
+	// If true, a Priori rup-rate constraint is applied to zero rates (eg, rups not in UCERF2)
+	private boolean aPrioriConstraintForZeroRates = true;
+	// Amount to multiply standard a-priori rup rate weight by when applying to zero rates (minimization constraint for rups not in UCERF2)
+	private double aPrioriConstraintForZeroRatesWtFactor = 0.1;
+	// If true, rates of Parkfield M~6 ruptures do not count toward MFD Equality Constraint misfit
+	private boolean excludeParkfieldRupsFromMfdEqualityConstraints = true;
+	
 	private String metadata;
 	
-	InversionConfiguration(
+	UCERF3InversionConfiguration(
 			double slipRateConstraintWt_normalized,
 			double slipRateConstraintWt_unnormalized,
 			SlipRateConstraintWeightingType slipRateWeighting,
@@ -179,7 +168,7 @@ public class InversionConfiguration implements XMLSaveable {
 	 * @param rupSet
 	 * @return
 	 */
-	public static InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet) {
+	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet) {
 		double mfdEqualityConstraintWt = DEFAULT_MFD_EQUALITY_WT;
 		double mfdInequalityConstraintWt = DEFAULT_MFD_INEQUALITY_WT;
 		
@@ -197,7 +186,7 @@ public class InversionConfiguration implements XMLSaveable {
 	 * to slip-rate constraint (recommended:  1000)
 	 * @return
 	 */
-	public static InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
+	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
 			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt) {
 		return forModel(model, rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt, null);
 	}
@@ -216,7 +205,7 @@ public class InversionConfiguration implements XMLSaveable {
 	 * @param modifiers command line modifier arguments (can be null)
 	 * @return
 	 */
-	public static InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
+	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
 			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt, CommandLine modifiers) {
 		
 		
@@ -466,7 +455,7 @@ public class InversionConfiguration implements XMLSaveable {
 			// no MFD constraints, do nothing
 		}
 		
-		return new InversionConfiguration(
+		return new UCERF3InversionConfiguration(
 				slipRateConstraintWt_normalized,
 				slipRateConstraintWt_unnormalized,
 				slipRateWeighting,
@@ -1161,6 +1150,30 @@ public class InversionConfiguration implements XMLSaveable {
 		MFDTransitionMag = mFDTransitionMag;
 	}
 	
+	public boolean isAPrioriConstraintForZeroRates() {
+		return aPrioriConstraintForZeroRates;
+	}
+
+	public void setAPrioriConstraintForZeroRates(boolean aPrioriConstraintForZeroRates) {
+		this.aPrioriConstraintForZeroRates = aPrioriConstraintForZeroRates;
+	}
+
+	public double getAPrioriConstraintForZeroRatesWtFactor() {
+		return aPrioriConstraintForZeroRatesWtFactor;
+	}
+
+	public void setAPrioriConstraintForZeroRatesWtFactor(double aPrioriConstraintForZeroRatesWtFactor) {
+		this.aPrioriConstraintForZeroRatesWtFactor = aPrioriConstraintForZeroRatesWtFactor;
+	}
+
+	public boolean isExcludeParkfieldRupsFromMfdEqualityConstraints() {
+		return excludeParkfieldRupsFromMfdEqualityConstraints;
+	}
+
+	public void setExcludeParkfieldRupsFromMfdEqualityConstraints(boolean excludeParkfieldRupsFromMfdEqualityConstraints) {
+		this.excludeParkfieldRupsFromMfdEqualityConstraints = excludeParkfieldRupsFromMfdEqualityConstraints;
+	}
+
 	@Override
 	public Element toXMLMetadata(Element root) {
 		Element el = root.addElement(XML_METADATA_NAME);
@@ -1208,7 +1221,7 @@ public class InversionConfiguration implements XMLSaveable {
 			subEls.get(i).addAttribute("index", i+"");
 	}
 	
-	public static InversionConfiguration fromXMLMetadata(Element confEl) {
+	public static UCERF3InversionConfiguration fromXMLMetadata(Element confEl) {
 		double slipRateConstraintWt_normalized = Double.parseDouble(confEl.attributeValue("slipRateConstraintWt_normalized"));
 		double slipRateConstraintWt_unnormalized = Double.parseDouble(confEl.attributeValue("slipRateConstraintWt_unnormalized"));
 		SlipRateConstraintWeightingType slipRateWeighting = SlipRateConstraintWeightingType.valueOf(confEl.attributeValue("slipRateWeighting"));
@@ -1234,7 +1247,7 @@ public class InversionConfiguration implements XMLSaveable {
 		List<MFD_InversionConstraint> mfdEqualityConstraints = mfdsFromXML(confEl.element("MFD_EqualityConstraints"));
 		List<MFD_InversionConstraint> mfdInequalityConstraints = mfdsFromXML(confEl.element("MFD_InequalityConstraints"));
 		
-		return new InversionConfiguration(slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, slipRateWeighting, paleoRateConstraintWt,
+		return new UCERF3InversionConfiguration(slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, slipRateWeighting, paleoRateConstraintWt,
 				paleoSlipConstraintWt, magnitudeEqualityConstraintWt, magnitudeInequalityConstraintWt, rupRateConstraintWt,
 				participationSmoothnessConstraintWt, participationConstraintMagBinSize, nucleationMFDConstraintWt,
 				mfdSmoothnessConstraintWt, mfdSmoothnessConstraintWtForPaleoParents, rupRateSmoothingConstraintWt,

@@ -40,7 +40,7 @@ import com.google.common.collect.Maps;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
-import scratch.UCERF3.inversion.InversionInputGenerator;
+import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.CompoundCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.EnergyChangeCompletionCriteria;
@@ -82,8 +82,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private double[] initialState;
 	
-	private List<Integer> rangeEndRows;
-	private List<String> rangeNames;
+	private List<ConstraintRange> constraintRanges;
 	
 	private DoubleMatrix2D A;
 	private DoubleMatrix2D A_ineq;
@@ -286,10 +285,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				+" threads, "+criteria+", SUB: "+subCompletionCriteria);
 		
 		if (criteria instanceof ProgressTrackingCompletionCriteria
-				&& rangeNames != null && !rangeNames.isEmpty()) {
-			((ProgressTrackingCompletionCriteria)criteria).setRangeNames(rangeNames);
-			if (Ebest.length < rangeNames.size()+4) {
-				double[] Ebest_new = new double[rangeNames.size()+4];
+				&& constraintRanges != null && !constraintRanges.isEmpty()) {
+			((ProgressTrackingCompletionCriteria)criteria).setConstraintRanges(constraintRanges);
+			if (Ebest.length < constraintRanges.size()+4) {
+				double[] Ebest_new = new double[constraintRanges.size()+4];
 				for (int i=0; i<Ebest.length; i++)
 					Ebest_new[i] = Ebest[i];
 				for (int i=Ebest.length; i<Ebest_new.length; i++)
@@ -441,24 +440,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			sas.remove(sas.size()-1);
 	}
 	
-	public void setRanges(List<Integer> rangeEndRows, List<String> rangeNames) {
-		if (rangeEndRows == null) {
-			Preconditions.checkArgument(rangeNames == null);
-		} else {
-			Preconditions.checkNotNull(rangeNames);
-			Preconditions.checkArgument(rangeEndRows.size() == rangeNames.size(),
-					"range sizes inconsistant!");
-			int prev = 0;
-			for (int i=0; i<rangeEndRows.size(); i++) {
-				int cur = rangeEndRows.get(i);
-				Preconditions.checkState(cur >= prev);
-				prev = cur;
-			}
-		}
-		this.rangeEndRows = rangeEndRows;
-		this.rangeNames = rangeNames;
+	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
+		this.constraintRanges = constraintRanges;
 		for (SerialSimulatedAnnealing sa : sas)
-			sa.setEqualityRangeEnds(rangeEndRows);
+			sa.setConstraintRanges(constraintRanges);
 	}
 	
 	public static Options createOptionsNoInputs() {
@@ -689,8 +674,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		double[] d_ineq = null; // can be null
 		double[] minimumRuptureRates = null; // can be null
 		
-		List<Integer> rangeEndRows = null;
-		List<String> rangeNames = null;
+		List<ConstraintRange> constraintRanges = null;
 		
 		if (cmd.hasOption("zip")) {
 			File zipFile = new File(cmd.getOptionValue("zip"));
@@ -719,14 +703,17 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			if (minimumRuptureRates_entry != null)
 				minimumRuptureRates = MatrixIO.doubleArrayFromInputStream(zip.getInputStream(minimumRuptureRates_entry), A.columns()*8);
 			
-			ZipEntry rangeEntry = zip.getEntry("energyRanges.csv");
+			ZipEntry rangeEntry = zip.getEntry("constraintRanges.csv");
 			if (rangeEntry != null) {
+				constraintRanges = new ArrayList<>();
 				CSVFile<String> rangeCSV = CSVFile.readStream(zip.getInputStream(rangeEntry), true);
-				rangeEndRows = Lists.newArrayList();
-				rangeNames = Lists.newArrayList();
-				for (int row=0; row<rangeCSV.getNumRows(); row++) {
-					rangeEndRows.add(Integer.parseInt(rangeCSV.get(row, 0)));
-					rangeNames.add(rangeCSV.get(row, 1));
+				for (int row=1; row<rangeCSV.getNumRows(); row++) {
+					String name = rangeCSV.get(row, 0);
+					String shortName = rangeCSV.get(row, 1);
+					boolean inequality = rangeCSV.getBoolean(row, 2);
+					int startRow = rangeCSV.getInt(row, 3);
+					int endRow = rangeCSV.getInt(row, 4);
+					constraintRanges.add(new ConstraintRange(name, shortName, startRow, endRow, inequality));
 				}
 			}
 		} else {
@@ -764,7 +751,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		}
 		
 		return parseOptions(cmd, A, d, initialState, A_ineq, d_ineq, minimumRuptureRates,
-				rangeEndRows, rangeNames);
+				constraintRanges);
 	}
 	
 	public static ThreadedSimulatedAnnealing parseOptions(CommandLine cmd,
@@ -774,8 +761,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			DoubleMatrix2D A_ineq,
 			double[] d_ineq,
 			double[] minimumRuptureRates,
-			List<Integer> rangeEndRows,
-			List<String> rangeNames) throws IOException {
+			List<ConstraintRange> constraintRanges) throws IOException {
 		
 		// load other weights
 		double relativeSmoothnessWt;
@@ -818,7 +804,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			tsa.setCheckPointCriteria(checkPointCriteria, checkPointFilePrefix);
 		}
 		
-		tsa.setRanges(rangeEndRows, rangeNames);
+		tsa.setConstraintRanges(constraintRanges);
 		
 		return tsa;
 	}
@@ -848,7 +834,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			MatrixIO.doubleArrayToFile(solution, outputOrigFile);
 			
 			System.out.println("Applying minimum rupture rates");
-			solution = InversionInputGenerator.adjustSolutionForMinimumRates(solution, minimumRuptureRates);
+			solution = UCERF3InversionInputGenerator.adjustSolutionForMinimumRates(solution, minimumRuptureRates);
 		}
 		
 		System.out.println("Writing solution to: "+outputFile.getAbsolutePath());
@@ -866,7 +852,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		double[] adjustedRates = null;
 		if (minimumRuptureRates != null) {
 			adjustedRates =
-				InversionInputGenerator.adjustSolutionForMinimumRates(getBestSolution(), minimumRuptureRates);
+				UCERF3InversionInputGenerator.adjustSolutionForMinimumRates(getBestSolution(), minimumRuptureRates);
 		}
 		writeRateVsRankPlot(prefix, solutionRates, adjustedRates, initialState);
 	}
@@ -1100,15 +1086,14 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			writeProgressPlots((ProgressTrackingCompletionCriteria)criteria, prefix);
 	}
 	
-	public Map<String, Double> getEnergies() {
-		if (rangeNames == null)
+	public Map<ConstraintRange, Double> getEnergies() {
+		if (constraintRanges == null)
 			return null;
-		Map<String, Double> energies = Maps.newHashMap();
+		Map<ConstraintRange, Double> energies = Maps.newHashMap();
 		
 		double[] e = getBestEnergy();
-		for (int i=4; i<e.length && (i-4)<rangeNames.size(); i++) {
-			energies.put(rangeNames.get(i-4), e[i]);
-		}
+		for (int i=4; i<e.length && (i-4)<constraintRanges.size(); i++)
+			energies.put(constraintRanges.get(i-4), e[i]);
 		
 		return energies;
 	}
@@ -1133,10 +1118,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			builder.append("A_ineq matrix size: "+A_ineq.rows()+"x"+A_ineq.columns()+"\n");
 		double[] e = getBestEnergy();
 		builder.append("Best energy: "+Doubles.join(", ", e)+"\n");
-		if (rangeNames != null) {
+		if (constraintRanges != null) {
 			builder.append("Energy type breakdown\n");
-			for (int i=4; i<e.length && (i-4)<rangeNames.size(); i++) {
-				builder.append("\t"+rangeNames.get(i-4)+" energy: "+e[i]+"\n");
+			for (int i=4; i<e.length && (i-4)<constraintRanges.size(); i++) {
+				builder.append("\t"+constraintRanges.get(i-4).shortName+"\tenergy: "+e[i]+"\n");
 			}
 		}
 		if (criteria instanceof ProgressTrackingCompletionCriteria) {

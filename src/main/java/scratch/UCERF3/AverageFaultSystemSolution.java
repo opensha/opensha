@@ -31,7 +31,7 @@ import org.opensha.commons.util.threads.ThreadedTaskComputer;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
-import scratch.UCERF3.inversion.InversionConfiguration;
+import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -95,7 +95,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 	}
 
 	public AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
-			List<double[]> ratesList, InversionConfiguration config, Map<String, Double> energies) {
+			List<double[]> ratesList, UCERF3InversionConfiguration config, Map<String, Double> energies) {
 		this(rupSet, toArrays(ratesList), config, energies);
 	}
 	
@@ -104,7 +104,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 	 * @param rates 2 dimensional array of rates ordered by rupture index [numRups][numSols]
 	 */
 	public AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
-			double[][] rates, InversionConfiguration config, Map<String, Double> energies) {
+			double[][] rates, UCERF3InversionConfiguration config, Map<String, Double> energies) {
 		super(rupSet, getMeanRates(rates), config, energies);
 		
 		this.ratesByRup = rates;

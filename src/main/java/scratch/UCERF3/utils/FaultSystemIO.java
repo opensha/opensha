@@ -47,7 +47,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.griddedSeismicity.GridSourceFileReader;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
-import scratch.UCERF3.inversion.InversionConfiguration;
+import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
@@ -544,16 +544,16 @@ public class FaultSystemIO {
 			if (DD) System.out.println("loading inversion metadata");
 			ZipEntry invXMLEntry = zip.getEntry(getRemappedName("inv_sol_metadata.xml", nameRemappings));
 			
-			InversionConfiguration conf = null;
+			UCERF3InversionConfiguration conf = null;
 			Map<String, Double> energies = null;
 			if (invXMLEntry != null) {
 				// new file, we can load directly from XML
 				Document invDoc = XMLUtils.loadDocument(zip.getInputStream(invXMLEntry));
 				Element invRoot = invDoc.getRootElement().element("InversionFaultSystemSolution");
 				
-				Element confEl = invRoot.element(InversionConfiguration.XML_METADATA_NAME);
+				Element confEl = invRoot.element(UCERF3InversionConfiguration.XML_METADATA_NAME);
 				if (confEl != null)
-					conf = InversionConfiguration.fromXMLMetadata(confEl);
+					conf = UCERF3InversionConfiguration.fromXMLMetadata(confEl);
 				
 				Element energiesEl = invRoot.element("Energies");
 				if (energiesEl != null) {
@@ -1004,7 +1004,7 @@ public class FaultSystemIO {
 		Element el = root.addElement("InversionFaultSystemSolution");
 		
 		// add InversionConfiguration
-		InversionConfiguration conf = invSol.getInversionConfiguration();
+		UCERF3InversionConfiguration conf = invSol.getInversionConfiguration();
 		if (conf != null)
 			conf.toXMLMetadata(el);
 		

@@ -1,22 +1,31 @@
 package scratch.UCERF3.inversion;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.eq.MagUtils;
-import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.IDPairing;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.APrioriInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInequalityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDLaplacianSmoothingInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDParticipationSmoothnessInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoVisibleEventRateSmoothnessInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -25,15 +34,14 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import cern.colt.function.tdouble.IntIntDoubleFunction;
+import cern.colt.list.tdouble.DoubleArrayList;
+import cern.colt.list.tint.IntArrayList;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
-import cern.colt.matrix.tdouble.impl.SparseDoubleMatrix2D;
-import cern.colt.matrix.tdouble.impl.SparseRCDoubleMatrix2D;
-
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
+import scratch.UCERF3.enumTreeBranches.InversionModels;
+import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
-import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
@@ -49,23 +57,19 @@ import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
  * @author Kevin, Morgan, Ned
  *
  */
-public class InversionInputGenerator {
+public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	
 	private static final boolean D = false;
 	/**
 	 * this enables use of the getQuick and setQuick methods on the sparse matrices.
 	 * this comes with a performance boost, but disables range checks and is more prone
-	 * to errors. this will always be true if debugging is disabled above. when debugging
-	 * is enabled, the 2nd value of the following line is used to enable/disable.
+	 * to errors.
 	 */
 	private static final boolean QUICK_GETS_SETS = true;
-	private boolean aPrioriConstraintForZeroRates = true;  // If true, a Priori rup-rate constraint is applied to zero rates (eg, rups not in UCERF2)
-	private double aPrioriConstraintForZeroRatesWtFactor = 0.1; // Amount to multiply standard a-priori rup rate weight by when applying to zero rates (minimization constraint for rups not in UCERF2)
-	private boolean excludeParkfieldRupsFromMfdEqualityConstraints = true; // If true, rates of Parkfield M~6 ruptures do not count toward MFD Equality Constraint misfit
 	
 	// inputs
 	private InversionFaultSystemRupSet rupSet;
-	private InversionConfiguration config;
+	private UCERF3InversionConfiguration config;
 	private List<PaleoRateConstraint> paleoRateConstraints;
 	private List<AveSlipConstraint> aveSlipConstraints;
 	private double[] improbabilityConstraint;
@@ -82,13 +86,15 @@ public class InversionInputGenerator {
 	private ArrayList<Integer> rangeEndRows;
 	private ArrayList<String> rangeNames;
 	
-	public InversionInputGenerator(
+	public UCERF3InversionInputGenerator(
 			InversionFaultSystemRupSet rupSet,
-			InversionConfiguration config,
+			UCERF3InversionConfiguration config,
 			List<PaleoRateConstraint> paleoRateConstraints,
 			List<AveSlipConstraint> aveSlipConstraints,
 			double[] improbabilityConstraint, // may become an object in the future
 			PaleoProbabilityModel paleoProbabilityModel) {
+		super(rupSet, buildConstraints(rupSet, config, paleoRateConstraints, aveSlipConstraints, paleoProbabilityModel),
+				config.getInitialRupModel(), buildWaterLevel(config, rupSet));
 		this.rupSet = rupSet;
 		this.config = config;
 		this.paleoRateConstraints = paleoRateConstraints;
@@ -111,11 +117,181 @@ public class InversionInputGenerator {
 		return defaultProbModel;
 	}
 	
-	public void generateInputs() {
-		generateInputs(null);
+	private static List<InversionConstraint> buildConstraints(
+			InversionFaultSystemRupSet rupSet,
+			UCERF3InversionConfiguration config,
+			List<PaleoRateConstraint> paleoRateConstraints,
+			List<AveSlipConstraint> aveSlipConstraints,
+			PaleoProbabilityModel paleoProbabilityModel) {
+		// builds constraint instances
+		List<InversionConstraint> constraints = new ArrayList<>();
+		
+		double[] sectSlipRateReduced = rupSet.getSlipRateForAllSections();
+		
+		if (config.getSlipRateConstraintWt_normalized() > 0d
+				|| config.getSlipRateConstraintWt_unnormalized() > 0d)
+			// add slip rate constraint
+			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_normalized(),
+					config.getSlipRateConstraintWt_unnormalized(), config.getSlipRateWeightingType(),
+					rupSet, sectSlipRateReduced));
+		
+		if (config.getPaleoRateConstraintWt() > 0d)
+			constraints.add(new PaleoRateInversionConstraint(rupSet, config.getPaleoRateConstraintWt(),
+					paleoRateConstraints, paleoProbabilityModel));
+		
+		if (config.getPaleoSlipConstraintWt() > 0d)
+			constraints.add(new PaleoSlipInversionConstraint(rupSet, config.getPaleoSlipConstraintWt(),
+					aveSlipConstraints, sectSlipRateReduced));
+		
+		if (config.getRupRateConstraintWt() > 0d) {
+			// This is the RupRateConstraintWt for ruptures not in UCERF2
+			double zeroRupRateConstraintWt = 0;
+			if (config.isAPrioriConstraintForZeroRates())
+				zeroRupRateConstraintWt = config.getRupRateConstraintWt()*config.getAPrioriConstraintForZeroRatesWtFactor();
+			constraints.add(new APrioriInversionConstraint(config.getRupRateConstraintWt(), zeroRupRateConstraintWt, config.getA_PrioriRupConstraint()));
+		}
+		
+		// This constrains rates of ruptures that differ by only 1 subsection
+		if (config.getRupRateSmoothingConstraintWt() > 0)
+			constraints.add(new RupRateSmoothingInversionConstraint(config.getRupRateSmoothingConstraintWt(), rupSet));
+		
+		// Rupture rate minimization constraint
+		// Minimize the rates of ruptures below SectMinMag (strongly so that they have zero rates)
+		if (config.getMinimizationConstraintWt() > 0.0) {
+			List<Integer> belowMinIndexes = new ArrayList<>();
+			for (int r=0; r<rupSet.getNumRuptures(); r++)
+				if (rupSet.isRuptureBelowSectMinMag(r))
+					belowMinIndexes.add(r);
+			constraints.add(new RupRateMinimizationConstraint(config.getMinimizationConstraintWt(), belowMinIndexes));
+		}
+		
+		// Constrain Solution MFD to equal the Target MFD 
+		// This is for equality constraints only -- inequality constraints must be
+		// encoded into the A_ineq matrix instead since they are nonlinear
+		if (config.getMagnitudeEqualityConstraintWt() > 0.0) {
+			HashSet<Integer> excludeRupIndexes = null;
+			if (config.isExcludeParkfieldRupsFromMfdEqualityConstraints() && config.getParkfieldConstraintWt() > 0.0) {
+				excludeRupIndexes = new HashSet<>();
+				int parkfieldParentSectID = 32;
+				List<Integer> potentialRups = rupSet.getRupturesForParentSection(parkfieldParentSectID);
+				rupLoop:
+					for (int i=0; i<potentialRups.size(); i++) {
+						List<Integer> sects = rupSet.getSectionsIndicesForRup(potentialRups.get(i));
+						// Make sure there are 6-8 subsections
+						if (sects.size()<6 || sects.size()>8)
+							continue rupLoop;
+						// Make sure each section in rup is in Parkfield parent section
+						for (int s=0; s<sects.size(); s++) {
+							int parent = rupSet.getFaultSectionData(sects.get(s)).getParentSectionId();
+							if (parent != parkfieldParentSectID)
+								continue rupLoop;
+						}
+						excludeRupIndexes.add(potentialRups.get(i));
+					}
+			}
+			constraints.add(new MFDEqualityInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(),
+					config.getMfdEqualityConstraints(), excludeRupIndexes));
+		}
+		
+		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
+		if (config.getMagnitudeInequalityConstraintWt() > 0.0)	
+			constraints.add(new MFDInequalityInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(),
+					config.getMfdInequalityConstraints()));
+		
+		// MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection
+		if (config.getParticipationSmoothnessConstraintWt() > 0.0)
+			constraints.add(new MFDParticipationSmoothnessInversionConstraint(rupSet,
+					config.getParticipationSmoothnessConstraintWt(), config.getParticipationConstraintMagBinSize()));
+		
+		// MFD Subsection nucleation MFD constraint
+		ArrayList<SectionMFD_constraint> MFDConstraints = null;
+		if (config.getNucleationMFDConstraintWt() > 0.0) {
+			MFDConstraints = FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
+			constraints.add(new MFDSubSectNuclInversionConstraint(rupSet, config.getNucleationMFDConstraintWt(), MFDConstraints));
+		}
+		
+		// MFD Smoothing constraint - MFDs spatially smooth along adjacent subsections on a parent section (Laplacian smoothing)
+		if (config.getMFDSmoothnessConstraintWt() > 0.0 || config.getMFDSmoothnessConstraintWtForPaleoParents() > 0.0) {  
+			if (MFDConstraints == null)
+				MFDConstraints = FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
+			
+			HashSet<Integer> paleoParentIDs = new HashSet<>();
+			// Get list of parent IDs that have a paleo data point (paleo event rate or paleo mean slip)
+			if (config.getPaleoRateConstraintWt() > 0.0) {
+				for (int i=0; i<paleoRateConstraints.size(); i++) {
+					int paleoParentID = rupSet.getFaultSectionDataList().get(paleoRateConstraints.get(i).getSectionIndex()).getParentSectionId();
+					paleoParentIDs.add(paleoParentID);
+				}
+			}
+			if (config.getPaleoSlipConstraintWt() > 0.0) {
+				for (int i=0; i<aveSlipConstraints.size(); i++) {
+					int paleoParentID = rupSet.getFaultSectionDataList().get(aveSlipConstraints.get(i).getSubSectionIndex()).getParentSectionId();
+					paleoParentIDs.add(paleoParentID);
+				}
+			}
+			
+			constraints.add(new MFDLaplacianSmoothingInversionConstraint(rupSet, config.getMFDSmoothnessConstraintWt(),
+					config.getMFDSmoothnessConstraintWtForPaleoParents(), paleoParentIDs, MFDConstraints));
+		}
+		
+		// Constraint solution moment to equal deformation-model moment
+		if (config.getMomentConstraintWt() > 0.0)
+			constraints.add(new TotalMomentInversionConstraint(rupSet, config.getMomentConstraintWt(), rupSet.getTotalReducedMomentRate()));
+		
+		// Constraint rupture-rate for M~6 Parkfield earthquakes
+		// The Parkfield eqs are defined as rates of 6, 7, and 8 subsection ruptures in the Parkfield parent section (which has 8 subsections in total)
+		// THIS CONSTRAINT WILL NOT WORK IF SUBSECTIONS DRASTICALLY CHANGE IN SIZE OR IF PARENT-SECT-IDS CHANGE!
+		if (config.getParkfieldConstraintWt() > 0.0) {
+			if(D) System.out.println("\nAdding Parkfield rupture-rate constraints to A matrix ...");
+			double ParkfieldConstraintWt = config.getParkfieldConstraintWt();
+			double ParkfieldMeanRate = 1.0/25.0; // Bakun et al. (2005)
+			
+			// Find Parkfield M~6 ruptures
+			List<Integer> parkfieldRups = findParkfieldRups(rupSet);
+			
+			constraints.add(new ParkfieldInversionConstraint(ParkfieldConstraintWt, ParkfieldMeanRate, parkfieldRups));
+		}
+
+		// Constrain paleoseismically-visible event rates along parent sections to be smooth
+		if (config.getEventRateSmoothnessWt() > 0.0)
+			constraints.add(new PaleoVisibleEventRateSmoothnessInversionConstraint(rupSet, config.getEventRateSmoothnessWt(), paleoProbabilityModel));
+		
+		return constraints;
 	}
 	
-	public void generateInputs(Class<? extends DoubleMatrix2D> clazz) {
+	private static double[] buildWaterLevel(UCERF3InversionConfiguration config, FaultSystemRupSet rupSet) {
+		double minimumRuptureRateFraction = config.getMinimumRuptureRateFraction();
+		if (minimumRuptureRateFraction > 0) {
+			// set up minimum rupture rates (water level)
+			double[] minimumRuptureRateBasis = config.getMinimumRuptureRateBasis();
+			Preconditions.checkNotNull(minimumRuptureRateBasis,
+					"minimum rate fraction specified but no minimum rate basis given!");
+			
+			// first check to make sure that they're not all zeros
+			boolean allZeros = true;
+			int numRuptures = rupSet.getNumRuptures();
+			for (int i=0; i<numRuptures; i++) {
+				if (minimumRuptureRateBasis[i] > 0) {
+					allZeros = false;
+					break;
+				}
+			}
+			Preconditions.checkState(!allZeros, "cannot set water level when water level rates are all zero!");
+			
+			double[] minimumRuptureRates = new double[numRuptures];
+			for (int i=0; i < numRuptures; i++)
+				minimumRuptureRates[i] = minimumRuptureRateBasis[i]*minimumRuptureRateFraction;
+			return minimumRuptureRates;
+		}
+		return null;
+	}
+	
+	public void generateInputs() {
+		generateInputs(null, D);
+	}
+	
+	@Deprecated
+	public void generateInputsOld(Class<? extends DoubleMatrix2D> clazz) {
 		/*
 		 * This is a very important part of our code. There are a few key rules we should abide by here
 		 * to make sure it continues to operate correctly.
@@ -177,7 +353,7 @@ public class InversionInputGenerator {
 		// or BOTH (NORMALIZED & UNNORMALIZED both included - twice as many constraints) can be specified in SlipRateConstraintWeightingType
 		// NaN slip rates are treated as 0 slip rates: We minimize the model slip rates on these sections
 		int numSlipRateConstraints = numSections;
-		if (config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
+		if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
 			numSlipRateConstraints+=numSections;
 		
 		// Find number of rows in A matrix (equals the total number of constraints)
@@ -209,7 +385,7 @@ public class InversionInputGenerator {
 			int numRupRateRows = 0;
 			for (int i=0; i<numRuptures; i++) 
 					if ( aPrioriRupRates[i]>0) 	numRupRateRows++;	
-			if (aPrioriConstraintForZeroRates) numRupRateRows++;
+			if (config.isAPrioriConstraintForZeroRates()) numRupRateRows++;
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateRows);
 			numRows += numRupRateRows;
 			rangeEndRows.add(numRows-1);
@@ -218,7 +394,7 @@ public class InversionInputGenerator {
 		
 		List<IDPairing> smoothingConstraintRupPairings = Lists.newArrayList();
 		if (config.getRupRateSmoothingConstraintWt() > 0) { 
-			smoothingConstraintRupPairings = getRupSmoothingPairings(rupSet);
+			smoothingConstraintRupPairings = RupRateSmoothingInversionConstraint.getRupSmoothingPairings(rupSet);
 			int numRupRateSmoothingRows = smoothingConstraintRupPairings.size();
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateSmoothingRows);
 			numRows += numRupRateSmoothingRows;
@@ -430,15 +606,15 @@ public class InversionInputGenerator {
 				int row = sects.get(i);
 				int col = rup;
 				double val;
-				if (config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
+				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
 					if (QUICK_GETS_SETS)
 						A.setQuick(row, col, slipRateConstraintWt_unnormalized * slips[i]);
 					else
 						A.set(row, col, slipRateConstraintWt_unnormalized * slips[i]);
 					if(D) numNonZeroElements++;		
 				}
-				if (config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {  
-					if (config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
+				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {  
+					if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
 						row += numSections;
 					// Note that constraints for sections w/ slip rate < 0.1 mm/yr is not normalized by slip rate -- otherwise misfit will be huge (GEOBOUND model has 10e-13 slip rates that will dominate misfit otherwise)
 					if (sectSlipRateReduced[sects.get(i)] < 1E-4 || Double.isNaN(sectSlipRateReduced[sects.get(i)]))  
@@ -457,10 +633,10 @@ public class InversionInputGenerator {
 		// d vector component of slip-rate constraint
 		for (int sect=0; sect<numSections; sect++) {
 			int row = sect;
-			if (config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
+			if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
 				d[row] = slipRateConstraintWt_unnormalized * sectSlipRateReduced[sect];			
-			if (config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
-				if (config.getSlipRateWeightingType() == InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
+			if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
+				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
 					row += numSections;
 				if (sectSlipRateReduced[sect]<1E-4)  // For very small slip rates, do not normalize by slip rate (normalize by 0.0001 instead) so they don't dominate misfit
 					d[row] = slipRateConstraintWt_normalized * sectSlipRateReduced[sect]/0.0001;
@@ -550,7 +726,7 @@ public class InversionInputGenerator {
 		// Rupture-Rate Constraint - close to UCERF2 rates
 		if (config.getRupRateConstraintWt() > 0.0) {
 			double rupRateConstraintWt = config.getRupRateConstraintWt();
-			double zeroRupRateConstraintWt = config.getRupRateConstraintWt()*aPrioriConstraintForZeroRatesWtFactor;  // This is the RupRateConstraintWt for ruptures not in UCERF2 
+			double zeroRupRateConstraintWt = config.getRupRateConstraintWt()*config.getAPrioriConstraintForZeroRatesWtFactor();  // This is the RupRateConstraintWt for ruptures not in UCERF2 
 			if(D) System.out.println("\nAdding rupture-rate constraint to A matrix ...");
 			double[] aPrioriRupConstraint = config.getA_PrioriRupConstraint();
 			numNonZeroElements = 0;
@@ -566,7 +742,7 @@ public class InversionInputGenerator {
 				}
 			}
 			// If aPrioriConstrintforZeroRates=true, constrain sum of all these rupture rates to be zero (minimize - adding only one row to A matrix)
-			if (aPrioriConstraintForZeroRates) {
+			if (config.isAPrioriConstraintForZeroRates()) {
 				for(int rup=0; rup<numRuptures; rup++) {
 					if (aPrioriRupConstraint[rup]==0) { 
 						if (QUICK_GETS_SETS) 
@@ -703,7 +879,7 @@ public class InversionInputGenerator {
 					double mag = rupMeanMag[rup];
 					double fractRupInside = fractRupsInside[rup];
 					if (fractRupInside > 0 && mag>targetMagFreqDist.getMinX()-targetMagFreqDist.getDelta()/2.0 && mag<targetMagFreqDist.getMaxX()+targetMagFreqDist.getDelta()/2.0) {
-						if (excludeParkfieldRupsFromMfdEqualityConstraints==false || !parkfieldRups.contains(rup)) {		
+						if (!config.isExcludeParkfieldRupsFromMfdEqualityConstraints() || !parkfieldRups.contains(rup)) {		
 //							A.setQuick(rowIndex+targetMagFreqDist.getClosestXIndex(mag),rup,magnitudeEqualityConstraintWt * fractRupInside);
 							if (QUICK_GETS_SETS){
 								A.setQuick(rowIndex+targetMagFreqDist.getClosestXIndex(mag)-targetMagFreqDist.getClosestXIndex(rupSet.getMinMag()),rup,magnitudeEqualityConstraintWt * fractRupInside / targetMagFreqDist.getClosestYtoX(mag));
@@ -1222,59 +1398,6 @@ public class InversionInputGenerator {
 		}
 	}
 	
-	public static List<IDPairing> getRupSmoothingPairings(FaultSystemRupSet rupSet) {
-		List<IDPairing> pairings = Lists.newArrayList();
-		int numRuptures = rupSet.getNumRuptures();
-		// This is a list of each rupture as a HashSet for quick contains(...) operations
-		List<HashSet<Integer>> rupHashList = Lists.newArrayList();
-		// This is a list of the parent sections for each rupture as a HashSet
-		List<HashSet<Integer>> rupParentsHashList = Lists.newArrayList();
-		// This is a mapping from each unique set of parent sections, to the ruptures which involve all/only those parent sections
-		Map<HashSet<Integer>, List<Integer>> parentsToRupsMap = Maps.newHashMap();
-		for (int r=0; r<numRuptures; r++) {
-			// create the hashSet for the rupture
-			rupHashList.add(new HashSet<Integer>(rupSet.getSectionsIndicesForRup(r)));
-			// build the hashSet of parents
-			HashSet<Integer> parentIDs = new HashSet<Integer>();
-			for (FaultSection sect : rupSet.getFaultSectionDataForRupture(r))
-				parentIDs.add(sect.getParentSectionId());	// this won't have duplicates since it's a hash set
-			rupParentsHashList.add(parentIDs);
-			// now add this rupture to the list of ruptures that involve this set of parents
-			List<Integer> rupsForParents = parentsToRupsMap.get(parentIDs);
-			if (rupsForParents == null) {
-				rupsForParents = Lists.newArrayList();
-				parentsToRupsMap.put(parentIDs, rupsForParents);
-			}
-			rupsForParents.add(r);
-		}
-		if (D) System.out.println("Rupture rate smoothing constraint: "+parentsToRupsMap.size()+" unique parent set combinations");
-
-		// Find set of rupture pairs for smoothing
-		for(int rup1=0; rup1<numRuptures; rup1++) {
-			List<Integer> sects = rupSet.getSectionsIndicesForRup(rup1);
-			HashSet<Integer> rup1Parents = rupParentsHashList.get(rup1);
-			ruptureLoop:
-				for(Integer rup2 : parentsToRupsMap.get(rup1Parents)) { // We only loop over ruptures that involve the same set of parents
-					// Only keep pair if rup1 < rup2 (don't need to include pair in each direction)
-					if (rup2 <= rup1) // Only keep pair if rup1 < rup2 (don't need to include pair in each direction)
-						continue;
-					HashSet<Integer> sects2 = rupHashList.get(rup2);
-					// Check that ruptures are same size
-					if (sects.size() != sects2.size()) continue ruptureLoop;
-					// Check that ruptures differ by at most one subsection
-					int numSectsDifferent = 0;
-					for(int i=0; i<sects.size(); i++) {
-						if (!sects2.contains(sects.get(i))) numSectsDifferent++;
-						if (numSectsDifferent > 1) continue ruptureLoop;
-					}
-					// The pair passes!
-					pairings.add(new IDPairing(rup1, rup2));
-				}
-		}
-		
-		return pairings;
-	}
-	
 	public double[] adjustSolutionForMinimumRates(double[] solution) {
 		return adjustSolutionForMinimumRates(solution, minimumRuptureRates);
 	}
@@ -1350,117 +1473,8 @@ public class InversionInputGenerator {
 		
 		return distanceAlongRup;
 	}
-	
-	private static String getTimeStr(Stopwatch watch) {
-		return (float) watch.elapsed(TimeUnit.SECONDS) + " seconds";
-	}
-	
-	private static DoubleMatrix2D buildMatrix(Class<? extends DoubleMatrix2D> clazz, int rows, int cols) {
-		if (clazz == null || clazz.equals(SparseDoubleMatrix2D.class))
-			// default
-			return new SparseDoubleMatrix2D(rows, cols);
-		else if (clazz.equals(SparseRCDoubleMatrix2D.class))
-			return new SparseRCDoubleMatrix2D(rows, cols);
-		else if (clazz.equals(SparseCCDoubleMatrix2D.class))
-			return new SparseCCDoubleMatrix2D(rows, cols);
-		else
-			throw new IllegalArgumentException("Unknown matrix type: "+clazz);
-	}
-	
-	/**
-	 * Column compress the A matrix
-	 */
-	public void columnCompress() {
-		A = getColumnCompressed(A);
-		if (A_ineq != null)
-			A_ineq = getColumnCompressed(A_ineq);
-	}
-	
-	private static SparseCCDoubleMatrix2D getColumnCompressed(DoubleMatrix2D mat) {
-		if (mat instanceof SparseCCDoubleMatrix2D)
-			return (SparseCCDoubleMatrix2D)mat;
-		if (mat instanceof SparseRCDoubleMatrix2D)
-			return ((SparseRCDoubleMatrix2D)mat).getColumnCompressed();
-		if (mat instanceof SparseDoubleMatrix2D)
-			return ((SparseDoubleMatrix2D)mat).getColumnCompressed(true);
-		throw new RuntimeException("Can't column compress matrix: "+mat);
-	}
-	
-	public void writeZipFile(File file) throws IOException {
-		File tempDir = FileUtils.createTempDir();
-		writeZipFile(file, FileUtils.createTempDir(), true);
-		tempDir.delete();
-	}
-	
-	/**
-	 * Writes the inputs to the given zip file, storing the binary files
-	 * in the given directory and optionally cleaning up (deleting them)
-	 * when done.
-	 * 
-	 * @param file
-	 * @param storeDir
-	 * @param cleanup
-	 */
-	public void writeZipFile(File zipFile, File storeDir, boolean cleanup) throws IOException {
-		if(D) System.out.println("Saving to files...");
-		ArrayList<String> fileNames = new ArrayList<String>();
-		
-		fileNames.add("d.bin");			
-		MatrixIO.doubleArrayToFile(d, new File(storeDir, "d.bin"));
-		if(D) System.out.println("d.bin saved");
-		
-		fileNames.add("a.bin");			
-		MatrixIO.saveSparse(A, new File(storeDir, "a.bin"));
-		if(D) System.out.println("a.bin saved");
-		
-		fileNames.add("initial.bin");	
-		MatrixIO.doubleArrayToFile(initial, new File(storeDir, "initial.bin"));
-		if(D) System.out.println("initial.bin saved");
-		
-		if (d_ineq != null) {
-			fileNames.add("d_ineq.bin");	
-			MatrixIO.doubleArrayToFile(d_ineq, new File(storeDir, "d_ineq.bin"));
-			if(D) System.out.println("d_ineq.bin saved");
-		}
-		
-		if (A_ineq != null) {
-			fileNames.add("a_ineq.bin");	
-			MatrixIO.saveSparse(A_ineq,new File(storeDir, "a_ineq.bin"));
-			if(D) System.out.println("a_ineq.bin saved");
-		}
-		
-		if (minimumRuptureRates != null) {
-			fileNames.add("minimumRuptureRates.bin");	
-			MatrixIO.doubleArrayToFile(minimumRuptureRates,new File(storeDir, "minimumRuptureRates.bin"));
-			if(D) System.out.println("minimumRuptureRates.bin saved");
-		}
-		
-		CSVFile<String> rangeCSV = new CSVFile<String>(true);
-		for (int i=0; i<rangeEndRows.size(); i++)
-			rangeCSV.addLine(rangeEndRows.get(i)+"", rangeNames.get(i));
-		fileNames.add("energyRanges.csv");
-		rangeCSV.writeToFile(new File(storeDir, "energyRanges.csv"));
-		if(D) System.out.println("energyRanges.csv saved");
-		
-		FileUtils.createZipFile(zipFile.getAbsolutePath(), storeDir.getAbsolutePath(), fileNames);
-		if(D) System.out.println("Zip file saved");
-		if (cleanup) {
-			if(D) System.out.println("Cleaning up");
-			for (String fileName : fileNames) {
-				new File(storeDir, fileName).delete();
-			}
-		}
-	}
 
-	public FaultSystemRupSet getRupSet() {
-		return rupSet;
-	}
-
-	public void setRupSet(InversionFaultSystemRupSet rupSet) {
-		this.rupSet = rupSet;
-	}
-
-	public InversionConfiguration getConfig() {
+	public UCERF3InversionConfiguration getConfig() {
 		return config;
 	}
 
@@ -1474,47 +1488,6 @@ public class InversionInputGenerator {
 
 	public PaleoProbabilityModel getPaleoProbabilityModel() {
 		return paleoProbabilityModel;
-	}
-
-	public DoubleMatrix2D getA() {
-		return A;
-	}
-
-	public DoubleMatrix2D getA_ineq() {
-		return A_ineq;
-	}
-
-	public double[] getD() {
-		return d;
-	}
-
-	public double[] getD_ineq() {
-		return d_ineq;
-	}
-
-	public double[] getInitial() {
-		return initial;
-	}
-
-	public double[] getMinimumRuptureRates() {
-		return minimumRuptureRates;
-	}
-
-	public List<Integer> getRangeEndRows() {
-		return rangeEndRows;
-	}
-
-	public List<String> getRangeNames() {
-		return rangeNames;
-	}
-
-	public boolean isAPrioriConstraintForZeroRates() {
-		return aPrioriConstraintForZeroRates;
-	}
-
-	public void setAPrioriConstraintForZeroRates(
-			boolean aPrioriConstraintForZeroRates) {
-		this.aPrioriConstraintForZeroRates = aPrioriConstraintForZeroRates;
 	}
 	
 	public static List<Integer> findParkfieldRups(FaultSystemRupSet rupSet) {
@@ -1544,5 +1517,100 @@ public class InversionInputGenerator {
 			}
 		if (D) System.out.println("Number of M~6 Parkfield rups = "+parkfieldRups.size());
 		return parkfieldRups;
+	}
+	
+	public static void main(String[] args) throws IOException {
+		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
+		InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
+		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
+				branch.getValue(InversionModels.class), rupSet);
+		// enable all the constraints
+		config.setRupRateSmoothingConstraintWt(1d);
+		config.setMagnitudeEqualityConstraintWt(1d);
+		config.setSmoothnessWt(10000);
+		config.setMomentConstraintWt(1d);
+		config.setRupRateConstraintWt(1d);
+		config.setEventRateSmoothnessWt(1d);
+//		config.setParticipationSmoothnessConstraintWt(1d);
+		
+		// get the paleo rate constraints
+		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+					rupSet.getFaultModel(), rupSet);
+
+		// get the improbability constraints
+		double[] improbabilityConstraint = null; // null for now
+
+		// paleo probability model
+		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+
+		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+		
+		UCERF3InversionInputGenerator gen = new UCERF3InversionInputGenerator(
+				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
+		
+		System.out.println("BUILDING ORIGINAL");
+		gen.generateInputsOld(null);
+		DoubleMatrix2D A_orig = gen.A;
+		DoubleMatrix2D A_ineq_orig = gen.A_ineq;
+		double[] d_orig = gen.d;
+		double[] d_ineq_orig = gen.d_ineq;
+		
+		System.out.println("BUILDING NEW");
+		gen.generateInputs(true);
+		DoubleMatrix2D A_new = gen.A;
+		DoubleMatrix2D A_ineq_new = gen.A_ineq;
+		double[] d_new = gen.d;
+		double[] d_ineq_new = gen.d_ineq;
+
+		System.out.println("A orig size: "+A_orig.rows()+" x "+A_orig.columns());
+		System.out.println("A new size: "+A_orig.rows()+" x "+A_orig.columns());
+		System.out.println("A_ineq orig size: "+A_ineq_orig.rows()+" x "+A_ineq_orig.columns());
+		System.out.println("A_ineq new size: "+A_ineq_orig.rows()+" x "+A_ineq_orig.columns());
+		
+		System.out.println("Validating A");
+		validateA(A_orig, A_new);
+		System.out.println("Validating A_ineq");
+		validateA(A_ineq_orig, A_ineq_new);
+		
+		System.out.println("Validating D");
+		validateD(d_orig, d_new);
+		System.out.println("Validating D_ineq");
+		validateD(d_ineq_orig, d_ineq_new);
+	}
+	
+	private static void validateA(DoubleMatrix2D A_orig, DoubleMatrix2D A_new) {
+		IntArrayList rows = new IntArrayList();
+		IntArrayList cols = new IntArrayList();
+		DoubleArrayList origVals = new DoubleArrayList();
+		A_orig.getNonZeros(rows, cols, origVals);
+		
+		for (int i=0; i<rows.size(); i++) {
+			int row = rows.get(i);
+			int col = cols.get(i);
+			double val = origVals.get(i);
+			double oVal = A_new.get(row, col);
+			Preconditions.checkState(val == oVal, "Value mismatch at row=%s, col=%s: %s != %s",
+					row, col, val, oVal);
+		}
+		
+		// now check that they're the same size
+		rows = new IntArrayList();
+		cols = new IntArrayList();
+		DoubleArrayList newVals = new DoubleArrayList();
+		A_new.getNonZeros(rows, cols, newVals);
+		
+		Preconditions.checkState(origVals.size() == newVals.size(),
+				"Nonzero count mismatch: %s != %s", origVals.size(), newVals.size());
+		
+		System.out.println("Validated "+origVals.size()+" non-zero values");
+	}
+	
+	private static void validateD(double[] d_orig, double[] d_new) {
+		Preconditions.checkState(d_orig.length == d_new.length,
+				"d length mismatch: %s != %s", d_orig.length, d_new.length);
+		for (int i=0; i<d_orig.length; i++)
+			Preconditions.checkState(d_orig[i] == d_new[i], "d mismatch at %s: %s != %s",
+					i, d_orig[i], d_new[i]);
+		System.out.println("Validated "+d_orig.length+" data values");
 	}
 }

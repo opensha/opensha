@@ -147,8 +147,8 @@ public class FSS_ERF_ParamTest {
 		// build the subsections
 		int sectIndex = 0;
 		for (FaultSection parentSect : fsd) {
-			if (parentSect.getSectionId() != 301)
-				// only one fault, Mojave S
+			if (parentSect.getSectionId() != 301 && parentSect.getSectionId() != 32)
+				// only Mojave S and Parkfield
 				continue;
 			double ddw = parentSect.getOrigDownDipWidth();
 			double maxSectLength = ddw*maxSubSectionLength;

@@ -72,7 +72,7 @@ public class UCERF2_ComparisonSolutionFetcher {
 	}
 	
 	public static InversionFaultSystemSolution getUCERF2Solution(InversionFaultSystemRupSet rupSet) {
-		ArrayList<double[]> ucerf2_magsAndRates = InversionConfiguration.getUCERF2MagsAndrates(rupSet);
+		ArrayList<double[]> ucerf2_magsAndRates = UCERF3InversionConfiguration.getUCERF2MagsAndrates(rupSet);
 		
 		double[] mags = new double[ucerf2_magsAndRates.size()];
 		double[] rates = new double[ucerf2_magsAndRates.size()];

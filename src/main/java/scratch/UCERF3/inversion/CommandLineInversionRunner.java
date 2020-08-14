@@ -48,6 +48,13 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -64,6 +71,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
@@ -359,8 +367,8 @@ public class CommandLineInversionRunner {
 			// now build the inversion inputs
 
 			// MFD constraint weights
-			double mfdEqualityConstraintWt = InversionConfiguration.DEFAULT_MFD_EQUALITY_WT;
-			double mfdInequalityConstraintWt = InversionConfiguration.DEFAULT_MFD_INEQUALITY_WT;
+			double mfdEqualityConstraintWt = UCERF3InversionConfiguration.DEFAULT_MFD_EQUALITY_WT;
+			double mfdInequalityConstraintWt = UCERF3InversionConfiguration.DEFAULT_MFD_INEQUALITY_WT;
 
 			// check if we're on a RelaxMFD branch and set weights accordingly
 			if (branch.getValue(MomentRateFixes.class).isRelaxMFD()) {
@@ -370,7 +378,7 @@ public class CommandLineInversionRunner {
 
 			System.out.println("Building Inversion Configuration");
 			// this contains all inversion weights
-			InversionConfiguration config = InversionConfiguration.forModel(branch.getValue(InversionModels.class),
+			UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(branch.getValue(InversionModels.class),
 					rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt, cmd);
 
 			// load paleo rate constraints
@@ -378,7 +386,7 @@ public class CommandLineInversionRunner {
 
 			// load paleo probability of observance model
 			PaleoProbabilityModel paleoProbabilityModel =
-				InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+				UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 			
 			List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 			if (cmd.hasOption(InversionOptions.AVE_SLIP_SCALE.argName)) {
@@ -392,16 +400,16 @@ public class CommandLineInversionRunner {
 				aveSlipConstraints = newConstraints;
 			}
 
-			// this class generates inversion inputs (A matrix and data vector)
-			InversionInputGenerator gen = new InversionInputGenerator(rupSet, config,
-					paleoRateConstraints, aveSlipConstraints, null, paleoProbabilityModel);
-
 			// flag for enabling A Priori constraint (not used by default) on zero rate ruptures
 			// which acts as a minimization constraint on those ruptures.
 			if (cmd.hasOption(InversionOptions.A_PRIORI_CONST_FOR_ZERO_RATES.argName)) {
 				System.out.println("Setting a prior constraint for zero rates");
-				gen.setAPrioriConstraintForZeroRates(true);
+				config.setAPrioriConstraintForZeroRates(true);
 			}
+
+			// this class generates inversion inputs (A matrix and data vector)
+			UCERF3InversionInputGenerator gen = new UCERF3InversionInputGenerator(rupSet, config,
+					paleoRateConstraints, aveSlipConstraints, null, paleoProbabilityModel);
 
 			// actually generate the inputs
 			System.out.println("Building Inversion Inputs");
@@ -417,17 +425,16 @@ public class CommandLineInversionRunner {
 			FaultSystemIO.writeRupSet(rupSet, rupSetFile);
 			// now clear it out of memory
 			rupSet = null;
-			gen.setRupSet(null);
 			System.gc();
 
-			// this makes the inversion much more efficient
+			// this makes matrix multiplications more efficient
 			System.out.println("Column Compressing");
 			gen.columnCompress();
 
 			// fetch inversion inputs
 			DoubleMatrix2D A = gen.getA();
 			double[] d = gen.getD();
-			double[] initialState = gen.getInitial();
+			double[] initialState = gen.getInitialSolution();
 			// options for overriding initial state
 			if (cmd.hasOption(InversionOptions.INITIAL_ZERO.argName))
 				initialState = new double[initialState.length];
@@ -447,10 +454,9 @@ public class CommandLineInversionRunner {
 			double[] d_ineq = gen.getD_ineq();
 			// waterlevel rates (these have already been subtracted from all datas and the initial state)
 			// can be null for no waterlevel
-			double[] minimumRuptureRates = gen.getMinimumRuptureRates();
+			double[] minimumRuptureRates = gen.getWaterLevelRates();
 			// these list the row numbers and names for each constraint type for tracking individual energy levels
-			List<Integer> rangeEndRows = gen.getRangeEndRows();
-			List<String> rangeNames = gen.getRangeNames();
+			List<ConstraintRange> constraintRanges = gen.getConstraintRowRanges();
 			
 			if (cmd.hasOption(InversionOptions.SYNTHETIC.argName)) {
 				// special synthetic inversion test
@@ -470,47 +476,39 @@ public class CommandLineInversionRunner {
 				Preconditions.checkState(d.length == d_syn.length,
 						"D and D_syn lengths tdon't match!");
 				
-				List<int[]> rangesToCopy = Lists.newArrayList();
+				List<ConstraintRange> rangesToCopy = Lists.newArrayList();
 				
-				for (int i=0; i<rangeNames.size(); i++) {
-					String name = rangeNames.get(i);
+				for (int i=0; i<constraintRanges.size(); i++) {
+					ConstraintRange range = constraintRanges.get(i);
+					String name = range.name;
 					boolean keep = false;
-					if (name.equals("Slip Rate"))
+					if (name.equals(SlipRateInversionConstraint.NAME))
 						keep = true;
-					else if (name.equals("Paleo Event Rates"))
+					else if (name.equals(PaleoRateInversionConstraint.NAME))
 						keep = true;
-					else if (name.equals("Paleo Slips"))
+					else if (name.equals(PaleoSlipInversionConstraint.NAME))
 						keep = true;
-					else if (name.equals("MFD Equality"))
+					else if (name.equals(MFDEqualityInversionConstraint.NAME))
 						keep = true;
-					else if (name.equals("MFD Nucleation"))
+					else if (name.equals(MFDSubSectNuclInversionConstraint.NAME))
 						keep = true;
-					else if (name.equals("Parkfield"))
+					else if (name.equals(ParkfieldInversionConstraint.NAME))
 						keep = true;
 					
-					if (keep) {
-						int prevRow;
-						if (i == 0)
-							prevRow = 0;
-						else
-							prevRow = rangeEndRows.get(i-1) + 1;
-						int[] range = { prevRow, rangeEndRows.get(i) };
-						
+					if (keep)
 						rangesToCopy.add(range);
-					}
 				}
 				
 				// copy over "data" from synthetics
-				for (int[] range : rangesToCopy) {
-					System.out.println("Copying range "+range[0]+" => "+range[1]+" from syn to D");
-					for (int i=range[0]; i<=range[1]; i++)
+				for (ConstraintRange range : rangesToCopy) {
+					System.out.println("Copying range "+range+" from syn to D");
+					for (int i=range.startRow; i<range.endRow; i++)
 						d[i] = d_syn[i];
 				}
 			}
 
-			for (int i=0; i<rangeEndRows.size(); i++) {
-				System.out.println(i+". "+rangeNames.get(i)+": "+rangeEndRows.get(i));
-			}
+			for (int i=0; i<constraintRanges.size(); i++)
+				System.out.println(i+". "+constraintRanges.get(i));
 
 			// clear out generator
 			gen = null;
@@ -519,7 +517,7 @@ public class CommandLineInversionRunner {
 			System.out.println("Creating TSA");
 			// set up multi thread SA
 			ThreadedSimulatedAnnealing tsa = ThreadedSimulatedAnnealing.parseOptions(cmd, A, d,
-					initialState, A_ineq, d_ineq, minimumRuptureRates, rangeEndRows, rangeNames);
+					initialState, A_ineq, d_ineq, minimumRuptureRates, constraintRanges);
 			// store a copy of the initial state for later
 			initialState = Arrays.copyOf(initialState, initialState.length);
 			// setup completion criteria
@@ -578,10 +576,17 @@ public class CommandLineInversionRunner {
 				loadedRupSet.setInfoString(info);
 				double[] rupRateSolution = tsa.getBestSolution();
 				// this adds back in the minimum rupture rates (waterlevel) if present
-				rupRateSolution = InversionInputGenerator.adjustSolutionForMinimumRates(
+				rupRateSolution = UCERF3InversionInputGenerator.adjustSolutionForMinimumRates(
 						rupRateSolution, minimumRuptureRates);
+				Map<ConstraintRange, Double> energies = tsa.getEnergies();
+				Map<String, Double> energiesMap = null;
+				if (energies != null) {
+					energiesMap = new HashMap<>();
+					for (ConstraintRange range : energies.keySet())
+						energiesMap.put(range.shortName, energies.get(range));
+				}
 				InversionFaultSystemSolution sol = new InversionFaultSystemSolution(
-						loadedRupSet, rupRateSolution, config, tsa.getEnergies());
+						loadedRupSet, rupRateSolution, config, energiesMap);
 
 				File solutionFile = new File(subDir, prefix+"_sol.zip");
 
@@ -1839,7 +1844,7 @@ public class CommandLineInversionRunner {
 	
 	public static void writeRupPairingSmoothnessPlot(FaultSystemSolution sol, String prefix, File dir)
 			throws IOException {
-		List<IDPairing> pairings = InversionInputGenerator.getRupSmoothingPairings(sol.getRupSet());
+		List<IDPairing> pairings = RupRateSmoothingInversionConstraint.getRupSmoothingPairings(sol.getRupSet());
 		
 		double[] diffs = new double[pairings.size()];
 		double[] fracts = new double[pairings.size()];
@@ -1901,7 +1906,7 @@ public class CommandLineInversionRunner {
 	}
 	
 	public static InversionFaultSystemRupSet getUCERF2RupsOnly(InversionFaultSystemRupSet rupSet) {
-		List<double[]> ucerf2_magsAndRates = InversionConfiguration.getUCERF2MagsAndrates(rupSet);
+		List<double[]> ucerf2_magsAndRates = UCERF3InversionConfiguration.getUCERF2MagsAndrates(rupSet);
 		
 		int newNumRups = 0;
 		for (double[] u2Vals : ucerf2_magsAndRates)

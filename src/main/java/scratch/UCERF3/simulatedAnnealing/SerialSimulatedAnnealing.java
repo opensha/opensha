@@ -80,7 +80,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	private double[] misfit_best, misfit_ineq_best; // misfit between data and synthetics
 	
 	private double[] Ebest; // [total, from A, from entropy, from A_ineq]
-	private List<Integer> equality_range_ends;
+
+	private List<ConstraintRange> constraintRanges;
 	
 	private Random r = new Random();
 
@@ -247,8 +248,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		setResults(Ebest, xbest, null, null);
 	}
 	
-	public void setEqualityRangeEnds(List<Integer> rangeEnds) {
-		this.equality_range_ends = rangeEnds;
+	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
+		this.constraintRanges = constraintRanges;
 	}
 	
 	private static void calculateMisfit(DoubleMatrix2D mat, double[] data, double[] prev_misfit,
@@ -284,34 +285,22 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		// Do forward problem for new perturbed model (calculate synthetics)
 		
 		double Eequality = 0;
-		double[] ret;
-		if (equality_range_ends == null) {
-			for (int i = 0; i < nRow; i++) {
-				// NOTE: it is important that we loop over nRow and not the actual misfit array
-				// as it may be larger than nRow (for efficiency and less array copies)
-				Eequality += Math.pow(misfit[i], 2);  // L2 norm of misfit vector
+		double[] ret = constraintRanges == null ? new double[4] : new double[4+constraintRanges.size()];
+		for (int i = 0; i < nRow; i++) {
+			// NOTE: it is important that we loop over nRow and not the actual misfit array
+			// as it may be larger than nRow (for efficiency and fewer array copies)
+			
+			double val = Math.pow(misfit[i], 2);  // L2 norm of misfit vector
+			
+			if (constraintRanges != null) {
+				for (int j=0; j<constraintRanges.size(); j++)
+					if (constraintRanges.get(j).contains(i, false))
+						ret[j] += val;
 			}
-			ret = new double[4];
-			ret[1] = Eequality;
-		} else {
-			ret = new double[4+equality_range_ends.size()];
-			int curIndex = 4;
-			int rowEnd = equality_range_ends.get(0);
-			for (int i = 0; i < nRow; i++) {
-				// NOTE: it is important that we loop over nRow and not the actual misfit array
-				// as it may be larger than nRow (for efficiency and less array copies)
-				
-				while (i>rowEnd) {
-					curIndex += 1;
-					rowEnd = equality_range_ends.get(curIndex-4);
-				}
-				
-				double val = Math.pow(misfit[i], 2);  // L2 norm of misfit vector
-				Eequality += val;
-				ret[curIndex] += val;
-			}
-			ret[1] = Eequality;
+			
+			Eequality += val;
 		}
+		ret[1] = Eequality;
 		Preconditions.checkState(!Double.isNaN(Eequality), "energy from equality constraints is NaN!");
 		
 		// Add smoothness constraint misfit (nonlinear) to energy (this is the entropy-maximization constraint)
@@ -340,10 +329,21 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		double Einequality = 0;
 		if (hasInequalityConstraint) {
 			for (int i = 0; i < d_ineq.length; i++) {
-				// NOTE: it is important that we loop over d_MFD.length and not the actual misfit array
-				// as it may be larger than nRow (for efficiency and less array copies)
-				if (misfit_ineq[i] > 0.0) // This makes it an INEQUALITY constraint (Target MFD is an UPPER bound)
-					Einequality += Math.pow(misfit_ineq[i], 2);  // L2 norm of misfit vector
+				// NOTE: it is important that we loop over d_ineq.length and not the actual misfit array
+				// as it may be larger than nRow (for efficiency and fewer array copies)
+				
+				if (misfit_ineq[i] > 0.0) {
+					// This makes it an INEQUALITY constraint (Target MFD is an UPPER bound)
+					double val = Math.pow(misfit_ineq[i], 2);  // L2 norm of misfit vector
+					
+					if (constraintRanges != null) {
+						for (int j=0; j<constraintRanges.size(); j++)
+							if (constraintRanges.get(j).contains(i, true))
+								ret[j] += val;
+					}
+					
+					Einequality += val;
+				}
 			}
 			Preconditions.checkState(!Double.isNaN(Einequality), "energy from inequality constraints is NaN!");
 			ret[3] = Einequality;
