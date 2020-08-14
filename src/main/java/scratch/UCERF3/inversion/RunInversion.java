@@ -194,7 +194,7 @@ public class RunInversion {
 		double[] solution_raw = sa.getBestSolution();
 		
 		// adjust for minimum rates if applicable
-		double[] solution_adjusted = gen.adjustSolutionForMinimumRates(solution_raw);
+		double[] solution_adjusted = gen.adjustSolutionForWaterLevel(solution_raw);
 		Map<String, Double> energies = null;
 //		if (sa instanceof ThreadedSimulatedAnnealing)
 //			energies = ((ThreadedSimulatedAnnealing)sa).getEnergies();

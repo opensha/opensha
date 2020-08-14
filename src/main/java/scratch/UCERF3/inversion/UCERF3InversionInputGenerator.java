@@ -41,6 +41,7 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
@@ -74,17 +75,6 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	private List<AveSlipConstraint> aveSlipConstraints;
 	private double[] improbabilityConstraint;
 	private PaleoProbabilityModel paleoProbabilityModel;
-	
-	// outputs
-	private DoubleMatrix2D A;
-	private DoubleMatrix2D A_ineq;
-	private double[] d;
-	private double[] d_ineq;
-	private double[] initial;
-	private double[] minimumRuptureRates;
-	
-	private ArrayList<Integer> rangeEndRows;
-	private ArrayList<String> rangeNames;
 	
 	public UCERF3InversionInputGenerator(
 			InversionFaultSystemRupSet rupSet,
@@ -303,15 +293,15 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		int numSections = rupSet.getNumSections();
 		int numRuptures = rupSet.getNumRuptures();
 		
-		initial = config.getInitialRupModel();
-		minimumRuptureRates = null;
-		if (initial == null) {
+		initialSolution = config.getInitialRupModel();
+		waterLevelRates = null;
+		if (initialSolution == null) {
 			// all zeros
-			initial = new double[numRuptures];
+			initialSolution = new double[numRuptures];
 		}
 		
 		// now lets do a little input validation
-		Preconditions.checkState(initial.length == numRuptures);
+		Preconditions.checkState(initialSolution.length == numRuptures);
 		Preconditions.checkState(config.getA_PrioriRupConstraint() == null
 				|| config.getA_PrioriRupConstraint().length == numRuptures);
 		Preconditions.checkState(config.getMinimumRuptureRateBasis() == null
@@ -334,9 +324,9 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			}
 			Preconditions.checkState(!allZeros, "cannot set water level when water level rates are all zero!");
 			
-			minimumRuptureRates = new double[initial.length];
+			waterLevelRates = new double[initialSolution.length];
 			for (int i=0; i < numRuptures; i++)
-				minimumRuptureRates[i] = minimumRuptureRateBasis[i]*minimumRuptureRateFraction;
+				waterLevelRates[i] = minimumRuptureRateBasis[i]*minimumRuptureRateFraction;
 		}
 		
 		// now configure the minimum rupture rates
@@ -345,8 +335,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 //		double[] sectSlipRateStdDevReduced = getSlipRateStdDevForAllSections();  // CURRENTLY NOT USED
 		double[] rupMeanMag = rupSet.getMagForAllRups();
 		
-		rangeEndRows = new ArrayList<Integer>();
-		rangeNames = new ArrayList<String>();
+		constraintRowRanges = new ArrayList<>();
 		
 		// CURRENTLY, EVERY SUBSECTION IS INCLUDED IN SLIP-RATE CONSTRAINT - CONSTRAINT CANNOT BE DISABLED
 		// NORMALIZED (minimize ratio of model to target), UNNORMALIZED (minimize difference), 
@@ -360,24 +349,23 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		if(D) System.out.println("\nNumber of slip-rate constraints:    " + numSlipRateConstraints);
 		int numRows = numSlipRateConstraints;
 		if (numRows > 0) {
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Slip Rate");
+			constraintRowRanges.add(new ConstraintRange("Slip Rate", "Slip Rate", 0, numRows, false));
 		}
 		
 		int numPaleoRows = (int)Math.signum(config.getPaleoRateConstraintWt())*paleoRateConstraints.size();
 		if(D) System.out.println("Number of paleo section-rate constraints: "+numPaleoRows);
 		if (numPaleoRows > 0) {
 			numRows += numPaleoRows;
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Paleo Event Rates");
+			constraintRowRanges.add(new ConstraintRange("Paleo Event Rates", "Paleo Event Rates",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		
 		if (config.getPaleoSlipConstraintWt() > 0.0) {
 			int numPaleoSlipRows = aveSlipConstraints.size();
 			if(D) System.out.println("Number of paleo average slip constraints: "+numPaleoSlipRows);
 			numRows += numPaleoSlipRows;
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Paleo Slips");
+			constraintRowRanges.add(new ConstraintRange("Paleo Slips", "Paleo Slips",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		
 		if (config.getRupRateConstraintWt() > 0.0) {
@@ -388,8 +376,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if (config.isAPrioriConstraintForZeroRates()) numRupRateRows++;
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateRows);
 			numRows += numRupRateRows;
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Rupture Rates");
+			constraintRowRanges.add(new ConstraintRange("Rupture Rate", "Rupture Rate",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		
 		List<IDPairing> smoothingConstraintRupPairings = Lists.newArrayList();
@@ -398,8 +386,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			int numRupRateSmoothingRows = smoothingConstraintRupPairings.size();
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateSmoothingRows);
 			numRows += numRupRateSmoothingRows;
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Rupture Rate Smoothing");
+			constraintRowRanges.add(new ConstraintRange("Rupture Rate Smoothing", "Rupture Rate Smoothing",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		
 		
@@ -411,8 +399,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				if (rupSet.isRuptureBelowSectMinMag(rup) == true) numMinimizationRows++;
 			if(D) System.out.println("Number of minimization constraints: "+numMinimizationRows);
 			numRows += numMinimizationRows;
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Minimization");
+			constraintRowRanges.add(new ConstraintRange("Minimization", "Minimization",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		
 		IncrementalMagFreqDist targetMagFreqDist=null;
@@ -427,8 +415,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					+totalNumMagFreqConstraints);
 			// add number of rows used for magnitude distribution constraint
 			numRows += totalNumMagFreqConstraints;
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("MFD Equality");
+			constraintRowRanges.add(new ConstraintRange("MFD Equality", "MFD Equality",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0) {
 			int totalNumMagParticipationConstraints = 0;
@@ -457,8 +445,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			}
 			if(D) System.out.println("Number of MFD participation constraints: "
 					+ totalNumMagParticipationConstraints);
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("MFD Participation");
+			constraintRowRanges.add(new ConstraintRange("MFD Participation", "MFD Participation",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		ArrayList<SectionMFD_constraint> MFDConstraints = null;
 		if (config.getNucleationMFDConstraintWt() > 0.0) {
@@ -475,8 +463,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				}
 			}
 			if(D) System.out.println("Number of Nucleation MFD constraints: "+totalNumNucleationMFDConstraints);
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("MFD Nucleation");
+			constraintRowRanges.add(new ConstraintRange("MFD Nucleation", "MFD Nucleation",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		if (config.getMFDSmoothnessConstraintWt() > 0.0 || config.getMFDSmoothnessConstraintWtForPaleoParents() > 0.0) {
 			int totalNumMFDSmoothnessConstraints = 0;
@@ -526,20 +514,20 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				}
 			}
 			if(D) System.out.println("Number of MFD Smoothness constraints: "+totalNumMFDSmoothnessConstraints);
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("MFD Smoothness");
+			constraintRowRanges.add(new ConstraintRange("MFD Smoothness", "MFD Smoothness",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		if (config.getMomentConstraintWt() > 0.0) {
 			numRows++;
 			if(D) System.out.println("Number of Moment constraints: 1");
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Moment");
+			constraintRowRanges.add(new ConstraintRange("Moment", "Moment",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		if (config.getParkfieldConstraintWt() > 0.0) {
 			numRows++;
 			if(D) System.out.println("Number of Parkfield constraints: 1");
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Parkfield");
+			constraintRowRanges.add(new ConstraintRange("Parkfield", "Parkfield",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		if (config.getEventRateSmoothnessWt() > 0.0) {
 			ArrayList<Integer> parentIDs = new ArrayList<Integer>();
@@ -552,8 +540,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			int numNewRows = rupSet.getNumSections()-numParentSections;
 			numRows+=numNewRows;
 			if(D) System.out.println("Number of Event-Rate Smoothness constraints: "+numNewRows);
-			rangeEndRows.add(numRows-1);
-			rangeNames.add("Event-Rate Smoothness");	
+			constraintRowRanges.add(new ConstraintRange("Event-Rate Smoothness", "Event-Rate Smoothness",
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
 		}
 		
 		
@@ -571,6 +559,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				// Add number of rows used for magnitude distribution constraint - only include mag bins between minimum and maximum magnitudes in rupture set				
 				numMFDRows += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())-targetMagFreqDist.getClosestXIndex(rupSet.getMinMag())+1;
 			}
+			constraintRowRanges.add(new ConstraintRange("MFD Inequality", "MFD Inequality",
+					0, numMFDRows, true));
 			A_ineq = buildMatrix(clazz, numMFDRows, numRuptures); // (A_MFD * x <= d_MFD)
 			d_ineq = new double[numMFDRows];							
 			if(D) System.out.println("Number of magnitude-distribution inequality constraints (not in A matrix): "
@@ -1349,7 +1339,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		
 		
-		if (minimumRuptureRates != null) {
+		if (waterLevelRates != null) {
 			// apply the minimum rupture rates
 			if (D) System.out.println("Applying minimum rupture rates.");
 			
@@ -1358,7 +1348,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				
 				@Override
 				public synchronized double apply(int row, int col, double val) {
-					d[row] -= val * minimumRuptureRates[col];
+					d[row] -= val * waterLevelRates[col];
 					return val;
 				}
 			});
@@ -1370,19 +1360,19 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					
 					@Override
 					public synchronized double apply(int row, int col, double val) {
-						d_ineq[row] -= val * minimumRuptureRates[col];
+						d_ineq[row] -= val * waterLevelRates[col];
 						return val;
 					}
 				});
 			}
 			
 			// also adjust the initial solution by the minimum rates
-			initial = Arrays.copyOf(initial, numRuptures);
+			initialSolution = Arrays.copyOf(initialSolution, numRuptures);
 			for (int i=0; i<numRuptures; i++) {
-				double adjustedVal = initial[i] - minimumRuptureRates[i];
+				double adjustedVal = initialSolution[i] - waterLevelRates[i];
 				if (adjustedVal < 0)
 					adjustedVal = 0;
-				initial[i] = adjustedVal;
+				initialSolution[i] = adjustedVal;
 			}
 			
 			if (D) {
@@ -1396,24 +1386,6 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			watch_total.stop();
 			System.out.println("Generating inputs took "+getTimeStr(watch_total)+".");
 		}
-	}
-	
-	public double[] adjustSolutionForMinimumRates(double[] solution) {
-		return adjustSolutionForMinimumRates(solution, minimumRuptureRates);
-	}
-	
-	public static double[] adjustSolutionForMinimumRates(double[] solution, double[] minimumRuptureRates) {
-		solution = Arrays.copyOf(solution, solution.length);
-		
-		if (minimumRuptureRates != null) {
-			Preconditions.checkState(minimumRuptureRates.length == solution.length,
-					"minimum rates size mismatch!");
-			for (int i=0; i<solution.length; i++) {
-				solution[i] = solution[i] + minimumRuptureRates[i];
-			}
-		}
-		
-		return solution;
 	}
 	
 	/**
@@ -1555,12 +1527,18 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		double[] d_orig = gen.d;
 		double[] d_ineq_orig = gen.d_ineq;
 		
+		double[] initial_orig = gen.initialSolution;
+		double[] waterlevel_orig = gen.waterLevelRates;
+		
 		System.out.println("BUILDING NEW");
 		gen.generateInputs(true);
 		DoubleMatrix2D A_new = gen.A;
 		DoubleMatrix2D A_ineq_new = gen.A_ineq;
 		double[] d_new = gen.d;
 		double[] d_ineq_new = gen.d_ineq;
+		
+		double[] initial_new = gen.initialSolution;
+		double[] waterlevel_new = gen.waterLevelRates;
 
 		System.out.println("A orig size: "+A_orig.rows()+" x "+A_orig.columns());
 		System.out.println("A new size: "+A_orig.rows()+" x "+A_orig.columns());
@@ -1568,17 +1546,24 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		System.out.println("A_ineq new size: "+A_ineq_orig.rows()+" x "+A_ineq_orig.columns());
 		
 		System.out.println("Validating A");
-		validateA(A_orig, A_new);
+		validateA(A_orig, A_new, gen.constraintRowRanges, false);
 		System.out.println("Validating A_ineq");
-		validateA(A_ineq_orig, A_ineq_new);
+		validateA(A_ineq_orig, A_ineq_new, gen.constraintRowRanges, true);
 		
 		System.out.println("Validating D");
-		validateD(d_orig, d_new);
+		validateD(d_orig, d_new, gen.constraintRowRanges, false);
 		System.out.println("Validating D_ineq");
-		validateD(d_ineq_orig, d_ineq_new);
+		validateD(d_ineq_orig, d_ineq_new, gen.constraintRowRanges, true);
+
+		System.out.println("Validating initial");
+		validateRates(initial_orig, initial_new);
+		System.out.println("Validating water level");
+		validateRates(waterlevel_orig, waterlevel_new);
 	}
 	
-	private static void validateA(DoubleMatrix2D A_orig, DoubleMatrix2D A_new) {
+	private static void validateA(DoubleMatrix2D A_orig, DoubleMatrix2D A_new,
+			List<ConstraintRange> constraintRanges, boolean ineq) {
+		Preconditions.checkState(A_orig != A_new, "orig and new are same instance!");
 		IntArrayList rows = new IntArrayList();
 		IntArrayList cols = new IntArrayList();
 		DoubleArrayList origVals = new DoubleArrayList();
@@ -1589,8 +1574,15 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			int col = cols.get(i);
 			double val = origVals.get(i);
 			double oVal = A_new.get(row, col);
-			Preconditions.checkState(val == oVal, "Value mismatch at row=%s, col=%s: %s != %s",
-					row, col, val, oVal);
+			ConstraintRange matchRange = null;
+			if (val != oVal) {
+				for (ConstraintRange range : constraintRanges)
+					if (range.contains(row, ineq))
+						matchRange = range;
+			}
+			Preconditions.checkState(val == oVal,
+					"Value mismatch at row=%s, col=%s: %s != %s\nConstraint: %s",
+					row, col, val, oVal, matchRange);
 		}
 		
 		// now check that they're the same size
@@ -1605,12 +1597,31 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		System.out.println("Validated "+origVals.size()+" non-zero values");
 	}
 	
-	private static void validateD(double[] d_orig, double[] d_new) {
+	private static void validateD(double[] d_orig, double[] d_new,
+			List<ConstraintRange> constraintRanges, boolean ineq) {
+		Preconditions.checkState(d_orig != d_new, "orig and new are same instance!");
 		Preconditions.checkState(d_orig.length == d_new.length,
 				"d length mismatch: %s != %s", d_orig.length, d_new.length);
-		for (int i=0; i<d_orig.length; i++)
-			Preconditions.checkState(d_orig[i] == d_new[i], "d mismatch at %s: %s != %s",
-					i, d_orig[i], d_new[i]);
+		for (int i=0; i<d_orig.length; i++) {
+			ConstraintRange matchRange = null;
+			if (d_orig[i] != d_new[i]) {
+				for (ConstraintRange range : constraintRanges)
+					if (range.contains(i, ineq))
+						matchRange = range;
+			}
+			Preconditions.checkState(d_orig[i] == d_new[i], "d mismatch at %s: %s != %s\nConstraint: %s",
+					i, d_orig[i], d_new[i], matchRange);
+		}
 		System.out.println("Validated "+d_orig.length+" data values");
+	}
+	
+	private static void validateRates(double[] origRates, double[] newRates) {
+		Preconditions.checkState(origRates != newRates, "orig and new are same instance!");
+		Preconditions.checkState(origRates.length == newRates.length,
+				"rates length mismatch: %s != %s", origRates.length, newRates.length);
+		for (int i=0; i<newRates.length; i++)
+			Preconditions.checkState(origRates[i] == newRates[i], "rate mismatch at %s: %s != %s",
+					i, origRates[i], newRates[i]);
+		System.out.println("Validated "+origRates.length+" rate values");
 	}
 }

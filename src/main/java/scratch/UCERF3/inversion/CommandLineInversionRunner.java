@@ -464,7 +464,7 @@ public class CommandLineInversionRunner {
 				Preconditions.checkState(synrates.length == initialState.length,
 						"synthetic starting solution has different num rups!");
 				// subtract min rates
-				synrates = gen.adjustSolutionForMinimumRates(synrates);
+				synrates = gen.adjustSolutionForWaterLevel(synrates);
 				
 				DoubleMatrix1D synMatrix = new DenseDoubleMatrix1D(synrates);
 				
@@ -576,7 +576,7 @@ public class CommandLineInversionRunner {
 				loadedRupSet.setInfoString(info);
 				double[] rupRateSolution = tsa.getBestSolution();
 				// this adds back in the minimum rupture rates (waterlevel) if present
-				rupRateSolution = UCERF3InversionInputGenerator.adjustSolutionForMinimumRates(
+				rupRateSolution = UCERF3InversionInputGenerator.adjustSolutionForWaterLevel(
 						rupRateSolution, minimumRuptureRates);
 				Map<ConstraintRange, Double> energies = tsa.getEnergies();
 				Map<String, Double> energiesMap = null;

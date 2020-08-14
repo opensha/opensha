@@ -33,18 +33,18 @@ import scratch.UCERF3.utils.MatrixIO;
 public class InversionInputGenerator {
 	
 	// inputs
-	private int numRuptures;
-	private List<InversionConstraint> constraints;
-	private double[] initialSolution;
-	private double[] waterLevelRates;
+	protected int numRuptures;
+	protected List<InversionConstraint> constraints;
+	protected double[] initialSolution;
+	protected double[] waterLevelRates;
 	
 	// outputs
-	private DoubleMatrix2D A;
-	private double[] d;
-	private DoubleMatrix2D A_ineq;
-	private double[] d_ineq;
+	protected DoubleMatrix2D A;
+	protected double[] d;
+	protected DoubleMatrix2D A_ineq;
+	protected double[] d_ineq;
 	
-	private List<ConstraintRange> constraintRowRanges;
+	protected List<ConstraintRange> constraintRowRanges;
 
 	public InversionInputGenerator(FaultSystemRupSet rupSet, List<InversionConstraint> constraints) {
 		this(rupSet, constraints, null, null);

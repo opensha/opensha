@@ -23,7 +23,6 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.time.StopWatch;
-import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -33,14 +32,16 @@ import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Doubles;
 
+import cern.colt.matrix.tdouble.DoubleMatrix2D;
+import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
-import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.CompoundCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.EnergyChangeCompletionCriteria;
@@ -53,8 +54,6 @@ import scratch.UCERF3.simulatedAnnealing.params.CoolingScheduleType;
 import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
 import scratch.UCERF3.simulatedAnnealing.params.NonnegativityConstraintType;
 import scratch.UCERF3.utils.MatrixIO;
-import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 
 public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
@@ -834,7 +833,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			MatrixIO.doubleArrayToFile(solution, outputOrigFile);
 			
 			System.out.println("Applying minimum rupture rates");
-			solution = UCERF3InversionInputGenerator.adjustSolutionForMinimumRates(solution, minimumRuptureRates);
+			solution = InversionInputGenerator.adjustSolutionForWaterLevel(solution, minimumRuptureRates);
 		}
 		
 		System.out.println("Writing solution to: "+outputFile.getAbsolutePath());
@@ -851,8 +850,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		double[] solutionRates = getBestSolution();
 		double[] adjustedRates = null;
 		if (minimumRuptureRates != null) {
-			adjustedRates =
-				UCERF3InversionInputGenerator.adjustSolutionForMinimumRates(getBestSolution(), minimumRuptureRates);
+			adjustedRates = InversionInputGenerator.adjustSolutionForWaterLevel(
+					getBestSolution(), minimumRuptureRates);
 		}
 		writeRateVsRankPlot(prefix, solutionRates, adjustedRates, initialState);
 	}

@@ -4,6 +4,12 @@ import org.opensha.commons.data.ShortNamed;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
+/**
+ * Abstract class for an inversion constraint
+ * 
+ * @author kevin
+ *
+ */
 public abstract class InversionConstraint implements ShortNamed {
 	
 	private boolean quickGetsSets = true;
@@ -29,6 +35,14 @@ public abstract class InversionConstraint implements ShortNamed {
 	 */
 	public abstract long encode(DoubleMatrix2D A, double[] d, int startRow);
 	
+	/**
+	 * Utility method to set a value in the given A matrix, respecting the quickGetsSets value
+	 * 
+	 * @param A
+	 * @param row
+	 * @param col
+	 * @param val
+	 */
 	protected void setA(DoubleMatrix2D A, int row, int col, double val) {
 		if (quickGetsSets)
 			A.setQuick(row, col, val);
