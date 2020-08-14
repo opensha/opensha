@@ -9,6 +9,13 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 
+/**
+ * Constraint to match paleoseismic event rates at subsections, also taking into account
+ * the probability of a rupture being seen at a paleoseismic trench site.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class PaleoRateInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "Paleoseismic Event Rate";

@@ -9,6 +9,13 @@ import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.SlipEnabledRupSet;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 
+/**
+ * Constraint to match paleoseismic event rates inferred from mean slip on
+ * subsections.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class PaleoSlipInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "Paleoseismic Average Slip";

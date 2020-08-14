@@ -9,6 +9,14 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 
+/**
+ * MFD Subsection nucleation MFD constraint - constraints MFDs to conform to
+ * an a priori section MFD. In UCERF3, we weekly constrained section MFDs to match
+ * UCERF2.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "MFD Subsection Nucleation";
@@ -40,7 +48,9 @@ public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 		int numRows = 0;
 		for (SectionMFD_constraint constraint : constraints)
 			if (constraint != null)
-				numRows += constraint.getNumMags();
+				for (int i=0; i<constraint.getNumMags(); i++)
+					if (constraint.getRate(i) > 0)
+						numRows++;
 		return numRows;
 	}
 

@@ -6,6 +6,13 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
+/**
+ * This allows you to strongly minimize the rate of certain ruptures. We used this
+ * in UCERF3 to zero out rates for ruptures which were below the section minimum magnitude
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class RupRateMinimizationConstraint extends InversionConstraint {
 	
 	private double weight;

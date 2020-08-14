@@ -4,6 +4,15 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
+/**
+ * This will constrain a the inversion to stay near to a set of a priori rupture rates. It can apply
+ * different weights to ruptures with zero rates in the a priori model.
+ * 
+ * For UCERF3, this constraint allowed us to keep rates close to UCERF2, and we ultimately did not use it.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class APrioriInversionConstraint extends InversionConstraint {
 	
 	private double weight;

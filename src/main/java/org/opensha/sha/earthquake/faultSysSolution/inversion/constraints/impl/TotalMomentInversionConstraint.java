@@ -6,6 +6,12 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.FaultSystemRupSet;
 
+/**
+ * Constraint solution moment to equal deformation-model moment. We did not use this in UCERF3.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class TotalMomentInversionConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;

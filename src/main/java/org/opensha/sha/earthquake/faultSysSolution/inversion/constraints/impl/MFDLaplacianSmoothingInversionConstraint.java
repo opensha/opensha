@@ -15,6 +15,15 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 
+/**
+ * MFDs spatially smooth along adjacent subsections on a parent section (Laplacian smoothing).
+ * 
+ * This can be applied globally to all sections, or only to those which have paleoseismic constraints.
+ * In UCERF3, we used it only on paleo-constrained sections.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class MFDLaplacianSmoothingInversionConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;

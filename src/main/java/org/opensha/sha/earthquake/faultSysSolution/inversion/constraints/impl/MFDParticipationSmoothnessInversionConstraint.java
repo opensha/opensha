@@ -8,6 +8,14 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.FaultSystemRupSet;
 
+/**
+ * MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection.
+ * 
+ * This was not ultimately used in UCERF3
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class MFDParticipationSmoothnessInversionConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;
@@ -40,7 +48,7 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 			// Find minimum and maximum rupture-magnitudes for that subsection
 			double minMag = Double.POSITIVE_INFINITY; double maxMag = Double.NEGATIVE_INFINITY;
 			for (int rupIndex=0; rupIndex<rupturesForSection.size(); rupIndex++) {
-				double mag = rupSet.getMagForRup(rupIndex);
+				double mag = rupSet.getMagForRup(rupturesForSection.get(rupIndex));
 				minMag = Math.min(minMag, mag);
 				maxMag = Math.max(maxMag, mag);
 			}
@@ -50,7 +58,7 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 			// Find total number of section magnitude-bins
 			for (double m=minMag; m<maxMag; m=m+particMagBinSize) { 
 				for (int rupIndex=0; rupIndex<rupturesForSection.size(); rupIndex++) {
-					double mag = rupSet.getMagForRup(rupIndex);
+					double mag = rupSet.getMagForRup(rupturesForSection.get(rupIndex));
 					if (mag >=m && mag < m+particMagBinSize) {
 						totalNumMagParticipationConstraints++;
 						break;
@@ -63,7 +71,6 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 
 	@Override
 	public boolean isInequality() {
-		// TODO Auto-generated method stub
 		return false;
 	}
 
@@ -79,7 +86,7 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 			// Find minimum and maximum rupture-magnitudes for that subsection
 			double minMag = Double.POSITIVE_INFINITY; double maxMag = Double.NEGATIVE_INFINITY;
 			for (int rupIndex=0; rupIndex<rupturesForSection.size(); rupIndex++) {
-				double mag = rupSet.getMagForRup(rupIndex);
+				double mag = rupSet.getMagForRup(rupturesForSection.get(rupIndex));
 				minMag = Math.min(minMag, mag);
 				maxMag = Math.max(maxMag, mag);
 			}
@@ -95,7 +102,7 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 			for (double m=minMag; m<maxMag; m=m+particMagBinSize) {
 				numRupsForMagBin.add(0);
 				for (int rupIndex=0; rupIndex<rupturesForSection.size(); rupIndex++) {
-					double mag = rupSet.getMagForRup(rupIndex);
+					double mag = rupSet.getMagForRup(rupturesForSection.get(rupIndex));
 					if (mag >=m && mag < m+particMagBinSize)
 						numRupsForMagBin.set(numRupsForMagBin.size()-1,
 								numRupsForMagBin.get(numRupsForMagBin.size()-1)+1); // numRupsForMagBin(end)++
@@ -114,7 +121,7 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 						int col = rupturesForSection.get(rupIndex);
 						double val = weight/numNonzeroMagBins;	
 						numNonZeroElements++;
-						double mag = rupSet.getMagForRup(rupIndex);
+						double mag = rupSet.getMagForRup(col);
 						if (mag >=m && mag < m+particMagBinSize) {
 							// Subtract off rate for this mag bin (difference between average rate per mag bin
 							// & rate for this mag bin is set to 0)

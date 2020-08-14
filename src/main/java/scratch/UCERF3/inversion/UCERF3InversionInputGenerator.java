@@ -1270,6 +1270,9 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			System.out.println("Number of nonzero elements in A matrix = "+numNonZeroElements+"\n");
 		}
 		
+		System.out.println("Row ranges:");
+		for (ConstraintRange range : constraintRowRanges)
+			System.out.println("\t"+range);
 
 		// Constrain paleoseismically-visible event rates along parent sections to be smooth
 		if (config.getEventRateSmoothnessWt() > 0.0) {
@@ -1496,14 +1499,33 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
 				branch.getValue(InversionModels.class), rupSet);
-		// enable all the constraints
+		// first enable all other constraints
 		config.setRupRateSmoothingConstraintWt(1d);
 		config.setMagnitudeEqualityConstraintWt(1d);
 		config.setSmoothnessWt(10000);
 		config.setMomentConstraintWt(1d);
 		config.setRupRateConstraintWt(1d);
 		config.setEventRateSmoothnessWt(1d);
-//		config.setParticipationSmoothnessConstraintWt(1d);
+		config.setParticipationSmoothnessConstraintWt(1d);
+		// disable any/all constraints below
+//		config.setEventRateSmoothnessWt(0d);
+//		config.setMFDSmoothnessConstraintWt(0d);
+//		config.setMFDSmoothnessConstraintWtForPaleoParents(0d);
+//		config.setMinimizationConstraintWt(0d);
+//		config.setMomentConstraintWt(0d);
+//		config.setNucleationMFDConstraintWt(0d);
+//		config.setMagnitudeEqualityConstraintWt(0d);
+//		config.setMagnitudeInequalityConstraintWt(0d);
+//		config.setPaleoRateConstraintWt(0d);
+//		config.setPaleoSlipWt(0d);
+//		config.setParkfieldConstraintWt(0d);
+//		config.setParticipationSmoothnessConstraintWt(0d);
+//		config.setRupRateConstraintWt(0d);
+//		config.setRupRateSmoothingConstraintWt(0d);
+//		config.setSmoothnessWt(0d);
+		// always need these on for old to work
+//		config.setSlipRateConstraintWt_normalized(0d);
+//		config.setSlipRateConstraintWt_unnormalized(0d);
 		
 		// get the paleo rate constraints
 		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
@@ -1520,15 +1542,24 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		UCERF3InversionInputGenerator gen = new UCERF3InversionInputGenerator(
 				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
 		
+		double[] preGenInitial = gen.initialSolution;
+		
 		System.out.println("BUILDING ORIGINAL");
 		gen.generateInputsOld(null);
 		DoubleMatrix2D A_orig = gen.A;
 		DoubleMatrix2D A_ineq_orig = gen.A_ineq;
 		double[] d_orig = gen.d;
 		double[] d_ineq_orig = gen.d_ineq;
+		List<ConstraintRange> origRanges = gen.constraintRowRanges;
 		
 		double[] initial_orig = gen.initialSolution;
-		double[] waterlevel_orig = gen.waterLevelRates;
+		
+		gen.A = null;
+		gen.A_ineq = null;
+		gen.d = null;
+		gen.d_ineq = null;
+		gen.initialSolution = preGenInitial;
+		gen.constraintRowRanges = null;
 		
 		System.out.println("BUILDING NEW");
 		gen.generateInputs(true);
@@ -1536,65 +1567,109 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		DoubleMatrix2D A_ineq_new = gen.A_ineq;
 		double[] d_new = gen.d;
 		double[] d_ineq_new = gen.d_ineq;
+		List<ConstraintRange> newRanges = gen.constraintRowRanges;
 		
 		double[] initial_new = gen.initialSolution;
-		double[] waterlevel_new = gen.waterLevelRates;
 
 		System.out.println("A orig size: "+A_orig.rows()+" x "+A_orig.columns());
-		System.out.println("A new size: "+A_orig.rows()+" x "+A_orig.columns());
-		System.out.println("A_ineq orig size: "+A_ineq_orig.rows()+" x "+A_ineq_orig.columns());
-		System.out.println("A_ineq new size: "+A_ineq_orig.rows()+" x "+A_ineq_orig.columns());
+		System.out.println("A new size: "+A_new.rows()+" x "+A_new.columns());
+		if (A_ineq_orig != null || A_ineq_new != null) {
+			System.out.println("A_ineq orig size: "+A_ineq_orig.rows()+" x "+A_ineq_orig.columns());
+			System.out.println("A_ineq new size: "+A_ineq_new.rows()+" x "+A_ineq_new.columns());
+		}
+		
+		for (boolean ineq : new boolean [] { false, true }) {
+			List<ConstraintRange> ranges1 = getMatches(origRanges, ineq);
+			List<ConstraintRange> ranges2 = getMatches(newRanges, ineq);
+			Preconditions.checkState(ranges1.size() == ranges2.size(),
+					"Range sizes inconsistent: %s != %s", ranges1.size(), ranges2.size());
+			for (int i=0; i<ranges1.size(); i++) {
+				ConstraintRange r1 = ranges1.get(i);
+				ConstraintRange r2 = ranges2.get(i);
+				Preconditions.checkState(r1.startRow == r2.startRow,
+						"Start row mismatch:\n\tORIG: %s\n\tNEW: %s", r1, r2);
+				Preconditions.checkState(r1.endRow == r2.endRow,
+						"End row mismatch:\n\tORIG: %s\n\tNEW: %s", r1, r2);
+			}
+		}
 		
 		System.out.println("Validating A");
-		validateA(A_orig, A_new, gen.constraintRowRanges, false);
-		System.out.println("Validating A_ineq");
-		validateA(A_ineq_orig, A_ineq_new, gen.constraintRowRanges, true);
+		validateA(A_orig, A_new, origRanges, false);
+		if (A_ineq_orig != null || A_ineq_new != null) {
+			System.out.println("Validating A_ineq");
+			validateA(A_ineq_orig, A_ineq_new, origRanges, true);
+		}
 		
 		System.out.println("Validating D");
-		validateD(d_orig, d_new, gen.constraintRowRanges, false);
-		System.out.println("Validating D_ineq");
-		validateD(d_ineq_orig, d_ineq_new, gen.constraintRowRanges, true);
+		validateD(d_orig, d_new, origRanges, false);
+		if (d_ineq_orig != null || d_ineq_new != null) {
+			System.out.println("Validating D_ineq");
+			validateD(d_ineq_orig, d_ineq_new, origRanges, true);
+		}
 
 		System.out.println("Validating initial");
 		validateRates(initial_orig, initial_new);
-		System.out.println("Validating water level");
-		validateRates(waterlevel_orig, waterlevel_new);
+	}
+	
+	private static List<ConstraintRange> getMatches(List<ConstraintRange> ranges, boolean ineq) {
+		List<ConstraintRange> ret = new ArrayList<>();
+		for (ConstraintRange range : ranges)
+			if (ineq == range.inequality)
+				ret.add(range);
+		return ret;
+	}
+	
+	private static class ValidateFunc implements IntIntDoubleFunction {
+		
+		private DoubleMatrix2D compare;
+		private List<ConstraintRange> constraintRanges;
+		private boolean ineq;
+		
+		private long count = 0;
+
+		public ValidateFunc(DoubleMatrix2D compare, List<ConstraintRange> constraintRanges, boolean ineq) {
+			this.compare = compare;
+			this.constraintRanges = constraintRanges;
+			this.ineq = ineq;
+		}
+
+		@Override
+		public double apply(int row, int col, double val) {
+			if (compare != null) {
+				double oVal = compare.get(row, col);
+				ConstraintRange matchRange = null;
+				if (val != oVal) {
+					for (ConstraintRange range : constraintRanges)
+						if (range.contains(row, ineq))
+							matchRange = range;
+				}
+				Preconditions.checkState(val == oVal,
+						"Value mismatch at row=%s, col=%s: %s != %s\nConstraint: %s",
+						row, col, val, oVal, matchRange);
+			}
+			count++;
+			return val;
+		}
+		
 	}
 	
 	private static void validateA(DoubleMatrix2D A_orig, DoubleMatrix2D A_new,
 			List<ConstraintRange> constraintRanges, boolean ineq) {
 		Preconditions.checkState(A_orig != A_new, "orig and new are same instance!");
-		IntArrayList rows = new IntArrayList();
-		IntArrayList cols = new IntArrayList();
-		DoubleArrayList origVals = new DoubleArrayList();
-		A_orig.getNonZeros(rows, cols, origVals);
 		
-		for (int i=0; i<rows.size(); i++) {
-			int row = rows.get(i);
-			int col = cols.get(i);
-			double val = origVals.get(i);
-			double oVal = A_new.get(row, col);
-			ConstraintRange matchRange = null;
-			if (val != oVal) {
-				for (ConstraintRange range : constraintRanges)
-					if (range.contains(row, ineq))
-						matchRange = range;
-			}
-			Preconditions.checkState(val == oVal,
-					"Value mismatch at row=%s, col=%s: %s != %s\nConstraint: %s",
-					row, col, val, oVal, matchRange);
-		}
+		ValidateFunc validateFunc = new ValidateFunc(A_new, constraintRanges, ineq);
+		A_orig.forEachNonZero(validateFunc);
+		long origCount = validateFunc.count;
 		
 		// now check that they're the same size
-		rows = new IntArrayList();
-		cols = new IntArrayList();
-		DoubleArrayList newVals = new DoubleArrayList();
-		A_new.getNonZeros(rows, cols, newVals);
+		ValidateFunc countFunc = new ValidateFunc(null, null, ineq);
+		A_new.forEachNonZero(countFunc);
+		long newCount = countFunc.count;
 		
-		Preconditions.checkState(origVals.size() == newVals.size(),
-				"Nonzero count mismatch: %s != %s", origVals.size(), newVals.size());
+		Preconditions.checkState(origCount == newCount,
+				"Nonzero count mismatch: %s != %s", origCount, newCount);
 		
-		System.out.println("Validated "+origVals.size()+" non-zero values");
+		System.out.println("Validated "+origCount+" non-zero values");
 	}
 	
 	private static void validateD(double[] d_orig, double[] d_new,

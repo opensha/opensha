@@ -6,6 +6,14 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
+/**
+ * Constrains the summed rate across a set of ruptures to equal a given total rate.
+ * We used this in UCERF3 to constrain Parkfield M6's to have a 25 year recurrence interval,
+ * but it could be applied elsewhere as well.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class ParkfieldInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "Parkfield";

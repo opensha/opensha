@@ -12,6 +12,15 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 
+/**
+ * Constraints the solution to match the given MFD constraints, which can be region specific.
+ * 
+ * In UCERF3, we used an equality constraint up to large magnitudes, where we transitioned to
+ * an inequality constraint, and used separate constraints for northern and southern CA.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class MFDEqualityInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "MFD Equality";

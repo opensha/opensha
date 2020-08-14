@@ -8,6 +8,22 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.SlipEnabledRupSet;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 
+/**
+ * Constraints section slip rates to match the given target rate. It can apply normalized or
+ * unnormalized constraints, or both:
+ * 
+ * If normalized, slip rate misfit is % difference for each section (recommended since it helps
+ * fit slow-moving faults). Note that constraints for sections w/ slip rate < 0.1 mm/yr is not
+ * normalized by slip rate -- otherwise misfit will be huge (GEOBOUND model has 10e-13 slip rates
+ * that will dominate misfit otherwise)
+ * 
+ * If unnormalized, misfit is absolute difference.
+ * 
+ * Set the weighting with the SlipRateConstraintWeightingType enum.
+ * 
+ * @author kevin
+ *
+ */
 public class SlipRateInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "Slip Rate";

@@ -13,6 +13,14 @@ import org.opensha.sha.faultSurface.FaultSection;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.FaultSystemRupSet;
 
+/**
+ * This constrains rates of ruptures that differ by only 1 subsection to be smooth.
+ * 
+ * We did not ultimately use this in UCERF3.
+ * 
+ * @author Morgan Page & Kevin Milner
+ *
+ */
 public class RupRateSmoothingInversionConstraint extends InversionConstraint {
 	
 	private double weight;
