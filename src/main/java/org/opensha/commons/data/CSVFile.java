@@ -178,6 +178,10 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return Long.parseLong(get(row, col).toString());
 	}
 	
+	public boolean getBoolean(int row, int col) throws NumberFormatException {
+		return Boolean.parseBoolean(get(row, col).toString());
+	}
+	
 	public List<E> getLine(int index) {
 		return values.get(index);
 	}
