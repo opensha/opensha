@@ -16,6 +16,8 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import com.google.common.collect.Range;
+
 import cern.colt.list.tdouble.DoubleArrayList;
 import cern.colt.list.tint.IntArrayList;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -241,6 +243,7 @@ public class InversionConstraintImplTests {
 	}
 	
 	private void testConstraint(InversionConstraint constraint) {
+		constraint.setQuickGetSets(false);
 		int numRows = constraint.getNumRows();
 		System.out.println(constraint.getName()+" has "+numRows+" rows");
 		assertTrue("numRows="+numRows+" for "+constraint.getName(), numRows > 0);
@@ -249,6 +252,7 @@ public class InversionConstraintImplTests {
 		long count1 = constraint.encode(A1, d1, 0); 
 		int offsetBefore = r.nextInt(1000);
 		int offsetAfter = r.nextInt(1000);
+		Range<Integer> offsetRowRange = Range.closedOpen(offsetBefore, offsetBefore+numRows);
 		DoubleMatrix2D A2 = new SparseDoubleMatrix2D(numRows+offsetBefore+offsetAfter, numRuptures);
 		double[] d2 = new double[numRows+offsetBefore+offsetAfter];
 		long count2 = constraint.encode(A2, d2, offsetBefore);
@@ -266,6 +270,11 @@ public class InversionConstraintImplTests {
 		IntArrayList rows2 = new IntArrayList();
 		IntArrayList cols2 = new IntArrayList();
 		DoubleArrayList vals2 = new DoubleArrayList();
+		for (int r=0; r<rows2.size(); r++) {
+			int row2 = rows2.get(r);
+			assertTrue("offset wrote outside of bounds: row="+row2+", range="+offsetRowRange,
+					offsetRowRange.contains(row2));
+		}
 		
 		A2.getNonZeros(rows2, cols2, vals2);
 		
@@ -275,6 +284,7 @@ public class InversionConstraintImplTests {
 			int row1 = rows1.get(i);
 			int col = cols1.get(i);
 			double val1 = vals1.get(i);
+			assertTrue("zero-offset wrote outside of bounds: row="+row1+", numRows="+numRows, row1 < numRows);
 			
 			int row2 = row1+offsetBefore;
 			double val2 = A2.get(row2, col);
