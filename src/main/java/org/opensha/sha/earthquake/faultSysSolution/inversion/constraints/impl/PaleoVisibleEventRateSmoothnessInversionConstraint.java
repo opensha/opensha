@@ -17,9 +17,9 @@ import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
  * This constrains paleoseismically-visible event rates along parent sections to be smooth.
  * 
  * It was not ultimately used in UCERF3, and upon further review and implementation in the new
- * framework by Kevin, has a problem which needs to be addressed. I think that there should be
- * an adding of values instead of overriding duplicate values near the TODO below, but I left it
- * as was from UCERF3 development below. Use with caution.
+ * framework by Kevin, it had a problem at that time where A values were overridden (see note in
+ * the encode method below). That problem has now been corrected, so it won't match the prior
+ * (unused) UCERF3 implementation.
  * 
  * @author Morgan Page & Kevin Milner
  *
@@ -79,8 +79,6 @@ public class PaleoVisibleEventRateSmoothnessInversionConstraint extends Inversio
 			}
 		}
 		
-		int numDuplicates = 0;
-		
 		int rowIndex = startRow;
 
 		for (int parentID: parentIDs) {
@@ -96,36 +94,35 @@ public class PaleoVisibleEventRateSmoothnessInversionConstraint extends Inversio
 			for (int j=0; j<sectsForParent.size()-1; j++) {
 				int sect1 = sectsForParent.get(j);
 				int sect2 = sectsForParent.get(j+1);
-				List<Integer> sect1Rups = Lists.newArrayList(rupSet.getRupturesForSection(sect1));  
-				List<Integer> sect2Rups = Lists.newArrayList(rupSet.getRupturesForSection(sect2));
-				
-				HashSet<Integer> prevRups = new HashSet<>();
+				List<Integer> sect1Rups = rupSet.getRupturesForSection(sect1);
+				List<Integer> sect2Rups = rupSet.getRupturesForSection(sect2);
 				
 				for (int rup: sect1Rups) { 
-					double probPaleoVisible = paleoProbabilityModel.getProbPaleoVisible(rupSet, rup, sect1);	
-					setA(A, rowIndex, rup, probPaleoVisible*weight);
-					numNonZeroElements++;
-					prevRups.add(rup);
+					double probPaleoVisible = paleoProbabilityModel.getProbPaleoVisible(rupSet, rup, sect1);
+					if (probPaleoVisible > 0d) {
+						setA(A, rowIndex, rup, probPaleoVisible*weight);
+						numNonZeroElements++;
+					}
 				}
 				for (int rup: sect2Rups) {
 					double probPaleoVisible = paleoProbabilityModel.getProbPaleoVisible(rupSet, rup, sect2);
-					setA(A, rowIndex, rup, -probPaleoVisible*weight);
-					if (prevRups.contains(rup))
-						// TODO: this doesn't seem to be right. it clobbers the prior values
-						numDuplicates++;
-					else
-						numNonZeroElements++;
-					prevRups.add(rup);
+					if (probPaleoVisible > 0d) {
+						// NOTE: when we tested this constraint with UCERF3, we would just set the value to
+						// -probPaleoVisibile*weight which would clobber the prior value if this rupture also
+						// includes sect1. This is now corrected to subtract probPaleoVisible*weight.
+						double prevVal = getA(A, rowIndex, rup);
+						double newVal = prevVal - probPaleoVisible*weight;
+						if (newVal == 0d)
+							numNonZeroElements--;
+						else if (prevVal == 0d)
+							numNonZeroElements++;
+						setA(A, rowIndex, rup, newVal);
+					}
 				}
 				d[rowIndex] = 0;
 				rowIndex++;
 			}
 		}
-		if (numDuplicates > 0)
-			System.err.println("WARNING: "+getShortName()+", as implemented in UCERF3, doesn't properly "
-					+ "deal with ruptures which include both sections in a pairing. It should probably "
-					+ "be the average probability of each rupture, but instead the second section clobbers "
-					+ "and overwrites the prior value. TODO: fix if we ever use this");
 		return numNonZeroElements;
 	}
 
