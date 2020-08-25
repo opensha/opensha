@@ -626,6 +626,12 @@ public class FaultSystemRupSet implements Serializable {
 	 * @return
 	 */
 	public double[] getFractRupsInsideRegion(Region region, boolean traceOnly) {
+		if (region == null) {
+			double[] ret = new double[getNumRuptures()];
+			for (int r=0; r<ret.length; r++)
+				ret[r] = 1d;
+			return ret;
+		}
 		if (!fractRupsInsideRegions.contains(region, traceOnly)) {
 			if (fractRupsInsideRegions.size() > 10) { // max cache size
 				Set<Cell<Region, Boolean, double[]>> cells = fractRupsInsideRegions.cellSet();

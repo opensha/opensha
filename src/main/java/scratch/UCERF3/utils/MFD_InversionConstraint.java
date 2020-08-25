@@ -61,6 +61,8 @@ public class MFD_InversionConstraint implements XMLSaveable {
 	 * @return
 	 */
 	public double getFractionInRegion(List<FaultSectionPrefData> faultSectPrefDataList) {
+		if (region == null)
+			return 1d;
 		double numInside=0, totNum=0;
 		double gridSpacing=1;  // in km
 		for(FaultSectionPrefData data: faultSectPrefDataList) {
@@ -79,7 +81,8 @@ public class MFD_InversionConstraint implements XMLSaveable {
 		Element el = root.addElement(XML_METADATA_NAME);
 		
 		// must call this way to make sure we get the regular region, not a gridded
-		region.toXMLMetadata(el, Region.XML_METADATA_NAME);
+		if (region != null)
+			region.toXMLMetadata(el, Region.XML_METADATA_NAME);
 		mfd.toXMLMetadata(el);
 		
 		return root;
@@ -87,7 +90,7 @@ public class MFD_InversionConstraint implements XMLSaveable {
 	
 	public static MFD_InversionConstraint fromXMLMetadata(Element constrEl) {
 		Element regionEl = constrEl.element(Region.XML_METADATA_NAME);
-		Region region = Region.fromXMLMetadata(regionEl);
+		Region region = regionEl == null ? null : Region.fromXMLMetadata(regionEl);
 		
 		Element mfdEl = constrEl.element(IncrementalMagFreqDist.XML_METADATA_NAME);
 		EvenlyDiscretizedFunc func = (EvenlyDiscretizedFunc) EvenlyDiscretizedFunc.fromXMLMetadata(mfdEl);
