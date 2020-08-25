@@ -74,7 +74,6 @@ extends ProbEqkSource {
 	protected double duration;
 
 	private ArrayList<ProbEqkRupture> ruptureList; // keep this in case we add more mags later
-	private ArrayList<Location> faultCornerLocations = new ArrayList<Location>(); // used for the getMinDistance(Site) method
 
 
 	/**
@@ -112,8 +111,6 @@ extends ProbEqkSource {
 			System.out.println("probability: " + probability);
 
 		}
-		// make a list of a subset of locations on the fault for use in the getMinDistance(site) method
-		makeFaultCornerLocs(ruptureSurface);
 
 		// make the rupture list
 		ruptureList = new ArrayList<ProbEqkRupture>();
@@ -173,9 +170,6 @@ extends ProbEqkSource {
 			System.out.println("duration: " + duration);
 		}
 
-		// make a list of a subset of locations on the fault for use in the getMinDistance(site) method
-		makeFaultCornerLocs(ruptureSurface);
-
 		// make the rupture list
 		ruptureList = new ArrayList<ProbEqkRupture>();
 		double mag;
@@ -214,9 +208,6 @@ extends ProbEqkSource {
 			double rake) {
 
 		this.isPoissonian = false;
-
-		// make a list of a subset of locations on the fault for use in the getMinDistance(site) method
-		makeFaultCornerLocs(ruptureSurface);
 
 		// make the rupture list
 		ruptureList = new ArrayList<ProbEqkRupture>();
@@ -294,64 +285,7 @@ extends ProbEqkSource {
 	 * @return minimum distance in km
 	 */
 	public double getMinDistance(Site site) {
-
-		double min = Double.MAX_VALUE;
-		double tempMin;
-
-		Iterator it = faultCornerLocations.iterator();
-
-		while (it.hasNext()) {
-			tempMin = LocationUtils.horzDistance(site.getLocation(),
-					(Location) it.next());
-			if (tempMin < min) min = tempMin;
-		}
-		//System.out.println(C+" minDist for source "+this.NAME+" = "+min);
-		return min;
-	}
-
-	/**
-	 * This makes the vector of fault corner location used by the getMinDistance(site)
-	 * method.
-	 * @param faultSurface
-	 */
-	private void makeFaultCornerLocs(RuptureSurface faultSurface) {
-		if(faultSurface instanceof AbstractEvenlyGriddedSurface) {
-			AbstractEvenlyGriddedSurface griddedSurf = (AbstractEvenlyGriddedSurface) faultSurface;
-			int nRows = griddedSurf.getNumRows();
-			int nCols = griddedSurf.getNumCols();
-			faultCornerLocations.add(griddedSurf.get(0, 0));
-			faultCornerLocations.add(griddedSurf.get(0, (int) (nCols / 2)));
-			faultCornerLocations.add(griddedSurf.get(0, nCols - 1));
-			faultCornerLocations.add(griddedSurf.get(nRows - 1, 0));
-			faultCornerLocations.add(griddedSurf.get(nRows - 1, (int) (nCols / 2)));
-			faultCornerLocations.add(griddedSurf.get(nRows - 1, nCols - 1));
-		}
-		else if (faultSurface instanceof CompoundSurface) {
-			List<? extends RuptureSurface> surfs = ((CompoundSurface)faultSurface).getSurfaceList();
-			boolean gridded = surfs.get(0) instanceof EvenlyGriddedSurface;
-			for (int i=0; i<surfs.size(); i++) {
-				RuptureSurface surf = surfs.get(i);
-				if (gridded) {
-					// here we assume each surface is small enough to just take the top and bottom of 
-					//  first columns, plus the top and bottom of the last column of the last surface
-					EvenlyGriddedSurface griddedSurf = (EvenlyGriddedSurface)surf;
-					faultCornerLocations.add(griddedSurf.get(0, 0));
-					faultCornerLocations.add(griddedSurf.get(griddedSurf.getNumRows() - 1, 0));
-					
-					if (i == surfs.size()-1) {
-						// add last edge
-						int lastCol = griddedSurf.getNumCols() - 1;
-						faultCornerLocations.add(griddedSurf.get(0, lastCol));
-						faultCornerLocations.add(griddedSurf.get(griddedSurf.getNumRows() - 1, lastCol));
-					}
-				} else {
-					faultCornerLocations.addAll(surf.getPerimeter());
-				}
-			}
-		}
-		else
-			faultCornerLocations = faultSurface.getPerimeter();
-
+		return getSourceSurface().getQuickDistance(site.getLocation());
 	}
 
 	/**

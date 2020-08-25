@@ -1,10 +1,10 @@
 package org.opensha.sha.simulators.srf;
 
-import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -85,6 +85,10 @@ public class RSQSimEventSlipTimeFunc {
 		this.maxTime = maxTime;
 		this.minVel = minVel;
 		this.maxVel = maxVel;
+	}
+	
+	public Set<Integer> getPatchIDs() {
+		return patchTransitions.keySet();
 	}
 	
 	public RSQSimStateTime getStateTime(int patchID, double time) {

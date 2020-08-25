@@ -25,6 +25,9 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
+import org.jfree.chart.plot.CombinedDomainXYPlot;
+import org.jfree.chart.plot.CombinedRangeXYPlot;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.data.Range;
 import org.jfree.ui.RectangleEdge;
@@ -136,11 +139,11 @@ public class RupturePlotGenerator {
 	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
 			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
-		writeSlipPlot(event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, false);
+		writeSlipPlot(event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, false, true);
 	}
 	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
-			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline, boolean grayscaleFriendly)
+			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline, boolean pub, boolean includeLast)
 					throws IOException {
 		System.out.println("Estimating DAS");
 		Location[] refFrame;
@@ -155,18 +158,30 @@ public class RupturePlotGenerator {
 		
 		CPT slipCPT = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse();
 		slipCPT = slipCPT.rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
+		
+		double endTime;
+		if (includeLast) {
+			endTime = func.getEndTime();
+		} else {
+			endTime = 0d;
+			for (int patchID : func.getPatchIDs())
+				endTime = Math.max(endTime, func.getTimeOfFirstSlip(patchID));
+		}
+		
 		CPT timeCPT;
-		if (grayscaleFriendly) {
-			double endTime = func.getEndTime();
-			timeCPT = slipCPT.rescale(0d, endTime);
-			if (endTime > 45d)
-				timeCPT = timeCPT.asDiscrete(10d, true);
+		if (pub) {
+			timeCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, endTime);
+//			timeCPT = slipCPT.rescale(0d, endTime);
+			double timeDiscr;
+			if (endTime > 70d)
+				timeDiscr = 10d;
+			else if (endTime > 40d)
+				timeDiscr = 5d;
 			else if (endTime > 20d)
-				timeCPT = timeCPT.asDiscrete(5d, true);
-			else if (endTime > 10d)
-				timeCPT = timeCPT.asDiscrete(2d, true);
+				timeDiscr = 2d;
 			else
-				timeCPT = timeCPT.asDiscrete(10, true);
+				timeDiscr = 1d;
+			timeCPT = timeCPT.asDiscrete(timeDiscr, true);
 		} else {
 			timeCPT = GMT_CPT_Files.GMT_WYSIWYG.instance().rescale(0d, func.getEndTime());
 		}
@@ -186,7 +201,9 @@ public class RupturePlotGenerator {
 				rupElems, getCumulativeSlipScalars(event), slipCPT, false, Color.BLACK, 0.1d);
 		List<XYAnnotation> firstPolys = buildElementPolygons(
 				rupElems, getTimeFirstSlipScalars(event, func), timeCPT, false, Color.BLACK, 0.1d);
-		List<XYAnnotation> lastPolys = buildElementPolygons(
+		List<XYAnnotation> lastPolys = null;
+		if (includeLast)
+			lastPolys = buildElementPolygons(
 				rupElems, getTimeLastSlipScalars(event, func), timeCPT, false, Color.BLACK, 0.1d);
 		
 		XY_DataSet dummyData = new DefaultXY_DataSet(new double[] {0d}, new double[] {0d});
@@ -207,12 +224,13 @@ public class RupturePlotGenerator {
 				hypoDepth = elem.getCenterLocation().getDepth();
 			}
 		}
-		Stroke hypoStroke = new BasicStroke(1.5f);
+		Stroke hypoStroke = new BasicStroke(2.5f);
 		XYPolygonAnnotation hypoPoly = new XYPolygonAnnotation(star(hypoDAS, hypoDepth, 1.6), hypoStroke, Color.WHITE,
-				grayscaleFriendly ? Color.BLUE : HYPO_COLOR);
+				pub ? Color.BLUE : HYPO_COLOR);
 		slipPolys.add(hypoPoly);
 		firstPolys.add(hypoPoly);
-		lastPolys.add(hypoPoly);
+		if (includeLast)
+			lastPolys.add(hypoPoly);
 		
 		double minDAS = Double.POSITIVE_INFINITY;
 		double maxDAS = 0d;
@@ -250,7 +268,8 @@ public class RupturePlotGenerator {
 				XYLineAnnotation line = new XYLineAnnotation(p1[0], p1[1], p2[0], p2[1], rectStroke, RECT_COLOR);
 				slipPolys.add(line);
 				firstPolys.add(line);
-				lastPolys.add(line);
+				if (includeLast)
+					lastPolys.add(line);
 			}
 		}
 		if (rectHypo != null) {
@@ -259,7 +278,8 @@ public class RupturePlotGenerator {
 					star(rectHypoDAS, rectHypo.getDepth(), 1d), hypoStroke, Color.WHITE, RECT_HYPO_COLOR);
 			slipPolys.add(rectHypoPoly);
 			firstPolys.add(rectHypoPoly);
-			lastPolys.add(rectHypoPoly);
+			if (includeLast)
+				lastPolys.add(rectHypoPoly);
 			
 			minDAS = Math.min(minDAS, rectHypoDAS);
 			maxDAS = Math.max(maxDAS, rectHypoDAS);
@@ -285,7 +305,8 @@ public class RupturePlotGenerator {
 							dasVals[i], outline.get(i).getDepth(), surfStroke, OTHER_SURF_COLOR);
 					slipPolys.add(line);
 					firstPolys.add(line);
-					lastPolys.add(line);
+					if (includeLast)
+						lastPolys.add(line);
 				}
 			}
 		}
@@ -301,19 +322,24 @@ public class RupturePlotGenerator {
 		
 		List<PlotSpec> specs = new ArrayList<>();
 		
-		String title = "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
+		String title = pub ? "" : "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
 		
-		PlotSpec slipSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)", "Total Slip");
+		PlotSpec slipSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)",
+				includeLast ? "Total Slip" : "Depth (km)");
 		slipSpec.setPlotAnnotations(slipPolys);
 		specs.add(slipSpec);
 		
-		PlotSpec firstSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)", "Time First Slip");
+		PlotSpec firstSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)",
+				includeLast ? "Time First Slip" : "Depth (km)");
 		firstSpec.setPlotAnnotations(firstPolys);
 		specs.add(firstSpec);
 		
-		PlotSpec lastSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)", "Time Last Slip");
-		lastSpec.setPlotAnnotations(lastPolys);
-		specs.add(lastSpec);
+		if (includeLast) {
+			PlotSpec lastSpec = new PlotSpec(elems, chars, title, "Distance Along Strike (km)",
+					"Time Last Slip");
+			lastSpec.setPlotAnnotations(lastPolys);
+			specs.add(lastSpec);
+		}
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setTickLabelFontSize(18);
@@ -332,10 +358,11 @@ public class RupturePlotGenerator {
 			timeInc = 2;
 		else
 			timeInc = 1;
-		PaintScaleLegend timeCPTbar = XYZGraphPanel.getLegendForCPT(timeCPT, "Time (s)",
+		String timeLabel = includeLast ? "Time (s)" : "Time First Slip (s)";
+		PaintScaleLegend timeCPTbar = XYZGraphPanel.getLegendForCPT(timeCPT, timeLabel,
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), timeInc, RectangleEdge.BOTTOM);
 		slipSpec.addSubtitle(slipCPTbar);
-		lastSpec.addSubtitle(timeCPTbar);
+		firstSpec.addSubtitle(timeCPTbar);
 		
 		List<Range> xRanges = new ArrayList<>();
 		List<Range> yRanges = new ArrayList<>();
@@ -346,11 +373,19 @@ public class RupturePlotGenerator {
 		gp.setyAxisInverted(true);
 		gp.drawGraphPanel(specs, false, false, xRanges, yRanges);
 		
+		TickUnits tus = new TickUnits();
+		TickUnit tu = new NumberTickUnit(5d);
+		tus.add(tu);
+		CombinedDomainXYPlot combPlot = (CombinedDomainXYPlot)gp.getPlot();
+		List<XYPlot> subPlots = combPlot.getSubplots();
+		for (XYPlot subPlot : subPlots)
+			subPlot.getRangeAxis().setStandardTickUnits(tus);
+		
 		int bufferX = 113;
 		int bufferY = 332;
 		
 		int height = 800;
-		double heightEach = (height - bufferY)/3d;
+		double heightEach = (height - bufferY)/(double)specs.size();
 		System.out.println("Height each: "+heightEach);
 //		double targetWidth = heightEach*maxDepth/maxDAS;
 		double targetWidth = heightEach*maxDAS/maxDepth;
