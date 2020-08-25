@@ -66,10 +66,6 @@ public class InversionConstraintImplTests {
 			allParents.add(sect.getParentSectionId());
 	}
 
-	@Before
-	public void setUp() throws Exception {
-	}
-
 	@Test
 	public void testAPriori() {
 		double[] aPrioriRates = new double[numRuptures];
