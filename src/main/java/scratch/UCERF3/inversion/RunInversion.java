@@ -84,8 +84,8 @@ public class RunInversion {
 		if (D) System.out.println("Total Final (creep & subseismogenic rup reduced) Moment Rate = "+rupSet.getTotalReducedMomentRate());
 		
 		// get the inversion configuration
-		InversionConfiguration config;
-		config = InversionConfiguration.forModel(inversionModel, rupSet);
+		UCERF3InversionConfiguration config;
+		config = UCERF3InversionConfiguration.forModel(inversionModel, rupSet);
 		config.updateRupSetInfoString(rupSet);
 		
 		File precomputedDataDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
@@ -108,7 +108,7 @@ public class RunInversion {
 		// paleo probability model
 		PaleoProbabilityModel paleoProbabilityModel = null;
 		try {
-			paleoProbabilityModel = InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+			paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 		} catch (IOException e) {
 			e.printStackTrace();
 			// exit
@@ -124,7 +124,7 @@ public class RunInversion {
 		}
 		
 		// create the input generator
-		InversionInputGenerator gen = new InversionInputGenerator(rupSet, config, paleoRateConstraints, aveSlipConstraints,
+		UCERF3InversionInputGenerator gen = new UCERF3InversionInputGenerator(rupSet, config, paleoRateConstraints, aveSlipConstraints,
 				improbabilityConstraint, paleoProbabilityModel);
 		
 		// generate the inputs
@@ -135,7 +135,7 @@ public class RunInversion {
 		// write solution to disk (optional)
 		if (writeMatrixZipFiles) {
 			try {
-				gen.writeZipFile(new File(precomputedDataDir, fileName+"_inputs.zip"), precomputedDataDir, false);
+				gen.writeZipFile(new File(precomputedDataDir, fileName+"_inputs.zip"), precomputedDataDir, false, true);
 			} catch (IOException e) {
 				// a failure here is actually not the end of the world. just print the trace and move on
 				e.printStackTrace();
@@ -150,8 +150,8 @@ public class RunInversion {
 		double[] d = gen.getD();
 		DoubleMatrix2D A_ineq = gen.getA_ineq();
 		double[] d_ineq = gen.getD_ineq();
-		double[] initial = gen.getInitial();
-		double[] minimumRuptureRates = gen.getMinimumRuptureRates();
+		double[] initial = gen.getInitialSolution();
+		double[] minimumRuptureRates = gen.getWaterLevelRates();
 		
 		// now lets the run the inversion!
 		CompletionCriteria criteria;
@@ -179,7 +179,7 @@ public class RunInversion {
 			ThreadedSimulatedAnnealing tsa = new ThreadedSimulatedAnnealing(A, d, initial, relativeSmoothnessWt,
 					A_ineq, d_ineq, minimumRuptureRates, numThreads, subCompetionCriteria);
 			
-			tsa.setRanges(gen.getRangeEndRows(), gen.getRangeNames());
+			tsa.setConstraintRanges(gen.getConstraintRowRanges());
 			
 			sa = tsa;
 		} else {
@@ -194,10 +194,10 @@ public class RunInversion {
 		double[] solution_raw = sa.getBestSolution();
 		
 		// adjust for minimum rates if applicable
-		double[] solution_adjusted = gen.adjustSolutionForMinimumRates(solution_raw);
+		double[] solution_adjusted = gen.adjustSolutionForWaterLevel(solution_raw);
 		Map<String, Double> energies = null;
-		if (sa instanceof ThreadedSimulatedAnnealing)
-			energies = ((ThreadedSimulatedAnnealing)sa).getEnergies();
+//		if (sa instanceof ThreadedSimulatedAnnealing)
+//			energies = ((ThreadedSimulatedAnnealing)sa).getEnergies();
 		InversionFaultSystemSolution solution = new InversionFaultSystemSolution(
 				rupSet, solution_adjusted, config, energies);
 		

@@ -9,7 +9,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.collect.Maps;
 
 import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.inversion.InversionInputGenerator;
+import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 
 /**
  * This loads in Glenn's paleoseismic trench probabilities.
@@ -28,7 +28,7 @@ public abstract class PaleoProbabilityModel {
 	public abstract double getProbPaleoVisible(double mag, double distAlongRup);
 	
 	double getDistAlongRup(List<FaultSection> rupSections, int sectIndex) {
-		return InversionInputGenerator.getDistanceAlongRupture(
+		return UCERF3InversionInputGenerator.getDistanceAlongRupture(
 				rupSections, sectIndex, traceLengthCache);
 	}
 

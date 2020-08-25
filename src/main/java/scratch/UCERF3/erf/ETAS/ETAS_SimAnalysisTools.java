@@ -1856,7 +1856,6 @@ public class ETAS_SimAnalysisTools {
 
 	    NumberFormat format = NumberFormat.getInstance();
 
-	    StringBuilder sb = new StringBuilder();
 	    long maxMemory = runtime.maxMemory();
 	    long allocatedMemory = runtime.totalMemory();
 	    long freeMemory = runtime.freeMemory();

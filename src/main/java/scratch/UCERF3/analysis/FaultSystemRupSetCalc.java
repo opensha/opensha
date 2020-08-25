@@ -53,7 +53,7 @@ import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.InversionInputGenerator;
+import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
@@ -1875,8 +1875,8 @@ public class FaultSystemRupSetCalc {
 		
 		// lets first compute the average magnitude for Parkfield events
 		double aveParkfieldMag=0;
-		List<Integer> parkRupIndexList = InversionInputGenerator.findParkfieldRups(fltSystRupSet);
-		for( int parkRupIndex: InversionInputGenerator.findParkfieldRups(fltSystRupSet)) {
+		List<Integer> parkRupIndexList = UCERF3InversionInputGenerator.findParkfieldRups(fltSystRupSet);
+		for( int parkRupIndex: UCERF3InversionInputGenerator.findParkfieldRups(fltSystRupSet)) {
 			aveParkfieldMag += fltSystRupSet.getMagForRup(parkRupIndex)/(double)parkRupIndexList.size();
 		}
 		if(D) System.out.println("aveParkfieldMag = "+aveParkfieldMag);
@@ -2244,7 +2244,7 @@ public class FaultSystemRupSetCalc {
 						InversionModels.CHAR_CONSTRAINED, scaleRel, SlipAlongRuptureModels.TAPERED, 
 						TotalMag5Rate.RATE_7p9, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3);
 				
-				List<Integer> parkfileRupIndexList = InversionInputGenerator.findParkfieldRups(rupSet);
+				List<Integer> parkfileRupIndexList = UCERF3InversionInputGenerator.findParkfieldRups(rupSet);
 				
 				ArrayList<Integer> parkfileRupThatFallBelowMinMag = new ArrayList<Integer>();
 				
@@ -2301,7 +2301,7 @@ public class FaultSystemRupSetCalc {
 					InversionModels.CHAR_CONSTRAINED, scaleRel, SlipAlongRuptureModels.TAPERED, 
 					TotalMag5Rate.RATE_7p9, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3);
 
-			List<Integer> parkfileRupIndexList = InversionInputGenerator.findParkfieldRups(rupSet);
+			List<Integer> parkfileRupIndexList = UCERF3InversionInputGenerator.findParkfieldRups(rupSet);
 			
 			for(int index:parkfileRupIndexList) {
 				info += "\t"+index+"\t"+(float)rupSet.getMagForRup(index)+"\t"+(float)rupSet.getAveSlipForRup(index)+

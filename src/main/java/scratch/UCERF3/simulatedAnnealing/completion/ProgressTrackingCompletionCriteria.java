@@ -11,6 +11,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.GraphWindow;
 
+import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 
 import com.google.common.collect.Lists;
@@ -32,7 +33,7 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	
 	private File automaticFile;
 	
-	private List<String> rangeNames;
+	private List<ConstraintRange> constraintRanges;
 	
 	private long iterMod = 0;
 	
@@ -71,8 +72,9 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 		
 		ArrayList<String> header = Lists.newArrayList("Iterations", "Time (millis)", "Energy (total)",
 				"Energy (equality)", "Energy (entropy)", "Energy (inequality)");
-		if (rangeNames != null)
-			header.addAll(rangeNames);
+		if (constraintRanges != null)
+			for (ConstraintRange range : constraintRanges)
+				header.add(range.shortName);
 		header.add("Total Perterbations Kept");
 		csv.addLine(header);
 		
@@ -137,9 +139,9 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 			funcs.add(new ArbitrarilyDiscretizedFunc("Equality Energy"));
 			funcs.add(new ArbitrarilyDiscretizedFunc("Entropy Energy"));
 			funcs.add(new ArbitrarilyDiscretizedFunc("Inequality Energy"));
-			if (rangeNames != null) {
-				for (String name : rangeNames)
-					funcs.add(new ArbitrarilyDiscretizedFunc(name+" Energy"));
+			if (constraintRanges != null) {
+				for (ConstraintRange name : constraintRanges)
+					funcs.add(new ArbitrarilyDiscretizedFunc(name.shortName+" Energy"));
 			} else {
 				for (int i=4; i<energies.get(0).length; i++) {
 					funcs.add(new ArbitrarilyDiscretizedFunc("Unknown Energy "+(i+1)));
@@ -199,8 +201,8 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 		return energies;
 	}
 	
-	public void setRangeNames(List<String> rangeNames) {
-		this.rangeNames = rangeNames;
+	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
+		this.constraintRanges = constraintRanges;
 	}
 	
 	public CompletionCriteria getCriteria() {
