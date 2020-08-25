@@ -775,7 +775,10 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		double max = this.getMaxValue();
 		if (preserveEdges) {
 			orig = (CPT)clone();
-			orig = orig.rescale(min+0.5*delta, max-0.5*delta);
+			double lastBinStart = 0d;
+			for (double start = min; (float)start < (float)max; start += delta)
+				lastBinStart = start;
+			orig = orig.rescale(min+0.5*delta, lastBinStart+0.5*delta);
 		}
 		cpt.clear();
 		

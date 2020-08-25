@@ -1885,9 +1885,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	
 	public static void addColorbarCommand(ArrayList<String> gmtCommandLines, GMT_Map map,
 			double colorScaleMin, double colorScaleMax, String cptFile, String psFile, double plotWidth) {
-		addColorbarCommand(gmtCommandLines, map.getCustomLabel(), map.isLogPlot(), colorScaleMin, colorScaleMax,
-				cptFile, psFile, map.isCPTEqualSpacing(), map.getCPTCustomInterval(),
-				map.getLabelSize(), map.getLabelTickSize(), plotWidth);
+		if (!map.isHideColorbar())
+			addColorbarCommand(gmtCommandLines, map.getCustomLabel(), map.isLogPlot(), colorScaleMin, colorScaleMax,
+					cptFile, psFile, map.isCPTEqualSpacing(), map.getCPTCustomInterval(),
+					map.getLabelSize(), map.getLabelTickSize(), plotWidth);
 	}
 	
 	public static void addColorbarCommand(ArrayList<String> gmtCommandLines, String scaleLabel, boolean isLog,

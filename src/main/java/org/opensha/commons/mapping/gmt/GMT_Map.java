@@ -85,6 +85,7 @@ public class GMT_Map implements Serializable {
 	
 	private double imageWidth = 6.5;
 	
+	private boolean hideColorbar = false;
 	private String customLabel = null;
 	private Integer labelSize = null;
 	private Integer labelTickSize = null;
@@ -281,6 +282,14 @@ public class GMT_Map implements Serializable {
 
 	public void setCustomLabel(String customLabel) {
 		this.customLabel = customLabel;
+	}
+	
+	public void setHideColorbar(boolean hideColorbar) {
+		this.hideColorbar = hideColorbar;
+	}
+	
+	public boolean isHideColorbar() {
+		return hideColorbar;
 	}
 	
 	public void setLabelSize(Integer labelSize) {
