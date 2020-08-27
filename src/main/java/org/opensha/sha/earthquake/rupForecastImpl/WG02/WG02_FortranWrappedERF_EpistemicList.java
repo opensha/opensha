@@ -47,6 +47,9 @@ import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.rupForecastImpl.WG02.servlet.WG02Servlet;
 
+import com.google.common.base.Preconditions;
+import com.google.common.io.Files;
+
 /**
  * <p>Title: WG02_FortranWrappedERF_EpistemicList</p>
  * <p>Description: Working Group 2002 Epistemic List of ERFs. This class
@@ -216,17 +219,21 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 		double duration = timeSpan.getDuration();
 
 		// set the filename for the time-dependent SAF model according to duration
-		String timeDepFile;
+		String timeDepFileName;
 		if(duration == 1)
-			timeDepFile = TIME_PRED_FILE_01YRS;
+			timeDepFileName = TIME_PRED_FILE_01YRS;
 		else if (duration == 5)
-			timeDepFile = TIME_PRED_FILE_05YRS;
+			timeDepFileName = TIME_PRED_FILE_05YRS;
 		else if (duration == 10)
-			timeDepFile = TIME_PRED_FILE_10YRS;
+			timeDepFileName = TIME_PRED_FILE_10YRS;
 		else if (duration == 20)
-			timeDepFile = TIME_PRED_FILE_20YRS;
+			timeDepFileName = TIME_PRED_FILE_20YRS;
 		else
-			timeDepFile = TIME_PRED_FILE_30YRS;
+			timeDepFileName = TIME_PRED_FILE_30YRS;
+		
+		File timeDepFile = new File(WG02_CODE_PATH, timeDepFileName);
+		Preconditions.checkState(timeDepFile.exists(),
+				"input file doesn't exist: %s", timeDepFile.getAbsolutePath());
 
 
 		try {
@@ -296,7 +303,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 						fileLines.add(lineFromInputFile);
 						// get & set the time-predictable model filename line
 						lineFromInputFile = br.readLine();
-						lineFromInputFile = timeDepFile;
+						lineFromInputFile = timeDepFile.getAbsolutePath();
 					}
 				}
 				fileLines.add(lineFromInputFile);
@@ -308,14 +315,11 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 			//number of realizations have changed.
 			if(D)System.out.println("Creating the input files");
 			
-			String dirName = WG02_DIRS+System.currentTimeMillis();
-			
-			File dir = new File(WG02_CODE_PATH+dirName);
-			
-			dir.mkdir();
+			File tmpDir = Files.createTempDir();
 			
 			//overwriting the WG-02 input file with the changes in the file
-			FileWriter fw = new FileWriter(new File(dir, WG02_OPENSHA_INPUT_FILE));
+			File inputFile = new File(tmpDir, WG02_OPENSHA_INPUT_FILE);
+			FileWriter fw = new FileWriter(inputFile);
 			BufferedWriter bw = new BufferedWriter(fw);
 			ListIterator it= fileLines.listIterator();
 			while(it.hasNext())
@@ -323,36 +327,36 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 			bw.close();
 
 			//Command to be executed for the WG-02
-			String wg02_Command="./wg99_main  "+ dirName+"/"+WG02_OPENSHA_INPUT_FILE;
+			File executable = new File(WG02_CODE_PATH, "wg99_main");
+			String wg02_Command = executable.getAbsolutePath()+" "+inputFile.getAbsolutePath();
 			//creating the shell script  file to run the WG-02 code
-			fw= new FileWriter(WG02_CODE_PATH+dirName+"/"+"wg02.sh");
+			File tmpScript = new File(tmpDir, "wg02.sh");
+			fw= new FileWriter(tmpScript);
 			bw=new BufferedWriter(fw);
 			bw.write("#!/bin/bash\n");
 			bw.write("\n");
 			bw.write("set -o errexit\n");
 			bw.write("\n");
-			bw.write("cd "+WG02_CODE_PATH+"\n");
-			bw.write("\n");
-			bw.write("if [[ -e "+INPUT_FILE_NAME_1+" ]];then\n");
-			bw.write("\trm "+INPUT_FILE_NAME_1+"\n");
-			bw.write("fi\n");
-			bw.write("if [[ -e "+INPUT_FILE_NAME_2+" ]];then\n");
-			bw.write("\trm "+INPUT_FILE_NAME_2+"\n");
-			bw.write("fi\n");
+			bw.write("cd "+tmpDir.getAbsolutePath()+"\n");
 			bw.write("\n");
 			bw.write(wg02_Command+"\n");
-			bw.write("mv "+INPUT_FILE_NAME_1+" "+WG02_CODE_PATH+dirName+"/.\n");
-			bw.write("mv "+INPUT_FILE_NAME_2+" "+WG02_CODE_PATH+dirName+"/.\n");
 			bw.close();
 			//command to be executed during the runtime.
-			String[] command ={"sh","-c","sh "+ WG02_CODE_PATH+dirName+"/wg02.sh"};
+			String[] command ={"sh","-c","sh "+tmpScript.getAbsolutePath()};
 			RunScript.runScript(command);
 			//command[2]="rm "+WG02_CODE_PATH+"*.out*";
 			//RunScript.runScript(command);
 			//       command[2]="rm "+WG02_CODE_PATH+dirName+"/wg02.sh";
 			//       RunScript.runScript(command);
 			
-			return FileUtils.loadFile( WG02_CODE_PATH+dirName+"/"+INPUT_FILE_NAME_1 );
+			File outputFile = new File(tmpDir, INPUT_FILE_NAME_1);
+			Preconditions.checkState(outputFile.exists(),
+					"fortran output file doesn't exist: %s", outputFile.getAbsolutePath());
+			ArrayList<String> ret = FileUtils.loadFile(outputFile.getAbsolutePath());
+			
+			FileUtils.deleteRecursive(tmpDir);
+			
+			return ret;
 		}catch(Exception e){
 			throw ExceptionUtils.asRuntimeException(e);
 		}
