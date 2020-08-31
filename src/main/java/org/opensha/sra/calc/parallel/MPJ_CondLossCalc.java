@@ -148,16 +148,6 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 //		0, 25,    40,   60,    80,   100,   500
 //		ArbitrarilyDiscretizedFunc magThreshFunc = new MagDistCutoffParam().getDefaultValue();
 		
-		// from Keith 1/9/14
-//		5.25  60 km
-//		7.25 200 km
-//		9.00 500 km
-		ArbitrarilyDiscretizedFunc magThreshFunc = new ArbitrarilyDiscretizedFunc();
-		magThreshFunc.set(0d,	0.00);
-		magThreshFunc.set(60d,	5.25);
-		magThreshFunc.set(200d,	7.25);
-		magThreshFunc.set(500d,	9.00);
-		
 		keepTractResults = cmd.hasOption("tract-results");
 		if (keepTractResults) {
 			shuffle = false; // will keep individual assets on fewer nodes
@@ -196,7 +186,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 //			}
 		}
 		
-		calc = new ThreadedCondLossCalc(erfs, imrs, magThreshFunc);
+		calc = new ThreadedCondLossCalc(erfs, imrs, getDefaultMagDistFunc());
 		
 		if (cmd.hasOption("vuln-file")) {
 			File vulnFile = new File(cmd.getOptionValue("vuln-file"));
@@ -204,6 +194,19 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 			VulnerabilityFetcher.getVulnerabilities(vulnFile);
 			System.out.println("DONE loading vulns.");
 		}
+	}
+	
+	public static DiscretizedFunc getDefaultMagDistFunc() {
+		// from Keith 1/9/14
+//		5.25  60 km
+//		7.25 200 km
+//		9.00 500 km
+		ArbitrarilyDiscretizedFunc magThreshFunc = new ArbitrarilyDiscretizedFunc();
+		magThreshFunc.set(0d,	0.00);
+		magThreshFunc.set(60d,	5.25);
+		magThreshFunc.set(200d,	7.25);
+		magThreshFunc.set(500d,	9.00);
+		return magThreshFunc;
 	}
 	
 	private File getTractNodeDir(int rank) {
@@ -994,7 +997,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 			this.asset = asset;
 		}
 		
-		void calculate(ERF erf, ScalarIMR imr, Site initialSite, ArbitrarilyDiscretizedFunc magThreshFunc) {
+		void calculate(ERF erf, ScalarIMR imr, Site initialSite, DiscretizedFunc magThreshFunc) {
 			try {
 				results = asset.calculateExpectedLossPerRup(imr, magThreshFunc, initialSite, erf, MPJ_CondLossCalc.this);
 				registerResult(this);

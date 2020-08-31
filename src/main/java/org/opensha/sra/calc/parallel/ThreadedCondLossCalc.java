@@ -6,6 +6,7 @@ import java.util.Iterator;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.sha.earthquake.ERF;
@@ -21,9 +22,9 @@ public class ThreadedCondLossCalc {
 	protected Site[] sites;
 	
 	protected Deque<SiteResult> stack;
-	private ArbitrarilyDiscretizedFunc magThreshFunc;
+	private DiscretizedFunc magThreshFunc;
 	
-	public ThreadedCondLossCalc(ERF[] erfs, ScalarIMR[] imrs, ArbitrarilyDiscretizedFunc magThreshFunc) {
+	public ThreadedCondLossCalc(ERF[] erfs, ScalarIMR[] imrs, DiscretizedFunc magThreshFunc) {
 		Preconditions.checkNotNull(erfs);
 		Preconditions.checkNotNull(imrs);
 		Preconditions.checkArgument(imrs.length > 0);
