@@ -126,6 +126,11 @@ Named,java.io.Serializable{
 	}
 	
 	@Override
+	public double getInterpolatedY_inLogXDomain(double x) {
+		return getInterpolatedY(x, true, false);
+	}
+	
+	@Override
 	public double getInterpolatedY_inLogYDomain(double x) {
 		return getInterpolatedY(x, false, true);
 	}
