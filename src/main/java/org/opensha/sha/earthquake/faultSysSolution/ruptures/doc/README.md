@@ -53,7 +53,9 @@ Section azimuths are defined by drawing a vector between the midpoints of last t
 
 ![Azimuth](az_example_2.png)
 
-Here, the azimuth of the fault on the right is defined by the second subsection which is included.
+Here, the azimuth of the fault on the right is defined by the second subsection which is included. This is what the azimuths look like for our complicated UCERF3 rupture example above:
+
+![Azimuth](u3_complicated_az_1.png)
 
 This gets a little more complicated when splays are included. First, consider the following single-strand rupture including 2 nearly-parallel fault sections:
 
