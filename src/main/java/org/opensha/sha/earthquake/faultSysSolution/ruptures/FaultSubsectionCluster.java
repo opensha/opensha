@@ -67,11 +67,11 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	
 	private final ClusterJumpDistComparator clusterDistComparator;
 	
-	public FaultSubsectionCluster(List<FaultSection> subSects) {
+	public FaultSubsectionCluster(List<? extends FaultSection> subSects) {
 		this(subSects, null);
 	}
 	
-	public FaultSubsectionCluster(List<FaultSection> subSects, Collection<FaultSection> endSects) {
+	public FaultSubsectionCluster(List<? extends FaultSection> subSects, Collection<FaultSection> endSects) {
 		Preconditions.checkArgument(!subSects.isEmpty(), "Must supply at least 1 subsection");
 		this.subSects = ImmutableList.copyOf(subSects);
 		this.startSect = subSects.get(0);

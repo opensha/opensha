@@ -451,6 +451,11 @@ public class RupSetConnectionSearch {
 	
 	public ClusterRupture buildClusterRupture(List<FaultSubsectionCluster> rupClusters,
 			List<Jump> jumps, final boolean debug) {
+		return buildClusterRupture(rupClusters, jumps, debug, null);
+	}
+	
+	public ClusterRupture buildClusterRupture(List<FaultSubsectionCluster> rupClusters,
+			List<Jump> jumps, final boolean debug, FaultSubsectionCluster startCluster) {
 		
 		Multimap<FaultSubsectionCluster, Jump> jumpsFromMap = HashMultimap.create();
 		if (debug) {
@@ -464,39 +469,40 @@ public class RupSetConnectionSearch {
 			if (debug) System.out.println("Available jump: "+jump);
 		}
 		
-		// calculate isolation score where each first level connection costs 1, 2nd level
-		// costs 0.1, 3rd 0.01, etc...
-		FaultSubsectionCluster startCluster = null;
-		if (rupClusters.size() > 1) {
-			if (debug) System.out.println("Calculating cluster isolation scores...");
-			double minClusterScore = Double.POSITIVE_INFINITY;
-			for (FaultSubsectionCluster cluster : rupClusters) {
-				Preconditions.checkState(!jumpsFromMap.get(cluster).isEmpty());
-				HashSet<FaultSubsectionCluster> availableClusters = new HashSet<>(rupClusters);
-				availableClusters.remove(cluster);
-				double score = calcClusterIsolationScore(cluster,
-						availableClusters, jumpsFromMap, 1d);
-				if (debug) System.out.println("\tCluster "+cluster+"\tscore="+score);
-				if (score < minClusterScore) {
-					startCluster = cluster;
-					minClusterScore = score;
-				} else if (score == minClusterScore) {
-					// go by number of isolated end sections
-					int prevIsolatedSects = calcNumIsolatedEndSubsections(startCluster);
-					int myIsolatedSects = calcNumIsolatedEndSubsections(cluster);
-					if (debug) System.out.println("\t\tTie. I have "+myIsolatedSects
-							+" isolated sects, prev has "+prevIsolatedSects);
-					if (myIsolatedSects > prevIsolatedSects) {
+		if (startCluster == null) {
+			// calculate isolation score where each first level connection costs 1, 2nd level
+			// costs 0.1, 3rd 0.01, etc...
+			if (rupClusters.size() > 1) {
+				if (debug) System.out.println("Calculating cluster isolation scores...");
+				double minClusterScore = Double.POSITIVE_INFINITY;
+				for (FaultSubsectionCluster cluster : rupClusters) {
+					Preconditions.checkState(!jumpsFromMap.get(cluster).isEmpty());
+					HashSet<FaultSubsectionCluster> availableClusters = new HashSet<>(rupClusters);
+					availableClusters.remove(cluster);
+					double score = calcClusterIsolationScore(cluster,
+							availableClusters, jumpsFromMap, 1d);
+					if (debug) System.out.println("\tCluster "+cluster+"\tscore="+score);
+					if (score < minClusterScore) {
 						startCluster = cluster;
 						minClusterScore = score;
+					} else if (score == minClusterScore) {
+						// go by number of isolated end sections
+						int prevIsolatedSects = calcNumIsolatedEndSubsections(startCluster);
+						int myIsolatedSects = calcNumIsolatedEndSubsections(cluster);
+						if (debug) System.out.println("\t\tTie. I have "+myIsolatedSects
+								+" isolated sects, prev has "+prevIsolatedSects);
+						if (myIsolatedSects > prevIsolatedSects) {
+							startCluster = cluster;
+							minClusterScore = score;
+						}
 					}
 				}
+				
+				if (debug)
+					System.out.println("Most isolated cluster: "+startCluster+"\tscore="+minClusterScore);
+			} else {
+				startCluster = rupClusters.get(0);
 			}
-			
-			if (debug)
-				System.out.println("Most isolated cluster: "+startCluster+"\tscore="+minClusterScore);
-		} else {
-			startCluster = rupClusters.get(0);
 		}
 		
 		HashSet<FaultSubsectionCluster> availableClusters = new HashSet<>(rupClusters);
