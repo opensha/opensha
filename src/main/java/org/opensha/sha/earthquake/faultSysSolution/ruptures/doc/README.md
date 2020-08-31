@@ -39,3 +39,14 @@ In order to include the Pleito fault, there has to be a gap in the Big Bend sect
 
 ## Notes on Azimuth Change Calculations
 
+UCERF3 relied heavily on azimuth change to constrain possible rupture jumps (typically only allowing up to 60 degrees of azimuth change in a single jump). Here's an example of a UCERF3-style rupture with azimuth arrows drawn in green:
+
+![U3](parallel_simple.png)
+
+Section azimuths are defined by drawing a vector between the midpoints of last two sections before a jump, and an additional vector between the first two sections after a jump. We did it this way because the direction is undefined if you were to jump to a single subsection that is in the middle of a fault. This is best explained with a cartoon:
+
+![Azimuth](az_example_1.png)
+
+![Azimuth](az_example_2.png)
+
+Here, the azimuth of the fault on the right is defined by the second subsection which is included.
