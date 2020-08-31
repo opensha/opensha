@@ -27,7 +27,11 @@ It allows Y-ruptures, which are defined in this framework as a regular jump and 
 
 ![Simple](y_jump_1.png)
 
-And T-ruptures (which violate UCERF3 construction rules, but don't include splays):
+Those occur often in RSQSim, for example:
+
+![RSQSim](y_rsqsim.png)
+
+The new framework also allows T-ruptures (which violate UCERF3 construction rules, even though they aren't technically a splay by the new definition):
 
 ![Simple](t_jump_1.png)
 
@@ -40,6 +44,10 @@ Here is one example where we may want to include splay jumps in future UCERF's. 
 In order to include the Pleito fault, there has to be a gap in the Big Bend section of the SAF. If we allowed splays, then this rupture could be included:
 
 ![U3](u3_saf_pleito_splay.png)
+
+We see that type of rupture in RSQSim, for example:
+
+![RSQSim](saf_pleito_rsqsim.png)
 
 ## Notes on Azimuth Change Calculations
 
