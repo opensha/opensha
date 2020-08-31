@@ -4,6 +4,10 @@ In UCERF3, supra-seismogenic ruptures were defined as a unique set of fault subs
 
 ![Simple](simple_jump_1.png)
 
+Here is a breakdown of the plausibility critera employed in UCERF3:
+
+![plausibility](ucerf3_plausibility_table.png)
+
 Jumps between faults are only allowed at the closest pair of subsections between each fault (the ends in this simple example). Here are a couple more complicated real UCERF3 ruptures; note that even though these ruptures are complex, you can draw a single path through the ruptures:
 
 ![U3](u3_complicated_1.png)
@@ -50,3 +54,13 @@ Section azimuths are defined by drawing a vector between the midpoints of last t
 ![Azimuth](az_example_2.png)
 
 Here, the azimuth of the fault on the right is defined by the second subsection which is included.
+
+This gets a little more complicated when splays are included. First, consider the following single-strand rupture including 2 nearly-parallel fault sections:
+
+![parallel](parallel_as_primary.png)
+
+For this rupture, the jumping point is at the right end of the bottom fault, as that is the closest point. This results in an azimuth change of ~180 degrees, which would not pass the UCERF3 rules. Now, lets change things such that the upper fault is angled slightly toward the middle of the bottom fault:
+
+![parallel](parallel_as_splay.png)
+
+These two rupture examples are almost identical, but their representations in this framework are very different. Now, the closest section pair is in the middle of the bottom fault, and the rupture has a splay. Additionally, the azimuths change is now very small, and would pass the UCERF3 criteria. If we choose to include ruptures with parallel faults, then we must also replace our azimuth criteria with more flexible rules.
