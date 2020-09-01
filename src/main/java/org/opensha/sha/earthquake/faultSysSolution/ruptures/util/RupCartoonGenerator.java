@@ -1,22 +1,28 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.geom.Point2D;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import org.dom4j.DocumentException;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
+import org.jfree.ui.TextAnchor;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.gui.plot.AnimatedGIFRenderer;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
@@ -26,8 +32,12 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder.RupDebugCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterPermuationStrategy;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -38,9 +48,12 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.FaultSystemIO;
 
 public class RupCartoonGenerator {
+	
+	private static boolean write_pdfs = false;
 	
 	private static void plotSection(FaultSection sect, List<XY_DataSet> funcs,
 			List<PlotCurveCharacterstics> chars, PlotCurveCharacterstics traceChar,
@@ -168,7 +181,8 @@ public class RupCartoonGenerator {
 		File file = new File(outputDir, prefix);
 		gp.getChartPanel().setSize(width, height);
 		gp.saveAsPNG(file.getAbsolutePath()+".png");
-		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+		if (write_pdfs)
+			gp.saveAsPDF(file.getAbsolutePath()+".pdf");
 	}
 	
 	private static Color[] strand_colors =  { Color.BLACK, Color.MAGENTA.darker(), Color.ORANGE.darker() };
@@ -347,6 +361,181 @@ public class RupCartoonGenerator {
 		
 	}
 	
+	private static double getAnnY(Range yRange, int index, double startYMult, double deltaYMult) {
+		return yRange.getLowerBound() + (startYMult-index*deltaYMult)*
+				(yRange.getUpperBound() - yRange.getLowerBound());
+	}
+	
+	private static void animateRuptureBuilding(File outputDir, String prefix, RuptureBuilder rupBuild,
+			List<PlausibilityFilter> filters, SectionDistanceAzimuthCalculator distAzCalc,
+			double maxDist, int maxNumSplays, boolean includeDuplicates, boolean plotAzimuths,
+			boolean axisLabels, double fps) throws IOException {
+		TrackAllDebugCriteria tracker = new TrackAllDebugCriteria();
+		
+		DistCutoffClosestSectClusterConnectionStrategy connStrat =
+				new DistCutoffClosestSectClusterConnectionStrategy(maxDist);
+		connStrat.addConnections(rupBuild.allClusters, distAzCalc);
+		
+		ClusterRuptureBuilder builder = new ClusterRuptureBuilder(
+				rupBuild.allClusters, filters, maxNumSplays);
+		builder.setDebugCriteria(tracker, false);
+		List<ClusterRupture> finalRups = builder.build(new UCERF3ClusterPermuationStrategy());
+		
+		System.out.println("Built "+finalRups.size()+" final rups");
+		System.out.println("Tested "+tracker.allRups.size()+" rups");
+		
+		List<XY_DataSet> backgroundFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> backgroundChars = new ArrayList<>();
+		PlotCurveCharacterstics bgTraceChar = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, 2f, Color.LIGHT_GRAY);
+		PlotCurveCharacterstics bgOutlineChar = new PlotCurveCharacterstics(
+				PlotLineType.DOTTED, 1f, Color.LIGHT_GRAY);
+		for (FaultSection sect : rupBuild.subSectsList)
+			plotSection(sect, backgroundFuncs, backgroundChars, bgTraceChar, bgOutlineChar);
+		
+		MinMaxAveTracker latTrack = new MinMaxAveTracker();
+		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+		for (PlotElement xy : backgroundFuncs) {
+			for (Point2D pt : (XY_DataSet)xy) {
+				latTrack.addValue(pt.getY());
+				lonTrack.addValue(pt.getX());
+			}
+		}
+		
+		double minLon = lonTrack.getMin();
+		double maxLon = lonTrack.getMax();
+		double minLat = latTrack.getMin();
+		double maxLat = latTrack.getMax();
+		maxLat += 0.05;
+		minLat -= 0.05;
+		maxLon += 0.05;
+		minLon -= 0.05;
+		
+		double latSpan = maxLat - minLat;
+		double lonSpan = maxLon - minLon;
+		int width = 800;
+		double plotWidth = width - 70;
+		double plotHeight = plotWidth*latSpan/lonSpan;
+		int height = 150 + (int)plotHeight;
+		
+		Range xRange = new Range(minLon, maxLon);
+		Range yRange = new Range(minLat, maxLat);
+		
+		HashSet<UniqueRupture> uniques = new HashSet<>();
+		
+		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 22);
+		double startYMult = 0.98;
+		double deltaYMult = 0.08;
+		double rightAnnX = xRange.getLowerBound() + 0.98*(xRange.getUpperBound() - xRange.getLowerBound());
+		double leftAnnX = xRange.getLowerBound() + 0.02*(xRange.getUpperBound() - xRange.getLowerBound());
+		
+		File outputFile = new File(outputDir, prefix+".gif");
+		
+		AnimatedGIFRenderer gifRender = new AnimatedGIFRenderer(outputFile, fps, true);
+		
+		int count = 0;
+		
+		for (ClusterRupture possible : tracker.allRups) {
+			boolean duplicate = uniques.contains(possible.unique);;
+			if (duplicate && !includeDuplicates)
+				continue;
+			uniques.add(possible.unique);
+			PlausibilityResult result = PlausibilityResult.PASS;
+			List<PlausibilityResult> results = new ArrayList<>();
+			for (PlausibilityFilter filter : filters) {
+				PlausibilityResult subResult = filter.apply(possible, false);
+				results.add(subResult);
+				result = result.logicalAnd(subResult);
+			}
+			
+			PlotSpec spec = buildRupturePlot(possible, " ", false, false);
+			List<PlotElement> newFuncs = new ArrayList<>(backgroundFuncs);
+			List<PlotCurveCharacterstics> newChars = new ArrayList<>(backgroundChars);
+			newFuncs.addAll(spec.getPlotElems());
+			newChars.addAll(spec.getChars());
+			spec.setPlotElems(newFuncs);
+			spec.setChars(newChars);
+			
+			XYTextAnnotation resultAnn = new XYTextAnnotation(result.name(), rightAnnX,
+					getAnnY(yRange, 0, startYMult, deltaYMult));
+			resultAnn.setFont(annFont);
+			resultAnn.setTextAnchor(TextAnchor.TOP_RIGHT);
+			if (result.isPass())
+				resultAnn.setPaint(Color.GREEN.darker());
+			else if (result.canContinue())
+				resultAnn.setPaint(Color.DARK_GRAY);
+			else
+				resultAnn.setPaint(Color.RED.darker());
+			spec.addPlotAnnotation(resultAnn);
+			if (duplicate && result.isPass()) {
+				XYTextAnnotation dupAnn = new XYTextAnnotation("DUPLICATE", rightAnnX,
+						getAnnY(yRange, 1, startYMult, deltaYMult));
+				dupAnn.setFont(annFont);
+				dupAnn.setTextAnchor(TextAnchor.TOP_RIGHT);
+				spec.addPlotAnnotation(dupAnn);
+			}
+			for (int i=0; i<filters.size(); i++) {
+				String text = filters.get(i).getShortName()+": ";
+				PlausibilityResult subResult = results.get(i);
+				if (subResult.isPass()) {
+					text += "\u2714";
+				} else {
+					text += "X";
+					if (subResult.canContinue())
+						text += "*";
+				}
+				XYTextAnnotation resAnn = new XYTextAnnotation(text, leftAnnX,
+						getAnnY(yRange, i, startYMult, deltaYMult));
+				resAnn.setFont(annFont);
+				resAnn.setTextAnchor(TextAnchor.TOP_LEFT);
+				spec.addPlotAnnotation(resAnn);
+			}
+			
+			System.out.println("Plotting frame "+(count++));
+			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setTickLabelFontSize(18);
+			gp.setAxisLabelFontSize(24);
+			gp.setPlotLabelFontSize(24);
+			gp.setLegendFontSize(20);
+			gp.setBackgroundColor(Color.WHITE);
+			
+			gp.drawGraphPanel(spec, false, false, xRange, yRange);
+			gp.getXAxis().setTickLabelsVisible(axisLabels);
+			gp.getYAxis().setTickLabelsVisible(axisLabels);
+			
+			gp.getChartPanel().setSize(width, height);
+			BufferedImage img = gp.getBufferedImage(width, height);
+			
+			gifRender.writeFrame(img);
+		}
+		
+		gifRender.finalizeAnimation();
+	}
+	
+	private static class TrackAllDebugCriteria implements RupDebugCriteria {
+		
+		private List<ClusterRupture> allRups = new ArrayList<>();
+
+		@Override
+		public boolean isMatch(ClusterRupture rup) {
+			allRups.add(rup);
+			return false;
+		}
+
+		@Override
+		public boolean isMatch(ClusterRupture rup, Jump newJump) {
+			allRups.add(rup.take(newJump));
+			return false;
+		}
+
+		@Override
+		public boolean appliesTo(PlausibilityResult result) {
+			return true;
+		}
+		
+	}
+	
 	private static FaultSubsectionCluster buildCluster(FaultSection parentSect, double fractDDW, int startIndex) {
 		double width = parentSect.getOrigDownDipWidth();
 		return new FaultSubsectionCluster(parentSect.getSubSectionsList(fractDDW*width, startIndex, 2));
@@ -497,6 +686,31 @@ public class RupCartoonGenerator {
 		
 		plot(outputDir, "az_example_2", "Azimuth Example 2", fractDDW, true,
 				firstHorz, azExampleBelow);
+		
+		// now make a rupture building animation with a few small faults
+		FaultSection smallHorz = buildSect(parentID++, 85d, upperDepth, lowerDepth,
+				new Location(0d, 0d), new Location(0d, 0.2d));
+		FaultSection smallSE = buildSect(parentID++, 85d, upperDepth, lowerDepth,
+				new Location(-0.01d, 0.22d), new Location(-0.02, 0.28d));
+		FaultSection smallNE = buildSect(parentID++, 85d, upperDepth, lowerDepth,
+				new Location(0.04d, 0.22d), new Location(0.1, 0.35d));
+		FaultSection smallNConn = buildSect(parentID++, 85d, upperDepth, lowerDepth,
+				new Location(-0.038, 0.27d), new Location(0.09, 0.45d));
+//		plot(outputDir, "small_example_full", "Small Example System", fractDDW, false,
+//				smallHorz, smallSE, smallNE, smallNConn);
+		RuptureBuilder rupBuild = new RuptureBuilder(fractDDW);
+		rupBuild.addFault(smallHorz);
+		rupBuild.addFault(smallSE);
+		rupBuild.addFault(smallNE);
+		rupBuild.addFault(smallNConn);
+		List<PlausibilityFilter> filters = new ArrayList<>();
+		SectionDistanceAzimuthCalculator animDistAzCalc = new SectionDistanceAzimuthCalculator(
+				rupBuild.subSectsList);
+		filters.add(new MinSectsPerParentFilter(2, false, rupBuild.allClusters));
+		filters.add(new JumpAzimuthChangeFilter(
+				new JumpAzimuthChangeFilter.SimpleAzimuthCalc(animDistAzCalc), 60f));
+		animateRuptureBuilding(outputDir, "system_build_anim", rupBuild,
+				filters, animDistAzCalc, Double.POSITIVE_INFINITY, 0, true, false, false, 1d);
 	}
 
 }
