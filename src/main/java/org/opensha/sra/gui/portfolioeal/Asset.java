@@ -335,7 +335,7 @@ public class Asset implements Cloneable {
 	 * for the other assets in the list.
 	 */
 	public double[][] calculateExpectedLossPerRup(
-			ScalarIMR imr, ArbitrarilyDiscretizedFunc magThreshFunc, Site site, ERF erf,
+			ScalarIMR imr, DiscretizedFunc magThreshFunc, Site site, ERF erf,
 			CalculationExceptionHandler controller ) {
 		// Edit the site with the asset values
 		siteSetup(site);
