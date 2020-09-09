@@ -295,7 +295,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			if (constraintRanges != null) {
 				for (int j=0; j<constraintRanges.size(); j++)
 					if (constraintRanges.get(j).contains(i, false))
-						ret[j] += val;
+						ret[j+4] += val;
 			}
 			
 			Eequality += val;
@@ -339,7 +339,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					if (constraintRanges != null) {
 						for (int j=0; j<constraintRanges.size(); j++)
 							if (constraintRanges.get(j).contains(i, true))
-								ret[j] += val;
+								ret[j+4] += val;
 					}
 					
 					Einequality += val;
