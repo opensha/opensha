@@ -392,8 +392,27 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	public double getStartXValue(int series, int item) {
 		double x = ((Double)getXValue(series,item)).doubleValue();
 		XY_DataSet dataset = functions.get( series );
-		if( dataset != null && dataset instanceof EvenlyDiscretizedFunc)
-			x = x - ((EvenlyDiscretizedFunc)dataset).getDelta()/2;
+		if (dataset != null) {
+			if (dataset instanceof EvenlyDiscretizedFunc) {
+				x = x - ((EvenlyDiscretizedFunc)dataset).getDelta()/2;
+			} else if (dataset.size() > 1) {
+				if (item > 0) {
+					double prevX = ((Double)getXValue(series,item-1)).doubleValue();
+					if (xLog)
+						x = Math.pow(10, 0.5*(Math.log10(prevX)+Math.log10(x)));
+					else
+						x = 0.5*(prevX + x);
+				} else {
+					// use delta to the one above
+					double nextX = ((Double)getXValue(series,item+1)).doubleValue();
+					if (xLog) {
+						double logDelta = Math.log10(nextX) - Math.log10(x);
+						x = Math.pow(10, Math.log10(x)-0.5*logDelta);
+					} else
+						x = x - 0.5*(nextX - x);
+				}
+			}
+		}
 		return x;
 
 	}
@@ -410,8 +429,32 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	public double getEndXValue(int series, int item) {
 		double x = ((Double)getXValue(series,item)).doubleValue();
 		XY_DataSet dataset = functions.get( series );
-		if( dataset != null && dataset instanceof EvenlyDiscretizedFunc)
-			x = x + ((EvenlyDiscretizedFunc)dataset).getDelta()/2;
+		if (dataset != null) {
+			if (dataset instanceof EvenlyDiscretizedFunc) {
+				x = x + ((EvenlyDiscretizedFunc)dataset).getDelta()/2;
+			} else if (dataset.size() > 1) {
+				int maxIndex = dataset.size()-2;
+				if (DiscretizedFunctionXYDataSet.isAdjustedIndexIfFirstXZero(dataset, xLog, yLog))
+					maxIndex--;
+				if (item <= maxIndex) {
+					DiscretizedFunctionXYDataSet.isAdjustedIndexIfFirstXZero(dataset, xLog, yLog);
+//					System.out.println("item="+item+", size="+dataset.size());
+					double nextX = ((Double)getXValue(series,item+1)).doubleValue();
+					if (xLog)
+						x = Math.pow(10, 0.5*(Math.log10(nextX)+Math.log10(x)));
+					else
+						x = 0.5*(nextX + x);
+				} else {
+					// use delta to the one above
+					double prevX = ((Double)getXValue(series,item-1)).doubleValue();
+					if (xLog) {
+						double logDelta = Math.log10(x) - Math.log10(prevX);
+						x = Math.pow(10, Math.log10(x)+0.5*logDelta);
+					} else
+						x = x + 0.5*(x - prevX);
+				}
+			}
+		}
 		return x;
 	}
 
