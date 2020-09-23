@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYLineAnnotation;
 import org.jfree.chart.annotations.XYPolygonAnnotation;
@@ -105,8 +106,18 @@ public class RupturePlotGenerator {
 	public static List<Double> getTimeFirstSlipScalars(SimulatorEvent event, RSQSimEventSlipTimeFunc func) {
 		List<Double> scalars = new ArrayList<>();
 		
-		for (SimulatorElement e : event.getAllElements())
-			scalars.add(func.getTimeOfFirstSlip(e.getID()));
+		if (func == null) {
+			Preconditions.checkState(event instanceof RSQSimEvent,
+					"must be an RSQSim event if no slip-time func");
+			RSQSimEvent rsEvent = (RSQSimEvent)event;
+			double[] times = rsEvent.getAllElementTimes();
+			double minTime = StatUtils.min(times);
+			for (double time : times)
+				scalars.add(time - minTime);
+		} else {
+			for (SimulatorElement e : event.getAllElements())
+				scalars.add(func.getTimeOfFirstSlip(e.getID()));
+		}
 		
 		return scalars;
 	}
@@ -139,7 +150,7 @@ public class RupturePlotGenerator {
 	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
 			Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline) throws IOException {
-		writeSlipPlot(event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, false, true);
+		writeSlipPlot(event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, false, func != null);
 	}
 	
 	public static void writeSlipPlot(SimulatorEvent event, RSQSimEventSlipTimeFunc func, File outputDir, String prefix,
@@ -152,20 +163,24 @@ public class RupturePlotGenerator {
 		else
 			refFrame = SimulatorUtils.estimateVertexDAS(event, rectangle[0], rectangle[1]);
 		System.out.println("Done estimating DAS");
-		func = func.asRelativeTimeFunc();
+		if (func != null)
+			func = func.asRelativeTimeFunc();
 		
 		boolean contourTimeCPT = false;
 		
 		CPT slipCPT = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse();
-		slipCPT = slipCPT.rescale(0d, Math.ceil(func.getMaxCumulativeSlip()));
+		double maxSlip = StatUtils.max(event.getAllElementSlips());
+		slipCPT = slipCPT.rescale(0d, Math.ceil(maxSlip));
 		
+		List<Double> firstTimes = getTimeFirstSlipScalars(event, func);
 		double endTime;
 		if (includeLast) {
+			Preconditions.checkNotNull(func, "can't include last slip if no slip-time func");
 			endTime = func.getEndTime();
 		} else {
 			endTime = 0d;
-			for (int patchID : func.getPatchIDs())
-				endTime = Math.max(endTime, func.getTimeOfFirstSlip(patchID));
+			for (double time : firstTimes)
+				endTime = Math.max(endTime, time);
 		}
 		
 		CPT timeCPT;
@@ -183,12 +198,12 @@ public class RupturePlotGenerator {
 				timeDiscr = 1d;
 			timeCPT = timeCPT.asDiscrete(timeDiscr, true);
 		} else {
-			timeCPT = GMT_CPT_Files.GMT_WYSIWYG.instance().rescale(0d, func.getEndTime());
+			timeCPT = GMT_CPT_Files.GMT_WYSIWYG.instance().rescale(0d, endTime);
 		}
 		timeCPT.setAboveMaxColor(timeCPT.getMaxColor());
 		if (contourTimeCPT) {
 			CPT contourCPT = new CPT();
-			for (int i=0; i<(int)Math.ceil(func.getEndTime()); i++) {
+			for (int i=0; i<(int)Math.ceil(endTime); i++) {
 				Color c = timeCPT.getColor((float)i);
 				contourCPT.add(new CPTVal((float)i, c, (float)i+1, c));
 			}
@@ -200,7 +215,7 @@ public class RupturePlotGenerator {
 		List<XYAnnotation> slipPolys = buildElementPolygons(
 				rupElems, getCumulativeSlipScalars(event), slipCPT, false, Color.BLACK, 0.1d);
 		List<XYAnnotation> firstPolys = buildElementPolygons(
-				rupElems, getTimeFirstSlipScalars(event, func), timeCPT, false, Color.BLACK, 0.1d);
+				rupElems, firstTimes, timeCPT, false, Color.BLACK, 0.1d);
 		List<XYAnnotation> lastPolys = null;
 		if (includeLast)
 			lastPolys = buildElementPolygons(
@@ -216,8 +231,10 @@ public class RupturePlotGenerator {
 		double firstElemTime = Double.POSITIVE_INFINITY;
 		double hypoDAS = 0d;
 		double hypoDepth = 0d;
-		for (SimulatorElement elem : rupElems) {
-			double time = func.getTimeOfFirstSlip(elem.getID());
+		for (int i=0; i<rupElems.size(); i++) {
+			SimulatorElement elem = rupElems.get(i);
+//			double time = func.getTimeOfFirstSlip(elem.getID());
+			double time = firstTimes.get(i);
 			if (time < firstElemTime) {
 				firstElemTime = time;
 				hypoDAS = elem.getAveDAS();
@@ -352,9 +369,9 @@ public class RupturePlotGenerator {
 		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
 		double timeInc;
-		if (func.getEndTime() > 20)
+		if (endTime > 20)
 			timeInc = 5;
-		else if (func.getEndTime() > 10)
+		else if (endTime > 10)
 			timeInc = 2;
 		else
 			timeInc = 1;
