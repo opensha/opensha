@@ -92,7 +92,8 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 				parentSectionID = subSect.getParentSectionId();
 				parentSectionName = subSect.getParentSectionName();
 			} else {
-				Preconditions.checkState(subSect.getParentSectionId() == parentSectionID);
+				Preconditions.checkState(subSect.getParentSectionId() == parentSectionID,
+						"Cluster subSects list has sedctios with multiple parentSectionIDs");
 			}
 		}
 		this.parentSectionID = parentSectionID;
@@ -190,6 +191,40 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 				return cmp;
 		}
 		return 0;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((endSects == null) ? 0 : endSects.hashCode());
+		result = prime * result + parentSectionID;
+		result = prime * result + ((subSects == null) ? 0 : subSects.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		FaultSubsectionCluster other = (FaultSubsectionCluster) obj;
+		if (endSects == null) {
+			if (other.endSects != null)
+				return false;
+		} else if (!endSects.equals(other.endSects))
+			return false;
+		if (parentSectionID != other.parentSectionID)
+			return false;
+		if (subSects == null) {
+			if (other.subSects != null)
+				return false;
+		} else if (!subSects.equals(other.subSects))
+			return false;
+		return true;
 	}
 
 }

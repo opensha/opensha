@@ -17,11 +17,11 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 	
-	private AzimuthCalc calc;
+	private AzimuthCalc azCalc;
 	private float threshold;
 
 	public CumulativeAzimuthChangeFilter(AzimuthCalc calc, float threshold) {
-		this.calc = calc;
+		this.azCalc = calc;
 		this.threshold = threshold;
 	}
 
@@ -104,8 +104,8 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 	}
 	
 	private double doCalc(FaultSection sect1, FaultSection sect2, FaultSection sect3) {
-		double beforeAz = calc.calcAzimuth(sect1, sect2);
-		double afterAz = calc.calcAzimuth(sect2, sect3);
+		double beforeAz = azCalc.calcAzimuth(sect1, sect2);
+		double afterAz = azCalc.calcAzimuth(sect2, sect3);
 		
 		return Math.abs(JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz));
 	}

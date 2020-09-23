@@ -905,7 +905,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 					prob = 1-Math.exp(-aftRateCorr*probGain*faultSysSolution.getRateForRup(fltSystRupIndex)*duration);
 
 				src = new FaultRuptureSource(meanMag, 
-						rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing), 
+						rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing), 
 						rupSet.getAveRakeForRup(fltSystRupIndex), prob, isPoisson);
 			} else {
 					// apply aftershock and/or gain corrections
@@ -924,7 +924,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 					
 				// this set the source as Poisson for U3; does this matter? TODO
 				src = new FaultRuptureSource(rupMFDcorrected, 
-						rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing),
+						rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing),
 						rupSet.getAveRakeForRup(fltSystRupIndex), timeSpan.getDuration());
 			}
 		} else {
@@ -941,7 +941,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			GaussianMagFreqDist srcMFD = new GaussianMagFreqDist(5.05,8.65,37,meanMag,myAleatoryMagAreaStdDev,totMoRate,2.0,2);
 			// this also sets the source as Poisson for U3; does this matter? TODO
 			src = new FaultRuptureSource(srcMFD, 
-					rupSet.getSurfaceForRupupture(fltSystRupIndex, faultGridSpacing),
+					rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing),
 					rupSet.getAveRakeForRup(fltSystRupIndex), timeSpan.getDuration());
 			Preconditions.checkState(src.getNumRuptures() > 0,
 					"Source has zero rups! Mag="+meanMag+", aleatoryMagAreaStdDev="+myAleatoryMagAreaStdDev

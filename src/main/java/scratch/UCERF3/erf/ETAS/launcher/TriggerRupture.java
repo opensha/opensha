@@ -119,7 +119,7 @@ public abstract class TriggerRupture {
 			
 			rupture.setAveRake(rupSet.getAveRakeForRup(fssIndex));
 			rupture.setMag(origMag);
-			rupture.setRuptureSurface(rupSet.getSurfaceForRupupture(fssIndex, 1d));
+			rupture.setRuptureSurface(rupSet.getSurfaceForRupture(fssIndex, 1d));
 			rupture.setFSSIndex(fssIndex);
 			
 			if (overrideMag != null && overrideMag > 0) {

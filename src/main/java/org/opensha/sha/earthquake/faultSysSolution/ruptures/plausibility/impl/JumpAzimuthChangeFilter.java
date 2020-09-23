@@ -1,27 +1,33 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.HardCodedLeftLateralFlipAzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BoundType;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 	
-	private AzimuthCalc calc;
+	private AzimuthCalc azCalc;
 	private float threshold;
 
 	public JumpAzimuthChangeFilter(AzimuthCalc calc, float threshold) {
-		this.calc = calc;
+		this.azCalc = calc;
 		this.threshold = threshold;
 	}
 
@@ -35,7 +41,7 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
 		FaultSection before2 = jump.fromSection;
-		double beforeAz = calc.calcAzimuth(before1, before2);
+		double beforeAz = azCalc.calcAzimuth(before1, before2);
 		
 		FaultSection after1 = jump.toSection;
 		Collection<FaultSection> after2s;
@@ -59,7 +65,7 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 		}
 		for (FaultSection after2 : after2s) {
-			double afterAz = calc.calcAzimuth(after1, after2);
+			double afterAz = azCalc.calcAzimuth(after1, after2);
 			double diff = getAzimuthDifference(beforeAz, afterAz);
 			Preconditions.checkState(Double.isFinite(diff));
 			if (verbose)
@@ -123,24 +129,19 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 	
 	/**
 	 * Azimuth calculation strategy which will reverse the direction of the hard-coded set of left lateral
-	 * fault sections from UCERF3
+	 * fault sections
 	 * @author kevin
 	 *
 	 */
-	public static class UCERF3LeftLateralFlipAzimuthCalc implements AzimuthCalc {
+	public static class HardCodedLeftLateralFlipAzimuthCalc implements AzimuthCalc {
 
 		private SectionDistanceAzimuthCalculator calc;
 		private HashSet<Integer> parentIDs;
 
-		public UCERF3LeftLateralFlipAzimuthCalc(SectionDistanceAzimuthCalculator calc) {
+		public HardCodedLeftLateralFlipAzimuthCalc(SectionDistanceAzimuthCalculator calc,
+				HashSet<Integer> parentIDs) {
 			this.calc = calc;
-			parentIDs = new HashSet<Integer>();
-			parentIDs.add(48);
-			parentIDs.add(49);
-			parentIDs.add(93);
-			parentIDs.add(341);
-			parentIDs.add(47);
-			parentIDs.add(169);
+			this.parentIDs = parentIDs;
 		}
 
 		@Override
@@ -148,6 +149,31 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 			if (parentIDs.contains(sect1.getParentSectionId()) && parentIDs.contains(sect2.getParentSectionId()))
 				return calc.getAzimuth(sect2, sect1);
 			return calc.getAzimuth(sect1, sect2);
+		}
+		
+	}
+	
+	private static HashSet<Integer> getU3LeftLateralParents() {
+		HashSet<Integer> parentIDs = new HashSet<Integer>();
+		parentIDs.add(48);
+		parentIDs.add(49);
+		parentIDs.add(93);
+		parentIDs.add(341);
+		parentIDs.add(47);
+		parentIDs.add(169);
+		return parentIDs;
+	}
+	
+	/**
+	 * Azimuth calculation strategy which will reverse the direction of the hard-coded set of left lateral
+	 * fault sections from UCERF3
+	 * @author kevin
+	 *
+	 */
+	public static class UCERF3LeftLateralFlipAzimuthCalc extends HardCodedLeftLateralFlipAzimuthCalc {
+
+		public UCERF3LeftLateralFlipAzimuthCalc(SectionDistanceAzimuthCalculator calc) {
+			super(calc, getU3LeftLateralParents());
 		}
 		
 	}
@@ -168,6 +194,113 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 		@Override
 		public double calcAzimuth(FaultSection sect1, FaultSection sect2) {
 			return calc.getAzimuth(sect1, sect2);
+		}
+		
+	}
+	
+	public static class AzimuthCalcTypeAdapter extends TypeAdapter<AzimuthCalc> {
+		
+		private SectionDistanceAzimuthCalculator distAzCalc;
+
+		public AzimuthCalcTypeAdapter(SectionDistanceAzimuthCalculator distAzCalc) {
+			this.distAzCalc = distAzCalc;
+		}
+
+		@Override
+		public void write(JsonWriter out, AzimuthCalc calc) throws IOException {
+			out.beginObject();
+			if (calc instanceof LeftLateralFlipAzimuthCalc) {
+				Range<Double> range = ((LeftLateralFlipAzimuthCalc)calc).rakeRange;
+				String rangeStr = "";
+				if (range.lowerBoundType() == BoundType.CLOSED)
+					rangeStr += "[";
+				else
+					rangeStr += "(";
+				rangeStr += range.lowerEndpoint()+","+range.upperEndpoint();
+				if (range.upperBoundType() == BoundType.CLOSED)
+					rangeStr += "]";
+				else
+					rangeStr = ")";
+				out.name("leftLateralRange").value(rangeStr);
+			} else if (calc instanceof HardCodedLeftLateralFlipAzimuthCalc) {
+				out.name("leftLateralParents").beginArray();
+				for (Integer parent : ((HardCodedLeftLateralFlipAzimuthCalc)calc).parentIDs)
+					out.value(parent);
+				out.endArray();
+			} else {
+				Preconditions.checkState(calc instanceof SimpleAzimuthCalc,
+						"Don't know how to serialize this azimuth calculator");
+			}
+			
+			out.endObject();
+		}
+
+		@Override
+		public AzimuthCalc read(JsonReader in) throws IOException {
+			in.beginObject();
+			
+			AzimuthCalc calc = null;
+			
+			while (in.hasNext()) {
+				switch (in.nextName()) {
+				case "leftLateralRange":
+					String str = in.nextString().trim();
+					boolean lowerClosed;
+					if (str.startsWith("[")) {
+						lowerClosed = true;
+					} else {
+						lowerClosed = false;
+						Preconditions.checkState(str.startsWith("("));
+					}
+					str = str.substring(1);
+					boolean upperClosed;
+					if (str.endsWith("]")) {
+						upperClosed = true;
+					} else {
+						upperClosed = false;
+						Preconditions.checkState(str.endsWith(")"));
+					}
+					str = str.substring(0, str.length()-1);
+					String[] split = str.split(",");
+					Preconditions.checkState(split.length == 2);
+					double lower = Double.parseDouble(split[0]);
+					double upper = Double.parseDouble(split[1]);
+					
+					Range<Double> range;
+					if (lowerClosed && upperClosed)
+						range = Range.closed(lower, upper);
+					else if (lowerClosed && !upperClosed)
+						range = Range.closedOpen(lower, upper);
+					else if (!lowerClosed && upperClosed)
+						range = Range.openClosed(lower, upper);
+					else
+						range = Range.open(lower, upper);
+					
+					calc = new LeftLateralFlipAzimuthCalc(distAzCalc, range);
+					
+					break;
+					
+				case "leftLateralParents":
+					HashSet<Integer> parents = new HashSet<>();
+					in.beginArray();
+					while (in.hasNext())
+						parents.add(in.nextInt());
+					in.endArray();
+					
+					calc = new HardCodedLeftLateralFlipAzimuthCalc(distAzCalc, parents);
+					
+					break;
+
+				default:
+					break;
+				}
+			}
+			
+			if (calc == null)
+				calc = new SimpleAzimuthCalc(distAzCalc);
+			
+			in.endObject();
+			return calc;
 		}
 		
 	}

@@ -16,7 +16,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CoulombJunctionFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CoulombJunctionFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpCumulativeRakeChangeFilter;
@@ -56,7 +56,6 @@ public class CompareClusterRuptureBuild {
 		FaultModels fm = FaultModels.FM3_1;
 		List<FaultSection> parentSects = fm.fetchFaultSections();
 		List<? extends FaultSection> subSects = clusterRupSet.getFaultSectionDataList();
-		ClusterConnectionStrategy connectionStrategy = new DistCutoffClosestSectClusterConnectionStrategy(5d);
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
 		File cacheFile = new File("/tmp/dist_az_cache_"+fm.encodeChoiceString()+"_"+subSects.size()
 			+"_sects_"+parentSects.size()+"_parents.csv");
@@ -64,7 +63,8 @@ public class CompareClusterRuptureBuild {
 			System.out.println("Loading dist/az cache from "+cacheFile.getAbsolutePath());
 			distAzCalc.loadCacheFile(cacheFile);
 		}
-		List<FaultSubsectionCluster> clusters = ClusterRuptureBuilder.buildClusters(subSects, connectionStrategy, distAzCalc);
+		ClusterConnectionStrategy connectionStrategy = new DistCutoffClosestSectClusterConnectionStrategy(
+				subSects, distAzCalc, 5d);
 		Preconditions.checkState(subSects.size() == clusterRupSet.getNumSections());
 		Preconditions.checkState(subSects.size() == u3RupSet.getNumSections());
 		for (int i=0; i<subSects.size(); i++) {
@@ -84,11 +84,11 @@ public class CompareClusterRuptureBuild {
 //		filters.add(new CumulativeRakeChangeFilter(180f));
 //		filters.add(new JumpCumulativeRakeChangeFilter(180f));
 		filters.add(new U3CompatibleCumulativeRakeChangeFilter(180d));
-		filters.add(new MinSectsPerParentFilter(2, true, clusters));
+		filters.add(new MinSectsPerParentFilter(2, true, connectionStrategy));
 		CoulombRates coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
 		CoulombRatesTester coulombTester = new CoulombRatesTester(
 				TestType.COULOMB_STRESS, 0.04, 0.04, 1.25d, true, true);
-		filters.add(new CoulombJunctionFilter(coulombTester, coulombRates));
+		filters.add(new U3CoulombJunctionFilter(coulombTester, coulombRates));
 		
 		HashSet<UniqueRupture> u3Uniques = new HashSet<>();
 		for (int r=0; r<u3RupSet.getNumRuptures(); r++)

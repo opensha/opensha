@@ -142,7 +142,7 @@ public class StandaloneCalc {
 //			mainshockRup.setRuptureSurface(rupFromERF.getRuptureSurface());
 			mainshockRup.setAveRake(rupSet.getAveRakeForRup(fssScenarioRupID));
 			mainshockRup.setMag(rupSet.getMagForRup(fssScenarioRupID));
-			mainshockRup.setRuptureSurface(rupSet.getSurfaceForRupupture(fssScenarioRupID, 1d));
+			mainshockRup.setRuptureSurface(rupSet.getSurfaceForRupture(fssScenarioRupID, 1d));
 			mainshockRup.setID(0);
 			mainshockRup.setFSSIndex(fssScenarioRupID);
 //			debug("test Mainshock: "+erf.getSource(srcID).getName());

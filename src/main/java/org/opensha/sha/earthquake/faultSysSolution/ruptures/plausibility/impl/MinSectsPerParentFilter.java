@@ -1,15 +1,20 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 
-import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
+
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -17,21 +22,13 @@ public class MinSectsPerParentFilter implements PlausibilityFilter {
 	
 	private int minPerParent;
 	private boolean allowIfNoDirect;
-	private HashSet<IDPairing> parentConnections;
+	private ClusterConnectionStrategy connStrategy;
 
 	public MinSectsPerParentFilter(int minPerParent, boolean allowIfNoDirect,
-			List<FaultSubsectionCluster> clusters) {
+			ClusterConnectionStrategy connStrategy) {
 		this.minPerParent = minPerParent;
 		this.allowIfNoDirect = allowIfNoDirect;
-		if (allowIfNoDirect) {
-			parentConnections = new HashSet<>();
-			for (FaultSubsectionCluster cluster : clusters) {
-				for (Jump jump : cluster.getConnections()) {
-					parentConnections.add(new IDPairing(cluster.parentSectionID, jump.toCluster.parentSectionID));
-					parentConnections.add(new IDPairing(jump.toCluster.parentSectionID, cluster.parentSectionID));
-				}
-			}
-		}
+		this.connStrategy = connStrategy;
 	}
 
 	@Override
@@ -61,15 +58,12 @@ public class MinSectsPerParentFilter implements PlausibilityFilter {
 	}
 	
 	private boolean isDirectPossible(FaultSubsectionCluster from, FaultSubsectionCluster to) {
-		return parentConnections.contains(new IDPairing(from.parentSectionID, to.parentSectionID));
+		return connStrategy.areParentSectsConnected(from.parentSectionID, to.parentSectionID);
 	}
 	
 	private PlausibilityResult apply(FaultSubsectionCluster[] clusters, boolean verbose) {
 		if (clusters[0].subSects.size() < minPerParent) {
 			// never allow on first cluster
-			if (clusters.length == 0)
-				// other permutations could work, soft fail
-				return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
 		if (allowIfNoDirect) {
@@ -146,6 +140,54 @@ public class MinSectsPerParentFilter implements PlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Min Sections Per Parent";
+	}
+
+	@Override
+	public TypeAdapter<PlausibilityFilter> getTypeAdapter() {
+		return new Adapter();
+	}
+	
+	public static class Adapter extends PlausibilityFilterTypeAdapter {
+
+		private ClusterConnectionStrategy connStrategy;
+
+		@Override
+		public void init(ClusterConnectionStrategy connStrategy, SectionDistanceAzimuthCalculator distAzCalc) {
+			this.connStrategy = connStrategy;
+		}
+
+		@Override
+		public void write(JsonWriter out, PlausibilityFilter value) throws IOException {
+			MinSectsPerParentFilter filter = (MinSectsPerParentFilter)value;
+			out.beginObject();
+			out.name("minPerParent").value(filter.minPerParent);
+			out.name("allowIfNoDirect").value(filter.allowIfNoDirect);
+			out.endObject();
+		}
+
+		@Override
+		public PlausibilityFilter read(JsonReader in) throws IOException {
+			in.beginObject();
+			Integer minPerParent = null;
+			Boolean allowIfNoDirect = null;
+			while (in.hasNext()) {
+				switch (in.nextName()) {
+				case "minPerParent":
+					minPerParent = in.nextInt();
+					break;
+				case "allowIfNoDirect":
+					allowIfNoDirect = in.nextBoolean();
+					break;
+
+				default:
+					break;
+				}
+			}
+			
+			in.endObject();
+			return new MinSectsPerParentFilter(minPerParent, allowIfNoDirect, connStrategy);
+		}
+		
 	}
 
 }

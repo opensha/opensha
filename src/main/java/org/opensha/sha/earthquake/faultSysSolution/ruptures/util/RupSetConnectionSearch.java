@@ -62,29 +62,22 @@ public class RupSetConnectionSearch {
 	private SectionDistanceAzimuthCalculator distCalc;
 	
 	public static final double MAX_POSSIBLE_JUMP_DEFAULT = 100d;
-	private ClusterConnectionStrategy clusterConnStrategy;
+	private double maxJumpDist;
 	
 	public static final boolean CUMULATIVE_JUMPS_DEFAULT = false;
 	// if true, find connections via the smallest cumulative jump distance
 	// if false, find connections via the smallest individual jump (possibly across multiple clusters)
 	private boolean cumulativeJumps;
-
-	public RupSetConnectionSearch(FaultSystemRupSet rupSet) {
-		this(rupSet, new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList()));
-	}
 	
 	public RupSetConnectionSearch(FaultSystemRupSet rupSet, SectionDistanceAzimuthCalculator distCalc) {
-		this(rupSet, distCalc, new DistCutoffClosestSectClusterConnectionStrategy(MAX_POSSIBLE_JUMP_DEFAULT),
-				CUMULATIVE_JUMPS_DEFAULT);
+		this(rupSet, distCalc, MAX_POSSIBLE_JUMP_DEFAULT, CUMULATIVE_JUMPS_DEFAULT);
 	}
 	
 	public RupSetConnectionSearch(FaultSystemRupSet rupSet, SectionDistanceAzimuthCalculator distCalc,
-			ClusterConnectionStrategy clusterConnStrategy, boolean cumulativeJumps) {
+			double maxJumpDist, boolean cumulativeJumps) {
 		this.rupSet = rupSet;
-		if (distCalc == null)
-			distCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 		this.distCalc = distCalc;
-		this.clusterConnStrategy = clusterConnStrategy; 
+		this.maxJumpDist = maxJumpDist; 
 		this.cumulativeJumps = cumulativeJumps;
 	}
 	
@@ -124,10 +117,10 @@ public class RupSetConnectionSearch {
 			clusters.add(new FaultSubsectionCluster(curSects));
 		}
 		
-		// calculate connections
-		clusterConnStrategy.addConnections(clusters, distCalc);
+		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+				sects, clusters, distCalc, maxJumpDist);
 		
-		return clusters;
+		return connStrat.getClusters();
 	}
 	
 	private static final Comparator<FaultSection> sectIDcomp = new Comparator<FaultSection>() {
@@ -460,6 +453,7 @@ public class RupSetConnectionSearch {
 		Multimap<FaultSubsectionCluster, Jump> jumpsFromMap = HashMultimap.create();
 		if (debug) {
 			Collections.sort(jumps, Jump.id_comparator);
+			rupClusters = new ArrayList<>(rupClusters);
 			Collections.sort(rupClusters);
 		}
 		for (Jump jump : jumps) {
@@ -892,11 +886,10 @@ public class RupSetConnectionSearch {
 		
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
 		
-		SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
-		
-		ClusterConnectionStrategy connStrategy = new DistCutoffClosestSectClusterConnectionStrategy(maxPossibleJumpDist);
+		SectionDistanceAzimuthCalculator distCalc =
+				new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 		RupSetConnectionSearch search = new RupSetConnectionSearch(rupSet, distCalc,
-				connStrategy, CUMULATIVE_JUMPS_DEFAULT);
+				maxPossibleJumpDist, CUMULATIVE_JUMPS_DEFAULT);
 		
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		

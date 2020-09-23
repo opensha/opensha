@@ -47,7 +47,7 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.inversion.laughTest.PlausibilityConfiguration;
+import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
@@ -100,7 +100,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 
 	private LogicTreeBranch logicTreeBranch;
 
-	private PlausibilityConfiguration filter;
+	private OldPlausibilityConfiguration filter;
 
 	// rupture attributes (all in SI units)
 	final static double MIN_MO_RATE_REDUCTION = 0.1;
@@ -172,12 +172,13 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	public InversionFaultSystemRupSet(
 			FaultSystemRupSet rupSet,
 			LogicTreeBranch branch,
-			PlausibilityConfiguration filter,
+			OldPlausibilityConfiguration filter,
 			double[] rupAveSlips,
 			List<List<Integer>> sectionConnectionsListList,
 			List<List<Integer>> clusterRups,
 			List<List<Integer>> clusterSects) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
+		setPlausibilityConfiguration(rupSet.getPlausibilityConfiguration());
 		setParamsFromBranch(branch);
 		this.logicTreeBranch = branch;
 		init(rupSet);
@@ -475,14 +476,28 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 */
 	@Override
 	public double getAveSlipForRup(int rupIndex) {
-		return rupMeanSlip[rupIndex];
+		return getAveSlipForAllRups()[rupIndex];
 	}
 
 	/* (non-Javadoc)
 	 * @see scratch.UCERF3.inversion.SlipEnabledRupSet#getAveSlipForAllRups()
 	 */
 	@Override
-	public double[] getAveSlipForAllRups() {
+	public synchronized double[] getAveSlipForAllRups() {
+		if (rupMeanSlip == null) {
+			// need to build it
+			double[] slips = new double[getNumRuptures()];
+			for (int r=0; r<slips.length; r++) {
+				double area = getAreaForRup(r);
+				double length = getLengthForRup(r);
+				double totOrigArea = 0d;
+				for (FaultSection sect : getFaultSectionDataForRupture(r))
+					totOrigArea += sect.getTraceLength()*1e3*sect.getOrigDownDipWidth()*1e3;
+				double origDDW = totOrigArea/length;
+				slips[r] = scalingRelationship.getAveSlip(area, length, origDDW);
+			}
+			rupMeanSlip = slips;
+		}
 		return rupMeanSlip;
 	}
 
@@ -563,7 +578,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * 
 	 * @return
 	 */
-	public PlausibilityConfiguration getPlausibilityConfiguration() {
+	public OldPlausibilityConfiguration getOldPlausibilityConfiguration() {
 		return filter;
 	}
 

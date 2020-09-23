@@ -240,7 +240,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 				catalogLocs.add(hypo);
 				// populate the surface
 				if (rup.getFSSIndex() >= 0) {
-					RuptureSurface surf = fss.getRupSet().getSurfaceForRupupture(rup.getFSSIndex(), 1d);
+					RuptureSurface surf = fss.getRupSet().getSurfaceForRupture(rup.getFSSIndex(), 1d);
 					rup.setRuptureSurface(surf);
 //					catalogLocs.addAll(surf.getEvenlyDiscritizedListOfLocsOnSurface());
 				}

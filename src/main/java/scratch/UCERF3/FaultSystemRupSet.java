@@ -11,24 +11,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.faultSurface.CompoundSurface;
-import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
-import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -60,6 +54,8 @@ public class FaultSystemRupSet implements Serializable {
 	private double[] sectAreas;
 	private List<List<Integer>> sectionForRups;
 	private String info;
+	
+	private PlausibilityConfiguration plausibilityConfig;
 	
 	// for caching
 	protected boolean showProgress = false;
@@ -536,7 +532,7 @@ public class FaultSystemRupSet implements Serializable {
 	 * @param gridSpacing
 	 * @return
 	 */
-	public RuptureSurface getSurfaceForRupupture(int rupIndex, double gridSpacing) {
+	public RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing) {
 		return surfCache.getSurfaceForRupture(rupIndex, gridSpacing);
 	}
 	
@@ -791,6 +787,17 @@ public class FaultSystemRupSet implements Serializable {
 		return StatUtils.min(getMagForAllRups());
 	}
 	
+	/**
+	 * This gives the plausibility configuration used to create this rupture set if available,
+	 * otherwise null;
+	 * @return
+	 */
+	public PlausibilityConfiguration getPlausibilityConfiguration() {
+		return plausibilityConfig;
+	}
 	
+	public void setPlausibilityConfiguration(PlausibilityConfiguration plausibilityConfig) {
+		this.plausibilityConfig = plausibilityConfig;
+	}
 	
 }

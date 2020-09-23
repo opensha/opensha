@@ -1973,7 +1973,7 @@ public class ETAS_SimAnalysisTools {
 			if (fssIndex >= 0) {
 				Preconditions.checkState((float)rup.getMag() == (float)rupSet.getMagForRup(fssIndex),
 						"Magnitude discrepancy: "+(float)rup.getMag()+" != "+(float)rupSet.getMagForRup(fssIndex));
-				rup.setRuptureSurface(rupSet.getSurfaceForRupupture(fssIndex, 1d));
+				rup.setRuptureSurface(rupSet.getSurfaceForRupture(fssIndex, 1d));
 			}
 		}
 	}

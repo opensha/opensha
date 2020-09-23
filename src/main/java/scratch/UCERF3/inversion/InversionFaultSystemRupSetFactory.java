@@ -279,7 +279,7 @@ public class InversionFaultSystemRupSetFactory {
 			// test loading
 			InversionFaultSystemRupSet invRupSet = FaultSystemIO.loadInvRupSet(new File("/tmp/mean_rupSet.zip"));
 			System.out.println(invRupSet.getLogicTreeBranch());
-			System.out.println(invRupSet.getPlausibilityConfiguration());
+			System.out.println(invRupSet.getOldPlausibilityConfiguration());
 			System.exit(0);
 //			new SimpleFaultSystemRupSet(rupSet).toZipFile(new File("/tmp/rup_set_0.05_1.25.zip"));
 //			filter.setAllowSingleSectDuringJumps(false);

@@ -47,7 +47,8 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --event-id ci39126079"; // 4/4/2020 SJC Anza M4.9
 //			argz += " --event-id ci38488354"; // 4/4/2020 SJC Anza M4.9
 //			argz += " --event-id ci39493944"; // 6/24/2020 Long Pine M5.8
-			argz += " --event-id ci39338407"; // 6/24/2020 Long Pine M5.8
+//			argz += " --event-id ci39338407"; // 6/24/2020 Long Pine M5.8
+			argz += " --event-id ci38695658"; // 9/18/2020 El Monte M4.6
 			argz += " --radius 10";
 //			argz += " --mag-complete 2.5";
 			
@@ -59,7 +60,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			argz += " --days-before 7";
 //			argz += " --days-after 7";
 //			argz += " --hours-after 33.75";
-			argz += " --end-now";
+//			argz += " --end-now";
 //			argz += " --end-time 1591234330000";
 //			argz += " --name-add Before-M5.5";
 //			argz += " --gridded-only";

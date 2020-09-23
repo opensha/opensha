@@ -14,14 +14,14 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 	
-	private AzimuthCalc calc;
+	private AzimuthCalc azCalc;
 	private float threshold;
 	private boolean multiFaultOnly;
 	private boolean testFullEnd;
 
 	public TotalAzimuthChangeFilter(AzimuthCalc calc, float threshold, boolean multiFaultOnly,
 			boolean testFullEnd) {
-		this.calc = calc;
+		this.azCalc = calc;
 		this.threshold = threshold;
 		this.multiFaultOnly = multiFaultOnly;
 		this.testFullEnd = testFullEnd;
@@ -60,14 +60,14 @@ public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 		FaultSection before1 = startCluster.startSect;
 		FaultSection before2 = startCluster.subSects.get(1);
-		double beforeAz = calc.calcAzimuth(before1, before2);
+		double beforeAz = azCalc.calcAzimuth(before1, before2);
 		
 		int startIndex = testFullEnd ? 0 : endCluster.subSects.size()-2;
 		double maxDiff = 0d;
 		for (int i=startIndex; i<endCluster.subSects.size()-1; i++) {
 			FaultSection after1 = endCluster.subSects.get(i);
 			FaultSection after2 = endCluster.subSects.get(i+1);
-			double afterAz = calc.calcAzimuth(after1, after2);
+			double afterAz = azCalc.calcAzimuth(after1, after2);
 			
 			double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
 //			System.out.println(beforeAz+" => "+afterAz+" = "+diff);

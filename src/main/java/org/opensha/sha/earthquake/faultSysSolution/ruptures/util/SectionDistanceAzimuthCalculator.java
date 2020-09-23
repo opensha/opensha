@@ -24,19 +24,26 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
 
 public class SectionDistanceAzimuthCalculator {
 
+	private List<? extends FaultSection> subSects;
 	private LoadingCache<IDPairing, Double> distCache;
 	private LoadingCache<IDPairing, Double> azCache;
 	private Map<Integer, RuptureSurface> sectSurfs;
 
 	public SectionDistanceAzimuthCalculator(List<? extends FaultSection> subSects) {
+		this.subSects = ImmutableList.copyOf(subSects);
 		sectSurfs = new HashMap<>();
 		for (FaultSection subSect : subSects)
 			sectSurfs.put(subSect.getSectionId(), subSect.getFaultSurface(1d, false, false));
 		distCache = CacheBuilder.newBuilder().build(new DistLoader());
 		azCache = CacheBuilder.newBuilder().build(new AzLoader());
+	}
+	
+	public List<? extends FaultSection> getSubSections() {
+		return subSects;
 	}
 	
 	private class DistLoader extends CacheLoader<IDPairing, Double> {

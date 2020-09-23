@@ -19,12 +19,12 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesRecord;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
-public class CoulombJunctionFilter implements PlausibilityFilter {
+public class U3CoulombJunctionFilter implements PlausibilityFilter {
 	
 	private CoulombRatesTester tester;
 	private CoulombRates coulombRates;
 
-	public CoulombJunctionFilter(CoulombRatesTester tester, CoulombRates coulombRates) {
+	public U3CoulombJunctionFilter(CoulombRatesTester tester, CoulombRates coulombRates) {
 		this.tester = tester;
 		this.coulombRates = coulombRates;
 	}

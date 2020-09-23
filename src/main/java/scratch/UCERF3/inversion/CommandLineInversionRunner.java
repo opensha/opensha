@@ -1937,7 +1937,7 @@ public class CommandLineInversionRunner {
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
 		
-		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getPlausibilityConfiguration(), rupAveSlips,
+		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getOldPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
 	}
 	
@@ -1980,7 +1980,7 @@ public class CommandLineInversionRunner {
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
 		
-		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getPlausibilityConfiguration(), rupAveSlips,
+		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getOldPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
 	}
 	
@@ -2008,7 +2008,7 @@ public class CommandLineInversionRunner {
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
 		
-		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getPlausibilityConfiguration(), rupAveSlips,
+		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getOldPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
 	}
 	
