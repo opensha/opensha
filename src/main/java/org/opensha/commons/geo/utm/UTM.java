@@ -83,11 +83,11 @@ public class UTM
 		fromWGS84(wgs.getLatitude(), wgs.getLongitude(), zone, letter);
 	}
 	
-	private static int calcZone(double longitude) {
+	public static int calcZone(double longitude) {
 		return (int) Math.floor(longitude/6+31);
 	}
 	
-	private static char calcLetter(double latitude) {
+	public static char calcLetter(double latitude) {
 		if (latitude<-72) 
 			return 'C';
 		else if (latitude<-64) 
