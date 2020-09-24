@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -13,6 +14,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.ImmutableSet;
@@ -369,6 +371,64 @@ public class ClusterRupture {
 		return new ClusterRupture(clusterList.toArray(new FaultSubsectionCluster[0]), jumpsBuilder.build(),
 				ImmutableMap.of(), descendentsBuilder.build(), predecessorsBuilder.build(),
 				clusterDescendentsBuilder.build(), clusterPredecessorsBuilder.build(), internalSects, unique);
+	}
+	
+	/**
+	 * Returns all viable alternate paths through this rupture (staring at each end point)
+	 * @return
+	 */
+	public List<ClusterRupture> getInversions(RuptureConnectionSearch connSearch) {
+		List<ClusterRupture> inversions = new ArrayList<>();
+		
+		if (splays.isEmpty()) {
+			// simple
+			if (clusters.length == 1)
+				return inversions;
+			
+			if (clusters.length > 1) {
+				// check if it's truly single strand
+				boolean match = true;
+				for (Jump jump : getJumpsIterable()) {
+					if (jump.fromSection != jump.fromCluster.subSects.get(jump.fromCluster.subSects.size()-1)
+							|| jump.toSection != jump.toCluster.startSect) {
+						match = false;
+						break;
+					}
+				}
+				if (match) {
+					inversions.add(reversed());
+					return inversions;
+				}
+			}
+		}
+		
+		// complex
+		List<FaultSubsectionCluster> endClusters = new ArrayList<>();
+		getEndSects(endClusters, clusters[0]);
+
+		List<FaultSubsectionCluster> clusters = new ArrayList<>();
+		for (FaultSubsectionCluster cluster : getClustersIterable())
+			clusters.add(cluster);
+		List<Jump> jumps = new ArrayList<>();
+		for (Jump jump : getJumpsIterable())
+			jumps.add(jump);
+
+		// now build them out
+		for (FaultSubsectionCluster endCluster : endClusters)
+			inversions.add(connSearch.buildClusterRupture(clusters, jumps, false, endCluster));
+		
+		return inversions;
+	}
+	
+	private void getEndSects(List<FaultSubsectionCluster> endClusters, FaultSubsectionCluster curCluster) {
+		ImmutableCollection<FaultSubsectionCluster> descendants = clusterDescendantsMap.get(curCluster);
+		if (descendants == null || descendants.isEmpty()) {
+			// this is an end section
+			endClusters.add(curCluster);
+		} else {
+			for (FaultSubsectionCluster descendant : descendants)
+				getEndSects(endClusters, descendant);
+		}
 	}
 	
 	/**

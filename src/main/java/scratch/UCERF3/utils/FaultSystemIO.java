@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -115,6 +116,28 @@ public class FaultSystemIO {
 		Preconditions.checkArgument(sol instanceof InversionFaultSystemSolution,
 				"Solution cannot be loaded as an InversionFaultSystemSolution");
 		return (InversionFaultSystemSolution)sol;
+	}
+	
+	/**
+	 * 
+	 * @param file
+	 * @return true if the given zip file is a fault sytem solution, false otherwise
+	 */
+	public static boolean isSolution(File file) throws IOException {
+		ZipFile zip = new ZipFile(file);
+		boolean found = false;
+		
+		Enumeration<? extends ZipEntry> entries = zip.entries();
+		while (entries.hasMoreElements()) {
+			ZipEntry entry = entries.nextElement();
+			if (entry.getName().endsWith("rates.bin")) {
+				found = true;
+				break;
+			}
+		}
+		
+		zip.close();
+		return found;
 	}
 	
 	/**

@@ -11,11 +11,13 @@ import org.opensha.sha.faultSurface.FaultSection;
 class PrecomputedClusterConnectionStrategy extends ClusterConnectionStrategy {
 
 	private String name;
+	private double maxJumpDist;
 
 	PrecomputedClusterConnectionStrategy(String name, List<? extends FaultSection> subSections,
-			List<FaultSubsectionCluster> clusters) {
+			List<FaultSubsectionCluster> clusters, double maxJumpDist) {
 		super(subSections, clusters);
 		this.name = name;
+		this.maxJumpDist = maxJumpDist;
 		this.connectionsAdded = true;
 		connectedParents = new HashSet<>();
 		for (FaultSubsectionCluster cluster : clusters)
@@ -33,6 +35,11 @@ class PrecomputedClusterConnectionStrategy extends ClusterConnectionStrategy {
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public double getMaxJumpDist() {
+		return maxJumpDist;
 	}
 
 }

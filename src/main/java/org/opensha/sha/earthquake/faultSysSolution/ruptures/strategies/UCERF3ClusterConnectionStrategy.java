@@ -77,4 +77,9 @@ public class UCERF3ClusterConnectionStrategy extends ClusterConnectionStrategy {
 		return name;
 	}
 
+	@Override
+	public double getMaxJumpDist() {
+		return maxJumpDist;
+	}
+
 }

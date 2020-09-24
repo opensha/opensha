@@ -131,7 +131,7 @@ public class SubSectStiffnessCalculator {
 		double centerLon = lonTrack.getMin() + 0.5*(lonTrack.getMax() - lonTrack.getMin());
 		utmZone = UTM.calcZone(centerLon);
 		utmChar = UTM.calcLetter(centerLat);
-		System.out.println("UTM zone: "+utmZone+" "+utmChar);
+//		System.out.println("UTM zone: "+utmZone+" "+utmChar);
 	}
 	
 	private void checkInit() {

@@ -51,4 +51,9 @@ public class DistCutoffClosestSectClusterConnectionStrategy extends ClusterConne
 		return "ClosestSectPair: maxDist="+(float)maxJumpDist+" km";
 	}
 
+	@Override
+	public double getMaxJumpDist() {
+		return maxJumpDist;
+	}
+
 }

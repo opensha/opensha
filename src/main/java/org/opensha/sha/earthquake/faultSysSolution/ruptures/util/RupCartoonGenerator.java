@@ -548,7 +548,7 @@ public class RupCartoonGenerator {
 		
 		SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(rupBuild.subSectsList);
 //		List<FaultSubsectionCluster> clusters = connStrat.getClusters();
-		RupSetConnectionSearch search = new RupSetConnectionSearch(null, distCalc, Double.POSITIVE_INFINITY, false);
+		RuptureConnectionSearch search = new RuptureConnectionSearch(null, distCalc, Double.POSITIVE_INFINITY, false);
 		List<FaultSubsectionCluster> clusters = search.calcClusters(rupBuild.subSectsList, false);
 		
 		List<Jump> rupJumps = search.calcRuptureJumps(clusters, true);
@@ -579,7 +579,7 @@ public class RupCartoonGenerator {
 				fullClusters.add(new FaultSubsectionCluster(fullSects));
 			}
 		}
-		RupSetConnectionSearch search = new RupSetConnectionSearch(null, distCalc, Double.POSITIVE_INFINITY, false);
+		RuptureConnectionSearch search = new RuptureConnectionSearch(null, distCalc, Double.POSITIVE_INFINITY, false);
 		
 		List<Jump> rupJumps = search.calcRuptureJumps(fullClusters, true);
 		return search.buildClusterRupture(fullClusters, rupJumps, true, fullClusters.get(0));

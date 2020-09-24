@@ -56,7 +56,7 @@ import com.google.common.collect.Table.Cell;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.FaultSystemIO;
 
-public class RupSetConnectionSearch {
+public class RuptureConnectionSearch {
 	
 	private FaultSystemRupSet rupSet;
 	private SectionDistanceAzimuthCalculator distCalc;
@@ -69,16 +69,20 @@ public class RupSetConnectionSearch {
 	// if false, find connections via the smallest individual jump (possibly across multiple clusters)
 	private boolean cumulativeJumps;
 	
-	public RupSetConnectionSearch(FaultSystemRupSet rupSet, SectionDistanceAzimuthCalculator distCalc) {
+	public RuptureConnectionSearch(FaultSystemRupSet rupSet, SectionDistanceAzimuthCalculator distCalc) {
 		this(rupSet, distCalc, MAX_POSSIBLE_JUMP_DEFAULT, CUMULATIVE_JUMPS_DEFAULT);
 	}
 	
-	public RupSetConnectionSearch(FaultSystemRupSet rupSet, SectionDistanceAzimuthCalculator distCalc,
+	public RuptureConnectionSearch(FaultSystemRupSet rupSet, SectionDistanceAzimuthCalculator distCalc,
 			double maxJumpDist, boolean cumulativeJumps) {
 		this.rupSet = rupSet;
 		this.distCalc = distCalc;
 		this.maxJumpDist = maxJumpDist; 
 		this.cumulativeJumps = cumulativeJumps;
+	}
+	
+	public SectionDistanceAzimuthCalculator getDistAzCalc() {
+		return distCalc;
 	}
 	
 	public List<FaultSubsectionCluster> calcClusters(List<FaultSection> sects, final boolean debug) {
@@ -888,7 +892,7 @@ public class RupSetConnectionSearch {
 		
 		SectionDistanceAzimuthCalculator distCalc =
 				new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
-		RupSetConnectionSearch search = new RupSetConnectionSearch(rupSet, distCalc,
+		RuptureConnectionSearch search = new RuptureConnectionSearch(rupSet, distCalc,
 				maxPossibleJumpDist, CUMULATIVE_JUMPS_DEFAULT);
 		
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());

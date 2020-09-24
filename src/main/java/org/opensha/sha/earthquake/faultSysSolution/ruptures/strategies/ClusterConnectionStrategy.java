@@ -170,6 +170,11 @@ public abstract class ClusterConnectionStrategy implements Named {
 		return connectedParents.contains(new IDPairing(parentID1, parentID2));
 	}
 	
+	/**
+	 * @return max allowed jump distance, or +inf if no limit
+	 */
+	public abstract double getMaxJumpDist();
+	
 	public static class ConnStratTypeAdapter extends TypeAdapter<ClusterConnectionStrategy> {
 
 		private List<? extends FaultSection> subSects;
@@ -183,6 +188,8 @@ public abstract class ClusterConnectionStrategy implements Named {
 			// serialize based on clusters list
 			out.beginObject();
 			out.name("name").value(value.getName());
+			if (Double.isFinite(value.getMaxJumpDist()))
+				out.name("maxJumpDist").value(value.getMaxJumpDist());
 			out.name("clusters").beginArray();
 			for (FaultSubsectionCluster cluster : value.getClusters()) {
 				out.beginObject();
@@ -218,6 +225,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 		public ClusterConnectionStrategy read(JsonReader in) throws IOException {
 			in.beginObject();
 			String name = null;
+			double maxJumpDist = Double.POSITIVE_INFINITY;
 			List<FaultSubsectionCluster> clusters = null;
 			
 			while (in.hasNext()) {
@@ -225,6 +233,9 @@ public abstract class ClusterConnectionStrategy implements Named {
 				switch (jsonName) {
 				case "name":
 					name = in.nextString();
+					break;
+				case "maxJumpDist":
+					maxJumpDist = in.nextDouble();
 					break;
 				case "clusters":
 					clusters = loadClusters(in);
@@ -235,7 +246,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 			}
 			in.endObject();
 			Preconditions.checkNotNull(clusters);
-			return new PrecomputedClusterConnectionStrategy(name, subSects, clusters);
+			return new PrecomputedClusterConnectionStrategy(name, subSects, clusters, maxJumpDist);
 		}
 		
 		private FaultSection getSect(int sectID) {

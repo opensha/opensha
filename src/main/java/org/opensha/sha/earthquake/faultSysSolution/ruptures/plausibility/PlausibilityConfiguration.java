@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterCoulombCompatibilityFilter;
@@ -22,6 +23,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayLengthFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
@@ -184,6 +187,13 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
+		public Builder parentCoulomb(SubSectStiffnessCalculator subSectCalc,
+				StiffnessAggregationMethod aggMethod, float threshold, Directionality directionality) {
+			filters.add(new ParentCoulombCompatibilityFilter(
+					subSectCalc, aggMethod, threshold, directionality));
+			return this;
+		}
+		
 		public Builder cumulativeRakeChange(float threshold) {
 			filters.add(new CumulativeRakeChangeFilter(threshold));
 			return this;
@@ -285,6 +295,8 @@ public class PlausibilityConfiguration {
 		builder.registerTypeAdapter(PlausibilityConfiguration.class, configAdapter);
 		builder.registerTypeAdapter(AzimuthCalc.class,
 				new JumpAzimuthChangeFilter.AzimuthCalcTypeAdapter(distAzAdapter.distAzCalc));
+		builder.registerTypeAdapter(SubSectStiffnessCalculator.class,
+				new SubSectStiffnessTypeAdapter(subSects));
 		Gson gson = builder.create();
 		configAdapter.setGson(gson);
 		
@@ -401,13 +413,17 @@ public class PlausibilityConfiguration {
 						break;
 					case "adapter":
 						Preconditions.checkState(filter == null, "adapter must be before filter in JSON");
-						Class<TypeAdapter<PlausibilityFilter>> adapterClass =
-							getDeclaredTypeClass(in.nextString());
 						try {
+							Class<TypeAdapter<PlausibilityFilter>> adapterClass =
+									getDeclaredTypeClass(in.nextString());
 							Constructor<TypeAdapter<PlausibilityFilter>> constructor = adapterClass.getConstructor();
 							adapter = constructor.newInstance();
 						} catch (Exception e) {
-							throw ExceptionUtils.asRuntimeException(e);
+							e.printStackTrace();
+							System.err.println("Warning: adapter specified but class not found, "
+									+ "will attempt default serialization");
+//							throw ExceptionUtils.asRuntimeException(e);
+							break;
 						}
 						if (adapter instanceof PlausibilityFilterTypeAdapter)
 							((PlausibilityFilterTypeAdapter)adapter).init(connectionStrategy, distAzCalc);
@@ -573,6 +589,67 @@ public class PlausibilityConfiguration {
 		
 	}
 	
+	private static class SubSectStiffnessTypeAdapter extends TypeAdapter<SubSectStiffnessCalculator> {
+
+		private List<? extends FaultSection> subSects;
+		private SubSectStiffnessCalculator prevCalc;
+
+		public SubSectStiffnessTypeAdapter(List<? extends FaultSection> subSects) {
+			this.subSects = subSects;
+		}
+
+		@Override
+		public void write(JsonWriter out, SubSectStiffnessCalculator calc) throws IOException {
+			out.beginObject();
+			out.name("gridSpacing").value(calc.getGridSpacing());
+			out.name("lameLambda").value(calc.getLameLambda());
+			out.name("lameMu").value(calc.getLameMu());
+			out.name("coeffOfFriction").value(calc.getCoeffOfFriction());
+			out.endObject();
+		}
+
+		@Override
+		public SubSectStiffnessCalculator read(JsonReader in) throws IOException {
+			in.beginObject();
+			Double mu = null;
+			Double lambda = null;
+			Double coeffOfFriction = null;
+			Double gridSpacing = null;
+			while (in.hasNext()) {
+				switch (in.nextName()) {
+				case "lameMu":
+					mu = in.nextDouble();
+					break;
+				case "lameLambda":
+					lambda = in.nextDouble();
+					break;
+				case "coeffOfFriction":
+					coeffOfFriction = in.nextDouble();
+					break;
+				case "gridSpacing":
+					gridSpacing = in.nextDouble();
+					break;
+
+				default:
+					break;
+				}
+			}
+			in.endObject();
+			if (prevCalc != null) {
+				// see if it's the same
+				if (gridSpacing == prevCalc.getGridSpacing() && lambda == prevCalc.getLameLambda()
+						&& mu == prevCalc.getLameMu() && coeffOfFriction == prevCalc.getCoeffOfFriction()) {
+					return prevCalc;
+				}
+			}
+			SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
+					subSects, gridSpacing, lambda, mu, coeffOfFriction);
+			prevCalc = calc;
+			return calc;
+		}
+		
+	}
+	
 	public static void main(String[] args) {
 		FaultModels fm = FaultModels.FM3_1;
 		DeformationModels dm = fm.getFilterBasis();
@@ -597,8 +674,10 @@ public class PlausibilityConfiguration {
 		builder.u3Azimuth();
 		builder.u3Cumulatives();
 		builder.minSectsPerParent(2, true);
-		builder.clusterCoulomb(new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5),
-				StiffnessAggregationMethod.MEDIAN, 0f);
+		SubSectStiffnessCalculator stiffnessCalc =
+				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
+		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
+		builder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		
 		PlausibilityConfiguration config = builder.build();
 		

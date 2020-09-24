@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.dom4j.DocumentException;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
@@ -29,6 +30,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Sp
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
@@ -47,6 +49,7 @@ import com.google.common.primitives.Ints;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.SectionConnectionStrategy;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
@@ -689,6 +692,7 @@ public class ClusterRuptureBuilder {
 	public static void main(String[] args) throws IOException, DocumentException {
 		FaultModels fm = FaultModels.FM3_1;
 		DeformationModels dm = fm.getFilterBasis();
+		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
 		
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm,
 				null, 0.1);
@@ -728,11 +732,12 @@ public class ClusterRuptureBuilder {
 //						distAzCalc, 5d, CoulombRates.loadUCERF3CoulombRates(fm));
 		ClusterConnectionStrategy connectionStrategy =
 			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 5d);
-		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
-		configBuilder.cumulativeAzChange(560f);
-		configBuilder.cumulativeRakeChange(180f);
-//		configBuilder.u3Azimuth();
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
+		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
+		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
+		configBuilder.cumulativeAzChange(560f);
+//		configBuilder.cumulativeRakeChange(180f);
+//		configBuilder.u3Azimuth();
 //		configBuilder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		configBuilder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		configBuilder.maxSplays(0);
@@ -761,7 +766,7 @@ public class ClusterRuptureBuilder {
 		if (debugCriteria != null)
 			builder.setDebugCriteria(debugCriteria, stopAfterDebug);
 		
-		int threads = Runtime.getRuntime().availableProcessors();
+		int threads = Runtime.getRuntime().availableProcessors()-2;
 //		int threads = 1;
 		System.out.println("Building ruptures with "+threads+" threads...");
 		Stopwatch watch = Stopwatch.createStarted();
@@ -775,22 +780,63 @@ public class ClusterRuptureBuilder {
 		
 		if (debugCriteria == null || !stopAfterDebug) {
 			// write out test rup set
-			double[] mags = new double[rups.size()];
-			double[] rakes = new double[rups.size()];
-			double[] rupAreas = new double[rups.size()];
-			List<List<Integer>> sectionForRups = new ArrayList<>();
-			for (int r=0; r<rups.size(); r++) {
-				List<FaultSection> sects = rups.get(r).buildOrderedSectionList();
-				List<Integer> ids = new ArrayList<>();
-				for (FaultSection sect : sects)
-					ids.add(sect.getSectionId());
-				sectionForRups.add(ids);
-				mags[r] = Double.NaN;
-				rakes[r] = Double.NaN;
-				rupAreas[r] = Double.NaN;
+//			double[] mags = new double[rups.size()];
+//			double[] lenghts = new double[rups.size()];
+//			double[] rakes = new double[rups.size()];
+//			double[] rupAreas = new double[rups.size()];
+//			List<List<Integer>> sectionForRups = new ArrayList<>();
+//			for (int r=0; r<rups.size(); r++) {
+//				List<FaultSection> sects = rups.get(r).buildOrderedSectionList();
+//				List<Integer> ids = new ArrayList<>();
+//				for (FaultSection sect : sects)
+//					ids.add(sect.getSectionId());
+//				sectionForRups.add(ids);
+//				mags[r] = Double.NaN;
+//				rakes[r] = Double.NaN;
+//				rupAreas[r] = Double.NaN;
+//			}
+			double[] sectSlipRates = new double[subSects.size()];
+			double[] sectAreasReduced = new double[subSects.size()];
+			double[] sectAreasOrig = new double[subSects.size()];
+			for (int s=0; s<sectSlipRates.length; s++) {
+				FaultSection sect = subSects.get(s);
+				sectAreasReduced[s] = sect.getArea(true);
+				sectAreasOrig[s] = sect.getArea(false);
+				sectSlipRates[s] = sect.getReducedAveSlipRate()*1e-3; // mm/yr => m/yr
 			}
-			FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, null, null, null, 
-				sectionForRups, mags, rakes, rupAreas, null, "");
+			double[] rupMags = new double[rups.size()];
+			double[] rupRakes = new double[rups.size()];
+			double[] rupAreas = new double[rups.size()];
+			double[] rupLengths = new double[rups.size()];
+			List<List<Integer>> rupsIDsList = new ArrayList<>();
+			for (int r=0; r<rups.size(); r++) {
+				ClusterRupture rup = rups.get(r);
+				List<FaultSection> rupSects = rup.buildOrderedSectionList();
+				List<Integer> sectIDs = new ArrayList<>();
+				double totLength = 0d;
+				double totArea = 0d;
+				double totOrigArea = 0d; // not reduced for aseismicity
+				List<Double> sectAreas = new ArrayList<>();
+				List<Double> sectRakes = new ArrayList<>();
+				for (FaultSection sect : rupSects) {
+					sectIDs.add(sect.getSectionId());
+					double length = sect.getTraceLength()*1e3;	// km --> m
+					totLength += length;
+					double area = sectAreasReduced[sect.getSectionId()];	// sq-m
+					totArea += area;
+					totOrigArea += sectAreasOrig[sect.getSectionId()];	// sq-m
+					sectAreas.add(area);
+					sectRakes.add(sect.getAveRake());
+				}
+				rupAreas[r] = totArea;
+				rupLengths[r] = totLength;
+				rupRakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(sectAreas, sectRakes));
+				double origDDW = totOrigArea/totLength;
+				rupMags[r] = scale.getMag(totArea, origDDW);
+				rupsIDsList.add(sectIDs);
+			}
+			FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, null, sectAreasReduced, 
+					rupsIDsList, rupMags, rupRakes, rupAreas, rupLengths, "");
 			rupSet.setPlausibilityConfiguration(config);
 			FaultSystemIO.writeRupSet(rupSet, new File("/tmp/test_rup_set.zip"));
 		}
