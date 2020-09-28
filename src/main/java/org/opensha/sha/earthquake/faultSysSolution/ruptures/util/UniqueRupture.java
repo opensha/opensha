@@ -11,6 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
 /**
  * Unique rupture as defined only by the set of subsection IDs included (regardless of order)
@@ -136,13 +137,13 @@ public class UniqueRupture {
 				range = new SectIDRange(before.startID, range.endID);
 			}
 		}
-		if (index < list.size()-1) {
-			SectIDRange after = list.get(index+1);
+		if (index < list.size()) {
+			SectIDRange after = list.get(index);
 			Preconditions.checkState(range.endID < after.startID,
 					"Overlappping ID ranges detected: %s %s", range, after);
 			if (range.endID == after.startID-1) {
 				// combine them
-				list.remove(index+1);
+				list.remove(index);
 				range = new SectIDRange(range.startID, after.endID);
 			}
 		}
@@ -196,6 +197,25 @@ public class UniqueRupture {
 		} else if (!list.equals(other.list))
 			return false;
 		return true;
+	}
+	
+	/**
+	 * @return immutable view of the list of ID ranges
+	 */
+	public ImmutableList<SectIDRange> getRanges() {
+		return ImmutableList.copyOf(list);
+	}
+	
+	@Override
+	public String toString() {
+		StringBuilder str = new StringBuilder();
+		str.append("UniqueRupture(size="+size+"): ");
+		for (int i=0; i<list.size(); i++) {
+			if (i > 0)
+				str.append(",");
+			str.append(list.get(i));
+		}
+		return str.toString();
 	}
 
 }
