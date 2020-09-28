@@ -45,13 +45,22 @@ import scratch.UCERF3.utils.FaultSystemIO;
 public class CompareClusterRuptureBuild {
 
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
-		FaultSystemRupSet u3RupSet = FaultSystemIO.loadRupSet(new File(
-				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
-				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
+//		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
+//				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
+//				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
+//		boolean isCompUCERF3 = true;
+		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
+				"/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz_cmlRake_cffClusterPositive.zip"));
+		boolean isCompUCERF3 = false;
+		
+		System.out.println("compRupSet has "+compRupSet.getNumRuptures()+" ruptures");
+		
 		FaultSystemRupSet clusterRupSet = FaultSystemIO.loadRupSet(new File("/tmp/test_rup_set.zip"));
+		System.out.println("clusterRupSet has "+clusterRupSet.getNumRuptures()+" ruptures");
+		
 		boolean debugExclusions = true;
 		boolean debugNewInclusions = true;
-		boolean stopAfterFound = true;
+		boolean stopAfterFound = false;
 		
 		FaultModels fm = FaultModels.FM3_1;
 		List<FaultSection> parentSects = fm.fetchFaultSections();
@@ -66,66 +75,73 @@ public class CompareClusterRuptureBuild {
 		ClusterConnectionStrategy connectionStrategy = new DistCutoffClosestSectClusterConnectionStrategy(
 				subSects, distAzCalc, 5d);
 		Preconditions.checkState(subSects.size() == clusterRupSet.getNumSections());
-		Preconditions.checkState(subSects.size() == u3RupSet.getNumSections());
+		Preconditions.checkState(subSects.size() == compRupSet.getNumSections());
 		for (int i=0; i<subSects.size(); i++) {
 			Preconditions.checkState(subSects.get(i).getSectionName().equals(
 					clusterRupSet.getFaultSectionData(i).getSectionName()));
 			Preconditions.checkState(subSects.get(i).getSectionName().equals(
-					u3RupSet.getFaultSectionData(i).getSectionName()));
+					compRupSet.getFaultSectionData(i).getSectionName()));
 		}
 		System.out.println("passed all section consistency tests");
 		
-		List<PlausibilityFilter> filters = new ArrayList<>();
-		AzimuthCalc u3AzCalc = new JumpAzimuthChangeFilter.UCERF3LeftLateralFlipAzimuthCalc(distAzCalc);
-		filters.add(new JumpAzimuthChangeFilter(u3AzCalc, 60f));
-		filters.add(new TotalAzimuthChangeFilter(u3AzCalc, 60f, true, true));
-		filters.add(new CumulativeAzimuthChangeFilter(
-				new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc), 560f));
-//		filters.add(new CumulativeRakeChangeFilter(180f));
-//		filters.add(new JumpCumulativeRakeChangeFilter(180f));
-		filters.add(new U3CompatibleCumulativeRakeChangeFilter(180d));
-		filters.add(new MinSectsPerParentFilter(2, true, connectionStrategy));
-		CoulombRates coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
-		CoulombRatesTester coulombTester = new CoulombRatesTester(
-				TestType.COULOMB_STRESS, 0.04, 0.04, 1.25d, true, true);
-		filters.add(new U3CoulombJunctionFilter(coulombTester, coulombRates));
+		List<PlausibilityFilter> filters;
+		List<AbstractPlausibilityFilter> u3Filters = null;
+		if (isCompUCERF3) {
+			filters = new ArrayList<>();
+			AzimuthCalc u3AzCalc = new JumpAzimuthChangeFilter.UCERF3LeftLateralFlipAzimuthCalc(distAzCalc);
+			filters.add(new JumpAzimuthChangeFilter(u3AzCalc, 60f));
+			filters.add(new TotalAzimuthChangeFilter(u3AzCalc, 60f, true, true));
+			filters.add(new CumulativeAzimuthChangeFilter(
+					new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc), 560f));
+//			filters.add(new CumulativeRakeChangeFilter(180f));
+//			filters.add(new JumpCumulativeRakeChangeFilter(180f));
+			filters.add(new U3CompatibleCumulativeRakeChangeFilter(180d));
+			filters.add(new MinSectsPerParentFilter(2, true, connectionStrategy));
+			CoulombRates coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
+			CoulombRatesTester coulombTester = new CoulombRatesTester(
+					TestType.COULOMB_STRESS, 0.04, 0.04, 1.25d, true, true);
+			filters.add(new U3CoulombJunctionFilter(coulombTester, coulombRates));
+			
+			System.out.println("Building UCERF3 original plausibility filters...");
+			UCERF3PlausibilityConfig u3Config = UCERF3PlausibilityConfig.getDefault();
+			Map<IDPairing, Double> distances = new HashMap<>(distAzCalc.getCachedDistances());
+			Map<IDPairing, Double> azimuths = new HashMap<>(distAzCalc.getCachedAzimuths());
+			for (IDPairing pair : new ArrayList<>(distances.keySet())) {
+				distances.put(pair.getReversed(), distances.get(pair));
+				azimuths.put(pair, distAzCalc.getAzimuth(pair.getID1(), pair.getID2()));
+				azimuths.put(pair.getReversed(), distAzCalc.getAzimuth(pair.getID2(), pair.getID1()));
+			}
+			for (int i=1; i<subSects.size(); i++) {
+				azimuths.put(new IDPairing(i-1, i), distAzCalc.getAzimuth(i-1, i));
+				azimuths.put(new IDPairing(i, i-1), distAzCalc.getAzimuth(i, i-1));
+			}
+			List<List<Integer>> sectionConnectionsListList = UCERF3SectionConnectionStrategy.computeCloseSubSectionsListList(
+					subSects, distances, 5d, coulombRates);
+			u3Config.setCoulombRates(coulombRates);
+			u3Filters = u3Config.buildPlausibilityFilters(
+					azimuths, distances, sectionConnectionsListList, subSects);
+		} else {
+			filters = clusterRupSet.getPlausibilityConfiguration().getFilters();
+		}
+		
 		
 		HashSet<UniqueRupture> u3Uniques = new HashSet<>();
-		for (int r=0; r<u3RupSet.getNumRuptures(); r++)
-			u3Uniques.add(new UniqueRupture(u3RupSet.getSectionsIndicesForRup(r)));
+		for (int r=0; r<compRupSet.getNumRuptures(); r++)
+			u3Uniques.add(UniqueRupture.forIDs(compRupSet.getSectionsIndicesForRup(r)));
 		
 		HashSet<UniqueRupture> clusterUniques = new HashSet<>();
 		for (int r=0; r<clusterRupSet.getNumRuptures(); r++)
-			clusterUniques.add(new UniqueRupture(clusterRupSet.getSectionsIndicesForRup(r)));
-		
-		System.out.println("Building UCERF3 original plausibility filters...");
-		UCERF3PlausibilityConfig u3Config = UCERF3PlausibilityConfig.getDefault();
-		Map<IDPairing, Double> distances = new HashMap<>(distAzCalc.getCachedDistances());
-		Map<IDPairing, Double> azimuths = new HashMap<>(distAzCalc.getCachedAzimuths());
-		for (IDPairing pair : new ArrayList<>(distances.keySet())) {
-			distances.put(pair.getReversed(), distances.get(pair));
-			azimuths.put(pair, distAzCalc.getAzimuth(pair.getID1(), pair.getID2()));
-			azimuths.put(pair.getReversed(), distAzCalc.getAzimuth(pair.getID2(), pair.getID1()));
-		}
-		for (int i=1; i<subSects.size(); i++) {
-			azimuths.put(new IDPairing(i-1, i), distAzCalc.getAzimuth(i-1, i));
-			azimuths.put(new IDPairing(i, i-1), distAzCalc.getAzimuth(i, i-1));
-		}
-		List<List<Integer>> sectionConnectionsListList = UCERF3SectionConnectionStrategy.computeCloseSubSectionsListList(
-				subSects, distances, 5d, coulombRates);
-		u3Config.setCoulombRates(coulombRates);
-		List<AbstractPlausibilityFilter> u3Filters = u3Config.buildPlausibilityFilters(
-				azimuths, distances, sectionConnectionsListList, subSects);
+			clusterUniques.add(UniqueRupture.forIDs(clusterRupSet.getSectionsIndicesForRup(r)));
 		
 		if (debugExclusions) {
-			System.out.println("searching for members of the U3 rup set which are excluded in the cluster set");
+			System.out.println("searching for members of the reference rup set which are excluded in the cluster set");
 			int numFound = 0;
-			for (int o=0; o<u3RupSet.getNumRuptures(); o++) {
-				List<Integer> sectIndexes = u3RupSet.getSectionsIndicesForRup(o);
-				UniqueRupture oUnique = new UniqueRupture(sectIndexes);
+			for (int o=0; o<compRupSet.getNumRuptures(); o++) {
+				List<Integer> sectIndexes = compRupSet.getSectionsIndicesForRup(o);
+				UniqueRupture oUnique = UniqueRupture.forIDs(sectIndexes);
 				if (!clusterUniques.contains(oUnique)) {
 					numFound++;
-					List<FaultSection> sects = u3RupSet.getFaultSectionDataForRupture(o);
+					List<FaultSection> sects = compRupSet.getFaultSectionDataForRupture(o);
 					ClusterRupture clusterRup = ClusterRupture.forOrderedSingleStrandRupture(sects, distAzCalc);
 					System.out.println("Found an excluded rupture set at index "+o);
 					List<Integer> parents = new ArrayList<>();
@@ -133,20 +149,26 @@ public class CompareClusterRuptureBuild {
 						parents.add(cluster.parentSectionID);
 					System.out.println("\tParents: "+Joiner.on(",").join(parents));
 					System.out.println(clusterRup);
+					PlausibilityResult netResult = PlausibilityResult.PASS;
 					for (PlausibilityFilter filter : filters) {
 						PlausibilityResult result = filter.apply(clusterRup, true);
 						System.out.println(filter.getShortName()+": "+result);
+						netResult = netResult.logicalAnd(result);
 					}
-					System.out.println("Applying original filters:");
-					for (AbstractPlausibilityFilter filter : u3Filters) {
-						PlausibilityResult result = filter.apply(sects);
-						System.out.println(filter.getShortName()+": "+result);
+					System.out.println("Net result: "+netResult);
+					
+					if (isCompUCERF3) {
+						System.out.println("Applying original filters:");
+						for (AbstractPlausibilityFilter filter : u3Filters) {
+							PlausibilityResult result = filter.apply(sects);
+							System.out.println(filter.getShortName()+": "+result);
+						}
 					}
 					// prune from the end first
 					LinkedList<Integer> testIDs = new LinkedList<>(sectIndexes);
 					testIDs.removeLast();
 					while (!testIDs.isEmpty()) {
-						UniqueRupture testUnique = new UniqueRupture(testIDs);
+						UniqueRupture testUnique = UniqueRupture.forIDs(testIDs);
 						if (clusterUniques.contains(testUnique)) {
 							System.out.println("Found a subset which is included (pruned from end):");
 							List<FaultSection> testSects = new ArrayList<>();
@@ -161,7 +183,7 @@ public class CompareClusterRuptureBuild {
 					testIDs = new LinkedList<>(sectIndexes);
 					testIDs.removeFirst();
 					while (!testIDs.isEmpty()) {
-						UniqueRupture testUnique = new UniqueRupture(testIDs);
+						UniqueRupture testUnique = UniqueRupture.forIDs(testIDs);
 						if (clusterUniques.contains(testUnique)) {
 							System.out.println("Found a subset which is included (pruned from start):");
 							List<FaultSection> testSects = new ArrayList<>();
@@ -184,11 +206,11 @@ public class CompareClusterRuptureBuild {
 		}
 		
 		if (debugNewInclusions) {
-			System.out.println("searching for cluster ruptures which are not members of the U3 rup set");
+			System.out.println("searching for cluster ruptures which are not members of the reference rup set");
 			int numFound = 0;
 			for (int c=0; c<clusterRupSet.getNumRuptures(); c++) {
 				List<Integer> sectIndexes = clusterRupSet.getSectionsIndicesForRup(c);
-				UniqueRupture oUnique = new UniqueRupture(sectIndexes);
+				UniqueRupture oUnique = UniqueRupture.forIDs(sectIndexes);
 				if (!u3Uniques.contains(oUnique)) {
 					numFound++;
 					List<FaultSection> sects = clusterRupSet.getFaultSectionDataForRupture(c);
@@ -204,10 +226,12 @@ public class CompareClusterRuptureBuild {
 						PlausibilityResult result = filter.apply(clusterRup, true);
 						System.out.println(filter.getShortName()+": "+result);
 					}
-					System.out.println("Applying original filters:");
-					for (AbstractPlausibilityFilter filter : u3Filters) {
-						PlausibilityResult result = filter.apply(sects);
-						System.out.println(filter.getShortName()+": "+result);
+					if (isCompUCERF3) {
+						System.out.println("Applying original filters:");
+						for (AbstractPlausibilityFilter filter : u3Filters) {
+							PlausibilityResult result = filter.apply(sects);
+							System.out.println(filter.getShortName()+": "+result);
+						}
 					}
 					
 					if (stopAfterFound)

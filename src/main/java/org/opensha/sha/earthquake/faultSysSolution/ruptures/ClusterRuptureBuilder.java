@@ -642,7 +642,7 @@ public class ClusterRuptureBuilder {
 		public CompareRupSetNewInclusionCriteria(FaultSystemRupSet rupSet) {
 			uniques = new HashSet<>();
 			for (List<Integer> rupSects : rupSet.getSectionIndicesForAllRups())
-				uniques.add(new UniqueRupture(rupSects));
+				uniques.add(UniqueRupture.forIDs(rupSects));
 		}
 
 		@Override
@@ -669,7 +669,7 @@ public class ClusterRuptureBuilder {
 		public CompareRupSetExclusionCriteria(FaultSystemRupSet rupSet) {
 			uniques = new HashSet<>();
 			for (List<Integer> rupSects : rupSet.getSectionIndicesForAllRups())
-				uniques.add(new UniqueRupture(rupSects));
+				uniques.add(UniqueRupture.forIDs(rupSects));
 		}
 
 		@Override
@@ -734,12 +734,13 @@ public class ClusterRuptureBuilder {
 			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 5d);
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
 		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
+		configBuilder.maxNumClusters(2); // for connection only testing
 		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
 		configBuilder.cumulativeAzChange(560f);
-//		configBuilder.cumulativeRakeChange(180f);
+		configBuilder.cumulativeRakeChange(180f);
 //		configBuilder.u3Azimuth();
 //		configBuilder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
-		configBuilder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+//		configBuilder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		configBuilder.maxSplays(0);
 		configBuilder.minSectsPerParent(2, true);
 		PlausibilityConfiguration config = configBuilder.build();

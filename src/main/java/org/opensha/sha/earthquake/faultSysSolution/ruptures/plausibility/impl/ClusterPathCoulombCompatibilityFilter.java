@@ -6,6 +6,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessResult;
@@ -38,8 +39,9 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
 		if (rupture.getTotalNumJumps()  == 0)
 			return PlausibilityResult.PASS;
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
 		for (FaultSubsectionCluster nucleationCluster : rupture.getClustersIterable()) {
-			boolean valid = testNucleationPoint(rupture, nucleationCluster);
+			boolean valid = testNucleationPoint(navigator, nucleationCluster);
 			if (verbose)
 				System.out.println(getShortName()+": Nucleation point "+nucleationCluster+", result: "+valid);
 			if (valid)
@@ -54,14 +56,15 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 		return apply(rupture.take(newJump), verbose);
 	}
 	
-	private boolean testNucleationPoint(ClusterRupture rup, FaultSubsectionCluster nucleationCluster) {
-		FaultSubsectionCluster predecessor = rup.clusterPredecessorsMap.get(nucleationCluster);
+	private boolean testNucleationPoint(RuptureTreeNavigator navigator,
+			FaultSubsectionCluster nucleationCluster) {
+		FaultSubsectionCluster predecessor = navigator.getPredecessor(nucleationCluster);
 		if (predecessor != null)
-			if (!testStrand(rup, new HashSet<>(), predecessor))
+			if (!testStrand(navigator, new HashSet<>(), predecessor))
 				return false;
 		
-		for (FaultSubsectionCluster descendant : rup.clusterDescendantsMap.get(nucleationCluster)) {
-			if (!testStrand(rup, new HashSet<>(), descendant))
+		for (FaultSubsectionCluster descendant : navigator.getDescendants(nucleationCluster)) {
+			if (!testStrand(navigator, new HashSet<>(), descendant))
 				return false;
 		}
 		
@@ -69,7 +72,7 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 		return true;
 	}
 	
-	private boolean testStrand(ClusterRupture rup, HashSet<FaultSubsectionCluster> strandClusters,
+	private boolean testStrand(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> strandClusters,
 			FaultSubsectionCluster addition) {
 		if (!strandClusters.isEmpty()) {
 			StiffnessResult[] stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
@@ -84,21 +87,21 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 		newStrandClusters.add(addition);
 		
 		// check predecessor of this strand
-		FaultSubsectionCluster predecessor = rup.clusterPredecessorsMap.get(addition);
+		FaultSubsectionCluster predecessor = navigator.getPredecessor(addition);
 		if (predecessor != null && !strandClusters.contains(predecessor)) {
 			// go down that path
 			
-			if (!testStrand(rup, newStrandClusters, predecessor))
+			if (!testStrand(navigator, newStrandClusters, predecessor))
 				return false;
 		}
 		
 		// check descendants of this strand
-		for (FaultSubsectionCluster descendant : rup.clusterDescendantsMap.get(addition)) {
+		for (FaultSubsectionCluster descendant : navigator.getDescendants(addition)) {
 			if (strandClusters.contains(descendant))
 				continue;
 			// go down that path
 
-			if (!testStrand(rup, newStrandClusters, descendant))
+			if (!testStrand(navigator, newStrandClusters, descendant))
 				return false;
 		}
 		

@@ -6,6 +6,7 @@ import java.util.List;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -41,7 +42,7 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 			return PlausibilityResult.PASS;
 		}
 		FaultSection stopAt = rupture.clusters[rupture.clusters.length-1].startSect;
-		double tot = calc(rupture, rupture.clusters[0].startSect, stopAt, 0d, verbose);
+		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, stopAt, 0d, verbose);
 		if (tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -57,10 +58,10 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 		return apply(rupture.take(newJump), verbose);
 	}
 	
-	private double calc(ClusterRupture rupture, FaultSection sect1, FaultSection stopAt,
+	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, FaultSection stopAt,
 			double tot, boolean verbose) {
 		double rake1 = sect1.getAveRake();
-		for (FaultSection sect2 : rupture.sectDescendantsMap.get(sect1)) {
+		for (FaultSection sect2 : navigator.getDescendants(sect1)) {
 			double rake2 = sect2.getAveRake();
 			double diff = rakeDiff(rake1, rake2);
 			tot += diff;
@@ -72,7 +73,7 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 			if (sect2 == stopAt)
 				// UCERF3 compatibility: don't check the full last section
 				break;
-			tot = calc(rupture, sect2, stopAt, tot, verbose);
+			tot = calc(navigator, sect2, stopAt, tot, verbose);
 		}
 		return tot;
 	}

@@ -23,6 +23,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NumClustersFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayLengthFilter;
@@ -227,6 +228,11 @@ public class PlausibilityConfiguration {
 		 */
 		public Builder splayLength(double maxLen, boolean isFractOfMain, boolean totalAcrossSplays) {
 			filters.add(new SplayLengthFilter(maxLen, isFractOfMain, totalAcrossSplays));
+			return this;
+		}
+		
+		public Builder maxNumClusters(int maxNumClusters) {
+			filters.add(new NumClustersFilter(maxNumClusters));
 			return this;
 		}
 		

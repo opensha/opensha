@@ -42,6 +42,17 @@ public class SectionDistanceAzimuthCalculator {
 		azCache = CacheBuilder.newBuilder().build(new AzLoader());
 	}
 	
+	private RuptureSurface getSurface(int id) {
+		RuptureSurface surf = sectSurfs.get(id);
+		if (surf == null) {
+			FaultSection sect = subSects.get(id);
+			Preconditions.checkState(id == sect.getSectionId(), "Section IDs are not indexes");
+			surf = sect.getFaultSurface(1d, false, false);
+			sectSurfs.putIfAbsent(id, surf);
+		}
+		return surf;
+	}
+	
 	public List<? extends FaultSection> getSubSections() {
 		return subSects;
 	}
@@ -55,9 +66,9 @@ public class SectionDistanceAzimuthCalculator {
 			if (id1 == id2)
 				return 0d;
 			
-			RuptureSurface surf1 = sectSurfs.get(id1);
+			RuptureSurface surf1 = getSurface(id1);
 			Preconditions.checkNotNull(surf1);
-			RuptureSurface surf2 = sectSurfs.get(id2);
+			RuptureSurface surf2 = getSurface(id2);
 			Preconditions.checkNotNull(surf2);
 			
 			// if the quick distance is less than this value, calculate a full distance
@@ -87,9 +98,9 @@ public class SectionDistanceAzimuthCalculator {
 			if (id1 == id2)
 				return Double.NaN;
 			
-			RuptureSurface surf1 = sectSurfs.get(id1);
+			RuptureSurface surf1 = getSurface(id1);
 			Preconditions.checkNotNull(surf1);
-			RuptureSurface surf2 = sectSurfs.get(id2);
+			RuptureSurface surf2 = getSurface(id2);
 			Preconditions.checkNotNull(surf2);
 			
 			Location loc1 = GriddedSurfaceUtils.getSurfaceMiddleLoc(surf1);

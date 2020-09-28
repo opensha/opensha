@@ -8,6 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.HardCodedLeftLateralFlipAzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -33,7 +34,8 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump jump, boolean verbose) {
-		FaultSection before1 = rupture.sectPredecessorsMap.get(jump.fromSection);
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		FaultSection before1 = navigator.getPredecessor(jump.fromSection);
 		if (before1 == null) {
 			// fewer than 2 sections before the first jump, will never work
 			if (verbose)
@@ -48,7 +50,7 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 		if (rupture.contains(after1)) {
 			// this is a preexisting jump and can be a fork with multiple second sections after the jump
 			// we will pass only if they all pass
-			after2s = rupture.sectDescendantsMap.get(after1);
+			after2s = navigator.getDescendants(after1);
 		} else {
 			// we're testing a new possible jump
 			if (jump.toCluster.subSects.size() < 2) {

@@ -3,18 +3,19 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.opensha.commons.util.ComparablePairing;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
 
 /**
  * This class represents a cluster of contiguous subsections. It can either be a full parent
@@ -49,23 +50,13 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	public final ImmutableSet<FaultSection> endSects;
 	
 	/**
-	 * Internal HashSet of sections included in this cluster, for fast contains checks
+	 * Set of section IDs contained in this cluster
 	 */
-	private final HashSet<FaultSection> sectsSet;
+	public final UniqueRupture unique;
 	/**
 	 * Internal (mutable) list of allowed jumps. Set via constructor, or via addConnection(Jump) method
 	 */
 	private final List<Jump> possibleJumps;
-	/**
-	 * Mapping of possible jumps from the given section on this cluster
-	 */
-	private final Multimap<FaultSection, Jump> jumpsForSection;
-	/**
-	 * Mapping of possible jumps to the given cluster 
-	 */
-	private final Multimap<FaultSubsectionCluster, Jump> jumpsToCluster;
-	
-	private final ClusterJumpDistComparator clusterDistComparator;
 	
 	public FaultSubsectionCluster(List<? extends FaultSection> subSects) {
 		this(subSects, null);
@@ -83,7 +74,7 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 			endBuilder.addAll(endSects);
 			this.endSects = endBuilder.build();
 		}
-		sectsSet = new HashSet<>(subSects);
+		unique = UniqueRupture.forSects(subSects);
 		int parentSectionID = -1;
 		String parentSectionName = null;
 		for (FaultSection subSect : subSects) {
@@ -98,52 +89,52 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		}
 		this.parentSectionID = parentSectionID;
 		this.parentSectionName = parentSectionName;
-		jumpsForSection = HashMultimap.create();
-		jumpsToCluster = HashMultimap.create();
 		this.possibleJumps = new ArrayList<>();
-		this.clusterDistComparator = new ClusterJumpDistComparator();
 	}
 	
 	public void addConnection(Jump jump) {
 		Preconditions.checkState(jump.fromCluster == this);
-		Preconditions.checkState(sectsSet.contains(jump.fromSection));
+		Preconditions.checkState(jump.fromSection.getParentSectionId() == parentSectionID);
+		Preconditions.checkState(contains(jump.fromSection));
 		possibleJumps.add(jump);
-		jumpsForSection.put(jump.fromSection, jump);
-		jumpsToCluster.put(jump.toCluster, jump);
+	}
+	
+	public boolean contains(FaultSection sect) {
+		return unique.contains(sect.getSectionId());
 	}
 	
 	public Set<FaultSection> getExitPoints() {
-		return jumpsForSection.keySet();
+		HashSet<FaultSection> exitPoints = new HashSet<>();
+		for (Jump jump : possibleJumps)
+			exitPoints.add(jump.fromSection);
+		return exitPoints;
 	}
 	
 	public Set<FaultSubsectionCluster> getConnectedClusters() {
-		return jumpsToCluster.keySet();
+		HashSet<FaultSubsectionCluster> set = new HashSet<>();
+		for (Jump jump : possibleJumps)
+			set.add(jump.toCluster);
+		return set;
 	}
 	
 	public List<FaultSubsectionCluster> getDistSortedConnectedClusters() {
-		List<FaultSubsectionCluster> sorted = new ArrayList<>(jumpsToCluster.keySet());
-		Collections.sort(sorted, clusterDistComparator);
-		Preconditions.checkState(sorted.size() == jumpsToCluster.keySet().size());
-		return sorted;
-	}
-	
-	private class ClusterJumpDistComparator implements Comparator<FaultSubsectionCluster> {
-
-		@Override
-		public int compare(FaultSubsectionCluster o1, FaultSubsectionCluster o2) {
-			double minDist1 = Double.POSITIVE_INFINITY;
-			double minDist2 = Double.POSITIVE_INFINITY;
-			for (Jump jump : jumpsToCluster.get(o1))
-				minDist1 = Math.min(minDist1, jump.distance);
-			for (Jump jump : jumpsToCluster.get(o2))
-				minDist2 = Math.min(minDist2, jump.distance);
-			return Double.compare(minDist1, minDist2);
+		Map<FaultSubsectionCluster, Double> distMap = new HashMap<>();
+		for (Jump jump : possibleJumps) {
+			Double prevDist = distMap.get(jump.toCluster);
+			if (prevDist == null)
+				distMap.put(jump.toCluster, jump.distance);
+			else if (jump.distance < prevDist)
+				distMap.put(jump.toCluster, jump.distance);
 		}
-		
+		return ComparablePairing.getSortedData(distMap);
 	}
 	
 	public Collection<Jump> getConnectionsTo(FaultSubsectionCluster cluster) {
-		return jumpsToCluster.get(cluster);
+		List<Jump> jumps = new ArrayList<>();
+		for (Jump jump : possibleJumps)
+			if (jump.toCluster.equals(cluster))
+				jumps.add(jump);
+		return jumps;
 	}
 	
 	public List<Jump> getConnections() {
@@ -151,8 +142,12 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	}
 	
 	public Collection<Jump> getConnections(FaultSection exitPoint) {
-		Preconditions.checkState(sectsSet.contains(exitPoint), "Given section is not part of this cluster");
-		return jumpsForSection.get(exitPoint);
+		Preconditions.checkState(contains(exitPoint), "Given section is not part of this cluster");
+		List<Jump> jumps = new ArrayList<>();
+		for (Jump jump : possibleJumps)
+			if (jump.fromSection.equals(exitPoint))
+				jumps.add(jump);
+		return jumps;
 	}
 	@Override
 	public String toString() {

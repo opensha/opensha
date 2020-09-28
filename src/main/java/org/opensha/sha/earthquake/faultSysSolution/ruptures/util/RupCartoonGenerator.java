@@ -281,10 +281,11 @@ public class RupCartoonGenerator {
 		}
 		
 		private void addAzimuths(ClusterRupture rup, Jump jump) {
-			FaultSection before = rup.sectPredecessorsMap.get(jump.fromSection);
+			RuptureTreeNavigator navigator = rup.getTreeNavigator();
+			FaultSection before = navigator.getPredecessor(jump.fromSection);
 			if (before != null)
 				addAzimuth(before, jump.fromSection);
-			for (FaultSection after : rup.sectDescendantsMap.get(jump.toSection))
+			for (FaultSection after : navigator.getDescendants(jump.toSection))
 				addAzimuth(jump.toSection, after);
 		}
 		

@@ -6,6 +6,7 @@ import java.util.List;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -33,7 +34,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": passing with <3 sects");
 			return PlausibilityResult.PASS;
 		}
-		double tot = calc(rupture, rupture.clusters[0].startSect, verbose);
+		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -46,7 +47,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		double tot = calc(rupture, rupture.clusters[0].startSect, verbose);
+		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, verbose);
 		if ((float)tot <= threshold || verbose) {
 			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
 			subSects.add(newJump.fromSection);
@@ -63,10 +64,10 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
-	private double calc(ClusterRupture rupture, FaultSection sect1, boolean verbose) {
+	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, boolean verbose) {
 		double tot = 0d;
 		double rake1 = sect1.getAveRake();
-		for (FaultSection sect2 : rupture.sectDescendantsMap.get(sect1)) {
+		for (FaultSection sect2 : navigator.getDescendants(sect1)) {
 			double rake2 = sect2.getAveRake();
 			double diff = rakeDiff(rake1, rake2);
 			if (verbose && diff != 0d)
@@ -75,7 +76,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 			tot += diff;
 			if ((float)tot > threshold && !verbose)
 				return tot;
-			tot += calc(rupture, sect2, verbose);
+			tot += calc(navigator, sect2, verbose);
 		}
 		return tot;
 	}

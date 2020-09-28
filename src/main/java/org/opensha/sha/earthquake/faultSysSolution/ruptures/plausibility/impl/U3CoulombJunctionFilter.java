@@ -8,6 +8,7 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -35,48 +36,42 @@ public class U3CoulombJunctionFilter implements PlausibilityFilter {
 			return PlausibilityResult.PASS;
 		
 		List<List<IDPairing>> paths = new ArrayList<>();
-		findPaths(rupture.sectDescendantsMap, paths, new ArrayList<>(), rupture.clusters[0].startSect);
+		findPaths(rupture.getTreeNavigator(), paths, new ArrayList<>(), rupture.clusters[0].startSect);
 		
 		return testPaths(paths, verbose);
 	}
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		Multimap<FaultSection, FaultSection> descendentsMap = HashMultimap.create(rupture.sectDescendantsMap);
-		descendentsMap.put(newJump.fromSection, newJump.toSection);
-
-		List<List<IDPairing>> paths = new ArrayList<>();
-		findPaths(descendentsMap, paths, new ArrayList<>(), rupture.clusters[0].startSect);
-		
-		return testPaths(paths, verbose);
+		return apply(rupture.take(newJump), verbose);
 	}
 	
-	private void findPaths(Multimap<FaultSection, FaultSection> descendentsMap,
+	private void findPaths(RuptureTreeNavigator navigator,
 			List<List<IDPairing>> fullPaths, List<IDPairing> curPath, FaultSection curSect) {
-		Collection<FaultSection> descendents = descendentsMap.get(curSect);
+		Collection<FaultSection> descendants = navigator.getDescendants(curSect);
 		
-		while (descendents.size() == 1) {
-			FaultSection destSect = descendents.iterator().next();
+		while (descendants.size() == 1) {
+			FaultSection destSect = descendants.iterator().next();
 			if (curSect.getParentSectionId() != destSect.getParentSectionId())
 				// it's a jump
 				curPath.add(new IDPairing(curSect.getSectionId(), destSect.getSectionId()));
 			
 			curSect = destSect;
-			descendents = descendentsMap.get(curSect);
+			descendants = navigator.getDescendants(curSect);
 		}
 		
-		if (descendents.isEmpty()) {
+		if (descendants.isEmpty()) {
 			// we're at the end of a chain
 			fullPaths.add(curPath);
 		} else {
 			// we're at a branching point
-			for (FaultSection destSect : descendents) {
+			for (FaultSection destSect : descendants) {
 				List<IDPairing> branchPath = new ArrayList<>(curPath);
 				if (curSect.getParentSectionId() != destSect.getParentSectionId())
 					// it's a jump
 					branchPath.add(new IDPairing(curSect.getSectionId(), destSect.getSectionId()));
 				
-				findPaths(descendentsMap, fullPaths, branchPath, destSect);
+				findPaths(navigator, fullPaths, branchPath, destSect);
 			}
 		}
 	}
