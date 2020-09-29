@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterPermuationStrategy;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -280,10 +281,11 @@ public class RupCartoonGenerator {
 		}
 		
 		private void addAzimuths(ClusterRupture rup, Jump jump) {
-			FaultSection before = rup.sectPredecessorsMap.get(jump.fromSection);
+			RuptureTreeNavigator navigator = rup.getTreeNavigator();
+			FaultSection before = navigator.getPredecessor(jump.fromSection);
 			if (before != null)
 				addAzimuth(before, jump.fromSection);
-			for (FaultSection after : rup.sectDescendantsMap.get(jump.toSection))
+			for (FaultSection after : navigator.getDescendants(jump.toSection))
 				addAzimuth(jump.toSection, after);
 		}
 		
@@ -318,7 +320,7 @@ public class RupCartoonGenerator {
 		
 		private double fractDDW;
 		private List<FaultSection> subSectsList;
-		private List<FaultSubsectionCluster> allClusters;
+//		private List<FaultSubsectionCluster> allClusters;
 		
 		private List<ClusterRupture> allRups;
 		private ClusterRupture biggestRup;
@@ -326,38 +328,40 @@ public class RupCartoonGenerator {
 		public RuptureBuilder(double fractDDW) {
 			this.fractDDW = fractDDW;
 			this.subSectsList = new ArrayList<>();
-			allClusters = new ArrayList<>();
+//			allClusters = new ArrayList<>();
 		}
 		
 		public void addFault(FaultSection parent) {
 			// first build subsections
 			double width = parent.getOrigDownDipWidth();
-			FaultSubsectionCluster cluster = new FaultSubsectionCluster(
-					parent.getSubSectionsList(fractDDW*width, subSectsList.size(), 2));
-			subSectsList.addAll(cluster.subSects);
-			allClusters.add(cluster);
+//			FaultSubsectionCluster cluster = new FaultSubsectionCluster(
+//					parent.getSubSectionsList(fractDDW*width, subSectsList.size(), 2));
+//			subSectsList.addAll(cluster.subSects);
+			subSectsList.addAll(parent.getSubSectionsList(fractDDW*width, subSectsList.size(), 2));
+//			allClusters.add(cluster);
 		}
 		
-		public void buildRuptures() {
-			DistCutoffClosestSectClusterConnectionStrategy connStrat =
-					new DistCutoffClosestSectClusterConnectionStrategy(Double.POSITIVE_INFINITY);
-			connStrat.addConnections(allClusters, new SectionDistanceAzimuthCalculator(subSectsList));
-			
-			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(
-					allClusters, new ArrayList<>(), Integer.MAX_VALUE);
-			allRups = builder.build(new UCERF3ClusterPermuationStrategy());
-			System.out.println("Built "+allRups.size()+" rups");
-			for (ClusterRupture rup : allRups) {
-				if (biggestRup == null)
-					biggestRup = rup;
-				else if (rup.unique.size() > biggestRup.unique.size())
-					biggestRup = rup;
-				else if (rup.unique.size() == biggestRup.unique.size()
-						&& rup.clusters.length > biggestRup.clusters.length)
-					biggestRup = rup;
-			}
-			System.out.println("Biggest has "+biggestRup.unique.size()+" sections");
-		}
+//		public void buildRuptures() {
+//			DistCutoffClosestSectClusterConnectionStrategy connStrat =
+//					new DistCutoffClosestSectClusterConnectionStrategy(subSectsList,
+//							new SectionDistanceAzimuthCalculator(subSectsList), Double.POSITIVE_INFINITY);
+//			connStrat.addConnections(allClusters);
+//			
+//			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(
+//					allClusters, new ArrayList<>(), Integer.MAX_VALUE);
+//			allRups = builder.build(new UCERF3ClusterPermuationStrategy());
+//			System.out.println("Built "+allRups.size()+" rups");
+//			for (ClusterRupture rup : allRups) {
+//				if (biggestRup == null)
+//					biggestRup = rup;
+//				else if (rup.unique.size() > biggestRup.unique.size())
+//					biggestRup = rup;
+//				else if (rup.unique.size() == biggestRup.unique.size()
+//						&& rup.clusters.length > biggestRup.clusters.length)
+//					biggestRup = rup;
+//			}
+//			System.out.println("Biggest has "+biggestRup.unique.size()+" sections");
+//		}
 		
 	}
 	
@@ -367,17 +371,13 @@ public class RupCartoonGenerator {
 	}
 	
 	private static void animateRuptureBuilding(File outputDir, String prefix, RuptureBuilder rupBuild,
-			List<PlausibilityFilter> filters, SectionDistanceAzimuthCalculator distAzCalc,
-			double maxDist, int maxNumSplays, boolean includeDuplicates, boolean plotAzimuths,
+			List<PlausibilityFilter> filters, ClusterConnectionStrategy connStrat,
+			int maxNumSplays, boolean includeDuplicates, boolean plotAzimuths,
 			boolean axisLabels, double fps) throws IOException {
 		TrackAllDebugCriteria tracker = new TrackAllDebugCriteria();
 		
-		DistCutoffClosestSectClusterConnectionStrategy connStrat =
-				new DistCutoffClosestSectClusterConnectionStrategy(maxDist);
-		connStrat.addConnections(rupBuild.allClusters, distAzCalc);
-		
 		ClusterRuptureBuilder builder = new ClusterRuptureBuilder(
-				rupBuild.allClusters, filters, maxNumSplays);
+				connStrat.getClusters(), filters, maxNumSplays);
 		builder.setDebugCriteria(tracker, false);
 		List<ClusterRupture> finalRups = builder.build(new UCERF3ClusterPermuationStrategy());
 		
@@ -548,11 +548,9 @@ public class RupCartoonGenerator {
 			rupBuild.addFault(parent);
 		
 		SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(rupBuild.subSectsList);
-		DistCutoffClosestSectClusterConnectionStrategy connStrat =
-				new DistCutoffClosestSectClusterConnectionStrategy(Double.POSITIVE_INFINITY);
-		List<FaultSubsectionCluster> clusters = rupBuild.allClusters;
-		connStrat.addConnections(clusters, distCalc);
-		RupSetConnectionSearch search = new RupSetConnectionSearch(null, distCalc, connStrat, false);
+//		List<FaultSubsectionCluster> clusters = connStrat.getClusters();
+		RuptureConnectionSearch search = new RuptureConnectionSearch(null, distCalc, Double.POSITIVE_INFINITY, false);
+		List<FaultSubsectionCluster> clusters = search.calcClusters(rupBuild.subSectsList, false);
 		
 		List<Jump> rupJumps = search.calcRuptureJumps(clusters, true);
 		ClusterRupture fullRup = search.buildClusterRupture(clusters, rupJumps, true, clusters.get(0));
@@ -582,11 +580,7 @@ public class RupCartoonGenerator {
 				fullClusters.add(new FaultSubsectionCluster(fullSects));
 			}
 		}
-		
-		DistCutoffClosestSectClusterConnectionStrategy connStrat =
-				new DistCutoffClosestSectClusterConnectionStrategy(Double.POSITIVE_INFINITY);
-		connStrat.addConnections(fullClusters, distCalc);
-		RupSetConnectionSearch search = new RupSetConnectionSearch(null, distCalc, connStrat, false);
+		RuptureConnectionSearch search = new RuptureConnectionSearch(null, distCalc, Double.POSITIVE_INFINITY, false);
 		
 		List<Jump> rupJumps = search.calcRuptureJumps(fullClusters, true);
 		return search.buildClusterRupture(fullClusters, rupJumps, true, fullClusters.get(0));
@@ -706,11 +700,13 @@ public class RupCartoonGenerator {
 		List<PlausibilityFilter> filters = new ArrayList<>();
 		SectionDistanceAzimuthCalculator animDistAzCalc = new SectionDistanceAzimuthCalculator(
 				rupBuild.subSectsList);
-		filters.add(new MinSectsPerParentFilter(2, false, rupBuild.allClusters));
+		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+				rupBuild.subSectsList, animDistAzCalc, Double.POSITIVE_INFINITY);
+		filters.add(new MinSectsPerParentFilter(2, false, connStrat));
 		filters.add(new JumpAzimuthChangeFilter(
 				new JumpAzimuthChangeFilter.SimpleAzimuthCalc(animDistAzCalc), 60f));
 		animateRuptureBuilding(outputDir, "system_build_anim", rupBuild,
-				filters, animDistAzCalc, Double.POSITIVE_INFINITY, 0, true, false, false, 1d);
+				filters, connStrat, 0, true, false, false, 1d);
 	}
 
 }

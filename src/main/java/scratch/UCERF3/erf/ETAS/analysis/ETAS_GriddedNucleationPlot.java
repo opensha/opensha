@@ -161,7 +161,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 				Map<Integer, HashSet<Integer>> rupToGridNodes = new HashMap<>();
 				for (int r=0; r<rupSet.getNumRuptures(); r++) {
 					HashSet<Integer> nodes = new HashSet<>();
-					for (Location l : rupSet.getSurfaceForRupupture(r, 1d).getEvenlyDiscritizedListOfLocsOnSurface()) {
+					for (Location l : rupSet.getSurfaceForRupture(r, 1d).getEvenlyDiscritizedListOfLocsOnSurface()) {
 						int node = gridReg.indexForLocation(l);
 						if (node >= 0)
 							nodes.add(node);

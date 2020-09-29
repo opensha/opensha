@@ -24,19 +24,37 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
 
 public class SectionDistanceAzimuthCalculator {
 
+	private List<? extends FaultSection> subSects;
 	private LoadingCache<IDPairing, Double> distCache;
 	private LoadingCache<IDPairing, Double> azCache;
 	private Map<Integer, RuptureSurface> sectSurfs;
 
 	public SectionDistanceAzimuthCalculator(List<? extends FaultSection> subSects) {
+		this.subSects = ImmutableList.copyOf(subSects);
 		sectSurfs = new HashMap<>();
 		for (FaultSection subSect : subSects)
 			sectSurfs.put(subSect.getSectionId(), subSect.getFaultSurface(1d, false, false));
 		distCache = CacheBuilder.newBuilder().build(new DistLoader());
 		azCache = CacheBuilder.newBuilder().build(new AzLoader());
+	}
+	
+	private RuptureSurface getSurface(int id) {
+		RuptureSurface surf = sectSurfs.get(id);
+		if (surf == null) {
+			FaultSection sect = subSects.get(id);
+			Preconditions.checkState(id == sect.getSectionId(), "Section IDs are not indexes");
+			surf = sect.getFaultSurface(1d, false, false);
+			sectSurfs.putIfAbsent(id, surf);
+		}
+		return surf;
+	}
+	
+	public List<? extends FaultSection> getSubSections() {
+		return subSects;
 	}
 	
 	private class DistLoader extends CacheLoader<IDPairing, Double> {
@@ -48,9 +66,9 @@ public class SectionDistanceAzimuthCalculator {
 			if (id1 == id2)
 				return 0d;
 			
-			RuptureSurface surf1 = sectSurfs.get(id1);
+			RuptureSurface surf1 = getSurface(id1);
 			Preconditions.checkNotNull(surf1);
-			RuptureSurface surf2 = sectSurfs.get(id2);
+			RuptureSurface surf2 = getSurface(id2);
 			Preconditions.checkNotNull(surf2);
 			
 			// if the quick distance is less than this value, calculate a full distance
@@ -80,9 +98,9 @@ public class SectionDistanceAzimuthCalculator {
 			if (id1 == id2)
 				return Double.NaN;
 			
-			RuptureSurface surf1 = sectSurfs.get(id1);
+			RuptureSurface surf1 = getSurface(id1);
 			Preconditions.checkNotNull(surf1);
-			RuptureSurface surf2 = sectSurfs.get(id2);
+			RuptureSurface surf2 = getSurface(id2);
 			Preconditions.checkNotNull(surf2);
 			
 			Location loc1 = GriddedSurfaceUtils.getSurfaceMiddleLoc(surf1);

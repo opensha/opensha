@@ -3,6 +3,9 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -12,7 +15,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class JumpDistFilter extends JumpPlausibilityFilter {
+public class JumpDistFilter extends JumpPlausibilityFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private double maxDist;
 	
@@ -37,6 +40,24 @@ public class JumpDistFilter extends JumpPlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Maximum Jump Dist";
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		float max = 0f;
+		for (Jump jump : rupture.getJumpsIterable())
+			max = Float.max(max, (float)jump.distance);
+		return max;
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		return (float)newJump.distance;
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atMost((float)maxDist);
 	}
 
 }

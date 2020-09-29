@@ -1133,7 +1133,7 @@ public class FiniteFaultSectionResetCalc {
 		RuptureSurface[] surfs = new RuptureSurface[rupSet.getNumRuptures()];
 		double totRate = sol.getTotalRateForAllFaultSystemRups();
 		for (int r=0; r<rupSet.getNumRuptures(); r++)
-			surfs[r] = rupSet.getSurfaceForRupupture(r, 1d);
+			surfs[r] = rupSet.getSurfaceForRupture(r, 1d);
 		
 		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		

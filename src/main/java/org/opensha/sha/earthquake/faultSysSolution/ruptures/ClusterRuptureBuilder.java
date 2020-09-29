@@ -2,14 +2,25 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.dom4j.DocumentException;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CoulombJunctionFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CoulombJunctionFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeRakeChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
@@ -19,20 +30,28 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Sp
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsPermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterPermuationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Ints;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.inversion.SectionConnectionStrategy;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
@@ -55,58 +74,19 @@ public class ClusterRuptureBuilder {
 	private boolean stopAfterDebugMatch;
 	
 	/**
-	 * Constructor which builds clusters from the given parent sections
-	 * @param subSections sub section list
-	 * @param connectionStrategy connection strategy which defines cluster connection points
-	 * @param distAzCalc distance/azimuth calculator
-	 * @param filters list of plausibility filters
-	 * @param maxNumSplays the maximum number of splays per rupture (use 0 to disable splays)
-	 */
-	public ClusterRuptureBuilder(List<? extends FaultSection> subSections,
-			ClusterConnectionStrategy connectionStrategy, SectionDistanceAzimuthCalculator distAzCalc,
-			List<PlausibilityFilter> filters, int maxNumSplays) {
-		this(buildClusters(subSections, connectionStrategy, distAzCalc), filters, maxNumSplays);
-	}
-	
-	/**
+	 * Constructor which gets everything from the PlausibilityConfiguration
 	 * 
-	 * @param subSections sub section list
-	 * @param connectionStrategy connection strategy which defines cluster connection points
-	 * @param distAzCalc distance/azimuth calculator
-	 * @return Cluster list (with connections added) binned by parent-section ID
+	 * @param configuration plausibilty configuration
 	 */
-	public static List<FaultSubsectionCluster> buildClusters(List<? extends FaultSection> subSections,
-			ClusterConnectionStrategy connectionStrategy, SectionDistanceAzimuthCalculator distAzCalc) {
-		List<FaultSubsectionCluster> clusters = new ArrayList<>();
-		
-		List<FaultSection> curClusterSects = null;
-		int curParentID = -1;
-		
-		for (FaultSection subSect : subSections) {
-			int parentID = subSect.getParentSectionId();
-			Preconditions.checkState(parentID >= 0,
-					"Subsections are required, but this section doesn't have a parent ID set: %s. %s",
-					subSect.getSectionId(), subSect.getSectionName());
-			if (parentID != curParentID) {
-				if (curClusterSects != null)
-					clusters.add(new FaultSubsectionCluster(curClusterSects));
-				curParentID = parentID;
-				curClusterSects = new ArrayList<>();
-			}
-			curClusterSects.add(subSect);
-		}
-		clusters.add(new FaultSubsectionCluster(curClusterSects));
-		System.out.println("Building connections for "+subSections.size()
-			+" subsections on "+clusters.size()+" parent sections");
-		int count = connectionStrategy.addConnections(clusters, distAzCalc);
-		System.out.println("Found "+count+" possible section connections");
-		
-		return clusters;
+	public ClusterRuptureBuilder(PlausibilityConfiguration configuration) {
+		this(configuration.getConnectionStrategy().getClusters(), configuration.getFilters(),
+				configuration.getMaxNumSplays());
 	}
 	
 	/**
 	 * Constructor which uses previously built clusters (with connections added)
-	 * @param clusters list of clusters
+	 * 
+	 * @param clusters list of clusters (with connections added)
 	 * @param filters list of plausibility filters
 	 * @param maxNumSplays the maximum number of splays per rupture (use 0 to disable splays)
 	 */
@@ -140,11 +120,125 @@ public class ClusterRuptureBuilder {
 	 * @return list of unique ruptures which were build
 	 */
 	public List<ClusterRupture> build(ClusterPermutationStrategy permutationStrategy) {
+		return build(permutationStrategy, 1);
+	}
+	
+	/**
+	 * This builds ruptures using the given cluster permutation strategy with the given number of threads
+	 * 
+	 * @param permutationStrategy strategy for determining unique & viable subsection permutations 
+	 * for each cluster 
+	 * @param numThreads
+	 * @return list of unique ruptures which were build
+	 */
+	public List<ClusterRupture> build(ClusterPermutationStrategy permutationStrategy, int numThreads) {
 		List<ClusterRupture> rups = new ArrayList<>();
 		HashSet<UniqueRupture> uniques = new HashSet<>();
 		largestRup = 0;
 		
-		for (FaultSubsectionCluster cluster : clusters) {
+		if (numThreads <= 1) {
+			for (FaultSubsectionCluster cluster : clusters) {
+				ClusterBuildCallable build = new ClusterBuildCallable(permutationStrategy, cluster, uniques);
+				try {
+					build.call();
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				build.merge(rups);
+				if (build.debugStop)
+					break;
+//				for (FaultSection startSection : cluster.subSects) {
+//					for (FaultSubsectionCluster permutation : permutationStrategy.getPermutations(
+//							cluster, startSection)) {
+//						ClusterRupture rup = new ClusterRupture(permutation);
+//						PlausibilityResult result = testRup(rup, false);
+//						if (debugCriteria != null && debugCriteria.isMatch(rup)
+//								&& debugCriteria.appliesTo(result)) {
+//							System.out.println("\tPermutation "+permutation+" result="+result);
+//							testRup(rup, true);
+//							if (stopAfterDebugMatch) {
+//								return rups;
+//							}
+//						}
+//						if (!result.canContinue())
+//							// stop building here
+//							continue;
+//						if (result.isPass()) {
+//							// passes as is, add it if it's new
+//							if (!uniques.contains(rup.unique)) {
+//								rups.add(rup);
+//								uniques.add(rup.unique); // will add in merge below
+//								int count = rup.getTotalNumSects();
+//								if (count > largestRup) {
+//									largestRup = count;
+//									if (largestRup % largestRupPrintMod == 0)
+//										System.out.println("\tNew largest rup has "+largestRup
+//												+" subsections with "+rup.getTotalNumJumps()+" jumps and "
+//												+rup.splays.size()+" splays. "+rups.size()+" rups in total");
+//								}
+//							}
+//						}
+//						// continue to build this rupture
+//						boolean canContinue = addRuptures(rups, uniques, rup, rup, 
+//								result.isPass(), permutationStrategy);
+//						if (!canContinue) {
+//							System.out.println("Stopping due to debug criteria match with "+rups.size()+" ruptures");
+//							return rups;
+//						}
+//					}
+//				}
+			}
+		} else {
+			// multi threaded
+			ExecutorService exec = Executors.newFixedThreadPool(numThreads);
+			
+			List<Future<ClusterBuildCallable>> futures = new ArrayList<>();
+			
+			for (FaultSubsectionCluster cluster : clusters) {
+				ClusterBuildCallable build = new ClusterBuildCallable(permutationStrategy, cluster, uniques);
+				futures.add(exec.submit(build));
+			}
+			
+			System.out.println("Waiting on "+futures.size()+" cluster build futures");
+			for (Future<ClusterBuildCallable> future : futures) {
+				ClusterBuildCallable build;
+				try {
+					build = future.get();
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				build.merge(rups);
+				if (build.debugStop) {
+					exec.shutdownNow();
+					break;
+				}
+			}
+			
+			exec.shutdown();
+		}
+		
+		
+		return rups;
+	}
+	
+	private class ClusterBuildCallable implements Callable<ClusterBuildCallable> {
+		
+		private ClusterPermutationStrategy permutationStrategy;
+		private FaultSubsectionCluster cluster;
+		private HashSet<UniqueRupture> uniques;
+		private List<ClusterRupture> rups;
+		private boolean debugStop = false;
+
+		public ClusterBuildCallable(ClusterPermutationStrategy permutationStrategy,
+				FaultSubsectionCluster cluster, HashSet<UniqueRupture> uniques) {
+			this.permutationStrategy = permutationStrategy;
+			this.cluster = cluster;
+			this.uniques = uniques;
+		}
+
+		@Override
+		public ClusterBuildCallable call() throws Exception {
+			this.rups = new ArrayList<>();
 			for (FaultSection startSection : cluster.subSects) {
 				for (FaultSubsectionCluster permutation : permutationStrategy.getPermutations(
 						cluster, startSection)) {
@@ -154,8 +248,10 @@ public class ClusterRuptureBuilder {
 							&& debugCriteria.appliesTo(result)) {
 						System.out.println("\tPermutation "+permutation+" result="+result);
 						testRup(rup, true);
-						if (stopAfterDebugMatch)
-							return rups;
+						if (stopAfterDebugMatch) {
+							debugStop = true;
+							return this;
+						}
 					}
 					if (!result.canContinue())
 						// stop building here
@@ -164,7 +260,7 @@ public class ClusterRuptureBuilder {
 						// passes as is, add it if it's new
 						if (!uniques.contains(rup.unique)) {
 							rups.add(rup);
-							uniques.add(rup.unique);
+//							uniques.add(rup.unique); // will add in merge below
 							int count = rup.getTotalNumSects();
 							if (count > largestRup) {
 								largestRup = count;
@@ -180,15 +276,31 @@ public class ClusterRuptureBuilder {
 							result.isPass(), permutationStrategy);
 					if (!canContinue) {
 						System.out.println("Stopping due to debug criteria match with "+rups.size()+" ruptures");
-						return rups;
+						debugStop = true;
+						return this;
 					}
 				}
 			}
-			System.out.println("Have "+rups.size()+" ruptures after processing cluster "
-					+cluster.parentSectionID+": "+cluster.parentSectionName);
+			return this;
 		}
 		
-		return rups;
+		public void merge(List<ClusterRupture> masterRups) {
+			int added = 0;
+			for (ClusterRupture rup : rups) {
+				if (!uniques.contains(rup.unique)) {
+					masterRups.add(rup);
+					uniques.add(rup.unique);
+					// make sure that contains now returns 
+					Preconditions.checkState(uniques.contains(rup.unique));
+//					Preconditions.checkState(uniques.contains(rup.reversed().unique));
+					added++;
+				}
+			}
+			System.out.println("Have "+masterRups.size()+" ruptures after processing cluster "
+					+cluster.parentSectionID+": "+cluster.parentSectionName
+					+" ("+added+" new, "+rups.size()+" incl. possible duplicates)");
+		}
+		
 	}
 	
 	private PlausibilityResult testRup(ClusterRupture rupture, final boolean debug) {
@@ -263,7 +375,7 @@ public class ClusterRuptureBuilder {
 			ClusterRupture currentStrand, boolean testJumpOnly, ClusterPermutationStrategy permutationStrategy, Jump jump) {
 		Preconditions.checkNotNull(jump);
 		for (FaultSubsectionCluster permutation : permutationStrategy.getPermutations(
-				jump.toCluster, jump.toSection)) {
+				currentRupture, jump.toCluster, jump.toSection)) {
 			boolean hasLoopback = false;
 			for (FaultSection sect : permutation.subSects) {
 				if (currentRupture.contains(sect)) {
@@ -310,7 +422,7 @@ public class ClusterRuptureBuilder {
 				// passes as is, add it if it's new
 				if (!uniques.contains(candidateRupture.unique)) {
 					rups.add(candidateRupture);
-					uniques.add(candidateRupture.unique);
+//					uniques.add(candidateRupture.unique); // now merged in later
 				}
 				int count = candidateRupture.getTotalNumSects();
 				if (count > largestRup) {
@@ -534,7 +646,7 @@ public class ClusterRuptureBuilder {
 		public CompareRupSetNewInclusionCriteria(FaultSystemRupSet rupSet) {
 			uniques = new HashSet<>();
 			for (List<Integer> rupSects : rupSet.getSectionIndicesForAllRups())
-				uniques.add(new UniqueRupture(rupSects));
+				uniques.add(UniqueRupture.forIDs(rupSects));
 		}
 
 		@Override
@@ -561,7 +673,7 @@ public class ClusterRuptureBuilder {
 		public CompareRupSetExclusionCriteria(FaultSystemRupSet rupSet) {
 			uniques = new HashSet<>();
 			for (List<Integer> rupSects : rupSet.getSectionIndicesForAllRups())
-				uniques.add(new UniqueRupture(rupSects));
+				uniques.add(UniqueRupture.forIDs(rupSects));
 		}
 
 		@Override
@@ -584,6 +696,7 @@ public class ClusterRuptureBuilder {
 	public static void main(String[] args) throws IOException, DocumentException {
 		FaultModels fm = FaultModels.FM3_1;
 		DeformationModels dm = fm.getFilterBasis();
+		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
 		
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm,
 				null, 0.1);
@@ -593,6 +706,10 @@ public class ClusterRuptureBuilder {
 		
 		RupDebugCriteria debugCriteria = null;
 		boolean stopAfterDebug = false;
+		
+//		RupDebugCriteria debugCriteria = new ParentSectsRupDebugCriteria(false, false, 672, 668);
+////		RupDebugCriteria debugCriteria = new StartEndSectRupDebugCriteria(672, -1, true, false);
+//		boolean stopAfterDebug = true;
 
 //		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
 //				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
@@ -606,11 +723,39 @@ public class ClusterRuptureBuilder {
 //		RupDebugCriteria debugCriteria = new SectsRupDebugCriteria(false, false,
 //				loadRupString(rupStr, false));
 //		boolean stopAfterDebug = true;
-		
-		CoulombRates coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
-		ClusterConnectionStrategy connectionStrategy = new UCERF3ClusterConnectionStrategy(5d, coulombRates);
-//		ClusterConnectionStrategy connectionStrategy = new DistCutoffSingleConnectionClusterConnectionStrategy(5d);
+
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
+		
+		/*
+		 * To reproduce UCERF3
+		 */
+		PlausibilityConfiguration config = PlausibilityConfiguration.getUCERF3(subSects, distAzCalc, fm);
+		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
+		
+		/*
+		 * For other experiements
+		 */
+		// the exact same connections as UCERF3
+//		ClusterConnectionStrategy connectionStrategy =
+//				new UCERF3ClusterConnectionStrategy(subSects,
+//						distAzCalc, 5d, CoulombRates.loadUCERF3CoulombRates(fm));
+////		ClusterConnectionStrategy connectionStrategy =
+////			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 5d);
+//		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
+//		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
+////		configBuilder.maxNumClusters(2); // for connection only testing
+////		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
+//		configBuilder.cumulativeAzChange(560f);
+////		configBuilder.cumulativeRakeChange(180f);
+////		configBuilder.u3Azimuth();
+////		configBuilder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+//		configBuilder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+//		configBuilder.maxSplays(0);
+//		configBuilder.minSectsPerParent(2, true);
+//		PlausibilityConfiguration config = configBuilder.build();
+//		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
+////		ClusterPermutationStrategy permStrat = new ConnectionPointsPermutationStrategy();
+		
 		File cacheFile = new File("/tmp/dist_az_cache_"+fm.encodeChoiceString()+"_"+subSects.size()
 			+"_sects_"+parentSects.size()+"_parents.csv");
 		if (cacheFile.exists()) {
@@ -619,7 +764,7 @@ public class ClusterRuptureBuilder {
 		}
 		int numAzCached = distAzCalc.getCachedAzimuths().size();
 		int numDistCached = distAzCalc.getCachedDistances().size();
-		List<FaultSubsectionCluster> clusters = buildClusters(subSects, connectionStrategy, distAzCalc);
+		config.getConnectionStrategy().getClusters();
 		if (numAzCached < distAzCalc.getCachedAzimuths().size()
 				|| numDistCached < distAzCalc.getCachedDistances().size()) {
 			System.out.println("Writing dist/az cache to "+cacheFile.getAbsolutePath());
@@ -628,51 +773,83 @@ public class ClusterRuptureBuilder {
 			numDistCached = distAzCalc.getCachedDistances().size();
 		}
 		
-		List<PlausibilityFilter> filters = new ArrayList<>();
-		AzimuthCalc u3AzCalc = new JumpAzimuthChangeFilter.UCERF3LeftLateralFlipAzimuthCalc(distAzCalc);
-		filters.add(new JumpAzimuthChangeFilter(u3AzCalc, 60f));
-		filters.add(new TotalAzimuthChangeFilter(u3AzCalc, 60f, true, true));
-		filters.add(new CumulativeAzimuthChangeFilter(
-				new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc), 560f));
-//		filters.add(new CumulativeRakeChangeFilter(180f));
-//		filters.add(new JumpCumulativeRakeChangeFilter(180f));
-		filters.add(new U3CompatibleCumulativeRakeChangeFilter(180d));
-		filters.add(new MinSectsPerParentFilter(2, true, clusters));
-		CoulombRatesTester coulombTester = new CoulombRatesTester(
-				TestType.COULOMB_STRESS, 0.04, 0.04, 1.25d, true, true);
-		filters.add(new CoulombJunctionFilter(coulombTester, coulombRates));
-		
-		int maxNumSplays = 0;
-		if (maxNumSplays > 0)
-			filters.add(new SplayLengthFilter(0.2, true, maxNumSplays > 1));
-		
-		ClusterRuptureBuilder builder = new ClusterRuptureBuilder(clusters, filters, maxNumSplays);
+		ClusterRuptureBuilder builder = new ClusterRuptureBuilder(config);
 		
 		if (debugCriteria != null)
 			builder.setDebugCriteria(debugCriteria, stopAfterDebug);
 		
-		System.out.println("Building ruptures...");
-		List<ClusterRupture> rups = builder.build(new UCERF3ClusterPermuationStrategy());
-		System.out.println("Built "+rups.size()+" ruptures");
+		int threads = Runtime.getRuntime().availableProcessors()-2;
+//		int threads = 1;
+		System.out.println("Building ruptures with "+threads+" threads...");
+		Stopwatch watch = Stopwatch.createStarted();
+		List<ClusterRupture> rups = builder.build(permStrat, threads);
+		watch.stop();
+		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		double mins = (secs / 60d);
+		DecimalFormat timeDF = new DecimalFormat("0.00");
+		System.out.println("Built "+rups.size()+" ruptures in "+timeDF.format(secs)
+			+" secs = "+timeDF.format(mins)+" mins");
 		
 		if (debugCriteria == null || !stopAfterDebug) {
 			// write out test rup set
-			double[] mags = new double[rups.size()];
-			double[] rakes = new double[rups.size()];
-			double[] rupAreas = new double[rups.size()];
-			List<List<Integer>> sectionForRups = new ArrayList<>();
-			for (int r=0; r<rups.size(); r++) {
-				List<FaultSection> sects = rups.get(r).buildOrderedSectionList();
-				List<Integer> ids = new ArrayList<>();
-				for (FaultSection sect : sects)
-					ids.add(sect.getSectionId());
-				sectionForRups.add(ids);
-				mags[r] = Double.NaN;
-				rakes[r] = Double.NaN;
-				rupAreas[r] = Double.NaN;
+//			double[] mags = new double[rups.size()];
+//			double[] lenghts = new double[rups.size()];
+//			double[] rakes = new double[rups.size()];
+//			double[] rupAreas = new double[rups.size()];
+//			List<List<Integer>> sectionForRups = new ArrayList<>();
+//			for (int r=0; r<rups.size(); r++) {
+//				List<FaultSection> sects = rups.get(r).buildOrderedSectionList();
+//				List<Integer> ids = new ArrayList<>();
+//				for (FaultSection sect : sects)
+//					ids.add(sect.getSectionId());
+//				sectionForRups.add(ids);
+//				mags[r] = Double.NaN;
+//				rakes[r] = Double.NaN;
+//				rupAreas[r] = Double.NaN;
+//			}
+			double[] sectSlipRates = new double[subSects.size()];
+			double[] sectAreasReduced = new double[subSects.size()];
+			double[] sectAreasOrig = new double[subSects.size()];
+			for (int s=0; s<sectSlipRates.length; s++) {
+				FaultSection sect = subSects.get(s);
+				sectAreasReduced[s] = sect.getArea(true);
+				sectAreasOrig[s] = sect.getArea(false);
+				sectSlipRates[s] = sect.getReducedAveSlipRate()*1e-3; // mm/yr => m/yr
 			}
-			FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, null, null, null, 
-				sectionForRups, mags, rakes, rupAreas, null, "");
+			double[] rupMags = new double[rups.size()];
+			double[] rupRakes = new double[rups.size()];
+			double[] rupAreas = new double[rups.size()];
+			double[] rupLengths = new double[rups.size()];
+			List<List<Integer>> rupsIDsList = new ArrayList<>();
+			for (int r=0; r<rups.size(); r++) {
+				ClusterRupture rup = rups.get(r);
+				List<FaultSection> rupSects = rup.buildOrderedSectionList();
+				List<Integer> sectIDs = new ArrayList<>();
+				double totLength = 0d;
+				double totArea = 0d;
+				double totOrigArea = 0d; // not reduced for aseismicity
+				List<Double> sectAreas = new ArrayList<>();
+				List<Double> sectRakes = new ArrayList<>();
+				for (FaultSection sect : rupSects) {
+					sectIDs.add(sect.getSectionId());
+					double length = sect.getTraceLength()*1e3;	// km --> m
+					totLength += length;
+					double area = sectAreasReduced[sect.getSectionId()];	// sq-m
+					totArea += area;
+					totOrigArea += sectAreasOrig[sect.getSectionId()];	// sq-m
+					sectAreas.add(area);
+					sectRakes.add(sect.getAveRake());
+				}
+				rupAreas[r] = totArea;
+				rupLengths[r] = totLength;
+				rupRakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(sectAreas, sectRakes));
+				double origDDW = totOrigArea/totLength;
+				rupMags[r] = scale.getMag(totArea, origDDW);
+				rupsIDsList.add(sectIDs);
+			}
+			FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, null, sectAreasReduced, 
+					rupsIDsList, rupMags, rupRakes, rupAreas, rupLengths, "");
+			rupSet.setPlausibilityConfiguration(config);
 			FaultSystemIO.writeRupSet(rupSet, new File("/tmp/test_rup_set.zip"));
 		}
 

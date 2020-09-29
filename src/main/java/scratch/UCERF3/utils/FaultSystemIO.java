@@ -4,11 +4,13 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -51,7 +54,7 @@ import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.inversion.laughTest.PlausibilityConfiguration;
+import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 
 public class FaultSystemIO {
@@ -113,6 +116,28 @@ public class FaultSystemIO {
 		Preconditions.checkArgument(sol instanceof InversionFaultSystemSolution,
 				"Solution cannot be loaded as an InversionFaultSystemSolution");
 		return (InversionFaultSystemSolution)sol;
+	}
+	
+	/**
+	 * 
+	 * @param file
+	 * @return true if the given zip file is a fault sytem solution, false otherwise
+	 */
+	public static boolean isSolution(File file) throws IOException {
+		ZipFile zip = new ZipFile(file);
+		boolean found = false;
+		
+		Enumeration<? extends ZipEntry> entries = zip.entries();
+		while (entries.hasMoreElements()) {
+			ZipEntry entry = entries.nextElement();
+			if (entry.getName().endsWith("rates.bin")) {
+				found = true;
+				break;
+			}
+		}
+		
+		zip.close();
+		return found;
 	}
 	
 	/**
@@ -355,6 +380,15 @@ public class FaultSystemIO {
 		if (DD) System.out.println("instantiating FSRS");
 		FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, sectSlipRates,
 				sectSlipRateStdDevs, sectAreas, sectionForRups, mags, rakes, rupAreas, rupLengths, info);
+
+		if (DD) System.out.println("loading plausibility");
+		ZipEntry plausibilityEntry = zip.getEntry(getRemappedName("plausibility.json", nameRemappings));
+		if (plausibilityEntry != null) {
+			InputStreamReader json = new InputStreamReader(new BufferedInputStream(zip.getInputStream(plausibilityEntry)));
+			PlausibilityConfiguration plausibilityConfig =
+					PlausibilityConfiguration.readJSON(json, faultSectionData);
+			rupSet.setPlausibilityConfiguration(plausibilityConfig);
+		}
 		
 		if (branch != null) {
 			// it's an IVFSRS
@@ -775,6 +809,14 @@ public class FaultSystemIO {
 			}
 		}
 		
+		PlausibilityConfiguration plausibilityConfig = rupSet.getPlausibilityConfiguration();
+		if (plausibilityConfig != null) {
+			if (D) System.out.println("Saving plausibility config");
+			File plausibilityFile = new File(tempDir, getRemappedName("plausibility.json", nameRemappings));
+			plausibilityConfig.writeJSON(plausibilityFile);
+			zipFileNames.add(plausibilityFile.getName());
+		}
+		
 		// InversionFaultSystemRupSet specific
 		
 		if (rupSet instanceof InversionFaultSystemRupSet) {
@@ -878,7 +920,7 @@ public class FaultSystemIO {
 			branch.toXMLMetadata(el);
 		
 		// add LaughTestFilter
-		PlausibilityConfiguration filter = invRupSet.getPlausibilityConfiguration();
+		OldPlausibilityConfiguration filter = invRupSet.getOldPlausibilityConfiguration();
 		if (filter != null)
 			filter.toXMLMetadata(el);
 	}

@@ -253,6 +253,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		dependencyMap.put("grid_sources.bin", null);
 		dependencyMap.put("rup_mfds.bin", null);
 		dependencyMap.put("sub_seismo_on_fault_mfds.bin", null);
+		dependencyMap.put("plausibility.json", buildList(FaultModels.class));
 	}
 	
 	private static List<Class<? extends LogicTreeBranchNode<?>>> buildList(

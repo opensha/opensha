@@ -88,7 +88,7 @@ public class FiniteFaultMapper {
 		
 		for (int i=0; i<rupSet.getNumRuptures(); i++) {
 			lengths[i] = rupSet.getLengthForRup(i)/1000d; // convert to km
-			surfs[i] = rupSet.getSurfaceForRupupture(i, surfSpacing);
+			surfs[i] = rupSet.getSurfaceForRupture(i, surfSpacing);
 			centers[i] = calcCenter(surfs[i]);
 		}
 		

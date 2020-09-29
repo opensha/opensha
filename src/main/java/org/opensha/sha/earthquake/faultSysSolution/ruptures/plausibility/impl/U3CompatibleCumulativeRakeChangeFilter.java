@@ -1,14 +1,13 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -25,7 +24,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilter {
+public class U3CompatibleCumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<Double> {
 	
 	private double threshold;
 
@@ -41,7 +40,8 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 			return PlausibilityResult.PASS;
 		}
 		FaultSection stopAt = rupture.clusters[rupture.clusters.length-1].startSect;
-		double tot = calc(rupture, rupture.clusters[0].startSect, stopAt, 0d, verbose);
+		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect,
+				stopAt, 0d, verbose, !verbose);
 		if (tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -57,22 +57,22 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 		return apply(rupture.take(newJump), verbose);
 	}
 	
-	private double calc(ClusterRupture rupture, FaultSection sect1, FaultSection stopAt,
-			double tot, boolean verbose) {
+	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, FaultSection stopAt,
+			double tot, boolean verbose, boolean shortCircuit) {
 		double rake1 = sect1.getAveRake();
-		for (FaultSection sect2 : rupture.sectDescendantsMap.get(sect1)) {
+		for (FaultSection sect2 : navigator.getDescendants(sect1)) {
 			double rake2 = sect2.getAveRake();
 			double diff = rakeDiff(rake1, rake2);
 			tot += diff;
 			if (verbose && diff != 0d)
 				System.out.println(getShortName()+": "+sect1.getSectionId()+"="+(float)rake1+" => "
 							+sect2.getSectionId()+"="+(float)rake2+" = "+diff);
-			if (tot > threshold && !verbose)
+			if (tot > threshold && shortCircuit)
 				return tot;
 			if (sect2 == stopAt)
 				// UCERF3 compatibility: don't check the full last section
 				break;
-			tot = calc(rupture, sect2, stopAt, tot, verbose);
+			tot = calc(navigator, sect2, stopAt, tot, verbose, shortCircuit);
 		}
 		return tot;
 	}
@@ -93,6 +93,25 @@ public class U3CompatibleCumulativeRakeChangeFilter implements PlausibilityFilte
 	@Override
 	public String getName() {
 		return "UCERF3 Cumulative Rake Filter";
+	}
+
+	@Override
+	public Double getValue(ClusterRupture rupture) {
+		if (rupture.getTotalNumSects() < 2) {
+			return 0d;
+		}
+		FaultSection stopAt = rupture.clusters[rupture.clusters.length-1].startSect;
+		return calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, stopAt, 0d, false, false);
+	}
+
+	@Override
+	public Double getValue(ClusterRupture rupture, Jump newJump) {
+		return getValue(rupture.take(newJump));
+	}
+
+	@Override
+	public Range<Double> getAcceptableRange() {
+		return Range.atMost(threshold);
 	}
 
 }

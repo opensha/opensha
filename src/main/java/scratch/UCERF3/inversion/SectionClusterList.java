@@ -19,7 +19,7 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.inversion.laughTest.PlausibilityConfiguration;
+import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 
 public class SectionClusterList extends ArrayList<SectionCluster> {
@@ -32,26 +32,26 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	public static final boolean D = false;
 	
 	private List<List<Integer>> sectionConnectionsListList;
-	private PlausibilityConfiguration plausibility;
+	private OldPlausibilityConfiguration plausibility;
 	private List<? extends FaultSection> faultSectionData;
 	
 	private Map<IDPairing, Double> subSectionDistances;
 	
 	public SectionClusterList(FaultModels faultModel, DeformationModels defModel, File precomputedDataDir,
-			SectionConnectionStrategy connectionStrategy, PlausibilityConfiguration plausibility) {
+			SectionConnectionStrategy connectionStrategy, OldPlausibilityConfiguration plausibility) {
 		this(new DeformationModelFetcher(faultModel, defModel, precomputedDataDir,
 				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE), connectionStrategy, plausibility);
 	}
 	
 	public SectionClusterList(DeformationModelFetcher defModelFetcher, SectionConnectionStrategy connectionStrategy,
-			PlausibilityConfiguration plausibility) {
+			OldPlausibilityConfiguration plausibility) {
 		faultSectionData = defModelFetcher.getSubSectionList();
 		Map<IDPairing, Double> subSectionDistances = defModelFetcher.getSubSectionDistanceMap(plausibility.getMaxJumpDist());
 		Map<IDPairing, Double> subSectionAzimuths = defModelFetcher.getSubSectionAzimuthMap(subSectionDistances.keySet());
 		init(connectionStrategy, plausibility, faultSectionData, subSectionDistances, subSectionAzimuths);
 	}
 	
-	public SectionClusterList(SectionConnectionStrategy connectionStrategy, PlausibilityConfiguration plausibility,
+	public SectionClusterList(SectionConnectionStrategy connectionStrategy, OldPlausibilityConfiguration plausibility,
 			List<? extends FaultSection> faultSectionData, Map<IDPairing, Double> subSectionDistances,
 			Map<IDPairing, Double> subSectionAzimuths) {
 		init(connectionStrategy, plausibility, faultSectionData,
@@ -59,7 +59,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	}
 
 	private void init(SectionConnectionStrategy connectionStrategy,
-			PlausibilityConfiguration plausibility,
+			OldPlausibilityConfiguration plausibility,
 			List<? extends FaultSection> faultSectionData,
 			Map<IDPairing, Double> subSectionDistances,
 			Map<IDPairing, Double> subSectionAzimuths) {
@@ -152,7 +152,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		return sectionConnectionsListList;
 	}
 
-	public PlausibilityConfiguration getPlausibilityConfiguration() {
+	public OldPlausibilityConfiguration getPlausibilityConfiguration() {
 		return plausibility;
 	}
 

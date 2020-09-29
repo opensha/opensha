@@ -4,24 +4,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
-public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
+public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
-	private AzimuthCalc calc;
+	private AzimuthCalc azCalc;
 	private float threshold;
 
 	public CumulativeAzimuthChangeFilter(AzimuthCalc calc, float threshold) {
-		this.calc = calc;
+		this.azCalc = calc;
 		this.threshold = threshold;
 	}
 
@@ -32,7 +32,8 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": passing with <3 sects");
 			return PlausibilityResult.PASS;
 		}
-		double tot = calc(rupture, rupture.clusters[0].startSect, null, null, verbose);
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, !verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -51,10 +52,11 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": failing with <2 sects on first cluster");
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
-		double tot = calc(rupture, rupture.clusters[0].startSect, null, null, verbose);
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, !verbose);
 		if ((float)tot < threshold || verbose) {
 			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
-			subSects.add(rupture.sectPredecessorsMap.get(newJump.fromSection));
+			subSects.add(navigator.getPredecessor(newJump.fromSection));
 			subSects.add(newJump.fromSection);
 			subSects.addAll(newJump.toCluster.subSects);
 			for (int i=0; i<subSects.size()-2; i++) {
@@ -73,21 +75,21 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
-	private double calc(ClusterRupture rupture, FaultSection sect1, FaultSection sect2,
-			FaultSection sect3, boolean verbose) {
+	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, FaultSection sect2,
+			FaultSection sect3, boolean shortCircuit) {
 		Preconditions.checkNotNull(sect1);
 		if (sect2 == null) {
 			double tot = 0d;
-			for (FaultSection descendent : rupture.sectDescendantsMap.get(sect1)) {
-				tot += calc(rupture, sect1, descendent, null, verbose);
+			for (FaultSection descendant : navigator.getDescendants(sect1)) {
+				tot += calc(navigator, sect1, descendant, null, shortCircuit);
 			}
 			return tot;
 		}
 		if (sect3 == null) {
 			double tot = 0d;
-			for (FaultSection descendent : rupture.sectDescendantsMap.get(sect2)) {
-				tot += calc(rupture, sect1, sect2, descendent, verbose);
-				if ((float)tot > threshold && !verbose)
+			for (FaultSection descendant : navigator.getDescendants(sect2)) {
+				tot += calc(navigator, sect1, sect2, descendant, shortCircuit);
+				if ((float)tot > threshold && !shortCircuit)
 					return tot;
 			}
 			return tot;
@@ -95,17 +97,17 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 		double tot = doCalc(sect1, sect2, sect3);
 		if ((float)tot > threshold)
 			return tot;
-		for (FaultSection descendent : rupture.sectDescendantsMap.get(sect3)) {
-			tot += calc(rupture, sect2, sect3, descendent, verbose);
-			if ((float)tot > threshold && !verbose)
+		for (FaultSection descendant : navigator.getDescendants(sect3)) {
+			tot += calc(navigator, sect2, sect3, descendant, shortCircuit);
+			if ((float)tot > threshold && !shortCircuit)
 				return tot;
 		}
 		return tot;
 	}
 	
 	private double doCalc(FaultSection sect1, FaultSection sect2, FaultSection sect3) {
-		double beforeAz = calc.calcAzimuth(sect1, sect2);
-		double afterAz = calc.calcAzimuth(sect2, sect3);
+		double beforeAz = azCalc.calcAzimuth(sect1, sect2);
+		double afterAz = azCalc.calcAzimuth(sect2, sect3);
 		
 		return Math.abs(JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz));
 	}
@@ -118,6 +120,25 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Cumulative Azimuth Filter";
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		if (rupture.getTotalNumSects() < 3) {
+			return 0f;
+		}
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		return (float)calc(navigator, rupture.clusters[0].startSect, null, null, false);
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		return (getValue(rupture.take(newJump)));
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atMost(threshold);
 	}
 
 }

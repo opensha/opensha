@@ -139,7 +139,7 @@ public class ETAS_RuptureSearch {
 			if (mag < minMag || mag > maxMag)
 				continue;
 			
-			RuptureSurface surf = rupSet.getSurfaceForRupupture(r, 1d);
+			RuptureSurface surf = rupSet.getSurfaceForRupture(r, 1d);
 			
 			System.out.println("Rupture "+r+", M="+(float)mag);
 			double dist = surf.getDistanceJB(centerLoc);

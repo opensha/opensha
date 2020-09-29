@@ -8,7 +8,7 @@ import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.faultSurface.FaultSection;
 
-public interface PlausibilityConfiguration extends XMLSaveable {
+public interface OldPlausibilityConfiguration extends XMLSaveable {
 	
 	/**
 	 * Builds (or re-builds) the plausibility filters

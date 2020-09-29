@@ -19,7 +19,7 @@ import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 
-public class UCERF3PlausibilityConfig implements PlausibilityConfiguration {
+public class UCERF3PlausibilityConfig implements OldPlausibilityConfiguration {
 	
 	public static final String XML_METADATA_NAME = "LaughTestFilter";
 	

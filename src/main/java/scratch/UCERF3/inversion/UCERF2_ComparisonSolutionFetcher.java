@@ -94,7 +94,7 @@ public class UCERF2_ComparisonSolutionFetcher {
 		}
 
 		InversionFaultSystemRupSet modRupSet = new InversionFaultSystemRupSet(rupSet, rupSet.getLogicTreeBranch(),
-				rupSet.getPlausibilityConfiguration(), aveSlips, rupSet.getCloseSectionsListList(),
+				rupSet.getOldPlausibilityConfiguration(), aveSlips, rupSet.getCloseSectionsListList(),
 				rupSet.getRupturesForClusters(), rupSet.getSectionsForClusters());
 
 		modRupSet.setMagForallRups(mags);

@@ -3,7 +3,10 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.faultSurface.FaultSection;
+
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -14,7 +17,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class JumpCumulativeRakeChangeFilter implements PlausibilityFilter {
+public class JumpCumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private float threshold;
 
@@ -24,7 +27,7 @@ public class JumpCumulativeRakeChangeFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
-		double tot = calc(rupture, verbose);
+		double tot = calc(rupture, verbose, !verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -37,7 +40,7 @@ public class JumpCumulativeRakeChangeFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		double tot = calc(rupture, verbose);
+		double tot = calc(rupture, verbose, !verbose);
 		if (verbose)
 			System.out.println(getShortName()+": orig rup was "+tot+", now testing jump "+newJump);
 		if ((float)tot <= threshold || verbose)
@@ -52,12 +55,12 @@ public class JumpCumulativeRakeChangeFilter implements PlausibilityFilter {
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
-	private double calc(ClusterRupture rupture, boolean verbose) {
+	private double calc(ClusterRupture rupture, boolean verbose, boolean shortCircuit) {
 		double tot = 0d;
 		for (Jump jump : rupture.getJumpsIterable()) {
 			double diff = calc(jump, verbose);
 			tot += diff;
-			if ((float)tot > threshold && !verbose)
+			if ((float)tot > threshold && shortCircuit)
 				return tot;
 		}
 		return tot;
@@ -83,6 +86,21 @@ public class JumpCumulativeRakeChangeFilter implements PlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Jump Cumulative Rake Filter";
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		return (float)calc(rupture, false, false);
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		return getValue(rupture.take(newJump));
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atMost(threshold);
 	}
 
 }

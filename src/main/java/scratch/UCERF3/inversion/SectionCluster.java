@@ -25,7 +25,7 @@ import scratch.UCERF3.inversion.laughTest.BuggyCoulombFilter;
 import scratch.UCERF3.inversion.laughTest.CoulombFilter;
 import scratch.UCERF3.inversion.laughTest.AbstractPlausibilityFilter;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.inversion.laughTest.PlausibilityConfiguration;
+import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
@@ -50,7 +50,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	// elements here are section IDs (same as indices in sectonDataList)
 	private List<List<Integer>> rupListIndices;
 	private int numRupsAdded;
-	private PlausibilityConfiguration plausibility;
+	private OldPlausibilityConfiguration plausibility;
 	private Map<IDPairing, Double> sectionAzimuths;
 	private Map<IDPairing, Double> subSectionDistances;
 	
@@ -67,7 +67,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	 * @param maxTotAzimuthChange
 	 * @param maxRakeDiff
 	 */
-	public SectionCluster(PlausibilityConfiguration plausibility, List<? extends FaultSection> sectionDataList,
+	public SectionCluster(OldPlausibilityConfiguration plausibility, List<? extends FaultSection> sectionDataList,
 			SectionConnectionStrategy connStrategy, List<List<Integer>> sectionConnectionsListList, Map<IDPairing, Double> subSectionAzimuths,
 			Map<IDPairing, Double> subSectionDistances) {
 		this.sectionDataList = sectionDataList;

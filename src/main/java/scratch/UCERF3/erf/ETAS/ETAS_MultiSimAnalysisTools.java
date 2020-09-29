@@ -3703,7 +3703,7 @@ public class ETAS_MultiSimAnalysisTools {
 				// FaultSectionPrefData last = sectData.get(sectData.size()-1);
 				// Location start = first.getFaultTrace().first();
 				// Location end = last.getFaultTrace().last();
-				RuptureSurface surf = rupSet.getSurfaceForRupupture(rup.getFSSIndex(), 1d);
+				RuptureSurface surf = rupSet.getSurfaceForRupture(rup.getFSSIndex(), 1d);
 				Location hypo = rup.getHypocenterLocation();
 				// Location start = surf.getFirstLocOnUpperEdge();
 				// Location end = surf.getLastLocOnUpperEdge();
@@ -3860,7 +3860,7 @@ public class ETAS_MultiSimAnalysisTools {
 			sects = new HashSet<Integer>();
 			List<Location> scenarioLocs = Lists.newArrayList();
 			if (scenario.getFSS_Index() >= 0)
-				scenarioLocs.addAll(rupSet.getSurfaceForRupupture(scenario.getFSS_Index(), 1d).getUpperEdge());
+				scenarioLocs.addAll(rupSet.getSurfaceForRupture(scenario.getFSS_Index(), 1d).getUpperEdge());
 			else
 				scenarioLocs.add(scenario.getLocation());
 			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
@@ -5427,7 +5427,7 @@ public class ETAS_MultiSimAnalysisTools {
 			else if (scenario.getLocation() != null)
 				surf = new PointSurface(scenario.getLocation());
 			else
-				surf = fss.getRupSet().getSurfaceForRupupture(scenario.getFSS_Index(), 1d);
+				surf = fss.getRupSet().getSurfaceForRupture(scenario.getFSS_Index(), 1d);
 
 			File parentDir = resultsFile.getParentFile();
 
