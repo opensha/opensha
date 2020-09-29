@@ -45,13 +45,13 @@ import scratch.UCERF3.utils.FaultSystemIO;
 public class CompareClusterRuptureBuild {
 
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
-//		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
-//				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
-//				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
-//		boolean isCompUCERF3 = true;
 		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
-				"/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz_cmlRake_cffClusterPositive.zip"));
-		boolean isCompUCERF3 = false;
+				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
+				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
+		boolean isCompUCERF3 = true;
+//		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
+//				"/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz_cmlRake_cffClusterPositive.zip"));
+//		boolean isCompUCERF3 = false;
 		
 		System.out.println("compRupSet has "+compRupSet.getNumRuptures()+" ruptures");
 		
@@ -83,6 +83,23 @@ public class CompareClusterRuptureBuild {
 					compRupSet.getFaultSectionData(i).getSectionName()));
 		}
 		System.out.println("passed all section consistency tests");
+		
+		System.out.println("Looking for duplicates");
+		Map<HashSet<Integer>, Integer> prevRups = new HashMap<>();
+		for (int i=0; i<clusterRupSet.getNumRuptures(); i++) {
+			HashSet<Integer> idsSet = new HashSet<>(clusterRupSet.getSectionsIndicesForRup(i));
+//			Preconditions.checkState(!prevRups.containsKey(idsSet));
+			if (prevRups.containsKey(idsSet)) {
+				int prevID = prevRups.get(idsSet);
+				System.out.println("DUPLICATE FOUND");
+				System.out.println("\t"+prevID+": "+Joiner.on(",").join(
+						clusterRupSet.getSectionsIndicesForRup(prevID)));
+				System.out.println("\t"+i+": "+Joiner.on(",").join(
+						clusterRupSet.getSectionsIndicesForRup(i)));
+			}
+			prevRups.put(idsSet, i);
+		}
+		System.exit(0);
 		
 		List<PlausibilityFilter> filters;
 		List<AbstractPlausibilityFilter> u3Filters = null;

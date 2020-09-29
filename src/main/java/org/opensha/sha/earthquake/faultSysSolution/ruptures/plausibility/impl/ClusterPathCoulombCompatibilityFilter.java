@@ -5,12 +5,14 @@ import java.util.HashSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessResult;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -22,7 +24,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter {
+public class ClusterPathCoulombCompatibilityFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private SubSectStiffnessCalculator stiffnessCalc;
 	private StiffnessAggregationMethod aggMethod;
@@ -40,14 +42,19 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 		if (rupture.getTotalNumJumps()  == 0)
 			return PlausibilityResult.PASS;
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		float maxVal = Float.NEGATIVE_INFINITY;
 		for (FaultSubsectionCluster nucleationCluster : rupture.getClustersIterable()) {
-			boolean valid = testNucleationPoint(navigator, nucleationCluster);
+			float val = testNucleationPoint(navigator, nucleationCluster, !verbose);
 			if (verbose)
-				System.out.println(getShortName()+": Nucleation point "+nucleationCluster+", result: "+valid);
-			if (valid)
+				System.out.println(getShortName()+": Nucleation point "+nucleationCluster
+						+", result: "+(val >= threshold));
+			maxVal = Float.max(maxVal, val);
+			if (!verbose && maxVal >= threshold)
 				// passes if *any* nucleation point works
 				return PlausibilityResult.PASS;
 		}
+		if (maxVal >= threshold)
+			return PlausibilityResult.PASS;
 		return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 	}
 
@@ -55,31 +62,54 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
 		return apply(rupture.take(newJump), verbose);
 	}
-	
-	private boolean testNucleationPoint(RuptureTreeNavigator navigator,
-			FaultSubsectionCluster nucleationCluster) {
-		FaultSubsectionCluster predecessor = navigator.getPredecessor(nucleationCluster);
-		if (predecessor != null)
-			if (!testStrand(navigator, new HashSet<>(), predecessor))
-				return false;
-		
-		for (FaultSubsectionCluster descendant : navigator.getDescendants(nucleationCluster)) {
-			if (!testStrand(navigator, new HashSet<>(), descendant))
-				return false;
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		float maxVal = Float.NEGATIVE_INFINITY;
+		for (FaultSubsectionCluster nucleationCluster : rupture.getClustersIterable()) {
+			float val = testNucleationPoint(navigator, nucleationCluster, false);
+			maxVal = Float.max(maxVal, val);
 		}
-		
-		// passed all
-		return true;
+		return maxVal;
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		return getValue(rupture.take(newJump));
 	}
 	
-	private boolean testStrand(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> strandClusters,
-			FaultSubsectionCluster addition) {
+	private float testNucleationPoint(RuptureTreeNavigator navigator,
+			FaultSubsectionCluster nucleationCluster, boolean shortCircuit) {
+		HashSet<FaultSubsectionCluster> curClusters = new HashSet<>();
+		curClusters.add(nucleationCluster);
+		FaultSubsectionCluster predecessor = navigator.getPredecessor(nucleationCluster);
+		Float minVal = Float.POSITIVE_INFINITY;
+		if (predecessor != null) {
+			minVal = Float.min(minVal, testStrand(navigator, curClusters, predecessor, shortCircuit));
+			if (shortCircuit && minVal < threshold)
+				return minVal;
+		}
+		
+		for (FaultSubsectionCluster descendant : navigator.getDescendants(nucleationCluster)) {
+			minVal = Float.min(minVal, testStrand(navigator, curClusters, descendant, shortCircuit));
+			if (shortCircuit && minVal < threshold)
+				return minVal;
+		}
+		
+		return minVal;
+	}
+	
+	private float testStrand(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> strandClusters,
+			FaultSubsectionCluster addition, boolean shortCircuit) {
+		float minVal = Float.POSITIVE_INFINITY;
 		if (!strandClusters.isEmpty()) {
 			StiffnessResult[] stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
 					strandClusters, addition);
 			double val = stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
-			if ((float)val < threshold)
-				return false;
+			minVal = Float.min(minVal, (float)val);
+			if (shortCircuit && minVal < threshold)
+				return (float)val;
 		}
 		
 		// this additon passed, continue downstream
@@ -91,8 +121,10 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 		if (predecessor != null && !strandClusters.contains(predecessor)) {
 			// go down that path
 			
-			if (!testStrand(navigator, newStrandClusters, predecessor))
-				return false;
+			float val = testStrand(navigator, newStrandClusters, predecessor, shortCircuit);
+			minVal = Float.min(minVal, (float)val);
+			if (shortCircuit && minVal < threshold)
+				return (float)val;
 		}
 		
 		// check descendants of this strand
@@ -101,12 +133,14 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 				continue;
 			// go down that path
 
-			if (!testStrand(navigator, newStrandClusters, descendant))
-				return false;
+			float val = testStrand(navigator, newStrandClusters, descendant, shortCircuit);
+			minVal = Float.min(minVal, (float)val);
+			if (shortCircuit && minVal < threshold)
+				return (float)val;
 		}
 		
 		// if we made it here, this either the end of the line or all downstream strand extensions pass
-		return true;
+		return minVal;
 	}
 
 	@Override
@@ -117,6 +151,11 @@ public class ClusterPathCoulombCompatibilityFilter implements PlausibilityFilter
 	@Override
 	public String getName() {
 		return "Cluster Path Coulomb  ≥ "+(float)threshold;
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atLeast((float)threshold);
 	}
 
 }

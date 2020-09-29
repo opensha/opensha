@@ -3,16 +3,15 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
-public class TotalAzimuthChangeFilter implements PlausibilityFilter {
+public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private AzimuthCalc azCalc;
 	private float threshold;
@@ -54,10 +53,29 @@ public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 	
 	private PlausibilityResult apply(FaultSubsectionCluster startCluster,
 			FaultSubsectionCluster endCluster, boolean verbose) {
+		PlausibilityResult result = testIfPossible(startCluster, endCluster);
+		if (!result.canContinue())
+			return result;
+		double maxDiff = getValue(startCluster, endCluster, verbose);
+		if ((float)maxDiff <= threshold)
+			return PlausibilityResult.PASS;
+		if (verbose)
+			System.out.println(getShortName()+": failing with diff="+maxDiff);
+		
+		return PlausibilityResult.FAIL_HARD_STOP;
+	}
+	
+	private PlausibilityResult testIfPossible(FaultSubsectionCluster startCluster,
+			FaultSubsectionCluster endCluster) {
 		if (startCluster.subSects.size() < 2)
 			return PlausibilityResult.FAIL_HARD_STOP;
 		if (endCluster.subSects.size() < 2)
 			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
+		return PlausibilityResult.PASS;
+	}
+	
+	private double getValue(FaultSubsectionCluster startCluster,
+			FaultSubsectionCluster endCluster, boolean verbose) {
 		FaultSection before1 = startCluster.startSect;
 		FaultSection before2 = startCluster.subSects.get(1);
 		double beforeAz = azCalc.calcAzimuth(before1, before2);
@@ -76,12 +94,7 @@ public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 						+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
 			maxDiff = Math.max(Math.abs(diff), maxDiff);
 		}
-		if ((float)maxDiff <= threshold)
-			return PlausibilityResult.PASS;
-		if (verbose)
-			System.out.println(getShortName()+": failing with diff="+maxDiff);
-		
-		return PlausibilityResult.FAIL_HARD_STOP;
+		return maxDiff;
 	}
 
 	@Override
@@ -92,6 +105,36 @@ public class TotalAzimuthChangeFilter implements PlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Total Azimuth Change Filter";
+	}
+	
+	public Float getValue(FaultSubsectionCluster startCluster, ClusterRupture rupture) {
+		if (!testIfPossible(startCluster, rupture.clusters[rupture.clusters.length-1]).canContinue())
+			return null;
+		float maxVal = (float)getValue(startCluster, rupture.clusters[rupture.clusters.length-1], false);
+		for (ClusterRupture splay : rupture.splays.values()) {
+			Float splayVal = getValue(startCluster, splay);
+			if (splayVal == null)
+				return null;
+			maxVal = Float.max(maxVal, splayVal);
+		}
+		return maxVal;
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		return getValue(rupture.clusters[0], rupture);
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		if (!testIfPossible(rupture.clusters[0], newJump.toCluster).canContinue())
+			return null;
+		return (float)getValue(rupture.clusters[0], newJump.toCluster, false);
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atMost(threshold);
 	}
 
 }

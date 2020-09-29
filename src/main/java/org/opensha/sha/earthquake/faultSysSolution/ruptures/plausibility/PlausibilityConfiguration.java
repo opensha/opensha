@@ -190,8 +190,7 @@ public class PlausibilityConfiguration {
 		
 		public Builder parentCoulomb(SubSectStiffnessCalculator subSectCalc,
 				StiffnessAggregationMethod aggMethod, float threshold, Directionality directionality) {
-			filters.add(new ParentCoulombCompatibilityFilter(
-					subSectCalc, aggMethod, threshold, directionality));
+			filters.add(new ParentCoulombCompatibilityFilter(subSectCalc, aggMethod, threshold, directionality));
 			return this;
 		}
 		
@@ -286,7 +285,29 @@ public class PlausibilityConfiguration {
 		return conf;
 	}
 	
-	private static Gson buildGson(List<? extends FaultSection> subSects) {
+	private static Gson prevGson;
+	private static List<? extends FaultSection> prevSubSects;
+	
+	private synchronized static Gson buildGson(List<? extends FaultSection> subSects) {
+		if (prevGson != null && prevSubSects != null && prevSubSects.size() == subSects.size()) {
+			// see if we can reuse
+//			System.out.println("Lets se if we can reuse Gson....");
+			boolean match = true;
+			for (int s=0; s<subSects.size(); s++) {
+				FaultSection s1 = subSects.get(s);
+				FaultSection s2 = prevSubSects.get(s);
+				if (s1.getSectionId() != s2.getSectionId()
+						|| s1.getParentSectionId() != s2.getParentSectionId()) {
+//					System.out.println("Nope:\n\t"+s1+"\n\t"+s2);
+					match = false;
+					break;
+				}
+			}
+			if (match) {
+				System.out.println("Reusing PlausibilityConfiguration Gson instance");
+				return prevGson;
+			}
+		}
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 
@@ -305,6 +326,9 @@ public class PlausibilityConfiguration {
 				new SubSectStiffnessTypeAdapter(subSects));
 		Gson gson = builder.create();
 		configAdapter.setGson(gson);
+		
+		prevGson = gson;
+		prevSubSects = subSects;
 		
 		return gson;
 	}
@@ -349,7 +373,7 @@ public class PlausibilityConfiguration {
 				} else {
 					if (adapter instanceof PlausibilityFilterTypeAdapter) {
 						PlausibilityFilterTypeAdapter pAdapt = (PlausibilityFilterTypeAdapter)adapter;
-						pAdapt.init(config.getConnectionStrategy(), config.getDistAzCalc());
+						pAdapt.init(config.getConnectionStrategy(), config.getDistAzCalc(), gson);
 					}
 					out.name("adapter").value(adapter.getClass().getName());
 					out.name("filter");
@@ -432,7 +456,7 @@ public class PlausibilityConfiguration {
 							break;
 						}
 						if (adapter instanceof PlausibilityFilterTypeAdapter)
-							((PlausibilityFilterTypeAdapter)adapter).init(connectionStrategy, distAzCalc);
+							((PlausibilityFilterTypeAdapter)adapter).init(connectionStrategy, distAzCalc, gson);
 						break;
 					case "name":
 						name = in.nextString();

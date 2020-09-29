@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -10,13 +11,13 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 
 /**
- * This just returns full clusters from the given start section to either end of the cluster
+ * This just returns full clusters from the given start section to either end of the cluster or exit points
  * (no permutations in-between);
  * 
  * @author kevin
  *
  */
-public class FullClusterPermutationStrategy implements ClusterPermutationStrategy {
+public class ConnectionPointsPermutationStrategy implements ClusterPermutationStrategy {
 
 	@Override
 	public List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
@@ -27,6 +28,8 @@ public class FullClusterPermutationStrategy implements ClusterPermutationStrateg
 		List<FaultSection> newSects = new ArrayList<>();
 		newSects.add(firstSection);
 		
+		Set<FaultSection> exitPoints = fullCluster.getExitPoints();
+		
 		List<FaultSubsectionCluster> permuations = new ArrayList<>();
 		
 		// build toward the smallest ID
@@ -34,8 +37,9 @@ public class FullClusterPermutationStrategy implements ClusterPermutationStrateg
 			for (int i=myInd; --i>=0;) {
 				FaultSection nextSection = clusterSects.get(i);
 				newSects.add(nextSection);
+				if (exitPoints.contains(nextSection) || i == 0)
+					permuations.add(buildCopyJumps(fullCluster, newSects));
 			}
-			permuations.add(buildCopyJumps(fullCluster, newSects));
 		}
 		
 		if (myInd < clusterSects.size()-1) {
@@ -45,8 +49,9 @@ public class FullClusterPermutationStrategy implements ClusterPermutationStrateg
 			for (int i=myInd+1; i<clusterSects.size(); i++) {
 				FaultSection nextSection = clusterSects.get(i);
 				newSects.add(nextSection);
+				if (exitPoints.contains(nextSection) || i == clusterSects.size()-1)
+					permuations.add(buildCopyJumps(fullCluster, newSects));
 			}
-			permuations.add(buildCopyJumps(fullCluster, newSects));
 		}
 		return permuations;
 	}

@@ -12,6 +12,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterCo
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
@@ -152,7 +153,8 @@ public class MinSectsPerParentFilter implements PlausibilityFilter {
 		private ClusterConnectionStrategy connStrategy;
 
 		@Override
-		public void init(ClusterConnectionStrategy connStrategy, SectionDistanceAzimuthCalculator distAzCalc) {
+		public void init(ClusterConnectionStrategy connStrategy,
+				SectionDistanceAzimuthCalculator distAzCalc, Gson gson) {
 			this.connStrategy = connStrategy;
 		}
 

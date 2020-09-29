@@ -2,7 +2,9 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -13,7 +15,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class SplayCountFilter implements PlausibilityFilter {
+public class SplayCountFilter implements ScalarValuePlausibiltyFilter<Integer> {
 	
 	private int maxSplays;
 
@@ -79,6 +81,21 @@ public class SplayCountFilter implements PlausibilityFilter {
 		if (count > maxSplays)
 			return PlausibilityResult.FAIL_HARD_STOP;
 		return PlausibilityResult.PASS;
+	}
+
+	@Override
+	public Integer getValue(ClusterRupture rupture) {
+		return countSplays(rupture);
+	}
+
+	@Override
+	public Integer getValue(ClusterRupture rupture, Jump newJump) {
+		return getValue(rupture.take(newJump));
+	}
+
+	@Override
+	public Range<Integer> getAcceptableRange() {
+		return Range.atMost(maxSplays);
 	}
 
 }

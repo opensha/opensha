@@ -7,7 +7,7 @@ import java.util.HashSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.HardCodedLeftLateralFlipAzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -22,7 +22,8 @@ import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
-public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
+public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter
+implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private AzimuthCalc azCalc;
 	private float threshold;
@@ -42,6 +43,23 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 				System.out.println(getShortName()+": failing because fewer than 2 before 1st jump");
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
+		Float value = calc(rupture, jump, verbose);
+		if (value == null)
+			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
+		if (value > threshold)
+			return PlausibilityResult.FAIL_HARD_STOP;
+		return PlausibilityResult.PASS;
+	}
+	
+	private Float calc(ClusterRupture rupture, Jump jump, boolean verbose) {
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		FaultSection before1 = navigator.getPredecessor(jump.fromSection);
+		if (before1 == null) {
+			// fewer than 2 sections before the first jump, will never work
+			if (verbose)
+				System.out.println(getShortName()+": failing because fewer than 2 before 1st jump");
+			return null;
+		}
 		FaultSection before2 = jump.fromSection;
 		double beforeAz = azCalc.calcAzimuth(before1, before2);
 		
@@ -57,15 +75,16 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 				// it's a jump to a single-section cluster
 				if (verbose)
 					System.out.println(getShortName()+": jump to single-section cluster");
-				return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
+				return null;
 			}
 			after2s = Lists.newArrayList(jump.toCluster.subSects.get(1));
 		}
 		if (after2s.isEmpty()) {
 			if (verbose)
 				System.out.println(getShortName()+": jump to single-section cluster & nothing downstream");
-			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
+			return null;
 		}
+		float maxVal = 0f;
 		for (FaultSection after2 : after2s) {
 			double afterAz = azCalc.calcAzimuth(after1, after2);
 			double diff = getAzimuthDifference(beforeAz, afterAz);
@@ -73,15 +92,16 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 			if (verbose)
 				System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
 						+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
-			if ((float)Math.abs(diff) > threshold) {
-//				System.out.println("AZ DEBUG: "+before1.getSectionId()+" "+before2.getSectionId()
-//					+" => "+after1.getSectionId()+" and "+after2.getSectionId()+" after2: "+diff);
-				if (verbose)
-					System.out.println(getShortName()+": failing with diff="+diff);
-				return PlausibilityResult.FAIL_HARD_STOP;
-			}
+			maxVal = Float.max(maxVal, (float)Math.abs(diff));
+//			if ((float)Math.abs(diff) > threshold) {
+////				System.out.println("AZ DEBUG: "+before1.getSectionId()+" "+before2.getSectionId()
+////					+" => "+after1.getSectionId()+" and "+after2.getSectionId()+" after2: "+diff);
+//				if (verbose)
+//					System.out.println(getShortName()+": failing with diff="+diff);
+//				return PlausibilityResult.FAIL_HARD_STOP;
+//			}
 		}
-		return PlausibilityResult.PASS;
+		return maxVal;
 	}
 	
 	/**
@@ -315,6 +335,28 @@ public class JumpAzimuthChangeFilter extends JumpPlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Jump Azimuth Change Filter";
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		float max = 0f;
+		for (Jump jump : rupture.getJumpsIterable()) {
+			Float val = calc(rupture, jump, false);
+			if (val == null)
+				return val;
+			max = Float.max(val, max);
+		}
+		return max;
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		return calc(rupture, newJump, false);
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atMost(threshold);
 	}
 
 }

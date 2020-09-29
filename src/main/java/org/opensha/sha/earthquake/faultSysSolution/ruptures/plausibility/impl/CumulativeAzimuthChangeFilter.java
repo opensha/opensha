@@ -4,19 +4,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
-public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
+public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private AzimuthCalc azCalc;
 	private float threshold;
@@ -34,7 +33,7 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 			return PlausibilityResult.PASS;
 		}
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
-		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, verbose);
+		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, !verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -54,7 +53,7 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
-		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, verbose);
+		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, !verbose);
 		if ((float)tot < threshold || verbose) {
 			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
 			subSects.add(navigator.getPredecessor(newJump.fromSection));
@@ -77,20 +76,20 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 	}
 	
 	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, FaultSection sect2,
-			FaultSection sect3, boolean verbose) {
+			FaultSection sect3, boolean shortCircuit) {
 		Preconditions.checkNotNull(sect1);
 		if (sect2 == null) {
 			double tot = 0d;
 			for (FaultSection descendant : navigator.getDescendants(sect1)) {
-				tot += calc(navigator, sect1, descendant, null, verbose);
+				tot += calc(navigator, sect1, descendant, null, shortCircuit);
 			}
 			return tot;
 		}
 		if (sect3 == null) {
 			double tot = 0d;
 			for (FaultSection descendant : navigator.getDescendants(sect2)) {
-				tot += calc(navigator, sect1, sect2, descendant, verbose);
-				if ((float)tot > threshold && !verbose)
+				tot += calc(navigator, sect1, sect2, descendant, shortCircuit);
+				if ((float)tot > threshold && !shortCircuit)
 					return tot;
 			}
 			return tot;
@@ -99,8 +98,8 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 		if ((float)tot > threshold)
 			return tot;
 		for (FaultSection descendant : navigator.getDescendants(sect3)) {
-			tot += calc(navigator, sect2, sect3, descendant, verbose);
-			if ((float)tot > threshold && !verbose)
+			tot += calc(navigator, sect2, sect3, descendant, shortCircuit);
+			if ((float)tot > threshold && !shortCircuit)
 				return tot;
 		}
 		return tot;
@@ -121,6 +120,25 @@ public class CumulativeAzimuthChangeFilter implements PlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Cumulative Azimuth Filter";
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		if (rupture.getTotalNumSects() < 3) {
+			return 0f;
+		}
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
+		return (float)calc(navigator, rupture.clusters[0].startSect, null, null, false);
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		return (getValue(rupture.take(newJump)));
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atMost(threshold);
 	}
 
 }

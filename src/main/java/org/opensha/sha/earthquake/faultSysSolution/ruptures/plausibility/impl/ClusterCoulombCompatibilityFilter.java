@@ -1,12 +1,19 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessResult;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -19,7 +26,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class ClusterCoulombCompatibilityFilter extends JumpPlausibilityFilter {
+public class ClusterCoulombCompatibilityFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private SubSectStiffnessCalculator stiffnessCalc;
 	private StiffnessAggregationMethod aggMethod;
@@ -33,14 +40,71 @@ public class ClusterCoulombCompatibilityFilter extends JumpPlausibilityFilter {
 	}
 
 	@Override
+	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
+		double worstVal = doTest(new ArrayList<>(), rupture.clusters[0], rupture.getTreeNavigator(),
+				verbose, !verbose);
+		PlausibilityResult result =
+				(float)worstVal >= threshold ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
+		if (verbose)
+			System.out.println(getShortName()+": worst val="+worstVal+"\tresult="+result.name());
+		return result;
+	}
+
+	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		StiffnessResult[] stiffness = stiffnessCalc.calcAggRupToClusterStiffness(rupture, newJump.toCluster);
-		double val = stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
+//		StiffnessResult[] stiffness = stiffnessCalc.calcAggRupToClusterStiffness(rupture, newJump.toCluster);
+//		double val = stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
+		List<FaultSubsectionCluster> clusters = new ArrayList<>();
+		for (FaultSubsectionCluster cluster : rupture.getClustersIterable())
+			clusters.add(cluster);
+		double val = doTest(clusters, newJump.toCluster, null, verbose, !verbose);
 		PlausibilityResult result =
 				(float)val >= threshold ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
 		if (verbose)
 			System.out.println(getShortName()+": val="+val+"\tresult="+result.name());
 		return result;
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		return (float)doTest(new ArrayList<>(), rupture.clusters[0], rupture.getTreeNavigator(),
+				false, false);
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		List<FaultSubsectionCluster> clusters = new ArrayList<>();
+		for (FaultSubsectionCluster cluster : rupture.getClustersIterable())
+			clusters.add(cluster);
+		return (float)doTest(clusters, newJump.toCluster, null, false, false);
+	}
+	
+	private double doTest(List<FaultSubsectionCluster> curClusters, FaultSubsectionCluster nextCluster,
+			RuptureTreeNavigator navigator, boolean verbose, boolean shortCircuit) {
+		double val = Double.POSITIVE_INFINITY;
+		if (!curClusters.isEmpty()) {
+			// check rupture so far
+			StiffnessResult[] stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
+					curClusters, nextCluster);
+			val = stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
+			if (verbose)
+				System.out.println(getShortName()+": "+curClusters.size()+" clusters to "
+						+nextCluster+", val="+val);
+			else if ((float)val < threshold)
+				return val;
+		}
+		
+		if (navigator != null) {
+			for (FaultSubsectionCluster descendant : navigator.getDescendants(nextCluster)) {
+				List<FaultSubsectionCluster> newClusters = new ArrayList<>(curClusters);
+				newClusters.add(nextCluster);
+				val = Math.min(val, doTest(newClusters, descendant, navigator, verbose, shortCircuit));
+				if (!verbose && (float)val < threshold)
+					break;
+			}
+		}
+		
+		return val;
 	}
 
 	@Override
@@ -51,6 +115,16 @@ public class ClusterCoulombCompatibilityFilter extends JumpPlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Jump Cluster Coulomb  ≥ "+(float)threshold;
+	}
+	
+	@Override
+	public boolean isDirectional() {
+		return true;
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atLeast((float)threshold);
 	}
 
 }

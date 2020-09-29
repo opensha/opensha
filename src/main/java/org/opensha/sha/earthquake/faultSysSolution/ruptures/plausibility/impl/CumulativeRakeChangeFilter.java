@@ -5,11 +5,12 @@ import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -19,7 +20,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class CumulativeRakeChangeFilter implements PlausibilityFilter {
+public class CumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private float threshold;
 
@@ -34,7 +35,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": passing with <3 sects");
 			return PlausibilityResult.PASS;
 		}
-		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, verbose);
+		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, verbose, !verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -47,7 +48,7 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, verbose);
+		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, verbose, !verbose);
 		if ((float)tot <= threshold || verbose) {
 			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
 			subSects.add(newJump.fromSection);
@@ -64,7 +65,8 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
-	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, boolean verbose) {
+	private double calc(RuptureTreeNavigator navigator, FaultSection sect1,
+			boolean verbose, boolean shortCircuit) {
 		double tot = 0d;
 		double rake1 = sect1.getAveRake();
 		for (FaultSection sect2 : navigator.getDescendants(sect1)) {
@@ -74,9 +76,9 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 				System.out.println(getShortName()+": "+sect1.getSectionId()+"="+(float)rake1+" => "
 							+sect2.getSectionId()+"="+(float)rake2+" = "+diff);
 			tot += diff;
-			if ((float)tot > threshold && !verbose)
+			if ((float)tot > threshold && shortCircuit)
 				return tot;
-			tot += calc(navigator, sect2, verbose);
+			tot += calc(navigator, sect2, verbose, shortCircuit);
 		}
 		return tot;
 	}
@@ -115,6 +117,21 @@ public class CumulativeRakeChangeFilter implements PlausibilityFilter {
 	@Override
 	public String getName() {
 		return "Cumulative Rake Filter";
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture) {
+		return (float)calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, false, false);
+	}
+
+	@Override
+	public Float getValue(ClusterRupture rupture, Jump newJump) {
+		return getValue(rupture.take(newJump));
+	}
+
+	@Override
+	public Range<Float> getAcceptableRange() {
+		return Range.atMost(threshold);
 	}
 
 }

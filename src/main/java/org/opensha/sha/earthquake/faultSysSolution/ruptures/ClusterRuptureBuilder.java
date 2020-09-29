@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsPermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterPermuationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -289,6 +290,9 @@ public class ClusterRuptureBuilder {
 				if (!uniques.contains(rup.unique)) {
 					masterRups.add(rup);
 					uniques.add(rup.unique);
+					// make sure that contains now returns 
+					Preconditions.checkState(uniques.contains(rup.unique));
+//					Preconditions.checkState(uniques.contains(rup.reversed().unique));
 					added++;
 				}
 			}
@@ -702,6 +706,10 @@ public class ClusterRuptureBuilder {
 		
 		RupDebugCriteria debugCriteria = null;
 		boolean stopAfterDebug = false;
+		
+//		RupDebugCriteria debugCriteria = new ParentSectsRupDebugCriteria(false, false, 672, 668);
+////		RupDebugCriteria debugCriteria = new StartEndSectRupDebugCriteria(672, -1, true, false);
+//		boolean stopAfterDebug = true;
 
 //		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
 //				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
@@ -721,7 +729,8 @@ public class ClusterRuptureBuilder {
 		/*
 		 * To reproduce UCERF3
 		 */
-//		PlausibilityConfiguration config = PlausibilityConfiguration.getUCERF3(subSects, distAzCalc, fm);
+		PlausibilityConfiguration config = PlausibilityConfiguration.getUCERF3(subSects, distAzCalc, fm);
+		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
 		
 		/*
 		 * For other experiements
@@ -730,20 +739,22 @@ public class ClusterRuptureBuilder {
 //		ClusterConnectionStrategy connectionStrategy =
 //				new UCERF3ClusterConnectionStrategy(subSects,
 //						distAzCalc, 5d, CoulombRates.loadUCERF3CoulombRates(fm));
-		ClusterConnectionStrategy connectionStrategy =
-			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 5d);
-		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
-		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
-		configBuilder.maxNumClusters(2); // for connection only testing
-		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
-		configBuilder.cumulativeAzChange(560f);
-		configBuilder.cumulativeRakeChange(180f);
-//		configBuilder.u3Azimuth();
-//		configBuilder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+////		ClusterConnectionStrategy connectionStrategy =
+////			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 5d);
+//		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
+//		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
+////		configBuilder.maxNumClusters(2); // for connection only testing
+////		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
+//		configBuilder.cumulativeAzChange(560f);
+////		configBuilder.cumulativeRakeChange(180f);
+////		configBuilder.u3Azimuth();
+////		configBuilder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 //		configBuilder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
-		configBuilder.maxSplays(0);
-		configBuilder.minSectsPerParent(2, true);
-		PlausibilityConfiguration config = configBuilder.build();
+//		configBuilder.maxSplays(0);
+//		configBuilder.minSectsPerParent(2, true);
+//		PlausibilityConfiguration config = configBuilder.build();
+//		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
+////		ClusterPermutationStrategy permStrat = new ConnectionPointsPermutationStrategy();
 		
 		File cacheFile = new File("/tmp/dist_az_cache_"+fm.encodeChoiceString()+"_"+subSects.size()
 			+"_sects_"+parentSects.size()+"_parents.csv");
@@ -771,7 +782,7 @@ public class ClusterRuptureBuilder {
 //		int threads = 1;
 		System.out.println("Building ruptures with "+threads+" threads...");
 		Stopwatch watch = Stopwatch.createStarted();
-		List<ClusterRupture> rups = builder.build(new UCERF3ClusterPermuationStrategy(), threads);
+		List<ClusterRupture> rups = builder.build(permStrat, threads);
 		watch.stop();
 		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
 		double mins = (secs / 60d);

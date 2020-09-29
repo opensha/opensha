@@ -9,6 +9,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterCo
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
@@ -25,12 +26,26 @@ public interface PlausibilityFilter extends ShortNamed {
 	
 	/**
 	 * Apply the plausibility filter to the given jump, assuming that existing rupture already passes
+	 * or failed with FAIL_CAN_CONTINUE
 	 * @param rupture
 	 * @param newJump
 	 * @param verbose
 	 * @return
 	 */
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose);
+	
+	/**
+	 * This allows filters to declare that they are directional, i.e., they might fail for a rupture
+	 * presented in one direction but pass for a reversed version of that rupture. In that case,
+	 * evaluation of an existing set of ruptures with this filter should wrap it in the 
+	 * MultiDirectionalPlausibilityFilter which will test all possible paths through a rupture and pass
+	 * if any pass. Default implementation returns false.
+	 * 
+	 * @return true if it is directional
+	 */
+	public default boolean isDirectional() {
+		return false;
+	}
 	
 	/**
 	 * This returns a TypeAdapter for JSON [de]serialization. Default implementation returns null
@@ -49,8 +64,9 @@ public interface PlausibilityFilter extends ShortNamed {
 	public static abstract class PlausibilityFilterTypeAdapter extends TypeAdapter<PlausibilityFilter> {
 		
 		public abstract void init(ClusterConnectionStrategy connStrategy,
-				SectionDistanceAzimuthCalculator distAzCalc);
+				SectionDistanceAzimuthCalculator distAzCalc, Gson gson);
 		
 	}
+
 
 }

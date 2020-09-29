@@ -2,11 +2,20 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+
+import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
-public class NumClustersFilter implements PlausibilityFilter {
+/**
+ * Maximum number of allowed clusters in a rupture. This will mostly be useful for creating
+ * rupture sets to test connection points, without worrying about big ruptures
+ * 
+ * @author kevin
+ *
+ */
+public class NumClustersFilter implements ScalarValuePlausibiltyFilter<Integer> {
 	
 	private int maxNumClusters;
 
@@ -36,6 +45,21 @@ public class NumClustersFilter implements PlausibilityFilter {
 		if (rupture.getTotalNumClusters() > maxNumClusters-1)
 			return PlausibilityResult.FAIL_HARD_STOP;
 		return PlausibilityResult.PASS;
+	}
+
+	@Override
+	public Integer getValue(ClusterRupture rupture) {
+		return rupture.getTotalNumClusters();
+	}
+
+	@Override
+	public Integer getValue(ClusterRupture rupture, Jump newJump) {
+		return rupture.getTotalNumClusters()+1;
+	}
+
+	@Override
+	public Range<Integer> getAcceptableRange() {
+		return Range.atMost(maxNumClusters);
 	}
 
 }

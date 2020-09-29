@@ -324,7 +324,7 @@ public class SubSectStiffnessCalculator {
 			if (parentID == receiverParentID)
 				receiverSects.add(sect);
 		}
-		return calcCombinedStiffness(sourceSects, receiverSects, sourceParentID, receiverParentID);
+		return calcAggStiffness(sourceSects, receiverSects, sourceParentID, receiverParentID);
 	}
 	
 	/**
@@ -336,7 +336,7 @@ public class SubSectStiffnessCalculator {
 	 */
 	public StiffnessResult[] calcClusterStiffness(FaultSubsectionCluster sourceCluster,
 			FaultSubsectionCluster receiverCluster) {
-		return calcCombinedStiffness(sourceCluster.subSects, receiverCluster.subSects,
+		return calcAggStiffness(sourceCluster.subSects, receiverCluster.subSects,
 				sourceCluster.parentSectionID, receiverCluster.parentSectionID);
 	}
 	
@@ -353,7 +353,7 @@ public class SubSectStiffnessCalculator {
 		for (FaultSubsectionCluster cluster : sourceRupture.getClustersIterable())
 			if (cluster != receiverCluster)
 				sourceSects.addAll(cluster.subSects);
-		return calcCombinedStiffness(sourceSects, receiverCluster.subSects,
+		return calcAggStiffness(sourceSects, receiverCluster.subSects,
 				-1, receiverCluster.parentSectionID);
 	}
 	
@@ -370,11 +370,11 @@ public class SubSectStiffnessCalculator {
 		for (FaultSubsectionCluster cluster : sourceClusters)
 			if (cluster != receiverCluster)
 				sourceSects.addAll(cluster.subSects);
-		return calcCombinedStiffness(sourceSects, receiverCluster.subSects,
+		return calcAggStiffness(sourceSects, receiverCluster.subSects,
 				-1, receiverCluster.parentSectionID);
 	}
 	
-	private StiffnessResult[] calcCombinedStiffness(List<FaultSection> sources, List<FaultSection> receivers,
+	public StiffnessResult[] calcAggStiffness(List<FaultSection> sources, List<FaultSection> receivers,
 			int sourceID, int receiverID) {
 		List<StiffnessResult> sigmaResults = new ArrayList<>();
 		List<StiffnessResult> tauResults = new ArrayList<>();
