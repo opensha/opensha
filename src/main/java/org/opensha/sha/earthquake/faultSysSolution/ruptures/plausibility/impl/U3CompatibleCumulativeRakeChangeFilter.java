@@ -113,5 +113,15 @@ public class U3CompatibleCumulativeRakeChangeFilter implements ScalarValuePlausi
 	public Range<Double> getAcceptableRange() {
 		return Range.atMost(threshold);
 	}
+	
+	@Override
+	public String getScalarName() {
+		return "Cumulative Rake Change";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return "Degrees";
+	}
 
 }

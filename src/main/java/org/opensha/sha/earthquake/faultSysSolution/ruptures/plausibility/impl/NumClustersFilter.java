@@ -61,5 +61,15 @@ public class NumClustersFilter implements ScalarValuePlausibiltyFilter<Integer> 
 	public Range<Integer> getAcceptableRange() {
 		return Range.atMost(maxNumClusters);
 	}
+	
+	@Override
+	public String getScalarName() {
+		return "Number of Clusters";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return null;
+	}
 
 }

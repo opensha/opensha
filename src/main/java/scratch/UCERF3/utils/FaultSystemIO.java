@@ -33,6 +33,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -388,6 +389,14 @@ public class FaultSystemIO {
 			PlausibilityConfiguration plausibilityConfig =
 					PlausibilityConfiguration.readJSON(json, faultSectionData);
 			rupSet.setPlausibilityConfiguration(plausibilityConfig);
+		}
+		
+		if (DD) System.out.println("loading cluster ruptures");
+		ZipEntry clustersEntry = zip.getEntry(getRemappedName("cluster_ruptures.json", nameRemappings));
+		if (clustersEntry != null) {
+			InputStreamReader json = new InputStreamReader(new BufferedInputStream(zip.getInputStream(clustersEntry)));
+			List<ClusterRupture> clusterRuptures = ClusterRupture.readJSON(json, faultSectionData);
+			rupSet.setClusterRuptures(clusterRuptures);
 		}
 		
 		if (branch != null) {
@@ -815,6 +824,14 @@ public class FaultSystemIO {
 			File plausibilityFile = new File(tempDir, getRemappedName("plausibility.json", nameRemappings));
 			plausibilityConfig.writeJSON(plausibilityFile);
 			zipFileNames.add(plausibilityFile.getName());
+		}
+		
+		List<ClusterRupture> clusterRuptures = rupSet.getClusterRuptures();
+		if (clusterRuptures != null) {
+			if (D) System.out.println("Saving cluster ruptures");
+			File clusterFile = new File(tempDir, getRemappedName("cluster_ruptures.json", nameRemappings));
+			ClusterRupture.writeJSON(clusterFile, clusterRuptures, rupSet.getFaultSectionDataList());
+			zipFileNames.add(clusterFile.getName());
 		}
 		
 		// InversionFaultSystemRupSet specific

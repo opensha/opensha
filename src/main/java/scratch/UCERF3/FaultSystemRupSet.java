@@ -11,13 +11,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -54,8 +62,9 @@ public class FaultSystemRupSet implements Serializable {
 	private double[] sectAreas;
 	private List<List<Integer>> sectionForRups;
 	private String info;
-	
+
 	private PlausibilityConfiguration plausibilityConfig;
+	private List<ClusterRupture> clusterRuptures;
 	
 	// for caching
 	protected boolean showProgress = false;
@@ -789,15 +798,111 @@ public class FaultSystemRupSet implements Serializable {
 	
 	/**
 	 * This gives the plausibility configuration used to create this rupture set if available,
-	 * otherwise null;
+	 * otherwise null
+	 * 
 	 * @return
 	 */
 	public PlausibilityConfiguration getPlausibilityConfiguration() {
 		return plausibilityConfig;
 	}
 	
+	/**
+	 * Sets the plausibility configuration used to create this rupture set
+	 * 
+	 * @param plausibilityConfig
+	 */
 	public void setPlausibilityConfiguration(PlausibilityConfiguration plausibilityConfig) {
 		this.plausibilityConfig = plausibilityConfig;
+	}
+
+	/**
+	 * This gives a list of ClusterRupture instances if available, otherwise null. This list can be
+	 * built if needed via the buildClusterRuptures(...) method.
+	 * 
+	 * @return
+	 */
+	public List<ClusterRupture> getClusterRuptures() {
+		return clusterRuptures;
+	}
+
+	/**
+	 * Sets the list of ClusterRupture instances
+	 * 
+	 * @param clusterRuptures
+	 */
+	public void setClusterRuptures(List<ClusterRupture> clusterRuptures) {
+		Preconditions.checkState(clusterRuptures == null || clusterRuptures.size() == getNumRuptures(),
+				"Cluster ruptures list is of size=%s but numRuptures=%s",
+				clusterRuptures.size(), getNumRuptures());
+		this.clusterRuptures = clusterRuptures;
+	}
+	
+	/**
+	 * Builds cluster ruptures for this RuptureSet. If the plausibility configuration has been set
+	 * and no splays are allowed, then they will be built assuming an ordered single strand rupture.
+	 * Otherwise, the given RuptureConnectionSearch will be used to construct ClusterRupture representations
+	 * 
+	 * @param search
+	 */
+	public void buildClusterRups(RuptureConnectionSearch search) {
+		PlausibilityConfiguration config = getPlausibilityConfiguration();
+		System.out.println("Building ClusterRuptures for "+getNumRuptures()+" ruptures");
+		if (config != null && config.getMaxNumSplays() == 0) {
+			// if splays aren't allowed and we have a plausibility configuration, then simple strand ruptures
+			System.out.println("Assuming simple single strand ruptures");
+			List<ClusterRupture> rups = new ArrayList<>();
+			
+			for (int r=0; r<getNumRuptures(); r++) {
+				List<FaultSection> rupSects = getFaultSectionDataForRupture(r);
+//				System.out.println("rupture "+r);
+				rups.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, search.getDistAzCalc()));
+			}
+			
+			setClusterRuptures(rups);
+			return;
+		}
+		ExecutorService exec = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+		
+		List<Future<ClusterRupture>> futures = new ArrayList<>();
+		for (int r=0; r<getNumRuptures(); r++)
+			futures.add(exec.submit(new ClusterRupCalc(search, r)));
+		
+		List<ClusterRupture> ruptures = new ArrayList<>();
+		
+		for (int r=0; r<futures.size(); r++) {
+			if (r % 1000 == 0)
+				System.out.println("Calculating for rupture "+r+"/"+getNumRuptures());
+			Future<ClusterRupture> future = futures.get(r);
+			try {
+				ruptures.add(future.get());
+			} catch (InterruptedException | ExecutionException e) {
+				exec.shutdown();
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
+		System.out.println("Built "+ruptures.size()+" ruptures");
+		
+		exec.shutdown();
+		
+		setClusterRuptures(ruptures);
+	}
+	
+	private static class ClusterRupCalc implements Callable<ClusterRupture> {
+		
+		private RuptureConnectionSearch search;
+		private int rupIndex;
+
+		public ClusterRupCalc(RuptureConnectionSearch search, int rupIndex) {
+			this.search = search;
+			this.rupIndex = rupIndex;
+		}
+
+		@Override
+		public ClusterRupture call() throws Exception {
+			return search.buildClusterRupture(rupIndex, true, false);
+		}
+		
 	}
 	
 }

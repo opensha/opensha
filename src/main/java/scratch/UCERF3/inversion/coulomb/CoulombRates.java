@@ -23,6 +23,9 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 public class CoulombRates extends HashMap<IDPairing, CoulombRatesRecord> {
 	
@@ -45,11 +48,15 @@ public class CoulombRates extends HashMap<IDPairing, CoulombRatesRecord> {
 	
 	private static final String DATA_SUB_DIR = "coulomb";
 
-	private CoulombRates() {
+	private FaultModels fm;
+
+	private CoulombRates(FaultModels fm) {
+		this.fm = fm;
 		// private so that it can only be instantiated with the from data file methods
 	}
 	
-	public CoulombRates(Map<IDPairing, CoulombRatesRecord> rates) {
+	public CoulombRates(FaultModels fm, Map<IDPairing, CoulombRatesRecord> rates) {
+		this.fm = fm;
 		this.putAll(rates);
 	}
 	
@@ -70,11 +77,11 @@ public class CoulombRates extends HashMap<IDPairing, CoulombRatesRecord> {
 	public static CoulombRates loadUCERF3CoulombRates(FaultModels faultModel) throws IOException {
 		String fileName = modelDataFilesMap.get(faultModel);
 		Preconditions.checkNotNull(fileName, "No coulomb file exists for the given fault model: "+faultModel);
-		return loadExcelFile(UCERF3_DataUtils.locateResourceAsStream(DATA_SUB_DIR, fileName));
+		return loadExcelFile(faultModel, UCERF3_DataUtils.locateResourceAsStream(DATA_SUB_DIR, fileName));
 	}
 	
-	public static CoulombRates loadExcelFile(InputStream is) throws IOException {
-		CoulombRates rates = new CoulombRates();
+	public static CoulombRates loadExcelFile(FaultModels faultModel, InputStream is) throws IOException {
+		CoulombRates rates = new CoulombRates(faultModel);
 		
 		POIFSFileSystem fs = new POIFSFileSystem(is);
 		HSSFWorkbook wb = new HSSFWorkbook(fs);
@@ -218,6 +225,32 @@ public class CoulombRates extends HashMap<IDPairing, CoulombRatesRecord> {
 //		pairing = new IDPairing(1368, 1382);
 //		System.out.println(rates.get(pairing));
 //		System.out.println(rates.get(pairing.getReversed()));
+	}
+	
+	public static class Adapter extends TypeAdapter<CoulombRates> {
+
+		@Override
+		public void write(JsonWriter out, CoulombRates value) throws IOException {
+			Preconditions.checkNotNull(value.fm);
+			out.beginObject();
+			
+			out.name("faultModel").value(value.fm.name());
+			
+			out.endObject();
+		}
+
+		@Override
+		public CoulombRates read(JsonReader in) throws IOException {
+			in.beginObject();
+			
+			Preconditions.checkState(in.hasNext());
+			Preconditions.checkState(in.nextName().equals("faultModel"));
+			FaultModels fm = FaultModels.valueOf(in.nextString());
+			
+			in.endObject();
+			return loadUCERF3CoulombRates(fm);
+		}
+		
 	}
 
 }

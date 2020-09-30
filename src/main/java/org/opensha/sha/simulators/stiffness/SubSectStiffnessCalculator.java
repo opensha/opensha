@@ -2,6 +2,7 @@ package org.opensha.sha.simulators.stiffness;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.utm.UTM;
@@ -36,6 +38,17 @@ import com.google.common.primitives.Doubles;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.FaultSystemIO;
 
+/**
+ * This class calculates stiffness aggregated between fault subsections. First, each subsection is divided
+ * up into a number of small square patches (specified via the gridSpacing parameter in km, 2 km seems to
+ * be a good tradeoff between calculation accuracy and speed). Then, to calculate stiffness between
+ * subsections, stiffness is calculated between each combination of patches between the two subsections.
+ * An aggregate measure is then used to pick a single value from the set of all patch stiffness calculations,
+ * e.g., the median (see StiffnessAggregationMethod).
+ * 
+ * @author kevin
+ *
+ */
 public class SubSectStiffnessCalculator {
 	
 	private List<? extends FaultSection> subSects;
@@ -45,7 +58,9 @@ public class SubSectStiffnessCalculator {
 	
 	private transient Map<FaultSection, List<Patch>> patchesMap;
 	
-	private transient LoadingCache<IDPairing, StiffnessResult[]> subSectStiffnessCache;
+	// [ID1][ID2][Stiffness]
+	private transient StiffnessResult[][][] cache;
+//	private transient LoadingCache<IDPairing, StiffnessResult[]> subSectStiffnessCache;
 
 	private double gridSpacing;
 	private double lameLambda;
@@ -53,18 +68,20 @@ public class SubSectStiffnessCalculator {
 	private double coeffOfFriction;
 	
 	public enum StiffnessType {
-		SIGMA("ΔSigma", "&Delta;Sigma", "MPa"),
-		TAU("ΔTau", "&Delta;Tau", "MPa"),
-		CFF("ΔCFF", "&Delta;CFF", "MPa");
+		SIGMA("ΔSigma", "&Delta;Sigma", "MPa", 0),
+		TAU("ΔTau", "&Delta;Tau", "MPa", 1),
+		CFF("ΔCFF", "&Delta;CFF", "MPa", 2);
 		
 		private String name;
 		private String html;
 		private String units;
+		private int arrayIndex;
 		
-		private StiffnessType(String name, String html, String units) {
+		private StiffnessType(String name, String html, String units, int arrayIndex) {
 			this.name = name;
 			this.html = html;
 			this.units = units;
+			this.arrayIndex = arrayIndex;
 		}
 		
 		@Override
@@ -82,6 +99,13 @@ public class SubSectStiffnessCalculator {
 		
 		public String getUnits() {
 			return units;
+		}
+		
+		/**
+		 * @return index of this quantity in the StiffnessResult[] arrrays
+		 */
+		public int getArrayIndex() {
+			return arrayIndex;
 		}
 	}
 	
@@ -110,6 +134,14 @@ public class SubSectStiffnessCalculator {
 		}
 	}
 
+	/**
+	 * 
+	 * @param subSects subsections list
+	 * @param gridSpacing grid spacing used to divide subsections into square patches
+	 * @param lameLambda Lame's first parameter (lambda) in MPa
+	 * @param lameMu Lame's mu (shear modulus, mu) in MPa
+	 * @param coeffOfFriction coefficient of friction for Coulomb calculations
+	 */
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
 			double lameLambda, double lameMu, double coeffOfFriction) {
 		this.subSects = subSects;
@@ -134,13 +166,23 @@ public class SubSectStiffnessCalculator {
 //		System.out.println("UTM zone: "+utmZone+" "+utmChar);
 	}
 	
-	private void checkInit() {
-		if (subSectStiffnessCache == null) {
+	private void checkInitCache() {
+		if (cache == null) {
 			synchronized (this) {
-				if (subSectStiffnessCache != null)
+				if (cache != null)
+					return;
+				cache = new StiffnessResult[subSects.size()][subSects.size()][];
+			}
+		}
+	}
+	
+	private void checkInitPatches() {
+		if (patchesMap == null) {
+			synchronized (this) {
+				if (patchesMap != null)
 					return;
 				System.out.println("Building source patches...");
-				patchesMap = new HashMap<>();
+				Map<FaultSection, List<Patch>> patchesMap = new HashMap<>();
 				MinMaxAveTracker patchCountTrack = new MinMaxAveTracker();
 				for (FaultSection sect : subSects) {
 					RuptureSurface surf = sect.getFaultSurface(gridSpacing, false, false);
@@ -196,72 +238,71 @@ public class SubSectStiffnessCalculator {
 					patchesMap.put(sect, myPatches);
 				}
 				System.out.println("Patch stats: "+patchCountTrack);
-				
-				int concurLevel = Runtime.getRuntime().availableProcessors();
-				concurLevel = Integer.max(concurLevel, 4);
-				concurLevel = Integer.min(concurLevel, 20);
-				LoadingCache<IDPairing, StiffnessResult[]> cache = CacheBuilder.newBuilder()
-						.concurrencyLevel(concurLevel).build(
-						new CacheLoader<IDPairing, StiffnessResult[]>() {
-
-					@Override
-					public StiffnessResult[] load(IDPairing key) throws Exception {
-						List<Patch> sourcePatches = patchesMap.get(subSects.get(key.getID1()));
-						List<Patch> receiverPatches = patchesMap.get(subSects.get(key.getID2()));
-						
-						int count = sourcePatches.size()*receiverPatches.size();
-						
-						double[] sigmaVals = new double[count];
-						double[] tauVals = new double[count];
-						double[] cffVals = new double[count];
-						
-						int index = 0;
-						for (Patch source : sourcePatches) {
-							for (Patch receiver : receiverPatches) {
-								double[] stiffness = StiffnessCalc.calcStiffness(
-										lameLambda, lameMu, source, receiver);
-								if (stiffness == null) {
-									sigmaVals[index] = Double.NaN;
-									tauVals[index] = Double.NaN;
-									cffVals[index] = Double.NaN;
-								} else {
-									sigmaVals[index] = stiffness[0];
-									tauVals[index] = stiffness[1];
-									cffVals[index] = StiffnessCalc.calcCoulombStress(
-											stiffness[1], stiffness[0], coeffOfFriction);
-								}
-								index++;
-							}
-						}
-						
-						return new StiffnessResult[] {
-								new StiffnessResult(key.getID1(), key.getID2(), sigmaVals, StiffnessType.SIGMA),
-								new StiffnessResult(key.getID1(), key.getID2(), tauVals, StiffnessType.TAU),
-								new StiffnessResult(key.getID1(), key.getID2(), cffVals, StiffnessType.CFF)
-						};
-					}
-					
-				});
-				this.subSectStiffnessCache = cache;
+				this.patchesMap = patchesMap;
 			}
 		}
+	}
+	
+	private StiffnessResult checkLoad(StiffnessType type, int id1, int id2) {
+		checkInitCache();
+		StiffnessResult[] result = cache[id1][id2];
+		if (result != null && result[type.arrayIndex] != null)
+			return result[type.arrayIndex];
+		checkInitPatches();
+		List<Patch> sourcePatches = patchesMap.get(subSects.get(id1));
+		List<Patch> receiverPatches = patchesMap.get(subSects.get(id2));
+		
+		int count = sourcePatches.size()*receiverPatches.size();
+		
+		double[] sigmaVals = new double[count];
+		double[] tauVals = new double[count];
+		double[] cffVals = new double[count];
+		
+		int index = 0;
+		for (Patch source : sourcePatches) {
+			for (Patch receiver : receiverPatches) {
+				double[] stiffness = StiffnessCalc.calcStiffness(
+						lameLambda, lameMu, source, receiver);
+				if (stiffness == null) {
+					sigmaVals[index] = Double.NaN;
+					tauVals[index] = Double.NaN;
+					cffVals[index] = Double.NaN;
+				} else {
+					sigmaVals[index] = stiffness[0];
+					tauVals[index] = stiffness[1];
+					cffVals[index] = StiffnessCalc.calcCoulombStress(
+							stiffness[1], stiffness[0], coeffOfFriction);
+				}
+				index++;
+			}
+		}
+		
+		cache[id1][id2] = new StiffnessResult[] {
+				new StiffnessResult(id1, id2, sigmaVals, StiffnessType.SIGMA),
+				new StiffnessResult(id1, id2, tauVals, StiffnessType.TAU),
+				new StiffnessResult(id1, id2, cffVals, StiffnessType.CFF)
+		};
+		return cache[id1][id2][type.arrayIndex];
 	}
 	
 	/**
 	 * Calculates stiffness between the given sub sections
 	 * 
+	 * @param type
 	 * @param sourceSect
 	 * @param receiverSect
-	 * @return { sigma, tau, cff }
+	 * @return stiffness
 	 */
-	public StiffnessResult[] calcStiffness(FaultSection sourceSect, FaultSection receiverSect) {
-		checkInit();
-		try {
-			return subSectStiffnessCache.get(
-					new IDPairing(sourceSect.getSectionId(), receiverSect.getSectionId()));
-		} catch (ExecutionException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
+	public StiffnessResult calcStiffness(StiffnessType type, FaultSection sourceSect,
+			FaultSection receiverSect) {
+//		checkInit();
+//		try {
+//			return subSectStiffnessCache.get(
+//					new IDPairing(sourceSect.getSectionId(), receiverSect.getSectionId()));
+//		} catch (ExecutionException e) {
+//			throw ExceptionUtils.asRuntimeException(e);
+//		}
+		return checkLoad(type, sourceSect.getSectionId(), receiverSect.getSectionId());
 	}
 	
 	/**
@@ -308,13 +349,14 @@ public class SubSectStiffnessCalculator {
 	}
 
 	/**
-	 * Calculates stiffness between the given parent sections
+	 * Calculates stiffness of the given type between the given parent sections
 	 * 
+	 * @param type
 	 * @param sourceSect
 	 * @param receiverSect
-	 * @return { sigma, tau, cff }
+	 * @return stiffness
 	 */
-	public StiffnessResult[] calcParentStiffness(int sourceParentID, int receiverParentID) {
+	public StiffnessResult calcParentStiffness(StiffnessType type, int sourceParentID, int receiverParentID) {
 		List<FaultSection> sourceSects = new ArrayList<>();
 		List<FaultSection> receiverSects = new ArrayList<>();
 		for (FaultSection sect : subSects) {
@@ -324,89 +366,78 @@ public class SubSectStiffnessCalculator {
 			if (parentID == receiverParentID)
 				receiverSects.add(sect);
 		}
-		return calcAggStiffness(sourceSects, receiverSects, sourceParentID, receiverParentID);
+		return calcAggStiffness(type, sourceSects, receiverSects, sourceParentID, receiverParentID);
 	}
 	
 	/**
-	 * Calculates stiffness between the given clusters
+	 * Calculates stiffness of the given type between the given clusters
 	 * 
+	 * @param type
 	 * @param sourceSect
 	 * @param receiverSect
-	 * @return { sigma, tau, cff }
+	 * @return stiffness
 	 */
-	public StiffnessResult[] calcClusterStiffness(FaultSubsectionCluster sourceCluster,
+	public StiffnessResult calcClusterStiffness(StiffnessType type, FaultSubsectionCluster sourceCluster,
 			FaultSubsectionCluster receiverCluster) {
-		return calcAggStiffness(sourceCluster.subSects, receiverCluster.subSects,
+		return calcAggStiffness(type, sourceCluster.subSects, receiverCluster.subSects,
 				sourceCluster.parentSectionID, receiverCluster.parentSectionID);
 	}
 	
 	/**
-	 * Calculates aggregated stiffness from the given rupture to the given clusters
+	 * Calculates aggregated stiffness of the given type from the given rupture to the given cluster
 	 * 
-	 * @param sourceSect
-	 * @param receiverSect
-	 * @return { sigma, tau, cff }
+	 * @param type
+	 * @param sourceRupture
+	 * @param receiverCluster
+	 * @return stiffness
 	 */
-	public StiffnessResult[] calcAggRupToClusterStiffness(ClusterRupture sourceRupture,
+	public StiffnessResult calcAggRupToClusterStiffness(StiffnessType type, ClusterRupture sourceRupture,
 			FaultSubsectionCluster receiverCluster) {
 		List<FaultSection> sourceSects = new ArrayList<>();
 		for (FaultSubsectionCluster cluster : sourceRupture.getClustersIterable())
 			if (cluster != receiverCluster)
 				sourceSects.addAll(cluster.subSects);
-		return calcAggStiffness(sourceSects, receiverCluster.subSects,
+		return calcAggStiffness(type, sourceSects, receiverCluster.subSects,
 				-1, receiverCluster.parentSectionID);
 	}
 	
 	/**
-	 * Calculates aggregated stiffness from the given set of clusters to the given cluster
+	 * Calculates aggregated stiffness of the given type from the given set of clusters to the given cluster
 	 * 
+	 * @param type
 	 * @param sourceSect
 	 * @param receiverSect
-	 * @return { sigma, tau, cff }
+	 * @return stiffness
 	 */
-	public StiffnessResult[] calcAggClustersToClusterStiffness(Collection<FaultSubsectionCluster> sourceClusters,
-			FaultSubsectionCluster receiverCluster) {
+	public StiffnessResult calcAggClustersToClusterStiffness(StiffnessType type,
+			Collection<FaultSubsectionCluster> sourceClusters, FaultSubsectionCluster receiverCluster) {
 		List<FaultSection> sourceSects = new ArrayList<>();
 		for (FaultSubsectionCluster cluster : sourceClusters)
 			if (cluster != receiverCluster)
 				sourceSects.addAll(cluster.subSects);
-		return calcAggStiffness(sourceSects, receiverCluster.subSects,
+		return calcAggStiffness(type, sourceSects, receiverCluster.subSects,
 				-1, receiverCluster.parentSectionID);
 	}
 	
-	public StiffnessResult[] calcAggStiffness(List<FaultSection> sources, List<FaultSection> receivers,
-			int sourceID, int receiverID) {
-		List<StiffnessResult> sigmaResults = new ArrayList<>();
-		List<StiffnessResult> tauResults = new ArrayList<>();
-		List<StiffnessResult> cffResults = new ArrayList<>();
-		checkInit();
-		for (FaultSection source : sources) {
-			for (FaultSection receiver : receivers) {
-				try {
-					StiffnessResult[] myResults = subSectStiffnessCache.get(
-							new IDPairing(source.getSectionId(), receiver.getSectionId()));
-					sigmaResults.add(myResults[0]);
-					tauResults.add(myResults[1]);
-					cffResults.add(myResults[2]);
-				} catch (ExecutionException e) {
-					throw ExceptionUtils.asRuntimeException(e);
-				}
-			}
-		}
+	/**
+	 * Calculates aggregated stiffness of the given type from the given set of sources to the given set
+	 * of receivers
+	 * 
+	 * @param type
+	 * @param sources
+	 * @param receivers
+	 * @param sourceID
+	 * @param receiverID
+	 * @return stiffness
+	 */
+	public StiffnessResult calcAggStiffness(StiffnessType type, List<FaultSection> sources,
+			List<FaultSection> receivers, int sourceID, int receiverID) {
+		List<StiffnessResult> results = new ArrayList<>();
+		for (FaultSection source : sources)
+			for (FaultSection receiver : receivers)
+				results.add(checkLoad(type, source.getSectionId(), receiver.getSectionId()));
 		
-		return new StiffnessResult[] { new StiffnessResult(sourceID, receiverID, sigmaResults),
-				new StiffnessResult(sourceID, receiverID, tauResults),
-				new StiffnessResult(sourceID, receiverID, cffResults) };
-	}
-	
-	public double getValue(StiffnessResult[] stiffness, StiffnessType type, StiffnessAggregationMethod quantity) {
-		if (type == StiffnessType.SIGMA)
-			return getValue(stiffness[0], quantity);
-		if (type == StiffnessType.TAU)
-			return getValue(stiffness[1], quantity);
-		// CFF
-		Preconditions.checkState(type == StiffnessType.CFF);
-		return getValue(stiffness[2], quantity);
+		return new StiffnessResult(sourceID, receiverID, results);
 	}
 	
 	public static double getValue(StiffnessResult stiffness, StiffnessAggregationMethod quantity) {
@@ -479,6 +510,7 @@ public class SubSectStiffnessCalculator {
 		
 		public StiffnessResult(int sourceID, int receiverID,
 				List<StiffnessResult> results) {
+			Preconditions.checkState(!results.isEmpty(), "Need at least 1 stiffness result to aggregate");
 			// combine
 			double min = Double.POSITIVE_INFINITY;
 			double max = Double.NEGATIVE_INFINITY;
@@ -518,6 +550,25 @@ public class SubSectStiffnessCalculator {
 			this.numValues = num;
 		}
 		
+		public StiffnessResult(int sourceID, int receiverID, double mean, double median, double min, double max,
+				double fractPositive, double fractSingular, StiffnessType type, int numValues) {
+			super();
+			this.sourceID = sourceID;
+			this.receiverID = receiverID;
+			this.mean = mean;
+			this.median = median;
+			this.min = min;
+			this.max = max;
+			this.fractPositive = fractPositive;
+			this.fractSingular = fractSingular;
+			this.type = type;
+			this.numValues = numValues;
+		}
+		
+		public double getValue(StiffnessAggregationMethod aggMethod) {
+			return SubSectStiffnessCalculator.getValue(this, aggMethod);
+		}
+
 		@Override
 		public String toString() {
 			StringBuilder str = new StringBuilder();
@@ -530,6 +581,65 @@ public class SubSectStiffnessCalculator {
 			str.append("\tfractSingular=").append((float)fractSingular);
 			return str.toString();
 		}
+	}
+	
+	public int calcCacheSize() {
+		if (cache == null)
+			return 0;
+		int cached = 0;
+		for (int i=0; i<cache.length; i++)
+			for (int j=0; j<cache.length; j++)
+				if (cache[i][j] != null)
+					cached++;
+		return cached;
+	}
+	
+	public String getCacheFileName(StiffnessType type) {
+		DecimalFormat df = new DecimalFormat("0.##");
+		return type.name().toLowerCase()+"_cache_"+subSects.size()+"sects_"+df.format(gridSpacing)
+			+"km_lambda"+df.format(lameLambda)+"_mu"+df.format(lameMu)+"_coeff"+(float)coeffOfFriction+".csv";
+	}
+	
+	public void writeCacheFile(File cacheFile, StiffnessType type) throws IOException {
+		CSVFile<String> csv = new CSVFile<>(true);
+		csv.addLine("Source ID", "Receiver ID", "Mean", "Median", "Min", "Max", "Fraction Positive",
+				"Fraction Singular", "Num Values");
+		for (int i=0; i<cache.length; i++) {
+			for (int j=0; j<cache.length; j++) {
+				if (cache[i][j] != null && cache[i][j][type.arrayIndex] != null) {
+					StiffnessResult stiffness = cache[i][j][type.arrayIndex];
+					csv.addLine(stiffness.sourceID+"", stiffness.receiverID+"", stiffness.mean+"",
+							stiffness.median+"", stiffness.min+"", stiffness.max+"",
+							stiffness.fractPositive+"", stiffness.fractSingular+"", stiffness.numValues+"");
+				}
+			}
+		}
+		csv.writeToFile(cacheFile);
+	}
+	
+	public int loadCacheFile(File cacheFile, StiffnessType type) throws IOException {
+		System.out.println("Loading "+type+" cache from "+cacheFile.getAbsolutePath()+"...");
+		CSVFile<String> csv = CSVFile.readFile(cacheFile, true);
+		checkInitCache();
+		for (int row=1; row<csv.getNumRows(); row++) {
+			int sourceID = csv.getInt(row, 0);
+			int receiverID = csv.getInt(row, 1);
+			double mean = csv.getDouble(row, 2);
+			double median = csv.getDouble(row, 3);
+			double min = csv.getDouble(row, 4);
+			double max = csv.getDouble(row, 5);
+			double fractPositive = csv.getDouble(row, 6);
+			double fractSingular = csv.getDouble(row, 7);
+			int numValues = csv.getInt(row, 8);
+			
+			if (cache[sourceID][receiverID] == null)
+				cache[sourceID][receiverID] = new StiffnessResult[3];
+			cache[sourceID][receiverID][type.arrayIndex] = new StiffnessResult(
+					sourceID, receiverID, mean, median, min, max, fractPositive, fractSingular,
+					type, numValues);
+		}
+		System.out.println("Loaded "+(csv.getNumRows()-1)+" values");
+		return csv.getNumRows()-1;
 	}
 	
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
@@ -546,8 +656,8 @@ public class SubSectStiffnessCalculator {
 
 		FaultSection[] sects = {
 				calc.subSects.get(1836), calc.subSects.get(1837),
-//				calc.subSects.get(625), calc.subSects.get(1772),
-//				calc.subSects.get(771), calc.subSects.get(1811)
+				calc.subSects.get(625), calc.subSects.get(1772),
+				calc.subSects.get(771), calc.subSects.get(1811)
 		};
 		
 		StiffnessAggregationMethod quantity = StiffnessAggregationMethod.MEDIAN;
@@ -556,13 +666,14 @@ public class SubSectStiffnessCalculator {
 			for (int j=0; j<sects.length; j++) {
 				System.out.println("Source: "+sects[i].getSectionName());
 				System.out.println("Receiver: "+sects[j].getSectionName());
-				StiffnessResult[] stiffness = calc.calcStiffness(sects[i], sects[j]);
-				for (StiffnessType type : StiffnessType.values())
-					System.out.println("\t"+type+": "+calc.getValue(stiffness, type, quantity));
-//				System.out.println("\t"+stiffness[0]);
-//				System.out.println("\t"+stiffness[1]);
+				for (StiffnessType type : StiffnessType.values()) {
+					StiffnessResult stiffness = calc.calcStiffness(type, sects[i], sects[j]);
+					System.out.println("\t"+type+": "+getValue(stiffness, quantity));
+				}
 			}
 		}
+		
+		calc.writeCacheFile(new File("/tmp/stiffness_cache_test.csv"), StiffnessType.CFF);
 	}
 	
 }

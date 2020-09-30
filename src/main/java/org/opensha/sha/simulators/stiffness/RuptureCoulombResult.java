@@ -26,6 +26,7 @@ public class RuptureCoulombResult {
 	public enum RupCoulombQuantity {
 		MEAN_SECT_CFF("Mean Sect Net ΔCFF", "MPa"),
 		MIN_SECT_CFF("Min Sect Net ΔCFF", "MPa"),
+		SUM_SECT_CFF("Sum Sect Net ΔCFF", "MPa"),
 		MEAN_SECT_FRACT_POSITIVES("Mean Sect Fract ΔCFF > 0"),
 		MIN_SECT_FRACT_POSITIVES("Min Sect Fract ΔCFF > 0"),
 		NUM_NET_NEGATIVE_SECTS("Num Sects w/ Net ΔCFF < 0");
@@ -78,10 +79,9 @@ public class RuptureCoulombResult {
 			for (FaultSection source : rupSects) {
 				if (source == receiver)
 					continue;
-				StiffnessResult[] stiffness = calc.calcStiffness(source, receiver);
-				double cff = calc.getValue(stiffness, StiffnessType.CFF, calcAggMethod);
-				double fractPositive = calc.getValue(
-						stiffness, StiffnessType.CFF, StiffnessAggregationMethod.FRACT_POSITIVE);
+				StiffnessResult stiffness = calc.calcStiffness(StiffnessType.CFF, source, receiver);
+				double cff = stiffness.getValue(calcAggMethod);
+				double fractPositive = stiffness.getValue(StiffnessAggregationMethod.FRACT_POSITIVE);
 				Preconditions.checkState(Double.isFinite(cff), "CFF is %s from %s to %s",
 						cff, source.getSectionName(), receiver.getSectionName());
 				sumCFF += cff;
@@ -107,6 +107,8 @@ public class RuptureCoulombResult {
 			return mean(sectSumCFFs.values());
 		case MIN_SECT_CFF:
 			return min(sectSumCFFs.values());
+		case SUM_SECT_CFF:
+			return sum(sectSumCFFs.values());
 		case MEAN_SECT_FRACT_POSITIVES:
 			return mean(sectFractPositiveCFFs.values());
 		case MIN_SECT_FRACT_POSITIVES:
@@ -119,10 +121,15 @@ public class RuptureCoulombResult {
 		}
 	}
 	
-	private static double mean(Collection<Double> values) {
+	private static double sum(Collection<Double> values) {
 		double sum = 0d;
 		for (double val : values)
 			sum += val;
+		return sum;
+	}
+	
+	private static double mean(Collection<Double> values) {
+		double sum = sum(values);
 		return sum/(double)values.size();
 	}
 	

@@ -11,6 +11,7 @@ import java.util.Map;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster.JumpStub;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -191,32 +192,8 @@ public abstract class ClusterConnectionStrategy implements Named {
 			if (Double.isFinite(value.getMaxJumpDist()))
 				out.name("maxJumpDist").value(value.getMaxJumpDist());
 			out.name("clusters").beginArray();
-			for (FaultSubsectionCluster cluster : value.getClusters()) {
-				out.beginObject();
-				out.name("parentID").value(cluster.parentSectionID);
-				out.name("subSectIDs").beginArray();
-				for (FaultSection sect : cluster.subSects)
-					out.value(sect.getSectionId());
-				out.endArray();
-				out.name("endSectIDs").beginArray();
-				for (FaultSection sect : cluster.endSects)
-					out.value(sect.getSectionId());
-				out.endArray();
-				List<Jump> connections = cluster.getConnections();
-				if (connections != null) {
-					out.name("connections").beginArray();
-					for (Jump jump : connections) {
-						out.beginObject();
-						out.name("fromSectID").value(jump.fromSection.getSectionId());
-						out.name("toParentID").value(jump.toSection.getParentSectionId());
-						out.name("toSectID").value(jump.toSection.getSectionId());
-						out.name("distance").value(jump.distance);
-						out.endObject();
-					}
-					out.endArray();
-				}
-				out.endObject();
-			}
+			for (FaultSubsectionCluster cluster : value.getClusters())
+				cluster.writeJSON(out);
 			out.endArray();
 			out.endObject();
 		}
@@ -249,16 +226,6 @@ public abstract class ClusterConnectionStrategy implements Named {
 			return new PrecomputedClusterConnectionStrategy(name, subSects, clusters, maxJumpDist);
 		}
 		
-		private FaultSection getSect(int sectID) {
-			Preconditions.checkState(sectID >= 0 && sectID < subSects.size(),
-					"sectID=%s outside valid range: [0,%s]", sectID, subSects.size()-1);
-			FaultSection sect = subSects.get(sectID);;
-			Preconditions.checkState(sect.getSectionId() == sectID,
-					"Subsection indexing mismatch. Section at index %s has sectID=%s",
-					sectID, sect.getSectionId());
-			return sect;
-		}
-		
 		private List<FaultSubsectionCluster> loadClusters(JsonReader in) throws IOException {
 			List<FaultSubsectionCluster> clusters = new ArrayList<>();
 			in.beginArray();
@@ -268,124 +235,19 @@ public abstract class ClusterConnectionStrategy implements Named {
 			Map<FaultSubsectionCluster, List<JumpStub>> clusterJumps = new HashMap<>();
 			
 			while (in.hasNext()) {
-				in.beginObject();
-				
-				Integer parentID = null;
-				List<FaultSection> subSects = null;
-				List<FaultSection> endSects = null;
-				List<JumpStub> jumps = null;
-				
-				while (in.hasNext()) {
-					switch (in.nextName()) {
-					case "parentID":
-						parentID = in.nextInt();
-						break;
-					case "subSectIDs":
-						in.beginArray();
-						subSects = new ArrayList<>();
-						while (in.hasNext())
-							subSects.add(getSect(in.nextInt()));
-						in.endArray();
-						break;
-					case "endSectIDs":
-						in.beginArray();
-						endSects = new ArrayList<>();
-						while (in.hasNext())
-							endSects.add(getSect(in.nextInt()));
-						in.endArray();
-						break;
-					case "connections":
-						in.beginArray();
-						jumps = new ArrayList<>();
-						while (in.hasNext()) {
-							in.beginObject();
-							FaultSection fromSect = null;
-							FaultSection toSect = null;
-							Double distance = null;
-							Integer toParentID = null;
-							while (in.hasNext()) {
-								switch (in.nextName()) {
-								case "fromSectID":
-									fromSect = getSect(in.nextInt());
-									break;
-								case "toSectID":
-									toSect = getSect(in.nextInt());
-									break;
-								case "toParentID":
-									toParentID = in.nextInt();
-									break;
-								case "distance":
-									distance = in.nextDouble();
-									break;
+				FaultSubsectionCluster cluster = FaultSubsectionCluster.readJSON(in, subSects, clusterJumps);
 
-								default:
-									break;
-								}
-							}
-							Preconditions.checkNotNull(fromSect, "Jump fromSectID not specified");
-							Preconditions.checkNotNull(toSect, "Jump toSectID not specified");
-							Preconditions.checkNotNull(toParentID, "Jump toParentSectID not specified");
-							Preconditions.checkState(toParentID.intValue() == toSect.getParentSectionId(),
-									"toParentID=%s but toSect.getParentSectionId()=%s",
-									toParentID, toSect.getParentSectionId());
-							Preconditions.checkNotNull(distance, "Jump distance not specified");
-							jumps.add(new JumpStub(fromSect, toSect, distance));
-						
-							in.endObject();
-						}
-						in.endArray();
-						break;
-
-					default:
-						break;
-					}
-				}
-				Preconditions.checkNotNull(parentID, "Cluster parentID not specified");
-				Preconditions.checkNotNull(subSects, "Cluster subSects not specified");
-				FaultSubsectionCluster cluster;
-				if (endSects != null)
-					cluster = new FaultSubsectionCluster(subSects, endSects);
-				else
-					cluster = new FaultSubsectionCluster(subSects);
 				clusters.add(cluster);
-				parentsToClusters.put(parentID, cluster);
-				if (jumps != null)
-					clusterJumps.put(cluster, jumps);
-				
-				in.endObject();
+				parentsToClusters.put(cluster.parentSectionID, cluster);
 			}
 			
 			in.endArray();
 			
 			// now finalize jumps
-			for (FaultSubsectionCluster cluster : clusterJumps.keySet()) {
-				List<JumpStub> stubs = clusterJumps.get(cluster);
-				for (JumpStub stub : stubs) {
-					int toParent = stub.toSection.getParentSectionId();
-					FaultSubsectionCluster toCluster = parentsToClusters.get(toParent);
-					Preconditions.checkNotNull(toCluster,
-							"Jump to a non-existent cluster with parentID=%s", toParent);
-					Preconditions.checkState(stub.fromSection.getParentSectionId() == cluster.parentSectionID,
-							"Jump fromSect is from an unexpected parent section");
-					cluster.addConnection(new Jump(stub.fromSection, cluster,
-							stub.toSection, toCluster, stub.distance));
-				}
-			}
+			FaultSubsectionCluster.buildJumpsFromStubs(clusters, clusterJumps);
 			return clusters;
 		}
 		
-	}
-	
-	private static class JumpStub {
-		final FaultSection fromSection;
-		final FaultSection toSection;
-		final double distance;
-		public JumpStub(FaultSection fromSection, FaultSection toSection, double distance) {
-			super();
-			this.fromSection = fromSection;
-			this.toSection = toSection;
-			this.distance = distance;
-		}
 	}
 	
 	public static void main(String[] args) throws IOException {

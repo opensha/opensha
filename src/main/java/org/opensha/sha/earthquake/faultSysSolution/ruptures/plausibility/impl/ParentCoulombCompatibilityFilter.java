@@ -7,7 +7,7 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessResult;
@@ -18,7 +18,7 @@ import com.google.common.collect.Range;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 public class ParentCoulombCompatibilityFilter extends JumpPlausibilityFilter
-implements ScalarValuePlausibiltyFilter<Float> {
+implements ScalarCoulombPlausibilityFilter {
 	
 	private SubSectStiffnessCalculator stiffnessCalc;
 	private StiffnessAggregationMethod aggMethod;
@@ -97,8 +97,8 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	}
 	
 	private double calc(int sourceID, int receiverID) {
-		StiffnessResult[] stiffness = stiffnessCalc.calcParentStiffness(sourceID, receiverID);
-		return stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
+		StiffnessResult stiffness = stiffnessCalc.calcParentStiffness(StiffnessType.CFF, sourceID, receiverID);
+		return stiffness.getValue(aggMethod);
 	}
 
 	@Override
@@ -143,6 +143,11 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	@Override
 	public Range<Float> getAcceptableRange() {
 		return Range.atLeast(threshold);
+	}
+
+	@Override
+	public SubSectStiffnessCalculator getStiffnessCalc() {
+		return stiffnessCalc;
 	}
 
 }

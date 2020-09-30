@@ -431,8 +431,11 @@ public class RuptureConnectionSearch {
 	public ClusterRupture buildClusterRupture(int rupIndex) {
 		return buildClusterRupture(rupIndex, false);
 	}
-	
+
 	public ClusterRupture buildClusterRupture(int rupIndex, final boolean debug) {
+		return buildClusterRupture(rupIndex, false, debug);
+	}
+	public ClusterRupture buildClusterRupture(int rupIndex, boolean maintainOrder, final boolean debug) {
 		List<FaultSection> sects = rupSet.getFaultSectionDataForRupture(rupIndex);
 		
 		if (debug) System.out.println("Building clusters for "+rupIndex);
@@ -443,7 +446,17 @@ public class RuptureConnectionSearch {
 		if (debug) System.out.println("\tHave "+rupClusters.size()+" clusters");
 		
 		List<Jump> jumps = calcRuptureJumps(rupClusters, debug);
-		return buildClusterRupture(rupClusters, jumps, debug);
+		FaultSubsectionCluster startCluster = null;
+		if (maintainOrder) {
+			FaultSection firstSect = sects.get(0);
+			for (FaultSubsectionCluster cluster : rupClusters) {
+				if (cluster.contains(firstSect)) {
+					startCluster = cluster;
+					break;
+				}
+			}
+		}
+		return buildClusterRupture(rupClusters, jumps, debug, startCluster);
 	}
 	
 	public ClusterRupture buildClusterRupture(List<FaultSubsectionCluster> rupClusters,

@@ -59,5 +59,15 @@ public class JumpDistFilter extends JumpPlausibilityFilter implements ScalarValu
 	public Range<Float> getAcceptableRange() {
 		return Range.atMost((float)maxDist);
 	}
+	
+	@Override
+	public String getScalarName() {
+		return "Jump Distance";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return "km";
+	}
 
 }

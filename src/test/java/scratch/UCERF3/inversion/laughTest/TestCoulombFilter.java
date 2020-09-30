@@ -130,7 +130,7 @@ public class TestCoulombFilter {
 			}
 		}
 		
-		return new CoulombRates(ratesMap);
+		return new CoulombRates(null, ratesMap);
 	}
 	
 	private static CoulombRatesTester getDefaultTester() {

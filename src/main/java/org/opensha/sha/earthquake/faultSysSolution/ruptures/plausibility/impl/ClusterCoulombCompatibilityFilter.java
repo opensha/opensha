@@ -6,7 +6,7 @@ import java.util.List;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
@@ -26,7 +26,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class ClusterCoulombCompatibilityFilter implements ScalarValuePlausibiltyFilter<Float> {
+public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibilityFilter {
 	
 	private SubSectStiffnessCalculator stiffnessCalc;
 	private StiffnessAggregationMethod aggMethod;
@@ -84,9 +84,9 @@ public class ClusterCoulombCompatibilityFilter implements ScalarValuePlausibilty
 		double val = Double.POSITIVE_INFINITY;
 		if (!curClusters.isEmpty()) {
 			// check rupture so far
-			StiffnessResult[] stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
-					curClusters, nextCluster);
-			val = stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
+			StiffnessResult stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
+					StiffnessType.CFF, curClusters, nextCluster);
+			val = stiffness.getValue(aggMethod);
 			if (verbose)
 				System.out.println(getShortName()+": "+curClusters.size()+" clusters to "
 						+nextCluster+", val="+val);
@@ -125,6 +125,11 @@ public class ClusterCoulombCompatibilityFilter implements ScalarValuePlausibilty
 	@Override
 	public Range<Float> getAcceptableRange() {
 		return Range.atLeast((float)threshold);
+	}
+
+	@Override
+	public SubSectStiffnessCalculator getStiffnessCalc() {
+		return stiffnessCalc;
 	}
 
 }

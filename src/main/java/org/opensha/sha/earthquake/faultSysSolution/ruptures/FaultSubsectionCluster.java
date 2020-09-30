@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -16,6 +17,8 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * This class represents a cluster of contiguous subsections. It can either be a full parent
@@ -220,6 +223,209 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		} else if (!subSects.equals(other.subSects))
 			return false;
 		return true;
+	}
+	
+	/**
+	 * This will write this FaultSubsectionCluster to the given JsonWriter
+	 * 
+	 * @param out
+	 * @throws IOException
+	 */
+	public void writeJSON(JsonWriter out) throws IOException {
+		out.beginObject();
+		out.name("parentID").value(parentSectionID);
+		out.name("subSectIDs").beginArray();
+		for (FaultSection sect : subSects)
+			out.value(sect.getSectionId());
+		out.endArray();
+		boolean simpleEndSects = endSects.size() == 1;
+		if (simpleEndSects) {
+			// now make sure that it is indeed the last section
+			simpleEndSects = endSects.iterator().next().equals(subSects.get(subSects.size()-1));
+		}
+		if (!simpleEndSects) {
+			out.name("endSectIDs").beginArray();
+			for (FaultSection sect : endSects)
+				out.value(sect.getSectionId());
+			out.endArray();
+		}
+		if (possibleJumps != null && !possibleJumps.isEmpty()) {
+			out.name("connections").beginArray();
+			for (Jump jump : possibleJumps) {
+				out.beginObject();
+				out.name("fromSectID").value(jump.fromSection.getSectionId());
+				out.name("toParentID").value(jump.toSection.getParentSectionId());
+				out.name("toSectID").value(jump.toSection.getSectionId());
+				out.name("distance").value(jump.distance);
+				out.endObject();
+			}
+			out.endArray();
+		}
+		out.endObject();
+	}
+	
+	private static FaultSection getSect(List<? extends FaultSection> allSects, int sectID) {
+		Preconditions.checkState(sectID >= 0 && sectID < allSects.size(),
+				"sectID=%s outside valid range: [0,%s]", sectID, allSects.size()-1);
+		FaultSection sect = allSects.get(sectID);
+		Preconditions.checkState(sect.getSectionId() == sectID,
+				"Subsection indexing mismatch. Section at index %s has sectID=%s",
+				sectID, sect.getSectionId());
+		return sect;
+	}
+	
+	/**
+	 * This will read the next FaultSubsectionCluster from a JsonReader. This gets complicated because
+	 * jumps cannot be setup until all clusters have been read, so instead you must supply a map
+	 * of FaultSubsectionClusters to a list of JumpStub instances. Once all clusters have been read
+	 * from JSON, you can build/add all of the ruptures with the buildJumpsFromStubs(..) method
+	 * 
+	 * @param in
+	 * @param allSects
+	 * @param jumpStubsMap
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSubsectionCluster readJSON(JsonReader in, List<? extends FaultSection> allSects,
+			Map<FaultSubsectionCluster, List<JumpStub>> jumpStubsMap) throws IOException {
+		in.beginObject();
+		
+		Integer parentID = null;
+		List<FaultSection> subSects = null;
+		List<FaultSection> endSects = null;
+		List<JumpStub> jumps = null;
+		
+		while (in.hasNext()) {
+			switch (in.nextName()) {
+			case "parentID":
+				parentID = in.nextInt();
+				break;
+			case "subSectIDs":
+				in.beginArray();
+				subSects = new ArrayList<>();
+				while (in.hasNext())
+					subSects.add(getSect(allSects, in.nextInt()));
+				in.endArray();
+				break;
+			case "endSectIDs":
+				in.beginArray();
+				endSects = new ArrayList<>();
+				while (in.hasNext())
+					endSects.add(getSect(allSects, in.nextInt()));
+				in.endArray();
+				break;
+			case "connections":
+				in.beginArray();
+				jumps = new ArrayList<>();
+				while (in.hasNext()) {
+					in.beginObject();
+					FaultSection fromSect = null;
+					FaultSection toSect = null;
+					Double distance = null;
+					Integer toParentID = null;
+					while (in.hasNext()) {
+						switch (in.nextName()) {
+						case "fromSectID":
+							fromSect = getSect(allSects, in.nextInt());
+							break;
+						case "toSectID":
+							toSect = getSect(allSects, in.nextInt());
+							break;
+						case "toParentID":
+							toParentID = in.nextInt();
+							break;
+						case "distance":
+							distance = in.nextDouble();
+							break;
+
+						default:
+							break;
+						}
+					}
+					Preconditions.checkNotNull(fromSect, "Jump fromSectID not specified");
+					Preconditions.checkNotNull(toSect, "Jump toSectID not specified");
+					Preconditions.checkNotNull(toParentID, "Jump toParentSectID not specified");
+					Preconditions.checkState(toParentID.intValue() == toSect.getParentSectionId(),
+							"toParentID=%s but toSect.getParentSectionId()=%s",
+							toParentID, toSect.getParentSectionId());
+					Preconditions.checkNotNull(distance, "Jump distance not specified");
+					jumps.add(new JumpStub(fromSect, toSect, distance));
+				
+					in.endObject();
+				}
+				in.endArray();
+				break;
+
+			default:
+				break;
+			}
+		}
+		Preconditions.checkNotNull(parentID, "Cluster parentID not specified");
+		Preconditions.checkNotNull(subSects, "Cluster subSects not specified");
+		FaultSubsectionCluster cluster;
+		if (endSects != null)
+			cluster = new FaultSubsectionCluster(subSects, endSects);
+		else
+			cluster = new FaultSubsectionCluster(subSects);
+		if (jumps != null) {
+			if (jumpStubsMap == null)
+				System.err.println("WARNING: skipping loading all jumps (jumpStubsMap is null)");
+			else
+				jumpStubsMap.put(cluster, jumps);
+		}
+		
+		in.endObject();
+		return cluster;
+	}
+	
+	public static void buildJumpsFromStubs(Collection<FaultSubsectionCluster> clusters,
+			Map<FaultSubsectionCluster, List<JumpStub>> jumpStubsMap) {
+		if (jumpStubsMap.isEmpty())
+			return;
+		Map<Integer, List<FaultSubsectionCluster>> parentIDsMap = new HashMap<>();
+		for (FaultSubsectionCluster cluster : clusters) {
+			List<FaultSubsectionCluster> parentClusters = parentIDsMap.get(cluster.parentSectionID);
+			if (parentClusters == null) {
+				parentClusters = new ArrayList<>();
+				parentIDsMap.put(cluster.parentSectionID, parentClusters);
+			}
+			parentClusters.add(cluster);
+		}
+		
+		for (FaultSubsectionCluster fromCluster : jumpStubsMap.keySet()) {
+			List<JumpStub> jumpStubs = jumpStubsMap.get(fromCluster);
+			
+			for (JumpStub stub : jumpStubs) {
+				int toParent = stub.toSection.getParentSectionId();
+				FaultSubsectionCluster toCluster = null;
+				for (FaultSubsectionCluster possible : parentIDsMap.get(toParent)) {
+					if (possible.contains(stub.toSection)) {
+						toCluster = possible;
+						break;
+					}
+				}
+				Preconditions.checkNotNull(toCluster,
+						"Jump to a non-existent cluster with parentID=%s", toParent);
+				Preconditions.checkState(stub.fromSection.getParentSectionId() == fromCluster.parentSectionID,
+						"Jump fromSect is from an unexpected parent section");
+				Preconditions.checkState(fromCluster.contains(stub.fromSection),
+						"Jump fromSect is from an unexpected parent section");
+				fromCluster.addConnection(new Jump(stub.fromSection, fromCluster,
+						stub.toSection, toCluster, stub.distance));
+			}
+		}
+	}
+	
+	public static class JumpStub {
+		final FaultSection fromSection;
+		final FaultSection toSection;
+		final double distance;
+		public JumpStub(FaultSection fromSection, FaultSection toSection, double distance) {
+			super();
+			this.fromSection = fromSection;
+			this.toSection = toSection;
+			this.distance = distance;
+		}
 	}
 
 }

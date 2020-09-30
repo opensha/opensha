@@ -97,5 +97,15 @@ public class SplayCountFilter implements ScalarValuePlausibiltyFilter<Integer> {
 	public Range<Integer> getAcceptableRange() {
 		return Range.atMost(maxSplays);
 	}
+	
+	@Override
+	public String getScalarName() {
+		return "Number of Splays";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return null;
+	}
 
 }

@@ -136,5 +136,15 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 	public Range<Float> getAcceptableRange() {
 		return Range.atMost(threshold);
 	}
+	
+	@Override
+	public String getScalarName() {
+		return "Total Azimuth Change";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return "Degrees";
+	}
 
 }

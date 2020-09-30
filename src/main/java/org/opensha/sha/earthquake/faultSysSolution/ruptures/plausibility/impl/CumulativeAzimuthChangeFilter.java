@@ -141,4 +141,14 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 		return Range.atMost(threshold);
 	}
 
+	@Override
+	public String getScalarName() {
+		return "Cumulative Azimuth Change";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return "Degrees";
+	}
+
 }

@@ -5,7 +5,7 @@ import java.util.HashSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
@@ -24,7 +24,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  * @author kevin
  *
  */
-public class ClusterPathCoulombCompatibilityFilter implements ScalarValuePlausibiltyFilter<Float> {
+public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlausibilityFilter {
 	
 	private SubSectStiffnessCalculator stiffnessCalc;
 	private StiffnessAggregationMethod aggMethod;
@@ -104,9 +104,9 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarValuePlausib
 			FaultSubsectionCluster addition, boolean shortCircuit) {
 		float minVal = Float.POSITIVE_INFINITY;
 		if (!strandClusters.isEmpty()) {
-			StiffnessResult[] stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
-					strandClusters, addition);
-			double val = stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
+			StiffnessResult stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
+					StiffnessType.CFF, strandClusters, addition);
+			double val = stiffness.getValue(aggMethod);
 			minVal = Float.min(minVal, (float)val);
 			if (shortCircuit && minVal < threshold)
 				return (float)val;
@@ -156,6 +156,11 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarValuePlausib
 	@Override
 	public Range<Float> getAcceptableRange() {
 		return Range.atLeast((float)threshold);
+	}
+
+	@Override
+	public SubSectStiffnessCalculator getStiffnessCalc() {
+		return stiffnessCalc;
 	}
 
 }

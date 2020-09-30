@@ -1,11 +1,24 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster.JumpStub;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -23,6 +36,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * Rupture which is constructed as a set of connected FaultSubsectionCluster's. Jump's occur
@@ -424,6 +443,178 @@ public class ClusterRupture {
 		for (ClusterRupture splay : splays.values())
 			iterables.add(splay.getClustersIterable());
 		return Iterables.concat(iterables);
+	}
+	
+	/*
+	 * JSON [de]serialization
+	 */
+	
+	public static void writeJSON(File jsonFile, List<ClusterRupture> ruptures,
+			List<? extends FaultSection> subSects) throws IOException {
+		Gson gson = buildGson(subSects);
+		FileWriter fw = new FileWriter(jsonFile);
+		Type listType = new TypeToken<List<ClusterRupture>>(){}.getType();
+		gson.toJson(ruptures, listType, fw);
+		fw.write("\n");
+		fw.close();
+	}
+	
+	public static List<ClusterRupture> readJSON(File jsonFile, List<? extends FaultSection> subSects)
+			throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		return readJSON(reader, subSects);
+	}
+	
+	public static List<ClusterRupture> readJSON(String json, List<? extends FaultSection> subSects) {
+		return readJSON(new StringReader(json), subSects);
+	}
+	
+	public static List<ClusterRupture> readJSON(Reader json, List<? extends FaultSection> subSects) {
+		Gson gson = buildGson(subSects);
+		Type listType = new TypeToken<List<ClusterRupture>>(){}.getType();
+		List<ClusterRupture> ruptures = gson.fromJson(json, listType);
+		try {
+			json.close();
+		} catch (IOException e) {}
+		return ruptures;
+	}
+	
+	private static Gson buildGson(List<? extends FaultSection> subSects) {
+		GsonBuilder builder = new GsonBuilder();
+		builder.setPrettyPrinting();
+		builder.registerTypeAdapter(ClusterRupture.class, new Adapter(subSects));
+		Gson gson = builder.create();
+		
+		return gson;
+	}
+	
+	public static class Adapter extends TypeAdapter<ClusterRupture> {
+		
+		private List<? extends FaultSection> subSects;
+
+		public Adapter(List<? extends FaultSection> subSects) {
+			this.subSects = subSects;
+		}
+
+		@Override
+		public void write(JsonWriter out, ClusterRupture rupture) throws IOException {
+			out.beginObject(); // {
+			
+			out.name("clusters").beginArray(); // [
+			for (FaultSubsectionCluster cluster : rupture.clusters) {
+				// clusters can have more internal jumps than those used here, so we need to recreate
+				// with only the relevant ones
+				FaultSubsectionCluster newCluster = new FaultSubsectionCluster(
+						cluster.subSects, cluster.endSects);
+				for (Jump jump : rupture.internalJumps)
+					if (jump.fromCluster == cluster)
+						newCluster.addConnection(new Jump(jump.fromSection, newCluster,
+								jump.toSection, jump.toCluster, jump.distance));
+				newCluster.writeJSON(out);
+			}
+			out.endArray(); // ]
+			
+			if (!rupture.splays.isEmpty()) {
+				out.name("splays").beginArray(); // [
+				
+				for (ClusterRupture splay : rupture.splays.values())
+					write(out, splay);
+				
+				out.endArray(); // ]
+			}
+			
+			out.endObject(); // }
+		}
+
+		@Override
+		public ClusterRupture read(JsonReader in) throws IOException {
+			List<FaultSubsectionCluster> internalClusterList = null;
+			List<ClusterRupture> splayList = null;
+			Map<FaultSubsectionCluster, List<JumpStub>> jumpStubsMap = new HashMap<>();
+			
+			in.beginObject(); // {
+			
+			switch (in.nextName()) {
+			case "clusters":
+				internalClusterList = new ArrayList<>();
+				in.beginArray();
+				while (in.hasNext())
+					internalClusterList.add(FaultSubsectionCluster.readJSON(in, subSects, jumpStubsMap));
+				in.endArray();
+				break;
+			case "splays":
+				splayList = new ArrayList<>();
+				in.beginArray();
+				while (in.hasNext())
+					splayList.add(read(in));
+				in.endArray();
+				break;
+
+			default:
+				break;
+			}
+			
+			in.endObject(); // }
+			
+			// reconcile all internal jumps
+			List<FaultSubsectionCluster> targetClusters;
+			if (splayList == null) {
+				targetClusters = internalClusterList;
+			} else {
+				targetClusters = new ArrayList<>(internalClusterList);
+				for (ClusterRupture splay : splayList)
+					// add first cluster of splays
+					targetClusters.add(splay.clusters[0]);
+			}
+			FaultSubsectionCluster.buildJumpsFromStubs(targetClusters, jumpStubsMap);
+			
+			ImmutableSet.Builder<Jump> internalJumpsBuilder = ImmutableSet.builder();
+			FaultSubsectionCluster[] clusters = internalClusterList.toArray(new FaultSubsectionCluster[0]);
+			for (int i=0; i<clusters.length-1; i++) { // -1 as no internal jumps from last section
+				FaultSubsectionCluster cluster = internalClusterList.get(i);
+				Collection<Jump> connections = cluster.getConnectionsTo(clusters[i+1]);
+				Preconditions.checkState(connections.size() == 1, "Internal jump not found?");
+				internalJumpsBuilder.addAll(connections);
+			}
+			ImmutableSet<Jump> internalJumps = internalJumpsBuilder.build();
+			
+			ImmutableMap<Jump, ClusterRupture> splays;
+			UniqueRupture internalUnique = UniqueRupture.forClusters(clusters);
+			UniqueRupture unique;
+			if (splayList == null || splayList.isEmpty()) {
+				splays = ImmutableMap.of();
+				unique = internalUnique;
+			} else {
+				ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
+				// reverse as we are going to serach for them in reverse order below, so double reverse
+				// ensures that they are loaded in order (which shouldn't matter, but is nice)
+				Collections.reverse(splayList);
+				for (FaultSubsectionCluster cluster : clusters) {
+					for (int i=splayList.size(); --i>=0;) {
+						ClusterRupture splay = splayList.get(i);
+						Collection<Jump> connections = cluster.getConnectionsTo(splay.clusters[0]);
+						if (!connections.isEmpty()) {
+							Preconditions.checkState(connections.size() == 1);
+							// this is the splay connection
+							Jump splayJump = connections.iterator().next();
+							splayBuilder.put(splayJump, splay);
+							splayList.remove(i);
+						}
+					}
+					if (splayList.isEmpty())
+						break;
+				}
+				Preconditions.checkState(splayList.isEmpty(),
+						"No jumps found to %s splay(s)?", splayList.size());
+				splays = splayBuilder.build();
+				unique = internalUnique;
+				for (ClusterRupture splay : splays.values())
+					unique = new UniqueRupture(unique, splay.unique);
+			}
+			
+			return new ClusterRupture(clusters, internalJumps, splays, unique, internalUnique);
+		}
+		
 	}
 
 }

@@ -133,5 +133,15 @@ public class CumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<
 	public Range<Float> getAcceptableRange() {
 		return Range.atMost(threshold);
 	}
+	
+	@Override
+	public String getScalarName() {
+		return "Cumulative Rake Change";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return "Degrees";
+	}
 
 }

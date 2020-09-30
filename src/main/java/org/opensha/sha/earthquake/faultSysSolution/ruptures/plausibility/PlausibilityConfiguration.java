@@ -23,6 +23,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetClusterCoulombFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetRuptureCoulombFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NumClustersFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
@@ -37,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3Clu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
+import org.opensha.sha.simulators.stiffness.RuptureCoulombResult.RupCoulombQuantity;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
 
 import com.google.common.base.Preconditions;
@@ -194,6 +197,18 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
+		public Builder netRupCoulomb(SubSectStiffnessCalculator subSectCalc,
+				StiffnessAggregationMethod aggMethod, float threshold, RupCoulombQuantity quantity) {
+			filters.add(new NetRuptureCoulombFilter(subSectCalc, aggMethod, quantity, threshold));
+			return this;
+		}
+		
+		public Builder netClusterCoulomb(SubSectStiffnessCalculator subSectCalc,
+				StiffnessAggregationMethod aggMethod, float threshold) {
+			filters.add(new NetClusterCoulombFilter(subSectCalc, aggMethod, threshold));
+			return this;
+		}
+		
 		public Builder cumulativeRakeChange(float threshold) {
 			filters.add(new CumulativeRakeChangeFilter(threshold));
 			return this;
@@ -260,8 +275,9 @@ public class PlausibilityConfiguration {
 	}
 	
 	public void writeJSON(File jsonFile) throws IOException {
+		Gson gson = buildGson(connectionStrategy.getSubSections());
 		FileWriter fw = new FileWriter(jsonFile);
-		fw.write(toJSON());
+		gson.toJson(this, fw);
 		fw.write("\n");
 		fw.close();
 	}
@@ -324,6 +340,8 @@ public class PlausibilityConfiguration {
 				new JumpAzimuthChangeFilter.AzimuthCalcTypeAdapter(distAzAdapter.distAzCalc));
 		builder.registerTypeAdapter(SubSectStiffnessCalculator.class,
 				new SubSectStiffnessTypeAdapter(subSects));
+		builder.registerTypeAdapter(CoulombRates.class,
+				new CoulombRates.Adapter());
 		Gson gson = builder.create();
 		configAdapter.setGson(gson);
 		
@@ -333,7 +351,9 @@ public class PlausibilityConfiguration {
 		return gson;
 	}
 	
-	
+	/*
+	 * Custom TypeAdapter instances
+	 */
 	
 	private static class PlausibilityConfigTypeAdapter extends TypeAdapter<PlausibilityConfiguration> {
 

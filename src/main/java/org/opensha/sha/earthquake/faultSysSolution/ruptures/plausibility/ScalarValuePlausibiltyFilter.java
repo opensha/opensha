@@ -34,5 +34,15 @@ public interface ScalarValuePlausibiltyFilter<E extends Number & Comparable<E>> 
 	 * @return acceptable range of values, or null if rules are more complex
 	 */
 	public Range<E> getAcceptableRange();
+	
+	/**
+	 * @return name of this scalar value
+	 */
+	public String getScalarName();
+	
+	/**
+	 * @return units of this scalar value
+	 */
+	public String getScalarUnits();
 
 }

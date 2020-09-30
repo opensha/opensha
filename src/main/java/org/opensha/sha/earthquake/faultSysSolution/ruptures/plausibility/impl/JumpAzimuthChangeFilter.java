@@ -358,5 +358,15 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	public Range<Float> getAcceptableRange() {
 		return Range.atMost(threshold);
 	}
+	
+	@Override
+	public String getScalarName() {
+		return "Max Jump Azimuth Change";
+	}
+
+	@Override
+	public String getScalarUnits() {
+		return "Degrees";
+	}
 
 }
