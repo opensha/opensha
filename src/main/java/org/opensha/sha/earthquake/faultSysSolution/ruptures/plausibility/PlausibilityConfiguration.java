@@ -140,7 +140,7 @@ public class PlausibilityConfiguration {
 		public Builder u3All(CoulombRates coulombRates) {
 			u3Azimuth();
 			u3Cumulatives();
-			minSectsPerParent(2, true);
+			minSectsPerParent(2, true, true);
 			u3Coulomb(coulombRates);
 			return this;
 		}
@@ -174,8 +174,9 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
-		public Builder minSectsPerParent(int minPerParent, boolean allowIfNoDirect) {
-			filters.add(new MinSectsPerParentFilter(minPerParent, allowIfNoDirect, connectionStrategy));
+		public Builder minSectsPerParent(int minPerParent, boolean allowIfNoDirect, boolean allowChained) {
+			filters.add(new MinSectsPerParentFilter(minPerParent, allowIfNoDirect,
+					allowChained, connectionStrategy));
 			return this;
 		}
 		
@@ -723,7 +724,7 @@ public class PlausibilityConfiguration {
 		Builder builder = builder(connStrat, subSects);
 		builder.u3Azimuth();
 		builder.u3Cumulatives();
-		builder.minSectsPerParent(2, true);
+		builder.minSectsPerParent(2, true, true);
 		SubSectStiffnessCalculator stiffnessCalc =
 				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
 		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);

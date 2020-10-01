@@ -401,9 +401,11 @@ public class ClusterRuptureBuilder {
 				candidateRupture = currentRupture.take(testJump);
 				result = testRup(candidateRupture, false);
 			}
-			if (debugCriteria != null && debugCriteria.isMatch(currentRupture, testJump)
-					&& debugCriteria.appliesTo(result)) {
-				System.out.println("\tMulti "+currentRupture+" => "+testJump.toCluster+" result="+result);
+			boolean debugMatch = debugCriteria != null && debugCriteria.isMatch(currentRupture, testJump)
+					&& debugCriteria.appliesTo(result);
+			if (debugMatch) {
+				System.out.println("Debug match with result="+result);
+				System.out.println("\tMulti "+currentRupture+" => "+testJump.toCluster);
 				if (testJumpOnly) {
 					System.out.println("Testing at jumps only:");
 					offerJump(currentRupture, testJump, true);
@@ -415,6 +417,8 @@ public class ClusterRuptureBuilder {
 					return false;
 			}
 			if (!result.canContinue()) {
+				if (debugMatch)
+					System.out.println("Can't continue, bailing");
 				// stop building this permutation
 				continue;
 			}
@@ -423,17 +427,20 @@ public class ClusterRuptureBuilder {
 			if (result.isPass()) {
 				// passes as is, add it if it's new
 				if (!uniques.contains(candidateRupture.unique)) {
+					if (debugMatch)
+						System.out.println("We passed and this is potentially new, adding");
 					rups.add(candidateRupture);
 //					uniques.add(candidateRupture.unique); // now merged in later
-				}
-				int count = candidateRupture.getTotalNumSects();
-				if (count > largestRup) {
-					largestRup = count;
-					if (largestRup % largestRupPrintMod == 0)
-						System.out.println("\tNew largest rup has "+largestRup
-								+" subsections with "+candidateRupture.getTotalNumJumps()+" jumps and "
-								+candidateRupture.splays.size()+" splays. "+rups.size()+" rups in total");
-				}
+					int count = candidateRupture.getTotalNumSects();
+					if (count > largestRup) {
+						largestRup = count;
+						if (largestRup % largestRupPrintMod == 0)
+							System.out.println("\tNew largest rup has "+largestRup
+									+" subsections with "+candidateRupture.getTotalNumJumps()+" jumps and "
+									+candidateRupture.splays.size()+" splays. "+rups.size()+" rups in total");
+					}
+				} else if (debugMatch)
+					System.out.println("We passed but have already processed this rupture, skipping");
 			}
 			// continue to build this rupture
 			ClusterRupture newCurrentStrand;
@@ -698,7 +705,7 @@ public class ClusterRuptureBuilder {
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
-		FaultModels fm = FaultModels.FM3_1;
+		FaultModels fm = FaultModels.FM3_2;
 		File distAzCacheFile = new File(rupSetsDir, fm.encodeChoiceString().toLowerCase()
 				+"_dist_az_cache.csv");
 		DeformationModels dm = fm.getFilterBasis();
@@ -723,11 +730,11 @@ public class ClusterRuptureBuilder {
 //		RupDebugCriteria debugCriteria = new CompareRupSetNewInclusionCriteria(compRupSet);
 //		boolean stopAfterDebug = true;
 		
-//		String rupStr = "[248:2106,2107][124:316,317][152:1644,1645,1646][108:869,870,871][226:2285,2286]"
-//				+ "[220:1213,1214,1215,1216,1217,1218,1219,1220,1221,1222][221:1204,1205,1206][219:16,17]";
+//		String rupStr = "[129:301,300,299][202:2397,2398][116:1417,1418,1419,1420]"
+//				+ "[130:1409,1410,1411,1412,1413][183:2248,2247][196:542,543][108:869,870]";
 //		RupDebugCriteria debugCriteria = new SectsRupDebugCriteria(false, false,
 //				loadRupString(rupStr, false));
-//		boolean stopAfterDebug = true;
+//		boolean stopAfterDebug = false;
 
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
 		if (distAzCacheFile.exists()) {
@@ -740,52 +747,52 @@ public class ClusterRuptureBuilder {
 		/*
 		 * To reproduce UCERF3
 		 */
-//		PlausibilityConfiguration config = PlausibilityConfiguration.getUCERF3(subSects, distAzCalc, fm);
-//		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
-//		String outputName = fm.encodeChoiceString().toLowerCase()+"_reproduce_ucerf3.zip";
-//		SubSectStiffnessCalculator stiffnessCalc = null;
-//		File stiffnessCacheFile = null;
-//		int stiffnessCacheSize = 0;
+		PlausibilityConfiguration config = PlausibilityConfiguration.getUCERF3(subSects, distAzCalc, fm);
+		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
+		String outputName = fm.encodeChoiceString().toLowerCase()+"_reproduce_ucerf3.zip";
+		SubSectStiffnessCalculator stiffnessCalc = null;
+		File stiffnessCacheFile = null;
+		int stiffnessCacheSize = 0;
 		
 		/*
 		 * For other experiements
 		 */
-		// for Coulomb
-		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-				subSects, 2d, 3e4, 3e4, 0.5);
-		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCalc.getCacheFileName(StiffnessType.CFF));
-		int stiffnessCacheSize = 0;
-		if (stiffnessCacheFile.exists())
-			stiffnessCacheSize = stiffnessCalc.loadCacheFile(stiffnessCacheFile, StiffnessType.CFF);
-		// use this for the exact same connections as UCERF3
-		ClusterConnectionStrategy connectionStrategy =
-				new UCERF3ClusterConnectionStrategy(subSects,
-						distAzCalc, 5d, CoulombRates.loadUCERF3CoulombRates(fm));
-		// use this for simpler connection rules
+//		// for Coulomb
+//		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
+//				subSects, 2d, 3e4, 3e4, 0.5);
+//		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCalc.getCacheFileName(StiffnessType.CFF));
+//		int stiffnessCacheSize = 0;
+//		if (stiffnessCacheFile.exists())
+//			stiffnessCacheSize = stiffnessCalc.loadCacheFile(stiffnessCacheFile, StiffnessType.CFF);
+//		// use this for the exact same connections as UCERF3
 //		ClusterConnectionStrategy connectionStrategy =
-//			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 5d);
-		String outputName = fm.encodeChoiceString().toLowerCase();
-		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
-//		configBuilder.maxNumClusters(2); outputName += "_connOnly";
-//		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN,
-//			0f, Directionality.EITHER); outputName += "_cffParentPositive";
-		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz";
-//		configBuilder.cumulativeRakeChange(180f); outputName += "_cmlRake";
-//		configBuilder.u3Azimuth(); outputName += "_u3Az";
+//				new UCERF3ClusterConnectionStrategy(subSects,
+//						distAzCalc, 5d, CoulombRates.loadUCERF3CoulombRates(fm));
+//		// use this for simpler connection rules
+////		ClusterConnectionStrategy connectionStrategy =
+////			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 5d);
+//		String outputName = fm.encodeChoiceString().toLowerCase();
+//		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
+////		configBuilder.maxNumClusters(2); outputName += "_connOnly";
+////		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN,
+////			0f, Directionality.EITHER); outputName += "_cffParentPositive";
+//		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz";
+////		configBuilder.cumulativeRakeChange(180f); outputName += "_cmlRake";
+////		configBuilder.u3Azimuth(); outputName += "_u3Az";
 //		configBuilder.clusterCoulomb(
 //			stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f); outputName += "_cffClusterPositive";
-		configBuilder.clusterPathCoulomb(
-				stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f); outputName += "_cffClusterPathPositive";
-//		configBuilder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f,
-//				RupCoulombQuantity.SUM_SECT_CFF); outputName += "_cffRupNetPositive";
-		configBuilder.netClusterCoulomb(
-				stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f); outputName += "_cffClusterNetPositive";
-		configBuilder.maxSplays(0);
-		configBuilder.minSectsPerParent(2, true);
-		PlausibilityConfiguration config = configBuilder.build();
-		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
-//		ClusterPermutationStrategy permStrat = new ConnectionPointsPermutationStrategy();
-		outputName += ".zip";
+////		configBuilder.clusterPathCoulomb(
+////				stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f); outputName += "_cffClusterPathPositive";
+////		configBuilder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f,
+////				RupCoulombQuantity.SUM_SECT_CFF); outputName += "_cffRupNetPositive";
+////		configBuilder.netClusterCoulomb(
+////				stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f); outputName += "_cffClusterNetPositive";
+//		configBuilder.maxSplays(0);
+//		configBuilder.minSectsPerParent(2, true, true);
+//		PlausibilityConfiguration config = configBuilder.build();
+//		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
+////		ClusterPermutationStrategy permStrat = new ConnectionPointsPermutationStrategy();
+//		outputName += ".zip";
 		
 		config.getConnectionStrategy().getClusters();
 		if (numAzCached < distAzCalc.getCachedAzimuths().size()

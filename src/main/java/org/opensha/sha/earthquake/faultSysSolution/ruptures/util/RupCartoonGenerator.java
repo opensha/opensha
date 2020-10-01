@@ -702,7 +702,7 @@ public class RupCartoonGenerator {
 				rupBuild.subSectsList);
 		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
 				rupBuild.subSectsList, animDistAzCalc, Double.POSITIVE_INFINITY);
-		filters.add(new MinSectsPerParentFilter(2, false, connStrat));
+		filters.add(new MinSectsPerParentFilter(2, false, false, connStrat));
 		filters.add(new JumpAzimuthChangeFilter(
 				new JumpAzimuthChangeFilter.SimpleAzimuthCalc(animDistAzCalc), 60f));
 		animateRuptureBuilding(outputDir, "system_build_anim", rupBuild,
