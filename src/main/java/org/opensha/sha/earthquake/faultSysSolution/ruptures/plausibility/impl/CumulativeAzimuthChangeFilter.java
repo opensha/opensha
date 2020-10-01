@@ -33,7 +33,7 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 			return PlausibilityResult.PASS;
 		}
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
-		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, !verbose);
+		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, verbose);
 		if ((float)tot <= threshold) {
 			if (verbose)
 				System.out.println(getShortName()+": passing with tot="+tot);
@@ -53,14 +53,14 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
-		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, !verbose);
-		if ((float)tot < threshold || verbose) {
+		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, verbose);
+		if ((float)tot <= threshold || verbose) {
 			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
 			subSects.add(navigator.getPredecessor(newJump.fromSection));
 			subSects.add(newJump.fromSection);
 			subSects.addAll(newJump.toCluster.subSects);
 			for (int i=0; i<subSects.size()-2; i++) {
-				tot += doCalc(subSects.get(i), subSects.get(i+1), subSects.get(i+2));
+				tot += doCalc(subSects.get(i), subSects.get(i+1), subSects.get(i+2), verbose);
 				if ((float)tot > threshold && !verbose)
 					return PlausibilityResult.FAIL_HARD_STOP;
 			}
@@ -76,40 +76,47 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 	}
 	
 	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, FaultSection sect2,
-			FaultSection sect3, boolean shortCircuit) {
+			FaultSection sect3, boolean verbose) {
 		Preconditions.checkNotNull(sect1);
 		if (sect2 == null) {
 			double tot = 0d;
 			for (FaultSection descendant : navigator.getDescendants(sect1)) {
-				tot += calc(navigator, sect1, descendant, null, shortCircuit);
+				tot += calc(navigator, sect1, descendant, null, verbose);
 			}
 			return tot;
 		}
 		if (sect3 == null) {
 			double tot = 0d;
 			for (FaultSection descendant : navigator.getDescendants(sect2)) {
-				tot += calc(navigator, sect1, sect2, descendant, shortCircuit);
-				if ((float)tot > threshold && !shortCircuit)
+				tot += calc(navigator, sect1, sect2, descendant, verbose);
+				if ((float)tot > threshold && !verbose)
 					return tot;
 			}
 			return tot;
 		}
-		double tot = doCalc(sect1, sect2, sect3);
+		double tot = doCalc(sect1, sect2, sect3, verbose);
 		if ((float)tot > threshold)
 			return tot;
 		for (FaultSection descendant : navigator.getDescendants(sect3)) {
-			tot += calc(navigator, sect2, sect3, descendant, shortCircuit);
-			if ((float)tot > threshold && !shortCircuit)
+			tot += calc(navigator, sect2, sect3, descendant, verbose);
+			if ((float)tot > threshold && !verbose)
 				return tot;
 		}
 		return tot;
 	}
 	
-	private double doCalc(FaultSection sect1, FaultSection sect2, FaultSection sect3) {
+	private double doCalc(FaultSection sect1, FaultSection sect2, FaultSection sect3, boolean verbose) {
 		double beforeAz = azCalc.calcAzimuth(sect1, sect2);
 		double afterAz = azCalc.calcAzimuth(sect2, sect3);
 		
-		return Math.abs(JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz));
+		double val = Math.abs(JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz));
+		
+		if (verbose && (float)val > 0f)
+			System.out.println(getShortName()+": ["+sect1.getSectionId()+"=>"+sect2.getSectionId()
+				+"]="+beforeAz+"\t["+sect2.getSectionId()+"=>"+sect3.getSectionId()
+				+"]="+afterAz+",\tdiff="+val);
+		
+		return val;
 	}
 
 	@Override
