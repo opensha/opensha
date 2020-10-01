@@ -11,5 +11,6 @@ dependencies {
     
     compileAndResource 'com.google.code.gson:gson:2.8.5'
 
+    testCompile 'org.mockito:mockito-core:3.5.13'
     testCompile 'junit:junit:4.12'
 }
