@@ -6,7 +6,8 @@ import org.junit.runners.Suite;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
 	TestCoulombFilter.class,
-	TestIncrementalVsFullTests.class
+	TestIncrementalVsFullTests.class,
+	TestPlausbilityResult.class
 })
 
 public class LaughTestSuite {
