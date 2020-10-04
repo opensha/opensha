@@ -45,9 +45,11 @@ import scratch.UCERF3.utils.FaultSystemIO;
 public class CompareClusterRuptureBuild {
 
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
-		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
-				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
-				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
+		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+//		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
+//				"/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
+//				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
+		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(rupSetsDir, "fm3_2_ucerf3.zip"));
 		boolean isCompUCERF3 = true;
 //		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(
 //				"/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz_cmlRake_cffClusterPositive.zip"));
@@ -55,19 +57,20 @@ public class CompareClusterRuptureBuild {
 		
 		System.out.println("compRupSet has "+compRupSet.getNumRuptures()+" ruptures");
 		
-		FaultSystemRupSet clusterRupSet = FaultSystemIO.loadRupSet(new File("/tmp/test_rup_set.zip"));
+		FaultModels fm = FaultModels.FM3_2;
+		FaultSystemRupSet clusterRupSet = FaultSystemIO.loadRupSet(
+//				new File("/tmp/test_rup_set.zip"));
+				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_2_reproduce_ucerf3.zip"));
 		System.out.println("clusterRupSet has "+clusterRupSet.getNumRuptures()+" ruptures");
 		
 		boolean debugExclusions = true;
 		boolean debugNewInclusions = true;
-		boolean stopAfterFound = false;
+		boolean stopAfterFound = true;
 		
-		FaultModels fm = FaultModels.FM3_1;
-		List<FaultSection> parentSects = fm.fetchFaultSections();
 		List<? extends FaultSection> subSects = clusterRupSet.getFaultSectionDataList();
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
-		File cacheFile = new File("/tmp/dist_az_cache_"+fm.encodeChoiceString()+"_"+subSects.size()
-			+"_sects_"+parentSects.size()+"_parents.csv");
+		File cacheFile = new File(rupSetsDir, fm.encodeChoiceString().toLowerCase()
+				+"_dist_az_cache.csv");
 		if (cacheFile.exists()) {
 			System.out.println("Loading dist/az cache from "+cacheFile.getAbsolutePath());
 			distAzCalc.loadCacheFile(cacheFile);
@@ -99,7 +102,6 @@ public class CompareClusterRuptureBuild {
 			}
 			prevRups.put(idsSet, i);
 		}
-		System.exit(0);
 		
 		List<PlausibilityFilter> filters;
 		List<AbstractPlausibilityFilter> u3Filters = null;
@@ -113,7 +115,7 @@ public class CompareClusterRuptureBuild {
 //			filters.add(new CumulativeRakeChangeFilter(180f));
 //			filters.add(new JumpCumulativeRakeChangeFilter(180f));
 			filters.add(new U3CompatibleCumulativeRakeChangeFilter(180d));
-			filters.add(new MinSectsPerParentFilter(2, true, connectionStrategy));
+			filters.add(new MinSectsPerParentFilter(2, true, true, connectionStrategy));
 			CoulombRates coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
 			CoulombRatesTester coulombTester = new CoulombRatesTester(
 					TestType.COULOMB_STRESS, 0.04, 0.04, 1.25d, true, true);
@@ -139,6 +141,8 @@ public class CompareClusterRuptureBuild {
 					azimuths, distances, sectionConnectionsListList, subSects);
 		} else {
 			filters = clusterRupSet.getPlausibilityConfiguration().getFilters();
+//			clusterRupSet.getPlausibilityConfiguration().getDistAzCalc().
+			// TODO: copy cache?
 		}
 		
 		

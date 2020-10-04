@@ -831,9 +831,10 @@ public class FaultSystemRupSet implements Serializable {
 	 * @param clusterRuptures
 	 */
 	public void setClusterRuptures(List<ClusterRupture> clusterRuptures) {
-		Preconditions.checkState(clusterRuptures == null || clusterRuptures.size() == getNumRuptures(),
-				"Cluster ruptures list is of size=%s but numRuptures=%s",
-				clusterRuptures.size(), getNumRuptures());
+		if (clusterRuptures != null)
+			Preconditions.checkState(clusterRuptures.size() == getNumRuptures(),
+					"Cluster ruptures list is of size=%s but numRuptures=%s",
+					clusterRuptures.size(), getNumRuptures());
 		this.clusterRuptures = clusterRuptures;
 	}
 	

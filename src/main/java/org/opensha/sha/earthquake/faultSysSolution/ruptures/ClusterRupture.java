@@ -481,7 +481,7 @@ public class ClusterRupture {
 	
 	private static Gson buildGson(List<? extends FaultSection> subSects) {
 		GsonBuilder builder = new GsonBuilder();
-		builder.setPrettyPrinting();
+//		builder.setPrettyPrinting(); // extra whitespace makes these large files large, don't use here
 		builder.registerTypeAdapter(ClusterRupture.class, new Adapter(subSects));
 		Gson gson = builder.create();
 		
