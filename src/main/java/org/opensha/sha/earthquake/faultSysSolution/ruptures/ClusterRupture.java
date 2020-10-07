@@ -106,6 +106,10 @@ public class ClusterRupture {
 		this.unique = unique;
 		this.internalUnique = internalUnique;
 		Preconditions.checkState(internalUnique.size() <= unique.size());
+		int expectedJumps = clusters.length-1;
+		Preconditions.checkState(internalJumps.size() == expectedJumps,
+				"Expected %s internal jumps but have %s. Rupture: %s",
+				expectedJumps, internalJumps.size(), this);
 	}
 	
 	/**
@@ -163,7 +167,18 @@ public class ClusterRupture {
 	public int getTotalNumClusters() {
 		int tot = clusters.length;
 		for (ClusterRupture splay : splays.values())
-			tot += splay.clusters.length;
+			tot += splay.getTotalNumClusters();
+		return tot;
+	}
+	
+	/**
+	 * 
+	 * @return total number of splays across this and any splays
+	 */
+	public int getTotalNumSplays() {
+		int tot = splays.size();
+		for (ClusterRupture splay : splays.values())
+			tot += splay.getTotalNumSplays();
 		return tot;
 	}
 	
@@ -333,8 +348,22 @@ public class ClusterRupture {
 			jumps.add(jump);
 
 		// now build them out
-		for (FaultSubsectionCluster endCluster : endClusters)
-			inversions.add(connSearch.buildClusterRupture(clusters, jumps, false, endCluster));
+		int numClusters = getTotalNumClusters();
+//		for (FaultSubsectionCluster endCluster : endClusters) {
+		for (FaultSubsectionCluster newStart : clusters) {
+			ClusterRupture inversion = connSearch.buildClusterRupture(
+					clusters, jumps, false, newStart);
+//			if (inversion.getTotalNumClusters() != numClusters) {
+//				System.err.println("Inversion has a different cluster count ("
+//						+inversion.getTotalNumClusters()+" vs "+numClusters+")");
+//				System.err.println("Original: "+this);
+//				System.err.println("Inversion: "+inversion);
+//				System.err.flush();
+//				System.exit(0);
+//			}
+			Preconditions.checkState(inversion.getTotalNumClusters() == numClusters);
+			inversions.add(inversion);
+		}
 		
 		return inversions;
 	}

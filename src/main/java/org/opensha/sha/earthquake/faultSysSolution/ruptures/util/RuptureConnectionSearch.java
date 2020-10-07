@@ -85,7 +85,7 @@ public class RuptureConnectionSearch {
 		return distCalc;
 	}
 	
-	public List<FaultSubsectionCluster> calcClusters(List<FaultSection> sects, final boolean debug) {
+	public List<FaultSubsectionCluster> calcClusters(List<? extends FaultSection> sects, final boolean debug) {
 		List<FaultSubsectionCluster> clusters = new ArrayList<>();
 		
 		Map<Integer, List<FaultSection>> parentsMap = new HashMap<>();
@@ -435,6 +435,7 @@ public class RuptureConnectionSearch {
 	public ClusterRupture buildClusterRupture(int rupIndex, final boolean debug) {
 		return buildClusterRupture(rupIndex, false, debug);
 	}
+	
 	public ClusterRupture buildClusterRupture(int rupIndex, boolean maintainOrder, final boolean debug) {
 		List<FaultSection> sects = rupSet.getFaultSectionDataForRupture(rupIndex);
 		

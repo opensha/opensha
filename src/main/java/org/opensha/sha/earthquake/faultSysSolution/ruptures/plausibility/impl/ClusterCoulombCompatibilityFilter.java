@@ -118,7 +118,7 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 	}
 	
 	@Override
-	public boolean isDirectional() {
+	public boolean isDirectional(boolean splayed) {
 		return true;
 	}
 

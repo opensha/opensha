@@ -48,8 +48,9 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --event-id ci38488354"; // 4/4/2020 SJC Anza M4.9
 //			argz += " --event-id ci39493944"; // 6/24/2020 Long Pine M5.8
 //			argz += " --event-id ci39338407"; // 6/24/2020 Long Pine M5.8
-			argz += " --event-id ci38695658"; // 9/18/2020 El Monte M4.6
-			argz += " --radius 10";
+//			argz += " --event-id ci38695658"; // 9/18/2020 El Monte M4.6
+			argz += " --event-id ci39641528"; // 9/30/2020 Westmorland (near Bombay) M4.9
+			argz += " --radius 25";
 //			argz += " --mag-complete 2.5";
 			
 //			argz += " --event-id nc73292360"; // 10/15/2019 Tres Pinos, CA M4.71

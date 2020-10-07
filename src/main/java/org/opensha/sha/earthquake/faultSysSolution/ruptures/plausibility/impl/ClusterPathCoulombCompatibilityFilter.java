@@ -163,4 +163,10 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		return stiffnessCalc;
 	}
 
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
+	}
+
 }

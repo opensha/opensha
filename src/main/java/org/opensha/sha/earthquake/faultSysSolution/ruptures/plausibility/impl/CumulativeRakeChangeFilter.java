@@ -144,4 +144,10 @@ public class CumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<
 		return "Degrees";
 	}
 
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
+	}
+
 }

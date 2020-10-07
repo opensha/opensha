@@ -158,4 +158,10 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 		return "Degrees";
 	}
 
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
+	}
+
 }

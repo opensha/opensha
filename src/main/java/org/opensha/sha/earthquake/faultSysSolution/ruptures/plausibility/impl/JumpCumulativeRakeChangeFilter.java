@@ -113,4 +113,10 @@ public class JumpCumulativeRakeChangeFilter implements ScalarValuePlausibiltyFil
 		return "Degrees";
 	}
 
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
+	}
+
 }

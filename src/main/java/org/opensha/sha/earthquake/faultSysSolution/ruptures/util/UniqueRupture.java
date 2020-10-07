@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -26,7 +25,7 @@ public class UniqueRupture {
 	
 	public static UniqueRupture forIDs(Collection<Integer> sectIDs) {
 		UniqueRupture unique = new UniqueRupture();
-		unique.add(sectIDs);
+		unique.buildFrom(sectIDs);
 		return unique;
 	}
 	
@@ -35,7 +34,7 @@ public class UniqueRupture {
 		List<Integer> ids = new ArrayList<>(sects.size());
 		for (FaultSection sect : sects)
 			ids.add(sect.getSectionId());
-		unique.add(ids);
+		unique.buildFrom(ids);
 		return unique;
 	}
 	
@@ -73,7 +72,9 @@ public class UniqueRupture {
 		return size;
 	}
 	
-	private void add(Collection<Integer> ids) {
+	private void buildFrom(Collection<Integer> ids) {
+		Preconditions.checkState(size == 0,
+				"buildFrom can only be called when empty, have %s already", size);
 		int rangeStartID = Integer.MIN_VALUE;
 		int rangeEndID = -2;
 		boolean backwards = false;

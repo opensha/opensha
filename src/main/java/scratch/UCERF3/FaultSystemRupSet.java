@@ -24,6 +24,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -901,7 +902,33 @@ public class FaultSystemRupSet implements Serializable {
 
 		@Override
 		public ClusterRupture call() throws Exception {
-			return search.buildClusterRupture(rupIndex, true, false);
+			ClusterRupture rupture = search.buildClusterRupture(rupIndex, true, false);
+			
+			int numSplays = rupture.getTotalNumSplays();
+			if (numSplays > 0) {
+				// see if there is an alternative route through this rupture with fewer splays
+				double mainStrandLen = 0d;
+				for (FaultSubsectionCluster cluster : rupture.clusters)
+					for (FaultSection sect : cluster.subSects)
+						mainStrandLen += sect.getTraceLength();
+				for (ClusterRupture alternative : rupture.getInversions(search)) {
+					int altNumSplays = alternative.getTotalNumSplays();
+					double altStrandLen = 0d;
+					for (FaultSubsectionCluster cluster : alternative.clusters)
+						for (FaultSection sect : cluster.subSects)
+							altStrandLen += sect.getTraceLength();
+					if (altNumSplays < numSplays ||
+							(altNumSplays == numSplays && altStrandLen > mainStrandLen)) {
+						// switch to this representation if it has fewer splays, or the same number
+						// of splays but a longer primary strand
+						rupture = alternative;
+						numSplays = altNumSplays;
+						break;
+					}
+				}
+			}
+			
+			return rupture;
 		}
 		
 	}

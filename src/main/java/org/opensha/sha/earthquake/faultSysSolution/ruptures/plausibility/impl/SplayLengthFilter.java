@@ -83,7 +83,7 @@ public class SplayLengthFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		boolean isSplayJump = !rupture.clusters[rupture.clusters.length-1].endSects.contains(newJump.toSection);
+		boolean isSplayJump = !rupture.clusters[rupture.clusters.length-1].endSects.contains(newJump.fromSection);
 		if (rupture.splays.isEmpty() && !isSplayJump)
 			return PlausibilityResult.PASS;
 		if (verbose)
@@ -142,6 +142,12 @@ public class SplayLengthFilter implements PlausibilityFilter {
 			}
 		}
 		return PlausibilityResult.PASS;
+	}
+
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
 	}
 
 }

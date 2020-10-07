@@ -36,14 +36,17 @@ public interface PlausibilityFilter extends ShortNamed {
 	
 	/**
 	 * This allows filters to declare that they are directional, i.e., they might fail for a rupture
-	 * presented in one direction but pass for a reversed version of that rupture. In that case,
-	 * evaluation of an existing set of ruptures with this filter should wrap it in the 
+	 * presented in one direction but pass for an inversion of that rupture. In that case, evaluation
+	 * of an existing set of ruptures with this filter should wrap it in the
 	 * MultiDirectionalPlausibilityFilter which will test all possible paths through a rupture and pass
-	 * if any pass. Default implementation returns false.
+	 * if any pass. This answer can depend on whether or not a rupture contains any splays.
 	 * 
+	 * Default implementation returns false.
+	 * 
+	 * @param splayed
 	 * @return true if it is directional
 	 */
-	public default boolean isDirectional() {
+	public default boolean isDirectional(boolean splayed) {
 		return false;
 	}
 	

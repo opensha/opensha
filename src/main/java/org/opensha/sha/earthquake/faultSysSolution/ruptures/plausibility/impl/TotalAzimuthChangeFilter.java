@@ -1,16 +1,28 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
+/**
+ * Total azimuthal change filter from the start of the rupture to the end (or ends in the case of
+ * a splayed rupture).
+ * 
+ * @author kevin
+ *
+ */
 public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private AzimuthCalc azCalc;
@@ -18,6 +30,16 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 	private boolean multiFaultOnly;
 	private boolean testFullEnd;
 
+	/**
+	 * 
+	 * @param calc azimuth calculator
+	 * @param threshold maximum allowed azimuthal change
+	 * @param multiFaultOnly only apply to multifault ruptures (i.e., don't test a single cluster
+	 * rupture which could theoretically bend more than the threshold). true in UCERF3
+	 * @param testFullEnd UCERF3 tested total azimuth to the full end of each rupture. e.g., imagine a rupture
+	 * with 4 sbusections on the last cluster: it would test total azimuth to sections pairs [0,1], [1,2],
+	 * [2,3], and [3,4]. This was unintended, and should probably be disabled for new models
+	 */
 	public TotalAzimuthChangeFilter(AzimuthCalc calc, float threshold, boolean multiFaultOnly,
 			boolean testFullEnd) {
 		this.azCalc = calc;
@@ -38,62 +60,90 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 				System.out.println(getShortName()+": passing because no jumps");
 			return PlausibilityResult.PASS;
 		}
+		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
 		PlausibilityResult result = apply(rupture.clusters[0],
-				rupture.clusters[rupture.clusters.length-1], verbose);
+				rupture.clusters[rupture.clusters.length-1], navigator, null, verbose);
+		if (verbose)
+			System.out.println(getShortName()+": primary starnd result="+result);
 		for (ClusterRupture splay : rupture.splays.values())
 			result = result.logicalAnd(apply(rupture.clusters[0],
-					splay.clusters[splay.clusters.length-1], verbose));
+					splay.clusters[splay.clusters.length-1], navigator, null, verbose));
 		return result;
 	}
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump jump, boolean verbose) {
-		return apply(rupture.clusters[0], jump.toCluster, verbose);
+		return apply(rupture.clusters[0], jump.toCluster, rupture.getTreeNavigator(), jump, verbose);
+//		return apply(rupture.take(jump), verbose);
 	}
 	
 	private PlausibilityResult apply(FaultSubsectionCluster startCluster,
-			FaultSubsectionCluster endCluster, boolean verbose) {
-		PlausibilityResult result = testIfPossible(startCluster, endCluster);
-		if (!result.canContinue())
-			return result;
-		double maxDiff = getValue(startCluster, endCluster, verbose);
+			FaultSubsectionCluster endCluster, RuptureTreeNavigator navigator, Jump newJump,
+			boolean verbose) {
+		double maxDiff = getValue(startCluster, endCluster, navigator, newJump, verbose);
 		if ((float)maxDiff <= threshold)
 			return PlausibilityResult.PASS;
 		if (verbose)
 			System.out.println(getShortName()+": failing with diff="+maxDiff);
 		
+		if (endCluster.subSects.size() < 2)
+			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
-	private PlausibilityResult testIfPossible(FaultSubsectionCluster startCluster,
-			FaultSubsectionCluster endCluster) {
-		if (startCluster.subSects.size() < 2)
-			return PlausibilityResult.FAIL_HARD_STOP;
-		if (endCluster.subSects.size() < 2)
-			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
-		return PlausibilityResult.PASS;
-	}
-	
 	private double getValue(FaultSubsectionCluster startCluster,
-			FaultSubsectionCluster endCluster, boolean verbose) {
+			FaultSubsectionCluster endCluster, RuptureTreeNavigator navigator, Jump newJump,
+			boolean verbose) {
 		FaultSection before1 = startCluster.startSect;
-		FaultSection before2 = startCluster.subSects.get(1);
-		double beforeAz = azCalc.calcAzimuth(before1, before2);
-		
-		int startIndex = testFullEnd ? 0 : endCluster.subSects.size()-2;
-		double maxDiff = 0d;
-		for (int i=startIndex; i<endCluster.subSects.size()-1; i++) {
-			FaultSection after1 = endCluster.subSects.get(i);
-			FaultSection after2 = endCluster.subSects.get(i+1);
-			double afterAz = azCalc.calcAzimuth(after1, after2);
-			
-			double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
-//			System.out.println(beforeAz+" => "+afterAz+" = "+diff);
-			if (verbose)
-				System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
-						+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
-			maxDiff = Math.max(Math.abs(diff), maxDiff);
+		List<FaultSection> before2s = new ArrayList<>();
+		if (startCluster.subSects.size() == 1) {
+			// use the first section of the next cluster
+			before2s.addAll(navigator.getDescendants(before1));
+			if (newJump != null && newJump.fromCluster == startCluster)
+				// testing a new jump from the first section, use the jumping point
+				before2s.add(newJump.toSection);
+		} else {
+			before2s.add(startCluster.subSects.get(1));
 		}
+		Preconditions.checkState(!before2s.isEmpty());
+		double maxDiff = 0d;
+		for (FaultSection before2 : before2s) {
+			double beforeAz = azCalc.calcAzimuth(before1, before2);
+			
+			if (endCluster.subSects.size() == 1) {
+				// need to use the last section of the previous cluster
+				
+				FaultSection after2 = endCluster.subSects.get(0);
+				FaultSection after1;
+				if (newJump != null)
+					// it's a jump, use the fromSection
+					after1 = newJump.fromSection;
+				else
+					after1 = navigator.getPredecessor(after2);
+				double afterAz = azCalc.calcAzimuth(after1, after2);
+				
+				double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
+//				System.out.println(beforeAz+" => "+afterAz+" = "+diff);
+				if (verbose)
+					System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
+							+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
+				maxDiff = Math.max(Math.abs(diff), maxDiff);
+			}
+			int startIndex = testFullEnd ? 0 : endCluster.subSects.size()-2;
+			for (int i=startIndex; i<endCluster.subSects.size()-1; i++) {
+				FaultSection after1 = endCluster.subSects.get(i);
+				FaultSection after2 = endCluster.subSects.get(i+1);
+				double afterAz = azCalc.calcAzimuth(after1, after2);
+				
+				double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
+//				System.out.println(beforeAz+" => "+afterAz+" = "+diff);
+				if (verbose)
+					System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
+							+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
+				maxDiff = Math.max(Math.abs(diff), maxDiff);
+			}
+		}
+		
 		return maxDiff;
 	}
 
@@ -107,12 +157,14 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 		return "Total Azimuth Change Filter";
 	}
 	
-	public Float getValue(FaultSubsectionCluster startCluster, ClusterRupture rupture) {
-		if (!testIfPossible(startCluster, rupture.clusters[rupture.clusters.length-1]).canContinue())
+	public Float getValue(FaultSubsectionCluster startCluster, ClusterRupture rupture,
+			RuptureTreeNavigator navigator) {
+		if (rupture.getTotalNumSects() < 3)
 			return null;
-		float maxVal = (float)getValue(startCluster, rupture.clusters[rupture.clusters.length-1], false);
+		float maxVal = (float)getValue(startCluster,
+				rupture.clusters[rupture.clusters.length-1], navigator, null, false);
 		for (ClusterRupture splay : rupture.splays.values()) {
-			Float splayVal = getValue(startCluster, splay);
+			Float splayVal = getValue(startCluster, splay, navigator);
 			if (splayVal == null)
 				return null;
 			maxVal = Float.max(maxVal, splayVal);
@@ -122,14 +174,12 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 
 	@Override
 	public Float getValue(ClusterRupture rupture) {
-		return getValue(rupture.clusters[0], rupture);
+		return getValue(rupture.clusters[0], rupture, rupture.getTreeNavigator());
 	}
 
 	@Override
 	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		if (!testIfPossible(rupture.clusters[0], newJump.toCluster).canContinue())
-			return null;
-		return (float)getValue(rupture.clusters[0], newJump.toCluster, false);
+		return getValue(rupture.take(newJump));
 	}
 
 	@Override
@@ -145,6 +195,12 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 	@Override
 	public String getScalarUnits() {
 		return "Degrees";
+	}
+
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
 	}
 
 }

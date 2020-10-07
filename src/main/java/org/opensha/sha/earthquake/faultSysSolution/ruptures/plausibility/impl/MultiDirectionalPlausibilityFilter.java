@@ -19,10 +19,13 @@ public class MultiDirectionalPlausibilityFilter implements PlausibilityFilter {
 	
 	private PlausibilityFilter filter;
 	private RuptureConnectionSearch connSearch;
+	private boolean onlyWhenSplayed;
 
-	public MultiDirectionalPlausibilityFilter(PlausibilityFilter filter, RuptureConnectionSearch connSearch) {
+	public MultiDirectionalPlausibilityFilter(PlausibilityFilter filter,
+			RuptureConnectionSearch connSearch, boolean onlyWhenSplayed) {
 		this.filter = filter;
 		this.connSearch = connSearch;
+		this.onlyWhenSplayed = onlyWhenSplayed;
 	}
 
 	@Override
@@ -37,15 +40,30 @@ public class MultiDirectionalPlausibilityFilter implements PlausibilityFilter {
 
 	@Override
 	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
-		PlausibilityResult result = filter.apply(rupture, verbose);
-		if (result.isPass())
-			return result;
+		PlausibilityResult result;
+		RuntimeException error = null;
+		try {
+			result = filter.apply(rupture, verbose);
+			if (result.isPass() || onlyWhenSplayed && rupture.splays.isEmpty())
+				return result;
+		} catch (RuntimeException e) {
+			if (onlyWhenSplayed && rupture.splays.isEmpty())
+				throw e;
+			result = null;
+			error = e;
+		}
 		// try other paths through the rupture
 		for (ClusterRupture altRupture : rupture.getInversions(connSearch)) {
-			result = filter.apply(altRupture, verbose);
-			if (result.isPass())
-				return result;
+			try {
+				result = filter.apply(altRupture, verbose);
+				if (result.isPass())
+					return result;
+			} catch (RuntimeException e) {
+				error = e;
+			}
 		}
+		if (result == null && error != null)
+			throw error;
 		return result;
 	}
 

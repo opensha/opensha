@@ -43,19 +43,12 @@ public class SplayCountFilter implements ScalarValuePlausibiltyFilter<Integer> {
 
 	@Override
 	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
-		int count = countSplays(rupture);
+		int count = rupture.getTotalNumSplays();
 		if (verbose)
 			System.out.println("Have "+count+" splays");
 		if (count > maxSplays)
 			return PlausibilityResult.FAIL_HARD_STOP;
 		return PlausibilityResult.PASS;
-	}
-	
-	public int countSplays(ClusterRupture rupture) {
-		int tot = rupture.splays.size();
-		for (ClusterRupture splay : rupture.splays.values())
-			tot += countSplays(splay);
-		return tot;
 	}
 	
 	private boolean isContinuationJump(ClusterRupture rupture, Jump newJump) {
@@ -72,7 +65,7 @@ public class SplayCountFilter implements ScalarValuePlausibiltyFilter<Integer> {
 
 	@Override
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		int count = countSplays(rupture);
+		int count = rupture.getTotalNumSplays();
 		// now check the jump
 		if (!isContinuationJump(rupture, newJump))
 			count++;
@@ -85,7 +78,7 @@ public class SplayCountFilter implements ScalarValuePlausibiltyFilter<Integer> {
 
 	@Override
 	public Integer getValue(ClusterRupture rupture) {
-		return countSplays(rupture);
+		return rupture.getTotalNumSplays();
 	}
 
 	@Override
@@ -106,6 +99,11 @@ public class SplayCountFilter implements ScalarValuePlausibiltyFilter<Integer> {
 	@Override
 	public String getScalarUnits() {
 		return null;
+	}
+
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		return splayed;
 	}
 
 }

@@ -232,7 +232,7 @@ public class RSQSimUtils {
 				RSQSimEvent e = events.get(i);
 				mags[i] = e.getMagnitude();
 				rupAreas[i] = e.getArea();
-				rupLengths[i] = e.getLength();
+				rupLengths[i] = 0d;
 				
 				List<List<SubSectionMapping>> mappings = mapper.getFilteredSubSectionMappings(e);
 				
@@ -247,6 +247,7 @@ public class RSQSimUtils {
 						FaultSection subSect = mapping.getSubSect();
 						rupSectIndexes.add(subSect.getSectionId());
 						rakes.add(subSect.getAveRake());
+						rupLengths[i] += subSect.getTraceLength()*1000d;
 					}
 				}
 				sectionForRups.add(rupSectIndexes);

@@ -183,6 +183,12 @@ public class MinSectsPerParentFilter implements PlausibilityFilter {
 	public TypeAdapter<PlausibilityFilter> getTypeAdapter() {
 		return new Adapter();
 	}
+
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
+	}
 	
 	public static class Adapter extends PlausibilityFilterTypeAdapter {
 

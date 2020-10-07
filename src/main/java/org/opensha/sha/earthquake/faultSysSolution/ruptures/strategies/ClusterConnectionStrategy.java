@@ -94,9 +94,9 @@ public abstract class ClusterConnectionStrategy implements Named {
 	 */
 	public synchronized List<FaultSubsectionCluster> getClusters() {
 		if (!connectionsAdded) {
-			System.out.println("Building connections between "+clusters.size()+" clusters");
-			int count = buildConnections();
-			System.out.println("Found "+count+" possible section connections");
+//			System.out.println("Building connections between "+clusters.size()+" clusters");
+			buildConnections();
+//			System.out.println("Found "+count+" possible section connections");
 		}
 		return clusters;
 	}

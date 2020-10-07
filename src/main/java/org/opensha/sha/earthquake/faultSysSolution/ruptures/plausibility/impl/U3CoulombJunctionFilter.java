@@ -121,4 +121,10 @@ public class U3CoulombJunctionFilter implements PlausibilityFilter {
 		return "Coulomb Jump Filter";
 	}
 
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed (different inversions could take different jumping points)
+		return splayed;
+	}
+
 }

@@ -435,7 +435,8 @@ public class SubSectStiffnessCalculator {
 		List<StiffnessResult> results = new ArrayList<>();
 		for (FaultSection source : sources)
 			for (FaultSection receiver : receivers)
-				results.add(checkLoad(type, source.getSectionId(), receiver.getSectionId()));
+				if (source != receiver)
+					results.add(checkLoad(type, source.getSectionId(), receiver.getSectionId()));
 		
 		return new StiffnessResult(sourceID, receiverID, results);
 	}
@@ -640,6 +641,21 @@ public class SubSectStiffnessCalculator {
 		}
 		System.out.println("Loaded "+(csv.getNumRows()-1)+" values");
 		return csv.getNumRows()-1;
+	}
+	
+	public void copyCacheFrom(SubSectStiffnessCalculator o) {
+		if (o.cache == null)
+			return;
+		if (cache == null) {
+			// direct copy
+			cache = o.cache;
+			return;
+		}
+		Preconditions.checkState(cache.length == o.cache.length);
+		for (int i=0; i<cache.length; i++)
+			for (int j=0; j<cache[i].length; j++)
+				if (cache[i][j] == null)
+					cache[i][j] = o.cache[i][j];
 	}
 	
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {

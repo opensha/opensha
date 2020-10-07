@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +47,7 @@ import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
@@ -302,6 +304,51 @@ public class PlausibilityConfiguration {
 		return conf;
 	}
 	
+	public String filtersToJSON(List<PlausibilityFilter> filters) {
+		List<PlausibilityFilterRecord> records = new ArrayList<>();
+		for (PlausibilityFilter filter : filters)
+			records.add(new PlausibilityFilterRecord(filter));
+		Gson gson = buildGson(connectionStrategy.getSubSections(), distAzCalc, connectionStrategy);
+		return gson.toJson(records);
+	}
+	
+	public void writeFiltersJSON(File jsonFile) throws IOException {
+		List<PlausibilityFilterRecord> records = new ArrayList<>();
+		for (PlausibilityFilter filter : filters)
+			records.add(new PlausibilityFilterRecord(filter));
+		Gson gson = buildGson(connectionStrategy.getSubSections(), distAzCalc, connectionStrategy);
+		FileWriter fw = new FileWriter(jsonFile);
+		gson.toJson(records, fw);
+		fw.write("\n");
+		fw.close();
+	}
+	
+	public static List<PlausibilityFilter> readFiltersJSON(File jsonFile, ClusterConnectionStrategy connStrat,
+			SectionDistanceAzimuthCalculator distAzCalc)
+			throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		return readFiltersJSON(reader, connStrat, distAzCalc);
+	}
+	
+	public static List<PlausibilityFilter> readFiltersJSON(String json, ClusterConnectionStrategy connStrat,
+			SectionDistanceAzimuthCalculator distAzCalc) {
+		return readFiltersJSON(new StringReader(json), connStrat, distAzCalc);
+	}
+	
+	public static List<PlausibilityFilter> readFiltersJSON(Reader json, ClusterConnectionStrategy connStrat,
+			SectionDistanceAzimuthCalculator distAzCalc) {
+		Gson gson = buildGson(connStrat.getSubSections(), distAzCalc, connStrat);
+		Type listType = new TypeToken<List<PlausibilityFilterRecord>>(){}.getType();
+		List<PlausibilityFilterRecord> records = gson.fromJson(json, listType);
+		List<PlausibilityFilter> filters = new ArrayList<>();
+		for (PlausibilityFilterRecord record : records)
+			filters.add(record.filter);
+		try {
+			json.close();
+		} catch (IOException e) {}
+		return filters;
+	}
+	
 	private static Gson prevGson;
 	private static List<? extends FaultSection> prevSubSects;
 	
@@ -325,29 +372,42 @@ public class PlausibilityConfiguration {
 				return prevGson;
 			}
 		}
+		
+		Gson gson = buildGson(subSects, null, null);
+		
+		prevGson = gson;
+		prevSubSects = subSects;
+		
+		return gson;
+	}
+	
+	private static Gson buildGson(List<? extends FaultSection> subSects,
+			SectionDistanceAzimuthCalculator distAzCalc, ClusterConnectionStrategy connStrat) {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 
 		ConnStratTypeAdapter connStratAdapter = new ConnStratTypeAdapter(subSects);
 		builder.registerTypeHierarchyAdapter(ClusterConnectionStrategy.class, connStratAdapter);
 		builder.registerTypeHierarchyAdapter(FaultSection.class, new FaultSectTypeAdapter(subSects));
-		DistAzCalcTypeAdapter distAzAdapter = new DistAzCalcTypeAdapter(
-				new SectionDistanceAzimuthCalculator(subSects));
+		if (distAzCalc == null)
+			distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
+		DistAzCalcTypeAdapter distAzAdapter = new DistAzCalcTypeAdapter(distAzCalc);
 		builder.registerTypeAdapter(SectionDistanceAzimuthCalculator.class, distAzAdapter);
 		PlausibilityConfigTypeAdapter configAdapter = new PlausibilityConfigTypeAdapter(
 				connStratAdapter, distAzAdapter);
 		builder.registerTypeAdapter(PlausibilityConfiguration.class, configAdapter);
 		builder.registerTypeAdapter(AzimuthCalc.class,
-				new JumpAzimuthChangeFilter.AzimuthCalcTypeAdapter(distAzAdapter.distAzCalc));
+				new JumpAzimuthChangeFilter.AzimuthCalcTypeAdapter(distAzCalc));
 		builder.registerTypeAdapter(SubSectStiffnessCalculator.class,
 				new SubSectStiffnessTypeAdapter(subSects));
 		builder.registerTypeAdapter(CoulombRates.class,
 				new CoulombRates.Adapter());
+		PlausibilityFilterAdapter filterAdapter = new PlausibilityFilterAdapter(
+				null, connStrat, distAzCalc);
+		builder.registerTypeHierarchyAdapter(PlausibilityFilterRecord.class, filterAdapter);
 		Gson gson = builder.create();
 		configAdapter.setGson(gson);
-		
-		prevGson = gson;
-		prevSubSects = subSects;
+		filterAdapter.setGson(gson);
 		
 		return gson;
 	}
@@ -380,29 +440,12 @@ public class PlausibilityConfiguration {
 			connStratAdapter.write(out, config.getConnectionStrategy());
 			out.name("maxNumSplays").value(config.getMaxNumSplays());
 			out.name("filters").beginArray(); // [
-			for (PlausibilityFilter filter : config.getFilters()) {
-				out.beginObject(); // {
-				
-				out.name("name").value(filter.getName());
-				out.name("shortName").value(filter.getShortName());
-				out.name("class").value(filter.getClass().getName());
-				TypeAdapter<PlausibilityFilter> adapter = filter.getTypeAdapter();
-				if (adapter == null) {
-					// use default Gson serialization
-					out.name("filter");
-					gson.toJson(filter, filter.getClass(), out);
-				} else {
-					if (adapter instanceof PlausibilityFilterTypeAdapter) {
-						PlausibilityFilterTypeAdapter pAdapt = (PlausibilityFilterTypeAdapter)adapter;
-						pAdapt.init(config.getConnectionStrategy(), config.getDistAzCalc(), gson);
-					}
-					out.name("adapter").value(adapter.getClass().getName());
-					out.name("filter");
-					adapter.write(out, filter);
-				}
-				
-				out.endObject(); // }
-			}
+			PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
+					gson, config.getConnectionStrategy(), config.getDistAzCalc());
+			
+			for (PlausibilityFilter filter : config.filters)
+				adapter.write(out, new PlausibilityFilterRecord(filter));
+			
 			out.endArray(); // ]
 			
 			out.endObject();
@@ -427,7 +470,21 @@ public class PlausibilityConfiguration {
 				case "filters":
 					Preconditions.checkNotNull(connectionStrategy,
 							"Connection strategy must be before filters in JSON");
-					filters = loadFilters(in, connectionStrategy, distAzAdapter.distAzCalc);
+					PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
+							gson, connectionStrategy, distAzAdapter.distAzCalc);
+					
+					filters = new ArrayList<>();
+					
+					in.beginArray();
+					
+					while (in.hasNext()) {
+						PlausibilityFilter filter = adapter.read(in).filter;
+						
+						Preconditions.checkNotNull(filter, "Filter not found in JSON object");
+						filters.add(filter);
+					}
+					
+					in.endArray();
 					break;
 
 				default:
@@ -440,122 +497,170 @@ public class PlausibilityConfiguration {
 					connectionStrategy, distAzAdapter.distAzCalc);
 		}
 		
-		private List<PlausibilityFilter> loadFilters(
-				JsonReader in, ClusterConnectionStrategy connectionStrategy,
-				SectionDistanceAzimuthCalculator distAzCalc) throws IOException {
-			List<PlausibilityFilter> filters = new ArrayList<>();
+	}
+	
+	/**
+	 * wrapper calss for a plausibility filter so that we can specify a top level type adapter
+	 * and still use default gson serialization on individual filters themselves
+	 * @author kevin
+	 *
+	 */
+	private static class PlausibilityFilterRecord {
+		private final PlausibilityFilter filter;
+
+		public PlausibilityFilterRecord(PlausibilityFilter filter) {
+			super();
+			this.filter = filter;
+		}
+	}
+	
+	private static class PlausibilityFilterAdapter extends TypeAdapter<PlausibilityFilterRecord> {
+		
+		private Gson gson;
+		private ClusterConnectionStrategy connStrat;
+		private SectionDistanceAzimuthCalculator distAzCalc;
+
+		public PlausibilityFilterAdapter(Gson gson, ClusterConnectionStrategy connStrat,
+				SectionDistanceAzimuthCalculator distAzCalc) {
+			this.gson = gson;
+			this.connStrat = connStrat;
+			this.distAzCalc = distAzCalc;
+		}
+
+		public void setGson(Gson gson) {
+			this.gson = gson;
+		}
+
+		@Override
+		public void write(JsonWriter out, PlausibilityFilterRecord record) throws IOException {
+			out.beginObject(); // {
 			
-			in.beginArray();
+			PlausibilityFilter filter = record.filter;
+			
+			out.name("name").value(filter.getName());
+			out.name("shortName").value(filter.getShortName());
+			out.name("class").value(filter.getClass().getName());
+			TypeAdapter<PlausibilityFilter> adapter = filter.getTypeAdapter();
+			if (adapter == null) {
+				// use default Gson serialization
+				out.name("filter");
+				gson.toJson(filter, filter.getClass(), out);
+			} else {
+				if (adapter instanceof PlausibilityFilterTypeAdapter) {
+					PlausibilityFilterTypeAdapter pAdapt = (PlausibilityFilterTypeAdapter)adapter;
+					pAdapt.init(connStrat, distAzCalc, gson);
+				}
+				out.name("adapter").value(adapter.getClass().getName());
+				out.name("filter");
+				adapter.write(out, filter);
+			}
+			
+			out.endObject(); // }
+		}
+
+		@Override
+		public PlausibilityFilterRecord read(JsonReader in) throws IOException {
+			Class<PlausibilityFilter> type = null;
+			TypeAdapter<PlausibilityFilter> adapter = null;
+			PlausibilityFilter filter = null;
+			String name = null;
+			String shortName = null;
+			
+			in.beginObject();
 			
 			while (in.hasNext()) {
-				Class<PlausibilityFilter> type = null;
-				TypeAdapter<PlausibilityFilter> adapter = null;
-				PlausibilityFilter filter = null;
-				String name = null;
-				String shortName = null;
-				
-				in.beginObject();
-				
-				while (in.hasNext()) {
-					switch (in.nextName()) {
-					case "class":
-						type = getDeclaredTypeClass(in.nextString());
-//						System.out.println("new class at "+in.getPath()+": "+type);
-						break;
-					case "adapter":
-						Preconditions.checkState(filter == null, "adapter must be before filter in JSON");
-						try {
-							Class<TypeAdapter<PlausibilityFilter>> adapterClass =
-									getDeclaredTypeClass(in.nextString());
-							Constructor<TypeAdapter<PlausibilityFilter>> constructor = adapterClass.getConstructor();
-							adapter = constructor.newInstance();
-						} catch (Exception e) {
-							e.printStackTrace();
-							System.err.println("Warning: adapter specified but class not found, "
-									+ "will attempt default serialization");
-//							throw ExceptionUtils.asRuntimeException(e);
-							break;
-						}
-						if (adapter instanceof PlausibilityFilterTypeAdapter)
-							((PlausibilityFilterTypeAdapter)adapter).init(connectionStrategy, distAzCalc, gson);
-						break;
-					case "name":
-						name = in.nextString();
-						break;
-					case "shortName":
-						shortName = in.nextString();
-						break;
-					case "filter":
-						Preconditions.checkNotNull(type, "filter must be last in json object");
-						if (adapter == null) {
-							String startPath = in.getPath();
-							try {
-								// use Gson default
-								filter = gson.fromJson(in, type);
-							} catch (Exception e) {
-								e.printStackTrace();
-								System.err.println("Warning: couldn't de-serialize filter "
-										+ "(using stub instead): "+type.getName());
-								System.err.flush();
-//								System.out.println("PATH after read: "+in.getPath());
-								filter = new PlausibilityFilterStub(name, shortName);
-								// this is where it gets tricky. we have descended into the filter object
-								// and need to back the reader out
-//								System.out.println("Looking to back out to: "+startPath);
-								while (true) {
-									String path = in.getPath();
-									JsonToken peek = in.peek();
-									if (peek == JsonToken.END_OBJECT && path.equals(startPath)) {
-										// we're ready to break
-//										System.out.println("DONE, new path: "+in.getPath());
-										break;
-									}
-//									System.out.println("Still in the thick of it at: "+path);
-									if (peek == JsonToken.END_ARRAY) {
-//										System.out.println("\tending array");
-										in.endArray();
-									} else if (peek == JsonToken.END_OBJECT) {
-//										System.out.println("\tending object");
-										in.endObject();
-									} else {
-//										System.out.println("\tskipping "+peek);
-										in.skipValue();
-									}
-								}
-							}
-						} else {
-							// use specified adapter
-							filter = adapter.read(in);
-						}
-						break;
-
-					default:
+				switch (in.nextName()) {
+				case "class":
+					type = getDeclaredTypeClass(in.nextString());
+//					System.out.println("new class at "+in.getPath()+": "+type);
+					break;
+				case "adapter":
+					Preconditions.checkState(filter == null, "adapter must be before filter in JSON");
+					try {
+						Class<TypeAdapter<PlausibilityFilter>> adapterClass =
+								getDeclaredTypeClass(in.nextString());
+						Constructor<TypeAdapter<PlausibilityFilter>> constructor = adapterClass.getConstructor();
+						adapter = constructor.newInstance();
+					} catch (Exception e) {
+						e.printStackTrace();
+						System.err.println("Warning: adapter specified but class not found, "
+								+ "will attempt default serialization");
+//						throw ExceptionUtils.asRuntimeException(e);
 						break;
 					}
+					if (adapter instanceof PlausibilityFilterTypeAdapter)
+						((PlausibilityFilterTypeAdapter)adapter).init(connStrat, distAzCalc, gson);
+					break;
+				case "name":
+					name = in.nextString();
+					break;
+				case "shortName":
+					shortName = in.nextString();
+					break;
+				case "filter":
+					Preconditions.checkNotNull(type, "filter must be last in json object");
+					if (adapter == null) {
+						String startPath = in.getPath();
+						try {
+							// use Gson default
+							filter = gson.fromJson(in, type);
+						} catch (Exception e) {
+							e.printStackTrace();
+							System.err.println("Warning: couldn't de-serialize filter "
+									+ "(using stub instead): "+type.getName());
+							System.err.flush();
+//							System.out.println("PATH after read: "+in.getPath());
+							filter = new PlausibilityFilterStub(name, shortName);
+							// this is where it gets tricky. we have descended into the filter object
+							// and need to back the reader out
+//							System.out.println("Looking to back out to: "+startPath);
+							while (true) {
+								String path = in.getPath();
+								JsonToken peek = in.peek();
+								if (peek == JsonToken.END_OBJECT && path.equals(startPath)) {
+									// we're ready to break
+//									System.out.println("DONE, new path: "+in.getPath());
+									break;
+								}
+//								System.out.println("Still in the thick of it at: "+path);
+								if (peek == JsonToken.END_ARRAY) {
+//									System.out.println("\tending array");
+									in.endArray();
+								} else if (peek == JsonToken.END_OBJECT) {
+//									System.out.println("\tending object");
+									in.endObject();
+								} else {
+//									System.out.println("\tskipping "+peek);
+									in.skipValue();
+								}
+							}
+						}
+					} else {
+						// use specified adapter
+						filter = adapter.read(in);
+					}
+					break;
+
+				default:
+					break;
 				}
-				
-				Preconditions.checkNotNull(filter, "Filter not found in JSON object");
-				filters.add(filter);
-				
-				in.endObject();
 			}
 			
-			in.endArray();
-			
-			return filters;
+			in.endObject();
+			return new PlausibilityFilterRecord(filter);
 		}
 		
-		@SuppressWarnings("unchecked")
-		private <T> Class<T> getDeclaredTypeClass(String className) {
-			Class<?> raw;
-			try {
-				raw = Class.forName(className);
-			} catch (ClassNotFoundException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-			return (Class<T>)raw;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private static <T> Class<T> getDeclaredTypeClass(String className) {
+		Class<?> raw;
+		try {
+			raw = Class.forName(className);
+		} catch (ClassNotFoundException e) {
+			throw ExceptionUtils.asRuntimeException(e);
 		}
-		
+		return (Class<T>)raw;
 	}
 	
 	private static class PlausibilityFilterStub implements PlausibilityFilter {
@@ -701,7 +806,7 @@ public class PlausibilityConfiguration {
 		
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		FaultModels fm = FaultModels.FM3_1;
 		DeformationModels dm = fm.getFilterBasis();
 		
@@ -722,15 +827,20 @@ public class PlausibilityConfiguration {
 				new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxDist);
 		
 		Builder builder = builder(connStrat, subSects);
-		builder.u3Azimuth();
-		builder.u3Cumulatives();
-		builder.minSectsPerParent(2, true, true);
+//		builder.u3Azimuth();
+//		builder.u3Cumulatives();
+//		builder.minSectsPerParent(2, true, true);
 		SubSectStiffnessCalculator stiffnessCalc =
 				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
 		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
 		builder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+		builder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, RupCoulombQuantity.SUM_SECT_CFF);
+		builder.netClusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		
 		PlausibilityConfiguration config = builder.build();
+		
+		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/new_coulomb_filters.json"));
 		
 		Gson gson = buildGson(subSects);
 		
@@ -739,7 +849,13 @@ public class PlausibilityConfiguration {
 		
 		System.out.println("Deserializing");
 		gson = buildGson(subSects);
-		PlausibilityConfiguration config2 = gson.fromJson(json, PlausibilityConfiguration.class);
+		gson.fromJson(json, PlausibilityConfiguration.class);
+		
+		System.out.println("Serializing filters only");
+		json = config.filtersToJSON(config.getFilters());
+		System.out.println("Filters JSON:\n"+json);
+		System.out.println("Deserializing filters JSON");
+		readFiltersJSON(json, config.getConnectionStrategy(), config.getDistAzCalc());
 	}
 
 }

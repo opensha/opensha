@@ -27,10 +27,54 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	
 	private AzimuthCalc azCalc;
 	private float threshold;
+	
+	private transient boolean errOnCantEval = false;
 
 	public JumpAzimuthChangeFilter(AzimuthCalc calc, float threshold) {
 		this.azCalc = calc;
 		this.threshold = threshold;
+	}
+	
+	/**
+	 * This filter defaults to failing if a jump cannot be evaluated due to only 1 section
+	 * on either side of a jump. It can be useful to identify those as errors, however, when
+	 * evaluating an external rupture set (we don't want exceptions while building). If this is
+	 * set to true, then exceptions will be thrown on evaluation errors.
+	 * 
+	 * @param errOnCantEval
+	 */
+	public void setErrOnCantEvaluate(boolean errOnCantEval) {
+		this.errOnCantEval = errOnCantEval;
+	}
+
+	@Override
+	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
+		if (errOnCantEval) {
+			// return a failure from jumps any before throwing an exception
+			PlausibilityResult result = PlausibilityResult.PASS;
+			RuntimeException error = null;
+			for (Jump jump : rupture.getJumpsIterable()) {
+				if (!result.canContinue())
+					return result;
+				try {
+					result = result.logicalAnd(testJump(rupture, jump, verbose));
+				} catch (RuntimeException e) {
+					error = e;
+				}
+//				if (verbose)
+//					System.out.println("\t"+getShortName()+" applied at jump: "+jump+", result="+result);
+			}
+			if (error != null) {
+				// we had an error
+				if (!result.isPass())
+					// return the failure instead
+					return result;
+				// throw the error
+				throw error;
+			}
+			return result;
+		}
+		return super.apply(rupture, verbose);
 	}
 
 	@Override
@@ -39,13 +83,20 @@ implements ScalarValuePlausibiltyFilter<Float> {
 		FaultSection before1 = navigator.getPredecessor(jump.fromSection);
 		if (before1 == null) {
 			// fewer than 2 sections before the first jump, will never work
+			if (errOnCantEval)
+				throw new IllegalStateException(getShortName()+": erring because fewer than "
+						+ "2 sects before a jump");
 			if (verbose)
 				System.out.println(getShortName()+": failing because fewer than 2 before 1st jump");
 			return PlausibilityResult.FAIL_HARD_STOP;
 		}
 		Float value = calc(rupture, jump, verbose);
-		if (value == null)
+		if (value == null) {
+			if (errOnCantEval)
+				throw new IllegalStateException(getShortName()+": erring because fewer than "
+						+ "2 sects after a jump");
 			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
+		}
 		if (value > threshold)
 			return PlausibilityResult.FAIL_HARD_STOP;
 		return PlausibilityResult.PASS;
@@ -367,6 +418,12 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	@Override
 	public String getScalarUnits() {
 		return "Degrees";
+	}
+
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		// only directional if splayed
+		return splayed;
 	}
 
 }
