@@ -46,4 +46,16 @@ public enum PlausibilityResult {
 		return FAIL_HARD_STOP;
 	}
 
+	public PlausibilityResult logicalOr(PlausibilityResult result) {
+		boolean newPass = pass || result.pass;
+		boolean newCont = cont || result.cont;
+		if (newPass)
+			return PASS;
+		// it failed
+		if (newCont)
+			return FAIL_FUTURE_POSSIBLE;
+		return FAIL_HARD_STOP;
+	}
+	
+	
 }
