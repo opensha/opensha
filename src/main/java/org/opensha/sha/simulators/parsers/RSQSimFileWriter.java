@@ -279,6 +279,19 @@ public class RSQSimFileWriter {
 		writer.close();
 	}
 	
+	public static void writeFilteredCatalog(Iterable<RSQSimEvent> events, RuptureIdentifier filter,
+			File outputDir, String prefix, boolean bigEndian, RSQSimStateTransitionFileReader transReader)
+					throws IOException {
+		RSQSimFileWriter writer = new RSQSimFileWriter(outputDir, prefix, bigEndian, true, transReader.getVersion());
+		for (RSQSimEvent event : events) {
+			if (!filter.isMatch(event))
+				continue;
+			writer.writeEvent(event);
+			writer.writeTransitions(event, transReader, 0d);
+		}
+		writer.close();
+	}
+	
 	public static void stitchCatalogs(File outputDir, String outputPrefix, RuptureIdentifier filter,
 			List<SimulatorElement> elements, File... inputDirs) throws IOException {
 		stitchCatalogs(outputDir, outputPrefix, filter, elements, null, inputDirs);
