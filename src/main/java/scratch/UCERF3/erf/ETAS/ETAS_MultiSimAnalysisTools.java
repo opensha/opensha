@@ -29,7 +29,7 @@ import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
-import org.jfree.ui.TextAnchor;
+import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.calc.FractileCurveCalculator;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.AbstractXY_DataSet;

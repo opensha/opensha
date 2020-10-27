@@ -14,8 +14,8 @@ import java.util.Set;
 
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
-import org.jfree.ui.RectangleEdge;
-import org.jfree.ui.TextAnchor;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.HistogramFunction;
@@ -450,7 +450,7 @@ public class BranchSensitivityHistogram implements Serializable {
 			CommandLineInversionRunner.setFontSizes(gp);
 			
 			gp.drawGraphPanel(spec);
-			spec.setCustomLegendCollection(gp.getPlot().getLegendItems());
+			spec.setCustomLegendItems(gp.getPlot().getLegendItems());
 			
 			List<Double> choiceMeans = Lists.newArrayList();
 			List<Color> choiceColors = Lists.newArrayList();
