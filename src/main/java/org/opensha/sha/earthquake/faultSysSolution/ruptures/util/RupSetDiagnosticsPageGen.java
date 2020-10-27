@@ -712,7 +712,7 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("**New Ruptures with Unique Connections**");
 			int maxRups = 20;
 			int maxCols = 5;
-			table = plotConnRupExamples(inputSearch, inputUniqueJumps.keySet(),
+			table = plotConnRupExamples(inputSearch, inputRupSet, inputUniqueJumps.keySet(),
 					inputJumpsToRupsMap, maxRups, maxCols, resourcesDir, "conn_example");
 			lines.add("");
 			if (table == null)
@@ -721,7 +721,7 @@ public class RupSetDiagnosticsPageGen {
 				lines.addAll(table.build());
 			lines.add("");
 			lines.add("**"+compName+" Ruptures with Unique Connections**");
-			table = plotConnRupExamples(compSearch, compUniqueJumps.keySet(),
+			table = plotConnRupExamples(compSearch, compRupSet, compUniqueJumps.keySet(),
 					compJumpsToRupsMap, maxRups, maxCols, resourcesDir, "comp_conn_example");
 			lines.add("");
 			if (table == null)
@@ -1844,8 +1844,8 @@ public class RupSetDiagnosticsPageGen {
 //				connSearch.plotConnections(resourcesDir, prefix, rupIndex);
 				RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rups.get(rupIndex),
 						"Rupture "+rupIndex, plotAzimuths, true);
-				table.addColumn("![Rupture "+rupIndex+"]("
-						+resourcesDir.getName()+"/"+rupPrefix+".png)");
+				table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
+						"("+ generateRuptureInfoPage(rupSet, rups.get(rupIndex), rupIndex, resourcesDir, rupPrefix)+ ")");
 			}
 			table.finalizeLine();
 			lines.add("Example ruptures which failed:");
@@ -2190,8 +2190,8 @@ public class RupSetDiagnosticsPageGen {
 		}
 		return jumpRateMap;
 	}
-	
-	public static TableBuilder plotConnRupExamples(RuptureConnectionSearch search, Set<Jump> pairings,
+
+	public static TableBuilder plotConnRupExamples(RuptureConnectionSearch search, FaultSystemRupSet rupSet,  Set<Jump> pairings,
 			Map<Jump, List<Integer>> pairRupsMap, int maxRups, int maxCols,
 			File resourcesDir, String prefix) throws IOException {
 		List<Jump> sortedPairings = new ArrayList<>(pairings);
@@ -2228,8 +2228,8 @@ public class RupSetDiagnosticsPageGen {
 		for (int rupIndex : rupsToPlot) {
 			String rupPrefix = prefix+"_"+rupIndex;
 			search.plotConnections(resourcesDir, rupPrefix, rupIndex, pairings, "Unique Connections");
-			table.addColumn("![Rupture "+rupIndex+"]("
-					+resourcesDir.getName()+"/"+rupPrefix+".png)");
+			table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
+					"("+ generateRuptureInfoPage(rupSet, search.buildClusterRupture(rupIndex, true), rupIndex, resourcesDir, rupPrefix)+ ")");
 		}
 		table.finalizeLine();
 		return table.wrap(maxCols, 0);
@@ -2705,4 +2705,70 @@ public class RupSetDiagnosticsPageGen {
 		return file;
 	}
 
+
+	private static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex, File outputDir, String fileNamePrefix) throws IOException {
+		DecimalFormat format = new DecimalFormat("###,###.#");
+
+		List<String> lines = new ArrayList<>();
+		lines.add("## Rupture " + rupIndex);
+		lines.add("![Rupture " + rupIndex + "](resources/" + fileNamePrefix + ".png)");
+
+		HashMap<Integer, Jump> jumps = new HashMap<>();
+		for (Jump jump : rupture.getJumpsIterable()) {
+			jumps.put(jump.fromSection.getSectionId(), jump);
+		}
+
+		List<FaultSection> sections = rupSet.getFaultSectionDataForRupture(rupIndex);
+
+		Location startLocation = sections.get(0).getFaultTrace().get(0);
+		Location lastLocation = sections.get(sections.size() - 1).getFaultTrace().get(sections.get(sections.size() - 1).getFaultTrace().size() - 1);
+		String location = null;
+		if (startLocation.getLatitude() < lastLocation.getLatitude()) {
+			location = " South ";
+		} else {
+			location = " North ";
+		}
+		if (startLocation.getLongitude() < lastLocation.getLongitude()) {
+			location += " West ";
+		} else {
+			location += " East ";
+		}
+		lines.add("");
+		lines.addAll(
+				MarkdownUtils.tableBuilder().initNewLine()
+						.addColumn("Magnitude")
+						.addColumn("Length (km)")
+						.addColumn("Area (sq km)")
+						.addColumn(format.format(rupSet.getMagForRup(rupIndex)))
+						.addColumn(format.format(rupSet.getLengthForRup(rupIndex) / 1000.0))
+						.addColumn(format.format(rupSet.getAreaForRup(rupIndex) / 1000000.0))
+						.finalizeLine()
+						.wrap(3, 0)
+						.build());
+
+		lines.add("");
+		lines.add("List start is " + location + " compared to list end.");
+
+		int lastParent = Integer.MIN_VALUE;
+		List<String> sectionIds = new ArrayList<>();
+		for (FaultSection section : sections) {
+			if (lastParent != section.getParentSectionId()) {
+				if (lastParent != Integer.MIN_VALUE) {
+					lines.add("    * " + String.join(", ", sectionIds));
+					sectionIds.clear();
+				}
+				lines.add("* " + section.getParentSectionName());
+				lastParent = section.getParentSectionId();
+			}
+			if (jumps.containsKey(section.getSectionId())) {
+				Jump jump = jumps.get(section.getSectionId());
+				sectionIds.add("" + section.getSectionId() + " (jump to " + jump.toSection.getSectionId() + ", " + format.format(jump.distance) + "km)");
+			} else {
+				sectionIds.add("" + section.getSectionId());
+			}
+		}
+		lines.add("    * " + String.join(", ", sectionIds));
+		MarkdownUtils.writeHTML(lines, new File(outputDir.getParent() + "/" + fileNamePrefix + ".html"));
+		return fileNamePrefix + ".html";
+	}
 }
