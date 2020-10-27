@@ -39,8 +39,8 @@ import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.xy.XYDataset;
-import org.jfree.ui.RectangleEdge;
-import org.jfree.util.ShapeUtilities;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.util.ShapeUtils;
 
 /**
  * <p>Title: GriddedSubsetXYItemRenderer</p>
@@ -162,7 +162,7 @@ public class GriddedSubsetXYItemRenderer
             if (getPlotImages()) {
 
               Shape shape = getItemShape(series, item);
-              shape = ShapeUtilities.createTranslatedShape(shape, transY1, 
+              shape = ShapeUtils.createTranslatedShape(shape, transY1, 
                       transX1);
               if (isShapeFilled(plot, series, item, transX1, transY1)) {
                 if (shape.intersects(dataArea)) g2.fill(shape);
@@ -200,20 +200,24 @@ public class GriddedSubsetXYItemRenderer
             // do we need to update the crosshair values?
             double distance = 0.0;
             if (plot.isDomainCrosshairLockedOnData()) {
-              if (plot.isRangeCrosshairLockedOnData()) {
-                // both axes
-                crosshairInfo.updateCrosshairPoint(x1.doubleValue(), y1.doubleValue(),transX1,transY1,PlotOrientation.HORIZONTAL);
-                }
-                else {
-                  // just the horizontal axis...
-                  crosshairInfo.updateCrosshairX(x1.doubleValue());
-                }
+            	if (plot.isRangeCrosshairLockedOnData()) {
+            		// both axes
+            		// had to add datasetIndex to catch up with JFreeChart 1.5 changes, TODO verify
+            		crosshairInfo.updateCrosshairPoint(x1.doubleValue(), y1.doubleValue(), datasetIndex,
+            				transX1,transY1,PlotOrientation.HORIZONTAL);
+            	}
+            	else {
+            		// just the horizontal axis...
+            		// had to add datasetIndex to catch up with JFreeChart 1.5 changes, TODO verify
+            		crosshairInfo.updateCrosshairX(x1.doubleValue(), transX1, datasetIndex);
+            	}
             }
             else {
-              if (plot.isRangeCrosshairLockedOnData()) {
-                    // just the vertical axis...
-                    crosshairInfo.updateCrosshairY(y1.doubleValue());
-                }
+            	if (plot.isRangeCrosshairLockedOnData()) {
+            		// just the vertical axis...
+            		// had to add datasetIndex to catch up with JFreeChart 1.5 changes, TODO verify
+            		crosshairInfo.updateCrosshairY(y1.doubleValue(), transY1, datasetIndex);
+            	}
             }
         }
 

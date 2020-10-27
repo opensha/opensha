@@ -10,7 +10,7 @@ import java.util.Map;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
-import org.jfree.ui.TextAnchor;
+import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.gui.plot.GraphPanel;

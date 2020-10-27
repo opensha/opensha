@@ -54,7 +54,7 @@ import javax.swing.text.StyleConstants;
 
 import org.apache.commons.lang3.SystemUtils;
 import org.jfree.chart.ChartPanel;
-import org.jfree.chart.ChartUtilities;
+import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.LegendItem;
 import org.jfree.chart.LegendItemCollection;
@@ -64,6 +64,7 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.block.BlockBorder;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.DatasetRenderingOrder;
@@ -72,8 +73,9 @@ import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.Title;
 import org.jfree.data.Range;
-import org.jfree.ui.RectangleEdge;
-import org.jfree.ui.RectangleInsets;
+import org.jfree.chart.ui.RectangleAnchor;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
@@ -267,7 +269,9 @@ public class GraphPanel extends JSplitPane {
 	private static void setRendererInPlot(XYPlot plot, Color color, int functionIndex,
 			XYItemRenderer xyItemRenderer) {
 		plot.setRenderer(functionIndex,xyItemRenderer);
-		xyItemRenderer.setPaint(color);
+//		xyItemRenderer.setPaint(color);
+		xyItemRenderer.setSeriesPaint(0, color);
+//		xyItemRenderer.setDefaultPaint(color);
 	}
 
 	private boolean isBlankCurve(PlotCurveCharacterstics chars) {
@@ -661,39 +665,18 @@ public class GraphPanel extends JSplitPane {
 			
 			// add any legend
 			if (plotSpec.isLegendVisible()) {
-				LegendItemCollection subLegend = plotSpec.getCustomLegendCollection();
-				if (subLegend == null) {
-					subLegend = subPlot.getLegendItems();
-					for (int i=0; i<subLegend.getItemCount(); i++) {
-						LegendItem legend = subLegend.get(i);
-						Shape lineShape = legend.getLine();
-						Stroke stroke = legend.getLineStroke();
-						if (lineShape instanceof Line2D
-								&& stroke instanceof BasicStroke
-								&& ((BasicStroke)stroke).getEndCap() == BasicStroke.CAP_BUTT) {
-							// widen legends for dashed and dotted lines
-							Line2D line = (Line2D)lineShape;
-							line.setLine(line.getX1()*2d, line.getY1(),
-									line.getX2()*2d, line.getY2());
-						}
-					}
-				}
-				if (plotSpec.isLegendSkipBlank()) {
-					LegendItemCollection newLegend = new LegendItemCollection();
-					for (int i=0; i<subLegend.getItemCount(); i++) {
-						LegendItem item = subLegend.get(i);
-						String label = item.getLabel();
-						if (label != null && !label.isEmpty())
-							newLegend.add(item);
-					}
-					subLegend = newLegend;
-				}
+				LegendItemCollection subLegend = plotSpec.getLegendItems(subPlot);
 				
-				if (legendItems == null) {
-					legendItems = new LegendItemCollection();
-					legendLocation = plotSpec.getLegendLocation();
+				if (plotSpec.isLegendInset()) {
+					// just for this plot, inset
+					plot.addAnnotation(plotSpec.buildInsetLegend(subLegend, plotPrefs));
+				} else {
+					if (legendItems == null) {
+						legendItems = new LegendItemCollection();
+						legendLocation = plotSpec.getLegendLocation();
+					}
+					legendItems.addAll(subLegend);
 				}
-				legendItems.addAll(subLegend);
 			}
 			
 			// multiple plots
@@ -720,7 +703,6 @@ public class GraphPanel extends JSplitPane {
 		chart.setBackgroundPaint( backgroundColor );
 		
 		if (legendItems != null) {
-			// must be final to be used below. we use this one as some subplots may/may not have legends enabled
 			final LegendItemCollection legendItemsFin = legendItems;
 			LegendTitle chartLegend = new LegendTitle(new LegendItemSource() {
 				
@@ -1239,7 +1221,7 @@ public class GraphPanel extends JSplitPane {
 	 * @throws IOException
 	 */
 	public void saveAsPNG(String fileName, int width, int height) throws IOException {
-		ChartUtilities.saveChartAsPNG(new File(fileName),chartPanel.getChart() , 
+		ChartUtils.saveChartAsPNG(new File(fileName),chartPanel.getChart() , 
 				width, height);
 	}
 

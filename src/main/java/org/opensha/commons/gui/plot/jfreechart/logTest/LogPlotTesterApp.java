@@ -57,7 +57,7 @@ import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
 import org.jfree.data.Range;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.jfree.ui.RectangleInsets;
+import org.jfree.chart.ui.RectangleInsets;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
 import org.opensha.commons.gui.plot.jfreechart.MyTickUnits;
 

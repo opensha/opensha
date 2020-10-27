@@ -1,14 +1,27 @@
 package org.opensha.commons.gui.plot;
 
+import java.awt.BasicStroke;
+import java.awt.Font;
+import java.awt.Shape;
+import java.awt.Stroke;
+import java.awt.geom.Line2D;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.jfree.chart.LegendItem;
 import org.jfree.chart.LegendItemCollection;
+import org.jfree.chart.LegendItemSource;
 import org.jfree.chart.annotations.XYAnnotation;
+import org.jfree.chart.annotations.XYTitleAnnotation;
+import org.jfree.chart.block.BlockBorder;
+import org.jfree.chart.block.ColumnArrangement;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.Title;
-import org.jfree.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleAnchor;
+import org.jfree.chart.ui.RectangleEdge;
 import org.opensha.commons.data.function.DiscretizedFunc;
 
 import com.google.common.collect.Lists;
@@ -31,10 +44,19 @@ public class PlotSpec implements Serializable {
 	private List<XYAnnotation> annotations;
 	private List<Title> subtitles;
 	
+	// for standard legend
 	private boolean legend = false;
 	private boolean legendSkipBlank = true;
 	private RectangleEdge legendLocation = RectangleEdge.BOTTOM;
 	private LegendItemCollection customLegendCollection = null;
+	
+	// for inset legend
+	private boolean insetLegend = false;
+	private RectangleAnchor insetLegendLocation = RectangleAnchor.TOP_RIGHT;
+	private double insetLegendRelX = 0.95;
+	private double insetLegendRelY = 0.95;
+	private double insetLegendMaxWidth = 0.35;
+	private boolean insetLegendSingleColumn = true;
 	
 	/**
 	 * 
@@ -185,16 +207,97 @@ public class PlotSpec implements Serializable {
 		this.legendLocation = legendLocation;
 	}
 
-	public LegendItemCollection getCustomLegendCollection() {
-		return customLegendCollection;
+	public LegendItemCollection getLegendItems(XYPlot plot) {
+		if (customLegendCollection != null)
+			return customLegendCollection;
+		// build it
+		LegendItemCollection items = plot.getLegendItems();
+		for (int i=0; i<items.getItemCount(); i++) {
+			LegendItem legend = items.get(i);
+			Shape lineShape = legend.getLine();
+			Stroke stroke = legend.getLineStroke();
+			if (lineShape instanceof Line2D
+					&& stroke instanceof BasicStroke
+					&& ((BasicStroke)stroke).getEndCap() == BasicStroke.CAP_BUTT) {
+				// widen legends for dashed and dotted lines
+				Line2D line = (Line2D)lineShape;
+				line.setLine(line.getX1()*2d, line.getY1(),
+						line.getX2()*2d, line.getY2());
+			}
+		}
+		if (isLegendSkipBlank()) {
+			LegendItemCollection newItems = new LegendItemCollection();
+			for (int i=0; i<items.getItemCount(); i++) {
+				LegendItem item = items.get(i);
+				String label = item.getLabel();
+				if (label != null && !label.isEmpty())
+					newItems.add(item);
+			}
+			items = newItems;
+		}
+		return items;
 	}
 
 	/**
 	 * Can be used to set a custom list of Legend items, or null for auto legend.
 	 * @param customLegendCollection
 	 */
-	public void setCustomLegendCollection(
+	public void setCustomLegendItems(
 			LegendItemCollection customLegendCollection) {
 		this.customLegendCollection = customLegendCollection;
+	}
+	
+	public void setLegendInset(boolean insetLegend) {
+		if (insetLegend)
+			this.legend = true;
+		this.insetLegend = insetLegend;
+	}
+	
+	public void setLegendInset(RectangleAnchor anchor, double relX, double relY, double maxWidth,
+			boolean singleColumn) {
+		this.legend = true;
+		this.insetLegend = true;
+		this.insetLegendLocation = anchor;
+		this.insetLegendRelX = relX;
+		this.insetLegendRelY = relY;
+		this.insetLegendMaxWidth = maxWidth;
+		this.insetLegendSingleColumn = singleColumn;
+	}
+	
+	public boolean isLegendInset() {
+		return insetLegend;
+	}
+	
+	public XYTitleAnnotation buildInsetLegend(LegendItemCollection items, PlotPreferences plotPrefs) {
+//		new LegendTitle(source, hLayout, vLayout)
+		LegendItemSource source = new LegendItemSource() {
+			
+			@Override
+			public LegendItemCollection getLegendItems() {
+				return items;
+			}
+		};
+		LegendTitle lt;
+		if (insetLegendSingleColumn)
+			lt = new LegendTitle(source, new ColumnArrangement(), new ColumnArrangement());
+		else
+			lt = new LegendTitle(source);
+		Font legendFont = lt.getItemFont();
+		lt.setItemFont(new Font(legendFont.getName(), legendFont.getStyle(), plotPrefs.getLegendFontSize()));
+		lt.setBackgroundPaint(plotPrefs.getInsetLegendBackground());
+		if (plotPrefs.getInsetLegendBorder() != null)
+			lt.setFrame(new BlockBorder(plotPrefs.getInsetLegendBorder()));
+		RectangleEdge edge;
+		if (insetLegendLocation == RectangleAnchor.BOTTOM
+				|| insetLegendLocation == RectangleAnchor.BOTTOM_LEFT
+				|| insetLegendLocation == RectangleAnchor.BOTTOM_RIGHT)
+			edge = RectangleEdge.BOTTOM;
+		else
+			edge = RectangleEdge.TOP;
+		lt.setPosition(edge);
+		XYTitleAnnotation ann = new XYTitleAnnotation(insetLegendRelX, insetLegendRelY,
+				lt, RectangleAnchor.TOP_RIGHT);
+		ann.setMaxWidth(insetLegendMaxWidth);
+		return ann;
 	}
 }

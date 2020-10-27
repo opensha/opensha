@@ -6,7 +6,7 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
 import java.util.NoSuchElementException;
 
-import org.jfree.util.ShapeUtilities;
+import org.jfree.chart.util.ShapeUtils;
 
 import com.google.common.base.Preconditions;
 
@@ -66,23 +66,23 @@ public enum PlotSymbol {
 			return new Rectangle.Double(-DELTA-width/2,
 					-DELTA-width/2, SIZE+width, SIZE+width);
 		else if (this == TRIANGLE || this == FILLED_TRIANGLE)
-			return ShapeUtilities.createUpTriangle(width);
+			return ShapeUtils.createUpTriangle(width);
 		else if (this == INV_TRIANGLE || this == FILLED_INV_TRIANGLE)
-			return ShapeUtilities.createDownTriangle(width);
+			return ShapeUtils.createDownTriangle(width);
 		else if (this == DIAMOND || this == FILLED_DIAMOND)
-			return ShapeUtilities.createDiamond(width);
+			return ShapeUtils.createDiamond(width);
 		else if (this == X)
-			return ShapeUtilities.createDiagonalCross(width,0.1f);
+			return ShapeUtils.createDiagonalCross(width,0.1f);
 		else if (this == DASH)
-			return ShapeUtilities.createLineRegion(new Line2D.Float(-width/2f, 0, width/2f, 0), 0.1f);
+			return ShapeUtils.createLineRegion(new Line2D.Float(-width/2f, 0, width/2f, 0), 0.1f);
 		else if (this == BOLD_DASH)
-			return ShapeUtilities.createLineRegion(new Line2D.Float(-width/2f, 0, width/2f, 0), 0.5f);
+			return ShapeUtils.createLineRegion(new Line2D.Float(-width/2f, 0, width/2f, 0), 0.5f);
 		else if (this == BOLD_X)
-			return ShapeUtilities.createDiagonalCross(width,width*0.25f);
+			return ShapeUtils.createDiagonalCross(width,width*0.25f);
 		else if (this == CROSS)
-			return ShapeUtilities.createRegularCross(width,0.1f);
+			return ShapeUtils.createRegularCross(width,0.1f);
 		else if (this == BOLD_CROSS)
-			return ShapeUtilities.createRegularCross(width,width*0.25f);
+			return ShapeUtils.createRegularCross(width,width*0.25f);
 		else
 			throw new UnsupportedOperationException("Can't build shape for symbol: "+toString());
 	}

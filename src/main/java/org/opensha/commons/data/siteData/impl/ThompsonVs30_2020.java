@@ -219,9 +219,10 @@ public class ThompsonVs30_2020 extends AbstractSiteData<Double> {
 	
 	public static void main(String[] args) throws IOException {
 		
-		ThompsonVs30_2020 map = new ThompsonVs30_2020(
-//				"/tmp/thompson_vs30/California_vs30_Wills15_hybrid_7p5c.flt");
-				"/tmp/thompson_vs30/Wills15_hybk_3c_2020v2.flt");
+//		ThompsonVs30_2020 map = new ThompsonVs30_2020(
+////				"/tmp/thompson_vs30/California_vs30_Wills15_hybrid_7p5c.flt");
+//				"/tmp/thompson_vs30/Wills15_hybk_3c_2020v2.flt");
+		ThompsonVs30_2020 map = new ThompsonVs30_2020();
 		
 //		GriddedRegion region = 
 //			new GriddedRegion(

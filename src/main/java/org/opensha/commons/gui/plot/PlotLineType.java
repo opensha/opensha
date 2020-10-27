@@ -143,7 +143,9 @@ public enum PlotLineType {
 			} else {
 				renderer = lineShpRend;
 				Stroke stroke = plt.buildStroke(lineWidth);
-				renderer.setStroke(stroke);
+//				renderer.setStroke(stroke);
+//				renderer.setDefaultStroke(stroke);
+				renderer.setSeriesStroke(0, stroke);
 //				renderer.setBaseStroke(stroke);
 			}
 		}
@@ -157,9 +159,11 @@ public enum PlotLineType {
 			Preconditions.checkArgument(symWidth > 0, "symbol widht must be >0");
 			Shape shape = sym.buildShape(symWidth);
 			Preconditions.checkNotNull(shape, "Couldn't build shape for symbol: "+sym);
-			renderer.setShape(shape);
+//			renderer.setShape(shape);
+			renderer.setSeriesShape(0, shape);
 //			stdRend.setBaseShape(shape);
-			lineShpRend.setShapesFilled(sym.isFilled());
+//			lineShpRend.setShapesFilled(sym.isFilled());
+			lineShpRend.setSeriesShapesFilled(0, sym.isFilled());
 //			stdRend.setBaseShapesFilled(sym.isFilled());
 			
 		}

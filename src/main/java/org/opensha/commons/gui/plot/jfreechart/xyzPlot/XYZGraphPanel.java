@@ -16,7 +16,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import org.jfree.chart.ChartPanel;
-import org.jfree.chart.ChartUtilities;
+import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.axis.NumberAxis;
@@ -32,8 +32,8 @@ import org.jfree.chart.renderer.xy.XYBlockRenderer;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.data.Range;
 import org.jfree.data.xy.AbstractXYZDataset;
-import org.jfree.ui.RectangleEdge;
-import org.jfree.ui.RectangleInsets;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
@@ -559,7 +559,7 @@ public class XYZGraphPanel extends JPanel {
 	 * @throws IOException
 	 */
 	public void saveAsPNG(String fileName, int width, int height) throws IOException {
-		ChartUtilities.saveChartAsPNG(new File(fileName),chartPanel.getChart() , 
+		ChartUtils.saveChartAsPNG(new File(fileName),chartPanel.getChart() , 
 				width, height);
 	}
 

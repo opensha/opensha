@@ -127,11 +127,11 @@ import org.jfree.chart.axis.Tick;
 import org.jfree.chart.axis.ValueTick;
 import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.ValueAxisPlot;
+import org.jfree.chart.text.TextUtils;
 import org.jfree.data.Range;
-import org.jfree.text.TextUtilities;
-import org.jfree.ui.RectangleEdge;
-import org.jfree.ui.RectangleInsets;
-import org.jfree.ui.TextAnchor;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
+import org.jfree.chart.ui.TextAnchor;
 
 
 /**
@@ -693,7 +693,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				anchorPoint[1] += verticalAnchorShift;
 
 				if (isVerticalTickLabels()) {
-					TextUtilities.drawRotatedString(
+					TextUtils.drawRotatedString(
 							tick.getText(), g2, 
 							anchorPoint[0], anchorPoint[1],
 							tick.getTextAnchor(), 
@@ -704,7 +704,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				else{
 
 					if(eIndex==-1)
-						TextUtilities.drawRotatedString(
+						TextUtils.drawRotatedString(
 								tick.getText(), g2, 
 								anchorPoint[0], anchorPoint[1],
 								tick.getTextAnchor(), 
@@ -712,7 +712,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 								tick.getRotationAnchor()
 						);
 					else {
-						TextUtilities.drawRotatedString(
+						TextUtils.drawRotatedString(
 								"10", g2, 
 								anchorPoint[0]-7, anchorPoint[1],
 								tick.getTextAnchor(), 
@@ -722,7 +722,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 						//setting the font properties to show the power of 10
 						g2.setFont(new Font(this.getTickLabelFont().getName(),this.getTickLabelFont().getStyle(),
 								this.getTickLabelFont().getSize()-(int)(this.getTickLabelFont().getSize()*(0.2))));
-						TextUtilities.drawRotatedString(
+						TextUtils.drawRotatedString(
 								tick.getText().substring(eIndex+1), g2, 
 								anchorPoint[0]+(int)(0.3*getTickLabelFont().getSize()),
 								anchorPoint[1]-3-(int)(0.4*this.getTickLabelFont().getSize()),
@@ -884,7 +884,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			Range r = vap.getDataRange(this);
 			if (r == null) {
 				//no real data present
-				r = new Range(DEFAULT_LOWER_BOUND, DEFAULT_UPPER_BOUND);
+//				r = new Range(DEFAULT_LOWER_BOUND, DEFAULT_UPPER_BOUND);
+				r = new Range(0.01, 1.0);
 				lower = r.getLowerBound();    //get lower bound value
 			}
 			else {

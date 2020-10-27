@@ -23,6 +23,9 @@ public class PlotPreferences {
 	private int legendFontSize;
 	private Color backgroundColor;
 	
+	private Color insetLegendBackground = new Color(255, 255, 255, 180);
+	private Color insetLegendBorder = Color.BLACK;
+	
 	private List<ChangeListener> listeners = Lists.newArrayList();
 	
 	/**
@@ -101,6 +104,22 @@ public class PlotPreferences {
 		ChangeEvent e = new ChangeEvent(this);
 		for (ChangeListener l : listeners)
 			l.stateChanged(e);
+	}
+
+	public Color getInsetLegendBackground() {
+		return insetLegendBackground;
+	}
+
+	public void setInsetLegendBackground(Color insetLegendBackground) {
+		this.insetLegendBackground = insetLegendBackground;
+	}
+
+	public Color getInsetLegendBorder() {
+		return insetLegendBorder;
+	}
+
+	public void setInsetLegendBorder(Color insetLegendBorder) {
+		this.insetLegendBorder = insetLegendBorder;
 	}
 
 }

@@ -24,7 +24,7 @@ public class PlotRendererCreationTest {
 					renderer instanceof XYLineAndShapeRenderer);
 			
 			XYLineAndShapeRenderer stdRend = (XYLineAndShapeRenderer)renderer;
-			Stroke fromRend = stdRend.getBaseStroke();
+			Stroke fromRend = stdRend.getDefaultStroke();
 			assertNotNull("stroke should not be null!", fromRend);
 		} else {
 			String msg = "renderer should have lines & isn'tsymbol compatible, but isn't correct type for sym="+plt;

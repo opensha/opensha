@@ -3,7 +3,7 @@ package org.opensha.commons.gui.plot.jfreechart.xyzPlot;
 import java.util.List;
 
 import org.jfree.chart.annotations.XYAnnotation;
-import org.jfree.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleEdge;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.xyz.XYZ_DataSet;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
