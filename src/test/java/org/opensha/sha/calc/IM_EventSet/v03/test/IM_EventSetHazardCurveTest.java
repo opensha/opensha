@@ -27,7 +27,7 @@ import java.util.ListIterator;
 
 import static org.junit.Assert.*;
 
-import org.jfree.chart.ChartUtilities;
+import org.jfree.chart.ChartUtils;
 import org.jfree.data.Range;
 import org.junit.Test;
 import org.opensha.commons.data.Site;
@@ -138,7 +138,7 @@ public class IM_EventSetHazardCurveTest implements IM_EventSetCalc_v3_0_API {
 		this.gp.validate();
 		this.gp.repaint();
 		
-		ChartUtilities.saveChartAsPNG(new File(outputDir.getAbsolutePath() + File.separator + "curves.png"),
+		ChartUtils.saveChartAsPNG(new File(outputDir.getAbsolutePath() + File.separator + "curves.png"),
 				gp.getChartPanel().getChart(), 800, 600);
 		
 		double maxDiff = 0;
