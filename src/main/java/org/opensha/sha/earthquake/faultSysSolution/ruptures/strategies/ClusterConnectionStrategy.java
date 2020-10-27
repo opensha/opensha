@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,7 +18,9 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Multimap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
@@ -42,6 +45,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 	
 	protected transient HashSet<IDPairing> connectedParents;
 	protected transient boolean connectionsAdded = false;
+	protected transient Multimap<FaultSection, Jump> jumpsFrom;
 	
 	public ClusterConnectionStrategy(List<? extends FaultSection> subSections) {
 		this(subSections, buildClusters(subSections));
@@ -105,13 +109,15 @@ public abstract class ClusterConnectionStrategy implements Named {
 	 * Populates all possible connections between the given clusters (via the
 	 * FaultSubsectionCluster.addConnection(Jump) method).
 	 * 
-	 * If this method is overridden, you must also override the areParentSectsConnected method.
+	 * If this method is overridden, you must also override the areParentSectsConnected,
+	 * and getJumpsFrom methods.
 	 * 
 	 * @return the number of connections added
 	 */
 	private int buildConnections() {
 		int count = 0;
 		connectedParents = new HashSet<>();
+		jumpsFrom = HashMultimap.create();
 		for (int c1=0; c1<clusters.size(); c1++) {
 			FaultSubsectionCluster cluster1 = clusters.get(c1);
 			for (int c2=c1+1; c2<clusters.size(); c2++) {
@@ -122,8 +128,11 @@ public abstract class ClusterConnectionStrategy implements Named {
 						connectedParents.add(new IDPairing(cluster1.parentSectionID, cluster2.parentSectionID));
 						connectedParents.add(new IDPairing(cluster2.parentSectionID, cluster1.parentSectionID));
 						cluster1.addConnection(jump);
-						cluster2.addConnection(jump.reverse());
+						Jump reverse = jump.reverse();
+						cluster2.addConnection(reverse);
 						count++;
+						jumpsFrom.put(jump.fromSection, jump);
+						jumpsFrom.put(reverse.fromSection, reverse);
 					}
 				}
 			}
@@ -148,6 +157,19 @@ public abstract class ClusterConnectionStrategy implements Named {
 			jumps.addAll(cluster1.getConnections());
 		}
 		return jumps;
+	}
+	
+	/**
+	 * Returns a list of all possible jumps from the given section
+	 * 
+	 * @param clusters
+	 * @return
+	 */
+	public Collection<Jump> getJumpsFrom(FaultSection sect) {
+		// force it to populate connections if not yet populated
+		getClusters();
+		
+		return jumpsFrom.get(sect);
 	}
 	
 	/**

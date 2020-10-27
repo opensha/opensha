@@ -62,7 +62,9 @@ public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter 
 
 	@Override
 	public String getShortName() {
-		return "NetClusterCoulomb≥"+(float)threshold;
+		if (threshold == 0f)
+			return "NetClusterCFF≥0";
+		return "NetClusterCFF≥"+(float)threshold;
 	}
 
 	@Override
@@ -90,7 +92,7 @@ public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter 
 	@Override
 	public Float getValue(ClusterRupture rupture) {
 		if (rupture.getTotalNumClusters() == 1)
-			return 0f;
+			return null;
 		return getMinValue(getClusterList(rupture));
 	}
 

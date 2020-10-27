@@ -44,6 +44,8 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 
 	@Override
 	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
+		if (rupture.getTotalNumSects() == 1)
+			return PlausibilityResult.PASS;
 		float val = getValue(rupture);
 		PlausibilityResult result = val < threshold ?
 				PlausibilityResult.FAIL_HARD_STOP : PlausibilityResult.PASS;
@@ -64,7 +66,9 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 
 	@Override
 	public String getShortName() {
-		return "NetRupCoulomb≥"+(float)threshold;
+		if (threshold == 0f)
+			return "NetRupCFF≥0";
+		return "NetRupCFF≥"+(float)threshold;
 	}
 
 	@Override
@@ -75,7 +79,7 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 	@Override
 	public Float getValue(ClusterRupture rupture) {
 		if (rupture.getTotalNumSects() == 1)
-			return 0f;
+			return null;
 		return (float)new RuptureCoulombResult(rupture, stiffnessCalc, aggMethod).getValue(quantity);
 	}
 

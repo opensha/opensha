@@ -91,7 +91,9 @@ implements ScalarCoulombPlausibilityFilter {
 					throw new IllegalStateException();
 				}
 			}
-			passCache.put(pair, result);
+			synchronized (passCache) {
+				passCache.put(pair, result);
+			}
 		}
 		return result ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
 	}
@@ -103,7 +105,9 @@ implements ScalarCoulombPlausibilityFilter {
 
 	@Override
 	public String getShortName() {
-		return "ParentCoulomb≥"+(float)threshold;
+		if (threshold == 0f)
+			return "ParentCFF≥0";
+		return "ParentCFF≥"+(float)threshold;
 	}
 
 	@Override
@@ -113,6 +117,8 @@ implements ScalarCoulombPlausibilityFilter {
 
 	@Override
 	public Float getValue(ClusterRupture rupture) {
+		if (rupture.getTotalNumJumps()  == 0)
+			return null;
 		float min = Float.POSITIVE_INFINITY;
 		for (Jump jump : rupture.getJumpsIterable())
 			min = Float.min(min, getValue(rupture, jump));

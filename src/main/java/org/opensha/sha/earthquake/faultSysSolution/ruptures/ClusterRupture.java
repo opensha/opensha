@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster.JumpStub;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -154,7 +155,7 @@ public class ClusterRupture {
 	 * @return the total number of jumps (including to and within any splays) of this rupture
 	 */
 	public int getTotalNumJumps() {
-		int tot = internalJumps.size();
+		int tot = internalJumps.size() + splays.size();
 		for (ClusterRupture splay : splays.values())
 			tot += splay.getTotalNumJumps();
 		return tot;
@@ -306,19 +307,25 @@ public class ClusterRupture {
 		return new ClusterRupture(clusterList.toArray(new FaultSubsectionCluster[0]), jumpsBuilder.build(),
 				ImmutableMap.of(), unique, internalUnique);
 	}
-	
+
 	/**
-	 * Returns all viable alternate paths through this rupture (staring at each end point)
+	 * Returns a list of the best possible alternate paths through this rupture,
+	 * using each cluster as the starting point. This means that, from each cluster,
+	 * the shortest possible jump is taken to the next cluster.
+	 *
+	 * @param connSearch {@link RuptureConnectionSearch} to find the best paths through this rupture
 	 * @return
 	 */
-	public List<ClusterRupture> getInversions(RuptureConnectionSearch connSearch) {
+	public List<ClusterRupture> getPreferredInversions(RuptureConnectionSearch connSearch) {
 		List<ClusterRupture> inversions = new ArrayList<>();
-		
+
 		if (splays.isEmpty()) {
 			// simple
-			if (clusters.length == 1)
+			if (clusters.length == 1) {
+				inversions.add(reversed());
 				return inversions;
-			
+			}
+
 			if (clusters.length > 1) {
 				// check if it's truly single strand
 				boolean match = true;
@@ -335,11 +342,8 @@ public class ClusterRupture {
 				}
 			}
 		}
-		
-		// complex
-		List<FaultSubsectionCluster> endClusters = new ArrayList<>();
-		getEndSects(endClusters, clusters[0]);
 
+		// complex
 		List<FaultSubsectionCluster> clusters = new ArrayList<>();
 		for (FaultSubsectionCluster cluster : getClustersIterable())
 			clusters.add(cluster);
@@ -349,7 +353,6 @@ public class ClusterRupture {
 
 		// now build them out
 		int numClusters = getTotalNumClusters();
-//		for (FaultSubsectionCluster endCluster : endClusters) {
 		for (FaultSubsectionCluster newStart : clusters) {
 			ClusterRupture inversion = connSearch.buildClusterRupture(
 					clusters, jumps, false, newStart);
@@ -364,9 +367,125 @@ public class ClusterRupture {
 			Preconditions.checkState(inversion.getTotalNumClusters() == numClusters);
 			inversions.add(inversion);
 		}
-		
+
 		return inversions;
 	}
+	
+	private final static boolean inv_d = false;
+
+	/**
+	 * Returns all possible alternate paths through this rupture that would be allowed by the
+	 * given {@link ClusterConnectionStrategy}, trying each cluster as the starting cluster.
+	 *
+	 * This should return the same set of inversions that would be tried by
+	 * {@link ClusterRuptureBuilder}. This differs from the alternative method which takes a
+	 * {@link RuptureConnectionSearch} and only returns the optimal paths from each starting
+	 * cluster (where the shortest jump from each cluster is taken, not all possible jumps).
+	 * 
+	 * Note: clusters are never broken up or stitched together, so it's possible that rupture
+	 * permutations are missed that use different permutations of these sections, e.g., a cluster
+	 * that is contiguous in one representation but can also be represented as one partial cluster that
+	 * jumps to another fault and then back to the rest of the original cluster.
+	 * 
+	 * @return
+	 */
+	public List<ClusterRupture> getInversions(ClusterConnectionStrategy connStrat, int maxNumSplays) {
+		List<ClusterRupture> inversions = new ArrayList<>();
+
+		if (getTotalNumClusters() == 1) {
+			inversions.add(reversed());
+			return inversions;
+		}
+
+		HashSet<FaultSubsectionCluster> availableClusters = new HashSet<>();
+		for (FaultSubsectionCluster cluster : getClustersIterable())
+			availableClusters.add(cluster);
+		
+		if (inv_d) System.out.println("Building inversions for "+this);
+
+		for (FaultSubsectionCluster startCluster : availableClusters) {
+			HashSet<FaultSubsectionCluster> nextAvailable = new HashSet<>();
+			for (FaultSubsectionCluster avail : availableClusters)
+				if (avail != startCluster)
+					nextAvailable.add(avail);
+			buildInversionRecursive(inversions, new ClusterRupture(startCluster),
+					nextAvailable, connStrat, maxNumSplays);
+			if (startCluster.subSects.size() > 1)
+				// try it in reverse as well
+				buildInversionRecursive(inversions, new ClusterRupture(startCluster.reversed()),
+						nextAvailable, connStrat, maxNumSplays);
+		}
+
+		return inversions;
+	}
+
+	private void buildInversionRecursive(List<ClusterRupture> inversions,
+			ClusterRupture curRupture,
+			HashSet<FaultSubsectionCluster> availableClusters,
+			ClusterConnectionStrategy connStrat, int maxNumSplays) {
+		if (inv_d) System.out.println("\tBuilding inversion from "+curRupture);
+		if (availableClusters.isEmpty()) {
+			Preconditions.checkState(curRupture.unique.equals(unique));
+			inversions.add(curRupture);
+			if (inv_d) System.out.println("\t\tCOMPLETE");
+			return;
+		}
+		for (FaultSubsectionCluster nextCluster : availableClusters) {
+			int numSects = nextCluster.subSects.size();
+			if (inv_d) System.out.println("\t\tSearching to "+nextCluster);
+			HashSet<FaultSubsectionCluster> nextAvailable = new HashSet<>();
+			for (FaultSubsectionCluster avail : availableClusters)
+				if (avail != nextCluster)
+					nextAvailable.add(avail);
+			for (int i=0; i<numSects; i++) {
+				FaultSection toSect = nextCluster.subSects.get(i);
+				if (inv_d) System.out.println("\t\t\tLooking for jumps from "+curRupture+"\tto "+toSect.getSectionId());
+				for (Jump jump : connStrat.getJumpsFrom(toSect)) {
+					if (inv_d) System.out.println("\t\t\ttestJump="+jump+" sect="+toSect.getSectionId());
+					Preconditions.checkState(jump.fromSection.equals(toSect));
+					if (curRupture.contains(jump.toSection)) {
+						// try this jump, but first reverse it (this was a jump from 'toSect')
+						jump = jump.reverse();
+						if (inv_d) System.out.println("\t\t\tTaking jump: "+jump);
+
+						// need to replace the source/dest clusters in this jump
+						FaultSubsectionCluster fromCluster = null;
+						for (FaultSubsectionCluster cluster : curRupture.getClustersIterable()) {
+							if (cluster.contains(jump.fromSection)) {
+								fromCluster = cluster;
+								break;
+							}
+						}
+						Preconditions.checkNotNull(fromCluster);
+
+						int numFromEnd = numSects - i - 1;
+						if (numFromEnd < i || nextCluster.endSects.contains(jump.toSection)) {
+							// jump is closer to the end of this cluster, reverse it
+							if (inv_d) System.out.println("\t\t\tReversing with index="+i
+									+" and numFromEnd="+numFromEnd);
+							jump = new Jump(jump.fromSection, fromCluster,
+									jump.toSection, nextCluster.reversed(), jump.distance);
+						} else {
+							jump = new Jump(jump.fromSection, fromCluster,
+									jump.toSection, nextCluster, jump.distance);
+						}
+
+						ClusterRupture nextRupture = curRupture.take(jump);
+						if (inv_d) System.out.println("\t\tNew curRupture: "+nextRupture);
+						if (maxNumSplays >= 0 && nextRupture.getTotalNumSplays() > maxNumSplays) {
+							if (inv_d) System.out.println("\t\t\tBailing here, splays="
+									+nextRupture.getTotalNumSplays());
+							continue;
+						}
+
+						buildInversionRecursive(inversions, nextRupture,
+								nextAvailable, connStrat, maxNumSplays);
+					}
+				}
+			}
+		}
+	}
+
 	
 	/**
 	 * @return Rupture tree navigator (lazily initialized)
@@ -375,17 +494,6 @@ public class ClusterRupture {
 		if (navigator == null)
 			navigator = new RuptureTreeNavigator(this);
 		return navigator;
-	}
-	
-	private void getEndSects(List<FaultSubsectionCluster> endClusters, FaultSubsectionCluster curCluster) {
-		List<FaultSubsectionCluster> descendants = getTreeNavigator().getDescendants(curCluster);
-		if (descendants == null || descendants.isEmpty()) {
-			// this is an end section
-			endClusters.add(curCluster);
-		} else {
-			for (FaultSubsectionCluster descendant : descendants)
-				getEndSects(endClusters, descendant);
-		}
 	}
 	
 	/**

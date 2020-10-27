@@ -194,6 +194,13 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
+		public Builder clusterPathCoulomb(SubSectStiffnessCalculator subSectCalc,
+				StiffnessAggregationMethod aggMethod, float threshold, float fractPathsThreshold) {
+			filters.add(new ClusterPathCoulombCompatibilityFilter(
+					subSectCalc, aggMethod, threshold, fractPathsThreshold));
+			return this;
+		}
+		
 		public Builder parentCoulomb(SubSectStiffnessCalculator subSectCalc,
 				StiffnessAggregationMethod aggMethod, float threshold, Directionality directionality) {
 			filters.add(new ParentCoulombCompatibilityFilter(subSectCalc, aggMethod, threshold, directionality));
@@ -835,6 +842,9 @@ public class PlausibilityConfiguration {
 		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
 		builder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 0.5f);
+		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 1f/3f);
+		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 2f/3f);
 		builder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, RupCoulombQuantity.SUM_SECT_CFF);
 		builder.netClusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		

@@ -8,6 +8,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import com.google.common.collect.HashMultimap;
+
 class PrecomputedClusterConnectionStrategy extends ClusterConnectionStrategy {
 
 	private String name;
@@ -20,9 +22,13 @@ class PrecomputedClusterConnectionStrategy extends ClusterConnectionStrategy {
 		this.maxJumpDist = maxJumpDist;
 		this.connectionsAdded = true;
 		connectedParents = new HashSet<>();
-		for (FaultSubsectionCluster cluster : clusters)
-			for (Jump jump : cluster.getConnections())
+		jumpsFrom = HashMultimap.create();
+		for (FaultSubsectionCluster cluster : clusters) {
+			for (Jump jump : cluster.getConnections()) {
 				connectedParents.add(new IDPairing(cluster.parentSectionID, jump.toCluster.parentSectionID));
+				jumpsFrom.put(jump.fromSection, jump);
+			}
+		}
 		if (connectedParents.isEmpty())
 			System.err.println("WARNING: no connections detected");
 	}

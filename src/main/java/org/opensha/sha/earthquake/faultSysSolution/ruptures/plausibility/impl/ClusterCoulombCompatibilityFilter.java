@@ -67,6 +67,8 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 
 	@Override
 	public Float getValue(ClusterRupture rupture) {
+		if (rupture.getTotalNumJumps()  == 0)
+			return null;
 		return (float)doTest(new ArrayList<>(), rupture.clusters[0], rupture.getTreeNavigator(),
 				false, false);
 	}
@@ -109,7 +111,9 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 
 	@Override
 	public String getShortName() {
-		return "JumpClusterCoulomb≥"+(float)threshold;
+		if (threshold == 0f)
+			return "JumpClusterCFF≥0";
+		return "JumpClusterCFF≥"+(float)threshold;
 	}
 
 	@Override

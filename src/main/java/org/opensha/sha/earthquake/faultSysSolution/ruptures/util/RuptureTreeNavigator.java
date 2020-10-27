@@ -125,6 +125,30 @@ public class RuptureTreeNavigator {
 		throw new IllegalStateException("Couldn't locate section "+sect.getParentSectionId()+":"
 				+targetID+" ("+sect.getSectionName()+") in cluster "+cluster+".\nFull rupture: "+rupture);
 	}
+	
+	/**
+	 * Locates the given jump. If the jump occurs in the rupture backwards, i.e., from toCluster to
+	 * fromCluster, then the jump returned will be reversed such that it matches the supplied to/from clusters
+	 * 
+	 * @param fromCluster
+	 * @param toCluster
+	 * @return the jump from fromCluster to toCluster
+	 * @throws IllegalStateException if the rupture does not use a direct jump between these clusters
+	 */
+	public Jump getJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
+		ClusterConnections connections = clusterConnectionsMap.get(toCluster);
+		Preconditions.checkNotNull(connections, "toCluster not found: %s", toCluster);
+		if (connections.jumpTo != null && connections.jumpTo.fromCluster == fromCluster)
+			return connections.jumpTo;
+		// check the other direction (backwards jump)
+		connections = clusterConnectionsMap.get(fromCluster);
+		Preconditions.checkNotNull(connections, "fromCluster not found: %s", fromCluster);
+		if (connections.jumpTo != null && connections.jumpTo.fromCluster == toCluster)
+			return connections.jumpTo.reverse();
+		throw new IllegalStateException(
+				"Rupture does not use a direct jump between "+fromCluster+" to "+toCluster);
+	}
+	
 	/**
 	 * @param sect
 	 * @return the direct predecessor of this section (either within its cluster or in the previous cluster)

@@ -38,8 +38,8 @@ import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.data.Range;
-import org.jfree.ui.RectangleEdge;
-import org.jfree.ui.TextAnchor;
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -101,17 +101,25 @@ public class RupSetDiagnosticsPageGen {
 			// special case to make things easier for Kevin in eclipse
 			
 			File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
-			
-//			String inputName = "CmlAz, CFF Cluster Path Positive";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
+
+//			String inputName = "5% Sect Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_sectFractPerm0.05.zip");
+//			String inputName = "10% Sect Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_sectFractPerm0.1.zip");
+//			String inputName = "15% Sect Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_sectFractPerm0.15.zip");
+			String inputName = "CmlAz, CFF Cluster Path Positive";
+			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
+//			String inputName = "CmlAz, CFF Cluster Half Paths Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterHalfPathsPositive.zip");
 //			String inputName = "CmlAz, CFF Cluster Path & Net Positive";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_cffClusterNetPositive.zip");
 //			String inputName = "CmlAz, CFF Cluster Positive";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPositive.zip");
 //			String inputName = "CmlAz, CFF Cluster Net Positive";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterNetPositive.zip");
-			String inputName = "CmlAz, CFF Rup Net Positive";
-			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffRupNetPositive.zip");
+//			String inputName = "CmlAz, CFF Rup Net Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffRupNetPositive.zip");
 //			String inputName = "CFF Parent Positive, Connections Only Test";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffParentPositive_connOnly.zip");
 //			String inputName = "CmlAz, CFF Parent Positive";
@@ -493,7 +501,7 @@ public class RupSetDiagnosticsPageGen {
 				filters.add(new SplayCountFilter(compConfig.getMaxNumSplays()));
 				filters.add(new GapWithinSectFilter());
 				filters.addAll(compConfig.getFilters());
-				RupSetPlausibilityResult result = testRupSetPlausibility(inputRups, filters, inputSearch);
+				RupSetPlausibilityResult result = testRupSetPlausibility(inputRups, filters, inputConfig, inputSearch);
 				File plot = plotRupSetPlausibility(result, resourcesDir, "comp_filter_compare",
 						"Comparison with "+compName+" Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
@@ -517,7 +525,7 @@ public class RupSetDiagnosticsPageGen {
 				filters.add(new SplayCountFilter(inputConfig.getMaxNumSplays()));
 				filters.add(new GapWithinSectFilter());
 				filters.addAll(inputConfig.getFilters());
-				RupSetPlausibilityResult result = testRupSetPlausibility(compRups, filters, compSearch);
+				RupSetPlausibilityResult result = testRupSetPlausibility(compRups, filters, compConfig, compSearch);
 				File plot = plotRupSetPlausibility(result, resourcesDir, "main_filter_compare",
 						"Comparison with "+inputName+" Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
@@ -545,7 +553,7 @@ public class RupSetDiagnosticsPageGen {
 				if (coulombCacheDir != null)
 					checkLoadCoulombCache(filters, coulombCacheDir, loadedCoulombCaches);
 				
-				RupSetPlausibilityResult result = testRupSetPlausibility(inputRups, filters, inputSearch);
+				RupSetPlausibilityResult result = testRupSetPlausibility(inputRups, filters, inputConfig, inputSearch);
 				File plot = plotRupSetPlausibility(result, resourcesDir, "alt_filter_compare",
 						"Comparison with Alternative Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
@@ -1316,16 +1324,33 @@ public class RupSetDiagnosticsPageGen {
 	 */
 	
 	public static RupSetPlausibilityResult testRupSetPlausibility(List<ClusterRupture> rups,
-			List<PlausibilityFilter> filters, RuptureConnectionSearch connSearch) {
+			List<PlausibilityFilter> filters, PlausibilityConfiguration config,
+			RuptureConnectionSearch connSearch) {
 		
 		List<PlausibilityFilter> newFilters = new ArrayList<>();
 		for (PlausibilityFilter filter : filters) {
 			if (filter instanceof JumpAzimuthChangeFilter)
 //				filter = new ErrOnCantEvalAzFilter(filter, false);
 				((JumpAzimuthChangeFilter)filter).setErrOnCantEvaluate(true);
-			if (filter.isDirectional(false) || filter.isDirectional(true))
-				filter = new MultiDirectionalPlausibilityFilter(
-						filter, connSearch, !filter.isDirectional(false));
+			if (filter.isDirectional(false) || filter.isDirectional(true)) {
+				if (config == null) {
+					if (filter instanceof ScalarValuePlausibiltyFilter<?>)
+						filter = new MultiDirectionalPlausibilityFilter.Scalar(
+								(ScalarValuePlausibiltyFilter<?>)filter, connSearch,
+								!filter.isDirectional(false));
+					else
+						filter = new MultiDirectionalPlausibilityFilter(
+								filter, connSearch, !filter.isDirectional(false));
+				} else {
+					if (filter instanceof ScalarValuePlausibiltyFilter<?>)
+						filter = new MultiDirectionalPlausibilityFilter.Scalar(
+								(ScalarValuePlausibiltyFilter<?>)filter, config,
+								!filter.isDirectional(false));
+					else
+						filter = new MultiDirectionalPlausibilityFilter(
+								filter, config, !filter.isDirectional(false));
+				}
+			}
 			newFilters.add(filter);
 		}
 		
@@ -1335,19 +1360,7 @@ public class RupSetDiagnosticsPageGen {
 			ClusterRupture rupture = rups.get(r);
 			futures.add(exec.submit(new PlausibilityCalcCallable(newFilters, rupture, r)));
 		}
-		
-		List<List<Integer>> failIndexes = new ArrayList<>();
-		List<List<Integer>> failCanContinueIndexes = new ArrayList<>();
-		List<List<Integer>> onlyFailIndexes = new ArrayList<>();
-		List<List<Integer>> erredIndexes = new ArrayList<>();
-		for (int f=0; f<filters.size(); f++) {
-			failIndexes.add(new ArrayList<>());
-			failCanContinueIndexes.add(new ArrayList<>());
-			onlyFailIndexes.add(new ArrayList<>());
-			erredIndexes.add(new ArrayList<>());
-		}
-		RupSetPlausibilityResult fullResults = new RupSetPlausibilityResult(filters, rups.size(),
-				0, failIndexes, failCanContinueIndexes, onlyFailIndexes, erredIndexes);
+		RupSetPlausibilityResult fullResults = new RupSetPlausibilityResult(filters, rups.size());
 		
 		System.out.println("Waiting on "+futures.size()+" plausibility calc futures...");
 		for (Future<PlausibilityCalcCallable> future : futures) {
@@ -1373,6 +1386,7 @@ public class RupSetDiagnosticsPageGen {
 		// outputs
 		private PlausibilityResult[] results;
 		private Throwable[] exceptions;
+		private Double[] scalars;
 
 		public PlausibilityCalcCallable(List<PlausibilityFilter> filters, ClusterRupture rupture,
 				int rupIndex) {
@@ -1386,10 +1400,17 @@ public class RupSetDiagnosticsPageGen {
 		public PlausibilityCalcCallable call() throws Exception {
 			results = new PlausibilityResult[filters.size()];
 			exceptions = new Throwable[filters.size()];
+			scalars = new Double[filters.size()];
 			for (int t=0; t<filters.size(); t++) {
 				PlausibilityFilter filter = filters.get(t);
 				try {
 					results[t] = filter.apply(rupture, false);
+					if (filter instanceof ScalarValuePlausibiltyFilter<?>) {
+						Number scalar = ((ScalarValuePlausibiltyFilter<?>)filter)
+								.getValue(rupture);
+						if (scalar != null)
+							scalars[t] = scalar.doubleValue();
+					}
 				} catch (Exception e) {
 					exceptions[t] = e;
 				}
@@ -1398,6 +1419,63 @@ public class RupSetDiagnosticsPageGen {
 		}
 		
 		public void merge(RupSetPlausibilityResult fullResults) {
+			fullResults.addResult(results, exceptions, scalars);
+		}
+		
+	}
+	
+	public static class RupSetPlausibilityResult {
+		public final List<PlausibilityFilter> filters;
+		public final int numRuptures;
+		public int allPassCount;
+		
+		public final List<List<PlausibilityResult>> filterResults;
+		public final List<List<Double>> scalarVals;
+		public final List<Boolean> singleFailures;
+		public final int[] failCounts;
+		public final int[] failCanContinueCounts;
+		public final int[] onlyFailCounts;
+		public final int[] erredCounts;
+		
+		private RupSetPlausibilityResult(List<PlausibilityFilter> filters, int numRuptures) {
+			this.filters = filters;
+			this.numRuptures = numRuptures;
+			this.allPassCount = 0;
+			this.filterResults = new ArrayList<>();
+			this.scalarVals = new ArrayList<>();
+			for (PlausibilityFilter filter : filters) {
+				filterResults.add(new ArrayList<>());
+				if (filter instanceof ScalarValuePlausibiltyFilter<?>)
+					scalarVals.add(new ArrayList<>());
+				else
+					scalarVals.add(null);
+			}
+			this.singleFailures = new ArrayList<>();
+			failCounts = new int[filters.size()];
+			failCanContinueCounts = new int[filters.size()];
+			onlyFailCounts = new int[filters.size()];
+			erredCounts = new int[filters.size()];
+		}
+		
+		public RupSetPlausibilityResult(List<PlausibilityFilter> filters, int numRuptures, int allPassCount,
+				List<List<PlausibilityResult>> filterResults, List<List<Double>> scalarVals,
+				List<Boolean> singleFailures, int[] failCounts, int[] failCanContinueCounts, int[] onlyFailCounts,
+				int[] erredCounts) {
+			super();
+			this.filters = filters;
+			this.numRuptures = numRuptures;
+			this.allPassCount = allPassCount;
+			this.filterResults = filterResults;
+			this.scalarVals = scalarVals;
+			this.singleFailures = singleFailures;
+			this.failCounts = failCounts;
+			this.failCanContinueCounts = failCanContinueCounts;
+			this.onlyFailCounts = onlyFailCounts;
+			this.erredCounts = erredCounts;
+		}
+		
+		private void addResult(PlausibilityResult[] results, Throwable[] exceptions, Double[] scalars) {
+			Preconditions.checkState(results.length == filters.size());
 			boolean allPass = true;
 			int onlyFailureIndex = -1;
 			for (int t=0; t<filters.size(); t++) {
@@ -1406,15 +1484,16 @@ public class RupSetDiagnosticsPageGen {
 				
 				boolean subPass;
 				if (exceptions[t] != null) {
-					if (fullResults.erredIndexes.get(t).isEmpty()) {
+					if (erredCounts[t] == 0) {
 						System.err.println("First exception for "+test.getName()+":");
 						exceptions[t].printStackTrace();
 					}
-					fullResults.erredIndexes.get(t).add(rupIndex);
+					erredCounts[t]++;
 					subPass = true; // do not fail on error
+					result = null;
 				} else {
 					if (result == PlausibilityResult.FAIL_FUTURE_POSSIBLE)
-						fullResults.failCanContinueIndexes.get(t).add(rupIndex);
+						failCanContinueCounts[t]++;
 					subPass = result.isPass();
 				}
 				if (!subPass && allPass) {
@@ -1426,40 +1505,21 @@ public class RupSetDiagnosticsPageGen {
 				}
 				allPass = subPass && allPass;
 				if (!subPass)
-					fullResults.failIndexes.get(t).add(rupIndex);
+					failCounts[t]++;
+				
+				filterResults.get(t).add(result);
+				if (scalarVals.get(t) != null)
+					scalarVals.get(t).add(scalars[t]);
 			}
 			if (allPass)
-				fullResults.allPassCount++;
-			if (onlyFailureIndex >= 0)
-				fullResults.onlyFailIndexes.get(onlyFailureIndex).add(rupIndex);
-		}
-		
-	}
-	
-	public static class RupSetPlausibilityResult {
-		public final List<PlausibilityFilter> filters;
-		public final int numRuptures;
-		public int allPassCount;
-//		public final int[] failCounts;
-//		public final int[] failCanContinueCounts;
-//		public final int[] onlyFailCounts;
-//		public final int[] erredCounts;
-		public final List<List<Integer>> failIndexes;
-		public final List<List<Integer>> failCanContinueIndexes;
-		public final List<List<Integer>> onlyFailIndexes;
-		public final List<List<Integer>> erredIndexes;
-		
-		public RupSetPlausibilityResult(List<PlausibilityFilter> filters, int numRuptures, int allPassCount,
-				List<List<Integer>> failIndexes, List<List<Integer>> failCanContinueIndexes,
-				List<List<Integer>> onlyFailIndexes, List<List<Integer>> erredIndexes) {
-			super();
-			this.filters = filters;
-			this.numRuptures = numRuptures;
-			this.allPassCount = allPassCount;
-			this.failIndexes = failIndexes;
-			this.failCanContinueIndexes = failCanContinueIndexes;
-			this.onlyFailIndexes = onlyFailIndexes;
-			this.erredIndexes = erredIndexes;
+				allPassCount++;
+			if (onlyFailureIndex >= 0) {
+//				fullResults.onlyFailIndexes.get(onlyFailureIndex).add(rupIndex);
+				onlyFailCounts[onlyFailureIndex]++;
+				singleFailures.add(true);
+			} else {
+				singleFailures.add(false);
+			}
 		}
 	}
 	
@@ -1473,13 +1533,13 @@ public class RupSetDiagnosticsPageGen {
 		double deltaEachSide = (dx - buffer)/2d;
 		double maxY = 50;
 		for (int i=0; i<result.filters.size(); i++) {
-			int failCount = result.erredIndexes.get(i).size()+result.failIndexes.get(i).size();
+			int failCount = result.erredCounts[i]+result.failCounts[i];
 			double percent = (100d)*failCount/(double)result.numRuptures;
 			while (percent > maxY - 25d)
 				maxY += 10;
 		}
 
-		Font font = new Font(Font.SANS_SERIF, Font.BOLD, 22);
+		Font font = new Font(Font.SANS_SERIF, Font.BOLD, 20);
 		Font allFont = new Font(Font.SANS_SERIF, Font.BOLD, 26);
 		
 		List<PlotElement> funcs = new ArrayList<>();
@@ -1496,9 +1556,9 @@ public class RupSetDiagnosticsPageGen {
 		
 		for (int i=0; i<result.filters.size(); i++) {
 			double x = i*dx + 0.5*dx;
-			double percentFailed = 100d*result.failIndexes.get(i).size()/result.numRuptures;
-			double percentOnly = 100d*result.onlyFailIndexes.get(i).size()/result.numRuptures;
-			double percentErred = 100d*result.erredIndexes.get(i).size()/result.numRuptures;
+			double percentFailed = 100d*result.failCounts[i]/result.numRuptures;
+			double percentOnly = 100d*result.onlyFailCounts[i]/result.numRuptures;
+			double percentErred = 100d*result.erredCounts[i]/result.numRuptures;
 			
 			Color c = FILTER_COLORS[i % FILTER_COLORS.length];
 			
@@ -1537,7 +1597,7 @@ public class RupSetDiagnosticsPageGen {
 			anns.add(ann);
 		}
 		
-		Range xRange = new Range(-0.15*dx, (result.filters.size()+0.15)*dx);
+		Range xRange = new Range(-0.30*dx, (result.filters.size()+0.15)*dx + 0.15*dx);
 		
 		XYTextAnnotation ann = new XYTextAnnotation(
 				percentDF.format((double)result.allPassCount/result.numRuptures)+" passed all",
@@ -1606,18 +1666,12 @@ public class RupSetDiagnosticsPageGen {
 		for (int t=0; t<result.filters.size(); t++) {
 			table.initNewLine();
 			table.addColumn("**"+result.filters.get(t).getName()+"**");
-			table.addColumn(countStats(result.failIndexes.get(t).size(), result.numRuptures));
-			table.addColumn(countStats(result.onlyFailIndexes.get(t).size(), result.numRuptures));
-			table.addColumn(countStats(result.erredIndexes.get(t).size(), result.numRuptures));
+			table.addColumn(countStats(result.failCounts[t], result.numRuptures));
+			table.addColumn(countStats(result.onlyFailCounts[t], result.numRuptures));
+			table.addColumn(countStats(result.erredCounts[t], result.numRuptures));
 			table.finalizeLine();
 		}
 		return table;
-	}
-	
-	private static double distFromFrange(Double lower, Double upper, double val) {
-		if (upper == null)
-			return lower - val;
-		return val - upper;
 	}
 	
 	public static List<String> getRupSetPlausibilityDetailLines(RupSetPlausibilityResult result, boolean compRups,
@@ -1625,43 +1679,53 @@ public class RupSetDiagnosticsPageGen {
 			String heading, String topLink, RuptureConnectionSearch connSearch) throws IOException {
 		List<String> lines = new ArrayList<>();
 		
+		File rupHtmlDir = new File(resourcesDir.getParentFile(), "rupture_pages");
+		Preconditions.checkState(rupHtmlDir.exists() || rupHtmlDir.mkdir());
+		
 		for (int i = 0; i < result.filters.size(); i++) {
-			List<Integer> failIndexes = result.failIndexes.get(i);
-			List<Integer> errIndexes = result.erredIndexes.get(i);
-			if (failIndexes.isEmpty() && errIndexes.isEmpty())
+			if (result.failCounts[i] == 0 && result.erredCounts[i] == 0)
 				continue;
 			PlausibilityFilter filter = result.filters.get(i);
 			
 			lines.add(heading+" "+filter.getName());
 			lines.add(topLink); lines.add("");
 			
-			HashSet<Integer> plotIndexes = new HashSet<>(failIndexes);
-			plotIndexes.addAll(errIndexes);
-			
 			String filterPrefix = filter.getShortName().replaceAll("\\W+", "");
 			if (compRups)
 				filterPrefix += "_compRups";
 			Color color = compRups ? COMP_COLOR : MAIN_COLOR;
 			
+			HashSet<Integer> failIndexes = new HashSet<>();
+			HashSet<Integer> errIndexes = new HashSet<>();
+			
+			for (int r=0; r<result.numRuptures; r++) {
+				PlausibilityResult res = result.filterResults.get(i).get(r);
+				if (res == null)
+					errIndexes.add(r);
+				else if (!res.isPass())
+					failIndexes.add(r);
+			}
+			
+			HashSet<Integer> combIndexes = new HashSet<>(failIndexes);
+			combIndexes.addAll(errIndexes);
+			
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			table.initNewLine();
 			for (HistScalar scalar : HistScalar.values()) {
 				String prefix = "filter_hist_"+filterPrefix+"_"+scalar.name();
-				File plot = plotRuptureHistogram(resourcesDir, prefix, rupSet, null, plotIndexes,
+				File plot = plotRuptureHistogram(resourcesDir, prefix, rupSet, null, combIndexes,
 						null, null, null, color, scalar, false);
 				table.addColumn("!["+scalar.name+"]("+resourcesDir.getName()+"/"+plot.getName()+")");
 			}
 			table.finalizeLine();
-			lines.add("Distributions of ruptures which failed ("+failIndexes.size()+") or erred ("
-					+errIndexes.size()+"):");
+			lines.add("Distributions of ruptures which failed ("+result.failCounts[i]+") or erred ("
+					+result.erredCounts[i]+"):");
 			lines.add("");
 			lines.addAll(table.build());
 			lines.add("");
 			
-			if (!failIndexes.isEmpty() && filter instanceof ScalarValuePlausibiltyFilter<?>) {
+			if (result.failCounts[i] > 0 && filter instanceof ScalarValuePlausibiltyFilter<?>) {
 				System.out.println(filter.getName()+" is scalar");
-				MinMaxAveTracker track = new MinMaxAveTracker();
-				List<Double> scalars = new ArrayList<>();
 				ScalarValuePlausibiltyFilter<?> scaleFilter = (ScalarValuePlausibiltyFilter<?>)filter;
 				com.google.common.collect.Range<?> range = scaleFilter.getAcceptableRange();
 				Double lower = null;
@@ -1672,186 +1736,287 @@ public class RupSetDiagnosticsPageGen {
 					if (range.hasUpperBound())
 						upper = ((Number)range.upperEndpoint()).doubleValue();
 				}
-				for (int index : failIndexes) {
-					ClusterRupture rupture = rups.get(index);
-					Number scalar = scaleFilter.getValue(rupture);
-					if (scalar != null && Double.isFinite(scalar.doubleValue())) {
-						double scalarVal = scalar.doubleValue();
-						if (filter.isDirectional(!rupture.splays.isEmpty()) && range != null) {
-							// see if there's a better version available
-							double scalarDist = distFromFrange(lower, upper, scalarVal);
-							for (ClusterRupture alt : rupture.getInversions(connSearch)) {
-								Number altScalar = scaleFilter.getValue(alt);
-								if (altScalar != null &&
-										distFromFrange(lower, upper, altScalar.doubleValue()) < scalarDist) {
-									// this one is better
-									scalar = altScalar;
-								}
+				table = MarkdownUtils.tableBuilder();
+				table.addLine("Fail Scalar Distribution", "Pass Scalar Distribution");
+				table.initNewLine();
+				for (boolean passes : new boolean[] { false, true }) {
+					MinMaxAveTracker track = new MinMaxAveTracker();
+					List<Double> scalars = new ArrayList<>();
+					
+					for (int r=0; r<result.numRuptures; r++) {
+						PlausibilityResult res = result.filterResults.get(i).get(r);
+						if (res == null || res.isPass() != passes)
+							continue;
+						Double scalar = result.scalarVals.get(i).get(r);
+//						if (filter instanceof ClusterPathCoulombCompatibilityFilter && passes
+//								&& scalar != null && scalar < 0d) {
+//							System.out.println("Debugging weirdness...");
+//							ClusterRupture rupture = rups.get(r);
+//							System.out.println("Rupture: "+rupture);
+//							System.out.println("Stored result: "+res);
+//							System.out.println("Calculating now...");
+//							System.out.println("Result: "+filter.apply(rupture, true));
+//							System.out.println("Multi Result: "+new MultiDirectionalPlausibilityFilter.Scalar<>(
+//									(ClusterPathCoulombCompatibilityFilter)filter, connSearch, false).apply(rupture, true));
+//							System.out.println("Stored scalar: "+scalar);
+//							System.out.println("Now scalar: "
+//									+((ClusterPathCoulombCompatibilityFilter)filter).getValue(rupture));
+//							System.exit(0);
+//						}
+//						ClusterRupture rupture = rups.get(r);
+//						
+//						// TODO
+//						Number scalar = scaleFilter.getValue(rupture);
+//						boolean D = passes && scalar != null && scalar.doubleValue() < 0
+//								&& filter instanceof ClusterPathCoulombCompatibilityFilter;
+//						if (D) System.out.println("DEBUG: initial scalar: "+scalar+", result="+res);
+//						if (filter.isDirectional(!rupture.splays.isEmpty()) && range != null) {
+//							// see if there's a better version available
+//							for (ClusterRupture alt : rupture.getInversions(connSearch)) {
+//								Number altScalar = scaleFilter.getValue(alt);
+//								boolean better = isScalarBetter(lower, upper, altScalar, scalar);
+//								if (D) System.out.println("\tDEBUG: alt scalar: "+altScalar+", better ? "+better);
+//								if (altScalar != null && better)
+//									// this one is better
+//									scalar = altScalar;
+//							}
+//						}
+//						if (D) System.out.println("\tDEBUG: final scalar: "+scalar);
+						if (scalar != null && Double.isFinite(scalar.doubleValue())) {
+							scalars.add(scalar);
+							track.addValue(scalar);
+						}
+					}
+					
+					System.out.println("Have "+scalars.size()+" scalars, passes="+passes);
+					if (scalars.size() > 0) {
+						DiscretizedFunc hist;
+						boolean xLog;
+						boolean xNegFlip;
+						Range xRange;
+						String xAxisLabel;
+						if (scaleFilter.getScalarName() == null) {
+							xAxisLabel = "Scalar Value";
+						} else {
+							xAxisLabel = scaleFilter.getScalarName();
+							if (scaleFilter.getScalarUnits() != null)
+								xAxisLabel += " ("+scaleFilter.getScalarUnits()+")";
+						}
+						System.out.println("tracker: "+track);
+						
+						if (filter instanceof ScalarCoulombPlausibilityFilter
+								&& lower != null && lower.floatValue() <= 0f && track.getMax() < 0d) {
+							// do it in log spacing, negative
+							double logMinNeg = Math.log10(-track.getMax());
+							double logMaxNeg = Math.log10(-track.getMin());
+							System.out.println("Flipping with track: "+track);
+							System.out.println("\tlogMinNeg="+logMinNeg);
+							System.out.println("\tlogMaxNeg="+logMaxNeg);
+							if (logMinNeg < -8)
+								logMinNeg = -8;
+							else
+								logMinNeg = Math.floor(logMinNeg);
+							if (logMaxNeg < -1)
+								logMaxNeg = -1;
+							else
+								logMaxNeg = Math.ceil(logMaxNeg);
+							System.out.println("\tlogMinNeg="+logMinNeg);
+							System.out.println("\tlogMaxNeg="+logMaxNeg);
+							HistogramFunction logHist = HistogramFunction.getEncompassingHistogram(
+									logMinNeg, logMaxNeg, 0.1);
+							for (double scalar : scalars) {
+								scalar = Math.log10(-scalar);
+								logHist.add(logHist.getClosestXIndex(scalar), 1d);
 							}
+							hist = new ArbitrarilyDiscretizedFunc();
+							for (Point2D pt : logHist)
+								hist.set(Math.pow(10, pt.getX()), pt.getY());
+							xLog = true;
+							xNegFlip = false;
+							xRange = new Range(Math.pow(10, logHist.getMinX()-0.5*logHist.getDelta()),
+									Math.pow(10, logHist.getMaxX()+0.5*logHist.getDelta()));
+							xAxisLabel = "-"+xAxisLabel;
+						} else if (filter instanceof ScalarCoulombPlausibilityFilter
+								&& lower != null && lower.floatValue() >= 0f && track.getMin() > 0d) {
+							// do it in log spacing
+							double logMin = Math.log10(track.getMin());
+							double logMax = Math.log10(track.getMax());
+							if (logMin < -8)
+								logMin = -8;
+							else
+								logMin = Math.floor(logMin);
+							if (logMax < -1)
+								logMax = -1;
+							else
+								logMax = Math.ceil(logMax);
+							System.out.println("\tlogMin="+logMin);
+							System.out.println("\tlogMax="+logMax);
+							HistogramFunction logHist = HistogramFunction.getEncompassingHistogram(
+									logMin, logMax, 0.1);
+							for (double scalar : scalars) {
+								scalar = Math.log10(scalar);
+								logHist.add(logHist.getClosestXIndex(scalar), 1d);
+							}
+							hist = new ArbitrarilyDiscretizedFunc();
+							for (Point2D pt : logHist)
+								hist.set(Math.pow(10, pt.getX()), pt.getY());
+							xLog = true;
+							xNegFlip = false;
+							xRange = new Range(Math.pow(10, logHist.getMinX()-0.5*logHist.getDelta()),
+									Math.pow(10, logHist.getMaxX()+0.5*logHist.getDelta()));
+						} else {
+							double len = track.getMax() - track.getMin();
+							double delta;
+							if (len > 1000)
+								delta = 50;
+							else if (len > 100)
+								delta = 10;
+							else if (len > 50)
+								delta = 5;
+							else if (len > 10)
+								delta = 2;
+							else if (len > 5)
+								delta = 1;
+							else if (len > 2)
+								delta = 0.5;
+							else if (len > 1)
+								delta = 0.1;
+							else if (len > 0.5)
+								delta = 0.05;
+							else if (len > 0.1)
+								delta = 0.01;
+							else
+								delta = len/10d;
+							
+							double min = track.getMin();
+							double max = track.getMax();
+							if (min == max) {
+								HistogramFunction myHist = new HistogramFunction(min, max, 1);
+								myHist.set(0, scalars.size());
+								hist = myHist;
+								xLog = false;
+								xNegFlip = false;
+								xRange = new Range(min-0.5, max+0.5);
+							} else {
+								HistogramFunction myHist = HistogramFunction.getEncompassingHistogram(
+										track.getMin(), track.getMax(), delta);
+								for (double scalar : scalars)
+									myHist.add(myHist.getClosestXIndex(scalar), 1d);
+								hist = myHist;
+								xLog = false;
+								xNegFlip = false;
+								xRange = new Range(myHist.getMinX()-0.5*myHist.getDelta(),
+										myHist.getMaxX()+0.5*myHist.getDelta());
+							}
+							
 						}
-						scalars.add(scalarVal);
-						track.addValue(scalarVal);
-					}
-				}
-				
-				System.out.println("Have "+scalars.size()+" scalars");
-				if (scalars.size() > 0) {
-					DiscretizedFunc hist;
-					boolean xLog;
-					boolean xNegFlip;
-					Range xRange;
-					String xAxisLabel;
-					if (scaleFilter.getScalarName() == null) {
-						xAxisLabel = "Scalar Value";
-					} else {
-						xAxisLabel = scaleFilter.getScalarName();
-						if (scaleFilter.getScalarUnits() != null)
-							xAxisLabel += " ("+scaleFilter.getScalarUnits()+")";
-					}
-					
-					if (filter instanceof ScalarCoulombPlausibilityFilter
-							&& lower != null && lower.floatValue() <= 0f && track.getMax() < 0d) {
-						// do it in log spacing, negative
-						double logMinNeg = Math.log10(-track.getMax());
-						double logMaxNeg = Math.log10(-track.getMin());
-						System.out.println("Flipping with track: "+track);
-						System.out.println("\tlogMinNeg="+logMinNeg);
-						System.out.println("\tlogMaxNeg="+logMaxNeg);
-						if (logMinNeg < -8)
-							logMinNeg = -8;
+						
+						List<DiscretizedFunc> funcs = new ArrayList<>();
+						List<PlotCurveCharacterstics> chars = new ArrayList<>();
+						
+						funcs.add(hist);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
+						
+						String title = filter.getName();
+						if (passes)
+							title += " Passes";
 						else
-							logMinNeg = Math.floor(logMinNeg);
-						if (logMaxNeg < -1)
-							logMaxNeg = -1;
-						else
-							logMaxNeg = Math.ceil(logMaxNeg);
-						System.out.println("\tlogMinNeg="+logMinNeg);
-						System.out.println("\tlogMaxNeg="+logMaxNeg);
-						HistogramFunction logHist = HistogramFunction.getEncompassingHistogram(
-								logMinNeg, logMaxNeg, 0.1);
-						for (double scalar : scalars) {
-							scalar = Math.log10(-scalar);
-							logHist.add(logHist.getClosestXIndex(scalar), 1d);
-						}
-						hist = new ArbitrarilyDiscretizedFunc();
-						for (Point2D pt : logHist)
-							hist.set(Math.pow(10, pt.getX()), pt.getY());
-						xLog = true;
-						xNegFlip = false;
-						xRange = new Range(Math.pow(10, logHist.getMinX()-0.5*logHist.getDelta()),
-								Math.pow(10, logHist.getMaxX()+0.5*logHist.getDelta()));
-						xAxisLabel = "-"+xAxisLabel;
-					} else {
-						double len = track.getMax() - track.getMin();
-						double delta;
-						if (len > 1000)
-							delta = 50;
-						else if (len > 100)
-							delta = 10;
-						else if (len > 50)
-							delta = 5;
-						else if (len > 10)
-							delta = 2;
-						else if (len > 5)
-							delta = 1;
-						else if (len > 2)
-							delta = 0.5;
-						else if (len > 1)
-							delta = 0.1;
-						else if (len > 0.5)
-							delta = 0.05;
-						else if (len > 0.1)
-							delta = 0.01;
-						else
-							delta = len/10d;
-						HistogramFunction myHist = HistogramFunction.getEncompassingHistogram(
-								track.getMin(), track.getMax(), delta);
-						for (double scalar : scalars)
-							myHist.add(myHist.getClosestXIndex(scalar), 1d);
-						hist = myHist;
-						xLog = false;
-						xNegFlip = false;
-						xRange = new Range(myHist.getMinX()-0.5*myHist.getDelta(),
-								myHist.getMaxX()+0.5*myHist.getDelta());
-					}
-					lines.add("Scalar values of ruptures which failed:");
-					lines.add("");
-					
-					List<DiscretizedFunc> funcs = new ArrayList<>();
-					List<PlotCurveCharacterstics> chars = new ArrayList<>();
-					
-					funcs.add(hist);
-					chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
-					
-					PlotSpec spec = new PlotSpec(funcs, chars, filter.getName()+" Failures", xAxisLabel, "Count");
-					
-					HeadlessGraphPanel gp = new HeadlessGraphPanel();
-					gp.setTickLabelFontSize(18);
-					gp.setAxisLabelFontSize(24);
-					gp.setPlotLabelFontSize(24);
-					gp.setBackgroundColor(Color.WHITE);
-					
-					gp.drawGraphPanel(spec, xLog, false, xRange, null);
-					gp.getPlot().getDomainAxis().setInverted(xNegFlip);
+							title += " Failures";
+						PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, "Count");
+						
+						HeadlessGraphPanel gp = new HeadlessGraphPanel();
+						gp.setTickLabelFontSize(18);
+						gp.setAxisLabelFontSize(24);
+						gp.setPlotLabelFontSize(24);
+						gp.setBackgroundColor(Color.WHITE);
+						
+						gp.drawGraphPanel(spec, xLog, false, xRange, null);
+						gp.getPlot().getDomainAxis().setInverted(xNegFlip);
 
-					String prefix = "filter_hist_"+filterPrefix+"_failed_scalars";
-					File file = new File(resourcesDir, prefix);
-					gp.getChartPanel().setSize(800, 600);
-					gp.saveAsPNG(file.getAbsolutePath()+".png");
-					gp.saveAsPDF(file.getAbsolutePath()+".pdf");
-					
-					lines.add("![hist]("+resourcesDir.getName()+"/"+file.getName()+".png)");
-					lines.add("");
+						String prefix = "filter_hist_"+filterPrefix;
+						if (passes)
+							prefix += "_passed_scalars";
+						else
+							prefix += "_failed_scalars";
+						File file = new File(resourcesDir, prefix);
+						gp.getChartPanel().setSize(800, 600);
+						gp.saveAsPNG(file.getAbsolutePath()+".png");
+						gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+						
+						table.addColumn("![hist]("+resourcesDir.getName()+"/"+file.getName()+".png)");
+					} else {
+						table.addColumn("*N/A*");
+					}
 				}
+				table.finalizeLine();
 				
+				lines.add("Scalar values of ruptures");
+				lines.add("");
+				lines.addAll(table.build());
+				lines.add("");
 			}
 			
 			// now add examples
-			int shortestIndex = -1;
-			int shortestNumSects = Integer.MAX_VALUE;
-			int longestIndex = -1;
-			int longestNumClusters = 0;
-			for (int index : plotIndexes) {
-				ClusterRupture rup = rups.get(index);
-				int sects = rup.getTotalNumSects();
-				int clusters = rup.getTotalNumClusters();
-				if (sects < shortestNumSects) {
-					shortestIndex = index;
-					shortestNumSects = sects;
+			for (boolean err : new boolean[] {false, true}) {
+				if (!err && result.failCounts[i] == 0 ||
+						err && result.erredCounts[i] == 0)
+					continue;
+				int shortestIndex = -1;
+				int shortestNumSects = Integer.MAX_VALUE;
+				int longestIndex = -1;
+				int longestNumClusters = 0;
+				HashSet<Integer> plotIndexes = err ? errIndexes : failIndexes;
+				for (int index : plotIndexes) {
+					ClusterRupture rup = rups.get(index);
+					int sects = rup.getTotalNumSects();
+					int clusters = rup.getTotalNumClusters();
+					if (sects < shortestNumSects) {
+						shortestIndex = index;
+						shortestNumSects = sects;
+					}
+					if (clusters > longestNumClusters) {
+						longestIndex = index;
+						longestNumClusters = clusters;
+					}
 				}
-				if (clusters > longestNumClusters) {
-					longestIndex = index;
-					longestNumClusters = clusters;
+				plotIndexes.remove(shortestIndex);
+				plotIndexes.remove(longestIndex);
+				List<Integer> plotSorted = new ArrayList<>(plotIndexes);
+				Collections.sort(plotSorted);
+				Collections.shuffle(plotSorted, new Random(plotIndexes.size()));
+				if (plotSorted.size() > maxNumToPlot-2)
+					plotSorted = plotSorted.subList(0, maxNumToPlot-2);
+				for (int r=plotSorted.size(); --r>=0;) {
+					int index = plotSorted.get(r);
+					if (index == shortestIndex || index == longestIndex)
+						plotSorted.remove(r);
 				}
+				plotSorted.add(0, shortestIndex);
+				if (longestIndex != shortestIndex)
+					plotSorted.add(longestIndex);
+				
+				// plot them
+				table = MarkdownUtils.tableBuilder();
+				table.initNewLine();
+				String prefix = "filter_examples_"+filterPrefix;
+				boolean plotAzimuths = filter.getName().toLowerCase().contains("azimuth");
+				for (int rupIndex : plotSorted) {
+					String rupPrefix = prefix+"_"+rupIndex;
+//					connSearch.plotConnections(resourcesDir, prefix, rupIndex);
+					RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rups.get(rupIndex),
+							"Rupture "+rupIndex, plotAzimuths, true);
+					table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
+							"("+ generateRuptureInfoPage(rupSet, rups.get(rupIndex), rupIndex, rupHtmlDir, rupPrefix, result)+ ")");
+				}
+				table.finalizeLine();
+				if (err)
+					lines.add("Example ruptures which erred:");
+				else
+					lines.add("Example ruptures which failed:");
+				lines.add("");
+				lines.addAll(table.wrap(5, 0).build());
+				lines.add("");
 			}
-			plotIndexes.remove(shortestIndex);
-			plotIndexes.remove(longestIndex);
-			List<Integer> plotSorted = new ArrayList<>(plotIndexes);
-			Collections.sort(plotSorted);
-			Collections.shuffle(plotSorted, new Random(plotIndexes.size()));
-			if (plotSorted.size() > maxNumToPlot-2)
-				plotSorted = plotSorted.subList(0, maxNumToPlot-2);
-			plotSorted.add(0, shortestIndex);
-			plotSorted.add(longestIndex);
-			
-			// plot them
-			table = MarkdownUtils.tableBuilder();
-			table.initNewLine();
-			String prefix = "filter_examples_"+filterPrefix;
-			boolean plotAzimuths = filter.getName().toLowerCase().contains("azimuth");
-			for (int rupIndex : plotSorted) {
-				String rupPrefix = prefix+"_"+rupIndex;
-//				connSearch.plotConnections(resourcesDir, prefix, rupIndex);
-				RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rups.get(rupIndex),
-						"Rupture "+rupIndex, plotAzimuths, true);
-				table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
-						"("+ generateRuptureInfoPage(rupSet, rups.get(rupIndex), rupIndex, resourcesDir, rupPrefix)+ ")");
-			}
-			table.finalizeLine();
-			lines.add("Example ruptures which failed:");
-			lines.add("");
-			lines.addAll(table.wrap(5, 0).build());
-			lines.add("");
 		}
 		
 		return lines;
@@ -2222,6 +2387,9 @@ public class RupSetDiagnosticsPageGen {
 			indInPairing++;
 		}
 		
+		File rupHtmlDir = new File(resourcesDir.getParentFile(), "rupture_pages");
+		Preconditions.checkState(rupHtmlDir.exists() || rupHtmlDir.mkdir());
+		
 		System.out.println("Plotting "+rupsToPlot+" ruptures");
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
@@ -2229,7 +2397,8 @@ public class RupSetDiagnosticsPageGen {
 			String rupPrefix = prefix+"_"+rupIndex;
 			search.plotConnections(resourcesDir, rupPrefix, rupIndex, pairings, "Unique Connections");
 			table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
-					"("+ generateRuptureInfoPage(rupSet, search.buildClusterRupture(rupIndex, true), rupIndex, resourcesDir, rupPrefix)+ ")");
+					"("+ generateRuptureInfoPage(rupSet, search.buildClusterRupture(rupIndex, true),
+							rupIndex, rupHtmlDir, rupPrefix, null)+ ")");
 		}
 		table.finalizeLine();
 		return table.wrap(maxCols, 0);
@@ -2706,17 +2875,27 @@ public class RupSetDiagnosticsPageGen {
 	}
 
 
-	private static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex, File outputDir, String fileNamePrefix) throws IOException {
+	private static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex,
+			File outputDir, String fileNamePrefix, RupSetPlausibilityResult plausibiltyResult) throws IOException {
 		DecimalFormat format = new DecimalFormat("###,###.#");
 
 		List<String> lines = new ArrayList<>();
 		lines.add("## Rupture " + rupIndex);
-		lines.add("![Rupture " + rupIndex + "](resources/" + fileNamePrefix + ".png)");
+		lines.add("");
+		lines.add("![Rupture " + rupIndex + "](../resources/" + fileNamePrefix + ".png)");
 
 		HashMap<Integer, Jump> jumps = new HashMap<>();
 		for (Jump jump : rupture.getJumpsIterable()) {
 			jumps.put(jump.fromSection.getSectionId(), jump);
 		}
+		
+		lines.add("");
+		lines.add("Text representation:");
+		lines.add("");
+		lines.add("```");
+		lines.add(rupture.toString());
+		lines.add("```");
+		lines.add("");
 
 		List<FaultSection> sections = rupSet.getFaultSectionDataForRupture(rupIndex);
 
@@ -2739,15 +2918,17 @@ public class RupSetDiagnosticsPageGen {
 						.addColumn("Magnitude")
 						.addColumn("Length (km)")
 						.addColumn("Area (sq km)")
+						.addColumn("Rake (degrees)").finalizeLine().initNewLine()
 						.addColumn(format.format(rupSet.getMagForRup(rupIndex)))
-						.addColumn(format.format(rupSet.getLengthForRup(rupIndex) / 1000.0))
+						.addColumn(format.format(getLength(rupSet, rupIndex)))
 						.addColumn(format.format(rupSet.getAreaForRup(rupIndex) / 1000000.0))
+						.addColumn(format.format(rupSet.getAveRakeForRup(rupIndex)))
 						.finalizeLine()
-						.wrap(3, 0)
 						.build());
 
 		lines.add("");
-		lines.add("List start is " + location + " compared to list end.");
+		lines.add("Fault section list. First section listed is " + location + " relative to the last section.");
+		lines.add("");
 
 		int lastParent = Integer.MIN_VALUE;
 		List<String> sectionIds = new ArrayList<>();
@@ -2768,7 +2949,42 @@ public class RupSetDiagnosticsPageGen {
 			}
 		}
 		lines.add("    * " + String.join(", ", sectionIds));
-		MarkdownUtils.writeHTML(lines, new File(outputDir.getParent() + "/" + fileNamePrefix + ".html"));
-		return fileNamePrefix + ".html";
+		
+		if (plausibiltyResult != null) {
+			lines.add("");
+			lines.add("### Plausibility Filters Results");
+			lines.add("");
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.addLine("Name", "Result", "Scalar Value");
+			for (int f=0; f<plausibiltyResult.filters.size(); f++) {
+				table.initNewLine();
+				table.addColumn(plausibiltyResult.filters.get(f).getName());
+				PlausibilityResult result = plausibiltyResult.filterResults.get(f).get(rupIndex);
+				if (result == null)
+					table.addColumn("Erred");
+				else
+					table.addColumn(result.toString());
+				if (plausibiltyResult.scalarVals.get(f) == null) {
+					table.addColumn("*N/A*");
+				} else {
+					Double scalar = plausibiltyResult.scalarVals.get(f).get(rupIndex);
+					if (scalar == null) {
+						table.addColumn("*N/A*");
+					} else {
+						String str = scalar.floatValue()+"";
+						PlausibilityFilter filter = plausibiltyResult.filters.get(f);
+						String units = ((ScalarValuePlausibiltyFilter<?>)filter).getScalarUnits();
+						if (units != null)
+							str += " ("+units+")";
+						table.addColumn(str);
+					}
+				}
+			}
+			table.finalizeLine();
+			lines.addAll(table.build());
+		}
+		
+		MarkdownUtils.writeHTML(lines, new File(outputDir, fileNamePrefix + ".html"));
+		return outputDir.getName()+"/"+fileNamePrefix + ".html";
 	}
 }

@@ -911,7 +911,7 @@ public class FaultSystemRupSet implements Serializable {
 				for (FaultSubsectionCluster cluster : rupture.clusters)
 					for (FaultSection sect : cluster.subSects)
 						mainStrandLen += sect.getTraceLength();
-				for (ClusterRupture alternative : rupture.getInversions(search)) {
+				for (ClusterRupture alternative : rupture.getPreferredInversions(search)) {
 					int altNumSplays = alternative.getTotalNumSplays();
 					double altStrandLen = 0d;
 					for (FaultSubsectionCluster cluster : alternative.clusters)
