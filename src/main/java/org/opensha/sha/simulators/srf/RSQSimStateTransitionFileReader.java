@@ -819,7 +819,7 @@ public class RSQSimStateTransitionFileReader {
 		
 		long index = getIndexBefore(startTime);
 //		
-		int debugEventID = -999;
+		int debugEventID = 53897;
 //		int debugEventID = 5;
 		final boolean debug = debugEventID == eventID;
 		int numPreReads = 0;
@@ -1085,48 +1085,57 @@ public class RSQSimStateTransitionFileReader {
 	}
 	
 	public static void main(String[] args) throws IOException {
-//		File d = new File("/home/kevin/Simulators/catalogs/bruce/rundir4950");
-//		File tf = new File(d, "transV..out");
-//		File d = new File("/home/kevin/Simulators/catalogs/singleSS");
-//		File tf = new File(d, "trans.test.out");
-		File d = new File("/home/kevin/Simulators/catalogs/bruce/rundir4983.01");
-		File tf = new File(d, "trans..out");
-		TransVersion version = TransVersion.CONSOLIDATED_RELATIVE;
-		
-		RSQSimStateTransitionFileReader reader = new RSQSimStateTransitionFileReader(
-				tf, ByteOrder.LITTLE_ENDIAN, version);
-//		int maxNum = 100;
-//		int count = 0;
-//		int minPatchID = Integer.MAX_VALUE;
-//		int minEventID = Integer.MAX_VALUE;
-//		int maxPatchID = 0;
-//		int maxEventID = 0;
-//		for (RSQSimStateTime trans : reader.getTransitionsIterable(reader.getFirstTransitionTime(),
-//				reader.getLastTransitionTime())) {
-//			if (count < maxNum)
-//				System.out.println(count+". "+trans);
-//			count++;
-//			minPatchID = Integer.min(minPatchID, trans.patchID);
-//			maxPatchID = Integer.max(maxPatchID, trans.patchID);
-//			minEventID = Integer.min(minEventID, trans.eventID);
-//			maxEventID = Integer.max(maxEventID, trans.eventID);
-//		}
-//		System.out.println("Patch ID range: "+minPatchID+" "+maxPatchID);
-//		System.out.println("Event ID range: "+minEventID+" "+maxEventID);
-		
-//		long start = 803576214l;
-//		for (int i=0; i<10; i++) {
-//			long index = start+i;
-//			System.out.println(index+": "+reader.read(index, 1)[0]);
-//		}
-		reader.read(803181015, 803985);
-		
-//		List<RSQSimStateTime> myTrans = reader.getTransitions(5.835340584329015E11-60, 5.83534058433055E11);
-//		for (RSQSimStateTime t : myTrans) {
-//			if (t.patchID == 219277)
-//				System.out.println("\t"+t.absoluteTime+"\t"+t.patchID+"\t"+t.state+"\t"+t.velocity);
-//		}
-		System.exit(0);
+////		File d = new File("/home/kevin/Simulators/catalogs/bruce/rundir4950");
+////		File tf = new File(d, "transV..out");
+////		File d = new File("/home/kevin/Simulators/catalogs/singleSS");
+////		File tf = new File(d, "trans.test.out");
+////		File d = new File("/home/kevin/Simulators/catalogs/bruce/rundir4983.01");
+////		File tf = new File(d, "trans..out");
+//		File d = new File("/data-0/kevin/simulators/catalogs/rundir4983_stitched/plausibility_filtered");
+//		File tf = new File(d, "trans.filtered.out");
+//		TransVersion version = TransVersion.CONSOLIDATED_RELATIVE;
+//		
+////		RSQSimFileReader.
+//		
+//		RSQSimStateTransitionFileReader reader = new RSQSimStateTransitionFileReader(
+//				tf, ByteOrder.LITTLE_ENDIAN, version);
+//		
+//		List<RSQSimStateTime> myTrans = reader.getTransitions(
+//				584.2515*SimulatorUtils.SECONDS_PER_YEAR, 584.26*SimulatorUtils.SECONDS_PER_YEAR);
+//		System.out.println("Loaded "+myTrans.size()+" transitions");
+////		int maxNum = 100;
+////		int count = 0;
+////		int minPatchID = Integer.MAX_VALUE;
+////		int minEventID = Integer.MAX_VALUE;
+////		int maxPatchID = 0;
+////		int maxEventID = 0;
+////		for (RSQSimStateTime trans : reader.getTransitionsIterable(reader.getFirstTransitionTime(),
+////				reader.getLastTransitionTime())) {
+////			if (count < maxNum)
+////				System.out.println(count+". "+trans);
+////			count++;
+////			minPatchID = Integer.min(minPatchID, trans.patchID);
+////			maxPatchID = Integer.max(maxPatchID, trans.patchID);
+////			minEventID = Integer.min(minEventID, trans.eventID);
+////			maxEventID = Integer.max(maxEventID, trans.eventID);
+////		}
+////		System.out.println("Patch ID range: "+minPatchID+" "+maxPatchID);
+////		System.out.println("Event ID range: "+minEventID+" "+maxEventID);
+//		
+////		long start = 803576214l;
+////		for (int i=0; i<10; i++) {
+////			long index = start+i;
+////			System.out.println(index+": "+reader.read(index, 1)[0]);
+////		}
+////		reader.read(803181015, 803985);
+//		
+////		List<RSQSimStateTime> myTrans = reader.getTransitions(5.835340584329015E11-60, 5.83534058433055E11);
+////		for (RSQSimStateTime t : myTrans) {
+////			if (t.patchID == 219277)
+////				System.out.println("\t"+t.absoluteTime+"\t"+t.patchID+"\t"+t.state+"\t"+t.velocity);
+////		}
+//		System.exit(0);
+		TransVersion version = null;
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 //			File dir = new File("/data/kevin/simulators/catalogs/baseCatalogSW_10");
 //			File transFile = new File(dir, "trans.baseCatalogSW_10t.out");
@@ -1135,11 +1144,12 @@ public class RSQSimStateTransitionFileReader {
 //				+" 32777581 32777582 32777583 32777584 32777585 32777586 32777587 32777588 32777589 327775810";
 //			System.out.println("HARDCODED: "+str);
 //			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
-			File dir = new File("/home/kevin/Simulators/catalogs/bruce/rundir4860");
-			File geomFile = new File(dir, "zfault_Deepen.in");
-			File transFile = new File(dir, "transV..out");
-			long startIndex = 983197248;
-			int num = 100;
+//			File dir = new File("/home/kevin/Simulators/catalogs/bruce/rundir4860");
+			File dir = new File("/data-0/kevin/simulators/catalogs/rundir4983_stitched/plausibility_filtered");
+			File geomFile = new File(dir.getParentFile(), "zfault_Deepen.in");
+			File transFile = new File(dir, "trans.filtered.out");
+//			long startIndex = 983197248;
+//			int num = 100;
 //			File dir = new File("/home/kevin/Simulators/catalogs/test_double_4860");
 //			File transFile = new File(dir, "transV.combine.out");
 //			long startIndex = 2428679190l;
@@ -1153,7 +1163,7 @@ public class RSQSimStateTransitionFileReader {
 //			args = Iterables.toArray(Splitter.on(" ").split("--debug "+transFile.getAbsolutePath()+" "+startIndex+" "+num+" little"), String.class);
 
 			String str = "--print-rup "+transFile.getAbsolutePath()+" "+geomFile.getAbsolutePath()
-				+" 619852";
+				+" 6537";
 			args = Iterables.toArray(Splitter.on(" ").split(str), String.class);
 		}
 		if (args.length > 0 && args[0].equals("--debug")) {

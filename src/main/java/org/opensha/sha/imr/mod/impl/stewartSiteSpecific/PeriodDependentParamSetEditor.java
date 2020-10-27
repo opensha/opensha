@@ -26,11 +26,11 @@ import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.TableCellRenderer;
 
-import org.jfree.ui.ExtensionFileFilter;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.editor.AbstractParameterEditor;
@@ -389,7 +389,7 @@ extends AbstractParameterEditor<PeriodDependentParamSet<E>> implements ActionLis
 		} else if (e.getSource() == importButton) {
 			if (chooser == null) {
 				chooser = new JFileChooser();
-				chooser.setFileFilter(new ExtensionFileFilter("CSV File", "csv"));
+				chooser.setFileFilter(new FileNameExtensionFilter("CSV File", "csv", "CSV"));
 			}
 			int ret = chooser.showOpenDialog(widgetPanel);
 			if (ret == JFileChooser.APPROVE_OPTION) {
@@ -410,7 +410,7 @@ extends AbstractParameterEditor<PeriodDependentParamSet<E>> implements ActionLis
 		} else if (e.getSource() == exportButton) {
 			if (chooser == null) {
 				chooser = new JFileChooser();
-				chooser.setFileFilter(new ExtensionFileFilter("CSV File", "csv"));
+				chooser.setFileFilter(new FileNameExtensionFilter("CSV File", "csv", "CSV"));
 			}
 			int ret = chooser.showSaveDialog(widgetPanel);
 			if (ret == JFileChooser.APPROVE_OPTION) {

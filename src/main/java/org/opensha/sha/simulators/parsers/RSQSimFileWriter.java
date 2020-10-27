@@ -201,7 +201,7 @@ public class RSQSimFileWriter {
 			} else if (version == TransVersion.CONSOLIDATED_RELATIVE) {
 				transOut.writeDouble(transTime);
 				transOut.writeFloat(trans.relativeTime);
-				transOut.writeInt(eventID-1); // trans file events are 0-based
+				transOut.writeInt(eventID); // trans file events are 1-based
 				transOut.writeInt(trans.patchID-1); // trans file patches are 0-based
 				transOut.writeByte(trans.state.getStateInt());
 				transOut.writeFloat(trans.velocity);
