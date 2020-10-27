@@ -5,6 +5,7 @@ package org.opensha.refFaultParamDb.vo;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Objects;
 
 import org.dom4j.Attribute;
 import org.dom4j.Element;
@@ -22,7 +23,10 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 
 /**
- * This class contains preferred fault section data (rather than the estimates) from  FaultSectionData.
+ * This class contains preferred fault section data (rather than the estimates) from  FaultSectionData. It
+ * is the default implementation of the FaultSection interface.
+ * 
+ * Note: equals and hashCode implementations only check section/parentIDs, not fault properties themselves.
  * 
  *
  */
@@ -726,5 +730,22 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	public double getArea(boolean creepReduced) {
 		double ddw = creepReduced ? getReducedDownDipWidth() : getOrigDownDipWidth();
 		return ddw * getTraceLength() * 1e6;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(parentSectionId, sectionId);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		FaultSectionPrefData other = (FaultSectionPrefData) obj;
+		return parentSectionId == other.parentSectionId && sectionId == other.sectionId;
 	}
 }
