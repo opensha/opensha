@@ -70,6 +70,19 @@ createAppTask("appJarAR", "AttenuationRelationshipGUI", "org.opensha.sha.imr.att
 createAppTask("appJarSM", "ShakeMapGUI", "org.opensha.sha.gui.ScenarioShakeMapApp")
 createAppTask("appJarSD", "SiteDataGUI", "org.opensha.commons.data.siteData.gui.SiteDataCombinedApp")
 createAppTask("appJarGMT", "GMTMapApp", "org.opensha.commons.mapping.gmt.gui.GMT_MapGeneratorApplet")
+createAppTask("appJarIM", "IMEventSetAppV3", "org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_ASCII")
+
+task appZipIM(type: Zip) {
+	dependsOn 'appJarIM'
+	from ('build/libs/') {
+		include 'IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'
+		rename (('IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'), 'IM_EventSetCalc_v3_0_ASCII.jar')
+	}
+	from ('src/org/opensha/sha/calc/IM_EventSet/v03/') {
+		include '*.txt'
+	}
+	archiveName 'IM_EventSetCalc_v3_0_ASCII.zip'
+}
 
 task appJars(type: GradleBuild) {
      tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT']
