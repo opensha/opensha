@@ -20,12 +20,14 @@
 package org.opensha.sha.calc.IM_EventSet.v03;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
+import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 
 public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
@@ -76,19 +78,32 @@ public abstract class IM_EventSetCalc_v3_0 implements IM_EventSetCalc_v3_0_API {
 		for (int i=0; i<sites.size(); i++) {
 			Site site = sites.get(i);
 			ArrayList<SiteDataValue<?>> dataVals = calc.getUserSiteDataValues(i);
+			HashSet<String> userTypes = new HashSet<>();
 			if (dataVals == null) {
 				logger.log(Level.FINE, "No user site data for site "+i);
 				dataVals = new ArrayList<SiteDataValue<?>>();
 			} else {
-				for (SiteDataValue<?> dataVal : dataVals)
+				for (SiteDataValue<?> dataVal : dataVals) {
+					userTypes.add(dataVal.getDataType());;
 					logger.log(Level.FINE, "User data value for site "+i+": "+dataVal);
+				}
 			}
 			if (providers != null) {
-				ArrayList<SiteDataValue<?>> provData = providers.getAllAvailableData(site.getLocation());
-				if (provData != null) {
-					for (SiteDataValue<?> dataVal : provData)
-						logger.log(Level.FINE, "Provider data value for site "+i+": "+dataVal);
-					dataVals.addAll(provData);
+				boolean hasNewType = false;
+				for (SiteData<?> provider : providers) {
+					if (!userTypes.contains(provider.getDataType())) {
+						hasNewType = true;
+						break;
+					}
+				}
+				if (hasNewType) {
+					// only fetch site data if it's actually needed
+					ArrayList<SiteDataValue<?>> provData = providers.getAllAvailableData(site.getLocation());
+					if (provData != null) {
+						for (SiteDataValue<?> dataVal : provData)
+							logger.log(Level.FINE, "Provider data value for site "+i+": "+dataVal);
+						dataVals.addAll(provData);
+					}
 				}
 			}
 			sitesData.add(dataVals);
