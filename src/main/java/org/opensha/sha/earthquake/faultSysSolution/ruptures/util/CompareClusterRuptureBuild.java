@@ -123,12 +123,21 @@ public class CompareClusterRuptureBuild {
 			
 			System.out.println("Building UCERF3 original plausibility filters...");
 			UCERF3PlausibilityConfig u3Config = UCERF3PlausibilityConfig.getDefault();
-			Map<IDPairing, Double> distances = new HashMap<>(distAzCalc.getCachedDistances());
-			Map<IDPairing, Double> azimuths = new HashMap<>(distAzCalc.getCachedAzimuths());
-			for (IDPairing pair : new ArrayList<>(distances.keySet())) {
-				distances.put(pair.getReversed(), distances.get(pair));
-				azimuths.put(pair, distAzCalc.getAzimuth(pair.getID1(), pair.getID2()));
-				azimuths.put(pair.getReversed(), distAzCalc.getAzimuth(pair.getID2(), pair.getID1()));
+//			Map<IDPairing, Double> distances = new HashMap<>(distAzCalc.getCachedDistances());
+//			Map<IDPairing, Double> azimuths = new HashMap<>(distAzCalc.getCachedAzimuths());
+			Map<IDPairing, Double> distances = new HashMap<>();
+			Map<IDPairing, Double> azimuths = new HashMap<>();
+			for (int id1=0; id1<subSects.size(); id1++) {
+				for (int id2=0; id2<subSects.size(); id2++) {
+					if (distAzCalc.isDistanceCached(id1, id2)) {
+						IDPairing pair = new IDPairing(id1, id2);
+						double dist = distAzCalc.getDistance(id1, id2);
+						distances.put(pair, dist);
+						distances.put(pair.getReversed(), dist);
+						azimuths.put(pair, distAzCalc.getAzimuth(id1, id2));
+						azimuths.put(pair.getReversed(), distAzCalc.getAzimuth(id2, id1));
+					}
+				}
 			}
 			for (int i=1; i<subSects.size(); i++) {
 				azimuths.put(new IDPairing(i-1, i), distAzCalc.getAzimuth(i-1, i));

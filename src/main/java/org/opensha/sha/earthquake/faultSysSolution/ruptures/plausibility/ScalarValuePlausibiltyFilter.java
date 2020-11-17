@@ -23,14 +23,6 @@ public interface ScalarValuePlausibiltyFilter<E extends Number & Comparable<E>> 
 	public E getValue(ClusterRupture rupture);
 	
 	/**
-	 * @param rupture
-	 * @param newJump
-	 * @return scalar value for the new jump, assuming that existing rupture already passes
-	 * or failed with FAIL_CAN_CONTINUE
-	 */
-	public E getValue(ClusterRupture rupture, Jump newJump);
-	
-	/**
 	 * @return acceptable range of values, or null if rules are more complex
 	 */
 	public Range<E> getAcceptableRange();

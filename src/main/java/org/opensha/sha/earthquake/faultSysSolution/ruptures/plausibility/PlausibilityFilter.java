@@ -25,16 +25,6 @@ public interface PlausibilityFilter extends ShortNamed {
 	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose);
 	
 	/**
-	 * Apply the plausibility filter to the given jump, assuming that existing rupture already passes
-	 * or failed with FAIL_CAN_CONTINUE
-	 * @param rupture
-	 * @param newJump
-	 * @param verbose
-	 * @return
-	 */
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose);
-	
-	/**
 	 * This allows filters to declare that they are directional, i.e., they might fail for a rupture
 	 * presented in one direction but pass for an inversion of that rupture. In that case, evaluation
 	 * of an existing set of ruptures with this filter should wrap it in the

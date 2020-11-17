@@ -9,6 +9,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FilterDataClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
@@ -62,13 +63,29 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		int numNeeded = 1;
 		if (fractPassThreshold > 0f)
 			numNeeded = Integer.max(1, (int)Math.ceil(fractPassThreshold*numPaths));
+		HashSet<FaultSubsectionCluster> skipClusters = null;
+		if (rupture instanceof FilterDataClusterRupture) {
+			FilterDataClusterRupture fdRupture = (FilterDataClusterRupture)rupture;
+			Object filterData = fdRupture.getFilterData(this);
+			if (filterData != null && filterData instanceof HashSet<?>)
+				skipClusters = new HashSet<>((HashSet<FaultSubsectionCluster>)filterData); 
+			else
+				skipClusters = new HashSet<>();
+			fdRupture.addFilterData(this, skipClusters);
+		}
 		for (FaultSubsectionCluster nucleationCluster : clusters) {
+			if (skipClusters != null && skipClusters.contains(nucleationCluster))
+				// we can skip this one because it already failed in a subset of this rupture so it will
+				// never pass here
+				continue;
 			float val = testNucleationPoint(navigator, nucleationCluster, !verbose, verbose);
 			if (verbose)
 				System.out.println(getShortName()+": Nucleation point "+nucleationCluster
 						+", val="+val+", result: "+(val >= threshold));
 			if (val >= threshold)
 				numPasses++;
+			else if (skipClusters != null)
+				skipClusters.add(nucleationCluster);
 			if (!verbose && numPasses >= numNeeded)
 				return PlausibilityResult.PASS;
 		}
@@ -77,11 +94,6 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		if (numPasses >= numNeeded)
 			return PlausibilityResult.PASS;
 		return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
-	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		return apply(rupture.take(newJump), verbose);
 	}
 
 	@Override
@@ -106,11 +118,6 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		for (Float val : vals)
 			max = Float.max(val, max);
 		return max;
-	}
-
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		return getValue(rupture.take(newJump));
 	}
 	
 	private float testNucleationPoint(RuptureTreeNavigator navigator,

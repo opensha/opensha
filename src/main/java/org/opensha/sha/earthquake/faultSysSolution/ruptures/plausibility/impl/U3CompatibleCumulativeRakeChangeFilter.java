@@ -51,11 +51,6 @@ public class U3CompatibleCumulativeRakeChangeFilter implements ScalarValuePlausi
 			System.out.println(getShortName()+": failing with tot="+tot);
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		return apply(rupture.take(newJump), verbose);
-	}
 	
 	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, FaultSection stopAt,
 			double tot, boolean verbose, boolean shortCircuit) {
@@ -102,11 +97,6 @@ public class U3CompatibleCumulativeRakeChangeFilter implements ScalarValuePlausi
 		}
 		FaultSection stopAt = rupture.clusters[rupture.clusters.length-1].startSect;
 		return calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, stopAt, 0d, false, false);
-	}
-
-	@Override
-	public Double getValue(ClusterRupture rupture, Jump newJump) {
-		return getValue(rupture.take(newJump));
 	}
 
 	@Override

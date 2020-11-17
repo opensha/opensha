@@ -43,37 +43,6 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 			System.out.println(getShortName()+": failing with tot="+tot);
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		if (rupture.getTotalNumSects() < 2) {
-			// need at least 2 sections on the first cluster
-			if (verbose)
-				System.out.println(getShortName()+": failing with <2 sects on first cluster");
-			return PlausibilityResult.FAIL_HARD_STOP;
-		}
-		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
-		double tot = calc(navigator, rupture.clusters[0].startSect, null, null, verbose);
-		if ((float)tot <= threshold || verbose) {
-			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
-			subSects.add(navigator.getPredecessor(newJump.fromSection));
-			subSects.add(newJump.fromSection);
-			subSects.addAll(newJump.toCluster.subSects);
-			for (int i=0; i<subSects.size()-2; i++) {
-				tot += doCalc(subSects.get(i), subSects.get(i+1), subSects.get(i+2), verbose);
-				if ((float)tot > threshold && !verbose)
-					return PlausibilityResult.FAIL_HARD_STOP;
-			}
-		}
-		if ((float)tot <= threshold) {
-			if (verbose)
-				System.out.println(getShortName()+".testJump: passing with tot="+tot);
-			return PlausibilityResult.PASS;
-		}
-		if (verbose)
-			System.out.println(getShortName()+".testJump: failing with tot="+tot);
-		return PlausibilityResult.FAIL_HARD_STOP;
-	}
 	
 	private double calc(RuptureTreeNavigator navigator, FaultSection sect1, FaultSection sect2,
 			FaultSection sect3, boolean verbose) {
@@ -136,11 +105,6 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 		}
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
 		return (float)calc(navigator, rupture.clusters[0].startSect, null, null, false);
-	}
-
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		return (getValue(rupture.take(newJump)));
 	}
 
 	@Override

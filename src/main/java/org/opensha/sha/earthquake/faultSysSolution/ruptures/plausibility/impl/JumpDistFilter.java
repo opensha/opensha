@@ -51,11 +51,6 @@ public class JumpDistFilter extends JumpPlausibilityFilter implements ScalarValu
 	}
 
 	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		return (float)newJump.distance;
-	}
-
-	@Override
 	public Range<Float> getAcceptableRange() {
 		return Range.atMost((float)maxDist);
 	}

@@ -151,25 +151,6 @@ public class MinSectsPerParentFilter implements PlausibilityFilter {
 	}
 
 	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump jump, boolean verbose) {
-		if (allowIfNoDirect) {
-			// need to test the whole rupture
-			boolean failPossible = jump.toCluster.subSects.size() < minPerParent
-					|| jump.fromCluster.subSects.size() < minPerParent;
-			for (Jump prevJump : rupture.internalJumps)
-				failPossible = failPossible || prevJump.fromCluster.subSects.size() < minPerParent;
-			for (Jump prevJump : rupture.splays.keySet())
-				failPossible = failPossible || prevJump.fromCluster.subSects.size() < minPerParent;
-			if (failPossible)
-				return apply(rupture.take(jump), verbose);
-			return PlausibilityResult.PASS;
-		}
-		if (jump.toCluster.subSects.size() >= minPerParent)
-			return PlausibilityResult.PASS;
-		return PlausibilityResult.FAIL_HARD_STOP;
-	}
-
-	@Override
 	public String getShortName() {
 		return "SectsPerParent";
 	}
