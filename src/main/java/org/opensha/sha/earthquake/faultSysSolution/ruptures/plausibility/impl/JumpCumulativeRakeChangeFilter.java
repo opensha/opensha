@@ -37,23 +37,6 @@ public class JumpCumulativeRakeChangeFilter implements ScalarValuePlausibiltyFil
 			System.out.println(getShortName()+": failing with tot="+tot);
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		double tot = calc(rupture, verbose, !verbose);
-		if (verbose)
-			System.out.println(getShortName()+": orig rup was "+tot+", now testing jump "+newJump);
-		if ((float)tot <= threshold || verbose)
-			tot += calc(newJump, verbose);
-		if ((float)tot <= threshold) {
-			if (verbose)
-				System.out.println(getShortName()+": passing with tot="+tot);
-			return PlausibilityResult.PASS;
-		}
-		if (verbose)
-			System.out.println(getShortName()+": failing with tot="+tot);
-		return PlausibilityResult.FAIL_HARD_STOP;
-	}
 	
 	private double calc(ClusterRupture rupture, boolean verbose, boolean shortCircuit) {
 		double tot = 0d;
@@ -91,11 +74,6 @@ public class JumpCumulativeRakeChangeFilter implements ScalarValuePlausibiltyFil
 	@Override
 	public Float getValue(ClusterRupture rupture) {
 		return (float)calc(rupture, false, false);
-	}
-
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		return getValue(rupture.take(newJump));
 	}
 
 	@Override

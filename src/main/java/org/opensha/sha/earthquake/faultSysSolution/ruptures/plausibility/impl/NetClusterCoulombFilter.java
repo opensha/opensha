@@ -51,16 +51,6 @@ public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter 
 	}
 
 	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		float val = getValue(rupture, newJump);
-		PlausibilityResult result = val < threshold ?
-				PlausibilityResult.FAIL_HARD_STOP : PlausibilityResult.PASS;
-		if (verbose)
-			System.out.println(getShortName()+": val="+val+", result="+result);
-		return result;
-	}
-
-	@Override
 	public String getShortName() {
 		if (threshold == 0f)
 			return "NetClusterCFF≥0";
@@ -94,13 +84,6 @@ public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter 
 		if (rupture.getTotalNumClusters() == 1)
 			return null;
 		return getMinValue(getClusterList(rupture));
-	}
-
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		List<FaultSubsectionCluster> clusterList = getClusterList(rupture);
-		clusterList.add(newJump.toCluster);
-		return getMinValue(clusterList);
 	}
 
 	@Override

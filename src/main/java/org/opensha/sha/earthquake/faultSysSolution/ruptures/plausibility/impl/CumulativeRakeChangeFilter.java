@@ -45,25 +45,6 @@ public class CumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<
 			System.out.println(getShortName()+": failing with tot="+tot);
 		return PlausibilityResult.FAIL_HARD_STOP;
 	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		double tot = calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, verbose, !verbose);
-		if ((float)tot <= threshold || verbose) {
-			List<FaultSection> subSects = new ArrayList<>(newJump.toCluster.subSects.size()+2);
-			subSects.add(newJump.fromSection);
-			subSects.addAll(newJump.toCluster.subSects);
-			tot += calc(subSects, verbose);
-		}
-		if ((float)tot <= threshold) {
-			if (verbose)
-				System.out.println(getShortName()+": passing with tot="+tot);
-			return PlausibilityResult.PASS;
-		}
-		if (verbose)
-			System.out.println(getShortName()+": failing with tot="+tot);
-		return PlausibilityResult.FAIL_HARD_STOP;
-	}
 	
 	private double calc(RuptureTreeNavigator navigator, FaultSection sect1,
 			boolean verbose, boolean shortCircuit) {
@@ -122,11 +103,6 @@ public class CumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<
 	@Override
 	public Float getValue(ClusterRupture rupture) {
 		return (float)calc(rupture.getTreeNavigator(), rupture.clusters[0].startSect, false, false);
-	}
-
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		return getValue(rupture.take(newJump));
 	}
 
 	@Override

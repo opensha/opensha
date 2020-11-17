@@ -10,6 +10,7 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,33 +49,39 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.GapWithinSectFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayCountFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -82,14 +89,18 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.opensha.sha.simulators.utils.RupturePlotGenerator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.inversion.SectionConnectionStrategy;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -108,33 +119,41 @@ public class RupSetDiagnosticsPageGen {
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_sectFractPerm0.1.zip");
 //			String inputName = "15% Sect Fract Increase";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_sectFractPerm0.15.zip");
-			String inputName = "CmlAz, CFF Cluster Path Positive";
-			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
-//			String inputName = "CmlAz, CFF Cluster Half Paths Positive";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterHalfPathsPositive.zip");
-//			String inputName = "CmlAz, CFF Cluster Path & Net Positive";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_cffClusterNetPositive.zip");
-//			String inputName = "CmlAz, CFF Cluster Positive";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPositive.zip");
-//			String inputName = "CmlAz, CFF Cluster Net Positive";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterNetPositive.zip");
-//			String inputName = "CmlAz, CFF Rup Net Positive";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffRupNetPositive.zip");
-//			String inputName = "CFF Parent Positive, Connections Only Test";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cffParentPositive_connOnly.zip");
-//			String inputName = "CmlAz, CFF Parent Positive";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffParentPositive.zip");
-//			String inputName = "RSQSim 4983, SectArea=0.5";
-//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+//			String inputName = "CmlAz, CFF Cluster Path Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
+//			String inputName = "UCERF3, 10% Sect Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3_sectFractPerm0.1.zip");
+//			String inputName = "10km Jump Dist";
+//			File inputFile = new File(rupSetsDir, "fm3_1_10km_cmlAz_cffClusterPathPositive.zip");
+//			float probThresh = 0.005f;
+//			String inputName = "Cumulative W&B 16-17 P>"+probThresh;
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlProb"+probThresh+"-BW16-17_cffClusterPathPositive.zip");
+//			String inputName = "10km, Cumulative W&B 16-17 P>0.005";
+//			File inputFile = new File(rupSetsDir, "fm3_1_10km_cmlProb0.005-BW16-17_cffClusterPathPositive.zip");
+			
+//			String inputName = "Penalty5: Az60, Jump 1, Rake45";
+////			File inputFile = new File(rupSetsDir, "fm3_1_cmlPen5_az60_jump0.1km_rake45_cffClusterPathPositive.zip");
+//			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3_cmlPen5_jump1km_rake45.zip");
+			
+			String inputName = "RSQSim 4983, SectArea=0.5";
+			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+			
+//			String inputName = "UCERF3";
+//			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+			
 			String compName = "UCERF3";
 			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+//			String compName = null;
+//			File compareFile = null;
 //			String compName = "CmlAz, CFF Cluster Path Positive";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
 //			String compName = "CmlAz Only";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 //			String compName = "CmlAz, CFF Cluster Positive";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPositive.zip");
-			File altPlausibilityCompareFile = new File(rupSetsDir, "new_coulomb_filters.json");
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "new_coulomb_filters.json");
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "new_cumulative_prob_filters.json");
+			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
 //			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
@@ -270,8 +289,8 @@ public class RupSetDiagnosticsPageGen {
 			distAzCalc = inputConfig.getDistAzCalc();
 		if (distAzCache != null && distAzCache.exists())
 			distAzCalc.loadCacheFile(distAzCache);
-		int numAzCached = distAzCalc.getCachedAzimuths().size();
-		int numDistCached = distAzCalc.getCachedDistances().size();
+		int numAzCached = distAzCalc.getNumCachedAzimuths();
+		int numDistCached = distAzCalc.getNumCachedDistances();
 		
 		if (inputConfig == null) {
 			// see if it's UCERF3
@@ -457,22 +476,95 @@ public class RupSetDiagnosticsPageGen {
 		
 		lines.add("## Rupture Size Histograms");
 		lines.add(topLink); lines.add("");
-		
-		TableBuilder table = MarkdownUtils.tableBuilder();
-		if (compRupSet != null)
-			table.addLine(inputName, compName);
-		
-		plotRuptureHistograms(resourcesDir, "len_hist", table, inputRupSet, inputSol, inputRups,
-				inputUniques, compRupSet, compSol, compRups, compUniques, HistScalar.LENGTH);
-		plotRuptureHistograms(resourcesDir, "mag_hist", table, inputRupSet, inputSol, inputRups,
-				inputUniques, compRupSet, compSol, compRups, compUniques, HistScalar.MAG);
-		plotRuptureHistograms(resourcesDir, "sect_hist", table, inputRupSet, null, inputRups,
-				inputUniques, compRupSet, null, compRups, compUniques, HistScalar.SECT_COUNT);
-		plotRuptureHistograms(resourcesDir, "cluster_hist", table, inputRupSet, null, inputRups,
-				inputUniques, compRupSet, null, compRups, compUniques, HistScalar.CLUSTER_COUNT);
-		
-		lines.addAll(table.build());
-		lines.add("");
+
+		List<Integer> inputIndexes = new ArrayList<>();
+		for (int i=0; i<inputRups.size(); i++)
+			inputIndexes.add(i);
+		File rupHtmlDir = new File(resourcesDir.getParentFile(), "hist_rup_pages");
+		Preconditions.checkState(rupHtmlDir.exists() || rupHtmlDir.mkdir());
+		List<HistScalarValues> inputScalarVals = new ArrayList<>();
+		List<HistScalarValues> compScalarVals = compRups == null ? null : new ArrayList<>();
+		for (HistScalar scalar : HistScalar.values()) {
+			lines.add("### "+scalar.name);
+			lines.add(topLink); lines.add("");
+			lines.add(scalar.description);
+			lines.add("");
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			HistScalarValues inputScalars = new HistScalarValues(scalar, inputRupSet, inputSol,
+					inputRups, distAzCalc);
+			inputScalarVals.add(inputScalars);
+			HistScalarValues compScalars = null;
+			if (compRupSet != null) {
+				table.addLine(inputName, compName);
+				compScalars = new HistScalarValues(scalar, compRupSet, compSol,
+						compRups, distAzCalc);
+				compScalarVals.add(compScalars);
+			}
+			plotRuptureHistograms(resourcesDir, "hist_"+scalar.name(), table, inputScalars,
+					inputUniques, compScalars, compUniques);
+			
+			lines.addAll(table.build());
+			lines.add("");
+			
+			double[] fractiles = scalar.getExampleRupPlotFractiles();
+			if (fractiles == null)
+				continue;
+			
+			int[] fractileIndexes = new int[fractiles.length];
+			for (int i=0; i<fractiles.length; i++) {
+				double f = fractiles[i];
+				if (f == 1d)
+					fractileIndexes[i] = inputRups.size()-1;
+				else
+					fractileIndexes[i] = (int)(f*inputRups.size());
+			}
+			
+			lines.add("");
+			lines.add("#### "+scalar.name+" Extremes & Examples");
+			lines.add(topLink); lines.add("");
+			lines.add("Example "+inputName+" ruptures at varios percentiles of "+scalar.name);
+			lines.add("");
+			
+			List<Double> vals = new ArrayList<>();
+			for (int index=0; index<inputRups.size(); index++)
+				vals.add(scalar.getValue(index, inputRupSet, inputRups.get(index), distAzCalc));
+			List<Integer> sortedIndexes = ComparablePairing.getSortedData(vals, inputIndexes);
+			
+			table = MarkdownUtils.tableBuilder();
+			table.initNewLine();
+			for (int i=0; i<fractiles.length; i++) {
+				int index = sortedIndexes.get(fractileIndexes[i]);
+				double val = vals.get(index);
+				double f = fractiles[i];
+				String str;
+				if (f == 0d)
+					str = "Minimum";
+				else if (f == 1d)
+					str = "Maximum";
+				else
+					str = "p"+new DecimalFormat("0.#").format(f*100d);
+				str += ": ";
+				if (val < 0.1)
+					str += (float)val;
+				else
+					str += new DecimalFormat("0.##").format(val);
+				table.addColumn("**"+str+"**");
+			}
+			table.finalizeLine();
+			table.initNewLine();
+			for (int rawIndex : fractileIndexes) {
+				int index = sortedIndexes.get(rawIndex);
+				String rupPrefix = "hist_rup_"+index;
+				RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, inputRups.get(index),
+						"Rupture "+index, false, true);
+				table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
+						"("+ generateRuptureInfoPage(inputRupSet, inputRups.get(index),
+								index, rupHtmlDir, rupPrefix, null, distAzCalc)+ ")");
+			}
+			
+			lines.addAll(table.wrap(4, 0).build());
+			lines.add("");
+		}
 		
 //		System.gc();
 //		try {
@@ -508,8 +600,13 @@ public class RupSetDiagnosticsPageGen {
 				lines.add("");
 				lines.addAll(getRupSetPlausibilityTable(result).build());
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityDetailLines(result, false, inputRupSet,
-						inputRups, 15, resourcesDir, "### "+compName, topLink, inputSearch));
+				lines.add("**Magnitude-filtered comparisons**");
+				lines.add("");
+				lines.addAll(getMagPlausibilityTable(inputRupSet, result, resourcesDir,
+						"comp_filter_mag_comp").wrap(2, 0).build());
+				lines.add("");
+				lines.addAll(getRupSetPlausibilityDetailLines(result, false, inputRupSet, inputRups, 15,
+						resourcesDir, "### "+compName, topLink, inputSearch, inputScalarVals));
 				lines.add("");
 			}
 			
@@ -532,8 +629,13 @@ public class RupSetDiagnosticsPageGen {
 				lines.add("");
 				lines.addAll(getRupSetPlausibilityTable(result).build());
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityDetailLines(result, true, compRupSet,
-						compRups, 15, resourcesDir, "### "+compName+" against", topLink, compSearch));
+				lines.add("**Magnitude-filtered comparisons**");
+				lines.add("");
+				lines.addAll(getMagPlausibilityTable(compRupSet, result, resourcesDir,
+						"main_filter_mag_comp").wrap(2, 0).build());
+				lines.add("");
+				lines.addAll(getRupSetPlausibilityDetailLines(result, true, compRupSet, compRups, 15,
+						resourcesDir, "### "+compName+" against", topLink, compSearch, compScalarVals));
 				lines.add("");
 			}
 			
@@ -560,8 +662,13 @@ public class RupSetDiagnosticsPageGen {
 				lines.add("");
 				lines.addAll(getRupSetPlausibilityTable(result).build());
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityDetailLines(result, false, inputRupSet,
-						inputRups, 15, resourcesDir, "### Alternative", topLink, inputSearch));
+				lines.add("**Magnitude-filtered comparisons**");
+				lines.add("");
+				lines.addAll(getMagPlausibilityTable(inputRupSet, result, resourcesDir,
+						"alt_filter_mag_comp").wrap(2, 0).build());
+				lines.add("");
+				lines.addAll(getRupSetPlausibilityDetailLines(result, false, inputRupSet, inputRups, 15,
+						resourcesDir, "### Alternative", topLink, inputSearch, inputScalarVals));
 				lines.add("");
 			}
 		}
@@ -651,7 +758,7 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("### Jump Overlaps");
 			lines.add(topLink); lines.add("");
 			
-			table = MarkdownUtils.tableBuilder();
+			TableBuilder table = MarkdownUtils.tableBuilder();
 			table.addLine("", inputName, compName);
 			table.addLine("**Total Count**", inputJumps.size(), compJumps.size());
 			table.initNewLine();
@@ -687,7 +794,7 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("");
 		}
 		
-		table = MarkdownUtils.tableBuilder();
+		TableBuilder table = MarkdownUtils.tableBuilder();
 		if (compRups != null)
 			table.addLine(inputName, compName);
 		File mainPlot = new File(resourcesDir, "sect_connectivity.png");
@@ -736,6 +843,61 @@ public class RupSetDiagnosticsPageGen {
 				lines.add("*N/A*");
 			else
 				lines.addAll(table.build());
+			lines.add("");
+		}
+		
+		// now plot section maximum mag/connected lengths
+		
+		lines.add("## Subsection Maximum Values");
+		lines.add(topLink); lines.add("");
+		lines.add("These plots show the maximum value of various quantities across all ruptures for which "
+				+ "each individual subsection participates. This is useful, for example, to find sections "
+				+ "with low maximum magnitudes (due to low or no connectivity).");
+		lines.add("");
+		for (int i=0; i<inputScalarVals.size(); i++) {
+			HistScalarValues inputScalars = inputScalarVals.get(i);
+			HistScalarValues compScalars = compScalarVals == null ? null : compScalarVals.get(i);
+			HistScalar scalar = inputScalars.scalar;
+			if (!(scalar == HistScalar.MAG) && !(scalar == HistScalar.LENGTH)
+					&& !(scalar == HistScalar.CLUSTER_COUNT))
+				continue;
+			lines.add("### Subsection Maximum "+scalar.name);
+			lines.add(topLink); lines.add("");
+			table = MarkdownUtils.tableBuilder();
+			if (compRups != null)
+				table.addLine(inputName, compName);
+			String prefix = "sect_max_"+scalar.name();
+			if (!plotScalarMaxMapView(inputRupSet, resourcesDir, prefix, inputName,
+					inputScalars, compScalars, region, MAIN_COLOR, false, false))
+				continue;
+			table.initNewLine();
+			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+".png)");
+			if (compScalars != null) {
+				plotScalarMaxMapView(compRupSet, resourcesDir, prefix+"_comp", compName,
+						compScalarVals.get(i), inputScalars, region, COMP_COLOR, false, false);
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp.png)");
+			}
+			table.finalizeLine().initNewLine();
+			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_hist.png)");
+			if (compScalarVals != null) {
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp_hist.png)");
+			}
+			table.finalizeLine();
+			if (compRups != null) {
+				table.addLine("**Difference**", "**Ratio**");
+				table.initNewLine();
+				plotScalarMaxMapView(inputRupSet, resourcesDir, prefix+"_diff", "Difference",
+						inputScalars, compScalars, region, MAIN_COLOR, true, false);
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff.png)");
+				plotScalarMaxMapView(inputRupSet, resourcesDir, prefix+"_ratio", "Ratio",
+						inputScalars, compScalars, region, MAIN_COLOR, false, true);
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio.png)");
+				table.finalizeLine().initNewLine();
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff_hist.png)");
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio_hist.png)");
+				table.finalizeLine();
+			}
+			lines.addAll(table.build());
 			lines.add("");
 		}
 		
@@ -836,6 +998,107 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("");
 		}
 		
+		lines.add("## Biasi & Wesnousky (2016,2017) Comparisons");
+		lines.add(topLink); lines.add("");
+		
+		lines.add("### Jump Distance Comparisons");
+		lines.add(topLink); lines.add("");
+		String line = "These plots express the chances of taking an available jump of a given distance "
+				+ "between two faults of the same type (SS, Normal, Reverse). Passing ratios give the "
+				+ "ratio of times a jump was taken to the number of times a rupture ended without taking "
+				+ "an available jump of that distance.";
+		if (inputSol == null)
+			line += " NOTE: Only as-discretized rates are included, as we don't have a fault system solution.";
+		else
+			line += " Both as-discretized and rate-weighted probabilities are plotted (in separate plots).";
+		lines.add(line);
+		lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		ClusterConnectionStrategy connStrat;
+		if (inputConfig == null)
+			connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+					subSects, distAzCalc, 10d);
+		else
+			connStrat = inputConfig.getConnectionStrategy();
+		System.out.println("Plotting Biasi & Wesnousky (2016) jump distance comparisons");
+		for (RakeType type : RakeType.values()) {
+			table.addLine("**"+type.name+" Passing Ratio**", "**"+type.name+" Probability**");
+			File[] plots = plotBiasiWesnouskyJumpDistComparison(resourcesDir,
+					"bw_jump_dist_"+type.prefix+"_discr", type.name, inputRups, connStrat,
+					inputSearch, null, type);
+			table.addLine("![Passing Ratio](resources/"+plots[0].getName()+")",
+					"![Probability](resources/"+plots[1].getName()+")");
+			if (inputSol != null) {
+				plots = plotBiasiWesnouskyJumpDistComparison(resourcesDir,
+						"bw_jump_dist_"+type.prefix, type.name, inputRups, connStrat,
+						inputSearch, inputSol, type);
+				table.addLine("![Passing Ratio](resources/"+plots[0].getName()+")",
+						"![Probability](resources/"+plots[1].getName()+")");
+			}
+		}
+		lines.addAll(table.build());
+		
+		lines.add("### Jump Azimuth Change Comparisons");
+		lines.add(topLink); lines.add("");
+		line = "These plots express the chances of taking an available jump of a given azimuth change "
+				+ "between two faults of the same type (SS, Normal, Reverse). Passing ratios give the "
+				+ "ratio of times a jump was taken to the number of times a rupture ended without taking "
+				+ "an available jump of that azimuth change.";
+		if (inputSol == null)
+			line += " NOTE: Only as-discretized rates are included, as we don't have a fault system solution.";
+		else
+			line += " Both as-discretized and rate-weighted probabilities are plotted (in separate plots).";
+		lines.add(line);
+		lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		System.out.println("Plotting Biasi & Wesnousky (2017) azimuth change comparisons");
+		for (RakeType type : RakeType.values()) {
+			table.addLine("**"+type.name+" Passing Ratio**", "**"+type.name+" Probability**");
+			File[] plots = plotBiasiWesnouskyJumpAzComparison(resourcesDir,
+					"bw_jump_az_"+type.prefix+"_discr", type.name, inputRups, connStrat,
+					inputSearch, null, type);
+			table.addLine("![Passing Ratio](resources/"+plots[0].getName()+")",
+					"![Probability](resources/"+plots[1].getName()+")");
+			if (inputSol != null) {
+				plots = plotBiasiWesnouskyJumpAzComparison(resourcesDir,
+						"bw_jump_az_"+type.prefix, type.name, inputRups, connStrat,
+						inputSearch, inputSol, type);
+				table.addLine("![Passing Ratio](resources/"+plots[0].getName()+")",
+						"![Probability](resources/"+plots[1].getName()+")");
+			}
+		}
+		lines.addAll(table.build());
+		
+		lines.add("### Mechanism Change Comparisons");
+		lines.add(topLink); lines.add("");
+		line = "These plots express the probability of a rupture changing mechanism (e.g., strike-slip to "
+				+ "reverse, or right-lateral to left-lateral) at least once, as a function of magnitude.";
+		if (inputSol == null)
+			line += " NOTE: Only as-discretized rates are included, as we don't have a fault system solution.";
+		else
+			line += " Both as-discretized and rate-weighted probabilities are plotted (in separate plots).";
+		lines.add(line);
+		lines.add("");
+		table = MarkdownUtils.tableBuilder();
+		if (inputSol != null)
+			table.addLine("As Discretized", "Rate-Weighted");
+		table.initNewLine();
+		System.out.println("Plotting Biasi & Wesnousky (2017) mechanism change comparisons");
+		File plot = plotBiasiWesnouskyMechChangeComparison(resourcesDir,
+				"bw_mech_change_discr", "Mechanism Change Probability", inputRups, connStrat,
+				inputSearch, inputRupSet, null);
+		table.addColumn("![As Discretized](resources/"+plot.getName()+")");
+		if (inputSol != null) {
+			plot = plotBiasiWesnouskyMechChangeComparison(resourcesDir,
+					"bw_mech_change", "Mechanism Change Probability", inputRups, connStrat,
+					inputSearch, inputRupSet, inputSol);
+			table.addColumn("![Rate-Weighted](resources/"+plot.getName()+")");
+		}
+		table.finalizeLine();
+		lines.addAll(table.build());
+		
+		System.out.println("DONE building, writing markdown and HTML");
+		
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2));
 		lines.add(tocIndex, "## Table Of Contents");
@@ -843,8 +1106,8 @@ public class RupSetDiagnosticsPageGen {
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 		
-		if (distAzCache != null && (numAzCached < distAzCalc.getCachedAzimuths().size()
-				|| numDistCached < distAzCalc.getCachedDistances().size())) {
+		if (distAzCache != null && (numAzCached < distAzCalc.getNumCachedAzimuths()
+				|| numDistCached < distAzCalc.getNumCachedDistances())) {
 			System.out.println("Writing dist/az cache to "+distAzCache.getAbsolutePath());
 			distAzCalc.writeCacheFile(distAzCache);
 		}
@@ -1083,37 +1346,37 @@ public class RupSetDiagnosticsPageGen {
 	}
 	
 	public static void plotRuptureHistograms(File outputDir, String prefix, TableBuilder table,
-			FaultSystemRupSet inputRupSet, FaultSystemSolution inputSol, List<ClusterRupture> inputRups,
-			HashSet<UniqueRupture> inputUniques, FaultSystemRupSet compRupSet,
-			FaultSystemSolution compSol, List<ClusterRupture> compRups, HashSet<UniqueRupture> compUniques,
-			HistScalar scalar) throws IOException {
-		File main = plotRuptureHistogram(outputDir, prefix, inputRupSet, null,
-				compRupSet, compSol, compUniques, MAIN_COLOR, scalar, false);
+			HistScalarValues inputScalars, HashSet<UniqueRupture> inputUniques, HistScalarValues compScalars,
+			HashSet<UniqueRupture> compUniques) throws IOException {
+		File main = plotRuptureHistogram(outputDir, prefix, inputScalars, compScalars, compUniques,
+				MAIN_COLOR, false, false);
+		// normal as-discretized hists
 		table.initNewLine();
 		table.addColumn("![hist]("+outputDir.getName()+"/"+main.getName()+")");
-		if (compRupSet != null) {
-			File comp = plotRuptureHistogram(outputDir, prefix+"_comp", compRupSet, null,
-					inputRupSet, inputSol, inputUniques, COMP_COLOR, scalar, false);
+		if (compScalars != null) {
+			File comp = plotRuptureHistogram(outputDir, prefix+"_comp", compScalars,
+					inputScalars, inputUniques, COMP_COLOR, false, false);
 			table.addColumn("![hist]("+outputDir.getName()+"/"+comp.getName()+")");
 		}
 		table.finalizeLine();
-		if (inputSol != null || compSol != null) {
+		boolean hasCompSol = compScalars != null && compScalars.sol != null;
+		if (inputScalars.sol != null || hasCompSol) {
+			// rate-weighted hists
 			for (boolean logY : new boolean[] {false, true}) {
 				table.initNewLine();
 				
 				String logAdd = logY ? "_log" : "";
-				if (inputSol != null) {
-					main = plotRuptureHistogram(outputDir, prefix+"_rates"+logAdd, inputRupSet, inputSol,
-							compSol == null ? null : compRupSet, compSol, compUniques, MAIN_COLOR,
-									scalar, logY);
+				if (inputScalars.sol != null) {
+					main = plotRuptureHistogram(outputDir, prefix+"_rates"+logAdd, inputScalars,
+							hasCompSol ? compScalars : null, compUniques, MAIN_COLOR, logY, true);
 					table.addColumn("![hist]("+outputDir.getName()+"/"+main.getName()+")");
 				} else {
 					table.addColumn("*N/A*");
 				}
-				if (compSol != null) {
-					File comp = plotRuptureHistogram(outputDir, prefix+"_comp_rates"+logAdd, compRupSet,
-							compSol, inputSol == null ? null : inputRupSet, inputSol, inputUniques,
-									COMP_COLOR, scalar, logY);
+				if (hasCompSol) {
+					File comp = plotRuptureHistogram(outputDir, prefix+"_comp_rates"+logAdd, compScalars,
+							inputScalars.sol == null ? null : inputScalars, inputUniques,
+									COMP_COLOR, logY, true);
 					table.addColumn("![hist]("+outputDir.getName()+"/"+comp.getName()+")");
 				} else {
 					table.addColumn("*N/A*");
@@ -1122,22 +1385,47 @@ public class RupSetDiagnosticsPageGen {
 				table.finalizeLine();
 			}
 		}
+		
+		// now cumulatives
+		table.initNewLine();
+		main = plotRuptureCumulatives(outputDir, prefix+"_cumulative", inputScalars, compScalars, compUniques,
+				MAIN_COLOR, false);
+		table.addColumn("![hist]("+outputDir.getName()+"/"+main.getName()+")");
+		if (compScalars != null) {
+			File comp = plotRuptureCumulatives(outputDir, prefix+"_cumulative_comp", compScalars,
+					inputScalars, inputUniques, COMP_COLOR, false);
+			table.addColumn("![hist]("+outputDir.getName()+"/"+comp.getName()+")");
+		}
+		table.finalizeLine();
 	}
 	
+	private static class HistScalarValues {
+		private final HistScalar scalar;
+		private final FaultSystemRupSet rupSet;
+		private final FaultSystemSolution sol;
+		private final List<ClusterRupture> rups;
+		private final List<Double> values;
+		
+		public HistScalarValues(HistScalar scalar, FaultSystemRupSet rupSet, FaultSystemSolution sol,
+				List<ClusterRupture> rups, SectionDistanceAzimuthCalculator distAzCalc) {
+			super();
+			this.scalar = scalar;
+			this.rupSet = rupSet;
+			this.sol = sol;
+			this.rups = rups;
+			
+			values = new ArrayList<>();
+			System.out.println("Calculating "+scalar.name+" for "+rups.size()+" ruptures");
+			for (int r=0; r<rups.size(); r++)
+				values.add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+		}
+	}
+	
+	private static double[] example_fractiles_default =  { 0d, 0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 1d };
+	
 	private enum HistScalar {
-		MAG("Rupture Magnitude", "Magnitude") {
-			@Override
-			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
-				return HistogramFunction.getEncompassingHistogram(Math.floor(scalarTrack.getMin()),
-						Math.ceil(scalarTrack.getMax()), 0.1d);
-			}
-
-			@Override
-			public double getValue(int index, FaultSystemRupSet rupSet, List<ClusterRupture> rups) {
-				return rupSet.getMagForRup(index);
-			}
-		},
-		LENGTH("Rupture Length", "Length (km)") {
+		LENGTH("Rupture Length", "Length (km)",
+				"Total length (km) of the rupture, not including jumps or gaps.") {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
 				HistogramFunction hist;
@@ -1151,126 +1439,339 @@ public class RupSetDiagnosticsPageGen {
 			}
 
 			@Override
-			public double getValue(int index, FaultSystemRupSet rupSet, List<ClusterRupture> rups) {
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
 				return getLength(rupSet, index);
 			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
 		},
-		SECT_COUNT("Subsection Count", "# Subsections") {
+		MAG("Rupture Magnitude", "Magnitude", "Magnitude of the rupture.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				return HistogramFunction.getEncompassingHistogram(Math.floor(scalarTrack.getMin()),
+						Math.ceil(scalarTrack.getMax())-0.1, 0.1d);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				return rupSet.getMagForRup(index);
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		SECT_COUNT("Subsection Count", "# Subsections", "Total number of subsections involved in a rupture.") {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
 				return new HistogramFunction(1, (int)Math.max(10, scalarTrack.getMax()), 1d);
 			}
 
 			@Override
-			public double getValue(int index, FaultSystemRupSet rupSet, List<ClusterRupture> rups) {
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
 				return rupSet.getSectionsIndicesForRup(index).size();
 			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
 		},
-		CLUSTER_COUNT("Cluster Count", "# Clusters") {
+		CLUSTER_COUNT("Cluster Count", "# Clusters",
+				"Total number of clusters (of contiguous subsections on the same parent fault section) "
+				+ "a rupture.") {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
 				return new HistogramFunction(1, (int)Math.max(2, scalarTrack.getMax()), 1d);
 			}
 
 			@Override
-			public double getValue(int index, FaultSystemRupSet rupSet, List<ClusterRupture> rups) {
-				return rups.get(index).getTotalNumClusters();
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				return rup.getTotalNumClusters();
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		AREA("Area", "Area (km^2)", "Total area of the rupture (km^2).") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				HistogramFunction hist = HistogramFunction.getEncompassingHistogram(
+							0d, scalarTrack.getMax(), 100d);
+				return hist;
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				return rupSet.getAreaForRup(index)*1e-6;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		CUM_JUMP_DIST("Cumulative Jump Dist", "Cumulative Jump Distance (km)",
+				"The total cumulative jump distance summed over all jumps in the rupture.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				double delta;
+				if (scalarTrack.getMax() > 20d)
+					delta = 2d;
+				else
+					delta = 1d;
+				return HistogramFunction.getEncompassingHistogram(0d, scalarTrack.getMax(), delta);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				double sum = 0d;
+				for (Jump jump : rup.getJumpsIterable())
+					sum += jump.distance;
+				return sum;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		IDEAL_LEN_RATIO("Ideal Length Ratio", "Ideal Length Ratio",
+				"The ratio between the total length of this rupture and the 'idealized length,' which we "
+				+ "define as the straight line distance between the furthest two subsections.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				return new HistogramFunction(0.25, 10, 0.5);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				double idealLen = calcIdealMinLength(rupSet.getFaultSectionDataForRupture(index), distAzCalc);
+				double len = LENGTH.getValue(index, rupSet, rup, distAzCalc);
+				return len/idealLen;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		RAKE("Rake", "Rake (degrees)",
+				"The area-averaged rake for this rupture.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				return new HistogramFunction(-175, 36, 10d);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				return rupSet.getAveRakeForRup(index);
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return null;
+			}
+		},
+		MECH_CHANGE("Mechanism Change", "# Mechanism Changes",
+				"The number of times a rupture changed mechanisms, e.g., "
+				+ "from right-lateral SS to left-lateral or SS to reverse.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				int num = 1 + (int)scalarTrack.getMax();
+				return new HistogramFunction(0d, num, 1d);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				if (rup.getTotalNumClusters() == 1)
+					return 0;
+				int count = 0;
+				for (Jump jump : rup.getJumpsIterable())
+					if (RakeType.getType(jump.fromSection.getAveRake())
+							!= RakeType.getType(jump.toSection.getAveRake()))
+						count++;
+				return count;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		BW_PROB("Biasi & Wesnousky (2016,2017) Prob", "BS '16-'17 Prob",
+				"Biasi & Wesnousky (2016,2017) conditional probability of passing through each jump.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+//				return HistogramFunction.getEncompassingHistogram(0d, 1d, 0.02);
+				return HistogramFunction.getEncompassingHistogram(-5, 0, 0.1);
+			}
+			
+			public boolean isLogX() {
+				return true;
+			}
+			
+			private CumulativeProbabilityFilter filter = null;
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				synchronized (this) {
+					if (filter == null)
+						filter = new CumulativeProbabilityFilter(1e-10f,
+								CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc));
+				}
+				return filter.getValue(rup).doubleValue();
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return new double[] { 1d, 0.5, 0.1, 0.05, 0.025, 0.01, 0.001, 0 };
 			}
 		};
 		
 		private String name;
 		private String xAxisLabel;
+		private String description;
 
-		private HistScalar(String name, String xAxisLabel) {
+		private HistScalar(String name, String xAxisLabel, String description) {
 			this.name = name;
 			this.xAxisLabel = xAxisLabel;
+			this.description = description;
+		}
+		
+		public boolean isLogX() {
+			return false;
 		}
 		
 		public abstract HistogramFunction getHistogram(MinMaxAveTracker scalarTrack);
 		
-		public abstract double getValue(int index, FaultSystemRupSet rupSet, List<ClusterRupture> rups);
+		public abstract double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+				SectionDistanceAzimuthCalculator distAzCalc);
+		
+		public abstract double[] getExampleRupPlotFractiles();
 	}
 	
 	public static File plotRuptureHistogram(File outputDir, String prefix,
-			FaultSystemRupSet rupSet, FaultSystemSolution sol, FaultSystemRupSet compRupSet,
-			FaultSystemSolution compSol, HashSet<UniqueRupture> compUniques, Color color,
-			HistScalar histScalar, boolean logY) throws IOException {
+			HistScalarValues scalarVals, HistScalarValues compScalarVals, HashSet<UniqueRupture> compUniques, Color color,
+			boolean logY, boolean rateWeighted) throws IOException {
 		List<Integer> includeIndexes = new ArrayList<>();
-		for (int r=0; r<rupSet.getNumRuptures(); r++)
+		for (int r=0; r<scalarVals.rupSet.getNumRuptures(); r++)
 			includeIndexes.add(r);
-		return plotRuptureHistogram(outputDir, prefix, rupSet, sol, includeIndexes,
-				compRupSet, compSol, compUniques, color, histScalar, logY);
+		return plotRuptureHistogram(outputDir, prefix, scalarVals, includeIndexes,
+				compScalarVals, compUniques, color, logY, rateWeighted);
 	}
 	
 	public static File plotRuptureHistogram(File outputDir, String prefix,
-			FaultSystemRupSet rupSet, FaultSystemSolution sol,
-			Collection<Integer> includeIndexes, FaultSystemRupSet compRupSet,
-			FaultSystemSolution compSol, HashSet<UniqueRupture> compUniques, Color color,
-			HistScalar histScalar, boolean logY) throws IOException {
+			HistScalarValues scalarVals, Collection<Integer> includeIndexes, HistScalarValues compScalarVals,
+			HashSet<UniqueRupture> compUniques, Color color, boolean logY, boolean rateWeighted)
+					throws IOException {
 		List<Integer> indexesList = includeIndexes instanceof List<?> ?
 				(List<Integer>)includeIndexes : new ArrayList<>(includeIndexes);
-		List<Double> scalars = new ArrayList<>();
 		MinMaxAveTracker track = new MinMaxAveTracker();
-		List<ClusterRupture> rups = rupSet.getClusterRuptures();
-		for (int r : indexesList) {
-			double scalar = histScalar.getValue(r, rupSet, rups);
-			scalars.add(scalar);
-			track.addValue(scalar);
-		}
-		List<Double> compScalars = new ArrayList<>(); // used only for bounds
-		if (compRupSet != null) {
-			List<ClusterRupture> compRups = compRupSet.getClusterRuptures();
-			for (int r=0; r<compRups.size(); r++) {
-				double scalar = histScalar.getValue(r, compRupSet, compRups);
-				compScalars.add(scalar);
+		for (int r : indexesList)
+			track.addValue(scalarVals.values.get(r)); 
+		if (compScalarVals != null) {
+			// used only for bounds
+			for (double scalar : compScalarVals.values)
 				track.addValue(scalar);
-			}
 		}
+		HistScalar histScalar = scalarVals.scalar;
 		HistogramFunction hist = histScalar.getHistogram(track);
+		boolean logX = histScalar.isLogX();
 		HistogramFunction commonHist = null;
 		if (compUniques != null)
 			commonHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 		HistogramFunction compHist = null;
-		if (compRupSet != null) {
+		if (compScalarVals != null) {
 			compHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
-			for (int i=0; i<compRupSet.getNumRuptures(); i++) {
-				double scalar = compScalars.get(i);
-				double y = compSol == null ? 1 : compSol.getRateForRup(i);
-				compHist.add(compHist.getClosestXIndex(scalar), y);
+			for (int i=0; i<compScalarVals.values.size(); i++) {
+				double scalar = compScalarVals.values.get(i);
+				double y = rateWeighted ? compScalarVals.sol.getRateForRup(i) : 1d;
+				int index;
+				if (logX)
+					index = scalar <= 0 ? 0 : compHist.getClosestXIndex(Math.log10(scalar));
+				else
+					index = compHist.getClosestXIndex(scalar);
+				compHist.add(index, y);
 			}
 		}
 		
 		for (int i=0; i<indexesList.size(); i++) {
 			int rupIndex = indexesList.get(i);
-			double scalar = scalars.get(i);
-			double y = sol == null ? 1 : sol.getRateForRup(rupIndex);
-			hist.add(hist.getClosestXIndex(scalar), y);
-			if (compUniques != null && compUniques.contains(rups.get(rupIndex).unique))
-				commonHist.add(hist.getClosestXIndex(scalar), y);
+			double scalar = scalarVals.values.get(i);
+			double y = rateWeighted ? scalarVals.sol.getRateForRup(rupIndex) : 1;
+			int index;
+			if (logX)
+				index = scalar <= 0 ? 0 : hist.getClosestXIndex(Math.log10(scalar));
+			else
+				index = hist.getClosestXIndex(scalar);
+			hist.add(index, y);
+			if (compUniques != null && compUniques.contains(scalarVals.rups.get(rupIndex).unique))
+				commonHist.add(index, y);
 		}
 		
 		List<DiscretizedFunc> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
-		hist.setName("Unique");
-		funcs.add(hist);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
-		
-		if (commonHist != null) {
-			commonHist.setName("Common To Both");
-			funcs.add(commonHist);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, COMMON_COLOR));
+		if (logX) {
+			ArbitrarilyDiscretizedFunc linearHist = new ArbitrarilyDiscretizedFunc();
+			for (Point2D pt : hist)
+				linearHist.set(Math.pow(10, pt.getX()), pt.getY());
+			
+			linearHist.setName("Unique");
+			funcs.add(linearHist);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
+			
+			if (commonHist != null) {
+				linearHist = new ArbitrarilyDiscretizedFunc();
+				for (Point2D pt : commonHist)
+					linearHist.set(Math.pow(10, pt.getX()), pt.getY());
+				linearHist.setName("Common To Both");
+				funcs.add(linearHist);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, COMMON_COLOR));
+			}
+		} else {
+			hist.setName("Unique");
+			funcs.add(hist);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
+			
+			if (commonHist != null) {
+				commonHist.setName("Common To Both");
+				funcs.add(commonHist);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, COMMON_COLOR));
+			}
 		}
 		
 		String title = histScalar.name+" Histogram";
 		String xAxisLabel = histScalar.xAxisLabel;
-		String yAxisLabel = sol == null ? "Count" : "Annual Rate";
+		String yAxisLabel = rateWeighted ? "Annual Rate" : "Count";
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
 		spec.setLegendVisible(compUniques != null);
 		
-		Range xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
-				hist.getMaxX() + 0.5*hist.getDelta());
+		Range xRange;
+		if (logX)
+			xRange = new Range(Math.pow(10, hist.getMinX() - 0.5*hist.getDelta()),
+					Math.pow(10, hist.getMaxX() + 0.5*hist.getDelta()));
+		else
+			xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
+					hist.getMaxX() + 0.5*hist.getDelta());
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setBackgroundColor(Color.WHITE);
@@ -1310,12 +1811,188 @@ public class RupSetDiagnosticsPageGen {
 			yRange = new Range(0, 1.05*maxY);
 		}
 		
-		gp.drawGraphPanel(spec, false, logY, xRange, yRange);
+		gp.drawGraphPanel(spec, logX, logY, xRange, yRange);
 		gp.getChartPanel().setSize(800, 600);
 		File pngFile = new File(outputDir, prefix+".png");
 		File pdfFile = new File(outputDir, prefix+".pdf");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
+		return pngFile;
+	}
+	
+	private static HistogramFunction getCumulativeFractionalHist(HistogramFunction hist) {
+		HistogramFunction ret = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
+		double sum = 0d;
+		for (int i=0; i<hist.size(); i++) {
+			sum += hist.getY(i);
+			ret.set(i, sum);
+		}
+		ret.scale(1d/sum);
+		return ret;
+	}
+	
+	public static File plotRuptureCumulatives(File outputDir, String prefix,
+			HistScalarValues scalarVals, HistScalarValues compScalarVals,
+			HashSet<UniqueRupture> compUniques, Color color, boolean logY)
+					throws IOException {
+		List<Integer> includeIndexes = new ArrayList<>();
+		for (int r=0; r<scalarVals.rupSet.getNumRuptures(); r++)
+			includeIndexes.add(r);
+		return plotRuptureCumulatives(outputDir, prefix, scalarVals, includeIndexes, compScalarVals,
+				compUniques, color, logY);
+	}
+	
+	public static File plotRuptureCumulatives(File outputDir, String prefix,
+			HistScalarValues scalarVals, Collection<Integer> includeIndexes, HistScalarValues compScalarVals,
+			HashSet<UniqueRupture> compUniques, Color color, boolean logY)
+					throws IOException {
+		List<Integer> indexesList = includeIndexes instanceof List<?> ?
+				(List<Integer>)includeIndexes : new ArrayList<>(includeIndexes);
+		MinMaxAveTracker track = new MinMaxAveTracker();
+		for (int r : indexesList)
+			track.addValue(scalarVals.values.get(r)); 
+		if (compScalarVals != null) {
+			// used only for bounds
+			for (double scalar : compScalarVals.values)
+				track.addValue(scalar);
+		}
+		HistScalar histScalar = scalarVals.scalar;
+		HistogramFunction hist = histScalar.getHistogram(track);
+		// now super-sample it for the cumulative plot
+		double origDelta = hist.getDelta();
+		double origMin = hist.getMinX();
+		double newDelta = origDelta/50d;
+		double newMin = origMin - 0.5*origDelta + 0.5*newDelta;
+		hist = new HistogramFunction(newMin, hist.size()*50, newDelta);
+		boolean logX = histScalar.isLogX();
+		HistogramFunction commonHist = null;
+		if (compUniques != null)
+			commonHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
+		HistogramFunction rateHist = null;
+		HistogramFunction commonRateHist = null;
+		if (scalarVals.sol != null) {
+			rateHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
+			commonRateHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
+		}
+		
+		for (int i=0; i<indexesList.size(); i++) {
+			int rupIndex = indexesList.get(i);
+			double scalar = scalarVals.values.get(i);
+			int index;
+			if (logX)
+				index = scalar <= 0 ? 0 : hist.getClosestXIndex(Math.log10(scalar));
+			else
+				index = hist.getClosestXIndex(scalar);
+			hist.add(index, 1d);
+			if (rateHist != null)
+				rateHist.add(index, scalarVals.sol.getRateForRup(rupIndex));
+			if (compUniques != null && compUniques.contains(scalarVals.rups.get(rupIndex).unique)) {
+				commonHist.add(index, 1d);
+				if (commonRateHist != null)
+					commonRateHist.add(index, scalarVals.sol.getRateForRup(rupIndex));
+			}
+		}
+		
+		List<DiscretizedFunc> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		hist = getCumulativeFractionalHist(hist);
+		if (commonHist != null)
+			commonHist = getCumulativeFractionalHist(commonHist);
+		if (rateHist != null)
+			rateHist = getCumulativeFractionalHist(rateHist);
+		if (commonRateHist != null)
+			commonRateHist = getCumulativeFractionalHist(commonRateHist);
+		
+		boolean[] rateWeighteds;
+		if (rateHist == null)
+			rateWeighteds = new boolean[] { false };
+		else
+			rateWeighteds = new boolean[] { false, true };
+		
+		for (boolean rateWeighted : rateWeighteds) {
+			DiscretizedFunc myHist;
+			DiscretizedFunc myCommonHist = null;
+			PlotLineType plt;
+			if (rateWeighted) {
+				myHist = rateHist;
+				myHist.setName("Rate-Weighted");
+				if (commonRateHist != null) {
+					myCommonHist = commonRateHist;
+					myCommonHist.setName("Common");
+				}
+				plt = PlotLineType.DASHED;
+			} else {
+				myHist = hist;
+				myHist.setName("As Discretized");
+				if (commonHist != null) {
+					myCommonHist = commonHist;
+					myCommonHist.setName("Common");
+				}
+				plt = PlotLineType.SOLID;
+			}
+			if (logX) {
+				ArbitrarilyDiscretizedFunc linearHist = new ArbitrarilyDiscretizedFunc();
+				for (Point2D pt : myHist)
+					linearHist.set(Math.pow(10, pt.getX()), pt.getY());
+				
+				funcs.add(linearHist);
+				chars.add(new PlotCurveCharacterstics(plt, 3f, color));
+				
+				if (myCommonHist != null) {
+					linearHist = new ArbitrarilyDiscretizedFunc();
+					for (Point2D pt : myCommonHist)
+						linearHist.set(Math.pow(10, pt.getX()), pt.getY());
+					funcs.add(linearHist);
+					chars.add(new PlotCurveCharacterstics(plt, 3f, COMMON_COLOR));
+				}
+			} else {
+				funcs.add(myHist);
+				chars.add(new PlotCurveCharacterstics(plt, 3f, color));
+				
+				if (myCommonHist != null) {
+					funcs.add(myCommonHist);
+					chars.add(new PlotCurveCharacterstics(plt, 3f, COMMON_COLOR));
+				}
+			}
+		}
+		
+		String title = histScalar.name+" Cumulative Distribution";
+		String xAxisLabel = histScalar.xAxisLabel;
+		String yAxisLabel = "Cumulative Fraction";
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
+		spec.setLegendVisible(true);
+		
+		Range xRange;
+		if (logX)
+			xRange = new Range(Math.pow(10, hist.getMinX() - 0.5*hist.getDelta()),
+					Math.pow(10, hist.getMaxX() + 0.5*hist.getDelta()));
+		else
+			xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
+					hist.getMaxX() + 0.5*hist.getDelta());
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setLegendFontSize(22);
+		
+		Range yRange;
+		if (logY)
+			yRange = new Range(1e-8, 1);
+		else
+			yRange = new Range(0, 1d);
+		
+		gp.drawGraphPanel(spec, logX, logY, xRange, yRange);
+		gp.getChartPanel().setSize(800, 600);
+		File pngFile = new File(outputDir, prefix+".png");
+		File pdfFile = new File(outputDir, prefix+".pdf");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
 		return pngFile;
 	}
 	
@@ -1474,6 +2151,31 @@ public class RupSetDiagnosticsPageGen {
 			this.erredCounts = erredCounts;
 		}
 		
+		public RupSetPlausibilityResult filterByMag(FaultSystemRupSet rupSet, double minMag) {
+			List<Integer> matchingRups = new ArrayList<>();
+			for (int r=0; r<rupSet.getNumRuptures(); r++)
+				if (rupSet.getMagForRup(r) >= minMag)
+					matchingRups.add(r);
+			if (matchingRups.isEmpty())
+				return null;
+			RupSetPlausibilityResult ret = new RupSetPlausibilityResult(filters, matchingRups.size());
+			Throwable fakeException = new RuntimeException("Placeholder exception");
+			for (int r : matchingRups) {
+				PlausibilityResult[] results = new PlausibilityResult[filters.size()];
+				Throwable[] exceptions = new Throwable[filters.size()];
+				Double[] scalars = new Double[filters.size()];
+				for (int f=0; f<filters.size(); f++) {
+					results[f] = filterResults.get(f).get(r);
+					if (results[f] == null)
+						exceptions[f] = fakeException;
+					if (scalarVals.get(f) != null)
+						scalars[f] = scalarVals.get(f).get(r);
+				}
+				ret.addResult(results, exceptions, scalars);
+			}
+			return ret;
+		}
+		
 		private void addResult(PlausibilityResult[] results, Throwable[] exceptions, Double[] scalars) {
 			Preconditions.checkState(results.length == filters.size());
 			boolean allPass = true;
@@ -1484,7 +2186,8 @@ public class RupSetDiagnosticsPageGen {
 				
 				boolean subPass;
 				if (exceptions[t] != null) {
-					if (erredCounts[t] == 0) {
+					if (erredCounts[t] == 0 && (exceptions[t].getMessage() == null
+							|| !exceptions[t].getMessage().startsWith("Placeholder"))) {
 						System.err.println("First exception for "+test.getName()+":");
 						exceptions[t].printStackTrace();
 					}
@@ -1628,6 +2331,26 @@ public class RupSetDiagnosticsPageGen {
 		return pngFile;
 	}
 	
+	private static double[] plausibility_min_mags = { 6.5d, 7d, 7.5d, 8d };
+	
+	private static TableBuilder getMagPlausibilityTable(FaultSystemRupSet rupSet, RupSetPlausibilityResult fullResult,
+			File resourcesDir, String prefix) throws IOException {
+		TableBuilder table = MarkdownUtils.tableBuilder().initNewLine();
+		
+		for (double minMag : plausibility_min_mags) {
+			RupSetPlausibilityResult result = fullResult.filterByMag(rupSet, minMag);
+			if (result == null)
+				continue;
+			String magPrefix = prefix+"_m"+(float)minMag;
+			String title = "M≥"+(float)minMag+" Comparison";
+			File file = plotRupSetPlausibility(result, resourcesDir, magPrefix, title);
+			table.addColumn("![M>="+(float)minMag+"]("+resourcesDir.getName()+"/"+file.getName()+")");
+		}
+		table.finalizeLine();
+		
+		return table;
+	}
+	
 	private static Color darker(Color c) {
 		int r = c.getRed();
 		int g = c.getGreen();
@@ -1676,7 +2399,8 @@ public class RupSetDiagnosticsPageGen {
 	
 	public static List<String> getRupSetPlausibilityDetailLines(RupSetPlausibilityResult result, boolean compRups,
 			FaultSystemRupSet rupSet, List<ClusterRupture> rups, int maxNumToPlot, File resourcesDir,
-			String heading, String topLink, RuptureConnectionSearch connSearch) throws IOException {
+			String heading, String topLink, RuptureConnectionSearch connSearch, List<HistScalarValues> scalarVals)
+					throws IOException {
 		List<String> lines = new ArrayList<>();
 		
 		File rupHtmlDir = new File(resourcesDir.getParentFile(), "rupture_pages");
@@ -1709,20 +2433,23 @@ public class RupSetDiagnosticsPageGen {
 			HashSet<Integer> combIndexes = new HashSet<>(failIndexes);
 			combIndexes.addAll(errIndexes);
 			
-			TableBuilder table = MarkdownUtils.tableBuilder();
-			table.initNewLine();
-			for (HistScalar scalar : HistScalar.values()) {
-				String prefix = "filter_hist_"+filterPrefix+"_"+scalar.name();
-				File plot = plotRuptureHistogram(resourcesDir, prefix, rupSet, null, combIndexes,
-						null, null, null, color, scalar, false);
-				table.addColumn("!["+scalar.name+"]("+resourcesDir.getName()+"/"+plot.getName()+")");
+			if (scalarVals != null) {
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				table.initNewLine();
+				for (HistScalarValues vals : scalarVals) {
+					HistScalar scalar = vals.scalar;
+					String prefix = "filter_hist_"+filterPrefix+"_"+scalar.name();
+					File plot = plotRuptureHistogram(resourcesDir, prefix, vals, combIndexes,
+							null, null, color, false, false);
+					table.addColumn("!["+scalar.name+"]("+resourcesDir.getName()+"/"+plot.getName()+")");
+				}
+				table.finalizeLine();
+				lines.add("Distributions of ruptures which failed ("+result.failCounts[i]+") or erred ("
+						+result.erredCounts[i]+"):");
+				lines.add("");
+				lines.addAll(table.wrap(5, 0).build());
+				lines.add("");
 			}
-			table.finalizeLine();
-			lines.add("Distributions of ruptures which failed ("+result.failCounts[i]+") or erred ("
-					+result.erredCounts[i]+"):");
-			lines.add("");
-			lines.addAll(table.build());
-			lines.add("");
 			
 			if (result.failCounts[i] > 0 && filter instanceof ScalarValuePlausibiltyFilter<?>) {
 				System.out.println(filter.getName()+" is scalar");
@@ -1736,7 +2463,7 @@ public class RupSetDiagnosticsPageGen {
 					if (range.hasUpperBound())
 						upper = ((Number)range.upperEndpoint()).doubleValue();
 				}
-				table = MarkdownUtils.tableBuilder();
+				TableBuilder table = MarkdownUtils.tableBuilder();
 				table.addLine("Fail Scalar Distribution", "Pass Scalar Distribution");
 				table.initNewLine();
 				for (boolean passes : new boolean[] { false, true }) {
@@ -1996,7 +2723,7 @@ public class RupSetDiagnosticsPageGen {
 					plotSorted.add(longestIndex);
 				
 				// plot them
-				table = MarkdownUtils.tableBuilder();
+				TableBuilder table = MarkdownUtils.tableBuilder();
 				table.initNewLine();
 				String prefix = "filter_examples_"+filterPrefix;
 				boolean plotAzimuths = filter.getName().toLowerCase().contains("azimuth");
@@ -2006,7 +2733,8 @@ public class RupSetDiagnosticsPageGen {
 					RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rups.get(rupIndex),
 							"Rupture "+rupIndex, plotAzimuths, true);
 					table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
-							"("+ generateRuptureInfoPage(rupSet, rups.get(rupIndex), rupIndex, rupHtmlDir, rupPrefix, result)+ ")");
+							"("+ generateRuptureInfoPage(rupSet, rups.get(rupIndex), rupIndex, rupHtmlDir,
+									rupPrefix, result, connSearch.getDistAzCalc())+ ")");
 				}
 				table.finalizeLine();
 				if (err)
@@ -2398,7 +3126,7 @@ public class RupSetDiagnosticsPageGen {
 			search.plotConnections(resourcesDir, rupPrefix, rupIndex, pairings, "Unique Connections");
 			table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
 					"("+ generateRuptureInfoPage(rupSet, search.buildClusterRupture(rupIndex, true),
-							rupIndex, rupHtmlDir, rupPrefix, null)+ ")");
+							rupIndex, rupHtmlDir, rupPrefix, null, search.getDistAzCalc())+ ")");
 		}
 		table.finalizeLine();
 		return table.wrap(maxCols, 0);
@@ -2546,6 +3274,13 @@ public class RupSetDiagnosticsPageGen {
 		}
 		
 		public abstract boolean isMatch(double rake);
+		
+		public static RakeType getType(double rake) {
+			for (RakeType type : values())
+				if (type != OBLIQUE && type.isMatch(rake))
+					return type;
+			return OBLIQUE;
+		}
 	}
 	
 	public static Table<RakeType, RakeType, List<Double>> calcJumpAzimuths(
@@ -2874,9 +3609,9 @@ public class RupSetDiagnosticsPageGen {
 		return file;
 	}
 
-
 	private static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex,
-			File outputDir, String fileNamePrefix, RupSetPlausibilityResult plausibiltyResult) throws IOException {
+			File outputDir, String fileNamePrefix, RupSetPlausibilityResult plausibiltyResult,
+			SectionDistanceAzimuthCalculator distAzCalc) throws IOException {
 		DecimalFormat format = new DecimalFormat("###,###.#");
 
 		List<String> lines = new ArrayList<>();
@@ -2889,6 +3624,22 @@ public class RupSetDiagnosticsPageGen {
 			jumps.put(jump.fromSection.getSectionId(), jump);
 		}
 		
+		lines.add("");
+		TableBuilder table = MarkdownUtils.tableBuilder().initNewLine();
+		HistScalar[] scalars = HistScalar.values();
+		for (HistScalar scalar : scalars)
+			table.addColumn("**"+scalar.xAxisLabel+"**");
+		table.finalizeLine().initNewLine();
+		for (HistScalar scalar : scalars) {
+			double val = scalar.getValue(rupIndex, rupSet, rupture, distAzCalc);
+			if (Math.abs(val) < 1)
+				table.addColumn((float)val+"");
+			else
+				table.addColumn(format.format(val));
+		}
+		table.finalizeLine();
+		lines.addAll(table.wrap(5, 0).build());
+
 		lines.add("");
 		lines.add("Text representation:");
 		lines.add("");
@@ -2912,20 +3663,6 @@ public class RupSetDiagnosticsPageGen {
 		} else {
 			location += " East ";
 		}
-		lines.add("");
-		lines.addAll(
-				MarkdownUtils.tableBuilder().initNewLine()
-						.addColumn("Magnitude")
-						.addColumn("Length (km)")
-						.addColumn("Area (sq km)")
-						.addColumn("Rake (degrees)").finalizeLine().initNewLine()
-						.addColumn(format.format(rupSet.getMagForRup(rupIndex)))
-						.addColumn(format.format(getLength(rupSet, rupIndex)))
-						.addColumn(format.format(rupSet.getAreaForRup(rupIndex) / 1000000.0))
-						.addColumn(format.format(rupSet.getAveRakeForRup(rupIndex)))
-						.finalizeLine()
-						.build());
-
 		lines.add("");
 		lines.add("Fault section list. First section listed is " + location + " relative to the last section.");
 		lines.add("");
@@ -2954,7 +3691,7 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("");
 			lines.add("### Plausibility Filters Results");
 			lines.add("");
-			TableBuilder table = MarkdownUtils.tableBuilder();
+			table = MarkdownUtils.tableBuilder();
 			table.addLine("Name", "Result", "Scalar Value");
 			for (int f=0; f<plausibiltyResult.filters.size(); f++) {
 				table.initNewLine();
@@ -2986,5 +3723,718 @@ public class RupSetDiagnosticsPageGen {
 		
 		MarkdownUtils.writeHTML(lines, new File(outputDir, fileNamePrefix + ".html"));
 		return outputDir.getName()+"/"+fileNamePrefix + ".html";
+	}
+	
+	private static double calcIdealMinLength(List<? extends FaultSection> subSects,
+			SectionDistanceAzimuthCalculator distAzCalc) {
+//		FaultSection farS1 = null;
+//		FaultSection farS2 = null;
+//		double maxDist = 0d;
+//		for (int i=0; i<subSects.size(); i++) {
+//			FaultSection s1 = subSects.get(i);
+//			for (int j=i; j<subSects.size(); j++) {
+//				FaultSection s2 = subSects.get(j);
+//				double dist = distAzCalc.getDistance(s1, s2);
+//				if (dist >= maxDist) {
+//					maxDist = dist;
+//					farS1 = s1;
+//					farS2 = s2;
+//				}
+//			}
+//		}
+		FaultSection farS1 = subSects.get(0);
+		if (subSects.size() == 1)
+			return LocationUtils.horzDistance(farS1.getFaultTrace().first(), farS1.getFaultTrace().last());
+		FaultSection farS2 = null;
+		double maxDist = 0d;
+		for (int i=1; i<subSects.size(); i++) {
+			FaultSection s2 = subSects.get(i);
+			double dist = distAzCalc.getDistance(farS1, s2);
+			if (dist >= maxDist) {
+				maxDist = dist;
+				farS2 = s2;
+			}
+		}
+		if (farS1 == farS2)
+			return farS1.getTraceLength();
+		maxDist = 0d;
+		for (Location l1 : farS1.getFaultTrace())
+			for (Location l2 : farS2.getFaultTrace())
+				maxDist = Math.max(maxDist, LocationUtils.horzDistanceFast(l1, l2));
+		return maxDist;
+	}
+	
+	public static boolean plotScalarMaxMapView(FaultSystemRupSet rupSet, File outputDir, String prefix,
+			String title, HistScalarValues scalarVals, HistScalarValues compScalarVals, Region reg,
+			Color mainColor, boolean difference, boolean ratio) throws IOException {
+		Color faultOutlineColor = Color.LIGHT_GRAY;
+		
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		if (reg.contains(new Location(34, -118))) {
+			// add ca outlines
+			XY_DataSet[] outlines = PoliticalBoundariesData.loadCAOutlines();
+			PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)1d, Color.GRAY);
+			
+			for (XY_DataSet outline : outlines) {
+				funcs.add(outline);
+				chars.add(outlineChar);
+			}
+		}
+		
+		List<Double> values = new ArrayList<>();
+		for (int s=0; s<rupSet.getNumSections(); s++)
+			values.add(Double.NEGATIVE_INFINITY);
+		for (int r=0; r<rupSet.getNumRuptures(); r++) {
+			double value = scalarVals.values.get(r);
+			for (int s : rupSet.getSectionsIndicesForRup(r)) {
+				double prevMax = values.get(s);
+				if (value > prevMax)
+					values.set(s, value);
+			}
+		}
+		MinMaxAveTracker maxTrack = new MinMaxAveTracker();
+		for (double value : values)
+			if (Double.isFinite(value))
+				maxTrack.addValue(value);
+		if (maxTrack.getNum() == 0)
+			return false;
+		Preconditions.checkState(compScalarVals != null || (!difference && !ratio));
+		if (compScalarVals != null) {
+			// for consistent ranges
+			List<Double> compValues = new ArrayList<>();
+			for (int s=0; s<compScalarVals.rupSet.getNumSections(); s++)
+				compValues.add(Double.NEGATIVE_INFINITY);
+			for (int r=0; r<compScalarVals.rupSet.getNumRuptures(); r++) {
+				double value = compScalarVals.values.get(r);
+				for (int s : compScalarVals.rupSet.getSectionsIndicesForRup(r)) {
+					double prevMax = compValues.get(s);
+					if (value > prevMax)
+						compValues.set(s, value);
+				}
+			}
+			for (double value : compValues)
+				if (Double.isFinite(value))
+					maxTrack.addValue(value);
+			if (difference) {
+				Preconditions.checkState(compValues.size() == values.size());
+				for (int i=0; i<values.size(); i++)
+					values.set(i, values.get(i) - compValues.get(i));
+			} else if (ratio) {
+				Preconditions.checkState(compValues.size() == values.size());
+				for (int i=0; i<values.size(); i++)
+					values.set(i, values.get(i) / compValues.get(i));
+			}
+		}
+		
+		HistScalar histScalar = scalarVals.scalar;
+		
+		HistogramFunction hist;
+		CPT cpt;
+		if (difference) {
+			double maxAbsDiff = 0d;
+			for (double value : values)
+				if (Double.isFinite(value))
+					maxAbsDiff = Math.max(maxAbsDiff, Math.abs(value));
+			if (histScalar == HistScalar.MAG)
+				maxAbsDiff = Math.min(maxAbsDiff, 2d);
+			maxAbsDiff = Math.ceil(maxAbsDiff);
+			double delta = histScalar == HistScalar.CLUSTER_COUNT ? 1 : maxAbsDiff / 10d;
+			int num = 2*(int)(maxAbsDiff/delta)+1;
+			hist = new HistogramFunction(-maxAbsDiff - 0.5*delta, num, delta);
+			cpt = new CPT(-maxAbsDiff, maxAbsDiff,
+					new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+					Color.WHITE,
+					new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+		} else if (ratio) {
+			if (histScalar == HistScalar.MAG)
+				hist = new HistogramFunction(0.666667d, 1.5d, 30);
+			else
+				hist = new HistogramFunction(0.5d, 2d, 30);
+			CPT belowCPT = new CPT(hist.getMinX(), 1d,
+					new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+					Color.WHITE);
+			CPT aboveCPT = new CPT(1d, hist.getMaxX(),
+					Color.WHITE,
+					new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+			cpt = new CPT();
+			cpt.addAll(belowCPT);
+			cpt.addAll(aboveCPT);
+		} else {
+			hist = histScalar.getHistogram(maxTrack);
+			cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance();
+			cpt = cpt.rescale(hist.getMinX() - 0.5*hist.getDelta(), hist.getMaxX() + 0.5*hist.getDelta());
+		}
+		cpt.setBelowMinColor(cpt.getMinColor());
+		cpt.setAboveMaxColor(cpt.getMaxColor());
+		
+		for (int s=0; s<rupSet.getNumSections(); s++) {
+			FaultSection sect = rupSet.getFaultSectionData(s);
+			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
+			
+			XY_DataSet trace = new DefaultXY_DataSet();
+			for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
+				trace.set(loc.getLongitude(), loc.getLatitude());
+			
+			if (sect.getAveDip() != 90d) {
+				XY_DataSet outline = new DefaultXY_DataSet();
+				LocationList perimeter = surf.getPerimeter();
+				for (Location loc : perimeter)
+					outline.set(loc.getLongitude(), loc.getLatitude());
+				Location first = perimeter.first();
+				outline.set(first.getLongitude(), first.getLatitude());
+				
+				funcs.add(0, outline);
+				chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultOutlineColor));
+			}
+			
+			if (s == 0)
+				trace.setName("Fault Sections");
+			double value;
+			if (histScalar.isLogX())
+				value = Math.log10(values.get(s));
+			else
+				value = values.get(s);
+			Color faultColor = cpt.getColor((float)value);
+			int index;
+			if (histScalar.isLogX() && value <= 0d)
+				index = 0;
+			else
+				index = hist.getClosestXIndex(value);
+			hist.add(index, 1d);
+			
+			funcs.add(trace);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, faultColor));
+		}
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
+		spec.setLegendVisible(false);
+		
+		
+		String cptTitle = "Section Max Participating "+histScalar.xAxisLabel;
+		if (difference)
+			cptTitle += ", Difference";
+		if (histScalar.isLogX())
+			cptTitle = "Log10 "+cptTitle;
+		double cptLen = cpt.getMaxValue() - cpt.getMinValue();
+		double cptTick;
+		if (cptLen > 5000)
+			cptTick = 1000;
+		else if (cptLen > 1000)
+			cptTick = 500;
+		else if (cptLen > 500)
+			cptTick = 100;
+		else if (cptLen > 100)
+			cptTick = 50;
+		else if (cptLen > 50)
+			cptTick = 10;
+		else if (cptLen > 10)
+			cptTick = 5;
+		else if (cptLen > 5)
+			cptTick = 1;
+		else if (cptLen > 1)
+			cptTick = .5;
+		else if (cptLen > .5)
+			cptTick = .1;
+		else
+			cptTick = cptLen / 10d;
+		PaintScaleLegend cptBar = XYZGraphPanel.getLegendForCPT(cpt, cptTitle,
+				24, 18, cptTick, RectangleEdge.BOTTOM);
+		spec.addSubtitle(cptBar);
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(24);
+		gp.setPlotLabelFontSize(24);
+		gp.setBackgroundColor(Color.WHITE);
+		
+		Range xRange = new Range(reg.getMinLon(), reg.getMaxLon());
+		Range yRange = new Range(reg.getMinLat(), reg.getMaxLat());
+		
+		gp.drawGraphPanel(spec, false, false, xRange, yRange);
+		double tick = 2d;
+		TickUnits tus = new TickUnits();
+		TickUnit tu = new NumberTickUnit(tick);
+		tus.add(tu);
+		gp.getXAxis().setStandardTickUnits(tus);
+		gp.getYAxis().setStandardTickUnits(tus);
+		
+		File file = new File(outputDir, prefix);
+		double aspectRatio = yRange.getLength() / xRange.getLength();
+		gp.getChartPanel().setSize(800, 350 + (int)((800d-200d)*aspectRatio));
+		gp.saveAsPNG(file.getAbsolutePath()+".png");
+		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+		
+		// plot histogram now
+		funcs = new ArrayList<>();
+		chars = new ArrayList<>();
+		
+		if (histScalar.isLogX()) {
+			ArbitrarilyDiscretizedFunc linearHist = new ArbitrarilyDiscretizedFunc();
+			for (Point2D pt : hist)
+				linearHist.set(Math.pow(10, pt.getX()), pt.getY());
+			
+			funcs.add(linearHist);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, mainColor));
+		} else {
+			funcs.add(hist);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, mainColor));
+		}
+		
+		String xAxisLabel = "Section Max "+histScalar.xAxisLabel;
+		if (difference)
+			xAxisLabel += ", Difference";
+		String yAxisLabel = "Count";
+		
+		spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
+		
+		if (histScalar.isLogX())
+			xRange = new Range(Math.pow(10, hist.getMinX() - 0.5*hist.getDelta()),
+					Math.pow(10, hist.getMaxX() + 0.5*hist.getDelta()));
+		else
+			xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
+					hist.getMaxX() + 0.5*hist.getDelta());
+		
+		gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setLegendFontSize(22);
+		
+		yRange = new Range(0, 1.05*hist.getMaxY());
+		
+		gp.drawGraphPanel(spec, histScalar.isLogX(), false, xRange, yRange);
+		gp.getChartPanel().setSize(800, 600);
+		prefix += "_hist";
+		File pngFile = new File(outputDir, prefix+".png");
+		File pdfFile = new File(outputDir, prefix+".pdf");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
+		return true;
+	}
+	
+	private static File[] plotBiasiWesnouskyJumpDistComparison(File resourcesDir, String prefix,
+			String title, List<ClusterRupture> rups, ClusterConnectionStrategy connStrat,
+			RuptureConnectionSearch connSearch, FaultSystemSolution sol, RakeType mech) throws IOException {
+		Range xRange = new Range(0d, 10d);
+		EvenlyDiscretizedFunc jumpsTakenFunc = new EvenlyDiscretizedFunc(0.5, 10, 1d);
+		EvenlyDiscretizedFunc jumpsNotTakenFunc = new EvenlyDiscretizedFunc(0.5, 10, 1d);
+		for (int r=0; r<rups.size(); r++) {
+			double rate = sol == null ? 1d : sol.getRateForRup(r);
+			List<ClusterRupture> versions = Lists.newArrayList(rups.get(r));
+			versions.addAll(rups.get(r).getPreferredAltRepresentations(connSearch));
+			rate /= versions.size();
+			for (ClusterRupture rup : versions) {
+				for (Jump jump : rup.getJumpsIterable())
+					if (mech.isMatch(jump.fromSection.getAveRake()) && mech.isMatch(jump.toSection.getAveRake()))
+						jumpsTakenFunc.add(jumpsTakenFunc.getClosestXIndex(jump.distance), rate);
+				HashSet<Integer> rupParents = new HashSet<>();
+				for (FaultSubsectionCluster cluster : rup.getClustersIterable())
+					rupParents.add(cluster.parentSectionID);
+				for (ClusterRupture strand : rup.getStrandsIterable()) {
+					List<FaultSection> strandSects = strand.clusters[strand.clusters.length-1].subSects;
+					FaultSection lastSect = strandSects.get(strandSects.size()-1);
+					if (!mech.isMatch(lastSect.getAveRake()))
+						continue;
+					double minCandidateDist = Double.POSITIVE_INFINITY;
+					for (Jump jump : connStrat.getJumpsFrom(lastSect)) {
+						if (!mech.isMatch(jump.toSection.getAveRake()))
+							continue;
+						if (!rupParents.contains(jump.toSection.getParentSectionId())) {
+							// only count if we don't have this jump (or a jump to a the same section)
+							minCandidateDist = Math.min(minCandidateDist, jump.distance);
+						}
+					}
+					if (Double.isFinite(minCandidateDist))
+						jumpsNotTakenFunc.add(jumpsNotTakenFunc.getClosestXIndex(minCandidateDist), rate);
+				}
+			}
+		}
+		EvenlyDiscretizedFunc passingRatio = new EvenlyDiscretizedFunc(jumpsTakenFunc.getMinX(),
+				jumpsTakenFunc.getMaxX(), jumpsTakenFunc.size());
+		EvenlyDiscretizedFunc prob = new EvenlyDiscretizedFunc(jumpsTakenFunc.getMinX(),
+				jumpsTakenFunc.getMaxX(), jumpsTakenFunc.size());
+		for (int i=0; i<passingRatio.size(); i++) {
+			double pr = jumpsTakenFunc.getY(i)/jumpsNotTakenFunc.getY(i);
+			if (Double.isInfinite(pr))
+				pr = Double.NaN;
+			passingRatio.set(i, pr);
+			if (Double.isFinite(pr))
+				prob.set(i, CumulativeProbabilityFilter.passingRatioToProb(pr));
+			else
+				prob.set(i, Double.NaN);
+		}
+		
+		List<DiscretizedFunc> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		passingRatio.setName("Rupture Set");
+		funcs.add(passingRatio);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f,
+				PlotSymbol.FILLED_CIRCLE, 6f, MAIN_COLOR));
+		
+		EvenlyDiscretizedFunc bwPR = null;
+		if (mech == RakeType.LEFT_LATERAL || mech == RakeType.RIGHT_LATERAL) {
+			BiasiWesnousky2016SSJumpProb ssDistProb = new BiasiWesnousky2016SSJumpProb();
+			bwPR = new EvenlyDiscretizedFunc(passingRatio.getMinX(),
+					passingRatio.getMaxX(), passingRatio.size());
+			for (int i=0; i<bwPR.size(); i++)
+				bwPR.set(i, ssDistProb.calcPassingRatio(bwPR.getX(i)));
+			
+			bwPR.setName("B&W (2016), SS");
+			funcs.add(bwPR);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		}
+		
+		double bwDistIndepProb = new BiasiWesnousky2016CombJumpDistProb().getDistanceIndepentProb(mech);
+		double bwDistIndepPR = CumulativeProbabilityFilter.probToPassingRatio(bwDistIndepProb);
+		DiscretizedFunc bwDistIndepPRFunc = new ArbitrarilyDiscretizedFunc();
+		bwDistIndepPRFunc.set(xRange.getLowerBound(), bwDistIndepPR);
+		bwDistIndepPRFunc.set(xRange.getUpperBound(), bwDistIndepPR);
+		
+		bwDistIndepPRFunc.setName("B&W (2016) Dist-Indep. P(>1km)");
+		funcs.add(bwDistIndepPRFunc);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.BLACK));
+		
+		String yAxisLabel = "Passing Ratio";
+		if (sol == null)
+			yAxisLabel += " (as discretized)";
+		else
+			yAxisLabel += " (rate-weighted)";
+		PlotSpec spec = new PlotSpec(funcs, chars, title, "Jump Distance (km)", yAxisLabel);
+		spec.setLegendVisible(true);
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setLegendFontSize(22);
+		
+		Range yRange = new Range(0, 5d);
+		
+		gp.drawGraphPanel(spec, false, false, xRange, yRange);
+		gp.getChartPanel().setSize(800, 550);
+		File pngFile = new File(resourcesDir, prefix+"_ratio.png");
+		File pdfFile = new File(resourcesDir, prefix+"_ratio.pdf");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
+		File[] ret = new File[2];
+		ret[0] = pngFile;
+		
+		funcs = new ArrayList<>();
+		chars = new ArrayList<>();
+		
+		prob.setName("Rupture Set");
+		funcs.add(prob);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f,
+				PlotSymbol.FILLED_CIRCLE, 6f, MAIN_COLOR));
+		
+		if (bwPR != null) {
+			EvenlyDiscretizedFunc bwProb = new EvenlyDiscretizedFunc(
+					bwPR.getMinX(), bwPR.getMaxX(), bwPR.size());
+			for (int i=0; i<bwPR.size(); i++)
+				bwProb.set(i, CumulativeProbabilityFilter.passingRatioToProb(bwPR.getY(i)));
+			
+			bwProb.setName("B&W (2016), SS");
+			funcs.add(bwProb);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		}
+		
+		DiscretizedFunc bwDistIndepProbFunc = new ArbitrarilyDiscretizedFunc();
+		bwDistIndepProbFunc.set(xRange.getLowerBound(), bwDistIndepProb);
+		bwDistIndepProbFunc.set(xRange.getUpperBound(), bwDistIndepProb);
+		
+		bwDistIndepProbFunc.setName("B&W (2016) Dist-Indep. P(>1km)");
+		funcs.add(bwDistIndepProbFunc);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.BLACK));
+		
+		yAxisLabel = "Jump Probability";
+		if (sol == null)
+			yAxisLabel += " (as discretized)";
+		else
+			yAxisLabel += " (rate-weighted)";
+		spec = new PlotSpec(funcs, chars, title, "Jump Distance (km)", yAxisLabel);
+		spec.setLegendVisible(true);
+		
+		gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setLegendFontSize(22);
+		
+		yRange = new Range(0, 1d);
+		
+		gp.drawGraphPanel(spec, false, false, xRange, yRange);
+		gp.getChartPanel().setSize(800, 550);
+		pngFile = new File(resourcesDir, prefix+"_prob.png");
+		pdfFile = new File(resourcesDir, prefix+"_prob.pdf");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
+		ret[1] = pngFile;
+		
+		return ret;
+	}
+	
+	private static File[] plotBiasiWesnouskyJumpAzComparison(File resourcesDir, String prefix,
+			String title, List<ClusterRupture> rups, ClusterConnectionStrategy connStrat,
+			RuptureConnectionSearch connSearch, FaultSystemSolution sol, RakeType mech) throws IOException {
+		Range xRange = new Range(0d, 180d);
+		EvenlyDiscretizedFunc jumpsTakenFunc = new EvenlyDiscretizedFunc(5d, 18, 10d);
+		EvenlyDiscretizedFunc jumpsNotTakenFunc = new EvenlyDiscretizedFunc(5d, 18, 10d);
+		SectionDistanceAzimuthCalculator distAzCalc = connSearch.getDistAzCalc();
+		for (int r=0; r<rups.size(); r++) {
+			double rate = sol == null ? 1d : sol.getRateForRup(r);
+			List<ClusterRupture> versions = Lists.newArrayList(rups.get(r));
+			versions.addAll(rups.get(r).getPreferredAltRepresentations(connSearch));
+			rate /= versions.size();
+			for (ClusterRupture rup : versions) {
+				RuptureTreeNavigator nav = rup.getTreeNavigator();
+				for (Jump jump : rup.getJumpsIterable()) {
+					if (mech.isMatch(jump.fromSection.getAveRake())
+							&& mech.isMatch(jump.toSection.getAveRake())) {
+						FaultSection before2 = jump.fromSection;
+						FaultSection before1 = nav.getPredecessor(before2);
+						if (before1 == null)
+							continue;
+						double beforeAz = distAzCalc.getAzimuth(before1, before2);
+						FaultSection after1 = jump.toSection;
+						double minAz = Double.POSITIVE_INFINITY;
+						for (FaultSection after2 : nav.getDescendants(after1)) {
+							double afterAz = distAzCalc.getAzimuth(after1, after2);
+							double diff = Math.abs(
+									JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz));
+							minAz = Math.min(minAz, diff);
+						}
+						if (Double.isFinite(minAz))
+							jumpsTakenFunc.add(jumpsTakenFunc.getClosestXIndex(minAz), rate);
+					}
+				}
+				HashSet<Integer> rupParents = new HashSet<>();
+				for (FaultSubsectionCluster cluster : rup.getClustersIterable())
+					rupParents.add(cluster.parentSectionID);
+				for (ClusterRupture strand : rup.getStrandsIterable()) {
+					List<FaultSection> strandSects = strand.clusters[strand.clusters.length-1].subSects;
+					FaultSection lastSect = strandSects.get(strandSects.size()-1);
+					if (!mech.isMatch(lastSect.getAveRake()))
+						continue;
+					FaultSection before2 = lastSect;
+					FaultSection before1 = nav.getPredecessor(before2);
+					if (before1 == null)
+						continue;
+					double beforeAz = distAzCalc.getAzimuth(before1, before2);
+					double minCandidateAz = Double.POSITIVE_INFINITY;
+					for (Jump jump : connStrat.getJumpsFrom(lastSect)) {
+						if (!mech.isMatch(jump.toSection.getAveRake()))
+							continue;
+						
+						if (!rupParents.contains(jump.toSection.getParentSectionId())) {
+							// only count if we don't have this jump (or a jump to a the same section)
+							FaultSection after1 = jump.toSection;
+							if (jump.toCluster.subSects.size() < 2)
+								continue;
+							FaultSection after2 = jump.toCluster.subSects.get(1);
+							double afterAz = distAzCalc.getAzimuth(after1, after2);
+							double diff = Math.abs(
+									JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz));
+							minCandidateAz = Math.min(minCandidateAz, diff);
+						}
+					}
+					if (Double.isFinite(minCandidateAz))
+						jumpsNotTakenFunc.add(jumpsNotTakenFunc.getClosestXIndex(minCandidateAz), rate);
+				}
+			}
+		}
+		EvenlyDiscretizedFunc passingRatio = new EvenlyDiscretizedFunc(jumpsTakenFunc.getMinX(),
+				jumpsTakenFunc.getMaxX(), jumpsTakenFunc.size());
+		EvenlyDiscretizedFunc prob = new EvenlyDiscretizedFunc(jumpsTakenFunc.getMinX(),
+				jumpsTakenFunc.getMaxX(), jumpsTakenFunc.size());
+		for (int i=0; i<passingRatio.size(); i++) {
+			double pr = jumpsTakenFunc.getY(i)/jumpsNotTakenFunc.getY(i);
+			if (Double.isInfinite(pr))
+				pr = Double.NaN;
+			passingRatio.set(i, pr);
+			if (Double.isFinite(pr))
+				prob.set(i, CumulativeProbabilityFilter.passingRatioToProb(pr));
+			else
+				prob.set(i, Double.NaN);
+		}
+		
+		List<DiscretizedFunc> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		passingRatio.setName("Rupture Set");
+		funcs.add(passingRatio);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f,
+				PlotSymbol.FILLED_CIRCLE, 6f, MAIN_COLOR));
+		
+		EvenlyDiscretizedFunc bwPR = null;
+		if (mech == RakeType.LEFT_LATERAL || mech == RakeType.RIGHT_LATERAL) {
+			bwPR = CumulativeProbabilityFilter.bw2017_ss_passRatio.deepClone();
+			
+			bwPR.setName("B&W (2017), SS");
+			funcs.add(bwPR);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		}
+		
+		String yAxisLabel = "Passing Ratio";
+		if (sol == null)
+			yAxisLabel += " (as discretized)";
+		else
+			yAxisLabel += " (rate-weighted)";
+		PlotSpec spec = new PlotSpec(funcs, chars, title, "Jump Azimuth Change (degrees)", yAxisLabel);
+		spec.setLegendVisible(true);
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setLegendFontSize(22);
+		
+		Range yRange = new Range(0, 5d);
+		
+		gp.drawGraphPanel(spec, false, false, xRange, yRange);
+		gp.getChartPanel().setSize(800, 550);
+		File pngFile = new File(resourcesDir, prefix+"_ratio.png");
+		File pdfFile = new File(resourcesDir, prefix+"_ratio.pdf");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
+		File[] ret = new File[2];
+		ret[0] = pngFile;
+		
+		funcs = new ArrayList<>();
+		chars = new ArrayList<>();
+		
+		prob.setName("Rupture Set");
+		funcs.add(prob);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f,
+				PlotSymbol.FILLED_CIRCLE, 6f, MAIN_COLOR));
+		
+		if (bwPR != null) {
+			EvenlyDiscretizedFunc bwProb = new EvenlyDiscretizedFunc(
+					bwPR.getMinX(), bwPR.getMaxX(), bwPR.size());
+			for (int i=0; i<bwPR.size(); i++)
+				bwProb.set(i, CumulativeProbabilityFilter.passingRatioToProb(bwPR.getY(i)));
+			
+			bwProb.setName("B&W (2017), SS");
+			funcs.add(bwProb);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		}
+		
+		yAxisLabel = "Jump Probability";
+		if (sol == null)
+			yAxisLabel += " (as discretized)";
+		else
+			yAxisLabel += " (rate-weighted)";
+		spec = new PlotSpec(funcs, chars, title, "Jump Azimuth Change (degrees)", yAxisLabel);
+		spec.setLegendVisible(true);
+		
+		gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setLegendFontSize(22);
+		
+		yRange = new Range(0, 1d);
+		
+		gp.drawGraphPanel(spec, false, false, xRange, yRange);
+		gp.getChartPanel().setSize(800, 550);
+		pngFile = new File(resourcesDir, prefix+"_prob.png");
+		pdfFile = new File(resourcesDir, prefix+"_prob.pdf");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
+		ret[1] = pngFile;
+		
+		return ret;
+	}
+	
+	private static File plotBiasiWesnouskyMechChangeComparison(File resourcesDir, String prefix,
+			String title, List<ClusterRupture> rups, ClusterConnectionStrategy connStrat,
+			RuptureConnectionSearch connSearch, FaultSystemRupSet rupSet, FaultSystemSolution sol)
+					throws IOException {
+		Range xRange = new Range(6d, 8.5d);
+		EvenlyDiscretizedFunc mechChangesFunc = new EvenlyDiscretizedFunc(6.25, 5, 0.5d);
+		EvenlyDiscretizedFunc rupMagFunc = new EvenlyDiscretizedFunc(6.25, 5, 0.5d);
+		for (int r=0; r<rups.size(); r++) {
+			double rate = sol == null ? 1d : sol.getRateForRup(r);
+			
+			List<ClusterRupture> versions = Lists.newArrayList(rups.get(r));
+			versions.addAll(rups.get(r).getPreferredAltRepresentations(connSearch));
+			int magIndex = rupMagFunc.getClosestXIndex(rupSet.getMagForRup(r));
+			rupMagFunc.add(magIndex, rate);
+			rate /= versions.size();
+			for (ClusterRupture rup : versions) {
+				boolean found = false;
+				for (Jump jump : rup.getJumpsIterable()) {
+					if (RakeType.getType(jump.fromSection.getAveRake())
+							!= RakeType.getType(jump.toSection.getAveRake())) {
+						found = true;
+						break;
+					}
+				}
+				if (found)
+					mechChangesFunc.add(magIndex, rate);
+			}
+		}
+		EvenlyDiscretizedFunc prob = new EvenlyDiscretizedFunc(rupMagFunc.getMinX(),
+				rupMagFunc.getMaxX(), rupMagFunc.size());
+		for (int i=0; i<prob.size(); i++) {
+			double magRate = rupMagFunc.getY(i);
+			if (magRate == 0d) {
+				prob.set(i, Double.NaN);
+			} else {
+				prob.set(i, mechChangesFunc.getY(i)/magRate);
+			}
+		}
+		
+		List<DiscretizedFunc> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		prob.setName("Rupture Set");
+		funcs.add(prob);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, MAIN_COLOR));
+		
+		DiscretizedFunc bwProb = new ArbitrarilyDiscretizedFunc();
+		bwProb.set(xRange.getLowerBound(), CumulativeProbabilityFilter.bw2017_mech_change_prob);
+		bwProb.set(xRange.getUpperBound(), CumulativeProbabilityFilter.bw2017_mech_change_prob);
+		bwProb.setName("B&W (2017)");
+		funcs.add(bwProb);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		
+		String yAxisLabel = "Probability";
+		if (sol == null)
+			yAxisLabel += " (as discretized)";
+		else
+			yAxisLabel += " (rate-weighted)";
+		PlotSpec spec = new PlotSpec(funcs, chars, title, "Magnitude", yAxisLabel);
+		spec.setLegendVisible(true);
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		gp.setLegendFontSize(22);
+		
+		Range yRange = new Range(0, 1d);
+		
+		gp.drawGraphPanel(spec, false, false, xRange, yRange);
+		gp.getChartPanel().setSize(800, 550);
+		File pngFile = new File(resourcesDir, prefix+".png");
+		File pdfFile = new File(resourcesDir, prefix+".pdf");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		
+		return pngFile;
 	}
 }

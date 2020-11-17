@@ -25,5 +25,15 @@ public abstract class JumpPlausibilityFilter implements PlausibilityFilter {
 		}
 		return result;
 	}
+	
+	/**
+	 * Apply the plausibility filter to the given jump only
+	 * 
+	 * @param rupture
+	 * @param newJump
+	 * @param verbose
+	 * @return
+	 */
+	public abstract PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose);
 
 }

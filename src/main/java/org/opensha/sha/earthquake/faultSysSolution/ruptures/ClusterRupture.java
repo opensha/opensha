@@ -50,7 +50,7 @@ import com.google.gson.stream.JsonWriter;
  * strand defined by the clusters listed below in the 'clusters' array. Additional
  * splays off of that primary strand are contained in the splays map. These ruptures are recursive
  * in nature: splays can have splays. The key contract is that sections only exist once in the
- * rupture, and although each section can have multiple descendcents (sections directly downstream
+ * rupture, and although each section can have multiple descendants (sections directly downstream
  * of that section), there can only be one predecessor (section directly upstream of that section).
  * 
  * Build ruptures by starting with an initial cluster and calling the public constructor, and then
@@ -86,7 +86,10 @@ public class ClusterRupture {
 	
 	private RuptureTreeNavigator navigator;
 	
-	private final UniqueRupture internalUnique;
+	/**
+	 * UniqueRupture instance for only the primary strand
+	 */
+	public final UniqueRupture internalUnique;
 	
 	/**
 	 * Initiate a ClusterRupture with the given starting cluster. You can grow it later with the
@@ -98,7 +101,7 @@ public class ClusterRupture {
 				ImmutableMap.of(), cluster.unique, cluster.unique);
 	}
 
-	private ClusterRupture(FaultSubsectionCluster[] clusters, ImmutableSet<Jump> internalJumps,
+	protected ClusterRupture(FaultSubsectionCluster[] clusters, ImmutableSet<Jump> internalJumps,
 			ImmutableMap<Jump, ClusterRupture> splays, UniqueRupture unique, UniqueRupture internalUnique) {
 		super();
 		this.clusters = clusters;
@@ -316,7 +319,7 @@ public class ClusterRupture {
 	 * @param connSearch {@link RuptureConnectionSearch} to find the best paths through this rupture
 	 * @return
 	 */
-	public List<ClusterRupture> getPreferredInversions(RuptureConnectionSearch connSearch) {
+	public List<ClusterRupture> getPreferredAltRepresentations(RuptureConnectionSearch connSearch) {
 		List<ClusterRupture> inversions = new ArrayList<>();
 
 		if (splays.isEmpty()) {
@@ -389,7 +392,7 @@ public class ClusterRupture {
 	 * 
 	 * @return
 	 */
-	public List<ClusterRupture> getInversions(ClusterConnectionStrategy connStrat, int maxNumSplays) {
+	public List<ClusterRupture> getAllAltRepresentations(ClusterConnectionStrategy connStrat, int maxNumSplays) {
 		List<ClusterRupture> inversions = new ArrayList<>();
 
 		if (getTotalNumClusters() == 1) {
@@ -579,6 +582,20 @@ public class ClusterRupture {
 		iterables.add(Lists.newArrayList(clusters));
 		for (ClusterRupture splay : splays.values())
 			iterables.add(splay.getClustersIterable());
+		return Iterables.concat(iterables);
+	}
+	
+	/**
+	 * 
+	 * @return Iterable over all strands in this rupture
+	 */
+	public Iterable<ClusterRupture> getStrandsIterable() {
+		if (splays.isEmpty())
+			return Lists.newArrayList(this);
+		List<Iterable<ClusterRupture>> iterables = new ArrayList<>();
+		iterables.add(Lists.newArrayList(this));
+		for (ClusterRupture splay : splays.values())
+			iterables.add(splay.getStrandsIterable());
 		return Iterables.concat(iterables);
 	}
 	

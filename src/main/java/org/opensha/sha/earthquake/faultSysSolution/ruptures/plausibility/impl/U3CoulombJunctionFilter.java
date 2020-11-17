@@ -40,11 +40,6 @@ public class U3CoulombJunctionFilter implements PlausibilityFilter {
 		
 		return testPaths(paths, verbose);
 	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		return apply(rupture.take(newJump), verbose);
-	}
 	
 	private void findPaths(RuptureTreeNavigator navigator,
 			List<List<IDPairing>> fullPaths, List<IDPairing> curPath, FaultSection curSect) {

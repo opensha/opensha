@@ -11,7 +11,7 @@ public class TotalAzimuthChangeFilterTests {
         JumpDataMock data = new JumpDataMock(new double[]{fromAzimuth}, Double.MAX_VALUE, toAzimuths);
         
         TotalAzimuthChangeFilter jumpFilter = new TotalAzimuthChangeFilter(data.calc, threshold, true, testFullEnd);
-        return jumpFilter.testJump(data.rupture, data.jump, false);
+        return jumpFilter.apply(data.rupture.take(data.jump), false);
     }
 
     @Test

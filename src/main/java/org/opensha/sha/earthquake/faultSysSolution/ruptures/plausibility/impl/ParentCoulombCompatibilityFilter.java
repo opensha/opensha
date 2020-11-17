@@ -125,8 +125,7 @@ implements ScalarCoulombPlausibilityFilter {
 		return min;
 	}
 
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
+	private Float getValue(ClusterRupture rupture, Jump newJump) {
 		// swap out with full parent section clusters
 		int fromID = newJump.fromCluster.parentSectionID;
 		int toID = newJump.toCluster.parentSectionID;

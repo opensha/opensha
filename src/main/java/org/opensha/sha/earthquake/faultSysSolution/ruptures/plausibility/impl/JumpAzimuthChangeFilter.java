@@ -401,11 +401,6 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	}
 
 	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		return calc(rupture, newJump, false);
-	}
-
-	@Override
 	public Range<Float> getAcceptableRange() {
 		return Range.atMost(threshold);
 	}

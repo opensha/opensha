@@ -14,12 +14,15 @@ import java.util.List;
 
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterPathCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter.Penalty;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeRakeChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
@@ -252,6 +255,17 @@ public class PlausibilityConfiguration {
 		 */
 		public Builder splayLength(double maxLen, boolean isFractOfMain, boolean totalAcrossSplays) {
 			filters.add(new SplayLengthFilter(maxLen, isFractOfMain, totalAcrossSplays));
+			return this;
+		}
+
+		
+		public Builder cumulativePenalty(float threshold, boolean noDoubleCount, Penalty... penalties) {
+			filters.add(new CumulativePenaltyFilter(threshold, noDoubleCount, penalties));
+			return this;
+		}
+		
+		public Builder cumulativeProbability(float minProbability, RuptureProbabilityCalc... calcs) {
+			filters.add(new CumulativeProbabilityFilter(minProbability, calcs));
 			return this;
 		}
 		
@@ -578,8 +592,12 @@ public class PlausibilityConfiguration {
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "class":
-					type = getDeclaredTypeClass(in.nextString());
-//					System.out.println("new class at "+in.getPath()+": "+type);
+					String clazz = in.nextString();
+					try {
+						type = getDeclaredTypeClass(clazz);
+					} catch (Exception e) {
+						System.err.println("Warning: adapter class not found, will use stub: "+clazz);
+					}
 					break;
 				case "adapter":
 					Preconditions.checkState(filter == null, "adapter must be before filter in JSON");
@@ -605,46 +623,30 @@ public class PlausibilityConfiguration {
 					shortName = in.nextString();
 					break;
 				case "filter":
-					Preconditions.checkNotNull(type, "filter must be last in json object");
-					if (adapter == null) {
-						String startPath = in.getPath();
-						try {
-							// use Gson default
-							filter = gson.fromJson(in, type);
-						} catch (Exception e) {
-							e.printStackTrace();
-							System.err.println("Warning: couldn't de-serialize filter "
-									+ "(using stub instead): "+type.getName());
-							System.err.flush();
-//							System.out.println("PATH after read: "+in.getPath());
-							filter = new PlausibilityFilterStub(name, shortName);
-							// this is where it gets tricky. we have descended into the filter object
-							// and need to back the reader out
-//							System.out.println("Looking to back out to: "+startPath);
-							while (true) {
-								String path = in.getPath();
-								JsonToken peek = in.peek();
-								if (peek == JsonToken.END_OBJECT && path.equals(startPath)) {
-									// we're ready to break
-//									System.out.println("DONE, new path: "+in.getPath());
-									break;
-								}
-//								System.out.println("Still in the thick of it at: "+path);
-								if (peek == JsonToken.END_ARRAY) {
-//									System.out.println("\tending array");
-									in.endArray();
-								} else if (peek == JsonToken.END_OBJECT) {
-//									System.out.println("\tending object");
-									in.endObject();
-								} else {
-//									System.out.println("\tskipping "+peek);
-									in.skipValue();
-								}
-							}
-						}
+					String startPath = in.getPath();
+					if (type == null) {
+						// it's an unknown type, use stub
+						filter = new PlausibilityFilterStub(name, shortName);
+						skipUntilEndObject(in, startPath);
 					} else {
-						// use specified adapter
-						filter = adapter.read(in);
+						Preconditions.checkNotNull(type, "filter must be last in json object");
+						if (adapter == null) {
+							try {
+								// use Gson default
+								filter = gson.fromJson(in, type);
+							} catch (Exception e) {
+								e.printStackTrace();
+								System.err.println("Warning: couldn't de-serialize filter "
+										+ "(using stub instead): "+type.getName());
+								System.err.flush();
+//								System.out.println("PATH after read: "+in.getPath());
+								filter = new PlausibilityFilterStub(name, shortName);
+								skipUntilEndObject(in, startPath);
+							}
+						} else {
+							// use specified adapter
+							filter = adapter.read(in);
+						}
 					}
 					break;
 
@@ -659,8 +661,40 @@ public class PlausibilityConfiguration {
 		
 	}
 	
+	/**
+	 * This will skip all values in the given reader until it reaches END_OBJECT for the given path.
+	 * @param in
+	 * @param startPath
+	 * @throws IOException
+	 */
+	private static void skipUntilEndObject(JsonReader in, String startPath) throws IOException {
+		// this is where it gets tricky. we have descended into the filter object
+		// and need to back the reader out
+//		System.out.println("Looking to back out to: "+startPath);
+		while (true) {
+			String path = in.getPath();
+			JsonToken peek = in.peek();
+			if (peek == JsonToken.END_OBJECT && path.equals(startPath)) {
+				// we're ready to break
+//				System.out.println("DONE, new path: "+in.getPath());
+				break;
+			}
+//			System.out.println("Still in the thick of it at: "+path);
+			if (peek == JsonToken.END_ARRAY) {
+//				System.out.println("\tending array");
+				in.endArray();
+			} else if (peek == JsonToken.END_OBJECT) {
+//				System.out.println("\tending object");
+				in.endObject();
+			} else {
+//				System.out.println("\tskipping "+peek);
+				in.skipValue();
+			}
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
-	private static <T> Class<T> getDeclaredTypeClass(String className) {
+	public static <T> Class<T> getDeclaredTypeClass(String className) {
 		Class<?> raw;
 		try {
 			raw = Class.forName(className);
@@ -692,12 +726,6 @@ public class PlausibilityConfiguration {
 
 		@Override
 		public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
-			throw new UnsupportedOperationException(getShortName()+" could not be deserialized from "
-					+ "JSON and cannot be used for filtering");
-		}
-
-		@Override
-		public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
 			throw new UnsupportedOperationException(getShortName()+" could not be deserialized from "
 					+ "JSON and cannot be used for filtering");
 		}
@@ -744,6 +772,7 @@ public class PlausibilityConfiguration {
 		@Override
 		public SectionDistanceAzimuthCalculator read(JsonReader in) throws IOException {
 			in.beginObject();
+			in.nextName();
 			int numSects = in.nextInt();
 			Preconditions.checkState(numSects == distAzCalc.getSubSections().size());
 			in.endObject();
@@ -823,10 +852,10 @@ public class PlausibilityConfiguration {
 
 		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
 		// small subset
-		subSects = subSects.subList(0, 30);
-		double maxDist = 50d;
+//		subSects = subSects.subList(0, 30);
+//		double maxDist = 50d;
 		
-//		double maxDist = 5d;
+		double maxDist = 5d;
 		
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
 		
@@ -839,18 +868,37 @@ public class PlausibilityConfiguration {
 //		builder.minSectsPerParent(2, true, true);
 		SubSectStiffnessCalculator stiffnessCalc =
 				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
-		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
-		builder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+//		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
+//		builder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
 		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
-		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 0.5f);
-		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 1f/3f);
-		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 2f/3f);
-		builder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, RupCoulombQuantity.SUM_SECT_CFF);
-		builder.netClusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+//		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 0.5f);
+//		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 1f/3f);
+//		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 2f/3f);
+//		builder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, RupCoulombQuantity.SUM_SECT_CFF);
+//		builder.netClusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+		
+//		Penalty[] penalties = {
+//				new CumulativePenaltyFilter.JumpPenalty(0f, 1d, true),
+//				new CumulativePenaltyFilter.RakeChangePenalty(45f, 2d, false),
+//				new CumulativePenaltyFilter.DipChangePenalty(20, 1d, false),
+//				new CumulativePenaltyFilter.AzimuthChangePenalty(20f, 1d, false,
+//						new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc))
+//		};
+//		builder.cumulativePenalty(10f, false, penalties);
+		
+		RuptureProbabilityCalc[] probCalcs = CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc);
+		builder.cumulativeProbability(0.01f, probCalcs);
+		builder.cumulativeProbability(0.0075f, probCalcs);
+		builder.cumulativeProbability(0.005f, probCalcs);
+		builder.cumulativeProbability(0.0025f, probCalcs);
+		builder.cumulativeProbability(0.001f, probCalcs);
+		builder.cumulativeProbability(0.0005f, probCalcs);
 		
 		PlausibilityConfiguration config = builder.build();
 		
-		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/new_coulomb_filters.json"));
+//		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/new_coulomb_filters.json"));
+//		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/new_cumulative_prob_filters.json"));
+		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/alt_filters.json"));
 		
 		Gson gson = buildGson(subSects);
 		

@@ -101,28 +101,6 @@ public class ClusterRupturePlausibilityDebug {
 				System.out.println("result: "+result);
 				System.out.println("===================");
 			}
-			if (tryLastJump && rup.splays.isEmpty() && rup.clusters.length > 1) {
-				// also test by offering jumps
-				ClusterRupture newRup = new ClusterRupture(rup.clusters[0]);
-				for (int i=1; i<rup.clusters.length-1; i++) {
-					Jump jump = newRup.clusters[i-1].getConnectionsTo(rup.clusters[i]).iterator().next();
-					newRup = newRup.take(jump);
-				}
-				FaultSubsectionCluster addition = rup.clusters[rup.clusters.length-1];
-				Jump newJump = newRup.clusters[newRup.clusters.length-1].getConnectionsTo(addition)
-						.iterator().next();
-				System.out.println("Now trying testJump for at last jump");
-				System.out.println("Main rupture: "+newRup);
-				System.out.println("Addition: "+newJump);
-				System.out.println("===================");
-				for (PlausibilityFilter filter : testFilters) {
-					System.out.println("Testing "+filter.getName());
-					PlausibilityResult result = filter.testJump(newRup, newJump, true);
-					System.out.println("result: "+result);
-					System.out.println("===================");
-				}
-				
-			}
 			System.out.println();
 		}
 	}

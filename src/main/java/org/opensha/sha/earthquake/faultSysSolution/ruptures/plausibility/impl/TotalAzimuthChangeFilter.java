@@ -70,12 +70,6 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 					splay.clusters[splay.clusters.length-1], navigator, null, verbose));
 		return result;
 	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump jump, boolean verbose) {
-		return apply(rupture.clusters[0], jump.toCluster, rupture.getTreeNavigator(), jump, verbose);
-//		return apply(rupture.take(jump), verbose);
-	}
 	
 	private PlausibilityResult apply(FaultSubsectionCluster startCluster,
 			FaultSubsectionCluster endCluster, RuptureTreeNavigator navigator, Jump newJump,
@@ -175,11 +169,6 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 	@Override
 	public Float getValue(ClusterRupture rupture) {
 		return getValue(rupture.clusters[0], rupture, rupture.getTreeNavigator());
-	}
-
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		return getValue(rupture.take(newJump));
 	}
 
 	@Override

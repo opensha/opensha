@@ -82,69 +82,6 @@ public class SplayLengthFilter implements PlausibilityFilter {
 	}
 
 	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		boolean isSplayJump = !rupture.clusters[rupture.clusters.length-1].endSects.contains(newJump.fromSection);
-		if (rupture.splays.isEmpty() && !isSplayJump)
-			return PlausibilityResult.PASS;
-		if (verbose)
-			System.out.println(getShortName()+": isSplayJump="+isSplayJump);
-		double maxLen = isFractOfMain ?
-				this.maxLen*calcLen(rupture, isSplayJump ? null : newJump.toCluster, false) : this.maxLen;
-		if (verbose)
-			System.out.println(getShortName()+": maxLen="+maxLen);
-		double totSplay = 0d;
-		boolean jumpFound = false;
-		for (ClusterRupture splay : rupture.splays.values()) {
-			double splayLen;
-			if (splay.contains(newJump.fromSection)) {
-				jumpFound = true;
-				splayLen = calcLen(splay, newJump.toCluster, true);
-				if (verbose)
-					System.out.println(getShortName()+": jump located on splay with length="+splayLen);
-			} else {
-				splayLen = calcLen(splay, null, true);
-				if (verbose)
-					System.out.println(getShortName()+": splay with length="+splayLen);
-			}
-			if (totalAcrossSplays) {
-				totSplay += splayLen;
-				if ((float)totSplay > (float)maxLen) {
-					if (verbose)
-						System.out.println(getShortName()+": failing with cumulative length="+totSplay);
-					return PlausibilityResult.FAIL_HARD_STOP;
-				}
-			} else {
-				if ((float)splayLen > (float)maxLen) {
-					if (verbose)
-						System.out.println(getShortName()+": failing");
-					return PlausibilityResult.FAIL_HARD_STOP;
-				}
-			}
-		}
-		if (!jumpFound) {
-			// it's a new splay
-			double splayLen = calcLen(null, newJump.toCluster, true);
-			if (verbose)
-				System.out.println(getShortName()+": jump is new splay with length="+splayLen);
-			if (totalAcrossSplays) {
-				totSplay += splayLen;
-				if ((float)totSplay > (float)maxLen) {
-					if (verbose)
-						System.out.println(getShortName()+": failing with cumulative length="+totSplay);
-					return PlausibilityResult.FAIL_HARD_STOP;
-				}
-			} else {
-				if ((float)splayLen > (float)maxLen) {
-					if (verbose)
-						System.out.println(getShortName()+": failing");
-					return PlausibilityResult.FAIL_HARD_STOP;
-				}
-			}
-		}
-		return PlausibilityResult.PASS;
-	}
-
-	@Override
 	public boolean isDirectional(boolean splayed) {
 		// only directional if splayed
 		return splayed;

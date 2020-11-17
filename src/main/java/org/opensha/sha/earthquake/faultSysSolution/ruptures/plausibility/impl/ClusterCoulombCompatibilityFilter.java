@@ -51,34 +51,11 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 	}
 
 	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-//		StiffnessResult[] stiffness = stiffnessCalc.calcAggRupToClusterStiffness(rupture, newJump.toCluster);
-//		double val = stiffnessCalc.getValue(stiffness, StiffnessType.CFF, aggMethod);
-		List<FaultSubsectionCluster> clusters = new ArrayList<>();
-		for (FaultSubsectionCluster cluster : rupture.getClustersIterable())
-			clusters.add(cluster);
-		double val = doTest(clusters, newJump.toCluster, null, verbose, !verbose);
-		PlausibilityResult result =
-				(float)val >= threshold ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
-		if (verbose)
-			System.out.println(getShortName()+": val="+val+"\tresult="+result.name());
-		return result;
-	}
-
-	@Override
 	public Float getValue(ClusterRupture rupture) {
 		if (rupture.getTotalNumJumps()  == 0)
 			return null;
 		return (float)doTest(new ArrayList<>(), rupture.clusters[0], rupture.getTreeNavigator(),
 				false, false);
-	}
-
-	@Override
-	public Float getValue(ClusterRupture rupture, Jump newJump) {
-		List<FaultSubsectionCluster> clusters = new ArrayList<>();
-		for (FaultSubsectionCluster cluster : rupture.getClustersIterable())
-			clusters.add(cluster);
-		return (float)doTest(clusters, newJump.toCluster, null, false, false);
 	}
 	
 	private double doTest(List<FaultSubsectionCluster> curClusters, FaultSubsectionCluster nextCluster,

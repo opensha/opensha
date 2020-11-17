@@ -50,40 +50,10 @@ public class SplayCountFilter implements ScalarValuePlausibiltyFilter<Integer> {
 			return PlausibilityResult.FAIL_HARD_STOP;
 		return PlausibilityResult.PASS;
 	}
-	
-	private boolean isContinuationJump(ClusterRupture rupture, Jump newJump) {
-		if (rupture.containsInternal(newJump.fromSection)) {
-			// it's on the primary strand, check if it's an addition off of the end
-			return rupture.clusters[rupture.clusters.length-1].endSects.contains(newJump.fromSection);
-		}
-		// it's on a splay, see if it's a splay continuation or a splay off of a splay
-		for (ClusterRupture splay : rupture.splays.values())
-			if (splay.contains(newJump.fromSection))
-				return isContinuationJump(splay, newJump);
-		throw new IllegalStateException("newJump.fromSection isn't contained by the rupture");
-	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		int count = rupture.getTotalNumSplays();
-		// now check the jump
-		if (!isContinuationJump(rupture, newJump))
-			count++;
-		if (verbose)
-			System.out.println("Have "+count+" splays");
-		if (count > maxSplays)
-			return PlausibilityResult.FAIL_HARD_STOP;
-		return PlausibilityResult.PASS;
-	}
 
 	@Override
 	public Integer getValue(ClusterRupture rupture) {
 		return rupture.getTotalNumSplays();
-	}
-
-	@Override
-	public Integer getValue(ClusterRupture rupture, Jump newJump) {
-		return getValue(rupture.take(newJump));
 	}
 
 	@Override

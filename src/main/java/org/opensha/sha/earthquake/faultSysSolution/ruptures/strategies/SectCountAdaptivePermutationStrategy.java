@@ -214,12 +214,6 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 			
 			return result;
 		}
-
-		@Override
-		public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-			// simple case, testing a new jump not part of the rupture
-			return testCluster(rupture.getTotalNumSects(), newJump.toCluster, null, verbose);
-		}
 		
 		private PlausibilityResult testCluster(int rupSizeBefore, FaultSubsectionCluster cluster,
 				RuptureTreeNavigator navigator, boolean verbose) {

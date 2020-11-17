@@ -98,17 +98,12 @@ public class MultiDirectionalPlausibilityFilter implements PlausibilityFilter {
 	private List<ClusterRupture> getInversions(ClusterRupture rupture) {
 		if (plausibilityConfig != null)
 			// this will test all possible inversions as defined by the connection strategy
-			return rupture.getInversions(plausibilityConfig.getConnectionStrategy(),
+			return rupture.getAllAltRepresentations(plausibilityConfig.getConnectionStrategy(),
 					plausibilityConfig.getMaxNumSplays());
 		Preconditions.checkNotNull(connSearch);
 		// this will test all starting points for the rupture, but chooses the best
 		// path through the rupture from each starting point (not exhaustive)
-		return rupture.getPreferredInversions(connSearch);
-	}
-
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		return apply(rupture.take(newJump), verbose);
+		return rupture.getPreferredAltRepresentations(connSearch);
 	}
 	
 	public static class Scalar<E extends Number & Comparable<E>> extends MultiDirectionalPlausibilityFilter
@@ -180,11 +175,6 @@ public class MultiDirectionalPlausibilityFilter implements PlausibilityFilter {
 			// we have both, use distance to center (lower being better)
 			double center = 0.5*(lower + upper);
 			return Math.abs(curVal - center) < Math.abs(prevVal - center);
-		}
-
-		@Override
-		public E getValue(ClusterRupture rupture, Jump newJump) {
-			return getValue(rupture.take(newJump));
 		}
 
 		@Override

@@ -41,20 +41,8 @@ public class NumClustersFilter implements ScalarValuePlausibiltyFilter<Integer> 
 	}
 
 	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		if (rupture.getTotalNumClusters() > maxNumClusters-1)
-			return PlausibilityResult.FAIL_HARD_STOP;
-		return PlausibilityResult.PASS;
-	}
-
-	@Override
 	public Integer getValue(ClusterRupture rupture) {
 		return rupture.getTotalNumClusters();
-	}
-
-	@Override
-	public Integer getValue(ClusterRupture rupture, Jump newJump) {
-		return rupture.getTotalNumClusters()+1;
 	}
 
 	@Override

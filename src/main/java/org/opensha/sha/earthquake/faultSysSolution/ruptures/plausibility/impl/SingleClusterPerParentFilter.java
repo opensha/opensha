@@ -51,20 +51,5 @@ public class SingleClusterPerParentFilter implements PlausibilityFilter {
 		return PlausibilityResult.PASS;
 	}
 
-	@Override
-	public PlausibilityResult testJump(ClusterRupture rupture, Jump newJump, boolean verbose) {
-		HashSet<Integer> parents = new HashSet<>();
-		List<FaultSubsectionCluster> clusters = new ArrayList<>();
-		count(rupture, parents, clusters);
-		parents.add(newJump.toCluster.parentSectionID);
-		clusters.add(newJump.toCluster);
-		if (parents.size() != clusters.size()) {
-			if (verbose) System.out.println(getShortName()+": have "+parents.size()
-				+" parents but "+clusters.size()+" clusters");
-			return PlausibilityResult.FAIL_HARD_STOP;
-		}
-		return PlausibilityResult.PASS;
-	}
-
 }
 
