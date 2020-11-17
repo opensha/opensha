@@ -17,7 +17,7 @@ public class ShahiBaker2014Trans extends ComponentTranslation {
 	/**
 	 * RotD100/RotD50 factors as a function of period from Table 1 of Shahi & Baker 2014.
 	 * 
-	 * We convert from the natural log values provided in the table because they ahve more
+	 * We convert from the natural log values provided in the table because they have more
 	 * significant digits.
 	 */
 	private static DiscretizedFunc rotD100_over_RotD50;
