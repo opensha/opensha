@@ -41,6 +41,17 @@ public enum IMT {
 	SA6P0,
 	SA7P5,
 	SA10P0;
+	
+	private Double period;
+	
+	private IMT() {
+		if (name().startsWith("P")) {
+			period = null;
+		} else {
+			String valStr = name().replace("SA", "").replace("P", ".");
+			period = Double.parseDouble(valStr);
+		}
+	}
 
 	/**
 	 * Returns the corresponding period or frequency for this {@code IMT} if it
@@ -49,9 +60,7 @@ public enum IMT {
 	 *         acceleration, {@code null} otherwise
 	 */
 	public Double getPeriod() {
-		if (name().startsWith("P")) return null;
-		String valStr = name().replace("SA", "").replace("P", ".");
-		return Double.parseDouble(valStr);
+		return period;
 	}
 
 	/**

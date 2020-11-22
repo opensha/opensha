@@ -16,7 +16,7 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.data.Range;
-import org.jfree.ui.TextAnchor;
+import org.jfree.chart.ui.TextAnchor;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
