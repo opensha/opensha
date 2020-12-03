@@ -358,7 +358,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 					// set point-source distance correction type & mag if it's a pointSurface
 					if(rupture.getRuptureSurface() instanceof PointSurface)
 						((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-
+					
 					// indicate that a source has been used (put here because of above filter)
 					sourceUsed = true;
 
@@ -552,6 +552,270 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		return hazFunction;
 	}
 
+
+	
+	/**
+	 * This sums the conditional exceedance functions of all ruptures, giving the expected
+	 * number of exceedances for this events set (given aleatory variability in IML)
+	 * @param hazFunction
+	 * @param site
+	 * @param imr
+	 * @param eqkRupList
+	 * @param updateCurrRuptures
+	 * @return
+	 */
+	public DiscretizedFunc getEventSetExpNumExceedCurve(DiscretizedFunc hazFunction,
+			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
+
+
+		DiscretizedFunc condProbFunc = hazFunction.deepClone();
+
+		//resetting the Parameter change Listeners on the AttenuationRelationship
+		//parameters. This allows the Server version of our application to listen to the
+		//parameter changes.
+		((AttenuationRelationship)imr).resetParameterEventListeners();
+
+		// declare some varibles used in the calculation
+		int k;
+
+		// get the number of points
+		int numPoints = hazFunction.size();
+
+		// define distance filtering stuff
+		double maxDistance = maxDistanceParam.getValue();
+
+		// set the maximum distance in the attenuation relationship
+		imr.setUserMaxDistance(maxDistance);
+
+		int totRups = eqkRupList.size();
+		// progress bar stuff
+		if(updateCurrRuptures) {
+			totRuptures = totRups;
+			currRuptures = 0;
+		}
+
+		// initialize the hazard function to 1.0 (initial total non-exceedance probability)
+		initDiscretizeValues(hazFunction, 0.0);
+
+		// set the Site in IMR
+		imr.setSite(site);
+
+		if (D) System.out.println(C+": starting hazard curve calculation");
+
+		//	  System.out.println("totRuptures="+totRuptures);
+		
+		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
+
+
+		// loop over ruptures
+		for(int n=0; n < totRups ; n++) {
+
+			if(updateCurrRuptures)++currRuptures;
+
+			EqkRupture rupture = eqkRupList.get(n);
+			
+			// set point-source distance correction type (& mag) if it's a pointSurface
+			if(rupture.getRuptureSurface() instanceof PointSurface)
+				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
+
+
+			/*
+    		// apply mag-dist cutoff filter
+    		if(includeMagDistFilter) {
+    			//distance=??; // NEED TO COMPUTE THIS DISTANCE
+     			if(rupture.getMag() < magDistCutoffParam.getValue().getInterpolatedY(distance) {
+    			numRupRejected += 1;
+    			continue;
+    		}
+			 */
+
+			// set the EqkRup in the IMR
+			imr.setEqkRupture(rupture);
+
+			// get the conditional probability of exceedance from the IMR
+			condProbFunc=imr.getExceedProbabilities(condProbFunc);
+
+			// add this cond prob to hazard function
+			for(k=0;k<numPoints;k++) 
+				hazFunction.set(k,hazFunction.getY(k)+condProbFunc.getY(k));
+
+		}
+
+		//	  System.out.println(C+"hazFunction.toString"+hazFunction.toString());
+
+		//	  System.out.println("numRupRejected="+numRupRejected);
+
+		return hazFunction;
+	}
+
+
+	/**
+	 * The computed the exceedance curve using random IML samples.  The curve is
+	 * 1.0 up to the maximum IML sampled (among all ruptures) and zero above that.
+	 * @param hazFunction
+	 * @param site
+	 * @param imr
+	 * @param eqkRupList
+	 * @param updateCurrRuptures
+	 * @return
+	 */
+	public DiscretizedFunc getEventSetHazardCurveRandomIML(DiscretizedFunc hazFunction,
+			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
+
+
+		//resetting the Parameter change Listeners on the AttenuationRelationship
+		//parameters. This allows the Server version of our application to listen to the
+		//parameter changes.
+		((AttenuationRelationship)imr).resetParameterEventListeners();
+
+		// declare some varibles used in the calculation
+		int k;
+
+		// get the number of points
+		int numPoints = hazFunction.size();
+
+		// define distance filtering stuff
+		double maxDistance = maxDistanceParam.getValue();
+
+		// set the maximum distance in the attenuation relationship
+		imr.setUserMaxDistance(maxDistance);
+
+		int totRups = eqkRupList.size();
+		// progress bar stuff
+		if(updateCurrRuptures) {
+			totRuptures = totRups;
+			currRuptures = 0;
+		}
+
+		// set the Site in IMR
+		imr.setSite(site);
+
+		if (D) System.out.println(C+": starting hazard curve calculation");
+
+		//	  System.out.println("totRuptures="+totRuptures);
+		
+		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
+
+		double maxIML = Double.NEGATIVE_INFINITY;
+		
+		// loop over ruptures
+		for(int n=0; n < totRups ; n++) {
+
+			if(updateCurrRuptures)++currRuptures;
+
+			EqkRupture rupture = eqkRupList.get(n);
+			
+			// set point-source distance correction type (& mag) if it's a pointSurface
+			if(rupture.getRuptureSurface() instanceof PointSurface)
+				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
+
+
+			/*
+    		// apply mag-dist cutoff filter
+    		if(includeMagDistFilter) {
+    			//distance=??; // NEED TO COMPUTE THIS DISTANCE
+     			if(rupture.getMag() < magDistCutoffParam.getValue().getInterpolatedY(distance) {
+    			numRupRejected += 1;
+    			continue;
+    		}
+			 */
+
+			// set the EqkRup in the IMR
+			imr.setEqkRupture(rupture);
+
+			double randIML = imr.getRandomIML();
+			if(maxIML < randIML)
+				maxIML = randIML;
+
+		}
+
+		// now convert from total non-exceed prob to total exceed prob
+		for(int i=0;i<numPoints;++i)
+			if(hazFunction.getX(i) < maxIML)
+				hazFunction.set(i,1.0);
+			else
+				hazFunction.set(i,0.0);
+
+		return hazFunction;
+	}
+	
+	/**
+	 * This computes the number of exceedances curve using random IML samples.
+	 * @param hazFunction
+	 * @param site
+	 * @param imr
+	 * @param eqkRupList
+	 * @param updateCurrRuptures
+	 * @return
+	 */
+	public DiscretizedFunc getEventSetNumExceedCurveRandomIML(DiscretizedFunc hazFunction,
+			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
+
+
+		//resetting the Parameter change Listeners on the AttenuationRelationship
+		//parameters. This allows the Server version of our application to listen to the
+		//parameter changes.
+		((AttenuationRelationship)imr).resetParameterEventListeners();
+
+		// define distance filtering stuff
+		double maxDistance = maxDistanceParam.getValue();
+
+		// set the maximum distance in the attenuation relationship
+		imr.setUserMaxDistance(maxDistance);
+
+		int totRups = eqkRupList.size();
+		// progress bar stuff
+		if(updateCurrRuptures) {
+			totRuptures = totRups;
+			currRuptures = 0;
+		}
+
+		// set the Site in IMR
+		imr.setSite(site);
+
+		if (D) System.out.println(C+": starting hazard curve calculation");
+
+		//	  System.out.println("totRuptures="+totRuptures);
+		
+		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
+
+		// loop over ruptures
+		for(int n=0; n < totRups ; n++) {
+
+			if(updateCurrRuptures)++currRuptures;
+
+			EqkRupture rupture = eqkRupList.get(n);
+			
+			// set point-source distance correction type (& mag) if it's a pointSurface
+			if(rupture.getRuptureSurface() instanceof PointSurface)
+				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
+
+
+			/*
+    		// apply mag-dist cutoff filter
+    		if(includeMagDistFilter) {
+    			//distance=??; // NEED TO COMPUTE THIS DISTANCE
+     			if(rupture.getMag() < magDistCutoffParam.getValue().getInterpolatedY(distance) {
+    			numRupRejected += 1;
+    			continue;
+    		}
+			 */
+
+			// set the EqkRup in the IMR
+			imr.setEqkRupture(rupture);
+
+			double randIML = imr.getRandomIML();
+			
+			for(int i=0;i<hazFunction.size();++i) {
+				if(hazFunction.getX(i) < randIML)
+					hazFunction.set(i,hazFunction.getY(i)+1.0);
+				else
+					break;
+			}
+		}
+
+		return hazFunction;
+	}
 
 
 
