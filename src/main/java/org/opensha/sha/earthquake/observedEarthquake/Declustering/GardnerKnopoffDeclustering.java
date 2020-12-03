@@ -25,7 +25,7 @@ import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
  */
 public class GardnerKnopoffDeclustering {
 	
-	static boolean D = true; // debugging flag
+	static boolean D = false; // debugging flag
 	
 	ObsEqkRupList fullCatalog, mainshockList, aftershockList, forshockList, bothAftershockAndForeshockList;
 	EvenlyDiscretizedFunc timeWindowDaysFunc, distanceWindowKmFunc;
