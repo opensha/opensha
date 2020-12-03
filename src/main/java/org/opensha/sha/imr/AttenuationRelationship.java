@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Random;
 
 import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.data.Site;
@@ -330,6 +331,8 @@ extends AbstractIMR implements ScalarIMR {
 	 *  they contain.
 	 */
 	protected ParameterList imlAtExceedProbIndependentParams = new ParameterList();
+	
+	protected Random randomSampler = null;
 
 	/**
 	 *  Constructor for the AttenuationRelationship object - subclasses should execute the
@@ -565,6 +568,45 @@ extends AbstractIMR implements ScalarIMR {
 			}
 		}
 	}
+	
+	/**
+	 * This returns a random IML.  Performance could probably be improved by
+	 * not testing random samples for being within truncation limits.
+	 * @return
+	 */
+	public double getRandomIML() {
+		
+		double stdDev = getStdDev();
+		double mean = getMean();
+		
+		if(randomSampler == null)
+			randomSampler = new Random();
+		
+		if (sigmaTruncTypeParam == null || sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE)) {
+			return mean + stdDev*randomSampler.nextGaussian();
+		} else {
+			double numSig = ( (Double) ( (Parameter) sigmaTruncLevelParam).getValue()).doubleValue();
+			boolean done = false;
+			double randIML = Double.NaN;
+			if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED)) {
+				while(!done) {
+					randIML = mean + stdDev*randomSampler.nextGaussian();
+					if(randIML<mean+numSig*stdDev)
+						done = true;
+				}
+				return randIML;
+			}
+			else {
+				while(!done) {
+					randIML = mean + stdDev*randomSampler.nextGaussian();
+					if(randIML<mean+numSig*stdDev && randIML>mean-numSig*stdDev)
+						done = true;
+				}
+				return randIML;
+			}
+		}
+	}
+
 
 	/**
 	 *  This fills in the exceedance probability for multiple intensityMeasure

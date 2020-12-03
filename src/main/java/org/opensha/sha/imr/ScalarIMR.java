@@ -41,6 +41,11 @@ import org.opensha.sha.util.TectonicRegionType;
 
 public interface ScalarIMR extends IntensityMeasureRelationship {
 
+	/**
+	 * This returns a random IML
+	 * @return
+	 */
+	public double getRandomIML();
 
 	/**
 	 * This returns metadata for all parameters (only showing the independent parameters
