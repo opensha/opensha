@@ -166,6 +166,19 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
       return getCumDist(getSumOfAllY_Values());
     }
     
+    /**
+     * This returns an ArbitrarilyDiscretizedFunc representing the normalized
+     * distribution (so that values sum to 1.0).  This returns a modified clone
+     * (the original distribution is unmodified)
+     * @return
+     */
+    public ArbDiscrEmpiricalDistFunc getNormalizedDist() {
+    	ArbDiscrEmpiricalDistFunc func = deepClone();
+    	func.scale(1.0/getSumOfAllY_Values());
+      return func;
+    }
+
+    
     
     /**
      * This returns the sum of all Y values
@@ -334,6 +347,16 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
     public ArbitrarilyDiscretizedFunc getCumDist() {
       return getCumDist(1.0);
     }
+    
+    /**
+     * The 0.5 is needed to get this to work properly (because setting
+     * the value here will add it to the old one)
+     */
+	@Override
+	public void scale(double val) {
+		for(int i=0; i<size();i++) this.set(i, 0.5*val*getY(i));
+	}
+
 
 
 
