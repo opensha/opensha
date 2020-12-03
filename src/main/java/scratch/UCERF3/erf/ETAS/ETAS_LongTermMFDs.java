@@ -17,6 +17,7 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class ETAS_LongTermMFDs {
 
+	
 	private SummedMagFreqDist[] longTermSupraSeisMFD_OnSectArray;
 	private List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList;
 	private double[] totLongTermSubSeisRateOnSectArray;
