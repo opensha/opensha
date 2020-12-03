@@ -52,6 +52,7 @@ public class ETAS_LongTermMFDs {
 
 		// now set ERF to poisson:
 		erf.getParameter(ProbabilityModelParam.NAME).setValue(ProbabilityModelOptions.POISSON);
+		erf.getTimeSpan().setDuration(1.0); // set this to avoid problems for very long simulations
 		erf.updateForecast();
 		// get what we need
 		if(wtSupraNuclBySubSeisRates) {
@@ -66,6 +67,7 @@ public class ETAS_LongTermMFDs {
 
 		// set it back and test param values
 		erf.getParameter(ProbabilityModelParam.NAME).setValue(probModel);
+		erf.getTimeSpan().setDuration(duration);
 		erf.updateForecast();
 
 		int testNum = erf.getAdjustableParameterList().size()+2;
