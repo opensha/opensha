@@ -1480,25 +1480,25 @@ public class ETAS_Simulator {
 	public static void configAndRunSimulation() {
 		
 		ETAS_Simulator.D = true;	// debug flag
-		ETAS_Simulator.live_map = true;	// 
+		ETAS_Simulator.live_map = false;	// 
 		
 //		TestScenario scenario = TestScenario.PARKFIELD;
 		TestScenario scenario = null;
 		
-		String simulationName = "ElMayor";	// leave blank if scenario is not null
-		String incrementString = "_1"; // set as "-1", or "_2" to save previous runs
+		String simulationName = "TestDebug";	// leave blank if scenario is not null
+		String incrementString = "_2"; // set as "-1", or "_2" to save previous runs
 		
 		Long seed = null;
 //		Long seed = 890841985480217717l;
 		
 		// set start time
-//		double startTimeYear=2012.0;
-//		long startTimeMillis = getTimeInMillisFromYear(startTimeYear);		
+		double startTimeYear=2012.0;
+		long startTimeMillis = getTimeInMillisFromYear(startTimeYear);		
 //		long startTimeMillis = 709732654000l;	// Landers OT
-		long startTimeMillis = 1270420841000l; // El Mayor
+//		long startTimeMillis = 1270420841000l; // El Mayor
 
 		// set the duration
-		double durationYears=1;
+		double durationYears=500;
 //		double durationYears=7.0/365.25;
 		
 		ETAS_ParameterList params = new ETAS_ParameterList();
@@ -1507,7 +1507,9 @@ public class ETAS_Simulator {
 		params.setApplySubSeisForSupraNucl(true);
 //		params.setTotalRateScaleFactor(1.0);
 //		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.NO_ERT);
-		params.setTotalRateScaleFactor(1.14);
+		params.set_kCOV(1.5);
+//		params.setTotalRateScaleFactor(1.14);
+		params.setTotalRateScaleFactor(1.4);
 		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.FULL_TD);
 		params.setStatewideCompletenessModel(U3_EqkCatalogStatewideCompleteness.RELAXED);
 		
