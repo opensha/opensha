@@ -119,12 +119,12 @@ public class PointSource13b extends ProbEqkSource {
 
 	// this field is ignored by subclasses but ostensibly should be able to
 	// be a RuptureSurface once migrated to the new representation
-	private PointSurface13b surface;
+//	private PointSurface13b surface;
 	
 	/**
 	 * Rupture instance.
 	 */
-	protected ProbEqkRupture probEqkRupture;
+//	protected ProbEqkRupture probEqkRupture;
 
 	
 	/**
@@ -153,14 +153,15 @@ public class PointSource13b extends ProbEqkSource {
 		mechCount = countMechs(mechWtMap);
 		setIndices();
 
-		probEqkRupture = new ProbEqkRupture();
-		surface = new PointSurface13b(loc); // mutable, possibly depth varying
 	}
 
 	@Override
 	public ProbEqkRupture getRupture(int idx) {
 		if(idx>getNumRuptures()-1 || idx < 0)
 			throw new RuntimeException("index out of bounds");
+		ProbEqkRupture probEqkRupture = new ProbEqkRupture();
+		PointSurface13b surface = new PointSurface13b(loc); // mutable, possibly depth varying
+
 		FocalMech mech = mechForIndex(idx);
 		double wt = mechWts.get(mech);
 		if (mech != STRIKE_SLIP) wt *= 0.5;
@@ -225,13 +226,13 @@ public class PointSource13b extends ProbEqkSource {
 	@Override
 	public LocationList getAllSourceLocs() {
 		LocationList locList = new LocationList();
-		locList.add(surface.getLocation());
+		locList.add(loc);
 		return locList;
 	}
 
 	@Override
 	public RuptureSurface getSourceSurface() {
-		return surface;
+		return new PointSurface13b(loc);
 	}
 
 	@Override
