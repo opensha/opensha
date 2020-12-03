@@ -247,12 +247,31 @@ public class PlotSpec implements Serializable {
 		this.customLegendCollection = customLegendCollection;
 	}
 	
+	/**
+	 * Creates an inset legend with default settings (top right, 0.95 relative x/y, single column, max 35%
+	 * width).
+	 * 
+	 * @param insetLegend
+	 */
 	public void setLegendInset(boolean insetLegend) {
 		if (insetLegend)
 			this.legend = true;
 		this.insetLegend = insetLegend;
 	}
 	
+	/**
+	 * Creates a legend that is inset in the plot. Function names will be used to populate the legend
+	 * (null names will be skipped unless you call setLegendSkipBlank(true)). Coordinates are relative
+	 * and in the range of [0,1]. If you set the anchor to TOP_RIGHT, then the relX coordinate will be
+	 * the x location of the right edge of the legend, and the relY coordinate the y location of the top
+	 * edge.
+	 * 
+	 * @param anchor location of the inset legend, e.g., RectangleAnchor.TOP_RIGHT
+	 * @param relX relative x coordinate of the legend in the range [0,1]
+	 * @param relY relative y coordinate of the legend in the range [0,1]
+	 * @param maxWidth maximum relative width of the legend in the range (0,1]
+	 * @param singleColumn if true, force each item to be on a new line
+	 */
 	public void setLegendInset(RectangleAnchor anchor, double relX, double relY, double maxWidth,
 			boolean singleColumn) {
 		this.legend = true;
