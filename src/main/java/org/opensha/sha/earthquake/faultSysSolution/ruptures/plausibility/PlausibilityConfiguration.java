@@ -42,9 +42,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutof
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.RuptureCoulombResult.RupCoulombQuantity;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
@@ -185,40 +187,34 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
-		public Builder clusterCoulomb(SubSectStiffnessCalculator subSectCalc,
-				StiffnessAggregationMethod aggMethod, float threshold) {
-			filters.add(new ClusterCoulombCompatibilityFilter(subSectCalc, aggMethod, threshold));
+		public Builder clusterCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold) {
+			filters.add(new ClusterCoulombCompatibilityFilter(aggCalc, threshold));
 			return this;
 		}
 		
-		public Builder clusterPathCoulomb(SubSectStiffnessCalculator subSectCalc,
-				StiffnessAggregationMethod aggMethod, float threshold) {
-			filters.add(new ClusterPathCoulombCompatibilityFilter(subSectCalc, aggMethod, threshold));
+		public Builder clusterPathCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold) {
+			filters.add(new ClusterPathCoulombCompatibilityFilter(aggCalc, threshold));
 			return this;
 		}
 		
-		public Builder clusterPathCoulomb(SubSectStiffnessCalculator subSectCalc,
-				StiffnessAggregationMethod aggMethod, float threshold, float fractPathsThreshold) {
+		public Builder clusterPathCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold, float fractPathsThreshold) {
 			filters.add(new ClusterPathCoulombCompatibilityFilter(
-					subSectCalc, aggMethod, threshold, fractPathsThreshold));
+					aggCalc, threshold, fractPathsThreshold));
 			return this;
 		}
 		
-		public Builder parentCoulomb(SubSectStiffnessCalculator subSectCalc,
-				StiffnessAggregationMethod aggMethod, float threshold, Directionality directionality) {
-			filters.add(new ParentCoulombCompatibilityFilter(subSectCalc, aggMethod, threshold, directionality));
+		public Builder parentCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold, Directionality directionality) {
+			filters.add(new ParentCoulombCompatibilityFilter(aggCalc, threshold, directionality));
 			return this;
 		}
 		
-		public Builder netRupCoulomb(SubSectStiffnessCalculator subSectCalc,
-				StiffnessAggregationMethod aggMethod, float threshold, RupCoulombQuantity quantity) {
-			filters.add(new NetRuptureCoulombFilter(subSectCalc, aggMethod, quantity, threshold));
+		public Builder netRupCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold) {
+			filters.add(new NetRuptureCoulombFilter(aggCalc, threshold));
 			return this;
 		}
 		
-		public Builder netClusterCoulomb(SubSectStiffnessCalculator subSectCalc,
-				StiffnessAggregationMethod aggMethod, float threshold) {
-			filters.add(new NetClusterCoulombFilter(subSectCalc, aggMethod, threshold));
+		public Builder netClusterCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold) {
+			filters.add(new NetClusterCoulombFilter(aggCalc, threshold));
 			return this;
 		}
 		
@@ -797,6 +793,7 @@ public class PlausibilityConfiguration {
 			out.name("lameLambda").value(calc.getLameLambda());
 			out.name("lameMu").value(calc.getLameMu());
 			out.name("coeffOfFriction").value(calc.getCoeffOfFriction());
+			out.name("patchAlignment").value(calc.getPatchAlignment().name());
 			out.endObject();
 		}
 
@@ -807,6 +804,7 @@ public class PlausibilityConfiguration {
 			Double lambda = null;
 			Double coeffOfFriction = null;
 			Double gridSpacing = null;
+			PatchAlignment alignment = SubSectStiffnessCalculator.alignment_default;
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "lameMu":
@@ -820,6 +818,9 @@ public class PlausibilityConfiguration {
 					break;
 				case "gridSpacing":
 					gridSpacing = in.nextDouble();
+					break;
+				case "patchAlignment":
+					alignment = PatchAlignment.valueOf(in.nextString());
 					break;
 
 				default:
@@ -835,7 +836,7 @@ public class PlausibilityConfiguration {
 				}
 			}
 			SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
-					subSects, gridSpacing, lambda, mu, coeffOfFriction);
+					subSects, gridSpacing, lambda, mu, coeffOfFriction, alignment);
 			prevCalc = calc;
 			return calc;
 		}
@@ -870,7 +871,7 @@ public class PlausibilityConfiguration {
 				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
 //		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
 //		builder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
-		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+		builder.clusterPathCoulomb(AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc), 0f);
 //		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 0.5f);
 //		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 1f/3f);
 //		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 2f/3f);
@@ -886,19 +887,19 @@ public class PlausibilityConfiguration {
 //		};
 //		builder.cumulativePenalty(10f, false, penalties);
 		
-		RuptureProbabilityCalc[] probCalcs = CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc);
-		builder.cumulativeProbability(0.01f, probCalcs);
-		builder.cumulativeProbability(0.0075f, probCalcs);
-		builder.cumulativeProbability(0.005f, probCalcs);
-		builder.cumulativeProbability(0.0025f, probCalcs);
-		builder.cumulativeProbability(0.001f, probCalcs);
-		builder.cumulativeProbability(0.0005f, probCalcs);
+//		RuptureProbabilityCalc[] probCalcs = CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc);
+//		builder.cumulativeProbability(0.01f, probCalcs);
+//		builder.cumulativeProbability(0.0075f, probCalcs);
+//		builder.cumulativeProbability(0.005f, probCalcs);
+//		builder.cumulativeProbability(0.0025f, probCalcs);
+//		builder.cumulativeProbability(0.001f, probCalcs);
+//		builder.cumulativeProbability(0.0005f, probCalcs);
 		
 		PlausibilityConfiguration config = builder.build();
 		
 //		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/new_coulomb_filters.json"));
 //		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/new_cumulative_prob_filters.json"));
-		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/alt_filters.json"));
+//		config.writeFiltersJSON(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/alt_filters.json"));
 		
 		Gson gson = buildGson(subSects);
 		

@@ -33,9 +33,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FilterDataClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.RuptureCoulombResult.RupCoulombQuantity;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
@@ -772,7 +774,7 @@ public class ClusterRuptureBuilder {
 //		PlausibilityConfiguration config = PlausibilityConfiguration.getUCERF3(subSects, distAzCalc, fm);
 //		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
 //		String outputName = fm.encodeChoiceString().toLowerCase()+"_reproduce_ucerf3.zip";
-//		SubSectStiffnessCalculator stiffnessCalc = null;
+//		AggregatedStiffnessCache stiffnessCache = null;
 //		File stiffnessCacheFile = null;
 //		int stiffnessCacheSize = 0;
 		
@@ -784,16 +786,18 @@ public class ClusterRuptureBuilder {
 		// build stiffness calculator (used for new Coulomb)
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
 				subSects, 2d, 3e4, 3e4, 0.5);
-		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCalc.getCacheFileName(StiffnessType.CFF));
+		stiffnessCalc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
+		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
+		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());
 		int stiffnessCacheSize = 0;
 		if (stiffnessCacheFile.exists())
-			stiffnessCacheSize = stiffnessCalc.loadCacheFile(stiffnessCacheFile, StiffnessType.CFF);
+			stiffnessCacheSize = stiffnessCache.loadCacheFile(stiffnessCacheFile);
 		
 		/*
 		 * Connection strategy: which faults are allowed to connect, and where?
 		 */
 		// use this for the exact same connections as UCERF3
-		double minJumpDist = 10d;
+		double minJumpDist = 5d;
 		ClusterConnectionStrategy connectionStrategy =
 				new UCERF3ClusterConnectionStrategy(subSects,
 						distAzCalc, minJumpDist, CoulombRates.loadUCERF3CoulombRates(fm));
@@ -818,15 +822,15 @@ public class ClusterRuptureBuilder {
 //		configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
 		
 		// new probability-based cumulative filter (cumulatives should always be first for efficiency)
-		float probThresh = 0.005f;
-		outputName += "_cmlProb"+(float)probThresh;
-//		List<RuptureProbabilityCalc> probCalcs = new ArrayList<>();
-//		probCalcs.add(new BiasiWesnousky2016CombJumpDistProb(1d)); outputName += "-BW16Dist";
-//		probCalcs.add(new BiasiWesnousky2017JumpAzChangeProb(distAzCalc)); outputName += "-BW17Az";
-//		probCalcs.add(new BiasiWesnousky2017MechChangeProb()); outputName += "-BW17Mech";
-//		configBuilder.cumulativeProbability(probThresh, probCalcs.toArray(new RuptureProbabilityCalc[0]));
-		configBuilder.cumulativeProbability(probThresh,
-				CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc)); outputName += "-BW16-17";
+//		float probThresh = 0.005f;
+//		outputName += "_cmlProb"+(float)probThresh;
+////		List<RuptureProbabilityCalc> probCalcs = new ArrayList<>();
+////		probCalcs.add(new BiasiWesnousky2016CombJumpDistProb(1d)); outputName += "-BW16Dist";
+////		probCalcs.add(new BiasiWesnousky2017JumpAzChangeProb(distAzCalc)); outputName += "-BW17Az";
+////		probCalcs.add(new BiasiWesnousky2017MechChangeProb()); outputName += "-BW17Mech";
+////		configBuilder.cumulativeProbability(probThresh, probCalcs.toArray(new RuptureProbabilityCalc[0]));
+//		configBuilder.cumulativeProbability(probThresh,
+//				CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc)); outputName += "-BW16-17";
 		
 		// new penalty-based cumulative filter (cumulatives should always be first for efficiency)
 //		float penThresh = 10f;
@@ -848,10 +852,23 @@ public class ClusterRuptureBuilder {
 		
 		// other cumulatives
 //		configBuilder.cumulativeRakeChange(180f); outputName += "_cmlRake";
+//		configBuilder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0.75f,
+//				RupCoulombQuantity.MEAN_SECT_FRACT_POSITIVES); outputName += "_cffNetFract0.75";
+		AggregatedStiffnessCalculator aggNetPatchFracts =
+				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)
+				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.FRACT_POSITIVE)
+				.sectsToSectsAgg(AggregationMethod.MEAN).get();
+		configBuilder.netRupCoulomb(aggNetPatchFracts, 0.9f); outputName += "_cffPatchNetFract0.9";
 		
 		// new Coulomb filters (path is current preffered)
-		configBuilder.clusterPathCoulomb(stiffnessCalc,
-				StiffnessAggregationMethod.MEDIAN, 0f); outputName += "_cffClusterPathPositive";
+		// this will use the median interaction between 2 sections, and sum sect-to-sect values across a rupture
+		AggregatedStiffnessCalculator aggMedianPatchSumSects =
+				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
+		configBuilder.clusterPathCoulomb(aggMedianPatchSumSects, 0f); outputName += "_cffClusterPathPositive";
+//		configBuilder.clusterPathCoulomb(stiffnessCalc,
+//				StiffnessAggregationMethod.GREATER_SUM_MEDIAN, 0f); outputName += "_cffSumMedClusterPathPositive";
+//		configBuilder.clusterPathCoulomb(stiffnessCalc,
+//				StiffnessAggregationMethod.SUM, 0f); outputName += "_cffSumClusterPathPositive";
 //		configBuilder.clusterPathCoulomb(stiffnessCalc,
 //				StiffnessAggregationMethod.MEDIAN, 0f, 0.5f); outputName += "_cffClusterHalfPathsPositive";
 //		configBuilder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN,
@@ -1001,10 +1018,10 @@ public class ClusterRuptureBuilder {
 			System.out.println("DONE writing dist/az cache");
 		}
 		
-		if (stiffnessCalc != null && stiffnessCacheFile != null
-				&& stiffnessCacheSize < stiffnessCalc.calcCacheSize()) {
+		if (stiffnessCache != null && stiffnessCacheFile != null
+				&& stiffnessCacheSize < stiffnessCache.calcCacheSize()) {
 			System.out.println("Writing stiffness cache to "+stiffnessCacheFile.getAbsolutePath());
-			stiffnessCalc.writeCacheFile(stiffnessCacheFile, StiffnessType.CFF);
+			stiffnessCache.writeCacheFile(stiffnessCacheFile);
 			System.out.println("DONE writing stiffness cache");
 		}
 	}

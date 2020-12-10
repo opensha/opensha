@@ -364,7 +364,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 
 	@Override
 	public String getScalarName() {
-		return "Conditionaly Probability";
+		return "Conditional Probability";
 	}
 
 	@Override

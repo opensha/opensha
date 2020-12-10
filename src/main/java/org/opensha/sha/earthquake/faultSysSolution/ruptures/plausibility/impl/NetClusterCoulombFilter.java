@@ -2,15 +2,13 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessResult;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 
 import com.google.common.collect.Range;
 
@@ -26,15 +24,12 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  */
 public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter {
 	
-	private SubSectStiffnessCalculator stiffnessCalc;
-	private StiffnessAggregationMethod aggMethod;
+	private AggregatedStiffnessCalculator aggCalc;
 	private float threshold;
 
-	public NetClusterCoulombFilter(SubSectStiffnessCalculator stiffnessCalc, StiffnessAggregationMethod aggMethod,
-			float threshold) {
+	public NetClusterCoulombFilter(AggregatedStiffnessCalculator aggCalc, float threshold) {
 		super();
-		this.stiffnessCalc = stiffnessCalc;
-		this.aggMethod = aggMethod;
+		this.aggCalc = aggCalc;
 		this.threshold = threshold;
 	}
 
@@ -63,11 +58,15 @@ public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter 
 	}
 	
 	private float getMinValue(List<FaultSubsectionCluster> clusters) {
+		List<FaultSection> allSects = new ArrayList<>();
+		for (FaultSubsectionCluster cluster : clusters)
+			allSects.addAll(cluster.subSects);
 		float minVal = Float.POSITIVE_INFINITY;
 		for (FaultSubsectionCluster cluster : clusters) {
-			StiffnessResult val = stiffnessCalc.calcAggClustersToClusterStiffness(
-					StiffnessType.CFF, clusters, cluster);
-			minVal = Float.min(minVal, (float)val.getValue(aggMethod));
+			// get sublist of source sects: all sects not on this cluster
+			List<FaultSection> sources = allSects.stream().filter(s -> !cluster.contains(s)).collect(Collectors.toList());
+			double val = aggCalc.calcSectsToSects(sources, cluster.subSects);
+			minVal = Float.min(minVal, (float)val);
 		}
 		return minVal;
 	}
@@ -92,8 +91,8 @@ public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter 
 	}
 
 	@Override
-	public SubSectStiffnessCalculator getStiffnessCalc() {
-		return stiffnessCalc;
+	public AggregatedStiffnessCalculator getAggregator() {
+		return aggCalc;
 	}
 
 }

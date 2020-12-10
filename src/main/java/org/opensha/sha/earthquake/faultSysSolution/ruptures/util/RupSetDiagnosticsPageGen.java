@@ -80,6 +80,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Ju
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetRuptureCoulombFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayCountFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
@@ -121,6 +122,12 @@ public class RupSetDiagnosticsPageGen {
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_sectFractPerm0.15.zip");
 //			String inputName = "CmlAz, CFF Cluster Path Positive";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
+//			String inputName = "CmlAz, CFF Path Max(Med,Sum)";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
+			String inputName = "CmlAz, NetFract0.75, CFF Path Max(Med,Sum)";
+			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffNetFract0.75_cffSumMedClusterPathPositive.zip");
+//			String inputName = "CFF Sum";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumClusterPathPositive.zip");
 //			String inputName = "UCERF3, 10% Sect Fract Increase";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3_sectFractPerm0.1.zip");
 //			String inputName = "10km Jump Dist";
@@ -135,18 +142,20 @@ public class RupSetDiagnosticsPageGen {
 ////			File inputFile = new File(rupSetsDir, "fm3_1_cmlPen5_az60_jump0.1km_rake45_cffClusterPathPositive.zip");
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3_cmlPen5_jump1km_rake45.zip");
 			
-			String inputName = "RSQSim 4983, SectArea=0.5";
-			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+//			String inputName = "RSQSim 4983, SectArea=0.5";
+//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 			
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
-			String compName = "UCERF3";
-			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+//			String compName = "UCERF3";
+//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			String compName = null;
 //			File compareFile = null;
-//			String compName = "CmlAz, CFF Cluster Path Positive";
+//			String compName = "CFF Med Path";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
+			String compName = "No Net Fract";
+			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
 //			String compName = "CmlAz Only";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 //			String compName = "CmlAz, CFF Cluster Positive";
@@ -2530,9 +2539,28 @@ public class RupSetDiagnosticsPageGen {
 								xAxisLabel += " ("+scaleFilter.getScalarUnits()+")";
 						}
 						System.out.println("tracker: "+track);
+						ScalarCoulombPlausibilityFilter coulombFilter = null;
+						if (filter instanceof ScalarCoulombPlausibilityFilter) {
+							coulombFilter = (ScalarCoulombPlausibilityFilter)filter;
+							System.out.println("Coulomb filter "+filter.getName()+" has agg method "
+									+coulombFilter.getAggregationMethod()+", scalar type: "
+									+coulombFilter.getScalarName());
+							if (coulombFilter.getAggregationMethod() == StiffnessAggregationMethod.FRACT_POSITIVE) {
+								// use standard plotting for fract positive
+								coulombFilter = null;
+							} else if (coulombFilter instanceof NetRuptureCoulombFilter) {
+								RupCoulombQuantity rupQuantity =
+										((NetRuptureCoulombFilter)coulombFilter).getRuptureQuantity();
+								// only use log spacing if it's actually CFF
+								if (rupQuantity != RupCoulombQuantity.MEAN_SECT_CFF
+										&& rupQuantity != RupCoulombQuantity.MIN_SECT_CFF
+										&& rupQuantity != RupCoulombQuantity.SUM_SECT_CFF)
+									coulombFilter = null;
+							}
+						}
 						
-						if (filter instanceof ScalarCoulombPlausibilityFilter
-								&& lower != null && lower.floatValue() <= 0f && track.getMax() < 0d) {
+						if (coulombFilter != null && lower != null && lower.floatValue() <= 0f
+								&& track.getMax() < 0d) {
 							// do it in log spacing, negative
 							double logMinNeg = Math.log10(-track.getMax());
 							double logMaxNeg = Math.log10(-track.getMin());
@@ -2563,8 +2591,8 @@ public class RupSetDiagnosticsPageGen {
 							xRange = new Range(Math.pow(10, logHist.getMinX()-0.5*logHist.getDelta()),
 									Math.pow(10, logHist.getMaxX()+0.5*logHist.getDelta()));
 							xAxisLabel = "-"+xAxisLabel;
-						} else if (filter instanceof ScalarCoulombPlausibilityFilter
-								&& lower != null && lower.floatValue() >= 0f && track.getMin() > 0d) {
+						} else if (coulombFilter != null && lower != null && lower.floatValue() >= 0f
+								&& track.getMin() > 0d) {
 							// do it in log spacing
 							double logMin = Math.log10(track.getMin());
 							double logMax = Math.log10(track.getMax());

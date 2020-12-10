@@ -12,10 +12,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarC
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FilterDataClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessResult;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -33,20 +30,16 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
  */
 public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlausibilityFilter {
 	
-	private SubSectStiffnessCalculator stiffnessCalc;
-	private StiffnessAggregationMethod aggMethod;
+	private AggregatedStiffnessCalculator aggCalc;
 	private float threshold;
 	private float fractPassThreshold = 0; // default pass to if 1 or more paths pass
 
-	public ClusterPathCoulombCompatibilityFilter(SubSectStiffnessCalculator stiffnessCalc,
-			StiffnessAggregationMethod aggMethod, float threshold) {
-		this(stiffnessCalc, aggMethod, threshold, 0f);
+	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, float threshold) {
+		this(aggCalc, threshold, 0f);
 	}
 
-	public ClusterPathCoulombCompatibilityFilter(SubSectStiffnessCalculator stiffnessCalc,
-			StiffnessAggregationMethod aggMethod, float threshold, float fractPassThreshold) {
-		this.stiffnessCalc = stiffnessCalc;
-		this.aggMethod = aggMethod;
+	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, float threshold, float fractPassThreshold) {
+		this.aggCalc = aggCalc;
 		this.threshold = threshold;
 		Preconditions.checkState(fractPassThreshold <= 1f);
 		this.fractPassThreshold = fractPassThreshold;
@@ -167,9 +160,7 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		if (!strandSections.isEmpty()) {
 //			StiffnessResult stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
 //					StiffnessType.CFF, strandClusters, addition);
-			StiffnessResult stiffness = stiffnessCalc.calcAggStiffness(StiffnessType.CFF,
-					strandSections, addition.subSects, -1, addition.parentSectionID);
-			double val = stiffness.getValue(aggMethod);
+			double val = aggCalc.calcSectsToSects(strandSections, addition.subSects);
 			if (verbose)
 				System.out.println("\t\tval="+val+" for "+strandClusters.size()+" clusters ("
 						+strandSections.size()+" sects) to "+addition);
@@ -320,15 +311,15 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 	public Range<Float> getAcceptableRange() {
 		return Range.atLeast((float)threshold);
 	}
-
-	@Override
-	public SubSectStiffnessCalculator getStiffnessCalc() {
-		return stiffnessCalc;
-	}
-
+	
 	@Override
 	public boolean isDirectional(boolean splayed) {
 		return splayed;
+	}
+
+	@Override
+	public AggregatedStiffnessCalculator getAggregator() {
+		return aggCalc;
 	}
 
 }

@@ -20,9 +20,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Ne
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetRuptureCoulombFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.SimpleAzimuthCalc;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.simulators.stiffness.RuptureCoulombResult.RupCoulombQuantity;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
@@ -84,11 +82,11 @@ public class ClusterRupturePlausibilityDebug {
 				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5);
 		PlausibilityFilter[] testFilters = {
 //				new CumulativeAzimuthChangeFilter(new SimpleAzimuthCalc(config.getDistAzCalc()), 560f),
-				new ClusterPathCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
-				new NetClusterCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
-				new NetRuptureCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN,
-						RupCoulombQuantity.SUM_SECT_CFF, 0f),
-				new ClusterCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
+//				new ClusterPathCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
+//				new NetClusterCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
+//				new NetRuptureCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN,
+//						RupCoulombQuantity.SUM_SECT_CFF, 0f),
+//				new ClusterCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
 		};
 		
 		for (ClusterRupture rup : testRuptures) {

@@ -1,17 +1,17 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessAggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessResult;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 
 import com.google.common.collect.Range;
 
@@ -20,12 +20,12 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 public class ParentCoulombCompatibilityFilter extends JumpPlausibilityFilter
 implements ScalarCoulombPlausibilityFilter {
 	
-	private SubSectStiffnessCalculator stiffnessCalc;
-	private StiffnessAggregationMethod aggMethod;
+	private AggregatedStiffnessCalculator aggCalc;
 	private float threshold;
 	private Directionality directionality;
 	
 	private transient Map<IDPairing, Boolean> passCache;
+	private transient Map<Integer, List<FaultSection>> parentSectsMap;
 	
 	public enum Directionality {
 		EITHER,
@@ -33,10 +33,9 @@ implements ScalarCoulombPlausibilityFilter {
 		SUM
 	}
 
-	public ParentCoulombCompatibilityFilter(SubSectStiffnessCalculator stiffnessCalc,
-			StiffnessAggregationMethod aggMethod, float threshold, Directionality directionality) {
-		this.stiffnessCalc = stiffnessCalc;
-		this.aggMethod = aggMethod;
+	public ParentCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc,
+			float threshold, Directionality directionality) {
+		this.aggCalc = aggCalc;
 		this.threshold = threshold;
 		this.directionality = directionality;
 	}
@@ -98,9 +97,20 @@ implements ScalarCoulombPlausibilityFilter {
 		return result ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
 	}
 	
+	private synchronized List<FaultSection> getSectsForParent(int parentID) {
+		if (parentSectsMap == null)
+			parentSectsMap = new HashMap<>();
+		List<FaultSection> sects = parentSectsMap.get(parentID);
+		if (sects == null) {
+			sects = aggCalc.getCalc().getSubSects().stream().filter(
+					s -> s.getParentSectionId() == parentID).collect(Collectors.toList());
+			parentSectsMap.put(parentID, sects);
+		}
+		return sects;
+	}
+	
 	private double calc(int sourceID, int receiverID) {
-		StiffnessResult stiffness = stiffnessCalc.calcParentStiffness(StiffnessType.CFF, sourceID, receiverID);
-		return stiffness.getValue(aggMethod);
+		return aggCalc.calcSectsToSects(getSectsForParent(sourceID), getSectsForParent(receiverID));
 	}
 
 	@Override
@@ -151,14 +161,14 @@ implements ScalarCoulombPlausibilityFilter {
 	}
 
 	@Override
-	public SubSectStiffnessCalculator getStiffnessCalc() {
-		return stiffnessCalc;
-	}
-
-	@Override
 	public boolean isDirectional(boolean splayed) {
 		// only directional if splayed
 		return splayed;
+	}
+
+	@Override
+	public AggregatedStiffnessCalculator getAggregator() {
+		return aggCalc;
 	}
 
 }
