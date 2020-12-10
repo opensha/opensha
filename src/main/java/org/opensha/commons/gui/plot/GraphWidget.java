@@ -36,6 +36,8 @@ import javax.swing.border.LineBorder;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
 
+import com.google.common.collect.Lists;
+
 /**
  * <p>Title: GraphWidget</p>
  * <p>Description: This is a widget which contains a GraphPanel and associated
@@ -60,8 +62,8 @@ public class GraphWidget extends JPanel {
 	protected boolean xLog = false;
 	protected boolean yLog = false;
 	
-	private Range xRange;
-	private Range yRange;
+	private List<Range> xRanges;
+	private List<Range> yRanges;
 	
 	private PlotPreferences plotPrefs;
 
@@ -76,7 +78,7 @@ public class GraphWidget extends JPanel {
 	/**
 	 * List of ArbitrarilyDiscretized functions and Weighted funstions
 	 */
-	protected PlotSpec plotSpec;
+	protected List<PlotSpec> plotSpecs;
 
 	/**
 	 * for Y-log, 0 values will be converted to this small value
@@ -112,12 +114,14 @@ public class GraphWidget extends JPanel {
 		if (plotPrefs == null)
 			plotPrefs = PlotPreferences.getDefault();
 		this.plotPrefs = plotPrefs;
-		this.plotSpec = plotSpec;
+		this.plotSpecs = Lists.newArrayList(plotSpec);
 		graphPanel = new GraphPanel(plotPrefs);
 		this.xLog = xLog;
 		this.yLog = yLog;
-		this.xRange = xRange;
-		this.yRange = yRange;
+		if (xRange != null)
+			this.xRanges = Lists.newArrayList(xRange);
+		if (yRange != null)
+			this.yRanges = Lists.newArrayList(yRange);
 		
 		try {
 			jbInit();
@@ -213,7 +217,7 @@ public class GraphWidget extends JPanel {
 	 * @return the custom Range for the X-Axis
 	 */
 	public Range getUserX_AxisRange() {
-		return xRange;
+		return xRanges == null ? null : xRanges.get(0);
 	}
 
 	/**
@@ -221,7 +225,7 @@ public class GraphWidget extends JPanel {
 	 * @return the custom Range for the Y-Axis
 	 */
 	public Range getUserY_AxisRange() {
-		return yRange;
+		return yRanges == null ? null : yRanges.get(0);
 	}
 
 	/**
@@ -237,7 +241,10 @@ public class GraphWidget extends JPanel {
 	}
 	
 	public void setX_AxisRange(Range xRange) {
-		this.xRange = xRange;
+		if (xRange == null)
+			this.xRanges = null;
+		else
+			this.xRanges = Lists.newArrayList(xRange);
 		drawGraph();
 	}
 
@@ -254,7 +261,10 @@ public class GraphWidget extends JPanel {
 	}
 	
 	public void setY_AxisRange(Range yRange) {
-		this.yRange = yRange;
+		if (yRange == null)
+			yRanges = null;
+		else
+			yRanges = Lists.newArrayList(yRange);
 		drawGraph();
 	}
 
@@ -289,8 +299,14 @@ public class GraphWidget extends JPanel {
 	}
 	
 	public void setAxisRange(Range xRange, Range yRange) {
-		this.xRange = xRange;
-		this.yRange = yRange;
+		if (xRange == null)
+			this.xRanges = null;
+		else
+			this.xRanges = Lists.newArrayList(xRange);
+		if (yRange == null)
+			yRanges = null;
+		else
+			yRanges = Lists.newArrayList(yRange);
 		drawGraph();
 	}
 
@@ -298,8 +314,8 @@ public class GraphWidget extends JPanel {
 	 * Clear custom ranges for both axis.
 	 */
 	public void setAutoRange() {
-		this.xRange = null;
-		this.yRange = null;
+		this.xRanges = null;
+		this.yRanges = null;
 		drawGraph();
 	}
 	
@@ -308,7 +324,7 @@ public class GraphWidget extends JPanel {
 	 * @return currently displayed plot
 	 */
 	public PlotSpec getPlotSpec() {
-		return plotSpec;
+		return plotSpecs.get(0);
 	}
 	
 	/**
@@ -316,7 +332,14 @@ public class GraphWidget extends JPanel {
 	 * @param plotSpec
 	 */
 	public void setPlotSpec(PlotSpec plotSpec) {
-		this.plotSpec = plotSpec;
+		this.plotSpecs = Lists.newArrayList(plotSpec);
+		drawGraph();
+	}
+	
+	public void setMultiplePlotSpecs(List<PlotSpec> plotSpecs, List<Range> xRanges, List<Range> yRanges) {
+		this.plotSpecs = plotSpecs;
+		this.xRanges = xRanges;
+		this.yRanges = yRanges;
 		drawGraph();
 	}
 
@@ -325,19 +348,19 @@ public class GraphWidget extends JPanel {
 	 */
 	public void drawGraph() {
 		if (!isPlotEmpty())
-			graphPanel.drawGraphPanel(plotSpec, xLog, yLog, xRange, yRange);
+			graphPanel.drawGraphPanel(plotSpecs, xLog, yLog, xRanges, yRanges);
 		togglePlot();
 	}
 	
 	private boolean isPlotEmpty() {
-		return plotSpec == null || plotSpec.getPlotElems().isEmpty();
+		return plotSpecs == null || plotSpecs.isEmpty() || plotSpecs.get(0).getPlotElems().isEmpty();
 	}
 	
 	/* (non-Javadoc)
 	 * @see org.opensha.sha.gui.infoTools.GraphWindowAPI#getPlottingFeatures()
 	 */
 	public void setPlotChars(List<PlotCurveCharacterstics> curveCharacteristics) {
-		plotSpec.setChars(curveCharacteristics);
+		plotSpecs.get(0).setChars(curveCharacteristics);
 		drawGraph();
 	}
 
@@ -377,7 +400,7 @@ public class GraphWidget extends JPanel {
 	 * curve in list.
 	 */
 	public List<PlotCurveCharacterstics> getPlottingFeatures() {
-		return plotSpec.getChars();
+		return plotSpecs.get(0).getChars();
 	}
 
 	/**
@@ -385,7 +408,7 @@ public class GraphWidget extends JPanel {
 	 * @return the X Axis Label
 	 */
 	public String getXAxisLabel() {
-		return plotSpec.getXAxisLabel();
+		return plotSpecs.get(0).getXAxisLabel();
 	}
 
 	/**
@@ -393,7 +416,7 @@ public class GraphWidget extends JPanel {
 	 * @return Y Axis Label
 	 */
 	public String getYAxisLabel() {
-		return plotSpec.getYAxisLabel();
+		return plotSpecs.get(0).getYAxisLabel();
 	}
 
 	/**
@@ -401,7 +424,7 @@ public class GraphWidget extends JPanel {
 	 * @return plot Title
 	 */
 	public String getPlotLabel() {
-		return plotSpec.getTitle();
+		return plotSpecs.get(0).getTitle();
 	}
 
 	/**
@@ -409,7 +432,7 @@ public class GraphWidget extends JPanel {
 	 * sets  X Axis Label
 	 */
 	public void setXAxisLabel(String xAxisLabel) {
-		plotSpec.setXAxisLabel(xAxisLabel);
+		plotSpecs.get(0).setXAxisLabel(xAxisLabel);
 		this.drawGraph();
 	}
 
@@ -418,7 +441,7 @@ public class GraphWidget extends JPanel {
 	 * sets Y Axis Label
 	 */
 	public void setYAxisLabel(String yAxisLabel) {
-		plotSpec.setYAxisLabel(yAxisLabel);
+		plotSpecs.get(0).setYAxisLabel(yAxisLabel);
 		this.drawGraph();
 	}
 
@@ -427,7 +450,7 @@ public class GraphWidget extends JPanel {
 	 * sets plot Title
 	 */
 	public void setPlotLabel(String plotTitle) {
-		plotSpec.setTitle(plotTitle);
+		plotSpecs.get(0).setTitle(plotTitle);
 		this.drawGraph();
 	}
 

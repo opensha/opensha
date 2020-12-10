@@ -307,6 +307,9 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		int iBegCount = (int) StrictMath.floor(switchedLog10(lowerBoundVal));
 		//get log10 version of upper bound and round to integer:
 		int iEndCount = (int) StrictMath.ceil(switchedLog10(upperBoundVal));
+		
+//		System.out.println("refreshTicksHoriz: lower="+lowerBoundVal+", upper="+upperBoundVal);
+//		System.out.println("\tiBegCount="+iBegCount+", iEndCount="+iEndCount);
 
 		double tickVal;
 		String tickLabel="";
@@ -358,6 +361,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 					else
 						tickLabel = "";
 				}
+
+//				System.out.println("\t\tj="+j+", tickVal="+tickVal+", tickLabel="+tickLabel);
 
 				if (tickVal > upperBoundVal) {
 					return ticks;     //if past highest data value then exit method
@@ -418,7 +423,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 								 while(x<=x0 && size>0){
 									 //only remove the previous ticklabel if that has been labelled.
 									 Tick tempTick = ((Tick)ticks.get(size));
-									 if(!tempTick.getText().equals(""))
+									 if(!tempTick.getText().equals("") && !tempTick.getText().contains("E"))
 										 removePreviousTick(ticks);
 									 x0 =  ((Double)ticksXVals.get(size)).doubleValue()+3;
 									 --size;
@@ -427,12 +432,18 @@ public class JFreeLogarithmicAxis extends LogAxis {
 							 x0 = x + tickLabelBounds.getWidth() +3;
 						 }
 					}
+//					System.out.println("adding tick with val="+tickVal+", label="+tickLabel);
 					Tick tick = new NumberTick(tickVal, tickLabel, anchor, rotationAnchor,angle);
 					ticks.add(tick);
 					ticksXVals.add(new Double(x));
 				}
 			}
 		}
+//		System.out.println("Returning this tick list:");
+//		for (int i=0; i<ticks.size(); i++) {
+//			ValueTick tick = (ValueTick)ticks.get(i);
+//			System.out.println("\t"+i+". val="+tick.getValue()+", label="+tick.getText());
+//		}
 		return ticks;
 	}
 	
@@ -589,7 +600,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 								while(y>=y0 && size>0){
 									//only remove the previous ticklabel if that has been labelled.
 									Tick tempTick = ((Tick)ticks.get(size));
-									if(!tempTick.getText().equals(""))
+									if(!tempTick.getText().equals("") && !tempTick.getText().contains("E"))
 										//calling the function to remove the previous ticklLabel
 										removePreviousTick(ticks);
 									y0 =  ((Double)ticksYVals.get(size)).doubleValue()-3;
@@ -672,24 +683,28 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 		g2.setFont(getTickLabelFont());
 		Iterator iterator = ticks.iterator();
+//		System.out.println("Plotting log axis labels");
 		while (iterator.hasNext()) {
 			ValueTick tick = (ValueTick)iterator.next();
 
 			int eIndex =-1;
 			if(this.log10TickLabelsInPowerFlag)
 				eIndex =tick.getText().indexOf("E");
+			boolean majorAxis = eIndex >= 0;
 
-
-			if(eIndex!=-1) // for major axis
-				g2.setFont(new Font(this.getTickLabelFont().getName(),this.getTickLabelFont().getStyle(),this.getTickLabelFont().getSize()+(int)(this.getTickLabelFont().getSize()*(0.2))));
-			else  // show minor axis in smaller font
-				g2.setFont(new Font(this.getTickLabelFont().getName(),this.getTickLabelFont().getStyle(),this.getTickLabelFont().getSize()));
+			Font tickFont = this.getTickLabelFont();
+			if (majorAxis)
+				g2.setFont(new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize()+(int)(tickFont.getSize()*(0.2))));
 
 			if (isTickLabelsVisible()) {
 				g2.setPaint(getTickLabelPaint());
 				float[] anchorPoint = calculateAnchorPoint(
 						tick, cursor, dataArea, edge
 				);
+//				if (!tick.getText().isEmpty()) {
+//					System.out.println("tick: value="+tick.getValue()+", label="+tick.getText()+", vertical="+isVerticalTickLabels()+", edge="+edge);
+//					System.out.println("\tcursor="+cursor+", anchor="+anchorPoint[0]+","+anchorPoint[1]);
+//				}
 				anchorPoint[1] += verticalAnchorShift;
 
 				if (isVerticalTickLabels()) {
@@ -703,7 +718,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				}
 				else{
 
-					if(eIndex==-1)
+					if (!majorAxis) {
+						// minor axis (smaller font)
 						TextUtils.drawRotatedString(
 								tick.getText(), g2, 
 								anchorPoint[0], anchorPoint[1],
@@ -711,7 +727,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 								tick.getAngle(),
 								tick.getRotationAnchor()
 						);
-					else {
+					} else {
+						// major axis (10)
 						TextUtils.drawRotatedString(
 								"10", g2, 
 								anchorPoint[0]-7, anchorPoint[1],
@@ -719,12 +736,15 @@ public class JFreeLogarithmicAxis extends LogAxis {
 								tick.getAngle(),
 								tick.getRotationAnchor()
 						);
-						//setting the font properties to show the power of 10
-						g2.setFont(new Font(this.getTickLabelFont().getName(),this.getTickLabelFont().getStyle(),
-								this.getTickLabelFont().getSize()-(int)(this.getTickLabelFont().getSize()*(0.2))));
+						// setting the font properties to show the power of 10
+						g2.setFont(new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize()-(int)(tickFont.getSize()*(0.2))));
+
+						float horzOffset = (int)(0.3*getTickLabelFont().getSize());
+						if (!tick.getText().startsWith("-") && edge == RectangleEdge.BOTTOM)
+							horzOffset *= 2;
 						TextUtils.drawRotatedString(
 								tick.getText().substring(eIndex+1), g2, 
-								anchorPoint[0]+(int)(0.3*getTickLabelFont().getSize()),
+								anchorPoint[0]+horzOffset,
 								anchorPoint[1]-3-(int)(0.4*this.getTickLabelFont().getSize()),
 								tick.getTextAnchor(), 
 								tick.getAngle(),

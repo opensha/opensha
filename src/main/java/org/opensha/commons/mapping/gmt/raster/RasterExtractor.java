@@ -33,7 +33,7 @@ import javax.imageio.ImageIO;
 
 import org.opensha.commons.util.FileUtils;
 
-import com.lowagie.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.PdfReader;
 
 public class RasterExtractor {
 	
