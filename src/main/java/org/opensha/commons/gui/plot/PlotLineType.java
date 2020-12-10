@@ -54,7 +54,7 @@ public enum PlotLineType {
 			return new BasicStroke(lineWidth);
 		else if (this == DOTTED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
-					BasicStroke.JOIN_BEVEL,0,new float[] {1},0);
+					BasicStroke.JOIN_BEVEL,0,new float[] {Float.min(6, Float.max(lineWidth*0.7f, 1))},0);
 		else if (this == DASHED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
 					BasicStroke.JOIN_BEVEL,0,new float[] {9},0);

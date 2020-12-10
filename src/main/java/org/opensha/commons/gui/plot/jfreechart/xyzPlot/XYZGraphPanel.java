@@ -48,20 +48,21 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
 import org.opensha.commons.gui.plot.jfreechart.MyTickUnits;
+import org.opensha.commons.gui.plot.pdf.PDF_UTF8_FontMapper;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.cpt.CPT;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.lowagie.text.Document;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.HeaderFooter;
-import com.lowagie.text.Phrase;
-import com.lowagie.text.pdf.DefaultFontMapper;
-import com.lowagie.text.pdf.PdfContentByte;
-import com.lowagie.text.pdf.PdfTemplate;
-import com.lowagie.text.pdf.PdfWriter;
+import com.itextpdf.awt.FontMapper;
+import com.itextpdf.awt.PdfGraphics2D;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfContentByte;
+import com.itextpdf.text.pdf.PdfTemplate;
+import com.itextpdf.text.pdf.PdfWriter;
 
 /**
  * XYZ version of GraphPanel - this plots XYZ data in JFreeChart using CPT instances. A few
@@ -581,12 +582,10 @@ public class XYZGraphPanel extends JPanel {
 	 */
 	public void saveAsPDF(String fileName, int width, int height) throws IOException {
 		// step 1
-		Document metadataDocument = new Document(new com.lowagie.text.Rectangle(
+		Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(
 				width, height));
 		metadataDocument.addAuthor("OpenSHA");
 		metadataDocument.addCreationDate();
-		HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
-		metadataDocument.setFooter(footer);
 		try {
 			// step 2
 			PdfWriter writer;
@@ -598,8 +597,8 @@ public class XYZGraphPanel extends JPanel {
 			// step 4
 			PdfContentByte cb = writer.getDirectContent();
 			PdfTemplate tp = cb.createTemplate(width, height);
-			Graphics2D g2d = tp.createGraphics(width, height,
-					new DefaultFontMapper());
+			FontMapper fontMapper = new PDF_UTF8_FontMapper();
+			Graphics2D g2d = new PdfGraphics2D(tp, width, height, fontMapper);
 			Rectangle2D r2d = new Rectangle2D.Double(0, 0, width, height);
 			chartPanel.getChart().draw(g2d, r2d);
 			g2d.dispose();
