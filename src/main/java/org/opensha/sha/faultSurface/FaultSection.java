@@ -301,7 +301,7 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 * This returns a RuptureSurface with the specified grid spacing (if applicable), where aseismicSlipFactor
 	 * is optionally applied as a reduction of down-dip-width (an increase of the upper seis depth).
 	 * @param gridSpacing grid spacing in km (if applicable)
-	 * @param preserveGridSpacingExactly - if false, this will increase the grid spacing to fit the length 
+	 * @param preserveGridSpacingExactly - if false, this will decrease the grid spacing to fit the length 
 	 * and ddw exactly (otherwise trimming occurs)
 	 * @param aseisRecudesArea - flag to reduce area by aseismic slip factor
 	 * @return
