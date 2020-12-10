@@ -1250,7 +1250,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				
 				try {
 					FaultSysSolutionERF_Calc.combineBranchSensHists(histPDFs, new File(regionHistDir, "histograms_combined.pdf"));
-				} catch (com.lowagie.text.DocumentException e) {
+				} catch (com.itextpdf.text.DocumentException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
@@ -1287,7 +1287,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				if (faultSmallPDFs.size() > 1)
 					TestPDFCombine.combine(faultSmallPDFs, new File(smallFaultsDir, (int)duration+"yr_combined.pdf"),
 							2, 0.43, false, 0.06, 0.03);
-			} catch (com.lowagie.text.DocumentException e) {
+			} catch (com.itextpdf.text.DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 			
@@ -1391,7 +1391,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						2, 0.5, false, 0.03, 0.05);
 				TestPDFCombine.combine(faultSmallPDFs, new File(smallFaultsDir, (int)duration+"yr_combined.pdf"),
 						2, 0.43, false, 0.06, 0.03);
-			} catch (com.lowagie.text.DocumentException e) {
+			} catch (com.itextpdf.text.DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
@@ -3148,7 +3148,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 					
 					try {
 						FaultSysSolutionERF_Calc.combineBranchSensHists(histPDFs, new File(siteDir, prefix+".pdf"));
-					} catch (com.lowagie.text.DocumentException e) {
+					} catch (com.itextpdf.text.DocumentException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
 					

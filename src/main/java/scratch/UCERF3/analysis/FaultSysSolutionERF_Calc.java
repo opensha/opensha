@@ -3591,7 +3591,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		try {
 			combineBranchSensHists(comparePlotsDir);
-		} catch (com.lowagie.text.DocumentException e) {
+		} catch (com.itextpdf.text.DocumentException e) {
 			ExceptionUtils.throwAsRuntimeException(e);
 		}
 		
@@ -3623,7 +3623,7 @@ public class FaultSysSolutionERF_Calc {
 		return meanMap;
 	}
 	
-	public static void combineBranchSensHists(File dir) throws IOException, com.lowagie.text.DocumentException {
+	public static void combineBranchSensHists(File dir) throws IOException, com.itextpdf.text.DocumentException {
 		List<File> pdfFiles = Lists.newArrayList();
 		
 		List<String> classNames = Lists.newArrayList();
@@ -3658,7 +3658,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 	
 	public static void combineBranchSensHists(List<File> pdfFiles, File outputFile)
-			throws IOException, com.lowagie.text.DocumentException {
+			throws IOException, com.itextpdf.text.DocumentException {
 		
 		int cols = 3;
 		double scale = 0.4;
@@ -4745,7 +4745,7 @@ public class FaultSysSolutionERF_Calc {
 			File sensDir = new File(subDir, "BranchSensitivityMaps");
 			try {
 				TestPDFCombine.combine(sensDir, sensDir);
-			} catch (com.lowagie.text.DocumentException e) {
+			} catch (com.itextpdf.text.DocumentException e) {
 				ExceptionUtils.throwAsRuntimeException(e);
 			}
 			
