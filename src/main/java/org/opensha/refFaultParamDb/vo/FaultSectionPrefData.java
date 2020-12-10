@@ -530,7 +530,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 * This returns a StirlingGriddedSurface with the specified grid spacing, where aseismicSlipFactor
 	 * is applied as a reduction of down-dip-width (an increase of the upper seis depth).
 	 * @param gridSpacing
-	 * @param preserveGridSpacingExactly - if false, this will increase the grid spacing to fit the length 
+	 * @param preserveGridSpacingExactly - if false, this will decrease the grid spacing to fit the length 
 	 * and ddw exactly (otherwise trimming occurs)
 	 * @return
 	 */
