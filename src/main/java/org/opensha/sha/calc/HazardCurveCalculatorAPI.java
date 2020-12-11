@@ -83,6 +83,15 @@ public interface HazardCurveCalculatorAPI {
 	public void setMaxSourceDistance(double distance);
 
 	/**
+	 * This sets the minimum magnitude considered in the calculation.  Values
+	 * less than the specified amount will be ignored.
+	 *
+	 * @param magnitude: the minimum magnitude
+	 */
+	public void setMinMagnitude(double magnitude);
+
+
+	/**
 	 * This is a direct way of getting the distance cutoff from that parameter
 	 * 
 	 * @return max source distance

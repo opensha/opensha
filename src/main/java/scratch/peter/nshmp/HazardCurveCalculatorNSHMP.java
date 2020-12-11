@@ -168,6 +168,12 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	public void setMaxSourceDistance(double distance){
 		maxDistanceParam.setValue(distance);
 	}
+	
+	@Override
+	public void setMinMagnitude(double magnitude) {
+		throw new RuntimeException("Method not supported");
+	}
+
 
 
 	@Override

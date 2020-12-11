@@ -39,6 +39,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
 import org.opensha.sha.calc.params.MagDistCutoffParam;
 import org.opensha.sha.calc.params.MaxDistanceParam;
+import org.opensha.sha.calc.params.MinMagnitudeParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
 import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
@@ -85,6 +86,9 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	//Info for parameter that sets the maximum distance considered
 	private MaxDistanceParam maxDistanceParam;
 
+	//Info for parameter that sets the maximum distance considered
+	private MinMagnitudeParam minMagnitudeParam;
+
 	//Info for parameter tells whether to apply a magnitude-dependent distance cutoff
 	private IncludeMagDistFilterParam includeMagDistFilterParam;
 	
@@ -128,6 +132,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		includeMagDistFilterParam = new IncludeMagDistFilterParam();
 
 		magDistCutoffParam = new MagDistCutoffParam();
+		
+		minMagnitudeParam = new MinMagnitudeParam();
 
 		// Max Distance Parameter
 		numStochEventSetRealizationsParam = new NumStochasticEventSetsParam();
@@ -140,6 +146,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(maxDistanceParam);
+		adjustableParams.addParameter(minMagnitudeParam);
 		adjustableParams.addParameter(numStochEventSetRealizationsParam);
 		adjustableParams.addParameter(includeMagDistFilterParam);
 		adjustableParams.addParameter(magDistCutoffParam);
@@ -166,6 +173,18 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	public void setMaxSourceDistance(double distance){
 		maxDistanceParam.setValue(distance);
 	}
+	
+	/**
+	 * This sets the minimum magnitude considered in the calculation.  Values
+	 * less than the specified amount will be ignored.
+	 *
+	 * @param magnitude: the minimum magnitude
+	 */
+	@Override
+	public void setMinMagnitude(double magnitude) {
+		minMagnitudeParam.setValue(magnitude);
+	}
+
 
 
 	@Override
@@ -348,6 +367,12 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 				try {
 					// get the rupture probability
 					qkProb = ((ProbEqkRupture)rupture).getProbability();
+					
+					// skip small magnitudes
+					if(rupture.getMag() < minMagnitudeParam.getValue()) {
+						numRupRejected += 1;
+						continue;
+					}
 
 					// apply magThreshold if we're to use the mag-dist cutoff filter
 					if(includeMagDistFilter && rupture.getMag() < magThresh) {
@@ -511,6 +536,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
+			// skip small magnitudes
+			if(rupture.getMag() < minMagnitudeParam.getValue())
+				continue;
+			
 			// set point-source distance correction type (& mag) if it's a pointSurface
 			if(rupture.getRuptureSurface() instanceof PointSurface)
 				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
@@ -614,6 +643,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
+			// skip small magnitudes
+			if(rupture.getMag() < minMagnitudeParam.getValue())
+				continue;
+			
 			// set point-source distance correction type (& mag) if it's a pointSurface
 			if(rupture.getRuptureSurface() instanceof PointSurface)
 				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
@@ -705,6 +738,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
+			// skip small magnitudes
+			if(rupture.getMag() < minMagnitudeParam.getValue())
+				continue;
+			
 			// set point-source distance correction type (& mag) if it's a pointSurface
 			if(rupture.getRuptureSurface() instanceof PointSurface)
 				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
@@ -786,6 +823,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
+			// skip small magnitudes
+			if(rupture.getMag() < minMagnitudeParam.getValue())
+				continue;
+			
 			// set point-source distance correction type (& mag) if it's a pointSurface
 			if(rupture.getRuptureSurface() instanceof PointSurface)
 				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
@@ -828,6 +869,12 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 //		System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
 //		if(includeMagDistFilterParam.getValue())
 //			System.out.println("Haz Curv Calc: magDistCutoffParam.getValue()="+magDistCutoffParam.getValue().toString());
+
+		// skip small magnitudes
+		if(rupture.getMag() < minMagnitudeParam.getValue()) {
+			hazFunction.scale(0.0);;
+			return hazFunction;
+		}
 
 
 		// resetting the Parameter change Listeners on the AttenuationRelationship parameters,
@@ -892,6 +939,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	public void setAdjustableParams(ParameterList paramList) {
 		this.adjustableParams = paramList;
 		this.maxDistanceParam = (MaxDistanceParam)paramList.getParameter(MaxDistanceParam.NAME);
+		this.minMagnitudeParam = (MinMagnitudeParam)paramList.getParameter(MinMagnitudeParam.NAME);
 		this.numStochEventSetRealizationsParam =
 			(NumStochasticEventSetsParam)paramList.getParameter(NumStochasticEventSetsParam.NAME);
 		this.includeMagDistFilterParam =
