@@ -421,9 +421,6 @@ public class ETAS_Simulator {
 		info_fr.write("\nMaking ETAS_PrimaryEventSampler took "+(System.currentTimeMillis()-st)/60000+ " min");
 //		info_fr.flush();
 		
-		
-		
-		
 		// Make list of primary aftershocks for given list of obs quakes 
 		// (filling in origin time ID, parentID, and location on parent that does triggering, with the rest to be filled in later)
 		if (D) System.out.println("Making primary aftershocks from input obsEqkRuptureList, size = "+obsEqkRuptureList.size());
@@ -1593,9 +1590,21 @@ public class ETAS_Simulator {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
-		configAndRunSimulation();
+
+//		configAndRunSimulation();
 //		System.exit(0);
+
+		// from one of Kevin's config files:
+//		String string[] = new String[3];
+//		string[0] = "--threads";
+//		string[1] = "1";
+//		string[2] = "/Users/field/Field_Other/CEA_WGCEP/UCERF3/DeclusteringAnalysis/config_single.json";
+//		try {
+//			ETAS_Launcher.main(string);
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 		
 		
 		// *********** OLD RUNS (pre Oct 2018) FROM PREVIOUS CODE VERSION BELOW (before consolidation into configAndRunSimulation()) ***********
