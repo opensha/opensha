@@ -864,8 +864,11 @@ public class ClusterRuptureBuilder {
 		// this will use the median interaction between 2 sections, and sum sect-to-sect values across a rupture
 		AggregatedStiffnessCalculator aggMedianPatchSumSects =
 //				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
-				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc).flatten()
-				.process(AggregationMethod.MEDIAN).process(AggregationMethod.SUM)
+				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)
+				.flatten()
+				.process(AggregationMethod.MEDIAN)
+				.process(AggregationMethod.SUM)
+//				.passthrough()
 				.process(AggregationMethod.SUM).get();
 		configBuilder.clusterPathCoulomb(aggMedianPatchSumSects, 0f); outputName += "_cffClusterPathPositive";
 //		configBuilder.clusterPathCoulomb(stiffnessCalc,

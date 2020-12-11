@@ -553,16 +553,19 @@ public class AggregatedStiffnessCalculator {
 			FaultSection source = sources.get(s);
 			ReceiverDistribution[] aggregated = aggSectToSect(source, receiver);
 			if (distsList != null) {
+				// we're already in list mode
 				Collections.addAll(distsList, aggregated);
 			} else if (aggregated.length != 1) {
+				// we need to switch to list representation, not 1-to-1
 				if (distsList == null) {
 					distsList = new ArrayList<>(sources.size()*aggregated.length);
-					if (s > 0)
-						// copy over that which we already added
-						for (int i=0; i<s; i++)
-							distsList.add(receiverSectDists[i]);
+					// copy over that which we already added
+					for (int i=0; i<s; i++)
+						distsList.add(receiverSectDists[i]);
 				}
+				Collections.addAll(distsList, aggregated);
 			} else {
+				// still 1-to-1
 				receiverSectDists[s] = aggregated[0];
 			}
 		}
@@ -593,41 +596,30 @@ public class AggregatedStiffnessCalculator {
 		return getTerminalLayer(2).get(receiverSectDists);
 	}
 	
-//	// TODO delete this?
-//	private Collection<ReceiverDistribution> aggSectsToSects(List<FaultSection> sources, List<FaultSection> receivers) {
-//		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
-//		
-//		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(receivers.size());
-//		for (FaultSection receiver : receivers)
-//			receiverSectDists.addAll(aggSectsToSect(sources, receiver));
-//		
-//		return layers[3].aggregate(-1, receiverSectDists);
-//	}
-	
 	public double calc(List<FaultSection> sources, List<FaultSection> receivers) {
 		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
 		Preconditions.checkState(layers[3] instanceof TerminalLayer,
 				"Final layer must be terminal: %s", layers[3].getName());
 		
-//		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(receivers.size());
-//		for (FaultSection receiver : receivers)
-//			receiverSectDists.addAll(aggSectsToSect(sources, receiver));
 		ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[receivers.size()];
 		ArrayList<ReceiverDistribution> distsList = null;
 		for (int r=0; r<receivers.size(); r++) {
 			FaultSection receiver = receivers.get(r);
 			ReceiverDistribution[] aggregated = aggSectsToSect(sources, receiver);
 			if (distsList != null) {
+				// we're already in list mode
 				Collections.addAll(distsList, aggregated);
 			} else if (aggregated.length > 1) {
+				// we need to switch to list representation, not 1-to-1
 				if (distsList == null) {
 					distsList = new ArrayList<>(sources.size()*aggregated.length);
-					if (r > 0)
-						// copy over that which we already added
-						for (int i=0; i<r; i++)
-							distsList.add(receiverSectDists[i]);
+					// copy over that which we already added
+					for (int i=0; i<r; i++)
+						distsList.add(receiverSectDists[i]);
 				}
+				Collections.addAll(distsList, aggregated);
 			} else {
+				// still 1-to-1
 				receiverSectDists[r] = aggregated[0];
 			}
 		}
@@ -639,6 +631,7 @@ public class AggregatedStiffnessCalculator {
 			else
 				receiverSectDists = distsList.toArray(new ReceiverDistribution[distsList.size()]);
 		}
+//		System.out.println(receiverSectDists.length+" dists for "+sources.size()+" sources and "+receivers.size()+" receivers");
 		
 		return ((TerminalLayer)layers[3]).get(receiverSectDists);
 	}

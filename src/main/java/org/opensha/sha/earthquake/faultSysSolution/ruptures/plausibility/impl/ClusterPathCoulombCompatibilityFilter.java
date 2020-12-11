@@ -351,9 +351,13 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		
 		AggregatedStiffnessCalculator aggCalc =
 //				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
-				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc).flatten()
-				.process(AggregationMethod.MEDIAN).process(AggregationMethod.SUM)
+				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)
+				.flatten()
+				.process(AggregationMethod.MEDIAN)
+				.process(AggregationMethod.SUM)
+//				.passthrough()
 				.process(AggregationMethod.SUM).get();
+		System.out.println("Aggregator: "+aggCalc);
 		ClusterPathCoulombCompatibilityFilter filter = new ClusterPathCoulombCompatibilityFilter(aggCalc, 0f);
 		
 		ClusterRupture largest = null;
