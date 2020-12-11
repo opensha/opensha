@@ -4,14 +4,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.DoubleConsumer;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -19,7 +16,7 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
-import com.google.common.util.concurrent.AtomicDouble;
+import com.google.common.primitives.Doubles;
 
 /**
  * Stiffness (Coulomb) calculations are done between pairs of individual patches. Most faults are not
@@ -70,31 +67,22 @@ public class AggregatedStiffnessCalculator {
 		private final double[] aggValues;
 //		private final int numValues;
 		
-		public StiffnessAggregation(DoubleStream stream) {
-			this.aggValues = new double[AggregationMethod.values().length];
-			initSorted(stream.sorted().toArray());
-		}
-		
 		public StiffnessAggregation(double[] values) {
 			Arrays.sort(values);
 			this.aggValues = new double[AggregationMethod.values().length];
-			initSorted(values);
-		}
-		
-		private void initSorted(double[] sorted) {
 			int numPositive = 0;
 			double sum = 0d;
-			int count = sorted.length;
-			for (double val : sorted) {
+			int count = values.length;
+			for (double val : values) {
 				sum += val;
 				if (val >= 0)
 					numPositive++;
 			}
 			aggValues[AggregationMethod.MEAN.ordinal()] = sum/(double)count;
-			aggValues[AggregationMethod.MEDIAN.ordinal()] = DataUtils.median_sorted(sorted);
+			aggValues[AggregationMethod.MEDIAN.ordinal()] = DataUtils.median_sorted(values);
 			aggValues[AggregationMethod.SUM.ordinal()] = sum;
-			aggValues[AggregationMethod.MIN.ordinal()] = sorted[0];
-			aggValues[AggregationMethod.MAX.ordinal()] = sorted[count-1];
+			aggValues[AggregationMethod.MIN.ordinal()] = values[0];
+			aggValues[AggregationMethod.MAX.ordinal()] = values[count-1];
 			aggValues[AggregationMethod.FRACT_POSITIVE.ordinal()] = (double)numPositive/(double)count;
 			aggValues[AggregationMethod.NUM_POSITIVE.ordinal()] = numPositive;
 			aggValues[AggregationMethod.NUM_NEGATIVE.ordinal()] = count-numPositive;
@@ -118,127 +106,68 @@ public class AggregatedStiffnessCalculator {
 		}
 	}
 	
-	private static class DoubleSignCounter implements DoubleConsumer {
-		
-		private final AtomicInteger count = new AtomicInteger();
-		private final AtomicInteger numPositive = new AtomicInteger();
-
-		@Override
-		public void accept(double val) {
-			count.incrementAndGet();
-			if (val >= 0d)
-				numPositive.incrementAndGet();
-		}
-		
-	}
-	
-	private static class DoubleMedianConsumer implements DoubleConsumer {
-		
-		private final List<Double> sortedVals = new ArrayList<>();
-		private double sum = 0d; // in case we need sum/mean
-
-		@Override
-		public void accept(double val) {
-			sum += val;
-			int index = Collections.binarySearch(sortedVals, val);
-			if (index < 0)
-				index = -(index+1);
-			sortedVals.add(index, val);
-		}
-		
-		public double getMedian() {
-			int len = sortedVals.size();
-			Preconditions.checkState(len > 0, "must have at least one value");
-			if (len % 2 == 1)
-				return sortedVals.get((len+1)/2-1);
-			else {
-				double lower = sortedVals.get(len/2-1);
-				double upper = sortedVals.get(len/2);
-
-				return (lower + upper) * 0.5;
-			}	
-		}
-		
-		public double getSum() {
-			return sum;
-		}
-		
-		public double getMean() {
-			return sum/(double)sortedVals.size();
-		}
-		
-	}
-	
 	public enum AggregationMethod {
 		MEAN("Mean", true) {
 			@Override
-			public double calculate(DoubleStream stream) {
-				return stream.average().getAsDouble();
+			public double calculate(double[] values) {
+				return StatUtils.mean(values);
 			}
 		},
 		MEDIAN("Median", true) {
 			@Override
-			public double calculate(DoubleStream stream) {
-//				return DataUtils.median_sorted(stream.sorted().toArray());
-				DoubleMedianConsumer counter = new DoubleMedianConsumer();
-				stream.forEach(counter);
-				return counter.getMedian();
+			public double calculate(double[] values) {
+				Arrays.sort(values);
+				return DataUtils.median_sorted(values);
 			}
 		},
 		SUM("Sum", true) {
 			@Override
-			public double calculate(DoubleStream stream) {
-				return stream.sum();
+			public double calculate(double[] values) {
+				return StatUtils.sum(values);
 			}
 		},
 		MIN("Minimum", true) {
 			@Override
-			public double calculate(DoubleStream stream) {
-				return stream.min().getAsDouble();
+			public double calculate(double[] values) {
+				return StatUtils.min(values);
 			}
 		},
 		MAX("Maximum", true) {
 			@Override
-			public double calculate(DoubleStream stream) {
-				return stream.max().getAsDouble();
+			public double calculate(double[] values) {
+				return StatUtils.max(values);
 			}
 		},
 		FRACT_POSITIVE("Fraction Positive", false) {
 			@Override
-			public double calculate(DoubleStream stream) {
-				DoubleSignCounter counter = new DoubleSignCounter();
-				stream.forEach(counter);
-				return counter.numPositive.doubleValue()/counter.count.doubleValue();
+			public double calculate(double[] values) {
+				return NUM_POSITIVE.calculate(values)/values.length;
 			}
 		},
 		NUM_POSITIVE("Num Positive", false) {
 			@Override
-			public double calculate(DoubleStream stream) {
-				DoubleSignCounter counter = new DoubleSignCounter();
-				stream.forEach(counter);
-				return counter.numPositive.doubleValue();
+			public double calculate(double[] values) {
+				int count = 0;
+				for (double val : values)
+					if (val >= 0d)
+						count++;
+				return count;
 			}
 		},
 		NUM_NEGATIVE("Num Negative", false) {
 			@Override
-			public double calculate(DoubleStream stream) {
-				DoubleSignCounter counter = new DoubleSignCounter();
-				stream.forEach(counter);
-				return (double)(counter.count.get() - counter.numPositive.get());
+			public double calculate(double[] values) {
+				return values.length - NUM_POSITIVE.calculate(values);
 			}
 		},
 		GREATER_SUM_MEDIAN("Max[Sum,Median]", true) {
-			public double calculate(DoubleStream stream) {
-				DoubleMedianConsumer counter = new DoubleMedianConsumer();
-				stream.forEach(counter);
-				return Math.max(counter.getSum(), counter.getMedian());
+			public double calculate(double[] values) {
+				return Math.max(SUM.calculate(values), MEDIAN.calculate(values));
 			}
 		},
 		GREATER_MEAN_MEDIAN("Max[Mean,Median]", true) {
-			public double calculate(DoubleStream stream) {
-				DoubleMedianConsumer counter = new DoubleMedianConsumer();
-				stream.forEach(counter);
-				return Math.max(counter.getMean(), counter.getMedian());
+			public double calculate(double[] values) {
+				return Math.max(MEAN.calculate(values), MEDIAN.calculate(values));
 			}
 		};
 		
@@ -255,24 +184,20 @@ public class AggregatedStiffnessCalculator {
 			return name;
 		}
 		
-		public abstract double calculate(DoubleStream stream);
+		public abstract double calculate(double[] values);
 	}
 	
 	public static class ReceiverDistribution {
 		public final int receiverID;
-		public final DoubleStream stream;
+		public final double[] values;
 		
 		public ReceiverDistribution(int receiverID, List<Double> values) {
-			this(receiverID, values.stream().mapToDouble(d -> d));
+			this(receiverID, Doubles.toArray(values));
 		}
 		
 		public ReceiverDistribution(int receiverID, double[] values) {
-			this(receiverID, DoubleStream.of(values));
-		}
-		
-		public ReceiverDistribution(int receiverID, DoubleStream stream) {
 			this.receiverID = receiverID;
-			this.stream = stream;
+			this.values = values;
 		}
 		
 		public int getReceiverID() {
@@ -294,18 +219,21 @@ public class AggregatedStiffnessCalculator {
 	
 	private static ReceiverDistribution flatten(int receiverID, Collection<ReceiverDistribution> dists) {
 		Preconditions.checkState(!dists.isEmpty());
-		DoubleStream stream;
+		double[] flattened;
 		if (dists.size() == 1) {
-			stream = dists.iterator().next().stream;
-		} else if (dists.size() == 2) {
-			Iterator<ReceiverDistribution> it = dists.iterator();
-			ReceiverDistribution dist1 = it.next();
-			ReceiverDistribution dist2 = it.next();
-			stream = DoubleStream.concat(dist1.stream, dist2.stream);
+			flattened = dists.iterator().next().values;
 		} else {
-			stream = dists.stream().flatMapToDouble(s -> s.stream);
+			int totSize = 0;
+			for (ReceiverDistribution dist : dists)
+				totSize += dist.values.length;
+			flattened = new double[totSize];
+			int index = 0;
+			for (ReceiverDistribution dist : dists) {
+				System.arraycopy(dist.values, 0, flattened, index, dist.values.length);
+				index += dist.values.length;
+			}
 		}
-		return new ReceiverDistribution(receiverID, stream);
+		return new ReceiverDistribution(receiverID, flattened);
 	}
 	
 	public static class FlatteningLayer implements AggregationLayer {
@@ -354,7 +282,7 @@ public class AggregatedStiffnessCalculator {
 			double[] values = new double[dists.size()];
 			int index = 0;
 			for (ReceiverDistribution dist : dists)
-				values[index++] = method.calculate(dist.stream);
+				values[index++] = method.calculate(dist.values);
 			return Collections.singleton(new ReceiverDistribution(higherLevelID, values));
 		}
 
@@ -368,7 +296,7 @@ public class AggregatedStiffnessCalculator {
 				Preconditions.checkState(dists.size() == 1, "No distributions left at this layer");
 				dist = dists.iterator().next();
 			}
-			return method.calculate(dist.stream);
+			return method.calculate(dist.values);
 		}
 
 		@Override
@@ -557,7 +485,7 @@ public class AggregatedStiffnessCalculator {
 			Collection<ReceiverDistribution> receiverPatchDists = aggRecieverPatches(source, receiver);
 			Preconditions.checkState(receiverPatchDists.size() == 1,
 					"should only have 1 flattened or procssed distribution at sect-to-sect if cacheable");
-			aggregated = new StiffnessAggregation(receiverPatchDists.iterator().next().stream);
+			aggregated = new StiffnessAggregation(receiverPatchDists.iterator().next().values);
 			cache.put(patchAggMethod, source, receiver, aggregated);
 		}
 		return aggregated.get(((ProcessLayer)layers[1]).method);
@@ -569,7 +497,7 @@ public class AggregatedStiffnessCalculator {
 		// check the cache if possible at this layer
 		if (isSectToSectCacheable())
 			return Collections.singleton(new ReceiverDistribution(receiver.getSectionId(),
-					DoubleStream.of(getCachedSectToSect(source, receiver))));
+					new double[] { getCachedSectToSect(source, receiver) }));
 		
 		Collection<ReceiverDistribution> receiverPatchDists = aggRecieverPatches(source, receiver);
 		return layers[1].aggregate(receiver.getSectionId(), receiverPatchDists);
@@ -600,9 +528,10 @@ public class AggregatedStiffnessCalculator {
 	private Collection<ReceiverDistribution> aggSectsToSect(List<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
-		List<ReceiverDistribution> receiverSectDists = new ArrayList<>();
+		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(sources.size());
 		for (FaultSection source : sources)
-			receiverSectDists.addAll(aggSectToSect(source, receiver));
+//			receiverSectDists.addAll(aggSectToSect(source, receiver));
+			Collections.addAll(receiverSectDists, aggSectToSect(source, receiver));
 		
 		return layers[2].aggregate(receiver.getSectionId(), receiverSectDists);
 	}
@@ -610,9 +539,11 @@ public class AggregatedStiffnessCalculator {
 	public double calc(List<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
-		List<ReceiverDistribution> receiverSectDists = new ArrayList<>();
-		for (FaultSection source : sources)
-			receiverSectDists.addAll(aggSectToSect(source, receiver));
+		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(sources.size());
+		for (FaultSection source : sources) {
+			Collection<ReceiverDistribution> s2s = aggSectToSect(source, receiver);
+			receiverSectDists.addAll(s2s);
+		}
 		
 		return getTerminalLayer(2).get(receiverSectDists);
 	}
@@ -633,7 +564,7 @@ public class AggregatedStiffnessCalculator {
 		Preconditions.checkState(layers[3] instanceof TerminalLayer,
 				"Final layer must be terminal: %s", layers[3].getName());
 		
-		List<ReceiverDistribution> receiverSectDists = new ArrayList<>();
+		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(receivers.size());
 		for (FaultSection receiver : receivers)
 			receiverSectDists.addAll(aggSectsToSect(sources, receiver));
 		
