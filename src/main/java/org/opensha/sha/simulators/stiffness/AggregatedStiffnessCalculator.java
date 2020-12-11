@@ -207,21 +207,40 @@ public class AggregatedStiffnessCalculator {
 	
 	public static interface AggregationLayer extends Named {
 		
-		public Collection<ReceiverDistribution> aggregate(int higherLevelID, Collection<ReceiverDistribution> dists);
+		public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists);
 		
 	}
 	
 	public static interface TerminalLayer extends AggregationLayer {
 		
-		public double get(Collection<ReceiverDistribution> dists);
+		public double get(ReceiverDistribution[] dists);
 		
 	}
 	
-	private static ReceiverDistribution flatten(int receiverID, Collection<ReceiverDistribution> dists) {
-		Preconditions.checkState(!dists.isEmpty());
+	private static ReceiverDistribution flatten(int receiverID, ReceiverDistribution[] dists) {
+		Preconditions.checkState(dists.length > 0);
+		double[] flattened;
+		if (dists.length == 1) {
+			flattened = dists[0].values;
+		} else {
+			int totSize = 0;
+			for (ReceiverDistribution dist : dists)
+				totSize += dist.values.length;
+			flattened = new double[totSize];
+			int index = 0;
+			for (ReceiverDistribution dist : dists) {
+				System.arraycopy(dist.values, 0, flattened, index, dist.values.length);
+				index += dist.values.length;
+			}
+		}
+		return new ReceiverDistribution(receiverID, flattened);
+	}
+	
+	private static ReceiverDistribution flatten(int receiverID, List<ReceiverDistribution> dists) {
+		Preconditions.checkState(dists.size() > 0);
 		double[] flattened;
 		if (dists.size() == 1) {
-			flattened = dists.iterator().next().values;
+			flattened = dists.get(0).values;
 		} else {
 			int totSize = 0;
 			for (ReceiverDistribution dist : dists)
@@ -239,8 +258,8 @@ public class AggregatedStiffnessCalculator {
 	public static class FlatteningLayer implements AggregationLayer {
 
 		@Override
-		public Collection<ReceiverDistribution> aggregate(int higherLevelID, Collection<ReceiverDistribution> dists) {
-			return Collections.singleton(flatten(higherLevelID, dists));
+		public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
+			return new ReceiverDistribution[] { flatten(higherLevelID, dists) };
 		}
 
 		@Override
@@ -253,12 +272,13 @@ public class AggregatedStiffnessCalculator {
 	public static class ReceiverFlatteningLayer implements AggregationLayer {
 
 		@Override
-		public Collection<ReceiverDistribution> aggregate(int higherLevelID, Collection<ReceiverDistribution> dists) {
-			Map<Integer, List<ReceiverDistribution>> grouped = dists.stream().collect(
+		public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
+			Map<Integer, List<ReceiverDistribution>> grouped = Arrays.stream(dists).collect(
 					Collectors.groupingBy(ReceiverDistribution::getReceiverID));
-			List<ReceiverDistribution> ret = new ArrayList<>(grouped.keySet().size());
+			ReceiverDistribution[] ret = new ReceiverDistribution[grouped.keySet().size()];
+			int index = 0;
 			for (Integer receiverID : grouped.keySet())
-				ret.add(flatten(receiverID, grouped.get(receiverID)));
+				ret[index++] = flatten(receiverID, grouped.get(receiverID));
 			return ret;
 		}
 
@@ -278,23 +298,23 @@ public class AggregatedStiffnessCalculator {
 		}
 
 		@Override
-		public Collection<ReceiverDistribution> aggregate(int higherLevelID, Collection<ReceiverDistribution> dists) {
-			double[] values = new double[dists.size()];
+		public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
+			double[] values = new double[dists.length];
 			int index = 0;
 			for (ReceiverDistribution dist : dists)
 				values[index++] = method.calculate(dist.values);
-			return Collections.singleton(new ReceiverDistribution(higherLevelID, values));
+			return new ReceiverDistribution[] { new ReceiverDistribution(higherLevelID, values) };
 		}
 
 		@Override
-		public double get(Collection<ReceiverDistribution> dists) {
+		public double get(ReceiverDistribution[] dists) {
 			ReceiverDistribution dist;
-			if (dists.size() > 1) {
+			if (dists.length > 1) {
 				// flatten it for final processing
 				dist = flatten(-1, dists);
 			} else {
-				Preconditions.checkState(dists.size() == 1, "No distributions left at this layer");
-				dist = dists.iterator().next();
+				Preconditions.checkState(dists.length == 1, "No distributions left at this layer");
+				dist = dists[0];
 			}
 			return method.calculate(dist.values);
 		}
@@ -309,7 +329,7 @@ public class AggregatedStiffnessCalculator {
 	public static class PassthroughLayer implements AggregationLayer {
 
 		@Override
-		public Collection<ReceiverDistribution> aggregate(int higherLevelID, Collection<ReceiverDistribution> dists) {
+		public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
 			return dists;
 		}
 
@@ -448,7 +468,7 @@ public class AggregatedStiffnessCalculator {
 		return sectID*sect_id_multiplier + patchID;
 	}
 	
-	private Collection<ReceiverDistribution> aggRecieverPatches(FaultSection source, FaultSection receiver) {
+	private ReceiverDistribution[] aggRecieverPatches(FaultSection source, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 0, "Patch aggregation layer not supplied");
 		
 		StiffnessDistribution dist = calc.calcStiffnessDistribution(source, receiver);
@@ -456,9 +476,9 @@ public class AggregatedStiffnessCalculator {
 		double[] receiverPatchVals = new double[values.length];
 		Preconditions.checkState(receiverPatchVals.length < sect_id_multiplier-1, "Potential unique patch ID overflow");
 		
-		List<ReceiverDistribution> receiverDists = new ArrayList<>(values.length);
+		ReceiverDistribution[] receiverDists = new ReceiverDistribution[values.length];
 		for (int r=0; r<receiverPatchVals.length; r++)
-			receiverDists.add(new ReceiverDistribution(uniquePatchID(receiver.getSectionId(), r), values[r]));
+			receiverDists[r] = new ReceiverDistribution(uniquePatchID(receiver.getSectionId(), r), values[r]);
 		
 		return layers[0].aggregate(receiver.getSectionId(), receiverDists);
 	}
@@ -482,24 +502,24 @@ public class AggregatedStiffnessCalculator {
 		StiffnessAggregation aggregated = cache.get(patchAggMethod, source, receiver);
 		if (aggregated == null) {
 			// need to calculate and cache it
-			Collection<ReceiverDistribution> receiverPatchDists = aggRecieverPatches(source, receiver);
-			Preconditions.checkState(receiverPatchDists.size() == 1,
+			ReceiverDistribution[] receiverPatchDists = aggRecieverPatches(source, receiver);
+			Preconditions.checkState(receiverPatchDists.length == 1,
 					"should only have 1 flattened or procssed distribution at sect-to-sect if cacheable");
-			aggregated = new StiffnessAggregation(receiverPatchDists.iterator().next().values);
+			aggregated = new StiffnessAggregation(receiverPatchDists[0].values);
 			cache.put(patchAggMethod, source, receiver, aggregated);
 		}
 		return aggregated.get(((ProcessLayer)layers[1]).method);
 	}
 	
-	private Collection<ReceiverDistribution> aggSectToSect(FaultSection source, FaultSection receiver) {
+	private ReceiverDistribution[] aggSectToSect(FaultSection source, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 1, "Section-to-section aggregation layer not supplied");
 		
 		// check the cache if possible at this layer
 		if (isSectToSectCacheable())
-			return Collections.singleton(new ReceiverDistribution(receiver.getSectionId(),
-					new double[] { getCachedSectToSect(source, receiver) }));
+			return new ReceiverDistribution[] { new ReceiverDistribution(receiver.getSectionId(),
+					new double[] { getCachedSectToSect(source, receiver) }) };
 		
-		Collection<ReceiverDistribution> receiverPatchDists = aggRecieverPatches(source, receiver);
+		ReceiverDistribution[] receiverPatchDists = aggRecieverPatches(source, receiver);
 		return layers[1].aggregate(receiver.getSectionId(), receiverPatchDists);
 	}
 	
@@ -520,17 +540,47 @@ public class AggregatedStiffnessCalculator {
 		if (isSectToSectCacheable())
 			return getCachedSectToSect(source, receiver);
 		
-		Collection<ReceiverDistribution> receiverPatchDists = aggRecieverPatches(source, receiver);
+		ReceiverDistribution[] receiverPatchDists = aggRecieverPatches(source, receiver);
 		
 		return getTerminalLayer(1).get(receiverPatchDists);
 	}
 	
-	private Collection<ReceiverDistribution> aggSectsToSect(List<FaultSection> sources, FaultSection receiver) {
+	private ReceiverDistribution[] collectMultiSectsToSect(List<FaultSection> sources, FaultSection receiver) {
+		// start assuming that it's a one-to-one mapping
+		ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[sources.size()];
+		ArrayList<ReceiverDistribution> distsList = null;
+		for (int s=0; s<sources.size(); s++) {
+			FaultSection source = sources.get(s);
+			ReceiverDistribution[] aggregated = aggSectToSect(source, receiver);
+			if (distsList != null) {
+				Collections.addAll(distsList, aggregated);
+			} else if (aggregated.length != 1) {
+				if (distsList == null) {
+					distsList = new ArrayList<>(sources.size()*aggregated.length);
+					if (s > 0)
+						// copy over that which we already added
+						for (int i=0; i<s; i++)
+							distsList.add(receiverSectDists[i]);
+				}
+			} else {
+				receiverSectDists[s] = aggregated[0];
+			}
+		}
+
+		if (distsList != null) {
+			if (distsList.size() > receiverSectDists.length)
+				// reuse the array
+				receiverSectDists = distsList.toArray(receiverSectDists);
+			else
+				receiverSectDists = distsList.toArray(new ReceiverDistribution[distsList.size()]);
+		}
+		return receiverSectDists;
+	}
+	
+	private ReceiverDistribution[] aggSectsToSect(List<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
-		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(sources.size());
-		for (FaultSection source : sources)
-			receiverSectDists.addAll(aggSectToSect(source, receiver));
+		ReceiverDistribution[] receiverSectDists = collectMultiSectsToSect(sources, receiver);
 		
 		return layers[2].aggregate(receiver.getSectionId(), receiverSectDists);
 	}
@@ -538,34 +588,57 @@ public class AggregatedStiffnessCalculator {
 	public double calc(List<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
-		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(sources.size());
-		for (FaultSection source : sources) {
-			Collection<ReceiverDistribution> s2s = aggSectToSect(source, receiver);
-			receiverSectDists.addAll(s2s);
-		}
+		ReceiverDistribution[] receiverSectDists = collectMultiSectsToSect(sources, receiver);
 		
 		return getTerminalLayer(2).get(receiverSectDists);
 	}
 	
-	// TODO delete this?
-	private Collection<ReceiverDistribution> aggSectsToSects(List<FaultSection> sources, List<FaultSection> receivers) {
-		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
-		
-		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(receivers.size());
-		for (FaultSection receiver : receivers)
-			receiverSectDists.addAll(aggSectsToSect(sources, receiver));
-		
-		return layers[3].aggregate(-1, receiverSectDists);
-	}
+//	// TODO delete this?
+//	private Collection<ReceiverDistribution> aggSectsToSects(List<FaultSection> sources, List<FaultSection> receivers) {
+//		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
+//		
+//		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(receivers.size());
+//		for (FaultSection receiver : receivers)
+//			receiverSectDists.addAll(aggSectsToSect(sources, receiver));
+//		
+//		return layers[3].aggregate(-1, receiverSectDists);
+//	}
 	
 	public double calc(List<FaultSection> sources, List<FaultSection> receivers) {
 		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
 		Preconditions.checkState(layers[3] instanceof TerminalLayer,
 				"Final layer must be terminal: %s", layers[3].getName());
 		
-		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(receivers.size());
-		for (FaultSection receiver : receivers)
-			receiverSectDists.addAll(aggSectsToSect(sources, receiver));
+//		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(receivers.size());
+//		for (FaultSection receiver : receivers)
+//			receiverSectDists.addAll(aggSectsToSect(sources, receiver));
+		ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[receivers.size()];
+		ArrayList<ReceiverDistribution> distsList = null;
+		for (int r=0; r<receivers.size(); r++) {
+			FaultSection receiver = receivers.get(r);
+			ReceiverDistribution[] aggregated = aggSectsToSect(sources, receiver);
+			if (distsList != null) {
+				Collections.addAll(distsList, aggregated);
+			} else if (aggregated.length > 1) {
+				if (distsList == null) {
+					distsList = new ArrayList<>(sources.size()*aggregated.length);
+					if (r > 0)
+						// copy over that which we already added
+						for (int i=0; i<r; i++)
+							distsList.add(receiverSectDists[i]);
+				}
+			} else {
+				receiverSectDists[r] = aggregated[0];
+			}
+		}
+
+		if (distsList != null) {
+			if (distsList.size() > receiverSectDists.length)
+				// reuse the array
+				receiverSectDists = distsList.toArray(receiverSectDists);
+			else
+				receiverSectDists = distsList.toArray(new ReceiverDistribution[distsList.size()]);
+		}
 		
 		return ((TerminalLayer)layers[3]).get(receiverSectDists);
 	}
