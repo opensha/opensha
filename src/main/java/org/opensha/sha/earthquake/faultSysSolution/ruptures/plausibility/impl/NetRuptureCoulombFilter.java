@@ -104,7 +104,7 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 		List<FaultSection> allSects = new ArrayList<>();
 		for (FaultSubsectionCluster cluster : rupture.getClustersIterable())
 			allSects.addAll(cluster.subSects);
-		return (float)aggCalc.calcSectsToSects(allSects, allSects);
+		return (float)aggCalc.calc(allSects, allSects);
 	}
 
 	@Override

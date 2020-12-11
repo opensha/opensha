@@ -817,7 +817,7 @@ public class ClusterRuptureBuilder {
 //		configBuilder.u3All(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_ucerf3";
 		configBuilder.minSectsPerParent(2, true, true); // always do this one
 //		configBuilder.u3Cumulatives(); outputName += "_u3Cml"; // cml rake and azimuth
-//		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
+		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
 //		configBuilder.u3Azimuth(); outputName += "_u3Az";
 //		configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
 		
@@ -854,16 +854,19 @@ public class ClusterRuptureBuilder {
 //		configBuilder.cumulativeRakeChange(180f); outputName += "_cmlRake";
 //		configBuilder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0.75f,
 //				RupCoulombQuantity.MEAN_SECT_FRACT_POSITIVES); outputName += "_cffNetFract0.75";
-		AggregatedStiffnessCalculator aggNetPatchFracts =
-				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)
-				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.FRACT_POSITIVE)
-				.sectsToSectsAgg(AggregationMethod.MEAN).get();
-		configBuilder.netRupCoulomb(aggNetPatchFracts, 0.9f); outputName += "_cffPatchNetFract0.9";
+//		AggregatedStiffnessCalculator aggNetPatchFracts =
+//				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)
+//				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.FRACT_POSITIVE)
+//				.sectsToSectsAgg(AggregationMethod.MEAN).get();
+//		configBuilder.netRupCoulomb(aggNetPatchFracts, 0.9f); outputName += "_cffPatchNetFract0.9";
 		
 		// new Coulomb filters (path is current preffered)
 		// this will use the median interaction between 2 sections, and sum sect-to-sect values across a rupture
 		AggregatedStiffnessCalculator aggMedianPatchSumSects =
-				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
+//				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
+				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc).flatten()
+				.process(AggregationMethod.MEDIAN).process(AggregationMethod.SUM)
+				.process(AggregationMethod.SUM).get();
 		configBuilder.clusterPathCoulomb(aggMedianPatchSumSects, 0f); outputName += "_cffClusterPathPositive";
 //		configBuilder.clusterPathCoulomb(stiffnessCalc,
 //				StiffnessAggregationMethod.GREATER_SUM_MEDIAN, 0f); outputName += "_cffSumMedClusterPathPositive";

@@ -1,10 +1,15 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipException;
 
+import org.dom4j.DocumentException;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -12,13 +17,21 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarC
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FilterDataClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 
+import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
+import scratch.UCERF3.utils.FaultSystemIO;
 
 /**
  * This filter tests the Coulomb compatibility of each possible path through the given rupture. It tries each
@@ -160,7 +173,7 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		if (!strandSections.isEmpty()) {
 //			StiffnessResult stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
 //					StiffnessType.CFF, strandClusters, addition);
-			double val = aggCalc.calcSectsToSects(strandSections, addition.subSects);
+			double val = aggCalc.calc(strandSections, addition.subSects);
 			if (verbose)
 				System.out.println("\t\tval="+val+" for "+strandClusters.size()+" clusters ("
 						+strandSections.size()+" sects) to "+addition);
@@ -320,6 +333,48 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 	@Override
 	public AggregatedStiffnessCalculator getAggregator() {
 		return aggCalc;
+	}
+	
+	public static void main(String[] args) throws ZipException, IOException, DocumentException {
+		// for profiling
+		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(
+				new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip"));
+		
+		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
+				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5);
+		stiffnessCalc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
+		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
+		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());
+		if (stiffnessCacheFile.exists())
+			stiffnessCache.loadCacheFile(stiffnessCacheFile);
+		
+		AggregatedStiffnessCalculator aggCalc =
+//				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
+				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc).flatten()
+				.process(AggregationMethod.MEDIAN).process(AggregationMethod.SUM)
+				.process(AggregationMethod.SUM).get();
+		ClusterPathCoulombCompatibilityFilter filter = new ClusterPathCoulombCompatibilityFilter(aggCalc, 0f);
+		
+		ClusterRupture largest = null;
+		for (ClusterRupture rup : rupSet.getClusterRuptures())
+			if (largest == null || rup.getTotalNumSects() > largest.getTotalNumSects())
+				largest = rup;
+		System.out.println("Benchmarking with a largest rupture ("+largest.getTotalNumSects()+" sects):\n\t"+largest);
+		int num = 1000000;
+		Stopwatch watch = Stopwatch.createStarted();
+		for (int i=0; i<num; i++) {
+			if (i % 1000 == 0) {
+				double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+				double rate = i/secs;
+				System.out.println("processed "+i+" in "+(float)secs+" s:\t"+(float)rate+" per second");
+			}
+			filter.apply(largest, false);
+		}
+		watch.stop();
+		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		double rate = num/secs;
+		System.out.println("processed "+num+" in "+(float)secs+" s: "+(float)rate+" per second");
 	}
 
 }

@@ -1139,7 +1139,7 @@ public class SubSectStiffnessCalculator {
 				System.out.println("Receiver: "+receiver.getSectionName());
 				
 				for (AggregatedStiffnessCalculator aggCalc : aggregators)
-					System.out.println("\t"+aggCalc+": "+aggCalc.calcSectAggregated(source, receiver));
+					System.out.println("\t"+aggCalc+": "+aggCalc.calc(source, receiver));
 				
 //				StiffnessDistribution dist = calc.calcStiffnessDistribution(sects[i], sects[j]);
 //				

@@ -57,7 +57,7 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 		double val = Double.POSITIVE_INFINITY;
 		if (!curSects.isEmpty()) {
 			// check rupture so far
-			val = aggCalc.calcSectsToSects(curSects, nextCluster.subSects);
+			val = aggCalc.calc(curSects, nextCluster.subSects);
 			if (verbose)
 				System.out.println(getShortName()+": "+curSects.size()+" sects to "
 						+nextCluster+", val="+val);

@@ -110,7 +110,7 @@ implements ScalarCoulombPlausibilityFilter {
 	}
 	
 	private double calc(int sourceID, int receiverID) {
-		return aggCalc.calcSectsToSects(getSectsForParent(sourceID), getSectsForParent(receiverID));
+		return aggCalc.calc(getSectsForParent(sourceID), getSectsForParent(receiverID));
 	}
 
 	@Override

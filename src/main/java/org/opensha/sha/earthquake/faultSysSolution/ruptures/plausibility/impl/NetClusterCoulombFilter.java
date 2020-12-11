@@ -65,7 +65,7 @@ public class NetClusterCoulombFilter implements ScalarCoulombPlausibilityFilter 
 		for (FaultSubsectionCluster cluster : clusters) {
 			// get sublist of source sects: all sects not on this cluster
 			List<FaultSection> sources = allSects.stream().filter(s -> !cluster.contains(s)).collect(Collectors.toList());
-			double val = aggCalc.calcSectsToSects(sources, cluster.subSects);
+			double val = aggCalc.calc(sources, cluster.subSects);
 			minVal = Float.min(minVal, (float)val);
 		}
 		return minVal;
