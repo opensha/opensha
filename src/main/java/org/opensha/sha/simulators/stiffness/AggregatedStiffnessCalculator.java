@@ -530,8 +530,7 @@ public class AggregatedStiffnessCalculator {
 		
 		List<ReceiverDistribution> receiverSectDists = new ArrayList<>(sources.size());
 		for (FaultSection source : sources)
-//			receiverSectDists.addAll(aggSectToSect(source, receiver));
-			Collections.addAll(receiverSectDists, aggSectToSect(source, receiver));
+			receiverSectDists.addAll(aggSectToSect(source, receiver));
 		
 		return layers[2].aggregate(receiver.getSectionId(), receiverSectDists);
 	}
