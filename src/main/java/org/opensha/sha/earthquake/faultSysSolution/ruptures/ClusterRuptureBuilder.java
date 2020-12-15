@@ -817,7 +817,7 @@ public class ClusterRuptureBuilder {
 //		configBuilder.u3All(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_ucerf3";
 		configBuilder.minSectsPerParent(2, true, true); // always do this one
 //		configBuilder.u3Cumulatives(); outputName += "_u3Cml"; // cml rake and azimuth
-		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
+//		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
 //		configBuilder.u3Azimuth(); outputName += "_u3Az";
 //		configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
 		
@@ -858,7 +858,12 @@ public class ClusterRuptureBuilder {
 //				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)
 //				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.FRACT_POSITIVE)
 //				.sectsToSectsAgg(AggregationMethod.MEAN).get();
-//		configBuilder.netRupCoulomb(aggNetPatchFracts, 0.9f); outputName += "_cffPatchNetFract0.9";
+		AggregatedStiffnessCalculator aggNetPatchFracts =
+//				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
+				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc,
+						AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
+						AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE);
+		configBuilder.netRupCoulomb(aggNetPatchFracts, 0.9f); outputName += "_cffPatchNetFract0.9";
 		
 		// new Coulomb filters (path is current preffered)
 		// this will use the median interaction between 2 sections, and sum sect-to-sect values across a rupture

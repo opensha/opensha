@@ -56,14 +56,18 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 
 	@Override
 	public String getShortName() {
+		String name = aggCalc.getScalarShortName();
 		if (threshold == 0f)
-			return "NetRupCFF≥0";
-		return "NetRupCFF≥"+(float)threshold;
+			return name+"≥0";
+		return name+"≥"+(float)threshold;
 	}
 
 	@Override
 	public String getName() {
-		return "Net Rupture Coulomb ≥ "+(float)threshold;
+		String name = "Net Rupture ["+aggCalc.getScalarName()+"]";
+		if (threshold == 0f)
+			return name+" ≥0";
+		return name+" ≥"+(float)threshold;
 	}
 
 	@Override

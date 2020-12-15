@@ -285,39 +285,41 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 
 	@Override
 	public String getShortName() {
+		String type = "["+aggCalc.getScalarShortName()+"]";
 		String threshStr = threshold == 0f ? "0" : threshold+"";
 		if (fractPassThreshold > 0f) {
 			if (fractPassThreshold == 0.5f)
-				return "HalfPathsCFF≥"+threshStr;
+				return "HalfPaths"+type+"≥"+threshStr;
 			if (fractPassThreshold == 1f/3f)
-				return "1/3PathsCFF≥"+threshStr;
+				return "1/3Paths"+type+"≥"+threshStr;
 			if (fractPassThreshold == 2f/3f)
-				return "2/3PathsCFF≥"+threshStr;
+				return "2/3Paths"+type+"≥"+threshStr;
 			if (fractPassThreshold == 0.25f)
-				return "1/4PathsCFF≥"+threshStr;
+				return "1/4Paths"+type+"≥"+threshStr;
 			if (fractPassThreshold == 0.75f)
-				return "3/4PathsCFF≥"+threshStr;
-			return fractPassThreshold+"PathsCFF≥"+threshStr;
+				return "3/4Paths"+type+"≥"+threshStr;
+			return fractPassThreshold+"Paths"+type+"≥"+threshStr;
 		}
-		return "PathCFF≥"+threshStr;
+		return "Path"+type+"≥"+threshStr;
 	}
 
 	@Override
 	public String getName() {
+		String type = "["+aggCalc.getScalarName()+"]";
 		if (fractPassThreshold > 0f) {
 			if (fractPassThreshold == 0.5f)
-				return "Cluster Half Paths Coulomb  ≥ "+(float)threshold;
+				return "Cluster Half Paths "+type+" ≥ "+(float)threshold;
 			if (fractPassThreshold == 1f/3f)
-				return "Cluster 1/3 Paths Coulomb  ≥ "+(float)threshold;
+				return "Cluster 1/3 Paths "+type+" ≥ "+(float)threshold;
 			if (fractPassThreshold == 2f/3f)
-				return "Cluster 2/3 Paths Coulomb  ≥ "+(float)threshold;
+				return "Cluster 2/3 Paths "+type+" ≥ "+(float)threshold;
 			if (fractPassThreshold == 0.25f)
-				return "Cluster 1/4 Paths Coulomb  ≥ "+(float)threshold;
+				return "Cluster 1/4 Paths "+type+" ≥ "+(float)threshold;
 			if (fractPassThreshold == 0.75f)
-				return "Cluster 3/4 Paths Coulomb  ≥ "+(float)threshold;
-			return "Cluster "+fractPassThreshold+"x Paths Coulomb  ≥ "+(float)threshold;
+				return "Cluster 3/4 Paths "+type+" ≥ "+(float)threshold;
+			return "Cluster "+fractPassThreshold+"x Paths "+type+"  ≥ "+(float)threshold;
 		}
-		return "Cluster Path Coulomb  ≥ "+(float)threshold;
+		return "Cluster Path "+type+" ≥ "+(float)threshold;
 	}
 
 	@Override

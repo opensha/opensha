@@ -88,6 +88,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutof
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 import org.opensha.sha.simulators.utils.RupturePlotGenerator;
@@ -124,8 +126,8 @@ public class RupSetDiagnosticsPageGen {
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
 //			String inputName = "CmlAz, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
-			String inputName = "CmlAz, NetFract0.75, CFF Path Max(Med,Sum)";
-			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffNetFract0.75_cffSumMedClusterPathPositive.zip");
+//			String inputName = "CmlAz, NetFract0.75, CFF Path Max(Med,Sum)";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffNetFract0.75_cffSumMedClusterPathPositive.zip");
 //			String inputName = "CFF Sum";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumClusterPathPositive.zip");
 //			String inputName = "UCERF3, 10% Sect Fract Increase";
@@ -142,20 +144,20 @@ public class RupSetDiagnosticsPageGen {
 ////			File inputFile = new File(rupSetsDir, "fm3_1_cmlPen5_az60_jump0.1km_rake45_cffClusterPathPositive.zip");
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3_cmlPen5_jump1km_rake45.zip");
 			
-//			String inputName = "RSQSim 4983, SectArea=0.5";
-//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+			String inputName = "RSQSim 4983, SectArea=0.5";
+			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 			
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
 //			String compName = "UCERF3";
 //			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-//			String compName = null;
-//			File compareFile = null;
+			String compName = null;
+			File compareFile = null;
 //			String compName = "CFF Med Path";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
-			String compName = "No Net Fract";
-			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
+//			String compName = "No Net Fract";
+//			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
 //			String compName = "CmlAz Only";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 //			String compName = "CmlAz, CFF Cluster Positive";
@@ -310,7 +312,7 @@ public class RupSetDiagnosticsPageGen {
 			}
 		}
 		// check load coulomb
-		HashMap<String, List<SubSectStiffnessCalculator>> loadedCoulombCaches = new HashMap<>();
+		HashMap<String, List<AggregatedStiffnessCache>> loadedCoulombCaches = new HashMap<>();
 		if (inputConfig != null && coulombCacheDir != null)
 			checkLoadCoulombCache(inputConfig.getFilters(), coulombCacheDir, loadedCoulombCaches);
 		RuptureConnectionSearch inputSearch = new RuptureConnectionSearch(
@@ -1306,23 +1308,24 @@ public class RupSetDiagnosticsPageGen {
 	}
 	
 	private static void checkLoadCoulombCache(List<PlausibilityFilter> filters,
-			File cacheDir, Map<String, List<SubSectStiffnessCalculator>> loadedCoulombCaches)
+			File cacheDir, Map<String, List<AggregatedStiffnessCache>> loadedCoulombCaches)
 					throws IOException {
 		for (PlausibilityFilter filter : filters) {
 			if (filter instanceof ScalarCoulombPlausibilityFilter) {
-				SubSectStiffnessCalculator stiffnessCalc =
-						((ScalarCoulombPlausibilityFilter)filter).getStiffnessCalc();
-				String cacheName = stiffnessCalc.getCacheFileName(StiffnessType.CFF);
+				AggregatedStiffnessCalculator agg = ((ScalarCoulombPlausibilityFilter)filter).getAggregator();
+				SubSectStiffnessCalculator stiffnessCalc = agg.getCalc();
+				AggregatedStiffnessCache cache = stiffnessCalc.getAggregationCache(agg.getType());
+				String cacheName = cache.getCacheFileName();
 				File cacheFile = new File(cacheDir, cacheName);
 				if (!cacheFile.exists())
 					continue;
 				if (loadedCoulombCaches.containsKey(cacheName)) {
 					// copy the cache over to this one, if not already set
-					List<SubSectStiffnessCalculator> calcs = loadedCoulombCaches.get(cacheName);
+					List<AggregatedStiffnessCache> caches = loadedCoulombCaches.get(cacheName);
 					// it might be shared, so make sure we haven't already loaded that one
 					boolean found = false;
-					for (SubSectStiffnessCalculator oCalc : calcs) {
-						if (oCalc == stiffnessCalc) {
+					for (AggregatedStiffnessCache oCache : caches) {
+						if (oCache == cache) {
 							found = true;
 							// it's already been populated
 							break;
@@ -1330,15 +1333,15 @@ public class RupSetDiagnosticsPageGen {
 					}
 					if (!found) {
 						// need to actually populate this one
-						stiffnessCalc.copyCacheFrom(calcs.get(0));
-						calcs.add(stiffnessCalc);
+						cache.copyCacheFrom(cache);
+						caches.add(cache);
 					}
 				}
 				if (!loadedCoulombCaches.containsKey(cacheName) && cacheFile.exists()) {
-					stiffnessCalc.loadCacheFile(cacheFile, StiffnessType.CFF);
-					List<SubSectStiffnessCalculator> calcs = new ArrayList<>();
-					calcs.add(stiffnessCalc);
-					loadedCoulombCaches.put(cacheName, calcs);
+					cache.loadCacheFile(cacheFile);
+					List<AggregatedStiffnessCache> caches = new ArrayList<>();
+					caches.add(cache);
+					loadedCoulombCaches.put(cacheName, caches);
 				}
 			}
 		}
@@ -2542,21 +2545,9 @@ public class RupSetDiagnosticsPageGen {
 						ScalarCoulombPlausibilityFilter coulombFilter = null;
 						if (filter instanceof ScalarCoulombPlausibilityFilter) {
 							coulombFilter = (ScalarCoulombPlausibilityFilter)filter;
-							System.out.println("Coulomb filter "+filter.getName()+" has agg method "
-									+coulombFilter.getAggregationMethod()+", scalar type: "
-									+coulombFilter.getScalarName());
-							if (coulombFilter.getAggregationMethod() == StiffnessAggregationMethod.FRACT_POSITIVE) {
-								// use standard plotting for fract positive
+							AggregatedStiffnessCalculator aggCalc = coulombFilter.getAggregator();
+							if (!aggCalc.hasUnits())
 								coulombFilter = null;
-							} else if (coulombFilter instanceof NetRuptureCoulombFilter) {
-								RupCoulombQuantity rupQuantity =
-										((NetRuptureCoulombFilter)coulombFilter).getRuptureQuantity();
-								// only use log spacing if it's actually CFF
-								if (rupQuantity != RupCoulombQuantity.MEAN_SECT_CFF
-										&& rupQuantity != RupCoulombQuantity.MIN_SECT_CFF
-										&& rupQuantity != RupCoulombQuantity.SUM_SECT_CFF)
-									coulombFilter = null;
-							}
 						}
 						
 						if (coulombFilter != null && lower != null && lower.floatValue() <= 0f
