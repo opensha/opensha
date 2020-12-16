@@ -858,15 +858,18 @@ public class ClusterRuptureBuilder {
 //				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)
 //				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.FRACT_POSITIVE)
 //				.sectsToSectsAgg(AggregationMethod.MEAN).get();
-		AggregatedStiffnessCalculator aggNetPatchFracts =
-//				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
-				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc,
-						AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
-						AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE);
-		configBuilder.netRupCoulomb(aggNetPatchFracts, 0.9f); outputName += "_cffPatchNetFract0.9";
+//		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+//				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
+//				AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.95f); outputName += "_cffPatchNetFract0.95";
+		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM,
+				AggregationMethod.INTERACTION_SIGN, AggregationMethod.FRACT_POSITIVE), 0.9f); outputName += "_cffPatchNetPos0.9";
 		
 		// new Coulomb filters (path is current preffered)
 		// this will use the median interaction between 2 sections, and sum sect-to-sect values across a rupture
+//		configBuilder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+//				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
+//				AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.8f); outputName += "_cffJumpPatchNetFract0.8";
 		AggregatedStiffnessCalculator aggMedianPatchSumSects =
 //				AggregatedStiffnessCalculator.buildMedianPatchSumSects(StiffnessType.CFF, stiffnessCalc);
 				AggregatedStiffnessCalculator.builder(StiffnessType.CFF, stiffnessCalc)

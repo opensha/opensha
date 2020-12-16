@@ -80,14 +80,16 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 
 	@Override
 	public String getShortName() {
+		String type = "["+aggCalc.getScalarShortName()+"]";
 		if (threshold == 0f)
-			return "JumpClusterCFF≥0";
-		return "JumpClusterCFF≥"+(float)threshold;
+			return "JumpCluster"+type+"≥0";
+		return "JumpCluster"+type+"≥"+(float)threshold;
 	}
 
 	@Override
 	public String getName() {
-		return "Jump Cluster Coulomb  ≥ "+(float)threshold;
+		String type = "["+aggCalc.getScalarName()+"]";
+		return "Jump Cluster "+type+" ≥ "+(float)threshold;
 	}
 	
 	@Override
