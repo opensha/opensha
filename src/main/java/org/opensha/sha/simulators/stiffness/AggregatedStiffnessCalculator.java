@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -70,19 +71,18 @@ public class AggregatedStiffnessCalculator {
 	private AggregationMethod[] layers;
 	private boolean allowSectToSelf = false;
 	
+	public static final EnumSet<AggregationMethod> CACHEABLE_AGG_METHODS =
+			EnumSet.range(AggregationMethod.MEAN, AggregationMethod.COUNT);
 	private static final int CACHE_ARRAY_SIZE;
-	public static final int NUM_TERMINAL_METHODS;
 	static {
 		int maxTerminalIndex = -1;
-		int numTerminal = 0;
 		for (AggregationMethod method : AggregationMethod.values()) {
-			if (method.isTerminal()) {
+			if (CACHEABLE_AGG_METHODS.contains(method)) {
+				Preconditions.checkState(method.isTerminal());
 				maxTerminalIndex = Integer.max(maxTerminalIndex, method.ordinal());
-				numTerminal++;
 			}
 		}
 		CACHE_ARRAY_SIZE = maxTerminalIndex+1;
-		NUM_TERMINAL_METHODS = numTerminal;
 	}
 	
 	// multiplier to use for section IDs, to which patch IDs are added to get unique patch IDs
@@ -122,7 +122,7 @@ public class AggregatedStiffnessCalculator {
 		StiffnessAggregation(AggregationMethod[] methods, double[] aggValues) {
 			Preconditions.checkState(methods.length == aggValues.length);
 			this.aggValues = new double[CACHE_ARRAY_SIZE];
-			for (int i=0; i<aggValues.length; i++)
+			for (int i=0; i<this.aggValues.length; i++)
 				this.aggValues[i] = Double.NaN;
 			for (int i=0; i<methods.length; i++)
 				this.aggValues[methods[i].ordinal()] = aggValues[i];
@@ -233,7 +233,7 @@ public class AggregatedStiffnessCalculator {
 				return ret;
 			}
 		},
-		NORM_BY_COUNT("Normalize By Interaction Count", true, false) {
+		NORM_BY_COUNT("Normalize By Interaction Count", false, true) {
 			@Override
 			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
 				double sum = 0d;
@@ -248,23 +248,51 @@ public class AggregatedStiffnessCalculator {
 						"No interactions found at this level. Have %s dists and sum=%s", (Object)dists.length, sum);
 				return new ReceiverDistribution[] { new ReceiverDistribution(higherLevelID, interactionCount, fract) };
 			}
+
+			@Override
+			public double get(ReceiverDistribution[] dists) {
+				ReceiverDistribution[] agg = aggregate(-1, dists);
+				Preconditions.checkState(agg.length == 1 && agg[0].values.length == 1);
+				return agg[0].values[0];
+			}
 		},
-		INTERACTION_SIGN("Interaction Sign", true, false) {
+		HALF_INTERACTIONS("1/2 Interactions", false, true) {
 			@Override
 			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
-				double sum = 0d;
-				int interactionCount = 0;
-				for (ReceiverDistribution dist : dists) {
-					interactionCount += dist.totNumInteractions;
-					for (double val : dist.values)
-						sum += val;
-				}
-				double fract = sum/(double)interactionCount;
-				Preconditions.checkState(interactionCount > 0,
-						"No interactions found at this level. Have %s dists and sum=%s", (Object)dists.length, sum);
-				if (fract >= 0.5)
-					return new ReceiverDistribution[] { new ReceiverDistribution(higherLevelID, interactionCount, 1d) };
-				return new ReceiverDistribution[] { new ReceiverDistribution(higherLevelID, interactionCount, -1d) };
+				return new ReceiverDistribution[] { interactionTest(higherLevelID, dists, 0.5, 1, -1) };
+			}
+
+			@Override
+			public double get(ReceiverDistribution[] dists) {
+				ReceiverDistribution[] agg = aggregate(-1, dists);
+				Preconditions.checkState(agg.length == 1 && agg[0].values.length == 1);
+				return agg[0].values[0];
+			}
+		},
+		THREE_QUARTER_INTERACTIONS("3/4 Interactions", false, true) {
+			@Override
+			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
+				return new ReceiverDistribution[] { interactionTest(higherLevelID, dists, 0.75, 1, -1) };
+			}
+
+			@Override
+			public double get(ReceiverDistribution[] dists) {
+				ReceiverDistribution[] agg = aggregate(-1, dists);
+				Preconditions.checkState(agg.length == 1 && agg[0].values.length == 1);
+				return agg[0].values[0];
+			}
+		},
+		NINE_TENTH_INTERACTIONS("9/10 Interactions", false, true) {
+			@Override
+			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
+				return new ReceiverDistribution[] { interactionTest(higherLevelID, dists, 0.9, 1, -1) };
+			}
+
+			@Override
+			public double get(ReceiverDistribution[] dists) {
+				ReceiverDistribution[] agg = aggregate(-1, dists);
+				Preconditions.checkState(agg.length == 1 && agg[0].values.length == 1);
+				return agg[0].values[0];
 			}
 		},
 		PASSTHROUGH("Passthrough", true, false) {
@@ -350,6 +378,22 @@ public class AggregatedStiffnessCalculator {
 			return hasUnits;
 		}
 		
+	}
+	
+	private static ReceiverDistribution interactionTest(int receiverID, ReceiverDistribution[] dists, double threshold, double valPass, double valFail) {
+		double sum = 0d;
+		int interactionCount = 0;
+		for (ReceiverDistribution dist : dists) {
+			interactionCount += dist.totNumInteractions;
+			for (double val : dist.values)
+				sum += val;
+		}
+		Preconditions.checkState(interactionCount > 0,
+				"No interactions found at this level. Have %s dists and sum=%s", (Object)dists.length, sum);
+		double fract = sum/(double)interactionCount;
+		if (fract > threshold)
+			return new ReceiverDistribution(receiverID, interactionCount, valPass);
+		return new ReceiverDistribution(receiverID, interactionCount, valFail);
 	}
 	
 	public static class ReceiverDistribution {
@@ -670,7 +714,6 @@ public class AggregatedStiffnessCalculator {
 			ReceiverDistribution receiverPatchDist = flatten(receiver.getSectionId(), aggRecieverPatches(source, receiver));
 //			Preconditions.checkState(receiverPatchDists.length == 1,
 //					"should only have 1 flattened or procssed distribution at sect-to-sect if cacheable");
-			int interactionCount = 0;
 			aggregated = new StiffnessAggregation(receiverPatchDist.values, receiverPatchDist.totNumInteractions);
 			if (D) {
 				System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+" sect-to-sect "+layers[1]+":");
@@ -678,7 +721,8 @@ public class AggregatedStiffnessCalculator {
 			}
 			cache.putSectAggregated(patchAggMethod, source, receiver, aggregated);
 		} else if (D) {
-			System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+" sect-to-sect "+layers[1]+" is CACHED:");
+			System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()
+				+" sect-to-sect "+layers[1]+" is CACHED w/ patchAgg="+patchAggMethod+":");
 		}
 		
 		return aggregated;
@@ -989,6 +1033,8 @@ public class AggregatedStiffnessCalculator {
 //			System.out.println("Rupture "+r+": "+Joiner.on(",").join(rupSet.getSectionsIndicesForRup(r)));
 			System.out.println("Rupture "+r+": "+rupSects.stream().map(s -> s.getSectionId())
 					.map(String::valueOf).collect(Collectors.joining(",")));
+			double val = aggCalc.calc(rupSects, rupSects);
+			System.out.println("Value: "+val);
 			aggCalc.calc(rupSects, rupSects);
 			break;
 		}

@@ -16,6 +16,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.Stiffn
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
@@ -30,16 +31,21 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter {
 	
 	private AggregatedStiffnessCalculator aggCalc;
-	private float threshold;
+	private Range<Float> acceptableRange;
 	
 	// can't use the fitler data shortcut for anything where the final aggregation step involves a median
 	private static EnumSet<AggregationMethod> filterDataAggMethods = EnumSet.complementOf(
 			EnumSet.of(AggregationMethod.GREATER_MEAN_MEDIAN, AggregationMethod.GREATER_SUM_MEDIAN, AggregationMethod.MEDIAN));
 
 	public NetRuptureCoulombFilter(AggregatedStiffnessCalculator aggCalc, float threshold) {
+		this(aggCalc, Range.atLeast(threshold));
+	}
+
+	public NetRuptureCoulombFilter(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange) {
 		super();
 		this.aggCalc = aggCalc;
-		this.threshold = threshold;
+		Preconditions.checkArgument(acceptableRange.hasLowerBound() || acceptableRange.hasUpperBound());
+		this.acceptableRange = acceptableRange;
 	}
 
 	@Override
@@ -47,8 +53,8 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 		if (rupture.getTotalNumSects() == 1)
 			return PlausibilityResult.PASS;
 		float val = getValue(rupture);
-		PlausibilityResult result = val < threshold ?
-				PlausibilityResult.FAIL_HARD_STOP : PlausibilityResult.PASS;
+		PlausibilityResult result = acceptableRange.contains(val) ?
+				PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
 		if (verbose)
 			System.out.println(getShortName()+": val="+val+", result="+result);
 		return result;
@@ -57,17 +63,13 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 	@Override
 	public String getShortName() {
 		String name = aggCalc.getScalarShortName();
-		if (threshold == 0f)
-			return name+"≥0";
-		return name+"≥"+(float)threshold;
+		return name+getRangeStr();
 	}
 
 	@Override
 	public String getName() {
 		String name = "Net Rupture ["+aggCalc.getScalarName()+"]";
-		if (threshold == 0f)
-			return name+" ≥0";
-		return name+" ≥"+(float)threshold;
+		return name+getRangeStr();
 	}
 
 	@Override
@@ -113,7 +115,7 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 
 	@Override
 	public Range<Float> getAcceptableRange() {
-		return Range.atLeast(threshold);
+		return acceptableRange;
 	}
 	
 	private static class FilterData {

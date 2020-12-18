@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -175,19 +177,29 @@ public class AggregatedStiffnessCache {
 			return 0;
 		}
 		AggregationMethod[] methods = new AggregationMethod[header.size()-3];
-		if (methods.length != AggregatedStiffnessCalculator.NUM_TERMINAL_METHODS) {
+		if (methods.length != AggregatedStiffnessCalculator.CACHEABLE_AGG_METHODS.size()) {
 			System.err.println("Warning: aggregation methods have changed and cache is now invalid, skipping loading");
 			return 0;
 		}
+		HashSet<AggregationMethod> prevMethods = new HashSet<>();
 		for (int i=0; i<methods.length; i++) {
 			int col = i+3;
 			String name = header.get(col);
 			try {
 				methods[i] = AggregationMethod.valueOf(name);
 			} catch (IllegalArgumentException e) {
-				System.err.println("Warning: aggregation methods have changed (can't find '"+name+"')and cache is now invalid, skipping loading");
+				System.err.println("Warning: aggregation methods have changed (can't find '"+name+"') and cache is now invalid, skipping loading");
 				return 0;
 			}
+			if (!AggregatedStiffnessCalculator.CACHEABLE_AGG_METHODS.contains(methods[i])) {
+				System.err.println("Warning: aggregation methods have changed and cache is now invalid, skipping loading");
+				return 0;
+			}
+			if (prevMethods.contains(methods[i])) {
+				System.err.println("Warning: cache contains duplicate columns and is invalid, skipping loading");
+				return 0;
+			}
+			prevMethods.add(methods[i]);
 		}
 		for (int row=1; row<csv.getNumRows(); row++) {
 			int col = 0;

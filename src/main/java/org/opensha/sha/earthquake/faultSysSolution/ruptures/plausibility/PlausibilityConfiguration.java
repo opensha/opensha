@@ -49,6 +49,8 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlig
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BoundType;
+import com.google.common.collect.Range;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
@@ -197,9 +199,14 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
-		public Builder clusterPathCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold, float fractPathsThreshold) {
+		public Builder clusterPathCoulomb(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange) {
+			filters.add(new ClusterPathCoulombCompatibilityFilter(aggCalc, acceptableRange));
+			return this;
+		}
+		
+		public Builder clusterPathCoulomb(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange, float fractPathsThreshold) {
 			filters.add(new ClusterPathCoulombCompatibilityFilter(
-					aggCalc, threshold, fractPathsThreshold));
+					aggCalc, acceptableRange, fractPathsThreshold));
 			return this;
 		}
 		
@@ -210,6 +217,11 @@ public class PlausibilityConfiguration {
 		
 		public Builder netRupCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold) {
 			filters.add(new NetRuptureCoulombFilter(aggCalc, threshold));
+			return this;
+		}
+		
+		public Builder netRupCoulomb(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange) {
+			filters.add(new NetRuptureCoulombFilter(aggCalc, acceptableRange));
 			return this;
 		}
 		
@@ -422,6 +434,7 @@ public class PlausibilityConfiguration {
 		PlausibilityFilterAdapter filterAdapter = new PlausibilityFilterAdapter(
 				null, connStrat, distAzCalc);
 		builder.registerTypeHierarchyAdapter(PlausibilityFilterRecord.class, filterAdapter);
+		builder.registerTypeAdapter(TypeToken.getParameterized(Range.class, Float.class).getType(), new FloatRangeTypeAdapter());
 		Gson gson = builder.create();
 		configAdapter.setGson(gson);
 		filterAdapter.setGson(gson);
@@ -843,6 +856,62 @@ public class PlausibilityConfiguration {
 		
 	}
 	
+	private static class FloatRangeTypeAdapter extends TypeAdapter<Range<Float>> {
+
+		@Override
+		public void write(JsonWriter out, Range<Float> value) throws IOException {
+			out.beginObject();
+			if (value.hasLowerBound())
+				out.name("lower").value(value.lowerEndpoint()).name("lowerType").value(value.lowerBoundType().name());
+			if (value.hasUpperBound())
+				out.name("upper").value(value.upperEndpoint()).name("upperType").value(value.upperBoundType().name());
+			out.endObject();
+		}
+
+		@Override
+		public Range<Float> read(JsonReader in) throws IOException {
+			Float lower = null;
+			BoundType lowerType = null;
+			Float upper = null;
+			BoundType upperType = null;
+			in.beginObject();
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+				switch (name) {
+				case "lower":
+					lower = (float)in.nextDouble();
+					break;
+				case "lowerType":
+					lowerType = BoundType.valueOf(in.nextString());
+					break;
+				case "upper":
+					upper = (float)in.nextDouble();
+					break;
+				case "upperType":
+					upperType = BoundType.valueOf(in.nextString());
+					break;
+
+				default:
+					throw new IllegalStateException("unexpected json name: "+name);
+				}
+			}
+			
+			in.endObject();
+			Preconditions.checkState(lower != null || upper != null);
+			if (lower != null)
+				Preconditions.checkNotNull(lowerType, "lower bound supplied without type");
+			if (upper != null)
+				Preconditions.checkNotNull(upperType, "upper bound supplied without type");
+			if (lower == null)
+				return Range.upTo(upper, upperType);
+			if (upper == null)
+				return Range.downTo(lower, lowerType);
+			return Range.range(lower, lowerType, upper, upperType);
+		}
+		
+	}
+	
 	public static void main(String[] args) throws IOException {
 		FaultModels fm = FaultModels.FM3_1;
 		DeformationModels dm = fm.getFilterBasis();
@@ -881,18 +950,30 @@ public class PlausibilityConfiguration {
 		// fraction of all receiver patches that are net positive (summed over all sources)
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.95f);
-		// fraction of all [section -> receiver patch] interactions are positive
+//		// fraction of all [section -> receiver patch] interactions are positive
+//		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+//				AggregationMethod.SUM, AggregationMethod.FLATTEN, AggregationMethod.FLATTEN, AggregationMethod.FRACT_POSITIVE), 0.8f);
+//		// average fraction of positive receiver patches between each subsection pair
+//		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+//				AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN, AggregationMethod.MEAN), 0.8f);
+//		// fraction of net positive receiver sections, averaged across all source sections
+//		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+//				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN), 0.8f);
+		// fraction of receiver patches with >3/4 of interactions positive
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-				AggregationMethod.SUM, AggregationMethod.FLATTEN, AggregationMethod.FLATTEN, AggregationMethod.FRACT_POSITIVE), 0.9f);
-		// average fraction of positive receiver patches between each subsection pair
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.90f);
+		// 1/2 of all interactions positive
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-				AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN, AggregationMethod.MEAN), 0.9f);
-		// fraction of net positive source sections, averaged across all receiver sections
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS), 0f);
+		// 3/4 of all interactions positive
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN), 0.9f);
-		// fraction of receiver patches with >half of interactions positive
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS), 0f);
+		// 9/10 of all interactions positive
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.INTERACTION_SIGN, AggregationMethod.FRACT_POSITIVE), 0.8f);
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.NINE_TENTH_INTERACTIONS), 0f);
+		// number of receiver sections with <half of interactions positive
+		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.NUM_NEGATIVE), Range.atMost(5f));
 		// fraction of receiver patches on the opposite side of a jump that are net positive with the prior rupture as source
 		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.8f);

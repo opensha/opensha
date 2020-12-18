@@ -279,8 +279,13 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 
 		@Override
 		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump) {
-			RakeType type1 = RakeType.getType(jump.fromSection.getAveRake());
-			RakeType type2 = RakeType.getType(jump.toSection.getAveRake());
+			double rake1 = jump.fromSection.getAveRake();
+			double rake2 = jump.toSection.getAveRake();
+			if ((float)rake1 == (float)rake2)
+				// no mechanism change
+				return 1d;
+			RakeType type1 = RakeType.getType(rake1);
+			RakeType type2 = RakeType.getType(rake2);
 			if (type1 == type2)
 				// no mechanism change
 				return 1d;

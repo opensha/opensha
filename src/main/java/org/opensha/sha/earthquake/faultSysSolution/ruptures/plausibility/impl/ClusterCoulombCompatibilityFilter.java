@@ -26,11 +26,14 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibilityFilter {
 	
 	private AggregatedStiffnessCalculator aggCalc;
-	private float threshold;
+	private Range<Float> acceptableRange;
 
 	public ClusterCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, float threshold) {
+		this(aggCalc, Range.atLeast(threshold));
+	}
+	public ClusterCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange) {
 		this.aggCalc = aggCalc;
-		this.threshold = threshold;
+		this.acceptableRange = acceptableRange;
 	}
 
 	@Override
@@ -38,7 +41,7 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 		double worstVal = doTest(new ArrayList<>(), rupture.clusters[0], rupture.getTreeNavigator(),
 				verbose, !verbose);
 		PlausibilityResult result =
-				(float)worstVal >= threshold ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
+				acceptableRange.contains((float)worstVal) ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
 		if (verbose)
 			System.out.println(getShortName()+": worst val="+worstVal+"\tresult="+result.name());
 		return result;
@@ -52,16 +55,16 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 				false, false);
 	}
 	
-	private double doTest(List<FaultSection> curSects, FaultSubsectionCluster nextCluster,
+	private float doTest(List<FaultSection> curSects, FaultSubsectionCluster nextCluster,
 			RuptureTreeNavigator navigator, boolean verbose, boolean shortCircuit) {
-		double val = Double.POSITIVE_INFINITY;
+		float val = Float.POSITIVE_INFINITY;
 		if (!curSects.isEmpty()) {
 			// check rupture so far
-			val = aggCalc.calc(curSects, nextCluster.subSects);
+			val = (float)aggCalc.calc(curSects, nextCluster.subSects);
 			if (verbose)
 				System.out.println(getShortName()+": "+curSects.size()+" sects to "
 						+nextCluster+", val="+val);
-			else if ((float)val < threshold)
+			else if (!acceptableRange.contains((float)val))
 				return val;
 		}
 		
@@ -69,8 +72,8 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 			for (FaultSubsectionCluster descendant : navigator.getDescendants(nextCluster)) {
 				List<FaultSection> newSects = new ArrayList<>(curSects);
 				newSects.addAll(nextCluster.subSects);
-				val = Math.min(val, doTest(newSects, descendant, navigator, verbose, shortCircuit));
-				if (!verbose && (float)val < threshold)
+				val = getWorseValue((float)val, (float)doTest(newSects, descendant, navigator, verbose, shortCircuit));
+				if (!verbose && !acceptableRange.contains((float)val))
 					break;
 			}
 		}
@@ -81,15 +84,13 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 	@Override
 	public String getShortName() {
 		String type = "["+aggCalc.getScalarShortName()+"]";
-		if (threshold == 0f)
-			return "JumpCluster"+type+"≥0";
-		return "JumpCluster"+type+"≥"+(float)threshold;
+		return "JumpCluster"+type+getRangeStr();
 	}
 
 	@Override
 	public String getName() {
 		String type = "["+aggCalc.getScalarName()+"]";
-		return "Jump Cluster "+type+" ≥ "+(float)threshold;
+		return "Jump Cluster "+type+" "+getRangeStr();
 	}
 	
 	@Override
@@ -99,7 +100,7 @@ public class ClusterCoulombCompatibilityFilter implements ScalarCoulombPlausibil
 
 	@Override
 	public Range<Float> getAcceptableRange() {
-		return Range.atLeast((float)threshold);
+		return acceptableRange;
 	}
 
 	@Override

@@ -28,8 +28,8 @@ public class FilterDataClusterRupture extends ClusterRupture {
 	}
 	
 	private FilterDataClusterRupture(FaultSubsectionCluster[] clusters, ImmutableSet<Jump> internalJumps,
-			ImmutableMap<Jump, ClusterRupture> splays, UniqueRupture unique, UniqueRupture internalUnique) {
-		super(clusters, internalJumps, splays, unique, internalUnique);
+			ImmutableMap<Jump, ClusterRupture> splays, UniqueRupture unique, UniqueRupture internalUnique, boolean singleStrand) {
+		super(clusters, internalJumps, splays, unique, internalUnique, singleStrand);
 	}
 
 	public synchronized void addFilterData(PlausibilityFilter filter, Object data) {
@@ -55,7 +55,7 @@ public class FilterDataClusterRupture extends ClusterRupture {
 		ClusterRupture orig = super.take(jump);
 		
 		FilterDataClusterRupture ret = new FilterDataClusterRupture(orig.clusters, orig.internalJumps,
-				orig.splays, orig.unique, orig.internalUnique);
+				orig.splays, orig.unique, orig.internalUnique, orig.singleStrand);
 		if (filterData != null)
 			ret.filterData = new HashMap<>(filterData);
 		

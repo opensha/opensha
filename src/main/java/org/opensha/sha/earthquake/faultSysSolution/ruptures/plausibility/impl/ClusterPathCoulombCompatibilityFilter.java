@@ -44,16 +44,20 @@ import scratch.UCERF3.utils.FaultSystemIO;
 public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlausibilityFilter {
 	
 	private AggregatedStiffnessCalculator aggCalc;
-	private float threshold;
+	private Range<Float> acceptableRange;
 	private float fractPassThreshold = 0; // default pass to if 1 or more paths pass
 
 	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, float threshold) {
-		this(aggCalc, threshold, 0f);
+		this(aggCalc, Range.atLeast(threshold));
 	}
 
-	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, float threshold, float fractPassThreshold) {
+	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange) {
+		this(aggCalc, acceptableRange, 0f);
+	}
+
+	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange, float fractPassThreshold) {
 		this.aggCalc = aggCalc;
-		this.threshold = threshold;
+		this.acceptableRange = acceptableRange;
 		Preconditions.checkState(fractPassThreshold <= 1f);
 		this.fractPassThreshold = fractPassThreshold;
 	}
@@ -87,8 +91,8 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 			float val = testNucleationPoint(navigator, nucleationCluster, !verbose, verbose);
 			if (verbose)
 				System.out.println(getShortName()+": Nucleation point "+nucleationCluster
-						+", val="+val+", result: "+(val >= threshold));
-			if (val >= threshold)
+						+", val="+val+", result: "+(acceptableRange.contains(val)));
+			if (acceptableRange.contains(val))
 				numPasses++;
 			else if (skipClusters != null)
 				skipClusters.add(nucleationCluster);
@@ -117,13 +121,13 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 			// (such that if and only if that value passes, the rupture passes)
 			int numPaths = vals.size();
 			int numNeeded = Integer.max(1, (int)Math.ceil(fractPassThreshold*numPaths));
-			Collections.sort(vals);
+			Collections.sort(vals, worstToBestComparator());
 			return vals.get(vals.size()-numNeeded);
 		}
-		float max = Float.NEGATIVE_INFINITY;
+		Float bestVal = getWorseValue(Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY);
 		for (Float val : vals)
-			max = Float.max(val, max);
-		return max;
+			bestVal = getBestValue(val, bestVal);
+		return bestVal;
 	}
 	
 	private float testNucleationPoint(RuptureTreeNavigator navigator,
@@ -131,7 +135,7 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		HashSet<FaultSubsectionCluster> curClusters = new HashSet<>();
 		curClusters.add(nucleationCluster);
 		FaultSubsectionCluster predecessor = navigator.getPredecessor(nucleationCluster);
-		Float minVal = Float.POSITIVE_INFINITY;
+		Float worstVal = getBestValue(Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY);
 		if (verbose)
 			System.out.println("Testing strand(s) with start="+nucleationCluster);
 		if (predecessor != null) {
@@ -143,9 +147,9 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 					shortCircuit, verbose);
 			if (verbose)
 				System.out.println("\tPredecessor strand val="+strandVal);
-			minVal = Float.min(minVal, strandVal);
-			if (shortCircuit && minVal < threshold)
-				return minVal;
+			worstVal = getWorseValue(worstVal, strandVal);
+			if (shortCircuit && !acceptableRange.contains(worstVal))
+				return worstVal;
 		}
 		
 		for (FaultSubsectionCluster descendant : navigator.getDescendants(nucleationCluster)) {
@@ -157,19 +161,19 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 					shortCircuit, verbose);
 			if (verbose)
 				System.out.println("\tDescendant strand val="+strandVal);
-			minVal = Float.min(minVal, strandVal);
-			if (shortCircuit && minVal < threshold)
-				return minVal;
+			worstVal = getWorseValue(worstVal, strandVal);
+			if (shortCircuit && !acceptableRange.contains(worstVal))
+				return worstVal;
 		}
 		
-		return minVal;
+		return worstVal;
 	}
 	
 	private float testStrand(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> strandClusters,
 			List<FaultSection> strandSections, FaultSubsectionCluster prevAddition,
 			FaultSubsectionCluster addition, boolean shortCircuit,
 			boolean verbose) {
-		float minVal = Float.POSITIVE_INFINITY;
+		Float worstVal = getBestValue(Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY);
 		if (!strandSections.isEmpty()) {
 //			StiffnessResult stiffness = stiffnessCalc.calcAggClustersToClusterStiffness(
 //					StiffnessType.CFF, strandClusters, addition);
@@ -177,9 +181,9 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 			if (verbose)
 				System.out.println("\t\tval="+val+" for "+strandClusters.size()+" clusters ("
 						+strandSections.size()+" sects) to "+addition);
-			minVal = Float.min(minVal, (float)val);
-			if (shortCircuit && minVal < threshold)
-				return (float)val;
+			worstVal = getWorseValue(worstVal, (float)val);
+			if (shortCircuit && !acceptableRange.contains(worstVal))
+				return worstVal;
 		}
 		
 		// this addition passed, continue downstream
@@ -194,9 +198,9 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 					prevAddition, addition, predecessor);
 			float val = testStrand(navigator, newStrandClusters, newStrandSects, addition, predecessor,
 					shortCircuit, verbose);
-			minVal = Float.min(minVal, (float)val);
-			if (shortCircuit && minVal < threshold)
-				return (float)val;
+			worstVal = getWorseValue(worstVal, val);
+			if (shortCircuit && !acceptableRange.contains(worstVal))
+				return worstVal;
 		}
 		
 		// check descendants of this strand
@@ -208,13 +212,13 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 					prevAddition, addition, descendant);
 			float val = testStrand(navigator, newStrandClusters, newStrandSects, addition, descendant,
 					shortCircuit, verbose);
-			minVal = Float.min(minVal, (float)val);
-			if (shortCircuit && minVal < threshold)
-				return (float)val;
+			worstVal = getWorseValue(worstVal, val);
+			if (shortCircuit && !acceptableRange.contains(worstVal))
+				return worstVal;
 		}
 		
 		// if we m)ade it here, this either the end of the line or all downstream strand extensions pass
-		return minVal;
+		return worstVal;
 	}
 	
 	private List<FaultSection> getAddSectsToward(RuptureTreeNavigator navigator, List<FaultSection> prevSects,
@@ -286,21 +290,21 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 	@Override
 	public String getShortName() {
 		String type = "["+aggCalc.getScalarShortName()+"]";
-		String threshStr = threshold == 0f ? "0" : threshold+"";
+		String threshStr = getRangeStr();
 		if (fractPassThreshold > 0f) {
 			if (fractPassThreshold == 0.5f)
-				return "HalfPaths"+type+"≥"+threshStr;
+				return "HalfPaths"+type+threshStr;
 			if (fractPassThreshold == 1f/3f)
-				return "1/3Paths"+type+"≥"+threshStr;
+				return "1/3Paths"+type+threshStr;
 			if (fractPassThreshold == 2f/3f)
-				return "2/3Paths"+type+"≥"+threshStr;
+				return "2/3Paths"+type+threshStr;
 			if (fractPassThreshold == 0.25f)
-				return "1/4Paths"+type+"≥"+threshStr;
+				return "1/4Paths"+type+threshStr;
 			if (fractPassThreshold == 0.75f)
-				return "3/4Paths"+type+"≥"+threshStr;
-			return fractPassThreshold+"Paths"+type+"≥"+threshStr;
+				return "3/4Paths"+type+threshStr;
+			return fractPassThreshold+"Paths"+type+threshStr;
 		}
-		return "Path"+type+"≥"+threshStr;
+		return "Path"+type+threshStr;
 	}
 
 	@Override
@@ -308,23 +312,23 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 		String type = "["+aggCalc.getScalarName()+"]";
 		if (fractPassThreshold > 0f) {
 			if (fractPassThreshold == 0.5f)
-				return "Cluster Half Paths "+type+" ≥ "+(float)threshold;
+				return "Cluster Half Paths "+type+" "+getRangeStr();
 			if (fractPassThreshold == 1f/3f)
-				return "Cluster 1/3 Paths "+type+" ≥ "+(float)threshold;
+				return "Cluster 1/3 Paths "+type+" "+getRangeStr();
 			if (fractPassThreshold == 2f/3f)
-				return "Cluster 2/3 Paths "+type+" ≥ "+(float)threshold;
+				return "Cluster 2/3 Paths "+type+" "+getRangeStr();
 			if (fractPassThreshold == 0.25f)
-				return "Cluster 1/4 Paths "+type+" ≥ "+(float)threshold;
+				return "Cluster 1/4 Paths "+type+" "+getRangeStr();
 			if (fractPassThreshold == 0.75f)
-				return "Cluster 3/4 Paths "+type+" ≥ "+(float)threshold;
-			return "Cluster "+fractPassThreshold+"x Paths "+type+"  ≥ "+(float)threshold;
+				return "Cluster 3/4 Paths "+type+" "+getRangeStr();
+			return "Cluster "+fractPassThreshold+"x Paths "+type+" "+getRangeStr();
 		}
-		return "Cluster Path "+type+" ≥ "+(float)threshold;
+		return "Cluster Path "+type+" "+getRangeStr();
 	}
 
 	@Override
 	public Range<Float> getAcceptableRange() {
-		return Range.atLeast((float)threshold);
+		return acceptableRange;
 	}
 	
 	@Override
@@ -367,7 +371,9 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 			if (largest == null || rup.getTotalNumSects() > largest.getTotalNumSects())
 				largest = rup;
 		System.out.println("Benchmarking with a largest rupture ("+largest.getTotalNumSects()+" sects):\n\t"+largest);
-		int num = 1000000;
+//		int num = 1000000;
+		int num = 1;
+		boolean verbose = true;
 		Stopwatch watch = Stopwatch.createStarted();
 		for (int i=0; i<num; i++) {
 			if (i % 1000 == 0) {
@@ -375,7 +381,7 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 				double rate = i/secs;
 				System.out.println("processed "+i+" in "+(float)secs+" s:\t"+(float)rate+" per second");
 			}
-			filter.apply(largest, false);
+			filter.apply(largest, verbose);
 		}
 		watch.stop();
 		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;

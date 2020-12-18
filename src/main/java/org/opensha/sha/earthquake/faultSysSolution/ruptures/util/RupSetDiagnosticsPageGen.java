@@ -126,6 +126,8 @@ public class RupSetDiagnosticsPageGen {
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
 //			String inputName = "CmlAz, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
+			String inputName = "CFF Path Max(Med,Sum), JumpRecPatch0.8";
+			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.8_cffSumMedClusterPathPositive.zip");
 //			String inputName = "CmlAz, NetFract0.75, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffNetFract0.75_cffSumMedClusterPathPositive.zip");
 //			String inputName = "CFF Sum";
@@ -144,20 +146,20 @@ public class RupSetDiagnosticsPageGen {
 ////			File inputFile = new File(rupSetsDir, "fm3_1_cmlPen5_az60_jump0.1km_rake45_cffClusterPathPositive.zip");
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3_cmlPen5_jump1km_rake45.zip");
 			
-			String inputName = "RSQSim 4983, SectArea=0.5";
-			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+//			String inputName = "RSQSim 4983, SectArea=0.5";
+//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 			
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
 //			String compName = "UCERF3";
 //			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-			String compName = null;
-			File compareFile = null;
+//			String compName = null;
+//			File compareFile = null;
 //			String compName = "CFF Med Path";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
-//			String compName = "No Net Fract";
-//			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
+			String compName = "CmlAz, No JumpRecPatch";
+			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
 //			String compName = "CmlAz Only";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 //			String compName = "CmlAz, CFF Cluster Positive";
@@ -382,7 +384,7 @@ public class RupSetDiagnosticsPageGen {
 		List<String> lines = new ArrayList<>();
 		lines.add("# Rupture Set Diagnostics: "+inputName);
 		lines.add("");
-		lines.addAll(getBasicLines(inputRupSet));
+		lines.addAll(getBasicLines(inputRupSet, inputRups));
 		lines.add("");
 		int tocIndex = lines.size();
 		String topLink = "*[(top)](#table-of-contents)*";
@@ -424,7 +426,7 @@ public class RupSetDiagnosticsPageGen {
 			lines.add(topLink); lines.add("");
 			lines.add("Will include comparisons against: "+compName);
 			lines.add("");
-			lines.addAll(getBasicLines(compRupSet));
+			lines.addAll(getBasicLines(compRupSet, compRups));
 			lines.add("");
 			
 			lines.add("### Rupture Set Overlap");
@@ -1217,7 +1219,7 @@ public class RupSetDiagnosticsPageGen {
 		return lengths[r]*1e-3; // m => km
 	}
 	
-	private static List<String> getBasicLines(FaultSystemRupSet rupSet) {
+	private static List<String> getBasicLines(FaultSystemRupSet rupSet, List<ClusterRupture> clusterRups) {
 		List<String> lines = new ArrayList<>();
 		MinMaxAveTracker magTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lenTrack = new MinMaxAveTracker();
@@ -1228,6 +1230,12 @@ public class RupSetDiagnosticsPageGen {
 			sectsTrack.addValue(rupSet.getSectionsIndicesForRup(r).size());
 		}
 		lines.add("* Num ruptures: "+thousands.format(rupSet.getNumRuptures()));
+		int numSingleStrand = 0;
+		for (ClusterRupture rup : clusterRups)
+			if (rup.singleStrand)
+				numSingleStrand++;
+		lines.add("* Num single-strand ruptures: "+thousands.format(numSingleStrand)+" ("
+				+new DecimalFormat("0.#%").format((double)numSingleStrand/(double)clusterRups.size())+")");
 		lines.add("* Rupture mag range: ["+twoDigits.format(magTrack.getMin())
 		+","+twoDigits.format(magTrack.getMax())+"]");
 		lines.add("* Rupture length range: ["+twoDigits.format(lenTrack.getMin())
@@ -1643,10 +1651,12 @@ public class RupSetDiagnosticsPageGen {
 			@Override
 			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
 					SectionDistanceAzimuthCalculator distAzCalc) {
-				synchronized (this) {
-					if (filter == null)
-						filter = new CumulativeProbabilityFilter(1e-10f,
-								CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc));
+				if (filter == null) {
+					synchronized (this) {
+						if (filter == null)
+							filter = new CumulativeProbabilityFilter(1e-10f,
+									CumulativeProbabilityFilter.getPrefferedBWCalcs(distAzCalc));
+					}
 				}
 				return filter.getValue(rup).doubleValue();
 			}
@@ -2314,9 +2324,9 @@ public class RupSetDiagnosticsPageGen {
 		
 		Range xRange = new Range(-0.30*dx, (result.filters.size()+0.15)*dx + 0.15*dx);
 		
-		XYTextAnnotation ann = new XYTextAnnotation(
-				percentDF.format((double)result.allPassCount/result.numRuptures)+" passed all",
-				xRange.getCentralValue(), topRowY);
+		String passedStr = result.allPassCount+"/"+result.numRuptures+" = "
+				+percentDF.format((double)result.allPassCount/result.numRuptures)+" passed all";
+		XYTextAnnotation ann = new XYTextAnnotation(passedStr, xRange.getCentralValue(), topRowY);
 		ann.setTextAnchor(TextAnchor.CENTER);
 		ann.setPaint(Color.BLACK);
 		ann.setFont(allFont);
