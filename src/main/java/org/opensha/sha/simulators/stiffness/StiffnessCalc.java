@@ -314,6 +314,7 @@ public class StiffnessCalc {
 		double sigma = stiffness[0];
 		double tau = stiffness[1];
 		double cff = calcCoulombStress(tau, sigma, coeffOfFriction);
+		System.out.println("sigma="+sigma+", tau="+tau+", cff="+cff);
 		
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -426,123 +427,175 @@ public class StiffnessCalc {
 		double coeffOfFriction = 0.5;
 		
 		/*
-		 * 2 reverse faults which dip toward each other.
+		 * 2 stike-slip end-to-end
 		 * 
-		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-		 * and hanging wall motion is drawn with an arrow)
-		 *   source       receiver
-		 * ||-------|    |-------||
-		 * ||       |    |       ||
-		 * ||  <--  |    |  -->  ||
-		 * ||       |    |       ||
-		 * ||-------|    |-------||
+		 * ||
+		 * ||
+		 * ||
 		 * 
-		 * sigma: -333.9
-		 * tau: -283.1
-		 * cff: --116.2
+		 * ||
+		 * ||
+		 * ||
 		 */
-		double[] sourceCenter = { 0d, 0d, -1d };
-		FocalMechanism sourceMech = new FocalMechanism(0d, 45, 90d);
-		Patch source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		double[] sourceCenter = { 0d, 0d, -1000d };
+		FocalMechanism sourceMech = new FocalMechanism(0d, 90, 180d);
+		Patch source = new Patch(sourceCenter, 2000d, 2000d, sourceMech);
 		
-		double[] receiverCenter = { 5d, 0d, -1d };
-		FocalMechanism receiverMech = new FocalMechanism(180d, 45, 90d);
-		Patch receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		double[] receiverCenter = { 0d, 5000d, -1d };
+		FocalMechanism receiverMech = new FocalMechanism(0d, 90, 180d);
+		Patch receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
+//		double[] receiverCenter = sourceCenter;
+//		FocalMechanism receiverMech = sourceMech;
+//		Patch receiver = source;
 		plot(source, receiver, lambda, mu, coeffOfFriction);
 		
 		/*
-		 * 2 reverse faults which dip toward each other. Motion on either will
-		 * unclamp (sigma <0) the other
+		 * 2 stike-slip end-to-end
 		 * 
-		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-		 * and hanging wall motion is drawn with an arrow)
-		 *   source       receiver
-		 * ||-------|    |-------||
-		 * ||       |    |       ||
-		 * ||  -->  |    |  <--  ||
-		 * ||       |    |       ||
-		 * ||-------|    |-------||
+		 * ||
+		 * ||
+		 * ||
 		 * 
-		 * sigma: 
-		 * tau: 
-		 * cff: 
+		 * ||
+		 * ||
+		 * ||
+		 * ||
+		 * ||
+		 * ||
 		 */
-		sourceCenter = new double[] { 0d, 0d, -1d };
-		sourceMech = new FocalMechanism(0d, 45, -90d);
-		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+		sourceCenter = new double[] { 0d, -1000d, -1000d };
+		sourceMech = new FocalMechanism(0d, 90, 180d);
+		source = new Patch(sourceCenter, 4000d, 2000d, sourceMech);
 		
-		receiverCenter = new double[] { 5d, 0d, -1d };
-		receiverMech = new FocalMechanism(180d, 45, -90d);
-		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+		receiverCenter = new double[] { 0d, 5000d, -1d };
+		receiverMech = new FocalMechanism(0d, 90, 180d);
+		receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
+//		double[] receiverCenter = sourceCenter;
+//		FocalMechanism receiverMech = sourceMech;
+//		Patch receiver = source;
 		plot(source, receiver, lambda, mu, coeffOfFriction);
 		
-		/*
-		 * 2 reverse faults which dip toward each other. Motion on either will
-		 * unclamp (sigma <0) the other
-		 * 
-		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-		 * and hanging wall motion is drawn with an arrow)
-		 *   source       receiver
-		 * ||-------|    |-------||
-		 * ||       |    |       ||
-		 * ||  -->  |    |  -->  ||
-		 * ||       |    |       ||
-		 * ||-------|    |-------||
-		 * 
-		 * sigma: 
-		 * tau: 
-		 * cff: 
-		 */
-		sourceCenter = new double[] { 0d, 0d, -1d };
-		sourceMech = new FocalMechanism(0d, 45, -90d);
-		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
-		
-		receiverCenter = new double[] { 5d, 0d, -1d };
-		receiverMech = new FocalMechanism(180d, 45, 90d);
-		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-		plot(source, receiver, lambda, mu, coeffOfFriction);
-		
-		/*
-		 * 2 reverse faults which dip toward each other. Motion on either will
-		 * unclamp (sigma <0) the other
-		 * 
-		 * (in these drawings, || is the top of the fault and | is the buried bottom,
-		 * and hanging wall motion is drawn with an arrow)
-		 * 
-		 *           receiver
-		 *        ===============
-		 *             -->
-		 * 
-		 * 
-		 *       ||
-		 *       || ^
-		 *       || |
-		 *       || |
-		 *       ||
-		 *     source
-		 * 
-		 * sigma: 
-		 * tau: 
-		 * cff: 
-		 */
-		sourceCenter = new double[] { 0d, 0d, -1d };
-		sourceMech = new FocalMechanism(0d, 90, 0d);
-		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
-		
-		receiverCenter = new double[] { 1d, 2d, -1d };
-		receiverMech = new FocalMechanism(90d, 90, 0d);
-		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-		plot(source, receiver, lambda, mu, coeffOfFriction);
-		
-		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d+0.5*Math.sqrt(2), -1d };
-		receiverMech = new FocalMechanism(45d, 90, 0d);
-		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-		plot(source, receiver, lambda, mu, coeffOfFriction);
-		
-		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d-0.5*Math.sqrt(2), -1d };
-		receiverMech = new FocalMechanism(135d, 90, 0d);
-		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
-		plot(source, receiver, lambda, mu, coeffOfFriction);
+//		/*
+//		 * 2 reverse faults which dip toward each other.
+//		 * 
+//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+//		 * and hanging wall motion is drawn with an arrow)
+//		 *   source       receiver
+//		 * ||-------|    |-------||
+//		 * ||       |    |       ||
+//		 * ||  <--  |    |  -->  ||
+//		 * ||       |    |       ||
+//		 * ||-------|    |-------||
+//		 * 
+//		 * sigma: -333.9
+//		 * tau: -283.1
+//		 * cff: --116.2
+//		 */
+//		sourceCenter = new double[] { 0d, 0d, -1000d };
+//		sourceMech = new FocalMechanism(0d, 45, 90);
+//		source = new Patch(sourceCenter, 2000d, 2000d, sourceMech);
+//		
+//		receiverCenter = new double[] { 5d, 0d, -1000d };
+//		receiverMech = new FocalMechanism(180d, 45, 90d);
+//		receiver = new Patch(receiverCenter, 2000d, 2000d, receiverMech);
+////		double[] receiverCenter = sourceCenter;
+////		FocalMechanism receiverMech = sourceMech;
+////		Patch receiver = source;
+//		plot(source, receiver, lambda, mu, coeffOfFriction);
+//		
+//		/*
+//		 * 2 reverse faults which dip toward each other. Motion on either will
+//		 * unclamp (sigma <0) the other
+//		 * 
+//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+//		 * and hanging wall motion is drawn with an arrow)
+//		 *   source       receiver
+//		 * ||-------|    |-------||
+//		 * ||       |    |       ||
+//		 * ||  -->  |    |  <--  ||
+//		 * ||       |    |       ||
+//		 * ||-------|    |-------||
+//		 * 
+//		 * sigma: 
+//		 * tau: 
+//		 * cff: 
+//		 */
+//		sourceCenter = new double[] { 0d, 0d, -1d };
+//		sourceMech = new FocalMechanism(0d, 45, -90d);
+//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+//		
+//		receiverCenter = new double[] { 5d, 0d, -1d };
+//		receiverMech = new FocalMechanism(180d, 45, -90d);
+//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+//		plot(source, receiver, lambda, mu, coeffOfFriction);
+//		
+//		/*
+//		 * 2 reverse faults which dip toward each other. Motion on either will
+//		 * unclamp (sigma <0) the other
+//		 * 
+//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+//		 * and hanging wall motion is drawn with an arrow)
+//		 *   source       receiver
+//		 * ||-------|    |-------||
+//		 * ||       |    |       ||
+//		 * ||  -->  |    |  -->  ||
+//		 * ||       |    |       ||
+//		 * ||-------|    |-------||
+//		 * 
+//		 * sigma: 
+//		 * tau: 
+//		 * cff: 
+//		 */
+//		sourceCenter = new double[] { 0d, 0d, -1d };
+//		sourceMech = new FocalMechanism(0d, 45, -90d);
+//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+//		
+//		receiverCenter = new double[] { 5d, 0d, -1d };
+//		receiverMech = new FocalMechanism(180d, 45, 90d);
+//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+//		plot(source, receiver, lambda, mu, coeffOfFriction);
+//		
+//		/*
+//		 * 2 reverse faults which dip toward each other. Motion on either will
+//		 * unclamp (sigma <0) the other
+//		 * 
+//		 * (in these drawings, || is the top of the fault and | is the buried bottom,
+//		 * and hanging wall motion is drawn with an arrow)
+//		 * 
+//		 *           receiver
+//		 *        ===============
+//		 *             -->
+//		 * 
+//		 * 
+//		 *       ||
+//		 *       || ^
+//		 *       || |
+//		 *       || |
+//		 *       ||
+//		 *     source
+//		 * 
+//		 * sigma: 
+//		 * tau: 
+//		 * cff: 
+//		 */
+//		sourceCenter = new double[] { 0d, 0d, -1d };
+//		sourceMech = new FocalMechanism(0d, 90, 0d);
+//		source = new Patch(sourceCenter, 2d, 2d, sourceMech);
+//		
+//		receiverCenter = new double[] { 1d, 2d, -1d };
+//		receiverMech = new FocalMechanism(90d, 90, 0d);
+//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+//		plot(source, receiver, lambda, mu, coeffOfFriction);
+//		
+//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d+0.5*Math.sqrt(2), -1d };
+//		receiverMech = new FocalMechanism(45d, 90, 0d);
+//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+//		plot(source, receiver, lambda, mu, coeffOfFriction);
+//		
+//		receiverCenter = new double[] { 0.5*Math.sqrt(2), 2d-0.5*Math.sqrt(2), -1d };
+//		receiverMech = new FocalMechanism(135d, 90, 0d);
+//		receiver = new Patch(receiverCenter, 2d, 2d, receiverMech);
+//		plot(source, receiver, lambda, mu, coeffOfFriction);
 	}
 
 }

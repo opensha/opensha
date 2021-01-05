@@ -598,6 +598,15 @@ public class RupturePlotGenerator {
 			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
 			List<SimulatorElement> scaledElems, double[] customElemScalars, CPT elemCPT, String scalarLabel,
 			List<XYAnnotation> anns) throws IOException {
+		String title = event == null ? null : "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
+		return writeMapPlot(allElems, event, func, outputDir, prefix, rectangle, rectHypo, surfaceToOutline, scaledElems,
+				customElemScalars, elemCPT, scalarLabel, anns, title);
+	}
+	
+	public static PlotSpec writeMapPlot(List<SimulatorElement> allElems, SimulatorEvent event, RSQSimEventSlipTimeFunc func,
+			File outputDir, String prefix, Location[] rectangle, Location rectHypo, RuptureSurface surfaceToOutline,
+			List<SimulatorElement> scaledElems, double[] customElemScalars, CPT elemCPT, String scalarLabel,
+			List<XYAnnotation> anns, String title) throws IOException {
 		// determine extents
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
@@ -810,7 +819,6 @@ public class RupturePlotGenerator {
 			}
 		}
 		
-		String title = event == null ? null : "Event "+event.getID()+", M"+magDF.format(event.getMagnitude());
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
 		spec.setPlotAnnotations(anns);
 		
