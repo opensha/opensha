@@ -46,20 +46,23 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 	private AggregatedStiffnessCalculator aggCalc;
 	private Range<Float> acceptableRange;
 	private float fractPassThreshold = 0; // default pass to if 1 or more paths pass
+	private boolean failFuturePossible = true;
 
 	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, float threshold) {
 		this(aggCalc, Range.atLeast(threshold));
 	}
 
 	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange) {
-		this(aggCalc, acceptableRange, 0f);
+		this(aggCalc, acceptableRange, 0f, false);
 	}
 
-	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange, float fractPassThreshold) {
+	public ClusterPathCoulombCompatibilityFilter(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange,
+			float fractPassThreshold, boolean failFuturePossible) {
 		this.aggCalc = aggCalc;
 		this.acceptableRange = acceptableRange;
 		Preconditions.checkState(fractPassThreshold <= 1f);
 		this.fractPassThreshold = fractPassThreshold;
+		this.failFuturePossible = failFuturePossible;
 	}
 
 	@Override
@@ -103,7 +106,9 @@ public class ClusterPathCoulombCompatibilityFilter implements ScalarCoulombPlaus
 			System.out.println(getShortName()+": "+numPasses+"/"+numPaths+" pass, "+numNeeded+" needed");
 		if (numPasses >= numNeeded)
 			return PlausibilityResult.PASS;
-		return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
+		if (failFuturePossible)
+			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
+		return PlausibilityResult.FAIL_HARD_STOP;
 	}
 
 	@Override

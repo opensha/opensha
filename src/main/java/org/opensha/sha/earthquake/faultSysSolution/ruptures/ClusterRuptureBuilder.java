@@ -818,7 +818,7 @@ public class ClusterRuptureBuilder {
 //		configBuilder.u3All(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_ucerf3";
 		configBuilder.minSectsPerParent(2, true, true); // always do this one
 //		configBuilder.u3Cumulatives(); outputName += "_u3Cml"; // cml rake and azimuth
-		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
+//		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
 //		configBuilder.u3Azimuth(); outputName += "_u3Az";
 //		configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
 		
@@ -868,24 +868,31 @@ public class ClusterRuptureBuilder {
 //		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 //				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS,
 //				AggregationMethod.FRACT_POSITIVE), 0.95f); outputName += "_cffSectHalfPos0.95";
-//		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS,
-//				AggregationMethod.NUM_NEGATIVE), Range.atMost(3f)); outputName += "_cffMax3NegSects";
+		// fraction of receiver patches with >3/4 of interactions positive
+		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS,
+				AggregationMethod.FRACT_POSITIVE), 0.90f); outputName += "_cff3_4_f0.9Sects";
+		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS,
+				AggregationMethod.NUM_NEGATIVE), Range.atMost(3f)); outputName += "_cffMax3NegSects";
 //		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 //				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS,
 //				AggregationMethod.NUM_NEGATIVE), Range.lessThan(1f)); outputName += "_cffNoNegSects";
-//		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS),
-//				Range.greaterThan(0f)); outputName += "_cff3_4_IntsPos";
+		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS),
+				Range.greaterThan(0f)); outputName += "_cff3_4_IntsPos";
 		
 		// new Coulomb filters (path is current preffered)
 		// this will use the median interaction between 2 sections, and sum sect-to-sect values across a rupture
 //		configBuilder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
 //				AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.8f); outputName += "_cffJumpPatchNetFract0.8";
-		configBuilder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM),
-				Range.atLeast(0f)); outputName += "_cffClusterPathPositive";
+//		configBuilder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+//				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
+//				AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.5f); outputName += "_cffJumpPatchNetFract0.5";
+//		configBuilder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+//				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM),
+//				Range.atLeast(0f)); outputName += "_cffClusterPathPositive";
 //		configBuilder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //				AggregationMethod.FLATTEN, AggregationMethod.GREATER_SUM_MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM),
 //				Range.atLeast(0f)); outputName += "_cffSumMedClusterPathPositive";

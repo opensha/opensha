@@ -126,8 +126,8 @@ public class RupSetDiagnosticsPageGen {
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
 //			String inputName = "CmlAz, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
-			String inputName = "CFF Path Max(Med,Sum), JumpRecPatch0.8";
-			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.8_cffSumMedClusterPathPositive.zip");
+//			String inputName = "CFF Path Max(Med,Sum), JumpRecPatch0.8";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.8_cffSumMedClusterPathPositive.zip");
 //			String inputName = "CmlAz, NetFract0.75, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffNetFract0.75_cffSumMedClusterPathPositive.zip");
 //			String inputName = "CFF Sum";
@@ -149,17 +149,23 @@ public class RupSetDiagnosticsPageGen {
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 			
+			String inputName = "CmlAz Only";
+			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
+			
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
-//			String compName = "UCERF3";
-//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+//			String inputName = "UCERF3";
+//			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+			
+			String compName = "UCERF3";
+			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			String compName = null;
 //			File compareFile = null;
 //			String compName = "CFF Med Path";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
-			String compName = "CmlAz, No JumpRecPatch";
-			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
+//			String compName = "CmlAz, No JumpRecPatch";
+//			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
 //			String compName = "CmlAz Only";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 //			String compName = "CmlAz, CFF Cluster Positive";

@@ -204,9 +204,10 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
-		public Builder clusterPathCoulomb(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange, float fractPathsThreshold) {
+		public Builder clusterPathCoulomb(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange,
+				float fractPathsThreshold, boolean failFuturePossible) {
 			filters.add(new ClusterPathCoulombCompatibilityFilter(
-					aggCalc, acceptableRange, fractPathsThreshold));
+					aggCalc, acceptableRange, fractPathsThreshold, failFuturePossible));
 			return this;
 		}
 		
@@ -959,6 +960,9 @@ public class PlausibilityConfiguration {
 //		// fraction of net positive receiver sections, averaged across all source sections
 //		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 //				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN), 0.8f);
+		// average fraction of receiver patches net positive positive
+		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN, AggregationMethod.MEAN), 0.75f);
 		// fraction of receiver patches with >3/4 of interactions positive
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.90f);
