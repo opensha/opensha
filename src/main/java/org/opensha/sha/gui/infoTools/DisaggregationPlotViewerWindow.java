@@ -57,15 +57,15 @@ import org.opensha.commons.util.BrowserUtils;
 import org.opensha.commons.util.CustomFileFilter;
 import org.opensha.commons.util.FileUtils;
 
-import com.lowagie.text.Document;
-import com.lowagie.text.DocumentException;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.pdf.PRAcroForm;
-import com.lowagie.text.pdf.PdfCopy;
-import com.lowagie.text.pdf.PdfImportedPage;
-import com.lowagie.text.pdf.PdfReader;
-import com.lowagie.text.pdf.PdfWriter;
-import com.lowagie.text.pdf.SimpleBookmark;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.pdf.PRAcroForm;
+import com.itextpdf.text.pdf.PdfCopy;
+import com.itextpdf.text.pdf.PdfImportedPage;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.pdf.SimpleBookmark;
 
 
 /**
@@ -415,7 +415,8 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 				}
 				PRAcroForm form = reader.getAcroForm();
 				if (form != null)
-					writer.copyAcroForm(reader);
+					System.err.println("TODO: replace old copyAcroForm method");
+//					writer.copyAcroForm(reader);
 				f++;
 			}
 			if (master.size() > 0)
