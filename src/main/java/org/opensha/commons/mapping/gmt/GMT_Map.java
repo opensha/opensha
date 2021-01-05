@@ -99,6 +99,7 @@ public class GMT_Map implements Serializable {
 	private int dpi = 72;
 	
 	private boolean useGMTSmoothing = true;
+	private boolean useGRDView = false;
 	
 	private boolean blackBackground = true;
 	
@@ -533,6 +534,19 @@ public class GMT_Map implements Serializable {
 	
 	public Map<String, String> getGMT_Params() {
 		return gmtSetVals;
+	}
+
+	public boolean isUseGRDView() {
+		return useGRDView;
+	}
+
+	/**
+	 * If true, will use grdview instead of grdimage when smoohting and topography are disabled. This is slower but
+	 * more accurate for very finely spaced maps
+	 * @param useGRDView
+	 */
+	public void setUseGRDView(boolean useGRDView) {
+		this.useGRDView = useGRDView;
 	}
 
 }
