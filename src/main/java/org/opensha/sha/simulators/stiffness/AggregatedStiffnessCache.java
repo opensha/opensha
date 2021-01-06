@@ -136,9 +136,8 @@ public class AggregatedStiffnessCache {
 		line.add("Source ID");
 		line.add("Receiver ID");
 		line.add("Receiver Patch Aggregation");
-		for (AggregationMethod method : AggregationMethod.values())
-			if (method.isTerminal())
-				line.add(method.name());
+		for (AggregationMethod method : AggregatedStiffnessCalculator.CACHEABLE_AGG_METHODS)
+			line.add(method.name());
 		csv.addLine(line);
 		writeCacheLines(csv, null, fullDistCache);
 		for (AggregationMethod patchMethod : patchSectAggregatedCache.keySet())
@@ -159,9 +158,8 @@ public class AggregatedStiffnessCache {
 					line.add(j+""); // source ID
 					line.add(i+""); // receiver ID
 					line.add(patchMethod == null ? "" : patchMethod.name());
-					for (AggregationMethod method : AggregationMethod.values())
-						if (method.isTerminal())
-							line.add(agg.get(method)+"");
+					for (AggregationMethod method : AggregatedStiffnessCalculator.CACHEABLE_AGG_METHODS)
+						line.add(agg.get(method)+"");
 					csv.addLine(line);
 				}
 			}
