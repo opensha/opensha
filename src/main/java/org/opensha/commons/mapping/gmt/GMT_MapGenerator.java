@@ -416,6 +416,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		adjustableParams.addParameter(gmtFromServer);
 		adjustableParams.addParameter(logPlotParam);
 		adjustableParams.addParameter(kmlParam);
+		adjustableParams.addParameter(grdViewParam);
 
 
 	}
@@ -1491,7 +1492,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 				if (!contourOnly) {
 					// TODO
 					if (map.isUseGRDView())
-						commandLine="${GMT_PATH}grdview "+ grdFileName + xOff + yOff + projWdth + " -C"+cptFile+" -Ts"+dpi+ region + " > " + psFileName;
+						commandLine="${GMT_PATH}grdview "+ grdFileName + xOff + yOff + projWdth + " -C"+cptFile+" -Ts -K"+ region + " > " + psFileName;
 					else
 						commandLine="${GMT_PATH}grdimage "+ grdFileName + xOff + yOff + projWdth + " -C"+cptFile+" -K"+ region + " > " + psFileName;
 					gmtCommandLines.add(commandLine+"\n");
