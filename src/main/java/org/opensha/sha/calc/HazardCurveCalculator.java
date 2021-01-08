@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Random;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -693,8 +694,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	 * @return
 	 */
 	public DiscretizedFunc getEventSetHazardCurveRandomIML(DiscretizedFunc hazFunction,
-			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
+			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures, Random random) {
 
+		if(random == null)
+			random = new Random();
 
 		//resetting the Parameter change Listeners on the AttenuationRelationship
 		//parameters. This allows the Server version of our application to listen to the
@@ -760,7 +763,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			// set the EqkRup in the IMR
 			imr.setEqkRupture(rupture);
 
-			double randIML = imr.getRandomIML();
+			double randIML = imr.getRandomIML(random);
 			if(maxIML < randIML)
 				maxIML = randIML;
 
@@ -786,7 +789,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	 * @return
 	 */
 	public DiscretizedFunc getEventSetNumExceedCurveRandomIML(DiscretizedFunc hazFunction,
-			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
+			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures, Random random) {
 
 
 		//resetting the Parameter change Listeners on the AttenuationRelationship
@@ -845,7 +848,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			// set the EqkRup in the IMR
 			imr.setEqkRupture(rupture);
 
-			double randIML = imr.getRandomIML();
+			double randIML = imr.getRandomIML(random);
 			
 			for(int i=0;i<hazFunction.size();++i) {
 				if(hazFunction.getX(i) < randIML)
