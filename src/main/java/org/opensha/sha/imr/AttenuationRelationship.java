@@ -331,8 +331,6 @@ extends AbstractIMR implements ScalarIMR {
 	 *  they contain.
 	 */
 	protected ParameterList imlAtExceedProbIndependentParams = new ParameterList();
-	
-	protected Random randomSampler = null;
 
 	/**
 	 *  Constructor for the AttenuationRelationship object - subclasses should execute the
@@ -574,7 +572,7 @@ extends AbstractIMR implements ScalarIMR {
 	 * not testing random samples for being within truncation limits.
 	 * @return
 	 */
-	public double getRandomIML() {
+	public double getRandomIML(Random randomSampler) {
 		
 		double stdDev = getStdDev();
 		double mean = getMean();

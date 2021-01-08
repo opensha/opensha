@@ -20,6 +20,7 @@
 package org.opensha.sha.imr;
 
 import java.util.ListIterator;
+import java.util.Random;
 
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.exceptions.IMRException;
@@ -45,7 +46,7 @@ public interface ScalarIMR extends IntensityMeasureRelationship {
 	 * This returns a random IML
 	 * @return
 	 */
-	public double getRandomIML();
+	public double getRandomIML(Random random);
 
 	/**
 	 * This returns metadata for all parameters (only showing the independent parameters
