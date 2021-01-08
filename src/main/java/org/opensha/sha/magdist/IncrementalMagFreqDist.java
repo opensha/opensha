@@ -181,6 +181,18 @@ public class IncrementalMagFreqDist extends EvenlyDiscretizedFunc
       }
     }
 
+    /**
+     * This function normalizes to a PDF where the sum of y-values*delta is 1.0. 
+     */
+
+    public void normalizeToPDF() {
+      double totalIncrRate=getTotalIncrRate()*delta;
+      for(int i=0;i<num;++i) {
+          double newRate= getIncrRate(i)/totalIncrRate;
+          super.set(i,newRate);
+      }
+    }
+
 
 
      /**
