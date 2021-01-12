@@ -40,20 +40,20 @@ import scratch.UCERF3.utils.FaultSystemIO;
  * <li>At the sections-to-section level (N source sections, 1 receiver section, each with multiple patches)</li>
  * <li>At the sections-to-sections level (N source sections, M receiver sections, each with multiple patches)</li>
  * </ol>
- * You must specify the aggregation behavior at each of those levels, eache specified as an {@link AggregationMethod}.:
+ * You must specify the aggregation behavior at each of those levels, each specified as an {@link AggregationMethod}.:
  * <br><ol>
  * <li>Process: regular single statistic from each distribution of values, e.g., sum, median, mean, fraction positive</li>
  * <li>Flatten: combine all distributions of values as input to this layer into a single (flattened) distribution,
  * from which a single statistic can be calculated if passed to a process layer</li>
- * <li>Passthrough: dont't do any aggregation at this layer, pass each full distribution onto the next layer</li>
+ * <li>Passthrough: don't do any aggregation at this layer, pass each full distribution onto the next layer</li>
  * <li>Receiver Sum: Flatten at the receiverID level (be that a section or patch ID), and then take the sum of that distribution
  * of values for that receiver</li>
  * </ol>
  * <br>
  * In practice, you will usually want to perform a process aggregation at either the first (receiver patch) or second
  * (receiver section) levels. For example, to get the median of all section-to-section patch interactions, the ordering
- * would be: Flatten -> Median. But if you wanted to instead get the fraction of passes which are net positive, you would
- * do: Sum -> Fact. Positive. You must always end with a process layer to compute a final statistic.
+ * would be: Flatten -> Median. But if you wanted to instead get the fraction of receiver patches which are net positive,
+ * you would do: Sum -> Fact. Positive. You must always end with a process layer to compute a final statistic.
  * 
  * @author kevin
  *
