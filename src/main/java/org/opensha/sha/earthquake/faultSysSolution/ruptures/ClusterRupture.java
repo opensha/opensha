@@ -22,7 +22,9 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ComplexRuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SingleStrandRuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -92,23 +94,30 @@ public class ClusterRupture {
 	public final UniqueRupture internalUnique;
 	
 	/**
+	 * True if this rupture is a single strand of connected clusters, i.e., each jump occurs between the last section
+	 * of the prior cluster and the first section of the next.
+	 */
+	public final boolean singleStrand;
+	
+	/**
 	 * Initiate a ClusterRupture with the given starting cluster. You can grow it later with the
 	 * take(Jump) method
 	 * @param cluster
 	 */
 	public ClusterRupture(FaultSubsectionCluster cluster) {
 		this(new FaultSubsectionCluster[] {cluster}, ImmutableSet.of(),
-				ImmutableMap.of(), cluster.unique, cluster.unique);
+				ImmutableMap.of(), cluster.unique, cluster.unique, true);
 	}
 
 	protected ClusterRupture(FaultSubsectionCluster[] clusters, ImmutableSet<Jump> internalJumps,
-			ImmutableMap<Jump, ClusterRupture> splays, UniqueRupture unique, UniqueRupture internalUnique) {
+			ImmutableMap<Jump, ClusterRupture> splays, UniqueRupture unique, UniqueRupture internalUnique, boolean singleStrand) {
 		super();
 		this.clusters = clusters;
 		this.internalJumps = internalJumps;
 		this.splays = splays;
 		this.unique = unique;
 		this.internalUnique = internalUnique;
+		this.singleStrand = singleStrand;
 		Preconditions.checkState(internalUnique.size() <= unique.size());
 		int expectedJumps = clusters.length-1;
 		Preconditions.checkState(internalJumps.size() == expectedJumps,
@@ -203,6 +212,8 @@ public class ClusterRupture {
 		Preconditions.checkState(newUnique.size() == expectedCount,
 				"Duplicate subsections. Have %s unique, %s total", newUnique.size(), expectedCount);
 		
+		boolean newSingleStrand = singleStrand && jump.toCluster.subSects.get(0).equals(jump.toSection);
+		
 		if (containsInternal(jump.fromSection)) {
 			// it's on the main strand
 			FaultSubsectionCluster lastCluster = clusters[clusters.length-1];
@@ -222,6 +233,7 @@ public class ClusterRupture {
 				internalJumpBuild.add(jump);
 				newInternalJumps = internalJumpBuild.build();
 				newInternalUnique = new UniqueRupture(internalUnique, jump.toCluster);
+				newSingleStrand = newSingleStrand && lastCluster.subSects.get(lastCluster.subSects.size()-1).equals(jump.fromSection);
 			} else {
 				// it's a new splay
 //				System.out.println("it's a new splay!");
@@ -232,10 +244,12 @@ public class ClusterRupture {
 				newSplays = splayBuilder.build();
 				newInternalJumps = internalJumps;
 				newInternalUnique = internalUnique;
+				newSingleStrand = false;
 			}
-			return new ClusterRupture(newClusters, newInternalJumps, newSplays, newUnique, newInternalUnique);
+			return new ClusterRupture(newClusters, newInternalJumps, newSplays, newUnique, newInternalUnique, newSingleStrand);
 		} else {
 			// it's on a splay, grow that
+			newSingleStrand = false;
 			boolean found = false;
 			ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
 			for (Jump splayJump : splays.keySet()) {
@@ -254,7 +268,7 @@ public class ClusterRupture {
 			Preconditions.checkState(found,
 					"From section for jump not found in rupture (including splays): %s", jump);
 			return new ClusterRupture(clusters, internalJumps, splayBuilder.build(),
-					newUnique, internalUnique);
+					newUnique, internalUnique, newSingleStrand);
 		}
 	}
 	
@@ -284,19 +298,16 @@ public class ClusterRupture {
 	 * but the last section of a cluster
 	 */
 	public ClusterRupture reversed() {
-		Preconditions.checkState(splays.isEmpty(), "Can't reverse a splayed rupture");
+		Preconditions.checkState(singleStrand, "Can only reverse single strand ruptures");
 		
 		List<FaultSubsectionCluster> clusterList = new ArrayList<>();
 		for (int i=clusters.length; --i>=0;)
 			clusterList.add(clusters[i].reversed());
+		
 		Table<FaultSection, FaultSection, Jump> jumpsTable = HashBasedTable.create();
-		for (Jump jump : internalJumps) {
-			Preconditions.checkState(
-					jump.fromSection == jump.fromCluster.subSects.get(jump.fromCluster.subSects.size()-1),
-					"Can't reverse a ClusterRupture which contains a non-splay jump from a subsection "
-					+ "which is not the last subsection on that cluster");
+		for (Jump jump : internalJumps)
 			jumpsTable.put(jump.fromSection, jump.toSection, jump);
-		}
+		
 		ImmutableSet.Builder<Jump> jumpsBuilder = ImmutableSet.builder();
 		for (int i=1; i<clusterList.size(); i++) {
 			FaultSubsectionCluster fromCluster = clusterList.get(i-1);
@@ -304,11 +315,13 @@ public class ClusterRupture {
 			FaultSubsectionCluster toCluster = clusterList.get(i);
 			FaultSection toSection = toCluster.startSect;
 			Jump jump = jumpsTable.get(toSection, fromSection); // get old, non-reversed jump
+			Preconditions.checkNotNull(jump, "No jump found from %s to %s in rupture:\n\t%s\n\tAvailable jumps:%s",
+					toSection.getSectionId(), fromSection.getSectionId(), this, jumpsTable);
 			jumpsBuilder.add(new Jump(fromSection, fromCluster, toSection, toCluster, jump.distance));
 		}
 		
 		return new ClusterRupture(clusterList.toArray(new FaultSubsectionCluster[0]), jumpsBuilder.build(),
-				ImmutableMap.of(), unique, internalUnique);
+				ImmutableMap.of(), unique, internalUnique, singleStrand);
 	}
 
 	/**
@@ -322,28 +335,10 @@ public class ClusterRupture {
 	public List<ClusterRupture> getPreferredAltRepresentations(RuptureConnectionSearch connSearch) {
 		List<ClusterRupture> inversions = new ArrayList<>();
 
-		if (splays.isEmpty()) {
+		if (singleStrand) {
 			// simple
-			if (clusters.length == 1) {
-				inversions.add(reversed());
-				return inversions;
-			}
-
-			if (clusters.length > 1) {
-				// check if it's truly single strand
-				boolean match = true;
-				for (Jump jump : getJumpsIterable()) {
-					if (jump.fromSection != jump.fromCluster.subSects.get(jump.fromCluster.subSects.size()-1)
-							|| jump.toSection != jump.toCluster.startSect) {
-						match = false;
-						break;
-					}
-				}
-				if (match) {
-					inversions.add(reversed());
-					return inversions;
-				}
-			}
+			inversions.add(reversed());
+			return inversions;
 		}
 
 		// complex
@@ -395,7 +390,7 @@ public class ClusterRupture {
 	public List<ClusterRupture> getAllAltRepresentations(ClusterConnectionStrategy connStrat, int maxNumSplays) {
 		List<ClusterRupture> inversions = new ArrayList<>();
 
-		if (getTotalNumClusters() == 1) {
+		if (getTotalNumClusters() == 1 || singleStrand) {
 			inversions.add(reversed());
 			return inversions;
 		}
@@ -411,18 +406,18 @@ public class ClusterRupture {
 			for (FaultSubsectionCluster avail : availableClusters)
 				if (avail != startCluster)
 					nextAvailable.add(avail);
-			buildInversionRecursive(inversions, new ClusterRupture(startCluster),
+			buildAltRepsRecursive(inversions, new ClusterRupture(startCluster),
 					nextAvailable, connStrat, maxNumSplays);
 			if (startCluster.subSects.size() > 1)
 				// try it in reverse as well
-				buildInversionRecursive(inversions, new ClusterRupture(startCluster.reversed()),
+				buildAltRepsRecursive(inversions, new ClusterRupture(startCluster.reversed()),
 						nextAvailable, connStrat, maxNumSplays);
 		}
 
 		return inversions;
 	}
 
-	private void buildInversionRecursive(List<ClusterRupture> inversions,
+	private void buildAltRepsRecursive(List<ClusterRupture> inversions,
 			ClusterRupture curRupture,
 			HashSet<FaultSubsectionCluster> availableClusters,
 			ClusterConnectionStrategy connStrat, int maxNumSplays) {
@@ -481,7 +476,7 @@ public class ClusterRupture {
 							continue;
 						}
 
-						buildInversionRecursive(inversions, nextRupture,
+						buildAltRepsRecursive(inversions, nextRupture,
 								nextAvailable, connStrat, maxNumSplays);
 					}
 				}
@@ -494,8 +489,12 @@ public class ClusterRupture {
 	 * @return Rupture tree navigator (lazily initialized)
 	 */
 	public RuptureTreeNavigator getTreeNavigator() {
-		if (navigator == null)
-			navigator = new RuptureTreeNavigator(this);
+		if (navigator == null) {
+			if (singleStrand)
+				navigator = new SingleStrandRuptureTreeNavigator(this);
+			else
+				navigator = new ComplexRuptureTreeNavigator(this);
+		}
 		return navigator;
 	}
 	
@@ -540,7 +539,7 @@ public class ClusterRupture {
 		
 		UniqueRupture unique = UniqueRupture.forClusters(clusters);
 		
-		return new ClusterRupture(clusters, jumpsBuilder.build(), ImmutableMap.of(), unique, unique);
+		return new ClusterRupture(clusters, jumpsBuilder.build(), ImmutableMap.of(), unique, unique, true);
 	}
 	
 	@Override
@@ -645,9 +644,11 @@ public class ClusterRupture {
 	public static class Adapter extends TypeAdapter<ClusterRupture> {
 		
 		private List<? extends FaultSection> subSects;
+		private HashMap<FaultSubsectionCluster, FaultSubsectionCluster> prevClustersMap;
 
 		public Adapter(List<? extends FaultSection> subSects) {
 			this.subSects = subSects;
+			this.prevClustersMap = new HashMap<>();
 		}
 
 		@Override
@@ -693,7 +694,8 @@ public class ClusterRupture {
 				internalClusterList = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext())
-					internalClusterList.add(FaultSubsectionCluster.readJSON(in, subSects, jumpStubsMap));
+					internalClusterList.add(
+							FaultSubsectionCluster.readJSON(in, subSects, jumpStubsMap, prevClustersMap));
 				in.endArray();
 				break;
 			case "splays":
@@ -724,11 +726,17 @@ public class ClusterRupture {
 			
 			ImmutableSet.Builder<Jump> internalJumpsBuilder = ImmutableSet.builder();
 			FaultSubsectionCluster[] clusters = internalClusterList.toArray(new FaultSubsectionCluster[0]);
+			boolean singleStrand = true;
 			for (int i=0; i<clusters.length-1; i++) { // -1 as no internal jumps from last section
-				FaultSubsectionCluster cluster = internalClusterList.get(i);
+				FaultSubsectionCluster cluster = clusters[i];
+				FaultSubsectionCluster nextCluster = clusters[i+1];
 				Collection<Jump> connections = cluster.getConnectionsTo(clusters[i+1]);
-				Preconditions.checkState(connections.size() == 1, "Internal jump not found?");
-				internalJumpsBuilder.addAll(connections);
+				Preconditions.checkState(connections.size() == 1, "Expected 1 jump from %s to %s, have %s?",
+						cluster, nextCluster, connections.size());
+				Jump jump = connections.iterator().next();
+				singleStrand = singleStrand && jump.fromSection.equals(cluster.subSects.get(cluster.subSects.size()-1))
+						&& jump.toSection.equals(nextCluster.subSects.get(0));
+				internalJumpsBuilder.add(jump);
 			}
 			ImmutableSet<Jump> internalJumps = internalJumpsBuilder.build();
 			
@@ -739,6 +747,7 @@ public class ClusterRupture {
 				splays = ImmutableMap.of();
 				unique = internalUnique;
 			} else {
+				singleStrand = false;
 				ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
 				// reverse as we are going to serach for them in reverse order below, so double reverse
 				// ensures that they are loaded in order (which shouldn't matter, but is nice)
@@ -766,7 +775,7 @@ public class ClusterRupture {
 					unique = new UniqueRupture(unique, splay.unique);
 			}
 			
-			return new ClusterRupture(clusters, internalJumps, splays, unique, internalUnique);
+			return new ClusterRupture(clusters, internalJumps, splays, unique, internalUnique, singleStrand);
 		}
 		
 	}

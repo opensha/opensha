@@ -394,7 +394,8 @@ public class FaultSystemIO {
 		if (DD) System.out.println("loading cluster ruptures");
 		ZipEntry clustersEntry = zip.getEntry(getRemappedName("cluster_ruptures.json", nameRemappings));
 		if (clustersEntry != null) {
-			InputStreamReader json = new InputStreamReader(new BufferedInputStream(zip.getInputStream(clustersEntry)));
+			InputStreamReader json = new InputStreamReader(
+					new BufferedInputStream(zip.getInputStream(clustersEntry), 1024*128));
 			List<ClusterRupture> clusterRuptures = ClusterRupture.readJSON(json, faultSectionData);
 			rupSet.setClusterRuptures(clusterRuptures);
 		}

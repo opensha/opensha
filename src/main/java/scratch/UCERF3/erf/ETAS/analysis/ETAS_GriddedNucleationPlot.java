@@ -30,6 +30,7 @@ import com.google.common.base.Preconditions;
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
+import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -139,7 +140,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	private boolean ratio_spread_across_poly = false;
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+	protected List<MapRunnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		if (numRupsSkipped > 0)
 			System.out.println("GriddedNucleation: skipped "+numRupsSkipped+" ruptures outside of region");
@@ -199,7 +200,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		
 		System.out.println("GriddedParticipation modal magnitude (will skip plots below): "+(float)modalMag);
 		
-		List<Runnable> runnables = new ArrayList<>();
+		List<MapRunnable> runnables = new ArrayList<>();
 		if (hasSpont)
 			runnables.add(new MapRunnable(totalXYZs, fssXYZs, modalMag, scalar, outputDir, prefix));
 		if (hasTriggered) {
@@ -354,6 +355,61 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		lines.addAll(builder.build());
 		
 		return lines;
+	}
+	
+	public static void main(String[] args) throws IOException {
+		File runDir, resultsFile, outputDir;
+		boolean doPlot;
+		if (args.length == 4) {
+			runDir = new File(args[0]);
+			resultsFile = new File(args[1]);
+			outputDir = new File(args[2]);
+			doPlot = Boolean.parseBoolean(args[3]);
+		} else {
+//			File runDir = new File("/home/scec-02/kmilner/ucerf3/etas_sim/"
+//					+ "2019_11_05-Start2012_500yr_kCOV1p5_Spontaneous_HistoricalCatalog");
+//			File resultsFile = new File(runDir, "results_complete.bin");
+//			File outputDir = new File(runDir, "mfd_plots");
+//			boolean doPlot = false;
+			runDir = new File("/home/kevin/OpenSHA/UCERF3/etas/simulations/"
+					+ "2019_11_05-Start2012_500yr_kCOV1p5_Spontaneous_HistoricalCatalog");
+			resultsFile = new File(runDir, "results_m5_preserve_chain.bin");
+			outputDir = new File("/tmp");
+			doPlot = true;
+		}
+		
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		
+		File jsonFile = new File(runDir, "config.json");
+		ETAS_Config config = ETAS_Config.readJSON(jsonFile);
+		ETAS_Launcher launcher = new ETAS_Launcher(config);
+		
+		ETAS_GriddedNucleationPlot plot = new ETAS_GriddedNucleationPlot(config, launcher, "gridded_nucleation", true);
+		
+		FaultSystemSolution fss = launcher.checkOutFSS();
+		
+		int index = 0;
+		for (ETAS_Catalog catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(resultsFile, 0d)) {
+			System.out.println("Catalog "+(index++));
+			plot.processCatalog(catalog, fss);
+		}
+		
+		for (MapRunnable map : plot.doFinalize(outputDir, fss, null)) {
+			for (int i = 0; i < mags.length; i++) {
+				if ((float)mags[i] < (float)plot.modalMag)
+					continue;
+				String myPrefix = map.prefix+"_m"+(float)mags[i];
+				System.out.println(myPrefix);
+				GriddedGeoDataSet xyz = map.xyzs[i].copy();
+//				GriddedGeoDataSet xyz = plot.totalXYZs[i].copy();
+				xyz.scale(map.scalar);
+				GriddedGeoDataSet.writeXYZFile(xyz, new File(outputDir, myPrefix+".xyz"));
+			}
+			if (doPlot)
+				map.run();
+		}
+		
+		launcher.checkInFSS(fss);
 	}
 
 }
