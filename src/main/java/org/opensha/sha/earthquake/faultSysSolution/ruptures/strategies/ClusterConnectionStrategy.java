@@ -257,7 +257,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 			Map<FaultSubsectionCluster, List<JumpStub>> clusterJumps = new HashMap<>();
 			
 			while (in.hasNext()) {
-				FaultSubsectionCluster cluster = FaultSubsectionCluster.readJSON(in, subSects, clusterJumps);
+				FaultSubsectionCluster cluster = FaultSubsectionCluster.readJSON(in, subSects, clusterJumps, null);
 
 				clusters.add(cluster);
 				parentsToClusters.put(cluster.parentSectionID, cluster);

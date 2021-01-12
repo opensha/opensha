@@ -644,9 +644,11 @@ public class ClusterRupture {
 	public static class Adapter extends TypeAdapter<ClusterRupture> {
 		
 		private List<? extends FaultSection> subSects;
+		private HashMap<FaultSubsectionCluster, FaultSubsectionCluster> prevClustersMap;
 
 		public Adapter(List<? extends FaultSection> subSects) {
 			this.subSects = subSects;
+			this.prevClustersMap = new HashMap<>();
 		}
 
 		@Override
@@ -692,7 +694,8 @@ public class ClusterRupture {
 				internalClusterList = new ArrayList<>();
 				in.beginArray();
 				while (in.hasNext())
-					internalClusterList.add(FaultSubsectionCluster.readJSON(in, subSects, jumpStubsMap));
+					internalClusterList.add(
+							FaultSubsectionCluster.readJSON(in, subSects, jumpStubsMap, prevClustersMap));
 				in.endArray();
 				break;
 			case "splays":
@@ -728,7 +731,8 @@ public class ClusterRupture {
 				FaultSubsectionCluster cluster = clusters[i];
 				FaultSubsectionCluster nextCluster = clusters[i+1];
 				Collection<Jump> connections = cluster.getConnectionsTo(clusters[i+1]);
-				Preconditions.checkState(connections.size() == 1, "Internal jump not found?");
+				Preconditions.checkState(connections.size() == 1, "Expected 1 jump from %s to %s, have %s?",
+						cluster, nextCluster, connections.size());
 				Jump jump = connections.iterator().next();
 				singleStrand = singleStrand && jump.fromSection.equals(cluster.subSects.get(cluster.subSects.size()-1))
 						&& jump.toSection.equals(nextCluster.subSects.get(0));

@@ -16,7 +16,6 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessDistribution;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
@@ -192,13 +191,15 @@ public class AggregatedStiffnessCalculator {
 		GREATER_SUM_MEDIAN("Max[Sum,Median]", true, true) {
 			@Override
 			public double calculate(double[] values) {
-				return Math.max(SUM.calculate(values), MEDIAN.calculate(values));
+				Arrays.sort(values);
+				return Math.max(values[values.length-1], DataUtils.median_sorted(values));
 			}
 		},
 		GREATER_MEAN_MEDIAN("Max[Mean,Median]", true, true) {
 			@Override
 			public double calculate(double[] values) {
-				return Math.max(MEAN.calculate(values), MEDIAN.calculate(values));
+				Arrays.sort(values);
+				return Math.max(MEAN.calculate(values), DataUtils.median_sorted(values));
 			}
 		},
 		COUNT("Count", true, true) {

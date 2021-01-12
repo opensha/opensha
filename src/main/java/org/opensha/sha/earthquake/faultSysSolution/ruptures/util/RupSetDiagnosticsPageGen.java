@@ -124,10 +124,38 @@ public class RupSetDiagnosticsPageGen {
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive_sectFractPerm0.15.zip");
 //			String inputName = "CmlAz, CFF Cluster Path Positive";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
+//			String inputName = "CmlAz, CFF Cluster Path Sum Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterSumPathPositive.zip");
 //			String inputName = "CmlAz, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffSumMedClusterPathPositive.zip");
-//			String inputName = "CFF Path Max(Med,Sum), JumpRecPatch0.8";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.8_cffSumMedClusterPathPositive.zip");
+//			String inputName = "CFF Path, JumpRecPatch0.8";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.8_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, JumpRecPatch0.7";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.7_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, 9/10 Interactions Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff9_10_IntsPos_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Jump Half Interactions Positive, 9/10 Interactions Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff9_10_IntsPos_cffJumpPatchHalfIntNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Jump Half Interactions Positive, 3/4 Interactions Positive, No Neg Sects";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffNoNegSects_cff3_4_IntsPos_cffJumpPatchHalfIntNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Jump Half Interactions Positive, Parent Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchHalfIntNetFract0.5_cffClusterSumPathPositive_cffParent.zip");
+//			String inputName = "CFF Path, Prob >0.05 (Neg)";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.05Neg_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Prob >0.05 (Neg), 3/4 Interactions Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.05Neg_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Prob >0.05, 3/4 Interactions Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.05_cffClusterSumPathPositive.zip");
+			String inputName = "CFF Path, Prob >0.02 (Neg), 3/4 Interactions Positive, Jump Patch Net Fract >0.5";
+			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.02Neg_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Prob >0.01 (Neg&FullRup)";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.01NegFull_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Prob >0.02 (Neg&FullRup)";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.02NegFull_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, Prob >0.02 (Neg&FullRup), 5% Sect Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.02NegFull_cffClusterSumPathPositive_sectFractPerm0.05.zip");
+//			String inputName = "CFF Path, Net Cluster, Jump Half Interactions Positive";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchHalfIntNetFract0.5_cffClusterNetPositive_cffClusterSumPathPositive.zip");
 //			String inputName = "CmlAz, NetFract0.75, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffNetFract0.75_cffSumMedClusterPathPositive.zip");
 //			String inputName = "CFF Sum";
@@ -149,8 +177,8 @@ public class RupSetDiagnosticsPageGen {
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 			
-			String inputName = "CmlAz Only";
-			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
+//			String inputName = "CmlAz Only";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 			
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
@@ -162,6 +190,8 @@ public class RupSetDiagnosticsPageGen {
 			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			String compName = null;
 //			File compareFile = null;
+//			String compName = "CmlAz, CFF Cluster Path Sum Positive";
+//			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterSumPathPositive.zip");
 //			String compName = "CFF Med Path";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPathPositive.zip");
 //			String compName = "CmlAz, No JumpRecPatch";
@@ -172,8 +202,8 @@ public class RupSetDiagnosticsPageGen {
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPositive.zip");
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "new_coulomb_filters.json");
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "new_cumulative_prob_filters.json");
-			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
-//			File altPlausibilityCompareFile = null;
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
+			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
@@ -1208,9 +1238,10 @@ public class RupSetDiagnosticsPageGen {
 	private static final Color COMP_COLOR = Color.BLUE;
 	private static final Color COMMON_COLOR = Color.GREEN;
 	private static DecimalFormat twoDigits = new DecimalFormat("0.00");
-	private static DecimalFormat thousands = new DecimalFormat("0");
+	private static DecimalFormat countDF = new DecimalFormat("#");
 	static {
-		thousands.getDecimalFormatSymbols().setGroupingSeparator(',');
+		countDF.setGroupingUsed(true);
+		countDF.setGroupingSize(3);
 	}
 	
 	private static double getLength(FaultSystemRupSet rupSet, int r) {
@@ -1235,12 +1266,12 @@ public class RupSetDiagnosticsPageGen {
 			lenTrack.addValue(getLength(rupSet, r));
 			sectsTrack.addValue(rupSet.getSectionsIndicesForRup(r).size());
 		}
-		lines.add("* Num ruptures: "+thousands.format(rupSet.getNumRuptures()));
+		lines.add("* Num ruptures: "+countDF.format(rupSet.getNumRuptures()));
 		int numSingleStrand = 0;
 		for (ClusterRupture rup : clusterRups)
 			if (rup.singleStrand)
 				numSingleStrand++;
-		lines.add("* Num single-strand ruptures: "+thousands.format(numSingleStrand)+" ("
+		lines.add("* Num single-strand ruptures: "+countDF.format(numSingleStrand)+" ("
 				+new DecimalFormat("0.#%").format((double)numSingleStrand/(double)clusterRups.size())+")");
 		lines.add("* Rupture mag range: ["+twoDigits.format(magTrack.getMin())
 		+","+twoDigits.format(magTrack.getMax())+"]");
@@ -2060,7 +2091,11 @@ public class RupSetDiagnosticsPageGen {
 		}
 		
 		List<Future<PlausibilityCalcCallable>> futures = new ArrayList<>();
-		ExecutorService exec = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+		int threads = Runtime.getRuntime().availableProcessors();
+		if (threads > 8)
+			threads -= 2;
+		threads = Integer.max(1, Integer.min(32, threads));
+		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		for (int r=0; r<rups.size(); r++) {
 			ClusterRupture rupture = rups.get(r);
 			futures.add(exec.submit(new PlausibilityCalcCallable(newFilters, rupture, r)));
@@ -2255,7 +2290,8 @@ public class RupSetDiagnosticsPageGen {
 	}
 	
 	private static Color[] FILTER_COLORS = { Color.DARK_GRAY, new Color(102, 51, 0), Color.RED, Color.BLUE,
-			Color.GREEN.darker(), Color.CYAN, Color.PINK, Color.ORANGE.darker(), Color.MAGENTA };
+//			Color.GREEN.darker(), Color.CYAN, Color.PINK, Color.ORANGE.darker(), Color.MAGENTA };
+			Color.GREEN.darker(), Color.CYAN, Color.PINK };
 	
 	public static File plotRupSetPlausibility(RupSetPlausibilityResult result, File outputDir,
 			String prefix, String title) throws IOException {
@@ -2273,74 +2309,91 @@ public class RupSetDiagnosticsPageGen {
 		Font font = new Font(Font.SANS_SERIF, Font.BOLD, 20);
 		Font allFont = new Font(Font.SANS_SERIF, Font.BOLD, 26);
 		
-		List<PlotElement> funcs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
-		funcs.add(new DefaultXY_DataSet(new double[] {0d, 1d}, new double[] {0d, 0d}));
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 0f, Color.WHITE));
-		
-		List<XYAnnotation> anns = new ArrayList<>();
-		
 		double topRowY = maxY*0.95;
 		double secondRowY = maxY*0.91;
 		double thirdRowY = maxY*0.85;
 		
-		for (int i=0; i<result.filters.size(); i++) {
-			double x = i*dx + 0.5*dx;
-			double percentFailed = 100d*result.failCounts[i]/result.numRuptures;
-			double percentOnly = 100d*result.onlyFailCounts[i]/result.numRuptures;
-			double percentErred = 100d*result.erredCounts[i]/result.numRuptures;
+		int numPlots = 1 + (result.filters.size() / FILTER_COLORS.length);
+		int filtersEach = (int)Math.ceil((double)result.filters.size()/(double)numPlots);
+		System.out.println("Have "+result.filters.size()+" filters. Will do "+numPlots+" plots with "+filtersEach+" each");
+		Preconditions.checkState(filtersEach <= FILTER_COLORS.length && filtersEach > 0);
+		
+		List<PlotSpec> specs = new ArrayList<>();
+		
+		Range xRange = new Range(-0.30*dx, filtersEach*dx + 0.15*dx);
+		
+		List<Range> yRanges = new ArrayList<>();
+		
+		for (int p=0; p<numPlots; p++) {
+			List<PlotElement> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
 			
-			Color c = FILTER_COLORS[i % FILTER_COLORS.length];
+			funcs.add(new DefaultXY_DataSet(new double[] {0d, 1d}, new double[] {0d, 0d}));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 0f, Color.WHITE));
 			
-			String name = result.filters.get(i).getShortName();
+			List<XYAnnotation> anns = new ArrayList<>();
 			
-			if (percentErred > 0) {
-//				funcs.add(vertLine(x, percentFailed, percentFailed + percentErred));
-//				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, thickness, Color.LIGHT_GRAY));
-				anns.add(emptyBox(x-deltaEachSide, 0d, x+deltaEachSide, percentFailed + percentErred,
-						PlotLineType.DASHED, Color.LIGHT_GRAY, 2f));
-				name += "*";
+			for (int i=p*filtersEach; i<result.filters.size() && i<((p+1)*filtersEach); i++) {
+				int relIndex = i % filtersEach;
+				double x = relIndex*dx + 0.5*dx;
+				double percentFailed = 100d*result.failCounts[i]/result.numRuptures;
+				double percentOnly = 100d*result.onlyFailCounts[i]/result.numRuptures;
+				double percentErred = 100d*result.erredCounts[i]/result.numRuptures;
+				
+				Color c = FILTER_COLORS[relIndex];
+				
+				String name = result.filters.get(i).getShortName();
+				
+				if (percentErred > 0) {
+//					funcs.add(vertLine(x, percentFailed, percentFailed + percentErred));
+//					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, thickness, Color.LIGHT_GRAY));
+					anns.add(emptyBox(x-deltaEachSide, 0d, x+deltaEachSide, percentFailed + percentErred,
+							PlotLineType.DASHED, Color.LIGHT_GRAY, 2f));
+					name += "*";
+				}
+				
+//				funcs.add(vertLine(x, 0, percentFailed));
+//				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, thickness, c));
+				anns.add(filledBox(x-deltaEachSide, 0, x+deltaEachSide, percentFailed, c));
+				
+				if (percentOnly > 0) {
+//					funcs.add(vertLine(x, 0, percentOnly));
+//					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, thickness, darker(c)));
+					anns.add(filledBox(x-deltaEachSide, 0, x+deltaEachSide, percentOnly, darker(c)));
+				}
+				
+				XYTextAnnotation ann = new XYTextAnnotation(name, x, i % 2 == 0 ? secondRowY : thirdRowY);
+				ann.setTextAnchor(TextAnchor.TOP_CENTER);
+				ann.setPaint(c);
+				ann.setFont(font);
+				
+				anns.add(ann);
+				
+				ann = new XYTextAnnotation(percentDF.format(percentFailed/100d), x, percentFailed+0.6);
+				ann.setTextAnchor(TextAnchor.BOTTOM_CENTER);
+				ann.setPaint(Color.BLACK);
+				ann.setFont(font);
+				
+				anns.add(ann);
 			}
 			
-//			funcs.add(vertLine(x, 0, percentFailed));
-//			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, thickness, c));
-			anns.add(filledBox(x-deltaEachSide, 0, x+deltaEachSide, percentFailed, c));
-			
-			if (percentOnly > 0) {
-//				funcs.add(vertLine(x, 0, percentOnly));
-//				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, thickness, darker(c)));
-				anns.add(filledBox(x-deltaEachSide, 0, x+deltaEachSide, percentOnly, darker(c)));
+			if (p == 0) {
+				String passedStr = result.allPassCount+"/"+result.numRuptures+" = "
+						+percentDF.format((double)result.allPassCount/result.numRuptures)+" passed all";
+				XYTextAnnotation ann = new XYTextAnnotation(passedStr, xRange.getCentralValue(), topRowY);
+				ann.setTextAnchor(TextAnchor.CENTER);
+				ann.setPaint(Color.BLACK);
+				ann.setFont(allFont);
+				
+				anns.add(ann);
 			}
 			
-			XYTextAnnotation ann = new XYTextAnnotation(name, x, i % 2 == 0 ? secondRowY : thirdRowY);
-			ann.setTextAnchor(TextAnchor.TOP_CENTER);
-			ann.setPaint(c);
-			ann.setFont(font);
+			PlotSpec spec = new PlotSpec(funcs, chars, p == 0 ? title : "", " ", "Percent Failed");
+			spec.setPlotAnnotations(anns);
 			
-			anns.add(ann);
-			
-			ann = new XYTextAnnotation(percentDF.format(percentFailed/100d), x, percentFailed+0.6);
-			ann.setTextAnchor(TextAnchor.BOTTOM_CENTER);
-			ann.setPaint(Color.BLACK);
-			ann.setFont(font);
-			
-			anns.add(ann);
+			specs.add(spec);
+			yRanges.add(new Range(0, maxY));
 		}
-		
-		Range xRange = new Range(-0.30*dx, (result.filters.size()+0.15)*dx + 0.15*dx);
-		
-		String passedStr = result.allPassCount+"/"+result.numRuptures+" = "
-				+percentDF.format((double)result.allPassCount/result.numRuptures)+" passed all";
-		XYTextAnnotation ann = new XYTextAnnotation(passedStr, xRange.getCentralValue(), topRowY);
-		ann.setTextAnchor(TextAnchor.CENTER);
-		ann.setPaint(Color.BLACK);
-		ann.setFont(allFont);
-		
-		anns.add(ann);
-		
-		PlotSpec spec = new PlotSpec(funcs, chars, title, " ", "Percent Failed");
-		spec.setPlotAnnotations(anns);
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setBackgroundColor(Color.WHITE);
@@ -2348,10 +2401,12 @@ public class RupSetDiagnosticsPageGen {
 		gp.setAxisLabelFontSize(20);
 		gp.setPlotLabelFontSize(21);
 		
-		gp.drawGraphPanel(spec, false, false, xRange, new Range(0, maxY));
+		List<Range> xRanges = new ArrayList<>();
+		xRanges.add(xRange);
+		
+		gp.drawGraphPanel(specs, false, false, xRanges, yRanges);
 		gp.getXAxis().setTickLabelsVisible(false);
-//		gp.getXAxis().setvisi
-		gp.getChartPanel().setSize(1200, 600);
+		gp.getChartPanel().setSize(1200, 150 + 450*numPlots);
 		File pngFile = new File(outputDir, prefix+".png");
 		File pdfFile = new File(outputDir, prefix+".pdf");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
@@ -2472,8 +2527,8 @@ public class RupSetDiagnosticsPageGen {
 					table.addColumn("!["+scalar.name+"]("+resourcesDir.getName()+"/"+plot.getName()+")");
 				}
 				table.finalizeLine();
-				lines.add("Distributions of ruptures which failed ("+result.failCounts[i]+") or erred ("
-						+result.erredCounts[i]+"):");
+				lines.add("Distributions of ruptures that failed ("+countDF.format(result.failCounts[i])+") or erred ("
+						+countDF.format(result.erredCounts[i])+"):");
 				lines.add("");
 				lines.addAll(table.wrap(5, 0).build());
 				lines.add("");
@@ -2787,7 +2842,7 @@ public class RupSetDiagnosticsPageGen {
 	
 	private static final DecimalFormat percentDF = new DecimalFormat("0.00%");
 	private static String countStats(int count, int tot) {
-		return count+"/"+tot+" ("+percentDF.format((double)count/(double)tot)+")";
+		return countDF.format(count)+"/"+countDF.format(tot)+" ("+percentDF.format((double)count/(double)tot)+")";
 	}
 	
 //	public static getPlausibility
