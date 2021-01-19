@@ -15,12 +15,15 @@ import java.util.zip.ZipException;
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessDistribution;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemRupSet;
@@ -755,7 +758,7 @@ public class AggregatedStiffnessCalculator {
 		return aggregated;
 	}
 	
-	private double processUntilTerminal(int curLayer, int receiverID, ReceiverDistribution[] dists) {
+	private double processUntilTerminal(int curLayer, int receiverID, ReceiverDistribution... dists) {
 		if (layers[curLayer].isTerminal()) {
 			double val = layers[curLayer].get(dists);
 			if (D) System.out.println("\t"+layers[curLayer]+": "+val);
@@ -771,6 +774,26 @@ public class AggregatedStiffnessCalculator {
 			}
 			return processUntilTerminal(curLayer+1, -1, dists);
 		}
+	}
+	
+	public double[] calcReceiverPatchAgg(FaultSection source, FaultSection receiver) {
+		Preconditions.checkState(source.getSectionId() != receiver.getSectionId(),
+				"Source and receiver ID are the same and allowSectToSelf=false: %s", source.getSectionId());
+		
+		ReceiverDistribution[] receiverPatchDists = aggRecieverPatches(source, receiver);
+		
+		if (D) System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+" sect-to-sect "+layers[1]+":");
+		double[] ret = new double[receiverPatchDists.length];
+		if (layers[0].isTerminal()) {
+			for (int i=0; i<ret.length; i++) {
+				Preconditions.checkState(receiverPatchDists[i].values.length == 1);
+				ret[i] = receiverPatchDists[i].values[0];
+			}
+		} else {
+			for (int i=0; i<ret.length; i++)
+				ret[i] = processUntilTerminal(1, i, receiverPatchDists[i]);
+		}
+		return ret;
 	}
 	
 	public double calc(FaultSection source, FaultSection receiver) {
@@ -837,6 +860,25 @@ public class AggregatedStiffnessCalculator {
 		return receiverSectDists;
 	}
 	
+	public double[] calcReceiverPatchAgg(List<FaultSection> sources, FaultSection receiver) {
+		ReceiverDistribution[][] receiverAgg = null;
+		for (int s=0; s<sources.size(); s++) {
+			FaultSection source = sources.get(s);
+			ReceiverDistribution[] receiverPatchDists = aggRecieverPatches(source, receiver);
+			if (receiverAgg == null)
+				receiverAgg = new ReceiverDistribution[receiverPatchDists.length][sources.size()];
+			else
+				Preconditions.checkState(receiverPatchDists.length == receiverAgg.length);
+			for (int i=0; i<receiverPatchDists.length; i++)
+				receiverAgg[i][s] = receiverPatchDists[i];
+		}
+		
+		double[] ret = new double[receiverAgg.length];
+		for (int i=0; i<receiverAgg.length; i++)
+			ret[i] = processUntilTerminal(1, uniquePatchID(receiver.getSectionId(), i), receiverAgg[i]);
+		return ret;
+	}
+	
 	private ReceiverDistribution[] aggSectsToSect(List<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
@@ -854,6 +896,7 @@ public class AggregatedStiffnessCalculator {
 		return aggregated;
 	}
 	
+	// TODO cache internal here? not currently used
 	public double calc(List<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
@@ -864,50 +907,73 @@ public class AggregatedStiffnessCalculator {
 		return processUntilTerminal(2, receiver.getSectionId(), receiverSectDists);
 	}
 	
+	private transient Table<UniqueRupture, UniqueRupture, Double> s2sCache = null;
+	
+	// TODO cache internal here? used in every CFF filter
 	public double calc(List<FaultSection> sources, List<FaultSection> receivers) {
 		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
 		Preconditions.checkState(layers[3].isTerminal(), "Final layer must be terminal: %s", layers[3]);
-		
-		ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[receivers.size()];
-		ArrayList<ReceiverDistribution> distsList = null;
-		for (int r=0; r<receivers.size(); r++) {
-			FaultSection receiver = receivers.get(r);
-			ReceiverDistribution[] aggregated = aggSectsToSect(sources, receiver);
-			if (distsList != null) {
-				// we're already in list mode
-				Collections.addAll(distsList, aggregated);
-			} else if (aggregated.length > 1) {
-				// we need to switch to list representation, not 1-to-1
-				if (distsList == null) {
-					distsList = new ArrayList<>(sources.size()*aggregated.length);
-					// copy over that which we already added
-					for (int i=0; i<r; i++)
-						distsList.add(receiverSectDists[i]);
-				}
-				Collections.addAll(distsList, aggregated);
-			} else {
-				// still 1-to-1
-				receiverSectDists[r] = aggregated[0];
-			}
-		}
 
-		if (distsList != null) {
-			if (distsList.size() > receiverSectDists.length)
-				// reuse the array
-				receiverSectDists = distsList.toArray(receiverSectDists);
-			else
-				receiverSectDists = distsList.toArray(new ReceiverDistribution[distsList.size()]);
+		UniqueRupture sourcesUnique = UniqueRupture.forSects(sources);
+		UniqueRupture receiversUnique = UniqueRupture.forSects(receivers);
+		Double val;
+		synchronized (this) {
+			if (s2sCache == null)
+				s2sCache = HashBasedTable.create();
+			val = s2sCache.get(sources, receivers);
 		}
-//		System.out.println(receiverSectDists.length+" dists for "+sources.size()+" sources and "+receivers.size()+" receivers");
-		
-		double val = layers[3].get(receiverSectDists);
-		if (D) {
-			System.out.println(sources.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
-					+" -> "+receivers.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
-					+" sects-to-sects "+layers[3]+":");
-			for (ReceiverDistribution aggDist : receiverSectDists)
-				System.out.println("\t"+aggDist);
-			System.out.println("\tVAL: "+val);
+		if (val == null) {
+			ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[receivers.size()];
+			ArrayList<ReceiverDistribution> distsList = null;
+			for (int r=0; r<receivers.size(); r++) {
+				FaultSection receiver = receivers.get(r);
+				ReceiverDistribution[] aggregated = aggSectsToSect(sources, receiver);
+				if (distsList != null) {
+					// we're already in list mode
+					Collections.addAll(distsList, aggregated);
+				} else if (aggregated.length > 1) {
+					// we need to switch to list representation, not 1-to-1
+					if (distsList == null) {
+						distsList = new ArrayList<>(sources.size()*aggregated.length);
+						// copy over that which we already added
+						for (int i=0; i<r; i++)
+							distsList.add(receiverSectDists[i]);
+					}
+					Collections.addAll(distsList, aggregated);
+				} else {
+					// still 1-to-1
+					receiverSectDists[r] = aggregated[0];
+				}
+			}
+
+			if (distsList != null) {
+				if (distsList.size() > receiverSectDists.length)
+					// reuse the array
+					receiverSectDists = distsList.toArray(receiverSectDists);
+				else
+					receiverSectDists = distsList.toArray(new ReceiverDistribution[distsList.size()]);
+			}
+//			System.out.println(receiverSectDists.length+" dists for "+sources.size()+" sources and "+receivers.size()+" receivers");
+			
+			val = layers[3].get(receiverSectDists);
+			if (D) {
+				System.out.println(sources.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
+						+" -> "+receivers.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
+						+" sects-to-sects "+layers[3]+":");
+				for (ReceiverDistribution aggDist : receiverSectDists)
+					System.out.println("\t"+aggDist);
+				System.out.println("\tVAL: "+val);
+			}
+			synchronized (this) {
+				s2sCache.put(sourcesUnique, receiversUnique, val);
+			}
+		} else if (D) {
+			if (D) {
+				System.out.println(sources.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
+						+" -> "+receivers.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
+						+" sects-to-sects "+layers[3]+":");
+				System.out.println("\tCAHCED VAL: "+val);
+			}
 		}
 		
 		return val;
