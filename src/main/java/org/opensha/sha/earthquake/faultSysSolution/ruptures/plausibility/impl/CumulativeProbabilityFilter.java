@@ -40,9 +40,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		 * it beginning at the first cluster in this rupture
 		 * 
 		 * @param rupture
+		 * @param verbose
 		 * @return conditional probability of this rupture
 		 */
-		public double calcRuptureProb(ClusterRupture rupture);
+		public double calcRuptureProb(ClusterRupture rupture, boolean verbose);
 		
 		public default void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
 			// do nothing
@@ -58,15 +59,20 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		 * 
 		 * @param fullRupture
 		 * @param jump
+		 * @param verbose
 		 * @return conditional jump probability
 		 */
-		public abstract double calcJumpProbability(ClusterRupture fullRupture, Jump jump);
+		public abstract double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose);
 
 		@Override
-		public double calcRuptureProb(ClusterRupture rupture) {
+		public double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
 			double prob = 1d;
-			for (Jump jump : rupture.getJumpsIterable())
-				prob *= calcJumpProbability(rupture, jump);
+			for (Jump jump : rupture.getJumpsIterable()) {
+				double jumpProb = calcJumpProbability(rupture, jump, verbose);
+				if (verbose)
+					System.out.println(getName()+": "+jump+", P="+jumpProb);
+				prob *= jumpProb;
+			}
 			return prob;
 		}
 		
@@ -102,14 +108,14 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump) {
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 			if (jump.distance < minJumpDist)
 				return 1d;
 			RakeType type1 = RakeType.getType(jump.fromSection.getAveRake());
 			RakeType type2 = RakeType.getType(jump.toSection.getAveRake());
 			if (type1 == type2 && (type1 == RakeType.LEFT_LATERAL || type1 == RakeType.RIGHT_LATERAL))
 				// only use distance-dependent model if both are SS
-				return ssJumpProb.calcJumpProbability(fullRupture, jump);
+				return ssJumpProb.calcJumpProbability(fullRupture, jump, verbose);
 			// average probabilities from each mechanism
 			// TODO is this right? should we take the minimum or maximum? check with Biasi 
 			return 0.5*(getDistanceIndepentProb(type1)+getDistanceIndepentProb(type2));
@@ -153,7 +159,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump) {
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 			if (jump.distance < minJumpDist)
 				return 1d;
 			return calcPassingProb(jump.distance);
@@ -187,7 +193,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump) {
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 			RuptureTreeNavigator nav = fullRupture.getTreeNavigator();
 			
 			RakeType type1 = RakeType.getType(jump.fromSection.getAveRake());
@@ -242,7 +248,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump) {
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 			RuptureTreeNavigator nav = fullRupture.getTreeNavigator();
 			
 			RakeType type1 = RakeType.getType(jump.fromSection.getAveRake());
@@ -288,7 +294,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump) {
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 			double rake1 = jump.fromSection.getAveRake();
 			double rake2 = jump.toSection.getAveRake();
 			if ((float)rake1 == (float)rake2)
@@ -325,15 +331,17 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		private transient ClusterConnectionStrategy connStrat;
 		private boolean fullRuptureSource;
 		private boolean allowNegative;
+		private boolean relativeToBest = false;
 		
 		private transient Map<Integer, FaultSubsectionCluster> fullClustersMap;
 
 		public RelativeCoulombProb(AggregatedStiffnessCalculator aggCalc, ClusterConnectionStrategy connStrat,
-				boolean fullRuptureSource, boolean allowNegative) {
+				boolean fullRuptureSource, boolean allowNegative, boolean relativeToBest) {
 			this.aggCalc = aggCalc;
 			this.connStrat = connStrat;
 			this.fullRuptureSource = fullRuptureSource;
 			this.allowNegative = allowNegative;
+			this.relativeToBest = relativeToBest;
 		}
 
 		@Override
@@ -348,6 +356,8 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 				name += ", Full Rup Src";
 			if (allowNegative)
 				name += ", Allow Neg";
+			if (relativeToBest)
+				name += ", Rel Best";
 			return name;
 		}
 		
@@ -380,7 +390,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump) {
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 			List<FaultSection> sources;
 			if (fullRuptureSource) {
 				sources = getSectsBefore(fullRupture, jump);
@@ -389,6 +399,8 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 				sources = jump.fromCluster.subSects;
 			}
 			double myVal = aggCalc.calc(sources, jump.toCluster.subSects);
+			if (verbose)
+				System.out.println("\tJump taken value ("+jump.toCluster+"): "+myVal);
 			if (!allowNegative && myVal < 0)
 				return 0d;
 			
@@ -431,12 +443,14 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			// now add possible jumps to other clusters
 			for (Jump possible : jump.fromCluster.getConnections(jump.fromSection)) {
 				if (possible.toCluster.parentSectionID != jump.toCluster.parentSectionID)
-					targetClusters.add(jump.toCluster);
+					targetClusters.add(possible.toCluster);
 			}
 			List<Double> targetVals = new ArrayList<>();
 			double normalization = Math.min(myVal, 0d);
 			for (FaultSubsectionCluster targetCluster : targetClusters) {
 				double val = aggCalc.calc(sources, targetCluster.subSects);
+				if (verbose)
+					System.out.println("\tAlternative dest value ("+targetCluster+"): "+val);
 				if (val < 0) {
 					if (allowNegative && myVal < 0) {
 						normalization = Math.min(val, normalization);
@@ -446,27 +460,45 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 				}
 				targetVals.add(val);
 			}
-			if (targetVals.isEmpty())
+			if (targetVals.isEmpty()) {
 				// no alternatives
+				if (verbose)
+					System.out.println("\tno alternatives!");
 				return 1d;
+			}
 			if (normalization != 0d) {
+				if (verbose)
+					System.out.println("\tNormalizing by min value: "+normalization);
 				myVal -= normalization;
 				for (int i=0; i<targetVals.size(); i++)
 					targetVals.set(i, targetVals.get(i) - normalization);
 			}
-			double sum = myVal;
-			for (double val : targetVals)
-				sum += val;
-			Preconditions.checkState((float)sum >= 0f,
-					"Bad CFF sum = %s.\n\tnormalization: %s\n\tmyVal: %s\n\tallVals (after norm): %s",
-					sum, normalization, myVal, targetVals);
-			if ((float)sum == 0f)
+			double divisor = myVal;
+			if (relativeToBest) {
+				for (double val : targetVals)
+					divisor = Double.max(val, divisor);
+			} else {
+				for (double val : targetVals)
+					divisor += val;
+			}
+			if (verbose) {
+				if (relativeToBest)
+					System.out.println("\tBest: "+divisor);
+				else
+					System.out.println("\tSum: "+divisor);
+			}
+			Preconditions.checkState((float)divisor >= 0f,
+					"Bad CFF divisor = %s.\n\tnormalization: %s\n\tmyVal: %s\n\tallVals (after norm): %s",
+					divisor, normalization, myVal, targetVals);
+			if ((float)divisor == 0f)
 				return 0d;
 			
-			double prob = myVal / sum;
+			double prob = myVal / divisor;
+			if (verbose)
+				System.out.println("\tP = "+myVal+" / "+divisor+" = "+prob);
 			Preconditions.checkState(prob >= 0d && prob <= 1d,
 					"Bad CFF prob! P = %s / %s = %s.\n\tnormalization: %s\n\tallVals (after norm): %s",
-					myVal, sum, prob, normalization, targetVals);
+					myVal, divisor, prob, normalization, targetVals);
 			return prob;
 		}
 		
@@ -515,7 +547,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 	public Float getValue(ClusterRupture rupture, boolean verbose) {
 		double prob = 1d;
 		for (RuptureProbabilityCalc calc : calcs) {
-			double indvProb = calc.calcRuptureProb(rupture);
+			double indvProb = calc.calcRuptureProb(rupture, verbose);
 			if (verbose)
 				System.out.println("\t"+calc.getName()+": P="+indvProb);
 			Preconditions.checkState(indvProb >= 0d && indvProb <= 1d,
