@@ -4,10 +4,15 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Stroke;
 import java.awt.geom.Point2D;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -64,6 +69,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileNameComparator;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -99,6 +105,8 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
@@ -132,29 +140,42 @@ public class RupSetDiagnosticsPageGen {
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.8_cffClusterSumPathPositive.zip");
 //			String inputName = "CFF Path, JumpRecPatch0.7";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchNetFract0.7_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, 9/10 Interactions Positive";
+//			String inputName = "CFF Path, 9/10 Ints >0";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cff9_10_IntsPos_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Jump Half Interactions Positive, 9/10 Interactions Positive";
+//			String inputName = "CFF Path, Jump Half Ints >0, 9/10 Ints >0";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cff9_10_IntsPos_cffJumpPatchHalfIntNetFract0.5_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Jump Half Interactions Positive, 3/4 Interactions Positive, No Neg Sects";
+//			String inputName = "CFF Path, Jump Half Ints >0, 3/4 Ints >0, No Neg Sects";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffNoNegSects_cff3_4_IntsPos_cffJumpPatchHalfIntNetFract0.5_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Jump Half Interactions Positive, Parent Positive";
+//			String inputName = "CFF Path, Jump Half Ints >0, Parent Positive";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchHalfIntNetFract0.5_cffClusterSumPathPositive_cffParent.zip");
-//			String inputName = "CFF Path, Prob >0.05 (Neg)";
+//			String inputName = "CFF Path, P>0.05 (Neg)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.05Neg_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Prob >0.05 (Neg), 3/4 Interactions Positive";
+//			String inputName = "CFF Path, P>0.05 (Neg), 3/4 Ints >0";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.05Neg_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Prob >0.05, 3/4 Interactions Positive";
+//			String inputName = "CFF Path, P>0.05, 3/4 Ints >0";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.05_cffClusterSumPathPositive.zip");
-			String inputName = "CFF Path, Prob >0.02 (Neg), 3/4 Interactions Positive, Jump Patch Net Fract >0.5";
-			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.02Neg_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Prob >0.01 (Neg&FullRup)";
+//			String inputName = "CFF Path, 3/4 Ints >0, Jump RPatch 1/2 >0";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, P>0.1 (Neg), 3/4 Ints >0, Jump RPatch 1/2 >0";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.1Neg_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, P>0.05 (Neg), 3/4 Ints >0, Jump RPatch 1/2 >0";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.05Neg_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, P>0.02 (Neg), 3/4 Ints >0, Jump RPatch 1/2 >0";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.02Neg_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, P>0.01 (Neg), 3/4 Ints >0, Jump RPatch 1/2 >0";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.01Neg_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, P>0.001 (Neg), 3/4 Ints >0, Jump RPatch 1/2 >0";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.001Neg_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+			// CUR BEST
+			String inputName = "CFF Path, P>0.01 (Neg&RelBest), 3/4 Ints >0, Jump RPatch 1/2 >0";
+			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, P>0.01 (Neg&FullRup)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.01NegFull_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Prob >0.02 (Neg&FullRup)";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.02NegFull_cffClusterSumPathPositive.zip");
-//			String inputName = "CFF Path, Prob >0.02 (Neg&FullRup), 5% Sect Fract Increase";
+//			String inputName = "CFF Path, P>0.02";
+//			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.02_cffClusterSumPathPositive.zip");
+//			String inputName = "CFF Path, P>0.02 (Neg&FullRup), 5% Sect Fract Increase";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffProb0.02NegFull_cffClusterSumPathPositive_sectFractPerm0.05.zip");
-//			String inputName = "CFF Path, Net Cluster, Jump Half Interactions Positive";
+//			String inputName = "CFF Path, Net Cluster, Jump Half Ints >0";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cffJumpPatchHalfIntNetFract0.5_cffClusterNetPositive_cffClusterSumPathPositive.zip");
 //			String inputName = "CmlAz, NetFract0.75, CFF Path Max(Med,Sum)";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz_cffNetFract0.75_cffSumMedClusterPathPositive.zip");
@@ -186,6 +207,23 @@ public class RupSetDiagnosticsPageGen {
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
+			// thse are relative to fm3_1_cff3_4_IntsPos_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip
+//			boolean skipPlausibility = true;
+////			String compName = "No 3/4 Ints";
+////			File compareFile = new File(rupSetsDir, "fm3_1_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+////			String compName = "No Jump RPatch";
+////			File compareFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.01NegRelBest_cffClusterSumPathPositive.zip");
+////			String compName = "No CFF Path";
+////			File compareFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5.zip");
+////			String compName = "No Prob";
+////			File compareFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
+//			String compName = "5% Fract Increase";
+//			File compareFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5"
+//					+ "_cffClusterSumPathPositive_sectFractPerm0.05.zip");
+////			String compName = "CFF Path Median";
+////			File compareFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5_cffClusterMedPathPositive.zip");
+			
+			boolean skipPlausibility = false;
 			String compName = "UCERF3";
 			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			String compName = null;
@@ -200,9 +238,12 @@ public class RupSetDiagnosticsPageGen {
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 //			String compName = "CmlAz, CFF Cluster Positive";
 //			File compareFile = new File(rupSetsDir, "fm3_1_cmlAz_cffClusterPositive.zip");
+//			String compName = "CFF Path, P>0.01 (Neg&RelBest), 3/4 Ints >0, Jump RPatch 1/2 >0";
+//			File compareFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5_cffClusterSumPathPositive.zip");
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "new_coulomb_filters.json");
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "new_cumulative_prob_filters.json");
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
 			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
@@ -222,6 +263,8 @@ public class RupSetDiagnosticsPageGen {
 			if (altPlausibilityCompareFile != null) {
 				argz.add("--alt-plausibility"); argz.add(altPlausibilityCompareFile.getAbsolutePath());
 			}
+			if (skipPlausibility)
+				argz.add("--skip-plausibility");
 			args = argz.toArray(new String[0]);
 		}
 		
@@ -265,6 +308,7 @@ public class RupSetDiagnosticsPageGen {
 		}
 		
 		File outputDir;
+		File indexDir = null;
 		if (cmd.hasOption("output-dir")) {
 			Preconditions.checkArgument(!cmd.hasOption("reports-dir"),
 					"Can't supply both --output-dir and --reports-dir");
@@ -278,15 +322,17 @@ public class RupSetDiagnosticsPageGen {
 			Preconditions.checkState(reportsDir.exists() || reportsDir.mkdir(),
 					"Reports dir doesn't exist and could not be created: %s", reportsDir.getAbsolutePath());
 			
-			outputDir = new File(reportsDir, inputFile.getName().replaceAll(".zip", ""));
-			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+			indexDir = new File(reportsDir, inputFile.getName().replaceAll(".zip", ""));
+			Preconditions.checkState(indexDir.exists() || indexDir.mkdir());
 			
 			if (compareFile == null)
-				outputDir = new File(outputDir, "standalone");
+				outputDir = new File(indexDir, "standalone");
 			else
-				outputDir = new File(outputDir, "comp_"+compareFile.getName().replaceAll(".zip", ""));
+				outputDir = new File(indexDir, "comp_"+compareFile.getName().replaceAll(".zip", ""));
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		}
+		
+		boolean skipPlausibility = cmd.hasOption("skip-plausibility");
 		
 		File altPlausibilityCompareFile = null;
 		if (cmd.hasOption("alt-plausibility")) {
@@ -320,6 +366,8 @@ public class RupSetDiagnosticsPageGen {
 		FaultSystemSolution compSol = null;
 		PlausibilityConfiguration compConfig = null;
 		
+		DiagnosticSummary summary = new DiagnosticSummary();
+		
 		System.out.println("Loading input");
 		if (FaultSystemIO.isSolution(inputFile)) {
 			System.out.println("Input is a solution");
@@ -329,6 +377,7 @@ public class RupSetDiagnosticsPageGen {
 			inputRupSet = FaultSystemIO.loadRupSet(inputFile);
 		}
 		inputConfig = inputRupSet.getPlausibilityConfiguration();
+		summary.primaryName = inputName;
 		List<? extends FaultSection> subSects = inputRupSet.getFaultSectionDataList();
 		
 		SectionDistanceAzimuthCalculator distAzCalc;
@@ -349,6 +398,7 @@ public class RupSetDiagnosticsPageGen {
 				inputRupSet.setPlausibilityConfiguration(inputConfig);
 			}
 		}
+		summary.primaryMeta = new RupSetMetadata(inputRupSet, inputSol);
 		// check load coulomb
 		HashMap<String, List<AggregatedStiffnessCache>> loadedCoulombCaches = new HashMap<>();
 		if (inputConfig != null && coulombCacheDir != null)
@@ -415,6 +465,9 @@ public class RupSetDiagnosticsPageGen {
 			compUniques = new HashSet<>();
 			for (ClusterRupture rup : compRups)
 				compUniques.add(rup.unique);
+			
+			summary.compName = compName;
+			summary.compMeta = new RupSetMetadata(compRupSet, compSol);
 		}
 		
 		List<String> lines = new ArrayList<>();
@@ -519,6 +572,13 @@ public class RupSetDiagnosticsPageGen {
 				lines.addAll(getPlausibilityLines(compConfig, compJumps));
 				lines.add("");
 			}
+			
+			summary.primaryMeta.uniqueRupCount = numInputUnique;
+			if (inputSol != null)
+				summary.primaryMeta.uniqueRupRate = rateInputUnique;
+			summary.compMeta.uniqueRupCount = numCompUnique;
+			if (compSol != null)
+				summary.compMeta.uniqueRupRate = rateCompUnique;
 		}
 		
 		// length and magnitude distributions
@@ -542,11 +602,13 @@ public class RupSetDiagnosticsPageGen {
 			HistScalarValues inputScalars = new HistScalarValues(scalar, inputRupSet, inputSol,
 					inputRups, distAzCalc);
 			inputScalarVals.add(inputScalars);
+			summary.primaryMeta.scalars.add(new ScalarRange(inputScalars));
 			HistScalarValues compScalars = null;
 			if (compRupSet != null) {
 				table.addLine(inputName, compName);
 				compScalars = new HistScalarValues(scalar, compRupSet, compSol,
 						compRups, distAzCalc);
+				summary.compMeta.scalars.add(new ScalarRange(compScalars));
 				compScalarVals.add(compScalars);
 			}
 			plotRuptureHistograms(resourcesDir, "hist_"+scalar.name(), table, inputScalars,
@@ -630,7 +692,7 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("Plausibility Comparisons");
 			lines.add(topLink); lines.add("");
 			
-			if (compConfig != null) {
+			if (compConfig != null && !skipPlausibility) {
 				lines.add("## Comparisons with "+compName+" filters");
 				lines.add(topLink); lines.add("");
 				
@@ -659,7 +721,7 @@ public class RupSetDiagnosticsPageGen {
 				lines.add("");
 			}
 			
-			if (compRups != null && inputConfig != null) {
+			if (compRups != null && inputConfig != null && !skipPlausibility) {
 				lines.add("## "+compName+" comparisons with new filters");
 				lines.add(topLink); lines.add("");
 				
@@ -688,7 +750,7 @@ public class RupSetDiagnosticsPageGen {
 				lines.add("");
 			}
 			
-			if (altPlausibilityCompareFile != null) {
+			if (!skipPlausibility && altPlausibilityCompareFile != null) {
 				lines.add("## Comparisons with Alternative filters");
 				lines.add(topLink); lines.add("");
 				
@@ -777,6 +839,8 @@ public class RupSetDiagnosticsPageGen {
 		lines.add("## Fault Section Connections");
 		lines.add(topLink); lines.add("");
 		
+		summary.primaryMeta.connCount = inputJumps.size();
+		
 		if (compRups != null) {
 			List<Set<Jump>> connectionsList = new ArrayList<>();
 			List<Color> connectedColors = new ArrayList<>();
@@ -807,6 +871,10 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("### Jump Overlaps");
 			lines.add(topLink); lines.add("");
 			
+			summary.compMeta.connCount = compJumps.size();
+			summary.primaryMeta.uniqueConnCount = inputUniqueJumps.size();
+			summary.compMeta.uniqueConnCount = compUniqueJumps.size();
+			
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			table.addLine("", inputName, compName);
 			table.addLine("**Total Count**", inputJumps.size(), compJumps.size());
@@ -825,6 +893,7 @@ public class RupSetDiagnosticsPageGen {
 					double rateInputUnique = 0d;
 					for (Double rate : inputUniqueJumps.values())
 						rateInputUnique += rate;
+					summary.primaryMeta.uniqueConnRate = rateInputUnique;
 					table.addColumn((float)rateInputUnique+" ("+percentDF.format(
 							rateInputUnique/inputSol.getTotalRateForAllFaultSystemRups())+")");
 				}
@@ -834,6 +903,7 @@ public class RupSetDiagnosticsPageGen {
 					double rateCompUnique = 0d;
 					for (Double rate : compUniqueJumps.values())
 						rateCompUnique += rate;
+					summary.compMeta.uniqueConnRate = rateCompUnique;
 					table.addColumn((float)rateCompUnique+" ("+percentDF.format(
 							rateCompUnique/compSol.getTotalRateForAllFaultSystemRups())+")");
 				}
@@ -1155,6 +1225,15 @@ public class RupSetDiagnosticsPageGen {
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 		
+		System.out.println("Writing JSON metadata");
+		
+		writeMetadataJSON(summary, new File(outputDir, "metadata.json"));
+		
+		if (indexDir != null) {
+			System.out.println("Writing index to "+indexDir.getAbsolutePath());
+			writeIndex(indexDir);
+		}
+		
 		if (distAzCache != null && (numAzCached < distAzCalc.getNumCachedAzimuths()
 				|| numDistCached < distAzCalc.getNumCachedDistances())) {
 			System.out.println("Writing dist/az cache to "+distAzCache.getAbsolutePath());
@@ -1202,6 +1281,11 @@ public class RupSetDiagnosticsPageGen {
 				+ "set should be tested against");
 		altPlausibilityOption.setRequired(false);
 		ops.addOption(altPlausibilityOption);
+		
+		Option skipPlausibilityOption = new Option("sp", "skip-plausibility", false,
+				"Flag to skip plausibility calculations");
+		skipPlausibilityOption.setRequired(false);
+		ops.addOption(skipPlausibilityOption);
 		
 		Option distAzCacheOption = new Option("dac", "dist-az-cache", true,
 				"Path to a distance/azimuth cache file to speed up plausibility comparisons");
@@ -2094,7 +2178,7 @@ public class RupSetDiagnosticsPageGen {
 		int threads = Runtime.getRuntime().availableProcessors();
 		if (threads > 8)
 			threads -= 2;
-		threads = Integer.max(1, Integer.min(32, threads));
+		threads = Integer.max(1, Integer.min(31, threads));
 		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		for (int r=0; r<rups.size(); r++) {
 			ClusterRupture rupture = rups.get(r);
@@ -4526,5 +4610,234 @@ public class RupSetDiagnosticsPageGen {
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
 		
 		return pngFile;
+	}
+	
+	private static class DiagnosticSummary {
+		private String primaryName;
+		private RupSetMetadata primaryMeta;
+		
+		private String compName;
+		private RupSetMetadata compMeta;
+	}
+	
+	private static class RupSetMetadata {
+		// populated during constructor
+		private int maxNumSplays;
+		private double maxJumpDist;
+		private List<String> filterNames;
+		private int rupCount;
+		private double totRate;
+		
+		// populated later
+		private int uniqueRupCount;
+		private double uniqueRupRate;
+		
+		private int connCount;
+		private int uniqueConnCount;
+		private double uniqueConnRate;
+		
+		private List<ScalarRange> scalars;
+		
+		public RupSetMetadata(FaultSystemRupSet rupSet, FaultSystemSolution sol) {
+			this.rupCount = rupSet.getNumRuptures();
+			this.maxJumpDist = Double.NaN;
+			this.maxNumSplays = -1;
+			PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
+			if (config != null) {
+				if (config.getConnectionStrategy() != null)
+					maxJumpDist = config.getConnectionStrategy().getMaxJumpDist();
+				maxNumSplays = config.getMaxNumSplays();
+				if (config.getFilters() != null) {
+					filterNames = new ArrayList<>();
+					for (PlausibilityFilter filter : config.getFilters())
+						filterNames.add(filter.getName());
+				}
+			}
+			if (sol == null)
+				totRate = Double.NaN;
+			else
+				totRate = sol.getTotalRateForAllFaultSystemRups();
+			
+			this.uniqueConnCount = -1;
+			this.uniqueRupRate = Double.NaN;
+			this.connCount = -1;
+			this.uniqueConnCount = -1;
+			this.uniqueConnRate = Double.NaN;
+			this.scalars = new ArrayList<>();
+		}
+	}
+	
+	private static class ScalarRange {
+		private final HistScalar scalar;
+		private final double min, max;
+		
+		public ScalarRange(HistScalarValues values) {
+			double min = Double.POSITIVE_INFINITY;
+			double max = Double.NEGATIVE_INFINITY;
+			for (double val : values.values) {
+				min = Math.min(val, min);
+				max = Math.max(val, max);
+			}
+			this.min = min;
+			this.max = max;
+			this.scalar = values.scalar;
+		}
+	}
+	
+	private static Gson buildMetaGson() {
+		GsonBuilder builder = new GsonBuilder();
+		builder.serializeSpecialFloatingPointValues();
+		builder.setPrettyPrinting();
+		return builder.create();
+	}
+	
+	private static void writeMetadataJSON(DiagnosticSummary summary, File jsonFile) throws IOException {
+		Gson gson = buildMetaGson();
+		FileWriter fw = new FileWriter(jsonFile);
+		gson.toJson(summary, fw);
+		fw.write("\n");
+		fw.close();
+	}
+	
+	private static DiagnosticSummary loadMetadataJSON(File jsonFile) throws IOException {
+		Gson gson = buildMetaGson();
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		DiagnosticSummary summary = gson.fromJson(reader, DiagnosticSummary.class);
+		try {
+			reader.close();
+		} catch (IOException e) {}
+		return summary;
+	}
+	
+	private static void writeIndex(File indexDir) throws IOException {
+		List<File> subDirs = new ArrayList<>();
+		List<DiagnosticSummary> summaries = new ArrayList<>();
+		
+		RupSetMetadata primaryMeta = null;
+		String primaryName = null;
+		
+		File[] dirList = indexDir.listFiles();
+		Arrays.sort(dirList, new FileNameComparator());
+		
+		for (File subDir : dirList) {
+			if (!subDir.isDirectory() || subDir.getName().startsWith("."))
+				continue;
+			if (!new File(subDir, "resources").exists())
+				continue;
+			if (!new File(subDir, "README.md").exists())
+				continue;
+			System.out.println("Found sub directory: "+subDir.getName());
+			subDirs.add(subDir);
+			
+			File metadataFile = new File(subDir, "metadata.json");
+			if (metadataFile.exists()) {
+				System.out.println("\tLoading metadata");
+				DiagnosticSummary meta = loadMetadataJSON(metadataFile);
+				summaries.add(meta);
+				
+				if (primaryMeta == null)
+					primaryMeta = meta.primaryMeta;
+				if (primaryName == null || meta.compMeta == null)
+					primaryName = meta.primaryName;
+			} else {
+				System.out.println("\tNo metadata file found");
+				summaries.add(null);
+			}
+		}
+		if (primaryName == null)
+			primaryName = indexDir.getName();
+		
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("# "+primaryName);
+		lines.add("");
+		if (primaryMeta != null) {
+			lines.addAll(metaLines(primaryMeta));
+			lines.add("");			
+		}
+		int tocIndex = lines.size();
+		String topLink = "*[(top)](#table-of-contents)*";
+		
+		for (int i=0; i<subDirs.size(); i++) {
+			File subDir = subDirs.get(i);
+			DiagnosticSummary summary = summaries.get(i);
+			String compName = null;
+			if (summary != null && summary.compName != null)
+				compName = summary.compName;
+			else if (new File(new File(subDir, "resources"), "hist_LENGTH_comp.png").exists())
+				compName = subDir.getName();
+			
+			if (compName != null)
+				lines.add("## Compared With: "+compName);
+			else
+				lines.add("## Standalone Diagnostics");
+			lines.add("");
+			lines.add(topLink);
+			lines.add("");
+			lines.add("[Click here to view full diagnostic page]("+subDir.getName()+").");
+			lines.add("");
+			if (summary != null && summary.compMeta != null) {
+				lines.add("Comparison Rupture Set:");
+				lines.add("");
+				lines.addAll(metaLines(summary.compMeta));
+				lines.add("");
+			}
+			
+			File resourcesDir = new File(subDir, "resources");
+			if (resourcesDir.exists()) {
+				lines.add("### Length Figures");
+				lines.add("");
+				lines.add(topLink);
+				lines.add("");
+				
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				String rDirPath = subDir.getName()+"/"+resourcesDir.getName();
+				if (compName != null) {
+					table.addLine(primaryName, compName);
+					table.addLine("![Primary]("+rDirPath+"/hist_LENGTH.png)", "![Comparison]("+rDirPath+"/hist_LENGTH_comp.png)");
+					table.addLine("![Primary]("+rDirPath+"/sect_max_LENGTH.png)", "![Comparison]("+rDirPath+"/sect_max_LENGTH_comp.png)");
+				} else {
+					table.addLine("![Primary]("+rDirPath+"/hist_LENGTH.png)");
+					table.addLine("![Primary]("+rDirPath+"/sect_max_LENGTH.png)");
+				}
+				lines.addAll(table.build());
+				lines.add("");
+			}
+		}
+		
+		// add TOC
+		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2));
+		lines.add(tocIndex, "## Table Of Contents");
+		
+		MarkdownUtils.writeReadmeAndHTML(lines, indexDir);
+	}
+	
+	private static List<String> metaLines(RupSetMetadata meta) {
+		List<String> lines = new ArrayList<>();
+		lines.add("* Rupture Count: "+countDF.format(meta.rupCount));
+//		if () // TODO add comparisons
+		lines.add("* Connection Count: "+countDF.format(meta.connCount));
+		lines.add("* Max Allowed Jump Dist: "+(float)meta.maxJumpDist+" km");
+		lines.add("* Max Num Splays: "+meta.maxNumSplays);
+		if (Double.isFinite(meta.totRate))
+			lines.add("* Total Annual Rate: "+(float)meta.totRate);
+		if (meta.filterNames != null && !meta.filterNames.isEmpty()) {
+			lines.add("");
+			lines.add("**Plausibility Filters**");
+			lines.add("");
+			for (String filter : meta.filterNames)
+				lines.add("* "+filter);
+		}
+		if (meta.scalars != null && !meta.scalars.isEmpty()) {
+			lines.add("");
+			lines.add("**Scalar Values**");
+			lines.add("");
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.addLine("Name", "Min", "Max");
+			for (ScalarRange range : meta.scalars)
+				table.addLine(range.scalar.name, (float)range.min+"", (float)range.max+"");
+			lines.addAll(table.build());
+		}
+		return lines;
 	}
 }
