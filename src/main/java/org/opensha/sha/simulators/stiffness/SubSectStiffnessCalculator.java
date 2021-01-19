@@ -51,6 +51,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.StiffnessAggregation;
 import org.opensha.sha.simulators.stiffness.StiffnessCalc.Patch;
 
 import com.google.common.base.Joiner;
@@ -82,7 +83,7 @@ public class SubSectStiffnessCalculator {
 	private int utmZone;
 	private char utmChar;
 	
-	public static final PatchAlignment alignment_default = PatchAlignment.CENTER;
+	public static final PatchAlignment alignment_default = PatchAlignment.FILL_OVERLAP;
 	private PatchAlignment alignment = alignment_default;
 	
 	private transient Map<FaultSection, List<PatchLocation>> patchesMap;
@@ -479,229 +480,227 @@ public class SubSectStiffnessCalculator {
 		}
 	}
 	
-//	public LogDistributionPlot plotDistributionHistograms(StiffnessDistribution dist, StiffnessType type) {
-//		StiffnessResult result = dist.results[type.arrayIndex];
-//		
-//		double[][] vals;
-//		switch (result.type) {
-//		case SIGMA:
-//			vals = dist.sigmaVals;
-//			break;
-//		case TAU:
-//			vals = dist.tauVals;
-//			break;
-//		case CFF:
-//			vals = dist.cffVals;
-//			break;
-//
-//		default:
-//			throw new IllegalStateException();
-//		}
-//		
-//		double maxAbsVal = Math.abs(result.min);
-//		maxAbsVal = Math.max(maxAbsVal, Math.abs(result.max));
-//		if (maxAbsVal > 10d)
-//			maxAbsVal = 10d*Math.ceil(maxAbsVal/2d);
-//		else
-//			maxAbsVal = Math.ceil(maxAbsVal);
-//		double logMax = Math.max(Math.ceil(Math.log10(maxAbsVal)),
-//				// allow it to go up to 1e2 to capture the sum (but don't if unnecessary)
-//				Math.min(2d, Math.ceil(Math.log10(Math.abs(result.sum)))));
-//		double logMin = -1;
-//		for (double[] inner : vals) {
-//			for (double val : inner) {
-//				double abs = Math.abs(val);
-//				if (val > 0)
-//					logMin = Math.min(logMin, Math.log10(abs));
-//			}
-//		}
-//		logMin = Math.max(-8, Math.floor(logMin));
-//		
-//		double logDelta = 0.1;
-//		
-//		HistogramFunction posLogVals = HistogramFunction.getEncompassingHistogram(
-//				logMin, logMax, logDelta);
-//		HistogramFunction negLogVals = new HistogramFunction(
-//				posLogVals.getMinX(), posLogVals.getMaxX(), posLogVals.size());
-//		
-//		for (double[] innerVals : vals) {
-//			for (double val : innerVals) {
-//				if (val > 0d) {
-//					int ind = posLogVals.getClosestXIndex(Math.log10(val));
-//					posLogVals.add(ind, 1d);
-//				} else if (val == 0d) {
-//					posLogVals.add(0, 1d);
-//				} else {
-//					int ind = negLogVals.getClosestXIndex(Math.log10(-val));
-//					negLogVals.add(ind, 1d);
-//				}
-//			}
-//		}
-//		
-//		double maxY = Math.max(negLogVals.getMaxY(), posLogVals.getMaxY());
-//		maxY *= 1.1;
-//		
-//		Range xRange = new Range(Math.pow(10, logMin), Math.pow(10, logMax));
-//		Range yRange = new Range(0d, maxY);
-//		
-//		List<PlotSpec> specs = new ArrayList<>();
-//		
-//		double annOuterX = Math.pow(10, logMin + 0.95*(logMax - logMin));
-//		double annInnerX = Math.pow(10, logMin + 0.05*(logMax - logMin));
-//		double annY1 = 0.94*maxY;
-//		double annY2 = 0.88*maxY;
-//		double maxVertY = 0.87*maxY;
-//		PlotSpec negativeSpec = null;
-//		PlotSpec positiveSpec = null;
-//		
-//		DecimalFormat pDF = new DecimalFormat("0.0%");
-//		for (boolean positive : new boolean[] {false, true}) {
-//			ArbitrarilyDiscretizedFunc hist = new ArbitrarilyDiscretizedFunc();
-//			if (positive)
-//				for (Point2D pt : posLogVals)
-//					hist.set(Math.pow(10, pt.getX()), pt.getY());
-//			else
-//				for (Point2D pt : negLogVals)
-//					hist.set(Math.pow(10, pt.getX()), pt.getY());
-//			
-//			List<XY_DataSet> funcs = new ArrayList<>();
-//			List<PlotCurveCharacterstics> chars = new ArrayList<>();
-//			
-//			funcs.add(hist);
-//			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.GRAY));
-//			
-//			List<XYTextAnnotation> anns = new ArrayList<>();
-//			Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 18);
-//			
-//			String percentText;
-//			if (positive)
-//				percentText = pDF.format(result.fractPositive)+"≥0";
-//			else
-//				percentText = pDF.format(1d-result.fractPositive)+"<0";
-//			XYTextAnnotation percentAnn = new XYTextAnnotation(percentText, annInnerX, annY1);
-//			if (positive)
-//				percentAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
-//			else
-//				percentAnn.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
-//			percentAnn.setFont(annFont);
-//			percentAnn.setPaint(Color.BLACK);
-//			anns.add(percentAnn);
-//			
-//			if (!positive) {
-//				XYTextAnnotation meanAnn = new XYTextAnnotation("mean="+getValStr(result.mean),
-//						annOuterX, annY1);
-//				meanAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
-//				meanAnn.setFont(annFont);
-//				meanAnn.setPaint(Color.BLACK);
-//				anns.add(meanAnn);
-//			}
-//			if (positive == isPositive(result.mean)) {
-//				XY_DataSet meanXY = new DefaultXY_DataSet();
-//				meanXY.set(Math.abs(result.mean), 0d);
-//				meanXY.set(Math.abs(result.mean), maxVertY);
-////				meanXY.setName("mean="+getValStr(result.mean));
-//				funcs.add(meanXY);
-//				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
-//			}
-//			
-//			if (!positive) {
-//				XYTextAnnotation medianAnn = new XYTextAnnotation("mdn.="+getValStr(result.median),
-//						annOuterX, annY2);
-//				medianAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
-//				medianAnn.setFont(annFont);
-//				medianAnn.setPaint(Color.BLUE);
-//				anns.add(medianAnn);
-//			}
-//			if (positive == isPositive(result.median)) {
-//				XY_DataSet medianXY = new DefaultXY_DataSet();
-//				medianXY.set(Math.abs(result.median), 0d);
-//				medianXY.set(Math.abs(result.median), maxVertY);
-////				medianXY.setName("mdn.="+getValStr(result.median));
-//				funcs.add(medianXY);
-//				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
-//			}
-//			
-//			if (positive) {
-//				XYTextAnnotation sumAnn = new XYTextAnnotation("sum="+getValStr(result.sum),
-//						annOuterX, annY2);
-//				sumAnn.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
-//				sumAnn.setFont(annFont);
-//				sumAnn.setPaint(Color.RED);
-//				anns.add(sumAnn);
-//			}
-//			if (positive == isPositive(result.sum)) {
-//				XY_DataSet sumXY = new DefaultXY_DataSet();
-//				sumXY.set(Math.abs(result.sum), 0d);
-//				sumXY.set(Math.abs(result.sum), maxVertY);
-////				sumXY.setName("sum="+getValStr(result.sum));
-//				funcs.add(sumXY);
-//				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
-//			}
-//
-//			if (positive) {
-//				XYTextAnnotation boundsAnn = new XYTextAnnotation(
-//						"["+getValStr(result.min)+","+getValStr(result.max)+"]",
-//						annOuterX, annY1);
-//				boundsAnn.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
-//				boundsAnn.setFont(annFont);
-//				boundsAnn.setPaint(Color.DARK_GRAY);
-//				anns.add(boundsAnn);
-//			}
-//			if (positive == isPositive(result.min)) {
-//				XY_DataSet lowerXY = new DefaultXY_DataSet();
-//				lowerXY.set(Math.abs(result.min), 0d);
-//				lowerXY.set(Math.abs(result.min), maxVertY);
-////				lowerXY.setName("bounds=["+getValStr(result.min)+","+getValStr(result.max)+"]");
-//				funcs.add(lowerXY);
-//				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.DARK_GRAY));
-//			}
-//
-//			if (positive == isPositive(result.max)) {
-//				XY_DataSet upperXY = new DefaultXY_DataSet();
-//				upperXY.set(Math.abs(result.max), 0d);
-//				upperXY.set(Math.abs(result.max), maxVertY);
-//				funcs.add(upperXY);
-//				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.DARK_GRAY));
-//			}
-//			
-//			String title = type.name+" Distribution";
-//			if (result.sourceID >= 0 && result.receiverID >= 0)
-//				title += ", "+result.sourceID+" => "+result.receiverID;
-//			String xAxisLabel = result.type.name+" ("+result.type.units+")";
-//			if (!positive)
-//				xAxisLabel = "-"+xAxisLabel;
-//			PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, "Count");
-//			if (positive)
-//				positiveSpec = spec;
-//			else
-//				negativeSpec = spec;
-//			spec.setLegendVisible(false);
-//			spec.setPlotAnnotations(anns);
-//			specs.add(spec);
-//		}
-//		
-//		return new LogDistributionPlot(negativeSpec, positiveSpec, xRange, yRange);
-//	}
-//	
-//	private boolean isPositive(double value) {
-//		return value >= 0d;
-//	}
-//
-//	private static final DecimalFormat df1 = new DecimalFormat("0.0");
-//	private static final DecimalFormat df2 = new DecimalFormat("0.00");
-//	private static final DecimalFormat df3 = new DecimalFormat("0.000");
-//	private static final DecimalFormat dfE = new DecimalFormat("0.0E0");
-//	
-//	private static String getValStr(double val) {
-//		double abs = Math.abs(val);
-//		if (abs >= 1)
-//			return df1.format(val);
-//		if (abs >= 0.1)
-//			return df2.format(val);
-//		if (abs >= 0.01)
-//			return df3.format(val);
-//		return dfE.format(val).toLowerCase();
-//	}
+	public LogDistributionPlot plotDistributionHistograms(StiffnessDistribution dist, StiffnessType type,
+			int sourceID, int receiverID) {
+		double[][] vals = dist.get(type);
+		
+		int totSize = 0;
+		for (double[] sub : vals)
+			totSize += sub.length;
+		
+		double[] flattened = new double[totSize];
+		int index = 0;
+		for (double[] sub : vals) {
+			System.arraycopy(sub, 0, flattened, index, sub.length);
+			index += sub.length;
+		}
+		
+		StiffnessAggregation result = new StiffnessAggregation(flattened, flattened.length);
+		
+		double maxAbsVal = Math.abs(result.get(AggregationMethod.MIN));
+		maxAbsVal = Math.max(maxAbsVal, Math.abs(result.get(AggregationMethod.MAX)));
+		if (maxAbsVal > 10d)
+			maxAbsVal = 10d*Math.ceil(maxAbsVal/2d);
+		else
+			maxAbsVal = Math.ceil(maxAbsVal);
+		double logMax = Math.max(Math.ceil(Math.log10(maxAbsVal)),
+				// allow it to go up to 1e2 to capture the sum (but don't if unnecessary)
+				Math.min(2d, Math.ceil(Math.log10(Math.abs(result.get(AggregationMethod.SUM))))));
+		double logMin = -1;
+		for (double[] inner : vals) {
+			for (double val : inner) {
+				double abs = Math.abs(val);
+				if (val > 0)
+					logMin = Math.min(logMin, Math.log10(abs));
+			}
+		}
+		logMin = Math.max(-8, Math.floor(logMin));
+		
+		double logDelta = 0.1;
+		
+		HistogramFunction posLogVals = HistogramFunction.getEncompassingHistogram(
+				logMin, logMax, logDelta);
+		HistogramFunction negLogVals = new HistogramFunction(
+				posLogVals.getMinX(), posLogVals.getMaxX(), posLogVals.size());
+		
+		for (double[] innerVals : vals) {
+			for (double val : innerVals) {
+				if (val > 0d) {
+					int ind = posLogVals.getClosestXIndex(Math.log10(val));
+					posLogVals.add(ind, 1d);
+				} else if (val == 0d) {
+					posLogVals.add(0, 1d);
+				} else {
+					int ind = negLogVals.getClosestXIndex(Math.log10(-val));
+					negLogVals.add(ind, 1d);
+				}
+			}
+		}
+		
+		double maxY = Math.max(negLogVals.getMaxY(), posLogVals.getMaxY());
+		maxY *= 1.1;
+		
+		Range xRange = new Range(Math.pow(10, logMin), Math.pow(10, logMax));
+		Range yRange = new Range(0d, maxY);
+		
+		List<PlotSpec> specs = new ArrayList<>();
+		
+		double annOuterX = Math.pow(10, logMin + 0.95*(logMax - logMin));
+		double annInnerX = Math.pow(10, logMin + 0.05*(logMax - logMin));
+		double annY1 = 0.94*maxY;
+		double annY2 = 0.88*maxY;
+		double maxVertY = 0.87*maxY;
+		PlotSpec negativeSpec = null;
+		PlotSpec positiveSpec = null;
+		
+		DecimalFormat pDF = new DecimalFormat("0.0%");
+		for (boolean positive : new boolean[] {false, true}) {
+			ArbitrarilyDiscretizedFunc hist = new ArbitrarilyDiscretizedFunc();
+			if (positive)
+				for (Point2D pt : posLogVals)
+					hist.set(Math.pow(10, pt.getX()), pt.getY());
+			else
+				for (Point2D pt : negLogVals)
+					hist.set(Math.pow(10, pt.getX()), pt.getY());
+			
+			List<XY_DataSet> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			funcs.add(hist);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.GRAY));
+			
+			List<XYTextAnnotation> anns = new ArrayList<>();
+			Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 18);
+			
+			String percentText;
+			if (positive)
+				percentText = pDF.format(result.get(AggregationMethod.FRACT_POSITIVE))+"≥0";
+			else
+				percentText = pDF.format(1d-result.get(AggregationMethod.FRACT_POSITIVE))+"<0";
+			XYTextAnnotation percentAnn = new XYTextAnnotation(percentText, annInnerX, annY1);
+			if (positive)
+				percentAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
+			else
+				percentAnn.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
+			percentAnn.setFont(annFont);
+			percentAnn.setPaint(Color.BLACK);
+			anns.add(percentAnn);
+			
+			if (!positive) {
+				XYTextAnnotation meanAnn = new XYTextAnnotation("mean="+getValStr(result.get(AggregationMethod.MEAN)),
+						annOuterX, annY1);
+				meanAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
+				meanAnn.setFont(annFont);
+				meanAnn.setPaint(Color.BLACK);
+				anns.add(meanAnn);
+			}
+			if (positive == isPositive(result.get(AggregationMethod.MEAN))) {
+				XY_DataSet meanXY = new DefaultXY_DataSet();
+				meanXY.set(Math.abs(result.get(AggregationMethod.MEAN)), 0d);
+				meanXY.set(Math.abs(result.get(AggregationMethod.MEAN)), maxVertY);
+//				meanXY.setName("mean="+getValStr(result.mean));
+				funcs.add(meanXY);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+			}
+			
+			if (!positive) {
+				XYTextAnnotation medianAnn = new XYTextAnnotation("mdn.="+getValStr(result.get(AggregationMethod.MEDIAN)),
+						annOuterX, annY2);
+				medianAnn.setTextAnchor(TextAnchor.BOTTOM_LEFT);
+				medianAnn.setFont(annFont);
+				medianAnn.setPaint(Color.BLUE);
+				anns.add(medianAnn);
+			}
+			if (positive == isPositive(result.get(AggregationMethod.MEDIAN))) {
+				XY_DataSet medianXY = new DefaultXY_DataSet();
+				medianXY.set(Math.abs(result.get(AggregationMethod.MEDIAN)), 0d);
+				medianXY.set(Math.abs(result.get(AggregationMethod.MEDIAN)), maxVertY);
+//				medianXY.setName("mdn.="+getValStr(result.median));
+				funcs.add(medianXY);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
+			}
+			
+			if (positive) {
+				XYTextAnnotation sumAnn = new XYTextAnnotation("sum="+getValStr(result.get(AggregationMethod.SUM)),
+						annOuterX, annY2);
+				sumAnn.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
+				sumAnn.setFont(annFont);
+				sumAnn.setPaint(Color.RED);
+				anns.add(sumAnn);
+			}
+			if (positive == isPositive(result.get(AggregationMethod.SUM))) {
+				XY_DataSet sumXY = new DefaultXY_DataSet();
+				sumXY.set(Math.abs(result.get(AggregationMethod.SUM)), 0d);
+				sumXY.set(Math.abs(result.get(AggregationMethod.SUM)), maxVertY);
+//				sumXY.setName("sum="+getValStr(result.sum));
+				funcs.add(sumXY);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
+			}
+
+			if (positive) {
+				XYTextAnnotation boundsAnn = new XYTextAnnotation(
+						"["+getValStr(result.get(AggregationMethod.MIN))+","+getValStr(result.get(AggregationMethod.MAX))+"]",
+						annOuterX, annY1);
+				boundsAnn.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
+				boundsAnn.setFont(annFont);
+				boundsAnn.setPaint(Color.DARK_GRAY);
+				anns.add(boundsAnn);
+			}
+			if (positive == isPositive(result.get(AggregationMethod.MIN))) {
+				XY_DataSet lowerXY = new DefaultXY_DataSet();
+				lowerXY.set(Math.abs(result.get(AggregationMethod.MIN)), 0d);
+				lowerXY.set(Math.abs(result.get(AggregationMethod.MIN)), maxVertY);
+//				lowerXY.setName("bounds=["+getValStr(result.min)+","+getValStr(result.max)+"]");
+				funcs.add(lowerXY);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.DARK_GRAY));
+			}
+
+			if (positive == isPositive(result.get(AggregationMethod.MAX))) {
+				XY_DataSet upperXY = new DefaultXY_DataSet();
+				upperXY.set(Math.abs(result.get(AggregationMethod.MAX)), 0d);
+				upperXY.set(Math.abs(result.get(AggregationMethod.MAX)), maxVertY);
+				funcs.add(upperXY);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.DARK_GRAY));
+			}
+			
+			String title = type.name+" Distribution";
+			if (sourceID >= 0 && receiverID >= 0)
+				title += ", "+sourceID+" => "+receiverID;
+			String xAxisLabel = type.name+" ("+type.units+")";
+			if (!positive)
+				xAxisLabel = "-"+xAxisLabel;
+			PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, "Count");
+			if (positive)
+				positiveSpec = spec;
+			else
+				negativeSpec = spec;
+			spec.setLegendVisible(false);
+			spec.setPlotAnnotations(anns);
+			specs.add(spec);
+		}
+		
+		return new LogDistributionPlot(negativeSpec, positiveSpec, xRange, yRange);
+	}
+	
+	private boolean isPositive(double value) {
+		return value >= 0d;
+	}
+
+	private static final DecimalFormat df1 = new DecimalFormat("0.0");
+	private static final DecimalFormat df2 = new DecimalFormat("0.00");
+	private static final DecimalFormat df3 = new DecimalFormat("0.000");
+	private static final DecimalFormat dfE = new DecimalFormat("0.0E0");
+	
+	private static String getValStr(double val) {
+		double abs = Math.abs(val);
+		if (abs >= 1)
+			return df1.format(val);
+		if (abs >= 0.1)
+			return df2.format(val);
+		if (abs >= 0.01)
+			return df3.format(val);
+		return dfE.format(val).toLowerCase();
+	}
 	
 	/**
 	 * @return calculated UTM zone for the center of the fault region
@@ -1090,7 +1089,8 @@ public class SubSectStiffnessCalculator {
 	public synchronized void clearCaches() {
 		if (caches != null)
 			for (AggregatedStiffnessCache cache : caches)
-				cache.clear();
+				if (cache != null)
+					cache.clear();
 	}
 	
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
