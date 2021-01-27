@@ -1111,46 +1111,66 @@ public class SubSectStiffnessCalculator {
 		
 		System.out.println(calc.utmZone+" "+calc.utmChar);
 
-		FaultSection[] sects = {
-//				calc.subSects.get(1836), calc.subSects.get(1837),
-				calc.subSects.get(622), calc.subSects.get(1778),
-//				calc.subSects.get(625), calc.subSects.get(1772),
-//				calc.subSects.get(771), calc.subSects.get(1811)
-		};
-		
-		StiffnessType type = StiffnessType.CFF;
-		
-		List<AggregatedStiffnessCalculator> aggregators = new ArrayList<>();
-		
-		aggregators.add(AggregatedStiffnessCalculator.builder(type, calc)
-				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.SUM).get());
-		aggregators.add(AggregatedStiffnessCalculator.builder(type, calc)
-				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.FRACT_POSITIVE).get());
-		aggregators.add(AggregatedStiffnessCalculator.builder(type, calc)
-				.sectToSectAgg(AggregationMethod.FRACT_POSITIVE).get());
-		
-		for (int r=0; r<sects.length; r++) {
-			for (int s=0; s<sects.length; s++) {
-				if (r == s)
-					continue;
-				FaultSection source = sects[s];
-				FaultSection receiver = sects[r];
-				System.out.println("Source: "+source.getSectionName());
-				System.out.println("Receiver: "+receiver.getSectionName());
-				
-				for (AggregatedStiffnessCalculator aggCalc : aggregators)
-					System.out.println("\t"+aggCalc+": "+aggCalc.calc(source, receiver));
-				
-//				StiffnessDistribution dist = calc.calcStiffnessDistribution(sects[i], sects[j]);
+//		FaultSection[] sects = {
+////				calc.subSects.get(1836), calc.subSects.get(1837),
+//				calc.subSects.get(622), calc.subSects.get(1778),
+////				calc.subSects.get(625), calc.subSects.get(1772),
+////				calc.subSects.get(771), calc.subSects.get(1811)
+//		};
+//		
+//		StiffnessType type = StiffnessType.CFF;
+//		
+//		List<AggregatedStiffnessCalculator> aggregators = new ArrayList<>();
+//		
+//		aggregators.add(AggregatedStiffnessCalculator.builder(type, calc)
+//				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.SUM).get());
+//		aggregators.add(AggregatedStiffnessCalculator.builder(type, calc)
+//				.receiverPatchAgg(AggregationMethod.SUM).sectToSectAgg(AggregationMethod.FRACT_POSITIVE).get());
+//		aggregators.add(AggregatedStiffnessCalculator.builder(type, calc)
+//				.sectToSectAgg(AggregationMethod.FRACT_POSITIVE).get());
+//		
+//		for (int r=0; r<sects.length; r++) {
+//			for (int s=0; s<sects.length; s++) {
+//				if (r == s)
+//					continue;
+//				FaultSection source = sects[s];
+//				FaultSection receiver = sects[r];
+//				System.out.println("Source: "+source.getSectionName());
+//				System.out.println("Receiver: "+receiver.getSectionName());
 //				
-//				GraphWidget graph = new GraphWidget();
-//				graph.getPlotPrefs().setBackgroundColor(Color.WHITE);
-//				GraphWindow gw = new GraphWindow(graph);
-//				gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
-//				LogDistributionPlot plot = calc.plotDistributionHistograms(dist, StiffnessType.CFF);
-//				plot.plotInGW(gw);
-			}
-		}
+//				for (AggregatedStiffnessCalculator aggCalc : aggregators)
+//					System.out.println("\t"+aggCalc+": "+aggCalc.calc(source, receiver));
+//				
+////				StiffnessDistribution dist = calc.calcStiffnessDistribution(sects[i], sects[j]);
+////				
+////				GraphWidget graph = new GraphWidget();
+////				graph.getPlotPrefs().setBackgroundColor(Color.WHITE);
+////				GraphWindow gw = new GraphWindow(graph);
+////				gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
+////				LogDistributionPlot plot = calc.plotDistributionHistograms(dist, StiffnessType.CFF);
+////				plot.plotInGW(gw);
+//			}
+//		}
+		
+		AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(StiffnessType.CFF, calc, true,
+				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM);
+		List<? extends FaultSection> subSects = calc.getSubSects();
+		List<FaultSection> sources = Lists.newArrayList(
+				subSects.get(516),
+				subSects.get(515),
+				subSects.get(514),
+				subSects.get(513),
+				subSects.get(512),
+				subSects.get(511),
+				subSects.get(522)
+		);
+		List<FaultSection> receivers = Lists.newArrayList(
+				subSects.get(521)
+				
+		);
+		
+		System.out.println(aggCalc.calc(sources, receivers));
+		
 //		
 //		calc.writeCacheFile(new File("/tmp/stiffness_cache_test.csv"), StiffnessType.CFF);
 //		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");

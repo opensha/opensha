@@ -27,6 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Ju
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.AdaptiveDistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
@@ -113,7 +114,7 @@ public class ClusterRuptureBuilder {
 		// rupture size & count tracking
 		private int largestRup;
 		private int largestRupPrintMod = 10;
-		private int rupCountPrintMod = 100000;
+		private int rupCountPrintMod = 1000;
 		private HashSet<UniqueRupture> allPassedUniques;
 		
 		// start cluster tracking
@@ -121,9 +122,16 @@ public class ClusterRuptureBuilder {
 		private HashMap<Integer, List<Future<?>>> runningStartClusterFutures = new HashMap<>();
 		private HashSet<Integer> completedStartClusters = new HashSet<>();
 		
+		// rate tracking
+		private long startTime;
+		private long prevTime;
+		private int prevCount;
+		
 		public ProgressTracker() {
 			this.largestRup = 0;
 			this.allPassedUniques = new HashSet<>();
+			this.startTime = System.currentTimeMillis();
+			this.prevTime = startTime;
 		}
 		
 		public synchronized void processPassedRupture(ClusterRupture rup) {
@@ -132,15 +140,30 @@ public class ClusterRuptureBuilder {
 				int count = rup.getTotalNumSects();
 				if (count > largestRup) {
 					largestRup = count;
-					if (largestRup % largestRupPrintMod == 0)
-						System.out.println("\tNew largest rup has "+largestRup
+					if (largestRup % largestRupPrintMod == 0) {
+						System.out.println("New largest rup has "+largestRup
 								+" subsections with "+rup.getTotalNumJumps()+" jumps and "
-								+rup.splays.size()+" splays. "+countDF.format(allPassedUniques.size())
-								+" total unique passing ruptures found. "+getStartClusterStatus());
+								+rup.splays.size()+" splays.");
+						printCountAndStartClusterStatus();
+						return;
+					}
 				}
-				if (allPassedUniques.size() % rupCountPrintMod == 0)
-					System.out.println("\t"+countDF.format(allPassedUniques.size())+" unique passing ruptures found. "
-							+ "Longest has "+largestRup+" subsections. "+getStartClusterStatus());
+				int numUnique = allPassedUniques.size();
+				if (numUnique % rupCountPrintMod == 0) {
+					if (rupCountPrintMod <= 1000000) {
+						if (numUnique == 10000)
+							rupCountPrintMod = 5000;
+						if (numUnique == 50000)
+							rupCountPrintMod = 10000;
+						else if (numUnique == 100000)
+							rupCountPrintMod = 25000;
+						else if (numUnique == 200000)
+							rupCountPrintMod = 50000;
+						else if (numUnique == 1000000)
+							rupCountPrintMod = 100000;
+					}
+					printCountAndStartClusterStatus();
+				}
 			}
 		}
 		
@@ -163,8 +186,9 @@ public class ClusterRuptureBuilder {
 			futures.add(future);
 		}
 		
-		public synchronized String getStartClusterStatus() {
+		public synchronized void printCountAndStartClusterStatus() {
 			// see if there are any completed clusters
+			long curTime = System.currentTimeMillis();
 			List<Integer> newlyCompleted = new ArrayList<>();
 			int futuresOutstanding = 0;
 			for (Integer parentID : runningStartClusterFutures.keySet()) {
@@ -177,13 +201,69 @@ public class ClusterRuptureBuilder {
 				else
 					futuresOutstanding += futures.size();
 			}
+			int numRups = allPassedUniques.size();
+			if (numRups == prevCount && newlyCompleted.isEmpty())
+				return;
 			for (Integer parentID : newlyCompleted) {
 				runningStartClusterFutures.remove(parentID);
 				completedStartClusters.add(parentID);
 			}
-			return runningStartClusterFutures.size()+" start clusters running ("+futuresOutstanding+" futures), "
-					+completedStartClusters.size()+" completed, "+startClusterIDs.size()+" total";
+			StringBuilder str = new StringBuilder("\t").append(countDF.format(numRups));
+			str.append(" total unique passing ruptures found, longest has ").append(largestRup);
+			str.append(" subsections.\tStart clusters: ").append(runningStartClusterFutures.size());
+			str.append(" running (").append(futuresOutstanding).append(" futures), ");
+			str.append(completedStartClusters.size()).append(" completed, ");
+			str.append(startClusterIDs.size()).append(" total. ");
+			
+			str.append("\tRate: ").append(rupRate(numRups, curTime - startTime));
+			long recentMillis = curTime - prevTime;
+			str.append(" (").append(rupRate(numRups - prevCount, recentMillis)).append(" over last ");
+			double recentSecs = (double)recentMillis / 1000d;
+			if (recentSecs > 60d) {
+				double recentMins = recentSecs / 60d;
+				if (recentMins > 60d) {
+					double recentHours = recentMins / 60d;
+					str.append(oneDigitDF.format(recentHours)+"h");
+				} else {
+					str.append(oneDigitDF.format(recentMins)+"m");
+				}
+			} else if (recentSecs > 10){
+				str.append(countDF.format(recentSecs)+"s");
+			} else {
+				str.append(oneDigitDF.format(recentSecs)+"s");
+			}
+			str.append(")");
+			
+			prevTime = curTime;
+			prevCount = numRups;
+			
+			System.out.println(str.toString());
 		}
+	}
+	
+	private static String rupRate(int count, long timeDeltaMillis) {
+		if (timeDeltaMillis == 0)
+			return "N/A rups/s";
+		double timeDeltaSecs = (double)timeDeltaMillis/1000d;
+		
+		double perSec = (double)count/timeDeltaSecs;
+		if (count == 0 || perSec >= 0.1) {
+			if (perSec > 10)
+				return countDF.format(perSec)+" rups/s";
+			return oneDigitDF.format(perSec)+" rups/s";
+		}
+		// switch to per minute
+		double perMin = perSec*60d;
+		if (perMin >= 0.1) {
+			if (perMin > 10)
+				return countDF.format(perMin)+" rups/m";
+			return oneDigitDF.format(perMin)+" rups/m";
+		}
+		// fallback to per hour
+		double perHour = perMin*60d;
+		if (perHour > 10)
+			return countDF.format(perHour)+" rups/hr";
+		return oneDigitDF.format(perHour)+" rups/hr";
 	}
 	
 	/**
@@ -305,6 +385,7 @@ public class ClusterRuptureBuilder {
 		return rups;
 	}
 	
+	private static DecimalFormat oneDigitDF = new DecimalFormat("0.0");
 	private static DecimalFormat countDF = new DecimalFormat("#");
 	static {
 		countDF.setGroupingUsed(true);
@@ -406,9 +487,8 @@ public class ClusterRuptureBuilder {
 			}
 			System.out.println("Merged in "+countDF.format(masterRups.size())+" ruptures after processing "
 					+ "start cluster "+clusterIndex+"/"+track.startClusterCount()+" (id="+cluster.parentSectionID+"): "
-					+cluster.parentSectionName+" ("+added+" new, "+raw+" incl. possible duplicates). "
-					+countDF.format(track.allPassedUniques.size())+" total unique passing ruptures found. "
-					+track.getStartClusterStatus());
+					+cluster.parentSectionName+" ("+added+" new, "+raw+" incl. possible duplicates).");
+			track.printCountAndStartClusterStatus();
 		}
 		
 	}
@@ -971,6 +1051,8 @@ public class ClusterRuptureBuilder {
 		if (stiffnessCacheFile.exists())
 			stiffnessCacheSize = stiffnessCache.loadCacheFile(stiffnessCacheFile);
 		
+		String outputName = fm.encodeChoiceString().toLowerCase();
+		
 		/*
 		 * Connection strategy: which faults are allowed to connect, and where?
 		 */
@@ -979,13 +1061,21 @@ public class ClusterRuptureBuilder {
 		ClusterConnectionStrategy connectionStrategy =
 				new UCERF3ClusterConnectionStrategy(subSects,
 						distAzCalc, minJumpDist, CoulombRates.loadUCERF3CoulombRates(fm));
+		if (minJumpDist != 5d)
+			outputName += "_"+new DecimalFormat("0.#").format(minJumpDist)+"km";
 		// use this for simpler connection rules
 //		ClusterConnectionStrategy connectionStrategy =
 //			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, minJumpDist);
+//		if (minJumpDist != 5d)
+//			outputName += "_"+new DecimalFormat("0.#").format(minJumpDist)+"km";
+		// use this for adaptive distance filter
+//		double r0 = 5d;
+//		int nMin = 2;
+//		double rMax = 10d;
+//		ClusterConnectionStrategy connectionStrategy =
+//				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, nMin, rMax);
+//		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km_min"+nMin;
 		
-		String outputName = fm.encodeChoiceString().toLowerCase();
-		if (minJumpDist != 5d)
-			outputName += "_"+new DecimalFormat("0.#").format(minJumpDist)+"km";
 		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
 		
 		/*
@@ -1062,6 +1152,7 @@ public class ClusterRuptureBuilder {
 //		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 //				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.NINE_TENTH_INTERACTIONS),
 //				Range.greaterThan(0f)); outputName += "_cff9_10_IntsPos";
+		// CFF prob
 		float cmlProb = 0.01f;
 		boolean probFullRup = false;
 		boolean probAllowNeg = true;
@@ -1071,6 +1162,11 @@ public class ClusterRuptureBuilder {
 				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
 				connectionStrategy, probFullRup, probAllowNeg, probRelBest));
 		outputName += "_cffProb"+cmlProb+(probAllowNeg ? "Neg" : "")+(probFullRup ? "Full" : "")+(probRelBest ? "RelBest" : "");
+		// slip rate prob
+//		float slipProb = 0.01f;
+//		boolean slipProbAtIncr = true;
+//		configBuilder.cumulativeProbability(slipProb, new RelativeSlipRateProb(connectionStrategy, slipProbAtIncr));
+//		outputName += "_slipProb"+slipProb+(slipProbAtIncr ? "incr" : "");
 		
 		// new Coulomb filters (path is current preferred)
 		// this will use the median interaction between 2 sections, and sum sect-to-sect values across a rupture
@@ -1090,13 +1186,23 @@ public class ClusterRuptureBuilder {
 //		configBuilder.netClusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 //				AggregationMethod.SUM, AggregationMethod.SUM,
 //				AggregationMethod.SUM, AggregationMethod.SUM), 0f); outputName += "_cffClusterNetPositive";
-		configBuilder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM),
-				Range.atLeast(0f)); outputName += "_cffClusterMedPathPositive";
+//		configBuilder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+//				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM),
+//				Range.atLeast(0f)); outputName += "_cffClusterMedPathPositive";
 		//		MAIN CLUSTER PATH SUM
 //		configBuilder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
 //				Range.atLeast(0f)); outputName += "_cffClusterSumPathPositive";
+		//		SECT CLUSTER PATH SUM (most favorable)
+		boolean jumpToMostFavorable = true;
+		float favMaxDist = 15f;
+//		float fractPassThresh = 1f/3f; String pathStr = "Third";
+//		float fractPassThresh = 0.5f; String pathStr = "Half";
+		float fractPassThresh = 0f; String pathStr = "";
+		configBuilder.sectPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
+				Range.atLeast(0f), fractPassThresh, jumpToMostFavorable, favMaxDist);
+		outputName += "_cffSect"+(jumpToMostFavorable ? "Fav"+(int)favMaxDist : "")+pathStr+"PathPos";
 //		configBuilder.parentCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
 //				0f, Directionality.EITHER); outputName += "_cffParent";
@@ -1173,11 +1279,12 @@ public class ClusterRuptureBuilder {
 		Stopwatch watch = Stopwatch.createStarted();
 		List<ClusterRupture> rups = builder.build(permStrat, threads);
 		watch.stop();
-		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		long millis = watch.elapsed(TimeUnit.MILLISECONDS);
+		double secs = millis/1000d;
 		double mins = (secs / 60d);
 		DecimalFormat timeDF = new DecimalFormat("0.00");
 		System.out.println("Built "+countDF.format(rups.size())+" ruptures in "+timeDF.format(secs)
-			+" secs = "+timeDF.format(mins)+" mins");
+			+" secs = "+timeDF.format(mins)+" mins. Total rate: "+rupRate(rups.size(), millis));
 		
 		if (writeRupSet) {
 			// write out test rup set

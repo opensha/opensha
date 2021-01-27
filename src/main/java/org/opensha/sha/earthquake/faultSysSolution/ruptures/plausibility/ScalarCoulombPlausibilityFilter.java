@@ -23,18 +23,9 @@ public interface ScalarCoulombPlausibilityFilter extends ScalarValuePlausibiltyF
 	}
 	
 	public default float getWorseValue(float val1, float val2) {
-		Range<Float> range = getAcceptableRange();
-		double dist1 = distFromRange(val1, range);
-		double dist2 = distFromRange(val2, range);
-		if (dist1 == 0f && dist2 == 0f) {
-			// both are acceptable, choose worse
-			if (range.hasUpperBound())
-				return Float.max(val1, val2);
-			return Float.min(val1, val2);
-		}
-		if (dist1 > dist2)
-			return val1;
-		return val2;
+		if (isValueBetter(val1, val2))
+			return val2;
+		return val1;
 	}
 	
 	public default Comparator<Float> worstToBestComparator() {
@@ -45,15 +36,7 @@ public interface ScalarCoulombPlausibilityFilter extends ScalarValuePlausibiltyF
 			public int compare(Float val1, Float val2) {
 				if (val1.equals(val2))
 					return 0;
-				double dist1 = distFromRange(val1, range);
-				double dist2 = distFromRange(val2, range);
-				if (dist1 == 0f && dist2 == 0f) {
-					// both are acceptable, choose better
-					if (range.hasUpperBound())
-						return dist1 < dist2 ? 1 : -1;
-					return dist1 < dist2 ? -1 : 1;
-				}
-				if (dist1 <= dist2)
+				if (isValueBetter(val1, val2))
 					return 1;
 				return -1;
 			}
@@ -61,18 +44,24 @@ public interface ScalarCoulombPlausibilityFilter extends ScalarValuePlausibiltyF
 	}
 	
 	public default float getBestValue(float val1, float val2) {
+		if (isValueBetter(val1, val2))
+			return val1;
+		return val2;
+	}
+	
+	public default boolean isValueBetter(float testVal, float refVal) {
 		Range<Float> range = getAcceptableRange();
-		double dist1 = distFromRange(val1, range);
-		double dist2 = distFromRange(val2, range);
+		double dist1 = distFromRange(testVal, range);
+		double dist2 = distFromRange(refVal, range);
 		if (dist1 == 0f && dist2 == 0f) {
 			// both are acceptable, choose better
 			if (range.hasUpperBound())
-				return Float.min(val1, val2);
-			return Float.max(val1, val2);
+				return testVal < refVal;
+			return testVal > refVal;
 		}
-		if (dist1 <= dist2)
-			return val1;
-		return val2;
+		if (dist1 < dist2)
+			return true;
+		return false;
 	}
 	
 	static float distFromRange(float val, Range<Float> range) {

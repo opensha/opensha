@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -896,20 +897,51 @@ public class AggregatedStiffnessCalculator {
 		return aggregated;
 	}
 	
-	// TODO cache internal here? not currently used
+	// array by receiver index, to map of <sources, val>>
+	private transient List<Map<UniqueRupture, Double>> ss2rCache = null;
+	
 	public double calc(List<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
-		ReceiverDistribution[] receiverSectDists = collectMultiSectsToSect(sources, receiver);
-		
+		UniqueRupture sourcesUnique = UniqueRupture.forSects(sources);
+		if (ss2rCache == null) {
+			synchronized (this) {
+				if (ss2rCache == null) {
+					int n = calc.getSubSects().size();
+					List<Map<UniqueRupture, Double>> ss2rCache = new ArrayList<>(n);
+					for (int i=0; i<n; i++)
+						ss2rCache.add(new HashMap<>());
+					this.ss2rCache = ss2rCache;
+				}
+			}
+		}
+		int recID = receiver.getSectionId();
+		Preconditions.checkState(recID < ss2rCache.size());
+		Map<UniqueRupture, Double> cache = ss2rCache.get(recID);
+		Double val;
+		synchronized (cache) {
+			val = cache.get(sourcesUnique);
+		}
 		if (D) System.out.println(sources.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
-					+" -> "+receiver.getSectionId()+" sects-to-sect "+layers[2]+":");
-		return processUntilTerminal(2, receiver.getSectionId(), receiverSectDists);
+				+" -> "+receiver.getSectionId()+" sects-to-sect "+layers[2]+":");
+		if (val == null) {
+			ReceiverDistribution[] receiverSectDists = collectMultiSectsToSect(sources, receiver);
+			
+			
+			val = processUntilTerminal(2, receiver.getSectionId(), receiverSectDists);
+			if (D) System.out.println("\tVAL: "+val);
+			synchronized (cache) {
+				cache.putIfAbsent(sourcesUnique, val);
+			}
+		} else if (D) {
+			System.out.println("\tCAHCED VAL: "+val);
+		}
+		
+		return val;
 	}
 	
-	private transient Table<UniqueRupture, UniqueRupture, Double> s2sCache = null;
+	private transient Table<UniqueRupture, UniqueRupture, Double> ss2rsCache = null;
 	
-	// TODO cache internal here? used in every CFF filter
 	public double calc(List<FaultSection> sources, List<FaultSection> receivers) {
 		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
 		Preconditions.checkState(layers[3].isTerminal(), "Final layer must be terminal: %s", layers[3]);
@@ -917,10 +949,14 @@ public class AggregatedStiffnessCalculator {
 		UniqueRupture sourcesUnique = UniqueRupture.forSects(sources);
 		UniqueRupture receiversUnique = UniqueRupture.forSects(receivers);
 		Double val;
-		synchronized (this) {
-			if (s2sCache == null)
-				s2sCache = HashBasedTable.create();
-			val = s2sCache.get(sources, receivers);
+		if (ss2rsCache == null) {
+			synchronized (this) {
+				if (ss2rsCache == null)
+					ss2rsCache = HashBasedTable.create();
+			}
+		}
+		synchronized (ss2rsCache) {
+			val = ss2rsCache.get(sourcesUnique, receiversUnique);
 		}
 		if (val == null) {
 			ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[receivers.size()];
@@ -964,8 +1000,8 @@ public class AggregatedStiffnessCalculator {
 					System.out.println("\t"+aggDist);
 				System.out.println("\tVAL: "+val);
 			}
-			synchronized (this) {
-				s2sCache.put(sourcesUnique, receiversUnique, val);
+			synchronized (ss2rsCache) {
+				ss2rsCache.put(sourcesUnique, receiversUnique, val);
 			}
 		} else if (D) {
 			if (D) {

@@ -3,18 +3,21 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.RakeType;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
@@ -24,6 +27,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
+import com.google.common.util.concurrent.AtomicDouble;
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
@@ -48,6 +52,8 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		public default void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
 			// do nothing
 		}
+		
+		public boolean isDirectional(boolean splayed);
 	}
 	
 	public static abstract class JumpProbabilityCalc implements RuptureProbabilityCalc {
@@ -126,6 +132,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			return "BW16 JumpDist";
 		}
 		
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+		
 	}
 	
 	public static double passingRatioToProb(double passingRatio) {
@@ -168,6 +178,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		@Override
 		public String getName() {
 			return "BW16 SS JumpDist";
+		}
+		
+		public boolean isDirectional(boolean splayed) {
+			return false;
 		}
 		
 	}
@@ -237,6 +251,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			return "BW17 AzChange";
 		}
 		
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+		
 	}
 	
 	public static class BiasiWesnousky2017_SSJumpAzChangeProb extends JumpProbabilityCalc {
@@ -284,6 +302,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			return "BW17 SS AzChange";
 		}
 		
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+		
 	}
 	
 	public static final double bw2017_mech_change_prob = 4d/75d;
@@ -315,6 +337,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			return "BW17 MechChange";
 		}
 		
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+		
 	}
 	
 	public static RuptureProbabilityCalc[] getPrefferedBWCalcs(SectionDistanceAzimuthCalculator distAzCalc) {
@@ -325,21 +351,16 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		};
 	}
 	
-	public static class RelativeCoulombProb extends JumpProbabilityCalc {
+	private abstract static class AbstractRelativeProb extends JumpProbabilityCalc {
 		
-		private AggregatedStiffnessCalculator aggCalc;
-		private transient ClusterConnectionStrategy connStrat;
-		private boolean fullRuptureSource;
-		private boolean allowNegative;
-		private boolean relativeToBest = false;
+		protected transient ClusterConnectionStrategy connStrat;
+		protected boolean allowNegative;
+		protected boolean relativeToBest = false;
 		
-		private transient Map<Integer, FaultSubsectionCluster> fullClustersMap;
+		protected transient Map<Integer, FaultSubsectionCluster> fullClustersMap;
 
-		public RelativeCoulombProb(AggregatedStiffnessCalculator aggCalc, ClusterConnectionStrategy connStrat,
-				boolean fullRuptureSource, boolean allowNegative, boolean relativeToBest) {
-			this.aggCalc = aggCalc;
+		public AbstractRelativeProb(ClusterConnectionStrategy connStrat, boolean allowNegative, boolean relativeToBest) {
 			this.connStrat = connStrat;
-			this.fullRuptureSource = fullRuptureSource;
 			this.allowNegative = allowNegative;
 			this.relativeToBest = relativeToBest;
 		}
@@ -347,18 +368,6 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		@Override
 		public void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
 			this.connStrat = connStrat;
-		}
-
-		@Override
-		public String getName() {
-			String name = "Rel CFF";
-			if (fullRuptureSource)
-				name += ", Full Rup Src";
-			if (allowNegative)
-				name += ", Allow Neg";
-			if (relativeToBest)
-				name += ", Rel Best";
-			return name;
 		}
 		
 		private void checkInitFullClusters() {
@@ -375,30 +384,12 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			return;
 		}
 		
-		private List<FaultSection> getSectsBefore(ClusterRupture rupture, Jump jump) {
-			List<FaultSection> sectsBefore = new ArrayList<>();
-			for (FaultSubsectionCluster cluster : rupture.clusters) {
-				if (jump.toCluster.equals(cluster))
-					break;
-				sectsBefore.addAll(cluster.subSects);
-			}
-			for (Jump splayJump : rupture.splays.keySet()) {
-				if (!splayJump.equals(jump))
-					sectsBefore.addAll(getSectsBefore(rupture.splays.get(splayJump), jump));
-			}
-			return sectsBefore;
-		}
+		protected abstract double calcValue(ClusterRupture fullRupture, Jump origJump, FaultSubsectionCluster from,
+				FaultSubsectionCluster to);
 
 		@Override
 		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
-			List<FaultSection> sources;
-			if (fullRuptureSource) {
-				sources = getSectsBefore(fullRupture, jump);
-				Preconditions.checkState(!sources.isEmpty() && sources.size() >= jump.fromCluster.subSects.size());
-			} else {
-				sources = jump.fromCluster.subSects;
-			}
-			double myVal = aggCalc.calc(sources, jump.toCluster.subSects);
+			double myVal = calcValue(fullRupture, jump, jump.fromCluster, jump.toCluster);
 			if (verbose)
 				System.out.println("\tJump taken value ("+jump.toCluster+"): "+myVal);
 			if (!allowNegative && myVal < 0)
@@ -409,7 +400,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			Preconditions.checkNotNull(fullFrom);
 			List<FaultSubsectionCluster> targetClusters = new ArrayList<>();
 			if (fullFrom.subSects.size() > jump.fromCluster.subSects.size()
-					&& !jump.fromCluster.endSects.contains(jump.fromSection)) {
+					&& !fullFrom.endSects.contains(jump.fromSection)) {
 				// need to add continuing on this cluster as a possible "jump"
 				int fromSectIndex = fullFrom.subSects.indexOf(jump.fromSection);
 				Preconditions.checkState(fromSectIndex >=0, "From section not found in full cluster?");
@@ -441,14 +432,16 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 				}
 			}
 			// now add possible jumps to other clusters
-			for (Jump possible : jump.fromCluster.getConnections(jump.fromSection)) {
+			
+			for (Jump possible : fullFrom.getConnections(jump.fromSection)) {
+				// TODO: check that the possible target is not already in the rupture up to that point?
 				if (possible.toCluster.parentSectionID != jump.toCluster.parentSectionID)
 					targetClusters.add(possible.toCluster);
 			}
 			List<Double> targetVals = new ArrayList<>();
 			double normalization = Math.min(myVal, 0d);
 			for (FaultSubsectionCluster targetCluster : targetClusters) {
-				double val = aggCalc.calc(sources, targetCluster.subSects);
+				double val = calcValue(fullRupture, jump, jump.fromCluster, targetCluster);
 				if (verbose)
 					System.out.println("\tAlternative dest value ("+targetCluster+"): "+val);
 				if (val < 0) {
@@ -488,7 +481,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 					System.out.println("\tSum: "+divisor);
 			}
 			Preconditions.checkState((float)divisor >= 0f,
-					"Bad CFF divisor = %s.\n\tnormalization: %s\n\tmyVal: %s\n\tallVals (after norm): %s",
+					"Bad relative divisor = %s.\n\tnormalization: %s\n\tmyVal: %s\n\tallVals (after norm): %s",
 					divisor, normalization, myVal, targetVals);
 			if ((float)divisor == 0f)
 				return 0d;
@@ -497,9 +490,160 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			if (verbose)
 				System.out.println("\tP = "+myVal+" / "+divisor+" = "+prob);
 			Preconditions.checkState(prob >= 0d && prob <= 1d,
-					"Bad CFF prob! P = %s / %s = %s.\n\tnormalization: %s\n\tallVals (after norm): %s",
+					"Bad relative prob! P = %s / %s = %s.\n\tnormalization: %s\n\tallVals (after norm): %s",
 					myVal, divisor, prob, normalization, targetVals);
 			return prob;
+		}
+		
+	}
+	
+	public static class RelativeCoulombProb extends AbstractRelativeProb {
+		
+		private AggregatedStiffnessCalculator aggCalc;
+		private boolean fullRuptureSource;
+
+		public RelativeCoulombProb(AggregatedStiffnessCalculator aggCalc, ClusterConnectionStrategy connStrat,
+				boolean fullRuptureSource, boolean allowNegative, boolean relativeToBest) {
+			super(connStrat, allowNegative, relativeToBest);
+			this.aggCalc = aggCalc;
+			this.fullRuptureSource = fullRuptureSource;
+		}
+
+		@Override
+		public void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
+			this.connStrat = connStrat;
+		}
+
+		@Override
+		public String getName() {
+			String name = "Rel CFF";
+			if (fullRuptureSource)
+				name += ", Full Rup Src";
+			if (allowNegative)
+				name += ", Allow Neg";
+			if (relativeToBest)
+				name += ", Rel Best";
+			return name;
+		}
+		
+		private List<FaultSection> getSectsBefore(ClusterRupture rupture, Jump jump) {
+			List<FaultSection> sectsBefore = new ArrayList<>();
+			for (FaultSubsectionCluster cluster : rupture.clusters) {
+				if (jump.toCluster.equals(cluster))
+					break;
+				sectsBefore.addAll(cluster.subSects);
+			}
+			for (Jump splayJump : rupture.splays.keySet()) {
+				if (!splayJump.equals(jump))
+					sectsBefore.addAll(getSectsBefore(rupture.splays.get(splayJump), jump));
+			}
+			return sectsBefore;
+		}
+
+		@Override
+		protected double calcValue(ClusterRupture fullRupture, Jump origJump, FaultSubsectionCluster from,
+				FaultSubsectionCluster to) {
+			List<FaultSection> sources;
+			if (fullRuptureSource) {
+				sources = getSectsBefore(fullRupture, origJump);
+				Preconditions.checkState(!sources.isEmpty() && sources.size() >= from.subSects.size());
+			} else {
+				sources = from.subSects;
+			}
+			return aggCalc.calc(sources, to.subSects);
+		}
+		
+		public boolean isDirectional(boolean splayed) {
+			return true;
+		}
+		
+	}
+	
+	public static class RelativeSlipRateProb extends AbstractRelativeProb {
+		
+		private boolean onlyAtIncreases;
+
+		public RelativeSlipRateProb(ClusterConnectionStrategy connStrat, boolean onlyAtIncreases) {
+			super(connStrat, false, true);
+			this.onlyAtIncreases = onlyAtIncreases;
+		}
+
+		@Override
+		protected double calcValue(ClusterRupture fullRupture, Jump origJump, FaultSubsectionCluster from,
+				FaultSubsectionCluster to) {
+			return calcAveSlipRate(to);
+		}
+		
+		private double calcAveSlipRate(FaultSubsectionCluster cluster) {
+			double aveVal = 0d;
+			for (FaultSection sect : cluster.subSects)
+				aveVal += sect.getOrigAveSlipRate();
+			aveVal /= cluster.subSects.size();
+			return aveVal;
+		}
+		
+		@Override
+		public String getName() {
+			if (onlyAtIncreases)
+				return "Slip Rate Path (at incr.)";
+			return "Slip Rate Path";
+		}
+
+		@Override
+		public double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
+			int totNumClusters = rupture.getTotalNumClusters();
+			if (totNumClusters == 1)
+				return 1d;
+			if (onlyAtIncreases) {
+				// only include jump probabilities that precede an increase in slip rate (can always go down, it's when
+				// you try to go back up after going down that you get penalized
+				List<FaultSubsectionCluster> endClusters = new ArrayList<>();
+				findEndClusters(rupture, endClusters);
+				HashSet<FaultSubsectionCluster> skipToClusters = new HashSet<>();
+				RuptureTreeNavigator nav = rupture.getTreeNavigator();
+				for (FaultSubsectionCluster cluster : endClusters) {
+					double clusterVal = calcAveSlipRate(cluster);
+					FaultSubsectionCluster predecessor = nav.getPredecessor(cluster);
+					while (predecessor != null) {
+						double predecessorVal = calcAveSlipRate(predecessor);
+						if (predecessorVal < clusterVal)
+							// going to this cluster was an increase, stop here
+							break;
+						skipToClusters.add(cluster);
+						cluster = predecessor;
+						clusterVal = predecessorVal;
+						predecessor = nav.getPredecessor(cluster);
+					}
+				}
+				Preconditions.checkState(skipToClusters.size() < totNumClusters);
+				if (skipToClusters.size() == totNumClusters-1)
+					return 1d;
+				double prob = 1d;
+				for (Jump jump : rupture.getJumpsIterable()) {
+					if (skipToClusters.contains(jump.toCluster)) {
+						if (verbose)
+							System.out.println(getName()+": "+jump+", skipping (no downstream increase)");
+						continue;
+					}
+					double jumpProb = calcJumpProbability(rupture, jump, verbose);
+					if (verbose)
+						System.out.println(getName()+": "+jump+", P="+jumpProb);
+					prob *= jumpProb;
+				}
+				return prob;
+			}
+			return super.calcRuptureProb(rupture, verbose);
+		}
+		
+		private void findEndClusters(ClusterRupture rupture, List<FaultSubsectionCluster> endClusters) {
+			endClusters.add(rupture.clusters[rupture.clusters.length-1]);
+			for (ClusterRupture splay : rupture.splays.values())
+				findEndClusters(splay, endClusters);
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return true;
 		}
 		
 	}
@@ -668,6 +812,14 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			return new CumulativeProbabilityFilter(minProbability, calcs);
 		}
 		
+	}
+	
+	@Override
+	public boolean isDirectional(boolean splayed) {
+		for (RuptureProbabilityCalc calc : calcs)
+			if (calc.isDirectional(splayed))
+				return true;
+		return false;
 	}
 	
 	public static void main(String[] args) {

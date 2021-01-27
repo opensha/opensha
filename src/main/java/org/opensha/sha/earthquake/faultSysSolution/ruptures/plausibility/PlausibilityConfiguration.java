@@ -23,6 +23,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter.Penalty;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RelativeCoulombProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RelativeSlipRateProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeRakeChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
@@ -33,6 +34,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Ne
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NumClustersFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SectPathCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayLengthFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
@@ -209,6 +211,25 @@ public class PlausibilityConfiguration {
 				float fractPathsThreshold, boolean failFuturePossible) {
 			filters.add(new ClusterPathCoulombCompatibilityFilter(
 					aggCalc, acceptableRange, fractPathsThreshold, failFuturePossible));
+			return this;
+		}
+		
+		public Builder sectPathCoulomb(AggregatedStiffnessCalculator aggCalc, float threshold) {
+			filters.add(new SectPathCoulombCompatibilityFilter(aggCalc, Range.atLeast(threshold), 0f, true));
+			return this;
+		}
+		
+		public Builder sectPathCoulomb(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange,
+				boolean jumpToMostFavorable, float maxJumpDist) {
+			filters.add(new SectPathCoulombCompatibilityFilter(aggCalc, acceptableRange, 0f, jumpToMostFavorable,
+					maxJumpDist, distAzCalc, true));
+			return this;
+		}
+		
+		public Builder sectPathCoulomb(AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange,
+				float fractPassThreshold, boolean jumpToMostFavorable, float maxJumpDist) {
+			filters.add(new SectPathCoulombCompatibilityFilter(aggCalc, acceptableRange, fractPassThreshold, jumpToMostFavorable,
+					maxJumpDist, distAzCalc, true));
 			return this;
 		}
 		
@@ -641,22 +662,22 @@ public class PlausibilityConfiguration {
 						skipUntilEndObject(in, startPath);
 					} else {
 						Preconditions.checkNotNull(type, "filter must be last in json object");
-						if (adapter == null) {
-							try {
+						try {
+							if (adapter == null) {
 								// use Gson default
 								filter = gson.fromJson(in, type);
-							} catch (Exception e) {
-								e.printStackTrace();
-								System.err.println("Warning: couldn't de-serialize filter "
-										+ "(using stub instead): "+type.getName());
-								System.err.flush();
-//								System.out.println("PATH after read: "+in.getPath());
-								filter = new PlausibilityFilterStub(name, shortName);
-								skipUntilEndObject(in, startPath);
+							} else {
+								// use specified adapter
+								filter = adapter.read(in);
 							}
-						} else {
-							// use specified adapter
-							filter = adapter.read(in);
+						} catch (Exception e) {
+							e.printStackTrace();
+							System.err.println("Warning: couldn't de-serialize filter "
+									+ "(using stub instead): "+type.getName());
+							System.err.flush();
+//							System.out.println("PATH after read: "+in.getPath());
+							filter = new PlausibilityFilterStub(name, shortName);
+							skipUntilEndObject(in, startPath);
 						}
 					}
 					break;
@@ -775,17 +796,34 @@ public class PlausibilityConfiguration {
 
 		@Override
 		public void write(JsonWriter out, SectionDistanceAzimuthCalculator value) throws IOException {
-			out.beginObject();
-			out.name("numSects").value(value.getSubSections().size());
-			out.endObject();
+			if (value == null) {
+				//if the writer was not allowed to write null values
+				//do it only for this field
+				if (!out.getSerializeNulls()) {
+					out.setSerializeNulls(true);
+					out.nullValue();
+					out.setSerializeNulls(false);
+				} else {
+					out.nullValue();
+				}
+			} else {
+				out.beginObject();
+				out.name("numSects").value(value.getSubSections().size());
+				out.endObject();
+			}
 		}
 
 		@Override
 		public SectionDistanceAzimuthCalculator read(JsonReader in) throws IOException {
+			if(in.peek() == JsonToken.NULL) {
+				in.nextNull();
+				return null;
+			}
 			in.beginObject();
 			in.nextName();
 			int numSects = in.nextInt();
-			Preconditions.checkState(numSects == distAzCalc.getSubSections().size());
+			Preconditions.checkState(numSects == distAzCalc.getSubSections().size(),
+					"JSON says %s sects, expected %s", numSects, distAzCalc.getSubSections().size());
 			in.endObject();
 			return distAzCalc;
 		}
@@ -923,117 +961,133 @@ public class PlausibilityConfiguration {
 		
 
 		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
+		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
 		// small subset
 		subSects = subSects.subList(0, 30);
 		double maxDist = 50d;
 		
 //		double maxDist = 5d;
 		
-		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
-		
 		DistCutoffClosestSectClusterConnectionStrategy connStrat =
 				new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxDist);
 		
-		Builder builder = builder(connStrat, subSects);
+		Builder builder = builder(connStrat, distAzCalc);
 //		builder.u3Azimuth();
 //		builder.u3Cumulatives();
 //		builder.minSectsPerParent(2, true, true);
 		SubSectStiffnessCalculator stiffnessCalc =
 				new SubSectStiffnessCalculator(subSects, 2d, 3e4, 3e4, 0.5);
 		stiffnessCalc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
+		
 //		builder.parentCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, Directionality.EITHER);
 //		builder.clusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+		builder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
 //		builder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-//				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
-////		builder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-////				AggregationMethod.FLATTEN, AggregationMethod.GREATER_SUM_MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
-//		builder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-//				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
-//		// fraction of all receiver patches that are net positive (summed over all sources)
+//				AggregationMethod.FLATTEN, AggregationMethod.GREATER_SUM_MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
+		builder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
+		builder.add(new SectPathCoulombCompatibilityFilter(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), Range.atLeast(0f),
+				0, false, 0, null, false));
+		builder.add(new SectPathCoulombCompatibilityFilter(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), Range.atLeast(0f),
+				0, true, 15f, distAzCalc, false));
+		builder.add(new SectPathCoulombCompatibilityFilter(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), Range.atLeast(0f),
+				1f/3f, true, 15f, distAzCalc, false));
+		builder.add(new SectPathCoulombCompatibilityFilter(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), Range.atLeast(0f),
+				0.5f, true, 15f, distAzCalc, false));
+		// fraction of all receiver patches that are net positive (summed over all sources)
+		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.95f);
+//		// fraction of all [section -> receiver patch] interactions are positive
 //		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-//				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.95f);
-////		// fraction of all [section -> receiver patch] interactions are positive
-////		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-////				AggregationMethod.SUM, AggregationMethod.FLATTEN, AggregationMethod.FLATTEN, AggregationMethod.FRACT_POSITIVE), 0.8f);
-////		// average fraction of positive receiver patches between each subsection pair
-////		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-////				AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN, AggregationMethod.MEAN), 0.8f);
-////		// fraction of net positive receiver sections, averaged across all source sections
-////		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-////				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN), 0.8f);
-//		// average fraction of receiver patches net positive
+//				AggregationMethod.SUM, AggregationMethod.FLATTEN, AggregationMethod.FLATTEN, AggregationMethod.FRACT_POSITIVE), 0.8f);
+//		// average fraction of positive receiver patches between each subsection pair
 //		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-//				AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN, AggregationMethod.MEAN), 0.75f);
-//		// fraction of receiver patches with >1/2 of interactions positive
+//				AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN, AggregationMethod.MEAN), 0.8f);
+//		// fraction of net positive receiver sections, averaged across all source sections
 //		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.90f);
-//		// 1/2 of all interactions positive
+//				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN), 0.8f);
+		// average fraction of receiver patches net positive
+		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.SUM, AggregationMethod.FRACT_POSITIVE, AggregationMethod.MEAN, AggregationMethod.MEAN), 0.75f);
+		// fraction of receiver patches with >1/2 of interactions positive
+		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.90f);
+		// 1/2 of all interactions positive
 //		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 //				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS), 0f);
-//		// 3/4 of all interactions positive
+		// 3/4 of all interactions positive
+		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS), 0f);
+		// 9/10 of all interactions positive
 //		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS), 0f);
-//		// 9/10 of all interactions positive
-////		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-////				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.NINE_TENTH_INTERACTIONS), 0f);
-//		// number of receiver sections with <half of interactions positive
-//		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.NUM_NEGATIVE), Range.atMost(5f));
-//		// fraction of receiver patches on the opposite side of a jump that are net positive with the prior rupture as source
-//		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-//				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.8f);
-//		// fraction of receiver patches on the opposite side of a jump that have >1/2 interactions positive with the prior rupture as source
-//		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.5f);
-////		// jump cluster must be sum >= 0
-////		builder.netClusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-////				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
-//		builder.cumulativeProbability(0.02f, new RelativeCoulombProb(
+//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.NINE_TENTH_INTERACTIONS), 0f);
+		// number of receiver sections with <half of interactions positive
+		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.NUM_NEGATIVE), Range.atMost(5f));
+		// fraction of receiver patches on the opposite side of a jump that are net positive with the prior rupture as source
+		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.5f);
+		// fraction of receiver patches on the opposite side of a jump that have >1/2 interactions positive with the prior rupture as source
+		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.5f);
+//		// jump cluster must be sum >= 0
+//		builder.netClusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+//				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM), 0f);
+//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(
 //				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
 //				connStrat, false, false, false));
-//		builder.cumulativeProbability(0.02f, new RelativeCoulombProb(
-//				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-//				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
-//				connStrat, false, true, false));
-//		builder.cumulativeProbability(0.02f, new RelativeCoulombProb(
+		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(
+				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
+				connStrat, false, true, false));
+//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(
 //				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
 //				connStrat, true, false, false));
-//		builder.cumulativeProbability(0.02f, new RelativeCoulombProb(
+//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(
 //				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
 //				connStrat, false, false, true));
-//		builder.cumulativeProbability(0.02f, new RelativeCoulombProb(
-//				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-//				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
-//				connStrat, false, true, true));
-////		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 0.5f);
-////		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 1f/3f);
-////		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 2f/3f);
-////		builder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, RupCoulombQuantity.SUM_SECT_CFF);
-////		builder.netClusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
-//		String destFileName = "alt_filters.json";
+		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(
+				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
+				connStrat, false, true, true));
+		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, false));
+		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, true));
+		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, false));
+		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, true));
+//		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 0.5f);
+//		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 1f/3f);
+//		builder.clusterPathCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, 2f/3f);
+//		builder.netRupCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f, RupCoulombQuantity.SUM_SECT_CFF);
+//		builder.netClusterCoulomb(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f);
+		String destFileName = "alt_filters.json";
 		
 		// current best
-		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS),
-				Range.greaterThan(0f));
-		float cmlProb = 0.01f;
-		boolean probFullRup = false;
-		boolean probAllowNeg = true;
-		boolean probRelBest = true;
-		builder.cumulativeProbability(cmlProb, new RelativeCoulombProb(
-				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-						AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
-				connStrat, probFullRup, probAllowNeg, probRelBest));
-		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
-				AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.5f);
-		builder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM),
-				Range.atLeast(0f));
-		String destFileName = "cur_pref_filters.json";
+//		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS),
+//				Range.greaterThan(0f));
+//		float cmlProb = 0.01f;
+//		boolean probFullRup = false;
+//		boolean probAllowNeg = true;
+//		boolean probRelBest = true;
+//		builder.cumulativeProbability(cmlProb, new RelativeCoulombProb(
+//				new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+//						AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
+//				connStrat, probFullRup, probAllowNeg, probRelBest));
+//		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+//				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH,
+//				AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE), 0.5f);
+//		builder.clusterPathCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+//				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN, AggregationMethod.SUM, AggregationMethod.SUM),
+//				Range.atLeast(0f));
+//		String destFileName = "cur_pref_filters.json";
 		
 //		Penalty[] penalties = {
 //				new CumulativePenaltyFilter.JumpPenalty(0f, 1d, true),

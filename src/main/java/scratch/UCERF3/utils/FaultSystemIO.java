@@ -386,9 +386,16 @@ public class FaultSystemIO {
 		ZipEntry plausibilityEntry = zip.getEntry(getRemappedName("plausibility.json", nameRemappings));
 		if (plausibilityEntry != null) {
 			InputStreamReader json = new InputStreamReader(new BufferedInputStream(zip.getInputStream(plausibilityEntry)));
-			PlausibilityConfiguration plausibilityConfig =
-					PlausibilityConfiguration.readJSON(json, faultSectionData);
-			rupSet.setPlausibilityConfiguration(plausibilityConfig);
+			try {
+				PlausibilityConfiguration plausibilityConfig =
+						PlausibilityConfiguration.readJSON(json, faultSectionData);
+				rupSet.setPlausibilityConfiguration(plausibilityConfig);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("WARNING: Plausibilty configuration specified, but reading it failed. Skipping");
+				if (json != null)
+					json.close();
+			}
 		}
 		
 		if (DD) System.out.println("loading cluster ruptures");

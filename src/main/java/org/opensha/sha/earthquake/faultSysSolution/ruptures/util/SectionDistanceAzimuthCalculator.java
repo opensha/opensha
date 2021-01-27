@@ -10,7 +10,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
+import java.util.zip.ZipException;
 
+import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -25,6 +27,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
+
+import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.utils.FaultSystemIO;
 
 public class SectionDistanceAzimuthCalculator {
 
@@ -269,6 +274,14 @@ public class SectionDistanceAzimuthCalculator {
 			}
 		}
 		System.out.println("Loaded cache file for "+numDist+" distances and "+numAz+" azimuths");
+	}
+	
+	public static void main(String[] args) throws ZipException, IOException, DocumentException {
+		File rupSetFile = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip");
+		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(rupSetFile);
+		SectionDistanceAzimuthCalculator calc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+		System.out.println("516=>521: "+calc.getDistance(516, 521));
+		System.out.println("516=>522: "+calc.getDistance(516, 522));
 	}
 
 }

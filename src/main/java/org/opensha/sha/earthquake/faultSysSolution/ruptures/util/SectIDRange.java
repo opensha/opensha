@@ -1,13 +1,5 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
-import org.opensha.sha.faultSurface.FaultSection;
-
 import com.google.common.base.Preconditions;
 
 /**

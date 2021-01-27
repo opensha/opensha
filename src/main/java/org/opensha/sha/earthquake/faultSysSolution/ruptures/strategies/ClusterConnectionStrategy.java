@@ -94,6 +94,14 @@ public abstract class ClusterConnectionStrategy implements Named {
 	}
 	
 	/**
+	 * @return list of full clusters, without guaranteeing that all connections have been added. For internal use while
+	 * building connections.
+	 */
+	protected List<FaultSubsectionCluster> getRawClusters() {
+		return clusters;
+	}
+	
+	/**
 	 * @return list of full clusters, after adding all connections
 	 */
 	public synchronized List<FaultSubsectionCluster> getClusters() {
@@ -107,10 +115,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 
 	/**
 	 * Populates all possible connections between the given clusters (via the
-	 * FaultSubsectionCluster.addConnection(Jump) method).
-	 * 
-	 * If this method is overridden, you must also override the areParentSectsConnected,
-	 * and getJumpsFrom methods.
+	 * FaultSubsectionCluster.addConnection(Jump) method). This also populates the connectedParents and jumpsFrom maps.
 	 * 
 	 * @return the number of connections added
 	 */

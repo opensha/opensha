@@ -171,14 +171,23 @@ public class UniqueRupture {
 		int index = Collections.binarySearch(list, new SectIDRange(id, id), containsCompare);
 		return index >= 0;
 	}
+	
+	private int hashCode = -1;
 
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((list == null) ? 0 : list.hashCode());
-		result = prime * result + size;
-		return result;
+		if (hashCode == -1) {
+			synchronized (this) {
+				if (hashCode == -1) {
+					final int prime = 31;
+					int result = 1;
+					result = prime * result + ((list == null) ? 0 : list.hashCode());
+					result = prime * result + size;
+					hashCode = result;
+				}
+			}
+		}
+		return hashCode;
 	}
 
 	@Override
