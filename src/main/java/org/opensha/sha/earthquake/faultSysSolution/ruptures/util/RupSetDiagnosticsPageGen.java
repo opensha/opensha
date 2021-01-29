@@ -129,8 +129,8 @@ public class RupSetDiagnosticsPageGen {
 //					+ "fm3_1_adapt5_10km_min2_cff3_4_IntsPos_cffProb0.01NegRelBest_slipProb0.01incr_cffJumpPatchNetFract0.5_cffSectFav15PathPos"));
 //			System.exit(0);
 
-//			String inputName = "3/4 Ints >0, Comb Paths: [CFF Sect Fav. (15km), CFF P>0.01, CFF RPatch 1/2 >0, Slip P>0.01 (@Incr)]";
-//			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_comb4Paths_slipP0.01incr_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+			String inputName = "3/4 Ints >0, Comb Paths: [CFF Sect Fav. (15km), CFF P>0.01, CFF RPatch 1/2 >0, Slip P>0.01 (@Incr)]";
+			File inputFile = new File(rupSetsDir, "fm3_1_cff3_4_IntsPos_comb4Paths_slipP0.01incr_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
 			
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
