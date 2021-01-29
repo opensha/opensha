@@ -573,7 +573,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 				FaultSubsectionCluster to) {
 			return calcAveSlipRate(to);
 		}
-		
+
 		private double calcAveSlipRate(FaultSubsectionCluster cluster) {
 			double aveVal = 0d;
 			for (FaultSection sect : cluster.subSects)
@@ -585,8 +585,8 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		@Override
 		public String getName() {
 			if (onlyAtIncreases)
-				return "Slip Rate Path (at incr.)";
-			return "Slip Rate Path";
+				return "Rel Slip Rate (increases)";
+			return "Rel Slip Rate";
 		}
 
 		@Override

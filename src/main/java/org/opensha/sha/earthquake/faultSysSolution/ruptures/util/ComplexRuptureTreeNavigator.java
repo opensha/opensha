@@ -53,17 +53,24 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 		// add the start cluster
 		clusterConnectionsMap.put(rupture.clusters[0], new ClusterConnections(null));
 		// build parent relationships
-		for (Jump jump : rupture.getJumpsIterable()) {
+		Iterable<Jump> jumps = rupture.getJumpsIterable();
+		for (Jump jump : jumps) {
 			ClusterConnections connections = clusterConnectionsMap.get(jump.toCluster);
 			if (connections == null) {
 				connections = new ClusterConnections(jump);
 				clusterConnectionsMap.put(jump.toCluster, connections);
 			}
 		}
+		int numClusters = rupture.getTotalNumClusters();
+		Preconditions.checkState(clusterConnectionsMap.size() == numClusters,
+				"We have %s clusters but clusterConnectionsMap only has %s entries:\n%s",
+				numClusters, clusterConnectionsMap.size(), clusterConnectionsMap);
 		// build children relationships
-		for (Jump jump : rupture.getJumpsIterable()) {
+		for (Jump jump : jumps) {
 			ClusterConnections connections = clusterConnectionsMap.get(jump.fromCluster);
-			Preconditions.checkNotNull(connections);
+			Preconditions.checkNotNull(connections,
+					"No ClusterConnections instance found for cluster %s (from jump %s).\n\tRupture: %s\n\tConnMap: %s",
+					jump.fromCluster, jump, rupture, clusterConnectionsMap);
 			connections.addJumpFrom(jump);
 		}
 		for (FaultSubsectionCluster cluster : clusterConnectionsMap.keySet()) {

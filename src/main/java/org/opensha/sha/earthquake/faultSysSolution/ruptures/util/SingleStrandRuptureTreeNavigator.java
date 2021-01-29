@@ -54,7 +54,7 @@ public class SingleStrandRuptureTreeNavigator implements RuptureTreeNavigator {
 			if (myTo == fromCluster && myFrom == toCluster)
 				return jump.reverse();
 		}
-		throw new IllegalStateException("no jump fround from "+fromCluster+" to "+toCluster+" in rupture");
+		throw new IllegalStateException("no jump fround from "+fromCluster+" to "+toCluster+" in rupture: "+rupture);
 	}
 	
 	private static final Collection<FaultSection> emptySects = Collections.emptySet();

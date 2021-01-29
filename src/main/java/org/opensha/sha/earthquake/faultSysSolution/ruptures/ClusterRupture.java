@@ -224,6 +224,9 @@ public class ClusterRupture {
 			if (lastCluster.endSects.contains(jump.fromSection)) {
 				// regular jump from the end
 //				System.out.println("Taking a regular jump to extend a strand");
+				Preconditions.checkState(lastCluster.equals(jump.fromCluster),
+						"Cannot take jump %s: it's from a section on the last cluster, but fromCluster=%s doesn't match lastCluster=%s",
+						jump, jump.fromCluster, lastCluster);
 				newClusters = Arrays.copyOf(clusters, clusters.length+1);
 				newClusters[clusters.length] = jump.toCluster;
 				newSplays = splays;
@@ -237,6 +240,15 @@ public class ClusterRupture {
 			} else {
 				// it's a new splay
 //				System.out.println("it's a new splay!");
+				boolean found = false;
+				for (FaultSubsectionCluster cluster : clusters) {
+					if (cluster.equals(jump.fromCluster)) {
+						found = true;
+						break;
+					}
+				}
+				Preconditions.checkState(found, "Cannot take jump=%s: fromCluster=%s not found in rupture: %s",
+						jump, jump.fromCluster, this);
 				newClusters = clusters;
 				ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
 				splayBuilder.putAll(splays);

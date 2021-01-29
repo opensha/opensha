@@ -72,7 +72,7 @@ public class Jump {
 	}
 	
 	/**
-	 * @return reversed view of this jump
+	 * @return reversed view of this jump (note that this doesn't reverse the clusters themselves)
 	 */
 	public Jump reverse() {
 		return new Jump(toSection, toCluster, fromSection, fromCluster, distance);

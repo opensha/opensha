@@ -23,7 +23,7 @@ public abstract class CachedClusterPermutationStrategy implements ClusterPermuta
 	}
 
 	@Override
-	public final List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
+	public final synchronized List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
 			FaultSection firstSection) {
 		List<FaultSubsectionCluster> permutations = cacheTable.get(fullCluster, firstSection);
 		if (permutations == null) {
