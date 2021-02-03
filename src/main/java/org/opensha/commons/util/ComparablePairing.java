@@ -2,6 +2,7 @@ package org.opensha.commons.util;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -19,14 +20,23 @@ public class ComparablePairing<C extends Comparable<C>, E> implements Comparable
 	
 	private C comparable;
 	private E data;
+	private Comparator<C> comparator;
 	
 	public ComparablePairing(C comparable, E data) {
 		this.comparable = comparable;
 		this.data = data;
 	}
+	
+	public ComparablePairing(C comparable, E data, Comparator<C> comparator) {
+		this.comparable = comparable;
+		this.data = data;
+		this.comparator = comparator;
+	}
 
 	@Override
 	public int compareTo(ComparablePairing<C,E> o) {
+		if (comparator != null)
+			return comparator.compare(comparable, o.comparable);
 		return comparable.compareTo(o.comparable);
 	}
 	
