@@ -697,7 +697,8 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 		if (!resolved.equals(outputDir))
 			System.out.println("Resolved output dir: "+resolved.getAbsolutePath());
 		outputDir = resolved;
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir(),
+				"Output directory does not exist and cannot be created: %s", outputDir.getAbsolutePath());
 //		File configFile = new File(outputDir, "config.json");
 		if (configFile.exists())
 			System.err.println("WARNING: overwriting previous configuration file");
