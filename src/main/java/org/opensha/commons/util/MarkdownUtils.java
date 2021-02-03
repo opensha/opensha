@@ -116,7 +116,7 @@ public class MarkdownUtils {
 			int numWraps = (int)Math.ceil((double)curDataCols / (double)maxDataCols);
 			int newDataCols = (int)Math.ceil((double)curDataCols/(double)numWraps);
 			
-			System.out.println("Wrapping data from "+lines.size()+"x"+curDataCols+" to "+(lines.size()*numWraps)+"x"+newDataCols);
+//			System.out.println("Wrapping data from "+lines.size()+"x"+curDataCols+" to "+(lines.size()*numWraps)+"x"+newDataCols);
 			
 			List<String[]> newLines = new ArrayList<>(lines.size()*numWraps);
 			
