@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
 
 import org.opensha.commons.geo.Location;
@@ -71,7 +72,7 @@ public class ETAS_ComcatEventFetcher {
 		writeCatalogFile(outputFile, events);
 	}
 	
-	public static void writeCatalogFile(File outputFile, ObsEqkRupList catalog) throws IOException {
+	public static void writeCatalogFile(File outputFile, Collection<? extends ObsEqkRupture> catalog) throws IOException {
 		FileWriter fw = new FileWriter(outputFile);
 		
 		fw.write("# Year\tMonth\tDay\tHour\tMinute\tSec\tLat\tLon\tDepth\tMagnitude\t[event-ID]\n");
