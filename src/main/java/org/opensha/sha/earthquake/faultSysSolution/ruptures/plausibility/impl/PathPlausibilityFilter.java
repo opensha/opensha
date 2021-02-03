@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -102,7 +103,7 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 			RuptureTreeNavigator nav = rupture.getTreeNavigator();
 
 			if (verbose)
-				System.out.println("Testing strand(s) with start="+nucleationCluster);
+				System.out.println(getName()+": testing strand(s) with start="+nucleationCluster);
 			
 			HashSet<FaultSubsectionCluster> strandClusters = new HashSet<>();
 			strandClusters.add(nucleationCluster);
@@ -849,7 +850,11 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 						while (in.hasNext()) {
 							switch (in.nextName()) {
 							case "class":
-								type = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+								try {
+									type = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+								} catch (ClassNotFoundException e) {
+									throw ExceptionUtils.asRuntimeException(e);
+								}
 								break;
 							case "value":
 								Preconditions.checkNotNull(type, "Class must preceed value in PathPlausibility JSON");
@@ -876,7 +881,11 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 												while (in.hasNext()) {
 													switch (in.nextName()) {
 													case "class":
-														calcType = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+														try {
+															calcType = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+														} catch (ClassNotFoundException e) {
+															throw ExceptionUtils.asRuntimeException(e);
+														}
 														break;
 													case "value":
 														Preconditions.checkNotNull(calcType, "Class must preceed value in PathPlausibility JSON");

@@ -1,13 +1,9 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility;
 
-import java.util.List;
-
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
-import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;

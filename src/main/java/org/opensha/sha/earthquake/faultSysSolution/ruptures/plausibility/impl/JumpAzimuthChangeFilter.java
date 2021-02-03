@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
@@ -11,6 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarV
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FaultTrace;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BoundType;
@@ -29,6 +32,7 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	private float threshold;
 	
 	private transient boolean errOnCantEval = false;
+	private boolean useEndpointsForSingle = true;
 
 	public JumpAzimuthChangeFilter(AzimuthCalc calc, float threshold) {
 		this.azCalc = calc;
@@ -81,7 +85,7 @@ implements ScalarValuePlausibiltyFilter<Float> {
 	public PlausibilityResult testJump(ClusterRupture rupture, Jump jump, boolean verbose) {
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
 		FaultSection before1 = navigator.getPredecessor(jump.fromSection);
-		if (before1 == null) {
+		if (before1 == null && !useEndpointsForSingle) {
 			// fewer than 2 sections before the first jump, will never work
 			if (errOnCantEval)
 				throw new IllegalStateException(getShortName()+": erring because fewer than "
@@ -97,43 +101,114 @@ implements ScalarValuePlausibiltyFilter<Float> {
 						+ "2 sects after a jump");
 			return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 		}
-		if (value > threshold)
+		if (value > threshold) {
+			if (useEndpointsForSingle && navigator.getDescendants(jump.toCluster).isEmpty())
+				return PlausibilityResult.FAIL_FUTURE_POSSIBLE;
 			return PlausibilityResult.FAIL_HARD_STOP;
+		}
 		return PlausibilityResult.PASS;
+	}
+	
+	private static double distToTrace(Location loc, FaultTrace trace) {
+		double minDist = Double.POSITIVE_INFINITY;
+		for (Location loc2 : trace)
+			minDist = Math.min(minDist, LocationUtils.horzDistanceFast(loc, loc2));
+		return minDist;
 	}
 	
 	private Float calc(ClusterRupture rupture, Jump jump, boolean verbose) {
 		RuptureTreeNavigator navigator = rupture.getTreeNavigator();
 		FaultSection before1 = navigator.getPredecessor(jump.fromSection);
-		if (before1 == null) {
-			// fewer than 2 sections before the first jump, will never work
-			if (verbose)
-				System.out.println(getShortName()+": failing because fewer than 2 before 1st jump");
-			return null;
-		}
 		FaultSection before2 = jump.fromSection;
-		double beforeAz = azCalc.calcAzimuth(before1, before2);
-		
 		FaultSection after1 = jump.toSection;
-		Collection<FaultSection> after2s;
-		if (rupture.contains(after1)) {
-			// this is a preexisting jump and can be a fork with multiple second sections after the jump
-			// we will pass only if they all pass
-			after2s = navigator.getDescendants(after1);
-		} else {
-			// we're testing a new possible jump
-			if (jump.toCluster.subSects.size() < 2) {
-				// it's a jump to a single-section cluster
+		
+		int beforeID1;
+		double beforeAz;
+		if (before1 == null) {
+			if (useEndpointsForSingle) {
+				beforeID1 = -1;
+				Location startLoc = before2.getFaultTrace().first();
+				Location endLoc = before2.getFaultTrace().last();
+				// we want this azimuth vector to go toward the destination
+				if (distToTrace(startLoc, after1.getFaultTrace()) < distToTrace(endLoc, after1.getFaultTrace())) {
+					// reverse it
+					Location tmp = startLoc;
+					startLoc = endLoc;
+					endLoc = tmp;
+				}
+				if (azCalc instanceof HardCodedLeftLateralFlipAzimuthCalc) {
+					if (((HardCodedLeftLateralFlipAzimuthCalc)azCalc).parentIDs.contains(before2.getParentSectionId())) {
+						// reverse it
+						Location tmp = startLoc;
+						startLoc = endLoc;
+						endLoc = tmp;
+					}
+				} else if (azCalc instanceof LeftLateralFlipAzimuthCalc) {
+					if (((LeftLateralFlipAzimuthCalc)azCalc).rakeRange.contains(before2.getAveRake())) {
+						// reverse it
+						Location tmp = startLoc;
+						startLoc = endLoc;
+						endLoc = tmp;
+					}
+				}
+				beforeAz = LocationUtils.azimuth(startLoc, endLoc);
 				if (verbose)
-					System.out.println(getShortName()+": jump to single-section cluster");
+					System.out.println(getShortName()+": using endpoint azimuth for beforeAz="+beforeAz);
+			} else {
+				// fewer than 2 sections before the first jump, will never work
+				if (verbose)
+					System.out.println(getShortName()+": failing because fewer than 2 before 1st jump");
 				return null;
 			}
-			after2s = Lists.newArrayList(jump.toCluster.subSects.get(1));
+		} else {
+			beforeID1 = before1.getSectionId();
+			beforeAz = azCalc.calcAzimuth(before1, before2);
 		}
+		
+		Preconditions.checkState(rupture.contains(after1));
+		// this is a preexisting jump and can be a fork with multiple second sections after the jump
+		// we will pass only if they all pass
+		Collection<FaultSection> after2s = navigator.getDescendants(after1);
 		if (after2s.isEmpty()) {
-			if (verbose)
-				System.out.println(getShortName()+": jump to single-section cluster & nothing downstream");
-			return null;
+			if (useEndpointsForSingle) {
+				Location startLoc = after1.getFaultTrace().first();
+				Location endLoc = after1.getFaultTrace().last();
+				// we want this azimuth vector to go away from the before section
+				if (distToTrace(startLoc, before2.getFaultTrace()) > distToTrace(endLoc, before2.getFaultTrace())) {
+					// reverse it
+					Location tmp = startLoc;
+					startLoc = endLoc;
+					endLoc = tmp;
+				}
+				if (azCalc instanceof HardCodedLeftLateralFlipAzimuthCalc) {
+					if (((HardCodedLeftLateralFlipAzimuthCalc)azCalc).parentIDs.contains(after1.getParentSectionId())) {
+						// reverse it
+						Location tmp = startLoc;
+						startLoc = endLoc;
+						endLoc = tmp;
+					}
+				} else if (azCalc instanceof LeftLateralFlipAzimuthCalc) {
+					if (((LeftLateralFlipAzimuthCalc)azCalc).rakeRange.contains(after1.getAveRake())) {
+						// reverse it
+						Location tmp = startLoc;
+						startLoc = endLoc;
+						endLoc = tmp;
+					}
+				}
+				double afterAz = LocationUtils.azimuth(startLoc, endLoc);
+				if (verbose)
+					System.out.println(getShortName()+": using endpoint azimuth for afterAz="+afterAz);
+				double diff = getAzimuthDifference(beforeAz, afterAz);
+				Preconditions.checkState(Double.isFinite(diff));
+				if (verbose)
+					System.out.println(getShortName()+": ["+beforeID1+","+before2.getSectionId()+"]="
+							+beforeAz+" => ["+after1.getSectionId()+",-1"+"]="+afterAz+" = "+diff);
+				return (float)Math.abs(diff);
+			} else {
+				if (verbose)
+					System.out.println(getShortName()+": jump to single-section cluster & nothing downstream");
+				return null;
+			}
 		}
 		float maxVal = 0f;
 		for (FaultSection after2 : after2s) {
@@ -141,7 +216,7 @@ implements ScalarValuePlausibiltyFilter<Float> {
 			double diff = getAzimuthDifference(beforeAz, afterAz);
 			Preconditions.checkState(Double.isFinite(diff));
 			if (verbose)
-				System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
+				System.out.println(getShortName()+": ["+beforeID1+","+before2.getSectionId()+"]="
 						+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
 			maxVal = Float.max(maxVal, (float)Math.abs(diff));
 //			if ((float)Math.abs(diff) > threshold) {

@@ -1044,13 +1044,57 @@ public class ClusterRuptureBuilder {
 		
 		/*
 		 * =============================
+		 * To reproduce UCERF3 with an alternative distance/conn strategy (and calculate missing coulomb)
+		 * =============================
+		 */
+//		String outputName = fm.encodeChoiceString().toLowerCase()+"_ucerf3";
+//		CoulombRates coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
+//		
+//		double maxJumpDist = 5d;
+//		ClusterConnectionStrategy connectionStrategy =
+//				new UCERF3ClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist, coulombRates);
+//		outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
+//		
+////		double r0 = 5d;
+////		double rMax = 10d;
+////		int cMax = -1;
+////		int sMax = 1;
+////		ClusterConnectionStrategy connectionStrategy =
+////				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
+////		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
+////		if (cMax >= 0)
+////			outputName += "_cMax"+cMax;
+////		if (sMax >= 0)
+////			outputName += "_sMax"+sMax;
+//		
+//		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
+//		configBuilder.minSectsPerParent(2, true, true);
+//		configBuilder.u3Cumulatives();
+////		configBuilder.cumulativeAzChange(560f);
+//		configBuilder.u3Azimuth();
+//		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
+//				subSects, 1d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
+//		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
+//		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());
+//		int stiffnessCacheSize = 0;
+//		if (stiffnessCacheFile.exists())
+//			stiffnessCacheSize = stiffnessCache.loadCacheFile(stiffnessCacheFile);
+////		configBuilder.u3Coulomb(coulombRates, stiffnessCalc); outputName += "_cffFallback";
+////		outputName += "_noCoulomb";
+//		configBuilder.u3Coulomb(new CoulombRates(fm, new HashMap<>()), stiffnessCalc); outputName += "_cffReproduce";
+//		PlausibilityConfiguration config = configBuilder.build();
+//		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
+//		outputName += ".zip";
+//		File outputDir = rupSetsDir;
+		
+		/*
+		 * =============================
 		 * For other experiments
 		 * =============================
 		 */
 		// build stiffness calculator (used for new Coulomb)
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-				subSects, 2d, 3e4, 3e4, 0.5);
-		stiffnessCalc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
+				subSects, 2d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
 		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
 		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());
 		int stiffnessCacheSize = 0;
@@ -1068,30 +1112,30 @@ public class ClusterRuptureBuilder {
 		 * Connection strategy: which faults are allowed to connect, and where?
 		 */
 		// use this for the exact same connections as UCERF3
-//		double minJumpDist = 5d;
+//		double maxJumpDist = 5d;
 //		ClusterConnectionStrategy connectionStrategy =
 //				new UCERF3ClusterConnectionStrategy(subSects,
-//						distAzCalc, minJumpDist, CoulombRates.loadUCERF3CoulombRates(fm));
-//		if (minJumpDist != 5d)
-//			outputName += "_"+new DecimalFormat("0.#").format(minJumpDist)+"km";
+//						distAzCalc, maxJumpDist, CoulombRates.loadUCERF3CoulombRates(fm));
+//		if (maxJumpDist != 5d)
+//			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
 		// use this for simpler connection rules
-//		double minJumpDist = 10d;
-//		ClusterConnectionStrategy connectionStrategy =
-//			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, minJumpDist);
-//		if (minJumpDist != 5d)
-//			outputName += "_"+new DecimalFormat("0.#").format(minJumpDist)+"km";
-		// use this for adaptive distance filter
-		double r0 = 5d;
-		double rMax = 10d;
-		int cMax = -1;
-		int sMax = 1;
+		double maxJumpDist = 10d;
 		ClusterConnectionStrategy connectionStrategy =
-				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
-		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
-		if (cMax >= 0)
-			outputName += "_cMax"+cMax;
-		if (sMax >= 0)
-			outputName += "_sMax"+sMax;
+			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
+		if (maxJumpDist != 5d)
+			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
+		// use this for adaptive distance filter
+//		double r0 = 5d;
+//		double rMax = 10d;
+//		int cMax = -1;
+//		int sMax = 1;
+//		ClusterConnectionStrategy connectionStrategy =
+//				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
+//		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
+//		if (cMax >= 0)
+//			outputName += "_cMax"+cMax;
+//		if (sMax >= 0)
+//			outputName += "_sMax"+sMax;
 		
 		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
 		
@@ -1106,6 +1150,7 @@ public class ClusterRuptureBuilder {
 		configBuilder.minSectsPerParent(2, true, true); // always do this one
 //		configBuilder.u3Cumulatives(); outputName += "_u3Cml"; // cml rake and azimuth
 //		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
+//		configBuilder.cumulativeRakeChange(180f); outputName += "_cmlRake"; // cml azimuth only
 //		configBuilder.u3Azimuth(); outputName += "_u3Az";
 //		configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
 		
@@ -1118,12 +1163,12 @@ public class ClusterRuptureBuilder {
 		// END SLIP RATE PROB
 		
 		/*
-		 * Regular CFF prob
+		 * Regular CFF prob (not currently used)
 		 */
 		// SLIP RATE PROB: allow neg, 0.01
 //		configBuilder.cumulativeProbability(0.01f, new RelativeCoulombProb(
 //				sumAgg, connectionStrategy, false, true, true));
-//		outputName += "_cfP0.01incr";
+//		outputName += "_cffP0.01incr";
 		// END SLIP RATE PROB
 		
 		/*
@@ -1142,7 +1187,7 @@ public class ClusterRuptureBuilder {
 		List<NucleationClusterEvaluator> combPathEvals = new ArrayList<>();
 		List<String> combPathPrefixes = new ArrayList<>();
 		float fractPathsThreshold = 0f; String fractPathsStr = "";
-		// SLIP RATE PROB: as a path, only increasing
+		// SLIP RATE PROB: as a path, only increasing NOT CURRENTLY PREFERRED
 //		float pathSlipProb = 0.1f;
 //		CumulativeJumpProbPathEvaluator slipEval = new CumulativeJumpProbPathEvaluator(
 //				pathSlipProb, PlausibilityResult.FAIL_HARD_STOP, new RelativeSlipRateProb(connectionStrategy, true));
@@ -1189,9 +1234,9 @@ public class ClusterRuptureBuilder {
 		// Check connectivity only (maximum 2 clusters per rupture)
 //		configBuilder.maxNumClusters(2); outputName += "_connOnly";
 		
-//		File outputDir = new File("fm3_1_cff3_4_IntsPos_comb4Paths_slipP0.01incr_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
-//		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		File outputDir = rupSetsDir;
+		File outputDir = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+//		File outputDir = rupSetsDir;
 		
 		/*
 		 * Splay constraints
@@ -1206,16 +1251,16 @@ public class ClusterRuptureBuilder {
 		 * will be used to construct ruptures
 		 */
 		// regular (UCERF3) permutation strategy
-		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
+//		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
 		// only permutate at connection points or subsection end points
 		// (for strict segmentation or testing connection points)
 //		ClusterPermutationStrategy permStrat = new ConnectionPointsPermutationStrategy();
 //		outputName += "_connPointsPerm";
 		// build permutations adaptively (skip over some end points for larger ruptures)
-//		float sectFract = 0.05f;
-//		SectCountAdaptivePermutationStrategy permStrat = new SectCountAdaptivePermutationStrategy(sectFract, true);
-//		configBuilder.add(permStrat.buildConnPointCleanupFilter(connectionStrategy));
-//		outputName += "_sectFractPerm"+sectFract;
+		float sectFract = 0.05f;
+		SectCountAdaptivePermutationStrategy permStrat = new SectCountAdaptivePermutationStrategy(sectFract, true);
+		configBuilder.add(permStrat.buildConnPointCleanupFilter(connectionStrategy));
+		outputName += "_sectFractPerm"+sectFract;
 		
 		// build our configuration
 		PlausibilityConfiguration config = configBuilder.build();

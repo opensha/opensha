@@ -43,6 +43,8 @@ import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.commons.util.cpt.CPT;
+import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -88,6 +90,8 @@ public class SubSectStiffnessCalculator {
 	
 	private transient Map<FaultSection, List<PatchLocation>> patchesMap;
 	
+	private transient double[][] selfStiffnessCache;
+	
 	private transient AggregatedStiffnessCache[] caches;
 	
 	public static class PatchLocation {
@@ -111,6 +115,7 @@ public class SubSectStiffnessCalculator {
 	private double lameLambda;
 	private double lameMu;
 	private double coeffOfFriction;
+	private double selfStiffnessCap;
 	
 	public enum StiffnessType {
 		SIGMA("ΔSigma", "&Delta;Sigma", "MPa", 0),
@@ -155,7 +160,7 @@ public class SubSectStiffnessCalculator {
 	 */
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
 			double lameLambda, double lameMu, double coeffOfFriction) {
-		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, alignment_default);
+		this(subSects, gridSpacing, lameLambda, lameMu, coeffOfFriction, alignment_default, 0d);
 	}
 
 	/**
@@ -166,15 +171,18 @@ public class SubSectStiffnessCalculator {
 	 * @param lameMu Lame's mu (shear modulus, mu) in MPa
 	 * @param coeffOfFriction coefficient of friction for Coulomb calculations
 	 * @param alignment patch alignment algorithm
+	 * @param selfStiffnessCap self-stiffness CFF cap, applied as a multiple of a patch's self stiffness (bounded positive or negative)
 	 */
 	public SubSectStiffnessCalculator(List<? extends FaultSection> subSects, double gridSpacing,
-			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment) {
+			double lameLambda, double lameMu, double coeffOfFriction, PatchAlignment alignment,
+			double selfStiffnessCap) {
 		this.subSects = subSects;
 		this.gridSpacing = gridSpacing;
 		this.lameLambda = lameLambda;
 		this.lameMu = lameMu;
 		this.coeffOfFriction = coeffOfFriction;
 		this.alignment = alignment;
+		this.selfStiffnessCap = selfStiffnessCap;
 		
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
@@ -429,9 +437,16 @@ public class SubSectStiffnessCalculator {
 		List<PatchLocation> receiverPatches = patchesMap.get(subSects.get(receiverID));
 		
 		double[][][] values = new double[StiffnessType.values().length][receiverPatches.size()][sourcePatches.size()];
+		
+		double[] selfStiffness = null;
+		if (selfStiffnessCap > 0)
+			selfStiffness = getSelfStiffness(receiverID, receiverPatches);
 
 		for (int r=0; r<receiverPatches.size(); r++) {
 			PatchLocation receiver = receiverPatches.get(r);
+			double cap = Double.NaN;
+			if (selfStiffnessCap > 0)
+				cap = Math.abs(selfStiffness[r])*selfStiffnessCap;
 			for (int s=0; s<sourcePatches.size(); s++) {
 				PatchLocation source = sourcePatches.get(s);
 				double[] stiffness = StiffnessCalc.calcStiffness(
@@ -445,6 +460,12 @@ public class SubSectStiffnessCalculator {
 					sigma = stiffness[0];
 					tau = stiffness[1];
 					cff = StiffnessCalc.calcCoulombStress(tau, sigma, coeffOfFriction);
+					if (selfStiffnessCap > 0) {
+						if (cff > cap)
+							cff = cap;
+						else if (cff < -cap)
+							cff = -cap;
+					}
 				}
 				values[StiffnessType.SIGMA.ordinal()][r][s] = sigma;
 				values[StiffnessType.TAU.ordinal()][r][s] = tau;
@@ -453,6 +474,27 @@ public class SubSectStiffnessCalculator {
 		}
 		
 		return new StiffnessDistribution(sourcePatches, receiverPatches, values);
+	}
+	
+	private double[] getSelfStiffness(int sectID, List<PatchLocation> receiverPatches) {
+		if (selfStiffnessCache == null) {
+			synchronized (this) {
+				if (selfStiffnessCache == null)
+					selfStiffnessCache = new double[subSects.size()][];
+			}
+		}
+		if (selfStiffnessCache[sectID] == null) {
+			// calculate it
+			double[] values = new double[receiverPatches.size()];
+			for (int r=0; r<values.length; r++) {
+				PatchLocation receiver = receiverPatches.get(r);
+				double[] stiffness = StiffnessCalc.calcStiffness(
+						lameLambda, lameMu, receiver.patch, receiver.patch);
+				values[r] = StiffnessCalc.calcCoulombStress(stiffness[1], stiffness[0], coeffOfFriction);
+			}
+			selfStiffnessCache[sectID] = values;
+		}
+		return selfStiffnessCache[sectID];
 	}
 	
 	public static class LogDistributionPlot {
@@ -746,6 +788,13 @@ public class SubSectStiffnessCalculator {
 	}
 	
 	/**
+	 * @return self stiffness cap. if >0, CFF values will be capped by this times the receiving patch's self-stiffness
+	 */
+	public double getSelfStiffnessCap() {
+		return selfStiffnessCap;
+	}
+	
+	/**
 	 * @return alignment of patches across section surfaces
 	 */
 	public PatchAlignment getPatchAlignment() {
@@ -765,6 +814,38 @@ public class SubSectStiffnessCalculator {
 			this.receiverPatches = receiverPatches;
 			Preconditions.checkState(values.length == StiffnessType.values().length);
 			this.values = values;
+		}
+		
+		public StiffnessDistribution receiverAggregate(AggregationMethod method) {
+			Preconditions.checkState(method.isTerminal());
+			double[][][] agg = new double[values.length][][];
+			for (int t=0; t<agg.length; t++) {
+				if (values[t] == null)
+					continue;
+				agg[t] = new double[values[t].length][1];
+				for (int r=0; r<agg[t].length; r++)
+					agg[t][r] = new double[] { method.calculate(values[t][r]) };
+			}
+			
+			return new StiffnessDistribution(null, receiverPatches, agg);
+		}
+		
+		public StiffnessDistribution add(StiffnessDistribution o) {
+			double[][][] combined = new double[values.length][][];
+			for (int t=0; t<combined.length; t++) {
+				if (values[t] == null || o.values[t] == null)
+					continue;
+				combined[t] = new double[values[t].length+o.values[t].length][];
+				int ind = 0;
+				for (double[] sourceVals : values[t])
+					combined[t][ind++] = sourceVals;
+				for (double[] sourceVals : o.values[t])
+					combined[t][ind++] = sourceVals;
+			}
+			List<PatchLocation> newSourcePatches = null;
+			if (this.sourcePatches != null && this.sourcePatches.equals(o.sourcePatches))
+				newSourcePatches = sourcePatches;
+			return new StiffnessDistribution(newSourcePatches, null, combined);
 		}
 		
 		public double[][] get(StiffnessType type) {
@@ -1093,6 +1174,52 @@ public class SubSectStiffnessCalculator {
 					cache.clear();
 	}
 	
+	public static CPT getLogCPT(boolean positive) {
+		
+		Color minColor, oneColor, maxColor;
+		if (positive) {
+			minColor = new Color(255, 220, 220);
+			oneColor = new Color(255, 0, 0);
+			maxColor = new Color(100, 0, 0);
+		} else {
+			minColor = new Color(220, 220, 255);
+			oneColor = new Color(0, 0, 255);
+			maxColor = new Color(0, 0, 100);
+		}
+		CPT cpt = new CPT(-4, 0, minColor, oneColor);
+		cpt.add(new CPTVal(cpt.getMaxValue(), oneColor, 1, maxColor));
+		cpt.setBelowMinColor(Color.WHITE);
+		cpt.setAboveMaxColor(maxColor);
+		return cpt;
+	}
+	
+	public static CPT getPreferredPosNegCPT() {
+		CPT posLogCPT = getLogCPT(true);
+		CPT negLogCPT = getLogCPT(false);
+		EvenlyDiscretizedFunc logDiscr = new EvenlyDiscretizedFunc(posLogCPT.getMinValue(), posLogCPT.getMaxValue(), 100);
+		CPT cpt = new CPT();
+		for (int i=logDiscr.size(); --i>0;) {
+			double x1 = logDiscr.getX(i); // abs larger value, neg smaller
+			double x2 = logDiscr.getX(i-1); // abs smaller value, neg larger
+			Color c1 = negLogCPT.getColor((float)x1);
+			Color c2 = negLogCPT.getColor((float)x2);
+			cpt.add(new CPTVal(-(float)Math.pow(10, x1), c1, -(float)Math.pow(10, x2), c2));
+		}
+		cpt.add(new CPTVal(cpt.getMaxValue(), cpt.getMaxColor(), 0f, Color.WHITE));
+		cpt.add(new CPTVal(0f, Color.WHITE, (float)Math.pow(10, posLogCPT.getMinValue()),
+				posLogCPT.getMinColor()));
+		for (int i=0; i<logDiscr.size()-1; i++) {
+			double x1 = logDiscr.getX(i);
+			double x2 = logDiscr.getX(i+1);
+			Color c1 = posLogCPT.getColor((float)x1);
+			Color c2 = posLogCPT.getColor((float)x2);
+			cpt.add(new CPTVal((float)Math.pow(10, x1), c1, (float)Math.pow(10, x2), c2));
+		}
+		cpt.setBelowMinColor(cpt.getMinColor());
+		cpt.setAboveMaxColor(cpt.getMaxColor());
+		return cpt;
+	}
+	
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 //		System.out.println(Joiner.on(",").join(calcFullOverlapCenters(7, 2)));
 //		System.out.println(Joiner.on(",").join(calcFullOverlapCenters(5.5, 2)));
@@ -1105,8 +1232,10 @@ public class SubSectStiffnessCalculator {
 		double lambda = 30000;
 		double mu = 30000;
 		double coeffOfFriction = 0.5;
+//		SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
+//				rupSet.getFaultSectionDataList(), 2d, lambda, mu, coeffOfFriction);
 		SubSectStiffnessCalculator calc = new SubSectStiffnessCalculator(
-				rupSet.getFaultSectionDataList(), 2d, lambda, mu, coeffOfFriction);
+				rupSet.getFaultSectionDataList(), 1d, lambda, mu, coeffOfFriction);
 		calc.setPatchAlignment(PatchAlignment.FILL_OVERLAP);
 		
 		System.out.println(calc.utmZone+" "+calc.utmChar);
@@ -1152,26 +1281,41 @@ public class SubSectStiffnessCalculator {
 //			}
 //		}
 		
-		AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(StiffnessType.CFF, calc, true,
-				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM);
-		List<? extends FaultSection> subSects = calc.getSubSects();
-		List<FaultSection> sources = Lists.newArrayList(
-				subSects.get(516),
-				subSects.get(515),
-				subSects.get(514),
-				subSects.get(513),
-				subSects.get(512),
-				subSects.get(511),
-				subSects.get(522)
-		);
-		List<FaultSection> receivers = Lists.newArrayList(
-				subSects.get(521)
-				
-		);
-		
-		System.out.println(aggCalc.calc(sources, receivers));
-		
+//		AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(StiffnessType.CFF, calc, true,
+//				AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM);
+//		List<? extends FaultSection> subSects = calc.getSubSects();
+//		List<FaultSection> sources = Lists.newArrayList(
+//				subSects.get(516),
+//				subSects.get(515),
+//				subSects.get(514),
+//				subSects.get(513),
+//				subSects.get(512),
+//				subSects.get(511),
+//				subSects.get(522)
+//		);
+//		List<FaultSection> receivers = Lists.newArrayList(
+//				subSects.get(521)
+//				
+//		);
 //		
+//		System.out.println(aggCalc.calc(sources, receivers));
+		
+		AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(StiffnessType.CFF, calc, false,
+//				AggregationMethod.MAX, AggregationMethod.MAX);
+				AggregationMethod.SUM, AggregationMethod.SUM);
+		List<? extends FaultSection> subSects = calc.getSubSects();
+		FaultSection source = subSects.get(1398);
+		List<FaultSection> receivers = Lists.newArrayList(
+				subSects.get(1399),
+				subSects.get(324),
+				subSects.get(1979)
+		);
+		
+		for (FaultSection receiver : receivers) {
+			System.out.println(source.getSectionId()+"=>"+receiver.getSectionId()+": "+aggCalc.calc(source, receiver));
+		}
+		
+		
 //		calc.writeCacheFile(new File("/tmp/stiffness_cache_test.csv"), StiffnessType.CFF);
 //		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
 //		File rupSetFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");

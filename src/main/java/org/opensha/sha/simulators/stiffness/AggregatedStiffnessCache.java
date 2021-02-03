@@ -1,6 +1,8 @@
 package org.opensha.sha.simulators.stiffness;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -125,9 +127,12 @@ public class AggregatedStiffnessCache {
 	
 	public String getCacheFileName() {
 		DecimalFormat df = new DecimalFormat("0.##");
-		return type.name().toLowerCase()+"_cache_"+sects.size()+"sects_"+df.format(calc.getGridSpacing())
+		String ret = type.name().toLowerCase()+"_cache_"+sects.size()+"sects_"+df.format(calc.getGridSpacing())
 			+"km_lambda"+df.format(calc.getLameLambda())+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction()
-			+"_align"+calc.getPatchAlignment().name()+".csv";
+			+"_align"+calc.getPatchAlignment().name();
+		if (calc.getSelfStiffnessCap() > 0)
+			ret += "_stiffCap"+df.format(calc.getSelfStiffnessCap())+"x";
+		return ret+".csv";
 	}
 	
 	public void writeCacheFile(File cacheFile) throws IOException {
@@ -168,7 +173,9 @@ public class AggregatedStiffnessCache {
 	
 	public int loadCacheFile(File cacheFile) throws IOException {
 		System.out.println("Loading "+type+" cache from "+cacheFile.getAbsolutePath()+"...");
-		CSVFile<String> csv = CSVFile.readFile(cacheFile, true);
+//		CSVFile<String> csv = CSVFile.readFile(cacheFile, true);
+		BufferedInputStream bis = new BufferedInputStream(new FileInputStream(cacheFile), 1024*64);
+		CSVFile<String> csv = CSVFile.readStream(bis, true);
 		List<String> header = csv.getLine(0);
 		if (header.size() < 4) {
 			System.err.println("Warning: stiffness cache file is invalid, skipping loading");

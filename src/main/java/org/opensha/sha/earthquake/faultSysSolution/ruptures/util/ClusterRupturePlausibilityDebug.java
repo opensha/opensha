@@ -41,8 +41,7 @@ public class ClusterRupturePlausibilityDebug {
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(
 //				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz.zip"));
 				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
-						+ "fm3_1_adapt5_10km_min2_cff3_4_IntsPos_cffProb0.02NegRelBest_slipProb0.1incr"
-						+ "_cffJumpPatchNetFract0.5_cffSectFav15ThirdPathPos_sectFractPerm0.05.zip"));
+						+ "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip"));
 		System.out.println("Loaded "+rupSet.getNumRuptures()+" ruptures");
 		
 		PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
@@ -55,7 +54,7 @@ public class ClusterRupturePlausibilityDebug {
 			clusterRuptures = rupSet.getClusterRuptures();
 		}
 		
-		int[] testIndexes = { 128456 };
+		int[] testIndexes = { 199428 };
 		
 		List<ClusterRupture> testRuptures = new ArrayList<>();
 		for (int testIndex : testIndexes)

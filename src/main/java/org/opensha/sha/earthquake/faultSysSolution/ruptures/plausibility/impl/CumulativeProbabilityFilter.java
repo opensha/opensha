@@ -10,6 +10,7 @@ import java.util.Map;
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -78,6 +79,9 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 				if (verbose)
 					System.out.println(getName()+": "+jump+", P="+jumpProb);
 				prob *= jumpProb;
+				if (prob == 0d)
+					// don't bother continuing
+					break;
 			}
 			return prob;
 		}
@@ -629,6 +633,8 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 					if (verbose)
 						System.out.println(getName()+": "+jump+", P="+jumpProb);
 					prob *= jumpProb;
+					if (prob == 0d)
+						break;
 				}
 				return prob;
 			}
@@ -779,7 +785,11 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 						while (in.hasNext()) {
 							switch (in.nextName()) {
 							case "class":
-								type = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+								try {
+									type = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+								} catch (ClassNotFoundException e) {
+									throw ExceptionUtils.asRuntimeException(e);
+								}
 								break;
 							case "value":
 								Preconditions.checkNotNull(type, "Class must preceed value in ProbCalc JSON");

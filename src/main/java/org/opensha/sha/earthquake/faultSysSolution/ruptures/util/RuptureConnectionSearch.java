@@ -706,10 +706,10 @@ public class RuptureConnectionSearch {
 			Set<Jump> highlightConn, String highlightName) throws IOException {
 //		HashSet<IDPairing> connections = calcConnections(rupIndex, true);
 		List<FaultSection> sects = rupSet.getFaultSectionDataForRupture(rupIndex);
-		List<FaultSubsectionCluster> clusters = calcClusters(sects, true);
+		List<FaultSubsectionCluster> clusters = calcClusters(sects, false);
 //		List<Jump> jumps = calcRuptureJumps(clusters, true);
 		List<Jump> jumps = new ArrayList<>();
-		for (Jump jump : buildClusterRupture(rupIndex, true).getJumpsIterable())
+		for (Jump jump : buildClusterRupture(rupIndex, false).getJumpsIterable())
 			jumps.add(jump);
 
 		HashSet<Integer> parentIDs = new HashSet<>();

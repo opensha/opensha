@@ -12,12 +12,10 @@ public class CoulombRatesRecord {
 	public CoulombRatesRecord(IDPairing pairing, double ds, double pds, double dcff, double pdcff) {
 		Preconditions.checkNotNull(pairing);
 		this.pairing = pairing;
-		Preconditions.checkState(!Double.isNaN(ds) && !Double.isNaN(pds)
-				&& !Double.isNaN(dcff) && !Double.isNaN(pdcff) && !Double.isNaN(ds));
-		Preconditions.checkState(!Double.isInfinite(ds) && !Double.isInfinite(pds)
-				&& !Double.isInfinite(dcff) && !Double.isInfinite(pdcff) && !Double.isInfinite(ds));
-		Preconditions.checkState(pds >= 0 && pds <= 1);
-		Preconditions.checkState(pdcff >= 0 && pdcff <= 1);
+		Preconditions.checkState(Double.isFinite(ds) && Double.isFinite(pds)
+				&& Double.isFinite(dcff) && Double.isFinite(pdcff));
+		Preconditions.checkState(pds >= 0 && pds <= 1, "bad pds=%s", pds);
+		Preconditions.checkState(pdcff >= 0 && pdcff <= 1, "bad pdcff=%s", pdcff);
 		this.ds = ds;
 		this.pds = pds;
 		this.dcff = dcff;

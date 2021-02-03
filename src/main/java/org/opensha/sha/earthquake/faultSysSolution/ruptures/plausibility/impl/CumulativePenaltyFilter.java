@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.opensha.commons.data.Named;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -320,7 +321,11 @@ public class CumulativePenaltyFilter implements ScalarValuePlausibiltyFilter<Flo
 						while (in.hasNext()) {
 							switch (in.nextName()) {
 							case "class":
-								type = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+								try {
+									type = PlausibilityConfiguration.getDeclaredTypeClass(in.nextString());
+								} catch (ClassNotFoundException e) {
+									throw ExceptionUtils.asRuntimeException(e);
+								}
 								break;
 							case "value":
 								Preconditions.checkNotNull(type, "Class must preceed value in Penalty JSON");
