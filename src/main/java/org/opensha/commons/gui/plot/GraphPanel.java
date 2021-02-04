@@ -927,7 +927,7 @@ public class GraphPanel extends JSplitPane {
 				if(weightedList.areIndividualCurvesToPlot()){
 					//getting the metadata for each individual curves and creating the legend string
 					XY_DataSetList list = weightedList.getWeightedFunctionList();
-					ArrayList wtList = weightedList.getRelativeWtList();
+					List<Double> wtList = weightedList.getRelativeWtList();
 					int listSize = list.size();
 					for(int j=0;j<listSize;++j){
 						b.append("\nFunction #"+(j+1)+" of "+listSize+", from Dataset #"+(i+1)+
@@ -941,7 +941,7 @@ public class GraphPanel extends JSplitPane {
 
 					//getting the fractile info for the weighted function list and adding that to the legend
 					XY_DataSetList list = weightedList.getFractileList();
-					ArrayList fractileValueList = weightedList.getFractileValuesList();
+					List<Double> fractileValueList = weightedList.getFractileValuesList();
 					int listSize = list.size();
 					for(int j=0;j<listSize;++j){
 						b.append("\n"+(Double)fractileValueList.get(j)+" Fractile for Dataset #"+(i+1)+"\n");

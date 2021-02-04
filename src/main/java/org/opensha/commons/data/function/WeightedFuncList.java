@@ -20,8 +20,11 @@
 package org.opensha.commons.data.function;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.commons.calc.FractileCurveCalculator;
+
+import com.google.common.collect.Lists;
 
 /**
  * <p>Title: WeightedFuncList</p>
@@ -37,7 +40,7 @@ import org.opensha.commons.calc.FractileCurveCalculator;
 public class WeightedFuncList {
 
 	//relative Wts for each
-	private ArrayList relativeWts = new ArrayList();
+	private List<Double> relativeWts = new ArrayList<>();
 
 	//Discretized list of functions for individual curves
 	private XY_DataSetList functionList = new XY_DataSetList();
@@ -58,8 +61,7 @@ public class WeightedFuncList {
 	/**
 	 * list of fractions at which we need to calculate the fractiles
 	 */
-	private ArrayList fractionList = new ArrayList();
-
+	private List<Double> fractionList = new ArrayList<>();
 
 	//checks if mean fractile was calculated or not.
 	private boolean isMeanFractileCalculated = false;
@@ -79,7 +81,7 @@ public class WeightedFuncList {
 	 * in the list.
 	 * @param funcList : List of individual functions
 	 */
-	public void addList(ArrayList relWts,XY_DataSetList funcList){
+	public void addList(List<Double> relWts, XY_DataSetList funcList){
 
 		int size = relWts.size();
 		if(size != funcList.size()){
@@ -101,7 +103,7 @@ public class WeightedFuncList {
 		//any new function is added.
 		if(fractileList.size() >0){
 			//creating new instance of the fraction list
-			ArrayList list = new ArrayList();
+			ArrayList<Double> list = new ArrayList<>();
 			//adding all the contents of the existing fraction list to a new list becuase
 			//we will clear the existing list.
 			list.addAll(fractionList);
@@ -126,7 +128,7 @@ public class WeightedFuncList {
 
 		funcListInfo = funcListInfo.substring(0,funcListInfo.length()-2)+"\n";
 		functionList.setInfo(funcListInfo);
-		int size = functionList.size();
+//		int size = functionList.size();
 		//setting the info for each function in the list
 		//for(int i=0;i<size;++i)
 		//functionList.get(i).setInfo("Dataset-"+(i+1)+" of "+size+"  with relative wt: "+
@@ -156,7 +158,7 @@ public class WeightedFuncList {
 		//any new function is added.
 		if(fractileList.size() >0){
 			//creating new instance of the fraction list
-			ArrayList list = new ArrayList();
+			ArrayList<Double> list = new ArrayList<>();
 			//adding all the contents of the existing fraction list to a new list becuase
 			//we will clear the existing list.
 			list.addAll(fractionList);
@@ -208,9 +210,7 @@ public class WeightedFuncList {
 	 * @param fraction
 	 */
 	public void addFractile(double fraction){
-		fractionList.add(new Double(fraction));
-		setFractileCurveCalcuations();
-		fractileList.add(fractileCalc.getFractile(fraction));
+		addFractiles(Lists.newArrayList(fraction));
 	}
 
 	/**
@@ -220,7 +220,7 @@ public class WeightedFuncList {
 	 * @param fractionList: List of fraction (Doubles) for which we need to compute
 	 * fractile.
 	 */
-	public void addFractiles(ArrayList list){
+	public void addFractiles(List<Double> list){
 		int size  = list.size();
 		//clearing the fractile list
 		fractileList.clear();
@@ -273,7 +273,7 @@ public class WeightedFuncList {
 	 * This method returns list of values for which fractiles are computed
 	 * @return
 	 */
-	public ArrayList getFractileValuesList(){
+	public List<Double> getFractileValuesList(){
 		return fractionList;
 	}
 
@@ -293,7 +293,7 @@ public class WeightedFuncList {
 	 *
 	 * @return the relative weights array associated with each function in the list.
 	 */
-	public ArrayList getRelativeWtList(){
+	public List<Double> getRelativeWtList(){
 		return relativeWts;
 	}
 
@@ -386,7 +386,7 @@ public class WeightedFuncList {
 		fractileInfo = fractileInfo.substring(0,fractileInfo.length()-2)+"\n";
 		fractileList.setInfo(fractileInfo);
 
-		int size = fractileList.size();
+//		int size = fractileList.size();
 		//setting the info for each function in the list
 		// for(int i=0;i<size;++i)
 		// fractileList.get(i).setInfo("Fractile: "+(Double)fractionList.get(i));
