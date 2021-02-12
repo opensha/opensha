@@ -50,25 +50,25 @@ public class AfterLargeEventScriptWriter {
 		
 //		String kCOV = null;
 		
-		String kCOV = "1.5";
-		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
-		String parentDir = "${ETAS_SIM_DIR}/2021_02_02-after-m6-1986-present-full_td-kCOV1.5";
-		boolean griddedOnly = false;
+//		String kCOV = "1.5";
+//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
+//		String parentDir = "${ETAS_SIM_DIR}/2021_02_02-after-m6-1986-present-full_td-kCOV1.5";
+//		boolean griddedOnly = false;
 		
 //		String kCOV = null;
 //		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
-//		String parentDir = "${ETAS_SIM_DIR}/2020_07_22-weekly-1986-present-full_td";
+//		String parentDir = "${ETAS_SIM_DIR}/2021_02_08-after-m6-1986-present-full_td";
 //		boolean griddedOnly = false;
 		
 //		String kCOV = "1.5";
 //		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
-//		String parentDir = "${ETAS_SIM_DIR}/2020_05_25-weekly-1986-present-no_ert-kCOV1.5";
+//		String parentDir = "${ETAS_SIM_DIR}/2021_02_08-after-m6-1986-present-no_ert-kCOV1.5";
 //		boolean griddedOnly = false;
 		
-//		String kCOV = "1.5";
-//		U3ETAS_ProbabilityModelOptions probModel = null;
-//		String parentDir = "${ETAS_SIM_DIR}/2020_07_13-weekly-1986-present-gridded-kCOV1.5";
-//		boolean griddedOnly = true;
+		String kCOV = "1.5";
+		U3ETAS_ProbabilityModelOptions probModel = null;
+		String parentDir = "${ETAS_SIM_DIR}/2021_02_08-after-m6-1986-present-gridded-kCOV1.5";
+		boolean griddedOnly = true;
 		
 		File resolvedParentDir = ETAS_Config.resolvePath(parentDir);
 		Preconditions.checkState(resolvedParentDir.exists() || resolvedParentDir.mkdir());
@@ -160,7 +160,7 @@ public class AfterLargeEventScriptWriter {
 			
 			argz.add("--hpc-site"); argz.add("TACC_STAMPEDE2");
 			argz.add("--nodes"); argz.add("10");
-			argz.add("--hours"); argz.add("20");
+			argz.add("--hours"); argz.add("10");
 			argz.add("--threads"); argz.add("20");
 			argz.add("--queue"); argz.add("skx-normal");
 			argz.add("--output-dir"); argz.add(outputDir);
