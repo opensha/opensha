@@ -174,11 +174,20 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 	public FaultSection getPredecessor(FaultSection sect) {
 		FaultSubsectionCluster cluster = locateCluster(sect);
 		ClusterConnections connections = clusterConnectionsMap.get(cluster);
-		if (connections.jumpTo != null && connections.jumpTo.toSection.equals(sect))
-			// we jumped to this section
-			return connections.jumpTo.fromSection;
-		// no jump to this cluster, see if we're at the start of the cluster
 		int indexInCluster = indexWithinCluster(sect, cluster);
+		if (connections.jumpTo != null) {
+			// we jumped to this section
+			if (connections.jumpTo.toSection.equals(sect))
+				// we jumped to this section
+				return connections.jumpTo.fromSection;
+			int jumpToIndex = indexWithinCluster(connections.jumpTo.toSection, cluster);
+			if (jumpToIndex > indexInCluster) {
+				// we jumped to a section after this, which means that that our predecessor is actually after us
+				// (bilateral spread in a T rupture)
+				return cluster.subSects.get(indexInCluster+1);
+			}
+		}
+		// no jump to this cluster, see if we're at the start of the cluster
 		if (indexInCluster > 0)
 			// not at the start, predecessor is the section before
 			return cluster.subSects.get(indexInCluster-1);
@@ -191,14 +200,44 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 		FaultSubsectionCluster cluster = locateCluster(sect);
 		int indexInCluster = indexWithinCluster(sect, cluster);
 		List<FaultSection> descendants = new ArrayList<>();
-		if (indexInCluster < cluster.subSects.size()-1)
-			descendants.add(cluster.subSects.get(indexInCluster+1));
 		ClusterConnections connections = clusterConnectionsMap.get(cluster);
-		if (indexInCluster > 0 && connections.jumpTo != null && connections.jumpTo.toSection.equals(sect)) {
-			// we took a jump to get to this point, but it's not the start, so there are descendants in both
-			// directions (T rupture)
-			descendants.add(cluster.subSects.get(indexInCluster-1));
+		
+		if (connections.jumpTo != null) {
+			// there is a jump to this cluster. check for special case where the jump was "later" in this rupture
+			// (a T rupture) and it spreads bilaterally
+			int jumpIndexInCluster = indexWithinCluster(connections.jumpTo.toSection, cluster);
+			if (jumpIndexInCluster == indexInCluster) {
+				// jump was to this section, both directions are descendants
+				if (indexInCluster > 0)
+					descendants.add(cluster.subSects.get(indexInCluster-1));
+				if (indexInCluster < cluster.subSects.size()-1)
+					descendants.add(cluster.subSects.get(indexInCluster+1));
+			} else if (jumpIndexInCluster > indexInCluster) {
+				// bilateral spread from a later section, descendant is earlier in list
+				if (indexInCluster > 0)
+					descendants.add(cluster.subSects.get(indexInCluster-1));
+			} else {
+				// normal, descendant is later in list
+				if (indexInCluster < cluster.subSects.size()-1)
+					descendants.add(cluster.subSects.get(indexInCluster+1));
+			}
+		} else {
+			// this is the first cluster, so things are in order & descendants are later
+			if (indexInCluster < cluster.subSects.size()-1)
+				descendants.add(cluster.subSects.get(indexInCluster+1));
 		}
+		
+//		if (indexInCluster < cluster.subSects.size()-1) {
+//			// if this is a T, then the section after can actually be our predecessor. only add if not
+//			FaultSection sectAfter = cluster.subSects.get(indexInCluster+1);
+//			if (connections.jumpTo == null || !connections.jumpTo.toSection.equals(sectAfter))
+//				descendants.add(sectAfter);
+//		}
+//		if (indexInCluster > 0 && connections.jumpTo != null && connections.jumpTo.toSection.equals(sect)) {
+//			// we took a jump to get to this point, but it's not the start, so there are descendants in both
+//			// directions (T rupture)
+//			descendants.add(cluster.subSects.get(indexInCluster-1));
+//		}
 		for (Jump jump : connections.jumpsFrom)
 			if (jump.fromSection.getSectionId() == sect.getSectionId())
 				descendants.add(jump.toSection);
