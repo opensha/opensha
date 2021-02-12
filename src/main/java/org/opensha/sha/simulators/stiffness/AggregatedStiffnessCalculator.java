@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -63,8 +64,9 @@ import scratch.UCERF3.utils.FaultSystemIO;
  *
  */
 public class AggregatedStiffnessCalculator {
-	
+
 	private static final boolean D = false;
+	private static final boolean DD = D && false;
 
 	private StiffnessType type;
 	private SubSectStiffnessCalculator calc;
@@ -304,6 +306,23 @@ public class AggregatedStiffnessCalculator {
 			@Override
 			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
 				return dists;
+			}
+		},
+		FLAT_SUM("FlatSum", true, true) {
+			@Override
+			public double calculate(double[] values) {
+				return StatUtils.sum(values);
+			}
+
+			@Override
+			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
+				double totalSum = 0d;
+				int totalNumInts = 0;
+				for (ReceiverDistribution dist : dists) {
+					totalSum += calculate(dist.values);
+					totalNumInts += dist.totNumInteractions;
+				}
+				return new ReceiverDistribution[] { new ReceiverDistribution(higherLevelID, totalNumInts, totalSum) };
 			}
 		};
 		
@@ -647,9 +666,13 @@ public class AggregatedStiffnessCalculator {
 			ReceiverDistribution[] cached = cache.getPatchAggregated(layers[0], source, receiver);
 			if (cached != null) {
 				if (D) {
-					System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+", patchAgg="+layers[0]+"\n\tCACHED:");
-					for (ReceiverDistribution dist : cached)
-						System.out.println("\t"+dist);
+					System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+", patchAgg="+layers[0]
+							+cached.length+" aggregated receiver dists");
+					if (DD) {
+						System.out.println("\tCACHED:");
+						for (ReceiverDistribution dist : cached)
+							System.out.println("\t"+dist);
+					}
 				}
 				return cached;
 			}
@@ -674,8 +697,10 @@ public class AggregatedStiffnessCalculator {
 					System.arraycopy(values[r], r+1, receiverVals, r, receiverVals.length - r);
 				if (D) {
 					System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+" sect-to-self patch calc, removing index "+r);
-					System.out.println("\traw["+r+"]:\t"+DoubleStream.of(values[r]).mapToObj(String::valueOf).collect(Collectors.joining(",")));
-					System.out.println("\tprocessed:\t"+DoubleStream.of(receiverVals).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+					if (DD) {
+						System.out.println("\traw["+r+"]:\t"+DoubleStream.of(values[r]).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+						System.out.println("\tprocessed:\t"+DoubleStream.of(receiverVals).mapToObj(String::valueOf).collect(Collectors.joining(",")));
+					}
 				}
 			} else {
 				receiverVals = values[r];
@@ -689,9 +714,12 @@ public class AggregatedStiffnessCalculator {
 			cache.putPatchAggregated(layers[0], source, receiver, aggregated);
 		
 		if (D) {
-			System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+", patchAgg="+layers[0]+":");
-			for (ReceiverDistribution aggDist : aggregated)
-				System.out.println("\t"+aggDist);
+			System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+", patchAgg="+layers[0]+". "
+					+aggregated.length+" aggregated receiver dists");
+			if (DD) {
+				for (ReceiverDistribution aggDist : aggregated)
+					System.out.println("\t"+aggDist);
+			}
 		}
 		
 		return aggregated;
@@ -751,9 +779,12 @@ public class AggregatedStiffnessCalculator {
 		ReceiverDistribution[] aggregated =  layers[1].aggregate(receiver.getSectionId(), receiverPatchDists);
 		
 		if (D) {
-			System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+" sect-to-sect "+layers[1]+":");
-			for (ReceiverDistribution aggDist : aggregated)
-				System.out.println("\t"+aggDist);
+			System.out.println(source.getSectionId()+" -> "+receiver.getSectionId()+" sect-to-sect "+layers[1]+". "
+					+aggregated.length+" aggregated receiver dists");
+			if (DD) {
+				for (ReceiverDistribution aggDist : aggregated)
+					System.out.println("\t"+aggDist);
+			}
 		}
 		
 		return aggregated;
@@ -770,8 +801,12 @@ public class AggregatedStiffnessCalculator {
 			
 			if (D) {
 				System.out.println("Intermediate layer "+curLayer+", "+layers[curLayer]+":");
-				for (ReceiverDistribution aggDist : dists)
-					System.out.println("\t"+aggDist);
+				if (DD) {
+					for (ReceiverDistribution aggDist : dists)
+						System.out.println("\t"+aggDist);
+				} else {
+					System.out.println("\t"+dists.length+" dists");
+				}
 			}
 			return processUntilTerminal(curLayer+1, -1, dists);
 		}
@@ -815,12 +850,13 @@ public class AggregatedStiffnessCalculator {
 		return processUntilTerminal(1, receiver.getSectionId(), receiverPatchDists);
 	}
 	
-	private ReceiverDistribution[] collectMultiSectsToSect(List<FaultSection> sources, FaultSection receiver) {
+	private ReceiverDistribution[] collectMultiSectsToSect(Collection<FaultSection> sources, FaultSection receiver) {
 		if (!allowSectToSelf) {
 			List<FaultSection> filtered = new ArrayList<>(sources.size());
 			int receiverID = receiver.getSectionId();
-			for (int s=0; s<sources.size(); s++) {
-				FaultSection source = sources.get(s);
+//			for (int s=0; s<sources.size(); s++) {
+//				FaultSection source = sources.get(s);
+			for (FaultSection source : sources) {
 				if (source.getSectionId() != receiverID)
 					filtered.add(source);
 			}
@@ -830,8 +866,10 @@ public class AggregatedStiffnessCalculator {
 		// start assuming that it's a one-to-one mapping
 		ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[sources.size()];
 		ArrayList<ReceiverDistribution> distsList = null;
-		for (int s=0; s<sources.size(); s++) {
-			FaultSection source = sources.get(s);
+//		for (int s=0; s<sources.size(); s++) {
+//			FaultSection source = sources.get(s);
+		int s = 0;
+		for (FaultSection source : sources) {
 			ReceiverDistribution[] aggregated = aggSectToSect(source, receiver);
 			if (distsList != null) {
 				// we're already in list mode
@@ -849,6 +887,7 @@ public class AggregatedStiffnessCalculator {
 				// still 1-to-1
 				receiverSectDists[s] = aggregated[0];
 			}
+			s++;
 		}
 
 		if (distsList != null) {
@@ -880,7 +919,7 @@ public class AggregatedStiffnessCalculator {
 		return ret;
 	}
 	
-	private ReceiverDistribution[] aggSectsToSect(List<FaultSection> sources, FaultSection receiver) {
+	private ReceiverDistribution[] aggSectsToSect(Collection<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
 		ReceiverDistribution[] receiverSectDists = collectMultiSectsToSect(sources, receiver);
@@ -889,9 +928,12 @@ public class AggregatedStiffnessCalculator {
 		
 		if (D) {
 			System.out.println(sources.stream().map(s -> s.getSectionId()).map(String::valueOf).collect(Collectors.joining(","))
-					+" -> "+receiver.getSectionId()+" sects-to-sect "+layers[2]+":");
-			for (ReceiverDistribution aggDist : aggregated)
-				System.out.println("\t"+aggDist);
+					+" -> "+receiver.getSectionId()+" sects-to-sect "+layers[2]+". "+aggregated.length+" agg receiver dists from "
+					+receiverSectDists.length+" input dists");
+			if (DD) {
+				for (ReceiverDistribution aggDist : aggregated)
+					System.out.println("\t"+aggDist);
+			}
 		}
 		
 		return aggregated;
@@ -900,7 +942,7 @@ public class AggregatedStiffnessCalculator {
 	// array by receiver index, to map of <sources, val>>
 	private transient List<Map<UniqueRupture, Double>> ss2rCache = null;
 	
-	public double calc(List<FaultSection> sources, FaultSection receiver) {
+	public double calc(Collection<FaultSection> sources, FaultSection receiver) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
 		UniqueRupture sourcesUnique = UniqueRupture.forSects(sources);
@@ -942,7 +984,7 @@ public class AggregatedStiffnessCalculator {
 	
 	private transient Table<UniqueRupture, UniqueRupture, Double> ss2rsCache = null;
 	
-	public double calc(List<FaultSection> sources, List<FaultSection> receivers) {
+	public double calc(Collection<FaultSection> sources, Collection<FaultSection> receivers) {
 		Preconditions.checkState(layers.length > 3, "Sections-to-sections aggregation layer not supplied");
 		Preconditions.checkState(layers[3].isTerminal(), "Final layer must be terminal: %s", layers[3]);
 
@@ -961,8 +1003,10 @@ public class AggregatedStiffnessCalculator {
 		if (val == null) {
 			ReceiverDistribution[] receiverSectDists = new ReceiverDistribution[receivers.size()];
 			ArrayList<ReceiverDistribution> distsList = null;
-			for (int r=0; r<receivers.size(); r++) {
-				FaultSection receiver = receivers.get(r);
+//			for (int r=0; r<receivers.size(); r++) {
+//				FaultSection receiver = receivers.get(r);
+			int r = 0;
+			for (FaultSection receiver : receivers) {
 				ReceiverDistribution[] aggregated = aggSectsToSect(sources, receiver);
 				if (distsList != null) {
 					// we're already in list mode
@@ -980,6 +1024,7 @@ public class AggregatedStiffnessCalculator {
 					// still 1-to-1
 					receiverSectDists[r] = aggregated[0];
 				}
+				r++;
 			}
 
 			if (distsList != null) {
@@ -1118,8 +1163,10 @@ public class AggregatedStiffnessCalculator {
 //				AggregationMethod.FLATTEN, AggregationMethod.FRACT_POSITIVE);
 //				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN,
 //				AggregationMethod.SUM, AggregationMethod.SUM);
-				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM,
-				AggregationMethod.NORM_BY_COUNT, AggregationMethod.FRACT_POSITIVE);
+//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM,
+//				AggregationMethod.NORM_BY_COUNT, AggregationMethod.FRACT_POSITIVE);
+				AggregationMethod.SUM, AggregationMethod.SUM,
+				AggregationMethod.FLAT_SUM, AggregationMethod.NUM_NEGATIVE);
 		
 //		FaultSection s1 = subSects.get(0);
 //		FaultSection s2 = subSects.get(1);
@@ -1127,7 +1174,7 @@ public class AggregatedStiffnessCalculator {
 ////		aggCalc.calc(s2, s1);
 ////		aggCalc.calc(s3, s1);
 //		aggCalc.calc(Lists.newArrayList(s2, s3), s1);
-		int targetNumSects = 2;
+		int targetNumSects = 4;
 		
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
 			List<FaultSection> rupSects = rupSet.getFaultSectionDataForRupture(r);
