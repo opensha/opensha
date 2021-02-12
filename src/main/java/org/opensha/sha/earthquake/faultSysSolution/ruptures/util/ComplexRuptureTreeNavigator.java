@@ -86,21 +86,11 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 		}
 	}
 
-	/**
-	 * @param cluster
-	 * @return the predecessor (up a level in the tree) to this cluster, or null if this is the
-	 * top level cluster
-	 */
 	@Override
 	public FaultSubsectionCluster getPredecessor(FaultSubsectionCluster cluster) {
 		return clusterConnectionsMap.get(cluster).predecessor;
 	}
 	
-	/**
-	 * @param cluster
-	 * @return a list of all descendants (down a level in the tree) from this cluster (empty list is
-	 * returned if no descendants exist)
-	 */
 	@Override
 	public List<FaultSubsectionCluster> getDescendants(FaultSubsectionCluster cluster) {
 		return clusterConnectionsMap.get(cluster).descendants;
@@ -135,15 +125,6 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 				+targetID+" ("+sect.getSectionName()+") in cluster "+cluster+".\nFull rupture: "+rupture);
 	}
 	
-	/**
-	 * Locates the given jump. If the jump occurs in the rupture backwards, i.e., from toCluster to
-	 * fromCluster, then the jump returned will be reversed such that it matches the supplied to/from clusters
-	 * 
-	 * @param fromCluster
-	 * @param toCluster
-	 * @return the jump from fromCluster to toCluster
-	 * @throws IllegalStateException if the rupture does not use a direct jump between these clusters
-	 */
 	@Override
 	public Jump getJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
 		ClusterConnections connections = clusterConnectionsMap.get(toCluster);
@@ -159,31 +140,52 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 				"Rupture does not use a direct jump between "+fromCluster+" to "+toCluster);
 	}
 	
-	/**
-	 * @param sect
-	 * @return the direct predecessor of this section (either within its cluster or in the previous cluster)
-	 * null if this is the first section of the first cluster
-	 */
+	@Override
+	public Jump getJump(FaultSection fromSection, FaultSection toSection) {
+		FaultSubsectionCluster fromCluster = locateCluster(fromSection);
+		FaultSubsectionCluster toCluster = locateCluster(toSection);
+		Preconditions.checkState(fromCluster != toCluster && fromCluster != null && fromCluster.contains(fromSection)
+				&& toCluster != null && toCluster.contains(toSection));
+		
+		ClusterConnections connections = clusterConnectionsMap.get(toCluster);
+		Preconditions.checkNotNull(connections, "toCluster not found: %s", toCluster);
+		if (connections.jumpTo != null && connections.jumpTo.fromCluster == fromCluster) {
+			Jump jump = connections.jumpTo;
+			Preconditions.checkState(jump.fromSection.equals(fromSection) && jump.toSection.equals(toSection),
+					"Jump doesn't occur between %s and %s: %s",
+					fromSection.getSectionId(), toSection.getSectionId(), connections.jumpTo);
+			return jump;
+		}
+		// check the other direction (backwards jump)
+		connections = clusterConnectionsMap.get(fromCluster);
+		Preconditions.checkNotNull(connections, "fromCluster not found: %s", fromCluster);
+		if (connections.jumpTo != null && connections.jumpTo.fromCluster == toCluster) {
+			Jump jump = connections.jumpTo.reverse();
+			Preconditions.checkState(jump.fromSection.equals(fromSection) && jump.toSection.equals(toSection),
+					"Jump doesn't occur between %s and %s: %s\n\tRupture: %s",
+					fromSection.getSectionId(), toSection.getSectionId(), connections.jumpTo, rupture);
+			return jump;
+		}
+		throw new IllegalStateException(
+				"Rupture does not use a direct jump between "+fromSection.getSectionId()+" to "+toSection.getSectionId());
+	}
+	
 	@Override
 	public FaultSection getPredecessor(FaultSection sect) {
 		FaultSubsectionCluster cluster = locateCluster(sect);
+		ClusterConnections connections = clusterConnectionsMap.get(cluster);
+		if (connections.jumpTo != null && connections.jumpTo.toSection.equals(sect))
+			// we jumped to this section
+			return connections.jumpTo.fromSection;
+		// no jump to this cluster, see if we're at the start of the cluster
 		int indexInCluster = indexWithinCluster(sect, cluster);
 		if (indexInCluster > 0)
+			// not at the start, predecessor is the section before
 			return cluster.subSects.get(indexInCluster-1);
-		// need upstream cluster
-		ClusterConnections connections = clusterConnectionsMap.get(cluster);
-		if (connections.jumpTo == null)
-			// start cluster
-			return null;
-		return connections.jumpTo.fromSection;
+		// if we're here, then no jumps to us and we're the first section. no predecessor (first sect of first cluster)
+		return null;
 	}
 	
-	/**
-	 * 
-	 * @param sect
-	 * @return a list of all descendants from this subsection, which could be in the same
-	 * cluster or on the other side of a jump (empty list is returned if no descendants exist)
-	 */
 	@Override
 	public List<FaultSection> getDescendants(FaultSection sect) {
 		FaultSubsectionCluster cluster = locateCluster(sect);
@@ -191,7 +193,13 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 		List<FaultSection> descendants = new ArrayList<>();
 		if (indexInCluster < cluster.subSects.size()-1)
 			descendants.add(cluster.subSects.get(indexInCluster+1));
-		for (Jump jump : clusterConnectionsMap.get(cluster).jumpsFrom)
+		ClusterConnections connections = clusterConnectionsMap.get(cluster);
+		if (indexInCluster > 0 && connections.jumpTo != null && connections.jumpTo.toSection.equals(sect)) {
+			// we took a jump to get to this point, but it's not the start, so there are descendants in both
+			// directions (T rupture)
+			descendants.add(cluster.subSects.get(indexInCluster-1));
+		}
+		for (Jump jump : connections.jumpsFrom)
 			if (jump.fromSection.getSectionId() == sect.getSectionId())
 				descendants.add(jump.toSection);
 		return descendants;

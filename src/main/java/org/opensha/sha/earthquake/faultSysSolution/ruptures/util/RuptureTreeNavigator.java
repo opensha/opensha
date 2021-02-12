@@ -34,6 +34,17 @@ public interface RuptureTreeNavigator {
 	public Jump getJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster);
 
 	/**
+	 * Locates the given jump. If the jump occurs in the rupture backwards, i.e., from toSection to
+	 * fromSection, then the jump returned will be reversed such that it matches the supplied to/from sections
+	 * 
+	 * @param fromSection
+	 * @param toSection
+	 * @return the jump from fromSection to toSection
+	 * @throws IllegalStateException if the rupture does not use a direct jump between these sections
+	 */
+	public Jump getJump(FaultSection fromSection, FaultSection toSection);
+
+	/**
 	 * @param sect
 	 * @return the direct predecessor of this section (either within its cluster or in the previous cluster)
 	 * null if this is the first section of the first cluster

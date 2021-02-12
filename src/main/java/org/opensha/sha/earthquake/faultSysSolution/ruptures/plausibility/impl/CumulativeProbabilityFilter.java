@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +26,9 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavi
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
+import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
+import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
@@ -87,6 +91,35 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 		
 	}
+	
+	public static class Shaw07JumpDistProb extends JumpProbabilityCalc {
+		
+		private double a;
+		private double r0;
+
+		public Shaw07JumpDistProb(double a, double r0) {
+			this.a = a;
+			this.r0 = r0;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Shaw07 [A="+optionalDigitDF.format(a)+", R0="+optionalDigitDF.format(r0)+"]";
+		}
+
+		@Override
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			return a*Math.exp(-jump.distance/r0);
+		}
+		
+	}
+	
+	private static final DecimalFormat optionalDigitDF = new DecimalFormat("0.#");
 	
 	public static class BiasiWesnousky2016CombJumpDistProb extends JumpProbabilityCalc {
 
@@ -653,6 +686,11 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 		
 	}
+	
+//	public static class CoulombSectProb implements RuptureProbabilityCalc {
+//		
+//		public CoulombSectProb
+//	}
 	
 	private float minProbability;
 	private RuptureProbabilityCalc[] calcs;

@@ -16,9 +16,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.dom4j.Document;
 import org.dom4j.DocumentException;
+import org.dom4j.Element;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.XMLUtils;
+import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
@@ -981,16 +985,32 @@ public class ClusterRuptureBuilder {
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
-		FaultModels fm = FaultModels.FM3_1;
-		File distAzCacheFile = new File(rupSetsDir, fm.encodeChoiceString().toLowerCase()
-				+"_dist_az_cache.csv");
-		DeformationModels dm = fm.getFilterBasis();
+		
+		// for UCERF3 fault models
+//		FaultModels fm = FaultModels.FM3_1;
+//		String fmPrefix = fm.encodeChoiceString().toLowerCase();
+//		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
+//		DeformationModels dm = fm.getFilterBasis();
+//		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
+//		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
+//		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
+		// END U3
+		
+		// for NZ tests
+		File xmlFile = new File(rupSetsDir, "DEMO5_SANSTVZ_crustal_opensha.xml");
+		Document fsDoc = XMLUtils.loadDocument(xmlFile);
+		Element fsEl = fsDoc.getRootElement().element("FaultModel");
+		List<FaultSection> sects = FaultSystemIO.fsDataFromXML(fsEl);
+		System.out.println("Loaded "+sects.size()+" sections");
+		List<FaultSection> subSects = new ArrayList<>();
+		for (FaultSection sect : sects)
+			subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
+		System.out.println("Built "+subSects.size()+" subsections");
+		Preconditions.checkState(!subSects.isEmpty());
+		String fmPrefix = "nz_demo5_crustal";
+		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
 		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
-		
-		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm,
-				null, 0.1);
-		
-		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
+		// END NZ
 		
 		RupDebugCriteria debugCriteria = null;
 		boolean stopAfterDebug = false;
@@ -1036,7 +1056,7 @@ public class ClusterRuptureBuilder {
 		 */
 //		PlausibilityConfiguration config = PlausibilityConfiguration.getUCERF3(subSects, distAzCalc, fm);
 //		ClusterPermutationStrategy permStrat = new UCERF3ClusterPermuationStrategy();
-//		String outputName = fm.encodeChoiceString().toLowerCase()+"_reproduce_ucerf3.zip";
+//		String outputName = fmPrefix+"_reproduce_ucerf3.zip";
 //		AggregatedStiffnessCache stiffnessCache = null;
 //		File stiffnessCacheFile = null;
 //		int stiffnessCacheSize = 0;
@@ -1047,7 +1067,7 @@ public class ClusterRuptureBuilder {
 		 * To reproduce UCERF3 with an alternative distance/conn strategy (and calculate missing coulomb)
 		 * =============================
 		 */
-//		String outputName = fm.encodeChoiceString().toLowerCase()+"_ucerf3";
+//		String outputName = fmPrefix+"_ucerf3";
 //		CoulombRates coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
 //		
 //		double maxJumpDist = 5d;
@@ -1106,7 +1126,7 @@ public class ClusterRuptureBuilder {
 		AggregatedStiffnessCalculator fractRpatchPosAgg = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE);
 		
-		String outputName = fm.encodeChoiceString().toLowerCase();
+		String outputName = fmPrefix;
 		
 		/*
 		 * Connection strategy: which faults are allowed to connect, and where?
@@ -1119,23 +1139,23 @@ public class ClusterRuptureBuilder {
 //		if (maxJumpDist != 5d)
 //			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
 		// use this for simpler connection rules
-		double maxJumpDist = 10d;
-		ClusterConnectionStrategy connectionStrategy =
-			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
-		if (maxJumpDist != 5d)
-			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
-		// use this for adaptive distance filter
-//		double r0 = 5d;
-//		double rMax = 10d;
-//		int cMax = -1;
-//		int sMax = 1;
+//		double maxJumpDist = 5d;
 //		ClusterConnectionStrategy connectionStrategy =
-//				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
-//		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
-//		if (cMax >= 0)
-//			outputName += "_cMax"+cMax;
-//		if (sMax >= 0)
-//			outputName += "_sMax"+sMax;
+//			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
+//		if (maxJumpDist != 5d)
+//			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
+		// use this for adaptive distance filter
+		double r0 = 5d;
+		double rMax = 10d;
+		int cMax = -1;
+		int sMax = 1;
+		ClusterConnectionStrategy connectionStrategy =
+				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
+		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
+		if (cMax >= 0)
+			outputName += "_cMax"+cMax;
+		if (sMax >= 0)
+			outputName += "_sMax"+sMax;
 		
 		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
 		
@@ -1165,7 +1185,7 @@ public class ClusterRuptureBuilder {
 		/*
 		 * Regular CFF prob (not currently used)
 		 */
-		// SLIP RATE PROB: allow neg, 0.01
+		// CFF prob: allow neg, 0.01
 //		configBuilder.cumulativeProbability(0.01f, new RelativeCoulombProb(
 //				sumAgg, connectionStrategy, false, true, true));
 //		outputName += "_cffP0.01incr";
@@ -1234,9 +1254,9 @@ public class ClusterRuptureBuilder {
 		// Check connectivity only (maximum 2 clusters per rupture)
 //		configBuilder.maxNumClusters(2); outputName += "_connOnly";
 		
-		File outputDir = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-//		File outputDir = rupSetsDir;
+//		File outputDir = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
+//		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		File outputDir = rupSetsDir;
 		
 		/*
 		 * Splay constraints

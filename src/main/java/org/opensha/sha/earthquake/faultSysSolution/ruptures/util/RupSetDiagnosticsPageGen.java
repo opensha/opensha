@@ -26,6 +26,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.regex.Matcher;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -34,6 +35,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYBoxAnnotation;
@@ -91,6 +93,9 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Sp
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.RateCombiner;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
@@ -129,8 +134,8 @@ public class RupSetDiagnosticsPageGen {
 //					+ "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos"));
 //			System.exit(0);
 			
-//			String inputName = "RSQSim 4983, SectArea=0.5";
-//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+			String inputName = "RSQSim 4983, SectArea=0.5";
+			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 			
 //			String inputName = "CmlAz Only";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
@@ -138,44 +143,49 @@ public class RupSetDiagnosticsPageGen {
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
-			String inputName = "Adaptive 5-10km (SMax=1), Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
-			File inputFile = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-			// these are relative to fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip
-			File relDir = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
-			boolean skipPlausibility = true;
-			File altPlausibilityCompareFile = null;
-//			String compName = "Jump: Adaptive 5-15km (SMax=1)";				// generated, plotted REDO: build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_15km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "Jump: Adaptive 5-10km (CMax=2)";				// generated, plotted REDO: build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_cMax2_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "Jump: 10km";									// generated, plotted REDO: build?	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_10km_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-			String compName = "Jump: 10km, 5% Fract Increase";				// generated, plotted
-			File compareFile = new File(relDir, "fm3_1_10km_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
-//			String compName = "Jump: 5km";									// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "Separate CFF Paths";							// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_cffPathP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "5% Fract Increase";							// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
-//			String compName = "No Slip Rate Prob";							// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "No CFF 3/4 Ints";							// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "No CFF Path RPatch";							// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffP0.01_cffSPathFav15.zip");
-//			String compName = "No CFF Sect Path";							// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffP0.01_cffCPathRPatchHalfPos.zip");
-//			String compName = "No CFF Prob";								// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "CmlAz, CFF Comb Paths: [Sect,RPatch]";		// generated, plotted REDO build? 	done	plot?	done
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlAz_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "No Self-Stiffness Cap";						// generated, plotted
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_cap0x.zip");
-//			String compName = "Add CmlRake<=180";							// generated, plotted
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlRake_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			String compName = "CmlAz, CmlRake, CFF Comb Paths: [Sect,RPatch]";// generated, plotted
-//			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlAz_cmlRake_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+//			String inputName = "NZ 5km, Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
+//			File inputFile = new File(rupSetsDir, "nz_demo5_crustal_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
+			
+//			String inputName = "Adaptive 5-10km (SMax=1), Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
+//			File inputFile = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+//			// these are relative to fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip
+//			File relDir = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
+//			boolean skipPlausibility = true;
+//			File altPlausibilityCompareFile = null;
+//			String compName = null;
+//			File compareFile = null;
+////			String compName = "Jump: Adaptive 5-15km (SMax=1)";				// generated, plotted REDO: build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_15km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "Jump: Adaptive 5-10km (CMax=2)";				// generated, plotted REDO: build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_cMax2_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "Jump: 10km";									// generated, plotted REDO: build?		plot?	
+////			File compareFile = new File(relDir, "fm3_1_10km_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "Jump: 10km, 5% Fract Increase";				// generated, plotted
+////			File compareFile = new File(relDir, "fm3_1_10km_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
+////			String compName = "Jump: 5km";									// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "Separate CFF Paths";							// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_cffPathP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "5% Fract Increase";							// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
+////			String compName = "No Slip Rate Prob";							// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "No CFF 3/4 Ints";							// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "No CFF Path RPatch";							// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffP0.01_cffSPathFav15.zip");
+////			String compName = "No CFF Sect Path";							// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffP0.01_cffCPathRPatchHalfPos.zip");
+////			String compName = "No CFF Prob";								// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "CmlAz, CFF Comb Paths: [Sect,RPatch]";		// generated, plotted REDO build? 		plot?	
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlAz_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "No Self-Stiffness Cap";						// generated, plotted
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_cap0x.zip");
+////			String compName = "Add CmlRake<=180";							// generated, plotted
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlRake_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+////			String compName = "CmlAz, CmlRake, CFF Comb Paths: [Sect,RPatch]";// generated, plotted
+////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlAz_cmlRake_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
 			
 			// UCERF3 variants
 //			boolean skipPlausibility = false;
@@ -194,21 +204,32 @@ public class RupSetDiagnosticsPageGen {
 			
 			
 			// common ones
-//			boolean skipPlausibility = false;
-////			String compName = "UCERF3";
-////			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
-////			String compName = null;
-////			File compareFile = null;
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
-//			String compName = "Adaptive 5-10km (SMax=1), Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
-//			File compareFile = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+			boolean skipPlausibility = false;
+//			String compName = "UCERF3";
+//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
+//			String compName = null;
+//			File compareFile = null;
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
+			String compName = "Adaptive 5-10km (SMax=1), Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
+			File compareFile = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+//			String compName = "NZ w/ U3 (non-CFF) Filters";
+//			File compareFile = new File(rupSetsDir, "nz_demo5_crustal_cmlAz_cmlRake_u3Az_sectFractPerm0.05.zip");
+//			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
-			argz.add("--dist-az-cache");
-			argz.add(new File(rupSetsDir, "fm3_1_dist_az_cache.csv").getAbsolutePath());
+			if (inputFile.getName().startsWith("fm_3_1") || inputFile.getName().startsWith("rsqsim_")) {
+				argz.add("--dist-az-cache");
+				argz.add(new File(rupSetsDir, "fm3_1_dist_az_cache.csv").getAbsolutePath());
+			} else if (inputFile.getName().startsWith("fm_3_2")) {
+				argz.add("--dist-az-cache");
+				argz.add(new File(rupSetsDir, "fm3_2_dist_az_cache.csv").getAbsolutePath());
+			} else if (inputFile.getName().startsWith("nz_demo5_crustal")) {
+				argz.add("--dist-az-cache");
+				argz.add(new File(rupSetsDir, "nz_demo5_crustal_dist_az_cache.csv").getAbsolutePath());
+			}
 			argz.add("--coulomb-cache-dir"); argz.add(rupSetsDir.getAbsolutePath());
 			argz.add("--rupture-set"); argz.add(inputFile.getAbsolutePath());
 			if (inputName != null) {
@@ -375,19 +396,7 @@ public class RupSetDiagnosticsPageGen {
 			inputUniques.add(rup.unique);
 		
 		// detect region
-		MinMaxAveTracker latTrack = new MinMaxAveTracker();
-		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
-		for (FaultSection sect : inputRupSet.getFaultSectionDataList()) {
-			for (Location loc : sect.getFaultTrace()) {
-				latTrack.addValue(loc.getLatitude());
-				lonTrack.addValue(loc.getLongitude());
-			}
-		}
-		double minLat = Math.floor(latTrack.getMin());
-		double maxLat = Math.ceil(latTrack.getMax());
-		double minLon = Math.floor(lonTrack.getMin());
-		double maxLon = Math.ceil(lonTrack.getMax());
-		Region region = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+		Region region = RupSetMapMaker.buildBufferedRegion(subSects);
 
 		List<ClusterRupture> compRups = null;
 		RuptureConnectionSearch compSearch = null;
@@ -461,6 +470,17 @@ public class RupSetDiagnosticsPageGen {
 				if (compUniqueJumps.containsKey(jump))
 					compUniqueJumps.remove(jump);
 		}
+		
+		double defaultMaxDist = DEFAULT_MAX_DIST;
+		if (cmd.hasOption("default-max-dist"))
+			defaultMaxDist = Double.parseDouble(cmd.getOptionValue("default-max-dist"));
+		
+		ClusterConnectionStrategy inputConnStrat = buildDefaultConnStrat(
+				inputConfig, distAzCalc, inputJumps.keySet(), defaultMaxDist);
+		ClusterConnectionStrategy compConnStrat = null;
+		if (compRupSet != null)
+			compConnStrat = buildDefaultConnStrat(
+					compConfig, distAzCalc, compJumps.keySet(), defaultMaxDist);
 		
 		if (inputConfig != null) {
 			lines.add("## Plausibility Configuration");
@@ -665,7 +685,7 @@ public class RupSetDiagnosticsPageGen {
 				filters.addAll(compConfig.getFilters());
 				RupSetPlausibilityResult result = testRupSetPlausibility(inputRups, filters, inputConfig, inputSearch);
 				File plot = plotRupSetPlausibility(result, resourcesDir, "comp_filter_compare",
-						"Comparison with "+compName+" Filters");
+						"Comparison with "+getTruncatedTitle(compName)+" Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
 				lines.add("");
 				lines.addAll(getRupSetPlausibilityTable(result, compName).build());
@@ -694,7 +714,7 @@ public class RupSetDiagnosticsPageGen {
 				filters.addAll(inputConfig.getFilters());
 				RupSetPlausibilityResult result = testRupSetPlausibility(compRups, filters, compConfig, compSearch);
 				File plot = plotRupSetPlausibility(result, resourcesDir, "main_filter_compare",
-						"Comparison with "+inputName+" Filters");
+						"Comparison with "+getTruncatedTitle(inputName)+" Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
 				lines.add("");
 				lines.addAll(getRupSetPlausibilityTable(result, compName+" against").build());
@@ -714,20 +734,6 @@ public class RupSetDiagnosticsPageGen {
 				lines.add(topLink); lines.add("");
 				
 				// load in alternatives
-				ClusterConnectionStrategy inputConnStrat = null;
-				if (inputConfig == null) {
-					double maxDist = 0d;
-					
-					for (Jump jump : inputJumps.keySet())
-						maxDist = Math.max(maxDist, jump.distance);
-					maxDist = Math.ceil(maxDist);
-					System.out.println("WARNING: primary rupture set doesn't have a connection strategy, using actual "
-							+ "maxDist="+(int)maxDist+" km for alt plausibility filters which use connections.");
-					inputConnStrat = new DistCutoffClosestSectClusterConnectionStrategy(
-							subSects, distAzCalc, maxDist);
-				} else {
-					inputConnStrat = inputConfig.getConnectionStrategy();
-				}
 				List<PlausibilityFilter> filters = PlausibilityConfiguration.readFiltersJSON(
 						altPlausibilityCompareFile, inputConnStrat, distAzCalc);
 				if (coulombCacheDir != null)
@@ -754,22 +760,22 @@ public class RupSetDiagnosticsPageGen {
 		// connections plots
 		System.out.println("Plotting section connections");
 		plotConnectivityLines(inputRupSet, resourcesDir, "sect_connectivity",
-				inputName+" Connectivity", inputJumps.keySet(), MAIN_COLOR, region, 800);
+				getTruncatedTitle(inputName)+" Connectivity", inputJumps.keySet(), MAIN_COLOR, region, 800);
 		plotConnectivityLines(inputRupSet, resourcesDir, "sect_connectivity_hires",
-				inputName+" Connectivity", inputJumps.keySet(), MAIN_COLOR, region, 3000);
+				getTruncatedTitle(inputName)+" Connectivity", inputJumps.keySet(), MAIN_COLOR, region, 3000);
 		if (compRups != null) {
 			plotConnectivityLines(compRupSet, resourcesDir, "sect_connectivity_comp",
-					compName+" Connectivity", compJumps.keySet(), COMP_COLOR, region, 800);
+					getTruncatedTitle(compName)+" Connectivity", compJumps.keySet(), COMP_COLOR, region, 800);
 			plotConnectivityLines(compRupSet, resourcesDir, "sect_connectivity_comp_hires",
-					compName+" Connectivity", compJumps.keySet(), COMP_COLOR, region, 3000);
+					getTruncatedTitle(compName)+" Connectivity", compJumps.keySet(), COMP_COLOR, region, 3000);
 			plotConnectivityLines(inputRupSet, resourcesDir, "sect_connectivity_unique",
-					inputName+" Unique Connectivity", inputUniqueJumps.keySet(), MAIN_COLOR, region, 800);
+					getTruncatedTitle(inputName)+" Unique Connectivity", inputUniqueJumps.keySet(), MAIN_COLOR, region, 800);
 			plotConnectivityLines(inputRupSet, resourcesDir, "sect_connectivity_unique_hires",
-					inputName+" Unique Connectivity", inputUniqueJumps.keySet(), MAIN_COLOR, region, 3000);
+					getTruncatedTitle(inputName)+" Unique Connectivity", inputUniqueJumps.keySet(), MAIN_COLOR, region, 3000);
 			plotConnectivityLines(compRupSet, resourcesDir, "sect_connectivity_unique_comp",
-					compName+" Unique Connectivity", compUniqueJumps.keySet(), COMP_COLOR, region, 800);
+					getTruncatedTitle(compName)+" Unique Connectivity", compUniqueJumps.keySet(), COMP_COLOR, region, 800);
 			plotConnectivityLines(compRupSet, resourcesDir, "sect_connectivity_unique_comp_hires",
-					compName+" Unique Connectivity", compUniqueJumps.keySet(), COMP_COLOR, region, 3000);
+					getTruncatedTitle(compName)+" Unique Connectivity", compUniqueJumps.keySet(), COMP_COLOR, region, 3000);
 		}
 		
 		double maxConnDist = 0d;
@@ -779,26 +785,26 @@ public class RupSetDiagnosticsPageGen {
 			for (Jump jump : compJumps.keySet())
 				maxConnDist = Math.max(maxConnDist, jump.distance);
 		plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist",
-				inputName+" Connectivity", inputJumps, inputUniqueJumps, maxConnDist,
+				getTruncatedTitle(inputName)+" Connectivity", inputJumps, inputUniqueJumps, maxConnDist,
 				MAIN_COLOR, false, false);
 		if (inputSol != null) {
 			plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates",
-					inputName+" Connectivity", inputJumps, inputUniqueJumps, maxConnDist,
+					getTruncatedTitle(inputName)+" Connectivity", inputJumps, inputUniqueJumps, maxConnDist,
 					MAIN_COLOR, true, false);
 			plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates_log",
-					inputName+" Connectivity", inputJumps, inputUniqueJumps, maxConnDist,
+					getTruncatedTitle(inputName)+" Connectivity", inputJumps, inputUniqueJumps, maxConnDist,
 					MAIN_COLOR, true, true);
 		}
 		if (compRups != null) {
 			plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_comp",
-					compName+" Connectivity", compJumps, compUniqueJumps, maxConnDist,
+					getTruncatedTitle(compName)+" Connectivity", compJumps, compUniqueJumps, maxConnDist,
 					COMP_COLOR, false, false);
 			if (compSol != null) {
 				plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates_comp",
-						compName+" Connectivity", compJumps, compUniqueJumps, maxConnDist,
+						getTruncatedTitle(compName)+" Connectivity", compJumps, compUniqueJumps, maxConnDist,
 						COMP_COLOR, true, false);
 				plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates_comp_log",
-						compName+" Connectivity", compJumps, compUniqueJumps, maxConnDist,
+						getTruncatedTitle(compName)+" Connectivity", compJumps, compUniqueJumps, maxConnDist,
 						COMP_COLOR, true, true);
 			}
 		}
@@ -932,6 +938,237 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("");
 		}
 		
+		if (inputSol != null) {
+			lines.add("## Fault Segmentation");
+			lines.add(topLink); lines.add("");
+			
+			double minMag = inputRupSet.getMinMag();
+			double[] minMags;
+			if (minMag >= 7.5)
+				minMags = new double[] { 7.5 };
+			else if (minMag >= 7)
+				minMags = new double[] { 7d, 7.5 };
+			else if (minMag >= 6.5)
+				minMags = new double[] { 6.5, 7d, 7.5 };
+			else
+				minMags = new double[] { 0d, 6.5, 7d, 7.5 };
+			
+			lines.add("The following plots show implied segmentation from the rates of this fault system solution.");
+			lines.add("");
+			
+			SegmentationCalculator inputSegCalc = new SegmentationCalculator(
+					inputSol, inputRups, inputConnStrat, distAzCalc, minMags);
+			SegmentationCalculator compSegCalc = null;
+			if (compSol != null)
+				compSegCalc = new SegmentationCalculator(compSol, compRups, compConnStrat, distAzCalc, minMags);
+			if (inputSegCalc.areMultipleJumpsPerParent() || compSegCalc != null && compSegCalc.areMultipleJumpsPerParent()) {
+				String names = null;
+				if (inputSegCalc.areMultipleJumpsPerParent()) {
+					names = inputName;
+					inputSegCalc = inputSegCalc.combineMultiJumps(true);
+				}
+				if (compSegCalc != null && compSegCalc.areMultipleJumpsPerParent()) {
+					if (names == null)
+						names = compName;
+					else
+						names = "both "+names+" and "+compName;
+					compSegCalc = compSegCalc.combineMultiJumps(true);
+				}
+				lines.add("NOTE: "+names+" has multiple jumping points between parent sections. We consolidate "
+						+ "all jumps to occur at a single jumping point (with the highest jumping rate) and average "
+						+ "quantities on either side of the jump (participation/slip rates)");
+				lines.add("");
+			}
+			
+//			RateCombiner[] combiners = RateCombiner.values();
+			RateCombiner[] combiners = { RateCombiner.MIN };
+			Scalars[] scalars = Scalars.values();
+			
+			File[] inputConnRates = inputSegCalc.plotConnectionRates(resourcesDir, "conn_rates", inputName);
+			Map<RateCombiner, File[]> inputPassthroughRates = new HashMap<>();
+			for (RateCombiner combiner : combiners)
+				inputPassthroughRates.put(combiner, inputSegCalc.plotConnectionFracts(resourcesDir,
+						"conn_passthrough_"+combiner.name(), "Connection Passthrough Rates, Relative to "+combiner, combiner));
+			Map<Scalars, File[]> inputScalarPassthroughs = new HashMap<>();
+			Map<Scalars, File[]> inputScalarLogPassthroughs = new HashMap<>();
+			for (Scalars scalar : scalars) {
+				inputScalarPassthroughs.put(scalar, inputSegCalc.plotFractVsScalars(resourcesDir,
+						"conn_passthrough_"+scalar.name(), scalar, false, combiners));
+				inputScalarLogPassthroughs.put(scalar, inputSegCalc.plotFractVsScalars(resourcesDir,
+						"conn_passthrough_"+scalar.name()+"_log", scalar, true, combiners));
+			}
+			
+			File[] compConnRates = null;
+			Map<RateCombiner, File[]> compPassthroughRates = null;
+			Map<Scalars, File[]> compScalarPassthroughs = null;
+			Map<Scalars, File[]> compScalarLogPassthroughs = null;
+			if (compSegCalc != null) {
+				compConnRates = compSegCalc.plotConnectionRates(resourcesDir, "comp_conn_rates", compName);
+				compPassthroughRates = new HashMap<>();
+				for (RateCombiner combiner : combiners)
+					compPassthroughRates.put(combiner, compSegCalc.plotConnectionFracts(resourcesDir,
+							"comp_conn_passthrough_"+combiner.name(), "Connection Passthrough Rates, Relative to "+combiner, combiner));
+				compScalarPassthroughs = new HashMap<>();
+				compScalarLogPassthroughs = new HashMap<>();
+				for (Scalars scalar : scalars) {
+					compScalarPassthroughs.put(scalar, compSegCalc.plotFractVsScalars(resourcesDir,
+							"comp_conn_passthrough_"+scalar.name(), scalar, false, combiners));
+					compScalarLogPassthroughs.put(scalar, compSegCalc.plotFractVsScalars(resourcesDir,
+							"comp_conn_passthrough_"+scalar.name()+"_log", scalar, true, combiners));
+				}
+			}
+			
+			for (int m=0; m<minMags.length; m++) {
+				if (minMags.length > 1) {
+					if (minMags[m] > 0)
+						lines.add("### M&ge;"+(float)minMags[m]+" Fault Segmentation");
+					else
+						lines.add("### Supra-Seismogenic Fault Segmentation");
+					lines.add(topLink); lines.add("");
+				}
+				
+				lines.add("**Connection Rates**");
+				lines.add("");
+				lines.add("This shows the rate at which each connection is taken.");
+				lines.add("");
+				
+				if (compConnRates == null) {
+					lines.add("![Rates](resources/"+inputConnRates[m].getName()+")");
+				} else {
+					table = MarkdownUtils.tableBuilder();
+					table.addLine(inputName, compName);
+					table.initNewLine();
+					table.addColumn("![Rates](resources/"+inputConnRates[m].getName()+")");
+					table.addColumn("![Rates](resources/"+compConnRates[m].getName()+")");
+					table.finalizeLine();
+					lines.addAll(table.build());
+				}
+				lines.add("");
+				
+				lines.add("**Connection Passthrough Rates**");
+				lines.add(""); lines.add(topLink); lines.add("");
+				lines.add("Passthrough rates refer to the ratio of the jumping rate to the rates on either side of the jump. "
+						+ "The denominator of that ratio can be either the minimum, maximum, or average of the subsection "
+						+ "rates on either side of the jump. Each choice of denomiator is plotted separately.");
+				lines.add("");
+				
+				table = MarkdownUtils.tableBuilder();
+				if (compSegCalc != null)
+					table.addLine(inputName, compName);
+				for (RateCombiner combiner : combiners) {
+					table.initNewLine();
+					table.addColumn("![Rates](resources/"+inputPassthroughRates.get(combiner)[m].getName()+")");
+					if (compSegCalc != null)
+						table.addColumn("![Rates](resources/"+compPassthroughRates.get(combiner)[m].getName()+")");
+					table.finalizeLine();
+				}
+				lines.addAll(table.build());
+				lines.add("");
+				
+				lines.add("**Connection Passthrough Rates vs Scalars**");
+				lines.add(""); lines.add(topLink); lines.add("");
+				lines.add("This plots passthrough rates versus various scalar values (for each rate combiniation type).");
+				lines.add("");
+				
+				for (Scalars scalar : scalars) {
+					table = MarkdownUtils.tableBuilder();
+					table.initNewLine();
+					if (compSegCalc != null)
+						table.addColumn("");
+					// escape absolute values
+					String scalarName = scalar.toString().replace("|", "\\|");
+					table.addColumn(scalarName).addColumn(scalarName+" (Log10 Rates)");
+					table.finalizeLine();
+					table.initNewLine();
+					if (compSegCalc != null)
+						table.addColumn("**"+inputName+"**");
+					table.addColumn("![Rates](resources/"+inputScalarPassthroughs.get(scalar)[m].getName()+")");
+					table.addColumn("![Rates](resources/"+inputScalarLogPassthroughs.get(scalar)[m].getName()+")");
+					table.finalizeLine();
+					if (compSegCalc != null) {
+						table.initNewLine();
+						table.addColumn("**"+compName+"**");
+						table.addColumn("![Rates](resources/"+compScalarPassthroughs.get(scalar)[m].getName()+")");
+						table.addColumn("![Rates](resources/"+compScalarLogPassthroughs.get(scalar)[m].getName()+")");
+						table.finalizeLine();
+					}
+					lines.addAll(table.build());
+					lines.add("");
+				}
+				
+//				lines.add("**Connection Passthrough Rates vs Log10 Scalars**");
+//				lines.add(""); lines.add(topLink); lines.add("");
+//				lines.add("This plots passthrough rates versus various Log10 scalar values (for each rate combiniation type).");
+//				lines.add("");
+//				
+//				table = MarkdownUtils.tableBuilder();
+//				if (compSegCalc != null)
+//					table.addLine(inputName, compName);
+//				for (Scalars scalar : scalars) {
+//					table.initNewLine();
+//					table.addColumn("![Rates](resources/"+inputScalarLogPassthroughs.get(scalar)[m].getName()+")");
+//					if (compSegCalc != null) {
+//						table.addColumn("![Rates](resources/"+compScalarLogPassthroughs.get(scalar)[m].getName()+")");
+//					}
+//					table.finalizeLine();
+//				}
+//				lines.addAll(table.build());
+//				lines.add("");
+				
+				if (combiners.length > 1) {
+					lines.add("**Connection Passthrough Rates for Different Rate Combiners**");
+					lines.add(""); lines.add(topLink); lines.add("");
+					lines.add("This comapres "+inputName+ " passthrough rates for each rate combiniation type. "
+							+ "Linear on the left, log10 on the right.");
+					lines.add("");
+					
+					table = MarkdownUtils.tableBuilder();
+					table.addLine("Linear Passthrough Rates", "Log10 Passthrough Rates");
+					for (int c1=0; c1<combiners.length; c1++) {
+						for (int c2=c1+1; c2<combiners.length; c2++) {
+							table.initNewLine();
+							String prefix = "conn_rates_"+combiners[c1].name()+"_vs_"+combiners[c2].name();
+							File linearPlot = inputSegCalc.plotCombinerScatter(resourcesDir, prefix,
+									false, m, combiners[c1], combiners[c2]);
+							File logPlot = inputSegCalc.plotCombinerScatter(resourcesDir, prefix+"_log",
+									true, m, combiners[c1], combiners[c2]);
+							table.addColumn("![Scatter](resources/"+linearPlot.getName()+")");
+							table.addColumn("![Scatter](resources/"+logPlot.getName()+")");
+							table.finalizeLine();
+						}
+					}
+					lines.addAll(table.build());
+					lines.add("");
+				}
+			}
+			
+			if (minMags.length > 1) {
+				lines.add("### Magnitude Connection Rate Comparisons");
+				lines.add(topLink); lines.add("");
+				lines.add("This comapres "+inputName+ " passthrough rates across magniutdes (and also for each rate "
+						+ "combiniation type). Linear on the left, log10 on the right.");
+				lines.add("");
+				table = MarkdownUtils.tableBuilder();
+				table.addLine("Linear Passthrough Rates", "Log10 Passthrough Rates");
+				for (int m1=0; m1<minMags.length; m1++) {
+					for (int m2=m1+1; m2<minMags.length; m2++) {
+						table.initNewLine();
+						String prefix = "conn_rates_"+SegmentationCalculator.getMagPrefix(minMags[m1])
+							+"_vs_"+SegmentationCalculator.getMagPrefix(minMags[m2]);
+						File linearPlot = inputSegCalc.plotMagScatter(resourcesDir, prefix,
+								false, m1, m2, combiners);
+						File logPlot = inputSegCalc.plotMagScatter(resourcesDir, prefix+"_log",
+								true, m1, m2, combiners);
+						table.addColumn("![Scatter](resources/"+linearPlot.getName()+")");
+						table.addColumn("![Scatter](resources/"+logPlot.getName()+")");
+						table.finalizeLine();
+					}
+				}
+				lines.addAll(table.build());
+				lines.add("");
+			}
+		}
+		
 		// now plot section maximum mag/connected lengths
 		
 		lines.add("## Subsection Maximum Values");
@@ -953,13 +1190,13 @@ public class RupSetDiagnosticsPageGen {
 			if (compRups != null)
 				table.addLine(inputName, compName);
 			String prefix = "sect_max_"+scalar.name();
-			if (!plotScalarMaxMapView(inputRupSet, resourcesDir, prefix, inputName,
+			if (!plotScalarMaxMapView(inputRupSet, resourcesDir, prefix, getTruncatedTitle(inputName),
 					inputScalars, compScalars, region, MAIN_COLOR, false, false))
 				continue;
 			table.initNewLine();
 			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+".png)");
 			if (compScalars != null) {
-				plotScalarMaxMapView(compRupSet, resourcesDir, prefix+"_comp", compName,
+				plotScalarMaxMapView(compRupSet, resourcesDir, prefix+"_comp", getTruncatedTitle(compName),
 						compScalarVals.get(i), inputScalars, region, COMP_COLOR, false, false);
 				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp.png)");
 			}
@@ -1001,13 +1238,13 @@ public class RupSetDiagnosticsPageGen {
 			lines.add("");
 			System.out.println("Plotting num jumps");
 			table.initNewLine();
-			File plotFile = plotFixedJumpDist(inputRupSet, null, inputRups, inputName,
-					compRupSet, null, compRups, compName, distAzCalc, 0d, jumpDist, resourcesDir);
+			File plotFile = plotFixedJumpDist(inputRupSet, null, inputRups, getTruncatedTitle(inputName),
+					compRupSet, null, compRups, getTruncatedTitle(compName), distAzCalc, 0d, jumpDist, resourcesDir);
 			table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
 			if (hasSols) {
 				plotFile = plotFixedJumpDist(
-						inputSol == null ? null : inputRupSet, inputSol, inputRups, inputName,
-						compSol == null ? null : compRupSet, compSol, compRups, compName,
+						inputSol == null ? null : inputRupSet, inputSol, inputRups, getTruncatedTitle(inputName),
+						compSol == null ? null : compRupSet, compSol, compRups, getTruncatedTitle(compName),
 						distAzCalc, 0d, jumpDist, resourcesDir);
 				table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
 			}
@@ -1208,6 +1445,8 @@ public class RupSetDiagnosticsPageGen {
 		}
 	}
 	
+	public static double DEFAULT_MAX_DIST = 10d;
+	
 	private static Options createOptions() {
 		Options ops = new Options();
 
@@ -1264,6 +1503,12 @@ public class RupSetDiagnosticsPageGen {
 		coulombCacheOption.setRequired(false);
 		ops.addOption(coulombCacheOption);
 		
+		Option maxDistOption = new Option("dmd", "default-max-dist", true,
+				"Default maximum distance to use to infer connection strategies (if rupture set doesn't have one). "
+				+ "Default: "+(float)DEFAULT_MAX_DIST+" km");
+		maxDistOption.setRequired(false);
+		ops.addOption(maxDistOption);
+		
 		return ops;
 	}
 	
@@ -1283,6 +1528,29 @@ public class RupSetDiagnosticsPageGen {
 				table.addColumn("*N/A*");
 		}
 		table.finalizeLine();
+	}
+	
+	private static ClusterConnectionStrategy buildDefaultConnStrat(PlausibilityConfiguration config,
+			SectionDistanceAzimuthCalculator distAzCalc, Set<Jump> jumps, double defaultMaxDist) {
+		if (config == null) {
+			System.err.println("WARNING: primary rupture set doesn't have a connection strategy, using actual "
+					+ "connections, plus any up to the fallback maxDist="+(float)defaultMaxDist+" km. This may be used "
+							+ "by plausibilty filters or segmentation plots. Override with --default-max-dist <dist>");
+			
+			return new InputJumpsOrDistClusterConnectionStrategy(
+					distAzCalc.getSubSections(), distAzCalc, defaultMaxDist, jumps);
+		} 
+		return config.getConnectionStrategy();
+	}
+	
+	private static double getSearchMaxJumpDist(PlausibilityConfiguration config) {
+		if (config == null)
+			return 100d;
+		ClusterConnectionStrategy connStrat = config.getConnectionStrategy();
+		double maxDist = connStrat.getMaxJumpDist();
+		if (Double.isFinite(maxDist))
+			return maxDist;
+		return 100d;
 	}
 	
 	private static final Color MAIN_COLOR = Color.RED;
@@ -1441,16 +1709,6 @@ public class RupSetDiagnosticsPageGen {
 				}
 			}
 		}
-	}
-	
-	private static double getSearchMaxJumpDist(PlausibilityConfiguration config) {
-		if (config == null)
-			return 100d;
-		ClusterConnectionStrategy connStrat = config.getConnectionStrategy();
-		double maxDist = connStrat.getMaxJumpDist();
-		if (Double.isFinite(maxDist))
-			return maxDist;
-		return 100d;
 	}
 	
 	public static void plotRuptureHistograms(File outputDir, String prefix, TableBuilder table,
@@ -2113,13 +2371,20 @@ public class RupSetDiagnosticsPageGen {
 	public static RupSetPlausibilityResult testRupSetPlausibility(List<ClusterRupture> rups,
 			List<PlausibilityFilter> filters, PlausibilityConfiguration config,
 			RuptureConnectionSearch connSearch) {
+		boolean hasSplays = false;
+		for (ClusterRupture rup : rups) {
+			if (!rup.splays.isEmpty()) {
+				hasSplays = true;
+				break;
+			}
+		}
 		
 		List<PlausibilityFilter> newFilters = new ArrayList<>();
 		for (PlausibilityFilter filter : filters) {
 			if (filter instanceof JumpAzimuthChangeFilter)
 //				filter = new ErrOnCantEvalAzFilter(filter, false);
 				((JumpAzimuthChangeFilter)filter).setErrOnCantEvaluate(true);
-			if (filter.isDirectional(false) || filter.isDirectional(true)) {
+			if (filter.isDirectional(false) || (hasSplays && filter.isDirectional(true))) {
 				if (config == null) {
 					if (filter instanceof ScalarValuePlausibiltyFilter<?>)
 						filter = new MultiDirectionalPlausibilityFilter.Scalar(
@@ -2210,7 +2475,7 @@ public class RupSetDiagnosticsPageGen {
 		}
 		
 		public void merge(RupSetPlausibilityResult fullResults) {
-			fullResults.addResult(results, exceptions, scalars);
+			fullResults.addResult(rupture, results, exceptions, scalars);
 		}
 		
 	}
@@ -2285,12 +2550,12 @@ public class RupSetDiagnosticsPageGen {
 					if (scalarVals.get(f) != null)
 						scalars[f] = scalarVals.get(f).get(r);
 				}
-				ret.addResult(results, exceptions, scalars);
+				ret.addResult(null, results, exceptions, scalars);
 			}
 			return ret;
 		}
 		
-		private void addResult(PlausibilityResult[] results, Throwable[] exceptions, Double[] scalars) {
+		private void addResult(ClusterRupture rupture, PlausibilityResult[] results, Throwable[] exceptions, Double[] scalars) {
 			Preconditions.checkState(results.length == filters.size());
 			boolean allPass = true;
 			int onlyFailureIndex = -1;
@@ -2304,6 +2569,13 @@ public class RupSetDiagnosticsPageGen {
 							|| !exceptions[t].getMessage().startsWith("Placeholder"))) {
 						System.err.println("First exception for "+test.getName()+":");
 						exceptions[t].printStackTrace();
+						if (rupture != null) {
+							System.err.println("Running in verbose mode for rupture:\n\t"+rupture);
+							try {
+								this.filters.get(t).apply(rupture, true);
+							} catch (Exception e) {}
+							System.err.println("DONE verbose");
+						}
 					}
 					erredCounts[t]++;
 					subPass = true; // do not fail on error
@@ -2954,107 +3226,26 @@ public class RupSetDiagnosticsPageGen {
 		plotConnectivityLines(rupSet, outputDir, prefix, title, connectionsList, connectedColors, connNames, reg, width);
 	}
 	
+	private static String getTruncatedTitle(String title) {
+		if (title != null && title.length() > 30)
+			return title.substring(0, 29).trim()+"…";
+		return title;
+	}
+	
 	public static void plotConnectivityLines(FaultSystemRupSet rupSet, File outputDir, String prefix, String title,
 			List<Set<Jump>> connectionsList, List<Color> connectedColors, List<String> connNames,
 			Region reg, int width) throws IOException {
-		Color faultColor = Color.DARK_GRAY;
-		Color faultOutlineColor = Color.LIGHT_GRAY;
-		
-		List<XY_DataSet> funcs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
-		if (reg.contains(new Location(34, -118))) {
-			// add ca outlines
-			XY_DataSet[] outlines = PoliticalBoundariesData.loadCAOutlines();
-			PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)1d, Color.GRAY);
-			
-			for (XY_DataSet outline : outlines) {
-				funcs.add(outline);
-				chars.add(outlineChar);
-			}
-		}
-		
-		List<Location> middles = new ArrayList<>();
-		
-		for (int s=0; s<rupSet.getNumSections(); s++) {
-			FaultSection sect = rupSet.getFaultSectionData(s);
-			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
-			
-			XY_DataSet trace = new DefaultXY_DataSet();
-			for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
-				trace.set(loc.getLongitude(), loc.getLatitude());
-			
-			if (sect.getAveDip() != 90d) {
-				XY_DataSet outline = new DefaultXY_DataSet();
-				LocationList perimeter = surf.getPerimeter();
-				for (Location loc : perimeter)
-					outline.set(loc.getLongitude(), loc.getLatitude());
-				Location first = perimeter.first();
-				outline.set(first.getLongitude(), first.getLatitude());
-				
-				funcs.add(0, outline);
-				chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultOutlineColor));
-			}
-			
-			middles.add(GriddedSurfaceUtils.getSurfaceMiddleLoc(surf));
-			
-			if (s == 0)
-				trace.setName("Fault Sections");
-			
-			funcs.add(trace);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor));
-		}
+		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
 		
 		for (int i=0; i<connectionsList.size(); i++) {
 			Set<Jump> connections = connectionsList.get(i);
 			Color connectedColor = connectedColors.get(i);
 			String connName = connNames.get(i);
 			
-			boolean first = true;
-			for (Jump connection : connections) {
-				DefaultXY_DataSet xy = new DefaultXY_DataSet();
-				
-				if (first) {
-					xy.setName(connName);
-					first = false;
-				}
-				
-				Location loc1 = middles.get(connection.fromSection.getSectionId());
-				Location loc2 = middles.get(connection.toSection.getSectionId());
-				
-				xy.set(loc1.getLongitude(), loc1.getLatitude());
-				xy.set(loc2.getLongitude(), loc2.getLatitude());
-				
-				funcs.add(xy);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, connectedColor));
-			}
+			plotter.plotJumps(connections, connectedColor, getTruncatedTitle(connName));
 		}
 		
-		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
-		spec.setLegendVisible(true);
-		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(24);
-		gp.setPlotLabelFontSize(24);
-		gp.setBackgroundColor(Color.WHITE);
-		
-		Range xRange = new Range(reg.getMinLon(), reg.getMaxLon());
-		Range yRange = new Range(reg.getMinLat(), reg.getMaxLat());
-		
-		gp.drawGraphPanel(spec, false, false, xRange, yRange);
-		double tick = 2d;
-		TickUnits tus = new TickUnits();
-		TickUnit tu = new NumberTickUnit(tick);
-		tus.add(tu);
-		gp.getXAxis().setStandardTickUnits(tus);
-		gp.getYAxis().setStandardTickUnits(tus);
-		
-		File file = new File(outputDir, prefix);
-		double aspectRatio = yRange.getLength() / xRange.getLength();
-		gp.getChartPanel().setSize(width, 200 + (int)((width-200d)*aspectRatio));
-		gp.saveAsPNG(file.getAbsolutePath()+".png");
-		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+		plotter.plot(outputDir, prefix, title, width);
 	}
 	
 	public static void plotConnectivityHistogram(File outputDir, String prefix, String title,
@@ -3947,21 +4138,6 @@ public class RupSetDiagnosticsPageGen {
 	public static boolean plotScalarMaxMapView(FaultSystemRupSet rupSet, File outputDir, String prefix,
 			String title, HistScalarValues scalarVals, HistScalarValues compScalarVals, Region reg,
 			Color mainColor, boolean difference, boolean ratio) throws IOException {
-		Color faultOutlineColor = Color.LIGHT_GRAY;
-		
-		List<XY_DataSet> funcs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		
-		if (reg.contains(new Location(34, -118))) {
-			// add ca outlines
-			XY_DataSet[] outlines = PoliticalBoundariesData.loadCAOutlines();
-			PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, (float)1d, Color.GRAY);
-			
-			for (XY_DataSet outline : outlines) {
-				funcs.add(outline);
-				chars.add(outlineChar);
-			}
-		}
 		
 		List<Double> values = new ArrayList<>();
 		for (int s=0; s<rupSet.getNumSections(); s++)
@@ -4049,106 +4225,34 @@ public class RupSetDiagnosticsPageGen {
 		cpt.setBelowMinColor(cpt.getMinColor());
 		cpt.setAboveMaxColor(cpt.getMaxColor());
 		
-		for (int s=0; s<rupSet.getNumSections(); s++) {
-			FaultSection sect = rupSet.getFaultSectionData(s);
-			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
-			
-			XY_DataSet trace = new DefaultXY_DataSet();
-			for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
-				trace.set(loc.getLongitude(), loc.getLatitude());
-			
-			if (sect.getAveDip() != 90d) {
-				XY_DataSet outline = new DefaultXY_DataSet();
-				LocationList perimeter = surf.getPerimeter();
-				for (Location loc : perimeter)
-					outline.set(loc.getLongitude(), loc.getLatitude());
-				Location first = perimeter.first();
-				outline.set(first.getLongitude(), first.getLatitude());
-				
-				funcs.add(0, outline);
-				chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultOutlineColor));
-			}
-			
-			if (s == 0)
-				trace.setName("Fault Sections");
-			double value;
-			if (histScalar.isLogX())
-				value = Math.log10(values.get(s));
-			else
-				value = values.get(s);
-			Color faultColor = cpt.getColor((float)value);
-			int index;
-			if (histScalar.isLogX() && value <= 0d)
-				index = 0;
-			else
-				index = hist.getClosestXIndex(value);
-			hist.add(index, 1d);
-			
-			funcs.add(trace);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, faultColor));
-		}
-		
-		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
-		spec.setLegendVisible(false);
-		
+		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
 		
 		String cptTitle = "Section Max Participating "+histScalar.xAxisLabel;
 		if (difference)
 			cptTitle += ", Difference";
 		if (histScalar.isLogX())
 			cptTitle = "Log10 "+cptTitle;
-		double cptLen = cpt.getMaxValue() - cpt.getMinValue();
-		double cptTick;
-		if (cptLen > 5000)
-			cptTick = 1000;
-		else if (cptLen > 1000)
-			cptTick = 500;
-		else if (cptLen > 500)
-			cptTick = 100;
-		else if (cptLen > 100)
-			cptTick = 50;
-		else if (cptLen > 50)
-			cptTick = 10;
-		else if (cptLen > 10)
-			cptTick = 5;
-		else if (cptLen > 5)
-			cptTick = 1;
-		else if (cptLen > 1)
-			cptTick = .5;
-		else if (cptLen > .5)
-			cptTick = .1;
-		else
-			cptTick = cptLen / 10d;
-		PaintScaleLegend cptBar = XYZGraphPanel.getLegendForCPT(cpt, cptTitle,
-				24, 18, cptTick, RectangleEdge.BOTTOM);
-		spec.addSubtitle(cptBar);
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(24);
-		gp.setPlotLabelFontSize(24);
-		gp.setBackgroundColor(Color.WHITE);
+		if (histScalar.isLogX()) {
+			for (int i=0; i<values.size(); i++)
+				values.set(i, Math.log10(values.get(i)));
+		}
 		
-		Range xRange = new Range(reg.getMinLon(), reg.getMaxLon());
-		Range yRange = new Range(reg.getMinLat(), reg.getMaxLat());
-		
-		gp.drawGraphPanel(spec, false, false, xRange, yRange);
-		double tick = 2d;
-		TickUnits tus = new TickUnits();
-		TickUnit tu = new NumberTickUnit(tick);
-		tus.add(tu);
-		gp.getXAxis().setStandardTickUnits(tus);
-		gp.getYAxis().setStandardTickUnits(tus);
-		
-		File file = new File(outputDir, prefix);
-		double aspectRatio = yRange.getLength() / xRange.getLength();
-		gp.getChartPanel().setSize(800, 350 + (int)((800d-200d)*aspectRatio));
-		gp.saveAsPNG(file.getAbsolutePath()+".png");
-		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+		plotter.plotSectScalars(values, cpt, cptTitle);
+		plotter.plot(outputDir, prefix, title);
 		
 		// plot histogram now
-		funcs = new ArrayList<>();
-		chars = new ArrayList<>();
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		for (double value : values) {
+			int index;
+			if (histScalar.isLogX() && value <= 0d)
+				index = 0;
+			else
+				index = hist.getClosestXIndex(value);
+			hist.add(index, 1d);
+		}
 		
 		if (histScalar.isLogX()) {
 			ArbitrarilyDiscretizedFunc linearHist = new ArbitrarilyDiscretizedFunc();
@@ -4167,23 +4271,23 @@ public class RupSetDiagnosticsPageGen {
 			xAxisLabel += ", Difference";
 		String yAxisLabel = "Count";
 		
-		spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
+		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
 		
+		Range xRange;
 		if (histScalar.isLogX())
 			xRange = new Range(Math.pow(10, hist.getMinX() - 0.5*hist.getDelta()),
 					Math.pow(10, hist.getMaxX() + 0.5*hist.getDelta()));
 		else
 			xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
 					hist.getMaxX() + 0.5*hist.getDelta());
+		Range yRange = new Range(0, 1.05*hist.getMaxY());
 		
-		gp = new HeadlessGraphPanel();
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setBackgroundColor(Color.WHITE);
 		gp.setTickLabelFontSize(18);
 		gp.setAxisLabelFontSize(20);
 		gp.setPlotLabelFontSize(21);
 		gp.setLegendFontSize(22);
-		
-		yRange = new Range(0, 1.05*hist.getMaxY());
 		
 		gp.drawGraphPanel(spec, histScalar.isLogX(), false, xRange, yRange);
 		gp.getChartPanel().setSize(800, 600);
