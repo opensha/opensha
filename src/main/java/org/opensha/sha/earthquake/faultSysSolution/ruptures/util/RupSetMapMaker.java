@@ -88,8 +88,12 @@ public class RupSetMapMaker {
 	private List<Location> surfMiddles;
 
 	public RupSetMapMaker(FaultSystemRupSet rupSet, Region region) {
+		this(rupSet.getFaultSectionDataList(), region);
+	}
+
+	public RupSetMapMaker(List<? extends FaultSection> subSects, Region region) {
 		this.region = region;
-		this.subSects = rupSet.getFaultSectionDataList();
+		this.subSects = subSects;
 		
 		Preconditions.checkState(!subSects.isEmpty());
 		for (int s=0; s<subSects.size(); s++)

@@ -3,36 +3,40 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.ClusterPathNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.CoulombFavorableSectionPathNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.PathAddition;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.PathNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.SectionPathNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.RakeType;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
-import com.google.common.util.concurrent.AtomicDouble;
+import com.google.common.primitives.Doubles;
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
@@ -388,11 +392,11 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		};
 	}
 	
-	private abstract static class AbstractRelativeProb extends JumpProbabilityCalc {
+	private abstract static class AbstractRelativeProb implements RuptureProbabilityCalc {
 		
 		protected transient ClusterConnectionStrategy connStrat;
 		protected boolean allowNegative;
-		protected boolean relativeToBest = false;
+		protected boolean relativeToBest = true;
 		
 		protected transient Map<Integer, FaultSubsectionCluster> fullClustersMap;
 
@@ -421,81 +425,151 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			return;
 		}
 		
-		protected abstract double calcValue(ClusterRupture fullRupture, Jump origJump, FaultSubsectionCluster from,
-				FaultSubsectionCluster to);
-
+		/**
+		 * Calculates the value associated with adding the given section(s) to a rupture consisting of currentSects
+		 * @param fullRupture the complete rupture
+		 * @param currentSects the sections considered so far
+		 * @param addition the addition to test
+		 * @return value associated with adding this addition
+		 */
+		protected abstract double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
+				PathAddition addition);
+		
+		/**
+		 * 
+		 * @return true if paths & tests should be taken cluster-by-cluster, false if they should be section-by-section
+		 */
+		protected abstract boolean isAddFullClusters();
+		
+		protected PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
+			if (isAddFullClusters())
+				return new ClusterPathNavigator(nucleationCluster, rupture.getTreeNavigator());
+			return new SectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator());
+		}
+		
+		protected HashSet<FaultSubsectionCluster> getSkipToClusters(ClusterRupture rupture) {
+			return null;
+		}
+		
+		protected PathAddition targetJumpToAddition(Collection<? extends FaultSection> curSects,
+				PathAddition testAddition, Jump alternateJump) {
+			Collection<FaultSection> toSects = isAddFullClusters() ?
+					alternateJump.toCluster.subSects : Collections.singleton(alternateJump.toSection);
+			return new PathAddition(testAddition.fromSect, testAddition.fromCluster, toSects, alternateJump.toCluster);
+		}
+		
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
-			double myVal = calcValue(fullRupture, jump, jump.fromCluster, jump.toCluster);
+		public double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
+			HashSet<FaultSubsectionCluster> skipToClusters = getSkipToClusters(rupture);
+			double prob = 1d;
+			
+			RuptureTreeNavigator rupNav = rupture.getTreeNavigator();
+			PathNavigator pathNav = getPathNav(rupture, rupture.clusters[0]);
+			pathNav.setVerbose(verbose);
+
 			if (verbose)
-				System.out.println("\tJump taken value ("+jump.toCluster+"): "+myVal);
-			if (!allowNegative && myVal < 0)
-				return 0d;
+				System.out.println(getName()+": testing with start="+rupture.clusters[0]);
 			
-			checkInitFullClusters();
-			FaultSubsectionCluster fullFrom = fullClustersMap.get(jump.fromCluster.parentSectionID);
-			Preconditions.checkNotNull(fullFrom);
-			List<FaultSubsectionCluster> targetClusters = new ArrayList<>();
-			if (fullFrom.subSects.size() > jump.fromCluster.subSects.size()
-					&& !fullFrom.endSects.contains(jump.fromSection)) {
-				// need to add continuing on this cluster as a possible "jump"
-				int fromSectIndex = fullFrom.subSects.indexOf(jump.fromSection);
-				Preconditions.checkState(fromSectIndex >=0, "From section not found in full cluster?");
-				if (fromSectIndex < fullFrom.subSects.size()-1) {
-					// try going forward in list
-					List<FaultSection> possibleSects = new ArrayList<>();
-					for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
-						FaultSection sect = fullFrom.subSects.get(i);
-						if (jump.fromCluster.contains(sect))
-							break;
-						possibleSects.add(sect);
-					}
-					if (!possibleSects.isEmpty())
-						targetClusters.add(new FaultSubsectionCluster(possibleSects));
-				}
-				
-				if (fromSectIndex > 0) {
-					// try going backward in list
-					List<FaultSection> possibleSects = new ArrayList<>();
-//					for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
-					for (int i=fromSectIndex; --i>=0;) {
-						FaultSection sect = fullFrom.subSects.get(i);
-						if (jump.fromCluster.contains(sect))
-							break;
-						possibleSects.add(sect);
-					}
-					if (!possibleSects.isEmpty())
-						targetClusters.add(new FaultSubsectionCluster(possibleSects));
-				}
-			}
-			// now add possible jumps to other clusters
+			List<FaultSection> curSects = pathNav.getCurrentSects();
+			Set<PathAddition> nextAdds = pathNav.getNextAdditions();
+			if (verbose)
+				System.out.println("Have "+nextAdds.size()+" nextAdds");
 			
-			for (Jump possible : fullFrom.getConnections(jump.fromSection)) {
-				// TODO: check that the possible target is not already in the rupture up to that point?
-				if (possible.toCluster.parentSectionID != jump.toCluster.parentSectionID)
-					targetClusters.add(possible.toCluster);
-			}
-			List<Double> targetVals = new ArrayList<>();
-			double normalization = Math.min(myVal, 0d);
-			for (FaultSubsectionCluster targetCluster : targetClusters) {
-				double val = calcValue(fullRupture, jump, jump.fromCluster, targetCluster);
-				if (verbose)
-					System.out.println("\tAlternative dest value ("+targetCluster+"): "+val);
-				if (val < 0) {
-					if (allowNegative && myVal < 0) {
-						normalization = Math.min(val, normalization);
-					} else {
+			boolean addFullClusters = isAddFullClusters();
+			
+			while (!nextAdds.isEmpty()) {
+				for (PathAddition add : nextAdds) {
+					if (skipToClusters != null && skipToClusters.contains(rupNav.locateCluster(add.toSects.iterator().next()))) {
+						if (verbose)
+							System.out.println(getName()+": skipping addition: "+add);
 						continue;
 					}
+					double myVal = calcAdditionValue(rupture, curSects, add);
+					if (verbose)
+						System.out.println("\tAddition taken value ("+add+"): "+myVal);
+					if (!allowNegative && myVal < 0)
+						return 0d;
+					
+					checkInitFullClusters();
+					FaultSubsectionCluster fullFrom = fullClustersMap.get(add.fromCluster.parentSectionID);
+					Preconditions.checkNotNull(fullFrom);
+					List<PathAddition> targetAdditions = new ArrayList<>();
+					if (fullFrom.subSects.size() > add.fromCluster.subSects.size()
+							&& !fullFrom.endSects.contains(add.fromSect)) {
+						// need to add continuing on this cluster as a possible "jump"
+						int fromSectIndex = fullFrom.subSects.indexOf(add.fromSect);
+						Preconditions.checkState(fromSectIndex >=0, "From section not found in full cluster?");
+						if (fromSectIndex < fullFrom.subSects.size()-1) {
+							// try going forward in list
+							List<FaultSection> possibleSects = new ArrayList<>();
+							for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
+								FaultSection sect = fullFrom.subSects.get(i);
+								if (add.fromCluster.contains(sect) || rupture.contains(sect))
+									break;
+								possibleSects.add(sect);
+								if (!addFullClusters)
+									break;
+							}
+							if (!possibleSects.isEmpty())
+								targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
+						}
+						
+						if (fromSectIndex > 0) {
+							// try going backward in list
+							List<FaultSection> possibleSects = new ArrayList<>();
+//							for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
+							for (int i=fromSectIndex; --i>=0;) {
+								FaultSection sect = fullFrom.subSects.get(i);
+								if (add.fromCluster.contains(sect) || rupture.contains(sect))
+									break;
+								possibleSects.add(sect);
+								if (!addFullClusters)
+									break;
+							}
+							if (!possibleSects.isEmpty())
+								targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
+						}
+					}
+					// now add possible jumps to other clusters
+					
+					for (Jump possible : fullFrom.getConnections(add.fromSect)) {
+						if (possible.toCluster.parentSectionID != add.toCluster.parentSectionID
+								&& !rupture.contains(possible.toSection))
+							targetAdditions.add(targetJumpToAddition(curSects, add, possible));
+					}
+					List<Double> targetVals = new ArrayList<>();
+					for (PathAddition targetAdd : targetAdditions) {
+						double val = calcAdditionValue(rupture, curSects, targetAdd);
+						if (verbose)
+							System.out.println("\tAlternative dest value ("+targetAdd+"): "+val);
+						targetVals.add(val);
+					}
+					double myProb = calcProb(myVal, targetVals, verbose);
+					prob *= myProb;
 				}
-				targetVals.add(val);
+				
+				curSects = pathNav.getCurrentSects();
+				nextAdds = pathNav.getNextAdditions();
+				if (verbose)
+					System.out.println("Have "+nextAdds.size()+" nextAdds");
 			}
+			Preconditions.checkState(pathNav.getCurrentSects().size() == rupture.getTotalNumSects(),
+					"Processed %s sects but rupture has %s:\n\t%s", pathNav.getCurrentSects().size(), rupture.getTotalNumSects(), rupture);
+			
+			return prob;
+		}
+		
+		private double calcProb(double myVal, List<Double> targetVals, boolean verbose) {
 			if (targetVals.isEmpty()) {
 				// no alternatives
 				if (verbose)
 					System.out.println("\tno alternatives!");
 				return 1d;
 			}
+			double normalization = Math.min(myVal, 0d);
+			if (allowNegative && myVal < 0)
+				for (double val : targetVals)
+					normalization = Math.min(val, normalization);
 			if (normalization != 0d) {
 				if (verbose)
 					System.out.println("\tNormalizing by min value: "+normalization);
@@ -537,61 +611,88 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 	public static class RelativeCoulombProb extends AbstractRelativeProb {
 		
 		private AggregatedStiffnessCalculator aggCalc;
-		private boolean fullRuptureSource;
+		private boolean sectBySect;
+		private boolean jumpToMostFavorable;
+		private float maxJumpDist;
+		private transient SectionDistanceAzimuthCalculator distAzCalc;
 
 		public RelativeCoulombProb(AggregatedStiffnessCalculator aggCalc, ClusterConnectionStrategy connStrat,
-				boolean fullRuptureSource, boolean allowNegative, boolean relativeToBest) {
-			super(connStrat, allowNegative, relativeToBest);
+				boolean allowNegative, boolean sectBySect) {
+			this(aggCalc, connStrat, allowNegative, sectBySect, false, 0f, null);
+		}
+
+		public RelativeCoulombProb(AggregatedStiffnessCalculator aggCalc, ClusterConnectionStrategy connStrat,
+				boolean allowNegative, boolean sectBySect, boolean jumpToMostFavorable,
+				float maxJumpDist, SectionDistanceAzimuthCalculator distAzCalc) {
+			super(connStrat, allowNegative, true); // always relative to best
 			this.aggCalc = aggCalc;
-			this.fullRuptureSource = fullRuptureSource;
+			this.sectBySect = sectBySect;
+			this.jumpToMostFavorable = jumpToMostFavorable;
+			if (jumpToMostFavorable) {
+				Preconditions.checkState(sectBySect);
+				Preconditions.checkState(maxJumpDist > 0f);
+				this.maxJumpDist = maxJumpDist;
+				Preconditions.checkNotNull(distAzCalc);
+				this.distAzCalc = distAzCalc;
+			}
 		}
 
 		@Override
 		public void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
-			this.connStrat = connStrat;
+			super.init(connStrat, distAzCalc);
+			this.distAzCalc = distAzCalc;
 		}
 
 		@Override
 		public String getName() {
 			String name = "Rel CFF";
-			if (fullRuptureSource)
-				name += ", Full Rup Src";
+			if (sectBySect) {
+				name += " Sect";
+				if (jumpToMostFavorable)
+					name += " Favorable ("+optionalDigitDF.format(maxJumpDist)+")";
+			} else {
+				name += " Cluster";
+			}
 			if (allowNegative)
 				name += ", Allow Neg";
-			if (relativeToBest)
-				name += ", Rel Best";
+			if (!relativeToBest)
+				name += ", Rel Total";
 			return name;
-		}
-		
-		private List<FaultSection> getSectsBefore(ClusterRupture rupture, Jump jump) {
-			List<FaultSection> sectsBefore = new ArrayList<>();
-			for (FaultSubsectionCluster cluster : rupture.clusters) {
-				if (jump.toCluster.equals(cluster))
-					break;
-				sectsBefore.addAll(cluster.subSects);
-			}
-			for (Jump splayJump : rupture.splays.keySet()) {
-				if (!splayJump.equals(jump))
-					sectsBefore.addAll(getSectsBefore(rupture.splays.get(splayJump), jump));
-			}
-			return sectsBefore;
-		}
-
-		@Override
-		protected double calcValue(ClusterRupture fullRupture, Jump origJump, FaultSubsectionCluster from,
-				FaultSubsectionCluster to) {
-			List<FaultSection> sources;
-			if (fullRuptureSource) {
-				sources = getSectsBefore(fullRupture, origJump);
-				Preconditions.checkState(!sources.isEmpty() && sources.size() >= from.subSects.size());
-			} else {
-				sources = from.subSects;
-			}
-			return aggCalc.calc(sources, to.subSects);
 		}
 		
 		public boolean isDirectional(boolean splayed) {
 			return true;
+		}
+
+		@Override
+		protected double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
+				PathAddition addition) {
+			return aggCalc.calc(currentSects, addition.toSects);
+		}
+
+		@Override
+		protected boolean isAddFullClusters() {
+			return !sectBySect;
+		}
+
+		@Override
+		protected PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
+			if (jumpToMostFavorable)
+				return new CoulombFavorableSectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator(),
+						aggCalc, Range.atLeast(0f), distAzCalc, maxJumpDist);
+			return super.getPathNav(rupture, nucleationCluster);
+		}
+
+		@Override
+		protected PathAddition targetJumpToAddition(Collection<? extends FaultSection> curSects,
+				PathAddition testAddition, Jump alternateJump) {
+			if (jumpToMostFavorable) {
+				Preconditions.checkState(sectBySect);
+				FaultSection destSect = PathPlausibilityFilter.findMostFavorableJumpSect(curSects, alternateJump,
+						maxJumpDist, Range.atLeast(0f), aggCalc, distAzCalc, false);
+				return new PathAddition(testAddition.fromSect, testAddition.fromCluster, destSect, alternateJump.toCluster);
+			}
+			return super.targetJumpToAddition(curSects, testAddition, alternateJump);
 		}
 		
 	}
@@ -601,21 +702,21 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		private boolean onlyAtIncreases;
 
 		public RelativeSlipRateProb(ClusterConnectionStrategy connStrat, boolean onlyAtIncreases) {
-			super(connStrat, false, true);
+			super(connStrat, false, true); // never negative, always relative to best
 			this.onlyAtIncreases = onlyAtIncreases;
 		}
-
+		
 		@Override
-		protected double calcValue(ClusterRupture fullRupture, Jump origJump, FaultSubsectionCluster from,
-				FaultSubsectionCluster to) {
-			return calcAveSlipRate(to);
+		protected double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
+				PathAddition addition) {
+			return calcAveSlipRate(addition.toSects);
 		}
 
-		private double calcAveSlipRate(FaultSubsectionCluster cluster) {
+		private double calcAveSlipRate(Collection<? extends FaultSection> subSects) {
 			double aveVal = 0d;
-			for (FaultSection sect : cluster.subSects)
+			for (FaultSection sect : subSects)
 				aveVal += sect.getOrigAveSlipRate();
-			aveVal /= cluster.subSects.size();
+			aveVal /= subSects.size();
 			return aveVal;
 		}
 		
@@ -627,11 +728,16 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		}
 
 		@Override
-		public double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
-			int totNumClusters = rupture.getTotalNumClusters();
-			if (totNumClusters == 1)
-				return 1d;
+		protected boolean isAddFullClusters() {
+			return true;
+		}
+
+		@Override
+		protected HashSet<FaultSubsectionCluster> getSkipToClusters(ClusterRupture rupture) {
 			if (onlyAtIncreases) {
+				int totNumClusters = rupture.getTotalNumClusters();
+				if (totNumClusters == 1)
+					return null;
 				// only include jump probabilities that precede an increase in slip rate (can always go down, it's when
 				// you try to go back up after going down that you get penalized
 				List<FaultSubsectionCluster> endClusters = new ArrayList<>();
@@ -639,10 +745,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 				HashSet<FaultSubsectionCluster> skipToClusters = new HashSet<>();
 				RuptureTreeNavigator nav = rupture.getTreeNavigator();
 				for (FaultSubsectionCluster cluster : endClusters) {
-					double clusterVal = calcAveSlipRate(cluster);
+					double clusterVal = calcAveSlipRate(cluster.subSects);
 					FaultSubsectionCluster predecessor = nav.getPredecessor(cluster);
 					while (predecessor != null) {
-						double predecessorVal = calcAveSlipRate(predecessor);
+						double predecessorVal = calcAveSlipRate(predecessor.subSects);
 						if (predecessorVal < clusterVal)
 							// going to this cluster was an increase, stop here
 							break;
@@ -653,25 +759,9 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 					}
 				}
 				Preconditions.checkState(skipToClusters.size() < totNumClusters);
-				if (skipToClusters.size() == totNumClusters-1)
-					return 1d;
-				double prob = 1d;
-				for (Jump jump : rupture.getJumpsIterable()) {
-					if (skipToClusters.contains(jump.toCluster)) {
-						if (verbose)
-							System.out.println(getName()+": "+jump+", skipping (no downstream increase)");
-						continue;
-					}
-					double jumpProb = calcJumpProbability(rupture, jump, verbose);
-					if (verbose)
-						System.out.println(getName()+": "+jump+", P="+jumpProb);
-					prob *= jumpProb;
-					if (prob == 0d)
-						break;
-				}
-				return prob;
+				return skipToClusters;
 			}
-			return super.calcRuptureProb(rupture, verbose);
+			return null;
 		}
 		
 		private void findEndClusters(ClusterRupture rupture, List<FaultSubsectionCluster> endClusters) {
@@ -687,10 +777,145 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 		
 	}
 	
-//	public static class CoulombSectProb implements RuptureProbabilityCalc {
-//		
-//		public CoulombSectProb
-//	}
+	public static class CoulombSectRatioProb implements RuptureProbabilityCalc {
+		
+		private AggregatedStiffnessCalculator aggCalc;
+		private int numDenominatorSubsects;
+		private boolean jumpToMostFavorable;
+		private float maxJumpDist;
+		private transient SectionDistanceAzimuthCalculator distAzCalc;
+
+		public CoulombSectRatioProb(AggregatedStiffnessCalculator aggCalc, int numDenominatorSubsects) {
+			this(aggCalc, numDenominatorSubsects, false, 0f, null);
+		}
+
+		public CoulombSectRatioProb(AggregatedStiffnessCalculator aggCalc, int numDenominatorSubsects,
+				boolean jumpToMostFavorable, float maxJumpDist, SectionDistanceAzimuthCalculator distAzCalc) {
+			this.aggCalc = aggCalc;
+			this.numDenominatorSubsects = numDenominatorSubsects;
+			this.jumpToMostFavorable = jumpToMostFavorable;
+			this.maxJumpDist = maxJumpDist;
+			this.distAzCalc = distAzCalc;
+		}
+
+		@Override
+		public void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
+			this.distAzCalc = distAzCalc;
+		}
+
+		@Override
+		public String getName() {
+			return "CFF Sect Ratio (RelTop"+numDenominatorSubsects+")";
+		}
+
+		@Override
+		public double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
+			SectionPathNavigator nav;
+			if (jumpToMostFavorable)
+				nav = new CoulombFavorableSectionPathNavigator(rupture.clusters[0].subSects, rupture.getTreeNavigator(),
+						aggCalc, Range.atLeast(0f), distAzCalc, maxJumpDist);
+			else
+				nav = new SectionPathNavigator(rupture.clusters[0].subSects, rupture.getTreeNavigator());
+			nav.setVerbose(verbose);
+			
+			double prob = 1d;
+			List<FaultSection> currentSects = nav.getCurrentSects();
+			Set<PathAddition> nextAdds = nav.getNextAdditions();
+			if (verbose)
+				System.out.println("Have "+nextAdds.size()+" nextAdds");
+			while (!nextAdds.isEmpty()) {
+				for (PathAddition add : nextAdds) {
+					Preconditions.checkState(add.toSects.size() == 1);
+					FaultSection receiver = add.toSects.iterator().next();
+					HighestNTracker track = new HighestNTracker(numDenominatorSubsects);
+					for (FaultSection source : currentSects)
+						track.addValue(aggCalc.calc(source, receiver));
+					double myProb = track.sum/Math.abs(track.getSumHighest());
+					if (myProb < 0)
+						myProb = 0;
+					else if (myProb > 1)
+						myProb = 1;
+					if (verbose)
+						System.out.println("Probability of adding "+receiver.getSectionId()+" with "
+								+currentSects.size()+" sources: "+track.sum+"/|"+track.getSumHighest()+"| = "+myProb);
+					prob *= myProb;
+				}
+				
+				currentSects = nav.getCurrentSects();
+				nextAdds = nav.getNextAdditions();
+				if (verbose)
+					System.out.println("Have "+nextAdds.size()+" nextAdds");
+			}
+			Preconditions.checkState(currentSects.size() == rupture.getTotalNumSects());
+			return prob;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return true;
+		}
+
+		public int getNumDenominatorSubsects() {
+			return numDenominatorSubsects;
+		}
+
+		public boolean isJumpToMostFavorable() {
+			return jumpToMostFavorable;
+		}
+
+		public float getMaxJumpDist() {
+			return maxJumpDist;
+		}
+	}
+	
+	/**
+	 * This class keeps track of the N highest values of a series, without keeping/sorting the whole list in memory
+	 * 
+	 * @author kevin
+	 *
+	 */
+	private static class HighestNTracker {
+		private int numProcessed = 0;
+		private double sum = 0d;
+		private double smallestHigh = Double.POSITIVE_INFINITY;
+		private int smallestIndex = -1;
+		private double[] highVals;
+		
+		public HighestNTracker(int n) {
+			highVals = new double[n];
+		}
+		
+		public void addValue(double val) {
+			if (numProcessed < highVals.length) {
+				highVals[numProcessed] = val;
+				if (val < smallestHigh) {
+					smallestHigh = val;
+					smallestIndex = numProcessed;
+				}
+			} else if (val > smallestHigh) {
+				// replace the old smallest value with this one
+				highVals[smallestIndex] = val;
+				smallestHigh = Double.POSITIVE_INFINITY;
+				for (int i=0; i<highVals.length; i++) {
+					if (highVals[i] < smallestHigh) {
+						smallestHigh = highVals[i];
+						smallestIndex = i;
+					}
+				}
+			}
+			
+			numProcessed++;
+			sum += val;
+		}
+		
+		public double getSum() {
+			return sum;
+		}
+		
+		public double getSumHighest() {
+			return StatUtils.sum(highVals);
+		}
+	}
 	
 	private float minProbability;
 	private RuptureProbabilityCalc[] calcs;
@@ -871,6 +1096,20 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 	}
 	
 	public static void main(String[] args) {
+		HighestNTracker track = new HighestNTracker(2);
+		List<Double> vals = new ArrayList<>();
+		double sum = 0d;
+		for (int i=0; i<20; i++) {
+			double val = (int)(Math.random()*100d + 0.5);
+			System.out.println("\tadding value: "+val);
+			track.addValue(val);
+			vals.add(val);
+			sum += val;
+			Collections.sort(vals);
+			System.out.println("Track has sum="+track.sum+"\thighest values: "+Joiner.on(",").join(Doubles.asList(track.highVals)));
+			System.out.println("List has sum="+sum+"\tsorted values: "+Joiner.on(",").join(vals));
+		}
+		System.exit(0);
 		BiasiWesnousky2016SSJumpProb jumpProb = new BiasiWesnousky2016SSJumpProb(0d);
 		
 		for (double len=0; len<=10d; len++) {

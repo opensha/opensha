@@ -16,6 +16,7 @@ public class SingleStrandRuptureTreeNavigator implements RuptureTreeNavigator {
 
 	public SingleStrandRuptureTreeNavigator(ClusterRupture rupture) {
 		this.rupture = rupture;
+		Preconditions.checkState(rupture.singleStrand);
 	}
 
 	@Override
@@ -103,6 +104,26 @@ public class SingleStrandRuptureTreeNavigator implements RuptureTreeNavigator {
 			}
 		}
 		throw new IllegalStateException("Section not found in rupture: "+sect);
+	}
+
+	@Override
+	public FaultSubsectionCluster locateCluster(FaultSection section) {
+		for (int i=0; i<rupture.clusters.length; i++)
+			if (rupture.clusters[i].contains(section))
+				return rupture.clusters[i];
+		throw new IllegalStateException("Section "+section.getSectionId()+" not found in rupture: "+rupture);
+	}
+
+	@Override
+	public Jump getJumpTo(FaultSubsectionCluster cluster) {
+		for (int i=0; i<rupture.clusters.length; i++) {
+			if (rupture.clusters[i] == cluster) {
+				if (i == 0)
+					return null;
+				return getJump(rupture.clusters[i-1], cluster);
+			}
+		}
+		throw new IllegalStateException("Cluster "+cluster+" not found in rupture: "+rupture);
 	}
 
 }

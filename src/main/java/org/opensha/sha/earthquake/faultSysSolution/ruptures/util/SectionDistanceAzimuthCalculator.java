@@ -38,12 +38,14 @@ public class SectionDistanceAzimuthCalculator {
 	private double[][] distCache;
 	private double[][] azCache;
 	private Map<Integer, RuptureSurface> sectSurfs;
+	
+	public static final double SURF_DISCRETIZATION = 1d;
 
 	public SectionDistanceAzimuthCalculator(List<? extends FaultSection> subSects) {
 		this.subSects = ImmutableList.copyOf(subSects);
 		sectSurfs = new HashMap<>();
 		for (FaultSection subSect : subSects)
-			sectSurfs.put(subSect.getSectionId(), subSect.getFaultSurface(1d, false, false));
+			sectSurfs.put(subSect.getSectionId(), subSect.getFaultSurface(SURF_DISCRETIZATION, false, false));
 		distCache = new double[subSects.size()][];
 		azCache = new double[subSects.size()][];
 	}

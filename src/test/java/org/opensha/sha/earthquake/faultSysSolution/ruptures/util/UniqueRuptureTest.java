@@ -101,9 +101,9 @@ public class UniqueRuptureTest {
 		HashSet<Integer> set = new HashSet<>();
 		
 		for (SectIDRange range : rup.getRanges()) {
-			minID = Integer.min(minID, range.startID);
-			maxID = Integer.max(maxID, range.endID);
-			for (int i=range.startID; i<=range.endID; i++)
+			minID = Integer.min(minID, range.getStartID());
+			maxID = Integer.max(maxID, range.getEndID());
+			for (int i=range.getStartID(); i<=range.getEndID(); i++)
 				set.add(i);
 		}
 		

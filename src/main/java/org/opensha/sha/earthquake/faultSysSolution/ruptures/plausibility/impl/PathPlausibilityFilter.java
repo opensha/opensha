@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.data.ShortNamed;
@@ -20,7 +20,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.SectionPathNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FilterDataClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
@@ -98,186 +97,70 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		
 	}
 	
-	public static abstract class ClusterPathEvaluator implements NucleationClusterEvaluator {
+	public static abstract class PathEvaluator implements NucleationClusterEvaluator {
+
+		public abstract PlausibilityResult testAddition(Collection<FaultSection> curSects,
+				PathAddition addition, boolean verbose);
+		
+		protected abstract PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster);
+//		protected SectionPathNavigator getSectPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
+//			return new SectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator());
+//		}
 		
 		@Override
 		public PlausibilityResult testNucleationCluster(ClusterRupture rupture,
 				FaultSubsectionCluster nucleationCluster, boolean verbose) {
-			RuptureTreeNavigator nav = rupture.getTreeNavigator();
-
-			if (verbose)
-				System.out.println(getName()+": testing cluster path with start="+nucleationCluster);
-			
-			HashSet<FaultSubsectionCluster> curClusters = new HashSet<>();
-			curClusters.add(nucleationCluster);
-			List<FaultSection> curSects = new ArrayList<>(nucleationCluster.subSects);
-			
-			PlausibilityResult result = PlausibilityResult.PASS;
-			List<FaultSubsectionCluster> curEndClusters = new ArrayList<>();
-			curEndClusters.add(nucleationCluster);
-			while (true) {
-				List<FaultSubsectionCluster> newDests = new ArrayList<>();
-				for (FaultSubsectionCluster end : curEndClusters) {
-					for (FaultSubsectionCluster destination : getDestinations(nav, end, curClusters)) {
-						Jump jump = nav.getJump(end, destination);
-						result = result.logicalAnd(testDestCluster(nav, curClusters, curSects, jump, verbose));
-//						E val = getClusterValue(nav, curClusters, nav.getJump(end, destination), verbose);
-//						if (worstVal == null || !ScalarValuePlausibiltyFilter.isValueBetter(val, worstVal, acceptableRange))
-//							worstVal = val;
-						if (!verbose && !result.isPass())
-							return result;
-						newDests.add(destination);
-					}
-				}
-				if (newDests.isEmpty())
-					break;
-				curClusters.addAll(newDests);
-				for (FaultSubsectionCluster dest : newDests)
-					curSects.addAll(dest.subSects);
-				curEndClusters = newDests;
-			}
-			Preconditions.checkState(curSects.size() == rupture.getTotalNumSects());
-			return result;
-		}
-
-		public abstract PlausibilityResult testDestCluster(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> curClusters,
-				List<FaultSection> curSects, Jump jump, boolean verbose);
-	}
-	
-	public static abstract class ScalarClusterPathEvaluator<E extends Number & Comparable<E>>
-	extends ClusterPathEvaluator implements ScalarNucleationClusterEvaluator<E> {
-		
-		protected final Range<E> acceptableRange;
-		protected final PlausibilityResult failureType;
-
-		public ScalarClusterPathEvaluator(Range<E> acceptableRange, PlausibilityResult failureType) {
-			this.acceptableRange = acceptableRange;
-			Preconditions.checkState(!failureType.isPass());
-			this.failureType = failureType;
-		}
-		
-		public PlausibilityResult testDestCluster(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> curClusters,
-				List<FaultSection> curSects, Jump jump, boolean verbose) {
-			if (acceptableRange.contains(getClusterValue(navigator, curClusters, curSects, jump, verbose)))
-				return PlausibilityResult.PASS;
-			return failureType;
-		}
-		
-		public abstract E getClusterValue(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> currentClusters,
-				List<FaultSection> curSects, Jump jump, boolean verbose);
-		
-		@Override
-		public E getNucleationClusterValue(ClusterRupture rupture,
-				FaultSubsectionCluster nucleationCluster, boolean verbose) {
-			RuptureTreeNavigator nav = rupture.getTreeNavigator();
-
-			if (verbose)
-				System.out.println(getName()+": testing cluster path with start="+nucleationCluster);
-			
-			HashSet<FaultSubsectionCluster> curClusters = new HashSet<>();
-			curClusters.add(nucleationCluster);
-			List<FaultSection> curSects = new ArrayList<>(nucleationCluster.subSects);
-			
-			E worstVal = null;
-			List<FaultSubsectionCluster> curEndClusters = new ArrayList<>();
-			curEndClusters.add(nucleationCluster);
-			while (true) {
-				List<FaultSubsectionCluster> newDests = new ArrayList<>();
-				for (FaultSubsectionCluster end : curEndClusters) {
-					for (FaultSubsectionCluster destination : getDestinations(nav, end, curClusters)) {
-						Jump jump = nav.getJump(end, destination);
-						E val = getClusterValue(nav, curClusters, curSects, nav.getJump(end, destination), verbose);
-						if (worstVal == null || !ScalarValuePlausibiltyFilter.isValueBetter(val, worstVal, acceptableRange))
-							worstVal = val;
-						newDests.add(destination);
-					}
-				}
-				if (newDests.isEmpty())
-					break;
-				curClusters.addAll(newDests);
-				for (FaultSubsectionCluster dest : newDests)
-					curSects.addAll(dest.subSects);
-				curEndClusters = newDests;
-			}
-			Preconditions.checkState(curSects.size() == rupture.getTotalNumSects());
-			return worstVal;
-		}
-
-		@Override
-		public Range<E> getAcceptableRange() {
-			return acceptableRange;
-		}
-
-		@Override
-		public PlausibilityResult getFailureType() {
-			return failureType;
-		}
-		
-	}
-	
-	public static abstract class SectPathEvaluator implements NucleationClusterEvaluator {
-		
-		protected SectionPathNavigator getSectPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
-			return new SectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator());
-		}
-		
-		@Override
-		public PlausibilityResult testNucleationCluster(ClusterRupture rupture,
-				FaultSubsectionCluster nucleationCluster, boolean verbose) {
-			SectionPathNavigator nav = getSectPathNav(rupture, nucleationCluster);
+			PathNavigator nav = getPathNav(rupture, nucleationCluster);
 			nav.setVerbose(verbose);
 
 			if (verbose)
 				System.out.println(getName()+": testing strand(s) with start="+nucleationCluster);
 			
 			List<FaultSection> curSects = nav.getCurrentSects();
-			List<FaultSection> nextSects = nav.getNextSects();
+			Set<PathAddition> nextAdds = nav.getNextAdditions();
 			if (verbose)
-				System.out.println("Have "+nextSects.size()+" nextSects");
+				System.out.println("Have "+nextAdds.size()+" nextAdds");
 			
 			PlausibilityResult result = PlausibilityResult.PASS;
-			while (!nextSects.isEmpty()) {
-				for (FaultSection destSect : nextSects) {
-					PlausibilityResult myResult = testDestSect(curSects, destSect, verbose);
+			while (!nextAdds.isEmpty()) {
+				for (PathAddition add : nextAdds) {
+					PlausibilityResult myResult = testAddition(curSects, add, verbose);
 					if (verbose)
-						System.out.println("\tdestSect="+destSect.getSectionId()+" w/ "+curSects.size()+" sources: "+myResult);
+						System.out.println("\taddition="+add+" w/ "+curSects.size()+" sources: "+myResult);
 					result = result.logicalAnd(myResult);
 					if (!verbose && !result.isPass())
 						return result;
 				}
 				
 				curSects = nav.getCurrentSects();
-				nextSects = nav.getNextSects();
+				nextAdds = nav.getNextAdditions();
 				if (verbose)
-					System.out.println("Have "+nextSects.size()+" nextSects");
+					System.out.println("Have "+nextAdds.size()+" nextAdds");
 			}
 			Preconditions.checkState(nav.getCurrentSects().size() == rupture.getTotalNumSects(),
 					"Processed %s sects but rupture has %s:\n\t%s", nav.getCurrentSects().size(), rupture.getTotalNumSects(), rupture);
 			return result;
 		}
-
-		public abstract PlausibilityResult testDestSect(Collection<FaultSection> curSects,
-				FaultSection destSect, boolean verbose);
 	}
 	
-	public static abstract class ScalarSectPathEvaluator<E extends Number & Comparable<E>>
-	extends SectPathEvaluator implements ScalarNucleationClusterEvaluator<E> {
+	public static abstract class ScalarPathEvaluator<E extends Number & Comparable<E>>
+	extends PathEvaluator implements ScalarNucleationClusterEvaluator<E> {
 		
 		protected final Range<E> acceptableRange;
 		protected final PlausibilityResult failureType;
 
-		public ScalarSectPathEvaluator(Range<E> acceptableRange, PlausibilityResult failureType) {
+		public ScalarPathEvaluator(Range<E> acceptableRange, PlausibilityResult failureType) {
 			this.acceptableRange = acceptableRange;
 			Preconditions.checkState(!failureType.isPass());
 			this.failureType = failureType;
 		}
 		
-		public abstract E getDestSectValue(Collection<FaultSection> curSects,
-				FaultSection destSect, boolean verbose);
+		public abstract E getAdditionValue(Collection<FaultSection> curSects,
+				PathAddition addition, boolean verbose);
 
-		public PlausibilityResult testDestSect(Collection<FaultSection> curSects,
-				FaultSection destSect, boolean verbose) {
-			if (acceptableRange.contains(getDestSectValue(curSects, destSect, verbose)))
+		public PlausibilityResult testAddition(Collection<FaultSection> curSects,
+				PathAddition addition, boolean verbose) {
+			if (acceptableRange.contains(getAdditionValue(curSects, addition, verbose)))
 				return PlausibilityResult.PASS;
 			return failureType;
 		}
@@ -285,31 +168,34 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		@Override
 		public E getNucleationClusterValue(ClusterRupture rupture,
 				FaultSubsectionCluster nucleationCluster, boolean verbose) {
-			SectionPathNavigator nav = getSectPathNav(rupture, nucleationCluster);
+			PathNavigator nav = getPathNav(rupture, nucleationCluster);
 			nav.setVerbose(verbose);
 
 			if (verbose)
 				System.out.println(getName()+": testing strand(s) with start="+nucleationCluster);
-
+			
 			List<FaultSection> curSects = nav.getCurrentSects();
-			List<FaultSection> nextSects = nav.getNextSects();
+			Set<PathAddition> nextAdds = nav.getNextAdditions();
+			if (verbose)
+				System.out.println("Have "+nextAdds.size()+" nextAdds");
 			
 			E worstVal = null;
-			while (!nextSects.isEmpty()) {
-				for (FaultSection destSect : nextSects) {
-					E val = getDestSectValue(curSects, destSect, verbose);
+			while (!nextAdds.isEmpty()) {
+				for (PathAddition add : nextAdds) {
+					E val = getAdditionValue(curSects, add, verbose);
 					if (worstVal == null || !ScalarValuePlausibiltyFilter.isValueBetter(val, worstVal, acceptableRange))
 						worstVal = val;
 					if (verbose)
-						System.out.println("\tdestSect="+destSect.getSectionId()+": "+val+" (worst="+worstVal+")");
+						System.out.println("\taddition="+add+": "+val+" (worst="+worstVal+")");
 				}
 				
 				curSects = nav.getCurrentSects();
-				nextSects = nav.getNextSects();
+				nextAdds = nav.getNextAdditions();
 				if (verbose)
-					System.out.println("Have "+nextSects.size()+" nextSects");
+					System.out.println("Have "+nextAdds.size()+" nextAdds");
 			}
-			Preconditions.checkState(nav.getCurrentSects().size() == rupture.getTotalNumSects());
+			Preconditions.checkState(nav.getCurrentSects().size() == rupture.getTotalNumSects(),
+					"Processed %s sects but rupture has %s:\n\t%s", nav.getCurrentSects().size(), rupture.getTotalNumSects(), rupture);
 			return worstVal;
 		}
 
@@ -325,7 +211,7 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		
 	}
 	
-	public static class ClusterCoulombPathEvaluator extends ScalarClusterPathEvaluator<Float> {
+	public static class ClusterCoulombPathEvaluator extends ScalarPathEvaluator<Float> {
 
 		private AggregatedStiffnessCalculator aggCalc;
 
@@ -336,9 +222,14 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		}
 
 		@Override
-		public Float getClusterValue(RuptureTreeNavigator navigator, HashSet<FaultSubsectionCluster> currentClusters,
-				List<FaultSection> curSects, Jump jump, boolean verbose) {
-			return (float)aggCalc.calc(curSects, jump.toCluster.subSects);
+		public Float getAdditionValue(Collection<FaultSection> curSects, PathAddition addition, boolean verbose) {
+			return (float)aggCalc.calc(curSects, addition.toSects);
+//			return (float)aggCalc.calc(addition.fromCluster.subSects, addition.toSects);
+		}
+
+		@Override
+		protected PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
+			return new ClusterPathNavigator(nucleationCluster, rupture.getTreeNavigator());
 		}
 
 		@Override
@@ -365,7 +256,7 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		
 	}
 	
-	public static class SectCoulombPathEvaluator extends ScalarSectPathEvaluator<Float> {
+	public static class SectCoulombPathEvaluator extends ScalarPathEvaluator<Float> {
 
 		private AggregatedStiffnessCalculator aggCalc;
 		private boolean jumpToMostFavorable;
@@ -399,17 +290,22 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		}
 		
 		@Override
-		protected SectionPathNavigator getSectPathNav(ClusterRupture rupture,
+		protected SectionPathNavigator getPathNav(ClusterRupture rupture,
 				FaultSubsectionCluster nucleationCluster) {
 			if (jumpToMostFavorable)
 				return new CoulombFavorableSectionPathNavigator(nucleationCluster.subSects,
 						rupture.getTreeNavigator(), aggCalc, acceptableRange, distAzCalc, maxJumpDist);
-			return super.getSectPathNav(rupture, nucleationCluster);
+			return new SectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator());
 		}
 
 		@Override
-		public Float getDestSectValue(Collection<FaultSection> curSects, FaultSection destSect, boolean verbose) {
-			return (float)aggCalc.calc(curSects, destSect);
+		public Float getAdditionValue(Collection<FaultSection> curSects, PathAddition addition, boolean verbose) {
+			Preconditions.checkState(addition.toSects.size() == 1);
+			FaultSection destSect = addition.toSects.iterator().next();
+			double val = aggCalc.calc(curSects, destSect);
+			if (verbose)
+				System.out.println("\t"+curSects.size()+" sources to "+destSect.getSectionId()+": "+val);
+			return (float)val;
 		}
 
 		@Override
@@ -438,13 +334,13 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		
 	}
 	
-	public static class CumulativeJumpProbPathEvaluator implements ScalarNucleationClusterEvaluator<Float> {
+	public static class CumulativeProbPathEvaluator implements ScalarNucleationClusterEvaluator<Float> {
 		
 		private RuptureProbabilityCalc[] calcs;
 		private float minProbability;
 		private PlausibilityResult failureType;
 
-		public CumulativeJumpProbPathEvaluator(float minProbability, PlausibilityResult failureType, RuptureProbabilityCalc... calcs) {
+		public CumulativeProbPathEvaluator(float minProbability, PlausibilityResult failureType, RuptureProbabilityCalc... calcs) {
 			Preconditions.checkState(calcs.length > 0, "Must supply at least one calculator");
 			this.calcs = calcs;
 			Preconditions.checkState(minProbability >= 0f && minProbability <= 1f);
@@ -661,29 +557,196 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 		
 	}
 	
-	public static class SectionPathNavigator {
+	/**
+	 * This interface defines how a rupture spreads. Typically, this is either outward one cluster at a time
+	 * or one section at a time.
+	 * @author kevin
+	 *
+	 */
+	public static interface PathNavigator {
+		
+		/**
+		 * @return the sections in the current path of this rupture, at the moment that this method is called
+		 */
+		public List<FaultSection> getCurrentSects();
+		
+		/**
+		 * This locates and returns all of the next additions to this rupture. Those sections will be then consumed
+		 * into the current path, so future calls to getCurrentSects() will contain the sections represented by these
+		 * additions.
+		 * 
+		 * @return the next additions to this rupture (be they within clusters or to new clusters)
+		 */
+		public Set<PathAddition> getNextAdditions();
+		
+		public default void setVerbose(boolean verbose) {
+			// to nothing
+		}
+	}
+	
+	/**
+	 * This represents an addition to a growing rupture
+	 * @author kevin
+	 *
+	 */
+	public static class PathAddition {
+		/**
+		 * Section that was the jumping point to this addition
+		 */
+		public final FaultSection  fromSect;
+		/**
+		 * Cluster that contains fromSect
+		 */
+		public final FaultSubsectionCluster fromCluster;
+		/**
+		 * Collection of sections to be added
+		 */
+		public final Collection<? extends FaultSection> toSects;
+		/**
+		 * Cluster that contains toSect (may be equal to fromCluster)
+		 */
+		public final FaultSubsectionCluster toCluster;
+		
+		public PathAddition(FaultSection fromSect, FaultSubsectionCluster fromCluster,
+				Collection<? extends FaultSection> toSects, FaultSubsectionCluster toCluster) {
+			this.fromSect = fromSect;
+			this.fromCluster = fromCluster;
+			this.toSects = toSects;
+			this.toCluster = toCluster;
+		}
+		
+		public PathAddition(FaultSection fromSect, FaultSubsectionCluster fromCluster,
+				FaultSection toSect, FaultSubsectionCluster toCluster) {
+			this.fromSect = fromSect;
+			this.fromCluster = fromCluster;
+			this.toSects = Collections.singleton(toSect);
+			this.toCluster = toCluster;
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((toSects == null) ? 0 : toSects.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			PathAddition other = (PathAddition) obj;
+			if (toSects == null) {
+				if (other.toSects != null)
+					return false;
+			} else if (!toSects.equals(other.toSects))
+				return false;
+			return true;
+		}
+		
+		public String toString() {
+			String ret;
+			if (fromSect != null)
+				ret = fromSect.getSectionId()+"->[";
+			else
+				ret = "?->[";
+			return ret+toSects.stream().map(S -> S.getSectionId()).map(S -> S.toString())
+					.collect(Collectors.joining(","))+"]";
+		}
+	}
+	
+	/**
+	 * Path navigator where rupture grow outward, cluster by cluster
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class ClusterPathNavigator implements PathNavigator {
+		
+		protected HashSet<FaultSubsectionCluster> currentClusters;
+		protected HashSet<FaultSection> currentSects;
+		protected RuptureTreeNavigator rupNav;
+		
+		private List<FaultSubsectionCluster> growthPoints;
+		
+		protected boolean verbose = true;
+		
+		public ClusterPathNavigator(FaultSubsectionCluster startCluster, RuptureTreeNavigator nav) {
+			currentSects = new HashSet<>(startCluster.subSects);
+			currentClusters = new HashSet<>();
+			currentClusters.add(startCluster);
+			this.rupNav = nav;
+			this.growthPoints = new ArrayList<>();
+			this.growthPoints.add(startCluster);
+		}
+		
+		public void setVerbose(boolean verbose) {
+			this.verbose = verbose;
+		}
+
+		@Override
+		public List<FaultSection> getCurrentSects() {
+			return new ArrayList<>(currentSects);
+		}
+		
+		protected List<FaultSubsectionCluster> getNeighbors(FaultSubsectionCluster cluster) {
+			List<FaultSubsectionCluster> neighbors = new ArrayList<>();
+			FaultSubsectionCluster predecessor = rupNav.getPredecessor(cluster);
+			if (predecessor != null)
+				neighbors.add(predecessor);
+			neighbors.addAll(rupNav.getDescendants(cluster));
+			return neighbors;
+		}
+
+		@Override
+		public Set<PathAddition> getNextAdditions() {
+			HashSet<PathAddition> nextAdds = new HashSet<>();
+			if (verbose)
+				System.out.println("getNextAdditions with "+growthPoints.size()+" growth points, "+currentSects.size()+" curSects");
+			for (FaultSubsectionCluster cluster : growthPoints)
+				for (FaultSubsectionCluster neighbor : getNeighbors(cluster))
+					if (!currentClusters.contains(neighbor))
+						nextAdds.add(new PathAddition(rupNav.getJump(cluster, neighbor).fromSection, cluster, neighbor.subSects, neighbor));
+			if (verbose)
+				System.out.println("\tFound "+nextAdds.size()+" nextAdds: "+
+						nextAdds.stream().map(S -> S.toString()).collect(Collectors.joining(";")));
+			List<FaultSubsectionCluster> newGrowthPoints = new ArrayList<>(nextAdds.size());
+			for (PathAddition add : nextAdds) {
+				currentSects.addAll(add.toSects);
+				newGrowthPoints.add(add.toCluster);
+				currentClusters.add(add.toCluster);
+			}
+			growthPoints = newGrowthPoints;
+			return nextAdds;
+		}
+		
+	}
+	
+	/**
+	 * Path navigator where rupture grow outward, section by section
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class SectionPathNavigator implements PathNavigator {
 		
 		protected HashSet<FaultSection> currentSects;
 		protected RuptureTreeNavigator rupNav;
 		
-		private List<FaultSection> growthPoints;
+		private Set<FaultSection> growthPoints;
 		
 		protected boolean verbose = true;
 		
-//		public SectionPathNavigator(FaultSection startSect, RuptureTreeNavigator nav) {
-//			currentSects = new HashSet<>();
-//			currentSects.add(startSect);
-//			this.rupNav = nav;
-//			this.growthPoints = new ArrayList<>();
-//			growthPoints.add(startSect);
-//		}
-		
-		public SectionPathNavigator(Collection<FaultSection> startSects, RuptureTreeNavigator nav) {
+		public SectionPathNavigator(Collection<? extends FaultSection> startSects, RuptureTreeNavigator nav) {
 			currentSects = new HashSet<>(startSects);
 			Preconditions.checkState(currentSects.size() == startSects.size());
 //			System.out.println("Initializing SectionPathNav with "+startSects.size()+" startSects");
 			this.rupNav = nav;
-			this.growthPoints = new ArrayList<>(startSects);
+			this.growthPoints = currentSects;
 		}
 		
 		public void setVerbose(boolean verbose) {
@@ -699,46 +762,82 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 			return neighbors;
 		}
 		
+		@Override
 		public List<FaultSection> getCurrentSects() {
 			return Lists.newArrayList(currentSects);
 		}
 		
-		public List<FaultSection> getNextSects() {
-			List<FaultSection> nextSects = new ArrayList<>();
+		@Override
+		public Set<PathAddition> getNextAdditions() {
+			HashSet<PathAddition> nextAdds = new HashSet<>();
 			if (verbose)
-				System.out.println("getNextSects with "+growthPoints.size()+" growth points, "+currentSects.size()+" curSects");
-			for (FaultSection sect : growthPoints)
+				System.out.println("getNextAdditions with "+growthPoints.size()+" growth points, "+currentSects.size()+" curSects");
+			for (FaultSection sect : growthPoints) {
+				FaultSubsectionCluster fromCluster = rupNav.locateCluster(sect);
 				for (FaultSection neighbor : getNeighbors(sect))
 					if (!currentSects.contains(neighbor))
-						nextSects.add(neighbor);
+						nextAdds.add(new PathAddition(sect, fromCluster, neighbor, rupNav.locateCluster(neighbor)));
+			}
 			if (verbose)
-				System.out.println("\tFound "+nextSects.size()+" nextSects");
-			currentSects.addAll(nextSects);
-			growthPoints = nextSects;
-			return nextSects;
+				System.out.println("\tFound "+nextAdds.size()+" nextAdds: "+
+						nextAdds.stream().map(S -> S.toString()).collect(Collectors.joining(";")));
+			HashSet<FaultSection> newGrowthPoints = new HashSet<>(nextAdds.size());
+			for (PathAddition add : nextAdds) {
+				currentSects.addAll(add.toSects);
+				newGrowthPoints.addAll(add.toSects);
+			}
+			growthPoints = newGrowthPoints;
+			return nextAdds;
 		}
+	}
+	
+	static FaultSection findMostFavorableJumpSect(Collection<? extends FaultSection> sources, Jump jump, float maxSearchDist,
+			Range<Float> acceptableRange, AggregatedStiffnessCalculator aggCalc, SectionDistanceAzimuthCalculator distAzCalc,
+			boolean verbose) {
+		if (verbose)
+			System.out.println("Finding most favorable jump to "+jump.toCluster+", origJump="+jump);
+		List<FaultSection> allowedJumps = new ArrayList<>();
+		for (FaultSection sect : jump.toCluster.subSects) {
+			for (FaultSection source : jump.fromCluster.subSects) {
+				if (sect == jump.toSection || (float)distAzCalc.getDistance(sect, source) <= maxSearchDist) {
+					allowedJumps.add(sect);
+					break;
+				}
+			}
+		}
+		Preconditions.checkState(!allowedJumps.isEmpty(), "No jumps within %s km found between %s and %s",
+				maxSearchDist, jump.fromCluster, jump.toCluster);
+		if (allowedJumps.size() == 1) {
+			if (verbose)
+				System.out.println("Only 1 possible jump: "+allowedJumps.get(0));
+			return allowedJumps.get(0);
+		}
+		// find the most favorable one
+		float bestVal = Float.NaN;
+		FaultSection bestSect = null;
+		for (FaultSection sect : allowedJumps) {
+			float myVal = (float)aggCalc.calc(sources, sect);
+			if (verbose)
+				System.out.println("CFF to "+sect.getSectionId()+": "+myVal);
+			if (Double.isNaN(bestVal) || ScalarValuePlausibiltyFilter.isValueBetter(myVal, bestVal, acceptableRange)) {
+				bestVal = myVal;
+				bestSect = sect;
+			}
+		}
+		Preconditions.checkNotNull(bestSect);
+		return bestSect;
 	}
 	
 	public static class CoulombFavorableSectionPathNavigator extends SectionPathNavigator {
 
 		private final AggregatedStiffnessCalculator aggCalc;
 		private final SectionDistanceAzimuthCalculator distAzCalc;
-		private final double maxSearchDist;
+		private final float maxSearchDist;
 		private Range<Float> acceptableRange;
-
-//		public CoulombFavorableSectionPathNavigator(FaultSection startSect, RuptureTreeNavigator nav,
-//				AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange,
-//				SectionDistanceAzimuthCalculator distAzCalc, double maxSearchDist) {
-//			super(startSect, nav);
-//			this.aggCalc = aggCalc;
-//			this.acceptableRange = acceptableRange;
-//			this.distAzCalc = distAzCalc;
-//			this.maxSearchDist = maxSearchDist;
-//		}
 
 		public CoulombFavorableSectionPathNavigator(Collection<FaultSection> startSects, RuptureTreeNavigator nav,
 				AggregatedStiffnessCalculator aggCalc, Range<Float> acceptableRange,
-				SectionDistanceAzimuthCalculator distAzCalc, double maxSearchDist) {
+				SectionDistanceAzimuthCalculator distAzCalc, float maxSearchDist) {
 			super(startSects, nav);
 			this.aggCalc = aggCalc;
 			this.acceptableRange = acceptableRange;
@@ -760,38 +859,8 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 				} else {
 					// it's a jump, find most favorable
 					Jump jump = rupNav.getJump(fromSect, neighbor);
-					if (verbose)
-						System.out.println("Finding most favorable jump to "+jump.toCluster+", origJump="+jump);
-					List<FaultSection> allowedJumps = new ArrayList<>();
-					for (FaultSection sect : jump.toCluster.subSects) {
-						for (FaultSection source : jump.fromCluster.subSects) {
-							if (sect == neighbor || (float)distAzCalc.getDistance(sect, source) <= maxSearchDist) {
-								allowedJumps.add(sect);
-								break;
-							}
-						}
-					}
-					Preconditions.checkState(!allowedJumps.isEmpty(), "No jumps within %s km found between %s and %s",
-							maxSearchDist, jump.fromCluster, jump.toCluster);
-					if (allowedJumps.size() == 1) {
-						if (verbose)
-							System.out.println("Only 1 possible jump: "+allowedJumps.get(0));
-						neighbors.add(allowedJumps.get(0));
-					}
-					// find the most favorable one
-					float bestVal = Float.NaN;
-					FaultSection bestSect = null;
-					for (FaultSection sect : allowedJumps) {
-						float myVal = (float)aggCalc.calc(currentSects, sect);
-						if (verbose)
-							System.out.println("CFF to "+sect.getSectionId()+": "+myVal);
-						if (Double.isNaN(bestVal) || ScalarValuePlausibiltyFilter.isValueBetter(myVal, bestVal, acceptableRange)) {
-							bestVal = myVal;
-							bestSect = sect;
-						}
-					}
-					Preconditions.checkNotNull(bestSect);
-					neighbors.add(bestSect);
+					neighbors.add(findMostFavorableJumpSect(currentSects, jump, maxSearchDist, acceptableRange,
+							aggCalc, distAzCalc, verbose));
 				}
 			}
 			return neighbors;
@@ -851,15 +920,20 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 			fdRupture.addFilterData(this, skipClusters);
 		}
 		for (FaultSubsectionCluster nucleationCluster : clusters) {
-			if (skipClusters != null && skipClusters.contains(nucleationCluster))
+			if (skipClusters != null && skipClusters.contains(nucleationCluster)) {
 				// we can skip this one because it already failed in a subset of this rupture so it will
 				// never pass here
+				if (verbose)
+					System.out.println("Skipping known cluster that won't work: "+nucleationCluster);
 				continue;
+			}
 			
 			PlausibilityResult result = PlausibilityResult.PASS;
 			if (verbose)
 				System.out.println(getShortName()+": Nucleation point "+nucleationCluster);
 			for (NucleationClusterEvaluator eval : evaluators) {
+				if (verbose)
+					System.out.println("Testing "+eval.getName()+"...");
 				PlausibilityResult subResult = eval.testNucleationCluster(rupture, nucleationCluster, verbose);
 				if (verbose)
 					System.out.println("\t"+eval.getName()+": "+subResult);
@@ -951,9 +1025,9 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 				out.beginObject();
 				out.name("class").value(eval.getClass().getName());
 				out.name("value");
-				if (eval instanceof CumulativeJumpProbPathEvaluator) {
+				if (eval instanceof CumulativeProbPathEvaluator) {
 					out.beginObject();
-					CumulativeJumpProbPathEvaluator pathEval = (CumulativeJumpProbPathEvaluator)eval;
+					CumulativeProbPathEvaluator pathEval = (CumulativeProbPathEvaluator)eval;
 					out.name("minProbability").value(pathEval.minProbability);
 					out.name("failureType").value(pathEval.failureType.name());
 					out.name("calcs").beginArray();
@@ -1012,7 +1086,7 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 								break;
 							case "value":
 								Preconditions.checkNotNull(type, "Class must preceed value in PathPlausibility JSON");
-								if (type.equals(CumulativeJumpProbPathEvaluator.class)) {
+								if (type.equals(CumulativeProbPathEvaluator.class)) {
 									in.beginObject();
 									Float minProbability = null;
 									PlausibilityResult failureType = null;
@@ -1063,7 +1137,7 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 										}
 									}
 									in.endObject();
-									eval = new CumulativeJumpProbPathEvaluator(minProbability, failureType, calcs);
+									eval = new CumulativeProbPathEvaluator(minProbability, failureType, calcs);
 								} else {
 									eval = gson.fromJson(in, type);
 								}

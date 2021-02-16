@@ -96,7 +96,8 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 		return clusterConnectionsMap.get(cluster).descendants;
 	}
 	
-	private FaultSubsectionCluster locateCluster(FaultSection sect) {
+	@Override
+	public FaultSubsectionCluster locateCluster(FaultSection sect) {
 		Preconditions.checkState(sect.getParentSectionId() >= 0, "parent section IDs must be populated");
 		FaultSubsectionCluster[] clusters = parentClusterMap.get(sect.getParentSectionId());
 		Preconditions.checkNotNull(clusters,
@@ -242,5 +243,12 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 			if (jump.fromSection.getSectionId() == sect.getSectionId())
 				descendants.add(jump.toSection);
 		return descendants;
+	}
+
+	@Override
+	public Jump getJumpTo(FaultSubsectionCluster cluster) {
+		ClusterConnections connections = clusterConnectionsMap.get(cluster);
+		Preconditions.checkState(connections != null, "Cluster not found in rupture: %s", cluster);
+		return connections.jumpTo;
 	}
 }

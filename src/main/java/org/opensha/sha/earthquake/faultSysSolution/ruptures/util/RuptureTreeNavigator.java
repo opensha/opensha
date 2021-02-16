@@ -32,6 +32,22 @@ public interface RuptureTreeNavigator {
 	 * @throws IllegalStateException if the rupture does not use a direct jump between these clusters
 	 */
 	public Jump getJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster);
+	
+	/**
+	 * Locate the cluster containing the given section
+	 * @param section
+	 * @return cluster containing this section
+	 * @throws IllegalStateException if the rupture does not contain this section
+	 */
+	public FaultSubsectionCluster locateCluster(FaultSection section);
+	
+	/**
+	 * Locate the jump to the given cluster, or null if this is the first cluster in a rupture
+	 * @param cluster
+	 * @return the jump to the given cluster (or null if no such jump)
+	 * @throws IllegalStateException if the rupture does not contain this cluster
+	 */
+	public Jump getJumpTo(FaultSubsectionCluster cluster);
 
 	/**
 	 * Locates the given jump. If the jump occurs in the rupture backwards, i.e., from toSection to

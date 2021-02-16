@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter.Penalty;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.CoulombSectRatioProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RelativeCoulombProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RelativeSlipRateProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RuptureProbabilityCalc;
@@ -1029,7 +1030,7 @@ public class PlausibilityConfiguration {
 		/*
 		 * cluster path
 		 */
-//		builder.clusterPathCoulomb(medSumAgg, 0f);
+////		builder.clusterPathCoulomb(medSumAgg, 0f);
 //		builder.clusterPathCoulomb(sumAgg, 0f);
 //		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
 //				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_FUTURE_POSSIBLE);
@@ -1056,56 +1057,80 @@ public class PlausibilityConfiguration {
 //		// fraction of receiver patches on the opposite side of a jump that are net positive with the prior rupture as source
 //		builder.clusterCoulomb(fractRpatchPosAgg, 0.5f);
 //		// fraction of receiver patches on the opposite side of a jump that have >1/2 interactions positive with the prior rupture as source
-//		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.5f);
+////		builder.clusterCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
+////				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.HALF_INTERACTIONS, AggregationMethod.FRACT_POSITIVE), 0.5f);
 //		/**
 //		 * CFF probability
 //		 */
-//		// relative to best, no negative
-//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, false, false, true));
-//		// allow negative, and relative to best
-//		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true);
+//		// no negative, cluster-by-cluster
+//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, false, false));
+//		// allow negative, cluster-by-cluster
+//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, true, false));
+//		// no negative, sect-by-sect
+//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, false, true));
+//		// no negative, sect-by-sect, favorable jumps up to 15km
+//		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true, 15f, distAzCalc);
 //		builder.cumulativeProbability(0.01f, prefCFFProb);
 //		// same but as a path option
-//		CumulativeJumpProbPathEvaluator cffProbPathEval = new CumulativeJumpProbPathEvaluator(
+//		CumulativeProbPathEvaluator cffProbPathEval = new CumulativeProbPathEvaluator(
 //				0.01f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb);
 //		builder.path(cffProbPathEval);
 //		/**
+//		 * CFF ratio probability
+//		 */
+//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2, true, 15f, distAzCalc);
+//		builder.cumulativeProbability(0.01f, cffRatioProb);
+//		// same but as a path option
+//		CumulativeProbPathEvaluator cffRatioProbPathEval = new CumulativeProbPathEvaluator(
+//				0.01f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
+//		builder.path(cffRatioProbPathEval);
+//		builder.cumulativeProbability(0.1f, cffRatioProb);
+//		// same but as a path option
+//		cffRatioProbPathEval = new CumulativeProbPathEvaluator(
+//				0.1f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
+//		builder.path(cffRatioProbPathEval);
+//		/**
 //		 * Slip probability
 //		 */
-//		// regular, 0.01
-//		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, false));
+////		// regular, 0.01
+////		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, false));
 //		// only increasing, 0.01
 //		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, true));
-//		// regular, 0.01
-//		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, false));
+////		// regular, 0.01
+////		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, false));
 //		// only increasing, 0.1
 //		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, true));
 //		// as a path, only increasing, 0.01
-//		CumulativeJumpProbPathEvaluator prefSlipEval = new CumulativeJumpProbPathEvaluator(
-//				0.01f, PlausibilityResult.FAIL_HARD_STOP, new RelativeSlipRateProb(connStrat, true));
-//		builder.add(new ScalarPathPlausibilityFilter<>(prefSlipEval));
+////		CumulativeJumpProbPathEvaluator prefSlipEval = new CumulativeJumpProbPathEvaluator(
+////				0.01f, PlausibilityResult.FAIL_HARD_STOP, new RelativeSlipRateProb(connStrat, true));
+////		builder.add(new ScalarPathPlausibilityFilter<>(prefSlipEval));
 //		/**
 //		 * Combined path filter
 //		 */
-//		builder.path(prefSlipEval, cffProbPathEval, prefCFFSectPathEval, prefCFFRPatchEval);
+////		builder.path(prefSlipEval, cffProbPathEval, prefCFFSectPathEval, prefCFFRPatchEval);
 //		builder.path(cffProbPathEval, prefCFFSectPathEval, prefCFFRPatchEval);
 //		builder.path(cffProbPathEval, prefCFFRPatchEval);
 //		
 //		String destFileName = "alt_filters.json";
 		
 		// current best
-		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, true));
+		builder.cumulativeProbability(0.05f, new RelativeSlipRateProb(connStrat, true));
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS), 0f);
-		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true);
-		CumulativeJumpProbPathEvaluator cffProbPathEval = new CumulativeJumpProbPathEvaluator(
-				0.01f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb);
-		SectCoulombPathEvaluator prefCFFSectPathEval = new SectCoulombPathEvaluator(
-				sumAgg, Range.atLeast(0f), PlausibilityResult.FAIL_HARD_STOP, true, 15f, distAzCalc);
-		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
-				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_FUTURE_POSSIBLE);
-		builder.path(cffProbPathEval, prefCFFSectPathEval, prefCFFRPatchEval);
+		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, true, true);
+//		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true, 15f, distAzCalc);
+		CumulativeProbPathEvaluator cffProbPathEval = new CumulativeProbPathEvaluator(
+				0.05f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb);
+//		SectCoulombPathEvaluator prefCFFSectPathEval = new SectCoulombPathEvaluator(
+//				sumAgg, Range.atLeast(0f), PlausibilityResult.FAIL_HARD_STOP, true, 15f, distAzCalc);
+//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2, true, 15f, distAzCalc);
+		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2);
+		CumulativeProbPathEvaluator cffRatioProbPathEval = new CumulativeProbPathEvaluator(
+				0.5f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
+//		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
+//				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_FUTURE_POSSIBLE);
+//		builder.path(cffProbPathEval, cffRatioProbPathEval, prefCFFRPatchEval);
+		builder.path(cffProbPathEval, cffRatioProbPathEval);
 		String destFileName = "cur_pref_filters.json";
 		
 		// UCERF3 non-construction

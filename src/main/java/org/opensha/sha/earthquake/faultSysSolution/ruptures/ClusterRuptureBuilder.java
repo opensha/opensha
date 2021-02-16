@@ -28,9 +28,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetRuptureCoulombFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.ClusterCoulombPathEvaluator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.CumulativeJumpProbPathEvaluator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.CumulativeProbPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.NucleationClusterEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.SectCoulombPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter.*;
@@ -39,6 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.AdaptiveD
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptivePermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsPermutationStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
@@ -166,7 +169,7 @@ public class ClusterRuptureBuilder {
 							rupCountPrintMod = 10000;
 						else if (numUnique == 100000)
 							rupCountPrintMod = 25000;
-						else if (numUnique == 200000)
+						else if (numUnique == 500000)
 							rupCountPrintMod = 50000;
 						else if (numUnique == 1000000)
 							rupCountPrintMod = 100000;
@@ -1125,6 +1128,11 @@ public class ClusterRuptureBuilder {
 				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM);
 		AggregatedStiffnessCalculator fractRpatchPosAgg = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.SUM, AggregationMethod.PASSTHROUGH, AggregationMethod.RECEIVER_SUM, AggregationMethod.FRACT_POSITIVE);
+		AggregatedStiffnessCalculator threeQuarterInts = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS);
+		float cffRatioThresh = 0.5f;
+//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2, true, 15f, distAzCalc);
+		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2);
 		
 		String outputName = fmPrefix;
 		
@@ -1139,23 +1147,34 @@ public class ClusterRuptureBuilder {
 //		if (maxJumpDist != 5d)
 //			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
 		// use this for simpler connection rules
-//		double maxJumpDist = 5d;
+//		double maxJumpDist = 10d;
 //		ClusterConnectionStrategy connectionStrategy =
 //			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
 //		if (maxJumpDist != 5d)
 //			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
 		// use this for adaptive distance filter
-		double r0 = 5d;
-		double rMax = 10d;
-		int cMax = -1;
-		int sMax = 1;
+//		double r0 = 5d;
+//		double rMax = 10d;
+//		int cMax = -1;
+//		int sMax = 1;
+//		ClusterConnectionStrategy connectionStrategy =
+//				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
+//		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
+//		if (cMax >= 0)
+//			outputName += "_cMax"+cMax;
+//		if (sMax >= 0)
+//			outputName += "_sMax"+sMax;
+		// use this to pick connections which agree with your plausibility filters
+		double maxJumpDist = 10d;
 		ClusterConnectionStrategy connectionStrategy =
-				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
-		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
-		if (cMax >= 0)
-			outputName += "_cMax"+cMax;
-		if (sMax >= 0)
-			outputName += "_sMax"+sMax;
+			new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
+					new CumulativeProbabilityFilter(cffRatioThresh, cffRatioProb),
+					new PathPlausibilityFilter(
+							new CumulativeProbPathEvaluator(cffRatioThresh, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb),
+							new CumulativeProbPathEvaluator(0.05f, PlausibilityResult.FAIL_HARD_STOP, new RelativeCoulombProb(
+									sumAgg, new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d), false, true))),
+					new NetRuptureCoulombFilter(threeQuarterInts, 0f));
+		outputName += "_plausible"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
 		
 		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
 		
@@ -1169,94 +1188,103 @@ public class ClusterRuptureBuilder {
 //		configBuilder.u3All(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_ucerf3";
 		configBuilder.minSectsPerParent(2, true, true); // always do this one
 //		configBuilder.u3Cumulatives(); outputName += "_u3Cml"; // cml rake and azimuth
-//		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
-//		configBuilder.cumulativeRakeChange(180f); outputName += "_cmlRake"; // cml azimuth only
-//		configBuilder.u3Azimuth(); outputName += "_u3Az";
+		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
+		configBuilder.cumulativeRakeChange(180f); outputName += "_cmlRake"; // cml azimuth only
+		configBuilder.u3Azimuth(); outputName += "_u3Az";
 //		configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
 		
 		/*
 		 * Regular slip prob
 		 */
 		// SLIP RATE PROB: only increasing, 0.01
-		configBuilder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connectionStrategy, true));
-		outputName += "_slipP0.01incr";
+		float slipProb = 0.05f;
+		configBuilder.cumulativeProbability(slipProb, new RelativeSlipRateProb(connectionStrategy, true));
+		outputName += "_slipP"+slipProb+"incr";
 		// END SLIP RATE PROB
 		
 		/*
 		 * Regular CFF prob (not currently used)
 		 */
 		// CFF prob: allow neg, 0.01
-//		configBuilder.cumulativeProbability(0.01f, new RelativeCoulombProb(
-//				sumAgg, connectionStrategy, false, true, true));
-//		outputName += "_cffP0.01incr";
-		// END SLIP RATE PROB
-		
-		/*
-		 *  CFF net rupture filters
-		 */
-		// MAIN 3/4 INTERACTIONS POSITIVE
-		configBuilder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
-				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS),
-				Range.greaterThan(0f));
-		outputName += "_cff3_4_IntsPos";
-		// END MAIN 3/4 INTERACTIONS POSITIVE
-		
-		/**
-		 * Path filters
-		 */
-		List<NucleationClusterEvaluator> combPathEvals = new ArrayList<>();
-		List<String> combPathPrefixes = new ArrayList<>();
-		float fractPathsThreshold = 0f; String fractPathsStr = "";
-		// SLIP RATE PROB: as a path, only increasing NOT CURRENTLY PREFERRED
-//		float pathSlipProb = 0.1f;
-//		CumulativeJumpProbPathEvaluator slipEval = new CumulativeJumpProbPathEvaluator(
-//				pathSlipProb, PlausibilityResult.FAIL_HARD_STOP, new RelativeSlipRateProb(connectionStrategy, true));
-//		combPathEvals.add(slipEval); combPathPrefixes.add("slipP"+pathSlipProb+"incr");
-////		configBuilder.path(slipEval); outputName += "_slipPathP"+pathSlipProb+"incr"; // do it separately
-		// END SLIP RATE PROB
-		// CFF PROB: as a path, allow negative, 0.01
-		RelativeCoulombProb cffProbCalc = new RelativeCoulombProb(
-				sumAgg, connectionStrategy, false, true, true);
-		CumulativeJumpProbPathEvaluator cffProbPathEval = new CumulativeJumpProbPathEvaluator(
-				0.01f, PlausibilityResult.FAIL_HARD_STOP, cffProbCalc);
-		combPathEvals.add(cffProbPathEval); combPathPrefixes.add("cffP0.01");
-//		configBuilder.path(cffProbPathEval); outputName += "_cffPathP0.01"; // do it separately
-		// CFF SECT PATH: relBest, 15km
-		SectCoulombPathEvaluator prefCFFSectPathEval = new SectCoulombPathEvaluator(
-				sumAgg, Range.atLeast(0f), PlausibilityResult.FAIL_HARD_STOP, true, 15f, distAzCalc);
-		combPathEvals.add(prefCFFSectPathEval); combPathPrefixes.add("cffSPathFav15");
-//		configBuilder.path(prefCFFSectPathEval); outputName += "_cffSPathFav15"; // do it separately
-		// END CFF SECT PATH
-		// CFF CLUSTER PATH: half RPatches positive
-		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
-				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_HARD_STOP);
-		combPathEvals.add(prefCFFRPatchEval); combPathPrefixes.add("cffCPathRPatchHalfPos");
-//		configBuilder.path(prefCFFRPatchEval); outputName += "_cffCPathRPatchHalfPos"; // do it separately
-		// END CFF CLUSTER PATH
-		// add them
-		Preconditions.checkState(combPathEvals.size() == combPathPrefixes.size());
-		if (!combPathEvals.isEmpty()) {
-			configBuilder.path(fractPathsThreshold, combPathEvals.toArray(new NucleationClusterEvaluator[0]));
-			outputName += "_";
-			if (combPathEvals.size() > 1)
-				outputName += "comb"+combPathEvals.size();
-			outputName += fractPathsStr;
-			if (fractPathsStr.isEmpty() && combPathEvals.size() == 1) {
-				outputName += "path";
-			} else {
-				outputName += "Path";
-				if (combPathEvals.size() > 1)
-					outputName += "s";
-			}
-			outputName += "_"+Joiner.on("_").join(combPathPrefixes);
-		}
+////		configBuilder.cumulativeProbability(0.01f, new RelativeCoulombProb(
+////				sumAgg, connectionStrategy, false, true, true));
+////		outputName += "_cffP0.01incr";
+//		// END SLIP RATE PROB
+//		
+//		/*
+//		 *  CFF net rupture filters
+//		 */
+//		// MAIN 3/4 INTERACTIONS POSITIVE
+//		configBuilder.netRupCoulomb(threeQuarterInts,
+//				Range.greaterThan(0f));
+//		outputName += "_cff3_4_IntsPos";
+//		// END MAIN 3/4 INTERACTIONS POSITIVE
+//		
+//		/**
+//		 * Path filters
+//		 */
+//		List<NucleationClusterEvaluator> combPathEvals = new ArrayList<>();
+//		List<String> combPathPrefixes = new ArrayList<>();
+//		float fractPathsThreshold = 0f; String fractPathsStr = "";
+//		// SLIP RATE PROB: as a path, only increasing NOT CURRENTLY PREFERRED
+////		float pathSlipProb = 0.1f;
+////		CumulativeJumpProbPathEvaluator slipEval = new CumulativeJumpProbPathEvaluator(
+////				pathSlipProb, PlausibilityResult.FAIL_HARD_STOP, new RelativeSlipRateProb(connectionStrategy, true));
+////		combPathEvals.add(slipEval); combPathPrefixes.add("slipP"+pathSlipProb+"incr");
+//////		configBuilder.path(slipEval); outputName += "_slipPathP"+pathSlipProb+"incr"; // do it separately
+//		// END SLIP RATE PROB
+//		// CFF PROB: as a path, allow negative, 0.01
+//		float cffPRob = 0.05f;
+//		RelativeCoulombProb cffProbCalc = new RelativeCoulombProb(
+////				sumAgg, connectionStrategy, false, true, true, 15f, distAzCalc);
+//				sumAgg, connectionStrategy, false, true);
+//		CumulativeProbPathEvaluator cffProbPathEval = new CumulativeProbPathEvaluator(
+//				cffPRob, PlausibilityResult.FAIL_HARD_STOP, cffProbCalc);
+//		combPathEvals.add(cffProbPathEval); combPathPrefixes.add("cffP"+cffPRob);
+////		configBuilder.path(cffProbPathEval); outputName += "_cffPathP0.01"; // do it separately
+//		// CFF SECT PATH: relBest, 15km
+////		SectCoulombPathEvaluator prefCFFSectPathEval = new SectCoulombPathEvaluator(
+////				sumAgg, Range.atLeast(0f), PlausibilityResult.FAIL_HARD_STOP, true, 15f, distAzCalc);
+////		combPathEvals.add(prefCFFSectPathEval); combPathPrefixes.add("cffSPathFav15");
+//////		configBuilder.path(prefCFFSectPathEval); outputName += "_cffSPathFav15"; // do it separately
+//		// END CFF SECT PATH
+//		// CFF CLUSTER PATH: half RPatches positive
+////		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
+////				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_HARD_STOP);
+////		combPathEvals.add(prefCFFRPatchEval); combPathPrefixes.add("cffCPathRPatchHalfPos");
+//////		configBuilder.path(prefCFFRPatchEval); outputName += "_cffCPathRPatchHalfPos"; // do it separately
+//		// END CFF CLUSTER PATH
+//		// CFF RATIO PATH: N=2, relBest, 15km
+//		CumulativeProbPathEvaluator cffRatioPatchEval = new CumulativeProbPathEvaluator(cffRatioThresh,
+//				PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
+//		combPathEvals.add(cffRatioPatchEval);
+//		combPathPrefixes.add("cffRatioN"+cffRatioProb.getNumDenominatorSubsects()+"P"+cffRatioThresh);
+////		configBuilder.path(prefCFFRPatchEval); outputName += "_cffCPathRPatchHalfPos"; // do it separately
+//		// END CFF RATIO PATH
+//		// add them
+//		Preconditions.checkState(combPathEvals.size() == combPathPrefixes.size());
+//		if (!combPathEvals.isEmpty()) {
+//			configBuilder.path(fractPathsThreshold, combPathEvals.toArray(new NucleationClusterEvaluator[0]));
+//			outputName += "_";
+//			if (combPathEvals.size() > 1)
+//				outputName += "comb"+combPathEvals.size();
+//			outputName += fractPathsStr;
+//			if (fractPathsStr.isEmpty() && combPathEvals.size() == 1) {
+//				outputName += "path";
+//			} else {
+//				outputName += "Path";
+//				if (combPathEvals.size() > 1)
+//					outputName += "s";
+//			}
+//			outputName += "_"+Joiner.on("_").join(combPathPrefixes);
+//		}
 
 		// Check connectivity only (maximum 2 clusters per rupture)
 //		configBuilder.maxNumClusters(2); outputName += "_connOnly";
 		
-//		File outputDir = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
-//		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		File outputDir = rupSetsDir;
+		File outputDir = new File(rupSetsDir, "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05_comp");
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+//		File outputDir = rupSetsDir;
 		
 		/*
 		 * Splay constraints

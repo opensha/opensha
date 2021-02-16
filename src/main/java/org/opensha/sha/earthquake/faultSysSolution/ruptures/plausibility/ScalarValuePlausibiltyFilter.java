@@ -9,6 +9,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
 
+import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
+
 /**
  * Interface for a plausibility filter which is produces a scalar value (e.g., integer, double, float)
  * for each rupture. This is mostly a helper interface to allow diagnostic plots when comparing rupture
@@ -175,6 +177,67 @@ public interface ScalarValuePlausibiltyFilter<E extends Number & Comparable<E>> 
 		ret += acceptableRange.lowerEndpoint()+","+acceptableRange.upperEndpoint();
 		ret += (acceptableRange.upperBoundType() == BoundType.CLOSED) ? "]" : ")";
 		return ret;
+	}
+	
+	public static class DoubleWrapper implements ScalarValuePlausibiltyFilter<Double> {
+		
+		private ScalarValuePlausibiltyFilter<?> filter;
+		private Range<Double> doubleRange;
+
+		public DoubleWrapper(ScalarValuePlausibiltyFilter<?> filter) {
+			this.filter = filter;
+			Range<?> origRange = filter.getAcceptableRange();
+			if (origRange.hasLowerBound() && origRange.hasUpperBound())
+				doubleRange = Range.range(numberToDouble(origRange.lowerEndpoint()), origRange.lowerBoundType(),
+						numberToDouble(origRange.upperEndpoint()), origRange.upperBoundType());
+			else if (origRange.hasLowerBound())
+				doubleRange = Range.downTo(numberToDouble(origRange.lowerEndpoint()), origRange.lowerBoundType());
+			else
+				doubleRange = Range.upTo(numberToDouble(origRange.upperEndpoint()), origRange.upperBoundType());
+		}
+		
+		private double numberToDouble(Object obj) {
+			return ((Number)obj).doubleValue();
+		}
+
+		@Override
+		public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
+			return filter.apply(rupture, verbose);
+		}
+
+		@Override
+		public String getShortName() {
+			return filter.getShortName();
+		}
+
+		@Override
+		public String getName() {
+			return filter.getName();
+		}
+
+		@Override
+		public Double getValue(ClusterRupture rupture) {
+			Number value = filter.getValue(rupture);
+			if (value == null)
+				return null;
+			return value.doubleValue();
+		}
+
+		@Override
+		public Range<Double> getAcceptableRange() {
+			return doubleRange;
+		}
+
+		@Override
+		public String getScalarName() {
+			return filter.getScalarName();
+		}
+
+		@Override
+		public String getScalarUnits() {
+			return filter.getScalarUnits();
+		}
+		
 	}
 
 }

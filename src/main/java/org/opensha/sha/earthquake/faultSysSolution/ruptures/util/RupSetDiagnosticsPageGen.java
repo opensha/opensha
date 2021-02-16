@@ -134,58 +134,48 @@ public class RupSetDiagnosticsPageGen {
 //					+ "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos"));
 //			System.exit(0);
 			
-			String inputName = "RSQSim 4983, SectArea=0.5";
-			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+//			String inputName = "RSQSim 4983, SectArea=0.5";
+//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 			
 //			String inputName = "CmlAz Only";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 			
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-			
-//			String inputName = "NZ 5km, Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
-//			File inputFile = new File(rupSetsDir, "nz_demo5_crustal_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
-			
-//			String inputName = "Adaptive 5-10km (SMax=1), Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
-//			File inputFile = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-//			// these are relative to fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip
-//			File relDir = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_comp");
-//			boolean skipPlausibility = true;
-//			File altPlausibilityCompareFile = null;
+
+			String inputName = "Plausible 10km, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.05], 5% Fract Increase";
+			File inputFile = new File(rupSetsDir, "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+			// these are relative to fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip
+			File relDir = new File(rupSetsDir, "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05_comp");
+			boolean skipPlausibility = true;
+			File altPlausibilityCompareFile = null;
 //			String compName = null;
 //			File compareFile = null;
-////			String compName = "Jump: Adaptive 5-15km (SMax=1)";				// generated, plotted REDO: build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_15km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "Jump: Adaptive 5-10km (CMax=2)";				// generated, plotted REDO: build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_cMax2_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "Jump: 10km";									// generated, plotted REDO: build?		plot?	
-////			File compareFile = new File(relDir, "fm3_1_10km_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "Jump: 10km, 5% Fract Increase";				// generated, plotted
-////			File compareFile = new File(relDir, "fm3_1_10km_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
-////			String compName = "Jump: 5km";									// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "Separate CFF Paths";							// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_cffPathP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "5% Fract Increase";							// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip");
-////			String compName = "No Slip Rate Prob";							// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "No CFF 3/4 Ints";							// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "No CFF Path RPatch";							// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffP0.01_cffSPathFav15.zip");
-////			String compName = "No CFF Sect Path";							// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffP0.01_cffCPathRPatchHalfPos.zip");
-////			String compName = "No CFF Prob";								// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "CmlAz, CFF Comb Paths: [Sect,RPatch]";		// generated, plotted REDO build? 		plot?	
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlAz_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "No Self-Stiffness Cap";						// generated, plotted
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_cap0x.zip");
-////			String compName = "Add CmlRake<=180";							// generated, plotted
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlRake_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-////			String compName = "CmlAz, CmlRake, CFF Comb Paths: [Sect,RPatch]";// generated, plotted
-////			File compareFile = new File(relDir, "fm3_1_adapt5_10km_sMax1_cmlAz_cmlRake_comb2Paths_cffSPathFav15_cffCPathRPatchHalfPos.zip");
+//			String compName = "No 5% Thinning";									// generated	plotted
+//			File compareFile = new File(relDir, "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5.zip");
+//			String compName = "No 3/4 Interactions";							// generated	plotted
+//			File compareFile = new File(relDir, "fm3_1_plausible10km_slipP0.05incr_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+//			String compName = "No Slip Probability";							// generated	plotted
+//			File compareFile = new File(relDir, "fm3_1_plausible10km_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+//			String compName = "No CFF Ratio";									// generated	plotted	
+//			File compareFile = new File(relDir, "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_path_cffP0.05_sectFractPerm0.05.zip");
+//			String compName = "No CFF Probability";								// generated	plotted	
+//			File compareFile = new File(relDir, "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_path_cffRatioN2P0.5_sectFractPerm0.05.zip");
+//			String compName = "Jump: 15km";										// IP	
+//			File compareFile = new File(relDir, "fm3_1_plausible15km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+			String compName = "Jump: 5km";										// generated	plotted
+			File compareFile = new File(relDir, "fm3_1_plausible5km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+//			String compName = "10km, UCERF3 Filters (No CFF)";					// generated	
+//			File compareFile = new File(relDir, "fm3_1_plausible10km_cmlAz_cmlRake_u3Az_sectFractPerm0.05.zip");
+//			String compName = "10km, Closest Jumps";							// generated	plotted
+//			File compareFile = new File(relDir, "fm3_1_10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+			
+//			String inputName = "NZ 10km, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.05], 5% Fract Increase";
+//			File inputFile = new File(rupSetsDir, "nz_demo5_crustal_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+//			boolean skipPlausibility = false;
+//			String compName = "NZ w/ U3 (non-CFF) Filters";
+//			File compareFile = new File(rupSetsDir, "nz_demo5_crustal_plausible10km_cmlAz_cmlRake_u3Az_sectFractPerm0.05.zip");
+//			File altPlausibilityCompareFile = null;
 			
 			// UCERF3 variants
 //			boolean skipPlausibility = false;
@@ -204,19 +194,16 @@ public class RupSetDiagnosticsPageGen {
 			
 			
 			// common ones
-			boolean skipPlausibility = false;
-//			String compName = "UCERF3";
-//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
+//			boolean skipPlausibility = false;
+////			String compName = "UCERF3";
+////			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+////			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
 //			String compName = null;
 //			File compareFile = null;
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
-			String compName = "Adaptive 5-10km (SMax=1), Slip P>0.01 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Fav. (15km), P>0.01, RPatch 1/2 >0]";
-			File compareFile = new File(rupSetsDir, "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos.zip");
-			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
-//			String compName = "NZ w/ U3 (non-CFF) Filters";
-//			File compareFile = new File(rupSetsDir, "nz_demo5_crustal_cmlAz_cmlRake_u3Az_sectFractPerm0.05.zip");
-//			File altPlausibilityCompareFile = null;
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+////			String compName = "Adaptive 5-10km (SMax=1), Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect Ratio (N=2,Fav15km)>0.2, P>0.05]";
+////			File compareFile = new File(rupSetsDir, "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
@@ -322,7 +309,7 @@ public class RupSetDiagnosticsPageGen {
 		}
 		
 		File coulombCacheDir = null;
-		if (cmd.hasOption("coulomb-cache-dir")) {
+		if (cmd.hasOption("coulomb-cache-dir") && !skipPlausibility) {
 			coulombCacheDir = new File(cmd.getOptionValue("coulomb-cache-dir"));
 			Preconditions.checkState(coulombCacheDir.exists(),
 					"Coulomb cache dir doesn't exist: %s", coulombCacheDir.getAbsolutePath());
@@ -663,6 +650,12 @@ public class RupSetDiagnosticsPageGen {
 //			// TODO Auto-generated catch block
 //			e.printStackTrace();
 //		}
+		
+		if (!new File(outputDir, "README.md").exists()) {
+			System.out.println("Writing intermediate HTML");
+			
+			writeMarkdown(outputDir, summary, lines, tocIndex);
+		}
 		
 		if ((compRups != null && (inputConfig != null || compConfig != null))
 				|| altPlausibilityCompareFile != null) {
@@ -1422,16 +1415,7 @@ public class RupSetDiagnosticsPageGen {
 		
 		System.out.println("DONE building, writing markdown and HTML");
 		
-		// add TOC
-		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2));
-		lines.add(tocIndex, "## Table Of Contents");
-		
-		// write markdown
-		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
-		
-		System.out.println("Writing JSON metadata");
-		
-		writeMetadataJSON(summary, new File(outputDir, "metadata.json"));
+		writeMarkdown(outputDir, summary, lines, tocIndex);
 		
 		if (indexDir != null) {
 			System.out.println("Writing index to "+indexDir.getAbsolutePath());
@@ -1443,6 +1427,21 @@ public class RupSetDiagnosticsPageGen {
 			System.out.println("Writing dist/az cache to "+distAzCache.getAbsolutePath());
 			distAzCalc.writeCacheFile(distAzCache);
 		}
+	}
+
+	private static void writeMarkdown(File outputDir, DiagnosticSummary summary, List<String> lines, int tocIndex)
+			throws IOException {
+		lines = new ArrayList<>(lines);
+		// add TOC
+		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2));
+		lines.add(tocIndex, "## Table Of Contents");
+		
+		// write markdown
+		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+		
+		System.out.println("Writing JSON metadata");
+		
+		writeMetadataJSON(summary, new File(outputDir, "metadata.json"));
 	}
 	
 	public static double DEFAULT_MAX_DIST = 10d;
@@ -1734,15 +1733,14 @@ public class RupSetDiagnosticsPageGen {
 				String logAdd = logY ? "_log" : "";
 				if (inputScalars.sol != null) {
 					main = plotRuptureHistogram(outputDir, prefix+"_rates"+logAdd, inputScalars,
-							hasCompSol ? compScalars : null, compUniques, MAIN_COLOR, logY, true);
+							compScalars, compUniques, MAIN_COLOR, logY, true);
 					table.addColumn("![hist]("+outputDir.getName()+"/"+main.getName()+")");
 				} else {
 					table.addColumn("*N/A*");
 				}
 				if (hasCompSol) {
 					File comp = plotRuptureHistogram(outputDir, prefix+"_comp_rates"+logAdd, compScalars,
-							inputScalars.sol == null ? null : inputScalars, inputUniques,
-									COMP_COLOR, logY, true);
+							inputScalars, inputUniques, COMP_COLOR, logY, true);
 					table.addColumn("![hist]("+outputDir.getName()+"/"+comp.getName()+")");
 				} else {
 					table.addColumn("*N/A*");
@@ -1881,6 +1879,32 @@ public class RupSetDiagnosticsPageGen {
 			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
 					SectionDistanceAzimuthCalculator distAzCalc) {
 				return rupSet.getAreaForRup(index)*1e-6;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		MAX_JUMP_DIST("Maximum Jump Dist", "Maximum Jump Distance (km)",
+				"The maximum jump distance in the rupture.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				double delta;
+				if (scalarTrack.getMax() > 20d)
+					delta = 2d;
+				else
+					delta = 1d;
+				return HistogramFunction.getEncompassingHistogram(0d, scalarTrack.getMax(), delta);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				double max = 0d;
+				for (Jump jump : rup.getJumpsIterable())
+					max = Math.max(max, jump.distance);
+				return max;
 			}
 
 			@Override
@@ -2066,7 +2090,7 @@ public class RupSetDiagnosticsPageGen {
 		if (compUniques != null)
 			commonHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 		HistogramFunction compHist = null;
-		if (compScalarVals != null) {
+		if (compScalarVals != null && (!rateWeighted || compScalarVals.sol != null)) {
 			compHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 			for (int i=0; i<compScalarVals.values.size(); i++) {
 				double scalar = compScalarVals.values.get(i);

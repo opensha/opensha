@@ -93,9 +93,9 @@ public class UniqueRupture {
 				// it's a break in the range
 				if (rangeStartID != Integer.MIN_VALUE) {
 					if (backwards)
-						add(new SectIDRange(rangeEndID, rangeStartID));
+						add(SectIDRange.build(rangeEndID, rangeStartID));
 					else
-						add(new SectIDRange(rangeStartID, rangeEndID));
+						add(SectIDRange.build(rangeStartID, rangeEndID));
 				}
 				rangeStartID = id;
 				rangeEndID = id;
@@ -104,9 +104,9 @@ public class UniqueRupture {
 		}
 		if (rangeStartID != Integer.MIN_VALUE) {
 			if (backwards)
-				add(new SectIDRange(rangeEndID, rangeStartID));
+				add(SectIDRange.build(rangeEndID, rangeStartID));
 			else
-				add(new SectIDRange(rangeStartID, rangeEndID));
+				add(SectIDRange.build(rangeStartID, rangeEndID));
 		}
 		Preconditions.checkState(ids.size() == size,
 				"Size mismatch, duplicates? Expected %s, have %s", ids.size(), size);
@@ -129,23 +129,23 @@ public class UniqueRupture {
 		int sizeAdd = range.size();
 		if (index > 0) {
 			SectIDRange before = list.get(index-1);
-			Preconditions.checkState(range.startID > before.endID,
+			Preconditions.checkState(range.getStartID() > before.getEndID(),
 					"Overlappping ID ranges detected: %s %s", before, range);
-			if (range.startID == before.endID+1) {
+			if (range.getStartID() == before.getEndID()+1) {
 				// combine them
 				list.remove(index-1);
 				index--;
-				range = new SectIDRange(before.startID, range.endID);
+				range = SectIDRange.build(before.getStartID(), range.getEndID());
 			}
 		}
 		if (index < list.size()) {
 			SectIDRange after = list.get(index);
-			Preconditions.checkState(range.endID < after.startID,
+			Preconditions.checkState(range.getEndID() < after.getStartID(),
 					"Overlappping ID ranges detected: %s %s", range, after);
-			if (range.endID == after.startID-1) {
+			if (range.getEndID() == after.getStartID()-1) {
 				// combine them
 				list.remove(index);
-				range = new SectIDRange(range.startID, after.endID);
+				range = SectIDRange.build(range.getStartID(), after.getEndID());
 			}
 		}
 		list.add(index, range);
@@ -156,9 +156,9 @@ public class UniqueRupture {
 
 		@Override
 		public int compare(SectIDRange o1, SectIDRange o2) {
-			if (o1.size() == 1 && o2.contains(o1.startID) || o2.size() == 1 && o1.contains(o2.startID))
+			if (o1.size() == 1 && o2.contains(o1.getStartID()) || o2.size() == 1 && o1.contains(o2.getStartID()))
 				return 0;
-			return Integer.compare(o1.startID, o2.startID);
+			return Integer.compare(o1.getStartID(), o2.getStartID());
 		}
 		
 	};
@@ -168,7 +168,7 @@ public class UniqueRupture {
 			return false;
 		if (list.size() == 1)
 			return list.get(0).contains(id);
-		int index = Collections.binarySearch(list, new SectIDRange(id, id), containsCompare);
+		int index = Collections.binarySearch(list, SectIDRange.build(id, id), containsCompare);
 		return index >= 0;
 	}
 	
