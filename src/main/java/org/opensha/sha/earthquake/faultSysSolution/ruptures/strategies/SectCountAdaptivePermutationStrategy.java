@@ -54,6 +54,14 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 		return validAddSizes;
 	}
 	
+	public float getFractIncrease() {
+		return minFractSectIncrease;
+	}
+	
+	public boolean isMaintainConnectivity() {
+		return maintainConnectivity;
+	}
+	
 	@Override
 	public List<FaultSubsectionCluster> getPermutations(ClusterRupture currentRupture,
 			FaultSubsectionCluster fullCluster, FaultSection firstSection) {
@@ -295,6 +303,14 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 				System.out.println("\t\tValid additions: "+Joiner.on(",").join(sizes));
 			}
 		}
+	}
+
+	@Override
+	public String getName() {
+		String ret = "Adaptive, "+optionalDigitPDF.format(minFractSectIncrease)+" Sect Increase";
+		if (maintainConnectivity)
+			ret += ", Maintain Connectivity";
+		return ret;
 	}
 
 }

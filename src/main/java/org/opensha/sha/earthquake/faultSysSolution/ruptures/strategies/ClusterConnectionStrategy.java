@@ -8,8 +8,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.opensha.commons.data.Named;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster.JumpStub;
@@ -101,13 +107,21 @@ public abstract class ClusterConnectionStrategy implements Named {
 		return clusters;
 	}
 	
+	public synchronized void checkBuildThreaded(int numThreads) {
+		if (!connectionsAdded) {
+//			System.out.println("Building connections between "+clusters.size()+" clusters");
+			buildConnections(numThreads);
+//			System.out.println("Found "+count+" possible section connections");
+		}
+	}
+	
 	/**
 	 * @return list of full clusters, after adding all connections
 	 */
 	public synchronized List<FaultSubsectionCluster> getClusters() {
 		if (!connectionsAdded) {
 //			System.out.println("Building connections between "+clusters.size()+" clusters");
-			buildConnections();
+			buildConnections(1);
 //			System.out.println("Found "+count+" possible section connections");
 		}
 		return clusters;
@@ -119,31 +133,83 @@ public abstract class ClusterConnectionStrategy implements Named {
 	 * 
 	 * @return the number of connections added
 	 */
-	private int buildConnections() {
-		int count = 0;
-		connectedParents = new HashSet<>();
-		jumpsFrom = HashMultimap.create();
+	private int buildConnections(int numThreads) {
+		List<Jump> jumps = new ArrayList<>();
+		
+		List<ConnSearchCallable> calls = new ArrayList<>();
 		for (int c1=0; c1<clusters.size(); c1++) {
 			FaultSubsectionCluster cluster1 = clusters.get(c1);
 			for (int c2=c1+1; c2<clusters.size(); c2++) {
 				FaultSubsectionCluster cluster2 = clusters.get(c2);
-				List<Jump> jumps = buildPossibleConnections(cluster1, cluster2);
-				if (jumps != null) {
-					for (Jump jump : jumps) {
-						connectedParents.add(new IDPairing(cluster1.parentSectionID, cluster2.parentSectionID));
-						connectedParents.add(new IDPairing(cluster2.parentSectionID, cluster1.parentSectionID));
-						cluster1.addConnection(jump);
-						Jump reverse = jump.reverse();
-						cluster2.addConnection(reverse);
-						count++;
-						jumpsFrom.put(jump.fromSection, jump);
-						jumpsFrom.put(reverse.fromSection, reverse);
-					}
-				}
+				calls.add(new ConnSearchCallable(cluster1, cluster2));
 			}
 		}
+		
+		if (numThreads <= 1) {
+			for (ConnSearchCallable call : calls) {
+				List<Jump> newJumps;
+				try {
+					newJumps = call.call();
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				if (newJumps != null)
+					jumps.addAll(newJumps);
+			}
+		} else {
+			ExecutorService exec = Executors.newFixedThreadPool(numThreads);
+			List<Future<List<Jump>>> futures = new ArrayList<>();
+			
+			for (ConnSearchCallable call : calls)
+				futures.add(exec.submit(call));
+			
+			for (Future<List<Jump>> f : futures) {
+				try {
+					List<Jump> newJumps = f.get();
+					if (newJumps != null)
+						jumps.addAll(newJumps);
+				} catch (Exception e) {
+					exec.shutdown();
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+			
+			exec.shutdown();
+		}
+		
+		connectedParents = new HashSet<>();
+		jumpsFrom = HashMultimap.create();
+		
+		for (Jump jump : jumps) {
+			connectedParents.add(new IDPairing(jump.fromCluster.parentSectionID, jump.toCluster.parentSectionID));
+			connectedParents.add(new IDPairing(jump.toCluster.parentSectionID, jump.fromCluster.parentSectionID));
+			jump.fromCluster.addConnection(jump);
+			Jump reverse = jump.reverse();
+			jump.toCluster.addConnection(reverse);
+			jumpsFrom.put(jump.fromSection, jump);
+			jumpsFrom.put(reverse.fromSection, reverse);
+		}
+		
 		connectionsAdded = true;
-		return count;
+		return jumps.size();
+	}
+	
+	private class ConnSearchCallable implements Callable<List<Jump>> {
+		
+		private FaultSubsectionCluster cluster1;
+		private FaultSubsectionCluster cluster2;
+
+		public ConnSearchCallable(FaultSubsectionCluster cluster1, FaultSubsectionCluster cluster2) {
+			super();
+			this.cluster1 = cluster1;
+			this.cluster2 = cluster2;
+		}
+
+		@Override
+		public List<Jump> call() throws Exception {
+			return buildPossibleConnections(cluster1, cluster2);
+		}
+		
 	}
 	
 	/**

@@ -66,4 +66,9 @@ public class ConnectionPointsPermutationStrategy implements ClusterPermutationSt
 		return permutation;
 	}
 
+	@Override
+	public String getName() {
+		return "Connection Points Only";
+	}
+
 }

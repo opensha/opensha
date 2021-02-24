@@ -9,20 +9,13 @@ import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterCoulombCompatibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterPathCoulombCompatibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetClusterCoulombFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetRuptureCoulombFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.*;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.*;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.SimpleAzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
@@ -43,7 +36,13 @@ public class ClusterRupturePlausibilityDebug {
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(
 //				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz.zip"));
 				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
-						+ "fm3_1_adapt5_10km_sMax1_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.2.zip"));
+//						+ "fm3_1_adapt5_10km_sMax1_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.2.zip"));
+//						+ "fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_"
+//						+ "sectFractPerm0.05_comp/fm3_1_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_"
+//						+ "cffFavP0.05_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
+//						+ "fm3_1_plausible10km_slipP0.2incr_cff0.67IntsPos_comb2Paths_cffFavP0.05_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
+//						+ "fm3_1_plausible10km_direct_slipP0.2incr_cff0.67IntsPos_comb2Paths_cffFavP0.05_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
+						+ "fm3_1_plausible10km_direct_slipP0.1incr_cff0.67IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
 //						+ "nz_demo5_crustal_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip"));
 		System.out.println("Loaded "+rupSet.getNumRuptures()+" ruptures");
 		
@@ -57,10 +56,8 @@ public class ClusterRupturePlausibilityDebug {
 			clusterRuptures = rupSet.getClusterRuptures();
 		}
 		
-//		int[] testIndexes = { 199428 };
-//		int[] testIndexes = { 127180 };
-//		int[] testIndexes = { 207500 };
-		int[] testIndexes = { 239730 };
+//		int[] testIndexes = { 372703 };
+		int[] testIndexes = { 379782 };
 		
 		List<ClusterRupture> testRuptures = new ArrayList<>();
 		for (int testIndex : testIndexes)
@@ -124,9 +121,10 @@ public class ClusterRupturePlausibilityDebug {
 //		List<ClusterRupture> testRuptures = new ArrayList<>();
 //		testRuptures.add(ClusterRupture.forOrderedSingleStrandRupture(sects, config.getDistAzCalc()));
 		
-		PlausibilityFilter[] testFilters = null;
-//		SubSectStiffnessCaz
-//		PlausibilityFilter[] testFilters = {
+//		PlausibilityFilter[] testFilters = null;
+		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
+				rupSet.getFaultSectionDataList(), 2d, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
+		PlausibilityFilter[] testFilters = {
 //				new CumulativeProbabilityFilter(0.02f, new RelativeCoulombProb(
 //						new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //								AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
@@ -148,13 +146,17 @@ public class ClusterRupturePlausibilityDebug {
 //				new ClusterPathCoulombCompatibilityFilter(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, false,
 //						AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM),
 //						Range.atLeast(0f))
-////				new CumulativeAzimuthChangeFilter(new SimpleAzimuthCalc(config.getDistAzCalc()), 560f),
-////				new ClusterPathCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
-////				new NetClusterCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
-////				new NetRuptureCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN,
-////						RupCoulombQuantity.SUM_SECT_CFF, 0f),
-////				new ClusterCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
-//		};
+//				new CumulativeAzimuthChangeFilter(new SimpleAzimuthCalc(config.getDistAzCalc()), 560f),
+//				new ClusterPathCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
+//				new NetClusterCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
+//				new NetRuptureCoulombFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN,
+//						RupCoulombQuantity.SUM_SECT_CFF, 0f),
+//				new ClusterCoulombCompatibilityFilter(stiffnessCalc, StiffnessAggregationMethod.MEDIAN, 0f),
+//				new CumulativeProbabilityFilter(0.05f, new RelativeSlipRateProb(config.getConnectionStrategy(), true)),
+				new NetRuptureCoulombFilter(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
+						AggregationMethod.FLATTEN, AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.NORM_BY_COUNT), 0.67f),
+				new DirectPathPlausibilityFilter(config.getConnectionStrategy()),
+		};
 		
 		for (ClusterRupture rup : testRuptures) {
 			System.out.println("===================");
@@ -167,6 +169,8 @@ public class ClusterRupturePlausibilityDebug {
 					System.out.println("Testing "+filter.getName());
 					PlausibilityResult result = filter.apply(rup, true);
 					System.out.println("result: "+result);
+					if (filter instanceof ScalarValuePlausibiltyFilter<?>)
+						System.out.println("scalar: "+((ScalarValuePlausibiltyFilter<?>)filter).getValue(rup));
 					System.out.println("===================");
 				}
 			} else if (config.getFilters() != null) {
@@ -176,6 +180,8 @@ public class ClusterRupturePlausibilityDebug {
 					System.out.println("Testing "+filter.getName());
 					PlausibilityResult result = filter.apply(rup, true);
 					System.out.println("result: "+result);
+					if (filter instanceof ScalarValuePlausibiltyFilter<?>)
+						System.out.println("scalar: "+((ScalarValuePlausibiltyFilter<?>)filter).getValue(rup));
 					System.out.println("===================");
 				}
 			}

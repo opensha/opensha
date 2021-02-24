@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.List;
 
+import org.opensha.commons.data.Named;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -13,7 +14,7 @@ import org.opensha.sha.faultSurface.FaultSection;
  * @author kevin
  *
  */
-public interface ClusterPermutationStrategy {
+public interface ClusterPermutationStrategy extends Named {
 	
 	/**
 	 * Builds a list of all viable subsection permutations of the given cluster which start with

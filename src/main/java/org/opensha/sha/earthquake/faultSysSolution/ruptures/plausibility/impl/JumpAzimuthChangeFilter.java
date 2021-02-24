@@ -109,7 +109,7 @@ implements ScalarValuePlausibiltyFilter<Float> {
 		return PlausibilityResult.PASS;
 	}
 	
-	private static double distToTrace(Location loc, FaultTrace trace) {
+	public static double horzDistToTrace(Location loc, FaultTrace trace) {
 		double minDist = Double.POSITIVE_INFINITY;
 		for (Location loc2 : trace)
 			minDist = Math.min(minDist, LocationUtils.horzDistanceFast(loc, loc2));
@@ -130,7 +130,7 @@ implements ScalarValuePlausibiltyFilter<Float> {
 				Location startLoc = before2.getFaultTrace().first();
 				Location endLoc = before2.getFaultTrace().last();
 				// we want this azimuth vector to go toward the destination
-				if (distToTrace(startLoc, after1.getFaultTrace()) < distToTrace(endLoc, after1.getFaultTrace())) {
+				if (horzDistToTrace(startLoc, after1.getFaultTrace()) < horzDistToTrace(endLoc, after1.getFaultTrace())) {
 					// reverse it
 					Location tmp = startLoc;
 					startLoc = endLoc;
@@ -174,7 +174,7 @@ implements ScalarValuePlausibiltyFilter<Float> {
 				Location startLoc = after1.getFaultTrace().first();
 				Location endLoc = after1.getFaultTrace().last();
 				// we want this azimuth vector to go away from the before section
-				if (distToTrace(startLoc, before2.getFaultTrace()) > distToTrace(endLoc, before2.getFaultTrace())) {
+				if (horzDistToTrace(startLoc, before2.getFaultTrace()) > horzDistToTrace(endLoc, before2.getFaultTrace())) {
 					// reverse it
 					Location tmp = startLoc;
 					startLoc = endLoc;

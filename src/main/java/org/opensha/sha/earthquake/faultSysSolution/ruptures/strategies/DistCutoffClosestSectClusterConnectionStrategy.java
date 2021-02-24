@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
+import java.text.DecimalFormat;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -48,7 +49,7 @@ public class DistCutoffClosestSectClusterConnectionStrategy extends ClusterConne
 
 	@Override
 	public String getName() {
-		return "ClosestSectPair: maxDist="+(float)maxJumpDist+" km";
+		return "ClosestSectPair: maxDist="+new DecimalFormat("0.#").format(maxJumpDist)+" km";
 	}
 
 	@Override

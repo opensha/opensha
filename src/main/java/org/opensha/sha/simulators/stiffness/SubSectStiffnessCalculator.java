@@ -1174,7 +1174,7 @@ public class SubSectStiffnessCalculator {
 					cache.clear();
 	}
 	
-	public static CPT getLogCPT(boolean positive) {
+	public static CPT getLogCPT(double maxVal, boolean positive) {
 		
 		Color minColor, oneColor, maxColor;
 		if (positive) {
@@ -1187,15 +1187,19 @@ public class SubSectStiffnessCalculator {
 			maxColor = new Color(0, 0, 100);
 		}
 		CPT cpt = new CPT(-4, 0, minColor, oneColor);
-		cpt.add(new CPTVal(cpt.getMaxValue(), oneColor, 1, maxColor));
+		cpt.add(new CPTVal(cpt.getMaxValue(), oneColor, (float)Math.log10(maxVal), maxColor));
 		cpt.setBelowMinColor(Color.WHITE);
 		cpt.setAboveMaxColor(maxColor);
 		return cpt;
 	}
 	
 	public static CPT getPreferredPosNegCPT() {
-		CPT posLogCPT = getLogCPT(true);
-		CPT negLogCPT = getLogCPT(false);
+		return getPreferredPosNegCPT(10d);
+	}
+	
+	public static CPT getPreferredPosNegCPT(double maxVal) {
+		CPT posLogCPT = getLogCPT(maxVal, true);
+		CPT negLogCPT = getLogCPT(maxVal, false);
 		EvenlyDiscretizedFunc logDiscr = new EvenlyDiscretizedFunc(posLogCPT.getMinValue(), posLogCPT.getMaxValue(), 100);
 		CPT cpt = new CPT();
 		for (int i=logDiscr.size(); --i>0;) {

@@ -102,7 +102,7 @@ public class AggregatedStiffnessCalculator {
 		private final double[] aggValues;
 //		private final int numValues;
 		
-		public StiffnessAggregation(double[] values, int interactionCount) {
+		public StiffnessAggregation(double[] values, long interactionCount) {
 			Arrays.sort(values);
 			this.aggValues = new double[CACHE_ARRAY_SIZE];
 			int numPositive = 0;
@@ -262,7 +262,7 @@ public class AggregatedStiffnessCalculator {
 			@Override
 			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
 				double sum = 0d;
-				int interactionCount = 0;
+				long interactionCount = 0;
 				for (ReceiverDistribution dist : dists) {
 					interactionCount += dist.totNumInteractions;
 					for (double val : dist.values)
@@ -270,7 +270,7 @@ public class AggregatedStiffnessCalculator {
 				}
 				double fract = sum/(double)interactionCount;
 				Preconditions.checkState(interactionCount > 0,
-						"No interactions found at this level. Have %s dists and sum=%s", (Object)dists.length, sum);
+						"No interactions (%s) found at this level. Have %s dists and sum=%s", interactionCount, (Object)dists.length, sum);
 				return new ReceiverDistribution[] { new ReceiverDistribution(higherLevelID, interactionCount, fract) };
 			}
 
@@ -335,7 +335,7 @@ public class AggregatedStiffnessCalculator {
 			@Override
 			public ReceiverDistribution[] aggregate(int higherLevelID, ReceiverDistribution[] dists) {
 				double totalSum = 0d;
-				int totalNumInts = 0;
+				long totalNumInts = 0;
 				for (ReceiverDistribution dist : dists) {
 					totalSum += calculate(dist.values);
 					totalNumInts += dist.totNumInteractions;
@@ -431,15 +431,16 @@ public class AggregatedStiffnessCalculator {
 	
 	private static ReceiverDistribution interactionTest(int receiverID, ReceiverDistribution[] dists, double threshold, double valPass, double valFail) {
 		double sum = 0d;
-		int interactionCount = 0;
+		long interactionCount = 0;
 		for (ReceiverDistribution dist : dists) {
 			interactionCount += dist.totNumInteractions;
 			for (double val : dist.values)
 				sum += val;
 		}
 		Preconditions.checkState(interactionCount > 0,
-				"No interactions found at this level. Have %s dists and sum=%s", (Object)dists.length, sum);
+				"No interactions (%s) found at this level. Have %s dists and sum=%s", interactionCount, (Object)dists.length, sum);
 		double fract = sum/(double)interactionCount;
+		if (DD) System.out.println("calculated fract = "+(float)sum+"/"+interactionCount+" = "+fract);
 		if (fract > threshold)
 			return new ReceiverDistribution(receiverID, interactionCount, valPass);
 		return new ReceiverDistribution(receiverID, interactionCount, valFail);
@@ -448,17 +449,17 @@ public class AggregatedStiffnessCalculator {
 	public static class ReceiverDistribution {
 		public final int receiverID;
 		public final double[] values;
-		public final int totNumInteractions;
+		public final long totNumInteractions;
 		
-		public ReceiverDistribution(int receiverID, int totNumInteractions, List<Double> values) {
+		public ReceiverDistribution(int receiverID, long totNumInteractions, List<Double> values) {
 			this(receiverID, totNumInteractions, Doubles.toArray(values));
 		}
 		
-		public ReceiverDistribution(int receiverID, int totNumInteractions, double value) {
+		public ReceiverDistribution(int receiverID, long totNumInteractions, double value) {
 			this(receiverID, totNumInteractions, new double[] { value });
 		}
 		
-		public ReceiverDistribution(int receiverID, int totNumInteractions, double[] values) {
+		public ReceiverDistribution(int receiverID, long totNumInteractions, double[] values) {
 			this.receiverID = receiverID;
 			this.totNumInteractions = totNumInteractions;
 			this.values = values;
@@ -478,7 +479,7 @@ public class AggregatedStiffnessCalculator {
 	private static ReceiverDistribution flatten(int receiverID, ReceiverDistribution[] dists) {
 		Preconditions.checkState(dists.length > 0);
 		double[] flattened;
-		int totNumInteractions = 0;
+		long totNumInteractions = 0;
 		if (dists.length == 1) {
 			flattened = dists[0].values;
 			totNumInteractions = dists[0].totNumInteractions;
@@ -500,7 +501,7 @@ public class AggregatedStiffnessCalculator {
 	private static ReceiverDistribution flatten(int receiverID, List<ReceiverDistribution> dists) {
 		Preconditions.checkState(dists.size() > 0);
 		double[] flattened;
-		int totNumInteractions = 0;
+		long totNumInteractions = 0;
 		if (dists.size() == 1) {
 			flattened = dists.get(0).values;
 			totNumInteractions = dists.get(0).totNumInteractions;
@@ -1219,9 +1220,11 @@ public class AggregatedStiffnessCalculator {
 //				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN,
 //				AggregationMethod.SUM, AggregationMethod.SUM);
 //				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM,
-//				AggregationMethod.NORM_BY_COUNT, AggregationMethod.FRACT_POSITIVE);
-				AggregationMethod.SUM, AggregationMethod.SUM,
-				AggregationMethod.FLAT_SUM, AggregationMethod.NUM_NEGATIVE);
+//				AggregationMethod.SUM, AggregationMethod.NORM_BY_COUNT);
+				AggregationMethod.FLATTEN, AggregationMethod.NUM_POSITIVE,
+				AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS);
+//				AggregationMethod.SUM, AggregationMethod.SUM,
+//				AggregationMethod.FLAT_SUM, AggregationMethod.NUM_NEGATIVE);
 		
 //		FaultSection s1 = subSects.get(0);
 //		FaultSection s2 = subSects.get(1);

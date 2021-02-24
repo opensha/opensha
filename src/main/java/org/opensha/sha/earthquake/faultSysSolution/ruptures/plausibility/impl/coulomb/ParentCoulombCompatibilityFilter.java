@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb;
 
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +17,12 @@ import com.google.common.collect.Range;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
+/**
+ * Filter that evaluates the Coulomb compatibility of whole parent sections (indpendnet of specific ruptures)
+ * 
+ * @author kevin
+ *
+ */
 public class ParentCoulombCompatibilityFilter extends JumpPlausibilityFilter
 implements ScalarCoulombPlausibilityFilter {
 	

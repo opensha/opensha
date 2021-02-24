@@ -699,17 +699,28 @@ public class RuptureConnectionSearch {
 	}
 	
 	public void plotConnections(File outputDir, String prefix, int rupIndex) throws IOException {
-		plotConnections(outputDir, prefix, rupIndex, null, null);
+		plotConnections(outputDir, prefix, rupIndex, null, null, null);
+	}
+	
+	public void plotConnections(File outputDir, String prefix, int rupIndex, ClusterRupture rup) throws IOException {
+		plotConnections(outputDir, prefix, rupIndex, rup, null, null);
 	}
 	
 	public void plotConnections(File outputDir, String prefix, int rupIndex,
+			Set<Jump> highlightConn, String highlightName) throws IOException {
+		plotConnections(outputDir, prefix, rupIndex, null, highlightConn, highlightName);
+	}
+	
+	public void plotConnections(File outputDir, String prefix, int rupIndex, ClusterRupture rup,
 			Set<Jump> highlightConn, String highlightName) throws IOException {
 //		HashSet<IDPairing> connections = calcConnections(rupIndex, true);
 		List<FaultSection> sects = rupSet.getFaultSectionDataForRupture(rupIndex);
 		List<FaultSubsectionCluster> clusters = calcClusters(sects, false);
 //		List<Jump> jumps = calcRuptureJumps(clusters, true);
 		List<Jump> jumps = new ArrayList<>();
-		for (Jump jump : buildClusterRupture(rupIndex, false).getJumpsIterable())
+		if (rup == null)
+			rup = buildClusterRupture(rupIndex, false);
+		for (Jump jump : rup.getJumpsIterable())
 			jumps.add(jump);
 
 		HashSet<Integer> parentIDs = new HashSet<>();

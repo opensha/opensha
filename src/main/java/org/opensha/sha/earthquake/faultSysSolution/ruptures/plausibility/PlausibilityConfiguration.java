@@ -16,32 +16,17 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterCoulombCompatibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ClusterPathCoulombCompatibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter.Penalty;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.CoulombSectRatioProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RelativeCoulombProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RelativeSlipRateProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeProbabilityFilter.RuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeRakeChangeFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetClusterCoulombFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NetRuptureCoulombFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NumClustersFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.ParentCoulombCompatibilityFilter.Directionality;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.PathPlausibilityFilter.*;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SectPathCoulombCompatibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.ParentCoulombCompatibilityFilter.Directionality;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayLengthFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CoulombJunctionFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy.ConnStratTypeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
@@ -156,7 +141,8 @@ public class PlausibilityConfiguration {
 			u3Azimuth();
 			u3Cumulatives();
 			minSectsPerParent(2, true, true);
-			u3Coulomb(coulombRates);
+			if (coulombRates != null)
+				u3Coulomb(coulombRates);
 			return this;
 		}
 		
@@ -199,6 +185,11 @@ public class PlausibilityConfiguration {
 		public Builder minSectsPerParent(int minPerParent, boolean allowIfNoDirect, boolean allowChained) {
 			filters.add(new MinSectsPerParentFilter(minPerParent, allowIfNoDirect,
 					allowChained, connectionStrategy));
+			return this;
+		}
+		
+		public Builder noIndirectPaths() {
+			filters.add(new DirectPathPlausibilityFilter(connectionStrategy));
 			return this;
 		}
 		
@@ -1030,24 +1021,24 @@ public class PlausibilityConfiguration {
 		/*
 		 * cluster path
 		 */
-////		builder.clusterPathCoulomb(medSumAgg, 0f);
-//		builder.clusterPathCoulomb(sumAgg, 0f);
-//		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
-//				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_FUTURE_POSSIBLE);
-//		builder.path(prefCFFRPatchEval);
+//////		builder.clusterPathCoulomb(medSumAgg, 0f);
+////		builder.clusterPathCoulomb(sumAgg, 0f);
+////		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
+////				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_FUTURE_POSSIBLE);
+////		builder.path(prefCFFRPatchEval);
 //		/*
 //		 * section path
 //		 */
-//		builder.sectPathCoulomb(sumAgg, 0f);
-//		SectCoulombPathEvaluator prefCFFSectPathEval = new SectCoulombPathEvaluator(
-//				sumAgg, Range.atLeast(0f), PlausibilityResult.FAIL_HARD_STOP, true, 15f, distAzCalc);
-//		builder.path(prefCFFSectPathEval);
-//		builder.path(1f/3f, prefCFFSectPathEval);
+////		builder.sectPathCoulomb(sumAgg, 0f);
+////		SectCoulombPathEvaluator prefCFFSectPathEval = new SectCoulombPathEvaluator(
+////				sumAgg, Range.atLeast(0f), PlausibilityResult.FAIL_HARD_STOP, true, 15f, distAzCalc);
+////		builder.path(prefCFFSectPathEval);
+////		builder.path(1f/3f, prefCFFSectPathEval);
 //		/*
 //		 * Net rupture
 //		 */
 ////		// fraction of all receiver patches that are net positive (summed over all sources)
-//		builder.netRupCoulomb(fractRpatchPosAgg, 0.95f);
+////		builder.netRupCoulomb(fractRpatchPosAgg, 0.95f);
 ////		// 3/4 of all interactions positive
 //		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 //				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS), 0f);
@@ -1063,43 +1054,51 @@ public class PlausibilityConfiguration {
 //		 * CFF probability
 //		 */
 //		// no negative, cluster-by-cluster
-//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, false, false));
+////		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, false, false));
 //		// allow negative, cluster-by-cluster
-//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, true, false));
+////		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, true, false));
 //		// no negative, sect-by-sect
-//		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, false, true));
+////		builder.cumulativeProbability(0.01f, new RelativeCoulombProb(sumAgg, connStrat, false, true));
 //		// no negative, sect-by-sect, favorable jumps up to 15km
-//		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true, 15f, distAzCalc);
-//		builder.cumulativeProbability(0.01f, prefCFFProb);
+//		RelativeCoulombProb prefFavCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true, 10f, distAzCalc);
+////		builder.cumulativeProbability(0.01f, prefFavCFFProb);
+////		builder.cumulativeProbability(0.02f, prefFavCFFProb);
+//		builder.cumulativeProbability(0.05f, prefFavCFFProb);
+//		// no negative, sect-by-sect, favorable jumps up to 15km
+//		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true);
+////		builder.cumulativeProbability(0.01f, prefCFFProb);
+////		builder.cumulativeProbability(0.02f, prefCFFProb);
+//		builder.cumulativeProbability(0.05f, prefCFFProb);
 //		// same but as a path option
-//		CumulativeProbPathEvaluator cffProbPathEval = new CumulativeProbPathEvaluator(
-//				0.01f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb);
-//		builder.path(cffProbPathEval);
+////		CumulativeProbPathEvaluator cffProbPathEval = new CumulativeProbPathEvaluator(
+////				0.01f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb);
+////		builder.path(cffProbPathEval);
 //		/**
 //		 * CFF ratio probability
 //		 */
-//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2, true, 15f, distAzCalc);
-//		builder.cumulativeProbability(0.01f, cffRatioProb);
+//		CoulombSectRatioProb cffFavRatioProb = new CoulombSectRatioProb(sumAgg, 2, true, 10f, distAzCalc);
+//		builder.cumulativeProbability(0.5f, cffFavRatioProb);
 //		// same but as a path option
-//		CumulativeProbPathEvaluator cffRatioProbPathEval = new CumulativeProbPathEvaluator(
-//				0.01f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
-//		builder.path(cffRatioProbPathEval);
-//		builder.cumulativeProbability(0.1f, cffRatioProb);
+////		CumulativeProbPathEvaluator cffRatioProbPathEval = new CumulativeProbPathEvaluator(
+////				0.01f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
+////		builder.path(cffRatioProbPathEval);
+//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2);
+//		builder.cumulativeProbability(0.5f, cffRatioProb);
 //		// same but as a path option
-//		cffRatioProbPathEval = new CumulativeProbPathEvaluator(
-//				0.1f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
-//		builder.path(cffRatioProbPathEval);
+////		cffRatioProbPathEval = new CumulativeProbPathEvaluator(
+////				0.1f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
+////		builder.path(cffRatioProbPathEval);
 //		/**
 //		 * Slip probability
 //		 */
 ////		// regular, 0.01
 ////		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, false));
 //		// only increasing, 0.01
-//		builder.cumulativeProbability(0.01f, new RelativeSlipRateProb(connStrat, true));
+//		builder.cumulativeProbability(0.05f, new RelativeSlipRateProb(connStrat, true));
 ////		// regular, 0.01
 ////		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, false));
 //		// only increasing, 0.1
-//		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, true));
+////		builder.cumulativeProbability(0.1f, new RelativeSlipRateProb(connStrat, true));
 //		// as a path, only increasing, 0.01
 ////		CumulativeJumpProbPathEvaluator prefSlipEval = new CumulativeJumpProbPathEvaluator(
 ////				0.01f, PlausibilityResult.FAIL_HARD_STOP, new RelativeSlipRateProb(connStrat, true));
@@ -1108,8 +1107,14 @@ public class PlausibilityConfiguration {
 //		 * Combined path filter
 //		 */
 ////		builder.path(prefSlipEval, cffProbPathEval, prefCFFSectPathEval, prefCFFRPatchEval);
-//		builder.path(cffProbPathEval, prefCFFSectPathEval, prefCFFRPatchEval);
-//		builder.path(cffProbPathEval, prefCFFRPatchEval);
+////		builder.path(cffProbPathEval, prefCFFSectPathEval, prefCFFRPatchEval);
+////		builder.path(cffProbPathEval, prefCFFRPatchEval);
+//		builder.path(new CumulativeProbPathEvaluator(0.05f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb),
+//				new CumulativeProbPathEvaluator(0.5f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb));
+//		builder.path(new CumulativeProbPathEvaluator(0.02f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb),
+//				new CumulativeProbPathEvaluator(0.5f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb));
+//		builder.path(new CumulativeProbPathEvaluator(0.02f, PlausibilityResult.FAIL_HARD_STOP, prefFavCFFProb),
+//				new CumulativeProbPathEvaluator(0.5f, PlausibilityResult.FAIL_HARD_STOP, cffFavRatioProb));
 //		
 //		String destFileName = "alt_filters.json";
 		
@@ -1117,16 +1122,16 @@ public class PlausibilityConfiguration {
 		builder.cumulativeProbability(0.05f, new RelativeSlipRateProb(connStrat, true));
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS), 0f);
-		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, true, true);
-//		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true, 15f, distAzCalc);
+//		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true);
+		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true, true, 10f, distAzCalc);
 		CumulativeProbPathEvaluator cffProbPathEval = new CumulativeProbPathEvaluator(
-				0.05f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb);
+				0.02f, PlausibilityResult.FAIL_HARD_STOP, prefCFFProb);
 //		SectCoulombPathEvaluator prefCFFSectPathEval = new SectCoulombPathEvaluator(
 //				sumAgg, Range.atLeast(0f), PlausibilityResult.FAIL_HARD_STOP, true, 15f, distAzCalc);
-//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2, true, 15f, distAzCalc);
-		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2);
+		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2, true, 10f, distAzCalc);
+//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, 2);
 		CumulativeProbPathEvaluator cffRatioProbPathEval = new CumulativeProbPathEvaluator(
-				0.5f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
+				0.2f, PlausibilityResult.FAIL_HARD_STOP, cffRatioProb);
 //		ClusterCoulombPathEvaluator prefCFFRPatchEval = new ClusterCoulombPathEvaluator(
 //				fractRpatchPosAgg, Range.atLeast(0.5f), PlausibilityResult.FAIL_FUTURE_POSSIBLE);
 //		builder.path(cffProbPathEval, cffRatioProbPathEval, prefCFFRPatchEval);

@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb;
 
 import java.io.IOException;
 import java.util.ArrayList;

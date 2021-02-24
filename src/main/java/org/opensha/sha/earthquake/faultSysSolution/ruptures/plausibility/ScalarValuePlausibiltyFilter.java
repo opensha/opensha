@@ -121,7 +121,7 @@ public interface ScalarValuePlausibiltyFilter<E extends Number & Comparable<E>> 
 		double dist2 = distFromRange(refVal, range);
 		if ((float)dist1 == 0f && (float)dist2 == 0f) {
 			// both are acceptable, choose better
-			if (range.hasUpperBound())
+			if (!range.hasLowerBound())
 //				return testVal < refVal;
 				return testVal.compareTo(refVal) < 0;
 			return testVal.compareTo(refVal) > 0;

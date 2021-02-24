@@ -16,13 +16,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster.JumpStub;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ComplexRuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ComplexRuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SingleStrandRuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
@@ -31,10 +30,8 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableCollection;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
@@ -72,9 +69,9 @@ public class ClusterRupture {
 	 */
 	public final FaultSubsectionCluster[] clusters;
 	/**
-	 * Jumps internal to the primary strand, between the primary clusters
+	 * Jumps internal to the primary strand, between the primary clusters, in order
 	 */
-	public final ImmutableSet<Jump> internalJumps;
+	public final ImmutableList<Jump> internalJumps;
 	/**
 	 * Jumps to each splay sub-rupture
 	 */
@@ -105,11 +102,11 @@ public class ClusterRupture {
 	 * @param cluster
 	 */
 	public ClusterRupture(FaultSubsectionCluster cluster) {
-		this(new FaultSubsectionCluster[] {cluster}, ImmutableSet.of(),
+		this(new FaultSubsectionCluster[] {cluster}, ImmutableList.of(),
 				ImmutableMap.of(), cluster.unique, cluster.unique, true);
 	}
 
-	protected ClusterRupture(FaultSubsectionCluster[] clusters, ImmutableSet<Jump> internalJumps,
+	protected ClusterRupture(FaultSubsectionCluster[] clusters, ImmutableList<Jump> internalJumps,
 			ImmutableMap<Jump, ClusterRupture> splays, UniqueRupture unique, UniqueRupture internalUnique, boolean singleStrand) {
 		super();
 		this.clusters = clusters;
@@ -207,7 +204,7 @@ public class ClusterRupture {
 		Preconditions.checkState(!contains(jump.toSection),
 				"Cannot take jump because this rupture already has the toSection: %s", jump);
 		
-		UniqueRupture newUnique = new UniqueRupture(this.unique, jump.toCluster);
+		UniqueRupture newUnique = UniqueRupture.add(this.unique, jump.toCluster.unique);
 		int expectedCount = this.unique.size() + jump.toCluster.subSects.size();
 		Preconditions.checkState(newUnique.size() == expectedCount,
 				"Duplicate subsections. Have %s unique, %s total", newUnique.size(), expectedCount);
@@ -219,7 +216,7 @@ public class ClusterRupture {
 			FaultSubsectionCluster lastCluster = clusters[clusters.length-1];
 			FaultSubsectionCluster[] newClusters;
 			ImmutableMap<Jump, ClusterRupture> newSplays;
-			ImmutableSet<Jump> newInternalJumps;
+			ImmutableList<Jump> newInternalJumps;
 			UniqueRupture newInternalUnique;
 			if (lastCluster.endSects.contains(jump.fromSection)) {
 				// regular jump from the end
@@ -230,12 +227,12 @@ public class ClusterRupture {
 				newClusters = Arrays.copyOf(clusters, clusters.length+1);
 				newClusters[clusters.length] = jump.toCluster;
 				newSplays = splays;
-				ImmutableSet.Builder<Jump> internalJumpBuild =
-						ImmutableSet.builderWithExpectedSize(internalJumps.size()+1);
+				ImmutableList.Builder<Jump> internalJumpBuild =
+						ImmutableList.builderWithExpectedSize(internalJumps.size()+1);
 				internalJumpBuild.addAll(internalJumps);
 				internalJumpBuild.add(jump);
 				newInternalJumps = internalJumpBuild.build();
-				newInternalUnique = new UniqueRupture(internalUnique, jump.toCluster);
+				newInternalUnique = UniqueRupture.add(internalUnique, jump.toCluster.unique);
 				newSingleStrand = newSingleStrand && lastCluster.subSects.get(lastCluster.subSects.size()-1).equals(jump.fromSection);
 			} else {
 				// it's a new splay
@@ -320,7 +317,7 @@ public class ClusterRupture {
 		for (Jump jump : internalJumps)
 			jumpsTable.put(jump.fromSection, jump.toSection, jump);
 		
-		ImmutableSet.Builder<Jump> jumpsBuilder = ImmutableSet.builder();
+		ImmutableList.Builder<Jump> jumpsBuilder = ImmutableList.builder();
 		for (int i=1; i<clusterList.size(); i++) {
 			FaultSubsectionCluster fromCluster = clusterList.get(i-1);
 			FaultSection fromSection = fromCluster.subSects.get(fromCluster.subSects.size()-1);
@@ -536,7 +533,7 @@ public class ClusterRupture {
 		
 		FaultSubsectionCluster[] clusters = clusterList.toArray(new FaultSubsectionCluster[0]);
 		
-		ImmutableSet.Builder<Jump> jumpsBuilder = ImmutableSet.builder();
+		ImmutableList.Builder<Jump> jumpsBuilder = ImmutableList.builder();
 		for (int i=1; i<clusters.length; i++) {
 			FaultSubsectionCluster fromCluster = clusters[i-1];
 			FaultSection fromSect = fromCluster.subSects.get(fromCluster.subSects.size()-1);
@@ -631,7 +628,7 @@ public class ClusterRupture {
 	
 	public static void writeJSON(File jsonFile, List<ClusterRupture> ruptures,
 			List<? extends FaultSection> subSects) throws IOException {
-		Gson gson = buildGson(subSects);
+		Gson gson = buildGson(subSects, ruptures.size()<1000);
 		FileWriter fw = new FileWriter(jsonFile);
 		Type listType = new TypeToken<List<ClusterRupture>>(){}.getType();
 		gson.toJson(ruptures, listType, fw);
@@ -650,7 +647,7 @@ public class ClusterRupture {
 	}
 	
 	public static List<ClusterRupture> readJSON(Reader json, List<? extends FaultSection> subSects) {
-		Gson gson = buildGson(subSects);
+		Gson gson = buildGson(subSects, false);
 		Type listType = new TypeToken<List<ClusterRupture>>(){}.getType();
 		List<ClusterRupture> ruptures = gson.fromJson(json, listType);
 		try {
@@ -659,9 +656,10 @@ public class ClusterRupture {
 		return ruptures;
 	}
 	
-	private static Gson buildGson(List<? extends FaultSection> subSects) {
+	private static Gson buildGson(List<? extends FaultSection> subSects, boolean pretty) {
 		GsonBuilder builder = new GsonBuilder();
-//		builder.setPrettyPrinting(); // extra whitespace makes these large files large, don't use here
+		if (pretty)
+			builder.setPrettyPrinting(); // extra whitespace makes these large files large
 		builder.registerTypeAdapter(ClusterRupture.class, new Adapter(subSects));
 		Gson gson = builder.create();
 		
@@ -692,6 +690,10 @@ public class ClusterRupture {
 					if (jump.fromCluster == cluster)
 						newCluster.addConnection(new Jump(jump.fromSection, newCluster,
 								jump.toSection, jump.toCluster, jump.distance));
+				for (Jump jump : rupture.splays.keySet())
+					if (jump.fromCluster == cluster)
+						newCluster.addConnection(new Jump(jump.fromSection, newCluster,
+								jump.toSection, jump.toCluster, jump.distance));
 				newCluster.writeJSON(out);
 			}
 			out.endArray(); // ]
@@ -716,27 +718,32 @@ public class ClusterRupture {
 			
 			in.beginObject(); // {
 			
-			switch (in.nextName()) {
-			case "clusters":
-				internalClusterList = new ArrayList<>();
-				in.beginArray();
-				while (in.hasNext())
-					internalClusterList.add(
-							FaultSubsectionCluster.readJSON(in, subSects, jumpStubsMap, prevClustersMap));
-				in.endArray();
-				break;
-			case "splays":
-				splayList = new ArrayList<>();
-				in.beginArray();
-				while (in.hasNext())
-					splayList.add(read(in));
-				in.endArray();
-				break;
+			while (in.hasNext()) {
+				switch (in.nextName()) {
+				case "clusters":
+//					System.out.println("in clsters: "+in.getPath());
+					internalClusterList = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						internalClusterList.add(
+								FaultSubsectionCluster.readJSON(in, subSects, jumpStubsMap, prevClustersMap));
+					in.endArray();
+					break;
+				case "splays":
+//					System.out.println("in splays: "+in.getPath());
+					splayList = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						splayList.add(read(in));
+					in.endArray();
+					break;
 
-			default:
-				break;
+				default:
+					break;
+				}
 			}
 			
+//			System.out.println(in.getPath());
 			in.endObject(); // }
 			
 			// reconcile all internal jumps
@@ -751,7 +758,7 @@ public class ClusterRupture {
 			}
 			FaultSubsectionCluster.buildJumpsFromStubs(targetClusters, jumpStubsMap);
 			
-			ImmutableSet.Builder<Jump> internalJumpsBuilder = ImmutableSet.builder();
+			ImmutableList.Builder<Jump> internalJumpsBuilder = ImmutableList.builder();
 			FaultSubsectionCluster[] clusters = internalClusterList.toArray(new FaultSubsectionCluster[0]);
 			boolean singleStrand = true;
 			for (int i=0; i<clusters.length-1; i++) { // -1 as no internal jumps from last section
@@ -765,7 +772,7 @@ public class ClusterRupture {
 						&& jump.toSection.equals(nextCluster.subSects.get(0));
 				internalJumpsBuilder.add(jump);
 			}
-			ImmutableSet<Jump> internalJumps = internalJumpsBuilder.build();
+			ImmutableList<Jump> internalJumps = internalJumpsBuilder.build();
 			
 			ImmutableMap<Jump, ClusterRupture> splays;
 			UniqueRupture internalUnique = UniqueRupture.forClusters(clusters);
@@ -776,7 +783,7 @@ public class ClusterRupture {
 			} else {
 				singleStrand = false;
 				ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
-				// reverse as we are going to serach for them in reverse order below, so double reverse
+				// reverse as we are going to search for them in reverse order below, so double reverse
 				// ensures that they are loaded in order (which shouldn't matter, but is nice)
 				Collections.reverse(splayList);
 				for (FaultSubsectionCluster cluster : clusters) {
@@ -799,7 +806,7 @@ public class ClusterRupture {
 				splays = splayBuilder.build();
 				unique = internalUnique;
 				for (ClusterRupture splay : splays.values())
-					unique = new UniqueRupture(unique, splay.unique);
+					unique = UniqueRupture.add(unique, splay.unique);
 			}
 			
 			return new ClusterRupture(clusters, internalJumps, splays, unique, internalUnique, singleStrand);

@@ -44,6 +44,10 @@ public class MultiDirectionalPlausibilityFilter implements PlausibilityFilter {
 		this.connSearch = connSearch;
 		this.onlyWhenSplayed = onlyWhenSplayed;
 	}
+	
+	public PlausibilityFilter getFilter() {
+		return filter;
+	}
 
 	@Override
 	public String getShortName() {
@@ -81,6 +85,7 @@ public class MultiDirectionalPlausibilityFilter implements PlausibilityFilter {
 					System.out.println("MultiDirectional "+getShortName()
 						+": inversion="+altRupture);
 				result = filter.apply(altRupture, verbose);
+//				result = filter.apply(altRupture, false);
 				if (verbose)
 					System.out.println("MultiDirectional "+getShortName()
 						+": inversion result="+result);
@@ -148,33 +153,12 @@ public class MultiDirectionalPlausibilityFilter implements PlausibilityFilter {
 			for (ClusterRupture inversion : super.getInversions(rupture)) {
 				// see if there's a better version available
 				E altScalar = filter.getValue(inversion);
-				boolean better = isScalarBetter(altScalar, scalar);
+				boolean better = altScalar != null && (scalar == null || isValueBetter(altScalar, scalar));
 				if (altScalar != null && better)
 					// this one is better
 					scalar = altScalar;
 			}
 			return scalar;
-		}
-		
-		private boolean isScalarBetter(E curNumber, E prevNumber) {
-			Preconditions.checkState(upper != null || lower != null);
-			if (curNumber == null)
-				return false;
-			if (prevNumber == null)
-				return true;
-			double curVal = curNumber.doubleValue();
-			double prevVal = prevNumber.doubleValue();
-			if (upper == null) {
-				// we only have a lower bound, so higher values are better
-				return curVal > prevVal;
-			}
-			if (lower == null) {
-				// we only have an upper bound, so lower values are better
-				return curVal < prevVal;
-			}
-			// we have both, use distance to center (lower being better)
-			double center = 0.5*(lower + upper);
-			return Math.abs(curVal - center) < Math.abs(prevVal - center);
 		}
 
 		@Override
