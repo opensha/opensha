@@ -373,7 +373,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 */
 	public void add(int index, double y) {
 		if( index < 0 || index > ( num -1 ) ) {
-			throw new IndexOutOfBoundsException(C + ": set(): The specified index doesn't match this function domain.");
+			throw new IndexOutOfBoundsException(C + ": set(): The specified index="+index+" doesn't match this function domain.");
 		}
 		points[index] = y+points[index];
 	}
