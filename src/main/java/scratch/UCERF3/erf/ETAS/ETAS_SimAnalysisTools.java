@@ -244,7 +244,10 @@ public class ETAS_SimAnalysisTools {
 				FaultTrace trace = rup.getRuptureSurface().getEvenlyDiscritizedUpperEdge();
 				DefaultXY_DataSet traceFunc = new DefaultXY_DataSet();
 				int gen=rup.getGeneration();
-				traceFunc.setName("Large aftershock ID="+rup.getID()+";  generation="+gen+"; mag="+rup.getMag());
+				String rupType ="GridSeis";
+				if(rup.getFSSIndex() >= 0)
+					rupType="FltSys";
+				traceFunc.setName("Finite "+rupType+" Rupture ID="+rup.getID()+";  generation="+gen+"; mag="+rup.getMag()+"hypo: "+rup.getHypocenterLocation());
 				for(Location loc:trace)
 					traceFunc.set(loc.getLongitude(), loc.getLatitude());
 				funcs.add(traceFunc);
@@ -476,6 +479,130 @@ public class ETAS_SimAnalysisTools {
 	}
 	
 	
+	/**
+	 * This plots the finite surfaces for gridded seismicity ruptures
+	 * @param info
+	 * @param pdf_FileNameFullPath
+	 * @param allAftershocks
+	 * @param regionBorder
+	 */
+	public static void plotFiniteGridSeisRupMap(String info, String pdf_FileNameFullPath, 
+			Collection<ETAS_EqkRupture> allAftershocks, LocationList regionBorder) {
+
+		ArrayList<AbstractXY_DataSet> funcs = new ArrayList<AbstractXY_DataSet>();
+		ArrayList<PlotCurveCharacterstics> plotChars = new ArrayList<PlotCurveCharacterstics>();
+
+		DefaultXY_DataSet hypoLocs = new DefaultXY_DataSet();
+		hypoLocs.setName("Hypo Locs (Red Circles)");
+		funcs.add(hypoLocs);
+		plotChars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, 1f, Color.RED));
+
+
+		for(ETAS_EqkRupture rup:allAftershocks) {
+			if(rup.getFSSIndex() == -1 && !rup.getRuptureSurface().isPointSurface()) {
+				
+				// Points on Surface Plot
+				DefaultXY_DataSet surfPoints = new DefaultXY_DataSet();
+				for (Location loc : rup.getRuptureSurface().getEvenlyDiscritizedListOfLocsOnSurface())
+						surfPoints.set(loc.getLongitude(), loc.getLatitude());
+				surfPoints.setName("Points for Event with Mag="+(float)rup.getMag()+"; Dip="+rup.getRuptureSurface().getAveDip());
+				surfPoints.setInfo("(crosses)");
+				funcs.add(surfPoints);
+				plotChars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 1f, Color.BLACK));
+				
+				// add hypoc loc
+				hypoLocs.set(rup.getHypocenterLocation().getLongitude(),rup.getHypocenterLocation().getLatitude());
+				
+				// Trace Plot
+				FaultTrace trace = rup.getRuptureSurface().getEvenlyDiscritizedUpperEdge();
+				DefaultXY_DataSet traceFunc = new DefaultXY_DataSet();
+				int gen=rup.getGeneration();
+				traceFunc.setName("Trace for Rupture ID="+rup.getID()+";  generation="+gen+"; mag="+rup.getMag()+"hypo: "+rup.getHypocenterLocation());
+				for(Location loc:trace)
+					traceFunc.set(loc.getLongitude(), loc.getLatitude());
+				funcs.add(traceFunc);
+				Color color;
+				if(gen==0)
+					color = Color.BLACK;
+				else if(gen==1)
+					color = Color.RED;
+				else if(gen==2)
+					color = Color.BLUE;
+				else if(gen==3)
+					color = Color.GREEN;
+				else if(gen==4)
+					color = Color.LIGHT_GRAY;
+				else if(gen==5)
+					color = Color.ORANGE;
+				else// gen 6 and above
+					color = Color.YELLOW;
+				plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, color));
+
+			}
+		}
+		
+		// now plot the region border if not null
+		if(regionBorder != null) {
+			DefaultXY_DataSet regBorderFunc = new DefaultXY_DataSet();
+			regBorderFunc.setName("Region Border");
+			for(Location loc: regionBorder) {
+				regBorderFunc.set(loc.getLongitude(), loc.getLatitude());
+			}
+			// close the polygon:
+			regBorderFunc.set(regBorderFunc.get(0).getX(), regBorderFunc.get(0).getY());
+			funcs.add(regBorderFunc);
+			plotChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		}
+		
+		String title = "Surf for Grid Seis Finite Rups "+info;
+		PlotSpec spec = new PlotSpec(funcs, plotChars, title, "Longitude", "Latitude");
+
+				
+		double minLat=90, maxLat=-90,minLon=360,maxLon=-360;
+		for(PlotElement elem : spec.getPlotElems()) {
+//			System.out.println(func.getMinX()+"\t"+func.getMaxX()+"\t"+func.getMinY()+"\t"+func.getMaxY());
+			if (!(elem instanceof XY_DataSet))
+				continue;
+			XY_DataSet func = (XY_DataSet)elem;
+			if(func.getMaxX()>maxLon) maxLon = func.getMaxX();
+			if(func.getMinX()<minLon) minLon = func.getMinX();
+			if(func.getMaxY()>maxLat) maxLat = func.getMaxY();
+			if(func.getMinY()<minLat) minLat = func.getMinY();
+		}
+
+		GraphWindow graph = new GraphWindow(spec);
+		double deltaLat = maxLat-minLat;
+		double deltaLon = maxLon-minLon;
+		double aveLat = (minLat+maxLat)/2;
+		double scaleFactor = 1.57/Math.cos(aveLat*Math.PI/180);	// this is what deltaLon/deltaLat should equal
+		if(deltaLat > deltaLon/scaleFactor) {	// expand lon range
+			double newLonMax = minLon + deltaLat*scaleFactor;
+			graph.setX_AxisRange(minLon, newLonMax);
+			graph.setY_AxisRange(minLat, maxLat);
+		}
+		else { // expand lat range
+			double newMaxLat = minLat + deltaLon/scaleFactor;
+			graph.setX_AxisRange(minLon, maxLon);
+			graph.setY_AxisRange(minLat, newMaxLat);
+		}
+		
+//		// ****** HACK FOR SSA TALK ************ (delete next two lines when done)
+//		graph.setX_AxisRange(-120, -116);
+//		graph.setY_AxisRange(35, 37);
+		
+		graph.setPlotLabelFontSize(18);
+		graph.setAxisLabelFontSize(16);
+		graph.setTickLabelFontSize(14);
+
+		if(pdf_FileNameFullPath != null)
+		try {
+			graph.saveAsPDF(pdf_FileNameFullPath);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
 	
 	/**
 	 * This also excludes non-point-source surfaces
@@ -489,8 +616,10 @@ public class ETAS_SimAnalysisTools {
 			Collection<ETAS_EqkRupture> eventsList) {
 		DefaultXY_DataSet epicenterLocs = new DefaultXY_DataSet();
 		for (ETAS_EqkRupture event : eventsList) {
-			if(event.getMag()>=magLow && event.getMag()<magHigh && event.getGeneration()==generation && event.getRuptureSurface().isPointSurface())
+//			if(event.getMag()>=magLow && event.getMag()<magHigh && event.getGeneration()==generation && event.getRuptureSurface().isPointSurface()) {
+			if(event.getMag()>=magLow && event.getMag()<magHigh && event.getGeneration()==generation) {
 				epicenterLocs.set(event.getHypocenterLocation().getLongitude(), event.getHypocenterLocation().getLatitude());
+			}
 		}
 		epicenterLocs.setName("Generation "+generation+" Aftershock Epicenters for "+magLow+"<=Mag<"+magHigh);
 		return epicenterLocs;
