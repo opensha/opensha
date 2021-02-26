@@ -35,6 +35,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	U3ETAS_ApplyGridSeisCorrectionParam applyGridSeisCorrParam = new U3ETAS_ApplyGridSeisCorrectionParam();
 	U3ETAS_TotalRateScaleFactorParam totalRateScaleFactorParam = new U3ETAS_TotalRateScaleFactorParam();
 	U3ETAS_StatewideCatalogCompletenessParam statewideCompletenessParam = new U3ETAS_StatewideCatalogCompletenessParam();
+	U3ETAS_MaxPointSourceMagParam maxPtSrcMagParam = new U3ETAS_MaxPointSourceMagParam();
 	//	U3ETAS_MaxCharFactorParam maxCharFactorParam = new U3ETAS_MaxCharFactorParam();
 //	ETAS_FractionSpontaneousParam fractSpontParam = new ETAS_FractionSpontaneousParam();
 //	ETAS_ApplyLongTermRatesInSamplingParam applyLongTermRatesParam = new ETAS_ApplyLongTermRatesInSamplingParam();
@@ -52,6 +53,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 		this.addParameter(applyGridSeisCorrParam);
 		this.addParameter(totalRateScaleFactorParam);
 		this.addParameter(statewideCompletenessParam);
+		this.addParameter(maxPtSrcMagParam);
 //		this.addParameter(maxCharFactorParam);
 //		this.addParameter(fractSpontParam); // computed from other things
 //		this.addParameter(applyLongTermRatesParam);
@@ -70,6 +72,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	public boolean getApplyGridSeisCorr() {return applyGridSeisCorrParam.getValue();}
 	public double getTotalRateScaleFactor() {return totalRateScaleFactorParam.getValue();}
 	public U3_EqkCatalogStatewideCompleteness getStatewideCompletenessModel() { return statewideCompletenessParam.getValue(); }
+	public double getMaxPointSourceMag() { return maxPtSrcMagParam.getValue(); }
 //	public double getMaxCharFactor() {return maxCharFactorParam.getValue(); }
 //	public double getFractSpont() {return fractSpontParam.getValue();}
 //	public boolean getApplyLongTermRates() {return applyLongTermRatesParam.getValue();}
@@ -88,6 +91,7 @@ public class ETAS_ParameterList extends ParameterList implements XMLSaveable {
 	public void setTotalRateScaleFactor(double value) {totalRateScaleFactorParam.setValue(value);}
 	public void setStatewideCompletenessModel(U3_EqkCatalogStatewideCompleteness completenessModel)
 		{statewideCompletenessParam.setValue(completenessModel);}
+	public void setMaxPointSourceMag(double maxPtSrcMag) { maxPtSrcMagParam.setValue(maxPtSrcMag); }
 
 	
 //	public void setMaxCharFactor(double value) {maxCharFactorParam.setValue(value); }

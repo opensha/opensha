@@ -83,6 +83,7 @@ public class ETAS_Config {
 	private Double etas_c = null;
 	private Double etas_log10_k = null;
 	private Double etas_k_cov = null;
+	private Double maxPointSourceMag = null;
 	
 	// metadata
 	private String configCommand = null;
@@ -1019,6 +1020,14 @@ public class ETAS_Config {
 	
 	public Double getETAS_K_COV() {
 		return etas_k_cov;
+	}
+	
+	public Double getMaxPointSourceMag() {
+		return maxPointSourceMag;
+	}
+	
+	public void setMaxPointSourceMag(Double maxPointSourceMag) {
+		this.maxPointSourceMag = maxPointSourceMag;
 	}
 
 	public boolean isApplySubSeisForSupraNucl() {

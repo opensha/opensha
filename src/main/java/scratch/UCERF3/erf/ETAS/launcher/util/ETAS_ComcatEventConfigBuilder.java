@@ -40,7 +40,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			String argz = "";
 
 //			argz += " --event-id ci38443183"; // 2019 Searles Valley M6.4
-//			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
+			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
 //			argz += " --event-id ci39462536"; // 2020 Ridgecrest M5.5
 			argz += " --mag-complete 3.5";
 //			argz += " --event-id nn00719663"; // 3/20/2020 Lake Tahoe area M5
@@ -49,15 +49,15 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --event-id ci39493944"; // 6/24/2020 Long Pine M5.8
 //			argz += " --event-id ci39338407"; // 6/24/2020 Long Pine M5.8
 //			argz += " --event-id ci38695658"; // 9/18/2020 El Monte M4.6
-			argz += " --event-id ci39641528"; // 9/30/2020 Westmorland (near Bombay) M4.9
+//			argz += " --event-id ci39641528"; // 9/30/2020 Westmorland (near Bombay) M4.9
 			argz += " --radius 25";
 //			argz += " --mag-complete 2.5";
 			
 //			argz += " --event-id nc73292360"; // 10/15/2019 Tres Pinos, CA M4.71
 //			argz += " --region 38.5,-122.75,36.25,-120.5";
 
-			argz += " --num-simulations 100000";
-//			argz += " --num-simulations 1000";
+//			argz += " --num-simulations 100000";
+			argz += " --num-simulations 1000";
 			argz += " --days-before 7";
 //			argz += " --days-after 7";
 //			argz += " --hours-after 33.75";
@@ -65,6 +65,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --end-time 1591234330000";
 //			argz += " --name-add Before-M5.5";
 //			argz += " --gridded-only";
+			argz += " --max-point-src-mag 6";
 //			argz += " --impose-gr";
 //			argz += " --prob-model NO_ERT";
 //			argz += " --include-spontaneous";

@@ -138,11 +138,6 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class ETAS_Simulator {
 	
-	
-	// Griddes Seismicity events above the following magnitude will be given a
-	// random finite rupture surface; set as 10 to make all treated as point surface
-	public static double maxPointSourceMag = 6.0;
-	
 	public static boolean D=true; // debug flag
 	private static boolean live_map = false;
 	static boolean pause_for_events = false;
@@ -687,6 +682,8 @@ public class ETAS_Simulator {
 		}
 		
 		if (D) info_fr.flush();	// this writes the above out now in case of crash
+		
+		final double maxPointSourceMag = etasParams.getMaxPointSourceMag();
 		
 		while(eventsToProcess.size()>0) {
 			

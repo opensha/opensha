@@ -34,6 +34,7 @@ import com.google.common.io.Files;
 
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxPointSourceMagParam;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
@@ -193,6 +194,12 @@ public class ETAS_ConfigBuilder {
 		grOption.setRequired(false);
 		ops.addOption(grOption);
 		
+		Option maxPtSrcMagOption = new Option("ptm", "max-point-src-mag", true,
+				"Maximum magnitude for point source ruptures. Random finite rupture surfaces will be assigned above "
+				+ "this threshold. (DEFAULT: "+U3ETAS_MaxPointSourceMagParam.DEFAULT_VALUE.floatValue()+")");
+		maxPtSrcMagOption.setRequired(false);
+		ops.addOption(maxPtSrcMagOption);
+		
 		/*
 		 * HPC options
 		 */
@@ -239,6 +246,8 @@ public class ETAS_ConfigBuilder {
 			ops.add("kCOV="+cmd.getOptionValue("etas-k-cov"));
 		if (cmd.hasOption("impose-gr"))
 			ops.add("Impose G-R");
+		if (cmd.hasOption("max-point-src-mag"))
+			ops.add("MaxPtSrcM="+cmd.getOptionValue("max-point-src-mag"));
 		
 		if (fm != FM_DEFAULT)
 			ops.add(fm.getShortName());
@@ -291,6 +300,9 @@ public class ETAS_ConfigBuilder {
 		Double c = doubleArgIfPresent(cmd, "etas-c");
 		Double p = doubleArgIfPresent(cmd, "etas-p");
 		Double kCOV = doubleArgIfPresent(cmd, "etas-k-cov");
+		Double maxPtSrcMag = doubleArgIfPresent(cmd, "max-point-src-mag");
+		if (maxPtSrcMag == null)
+			maxPtSrcMag = U3ETAS_MaxPointSourceMagParam.DEFAULT_VALUE;
 		
 		File outputDir;
 		if (cmd.hasOption("output-dir")) {
@@ -341,6 +353,7 @@ public class ETAS_ConfigBuilder {
 		config.setETAS_C(c);
 		config.setETAS_P(p);
 		config.setETAS_K_COV(kCOV);
+		config.setMaxPointSourceMag(maxPtSrcMag);
 		
 		return config;
 	}

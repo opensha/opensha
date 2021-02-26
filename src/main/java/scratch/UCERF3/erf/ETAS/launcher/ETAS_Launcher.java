@@ -83,6 +83,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxPointSourceMagParam;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
@@ -207,6 +208,14 @@ public class ETAS_Launcher {
 			double kCOV = config.getETAS_K_COV();
 			debug(DebugLevel.INFO, "Setting k COV: "+(float)kCOV);
 			params.set_kCOV(kCOV);
+		}
+		if (config.getMaxPointSourceMag() != null) {
+			double maxPtSrcMag = config.getMaxPointSourceMag();
+			debug(DebugLevel.INFO, "Setting maximum point source mag: "+(float)maxPtSrcMag);
+			params.setMaxPointSourceMag(maxPtSrcMag);
+		} else {
+			debug(DebugLevel.INFO, "No maximum point source mag specified, disabling");
+			params.setMaxPointSourceMag(U3ETAS_MaxPointSourceMagParam.MAX);
 		}
 		params.setStatewideCompletenessModel(config.getCompletenessModel());
 		
