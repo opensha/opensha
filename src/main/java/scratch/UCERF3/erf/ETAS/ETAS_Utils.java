@@ -1,6 +1,8 @@
 package scratch.UCERF3.erf.ETAS;
 
 
+import static org.opensha.commons.geo.GeoTools.TO_RAD;
+
 import java.awt.Color;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
@@ -30,6 +32,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.gui.plot.GraphWindow;
@@ -52,6 +55,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.InterpolatedEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -74,6 +78,7 @@ import com.google.common.primitives.Doubles;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.analysis.GMT_CA_Maps;
+import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_DistanceDecayParam_q;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_MinDistanceParam_d;
@@ -3033,5 +3038,129 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 			ETAS_SimAnalysisTools.writeMemoryUse("Memory at end of simultation");
 		
 	}
+	
+	
+	/**
+	 * This produces a randomly oriented trace-centered rupture surface for the given parameters,
+	 * and assuming a default seismogenic depth of 13 km (the U3 fault average), and using the
+	 * average U3 scaling relationship to compute rupture area from mag.
+	 * @param mag
+	 * @param hypLoc
+	 * @param aveDip
+	 * @return
+	 */
+	public StirlingGriddedSurface getRandomFiniteRupSurface(double mag, Location hypLoc, double aveDip) {
+		double defaultSeisThickness = 13.0; // this is the average lower seis depth for UCERF3 faults (also for slip-rate weighted)
+		double rupTopDepth, rupBotDepth, rupLength, rupDDW, rupArea, rupSqrtArea;
+		double maxDDW;
+		
+		double dipRad = aveDip * TO_RAD;
+		
+		rupArea = ScalingRelationships.MEAN_UCERF3.getArea(mag, defaultSeisThickness)*1e-6;
+		rupSqrtArea = Math.sqrt(rupArea);
+
+		
+		maxDDW = defaultSeisThickness/Math.sin(dipRad);
+		if(hypLoc.getDepth()<=defaultSeisThickness) {
+			if(rupSqrtArea<=maxDDW) { // center at 6.5 km depth
+				rupLength=rupSqrtArea;
+				rupDDW=rupSqrtArea;
+				rupTopDepth = 0.5*defaultSeisThickness - 0.5*rupDDW*Math.sin(dipRad);
+				rupBotDepth = 0.5*defaultSeisThickness + 0.5*rupDDW*Math.sin(dipRad);
+				if(hypLoc.getDepth()>rupBotDepth) {
+					double diff = hypLoc.getDepth()-rupBotDepth;
+					rupBotDepth += diff; // move down
+					rupTopDepth += diff;
+				}
+				else if (hypLoc.getDepth()<rupTopDepth) {
+					double diff = rupTopDepth-hypLoc.getDepth();
+					rupBotDepth -= diff;  // move up
+					rupTopDepth -= diff;
+				}
+			}
+			else {
+				rupTopDepth=0;
+				rupBotDepth=defaultSeisThickness;
+				rupLength=rupArea/maxDDW;
+				rupDDW=maxDDW;
+			}
+		}
+		else {	// put hypocenter at bottom of rupture
+			rupBotDepth = hypLoc.getDepth();
+			maxDDW = rupBotDepth/Math.sin(dipRad);
+			if(rupSqrtArea<=maxDDW) { 
+				rupLength=rupSqrtArea;
+				rupDDW=rupSqrtArea;
+				rupTopDepth = rupBotDepth - rupDDW*Math.sin(dipRad);
+			}
+			else {
+				rupTopDepth=0;
+				rupLength=rupArea/maxDDW;
+				rupDDW=maxDDW;
+			}
+		}
+		
+		double randStrike = getRandomDouble()*360;
+		double dipDir = randStrike+90;
+		if(dipDir>360) dipDir-=360;
+		Location midTraceLoc;
+		if(aveDip<89) {
+			double vertDist = hypLoc.getDepth()-rupTopDepth;
+			double horzDist = vertDist/Math.tan(dipRad);
+			LocationVector dir = new LocationVector(dipDir, horzDist, -vertDist);
+			midTraceLoc = LocationUtils.location(hypLoc, dir);	
+		}
+		else {
+			midTraceLoc = new Location(hypLoc.getLatitude(),hypLoc.getLongitude(), rupTopDepth);
+		}
+		
+		LocationVector dirTraceLoc1 = new LocationVector(randStrike, rupLength/2.0, 0.0);
+		Location traceLoc1 = LocationUtils.location(midTraceLoc, dirTraceLoc1);
+		LocationVector dirTraceLoc2 = new LocationVector(randStrike+180, rupLength/2.0, 0.0);
+		Location traceLoc2 = LocationUtils.location(midTraceLoc, dirTraceLoc2);
+		FaultTrace trace = new FaultTrace("trace");
+		trace.add(traceLoc1);
+		trace.add(traceLoc2);
+
+//System.out.println(rupArea);
+//System.out.println(rupSqrtArea);
+//System.out.println(rupLength);
+//System.out.println(rupDDW);
+//System.out.println(rupTopDepth);
+//System.out.println(rupBotDepth);
+//System.out.println(midTraceLoc);
+//System.out.println(traceLoc1);
+//System.out.println(traceLoc2);
+		
+		StirlingGriddedSurface surf = new StirlingGriddedSurface(trace, aveDip, rupTopDepth,
+				rupBotDepth, 1.0);
+		
+		double distTest = LocationUtils.distanceToSurf(hypLoc, surf);
+		if(distTest>2.0) {
+			System.out.println("distTest Problem: "+distTest);
+			System.out.println("Mag at Problem: "+mag);
+			System.out.println("Hypo Loc at Problem: "+hypLoc);
+			System.out.println("Trace At Problem: "+trace);
+			System.out.println("Ave Dip At Problem: "+aveDip);
+			System.out.println("Rup Top and Bottom At Problem: "+rupTopDepth+", "+rupBotDepth);
+			throw new RuntimeException("Problem in getRandomFiniteRupSurface");
+		}
+		
+		System.out.println("RandSurf\t"+(float)distTest+"\t"+(float)mag+"\t"+(float)aveDip+"\t"+
+				(float)randStrike+"\t"+
+				hypLoc+"\t"+
+				(float)rupArea+"\t"+
+				(float)rupSqrtArea+"\t"+
+				(float)rupDDW+"\t"+
+				(float)rupLength+"\t"+
+				(float)rupBotDepth+"\t"+
+				(float)rupTopDepth+"\t");
+		
+		return surf;
+
+	}
+	
+
+
 }
 
