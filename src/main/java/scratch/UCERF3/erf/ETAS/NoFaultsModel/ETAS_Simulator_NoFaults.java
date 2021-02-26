@@ -861,6 +861,7 @@ public class ETAS_Simulator_NoFaults {
 		params.setApplySubSeisForSupraNucl(false);
 		params.setTotalRateScaleFactor(1.0);
 		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
+		params.setMaxPointSourceMag(6.0);
 		
 		boolean includeSpontEvents=true;
 		boolean includeIndirectTriggering=true;

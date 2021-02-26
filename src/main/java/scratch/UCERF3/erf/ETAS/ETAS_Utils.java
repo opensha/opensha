@@ -3118,9 +3118,20 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 		Location traceLoc1 = LocationUtils.location(midTraceLoc, dirTraceLoc1);
 		LocationVector dirTraceLoc2 = new LocationVector(randStrike+180, rupLength/2.0, 0.0);
 		Location traceLoc2 = LocationUtils.location(midTraceLoc, dirTraceLoc2);
+		
+		// check that trace loc depths are near rupTopDepth
+		if(Math.abs(traceLoc1.getDepth()-rupTopDepth)>0.05) // within 50 m
+			throw new RuntimeException("Error: problem with depth discrepancy");
+		if(Math.abs(traceLoc2.getDepth()-rupTopDepth)>0.05)
+			throw new RuntimeException("Error: problem with depth discrepancy");
+		
+		// Now ensure numerical equivalence:
+		Location finalTraceLoc1 = new Location(traceLoc1.getLatitude(),traceLoc1.getLongitude(),rupTopDepth);
+		Location finalTraceLoc2 = new Location(traceLoc2.getLatitude(),traceLoc2.getLongitude(),rupTopDepth);
+		
 		FaultTrace trace = new FaultTrace("trace");
-		trace.add(traceLoc1);
-		trace.add(traceLoc2);
+		trace.add(finalTraceLoc1);
+		trace.add(finalTraceLoc2);
 
 //System.out.println(rupArea);
 //System.out.println(rupSqrtArea);
@@ -3146,15 +3157,15 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 			throw new RuntimeException("Problem in getRandomFiniteRupSurface");
 		}
 		
-		System.out.println("RandSurf\t"+(float)distTest+"\t"+(float)mag+"\t"+(float)aveDip+"\t"+
-				(float)randStrike+"\t"+
-				hypLoc+"\t"+
-				(float)rupArea+"\t"+
-				(float)rupSqrtArea+"\t"+
-				(float)rupDDW+"\t"+
-				(float)rupLength+"\t"+
-				(float)rupBotDepth+"\t"+
-				(float)rupTopDepth+"\t");
+//		System.out.println("RandSurf\t"+(float)distTest+"\t"+(float)mag+"\t"+(float)aveDip+"\t"+
+//				(float)randStrike+"\t"+
+//				hypLoc+"\t"+
+//				(float)rupArea+"\t"+
+//				(float)rupSqrtArea+"\t"+
+//				(float)rupDDW+"\t"+
+//				(float)rupLength+"\t"+
+//				(float)rupBotDepth+"\t"+
+//				(float)rupTopDepth+"\t");
 		
 		return surf;
 

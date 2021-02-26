@@ -1537,6 +1537,8 @@ public class ETAS_Simulator {
 //		params.setTotalRateScaleFactor(1.4);
 		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.FULL_TD);
 		params.setStatewideCompletenessModel(U3_EqkCatalogStatewideCompleteness.RELAXED);
+		params.setMaxPointSourceMag(6.0);
+
 		
 		boolean includeSpontEvents=true;
 		boolean includeIndirectTriggering=true;
