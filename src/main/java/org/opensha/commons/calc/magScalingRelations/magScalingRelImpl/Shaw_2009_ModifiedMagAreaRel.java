@@ -82,22 +82,27 @@ public class Shaw_2009_ModifiedMagAreaRel extends MagAreaRelationship implements
     public double getMedianArea(double mag){
     	
     	if(magAreaFunc == null) {
-        	magAreaFunc = new ArbitrarilyDiscretizedFunc();
-        	// area from 1 to 100000 (log area from 0 to 5)
-        	for(int i=0; i<=1000; i++) {
-        		double logArea = (double)i*5.5/1000.0;
-        		double area = Math.pow(10,logArea);
-        		double tempMag = getMedianMag(area);
-        		magAreaFunc.set(area, tempMag);
-        	}
-        	/* debugging stuff 
-        	System.out.println("firstMag="+magAreaFunc.getY(0));
-        	System.out.println("lastMag="+magAreaFunc.getY(magAreaFunc.getNum()-1));
-    		ArrayList funcs = new ArrayList();
-    		funcs.add(magAreaFunc);
-    		funcs.add(this.getMagAreaFunction(4, 0.1, 45));
-    		GraphWindow graph = new GraphWindow(funcs, "Mag vs Area");   
-*/
+    		synchronized (this) {
+    			if (magAreaFunc == null) {
+    				ArbitrarilyDiscretizedFunc magAreaFunc = new ArbitrarilyDiscretizedFunc();
+    	        	// area from 1 to 100000 (log area from 0 to 5)
+    	        	for(int i=0; i<=1000; i++) {
+    	        		double logArea = (double)i*5.5/1000.0;
+    	        		double area = Math.pow(10,logArea);
+    	        		double tempMag = getMedianMag(area);
+    	        		magAreaFunc.set(area, tempMag);
+    	        	}
+    	        	this.magAreaFunc = magAreaFunc;
+    	        	/* debugging stuff 
+    	        	System.out.println("firstMag="+magAreaFunc.getY(0));
+    	        	System.out.println("lastMag="+magAreaFunc.getY(magAreaFunc.getNum()-1));
+    	    		ArrayList funcs = new ArrayList();
+    	    		funcs.add(magAreaFunc);
+    	    		funcs.add(this.getMagAreaFunction(4, 0.1, 45));
+    	    		GraphWindow graph = new GraphWindow(funcs, "Mag vs Area");   
+    	*/
+    			}
+    		}
     	}
      	return magAreaFunc.getFirstInterpolatedX(mag);
    }
