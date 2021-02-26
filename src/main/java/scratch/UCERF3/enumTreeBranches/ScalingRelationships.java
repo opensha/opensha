@@ -244,7 +244,12 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 		}
 		
 		public double getArea(double mag, double origWidth) {
-			return Double.NaN;
+			List<Double> weights = getNormalizedMeanWeights();
+			double map = 0;
+			for (int i=0; i<weights.size(); i++) {
+				map += weights.get(i)*scales.get(i).getArea(mag, origWidth);
+			}
+			return map;
 		}
 
 	};
