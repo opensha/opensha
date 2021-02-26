@@ -145,6 +145,11 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class ETAS_Simulator_NoFaults {
 	
+	// Griddes Seismicity events above the following magnitude will be given a
+	// random finite rupture surface; set as 10 to make all treated as point surface
+	public static double maxPointSourceMag = 6.0;
+
+	
 	public static boolean D=true; // debug flag
 	private static boolean live_map = false;
 	static boolean pause_for_events = false;
@@ -631,7 +636,13 @@ public class ETAS_Simulator_NoFaults {
 					hypoLoc = new Location(ptLoc.getLatitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
 							ptLoc.getLongitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
 							seisDepthDistribution.getRandomDepth(etas_utils));
-					rup.setPointSurface(hypoLoc);
+					
+					if(erf_rup.getMag()<maxPointSourceMag)
+						rup.setPointSurface(hypoLoc);
+					else {
+						double aveDip = erf_rup.getRuptureSurface().getAveDip(); // confirm this works
+						rup.setRuptureSurface(etas_utils.getRandomFiniteRupSurface(erf_rup.getMag(), hypoLoc, aveDip));
+					}
 
 				}
 				else {
@@ -648,7 +659,7 @@ public class ETAS_Simulator_NoFaults {
 			}
 			// Not spontaneous, so set as a primary aftershock
 			else {
-				succeededInSettingRupture = etas_PrimEventSampler.setRandomPrimaryEvent(rup);
+				succeededInSettingRupture = etas_PrimEventSampler.setRandomPrimaryEvent(rup, maxPointSourceMag);
 			}
 			
 			// break out if we failed to set the rupture
@@ -791,6 +802,13 @@ public class ETAS_Simulator_NoFaults {
 			}
 		} else if (D) {
 			ETAS_SimAnalysisTools.plotEpicenterMap(simulationName, new File(resultsDir,"hypoMap.pdf").getAbsolutePath(), null, simulatedRupsQueue, griddedRegion.getBorder());
+
+			ArrayList<ETAS_EqkRupture> bigGridSeisEventsList = new ArrayList<ETAS_EqkRupture>();
+			for(ETAS_EqkRupture rup:simulatedRupsQueue)
+				if(rup.getFSSIndex()==-1 && rup.getMag()>maxPointSourceMag)
+					bigGridSeisEventsList.add(rup);
+			ETAS_SimAnalysisTools.plotFiniteGridSeisRupMap(simulationName, new File(resultsDir,"hypoMapBigGridSeisEvents.pdf").getAbsolutePath(), bigGridSeisEventsList, griddedRegion.getBorder());
+
 		}
 		
 		if(D) {
@@ -826,18 +844,18 @@ public class ETAS_Simulator_NoFaults {
 //		ETAS_Simulator.TestScenario scenario = ETAS_Simulator.TestScenario.MOJAVE_M7;
 		ETAS_Simulator.TestScenario scenario = null;
 		
-		String simulationName = "Landers";
-		String incrementString = "_1"; // set as "-1", or "_2" to save previous runs
+		String simulationName = "Test40yrSim";
+		String incrementString = "_2"; // set as "-1", or "_2" to save previous runs
 		
 		Long seed = null;
 //		Long seed = 1449590752534l;
 		
-//		double startTimeYear=2014;
-//		long startTimeMillis = ETAS_Simulator.getStartTimeMillisFromYear(startTimeYear);
-		long startTimeMillis = 709732654000l;	// Landers OT
+		double startTimeYear=2012;
+		long startTimeMillis = ETAS_Simulator.getTimeInMillisFromYear(startTimeYear);
+//		long startTimeMillis = 709732654000l;	// Landers OT
 
 
-		double durationYears=1;
+		double durationYears=40;
 //		double durationYears=7.0/365.25;
 		
 		ETAS_ParameterList params = new ETAS_ParameterList();
@@ -847,7 +865,7 @@ public class ETAS_Simulator_NoFaults {
 		params.setTotalRateScaleFactor(1.0);
 		params.setU3ETAS_ProbModel(U3ETAS_ProbabilityModelOptions.POISSON);
 		
-		boolean includeSpontEvents=false;
+		boolean includeSpontEvents=true;
 		boolean includeIndirectTriggering=true;
 		double gridSeisDiscr = 0.1;
 		

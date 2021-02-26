@@ -693,7 +693,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 	 * @return boolean tells whether it succeeded in setting the rupture
 	 * @param rupToFillIn
 	 */
-	public boolean setRandomPrimaryEvent(ETAS_EqkRupture rupToFillIn) {
+	public boolean setRandomPrimaryEvent(ETAS_EqkRupture rupToFillIn, double maxPointSourceMag) {
 		
 		ETAS_EqkRupture parRup = rupToFillIn.getParentRup();
 		
@@ -851,15 +851,18 @@ public class ETAS_PrimaryEventSampler_noFaults {
 //					}
 //				}
 //			}
-			
-			
-			rupToFillIn.setHypocenterLocation(hypLoc);
-			rupToFillIn.setPointSurface(hypLoc);
-			// fill in the rest
-			rupToFillIn.setAveRake(erf_rup.getAveRake());
-			rupToFillIn.setMag(erf_rup.getMag());
-			rupToFillIn.setNthERF_Index(nthRup);
 		
+		if(erf_rup.getMag()<maxPointSourceMag)
+			rupToFillIn.setPointSurface(hypLoc);
+		else {
+			double aveDip = erf_rup.getRuptureSurface().getAveDip(); // confirm this works
+			rupToFillIn.setRuptureSurface(etas_utils.getRandomFiniteRupSurface(erf_rup.getMag(), hypLoc, aveDip));
+		}
+		// fill in the rest
+		rupToFillIn.setHypocenterLocation(hypLoc);
+		rupToFillIn.setAveRake(erf_rup.getAveRake());
+		rupToFillIn.setMag(erf_rup.getMag());
+		rupToFillIn.setNthERF_Index(nthRup);
 		
 		// distance of triggered event from parent
 		double distToParent = LocationUtils.linearDistanceFast(actualParentLoc, rupToFillIn.getHypocenterLocation());
