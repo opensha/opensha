@@ -100,7 +100,8 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		Preconditions.checkState(jump.fromSection.getParentSectionId() == parentSectionID);
 		Preconditions.checkState(contains(jump.fromSection));
 		for (Jump existing : possibleJumps)
-			if (existing.toCluster.equals(jump.toCluster) && existing.toSection.equals(jump.toSection))
+			if (existing.toCluster.equals(jump.toCluster) && existing.toSection.equals(jump.toSection)
+					&& existing.fromSection.equals(jump.fromSection))
 				// this is a duplicate, skip adding
 				return;
 		possibleJumps.add(jump);
