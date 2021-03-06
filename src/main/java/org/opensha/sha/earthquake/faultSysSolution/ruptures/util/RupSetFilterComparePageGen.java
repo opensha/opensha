@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -56,6 +59,7 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.Aggreg
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.FaultSystemRupSet;
@@ -86,6 +90,10 @@ public class RupSetFilterComparePageGen {
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		File resourcesDir = new File(outputDir, "resources");
 		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
+		
+		String[] skipFaultNames = {
+				"Great Valley"
+		};
 		
 		double maxDist = 10d;
 		double rupDebugMinMag = 8d;
@@ -759,6 +767,154 @@ public class RupSetFilterComparePageGen {
 				if (numDebugRups == maxRupDebugs)
 					break;
 			}
+		}
+		
+		if (skipFaultNames != null && skipFaultNames.length > 0) {
+			// without specific faults
+			Map<Integer, String> skipParents = new HashMap<>();
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+				String parentName = sect.getParentSectionName();
+				for (String name : skipFaultNames)
+					if (parentName.contains(name))
+						skipParents.put(sect.getParentSectionId(), sect.getParentSectionName());
+			}
+			
+			Preconditions.checkState(!skipParents.isEmpty());
+			
+			HashSet<Integer> retainedRups = new HashSet<>();
+			for (int r=0; r<rups.size(); r++) {
+				boolean exclude = false;
+				for (FaultSubsectionCluster cluster : rups.get(r).getClustersIterable()) {
+					if (skipParents.containsKey(cluster.parentSectionID)) {
+						exclude = true;
+						break;
+					}
+				}
+				if (!exclude)
+					retainedRups.add(r);
+			}
+			
+			String combSkipNames = Joiner.on(", ").join(skipFaultNames);
+			lines.add("## Plausibility without "+combSkipNames);
+			
+			RupSetPlausibilityResult result = combResults.get(0);
+			lines.add(topLink); lines.add("");
+			
+			lines.add("This gives plausibility results with preferred filter values and "+(rups.size()-retainedRups.size())
+					+" ruptures involving the following faults exluded:");
+			lines.add("");
+			List<String> parentNames = new ArrayList<>(skipParents.values());
+			Collections.sort(parentNames);
+			for (String name : parentNames)
+				lines.add("* "+name);
+			lines.add("");
+			
+			lines.add("*Filters:*");
+			lines.add("");
+			for (PlausibilityFilter filter : result.filters)
+				lines.add("* "+filter.getName());
+			lines.add("");
+			String prefix = "plausibility_sans_faults";
+			File plot = RupSetDiagnosticsPageGen.plotRupSetPlausibility(result.filterByRups(retainedRups), resourcesDir, prefix, "Plausibility");
+			
+			lines.add("![plot](resources/"+plot.getName()+")");
+			lines.add("");
+			
+			// by mag table
+			double minMag;
+			if (minRupMag < 6d)
+				minMag = 6d;
+			else
+				minMag = minMags[0];
+			
+			EvenlyDiscretizedFunc magFunc = new EvenlyDiscretizedFunc(minMag, minMags[minMags.length-1], 100);
+			magFunc.setName("Excluding "+combSkipNames);
+			for (int m=0; m<magFunc.size(); m++) {
+				double mag = magFunc.getX(m);
+				int fails = 0;
+				int magRups = 0;
+				for (int i=0; i<rups.size(); i++) {
+					if (retainedRups.contains(i) && rupSet.getMagForRup(i) >= mag) {
+						magRups++;
+						for (int f=0; f<result.filterResults.size(); f++) {
+							PlausibilityResult rupResult = result.filterResults.get(f).get(i);
+							if (rupResult != null && !rupResult.isPass()) {
+								fails++;
+								break;
+							}
+						}
+					}
+				}
+				magFunc.set(m, 100d*fails/(double)magRups);
+			}
+			EvenlyDiscretizedFunc altMagFunc = null;
+			if (altResult != null) {
+				altMagFunc = new EvenlyDiscretizedFunc(magFunc.getMinX(), magFunc.getMaxX(), magFunc.size());
+				altMagFunc.setName(altName+" excluding "+combSkipNames);
+				for (int m=0; m<altMagFunc.size(); m++) {
+					double mag = altMagFunc.getX(m);
+					int fails = 0;
+					int magRups = 0;
+					for (int i=0; i<rups.size(); i++) {
+						if (retainedRups.contains(i) && rupSet.getMagForRup(i) >= mag) {
+							magRups++;
+							for (int f=0; f<result.filterResults.size(); f++) {
+								PlausibilityResult rupResult = altResult.filterResults.get(f).get(i);
+								if (rupResult != null && !rupResult.isPass()) {
+									fails++;
+									break;
+								}
+							}
+						}
+					}
+					altMagFunc.set(m, 100d*fails/(double)magRups);
+				}
+			}
+			
+			List<DiscretizedFunc> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars =  new ArrayList<>();
+			
+			if (altMagFunc != null) {
+				funcs.add(altMagFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
+			}
+			
+			if (prefMagFunc != null) {
+				prefMagFunc.setName("All Faults");
+				funcs.add(prefMagFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
+			}
+			
+			funcs.add(magFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, "Combined Fails vs Mag", "Min Magnitude", "% Failed");
+			spec.setLegendVisible(true);
+			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setBackgroundColor(Color.WHITE);
+			gp.setTickLabelFontSize(18);
+			gp.setAxisLabelFontSize(20);
+			gp.setPlotLabelFontSize(21);
+			gp.setLegendFontSize(22);
+			
+			double maxY = 20d;
+			if (funcs.get(0).getMaxY() > maxY)
+				maxY = 50d;
+			if (funcs.get(0).getMaxY() > maxY)
+				maxY = 100d;
+			
+			gp.drawGraphPanel(spec, false, false, new Range(magFunc.getMinX(), magFunc.getMaxX()), new Range(0d, maxY));
+			gp.getChartPanel().setSize(1000, 800);
+			
+			prefix += "_vs_mag";
+			File pngFile = new File(resourcesDir, prefix+".png");
+			File pdfFile = new File(resourcesDir, prefix+".pdf");
+			gp.saveAsPNG(pngFile.getAbsolutePath());
+			gp.saveAsPDF(pdfFile.getAbsolutePath());
+			
+			lines.add("![plot](resources/"+pngFile.getName()+")");
+			lines.add("");
 		}
 		
 		// add TOC

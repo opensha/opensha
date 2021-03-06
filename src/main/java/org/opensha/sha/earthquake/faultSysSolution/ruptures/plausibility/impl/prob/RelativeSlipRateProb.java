@@ -30,7 +30,7 @@ public class RelativeSlipRateProb extends AbstractRelativeProb {
 	}
 	
 	@Override
-	protected double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
+	public double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
 			PathAddition addition) {
 		return calcAveSlipRate(addition.toSects);
 	}
@@ -51,12 +51,12 @@ public class RelativeSlipRateProb extends AbstractRelativeProb {
 	}
 
 	@Override
-	protected boolean isAddFullClusters() {
+	public boolean isAddFullClusters() {
 		return true;
 	}
 
 	@Override
-	protected HashSet<FaultSubsectionCluster> getSkipToClusters(ClusterRupture rupture) {
+	public HashSet<FaultSubsectionCluster> getSkipToClusters(ClusterRupture rupture) {
 		if (onlyAtIncreases) {
 			int totNumClusters = rupture.getTotalNumClusters();
 			if (totNumClusters == 1)

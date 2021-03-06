@@ -152,8 +152,14 @@ public class RupSetDiagnosticsPageGen {
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 
-			String inputName = "Plausible 10km, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.02], 5% Fract Increase";
-			File inputFile = new File(rupSetsDir, "fm3_1_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			String inputName = "Plausible 10km, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.02], 5% Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			String inputName = "Plausible 10km (MultiEnds), Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.02], 5% Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+			
+			String state = "All";
+			String inputName = "NSHM "+state+" V1, Current Best Filters";
+			File inputFile = new File(rupSetsDir, "nshm23_v1_"+state.toLowerCase()+"_plausibleMulti10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
 			
 //			String inputName = "NZ Plausible 10km, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.05], 5% Fract Increase";
 //			File inputFile = new File(rupSetsDir, "nz_demo5_crustal_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
@@ -185,15 +191,15 @@ public class RupSetDiagnosticsPageGen {
 //			String compName = "UCERF3";
 //			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
-//			String compName = null;
-//			File compareFile = null;
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
-//			File altPlausibilityCompareFile = null;
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
-			String compName = "1km Coulomb Patches";
-			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
-			File altPlausibilityCompareFile = null;
+			String compName = null;
+			File compareFile = null;
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+			File altPlausibilityCompareFile = null;
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
+//			String compName = "1km Coulomb Patches";
+//			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			File altPlausibilityCompareFile = null;
+////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
@@ -206,6 +212,12 @@ public class RupSetDiagnosticsPageGen {
 			} else if (inputFile.getName().startsWith("nz_demo5_crustal")) {
 				argz.add("--dist-az-cache");
 				argz.add(new File(rupSetsDir, "nz_demo5_crustal_dist_az_cache.csv").getAbsolutePath());
+			} else if (inputFile.getName().startsWith("nshm23_v1_")) {
+				String pstate = inputFile.getName().substring("nshm23_v1_".length());
+				pstate = pstate.substring(0, pstate.indexOf("_"));
+				System.out.println("Detected state: "+pstate);
+				argz.add("--dist-az-cache");
+				argz.add(new File(rupSetsDir, "nshm23_v1_"+pstate+"_dist_az_cache.csv").getAbsolutePath());
 			}
 			argz.add("--coulomb-cache-dir"); argz.add(rupSetsDir.getAbsolutePath());
 			argz.add("--rupture-set"); argz.add(inputFile.getAbsolutePath());
@@ -2011,8 +2023,20 @@ public class RupSetDiagnosticsPageGen {
 		MAG("Rupture Magnitude", "Magnitude", "Magnitude of the rupture.") {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
-				return HistogramFunction.getEncompassingHistogram(Math.floor(scalarTrack.getMin()),
-						Math.ceil(scalarTrack.getMax())-0.1, 0.1d);
+				double minMag;
+				if (scalarTrack.getMin() < 5d)
+					// only go below 6 if we have really weirdly low magnitudes (below 5)
+					minMag = 0.5*Math.floor(scalarTrack.getMin()*2);
+				else
+					minMag = 6d;
+				double maxMag;
+				if (scalarTrack.getMax() > 9d)
+					maxMag = 0.5*Math.ceil(scalarTrack.getMax()*2);
+				else if (scalarTrack.getMax() > 7.5)
+					maxMag = 8.5d;
+				else 
+					maxMag = 8d;
+				return HistogramFunction.getEncompassingHistogram(minMag, maxMag-0.1, 0.1d);
 			}
 
 			@Override
@@ -2177,7 +2201,7 @@ public class RupSetDiagnosticsPageGen {
 				+ "from right-lateral SS to left-lateral or SS to reverse.") {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
-				int num = 1 + (int)scalarTrack.getMax();
+				int num = Integer.max(2, 1 + (int)scalarTrack.getMax());
 				return new HistogramFunction(0d, num, 1d);
 			}
 
@@ -2451,7 +2475,8 @@ public class RupSetDiagnosticsPageGen {
 		double origMin = hist.getMinX();
 		double newDelta = origDelta/50d;
 		double newMin = origMin - 0.5*origDelta + 0.5*newDelta;
-		hist = new HistogramFunction(newMin, hist.size()*50, newDelta);
+		int newNum = hist.size() == 1 ? 1 : hist.size()*50;
+		hist = new HistogramFunction(newMin, newNum, newDelta);
 		boolean logX = histScalar.isLogX();
 		HistogramFunction commonHist = null;
 		if (compUniques != null)
@@ -2762,6 +2787,10 @@ public class RupSetDiagnosticsPageGen {
 			for (int r=0; r<rupSet.getNumRuptures(); r++)
 				if (rupSet.getMagForRup(r) >= minMag)
 					matchingRups.add(r);
+			return filterByRups(matchingRups);
+		}
+		
+		public RupSetPlausibilityResult filterByRups(Collection<Integer> matchingRups) {
 			if (matchingRups.isEmpty())
 				return null;
 			RupSetPlausibilityResult ret = new RupSetPlausibilityResult(filters, matchingRups.size());

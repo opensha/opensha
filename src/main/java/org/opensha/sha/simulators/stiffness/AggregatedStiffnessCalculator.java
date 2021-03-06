@@ -713,7 +713,7 @@ public class AggregatedStiffnessCalculator {
 		for (int r=0; r<receiverPatchVals.length; r++) {
 			double[] receiverVals;
 			if (sameSect) {
-				// source and receiver section are the same, make sure to include the patch self-stiffness value
+				// source and receiver section are the same, make sure to exclude the patch self-stiffness value
 				Preconditions.checkState(values[r].length == receiverDists.length);
 				
 				receiverVals = new double[receiverDists.length-1];

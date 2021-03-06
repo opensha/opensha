@@ -24,12 +24,12 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 
 /**
- * Package-private class for relative probabilities
+ * Abstract base class for relative probabilities
  * 
  * @author kevin
  *
  */
-abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
+public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 
 	protected transient ClusterConnectionStrategy connStrat;
 	protected boolean allowNegative;
@@ -41,6 +41,18 @@ abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 		this.connStrat = connStrat;
 		this.allowNegative = allowNegative;
 		this.relativeToBest = relativeToBest;
+	}
+
+	public ClusterConnectionStrategy getConnStrat() {
+		return connStrat;
+	}
+
+	public boolean isAllowNegative() {
+		return allowNegative;
+	}
+
+	public boolean isRelativeToBest() {
+		return relativeToBest;
 	}
 
 	@Override
@@ -69,26 +81,26 @@ abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 	 * @param addition the addition to test
 	 * @return value associated with adding this addition
 	 */
-	protected abstract double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
+	public abstract double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
 			PathAddition addition);
 
 	/**
 	 * 
 	 * @return true if paths & tests should be taken cluster-by-cluster, false if they should be section-by-section
 	 */
-	protected abstract boolean isAddFullClusters();
+	public abstract boolean isAddFullClusters();
 
-	protected PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
+	public PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
 		if (isAddFullClusters())
 			return new ClusterPathNavigator(nucleationCluster, rupture.getTreeNavigator());
 		return new SectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator());
 	}
 
-	protected HashSet<FaultSubsectionCluster> getSkipToClusters(ClusterRupture rupture) {
+	public HashSet<FaultSubsectionCluster> getSkipToClusters(ClusterRupture rupture) {
 		return null;
 	}
 
-	protected PathAddition targetJumpToAddition(Collection<? extends FaultSection> curSects,
+	public PathAddition targetJumpToAddition(Collection<? extends FaultSection> curSects,
 			PathAddition testAddition, Jump alternateJump) {
 		Collection<FaultSection> toSects = isAddFullClusters() ?
 				alternateJump.toCluster.subSects : Collections.singleton(alternateJump.toSection);
@@ -121,74 +133,9 @@ abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 						System.out.println(getName()+": skipping addition: "+add);
 					continue;
 				}
-				double myVal = calcAdditionValue(rupture, curSects, add);
-				if (verbose)
-					System.out.println("\tAddition taken value ("+add+"): "+myVal);
-				if (!allowNegative && myVal < 0)
-					return 0d;
-
-				checkInitFullClusters();
-				FaultSubsectionCluster fullFrom = fullClustersMap.get(add.fromCluster.parentSectionID);
-				Preconditions.checkNotNull(fullFrom);
-				List<PathAddition> targetAdditions = new ArrayList<>();
-				if (fullFrom.subSects.size() > add.fromCluster.subSects.size()
-						&& !fullFrom.endSects.contains(add.fromSect)) {
-					// need to add continuing on this cluster as a possible "jump"
-					int fromSectIndex = fullFrom.subSects.indexOf(add.fromSect);
-					Preconditions.checkState(fromSectIndex >=0, "From section not found in full cluster?");
-					if (fromSectIndex < fullFrom.subSects.size()-1) {
-						// try going forward in list
-						List<FaultSection> possibleSects = new ArrayList<>();
-						for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
-							FaultSection sect = fullFrom.subSects.get(i);
-							// don't include rupture in the check here: even if we go to that section later, we still
-							// want to penalize for not taking the better path now
-							//								if (add.fromCluster.contains(sect) || rupture.contains(sect))
-							if (add.fromCluster.contains(sect))
-								break;
-							possibleSects.add(sect);
-							if (!addFullClusters)
-								break;
-						}
-						if (!possibleSects.isEmpty())
-							targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
-					}
-
-					if (fromSectIndex > 0) {
-						// try going backward in list
-						List<FaultSection> possibleSects = new ArrayList<>();
-						//							for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
-						for (int i=fromSectIndex; --i>=0;) {
-							FaultSection sect = fullFrom.subSects.get(i);
-							// don't include rupture in the check here: even if we go to that section later, we still
-							// want to penalize for not taking the better path now
-							//								if (add.fromCluster.contains(sect) || rupture.contains(sect))
-							if (add.fromCluster.contains(sect))
-								break;
-							possibleSects.add(sect);
-							if (!addFullClusters)
-								break;
-						}
-						if (!possibleSects.isEmpty())
-							targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
-					}
-				}
-				// now add possible jumps to other clusters
-
-				for (Jump possible : fullFrom.getConnections(add.fromSect)) {
-					if (possible.toCluster.parentSectionID != add.toCluster.parentSectionID
-							&& !rupture.contains(possible.toSection))
-						targetAdditions.add(targetJumpToAddition(curSects, add, possible));
-				}
-				List<Double> targetVals = new ArrayList<>();
-				for (PathAddition targetAdd : targetAdditions) {
-					double val = calcAdditionValue(rupture, curSects, targetAdd);
-					if (verbose)
-						System.out.println("\tAlternative dest value ("+targetAdd+"): "+val);
-					targetVals.add(val);
-				}
-				double myProb = calcProb(myVal, targetVals, verbose);
-				prob *= myProb;
+				prob *= calcAdditionProb(rupture, curSects, add, verbose);
+				if (prob == 0d && !verbose)
+					break;
 			}
 
 			curSects = pathNav.getCurrentSects();
@@ -200,6 +147,77 @@ abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 				"Processed %s sects but rupture has %s:\n\t%s", pathNav.getCurrentSects().size(), rupture.getTotalNumSects(), rupture);
 
 		return prob;
+	}
+	
+	protected double calcAdditionProb(ClusterRupture rupture, List<FaultSection> curSects, PathAddition add, boolean verbose) {
+		double myVal = calcAdditionValue(rupture, curSects, add);
+		if (verbose)
+			System.out.println("\tAddition taken value ("+add+"): "+myVal);
+		if (!allowNegative && myVal < 0)
+			return 0d;
+
+		checkInitFullClusters();
+		FaultSubsectionCluster fullFrom = fullClustersMap.get(add.fromCluster.parentSectionID);
+		Preconditions.checkNotNull(fullFrom);
+		List<PathAddition> targetAdditions = new ArrayList<>();
+		if (fullFrom.subSects.size() > add.fromCluster.subSects.size()
+				&& !fullFrom.endSects.contains(add.fromSect)) {
+			// need to add continuing on this cluster as a possible "jump"
+			int fromSectIndex = fullFrom.subSects.indexOf(add.fromSect);
+			Preconditions.checkState(fromSectIndex >=0, "From section not found in full cluster?");
+			if (fromSectIndex < fullFrom.subSects.size()-1) {
+				// try going forward in list
+				List<FaultSection> possibleSects = new ArrayList<>();
+				for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
+					FaultSection sect = fullFrom.subSects.get(i);
+					// don't include rupture in the check here: even if we go to that section later, we still
+					// want to penalize for not taking the better path now
+					//								if (add.fromCluster.contains(sect) || rupture.contains(sect))
+					if (add.fromCluster.contains(sect))
+						break;
+					possibleSects.add(sect);
+					if (!isAddFullClusters())
+						break;
+				}
+				if (!possibleSects.isEmpty())
+					targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
+			}
+
+			if (fromSectIndex > 0) {
+				// try going backward in list
+				List<FaultSection> possibleSects = new ArrayList<>();
+				//							for (int i=fromSectIndex+1; i<fullFrom.subSects.size(); i++) {
+				for (int i=fromSectIndex; --i>=0;) {
+					FaultSection sect = fullFrom.subSects.get(i);
+					// don't include rupture in the check here: even if we go to that section later, we still
+					// want to penalize for not taking the better path now
+					//								if (add.fromCluster.contains(sect) || rupture.contains(sect))
+					if (add.fromCluster.contains(sect))
+						break;
+					possibleSects.add(sect);
+					if (!isAddFullClusters())
+						break;
+				}
+				if (!possibleSects.isEmpty())
+					targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
+			}
+		}
+		// now add possible jumps to other clusters
+
+		for (Jump possible : fullFrom.getConnections(add.fromSect)) {
+			if (possible.toCluster.parentSectionID != add.toCluster.parentSectionID
+					&& !rupture.contains(possible.toSection))
+				targetAdditions.add(targetJumpToAddition(curSects, add, possible));
+		}
+		List<Double> targetVals = new ArrayList<>();
+		for (PathAddition targetAdd : targetAdditions) {
+			double val = calcAdditionValue(rupture, curSects, targetAdd);
+			if (verbose)
+				System.out.println("\tAlternative dest value ("+targetAdd+"): "+val);
+			targetVals.add(val);
+		}
+		double myProb = calcProb(myVal, targetVals, verbose);
+		return myProb;
 	}
 
 	private double calcProb(double myVal, List<Double> targetVals, boolean verbose) {

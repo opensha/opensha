@@ -12,7 +12,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.zip.ZipException;
 
+import org.dom4j.DocumentException;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -24,6 +28,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pa
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CoulombSectRatioProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeCoulombProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy.CandidateJump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy.JumpSelector;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -36,12 +42,14 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlig
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Comparators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
+import scratch.UCERF3.utils.FaultSystemIO;
 
 /**
  * This connection strategy uses one or more plausibility filters to determine the best jumping point between each pair
@@ -68,32 +76,147 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 	
 	public static interface JumpSelector {
 		
-		public CandidateJump getBest(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose);
+		public default List<CandidateJump> select(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
+			if (candidates == null || candidates.isEmpty())
+				return null;
+			if (candidates.size() == 1)
+				return candidates;
+			Comparator<CandidateJump> comp = comparator(candidates, acceptableScalarRange, verbose);
+			Collections.sort(candidates, comp);
+			List<CandidateJump> ret = new ArrayList<>();
+			CandidateJump best = candidates.get(0);
+			if (verbose)
+				System.out.println("First candidate: "+best);
+			ret.add(best);
+			for (int c=1; c<candidates.size(); c++) {
+				// see if equivalent
+				CandidateJump candidate = candidates.get(c);
+				if (comp.compare(best, candidate) == 0) {
+					if (verbose)
+						System.out.println("\t"+candidate+" is equivalent, adding");
+					ret.add(candidate);
+				}
+			}
+			return ret;
+		}
+		
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose);
+	}
+	
+	public static class FallbackJumpSelector implements JumpSelector {
+		
+		private JumpSelector[] selectors;
+		private boolean pickFirst;
+
+		public FallbackJumpSelector(JumpSelector... selectors) {
+			this(false, selectors);
+		}
+
+		public FallbackJumpSelector(boolean pickFirst, JumpSelector... selectors) {
+			this.pickFirst = pickFirst;
+			Preconditions.checkArgument(selectors.length > 0);
+			this.selectors = selectors;
+		}
+		
+		@Override
+		public List<CandidateJump> select(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
+			if (candidates == null || candidates.isEmpty())
+				return null;
+			for (JumpSelector selector : selectors) {
+				candidates = selector.select(candidates, acceptableScalarRange, verbose);
+				if (candidates == null || candidates.isEmpty())
+					return null;
+				if (candidates.size() == 1)
+					return candidates;
+			}
+			if (pickFirst && candidates.size() > 1) {
+				Collections.sort(candidates, reproducible_tie_breaker);
+				return candidates.subList(0, 1);
+			}
+			return candidates;
+		}
+
+		@Override
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange,
+				boolean verbose) {
+			List<Comparator<CandidateJump>> comps = new ArrayList<>();
+			for (JumpSelector selector : selectors)
+				comps.add(selector.comparator(candidates, acceptableScalarRange, verbose));
+			return new Comparator<CandidateJump>() {
+
+				@Override
+				public int compare(CandidateJump o1, CandidateJump o2) {
+					for (Comparator<CandidateJump> comp : comps) {
+						int cmp = comp.compare(o1, o2);
+						if (cmp != 0)
+							return cmp;
+					}
+					return 0;
+				}
+			};
+		}
+		
 	}
 	
 	public static class MinDistanceSelector implements JumpSelector {
 
 		@Override
-		public CandidateJump getBest(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
-			return getMinDist(candidates);
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
+			return distCompare;
 		}
 		
 	}
 	
-	private static CandidateJump getMinDist(Collection<CandidateJump> candidates) {
-		if (candidates == null)
-			return null;
-		float minDist = Float.POSITIVE_INFINITY;
-		CandidateJump best = null;
+	public static class WithinDistanceSelector implements JumpSelector {
 		
-		for (CandidateJump candidate : candidates) {
-			if ((float)candidate.distance < minDist) {
-				minDist = (float)candidate.distance;
-				best = candidate;
-			}
+		private float maxDist;
+
+		public WithinDistanceSelector(float maxDist) {
+			this.maxDist = maxDist;
+		}
+
+		@Override
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
+			return new Comparator<PlausibleClusterConnectionStrategy.CandidateJump>() {
+
+				@Override
+				public int compare(CandidateJump o1, CandidateJump o2) {
+					boolean within1 = (float)o1.distance <= maxDist;
+					boolean within2 = (float)o2.distance <= maxDist;
+					if (within1 != within2) {
+						if (within1)
+							return -1;
+						return 1;
+					}
+					return 0;
+				}
+			};
 		}
 		
-		return best;
+	}
+	
+	/*
+	 * This will be used to break ties in a reproducible fashion
+	 */
+	private static Comparator<CandidateJump> reproducible_tie_breaker = new Comparator<CandidateJump>() {
+		
+		@Override
+		public int compare(CandidateJump o1, CandidateJump o2) {
+			int cmp = Integer.compare(o1.fromSection.getSectionId(), o2.fromSection.getSectionId());
+			if (cmp == 0)
+				cmp = Integer.compare(o1.toSection.getSectionId(), o2.toSection.getSectionId());
+			return cmp;
+		}
+	};
+	
+	private static double getMinPassingDist(Collection<CandidateJump> candidates) {
+		double minDist = Double.POSITIVE_INFINITY;
+		
+		for (CandidateJump candidate : candidates)
+			if (!candidate.allowedJumps.isEmpty() && (float)candidate.distance < minDist)
+				minDist = candidate.distance;
+		
+		return minDist;
 	}
 	
 	public static class BestScalarSelector implements JumpSelector {
@@ -105,154 +228,242 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		}
 
 		@Override
-		public CandidateJump getBest(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
-			if (candidates == null || candidates.isEmpty())
-				return null;
-			Collections.sort(candidates, distCompare);
-			if (equivDistance > 0d) {
-				double maxDist = candidates.get(0).distance + equivDistance;
-				List<CandidateJump> withinEquiv = new ArrayList<>();
-				for (int i=0; i<candidates.size(); i++) {
-					CandidateJump candidate = candidates.get(i);
-					if ((float)candidate.distance <= (float)maxDist)
-						withinEquiv.add(candidate);
-					else
-						break;
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
+			float maxScalarDist;
+			if (equivDistance > 0d)
+				maxScalarDist = (float)(getMinPassingDist(candidates) + equivDistance);
+			else
+				maxScalarDist = Float.POSITIVE_INFINITY;
+			
+			if (verbose)
+				System.out.println("MaxScalarDist="+maxScalarDist);
+			
+			return new Comparator<CandidateJump>() {
+
+				@Override
+				public int compare(CandidateJump o1, CandidateJump o2) {
+					if (verbose)
+						System.out.println("Comparing scalars (dist fallback) for "+o1+" and "+o2);
+					if ((float)o1.distance <= maxScalarDist && (float)o2.distance <= maxScalarDist
+							|| (float)o1.distance == (float)o2.distance) {
+						// compare scalars if we have any
+						if (o1.bestScalar != null || o2.bestScalar != null) {
+							if (o2.bestScalar == null || ScalarValuePlausibiltyFilter.isValueBetter(
+									o1.bestScalar, o2.bestScalar, acceptableScalarRange)) {
+								if (verbose)
+									System.out.println("\tfirst ("+o1.bestScalar+") is better than second ("+o2.bestScalar+")");
+								return -1;
+							} else if (o1.bestScalar == null ||ScalarValuePlausibiltyFilter.isValueBetter(
+									o2.bestScalar, o1.bestScalar, acceptableScalarRange)) {
+								if (verbose)
+									System.out.println("\tsecond ("+o2.bestScalar+") is better than first ("+o1.bestScalar+")");
+								return 1;
+							}
+						}
+						// no scalars or equal, defer to distance
+					}
+					int cmp = distCompare.compare(o1, o2);
+					if (verbose)
+						System.out.println("\tFellback to distance: "+cmp);
+					return cmp;
+					
 				}
-				candidates = withinEquiv;
-			}
-			Double bestValue = null;
-			List<CandidateJump> best = null;
-			for (CandidateJump candidate : candidates) {
-				if (candidate.bestScalar == null || candidate.allowedJumps.isEmpty())
-					continue;
-				if (verbose)
-					System.out.println("Testing "+candidate);
-				if (bestValue == null) {
-					// nothing before, so better
-					bestValue = candidate.bestScalar;
-					best = Lists.newArrayList(candidate);
-					if (verbose)
-						System.out.println("\tkeeping as first");
-				} else if (bestValue.floatValue() == candidate.bestScalar.floatValue()) {
-					// equivalent
-					best.add(candidate);
-					if (verbose)
-						System.out.println("\tadding (tie)");
-				} else if (ScalarValuePlausibiltyFilter.isValueBetter(candidate.bestScalar, bestValue, acceptableScalarRange)) {
-					// better
-					bestValue = candidate.bestScalar;
-					best = Lists.newArrayList(candidate);
-					if (verbose)
-						System.out.println("\treplacing as new best");
-				} else if (verbose) {
-					System.out.println("\t"+candidate.bestScalar+" is worse than "+bestValue);
-					System.out.println("\t\tRange: "+acceptableScalarRange);
-					System.out.println("\t\tcompare: "+candidate.bestScalar.compareTo(bestValue));
-					System.out.println("\t\tcandidate dist: "+ScalarValuePlausibiltyFilter.distFromRange(candidate.bestScalar, acceptableScalarRange));
-					System.out.println("\t\tprev dist: "+ScalarValuePlausibiltyFilter.distFromRange(candidate.bestScalar, acceptableScalarRange));
-				}
-			}
-			if (best == null) {
-				// fallback to shortest
-				if (verbose)
-					System.out.println("No scalars, falling back to minDist");
-				return candidates.get(0);
-			}
-			return getMinDist(best);
+			};
+//			if (equivDistance > 0d) {
+//				double maxDist = candidates.get(0).distance + equivDistance;
+//				List<CandidateJump> withinEquiv = new ArrayList<>();
+//				for (int i=0; i<candidates.size(); i++) {
+//					CandidateJump candidate = candidates.get(i);
+//					if ((float)candidate.distance <= (float)maxDist)
+//						withinEquiv.add(candidate);
+//					else
+//						break;
+//				}
+//				candidates = withinEquiv;
+//			}
+//			Double bestValue = null;
+//			List<CandidateJump> best = null;
+//			for (CandidateJump candidate : candidates) {
+//				if (candidate.bestScalar == null || candidate.allowedJumps.isEmpty())
+//					continue;
+//				if (verbose)
+//					System.out.println("Testing "+candidate);
+//				if (bestValue == null) {
+//					// nothing before, so better
+//					bestValue = candidate.bestScalar;
+//					best = Lists.newArrayList(candidate);
+//					if (verbose)
+//						System.out.println("\tkeeping as first");
+//				} else if (bestValue.floatValue() == candidate.bestScalar.floatValue()) {
+//					// equivalent
+//					best.add(candidate);
+//					if (verbose)
+//						System.out.println("\tadding (tie)");
+//				} else if (ScalarValuePlausibiltyFilter.isValueBetter(candidate.bestScalar, bestValue, acceptableScalarRange)) {
+//					// better
+//					bestValue = candidate.bestScalar;
+//					best = Lists.newArrayList(candidate);
+//					if (verbose)
+//						System.out.println("\treplacing as new best");
+//				} else if (verbose) {
+//					System.out.println("\t"+candidate.bestScalar+" is worse than "+bestValue);
+//					System.out.println("\t\tRange: "+acceptableScalarRange);
+//					System.out.println("\t\tcompare: "+candidate.bestScalar.compareTo(bestValue));
+//					System.out.println("\t\tcandidate dist: "+ScalarValuePlausibiltyFilter.distFromRange(candidate.bestScalar, acceptableScalarRange));
+//					System.out.println("\t\tprev dist: "+ScalarValuePlausibiltyFilter.distFromRange(candidate.bestScalar, acceptableScalarRange));
+//				}
+//			}
+//			if (best == null) {
+//				// fallback to shortest
+//				if (verbose)
+//					System.out.println("No scalars, falling back to minDist");
+//				return candidates.subList(0, 1);
+//			}
+//			return Lists.newArrayList(getMinDist(best));
 		}
 		
 	}
 	
-	public static class AnyPassMinDistSelector implements JumpSelector {
-		
-		private JumpSelector fallback;
-
-		public AnyPassMinDistSelector() {
-			this(new MinDistanceSelector());
-		}
-		
-		public AnyPassMinDistSelector(JumpSelector fallback) {
-			this.fallback = fallback;
-		}
+	public static class AnyPassSelector implements JumpSelector {
 
 		@Override
-		public CandidateJump getBest(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
-			List<CandidateJump> passed = new ArrayList<>();
-			for (CandidateJump candidate : candidates)
-				if (!candidate.allowedJumps.isEmpty())
-					passed.add(candidate);
-			if (passed.isEmpty())
-				return fallback.getBest(candidates, acceptableScalarRange, verbose);
-			return getMinDist(passed);
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
+			return new Comparator<CandidateJump>() {
+
+				@Override
+				public int compare(CandidateJump o1, CandidateJump o2) {
+					if (o1.allowedJumps.isEmpty() != o2.allowedJumps.isEmpty()) {
+						// one of these passes, the other doesn't
+						if (o1.allowedJumps.isEmpty())
+							return 1;
+						return -1;
+					}
+					return 0;
+				}
+			};
 		}
 		
 	}
 	
 	public static class PassesMinimizeFailedSelector implements JumpSelector {
-		
-		private JumpSelector fallback;
-
-		public PassesMinimizeFailedSelector() {
-			this(new MinDistanceSelector());
-		}
-		
-		public PassesMinimizeFailedSelector(JumpSelector fallback) {
-			this.fallback = fallback;
-		}
 
 		@Override
-		public CandidateJump getBest(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
-			List<CandidateJump> options = null;
-			for (CandidateJump candidate : candidates) {
-				if (candidate.allowedJumps.isEmpty())
-					// doesn't pass any direction, skip
-					continue;
-				if (options == null) {
-					// this is the new best
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
+			return new Comparator<CandidateJump>() {
+
+				@Override
+				public int compare(CandidateJump o1, CandidateJump o2) {
 					if (verbose)
-						System.out.println("First real option: "+candidate);
-					options = Lists.newArrayList(candidate);
-				} else {
-					// test it
-					CandidateJump prev = options.get(0);
-					// 0 if same number of failures, +1 if prev had more failures, -1 if prev had fewer failures
-					int cmp = Integer.compare(prev.failedJumps.size(), candidate.failedJumps.size());
+						System.out.println("Comparing "+o1+" to "+o2);
+					if (o1.allowedJumps.isEmpty() != o2.allowedJumps.isEmpty()) {
+						// one of these passes, the other doesn't
+						if (o1.allowedJumps.isEmpty()) {
+							if (verbose)
+								System.out.println("\tsecond passes first doesn't, returning 1");
+							return 1;
+						}
+						if (verbose)
+							System.out.println("\tfirst passes second doesn't, returning 1");
+						return -1;
+					}
+					// if we're here, both pass or both don't pass
+					if (o1.allowedJumps.isEmpty() && o2.allowedJumps.isEmpty()) {
+						// both fail, fallback to minDist
+						int cmp = distCompare.compare(o1, o2);
+						if (verbose)
+							System.out.println("\tneither pass, going with closest: "+cmp);
+						return cmp;
+					}
+					// 0 if same number of failures, -1 if o1 has fewer, +1 if o1 has more failures
+					int cmp = Integer.compare(o1.failedJumps.size(), o2.failedJumps.size());
 					if (verbose)
-						System.out.println("Comparing: failCMP="+cmp+"\n\tprev: "+prev+"\n\tnew="+candidate);
+						System.out.println("\tfailCMP="+cmp);
 					if (cmp == 0) {
-						// same number of failures, new it's better if fewer jumps in total (at end(s))
+						// same number of failures, new it's better if fewer jumps in total (e.g., at end(s))
 						// 0 if same number of total jumps, +1 if prev had more jumps, -1 if prev had fewer jumps
-						cmp = Integer.compare(prev.totalJumps, candidate.totalJumps);
+						cmp = Integer.compare(o1.totalJumps, o2.totalJumps);
 						if (verbose)
-							System.out.println("Fellback to totalJumps: jumpCMP="+cmp+"\tprev: "+prev.totalJumps+"\tnew="+candidate.totalJumps);
+							System.out.println("\tfellback to totalJumps: jumpCMP="+cmp+"\to1: "+o1.totalJumps+"\to2="+o2.totalJumps);
 					}
-					if (cmp > 0) {
-						// this is the new best: fewer failures, or same failure and fewer branches
-						if (verbose)
-							System.out.println("\t\tnew best!");
-						options = Lists.newArrayList(candidate);
-					} else if (cmp == 0) {
-						// tie
-						if (verbose)
-							System.out.println("\t\ttie for best!");
-						options.add(candidate);
-					}
+					return cmp;
 				}
-			}
-			if (options == null)
-				return fallback.getBest(candidates, acceptableScalarRange, verbose);
-			if (verbose) {
-				System.out.println("Ended with "+options.size()+" options:");
-				for (CandidateJump candidate : options)
-					System.out.println("\t"+candidate);
-			}
-			return fallback.getBest(options, acceptableScalarRange, verbose);
+			};
 		}
 		
 	}
 	
-	public static final JumpSelector JUMP_SELECTOR_DEFAULT = new PassesMinimizeFailedSelector(new BestScalarSelector(2d));
+	public static class AllowMultiEndsSelector implements JumpSelector {
+		
+		private JumpSelector fallback;
+		private float maxAdditionalJumpDist;
+
+		public AllowMultiEndsSelector(float maxAdditionalJumpDist, JumpSelector fallback) {
+			this.maxAdditionalJumpDist = maxAdditionalJumpDist;
+			this.fallback = fallback;
+		}
+
+		@Override
+		public List<CandidateJump> select(List<CandidateJump> candidates, Range<Double> acceptableScalarRange,
+				boolean verbose) {
+			if (candidates == null || candidates.isEmpty())
+				return null;
+			if (candidates.size() == 1)
+				return candidates;
+			if (fallback != null)
+				Collections.sort(candidates, fallback.comparator(candidates, acceptableScalarRange, verbose));
+			CandidateJump first = candidates.get(0);
+			int firstEnds = first.numEnds();
+			if (!first.allowedJumps.isEmpty() && firstEnds > 0) {
+				// we have an end. allow everyone else with ends
+				List<CandidateJump> ret = new ArrayList<>();
+				ret.add(first);
+				HashSet<FaultSection> prevJumpPoints = new HashSet<>();
+				prevJumpPoints.add(first.fromSection);
+				prevJumpPoints.add(first.toSection);
+				for (CandidateJump candidate : candidates) {
+					// we get to keep this as well if...
+					// it's within the (potentially stricter) distance threshold
+					if ((float)candidate.distance <= maxAdditionalJumpDist
+							// it also passes, and involves the same number of ends
+							&& !candidate.allowedJumps.isEmpty() && candidate.numEnds() >= firstEnds
+							// it doesn't involve a previously allowed jump point
+							&& !prevJumpPoints.contains(candidate.fromSection)
+							&& !prevJumpPoints.contains(candidate.toSection)) {
+						// allow this as well if it has the same number of ends, but involves different from and end sections
+						ret.add(candidate);
+						prevJumpPoints.add(candidate.fromSection);
+						prevJumpPoints.add(candidate.toSection);
+					}
+				}
+				return ret;
+			}
+			// revert to fallback
+			if (fallback != null)
+				candidates = fallback.select(candidates, acceptableScalarRange, verbose);
+			return candidates;
+		}
+
+		@Override
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange,
+				boolean verbose) {
+			return new Comparator<CandidateJump>() {
+
+				@Override
+				public int compare(CandidateJump o1, CandidateJump o2) {
+					return -Integer.compare(o1.numEnds(), o2.numEnds());
+				}
+			};
+		}
+		
+	}
+	
+//	public static final JumpSelector JUMP_SELECTOR_DEFAULT = new PassesMinimizeFailedSelector(new BestScalarSelector(2d));
+//	public static final JumpSelector JUMP_SELECTOR_DEFAULT = new FallbackJumpSelector(true, new PassesMinimizeFailedSelector(), new BestScalarSelector(2d))
+	public static final JumpSelector JUMP_SELECTOR_DEFAULT_MULTI = new FallbackJumpSelector(false,
+			new PassesMinimizeFailedSelector(), new AllowMultiEndsSelector(5f, new FallbackJumpSelector(true, new BestScalarSelector(2d))));
+	public static final JumpSelector JUMP_SELECTOR_DEFAULT_SINGLE = new FallbackJumpSelector(false,
+			new PassesMinimizeFailedSelector(), new BestScalarSelector(2d));
+	public static final JumpSelector JUMP_SELECTOR_DEFAULT = JUMP_SELECTOR_DEFAULT_MULTI;
 
 	public PlausibleClusterConnectionStrategy(List<? extends FaultSection> subSects,
 			SectionDistanceAzimuthCalculator distCalc, double maxJumpDist, PlausibilityFilter... filters) {
@@ -320,6 +531,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 
 	private static final int debug_parent_1 = -1;
 	private static final int debug_parent_2 = -1;
+//	private static final int debug_parent_1 = 1001;
+//	private static final int debug_parent_2 = 1002;
 //	private static final int debug_parent_1 = 84;
 //	private static final int debug_parent_2 = 85;
 //	private static final int debug_parent_1 = 170;
@@ -332,6 +545,16 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 //	private static final int debug_parent_2 = 209;
 //	private static final int debug_parent_1 = 82;
 //	private static final int debug_parent_2 = 84;
+//	private static final int debug_parent_1 = 724; // camp rock
+//	private static final int debug_parent_2 = 90; // emerson-copper mtn
+//	private static final int debug_parent_1 = 894; // davis creek
+//	private static final int debug_parent_2 = 708; // surprise valley
+//	private static final int debug_parent_1 = 884; // cleghorn lake
+//	private static final int debug_parent_2 = 883; // cleghorn pass
+//	private static final int debug_parent_1 = 174; // Thirty Mile Bank
+//	private static final int debug_parent_2 = 776; // Coronado Bank
+//	private static final int debug_parent_1 = 294; // SAF NBMC
+//	private static final int debug_parent_2 = 283; // SAV SB S
 
 	@Override
 	protected List<Jump> buildPossibleConnections(FaultSubsectionCluster from, FaultSubsectionCluster to) {
@@ -384,6 +607,15 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			ret += ": dist="+(float)distance+"\t"+allowedJumps.size()+"/"+(allowedJumps.size()+failedJumps.size())+" pass";
 			if (bestScalar != null)
 				ret += "\tbestScalar: "+bestScalar.floatValue();
+			return ret;
+		}
+		
+		public int numEnds() {
+			int ret = 0;
+			if (fromEnd)
+				ret++;
+			if (toEnd)
+				ret++;
 			return ret;
 		}
 	}
@@ -442,7 +674,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 									System.out.println("\tTrying reversed: "+rupture);
 								PlausibilityResult reverseResult = PlausibilityResult.PASS;
 								for (PlausibilityFilter filter : filters)
-									reverseResult = result.logicalAnd(filter.apply(rupture, false));
+									reverseResult = reverseResult.logicalAnd(filter.apply(rupture, false));
 								if (debug)
 									System.out.println("\tResult: "+reverseResult);
 								if (scalarFilter != null && reverseResult.isPass()) {
@@ -484,20 +716,24 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			for (CandidateJump candidate : candidates)
 				System.out.println("\t"+candidate);
 		}
-		CandidateJump bestCandidate = selector.getBest(candidates, scalarRange, debug);
-		if (debug)
-			System.out.println("Final candidate: "+bestCandidate);
-		if (bestCandidate == null)
+		List<CandidateJump> selected = selector.select(candidates, scalarRange, debug);
+		if (debug && selected != null)
+			System.out.println("Selected candidate(s):\n\t"+selected.stream().map(S -> S.toString()).collect(Collectors.joining("\n\t")));
+		if (selected == null)
 			return null;
-		return Lists.newArrayList(new Jump(
-				bestCandidate.fromSection, from, bestCandidate.toSection, to, bestCandidate.distance));
+		
+		List<Jump> ret = new ArrayList<>();
+		for (CandidateJump candidate : selected)
+			ret.add(new Jump(candidate.fromSection, from, candidate.toSection, to, candidate.distance));
+//		System.out.println("returning "+ret.size()+" jumps");
+		return ret;
 	}
 	
 	private static final Comparator<CandidateJump> distCompare = new Comparator<CandidateJump>() {
 
 		@Override
 		public int compare(CandidateJump o1, CandidateJump o2) {
-			return Double.compare(o1.distance, o2.distance);
+			return Float.compare((float)o1.distance, (float)o2.distance);
 		}
 	};
 	
@@ -517,9 +753,15 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 
 	@Override
 	public String getName() {
+		String summary = "maxDist="+new DecimalFormat("0.#").format(maxJumpDist)+" km";
+		if (selector instanceof FallbackJumpSelector) {
+			for (JumpSelector sub : ((FallbackJumpSelector)selector).selectors)
+				if (sub instanceof AllowMultiEndsSelector)
+					summary += ", MultiEnds";
+		}
 		if (filters.size() == 1)
-			return filters.get(0)+" Plausibile: maxDist="+new DecimalFormat("0.#").format(maxJumpDist)+" km";
-		return "Plausible ("+filters.size()+" filters): maxDist="+new DecimalFormat("0.#").format(maxJumpDist)+" km";
+			return filters.get(0)+" Plausibile: "+summary;
+		return "Plausible ("+filters.size()+" filters): "+summary;
 	}
 
 	@Override
@@ -553,19 +795,29 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		double maxJumpDist = 10d;
 		boolean favJump = true;
 		
-		float cffProb = 0.05f;
+		float cffProb = 0.02f;
 		RelativeCoulombProb cffProbCalc = new RelativeCoulombProb(
 				sumAgg, new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d), false, true, favJump, (float)maxJumpDist, distAzCalc);
 		float cffRatio = 0.5f;
 		CoulombSectRatioProb sectRatioCalc = new CoulombSectRatioProb(sumAgg, 2, favJump, (float)maxJumpDist, distAzCalc);
-		NetRuptureCoulombFilter fractInts = new NetRuptureCoulombFilter(fractIntsAgg, Range.greaterThan(0.67f));
+		NetRuptureCoulombFilter fractInts = new NetRuptureCoulombFilter(fractIntsAgg, Range.greaterThan(0.75f));
 		PathPlausibilityFilter combinedPathFilter = new PathPlausibilityFilter(
 				new CumulativeProbPathEvaluator(cffRatio, PlausibilityResult.FAIL_HARD_STOP, sectRatioCalc),
 				new CumulativeProbPathEvaluator(cffProb, PlausibilityResult.FAIL_HARD_STOP, cffProbCalc));
 		
 		
-		ClusterConnectionStrategy orig = new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
-		String origName = "Min Distance";
+//		ClusterConnectionStrategy orig = new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
+//		String origName = "Min Distance";
+//		ClusterConnectionStrategy orig;
+//		try {
+//			orig = FaultSystemIO.loadRupSet(new File(rupSetsDir,
+////					"fm3_1_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip"))
+//					"fm3_1_plausibleMulti10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip"))
+//					.getPlausibilityConfiguration().getConnectionStrategy();
+//		} catch (Exception e) {
+//			throw ExceptionUtils.asRuntimeException(e);
+//		}
+//		String origName = "Previous Version";
 //		ClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist, sumAgg, false);
 //		PlausibleClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
 //				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), threeQuarters);
@@ -585,10 +837,15 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 //						new CumulativeProbPathEvaluator(cffProb, PlausibilityResult.FAIL_HARD_STOP, new RelativeCoulombProb(
 //								sumAgg, new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d), false, true))), threeQuarters);
 //		String origName = "No Fav Nump";
+		JumpSelector singleSelect = new FallbackJumpSelector(true, new PassesMinimizeFailedSelector(), new BestScalarSelector(2d));
+		ClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
+				singleSelect,
+				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
+		String origName = "Single Connection";
 		
 //		PlausibilityFilter filter = new CumulativeProbabilityFilter(0.5f, new CoulombSectRatioProb(sumAgg, 2));
 		ClusterConnectionStrategy newStrat = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
-				new PassesMinimizeFailedSelector(new BestScalarSelector(2d)),
+				JUMP_SELECTOR_DEFAULT,
 				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
 		String newName = "New Plausible";
 //		String newName = "15km";
@@ -620,6 +877,10 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			if (!commonJumps.contains(jump))
 				cffUniqueJumps.add(jump);
 		}
+		
+		System.out.println(commonJumps.size()+" common");
+		System.out.println(origUniqueJumps.size()+" unique to "+origName);
+		System.out.println(cffUniqueJumps.size()+" unique to "+newName);
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, RupSetMapMaker.buildBufferedRegion(subSects));
 		mapMaker.plotJumps(commonJumps, RupSetDiagnosticsPageGen.darkerTrans(Color.GREEN), "Common Jumps");

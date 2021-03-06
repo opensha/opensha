@@ -180,7 +180,12 @@ public abstract class ClusterConnectionStrategy implements Named {
 		connectedParents = new HashSet<>();
 		jumpsFrom = HashMultimap.create();
 		
+//		System.out.println("got "+jumps.size()+" jumps");
+		
 		for (Jump jump : jumps) {
+//			System.out.println("\tadding "+jump);
+//			Preconditions.checkState(clusters.contains(jump.fromCluster));
+//			Preconditions.checkState(clusters.contains(jump.toCluster));
 			connectedParents.add(new IDPairing(jump.fromCluster.parentSectionID, jump.toCluster.parentSectionID));
 			connectedParents.add(new IDPairing(jump.toCluster.parentSectionID, jump.fromCluster.parentSectionID));
 			jump.fromCluster.addConnection(jump);
@@ -188,7 +193,11 @@ public abstract class ClusterConnectionStrategy implements Named {
 			jump.toCluster.addConnection(reverse);
 			jumpsFrom.put(jump.fromSection, jump);
 			jumpsFrom.put(reverse.fromSection, reverse);
+//			System.out.println("\t\tfrom has "+jump.fromCluster.getConnections().size()+", to has "+jump.toCluster.getConnections().size());
 		}
+		
+//		for (FaultSubsectionCluster cluster : clusters)
+//			System.out.println("Cluster "+cluster+" has "+cluster.getConnections().size()+" jumps");
 		
 		connectionsAdded = true;
 		return jumps.size();

@@ -23,6 +23,7 @@ import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.ComparablePairing;
@@ -417,23 +418,12 @@ public class RupSetMapMaker {
 		plot(outputDir, prefix, buildPlot(title), width);
 	}
 	
-	// these are tuned to match the default font sizes
-	private static final int cpt_height = 85;
-	private static final int legend_height = 20;
-	private static final int title_height = 30;
-	private static final int vert_buffer = 70;
-	private static final int horz_buffer = 95;
-	
 	public void plot(File outputDir, String prefix, PlotSpec spec) throws IOException {
 		plot(outputDir, prefix, spec, 800);
 	}
 	
 	public void plot(File outputDir, String prefix, PlotSpec spec, int width) throws IOException {
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(24);
-		gp.setPlotLabelFontSize(24);
-		gp.setBackgroundColor(Color.WHITE);
+		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		
 		Range xRange = getXRange();
 		Range yRange = getYRange();
@@ -451,27 +441,10 @@ public class RupSetMapMaker {
 			tick = 0.5d;
 		else
 			tick = 0.2;
-		TickUnits tus = new TickUnits();
-		TickUnit tu = new NumberTickUnit(tick);
-		tus.add(tu);
-		gp.getXAxis().setStandardTickUnits(tus);
-		gp.getYAxis().setStandardTickUnits(tus);
+		PlotUtils.setXTick(gp, tick);
+		PlotUtils.setYTick(gp, tick);
 		
-		int chartWidth = width - horz_buffer;
-		int chartHeight = (int)(chartWidth * yRange.getLength()/xRange.getLength());
-		int height = chartHeight + vert_buffer;
-		if (spec.getTitle() != null && !spec.getTitle().isEmpty())
-			height += title_height;
-		if (spec.isLegendVisible())
-			height += legend_height;
-		if (spec.getSubtitles() != null)
-			height += cpt_height*spec.getSubtitles().size();
-		
-		File file = new File(outputDir, prefix);
-		gp.getChartPanel().setSize(width, height);
-		gp.saveAsPNG(file.getAbsolutePath()+".png");
-		if (writePDFs)
-			gp.saveAsPDF(file.getAbsolutePath()+".pdf");
+		PlotUtils.writePlots(outputDir, prefix, gp, width, -1, true, writePDFs, false);
 	}
 
 }

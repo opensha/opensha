@@ -129,7 +129,7 @@ public class CoulombSectRatioProb implements RuptureProbabilityCalc {
 	 * @author kevin
 	 *
 	 */
-	static class HighestNTracker {
+	public static class HighestNTracker {
 		private int numProcessed = 0;
 		double sum = 0d;
 		private double smallestHigh = Double.POSITIVE_INFINITY;

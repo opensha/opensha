@@ -5,9 +5,11 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -26,29 +28,14 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.ParentCoulombCompatibilityFilter.Directionality;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.NucleationClusterEvaluator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CoulombSectRatioProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeCoulombProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeSlipRateProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.ClusterCoulombPathEvaluator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativePenaltyFilter.*;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.AdaptiveDistCutoffClosestSectClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptivePermutationStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsPermutationStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveClusterPermuationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FilterDataClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader.GeoSlipRateRecord;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -883,7 +870,7 @@ public class ClusterRuptureBuilder {
 		
 	}
 	
-	private static int[] loadRupString(String rupStr, boolean parents) {
+	public static int[] loadRupString(String rupStr, boolean parents) {
 		Preconditions.checkState(rupStr.contains("["));
 		List<Integer> ids = new ArrayList<>();
 		while (rupStr.contains("[")) {
@@ -992,13 +979,13 @@ public class ClusterRuptureBuilder {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
 		
 		// for UCERF3 fault models
-		FaultModels fm = FaultModels.FM3_1;
-		String fmPrefix = fm.encodeChoiceString().toLowerCase();
-		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
-		DeformationModels dm = fm.getFilterBasis();
-		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
-		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
-		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
+//		FaultModels fm = FaultModels.FM3_1;
+//		String fmPrefix = fm.encodeChoiceString().toLowerCase();
+//		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
+//		DeformationModels dm = fm.getFilterBasis();
+//		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
+//		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
+//		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
 		// END U3
 		
 		// for NZ tests
@@ -1016,6 +1003,46 @@ public class ClusterRuptureBuilder {
 //		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
 //		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
 		// END NZ
+		
+		// NSHM23 tests
+		String state = null;
+		
+		String fmPrefix;
+		List<FaultSection> sects;
+		if (state == null) {
+			fmPrefix = "nshm23_v1_all";
+			sects = new ArrayList<>();
+			for (List<FaultSection> stateFaults : GeoJSONFaultReader.readFaultSections(
+					new File("/home/kevin/Downloads/NSHM2023_FaultSections_v1mod.geojson"), false).values())
+				sects.addAll(stateFaults);
+		} else {
+			fmPrefix = "nshm23_v1_"+state.toLowerCase();
+			sects = GeoJSONFaultReader.readFaultSections(
+					new File("/home/kevin/Downloads/NSHM2023_FaultSections_v1mod.geojson"), true).get(state);
+		}
+		Collections.sort(sects, new Comparator<FaultSection>() {
+
+			@Override
+			public int compare(FaultSection o1, FaultSection o2) {
+				return o1.getSectionName().compareTo(o2.getSectionName());
+			}
+		});
+		
+		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
+		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
+		System.out.println("Loaded "+sects.size()+" sections");
+		// add slip rates
+		Map<Integer, List<GeoSlipRateRecord>> slipRates = GeoJSONFaultReader.readGeoDB(
+				new File("/home/kevin/Downloads/NSHM2023_EQGeoDB_v1.geojson"));
+		List<FaultSection> fallbacks = new ArrayList<>();
+		fallbacks.addAll(FaultModels.FM3_1.fetchFaultSections());
+		fallbacks.addAll(FaultModels.FM3_2.fetchFaultSections());
+		GeoJSONFaultReader.testMapSlipRates(sects, slipRates, 1d, fallbacks);
+		List<FaultSection> subSects = new ArrayList<>();
+		for (FaultSection sect : sects)
+			subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
+		System.out.println("Built "+subSects.size()+" subsections");
+		// END NSHM23
 		
 		RupDebugCriteria debugCriteria = null;
 		boolean stopAfterDebug = false;
@@ -1121,7 +1148,7 @@ public class ClusterRuptureBuilder {
 		 * =============================
 		 */
 		// build stiffness calculator (used for new Coulomb)
-		double stiffGridSpacing = 1d;
+		double stiffGridSpacing = 2d;
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
 				subSects, stiffGridSpacing, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
 		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
@@ -1204,7 +1231,7 @@ public class ClusterRuptureBuilder {
 		ClusterConnectionStrategy connectionStrategy =
 			new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
 					PlausibleClusterConnectionStrategy.JUMP_SELECTOR_DEFAULT, connFilters);
-		outputName += "_plausible"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
+		outputName += "_plausibleMulti"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
 		connectionStrategy.checkBuildThreaded(threads);
 		System.out.println("DONE building plausible connections");
 		

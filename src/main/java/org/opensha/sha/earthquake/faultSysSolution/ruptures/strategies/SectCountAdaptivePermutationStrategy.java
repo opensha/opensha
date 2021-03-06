@@ -239,9 +239,10 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 			}
 			FaultSection lastSect = cluster.subSects.get(newSize-1);
 			int lastID = lastSect.getSectionId();
-			if (lastID == fullCluster.subSects.get(0).getSectionId()
-					|| lastID == fullCluster.subSects.get(fullSize-1).getSectionId()) {
+//			if (lastID == fullCluster.subSects.get(0).getSectionId()
+//					|| lastID == fullCluster.subSects.get(fullSize-1).getSectionId()) {
 				// pass if this cluster ends at either the start or end of the full cluster
+			if (lastID == fullCluster.subSects.get(fullSize-1).getSectionId()) {
 				if (verbose)
 					System.out.println(getShortName()+": passes because "+lastID
 							+" is a cluster end (fullCluster="+fullCluster+")");

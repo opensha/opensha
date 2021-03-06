@@ -84,18 +84,18 @@ public class RelativeCoulombProb extends AbstractRelativeProb {
 	}
 
 	@Override
-	protected double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
+	public double calcAdditionValue(ClusterRupture fullRupture, Collection<? extends FaultSection> currentSects,
 			PathAddition addition) {
 		return aggCalc.calc(currentSects, addition.toSects);
 	}
 
 	@Override
-	protected boolean isAddFullClusters() {
+	public boolean isAddFullClusters() {
 		return !sectBySect;
 	}
 
 	@Override
-	protected PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
+	public PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
 		if (jumpToMostFavorable)
 			return new CoulombFavorableSectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator(),
 					aggCalc, Range.atLeast(0f), distAzCalc, maxJumpDist);
@@ -103,7 +103,7 @@ public class RelativeCoulombProb extends AbstractRelativeProb {
 	}
 
 	@Override
-	protected PathAddition targetJumpToAddition(Collection<? extends FaultSection> curSects,
+	public PathAddition targetJumpToAddition(Collection<? extends FaultSection> curSects,
 			PathAddition testAddition, Jump alternateJump) {
 		if (jumpToMostFavorable) {
 			Preconditions.checkState(sectBySect);

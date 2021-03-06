@@ -1,9 +1,11 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -22,6 +24,12 @@ public class ConnectionPointsPermutationStrategy implements ClusterPermutationSt
 	@Override
 	public List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
 			FaultSection firstSection) {
+		return getPermutations(null, fullCluster, firstSection);
+	}
+
+	@Override
+	public List<FaultSubsectionCluster> getPermutations(ClusterRupture currentRupture,
+			FaultSubsectionCluster fullCluster, FaultSection firstSection) {
 		List<FaultSection> clusterSects = fullCluster.subSects;
 		int myInd = fullCluster.subSects.indexOf(firstSection);
 		Preconditions.checkState(myInd >= 0, "first section not found in cluster");
@@ -29,8 +37,30 @@ public class ConnectionPointsPermutationStrategy implements ClusterPermutationSt
 		newSects.add(firstSection);
 		
 		Set<FaultSection> exitPoints = fullCluster.getExitPoints();
+		if (currentRupture != null && !exitPoints.isEmpty()) {
+			// don't include connection points that only go to places already in this rupture
+			List<FaultSection> toRemove = new ArrayList<>();
+			for (FaultSection exit : exitPoints) {
+				boolean externalConnection = false;
+				for (Jump jump : fullCluster.getConnections(exit)) {
+					if (!currentRupture.contains(jump.toSection)) {
+						externalConnection = true;
+						break;
+					}
+				}
+				if (!externalConnection)
+					toRemove.add(exit);
+			}
+			if (!toRemove.isEmpty()) {
+				exitPoints = new HashSet<>(exitPoints);
+				for (FaultSection remove : toRemove)
+					exitPoints.remove(remove);
+			}
+		}
 		
 		List<FaultSubsectionCluster> permuations = new ArrayList<>();
+		if (exitPoints.contains(firstSection))
+			permuations.add(buildCopyJumps(fullCluster, newSects));
 		
 		// build toward the smallest ID
 		if (myInd > 0) {
