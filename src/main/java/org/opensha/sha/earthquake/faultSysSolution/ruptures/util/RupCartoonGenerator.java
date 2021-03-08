@@ -1337,11 +1337,11 @@ public class RupCartoonGenerator {
 		
 		connStrats.add(new PlausibleClusterConnectionStrategy(rupBuild.subSectsList, distAzCalc, maxDist, singleSelect, filters));
 		connPrefixes.add("conn_plausible_single");
-		connTitles.add("Path-Optimized, Plausibile, Single Connection");
+		connTitles.add("Path-Optimized, Plausible, Single Connection");
 		
 		connStrats.add(new PlausibleClusterConnectionStrategy(rupBuild.subSectsList, distAzCalc, maxDist, multiSelect, filters));
 		connPrefixes.add("conn_plausible_multi");
-		connTitles.add("Path-Optimized, Plausibile, Multiple Connections");
+		connTitles.add("Path-Optimized, Plausible, Multiple Connections");
 		
 		List<Jump> allPossibleJumps = new ArrayList<>();
 		PlausibleClusterConnectionStrategy all = new PlausibleClusterConnectionStrategy(rupBuild.subSectsList, distAzCalc, maxDist, allSelect, filters);
@@ -2368,7 +2368,7 @@ public class RupCartoonGenerator {
 				for (XY_DataSet xy : negFuncs.get(patch))
 					funcCharPairs.add(new Object[] { xy, negChar });
 			System.out.println("combined down to "+funcCharPairs.size()+" functions");
-			Collections.shuffle(funcCharPairs);
+			Collections.shuffle(funcCharPairs, new Random(funcCharPairs.size()));
 			
 			double val = aggCalc.calc(rupSects, rupSects);
 			long numPositive = (long)(val*numInts);
