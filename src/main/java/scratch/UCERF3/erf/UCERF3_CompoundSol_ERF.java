@@ -77,7 +77,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		File compoundFile = new File(storeDir, COMPOUND_FILE_NAME);
 		
 		// allow errors so that app doesn't crash if can't download
-		MeanUCERF3.checkDownload(compoundFile, true);
+		MeanUCERF3.checkDownload(compoundFile, false);
 		
 		if (!compoundFile.exists())
 			return null;
