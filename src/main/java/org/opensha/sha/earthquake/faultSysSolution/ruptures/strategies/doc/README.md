@@ -34,8 +34,9 @@ We now have options for adaptive ("thinned") permutation strategies that take th
 
 Finally, an extreme permutation strategy that only includes permutations that start and end at either fault ends or at connection points is included. This one is most useful for testing, and is shown on the right below.
 
-| ![Exhaustive](perm_strat_exhaustive.png) | ![Adaptive](perm_strat_adaptive.png) | ![Connection Points](perm_strat_conn_points.png) |
-|-----|-----|-----|
+| ![Exhaustive](perm_strat_exhaustive.png) | ![Adaptive](perm_strat_adaptive.png) |
+|-----|-----|
+| ![Connection Points](perm_strat_conn_points.png) |  |
 
 ### Bilateral Permutation Strategies
 
