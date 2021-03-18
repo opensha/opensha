@@ -1,6 +1,6 @@
 # Plausibility Filter Examples
 
-Example figures showing new proposed plausibility filters.
+Example figures showing plausibility filters.
 
 ## Relative Slip Rate Probability
 
@@ -42,4 +42,20 @@ This filter tests the far-field Coulomb compatibility of a rupture in order to f
 This filter prevents a rupture from taking a small excursion that could have been skipped on one fault and then immediately jumping back to another fault that was directly connected to the prior rupture. This case is encountered where a fault network branches. We want to be able to take both branches independently (if they pass other filters), but not both.
 
 ![No Indirect](indirect_demo.png)
+
+## Cumulative Azimuth Change
+
+This was a problematic UCERF3 filter, mostly because it doesn't quite do what the title suggests. Yes, it accumulates azimuth changes, but it also penalizes well mapped traces and stepovers. That's because azimuths are calculated between each pair of subsections. Consider a rupture with 4 subsections:
+
+`[0,1,2,3]`
+
+The cumulative azimuth would then be the sum of:
+
+`|Az[1->2] - Az[0->1]| + |Az[2->3] - Az[1->2]|`
+
+If a stepover exists between sections 1 and 2, then even if the faults are at at the same angle, there will be a large azimuth difference. See the top 2 panels of the example below.
+
+Additionnally, carefully mapped faults will acrue azimuth change where simple proxy faults will not, as can be seen in the bottom example.
+
+![Cumulative Azimuth](cumulative_azimuth.png)
 
