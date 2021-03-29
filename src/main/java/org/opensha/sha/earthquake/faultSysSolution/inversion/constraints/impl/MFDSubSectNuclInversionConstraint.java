@@ -11,7 +11,7 @@ import scratch.UCERF3.utils.SectionMFD_constraint;
 
 /**
  * MFD Subsection nucleation MFD constraint - constraints MFDs to conform to
- * an a priori section MFD. In UCERF3, we weekly constrained section MFDs to match
+ * an a priori section MFD. In UCERF3, we weakly constrained section MFDs to match
  * UCERF2.
  * 
  * @author Morgan Page & Kevin Milner
