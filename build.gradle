@@ -15,7 +15,6 @@ dependencies {
     testCompile 'junit:junit:4.12'
 }
 
-
 // The following section adds the new NSHM integration tests to the main 'test' task
 test {
 	// Uncomment the following to exclude slow tests (useful when modding this file.... 

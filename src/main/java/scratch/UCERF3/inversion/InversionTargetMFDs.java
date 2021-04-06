@@ -144,7 +144,12 @@ public class InversionTargetMFDs {
 	protected InversionTargetMFDs() {
 		//do nothing, this is here so subclasses can do their own setup
 	}		
-	
+
+	//=======
+	//	public InversionTargetMFDs() {
+	//		//do nothing this is here so subclasses can do their own setup
+	//>>>>>>> made these classes sub-classable for use outside California
+
 	/**
 	 * 
 	 * @param invRupSet

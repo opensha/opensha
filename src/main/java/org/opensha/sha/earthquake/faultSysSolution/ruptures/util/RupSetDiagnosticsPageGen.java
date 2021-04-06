@@ -753,6 +753,7 @@ public class RupSetDiagnosticsPageGen {
 					headings.add(null);
 				else
 					headings.add("From the primary rupture set ("+inputName+"):");
+
 				scalarValsList.add(inputScalars.getValues());
 				
 				prefixes.add("hist_rup");
