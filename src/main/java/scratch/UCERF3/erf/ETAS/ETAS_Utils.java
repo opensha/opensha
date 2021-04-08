@@ -3146,7 +3146,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 		StirlingGriddedSurface surf = new StirlingGriddedSurface(trace, aveDip, rupTopDepth,
 				rupBotDepth, 1.0);
 		
-		double distTest = LocationUtils.distanceToSurf(hypLoc, surf);
+		double distTest = LocationUtils.distanceToSurfFast(hypLoc, surf);
 		if(distTest>2.0) {
 			System.out.println("distTest Problem: "+distTest);
 			System.out.println("Mag at Problem: "+mag);

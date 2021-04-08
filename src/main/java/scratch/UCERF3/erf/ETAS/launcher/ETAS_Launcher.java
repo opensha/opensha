@@ -84,6 +84,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxPointSourceMagParam;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.ETAS_Simulator_NoFaults;
 import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
@@ -184,8 +185,8 @@ public class ETAS_Launcher {
 		if (config.isGriddedOnly()) {
 			if (config.isGridSeisCorr())
 				debug(DebugLevel.INFO, "WARNING: grid seis correction not applied in gridded only case");
-			Preconditions.checkState(config.getTotRateScaleFactor() == 1,
-					"Total rate scale factor for fault-based ETAS (for now, we don't know the appropriate value for gridded only");
+//			Preconditions.checkState(config.getTotRateScaleFactor() == 1,
+//					"Total rate scale factor for fault-based ETAS (for now, we don't know the appropriate value for gridded only");
 		}
 		params.setApplyGridSeisCorr(config.isGridSeisCorr() && !config.isGriddedOnly());
 		params.setApplySubSeisForSupraNucl(config.isApplySubSeisForSupraNucl());
@@ -217,7 +218,11 @@ public class ETAS_Launcher {
 			debug(DebugLevel.INFO, "No maximum point source mag specified, disabling");
 			params.setMaxPointSourceMag(U3ETAS_MaxPointSourceMagParam.MAX);
 		}
-		params.setStatewideCompletenessModel(config.getCompletenessModel());
+		if (config.getCompletenessModel() != null) {
+			if (config.getCompletenessModel() != U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE)
+				debug(DebugLevel.INFO, "Setting completeness model: "+config.getCompletenessModel().name());
+			params.setStatewideCompletenessModel(config.getCompletenessModel());
+		}
 		
 		lastEventData = LastEventData.load();
 		resetSubSectsMap = new HashMap<>();
@@ -379,6 +384,10 @@ public class ETAS_Launcher {
 	public ETAS_EqkRupture getRuptureForTrigger(TriggerRupture trigger) {
 		getTriggerRuptures(); // force initialization
 		return triggerRupturesMap.get(trigger);
+	}
+	
+	public ETAS_ParameterList getETAS_Params() {
+		return params;
 	}
 
 	public synchronized List<ETAS_EqkRupture> getHistQkList() {

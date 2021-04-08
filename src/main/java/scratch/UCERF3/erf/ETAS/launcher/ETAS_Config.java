@@ -155,14 +155,18 @@ public class ETAS_Config {
 	}
 	
 	public void buildDefaultBinaryOutputFilters() {
-		binaryOutputFilters = new ArrayList<>();
-		binaryOutputFilters.add(
-				new BinaryFilteredOutputConfig("results_complete", null, null, false));
-		binaryOutputFilters.add(
-				new BinaryFilteredOutputConfig("results_m5_preserve_chain", 5d, true, false));
-		if (includeSpontaneous && hasTriggers())
+		if (binaryOutput) {
+			binaryOutputFilters = new ArrayList<>();
 			binaryOutputFilters.add(
-					new BinaryFilteredOutputConfig("results_triggered_descendants", null, null, true));
+					new BinaryFilteredOutputConfig("results_complete", null, null, false));
+			binaryOutputFilters.add(
+					new BinaryFilteredOutputConfig("results_m5_preserve_chain", 5d, true, false));
+			if (includeSpontaneous && hasTriggers())
+				binaryOutputFilters.add(
+						new BinaryFilteredOutputConfig("results_triggered_descendants", null, null, true));
+		} else {
+			binaryOutputFilters = null;
+		}
 	}
 	
 	private static Gson buildGson(boolean resolvePaths, boolean skipTriggers) {
@@ -1080,6 +1084,10 @@ public class ETAS_Config {
 	
 	public U3_EqkCatalogStatewideCompleteness getCompletenessModel() {
 		return catalogCompletenessModel;
+	}
+	
+	public void setCompletenessModel(U3_EqkCatalogStatewideCompleteness catalogCompletenessModel) {
+		this.catalogCompletenessModel = catalogCompletenessModel;
 	}
 	
 	public void setComcatMetadata(ComcatMetadata comcatMetadata) {

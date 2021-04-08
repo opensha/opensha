@@ -36,10 +36,12 @@ import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxPointSourceMagParam;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.KML_RuptureLoader.KML_Node;
 import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
 public class ETAS_ConfigBuilder {
 	
@@ -130,6 +132,14 @@ public class ETAS_ConfigBuilder {
 		Option nameAddOption = new Option("na", "name-add", true, "Custom addendum to automatically generated name");
 		nameAddOption.setRequired(false);
 		ops.addOption(nameAddOption);
+
+		Option asciiOption = new Option("ascii", "ascii-output", false, "Flag to force ASCII output.");
+		asciiOption.setRequired(false);
+		ops.addOption(asciiOption);
+
+		Option binaryOption = new Option("binary", "binary-output", false, "Flag to force binary output.");
+		binaryOption.setRequired(false);
+		ops.addOption(binaryOption);
 		
 		/*
 		 * Simulation parameters
@@ -194,6 +204,12 @@ public class ETAS_ConfigBuilder {
 		grOption.setRequired(false);
 		ops.addOption(grOption);
 		
+		Option completenessOption = new Option("cm", "completeness-model", true,
+				"Statewide magnitude-of-completeness model. One of [STRICT, RELAXED]. Default: "
+						+U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE);
+		completenessOption.setRequired(false);
+		ops.addOption(completenessOption);
+		
 		Option maxPtSrcMagOption = new Option("ptm", "max-point-src-mag", true,
 				"Maximum magnitude for point source ruptures. Random finite rupture surfaces will be assigned above "
 				+ "this threshold. (DEFAULT: "+U3ETAS_MaxPointSourceMagParam.DEFAULT_VALUE.floatValue()+")");
@@ -248,6 +264,12 @@ public class ETAS_ConfigBuilder {
 			ops.add("Impose G-R");
 		if (cmd.hasOption("max-point-src-mag"))
 			ops.add("MaxPtSrcM="+cmd.getOptionValue("max-point-src-mag"));
+		if (cmd.hasOption("completeness-model")) {
+			U3_EqkCatalogStatewideCompleteness completeness = U3_EqkCatalogStatewideCompleteness.valueOf(
+					cmd.getOptionValue("completeness-model"));
+			if (completeness != U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE)
+				ops.add("Completeness="+completeness.name());
+		}
 		
 		if (fm != FM_DEFAULT)
 			ops.add(fm.getShortName());
@@ -255,12 +277,13 @@ public class ETAS_ConfigBuilder {
 			ops.add("No Faults");
 		if (probModel != PROB_MODEL_DEFAULT && !griddedOnly)
 			ops.add(probModel.toString());
-		if (cmd.hasOption("scale-factor") && (float)scaleFactor != probModelScaleMap.get(probModel).floatValue())
-			ops.add("Scale Factor "+(float)scaleFactor);
-		if (cmd.hasOption("include-spontaneous"))
+		boolean spont = cmd.hasOption("include-spontaneous");
+		if (cmd.hasOption("scale-factor") && (float)scaleFactor != probModelScaleMap.get(probModel).floatValue() && spont)
+			ops.add("Scale "+(float)scaleFactor);
+		if (spont)
 			ops.add("Spontaneous");
 		if (cmd.hasOption("historical-catalog"))
-			ops.add("Historical Catalog");
+			ops.add("Hist Catalog");
 		
 		return ops;
 	}
@@ -354,6 +377,17 @@ public class ETAS_ConfigBuilder {
 		config.setETAS_P(p);
 		config.setETAS_K_COV(kCOV);
 		config.setMaxPointSourceMag(maxPtSrcMag);
+		if (cmd.hasOption("completeness-model"))
+			config.setCompletenessModel(U3_EqkCatalogStatewideCompleteness.valueOf(cmd.getOptionValue("completeness-model")));
+		
+		if (cmd.hasOption("binary-output")) {
+			Preconditions.checkArgument(!cmd.hasOption("ascii-output"), "Can't specify both binary and ASCII output");
+			config.setBinaryOutput(true);
+			config.buildDefaultBinaryOutputFilters();
+		} else if (cmd.hasOption("ascii-output")) {
+			config.setBinaryOutput(false);
+			config.setBinaryOutputFilters(null);
+		}
 		
 		return config;
 	}
@@ -611,41 +645,49 @@ public class ETAS_ConfigBuilder {
 			String argz = "";
 
 //			argz += " --start-year 1919";
-			argz += " --start-year 2020";
+//			argz += " --start-year 2020";
 //			argz += " --num-simulations 100000";
-			argz += " --num-simulations 25000";
-			argz += " --duration-years 1";
+//			argz += " --num-simulations 25000";
+//			argz += " --duration-years 1";
 //			argz += " --num-simulations 10000";
 //			argz += " --duration-years 10";
+			argz += " --start-year 2012";
+			argz += " --num-simulations 100";
+			argz += " --duration-years 500";
 			
 //			argz += " --num-simulations 1";
 //			argz += " --duration-years 100";
 			
-//			argz += " --gridded-only";
+			argz += " --gridded-only";
 //			argz += " --prob-model NO_ERT";
-//			argz += " --include-spontaneous";
-//			argz += " --historical-catalog";
+			argz += " --include-spontaneous";
+			argz += " --historical-catalog";
 //			argz += " --etas-k-cov 1.16";
 //			argz += " --etas-k-cov 1.5";
+//			argz += " --max-point-src-mag 6";
 			
 //			argz += " --etas-k -2.31 --etas-p 1.08 --etas-c 0.04";
 //			argz += " --scale-factor 1.1338";
-//			argz += " --scale-factor 1.0";
+//			argz += " --scale-factor 1.29"; // new FullTD default
+//			argz += " --scale-factor 1.16"; // new NoERT default
+			argz += " --scale-factor 1.2"; // new NoFaults default
+			argz += " --name-add ASCII";
+			argz += " --ascii-output";
 //			argz += " --scale-factor 1.212";
 			
 //			argz += " --random-seed 123456789";
 			
-			argz += " --magnitude 7";
-			argz += " --latitude 34.695";
-			argz += " --depth 5";
-//			argz += " --longitude -118.5";
-//			argz += " --name M7OnSAF";
-			argz += " --longitude -117.7";
-			argz += " --name M7AwaySAF";
+//			argz += " --magnitude 7";
+//			argz += " --latitude 34.695";
+//			argz += " --depth 5";
+////			argz += " --longitude -118.5";
+////			argz += " --name M7OnSAF";
+//			argz += " --longitude -117.7";
+//			argz += " --name M7AwaySAF";
 			
 			// hpc options
 			argz += " --hpc-site USC_HPC";
-			argz += " --nodes 36";
+			argz += " --nodes 12";
 			argz += " --hours 24";
 //			argz += " --queue scec_hiprio";
 			argz += " --queue scec";

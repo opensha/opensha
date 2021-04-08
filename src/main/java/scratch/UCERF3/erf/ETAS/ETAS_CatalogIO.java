@@ -609,7 +609,7 @@ public class ETAS_CatalogIO {
 
 		for (int i=0; i<numCatalogs; i++) {
 			catalogs.add(doLoadCatalogBinary(in, minMag));
-			if ((i+1) % printMod == 0)
+			if ((i+1) % printMod == 0 && i < numCatalogs)
 				System.out.println("Loaded "+(i+1)+"/"+numCatalogs+" catalogs (and counting)...");
 		}
 		System.out.println("Loaded "+catalogs.size()+" catalogs");
