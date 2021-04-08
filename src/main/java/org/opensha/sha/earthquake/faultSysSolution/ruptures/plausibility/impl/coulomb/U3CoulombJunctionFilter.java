@@ -136,67 +136,71 @@ public class U3CoulombJunctionFilter implements PlausibilityFilter {
 		}
 	}
 	
+	public CoulombRatesRecord calculateFallbackCoulombRates(IDPairing pair) {
+		// calculate it ourselves
+		Preconditions.checkNotNull(connStrat, "have stiffness calculator but not connection strategy");
+		List<? extends FaultSection> subSects = cffCalc.getCalc().getSubSects();
+		double ds=0, pds=0, dcff=0, pdcff=0;
+		StiffnessType[] types;
+		switch (tester.getTestType()) {
+		case COULOMB_STRESS:
+			types = new StiffnessType[] { StiffnessType.CFF };
+			break;
+		case SHEAR_STRESS:
+			types = new StiffnessType[] { StiffnessType.TAU };
+			break;
+		default:
+			types = new StiffnessType[] { StiffnessType.TAU, StiffnessType.CFF };
+			break;
+		}
+		for (StiffnessType type : types) {
+			AggregatedStiffnessCalculator stiffnessCalc = type == StiffnessType.CFF ? cffCalc : tauCalc;
+			Preconditions.checkNotNull(type, "Don't have a stiffness calculator for %s", type);
+			FaultSection source = subSects.get(pair.getID1());
+			Preconditions.checkState(source.getSectionId() == pair.getID1());
+			FaultSection receiver = subSects.get(pair.getID2());
+			Preconditions.checkState(receiver.getSectionId() == pair.getID2());
+			// stiffness calculator uses 1m displacement and gives results in MPa
+			// CoulombRuptureRates assumes 0.1m displacement and bars
+			// these two cancel out exactly (multiply by 0.1 to fix displacement, then by 10 to fix units)
+			double val = Math.max(0, stiffnessCalc.calc(source, receiver));
+			// scalar to correct for method differences
+			// median ratio of the value calculated previously divided by that calculated from our method
+			val *= 1.5945456137624658;
+			// now calculate pdcff, first by summing across all DCFF values
+			double sum = val;
+			// check other possible connecting sections
+			for (Jump jump : connStrat.getJumpsFrom(source)) {
+				if (jump.toCluster.parentSectionID != receiver.getParentSectionId()) {
+					// it's to a different parent section, include it
+					sum += Math.max(0, stiffnessCalc.calc(source, jump.toSection));
+				}
+			}
+			// check neighbors on the same fault
+			if (source.getSectionId() > 0 && source.getParentSectionId() == subSects.get(source.getSectionId()-1).getParentSectionId())
+				// section before is a target
+				sum += Math.max(0, stiffnessCalc.calc(source, subSects.get(source.getSectionId()-1)));
+			if (source.getSectionId() < subSects.size()-1 && source.getParentSectionId() == subSects.get(source.getSectionId()+1).getParentSectionId())
+				sum += Math.max(0, stiffnessCalc.calc(source, subSects.get(source.getSectionId()+1)));
+			double prob = sum > 0 ? val/sum : 0;
+			if (type == StiffnessType.CFF) {
+				dcff = val;
+				pdcff = prob;
+			} else {
+				ds = val;
+				pds = prob;
+			}
+		}
+		return new CoulombRatesRecord(pair, ds, pds, dcff, pdcff);
+	}
+	
 	private CoulombRatesRecord getCoulombRates(IDPairing pair) {
 		CoulombRatesRecord rates;
 		synchronized (this) {
 			rates = coulombRates.get(pair);
 		}
 		if (rates == null && (cffCalc != null || tauCalc != null)) {
-			// calculate it ourselves
-			Preconditions.checkNotNull(connStrat, "have stiffness calculator but not connection strategy");
-			List<? extends FaultSection> subSects = cffCalc.getCalc().getSubSects();
-			double ds=0, pds=0, dcff=0, pdcff=0;
-			StiffnessType[] types;
-			switch (tester.getTestType()) {
-			case COULOMB_STRESS:
-				types = new StiffnessType[] { StiffnessType.CFF };
-				break;
-			case SHEAR_STRESS:
-				types = new StiffnessType[] { StiffnessType.TAU };
-				break;
-			default:
-				types = new StiffnessType[] { StiffnessType.TAU, StiffnessType.CFF };
-				break;
-			}
-			for (StiffnessType type : types) {
-				AggregatedStiffnessCalculator stiffnessCalc = type == StiffnessType.CFF ? cffCalc : tauCalc;
-				Preconditions.checkNotNull(type, "Don't have a stiffness calculator for %s", type);
-				FaultSection source = subSects.get(pair.getID1());
-				Preconditions.checkState(source.getSectionId() == pair.getID1());
-				FaultSection receiver = subSects.get(pair.getID2());
-				Preconditions.checkState(receiver.getSectionId() == pair.getID2());
-				// stiffness calculator uses 1m displacement and gives results in MPa
-				// CoulombRuptureRates assumes 0.1m displacement and bars
-				// these two cancel out exactly (multiply by 0.1 to fix displacement, then by 10 to fix units)
-				double val = Math.max(0, stiffnessCalc.calc(source, receiver));
-				// scalar to correct for method differences
-				// median ratio of the value calculated previously divided by that calucated from our method
-				val *= 1.5945456137624658;
-				// now calculate pdcff, first by summing across all DCFF values
-				double sum = val;
-				// check other possible connecting sections
-				for (Jump jump : connStrat.getJumpsFrom(source)) {
-					if (jump.toCluster.parentSectionID != receiver.getParentSectionId()) {
-						// it's to a different parent section, include it
-						sum += Math.max(0, stiffnessCalc.calc(source, jump.toSection));
-					}
-				}
-				// check neighbors on the same fault
-				if (source.getSectionId() > 0 && source.getParentSectionId() == subSects.get(source.getSectionId()-1).getParentSectionId())
-					// section before is a target
-					sum += Math.max(0, stiffnessCalc.calc(source, subSects.get(source.getSectionId()-1)));
-				if (source.getSectionId() < subSects.size()-1 && source.getParentSectionId() == subSects.get(source.getSectionId()+1).getParentSectionId())
-					sum += Math.max(0, stiffnessCalc.calc(source, subSects.get(source.getSectionId()+1)));
-				double prob = sum > 0 ? val/sum : 0;
-				if (type == StiffnessType.CFF) {
-					dcff = val;
-					pdcff = prob;
-				} else {
-					ds = val;
-					pds = prob;
-				}
-			}
-			rates = new CoulombRatesRecord(pair, ds, pds, dcff, pdcff);
+			rates = calculateFallbackCoulombRates(pair);
 			synchronized (this) {
 				coulombRates.put(pair, rates);
 			}
