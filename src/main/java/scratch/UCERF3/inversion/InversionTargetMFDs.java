@@ -13,7 +13,6 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.magdist.TaperedGR_MagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -98,30 +97,34 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
 public class InversionTargetMFDs {
 	
 	// debugging flag
-	final static boolean D = false;
+	protected final static boolean D = false;
 	final static boolean GR_OFF_FAULT_IS_TAPERED = true;
-	String debugString;
+	protected String debugString;
 	
-	InversionFaultSystemRupSet invRupSet;
-	double totalRegionRateMgt5, onFaultRegionRateMgt5, offFaultRegionRateMgt5;
-	double mMaxOffFault;
-	boolean applyImpliedCouplingCoeff;
-	SpatialSeisPDF spatialSeisPDF;
-	SpatialSeisPDF spatialSeisPDFforOnFaultRates;
-	InversionModels inversionModel;
-	GriddedSeisUtils gridSeisUtils;
+	protected InversionFaultSystemRupSet invRupSet;
+	protected double totalRegionRateMgt5;
+	protected double onFaultRegionRateMgt5;
+	protected double offFaultRegionRateMgt5;
+	protected double mMaxOffFault;
+	protected boolean applyImpliedCouplingCoeff;
+	protected SpatialSeisPDF spatialSeisPDF;
+	protected SpatialSeisPDF spatialSeisPDFforOnFaultRates;
+	protected InversionModels inversionModel;
+	protected GriddedSeisUtils gridSeisUtils;
 	
-	double origOnFltDefModMoRate, offFltDefModMoRate, aveMinSeismoMag, roundedMmaxOnFault;
+	protected double origOnFltDefModMoRate, offFltDefModMoRate, aveMinSeismoMag, roundedMmaxOnFault;
 	double fractSeisInSoCal;
-	double fractionSeisOnFault;
-	double impliedOnFaultCouplingCoeff;
-	double impliedTotalCouplingCoeff;
-	double finalOffFaultCouplingCoeff;
-	GutenbergRichterMagFreqDist totalTargetGR, totalTargetGR_NoCal, totalTargetGR_SoCal;
-	SummedMagFreqDist targetOnFaultSupraSeisMFD;
-	IncrementalMagFreqDist trulyOffFaultMFD;
-	ArrayList<GutenbergRichterMagFreqDist> subSeismoOnFaultMFD_List;
-	SummedMagFreqDist totalSubSeismoOnFaultMFD;		// this is a sum of the MFDs in subSeismoOnFaultMFD_List
+	protected double fractionSeisOnFault;
+	protected double impliedOnFaultCouplingCoeff;
+	protected double impliedTotalCouplingCoeff;
+	protected double finalOffFaultCouplingCoeff;
+	protected GutenbergRichterMagFreqDist totalTargetGR;
+	protected SummedMagFreqDist targetOnFaultSupraSeisMFD;
+	protected IncrementalMagFreqDist trulyOffFaultMFD;
+	protected ArrayList<GutenbergRichterMagFreqDist> subSeismoOnFaultMFD_List;
+	protected SummedMagFreqDist totalSubSeismoOnFaultMFD;		// this is a sum of the MFDs in subSeismoOnFaultMFD_List
+
+	GutenbergRichterMagFreqDist totalTargetGR_NoCal, totalTargetGR_SoCal;
 	IncrementalMagFreqDist noCalTargetSupraMFD, soCalTargetSupraMFD;
 
 	
@@ -135,10 +138,15 @@ public class InversionTargetMFDs {
 	
 	public final static double FAULT_BUFFER = 12d;	// buffer for fault polygons
 
-
+	/**
+	 * Implicit constructor required for subclassing
+	 */
+	protected InversionTargetMFDs() {
+		//do nothing, this is here so subclasses can do their own setup
+	}		
+	
 	/**
 	 * 
-	 * @param invRupSet
 	 * @param invRupSet
 	 */
 	public InversionTargetMFDs(InversionFaultSystemRupSet invRupSet) {
@@ -215,7 +223,6 @@ public class InversionTargetMFDs {
 //		System.out.println("\ntempMag="+tempMag+"\n");
 		
 		aveMinSeismoMag = totalTargetGR.getX(totalTargetGR.getClosestXIndex(tempMag));	// round to nearest MFD value
-
 
 		if(D) {
 			debugString = "\ttotalRegionRateMgt5 =\t"+totalRegionRateMgt5+"\n"+

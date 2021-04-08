@@ -12,7 +12,7 @@ public class JumpAzimuthChangeFilterTests {
         JumpDataMock data = new JumpDataMock(new double[]{fromAzimuth}, Double.MAX_VALUE, new double[]{toAzimuth});
 
         JumpAzimuthChangeFilter jumpFilter = new JumpAzimuthChangeFilter(data.calc, threshold);
-        return jumpFilter.testJump(data.rupture, data.jump, false);
+        return jumpFilter.apply(data.rupture, false);
     }
 
     @Test
@@ -21,7 +21,7 @@ public class JumpAzimuthChangeFilterTests {
         assertEquals(PlausibilityResult.PASS, jump(50, 50, 60));
         assertEquals(PlausibilityResult.PASS, jump(0, 60, 60));
         assertEquals(PlausibilityResult.PASS, jump(-45, 270, 60));
-        assertEquals(PlausibilityResult.FAIL_HARD_STOP, jump(180, 60, 60));
+        assertEquals(PlausibilityResult.FAIL_FUTURE_POSSIBLE, jump(180, 60, 60));
     }
 
     @Test

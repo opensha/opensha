@@ -23,6 +23,8 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -119,9 +121,47 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	private Map<IDPairing, Double> subSectionDistances;
 
 	public final static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6.0;
-	private double[] minMagForSectArray;
+	protected double[] minMagForSectArray; //TODO: this is only used in one method, which we need to override in NSHM. 
 	private boolean[] isRupBelowMinMagsForSects;
 
+ 	/**
+ 	 * Create a new InversionFaultSystemRupSet for the given rupture set & branch.
+ 	 * 
+ 	 * @param rupSet
+ 	 * @param branch
+ 	 */
+ 	@SuppressWarnings("unused")
+	public InversionFaultSystemRupSet(FaultSystemRupSet rupSet, LogicTreeBranch branch) {
+		super(branch.getValue(SlipAlongRuptureModels.class));
+		setLogicTreeBranch(branch);
+		setParamsFromBranch(branch);		
+		init(rupSet);
+		
+		/*
+		 * TODO: 
+		 *  - perhaps we have a rupture set with no cluster_ruptures.json?
+		 *  - Or maybe we just want to recompute? 
+		 * 
+		 * Beware, there's a lot going on in this class and the other constructors
+		 * are quite different.
+		 * 
+		 * As I did this first and got it working, I decided to leave this here for now - CBC.
+		 * 
+		 */
+		if (rupSet.getClusterRuptures() == null) {
+			 SectionDistanceAzimuthCalculator distCalc = rupSet.getPlausibilityConfiguration().getDistAzCalc(); 
+			 double maxDist = rupSet.getPlausibilityConfiguration().getConnectionStrategy().getMaxJumpDist();
+			 boolean cumulativeJumps = true;
+			 RuptureConnectionSearch search = new RuptureConnectionSearch(
+					 rupSet,
+					 distCalc, maxDist, cumulativeJumps); 
+			 buildClusterRups(search);
+		} else {
+			// When we have a rupset loaded from disk with cluster_ruptures.json, this should be enough...
+			setClusterRuptures(rupSet.getClusterRuptures()); 			
+		}
+	}		
+	
 	/**
 	 * This creates a new InversionFaultSystemRupSet for the given cluster list, which may or may have been
 	 * generated with this deformation model (but needs to be generated with this fault model!).

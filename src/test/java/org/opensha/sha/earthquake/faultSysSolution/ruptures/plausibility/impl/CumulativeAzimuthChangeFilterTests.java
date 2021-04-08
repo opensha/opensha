@@ -11,7 +11,7 @@ public class CumulativeAzimuthChangeFilterTests {
         JumpDataMock data = new JumpDataMock(fromAzimuths, jumpAzimuth, toAzimuths);
 
         CumulativeAzimuthChangeFilter jumpFilter = new CumulativeAzimuthChangeFilter(data.calc, threshold);
-        return jumpFilter.apply(data.rupture.take(data.jump), false);
+        return jumpFilter.apply(data.rupture, false);
     }
 
     @Test

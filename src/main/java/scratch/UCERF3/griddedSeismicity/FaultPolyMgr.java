@@ -58,8 +58,7 @@ public class FaultPolyMgr implements Iterable<Area> {
 	private Map<Integer, Double> nodeExtents;
 	private Map<Integer, Double> sectExtents;
 
-	private static GriddedRegion region = new CaliforniaRegions.RELM_TESTING_GRIDDED();
-
+	private GriddedRegion region;
 	private FaultPolyMgr() {}
 	
 	/**
@@ -175,20 +174,59 @@ public class FaultPolyMgr implements Iterable<Area> {
 	 * @param fspd {@code FaultSectionPrefData} to initialize manager with
 	 * @param buf additional buffer around fault trace to include in polygon in
 	 *        km on either side of fault; may be {@code null}
+	 * @param region {@code GriddedRegion} to override the default California        
 	 * @return a reference to the newly minted manager
 	 */
-	public static FaultPolyMgr create(List<? extends FaultSection> fspd, Double buf) {
+	public static FaultPolyMgr create(List<? extends FaultSection> fspd, Double buf, GriddedRegion region) {
 		FaultPolyMgr mgr = new FaultPolyMgr();
 		if (log) System.out.println("Building poly mgr...");
 		if (log) System.out.println("   section polygons");
+		mgr.region = region;
 		mgr.polys = SectionPolygons.create(fspd, buf, null);
 		mgr.init();
 		return mgr;
 	}
 	
 	/**
+	 * Create a fault polygon manager from a list of {@code FaultSectionPrefData}.
+	 * This method assumes that  of which references the polygon of it's parent fault.
+	 * @param fspd {@code FaultSectionPrefData} to initialize manager with
+	 * @param buf additional buffer around fault trace to include in polygon in
+	 *        km on either side of fault; may be {@code null}
+	 * @return a reference to the newly minted manager
+	 */	
+	public static FaultPolyMgr create(List<? extends FaultSection> fspd, Double buf) {
+		GriddedRegion region = new CaliforniaRegions.RELM_TESTING_GRIDDED();
+		return create(fspd, buf, region);
+	}
+	
+	/**
 	 * Create a fault polygon manager from a FaultModel and a desired
 	 * fault-section length (for subdividing faults in model).
+	 * @param fm {@code FaultModel} to initialize manager with
+	 * @param buf additional buffer around fault trace to include in polygon in
+	 *        km on either side of fault; may be {@code null}
+	 * @param len fault-section length for subdividing
+	 * @param region a {@code GriddedRegion} to override the default California
+	 * @return a reference to the newly minted manager
+	 */
+	public static FaultPolyMgr create(FaultModels fm, Double buf, Double len, GriddedRegion region) {		
+		FaultPolyMgr mgr = new FaultPolyMgr();
+		if (log) System.out.println("Building poly mgr...");
+		if (log) System.out.println("   getting faults from model");
+		List<FaultSection> faults = fm.fetchFaultSections();
+		if (log) System.out.println("   subsection polygons");
+		mgr.region = region;
+		mgr.polys = SectionPolygons.create(faults, buf, len);
+		mgr.init();
+		return mgr;
+	}
+	
+	/**
+	 * Create a fault polygon manager from a FaultModel and a desired
+	 * fault-section length (for subdividing faults in model). 
+	 * GriddedRegion is set to CaliforniaRegions.RELM_TESTING_GRIDDED()
+	 * 
 	 * @param fm {@code FaultModel} to initialize manager with
 	 * @param len fault-section length for subdividing
 	 * @param buf additional buffer around fault trace to include in polygon in
@@ -196,15 +234,9 @@ public class FaultPolyMgr implements Iterable<Area> {
 	 * @return a reference to the newly minted manager
 	 */
 	public static FaultPolyMgr create(FaultModels fm, Double buf, Double len) {		
-		FaultPolyMgr mgr = new FaultPolyMgr();
-		if (log) System.out.println("Building poly mgr...");
-		if (log) System.out.println("   getting faults from model");
-		List<FaultSection> faults = fm.fetchFaultSections();
-		if (log) System.out.println("   subsection polygons");
-		mgr.polys = SectionPolygons.create(faults, buf, len);
-		mgr.init();
-		return mgr;
-	}
+		GriddedRegion region = new CaliforniaRegions.RELM_TESTING_GRIDDED();
+		return create(fm, buf, len, region);
+	}	
 	
 	private void init() {
 		if (log) System.out.println("   section:node map");
@@ -402,8 +434,8 @@ public class FaultPolyMgr implements Iterable<Area> {
 		if (model == null) model = FaultModels.FM3_1;
 		if (len == null) len = 7d;
 		FaultPolyMgr mgr = create(model, buf, len);
-		double[] values = new double[region.getNodeCount()];
-		for (int i = 0; i < region.getNodeCount(); i++) {
+		double[] values = new double[mgr.region.getNodeCount()];
+		for (int i = 0; i < mgr.region.getNodeCount(); i++) {
 			values[i] = mgr.getNodeFraction(i);
 		}
 		return values;

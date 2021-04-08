@@ -41,7 +41,7 @@ public class JumpDataMock {
         fromSection = fromCluster.subSects.get(fromCluster.subSects.size() - 1);
         when(calc.calcAzimuth(fromSection, toCluster.startSect)).thenReturn(jumpAzimuth);
         jump = new Jump(fromSection, fromCluster, toCluster.startSect, toCluster, 0.2);
-        rupture = new ClusterRupture(fromCluster);
+        rupture = new ClusterRupture(fromCluster).take(jump);
     }
 
     public FaultSubsectionCluster mockFaultSubsectionCluster(double[] azimuths, int parentId, JumpAzimuthChangeFilter.AzimuthCalc calc) {

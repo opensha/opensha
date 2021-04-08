@@ -2,11 +2,8 @@ package scratch.UCERF3.griddedSeismicity;
 
 import java.util.List;
 import java.util.Map;
-
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.sha.faultSurface.FaultSection;
-
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 
 /**
@@ -20,18 +17,31 @@ public class GriddedSeisUtils {
 	private FaultPolyMgr polyMgr;
 	private double[] pdf;
 	
+	/**
+	 * Create an instance of this utility class with a region
+	 *
+	 * @param fltSectList
+	 * @param pdf pass in result of PDF allows us to use alternate SpatiolSeisPDf provider
+	 * @param buf distance in km to buffer fault polygons
+	 * @param region the user defined region
+	 */
+	public GriddedSeisUtils(List<? extends FaultSection> fltSectList, 
+			double[] pdf, double buf, GriddedRegion region) {
+		polyMgr = FaultPolyMgr.create(fltSectList, buf, region);
+		this.pdf = pdf.clone();
+	}
 	
 	/**
 	 * Create an instance of this utility class.
-	 * @param fsrs
-	 * @param pdf
+	 * @param fltSectList
+	 * @param pdf pass in result of PDF allows us to use alternate SpatiolSeisPDf provider
+	 * @param buf distance in km to buffer fault polygons
 	 */
 	public GriddedSeisUtils(List<? extends FaultSection> fltSectList, 
 			SpatialSeisPDF pdf, double buf) {
 		polyMgr = FaultPolyMgr.create(fltSectList, buf);
 		this.pdf = pdf.getPDF();
-	}
-	
+	}	
 	
 	/**
 	 * Create an instance of this utility class.

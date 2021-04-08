@@ -161,13 +161,13 @@ public interface ScalarValuePlausibiltyFilter<E extends Number & Comparable<E>> 
 		Preconditions.checkState(acceptableRange.hasLowerBound() || acceptableRange.hasUpperBound());
 		if (!acceptableRange.hasLowerBound()) {
 			E upper = acceptableRange.upperEndpoint();
-			char ineq = acceptableRange.upperBoundType() == BoundType.CLOSED ? '≤' : '<';
+			char ineq = acceptableRange.upperBoundType() == BoundType.CLOSED ? '\u2264' : '<'; // u2264 is less than or equal
 			if (upper.floatValue() == 0f)
 				return ineq+"0";
 			return ineq+(upper+"");
 		} else if (!acceptableRange.hasUpperBound()) {
 			E lower = acceptableRange.lowerEndpoint();
-			char ineq = acceptableRange.lowerBoundType() == BoundType.CLOSED ? '≥' : '>';
+			char ineq = acceptableRange.lowerBoundType() == BoundType.CLOSED ? '\u2265' : '>'; // u2265 is greater than or equal
 			if (lower.floatValue() == 0f)
 				return ineq+"0";
 			return ineq+(lower+"");

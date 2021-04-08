@@ -36,19 +36,19 @@ import com.google.common.io.Resources;
  * @version $Id:$
  */
 public class GridReader {
-	private static final CaliforniaRegions.RELM_TESTING_GRIDDED region = 
+	protected static final CaliforniaRegions.RELM_TESTING_GRIDDED region = 
 			new CaliforniaRegions.RELM_TESTING_GRIDDED();
 	
-	private static final String DATA_DIR = "seismicityGrids";
+	protected static final String DATA_DIR = "seismicityGrids";
 
-	private static final Splitter SPLIT;
+	protected static final Splitter SPLIT;
 
-	private static final Function<String, Double> FN_STR_TO_DBL;
-	private static final Function<Double, Integer> FN_DBL_TO_KEY;
-	private static final Function<String, Integer> FN_STR_TO_KEY;
+	protected static final Function<String, Double> FN_STR_TO_DBL;
+	protected static final Function<Double, Integer> FN_DBL_TO_KEY;
+	protected static final Function<String, Integer> FN_STR_TO_KEY;
 
-	private Table<Integer, Integer, Double> table;
-	private String filename;
+	protected Table<Integer, Integer, Double> table;
+	protected String filename;
 
 	/**
 	 * Constructs a new UCERF3 grid reader for the supplied filename.
@@ -96,7 +96,7 @@ public class GridReader {
 		return values;
 	}
 
-	private Table<Integer, Integer, Double> initTable() {
+	protected Table<Integer, Integer, Double> initTable() {
 		Table<Integer, Integer, Double> table = HashBasedTable.create();
 		try {
 			BufferedReader br = new BufferedReader(UCERF3_DataUtils.getReader(DATA_DIR,
@@ -104,7 +104,7 @@ public class GridReader {
 			Iterator<String> dat;
 			String line = br.readLine();
 			while (line != null) {
-				dat = SPLIT.split(line).iterator();
+				dat = SPLIT.split(line).iterator();				
 				table.put(FN_STR_TO_KEY.apply(dat.next()),
 					FN_STR_TO_KEY.apply(dat.next()),
 					FN_STR_TO_DBL.apply(dat.next()));
@@ -142,7 +142,24 @@ public class GridReader {
 
 	public static void main(String[] args) {
 		double[] pdf = SpatialSeisPDF.UCERF3.getPDF();
-		System.out.println(DataUtils.sum(pdf));
+		System.out.println("U3 " + DataUtils.sum(pdf));
+		
+		pdf = SpatialSeisPDF.UCERF2.getPDF();
+		System.out.println("U2 " + DataUtils.sum(pdf));
+		
+		pdf = SpatialSeisPDF.UNSMOOTHED_GRIDDED.getPDF();
+		System.out.println("UNSMOOTHED_GRIDDED " + DataUtils.sum(pdf));
+		
+		pdf = SpatialSeisPDF.AVG_DEF_MODEL_ALL.getPDF();
+		System.out.println("AVG_DEF_MODEL_ALL " + DataUtils.sum(pdf));
+
+		pdf = SpatialSeisPDF.AVG_DEF_MODEL_OFF.getPDF();
+		System.out.println("AVG_DEF_MODEL_OFF " + DataUtils.sum(pdf));
+
+		
+		double fir = SpatialSeisPDF.UCERF3.getFractionInRegion(region);
+		System.out.println("U3 FractionInRegion" + fir);
+		
 //		String fName =  "SmoothSeis_KF_5-5-2012.txt";
 //		File f = getSourceFile(fName);
 //		System.out.println(f.exists());
