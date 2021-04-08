@@ -650,7 +650,7 @@ public class CommandLineInversionRunner {
 
 				// parent fault moment rates
 				ArrayList<ParentMomentRecord> parentMoRates = getSectionMoments(sol);
-				info += "\n\n****** Larges Moment Rate Discrepancies ******";
+				info += "\n\n****** Largest Moment Rate Discrepancies ******";
 				for (int i=0; i<10 && i<parentMoRates.size(); i++) {
 					ParentMomentRecord p = parentMoRates.get(i);
 					info += "\n"+p.parentID+". "+p.name+"\ttarget: "+p.targetMoment
