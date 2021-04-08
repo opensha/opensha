@@ -13,6 +13,7 @@ public class SplayLengthFilter implements PlausibilityFilter {
 	private double maxLen;
 	private boolean isFractOfMain;
 	private boolean totalAcrossSplays;
+	private boolean allowFullCluster = false;;
 
 	/**
 	 * 
@@ -20,10 +21,11 @@ public class SplayLengthFilter implements PlausibilityFilter {
 	 * @param isFractOfMain if true, maxLen is a fractional length of the primary rupture
 	 * @param totalAcrossSplays if true, maxLen is applied as a sum of all splays
 	 */
-	public SplayLengthFilter(double maxLen, boolean isFractOfMain, boolean totalAcrossSplays) {
+	public SplayLengthFilter(double maxLen, boolean isFractOfMain, boolean totalAcrossSplays, boolean allowFullCluster) {
 		this.maxLen = maxLen;
 		this.isFractOfMain = isFractOfMain;
 		this.totalAcrossSplays = totalAcrossSplays;
+		this.allowFullCluster = allowFullCluster;
 	}
 
 	@Override
@@ -56,7 +58,12 @@ public class SplayLengthFilter implements PlausibilityFilter {
 					return PlausibilityResult.FAIL_HARD_STOP;
 				}
 			} else {
-				if ((float)splayLen > (float)maxLen) {
+				if ((float)splayLen > (float)maxLen && (!allowFullCluster)) {
+					if (allowFullCluster && splay.clusters.length == 1 && splay.splays.isEmpty()) {
+						if (verbose)
+							System.out.println(getShortName()+": allowing over length because it's within the first cluster");
+						continue;
+					}
 					if (verbose)
 						System.out.println(getShortName()+": failing");
 					return PlausibilityResult.FAIL_HARD_STOP;
