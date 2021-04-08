@@ -1,10 +1,9 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
-import java.util.ArrayList;
+import java.text.DecimalFormat;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -89,15 +88,17 @@ public class CumulativeRakeChangeFilter implements ScalarValuePlausibiltyFilter<
 		Preconditions.checkState(rakeDiff >= 0);
 		return rakeDiff;
 	}
+	
+	private static final DecimalFormat df = new DecimalFormat("0.#");
 
 	@Override
 	public String getShortName() {
-		return "CumRake";
+		return "CumRake≤"+df.format(threshold);
 	}
 
 	@Override
 	public String getName() {
-		return "Cumulative Rake Filter";
+		return "Cumulative Rake Change ≤"+df.format(threshold);
 	}
 
 	@Override

@@ -12,12 +12,12 @@ import com.google.common.collect.Range;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
- * Cumulative rake change filter which matches UCERF3. This is done in 3 ways:
+ * Cumulative rake change filter that matches UCERF3. This is done in 3 ways:
  * 
  * 1) it preserves the precision issues in UCERF3 where something double precision errors 
  * can accumulate and cause failures with, e.g., 180.00000000000003 > 180
  * 2) rake changes can accumulate within sections, but are only tested at jumps. so if a
- * change happens during the last section which brings it over the threshold, that's OK
+ * change happens during the last section that brings it over the threshold, that's OK
  * 3) Keep running total, don't sum recursively. this is necessary as a running total must 
  * be kept in order to have the same floating point error propagation.
  * 

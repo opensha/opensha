@@ -1,10 +1,8 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.text.DecimalFormat;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
@@ -87,15 +85,17 @@ public class CumulativeAzimuthChangeFilter implements ScalarValuePlausibiltyFilt
 		
 		return val;
 	}
+	
+	private static final DecimalFormat df = new DecimalFormat("0.#");
 
 	@Override
 	public String getShortName() {
-		return "CumAzimuth";
+		return "CumAzimuth≤"+df.format(threshold);
 	}
 
 	@Override
 	public String getName() {
-		return "Cumulative Azimuth Filter";
+		return "Cumulative Azimuth ≤"+df.format(threshold);
 	}
 
 	@Override
