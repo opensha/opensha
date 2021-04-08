@@ -50,7 +50,7 @@ public class NetRuptureCoulombFilter implements ScalarCoulombPlausibilityFilter 
 
 	@Override
 	public PlausibilityResult apply(ClusterRupture rupture, boolean verbose) {
-		if (rupture.getTotalNumSects() == 1)
+		if (rupture.getTotalNumJumps() == 0)
 			return PlausibilityResult.PASS;
 		float val = getValue(rupture);
 		PlausibilityResult result = acceptableRange.contains(val) ?
