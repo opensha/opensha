@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,9 +25,7 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
-import com.google.common.collect.Tables;
+import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.FaultSystemRupSet;
@@ -1219,10 +1216,10 @@ public class AggregatedStiffnessCalculator {
 //				AggregationMethod.FLATTEN, AggregationMethod.FRACT_POSITIVE);
 //				AggregationMethod.FLATTEN, AggregationMethod.MEDIAN,
 //				AggregationMethod.SUM, AggregationMethod.SUM);
-//				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM,
-//				AggregationMethod.SUM, AggregationMethod.NORM_BY_COUNT);
-				AggregationMethod.FLATTEN, AggregationMethod.NUM_POSITIVE,
-				AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS);
+				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM,
+				AggregationMethod.SUM, AggregationMethod.NORM_BY_COUNT);
+//				AggregationMethod.FLATTEN, AggregationMethod.NUM_POSITIVE,
+//				AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS);
 //				AggregationMethod.SUM, AggregationMethod.SUM,
 //				AggregationMethod.FLAT_SUM, AggregationMethod.NUM_NEGATIVE);
 		
@@ -1232,20 +1229,24 @@ public class AggregatedStiffnessCalculator {
 ////		aggCalc.calc(s2, s1);
 ////		aggCalc.calc(s3, s1);
 //		aggCalc.calc(Lists.newArrayList(s2, s3), s1);
-		int targetNumSects = 4;
 		
-		for (int r=0; r<rupSet.getNumRuptures(); r++) {
-			List<FaultSection> rupSects = rupSet.getFaultSectionDataForRupture(r);
-			if (rupSects.size() != targetNumSects)
-				continue;
-//			System.out.println("Rupture "+r+": "+Joiner.on(",").join(rupSet.getSectionsIndicesForRup(r)));
-			System.out.println("Rupture "+r+": "+rupSects.stream().map(s -> s.getSectionId())
-					.map(String::valueOf).collect(Collectors.joining(",")));
-			double val = aggCalc.calc(rupSects, rupSects);
-			System.out.println("Value: "+val);
-			aggCalc.calc(rupSects, rupSects);
-			break;
-		}
+		List<FaultSection> rupSects = Lists.newArrayList(subSects.get(419), subSects.get(420));
+		System.out.println(aggCalc.calc(rupSects, rupSects));
+		
+//		int targetNumSects = 4;
+//		
+//		for (int r=0; r<rupSet.getNumRuptures(); r++) {
+//			List<FaultSection> rupSects = rupSet.getFaultSectionDataForRupture(r);
+//			if (rupSects.size() != targetNumSects)
+//				continue;
+////			System.out.println("Rupture "+r+": "+Joiner.on(",").join(rupSet.getSectionsIndicesForRup(r)));
+//			System.out.println("Rupture "+r+": "+rupSects.stream().map(s -> s.getSectionId())
+//					.map(String::valueOf).collect(Collectors.joining(",")));
+//			double val = aggCalc.calc(rupSects, rupSects);
+//			System.out.println("Value: "+val);
+//			aggCalc.calc(rupSects, rupSects);
+//			break;
+//		}
 	}
 
 }
