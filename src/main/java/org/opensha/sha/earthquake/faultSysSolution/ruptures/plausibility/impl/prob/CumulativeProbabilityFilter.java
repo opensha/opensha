@@ -64,7 +64,7 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 	public String getName() {
 		if (calcs.length > 1)
 			return "Cumulative Probability Filter ≥"+minProbability;
-		return calcs[0].getName()+" ≥"+minProbability;
+		return "P("+calcs[0].getName()+") ≥"+minProbability;
 	}
 
 	@Override
@@ -83,6 +83,10 @@ public class CumulativeProbabilityFilter implements ScalarValuePlausibiltyFilter
 			prob *= indvProb;
 		}
 		return (float)prob;
+	}
+	
+	public RuptureProbabilityCalc[] getProbCalcs() {
+		return calcs;
 	}
 
 	@Override

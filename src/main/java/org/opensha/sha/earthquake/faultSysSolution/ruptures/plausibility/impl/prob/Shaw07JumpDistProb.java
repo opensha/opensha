@@ -4,7 +4,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 
 /**
- * Jump distance probability proposed in Shaw (2007)
+ * Jump distance probability proposed in Shaw and Dieterich (2007)
  * 
  * @author kevin
  *
@@ -26,12 +26,24 @@ public class Shaw07JumpDistProb extends JumpProbabilityCalc {
 
 	@Override
 	public String getName() {
-		return "Shaw07 [A="+CumulativeProbabilityFilter.optionalDigitDF.format(a)+", R0="+CumulativeProbabilityFilter.optionalDigitDF.format(r0)+"]";
+		if ((float)a != 1f)
+			return "Shaw07 [A="+CumulativeProbabilityFilter.optionalDigitDF.format(a)+", R₀="+CumulativeProbabilityFilter.optionalDigitDF.format(r0)+"]";
+		return "Shaw07 [R₀="+CumulativeProbabilityFilter.optionalDigitDF.format(r0)+"]";
 	}
 
 	@Override
 	public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
-		return a*Math.exp(-jump.distance/r0);
+		return calcJumpProbability(jump.distance);
+	}
+	
+	public double calcJumpProbability(double distance) {
+		return a*Math.exp(-distance/r0);
+	}
+	
+	public static void main(String[] args) {
+		Shaw07JumpDistProb prob = new Shaw07JumpDistProb(1d, 3d);
+		for (double d=0; d<=25; d += 0.1)
+			System.out.println((float)d+" km:\t"+prob.calcJumpProbability(d));
 	}
 	
 }

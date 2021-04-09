@@ -46,7 +46,7 @@ public class RelativeSlipRateProb extends AbstractRelativeProb {
 	@Override
 	public String getName() {
 		if (onlyAtIncreases)
-			return "Rel Slip Rate (@increases)";
+			return "Rel Slip Rate (@incr.)";
 		return "Rel Slip Rate";
 	}
 
