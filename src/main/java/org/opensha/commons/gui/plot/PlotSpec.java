@@ -315,7 +315,7 @@ public class PlotSpec implements Serializable {
 			edge = RectangleEdge.TOP;
 		lt.setPosition(edge);
 		XYTitleAnnotation ann = new XYTitleAnnotation(insetLegendRelX, insetLegendRelY,
-				lt, RectangleAnchor.TOP_RIGHT);
+				lt, insetLegendLocation);
 		ann.setMaxWidth(insetLegendMaxWidth);
 		return ann;
 	}
