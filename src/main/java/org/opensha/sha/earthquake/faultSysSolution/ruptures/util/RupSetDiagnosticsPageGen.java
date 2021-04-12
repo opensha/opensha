@@ -82,6 +82,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeRakeChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.GapWithinSectFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
@@ -145,24 +147,41 @@ public class RupSetDiagnosticsPageGen {
 			
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+//			String inputName = "RSQSim 4983, SectArea=0.5, Uniques";
+//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
 			
 //			String inputName = "CmlAz Only";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
 			
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-
-//			String inputName = "Plausible 10km, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.02], 5% Fract Increase";
-//			File inputFile = new File(rupSetsDir, "fm3_1_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
-//			String inputName = "Plausible 10km (MultiEnds), Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.02], 5% Fract Increase";
-//			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
 			
-			String state = "All";
-			String inputName = "NSHM "+state+" V1, Current Best Filters";
-			File inputFile = new File(rupSetsDir, "nshm23_v1_"+state.toLowerCase()+"_plausibleMulti10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			String inputName = "Plausible 10km (MultiEnds), Rake≤360, Jump P>0.001, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 5% Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			boolean skipPlausibility = true;
+//			File altPlausibilityCompareFile = null;
+//			String compName = "CFF Grid Spacing: 1.5km";
+//			File compareFile = new File(rupSetsDir, "fm3_1_stiff1.5km_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_bilateral_sectFractPerm0.05.zip");
 			
-//			String inputName = "NZ Plausible 10km, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.05], 5% Fract Increase";
-//			File inputFile = new File(rupSetsDir, "nz_demo5_crustal_plausible10km_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.5_sectFractPerm0.05.zip");
+			String inputName = "Pref Model, Minimum Distance";
+			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractPerm0.05_comp/alt_conn_ClosestSectPairmaxDist10km.zip");
+			boolean skipPlausibility = true;
+			File altPlausibilityCompareFile = null;
+			String compName = "CFF Grid Spacing: 1.5km";
+			File compareFile = new File(rupSetsDir, "fm3_1_stiff1.5km_10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
+			
+//			String state = "All";
+//			String inputName = "NSHM "+state+" V1.2, Current Best Filters";
+//			File inputFile = new File(rupSetsDir, "nshm23_v1p2_"+state.toLowerCase()+"_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			boolean skipPlausibility = true;
+//			File altPlausibilityCompareFile = null;
+//			String compName = null;
+//			File compareFile = null;
+////			String compName = "Jump 15km";
+////			File compareFile = new File(rupSetsDir, "nshm23_v1p1_"+state.toLowerCase()+"_plausibleMulti15km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+			
+//			String inputName = "NZ Plausible 10km (MultiEnds), Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.02], 5% Fract Increase";
+//			File inputFile = new File(rupSetsDir, "nz_demo5_crustal_plausibleMulti10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
 //			boolean skipPlausibility = true;
 //			String compName = "NZ 10km w/ U3 (non-CFF) Filters";
 //			File compareFile = new File(rupSetsDir, "nz_demo5_crustal_plausible10km_cmlAz_cmlRake_u3Az_sectFractPerm0.05.zip");
@@ -187,19 +206,22 @@ public class RupSetDiagnosticsPageGen {
 			
 			
 			// common ones
-			boolean skipPlausibility = true;
-//			String compName = "UCERF3";
-//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
-			String compName = null;
-			File compareFile = null;
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
-			File altPlausibilityCompareFile = null;
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
-//			String compName = "1km Coulomb Patches";
-//			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			boolean skipPlausibility = false;
+////			String compName = "UCERF3";
+////			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+////			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
+////			String compName = null;
+////			File compareFile = null;
+//////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+////			File altPlausibilityCompareFile = null;
+////			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
+////			String compName = "1km Coulomb Patches";
+////			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+////			File altPlausibilityCompareFile = null;
+//////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+//			String compName = "Current Preferred";
+//			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
 //			File altPlausibilityCompareFile = null;
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
@@ -690,14 +712,15 @@ public class RupSetDiagnosticsPageGen {
 				
 				lines.addAll(table.build());
 				lines.add("");
-				lines.add("#### "+scalar.name+" Extremes & Examples");
-				lines.add(topLink); lines.add("");
-				lines.add("Example ruptures at varios percentiles of "+scalar.name);
-				lines.add("");
 				
 				double[] fractiles = scalar.getExampleRupPlotFractiles();
 				if (fractiles == null)
 					continue;
+				
+				lines.add("#### "+scalar.name+" Extremes & Examples");
+				lines.add(topLink); lines.add("");
+				lines.add("Example ruptures at varios percentiles of "+scalar.name);
+				lines.add("");
 				
 				List<List<ClusterRupture>> ruptureLists = new ArrayList<>();
 				List<HashSet<UniqueRupture>> uniqueLists = new ArrayList<>();
@@ -711,7 +734,7 @@ public class RupSetDiagnosticsPageGen {
 				if (compRupSet == null)
 					headings.add(null);
 				else
-					headings.add("From the primary rupture set ("+inputName+"):");
+					headings.add("From the primary rupture set (*"+inputName+"*):");
 				scalarValsList.add(inputScalars.values);
 				prefixes.add("hist_rup");
 				rupSets.add(inputRupSet);
@@ -725,7 +748,7 @@ public class RupSetDiagnosticsPageGen {
 						Preconditions.checkState(!includeUniques.isEmpty());
 						ruptureLists.add(inputRups);
 						uniqueLists.add(includeUniques);
-						headings.add("Ruptures that are unique to the primary rupture set ("+inputName+"):");
+						headings.add("Ruptures that are unique to the primary rupture set (*"+inputName+"*):");
 						scalarValsList.add(inputScalars.values);
 						prefixes.add("hist_rup");
 						rupSets.add(inputRupSet);
@@ -739,7 +762,7 @@ public class RupSetDiagnosticsPageGen {
 						Preconditions.checkState(!includeUniques.isEmpty());
 						ruptureLists.add(compRups);
 						uniqueLists.add(includeUniques);
-						headings.add("Ruptures that are unique to the comparison rupture set ("+compName+"):");
+						headings.add("Ruptures that are unique to the comparison rupture set (*"+compName+"*):");
 						scalarValsList.add(compScalars.values);
 						prefixes.add("hist_comp_rup");
 						rupSets.add(compRupSet);
@@ -762,7 +785,7 @@ public class RupSetDiagnosticsPageGen {
 					List<Integer> filteredIndexes = new ArrayList<>();
 					List<Double> filteredVals = new ArrayList<>();
 					for (int r=0; r<rups.size(); r++) {
-						if (includeUniques == null || includeUniques.contains(rups.get(r).unique)); {
+						if (includeUniques == null || includeUniques.contains(rups.get(r).unique)) {
 							filteredIndexes.add(r);
 							filteredVals.add(vals.get(r));
 						}
@@ -803,7 +826,11 @@ public class RupSetDiagnosticsPageGen {
 					for (int rawIndex : fractileIndexes) {
 						int index = sortedIndexes.get(rawIndex);
 						String rupPrefix = prefix+"_"+index;
-						RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rups.get(index),
+						ClusterRupture rup = rups.get(index);
+						if (includeUniques != null)
+							Preconditions.checkState(includeUniques.contains(rup.unique),
+									"IncludeUniques doesn't contain rupture at rawIndex=%s, index=%s: %s", rawIndex, index, rup);
+						RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rup,
 								"Rupture "+index, false, true);
 						table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
 								"("+ generateRuptureInfoPage(rupSet, rups.get(index),
@@ -846,7 +873,7 @@ public class RupSetDiagnosticsPageGen {
 						"Comparison with "+getTruncatedTitle(compName)+" Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityTable(result, compName).build());
+				lines.addAll(getRupSetPlausibilityTable(result, inputSol, compName).build());
 				lines.add("");
 				lines.add("**Magnitude-filtered comparisons**");
 				lines.add("");
@@ -875,7 +902,7 @@ public class RupSetDiagnosticsPageGen {
 						"Comparison with "+getTruncatedTitle(inputName)+" Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityTable(result, compName+" against").build());
+				lines.addAll(getRupSetPlausibilityTable(result, compSol, compName+" against").build());
 				lines.add("");
 				lines.add("**Magnitude-filtered comparisons**");
 				lines.add("");
@@ -902,7 +929,7 @@ public class RupSetDiagnosticsPageGen {
 						"Comparison with Alternative Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityTable(result, "Alternative").build());
+				lines.addAll(getRupSetPlausibilityTable(result, inputSol, "Alternative").build());
 				lines.add("");
 				lines.add("**Magnitude-filtered comparisons**");
 				lines.add("");
@@ -1342,8 +1369,8 @@ public class RupSetDiagnosticsPageGen {
 			HistScalarValues inputScalars = inputScalarVals.get(i);
 			HistScalarValues compScalars = compScalarVals == null ? null : compScalarVals.get(i);
 			HistScalar scalar = inputScalars.scalar;
-			if (!(scalar == HistScalar.MAG) && !(scalar == HistScalar.LENGTH)
-					&& !(scalar == HistScalar.CLUSTER_COUNT))
+			if (scalar != HistScalar.MAG && scalar != HistScalar.LENGTH && scalar != HistScalar.CUM_JUMP_DIST
+					&& scalar != HistScalar.CUM_RAKE_CHANGE && scalar != HistScalar.CUM_AZ_CHANGE)
 				continue;
 			lines.add("### Subsection Maximum "+scalar.name);
 			lines.add(topLink); lines.add("");
@@ -1801,6 +1828,7 @@ public class RupSetDiagnosticsPageGen {
 		String avgConns = twoDigits.format(parentConnTrack.getAverage());
 		totNumConnections /= 2; // remove duplicates
 		lines.add("* Connection strategy: ");
+		lines.add("    * Name: "+connStrat.getName());
 		lines.add("    * Max jump dist: "+(float)connStrat.getMaxJumpDist()+" km");
 		lines.add("    * Allowed parent-section connections:");
 		lines.add("        * Total: "+totNumConnections);
@@ -2193,7 +2221,33 @@ public class RupSetDiagnosticsPageGen {
 
 			@Override
 			public double[] getExampleRupPlotFractiles() {
+				// don't want rake rupture plots
 				return null;
+			}
+		},
+		CUM_RAKE_CHANGE("Cumulative Rake Change", "Cumulative Rake Change (degrees)",
+				"Cumulative rake change for this rupture.") {
+			CumulativeRakeChangeFilter filter = null;
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				return HistogramFunction.getEncompassingHistogram(0d, scalarTrack.getMax(), 60d);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				if (filter == null) {
+					synchronized (this) {
+						if (filter == null)
+							filter = new CumulativeRakeChangeFilter(180f);
+					}
+				}
+				return filter.getValue(rup);
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
 			}
 		},
 		MECH_CHANGE("Mechanism Change", "# Mechanism Changes",
@@ -2216,6 +2270,32 @@ public class RupSetDiagnosticsPageGen {
 							!= RakeType.getType(jump.toSection.getAveRake()))
 						count++;
 				return count;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		CUM_AZ_CHANGE("Cumulative Azimuth Change", "Cumulative Azimuth Change (degrees)",
+				"Cumulative azimuth change for this rupture.") {
+			CumulativeAzimuthChangeFilter filter = null;
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				return HistogramFunction.getEncompassingHistogram(0d, scalarTrack.getMax(), 20d);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				if (filter == null) {
+					synchronized (this) {
+						if (filter == null)
+							filter = new CumulativeAzimuthChangeFilter(
+									new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc), 560f);
+					}
+				}
+				return filter.getValue(rup);
 			}
 
 			@Override
@@ -3045,10 +3125,14 @@ public class RupSetDiagnosticsPageGen {
 		return ann;
 	}
 	
-	public static TableBuilder getRupSetPlausibilityTable(RupSetPlausibilityResult result, String linkHeading) {
+	public static TableBuilder getRupSetPlausibilityTable(RupSetPlausibilityResult result, FaultSystemSolution sol, String linkHeading) {
 		linkHeading = linkHeading.replaceAll("#", "").trim();
 		TableBuilder table = MarkdownUtils.tableBuilder();
-		table.addLine("Filter", "Failed", "Only Failure", "Erred");
+		boolean hasRates = sol != null && sol.getRupSet().getNumRuptures() == result.numRuptures;
+		if (hasRates)
+			table.addLine("Filter", "Failed", "Failure Rate", "Only Failure", "Erred");
+		else
+			table.addLine("Filter", "Failed", "Only Failure", "Erred");
 		for (int t=0; t<result.filters.size(); t++) {
 			table.initNewLine();
 			String name = result.filters.get(t).getName();
@@ -3057,10 +3141,51 @@ public class RupSetDiagnosticsPageGen {
 			else
 				table.addColumn("**"+name+"**");
 			table.addColumn(countStats(result.failCounts[t], result.numRuptures));
+			if (hasRates) {
+				FaultSystemRupSet rupSet = sol.getRupSet();
+				double totRate = sol.getTotalRateForAllFaultSystemRups();
+				double failRate = 0d;
+				for (int r=0; r<result.numRuptures; r++) {
+					PlausibilityResult filterResult = result.filterResults.get(t).get(r);
+					if (filterResult != null && !filterResult.isPass())
+						failRate += sol.getRateForRup(r);
+				}
+				table.addColumn((float)failRate+" ("+percentDF.format(failRate/totRate)+")");
+			}
 			table.addColumn(countStats(result.onlyFailCounts[t], result.numRuptures));
 			table.addColumn(countStats(result.erredCounts[t], result.numRuptures));
 			table.finalizeLine();
 		}
+		// add total
+		table.initNewLine();
+		table.addColumn("**Combined**");
+		int numFails = 0;
+		int numErrs = 0;
+		double failRate = 0d;
+		
+		for (int r=0; r<result.numRuptures; r++) {
+			boolean fails = false;
+			boolean errs = false;
+			for (List<PlausibilityResult> filterResults : result.filterResults) {
+				PlausibilityResult filterResult = filterResults.get(r);
+				if (filterResult == null)
+					errs = true;
+				else if (!filterResult.isPass())
+					fails = true;
+			}
+			if (fails)
+				numFails++;
+			if (errs)
+				numErrs++;
+			if (fails && hasRates)
+				failRate += sol.getRateForRup(r);
+		}
+		table.addColumn(countStats(numFails, result.numRuptures));
+		if (hasRates)
+			table.addColumn((float)failRate+" ("+percentDF.format(failRate/sol.getTotalRateForAllFaultSystemRups())+")");
+		table.addColumn("*N/A*");
+		table.addColumn(countStats(numErrs, result.numRuptures));
+		table.finalizeLine();
 		return table;
 	}
 	

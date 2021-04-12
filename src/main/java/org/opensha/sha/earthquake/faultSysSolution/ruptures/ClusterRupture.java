@@ -203,6 +203,8 @@ public class ClusterRupture {
 				"Cannot take jump because this rupture doesn't have the fromSection: %s", jump);
 		Preconditions.checkState(!contains(jump.toSection),
 				"Cannot take jump because this rupture already has the toSection: %s", jump);
+		Preconditions.checkState(jump.toSection.equals(jump.toCluster.startSect),
+				"Jump toSection is not the start section of the toCluster: jump=%s, toCluster=%s", jump, jump.toCluster);
 		
 		UniqueRupture newUnique = UniqueRupture.add(this.unique, jump.toCluster.unique);
 		int expectedCount = this.unique.size() + jump.toCluster.subSects.size();
@@ -342,6 +344,10 @@ public class ClusterRupture {
 	 * @return
 	 */
 	public List<ClusterRupture> getPreferredAltRepresentations(RuptureConnectionSearch connSearch) {
+		return getPreferredAltRepresentations(connSearch, false);
+	}
+	
+	public List<ClusterRupture> getPreferredAltRepresentations(RuptureConnectionSearch connSearch, boolean debug) {
 		List<ClusterRupture> inversions = new ArrayList<>();
 
 		if (singleStrand) {
@@ -362,7 +368,7 @@ public class ClusterRupture {
 		int numClusters = getTotalNumClusters();
 		for (FaultSubsectionCluster newStart : clusters) {
 			ClusterRupture inversion = connSearch.buildClusterRupture(
-					clusters, jumps, false, newStart);
+					clusters, jumps, debug, newStart);
 //			if (inversion.getTotalNumClusters() != numClusters) {
 //				System.err.println("Inversion has a different cluster count ("
 //						+inversion.getTotalNumClusters()+" vs "+numClusters+")");
@@ -471,7 +477,7 @@ public class ClusterRupture {
 							if (inv_d) System.out.println("\t\t\tReversing with index="+i
 									+" and numFromEnd="+numFromEnd);
 							jump = new Jump(jump.fromSection, fromCluster,
-									jump.toSection, nextCluster.reversed(), jump.distance);
+									jump.toSection, nextCluster.reversed(jump.toSection), jump.distance);
 						} else {
 							jump = new Jump(jump.fromSection, fromCluster,
 									jump.toSection, nextCluster, jump.distance);

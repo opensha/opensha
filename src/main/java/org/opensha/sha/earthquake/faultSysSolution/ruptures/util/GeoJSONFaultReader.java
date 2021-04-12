@@ -13,6 +13,7 @@ import java.util.Map;
 
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -168,11 +169,64 @@ public class GeoJSONFaultReader {
 									Preconditions.checkState(!trace.isEmpty(), "Trace is empty");
 									reader.endArray();
 									if (reader.peek() != JsonToken.END_ARRAY) {
-										System.err.println("WARNING: skipping mult-trace for "+name+" ("+id+")");
-										while (reader.peek() != JsonToken.END_ARRAY) {
-//											System.out.println("Skipping "+reader.peek());
-											reader.skipValue();
+//										System.err.println("WARNING: skipping mult-trace for "+name+" ("+id+")");
+//										while (reader.peek() != JsonToken.END_ARRAY) {
+////											System.out.println("Skipping "+reader.peek());
+//											reader.skipValue();
+//										}
+										System.err.println("WARNING: concatenating multi-trace for "+name+" ("+id+")");
+										int extraLocs = 0;
+										List<FaultTrace> extraTraces = new ArrayList<>();
+										while (reader.hasNext()) {
+											reader.beginArray();
+											FaultTrace extraTrace = new FaultTrace(null);
+											while (reader.hasNext()) {
+												reader.beginArray();
+												double lon = reader.nextDouble();
+												double lat = reader.nextDouble();
+												Location newLoc = new Location(lat, lon);
+												extraLocs++;
+												extraTrace.add(newLoc);
+												reader.endArray();
+											}
+											extraTraces.add(extraTrace);
+											reader.endArray();
 										}
+										// figure out where they go
+										while (!extraTraces.isEmpty()) {
+											int bestIndex = -1;
+											boolean bestAtEnd = false;
+											double bestDistance = Double.POSITIVE_INFINITY;
+											for (int i=0; i<extraTraces.size(); i++) {
+												FaultTrace extraTrace = extraTraces.get(i);
+												double beforeDist = LocationUtils.horzDistanceFast(extraTrace.last(), trace.first());
+												double afterDist = LocationUtils.horzDistanceFast(extraTrace.first(), trace.last());
+												if (beforeDist < afterDist && beforeDist < bestDistance) {
+													bestIndex = i;
+													bestAtEnd = false;
+													bestDistance = beforeDist;
+												} else if (afterDist <= beforeDist && afterDist < bestDistance) {
+													bestIndex = i;
+													bestAtEnd = true;
+													bestDistance = afterDist;
+												}
+											}
+											FaultTrace addTrace = extraTraces.remove(bestIndex);
+//											System.err.println("\tadding extra trace with inOrder="+bestAtEnd+", dist="+bestDistance);
+											if (bestAtEnd) {
+												System.err.println("\tadding extra trace to end:\n\t\tprevLoc="+trace.last()+"\n\t\tnextLoc="
+														+addTrace.first()+"\t(dist="+bestDistance+")");
+												trace.addAll(addTrace);
+											} else {
+												System.err.println("\tadding extra trace to start (before previous):\n\t\tprevLoc="
+													+trace.last()+"\n\t\tnextLoc="+addTrace.first()+"\t(dist="+bestDistance+")");
+												trace.addAll(0, addTrace);
+											}
+											if (bestIndex != 0)
+												System.out.println("\t\tWARNING: didn't add new traces in order");
+										}
+//										System.err.println("\tAdded "+extraTraces+" traces w/ "+extraLocs+" locs. "
+//												+ "Max dist from prevLast to new trace: "+(float)maxDistFromPrev);
 									}
 									reader.endArray();
 									break;
@@ -549,7 +603,8 @@ public class GeoJSONFaultReader {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File sectFile = new File("/home/kevin/Downloads/NSHM2023_FaultSections_v1mod.geojson");
+		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/NSHM2023_FaultSectionsEQGeoDB_v1p2_29March2021");
+		File sectFile = new File(baseDir, "NSHM2023_FaultSections_v1p2.geojson");
 		Map<String, List<FaultSection>> sectsMap = readFaultSections(sectFile, false);
 		for (String state : sectsMap.keySet()) {
 			System.out.println(state+":");
@@ -558,7 +613,7 @@ public class GeoJSONFaultReader {
 			}
 		}
 
-		File geoFile = new File("/home/kevin/Downloads/NSHM2023_EQGeoDB_v1.geojson");
+		File geoFile = new File(baseDir, "NSHM2023_EQGeoDB_v1p2.geojson");
 		Map<Integer, List<GeoSlipRateRecord>> slipRecords = readGeoDB(geoFile);
 		int numRecs = 0;
 		for (List<GeoSlipRateRecord> recs : slipRecords.values())

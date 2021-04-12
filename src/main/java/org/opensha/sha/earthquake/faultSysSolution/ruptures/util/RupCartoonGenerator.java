@@ -34,6 +34,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ComparablePairing;
@@ -47,9 +48,12 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilde
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.DirectPathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MinSectsPerParentFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.SimpleAzimuthCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.ClusterCoulombCompatibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.ClusterCoulombPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
@@ -66,11 +70,13 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeCoulombProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeSlipRateProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsPermutationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.RuptureGrowingStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptivePermutationStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveClusterPermuationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy.SecondaryVariations;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveUnilateralRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy.*;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -241,7 +247,7 @@ public class RupCartoonGenerator {
 			List<Jump> extraPassing, List<Jump> extraFailing) throws IOException {
 		List<FaultSubsectionCluster> clusters = connStrat.getClusters();
 		
-		ConnectionPointsPermutationStrategy permStrat = new ConnectionPointsPermutationStrategy();
+		ConnectionPointsRuptureGrowingStrategy permStrat = new ConnectionPointsRuptureGrowingStrategy();
 		
 		ClusterRuptureBuilder build = new ClusterRuptureBuilder(clusters, filters, 0);
 		System.out.println("Building ruptures with connStrat="+connStrat.getName());
@@ -266,7 +272,7 @@ public class RupCartoonGenerator {
 			for (FaultSection sect : cluster.subSects) {
 				plotSection(sect, funcs, chars, isolatedChar, outlineChar);
 				if (firstIsolated)
-					funcs.get(funcs.size()-1).setName("Isolated Sections");
+					funcs.get(funcs.size()-1).setName("Isolated Section");
 				firstIsolated = false;
 			}
 		}
@@ -277,7 +283,7 @@ public class RupCartoonGenerator {
 				if (coruptureSects.contains(sect)) {
 					plotSection(sect, funcs, chars, corupChar, outlineChar);
 					if (firstCorup)
-						funcs.get(funcs.size()-1).setName("Co-rupturing Sections");
+						funcs.get(funcs.size()-1).setName("Co-rupturing Section");
 					firstCorup = false;
 				}
 			}
@@ -414,12 +420,15 @@ public class RupCartoonGenerator {
 							firstSects[strandIndex] = false;
 							String name;
 							if (strandIndex == 0)
-								name = "Primary Strand Sect";
+								name = "Primary Strand";
 							else {
-								name = "Splay Strand (L"+strandIndex;
-								if (strandIndex == strand_colors.length-1)
-									name += "+";
-								name += ")";
+								name = "Splay Strand";
+								if (strandIndex > 1) {
+									name += " (L"+strandIndex;
+									if (strandIndex == strand_colors.length-1)
+										name += "+";
+									name += ")";
+								}
 							}
 							sectFuncs.get(sectFuncs.size()-1).setName(name);
 						}
@@ -464,19 +473,19 @@ public class RupCartoonGenerator {
 			RuptureTreeNavigator navigator = rup.getTreeNavigator();
 			FaultSection before = navigator.getPredecessor(jump.fromSection);
 			if (before != null)
-				addAzimuth(before, jump.fromSection);
+				addAzimuth(before, jump.fromSection, az_arrow_char);
 			for (FaultSection after : navigator.getDescendants(jump.toSection))
-				addAzimuth(jump.toSection, after);
+				addAzimuth(jump.toSection, after, az_arrow_char);
 		}
 		
-		private void addAzimuth(FaultSection from, FaultSection to) {
+		private void addAzimuth(FaultSection from, FaultSection to, PlotCurveCharacterstics azChar) {
 			List<XY_DataSet> xys = line(from, to, true, 2.5d);
 			if (firstAz)
 				xys.get(0).setName("Azimuth");
 			firstAz = false;
 			for (XY_DataSet xy : xys) {
 				arrowFuncs.add(xy);
-				arrowChars.add(az_arrow_char);
+				arrowChars.add(azChar);
 			}
 		}
 	}
@@ -556,13 +565,13 @@ public class RupCartoonGenerator {
 			List<PlausibilityFilter> filters, ClusterConnectionStrategy connStrat,
 			int maxNumSplays, boolean includeDuplicates, boolean plotAzimuths,
 			boolean axisLabels, double fps) throws IOException {
-		animateRuptureBuilding(outputDir, prefix, rupBuild, filters, connStrat, new ExhaustiveClusterPermuationStrategy(),
+		animateRuptureBuilding(outputDir, prefix, rupBuild, filters, connStrat, new ExhaustiveUnilateralRuptureGrowingStrategy(),
 				maxNumSplays, includeDuplicates, true, plotAzimuths, axisLabels, fps, null);
 	}
 	
 	private static void animateRuptureBuilding(File outputDir, String prefix, SubSectBuilder rupBuild,
 			List<PlausibilityFilter> filters, ClusterConnectionStrategy connStrat,
-			ClusterPermutationStrategy permStrat, int maxNumSplays, boolean includeDuplicates, boolean includeFailures,
+			RuptureGrowingStrategy permStrat, int maxNumSplays, boolean includeDuplicates, boolean includeFailures,
 			boolean plotAzimuths, boolean axisLabels, double fps, Set<FaultSection> startSects) throws IOException {
 		TrackAllDebugCriteria tracker = new TrackAllDebugCriteria();
 		
@@ -931,10 +940,10 @@ public class RupCartoonGenerator {
 		List<PlausibilityFilter> filters = new ArrayList<>();
 		filters.add(new MinSectsPerParentFilter(2, false, false, connStrat));
 		animateRuptureBuilding(outputDir, "system_build_anim_thin", rupBuild,
-				filters, connStrat, new SectCountAdaptivePermutationStrategy(0.1f, true), 0, true, true, false, false, 2d,
+				filters, connStrat, new SectCountAdaptiveRuptureGrowingStrategy(0.1f, true), 0, true, true, false, false, 2d,
 				s1Sects);
 		animateRuptureBuilding(outputDir, "system_build_anim_no_thin", rupBuild,
-				filters, connStrat, new ExhaustiveClusterPermuationStrategy(), 0, true, true, false, false, 2d,
+				filters, connStrat, new ExhaustiveUnilateralRuptureGrowingStrategy(), 0, true, true, false, false, 2d,
 				s1Sects);
 	}
 	
@@ -1002,14 +1011,14 @@ public class RupCartoonGenerator {
 		List<PlausibilityFilter> filters = new ArrayList<>();
 //		filters.add(new MinSectsPerParentFilter(2, false, false, connStrat));
 
-		List<ClusterPermutationStrategy> permStrats = new ArrayList<>();
+		List<RuptureGrowingStrategy> permStrats = new ArrayList<>();
 		List<String> prefixes = new ArrayList<>();
 		
-		permStrats.add(new SectCountAdaptivePermutationStrategy(fract, true));
+		permStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(fract, true));
 		prefixes.add("perm_strat_adaptive");
-		permStrats.add(new ExhaustiveClusterPermuationStrategy());
+		permStrats.add(new ExhaustiveUnilateralRuptureGrowingStrategy());
 		prefixes.add("perm_strat_exhaustive");
-		permStrats.add(new ConnectionPointsPermutationStrategy());
+		permStrats.add(new ConnectionPointsRuptureGrowingStrategy());
 		prefixes.add("perm_strat_conn_points");
 		
 		PlotCurveCharacterstics rupChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK);
@@ -1018,16 +1027,20 @@ public class RupCartoonGenerator {
 		PlotCurveCharacterstics whiteChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.WHITE);
 		
 		for (int p=0; p<permStrats.size(); p++) {
-			ClusterPermutationStrategy permStrat = permStrats.get(p);
+			RuptureGrowingStrategy permStrat = permStrats.get(p);
 			
 //			String title = "Permuation Strategy: "+permStrat.getName();
-			String title = permStrat.getName();
+			String title = permStrat.getName().replaceAll("Unilateral", "").trim();
+			if (title.startsWith(","))
+				title = title.substring(1).trim();
+			if (title.endsWith(","))
+				title = title.substring(0, title.length()-1).trim();
 			System.out.println(title);
 			
 			// build ruptures
 			List<PlausibilityFilter> myFilters = new ArrayList<>(filters);
-			if (permStrat instanceof SectCountAdaptivePermutationStrategy)
-				myFilters.add(((SectCountAdaptivePermutationStrategy)permStrat).buildConnPointCleanupFilter(connStrat));
+			if (permStrat instanceof SectCountAdaptiveRuptureGrowingStrategy)
+				myFilters.add(((SectCountAdaptiveRuptureGrowingStrategy)permStrat).buildConnPointCleanupFilter(connStrat));
 			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(connStrat.getClusters(), myFilters, 0);
 			
 			List<ClusterRupture> rups = builder.build(permStrat);
@@ -1056,12 +1069,149 @@ public class RupCartoonGenerator {
 					if (rup.contains(sect)) {
 						plotSection(sect, funcs, chars, rupChar, traceChar);
 						if (firstRup)
-							funcs.get(funcs.size()-1).setName("Ruptured Sections");
+							funcs.get(funcs.size()-1).setName("Ruptured Section");
 						firstRup = false;
 					} else {
 						plotSection(sect, funcs, chars, noRupChar, traceChar);
 						if (firstNoRup)
-							funcs.get(funcs.size()-1).setName("Other Sections");
+							funcs.get(funcs.size()-1).setName("Other Section");
+						firstNoRup = false;
+					}
+				}
+				boolean firstJump = true;
+				for (Jump jump : rup.getJumpsIterable()) {
+					List<XY_DataSet> arrow = line(jump.fromSection, jump.toSection, true, 1d, 1d);
+					if (firstJump)
+						arrow.get(0).setName("Jump");
+					for (XY_DataSet xy : arrow) {
+						funcs.add(xy);
+						chars.add(reg_jump_char);
+					}
+				}
+				
+				PlotSpec spec = new PlotSpec(funcs, chars, title, null, " ");
+				spec.setLegendVisible(specs.isEmpty());
+				specs.add(spec);
+			}
+			while (specs.size() < numRupsToPlot) {
+				List<XY_DataSet> funcs = new ArrayList<>();
+				List<PlotCurveCharacterstics> chars = new ArrayList<>();
+				
+				titles.add(" ");
+				for (FaultSection sect : rupBuild.subSectsList) {
+					plotSection(sect, funcs, chars, whiteChar, whiteChar);
+				}
+				
+				PlotSpec spec = new PlotSpec(funcs, chars, title, null, " ");
+				spec.setLegendVisible(false);
+				specs.add(spec);
+			}
+			
+			plotTileMulti(outputDir, prefixes.get(p), specs, title, titles, 0.01, 16, 0);
+		}
+	}
+	
+	private static void buildPermStratBilateralDemos(File outputDir) throws IOException {
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		
+		double upperDepth = 0d;
+		double lowerDepth = 10d;
+		double fractDDW = 0.5;
+		int parentID = 1001;
+		
+		int numRupsToPlot = 13;
+		
+		double dip = 84d;
+		
+		float fract = 0.1f;
+		
+		FaultSection s1 = buildSect(parentID++, dip, upperDepth, lowerDepth,
+				loc(0d, -2.5d), loc(45d, -0.5d));
+		s1.setAveRake(180d);
+		FaultSection s2 = buildSect(parentID++, dip, upperDepth, lowerDepth,
+				loc(33d, 1d), loc(60d, -2.5d));
+		s2.setAveRake(180d);
+
+		SubSectBuilder rupBuild = new SubSectBuilder(fractDDW);
+		rupBuild.addFault(s1);
+		HashSet<FaultSection> s1Sects = new HashSet<>(rupBuild.subSectsList);
+		System.out.println("S1 has "+s1Sects.size()+" sects");
+		rupBuild.addFault(s2);
+		
+		SectionDistanceAzimuthCalculator animDistAzCalc = new SectionDistanceAzimuthCalculator(
+				rupBuild.subSectsList);
+		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+				rupBuild.subSectsList, animDistAzCalc, 5d);
+		List<PlausibilityFilter> filters = new ArrayList<>();
+//		filters.add(new MinSectsPerParentFilter(2, false, false, connStrat));
+
+		List<RuptureGrowingStrategy> permStrats = new ArrayList<>();
+		List<String> prefixes = new ArrayList<>();
+		permStrats.add(new ExhaustiveUnilateralRuptureGrowingStrategy());
+		prefixes.add("perm_strat_bilateral_unilateral");
+		permStrats.add(new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.ALL, false));
+		prefixes.add("perm_strat_bilateral_all");
+		permStrats.add(new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.SINGLE_FULL, false));
+		prefixes.add("perm_strat_bilateral_single_full");
+		permStrats.add(new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.EQUAL_LEN, false));
+		prefixes.add("perm_strat_bilateral_equal_len");
+		permStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(
+				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.SINGLE_FULL, false), fract, true));
+		prefixes.add("perm_strat_bilateral_adaptive_single_full");
+		permStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(
+				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.EQUAL_LEN, false), fract, true));
+		prefixes.add("perm_strat_bilateral_adaptive_equal_len");
+		
+		PlotCurveCharacterstics rupChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK);
+		PlotCurveCharacterstics noRupChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.LIGHT_GRAY);
+		PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GRAY);
+		PlotCurveCharacterstics whiteChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.WHITE);
+		
+		for (int p=0; p<permStrats.size(); p++) {
+			RuptureGrowingStrategy permStrat = permStrats.get(p);
+			
+//			String title = "Permuation Strategy: "+permStrat.getName();
+			String title = permStrat.getName();
+			System.out.println(title);
+			
+			// build ruptures
+			List<PlausibilityFilter> myFilters = new ArrayList<>(filters);
+			if (permStrat instanceof SectCountAdaptiveRuptureGrowingStrategy)
+				myFilters.add(((SectCountAdaptiveRuptureGrowingStrategy)permStrat).buildConnPointCleanupFilter(connStrat));
+			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(connStrat.getClusters(), myFilters, 0);
+			
+			List<ClusterRupture> rups = builder.build(permStrat);
+			List<ClusterRupture> matchingRups = new ArrayList<>();
+			for (ClusterRupture rup : rups) {
+				if (rup.clusters[0].parentSectionID != s1.getSectionId() || rup.clusters[0].subSects.size() != s1Sects.size())
+					continue;
+				matchingRups.add(rup);
+				if (matchingRups.size() == numRupsToPlot)
+					break;
+			}
+			
+			System.out.println("Plotting "+matchingRups.size()+" ruptures");
+			
+			List<PlotSpec> specs = new ArrayList<>();
+			List<String> titles = new ArrayList<>();
+			for (ClusterRupture rup : matchingRups) {
+				List<XY_DataSet> funcs = new ArrayList<>();
+				List<PlotCurveCharacterstics> chars = new ArrayList<>();
+				
+				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+				
+				boolean firstRup = true;
+				boolean firstNoRup = true;
+				for (FaultSection sect : rupBuild.subSectsList) {
+					if (rup.contains(sect)) {
+						plotSection(sect, funcs, chars, rupChar, traceChar);
+						if (firstRup)
+							funcs.get(funcs.size()-1).setName("Ruptured Section");
+						firstRup = false;
+					} else {
+						plotSection(sect, funcs, chars, noRupChar, traceChar);
+						if (firstNoRup)
+							funcs.get(funcs.size()-1).setName("Other Section");
 						firstNoRup = false;
 					}
 				}
@@ -1509,7 +1659,7 @@ public class RupCartoonGenerator {
 						for (FaultSection source : currentSects) {
 							plotSection(source, funcs, chars, sourceChar, traceChar);
 							if (firstSourceSect)
-								funcs.get(funcs.size()-1).setName("Sources");
+								funcs.get(funcs.size()-1).setName("Source");
 							firstSourceSect = false;
 							processed.add(source);
 						}
@@ -1571,8 +1721,8 @@ public class RupCartoonGenerator {
 			int expectedNum = rupBuild.subSectsList.size()-clusters.get(n).subSects.size()+1;
 			PlotCurveCharacterstics whiteChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.WHITE);
 			
-			bestRecieverFunc.setName("Receivers");
-			lastRecieverFunc.setName("Future Sections");
+			bestRecieverFunc.setName("Receiver");
+			lastRecieverFunc.setName("Future Section");
 			
 			plotTileMulti(outputDir, prefix+"_"+n, specs, title, titles, 0.02, 20, 0);
 		}
@@ -1782,7 +1932,7 @@ public class RupCartoonGenerator {
 	private static List<ClusterRupture> getRelProbExampleRups(List<FaultSubsectionCluster> clusters) {
 		List<PlausibilityFilter> buildFilters = new ArrayList<>();
 		buildFilters.add(new StartsWithFitler(clusters.get(0).startSect));
-		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsPermutationStrategy());
+		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsRuptureGrowingStrategy());
 		
 		System.out.println("Building relative probability example ruptures");
 		
@@ -1966,7 +2116,7 @@ public class RupCartoonGenerator {
 				} else {
 					plotSection(sect, funcs, chars, optionChar, traceChar);
 					if (firstOption)
-						funcs.get(funcs.size()-1).setName("Other Sections");
+						funcs.get(funcs.size()-1).setName("Other Section");
 					firstOption = false;
 				}
 			}
@@ -2151,7 +2301,7 @@ public class RupCartoonGenerator {
 		List<PlausibilityFilter> buildFilters = new ArrayList<>();
 		buildFilters.add(new StartsWithFitler(clusters.get(0).startSect));
 		
-		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsPermutationStrategy());
+		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsRuptureGrowingStrategy());
 		
 		List<ClusterRupture> plotRups = new ArrayList<>();
 		
@@ -2203,7 +2353,7 @@ public class RupCartoonGenerator {
 				for (FaultSection sect : cluster.subSects) {
 					plotSection(sect, funcs, chars, rupChar, traceChar);
 					if (firstRup)
-						funcs.get(funcs.size()-1).setName("Ruptured Sections");
+						funcs.get(funcs.size()-1).setName("Ruptured Section");
 					firstRup = false;
 				}
 			}
@@ -2222,7 +2372,7 @@ public class RupCartoonGenerator {
 			// rename
 			for (XY_DataSet xy : funcs)
 				if (xy.getName() != null && xy.getName().contains("Sect"))
-					xy.setName("Ruptured Sections");
+					xy.setName("Ruptured Section");
 			
 			// add any non-ruptured sects
 			boolean firstOther = true;
@@ -2230,7 +2380,7 @@ public class RupCartoonGenerator {
 				if (!rup.contains(sect)) {
 					plotSection(sect, funcs, chars, otherChar, traceChar);
 					if (firstOther)
-						funcs.get(funcs.size()-1).setName("Other Sections");
+						funcs.get(funcs.size()-1).setName("Other Section");
 					firstOther = false;
 				}
 			}
@@ -2282,13 +2432,15 @@ public class RupCartoonGenerator {
 		
 		SubSectStiffnessCalculator stiffCalc = new SubSectStiffnessCalculator(rupBuild.subSectsList, 2d, 30000, 30000,
 				0.5d, PatchAlignment.CENTER, 1d);
+//		SubSectStiffnessCalculator stiffCalc = new SubSectStiffnessCalculator(rupBuild.subSectsList, 2d, 30000, 30000,
+//				0.5d, PatchAlignment.FILL_OVERLAP, 1d);
 		AggregatedStiffnessCalculator aggCalc = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffCalc, false,
 				AggregationMethod.NUM_POSITIVE, AggregationMethod.FLATTEN, AggregationMethod.FLATTEN, AggregationMethod.NORM_BY_COUNT);
 		
 		List<PlausibilityFilter> buildFilters = new ArrayList<>();
 		buildFilters.add(new StartsWithFitler(clusters.get(0).startSect));
 		
-		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsPermutationStrategy());
+		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsRuptureGrowingStrategy());
 		
 		List<ClusterRupture> plotRups = new ArrayList<>();
 		// plot ruptures that add each cluster in order
@@ -2387,7 +2539,7 @@ public class RupCartoonGenerator {
 				for (FaultSection sect : cluster.subSects) {
 					plotSection(sect, funcs, chars, rupChar, traceChar);
 					if (firstRup)
-						funcs.get(funcs.size()-1).setName("Ruptured Sections");
+						funcs.get(funcs.size()-1).setName("Ruptured Section");
 					firstRup = false;
 				}
 			}
@@ -2406,7 +2558,7 @@ public class RupCartoonGenerator {
 			// rename
 			for (XY_DataSet xy : funcs)
 				if (xy.getName() != null && xy.getName().contains("Sect"))
-					xy.setName("Ruptured Sections");
+					xy.setName("Ruptured Section");
 			
 			// add any non-ruptured sects
 			boolean firstOther = true;
@@ -2414,7 +2566,7 @@ public class RupCartoonGenerator {
 				if (!rup.contains(sect)) {
 					plotSection(sect, funcs, chars, otherChar, traceChar);
 					if (firstOther)
-						funcs.get(funcs.size()-1).setName("Other Sections");
+						funcs.get(funcs.size()-1).setName("Other Section");
 					firstOther = false;
 				}
 			}
@@ -2467,24 +2619,260 @@ public class RupCartoonGenerator {
 		}
 		news.add(xy);
 	}
+	
+	private static void buildCumulativeAzimuthDemo(File outputDir) throws IOException {
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		
+		double upperDepth = 0d;
+		double lowerDepth = 10d;
+		double fractDDW = 0.5;
+		int parentID = 1001;
+		
+		double dip = 85d;
+		
+		SubSectBuilder rupBuild = new SubSectBuilder(fractDDW);
+		
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
+				loc(0d, 0), loc(50, 0d)));
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
+				loc(45d, 5d), loc(100, 5d)));
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
+				loc(50d, 5), loc(100, 5d)));
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
+				loc(0d, 0), loc(70, 0d)));
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
+				loc(55d, 0), loc(100, 10d)));
+		
+		int numPoints = 11;
+		double deltaX = 10;
+		Location[] locs = new Location[numPoints];
+		Random r = new Random(numPoints*3);
+		for (int i=0; i<numPoints; i++) {
+			double x = deltaX*i;
+			double y = 0d;
+			if (i > 0 && i < numPoints-1) {
+				x += deltaX*0.5*(r.nextDouble()-0.5);
+				y += deltaX*0.5*(r.nextDouble()-0.25);
+			}
+			y += 0.5;
+			locs[i] = loc(x, y);
+		}
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth, locs));
+		// now add simpler version
+		List<Location> simpleLocsList = new ArrayList<>();
+		for (int i=0; i<numPoints; i++)
+//			if (i == 0 || i == numPoints-1 || r.nextDouble() < 0.5)
+//				simpleLocsList.add(locs[i]);
+			if (i == 0 || i % 2 == 1 || i == numPoints-1)
+				simpleLocsList.add(locs[i]);
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth, simpleLocsList.toArray(new Location[0])));
+		// now add more refined version
+		List<Location> complicatedLocsList = new ArrayList<>();
+		double compMult = 0.02;
+		for (int i=0; i<numPoints; i++) {
+			if (i > 0) {
+				double lat = 0.5*(locs[i-1].getLatitude() + locs[i].getLatitude());
+				double lon = 0.5*(locs[i-1].getLongitude() + locs[i].getLongitude());
+				lat += compMult*(r.nextDouble()-0.5);
+				lon += compMult*(r.nextDouble()-0.5);
+				complicatedLocsList.add(new Location(lat, lon));
+			}
+			complicatedLocsList.add(locs[i]);
+		}
+		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth, complicatedLocsList.toArray(new Location[0])));
+		
+		List<? extends FaultSection> subSects = rupBuild.subSectsList;
+		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
+		
+		CumulativeAzimuthChangeFilter filter = new CumulativeAzimuthChangeFilter(
+				new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc), 560f);
+		
+//		List<FaultSubsectionCluster> clusters = new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 20d).getClusters();
+		List<FaultSubsectionCluster> clusters = new PlausibleClusterConnectionStrategy(
+				subSects, distAzCalc, 20d, new OnlyEndsJumpSelector(true), new JumpDistFilter(20d)).getClusters();
+
+		FaultSubsectionCluster cluster1 = clusters.get(0);
+		FaultSubsectionCluster cluster2 = clusters.get(1);
+		FaultSubsectionCluster cluster3 = clusters.get(2);
+		FaultSubsectionCluster cluster4 = clusters.get(3);
+		FaultSubsectionCluster cluster5 = clusters.get(4);
+		FaultSubsectionCluster cluster6 = clusters.get(5);
+		FaultSubsectionCluster cluster7 = clusters.get(6);
+		FaultSubsectionCluster cluster8 = clusters.get(7);
+		
+		List<ClusterRupture> rups = new ArrayList<>();
+		rups.add(new ClusterRupture(cluster1).take(cluster1.getConnectionsTo(cluster5).iterator().next()));
+		rups.add(new ClusterRupture(cluster1).take(cluster1.getConnectionsTo(cluster3).iterator().next()));
+		rups.add(new ClusterRupture(cluster1).take(cluster1.getConnectionsTo(cluster2).iterator().next()));
+		rups.add(new ClusterRupture(cluster7));
+		rups.add(new ClusterRupture(cluster6));
+//		rups.add(new ClusterRupture(cluster8));
+		
+		List<PlotSpec> specs = new ArrayList<>();
+		List<String> labels = new ArrayList<>();
+		
+		for (ClusterRupture rup : rups) {
+			List<XY_DataSet> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			PlotCurveCharacterstics rupChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK);
+			PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GRAY);
+			PlotCurveCharacterstics azChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GREEN.darker());
+//			PlotCurveCharacterstics azMidPointChar = new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 4f, Color.GREEN.darker().darker());
+			PlotCurveCharacterstics azMidPointChar = new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 4f, Color.BLUE.darker());
+			
+			boolean firstSect = true;
+			for (FaultSubsectionCluster cluster : rup.getClustersIterable()) {
+				for (FaultSection sect : cluster.subSects) {
+					plotSection(sect, funcs, chars, rupChar, traceChar);
+					if (firstSect)
+						funcs.get(funcs.size()-1).setName("Ruptured Section");
+					firstSect = false;
+				}
+			}
+			
+			List<Double> changes = new ArrayList<>();
+			XY_DataSet midPoints = new DefaultXY_DataSet();
+			midPoints.setName("Section Midpoint");
+			addAzArrowsRecursive(rup.getTreeNavigator(), rup.clusters[0].startSect, null,
+					funcs, chars, azChar, midPoints, distAzCalc, 3d, changes);
+			funcs.get(funcs.size()-1).setName("Azimuth");
+			funcs.add(midPoints);
+			chars.add(azMidPointChar);
+			
+			boolean firstJump = true;
+			for (Jump jump : rup.getJumpsIterable()) {
+				for (XY_DataSet xy : line(jump.fromSection, jump.toSection, true, 1d, 1d)) {
+					funcs.add(xy);
+					chars.add(reg_jump_char);
+					if (firstJump)
+						xy.setName("Jump");
+					firstJump = false;
+				}
+			}
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, null, " ", " ");
+			spec.setLegendVisible(specs.isEmpty());
+			
+			specs.add(spec);
+			String label = null;
+			if (changes.isEmpty()) {
+				label = "";
+			} else {
+				double total = 0d;
+				int intTotal = 0;
+				List<Integer> intChanges = new ArrayList<>();
+				for (Double change : changes) {
+					int chInt = (int)(change+0.5);
+					total += change;
+					intChanges.add(chInt);
+					intTotal += chInt;
+				}
+				
+				while (intTotal != (int)(total+0.5)) {
+					System.out.println("Fixing rounding drift with total="+(float)total+"~="+(int)(total+0.5)+" and intTotal="+intTotal);
+					boolean higher = intTotal > (int)(total+0.5);
+					int changeIndex = -1;
+					double minChangeDelta = 0d;
+					for (int i=0; i<intChanges.size(); i++) {
+						int intVal = intChanges.get(i);
+						double val = changes.get(i);
+						if (higher && intVal > val && intVal > 0) {
+							double delta = intVal - val;
+							if (delta > minChangeDelta) {
+								minChangeDelta = delta;
+								changeIndex = i;
+							}
+						} else if (!higher && intVal < val) {
+							double delta = val - intVal;
+							if (delta > minChangeDelta) {
+								minChangeDelta = delta;
+								changeIndex = i;
+							}
+						}
+					}
+					Preconditions.checkState(changeIndex >= 0, "Change index not found");
+					int changeInt = intChanges.get(changeIndex);
+					int newChangeInt = higher ? changeInt-1 : changeInt+1;
+					System.out.println("\tChanging value at "+changeIndex+" from "+changeInt+" to "+newChangeInt
+							+" with val="+changes.get(changeIndex).floatValue());
+					intChanges.set(changeIndex, newChangeInt);
+					intTotal += (newChangeInt - changeInt);
+				}
+				
+				intTotal = 0;
+				for (int chInt : intChanges) {
+					if (chInt == 0)
+						continue;
+					if (label == null)
+						label = "";
+					else
+						label += "+";
+					intTotal += chInt;
+					label += chInt;
+				}
+				System.out.println("Calculated total="+total+", intTotal="+intTotal);
+				label += "=";
+			}
+			labels.add("Rupture "+specs.size()+": "+label+(int)(filter.getValue(rup)+0.5f)+"°");
+		}
+		
+		plotTileMulti(outputDir, "cumulative_azimuth", specs, "Cumulative Azimuth Change", labels, 0.025, 18, 1);
+	}
+	
+	private static void addAzArrowsRecursive(RuptureTreeNavigator nav, FaultSection curSect, Double prevAz,
+			List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars, PlotCurveCharacterstics azChar,
+			XY_DataSet midPoints, SectionDistanceAzimuthCalculator distAzCalc,
+			double arrowLen, List<Double> changes) {
+		for (FaultSection descendant : nav.getDescendants(curSect)) {
+			double azimuth = distAzCalc.getAzimuth(curSect, descendant);
+			
+			if (prevAz != null && Math.abs(prevAz - azimuth) > 0.0001 || descendant.getParentSectionId() != curSect.getParentSectionId()) {
+//				System.out.println("prev="+prevAz+", cur="+azimuth);
+				Location center1 = GriddedSurfaceUtils.getSurfaceMiddleLoc(nav.getPredecessor(curSect).getFaultSurface(1d, false, false));
+				Location center2 = GriddedSurfaceUtils.getSurfaceMiddleLoc(curSect.getFaultSurface(1d, false, false));
+				Location center3 = GriddedSurfaceUtils.getSurfaceMiddleLoc(descendant.getFaultSurface(1d, false, false));
+				midPoints.set(center1.getLongitude(), center1.getLatitude());
+				midPoints.set(center2.getLongitude(), center2.getLatitude());
+				midPoints.set(center3.getLongitude(), center3.getLatitude());
+				// plot this one
+				for (XY_DataSet xy : line(nav.getPredecessor(curSect), curSect, true, 2d, arrowLen)) {
+					funcs.add(xy);
+					chars.add(azChar);
+				}
+				for (XY_DataSet xy : line(curSect, descendant, true, 2d, arrowLen)) {
+					funcs.add(xy);
+					chars.add(azChar);
+				}
+				double change = Math.abs(prevAz - azimuth);
+				if (change >= 0.5)
+					changes.add(change);
+			}
+			
+			addAzArrowsRecursive(nav, descendant, azimuth, funcs, chars, azChar, midPoints, distAzCalc, arrowLen, changes);
+		}
+	}
 
 	public static void main(String[] args) throws IOException, DocumentException {
-		File rupsDir = new File("/home/kevin/workspace/opensha-ucerf3/src/org/opensha/sha/"
+		File mainDir = new File("/home/kevin/workspace/opensha-ucerf3/src/org/opensha/sha/"
 				+ "earthquake/faultSysSolution/ruptures");
-		File rupDocsDir = new File(rupsDir, "doc");
-		File stratDocsDir = new File(rupsDir, "strategies/doc");
-		File plausiblityDocsDir = new File(rupsDir, "plausibility/doc");
+//		File mainDir = new File("/tmp/cartoons");
+		File rupDocsDir = new File(mainDir, "doc");
+		File stratDocsDir = new File(mainDir, "strategies/doc");
+		File plausiblityDocsDir = new File(mainDir, "plausibility/doc");
 		
 //		buildStandardDemos(rupDocsDir);
 //		buildThinningDemo(stratDocsDir);
 		buildConnStratDemo(stratDocsDir);
 		buildPermStratDemos(stratDocsDir);
+		buildPermStratBilateralDemos(stratDocsDir);
 		
 		buildPathCoulombDemos(plausiblityDocsDir);
 		buildSlipProbDemo(plausiblityDocsDir);
 		buildCoulombProbDemo(plausiblityDocsDir);
 		buildNoIndirectExamples(plausiblityDocsDir);
 		buildCoulombInteractionDemo(plausiblityDocsDir);
+		buildCumulativeAzimuthDemo(plausiblityDocsDir);
 	}
 
 }

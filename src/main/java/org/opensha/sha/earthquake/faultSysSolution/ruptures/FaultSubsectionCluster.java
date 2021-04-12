@@ -22,7 +22,7 @@ import com.google.gson.stream.JsonWriter;
 
 /**
  * This class represents a cluster of contiguous subsections. It can either be a full parent
- * fault section, or a smaller permutation of a parent section
+ * fault section, or a smaller subset of a parent section
  * @author kevin
  *
  */
@@ -37,11 +37,16 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	 */
 	public final String parentSectionName;
 	/**
-	 * Immutable list of subsections that constitute this cluster
+	 * Immutable list of subsections that constitute this cluster. For simple, unliateral ruptures, they must be in
+	 * order from the start of the rupture to the end. For bilateral ruptures, they should be in order from the shorter
+	 * end to the longer end, i.e., the startSect should be closer to the start of this list than the end. Order can be
+	 * more flexible for faults with multiple subsections down-dip, but ensure that any plausibility filters can handle
+	 * this.
 	 */
 	public final ImmutableList<FaultSection> subSects;
 	/**
-	 * The starting section (entry point to) this cluster
+	 * The starting section (entry point to) this cluster. This is typically the first section in the subSects list,
+	 * but need not always be if a rupture jumps to this cluster and spreads bilaterally.
 	 */
 	public final FaultSection startSect;
 	/**
@@ -61,14 +66,38 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	 */
 	private final List<Jump> possibleJumps;
 	
+	/**
+	 * Constructor for a simple unliateral cluster that begins at the first section and ends at the last section.
+	 * 
+	 * @param subSects
+	 */
 	public FaultSubsectionCluster(List<? extends FaultSection> subSects) {
 		this(subSects, null);
 	}
 	
+	/**
+	 * Constructor for a more complicated cluster that has multiple end points (from where jumps can occur),
+	 * but starts at the first section. USeful for faults with multiple subsections down dip. 
+	 * 
+	 * @param subSects
+	 * @param endSects
+	 */
 	public FaultSubsectionCluster(List<? extends FaultSection> subSects, Collection<FaultSection> endSects) {
+		this(subSects, subSects.get(0), endSects);
+	}
+	
+	/**
+	 * Constructor for a more complicated cluster that has multiple end points (from where jumps can occur),
+	 * but starts at the first section. USeful for faults with multiple subsections down dip. 
+	 * 
+	 * @param subSects
+	 * @param endSects
+	 */
+	public FaultSubsectionCluster(List<? extends FaultSection> subSects, FaultSection startSect,
+			Collection<FaultSection> endSects) {
 		Preconditions.checkArgument(!subSects.isEmpty(), "Must supply at least 1 subsection");
 		this.subSects = ImmutableList.copyOf(subSects);
-		this.startSect = subSects.get(0);
+		this.startSect = startSect;
 		if (endSects == null) {
 			// default behaviour: last section
 			this.endSects = ImmutableSet.of(subSects.get(subSects.size()-1));
@@ -160,7 +189,10 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	}
 	@Override
 	public String toString() {
-		return toString(-1);
+		int jumpToID = -1;
+		if (startSect != subSects.get(0))
+			jumpToID = startSect.getSectionId();
+		return toString(jumpToID);
 	}
 	public String toString(int jumpToID) {
 		StringBuilder str = null;
@@ -177,9 +209,15 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	}
 	
 	public FaultSubsectionCluster reversed() {
+		return reversed(null);
+	}
+	
+	public FaultSubsectionCluster reversed(FaultSection newStartSect) {
 		List<FaultSection> sects = new ArrayList<>(subSects);
 		Collections.reverse(sects);
-		FaultSubsectionCluster reversed = new FaultSubsectionCluster(sects);
+		if (newStartSect == null)
+			newStartSect = sects.get(0);
+		FaultSubsectionCluster reversed = new FaultSubsectionCluster(sects, newStartSect, null);
 		for (Jump jump : possibleJumps)
 			reversed.addConnection(new Jump(jump.fromSection, reversed,
 					jump.toSection, jump.toCluster, jump.distance));
@@ -206,9 +244,10 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((endSects == null) ? 0 : endSects.hashCode());
+		result = prime * result + endSects.hashCode();
 		result = prime * result + parentSectionID;
-		result = prime * result + ((subSects == null) ? 0 : subSects.hashCode());
+		result = prime * result + startSect.hashCode();
+		result = prime * result + subSects.hashCode();
 		return result;
 	}
 
@@ -221,17 +260,13 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		if (getClass() != obj.getClass())
 			return false;
 		FaultSubsectionCluster other = (FaultSubsectionCluster) obj;
-		if (endSects == null) {
-			if (other.endSects != null)
-				return false;
-		} else if (!endSects.equals(other.endSects))
-			return false;
 		if (parentSectionID != other.parentSectionID)
 			return false;
-		if (subSects == null) {
-			if (other.subSects != null)
-				return false;
-		} else if (!subSects.equals(other.subSects))
+		if (!startSect.equals(other.startSect))
+			return false;
+		if (!endSects.equals(other.endSects))
+			return false;
+		if (!subSects.equals(other.subSects))
 			return false;
 		return true;
 	}
@@ -245,6 +280,8 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	public void writeJSON(JsonWriter out) throws IOException {
 		out.beginObject();
 		out.name("parentID").value(parentSectionID);
+		if (!startSect.equals(subSects.get(0)))
+			out.name("startSectID").value(startSect.getSectionId());
 		out.name("subSectIDs").beginArray();
 		for (FaultSection sect : subSects)
 			out.value(sect.getSectionId());
@@ -307,6 +344,7 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		in.beginObject();
 		
 		Integer parentID = null;
+		FaultSection startSect = null;
 		List<FaultSection> subSects = null;
 		List<FaultSection> endSects = null;
 		List<JumpStub> jumps = null;
@@ -315,6 +353,9 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 			switch (in.nextName()) {
 			case "parentID":
 				parentID = in.nextInt();
+				break;
+			case "startSectID":
+				startSect = getSect(allSects, in.nextInt());
 				break;
 			case "subSectIDs":
 				in.beginArray();
@@ -378,11 +419,9 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 		}
 		Preconditions.checkNotNull(parentID, "Cluster parentID not specified");
 		Preconditions.checkNotNull(subSects, "Cluster subSects not specified");
-		FaultSubsectionCluster cluster;
-		if (endSects != null)
-			cluster = new FaultSubsectionCluster(subSects, endSects);
-		else
-			cluster = new FaultSubsectionCluster(subSects);
+		if (startSect == null)
+			startSect = subSects.get(0);
+		FaultSubsectionCluster cluster = new FaultSubsectionCluster(subSects, startSect, endSects);
 		if (prevClustersMap != null) {
 			if (prevClustersMap.containsKey(cluster))
 				cluster = prevClustersMap.get(cluster);

@@ -14,21 +14,21 @@ import com.google.common.base.Preconditions;
 
 /**
  * This just returns full clusters from the given start section to either end of the cluster or exit points
- * (no permutations in-between);
+ * (no variations in-between);
  * 
  * @author kevin
  *
  */
-public class ConnectionPointsPermutationStrategy implements ClusterPermutationStrategy {
+public class ConnectionPointsRuptureGrowingStrategy implements RuptureGrowingStrategy {
 
 	@Override
-	public List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
+	public List<FaultSubsectionCluster> getVariations(FaultSubsectionCluster fullCluster,
 			FaultSection firstSection) {
-		return getPermutations(null, fullCluster, firstSection);
+		return getVariations(null, fullCluster, firstSection);
 	}
 
 	@Override
-	public List<FaultSubsectionCluster> getPermutations(ClusterRupture currentRupture,
+	public List<FaultSubsectionCluster> getVariations(ClusterRupture currentRupture,
 			FaultSubsectionCluster fullCluster, FaultSection firstSection) {
 		List<FaultSection> clusterSects = fullCluster.subSects;
 		int myInd = fullCluster.subSects.indexOf(firstSection);

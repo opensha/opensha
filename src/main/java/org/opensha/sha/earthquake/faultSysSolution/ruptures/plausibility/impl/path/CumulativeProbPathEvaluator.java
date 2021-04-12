@@ -17,7 +17,7 @@ import com.google.common.collect.Range;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
- * This class uses a (or set of) RuptureProbabilityCalc instance to test each nucleation cluster. Ruptures are reorganized
+ * This class uses a (or set of) RuptureProbabilityCalc instance(s) to test each nucleation cluster. Ruptures are reorganized
  * soas to start at each cluster (with splays as necessary to represent bilateral spread) and then passed to the
  * RuptureProbabilityCalc
  * 
@@ -108,7 +108,7 @@ public class CumulativeProbPathEvaluator implements NucleationClusterEvaluator.S
 			}
 			while (predecessor != null) {
 				Jump origJump = nav.getJump(predecessor, prevOrig);
-				FaultSubsectionCluster reversed = predecessor.reversed();
+				FaultSubsectionCluster reversed = predecessor.reversed(origJump.fromSection);
 				Jump reverseJump = new Jump(origJump.toSection, prevReversed,
 						origJump.fromSection, reversed, origJump.distance);
 				nucleationRupture = nucleationRupture.take(reverseJump);

@@ -103,6 +103,35 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose);
 	}
 	
+	public static class OnlyEndsJumpSelector implements JumpSelector {
+		
+		private boolean requireBoth;
+
+		public OnlyEndsJumpSelector(boolean requireBoth) {
+			this.requireBoth = requireBoth;
+		}
+
+		@Override
+		public List<CandidateJump> select(List<CandidateJump> candidates, Range<Double> acceptableScalarRange,
+				boolean verbose) {
+			List<CandidateJump> ret = new ArrayList<>();
+			for (CandidateJump jump : candidates) {
+				if (jump.fromEnd || jump.toEnd) {
+					if (!requireBoth || jump.fromEnd && jump.toEnd)
+						ret.add(jump);
+				}
+			}
+			return ret;
+		}
+
+		@Override
+		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange,
+				boolean verbose) {
+			return null;
+		}
+		
+	}
+	
 	public static class FallbackJumpSelector implements JumpSelector {
 		
 		private JumpSelector[] selectors;
@@ -622,6 +651,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 
 	protected List<Jump> buildPossibleConnections(FaultSubsectionCluster from, FaultSubsectionCluster to, final boolean debug) {
 		List<CandidateJump> candidates = new ArrayList<>();
+		double minDist = Double.POSITIVE_INFINITY;
 		for (int i=0; i<from.subSects.size(); i++) {
 			FaultSection s1 = from.subSects.get(i);
 			List<List<? extends FaultSection>> fromStrands = getStrandsTo(from.subSects, i);
@@ -629,6 +659,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			for (int j=0; j<to.subSects.size(); j++) {
 				FaultSection s2 = to.subSects.get(j);
 				double dist = distCalc.getDistance(s1, s2);
+				minDist = Double.min(minDist, dist);
 				boolean toEnd = j == 0 || j == to.subSects.size()-1;
 				if ((float)dist <= (float)maxJumpDist) {
 					if (debug)
@@ -708,8 +739,12 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 				}
 			}
 		}
-		if (candidates.isEmpty())
+		if (candidates.isEmpty()) {
+//			if ((float)minDist <= (float)maxJumpDist)
+//				System.err.println("WARNING: no connection returned between "+from.parentSectionID+" and "
+//						+to.parentSectionID+", despite a distance of "+(float)minDist);
 			return null;
+		}
 		if (debug) {
 			System.out.println("All candidates (distance sorted)");
 			Collections.sort(candidates, distCompare);
@@ -726,6 +761,9 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		for (CandidateJump candidate : selected)
 			ret.add(new Jump(candidate.fromSection, from, candidate.toSection, to, candidate.distance));
 //		System.out.println("returning "+ret.size()+" jumps");
+//		if (ret.isEmpty() && (float)minDist <= (float)maxJumpDist)
+//			System.err.println("WARNING: no connection returned between "+from.parentSectionID+" and "
+//					+to.parentSectionID+", despite a distance of "+(float)minDist);
 		return ret;
 	}
 	

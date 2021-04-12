@@ -15,6 +15,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.NucleationClusterEvaluator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -45,34 +47,38 @@ public class ClusterRupturePlausibilityDebug {
 //						+ "fm3_1_plausible10km_direct_slipP0.2incr_cff0.67IntsPos_comb2Paths_cffFavP0.05_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
 //						+ "fm3_1_plausible10km_direct_slipP0.1incr_cff0.67IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
 //						+ "nz_demo5_crustal_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip"));
-						+ "fm3_1_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
+//						+ "fm3_1_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
+//						+ "fm3_1_plausibleMulti10km_direct_cmlRake180_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.25_sectFractPerm0.05.zip"));
+						+ "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
 		System.out.println("Loaded "+rupSet.getNumRuptures()+" ruptures");
 		
 		PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
 		
+		boolean verbose = false;
+		
 		// for specific ruptures by ID
-//		List<ClusterRupture> clusterRuptures = rupSet.getClusterRuptures();
-//		if (clusterRuptures == null) {
-//			rupSet.buildClusterRups(new RuptureConnectionSearch(rupSet, config.getDistAzCalc(),
-//					config.getConnectionStrategy().getMaxJumpDist(), false));
-//			clusterRuptures = rupSet.getClusterRuptures();
-//		}
-//		
-////		int[] testIndexes = { 372703 };
-//		int[] testIndexes = { 379782 };
-//		
-//		List<ClusterRupture> testRuptures = new ArrayList<>();
-//		for (int testIndex : testIndexes)
-//			testRuptures.add(clusterRuptures.get(testIndex));
+		List<ClusterRupture> clusterRuptures = rupSet.getClusterRuptures();
+		if (clusterRuptures == null) {
+			rupSet.buildClusterRups(new RuptureConnectionSearch(rupSet, config.getDistAzCalc(),
+					config.getConnectionStrategy().getMaxJumpDist(), false));
+			clusterRuptures = rupSet.getClusterRuptures();
+		}
+		
+//		int[] testIndexes = { 372703 };
+		int[] testIndexes = { 173179 };
+		
+		List<ClusterRupture> testRuptures = new ArrayList<>();
+		for (int testIndex : testIndexes)
+			testRuptures.add(clusterRuptures.get(testIndex));
 		
 		// by string
-		int[] sectIDs = ClusterRuptureBuilder.loadRupString(
-				"[724:243,242][90:557,556,555][723:880,879,878][92:1025,1024][91:991,990,989]", false);
-		List<FaultSection> rupSects = new ArrayList<>();
-		for (int sectID : sectIDs)
-			rupSects.add(rupSet.getFaultSectionData(sectID));
-		List<ClusterRupture> testRuptures = new ArrayList<>();
-		testRuptures.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, config.getDistAzCalc()));
+//		int[] sectIDs = ClusterRuptureBuilder.loadRupString(
+//				"[724:243,242][90:557,556,555][723:880,879,878][92:1025,1024][91:991,990,989]", false);
+//		List<FaultSection> rupSects = new ArrayList<>();
+//		for (int sectID : sectIDs)
+//			rupSects.add(rupSet.getFaultSectionData(sectID));
+//		List<ClusterRupture> testRuptures = new ArrayList<>();
+//		testRuptures.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, config.getDistAzCalc()));
 		
 		
 		// for possible whole-parent ruptures
@@ -179,7 +185,7 @@ public class ClusterRupturePlausibilityDebug {
 				System.out.println("===================");
 				for (PlausibilityFilter filter : testFilters) {
 					System.out.println("Testing "+filter.getName());
-					PlausibilityResult result = filter.apply(rup, true);
+					PlausibilityResult result = filter.apply(rup, verbose);
 					System.out.println("result: "+result);
 					if (filter instanceof ScalarValuePlausibiltyFilter<?>)
 						System.out.println("scalar: "+((ScalarValuePlausibiltyFilter<?>)filter).getValue(rup));
@@ -188,9 +194,25 @@ public class ClusterRupturePlausibilityDebug {
 			} else if (config.getFilters() != null) {
 				System.out.println("Rup Set filters");
 				System.out.println("===================");
-				for (PlausibilityFilter filter : config.getFilters()) {
+				List<PlausibilityFilter> filters = new ArrayList<>(config.getFilters());
+				for (int f=0; f<filters.size(); f++) {
+					PlausibilityFilter filter = filters.get(f);
+					if (filter instanceof PathPlausibilityFilter) {
+						PathPlausibilityFilter pFilter = (PathPlausibilityFilter)filter;
+						if (pFilter.getEvaluators().length > 1) {
+							// separate them
+							for (NucleationClusterEvaluator eval : pFilter.getEvaluators()) {
+								if (eval instanceof NucleationClusterEvaluator.Scalar<?>)
+									filters.add(f+1, new PathPlausibilityFilter.Scalar<>((NucleationClusterEvaluator.Scalar<?>)eval));
+								else
+									filters.add(f+1, new PathPlausibilityFilter(eval));
+							}
+						}
+					}
+				}
+				for (PlausibilityFilter filter : filters) {
 					System.out.println("Testing "+filter.getName());
-					PlausibilityResult result = filter.apply(rup, true);
+					PlausibilityResult result = filter.apply(rup, verbose);
 					System.out.println("result: "+result);
 					if (filter instanceof ScalarValuePlausibiltyFilter<?>)
 						System.out.println("scalar: "+((ScalarValuePlausibiltyFilter<?>)filter).getValue(rup));

@@ -63,22 +63,30 @@ public class DirectPathPlausibilityFilter implements PlausibilityFilter {
 		PlausibilityResult result = PlausibilityResult.PASS;
 		for (Jump jump : rupture.internalJumps) {
 			for (FaultSection prevFrom : prevFroms) {
-				IDPairing pair = pairing(prevFrom, jump.toSection);
-				if (sectJumps.contains(pair)) {
-					result = PlausibilityResult.FAIL_HARD_STOP;
-					if (verbose)
-						System.out.println(getShortName()+": loopback detected. Could have jumped directly from "
-								+prevFrom.getSectionId()+" to "+jump.toSection.getSectionId());
-					else
-						break;
-				}
-				if (prevFrom.getParentSectionId() == jump.toSection.getParentSectionId() && pair.getID2() == pair.getID1()+1) {
-					result = PlausibilityResult.FAIL_HARD_STOP;
-					if (verbose)
-						System.out.println(getShortName()+": loopback detected. "+prevFrom.getSectionId()+" to "
-								+jump.toSection.getSectionId()+" are neighbors on the same parent, but we took a circuitous route.");
-					else
-						break;
+				IDPairing[] testPairs;
+				if (jump.toCluster.subSects.get(0).equals(jump.toSection))
+					// simple jump
+					testPairs = new IDPairing[] { pairing(prevFrom, jump.toSection) };
+				else
+					// T jump, include both toSection and the start of toCluster
+					testPairs = new IDPairing[] { pairing(prevFrom, jump.toSection), pairing(prevFrom, jump.toCluster.subSects.get(0)) };
+				for (IDPairing pair : testPairs) {
+					if (sectJumps.contains(pair)) {
+						result = PlausibilityResult.FAIL_HARD_STOP;
+						if (verbose)
+							System.out.println(getShortName()+": loopback detected. Could have jumped directly from "
+									+prevFrom.getSectionId()+" to "+jump.toSection.getSectionId());
+						else
+							break;
+					}
+					if (prevFrom.getParentSectionId() == jump.toSection.getParentSectionId() && pair.getID2() == pair.getID1()+1) {
+						result = PlausibilityResult.FAIL_HARD_STOP;
+						if (verbose)
+							System.out.println(getShortName()+": loopback detected. "+prevFrom.getSectionId()+" to "
+									+jump.toSection.getSectionId()+" are neighbors on the same parent, but we took a circuitous route.");
+						else
+							break;
+					}
 				}
 			}
 			prevFroms.add(jump.fromSection);

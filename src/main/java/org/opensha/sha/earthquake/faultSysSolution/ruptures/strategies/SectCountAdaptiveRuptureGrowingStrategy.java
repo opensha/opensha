@@ -21,20 +21,36 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
-public class SectCountAdaptivePermutationStrategy implements ClusterPermutationStrategy {
+/**
+ * Adaptive rupture growing strategy that requires that each subsequent variant increase the total subsection count
+ * by at least the given fraction. The ends of fault sections will never be slipped, and if maintainConnectivity == true
+ * then neither will connection points to other faults.
+ * 
+ * @author kevin
+ *
+ */
+public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingStrategy {
 	
 	private float minFractSectIncrease;
 	private boolean maintainConnectivity;
+	private RuptureGrowingStrategy exhaustiveStrategy;
 
-	public SectCountAdaptivePermutationStrategy(float minFractSectIncrease, boolean maintainConnectivity) {
+	public SectCountAdaptiveRuptureGrowingStrategy(float minFractSectIncrease, boolean maintainConnectivity) {
+		this(new ExhaustiveUnilateralRuptureGrowingStrategy(), minFractSectIncrease, maintainConnectivity);
+	}
+
+	public SectCountAdaptiveRuptureGrowingStrategy(RuptureGrowingStrategy exhaustiveStrategy,
+			float minFractSectIncrease, boolean maintainConnectivity) {
+		this.exhaustiveStrategy = exhaustiveStrategy;
 		this.minFractSectIncrease = minFractSectIncrease;
 		this.maintainConnectivity = maintainConnectivity;
 	}
 
 	@Override
-	public List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
+	public List<FaultSubsectionCluster> getVariations(FaultSubsectionCluster fullCluster,
 			FaultSection firstSection) {
-		return getPermutations(null, fullCluster, firstSection);
+		return exhaustiveStrategy.getVariations(fullCluster, firstSection);
+//		return getPermutations(null, fullCluster, firstSection);
 	}
 	
 	public static HashSet<Integer> getValidAdditionCounts(int originalRupSize, int newClusterSize,
@@ -63,17 +79,19 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 	}
 	
 	@Override
-	public List<FaultSubsectionCluster> getPermutations(ClusterRupture currentRupture,
+	public List<FaultSubsectionCluster> getVariations(ClusterRupture currentRupture,
 			FaultSubsectionCluster fullCluster, FaultSection firstSection) {
-		HashSet<Integer> validAddSizes = null;
-		if (currentRupture != null)
-			validAddSizes = getValidAdditionCounts(currentRupture.getTotalNumSects(),
-					fullCluster.subSects.size(), minFractSectIncrease);
+		List<FaultSubsectionCluster> exhaustivePerms = exhaustiveStrategy.getVariations(currentRupture, fullCluster, firstSection);
+		if (currentRupture == null)
+			return exhaustivePerms;
+		
+		HashSet<Integer> validAddSizes = getValidAdditionCounts(currentRupture.getTotalNumSects(),
+				fullCluster.subSects.size(), minFractSectIncrease);
 //		boolean D = currentRupture != null && currentRupture.getTotalNumClusters() == 4
 //				&& fullCluster.parentSectionID == 219 && currentRupture.clusters[0].parentSectionID == 240
 //				&& currentRupture.getTotalNumSects() == 10
 //				&& currentRupture.clusters[0].subSects.get(0).getSectionId() == 1637;
-		boolean D = false;
+		final boolean D = false;
 		if (D) {
 			System.out.println("Getting permutations with currentRupture="+currentRupture);
 			System.out.println("\tfull cluster: "+fullCluster);
@@ -81,68 +99,39 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 			System.out.println("\tvalid sizes: "+Joiner.on(",").join(validAddSizes));
 		}
 		
-		List<FaultSection> clusterSects = fullCluster.subSects;
-		int myInd = fullCluster.subSects.indexOf(firstSection);
-		Preconditions.checkState(myInd >= 0, "first section not found in cluster");
-		List<FaultSection> newSects = new ArrayList<>();
-		newSects.add(firstSection);
-		
+		List<FaultSubsectionCluster> permutations = new ArrayList<>();
+		List<FaultSection> fullSects = fullCluster.subSects;
 		Set<FaultSection> exitPoints = fullCluster.getExitPoints();
 		
-		List<FaultSubsectionCluster> permutations = new ArrayList<>();
-		
-		// just this section
-		if (validAddSizes == null || validAddSizes.contains(1) || exitPoints.contains(firstSection))
-			permutations.add(buildCopyJumps(fullCluster, newSects));
-		
-		// build toward the smallest ID
-		if (myInd > 0) {
-			for (int i=myInd; --i>=0;) {
-				FaultSection nextSection = clusterSects.get(i);
-				newSects.add(nextSection);
-				// keep section endpoints, and all valid sizes or everything if no rupture supplied
-				boolean valid = i == 0 || validAddSizes == null || validAddSizes.contains(newSects.size());
-				if (!valid && maintainConnectivity && exitPoints.contains(nextSection))
-					// this is a possible jump to another section, keep it anyway
-					valid = true;
-				if (valid)
-					permutations.add(buildCopyJumps(fullCluster, newSects));
+		for (FaultSubsectionCluster permutation : exhaustivePerms) {
+			if (validAddSizes.contains(permutation.subSects.size())) {
+				// simplest case, it's a valid size
+				if (D) System.out.println("\t\tperm PASSES, valid size ("+permutation.subSects.size()+") "+permutation);
+				permutations.add(permutation);
+				continue;
 			}
-		}
-		
-		if (myInd < clusterSects.size()-1) {
-			newSects = new ArrayList<>();
-			newSects.add(firstSection);
-			// build toward the largest ID
-			for (int i=myInd+1; i<clusterSects.size(); i++) {
-				FaultSection nextSection = clusterSects.get(i);
-				newSects.add(nextSection);
-				// keep section endpoints, and all valid sizes or everything if no rupture supplied
-				boolean valid = i == clusterSects.size()-1 || validAddSizes == null
-						|| validAddSizes.contains(newSects.size());
-				if (!valid && maintainConnectivity && exitPoints.contains(nextSection))
-					// this is a possible jump to another section, keep it anyway
-					valid = true;
-				if (valid)
-					permutations.add(buildCopyJumps(fullCluster, newSects));
+			// now see if it ruptures to an end
+			List<FaultSection> myEnds = new ArrayList<>();
+			myEnds.add(permutation.subSects.get(permutation.subSects.size()-1));
+			if (!permutation.subSects.get(0).equals(firstSection))
+				// this is a T jump, so the "start" section after the jump isn't first in the cluster, also check that end
+				myEnds.add(permutation.subSects.get(0));
+			boolean rupturesToEnds = true;
+			boolean rupturesToConnPoints = true;
+			for (FaultSection endSect : myEnds) {
+				rupturesToEnds = rupturesToEnds && (endSect.equals(fullSects.get(0)) || endSect.equals(fullSects.get(fullSects.size()-1)));
+				rupturesToConnPoints = rupturesToConnPoints && exitPoints.contains(endSect);
 			}
-		}
-		if (D) {
-			System.out.println("\tPermutations:");
-			for (FaultSubsectionCluster p : permutations)
-				System.out.println("\t\t"+p);
+			if (rupturesToEnds || (maintainConnectivity && rupturesToConnPoints)) {
+				if (D) System.out.println("\t\tperm PASSES. toEnds="+rupturesToEnds+", toConnPoints="
+						+rupturesToConnPoints+", size="+permutation.subSects.size()+" "+permutation);
+				permutations.add(permutation);
+			} else if (D) {
+				System.out.println("\t\tperm FAILS. toEnds="+rupturesToEnds+", toConnPoints="
+						+rupturesToConnPoints+", size="+permutation.subSects.size()+" "+permutation);
+			}
 		}
 		return permutations;
-	}
-
-	private static FaultSubsectionCluster buildCopyJumps(FaultSubsectionCluster fullCluster,
-			List<FaultSection> subsetSects) {
-		FaultSubsectionCluster permutation = new FaultSubsectionCluster(new ArrayList<>(subsetSects));
-		for (FaultSection sect : subsetSects)
-			for (Jump jump : fullCluster.getConnections(sect))
-				permutation.addConnection(new Jump(sect, permutation,
-						jump.toSection, jump.toCluster, jump.distance));
-		return permutation;
 	}
 	
 	public ConnPointCleanupFilter buildConnPointCleanupFilter(ClusterConnectionStrategy connStrat) {
@@ -230,7 +219,7 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 			int fullSize = fullCluster.subSects.size();
 			if (verbose)
 				System.out.println("Testing rupture of size="+rupSizeBefore+" to new cluster "
-						+cluster.parentSectionID+" with size="+newSize);
+						+cluster.parentSectionID+" with size="+newSize+": "+cluster);
 			if (newSize == fullSize) {
 				// this is a full cluster, easy pass
 				if (verbose)
@@ -239,10 +228,9 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 			}
 			FaultSection lastSect = cluster.subSects.get(newSize-1);
 			int lastID = lastSect.getSectionId();
-//			if (lastID == fullCluster.subSects.get(0).getSectionId()
-//					|| lastID == fullCluster.subSects.get(fullSize-1).getSectionId()) {
+			if (lastID == fullCluster.subSects.get(0).getSectionId()
+					|| lastID == fullCluster.subSects.get(fullSize-1).getSectionId()) {
 				// pass if this cluster ends at either the start or end of the full cluster
-			if (lastID == fullCluster.subSects.get(fullSize-1).getSectionId()) {
 				if (verbose)
 					System.out.println(getShortName()+": passes because "+lastID
 							+" is a cluster end (fullCluster="+fullCluster+")");
@@ -308,10 +296,30 @@ public class SectCountAdaptivePermutationStrategy implements ClusterPermutationS
 
 	@Override
 	public String getName() {
-		String ret = "Adaptive, "+optionalDigitPDF.format(minFractSectIncrease)+" Sect Increase";
+		String ret = exhaustiveStrategy.getName().replace("Exhaustive", "").trim();
+//		if (exhaustiveStrategy instanceof ExhaustiveBilateralClusterPermuationStrategy)
+//			ret = "Bilateral, ";
+//		else if (exhaustiveStrategy instanceof ExhaustiveUnilateralClusterPermuationStrategy)
+//			ret = "Unilateral, ";
+//		else if (exhaustiveStrategy.getName() != null)
+//			ret = exhaustiveStrategy.getName()+", ";
+//		else
+//			ret = "";
+		while (ret.startsWith(",") || ret.startsWith(";"))
+			ret = ret.substring(1).trim();
+		while (ret.endsWith(",") || ret.endsWith(";"))
+			ret = ret.substring(0, ret.length()-1).trim();
+		if (!ret.isEmpty())
+			ret += ", ";
+		ret += "Adaptive, "+optionalDigitPDF.format(minFractSectIncrease)+" Sect Increase";
 		if (maintainConnectivity)
 			ret += ", Maintain Connectivity";
 		return ret;
+	}
+	
+	@Override
+	public void clearCaches() {
+		exhaustiveStrategy.clearCaches();
 	}
 
 }

@@ -50,7 +50,7 @@ public class KaikouraRuptureTests {
 			int id = sectsCSV.getInt(row, 1);
 			System.out.println("Adding sections for "+name+" ("+id+")");
 			
-			if (sectsCSV.get(row, 8).isBlank()) {
+			if (sectsCSV.get(row, 8).trim().isEmpty()) {
 				System.out.println("\tskipping, no sections");
 				continue;
 			}

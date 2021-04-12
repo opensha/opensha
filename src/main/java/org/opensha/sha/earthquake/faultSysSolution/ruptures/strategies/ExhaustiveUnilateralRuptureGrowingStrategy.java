@@ -12,12 +12,12 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 
 /**
- * Exhaustive rupture permutations (as used in UCERF3), which assumes that subsections are listed in order and connections
+ * Exhaustive unilateral rupture growing (as used in UCERF3), which assumes that subsections are listed in order and connections
  * only exist between neighbors in that list
  * @author kevin
  *
  */
-public class ExhaustiveClusterPermuationStrategy extends CachedClusterPermutationStrategy {
+public class ExhaustiveUnilateralRuptureGrowingStrategy extends CachedRuptureGrowingStrategy {
 
 	@Override
 	public List<FaultSubsectionCluster> calcPermutations(FaultSubsectionCluster fullCluster,
@@ -61,7 +61,7 @@ public class ExhaustiveClusterPermuationStrategy extends CachedClusterPermutatio
 
 	@Override
 	public String getName() {
-		return "Exhaustive";
+		return "Exhaustive Unilateral";
 	}
 
 }

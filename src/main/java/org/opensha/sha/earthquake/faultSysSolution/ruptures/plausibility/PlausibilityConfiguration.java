@@ -10,6 +10,7 @@ import java.io.StringReader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.opensha.commons.util.ExceptionUtils;
@@ -129,6 +130,16 @@ public class PlausibilityConfiguration {
 		
 		public Builder add(PlausibilityFilter filter) {
 			this.filters.add(filter);
+			return this;
+		}
+		
+		public Builder addAll(Collection<? extends PlausibilityFilter> filters) {
+			this.filters.addAll(filters);
+			return this;
+		}
+		
+		public Builder addFirst(PlausibilityFilter filter) {
+			this.filters.add(0, filter);
 			return this;
 		}
 		
@@ -294,8 +305,8 @@ public class PlausibilityConfiguration {
 		 * @param isFractOfMain if true, maxLen is a fractional length of the primary rupture
 		 * @param totalAcrossSplays if true, maxLen is applied as a sum of all splays
 		 */
-		public Builder splayLength(double maxLen, boolean isFractOfMain, boolean totalAcrossSplays) {
-			filters.add(new SplayLengthFilter(maxLen, isFractOfMain, totalAcrossSplays));
+		public Builder splayLength(double maxLen, boolean isFractOfMain, boolean totalAcrossSplays, boolean allowFullCluster) {
+			filters.add(new SplayLengthFilter(maxLen, isFractOfMain, totalAcrossSplays, allowFullCluster));
 			return this;
 		}
 

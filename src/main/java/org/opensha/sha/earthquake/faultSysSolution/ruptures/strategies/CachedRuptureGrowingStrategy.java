@@ -9,21 +9,21 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
 /**
- * Utility class to cache viable cluster permutations for faster rupture building
+ * Utility class to cache viable cluster variations for faster and memory-efficient rupture building
  * 
  * @author kevin
  *
  */
-public abstract class CachedClusterPermutationStrategy implements ClusterPermutationStrategy {
+public abstract class CachedRuptureGrowingStrategy implements RuptureGrowingStrategy {
 	
 	private Table<FaultSubsectionCluster, FaultSection, List<FaultSubsectionCluster>> cacheTable;
 	
-	public CachedClusterPermutationStrategy() {
+	public CachedRuptureGrowingStrategy() {
 		cacheTable = HashBasedTable.create();
 	}
 
 	@Override
-	public final synchronized List<FaultSubsectionCluster> getPermutations(FaultSubsectionCluster fullCluster,
+	public final synchronized List<FaultSubsectionCluster> getVariations(FaultSubsectionCluster fullCluster,
 			FaultSection firstSection) {
 		List<FaultSubsectionCluster> permutations = cacheTable.get(fullCluster, firstSection);
 		if (permutations == null) {
@@ -35,5 +35,10 @@ public abstract class CachedClusterPermutationStrategy implements ClusterPermuta
 	
 	protected abstract List<FaultSubsectionCluster> calcPermutations(FaultSubsectionCluster fullCluster,
 			FaultSection firstSection);
+	
+	@Override
+	public void clearCaches() {
+		cacheTable.clear();
+	}
 
 }

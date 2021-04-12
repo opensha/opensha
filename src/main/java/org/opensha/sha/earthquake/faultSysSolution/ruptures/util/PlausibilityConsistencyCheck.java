@@ -13,7 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptivePermutationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
 
 import com.google.common.base.Preconditions;
 
@@ -46,7 +46,7 @@ public class PlausibilityConsistencyCheck {
 		int maxNumVerbose = 5;
 //		HashSet<Class<? extends PlausibilityFilter>> includeTypes = null;
 		HashSet<Class<? extends PlausibilityFilter>> includeTypes = new HashSet<>();
-		includeTypes.add(SectCountAdaptivePermutationStrategy.ConnPointCleanupFilter.class);
+		includeTypes.add(SectCountAdaptiveRuptureGrowingStrategy.ConnPointCleanupFilter.class);
 		
 		System.out.println("Loading rupture set");
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(rupSetFile);

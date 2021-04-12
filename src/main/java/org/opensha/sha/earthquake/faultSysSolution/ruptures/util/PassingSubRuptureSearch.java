@@ -8,8 +8,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterPermutationStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveClusterPermuationStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.RuptureGrowingStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveUnilateralRuptureGrowingStrategy;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
@@ -18,7 +18,7 @@ public class PassingSubRuptureSearch {
 	
 	private ClusterRupture rupture;
 	private List<PlausibilityFilter> filters;
-	private ClusterPermutationStrategy permStrat;
+	private RuptureGrowingStrategy permStrat;
 	private RuptureTreeNavigator nav;
 
 	public PassingSubRuptureSearch(ClusterRupture rupture, List<PlausibilityFilter> filters) {
@@ -33,7 +33,7 @@ public class PassingSubRuptureSearch {
 			}
 		}
 		this.nav = rupture.getTreeNavigator();
-		this.permStrat = new ExhaustiveClusterPermuationStrategy();
+		this.permStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
 	}
 	
 	/**
@@ -41,7 +41,7 @@ public class PassingSubRuptureSearch {
 	 * 
 	 * @return
 	 */
-	public ClusterRupture getLargestPassinSubset() {
+	public ClusterRupture getLargestPassingSubset() {
 		ClusterRupture largestPassing = null;
 		for (FaultSubsectionCluster nucleationCluster : rupture.getClustersIterable()) {
 			ClusterRupture rup = new FilterDataClusterRupture(nucleationCluster);
@@ -49,7 +49,7 @@ public class PassingSubRuptureSearch {
 				rup = null;
 				int largestPassingPerm = 0;
 				for (FaultSection sect : nucleationCluster.subSects) {
-					for (FaultSubsectionCluster perm : permStrat.getPermutations(nucleationCluster, sect)) {
+					for (FaultSubsectionCluster perm : permStrat.getVariations(nucleationCluster, sect)) {
 						if (perm.subSects.size() > largestPassingPerm) {
 							ClusterRupture test = new FilterDataClusterRupture(perm);
 							if (passes(test)) {
@@ -75,14 +75,17 @@ public class PassingSubRuptureSearch {
 			for (FaultSection sect : fromCluster.subSects) {
 				for (FaultSection dest : getDestinationsNotInRupture(rup, sect)) {
 					Jump jump = nav.getJump(sect, dest);
-					jump = new Jump(sect, fromCluster, dest, jump.toCluster, jump.distance);
+					FaultSubsectionCluster toCluster = jump.toCluster;
+					if (!toCluster.startSect.equals(dest))
+						toCluster = new FaultSubsectionCluster(toCluster.subSects, dest, toCluster.endSects);
+					jump = new Jump(sect, fromCluster, dest, toCluster, jump.distance);
 					// try the full destination cluster
 					ClusterRupture taken = rup.take(jump);
 					if (!passes(taken)) {
 						// see if a subset passes
 						taken = null;
 						int maxPass = 0;
-						for (FaultSubsectionCluster perm : permStrat.getPermutations(jump.toCluster, dest)) {
+						for (FaultSubsectionCluster perm : permStrat.getVariations(jump.toCluster, dest)) {
 							if (perm.subSects.size() < maxPass)
 								continue;
 							Jump j2 = new Jump(jump.fromSection, jump.fromCluster, dest, perm, jump.distance);
