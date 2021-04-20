@@ -16,49 +16,55 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 /**
- * Adaptive connection strategy that connects fault subsection clusters at their closest subsection pair. This adds an
- * additional feature to DistCutoffClosestSectClusterConnectionStrategy, where the is a distance below which all connections
+ * Adaptive connection strategy that adds an additional feature where the is a distance below which all connections
  * are include (r0), as well as a larger distance (rMax) up to which additional connections can be added, so long as
- * the total cluster connection count is below clusterMax and the subsection connection count is below sectMax. Connections
- * above r0 will be added in order of increasing distance
+ * the total connection count from each section is below sectMax. Connections above r0 will be added in order of
+ * increasing distance
  * 
  * @author kevin
  *
  */
-public class AdaptiveDistCutoffClosestSectClusterConnectionStrategy extends ClusterConnectionStrategy {
+public class AdaptiveClusterConnectionStrategy extends ClusterConnectionStrategy {
 
-	private SectionDistanceAzimuthCalculator distCalc;
+	private ClusterConnectionStrategy fullConnStrat;
 	private double r0;
-	private double rMax;
-	private int clusterMax;
 	private int sectMax;
 	
 	private transient Map<FaultSubsectionCluster, List<Jump>> fromJumpsMap;
 
-	public AdaptiveDistCutoffClosestSectClusterConnectionStrategy(List<? extends FaultSection> subSects,
-			SectionDistanceAzimuthCalculator distCalc, double r0, double rMax, int clusterMax, int sectMax) {
-		super(subSects);
-		init(distCalc, r0, rMax, clusterMax, sectMax);
-	}
-
-	public AdaptiveDistCutoffClosestSectClusterConnectionStrategy(List<? extends FaultSection> subSects,
-			List<FaultSubsectionCluster> clusters, SectionDistanceAzimuthCalculator distCalc,
-			double r0, double rMax, int clusterMax, int sectMax) {
-		super(subSects, clusters);
-		init(distCalc, r0, rMax, clusterMax, sectMax);
+	public AdaptiveClusterConnectionStrategy(ClusterConnectionStrategy fullConnStrat, double r0, int sectMax) {
+		this(fullConnStrat, fullConnStrat.getRawClusters(), r0, sectMax);
 	}
 	
-	private void init(SectionDistanceAzimuthCalculator distCalc, double r0, double rMax, int clusterMax, int sectMax) {
+	private static List<FaultSubsectionCluster> cloneClusters(List<FaultSubsectionCluster> clusters) {
+		List<FaultSubsectionCluster> ret = new ArrayList<>();
+		for (FaultSubsectionCluster cluster : clusters)
+			ret.add(new FaultSubsectionCluster(cluster.subSects, cluster.startSect, cluster.endSects));
+		return ret;
+	}
+
+	public AdaptiveClusterConnectionStrategy(ClusterConnectionStrategy fullConnStrat,
+			List<FaultSubsectionCluster> clusters, double r0, int sectMax) {
+		super(fullConnStrat.getSubSections(), cloneClusters(clusters), fullConnStrat.getDistCalc());
+		init(fullConnStrat, r0, sectMax);
+	}
+	
+	private void init(ClusterConnectionStrategy fullConnStrat, double r0, int sectMax) {
 		Preconditions.checkState(r0 >= 0, "r0 must be >= 0");
-		Preconditions.checkArgument(rMax >= r0, "rMax=%s should be >= r0=%s", rMax, r0);
 		this.r0 = r0;
-		this.rMax = rMax;
-		Preconditions.checkArgument(clusterMax >= 0 || sectMax >= 0,
-				"at least one of clusterMax=%s sectMax=%s must be >=0", clusterMax, sectMax);
-		this.clusterMax = clusterMax;
+		Preconditions.checkArgument(sectMax > 0);
 		this.sectMax = sectMax;
-		Preconditions.checkNotNull(distCalc);
-		this.distCalc = distCalc;
+		Preconditions.checkNotNull(fullConnStrat);
+		this.fullConnStrat = fullConnStrat;
+	}
+	
+	@Override
+	public synchronized void checkBuildThreaded(int numThreads) {
+		System.out.println("Building full threaded...");
+		fullConnStrat.checkBuildThreaded(numThreads);
+		System.out.println("Done building full, building me...");
+		getJumpsFrom(getRawClusters().get(0));
+		System.out.println("Done building");
 	}
 	
 	private synchronized List<Jump> getJumpsFrom(FaultSubsectionCluster cluster) {
@@ -74,17 +80,10 @@ public class AdaptiveDistCutoffClosestSectClusterConnectionStrategy extends Clus
 				for (int c2=c1+1; c2<clusters.size(); c2++) {
 					FaultSubsectionCluster to = clusters.get(c2);
 					
-					Jump jump = null;
-					for (FaultSection s1 : from.subSects) {
-						for (FaultSection s2 : to.subSects) {
-							double dist = distCalc.getDistance(s1, s2);
-							// do everything to float precision to avoid system dependent results
-							if ((float)dist <= (float)rMax && (jump == null || (float)dist < (float)jump.distance))
-								jump = new Jump(s1, from, s2, to, dist);
-						}
-					}
-					
-					if (jump != null) {
+					List<Jump> possibles = fullConnStrat.buildPossibleConnections(from, to);
+					if (possibles == null)
+						continue;
+					for (Jump jump : possibles) {
 						possibleMap.get(from).add(jump);
 						possibleMap.get(to).add(jump.reverse());
 					}
@@ -96,27 +95,19 @@ public class AdaptiveDistCutoffClosestSectClusterConnectionStrategy extends Clus
 				List<Jump> jumps = possibleMap.get(from);
 				// sort by increasing distance
 				Collections.sort(jumps, Jump.dist_comparator);
-				Map<Integer, Integer> sectCounts = sectMax >= 0 ? new HashMap<>() : null;
-				int clusterCount = 0;
+				Map<Integer, Integer> sectCounts = new HashMap<>();
 				for (Jump jump : jumps) {
 					int fromID = jump.fromSection.getSectionId();
-					int sectCount = -1;
-					if (sectMax >= 0)
-						sectCount = sectCounts.containsKey(fromID) ? sectCounts.get(fromID) : 0;
+					int sectCount = sectCounts.containsKey(fromID) ? sectCounts.get(fromID) : 0;
 					
 					boolean keep;
 					if ((float)jump.distance <= (float)r0) {
 						keep = true;
 					} else {
-						// need to check against sect and cluster max
-						boolean clusterPass = clusterMax < 0 || clusterCount < clusterMax;
-						boolean sectPass = sectMax < 0 || sectCount < sectMax;
-						keep = clusterPass && sectPass;
+						keep = sectMax < 0 || sectCount < sectMax;
 					}
 					if (keep) {
-						clusterCount++;
-						if (sectMax >= 0)
-							sectCounts.put(fromID, sectCount+1);
+						sectCounts.put(fromID, sectCount+1);
 						allowedJumps.add(jump);
 						allowedJumps.add(jump.reverse());
 					}
@@ -142,22 +133,27 @@ public class AdaptiveDistCutoffClosestSectClusterConnectionStrategy extends Clus
 		List<Jump> possibleJumpsFrom = getJumpsFrom(from);
 		if (possibleJumpsFrom == null)
 			return null;
+		List<Jump> allowed = new ArrayList<>();
 		for (Jump jump : possibleJumpsFrom) {
 			Preconditions.checkState(from.equals(jump.fromCluster));
 			if (to.equals(jump.toCluster))
-				return Lists.newArrayList(jump);
+				allowed.add(jump);
 		}
-		return null;
+		if (allowed.isEmpty())
+			return null;
+		return allowed;
 	}
 
 	@Override
 	public String getName() {
-		return "AdaptiveClosestSectPair: r0="+(float)r0+" km, nMin="+clusterMax+", rMax="+(float)rMax+" km";
+		if (sectMax != 1)
+			return "Adaptive (r₀="+(float)r0+" km, sectMax="+sectMax+") "+fullConnStrat.getName();
+		return "Adaptive (r₀="+(float)r0+" km) "+fullConnStrat.getName();
 	}
 
 	@Override
 	public double getMaxJumpDist() {
-		return rMax;
+		return fullConnStrat.getMaxJumpDist();
 	}
 
 }

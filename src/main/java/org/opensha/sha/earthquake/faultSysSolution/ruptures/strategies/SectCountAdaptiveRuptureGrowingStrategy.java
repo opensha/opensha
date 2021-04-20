@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,11 +14,17 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
@@ -273,6 +280,42 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 		@Override
 		public boolean isDirectional(boolean splayed) {
 			return true;
+		}
+
+		@Override
+		public TypeAdapter<PlausibilityFilter> getTypeAdapter() {
+			return new ConnPointsAdapter();
+		}
+		
+	}
+	
+	public static class ConnPointsAdapter extends PlausibilityFilterTypeAdapter {
+
+		private ClusterConnectionStrategy connStrategy;
+
+		@Override
+		public void init(ClusterConnectionStrategy connStrategy, SectionDistanceAzimuthCalculator distAzCalc,
+				Gson gson) {
+			this.connStrategy = connStrategy;
+		}
+
+		@Override
+		public void write(JsonWriter out, PlausibilityFilter value) throws IOException {
+			Preconditions.checkState(value instanceof ConnPointCleanupFilter);
+			ConnPointCleanupFilter filter = (ConnPointCleanupFilter)value;
+			out.beginObject();
+			out.name("minFractSectIncrease").value(filter.minFractSectIncrease);
+			out.endObject();
+		}
+
+		@Override
+		public PlausibilityFilter read(JsonReader in) throws IOException {
+			Preconditions.checkNotNull(connStrategy);
+			in.beginObject();
+			Preconditions.checkState(in.nextName().equals("minFractSectIncrease"));
+			float minFractSectIncrease = (float)in.nextDouble();
+			in.endObject();
+			return new ConnPointCleanupFilter(minFractSectIncrease, connStrategy);
 		}
 		
 	}

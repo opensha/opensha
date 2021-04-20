@@ -26,7 +26,7 @@ public class InputJumpsOrDistClusterConnectionStrategy extends ClusterConnection
 
 	public InputJumpsOrDistClusterConnectionStrategy(List<? extends FaultSection> subSects,
 			SectionDistanceAzimuthCalculator distCalc, double maxJumpDist, Collection<Jump> inputJumps) {
-		super(subSects);
+		super(subSects, distCalc);
 		this.maxJumpDist = maxJumpDist;
 		this.distCalc = distCalc;
 		initAllowedSectConnections(inputJumps);
@@ -35,7 +35,7 @@ public class InputJumpsOrDistClusterConnectionStrategy extends ClusterConnection
 	public InputJumpsOrDistClusterConnectionStrategy(List<? extends FaultSection> subSects,
 			List<FaultSubsectionCluster> clusters, SectionDistanceAzimuthCalculator distCalc,
 			double maxJumpDist, Collection<Jump> inputJumps) {
-		super(subSects, clusters);
+		super(subSects, clusters, distCalc);
 		this.maxJumpDist = maxJumpDist;
 		this.distCalc = distCalc;
 		initAllowedSectConnections(inputJumps);

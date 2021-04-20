@@ -141,6 +141,11 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			this(false, selectors);
 		}
 
+		/**
+		 * 
+		 * @param pickFirst if true, only a single candidate will be selected, otherwise multiple are allowed
+		 * @param selectors
+		 */
 		public FallbackJumpSelector(boolean pickFirst, JumpSelector... selectors) {
 			this.pickFirst = pickFirst;
 			Preconditions.checkArgument(selectors.length > 0);
@@ -210,8 +215,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 
 				@Override
 				public int compare(CandidateJump o1, CandidateJump o2) {
-					boolean within1 = (float)o1.distance <= maxDist;
-					boolean within2 = (float)o2.distance <= maxDist;
+					boolean within1 = (float)o1.connDistance <= maxDist;
+					boolean within2 = (float)o2.connDistance <= maxDist;
 					if (within1 != within2) {
 						if (within1)
 							return -1;
@@ -242,8 +247,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		double minDist = Double.POSITIVE_INFINITY;
 		
 		for (CandidateJump candidate : candidates)
-			if (!candidate.allowedJumps.isEmpty() && (float)candidate.distance < minDist)
-				minDist = candidate.distance;
+			if (!candidate.allowedJumps.isEmpty() && (float)candidate.connDistance < minDist)
+				minDist = candidate.connDistance;
 		
 		return minDist;
 	}
@@ -273,8 +278,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 				public int compare(CandidateJump o1, CandidateJump o2) {
 					if (verbose)
 						System.out.println("Comparing scalars (dist fallback) for "+o1+" and "+o2);
-					if ((float)o1.distance <= maxScalarDist && (float)o2.distance <= maxScalarDist
-							|| (float)o1.distance == (float)o2.distance) {
+					if ((float)o1.connDistance <= maxScalarDist && (float)o2.connDistance <= maxScalarDist
+							|| (float)o1.connDistance == (float)o2.connDistance) {
 						// compare scalars if we have any
 						if (o1.bestScalar != null || o2.bestScalar != null) {
 							if (o2.bestScalar == null || ScalarValuePlausibiltyFilter.isValueBetter(
@@ -354,6 +359,23 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 	}
 	
 	public static class AnyPassSelector implements JumpSelector {
+		
+		private boolean allowFailuresIfNonePass;
+
+		public AnyPassSelector(boolean allowFailuresIfNonePass) {
+			this.allowFailuresIfNonePass = allowFailuresIfNonePass;
+		}
+
+		@Override
+		public List<CandidateJump> select(List<CandidateJump> candidates, Range<Double> acceptableScalarRange,
+				boolean verbose) {
+			List<CandidateJump> selections = JumpSelector.super.select(candidates, acceptableScalarRange, verbose);
+			
+			if (!allowFailuresIfNonePass)
+				return onlyPassing(selections);
+			
+			return selections;
+		}
 
 		@Override
 		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
@@ -374,7 +396,39 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		
 	}
 	
+	/**
+	 * 
+	 * @param selections
+	 * @return sublist of the given selections that have at least one pass
+	 */
+	private static List<CandidateJump> onlyPassing(List<CandidateJump> selections) {
+		if (selections == null || selections.isEmpty())
+			return selections;
+		List<CandidateJump> ret = new ArrayList<>();
+		for (CandidateJump jump : selections)
+			if (!jump.allowedJumps.isEmpty())
+				ret.add(jump);
+		return ret;
+	}
+	
 	public static class PassesMinimizeFailedSelector implements JumpSelector {
+		
+		private boolean allowFailuresIfNonePass;
+
+		public PassesMinimizeFailedSelector(boolean allowFailuresIfNonePass) {
+			this.allowFailuresIfNonePass = allowFailuresIfNonePass;
+		}
+
+		@Override
+		public List<CandidateJump> select(List<CandidateJump> candidates, Range<Double> acceptableScalarRange,
+				boolean verbose) {
+			List<CandidateJump> selections = JumpSelector.super.select(candidates, acceptableScalarRange, verbose);
+			
+			if (!allowFailuresIfNonePass)
+				return onlyPassing(selections);
+			
+			return selections;
+		}
 
 		@Override
 		public Comparator<CandidateJump> comparator(List<CandidateJump> candidates, Range<Double> acceptableScalarRange, boolean verbose) {
@@ -452,7 +506,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 				for (CandidateJump candidate : candidates) {
 					// we get to keep this as well if...
 					// it's within the (potentially stricter) distance threshold
-					if ((float)candidate.distance <= maxAdditionalJumpDist
+					if ((float)candidate.connDistance <= maxAdditionalJumpDist
 							// it also passes, and involves the same number of ends
 							&& !candidate.allowedJumps.isEmpty() && candidate.numEnds() >= firstEnds
 							// it doesn't involve a previously allowed jump point
@@ -486,12 +540,14 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		
 	}
 	
+	private static final boolean allow_failures_if_none_pass = false;
+	
 //	public static final JumpSelector JUMP_SELECTOR_DEFAULT = new PassesMinimizeFailedSelector(new BestScalarSelector(2d));
 //	public static final JumpSelector JUMP_SELECTOR_DEFAULT = new FallbackJumpSelector(true, new PassesMinimizeFailedSelector(), new BestScalarSelector(2d))
 	public static final JumpSelector JUMP_SELECTOR_DEFAULT_MULTI = new FallbackJumpSelector(false,
-			new PassesMinimizeFailedSelector(), new AllowMultiEndsSelector(5f, new FallbackJumpSelector(true, new BestScalarSelector(2d))));
+			new PassesMinimizeFailedSelector(allow_failures_if_none_pass), new AllowMultiEndsSelector(5f, new FallbackJumpSelector(true, new BestScalarSelector(2d))));
 	public static final JumpSelector JUMP_SELECTOR_DEFAULT_SINGLE = new FallbackJumpSelector(false,
-			new PassesMinimizeFailedSelector(), new BestScalarSelector(2d));
+			new PassesMinimizeFailedSelector(allow_failures_if_none_pass), new BestScalarSelector(2d));
 	public static final JumpSelector JUMP_SELECTOR_DEFAULT = JUMP_SELECTOR_DEFAULT_MULTI;
 
 	public PlausibleClusterConnectionStrategy(List<? extends FaultSection> subSects,
@@ -508,7 +564,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 	public PlausibleClusterConnectionStrategy(List<? extends FaultSection> subSects,
 			SectionDistanceAzimuthCalculator distCalc, double maxJumpDist, JumpSelector selector,
 			List<PlausibilityFilter> filters) {
-		super(subSects);
+		super(subSects, distCalc);
 		Preconditions.checkState(!filters.isEmpty());
 		this.maxJumpDist = maxJumpDist;
 		this.distCalc = distCalc;
@@ -584,6 +640,10 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 //	private static final int debug_parent_2 = 776; // Coronado Bank
 //	private static final int debug_parent_1 = 294; // SAF NBMC
 //	private static final int debug_parent_2 = 283; // SAV SB S
+//	private static final int debug_parent_1 = 37; // Hat Creek
+//	private static final int debug_parent_2 = 689; // Rocky Ledge
+//	private static final int debug_parent_1 = 667;
+//	private static final int debug_parent_2 = 696;
 
 	@Override
 	protected List<Jump> buildPossibleConnections(FaultSubsectionCluster from, FaultSubsectionCluster to) {
@@ -599,7 +659,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		public final FaultSubsectionCluster toCluster;
 		public final FaultSection toSection;
 		public final boolean toEnd;
-		public final double distance;
+		public final double connDistance;
+		public final double minDistance;
 		
 		public final List<Jump> allowedJumps;
 		public final List<Jump> failedJumps;
@@ -608,7 +669,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		public final int totalJumps;
 		
 		public CandidateJump(FaultSubsectionCluster fromCluster, FaultSection fromSection, boolean fromEnd,
-				FaultSubsectionCluster toCluster, FaultSection toSection, boolean toEnd, double distance,
+				FaultSubsectionCluster toCluster, FaultSection toSection, boolean toEnd, double connDistance, double minDistance,
 				List<Jump> allowedJumps, List<Jump> failedJumps, Map<Jump, Double> jumpScalars, Double bestScalar) {
 			super();
 			this.fromCluster = fromCluster;
@@ -617,7 +678,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			this.toCluster = toCluster;
 			this.toSection = toSection;
 			this.toEnd = toEnd;
-			this.distance = distance;
+			this.connDistance = connDistance;
+			this.minDistance = minDistance;
 			this.allowedJumps = allowedJumps;
 			this.failedJumps = failedJumps;
 			this.jumpScalars = jumpScalars;
@@ -633,7 +695,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			ret += "->"+toSection.getSectionId();
 			if (toEnd)
 				ret += "[end]";
-			ret += ": dist="+(float)distance+"\t"+allowedJumps.size()+"/"+(allowedJumps.size()+failedJumps.size())+" pass";
+			ret += ": dist="+(float)connDistance+"\t"+allowedJumps.size()+"/"+(allowedJumps.size()+failedJumps.size())+" pass";
 			if (bestScalar != null)
 				ret += "\tbestScalar: "+bestScalar.floatValue();
 			return ret;
@@ -669,6 +731,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 					Map<Jump, Double> jumpScalars = scalarFilter == null ? null : new HashMap<>();
 					Double bestScalar = null;
 					List<List<? extends FaultSection>> toStrands = getStrandsTo(to.subSects, j);
+					double minPassingDist = Double.POSITIVE_INFINITY;
 					for (List<? extends FaultSection> fromStrand : fromStrands) {
 						FaultSubsectionCluster fromCluster = new FaultSubsectionCluster(fromStrand);
 						if (!fromCluster.subSects.get(fromCluster.subSects.size()-1).equals(s1))
@@ -725,13 +788,18 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 									bestScalar = myScalar;
 							}
 							
-							if (result.isPass())
+							if (result.isPass()) {
 								allowedJumps.add(testJump);
-							else
+								// figure out the minimum distance between any sections that pass
+								for (FaultSection ss1 : testJump.fromCluster.subSects)
+									for (FaultSection ss2 : testJump.toCluster.subSects)
+										minPassingDist = Double.min(minPassingDist, distCalc.getDistance(ss1, ss2));
+							} else {
 								failedJumps.add(testJump);
+							}
 						}
 					}
-					CandidateJump candidate = new CandidateJump(from, s1, fromEnd, to, s2, toEnd, dist,
+					CandidateJump candidate = new CandidateJump(from, s1, fromEnd, to, s2, toEnd, dist, minPassingDist,
 							allowedJumps, failedJumps, jumpScalars, bestScalar);
 					if (debug)
 						System.out.println("New candidate: "+candidate);
@@ -759,7 +827,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		
 		List<Jump> ret = new ArrayList<>();
 		for (CandidateJump candidate : selected)
-			ret.add(new Jump(candidate.fromSection, from, candidate.toSection, to, candidate.distance));
+			// use the minimum distance, not the distance at the chosen connection point
+			ret.add(new Jump(candidate.fromSection, from, candidate.toSection, to, candidate.minDistance));
 //		System.out.println("returning "+ret.size()+" jumps");
 //		if (ret.isEmpty() && (float)minDist <= (float)maxJumpDist)
 //			System.err.println("WARNING: no connection returned between "+from.parentSectionID+" and "
@@ -771,7 +840,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 
 		@Override
 		public int compare(CandidateJump o1, CandidateJump o2) {
-			return Float.compare((float)o1.distance, (float)o2.distance);
+			return Float.compare((float)o1.connDistance, (float)o2.connDistance);
 		}
 	};
 	
@@ -859,9 +928,10 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 //		ClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist, sumAgg, false);
 //		PlausibleClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
 //				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), threeQuarters);
-//		PlausibleClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
-//				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, threeQuarters);
-//		String origName = "10km";
+		PlausibleClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
+				JUMP_SELECTOR_DEFAULT,
+				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
+		String origName = "10km";
 //		String origName = "No CFF Prob";
 //				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), threeQuarters);
 //		ClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
@@ -875,18 +945,23 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 //						new CumulativeProbPathEvaluator(cffProb, PlausibilityResult.FAIL_HARD_STOP, new RelativeCoulombProb(
 //								sumAgg, new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d), false, true))), threeQuarters);
 //		String origName = "No Fav Nump";
-		JumpSelector singleSelect = new FallbackJumpSelector(true, new PassesMinimizeFailedSelector(), new BestScalarSelector(2d));
-		ClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
-				singleSelect,
-				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
-		String origName = "Single Connection";
+//		JumpSelector singleSelect = new FallbackJumpSelector(true,
+//				new PassesMinimizeFailedSelector(allow_failures_if_none_pass), new BestScalarSelector(2d));
+//		ClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
+//				singleSelect,
+//				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
+//		String origName = "Single Connection";
+		
+////		PlausibilityFilter filter = new CumulativeProbabilityFilter(0.5f, new CoulombSectRatioProb(sumAgg, 2));
+//		ClusterConnectionStrategy newStrat = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, 15f,
+//				JUMP_SELECTOR_DEFAULT,
+//				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
+////		String newName = "New Plausible";
+//		String newName = "15km";
 		
 //		PlausibilityFilter filter = new CumulativeProbabilityFilter(0.5f, new CoulombSectRatioProb(sumAgg, 2));
-		ClusterConnectionStrategy newStrat = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
-				JUMP_SELECTOR_DEFAULT,
-				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
-		String newName = "New Plausible";
-//		String newName = "15km";
+		ClusterConnectionStrategy newStrat = new AdaptiveClusterConnectionStrategy(orig, 5d, 1);
+		String newName = "Adaptive";
 		
 		int threads = Integer.max(1, Integer.min(31, Runtime.getRuntime().availableProcessors()-2));
 		orig.checkBuildThreaded(threads);

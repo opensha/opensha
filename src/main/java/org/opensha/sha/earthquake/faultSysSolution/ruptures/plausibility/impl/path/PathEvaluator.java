@@ -10,8 +10,10 @@ import java.util.stream.Collectors;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -79,21 +81,27 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 		 * Cluster that contains toSect (may be equal to fromCluster)
 		 */
 		public final FaultSubsectionCluster toCluster;
+		/**
+		 * Distance to this addition
+		 */
+		public final double distance;
 		
 		public PathAddition(FaultSection fromSect, FaultSubsectionCluster fromCluster,
-				Collection<? extends FaultSection> toSects, FaultSubsectionCluster toCluster) {
+				Collection<? extends FaultSection> toSects, FaultSubsectionCluster toCluster, double distance) {
 			this.fromSect = fromSect;
 			this.fromCluster = fromCluster;
 			this.toSects = toSects;
 			this.toCluster = toCluster;
+			this.distance = distance;
 		}
 		
 		public PathAddition(FaultSection fromSect, FaultSubsectionCluster fromCluster,
-				FaultSection toSect, FaultSubsectionCluster toCluster) {
+				FaultSection toSect, FaultSubsectionCluster toCluster, double distance) {
 			this.fromSect = fromSect;
 			this.fromCluster = fromCluster;
 			this.toSects = Collections.singleton(toSect);
 			this.toCluster = toCluster;
+			this.distance = distance;
 		}
 
 		@Override
@@ -180,10 +188,14 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 			HashSet<PathAddition> nextAdds = new HashSet<>();
 			if (verbose)
 				System.out.println("getNextAdditions with "+growthPoints.size()+" growth points, "+currentSects.size()+" curSects");
-			for (FaultSubsectionCluster cluster : growthPoints)
-				for (FaultSubsectionCluster neighbor : getNeighbors(cluster))
-					if (!currentClusters.contains(neighbor))
-						nextAdds.add(new PathAddition(rupNav.getJump(cluster, neighbor).fromSection, cluster, neighbor.subSects, neighbor));
+			for (FaultSubsectionCluster cluster : growthPoints) {
+				for (FaultSubsectionCluster neighbor : getNeighbors(cluster)) {
+					if (!currentClusters.contains(neighbor)) {
+						Jump jump = rupNav.getJump(cluster, neighbor);
+						nextAdds.add(new PathAddition(jump.fromSection, cluster, neighbor.subSects, neighbor, jump.distance));
+					}
+				}
+			}
 			if (verbose)
 				System.out.println("\tFound "+nextAdds.size()+" nextAdds: "+
 						nextAdds.stream().map(S -> S.toString()).collect(Collectors.joining(";")));
@@ -247,9 +259,17 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 				System.out.println("getNextAdditions with "+growthPoints.size()+" growth points, "+currentSects.size()+" curSects");
 			for (FaultSection sect : growthPoints) {
 				FaultSubsectionCluster fromCluster = rupNav.locateCluster(sect);
-				for (FaultSection neighbor : getNeighbors(sect))
-					if (!currentSects.contains(neighbor))
-						nextAdds.add(new PathAddition(sect, fromCluster, neighbor, rupNav.locateCluster(neighbor)));
+				for (FaultSection neighbor : getNeighbors(sect)) {
+					if (!currentSects.contains(neighbor)) {
+						FaultSubsectionCluster destCluster = rupNav.locateCluster(neighbor);
+						double distance;
+						if (destCluster == fromCluster)
+							distance = 0d;
+						else
+							distance = rupNav.getJump(fromCluster, destCluster).distance;
+						nextAdds.add(new PathAddition(sect, fromCluster, neighbor, destCluster, distance));
+					}
+				}
 			}
 			if (verbose)
 				System.out.println("\tFound "+nextAdds.size()+" nextAdds: "+

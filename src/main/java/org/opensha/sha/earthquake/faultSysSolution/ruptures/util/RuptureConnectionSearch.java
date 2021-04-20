@@ -674,7 +674,7 @@ public class RuptureConnectionSearch {
 				}
 				availableClusters.remove(jump.toCluster);
 				if (debug) System.out.println("\tTaking jump: "+jump);
-				rupture = rupture.take(jump);
+				rupture = rupture.take(correctJumpDist(jump));
 				// current strand has now been replaced, find the new one
 				currentStrand = splaySearchRecursive(rupture, currentStrand.clusters[0]);
 				if (debug) System.out.println("Current strand after jump: "+currentStrand);
@@ -689,6 +689,14 @@ public class RuptureConnectionSearch {
 			rupture = buildRupture(rupture, splay, availableClusters, jumpsFromMap, debug);
 		}
 		return rupture;
+	}
+	
+	private Jump correctJumpDist(Jump jump) {
+		double minDist = Double.POSITIVE_INFINITY;
+		for (FaultSection s1 : jump.fromCluster.subSects)
+			for (FaultSection s2 : jump.toCluster.subSects)
+				minDist = Double.min(minDist, distCalc.getDistance(s1, s2));
+		return new Jump(jump.fromSection, jump.fromCluster, jump.toSection, jump.toCluster, minDist);
 	}
 	
 	private ClusterRupture splaySearchRecursive(ClusterRupture rup, FaultSubsectionCluster firstCluster) {

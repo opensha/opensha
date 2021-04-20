@@ -199,8 +199,8 @@ public class PlausibilityConfiguration {
 			return this;
 		}
 		
-		public Builder noIndirectPaths() {
-			filters.add(new DirectPathPlausibilityFilter(connectionStrategy));
+		public Builder noIndirectPaths(boolean onlyLargerDist) {
+			filters.add(new DirectPathPlausibilityFilter(connectionStrategy, onlyLargerDist));
 			return this;
 		}
 		
@@ -459,11 +459,11 @@ public class PlausibilityConfiguration {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 
-		ConnStratTypeAdapter connStratAdapter = new ConnStratTypeAdapter(subSects);
-		builder.registerTypeHierarchyAdapter(ClusterConnectionStrategy.class, connStratAdapter);
-		builder.registerTypeHierarchyAdapter(FaultSection.class, new FaultSectTypeAdapter(subSects));
 		if (distAzCalc == null)
 			distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
+		ConnStratTypeAdapter connStratAdapter = new ConnStratTypeAdapter(subSects, distAzCalc);
+		builder.registerTypeHierarchyAdapter(ClusterConnectionStrategy.class, connStratAdapter);
+		builder.registerTypeHierarchyAdapter(FaultSection.class, new FaultSectTypeAdapter(subSects));
 		DistAzCalcTypeAdapter distAzAdapter = new DistAzCalcTypeAdapter(distAzCalc);
 		builder.registerTypeAdapter(SectionDistanceAzimuthCalculator.class, distAzAdapter);
 		PlausibilityConfigTypeAdapter configAdapter = new PlausibilityConfigTypeAdapter(
@@ -1130,7 +1130,7 @@ public class PlausibilityConfiguration {
 //		String destFileName = "alt_filters.json";
 		
 		// current best
-		builder.cumulativeProbability(0.05f, new RelativeSlipRateProb(connStrat, true));
+		builder.cumulativeProbability(0.05f, new RelativeSlipRateProb(connStrat, true, false));
 		builder.netRupCoulomb(new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS), 0f);
 //		RelativeCoulombProb prefCFFProb = new RelativeCoulombProb(sumAgg, connStrat, false, true);

@@ -6,6 +6,7 @@ import java.util.List;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.HashMultimap;
@@ -16,8 +17,8 @@ class PrecomputedClusterConnectionStrategy extends ClusterConnectionStrategy {
 	private double maxJumpDist;
 
 	PrecomputedClusterConnectionStrategy(String name, List<? extends FaultSection> subSections,
-			List<FaultSubsectionCluster> clusters, double maxJumpDist) {
-		super(subSections, clusters);
+			List<FaultSubsectionCluster> clusters, double maxJumpDist, SectionDistanceAzimuthCalculator distCalc) {
+		super(subSections, clusters, distCalc);
 		this.name = name;
 		this.maxJumpDist = maxJumpDist;
 		this.connectionsAdded = true;

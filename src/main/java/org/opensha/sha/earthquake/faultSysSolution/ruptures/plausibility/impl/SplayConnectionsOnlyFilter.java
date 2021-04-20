@@ -1,35 +1,30 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
-import com.google.gson.Gson;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 public class SplayConnectionsOnlyFilter implements PlausibilityFilter {
 	
-	private boolean allowSectionEnd;
+	private ClusterConnectionStrategy connStrat;
+	private boolean applyToMainStrand;
 	
 	private transient Map<Integer, FaultSubsectionCluster> fullClusters;
 
-	public SplayConnectionsOnlyFilter(boolean applyToMainStrand) {
-//		this.applyToMainStrand = applyToMainStrand;
+	public SplayConnectionsOnlyFilter(ClusterConnectionStrategy connStrat, boolean applyToMainStrand) {
+		this.connStrat = connStrat;
+		this.applyToMainStrand = applyToMainStrand;
 	}
 
 	@Override
@@ -45,13 +40,13 @@ public class SplayConnectionsOnlyFilter implements PlausibilityFilter {
 	private FaultSubsectionCluster getFullCluster(Integer parentID) {
 		if (fullClusters == null) {
 			synchronized (this) {
-//				if (fullClusters == null) {
-//					List<FaultSubsectionCluster> clusters = connStrat.getClusters();
-//					Map<Integer, FaultSubsectionCluster> fullClusters = new HashMap<>();
-//					for (FaultSubsectionCluster cluster : clusters)
-//						fullClusters.put(cluster.parentSectionID, cluster);
-//					this.fullClusters = fullClusters;
-//				}
+				if (fullClusters == null) {
+					List<FaultSubsectionCluster> clusters = connStrat.getClusters();
+					Map<Integer, FaultSubsectionCluster> fullClusters = new HashMap<>();
+					for (FaultSubsectionCluster cluster : clusters)
+						fullClusters.put(cluster.parentSectionID, cluster);
+					this.fullClusters = fullClusters;
+				}
 			}
 		}
 		return fullClusters.get(parentID);
@@ -62,8 +57,8 @@ public class SplayConnectionsOnlyFilter implements PlausibilityFilter {
 		if (rupture.splays.isEmpty())
 			return PlausibilityResult.PASS;
 		RuptureTreeNavigator nav = rupture.getTreeNavigator();
-//		if (applyToMainStrand)
-//			return doApply(rupture, nav);
+		if (applyToMainStrand)
+			return doApply(rupture, nav);
 		PlausibilityResult result = PlausibilityResult.PASS;
 		for (ClusterRupture splay : rupture.splays.values())
 			result = result.logicalAnd(doApply(splay, nav));

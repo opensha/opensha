@@ -18,7 +18,7 @@ public class DistCutoffClosestSectClusterConnectionStrategy extends ClusterConne
 
 	public DistCutoffClosestSectClusterConnectionStrategy(List<? extends FaultSection> subSects,
 			SectionDistanceAzimuthCalculator distCalc, double maxJumpDist) {
-		super(subSects);
+		super(subSects, distCalc);
 		this.maxJumpDist = maxJumpDist;
 		this.distCalc = distCalc;
 	}
@@ -26,7 +26,7 @@ public class DistCutoffClosestSectClusterConnectionStrategy extends ClusterConne
 	public DistCutoffClosestSectClusterConnectionStrategy(List<? extends FaultSection> subSects,
 			List<FaultSubsectionCluster> clusters, SectionDistanceAzimuthCalculator distCalc,
 			double maxJumpDist) {
-		super(subSects, clusters);
+		super(subSects, clusters, distCalc);
 		this.maxJumpDist = maxJumpDist;
 		this.distCalc = distCalc;
 	}

@@ -81,11 +81,15 @@ public class RupSetFilterComparePageGen {
 
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+
+//		String inputName = "RSQSim 4983, SectArea=0.5";
+//		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+////		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
+//		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
+		String inputName = "RSQSim 5133, SectArea=0.5";
+		File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
+		File distAzCache = null;
 		
-		String inputName = "RSQSim 4983, SectArea=0.5";
-		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
-//		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
-		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
 		File altFiltersFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
 		String altName = "UCERF3";
 		
@@ -118,7 +122,7 @@ public class RupSetFilterComparePageGen {
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(inputFile);
 		
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
-		if (distAzCache.exists()) {
+		if (distAzCache != null && distAzCache.exists()) {
 			System.out.println("Loading dist/az cache from "+distAzCache.getAbsolutePath());
 			distAzCalc.loadCacheFile(distAzCache);
 		}
@@ -168,8 +172,10 @@ public class RupSetFilterComparePageGen {
 			minMags = new double[] { 7d, 7.5d, 8d };
 		if ((float)minRupMag >= 6.5d)
 			minMags = new double[] { 6.5d, 7d, 7.5d, 8d };
+		else if ((float)minRupMag >= 6d)
+			minMags = new double[] { 6d, 6.5d, 7d, 7.5d, 8d };
 		else
-			minMags = new double[] { 0d, 6.5d, 7d, 7.5d, 8d };
+			minMags = new double[] { 0d, 6d, 6.5d, 7d, 7.5d, 8d };
 		
 		CPT magIndexCPT = new CPT(0, minMags.length-1, Color.BLUE, Color.RED, Color.BLACK);
 		
@@ -186,7 +192,7 @@ public class RupSetFilterComparePageGen {
 			
 			@Override
 			public PlausibilityFilter get(Float value) {
-				return new CumulativeProbabilityFilter(value, new RelativeSlipRateProb(connStrat, true));
+				return new CumulativeProbabilityFilter(value, new RelativeSlipRateProb(connStrat, true, false));
 			}
 		});
 		minVals.add(0.01f);

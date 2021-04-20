@@ -72,6 +72,7 @@ public class ClusterRuptureBuilder {
 	private List<FaultSubsectionCluster> clusters;
 	private List<PlausibilityFilter> filters;
 	private int maxNumSplays = 0;
+	private SectionDistanceAzimuthCalculator distAzCalc;
 	
 	private RupDebugCriteria debugCriteria;
 	private boolean stopAfterDebugMatch;
@@ -83,7 +84,7 @@ public class ClusterRuptureBuilder {
 	 */
 	public ClusterRuptureBuilder(PlausibilityConfiguration configuration) {
 		this(configuration.getConnectionStrategy().getClusters(), configuration.getFilters(),
-				configuration.getMaxNumSplays());
+				configuration.getMaxNumSplays(), configuration.getDistAzCalc());
 	}
 	
 	/**
@@ -94,10 +95,11 @@ public class ClusterRuptureBuilder {
 	 * @param maxNumSplays the maximum number of splays per rupture (use 0 to disable splays)
 	 */
 	public ClusterRuptureBuilder(List<FaultSubsectionCluster> clusters,
-			List<PlausibilityFilter> filters, int maxNumSplays) {
+			List<PlausibilityFilter> filters, int maxNumSplays, SectionDistanceAzimuthCalculator distAzCalc) {
 		this.clusters = clusters;
 		this.filters = filters;
 		this.maxNumSplays = maxNumSplays;
+		this.distAzCalc = distAzCalc;
 	}
 	
 	/**
@@ -588,6 +590,17 @@ public class ClusterRuptureBuilder {
 		}
 		return true;
 	}
+	
+	private Jump buildJump(Jump jump, FaultSubsectionCluster toVariation) {
+		// correct the distance to be the minimum distance between the two clusters, not just the jumping point distance
+		double minDist = Double.POSITIVE_INFINITY;
+		for (FaultSection s1 : jump.fromCluster.subSects)
+			for (FaultSection s2 : toVariation.subSects)
+				minDist = Double.min(minDist, distAzCalc.getDistance(s1, s2));
+		Preconditions.checkState(toVariation.startSect.equals(jump.toSection));
+		Preconditions.checkState(toVariation.contains(jump.toSection));
+		return new Jump(jump.fromSection, jump.fromCluster, jump.toSection, toVariation, minDist);
+	}
 
 	private boolean addJumpVariations(List<ClusterRupture> rups, HashSet<UniqueRupture> uniques,
 			ClusterRupture currentRupture, ClusterRupture currentStrand,
@@ -605,10 +618,7 @@ public class ClusterRuptureBuilder {
 			}
 			if (hasLoopback)
 				continue;
-			Preconditions.checkState(variation.startSect.equals(jump.toSection));
-			Preconditions.checkState(variation.contains(jump.toSection));
-			Jump testJump = new Jump(jump.fromSection, jump.fromCluster,
-					jump.toSection, variation, jump.distance);
+			Jump testJump = buildJump(jump, variation);
 			ClusterRupture candidateRupture = currentRupture.take(testJump);
 			PlausibilityResult result = testRup(candidateRupture, false);
 			boolean debugMatch = debugCriteria != null && debugCriteria.isMatch(currentRupture, testJump)
@@ -971,39 +981,17 @@ public class ClusterRuptureBuilder {
 //		
 //		String fmPrefix;
 //		File nshmBaseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/NSHM2023_FaultSectionsEQGeoDB_v1p2_29March2021");
+//		File setctsFile = new File(nshmBaseDir, "NSHM2023_FaultSections_v1p2.geojson");
+//		File geoDBFile = new File(nshmBaseDir, "NSHM2023_EQGeoDB_v1p2.geojson");
 //		List<FaultSection> sects;
-//		if (state == null) {
+//		if (state == null)
 //			fmPrefix = "nshm23_v1p2_all";
-//			sects = new ArrayList<>();
-//			for (List<FaultSection> stateFaults : GeoJSONFaultReader.readFaultSections(
-//					new File(nshmBaseDir, "NSHM2023_FaultSections_v1p2.geojson"), false).values())
-//				sects.addAll(stateFaults);
-//		} else {
+//		else
 //			fmPrefix = "nshm23_v1p2_"+state.toLowerCase();
-//			sects = GeoJSONFaultReader.readFaultSections(
-//					new File(nshmBaseDir, "NSHM2023_FaultSections_v1p2.geojson"), true).get(state);
-//		}
-//		Collections.sort(sects, new Comparator<FaultSection>() {
-//
-//			@Override
-//			public int compare(FaultSection o1, FaultSection o2) {
-//				return o1.getSectionName().compareTo(o2.getSectionName());
-//			}
-//		});
 //		
 //		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
 //		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
-//		System.out.println("Loaded "+sects.size()+" sections");
-//		// add slip rates
-//		Map<Integer, List<GeoSlipRateRecord>> slipRates = GeoJSONFaultReader.readGeoDB(
-//				new File(nshmBaseDir, "NSHM2023_EQGeoDB_v1p2.geojson"));
-//		List<FaultSection> fallbacks = new ArrayList<>();
-//		fallbacks.addAll(FaultModels.FM3_1.fetchFaultSections());
-//		fallbacks.addAll(FaultModels.FM3_2.fetchFaultSections());
-//		GeoJSONFaultReader.testMapSlipRates(sects, slipRates, 1d, fallbacks);
-//		List<FaultSection> subSects = new ArrayList<>();
-//		for (FaultSection sect : sects)
-//			subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
+//		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(setctsFile, geoDBFile, state);
 //		System.out.println("Built "+subSects.size()+" subsections");
 		// END NSHM23
 		
@@ -1065,7 +1053,7 @@ public class ClusterRuptureBuilder {
 		
 		/*
 		 * =============================
-		 * To reproduce UCERF3 with an alternative distance/conn strategy (and calculate missing coulomb)
+		 * To reproduce UCERF3 with an alternative distance/conn strategy (and calculate missing Coulomb)
 		 * =============================
 		 */
 //		String outputName = fmPrefix+"_ucerf3";
@@ -1136,10 +1124,60 @@ public class ClusterRuptureBuilder {
 		 * For other experiments
 		 * =============================
 		 */
+		/*
+		 * Thresholds & params
+		 * 
+		 * preferred values are listed to the right of each parameter/threshold, and 'MOD' is appended whenever
+		 * one is temporarily modified from the preferred value.
+		 */
+		// PLAUSIBILITY FILTERS
+		// minimum subsections per parent
+		int minSectsPerParent = 2;				// PREF: 2
+		// filters out indirect paths
+		boolean noIndirectPaths = true;			// PREF: true
+		// relative slip rate probability
+		float slipRateProb = 0.05f;				// PREF: 0.05
+		// if false, slip rate probabilities only consider alternative jumps up to the distance (+2km) of the taken jump
+		boolean slipIncludeLonger = false;		// PREF: false
+		// fraction of interactions positive
+		float cffFractInts = 0.75f;				// PREF: 0.75
+		// number of denominator values for the CFF favorability ratio
+		int cffRatioN = 2;						// PREF: 2
+		// CFF favorability ratio threshold
+		float cffRatioThresh = 0.5f;			// PREF: 0.5
+		// relative CFF probability
+		float cffRelativeProb = 0.01f;			// PREF: 0.01
+		// if true, CFF calculations are computed with the most favorable path (up to max jump distance), which may not
+		// use the exact jumping point from the connection strategy
+		boolean favorableJumps = true;			// PREF: true
+		// cumulative jump probability threshold
+		float jumpProbThresh = 0.001f;			// PREF: 0.001 (~21 km)
+		// cumulative rake change threshold
+		float cmlRakeThresh = 360f;				// PREF: 360
+		// CONNECTION STRATEGY
+		// maximum individual jump distance
+		double maxJumpDist = 15d;				// PREF: 10
+		// if true, connections happen at places that actually work and paths are optimized. if false, closest points
+		boolean plausibleConnections = true;	// PREF: true
+		// if >0 and <maxDist, connections will only be added above this distance when no other connections exist from
+		// a given subsection. e.g., if set to 5, you can jump more than 5 km but only if no <= 5km jumps exist
+		double adaptiveMinDist = 6d;			// PREF: 6
+		// GROWING STRATEGY
+		// if nonzero, apply thinning to growing strategy
+		float adaptiveSectFract = 0.05f;		// PREF: 0.05
+		// if true, allow bilateral rupture growing (using default settings)
+		boolean bilateral = false;				// PREF: false
+		// if true, allow splays (using default settings)
+		boolean splays = false;					// PREF: false
+		/*
+		 * END Plausibility thresholds & params
+		 */
+		
 		// build stiffness calculator (used for new Coulomb)
 		double stiffGridSpacing = 2d;
+		double coeffOfFriction = 0.25;
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-				subSects, stiffGridSpacing, 3e4, 3e4, 0.5, PatchAlignment.FILL_OVERLAP, 1d);
+				subSects, stiffGridSpacing, 3e4, 3e4, coeffOfFriction, PatchAlignment.FILL_OVERLAP, 1d);
 		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
 		File stiffnessCacheFile = new File(rupSetsDir, stiffnessCache.getCacheFileName());
 		int stiffnessCacheSize = 0;
@@ -1154,21 +1192,13 @@ public class ClusterRuptureBuilder {
 //				AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.THREE_QUARTER_INTERACTIONS);
 		AggregatedStiffnessCalculator fractIntsAgg = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.FLATTEN, AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.NORM_BY_COUNT);
-		float slipRateProb = 0.05f;		// PREF: 0.05
-		float cffFractInts = 0.75f;		// PREF: 0.75
-		int cffRatioN = 2;				// PREF: 2
-		float cffRatioThresh = 0.5f;	// PREF: 0.5
-		float cffRelativeProb = 0.01f;	// PREF: 0.01
-		boolean favorableJumps = true;	// PREF: true
-		float jumpProbThresh = 0.001f;	// PREF: 0.001
-		float cmlRakeThresh = 360f;		// PREF: 360
-		double maxJumpDist = 10d;		// PREF: 10
-//		CoulombSectRatioProb cffRatioProb = new CoulombSectRatioProb(sumAgg, cffRatioN);
 		
 		String outputName = fmPrefix;
 		
 		if (stiffGridSpacing != 2d)
 			outputName += "_stiff"+new DecimalFormat("0.#").format(stiffGridSpacing)+"km";
+		if (coeffOfFriction != 0.5d)
+			outputName += "_coeff"+(float)coeffOfFriction;
 		
 		/*
 		 * Connection strategy: which faults are allowed to connect, and where?
@@ -1180,50 +1210,47 @@ public class ClusterRuptureBuilder {
 //						distAzCalc, maxJumpDist, CoulombRates.loadUCERF3CoulombRates(fm));
 //		if (maxJumpDist != 5d)
 //			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
-		// use this for simpler connection rules
-		ClusterConnectionStrategy connectionStrategy =
-			new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
-		if (maxJumpDist != 5d)
-			outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
-		// use this for adaptive distance filter
-//		double r0 = 5d;
-//		double rMax = 10d;
-//		int cMax = -1;
-//		int sMax = 1;
-//		ClusterConnectionStrategy connectionStrategy =
-//				new AdaptiveDistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, r0, rMax, cMax, sMax);
-//		outputName += "_adapt"+new DecimalFormat("0.#").format(r0)+"_"+new DecimalFormat("0.#").format(rMax)+"km";
-//		if (cMax >= 0)
-//			outputName += "_cMax"+cMax;
-//		if (sMax >= 0)
-//			outputName += "_sMax"+sMax;
-		// use this to pick connections which agree with your plausibility filters
-		// some filters need a connection strategy, use one that only includes immediate neighbors at this step
-//		DistCutoffClosestSectClusterConnectionStrategy neighborsConnStrat =
-//				new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d);
-//		List<PlausibilityFilter> connFilters = new ArrayList<>();
-//		if (cffRatioThresh > 0f) {
-//			connFilters.add(new CumulativeProbabilityFilter(cffRatioThresh, new CoulombSectRatioProb(
-//					sumAgg, cffRatioN, favorableJumps, (float)maxJumpDist, distAzCalc)));
-//			if (cffRelativeProb > 0f)
-//				connFilters.add(new PathPlausibilityFilter(
-//						new CumulativeProbPathEvaluator(cffRatioThresh, PlausibilityResult.FAIL_HARD_STOP,
-//								new CoulombSectRatioProb(sumAgg, cffRatioN, favorableJumps, (float)maxJumpDist, distAzCalc)),
-//						new CumulativeProbPathEvaluator(cffRelativeProb, PlausibilityResult.FAIL_HARD_STOP,
-//								new RelativeCoulombProb(sumAgg, neighborsConnStrat, false, true, favorableJumps, (float)maxJumpDist, distAzCalc))));
-//		} else if (cffRelativeProb > 0f) {
-//			connFilters.add(new CumulativeProbabilityFilter(cffRatioThresh, new RelativeCoulombProb(
-//					sumAgg, neighborsConnStrat, false, true, favorableJumps, (float)maxJumpDist, distAzCalc)));
-//		}
-//		if (cffFractInts > 0f)
-//			connFilters.add(new NetRuptureCoulombFilter(fractIntsAgg, cffFractInts));
-//		System.out.println("Building plausible connections w/ "+threads+" threads...");
-//		ClusterConnectionStrategy connectionStrategy =
-//			new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
-//					PlausibleClusterConnectionStrategy.JUMP_SELECTOR_DEFAULT, connFilters);
-//		outputName += "_plausibleMulti"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
-//		connectionStrategy.checkBuildThreaded(threads);
-//		System.out.println("DONE building plausible connections");
+		ClusterConnectionStrategy connectionStrategy;
+		if (plausibleConnections) {
+			// use this to pick connections which agree with your plausibility filters
+			
+			// some filters need a connection strategy, use one that only includes immediate neighbors at this step
+			DistCutoffClosestSectClusterConnectionStrategy neighborsConnStrat =
+					new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d);
+			List<PlausibilityFilter> connFilters = new ArrayList<>();
+			if (cffRatioThresh > 0f) {
+				connFilters.add(new CumulativeProbabilityFilter(cffRatioThresh, new CoulombSectRatioProb(
+						sumAgg, cffRatioN, favorableJumps, (float)maxJumpDist, distAzCalc)));
+				if (cffRelativeProb > 0f)
+					connFilters.add(new PathPlausibilityFilter(
+							new CumulativeProbPathEvaluator(cffRatioThresh, PlausibilityResult.FAIL_HARD_STOP,
+									new CoulombSectRatioProb(sumAgg, cffRatioN, favorableJumps, (float)maxJumpDist, distAzCalc)),
+							new CumulativeProbPathEvaluator(cffRelativeProb, PlausibilityResult.FAIL_HARD_STOP,
+									new RelativeCoulombProb(sumAgg, neighborsConnStrat, false, true, favorableJumps, (float)maxJumpDist, distAzCalc))));
+			} else if (cffRelativeProb > 0f) {
+				connFilters.add(new CumulativeProbabilityFilter(cffRatioThresh, new RelativeCoulombProb(
+						sumAgg, neighborsConnStrat, false, true, favorableJumps, (float)maxJumpDist, distAzCalc)));
+			}
+			if (cffFractInts > 0f)
+				connFilters.add(new NetRuptureCoulombFilter(fractIntsAgg, cffFractInts));
+			connectionStrategy = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
+						PlausibleClusterConnectionStrategy.JUMP_SELECTOR_DEFAULT, connFilters);
+			outputName += "_plausibleMulti"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
+//						PlausibleClusterConnectionStrategy.JUMP_SELECTOR_DEFAULT_SINGLE, connFilters);
+//			outputName += "_plausible"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
+			System.out.println("Building plausible connections w/ "+threads+" threads...");
+			connectionStrategy.checkBuildThreaded(threads);
+			System.out.println("DONE building plausible connections");
+		} else {
+			// just use closest distance
+			connectionStrategy = new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist);
+			if (maxJumpDist != 5d)
+				outputName += "_"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
+		}
+		if (adaptiveMinDist > 0d && adaptiveMinDist < maxJumpDist) {
+			connectionStrategy = new AdaptiveClusterConnectionStrategy(connectionStrategy, adaptiveMinDist, 1);
+			outputName += "_adaptive"+new DecimalFormat("0.#").format(adaptiveMinDist)+"km";
+		}
 		
 		Builder configBuilder = PlausibilityConfiguration.builder(connectionStrategy, subSects);
 		
@@ -1235,8 +1262,13 @@ public class ClusterRuptureBuilder {
 		 *  UCERF3 filters
 		 */
 //		configBuilder.u3All(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_ucerf3";
-		configBuilder.minSectsPerParent(2, true, true); // always do this one
-		configBuilder.noIndirectPaths(); outputName += "_direct";
+		if (minSectsPerParent > 1) {
+			configBuilder.minSectsPerParent(2, true, true); // always do this one
+		}
+		if (noIndirectPaths) {
+			configBuilder.noIndirectPaths(true);
+			outputName += "_direct";
+		}
 //		configBuilder.u3Cumulatives(); outputName += "_u3Cml"; // cml rake and azimuth
 //		configBuilder.cumulativeAzChange(560f); outputName += "_cmlAz"; // cml azimuth only
 		if (cmlRakeThresh > 0) {
@@ -1263,8 +1295,11 @@ public class ClusterRuptureBuilder {
 		 */
 		// SLIP RATE PROB: only increasing
 		if (slipRateProb > 0f) {
-			configBuilder.cumulativeProbability(slipRateProb, new RelativeSlipRateProb(connectionStrategy, true));
+			configBuilder.cumulativeProbability(slipRateProb,
+					new RelativeSlipRateProb(connectionStrategy, true, slipIncludeLonger));
 			outputName += "_slipP"+slipRateProb+"incr";
+			if (!slipIncludeLonger)
+				outputName += "CapDist";
 		}
 		// END SLIP RATE PROB
 		
@@ -1367,33 +1402,35 @@ public class ClusterRuptureBuilder {
 		/*
 		 * Splay constraints
 		 */
-		configBuilder.maxSplays(0); // default, no splays
-//		configBuilder.maxSplays(1); outputName += "_max1Splays";
-////		configBuilder.splayLength(0.1, true, true); outputName += "_splayLenFract0.1";
-////		configBuilder.splayLength(100, false, true, true); outputName += "_splayLen100km";
-//		configBuilder.splayLength(50, false, true, true); outputName += "_splayLen50km";
-//		configBuilder.splayLength(.5, true, true, true); outputName += "OrHalf";
-//		configBuilder.addFirst(new SplayConnectionsOnlyFilter(connectionStrategy, true)); outputName += "_splayConn";
+		if (splays) {
+			configBuilder.maxSplays(1); outputName += "_max1Splays";
+			//configBuilder.splayLength(0.1, true, true); outputName += "_splayLenFract0.1";
+			//configBuilder.splayLength(100, false, true, true); outputName += "_splayLen100km";
+			configBuilder.splayLength(50, false, true, true); outputName += "_splayLen50km";
+			configBuilder.splayLength(.5, true, true, true); outputName += "OrHalf";
+			configBuilder.addFirst(new SplayConnectionsOnlyFilter(connectionStrategy, true)); outputName += "_splayConn";
+		} else {
+			configBuilder.maxSplays(0); // default, no splays
+		}
 		
 		/*
-		 * Permutation strategies: how should faults be broken up into permutations, combinations of which
-		 * will be used to construct ruptures
+		 * Growing strategies: how should ruptures be broken up and spread onto new faults
 		 */
-		// regular (UCERF3) permutation strategy
-//		RuptureGrowingStrategy growingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
-		// only permutate at connection points or subsection end points
-		// (for strict segmentation or testing connection points)
-//		RuptureGrowingStrategy permStrat = new ConnectionPointsRuptureGrowingStrategy();
-//		outputName += "_connPointsGrow";
-		// build permutations adaptively (skip over some end points for larger ruptures)
-		RuptureGrowingStrategy exhaustiveStrategy = new ExhaustiveUnilateralRuptureGrowingStrategy();
-//		RuptureGrowingStrategy exhaustiveStrategy = new ExhaustiveBilateralRuptureGrowingStrategy(
-//				SecondaryPermutations.EQUAL_LEN, false); outputName += "_bilateral";
-		float sectFract = 0.05f;
-		SectCountAdaptiveRuptureGrowingStrategy growingStrat = new SectCountAdaptiveRuptureGrowingStrategy(
-				exhaustiveStrategy, sectFract, true);
-		configBuilder.add(growingStrat.buildConnPointCleanupFilter(connectionStrategy));
-		outputName += "_sectFractGrow"+sectFract;
+		RuptureGrowingStrategy growingStrat;
+		if (bilateral) {
+			growingStrat = new ExhaustiveBilateralRuptureGrowingStrategy(
+					SecondaryVariations.EQUAL_LEN, false);
+			outputName += "_bilateral";
+		} else {
+			growingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
+		}
+		if (adaptiveSectFract > 0f) {
+			SectCountAdaptiveRuptureGrowingStrategy adaptiveStrat = new SectCountAdaptiveRuptureGrowingStrategy(
+					growingStrat, adaptiveSectFract, true);
+			configBuilder.add(adaptiveStrat.buildConnPointCleanupFilter(connectionStrategy));
+			outputName += "_sectFractGrow"+adaptiveSectFract;
+			growingStrat = adaptiveStrat;
+		}
 		
 		// build our configuration
 		PlausibilityConfiguration config = configBuilder.build();

@@ -47,7 +47,7 @@ public class SectCoulombPathEvaluator extends ScalarCoulombPathEvaluator {
 				maxSearchDist, jump.fromCluster, jump.toCluster);
 		if (allowedJumps.size() == 1) {
 			if (verbose)
-				System.out.println("Only 1 possible jump: "+allowedJumps.get(0));
+				System.out.println("Only 1 possible jump: "+allowedJumps.get(0).getSectionId());
 			return allowedJumps.get(0);
 		}
 		// find the most favorable one
@@ -133,6 +133,10 @@ public class SectCoulombPathEvaluator extends ScalarCoulombPathEvaluator {
 	
 	public void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
 		this.distAzCalc = distAzCalc;
+	}
+	
+	public void setMaxJumpDist(float maxJumpDist) {
+		this.maxJumpDist = maxJumpDist;
 	}
 	
 	@Override

@@ -34,13 +34,17 @@ public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 	protected transient ClusterConnectionStrategy connStrat;
 	protected boolean allowNegative;
 	protected boolean relativeToBest = true;
+	protected boolean includeLongerJumps = true;
 
 	protected transient Map<Integer, FaultSubsectionCluster> fullClustersMap;
 
-	public AbstractRelativeProb(ClusterConnectionStrategy connStrat, boolean allowNegative, boolean relativeToBest) {
+	public AbstractRelativeProb(ClusterConnectionStrategy connStrat, boolean allowNegative,
+			boolean relativeToBest, boolean includeLongerJumps) {
 		this.connStrat = connStrat;
 		this.allowNegative = allowNegative;
 		this.relativeToBest = relativeToBest;
+		this.includeLongerJumps = includeLongerJumps;
+//		System.out.println(getName()+" longer ? "+includeLongerJumps);
 	}
 
 	public ClusterConnectionStrategy getConnStrat() {
@@ -104,7 +108,8 @@ public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 			PathAddition testAddition, Jump alternateJump) {
 		Collection<FaultSection> toSects = isAddFullClusters() ?
 				alternateJump.toCluster.subSects : Collections.singleton(alternateJump.toSection);
-		return new PathAddition(testAddition.fromSect, testAddition.fromCluster, toSects, alternateJump.toCluster);
+		return new PathAddition(testAddition.fromSect, testAddition.fromCluster,
+				toSects, alternateJump.toCluster, alternateJump.distance);
 	}
 
 	@Override
@@ -123,8 +128,6 @@ public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 		Set<PathAddition> nextAdds = pathNav.getNextAdditions();
 		if (verbose)
 			System.out.println("Have "+nextAdds.size()+" nextAdds");
-
-		boolean addFullClusters = isAddFullClusters();
 
 		while (!nextAdds.isEmpty()) {
 			for (PathAddition add : nextAdds) {
@@ -155,6 +158,10 @@ public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 			System.out.println("\tAddition taken value ("+add+"): "+myVal);
 		if (!allowNegative && myVal < 0)
 			return 0d;
+		
+		float maxDist = Float.POSITIVE_INFINITY;
+		if (!includeLongerJumps)
+			maxDist = (float)(add.distance + 2d);
 
 		checkInitFullClusters();
 		FaultSubsectionCluster fullFrom = fullClustersMap.get(add.fromCluster.parentSectionID);
@@ -180,7 +187,7 @@ public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 						break;
 				}
 				if (!possibleSects.isEmpty())
-					targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
+					targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom, 0d));
 			}
 
 			if (fromSectIndex > 0) {
@@ -199,14 +206,14 @@ public abstract class AbstractRelativeProb implements RuptureProbabilityCalc {
 						break;
 				}
 				if (!possibleSects.isEmpty())
-					targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom));
+					targetAdditions.add(new PathAddition(add.fromSect, add.fromCluster, possibleSects, fullFrom, 0d));
 			}
 		}
 		// now add possible jumps to other clusters
 
 		for (Jump possible : fullFrom.getConnections(add.fromSect)) {
 			if (possible.toCluster.parentSectionID != add.toCluster.parentSectionID
-					&& !rupture.contains(possible.toSection))
+					&& !rupture.contains(possible.toSection) && (float)possible.distance <= maxDist)
 				targetAdditions.add(targetJumpToAddition(curSects, add, possible));
 		}
 		List<Double> targetVals = new ArrayList<>();

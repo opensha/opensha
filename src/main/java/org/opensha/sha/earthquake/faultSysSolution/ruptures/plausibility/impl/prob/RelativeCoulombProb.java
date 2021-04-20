@@ -39,7 +39,7 @@ public class RelativeCoulombProb extends AbstractRelativeProb {
 	public RelativeCoulombProb(AggregatedStiffnessCalculator aggCalc, ClusterConnectionStrategy connStrat,
 			boolean allowNegative, boolean sectBySect, boolean jumpToMostFavorable,
 			float maxJumpDist, SectionDistanceAzimuthCalculator distAzCalc) {
-		super(connStrat, allowNegative, true); // always relative to best
+		super(connStrat, allowNegative, true, true); // always relative to best and distance invariant
 		this.aggCalc = aggCalc;
 		this.sectBySect = sectBySect;
 		this.jumpToMostFavorable = jumpToMostFavorable;
@@ -60,6 +60,10 @@ public class RelativeCoulombProb extends AbstractRelativeProb {
 	public void init(ClusterConnectionStrategy connStrat, SectionDistanceAzimuthCalculator distAzCalc) {
 		super.init(connStrat, distAzCalc);
 		this.distAzCalc = distAzCalc;
+	}
+	
+	public void setMaxJumpDist(float maxJumpDist) {
+		this.maxJumpDist = maxJumpDist;
 	}
 
 	@Override
@@ -93,12 +97,14 @@ public class RelativeCoulombProb extends AbstractRelativeProb {
 	public boolean isAddFullClusters() {
 		return !sectBySect;
 	}
+	
+	private static final Range<Float> posRange = Range.atLeast(0f);
 
 	@Override
 	public PathNavigator getPathNav(ClusterRupture rupture, FaultSubsectionCluster nucleationCluster) {
 		if (jumpToMostFavorable)
 			return new CoulombFavorableSectionPathNavigator(nucleationCluster.subSects, rupture.getTreeNavigator(),
-					aggCalc, Range.atLeast(0f), distAzCalc, maxJumpDist);
+					aggCalc, posRange, distAzCalc, maxJumpDist);
 		return super.getPathNav(rupture, nucleationCluster);
 	}
 
@@ -108,8 +114,9 @@ public class RelativeCoulombProb extends AbstractRelativeProb {
 		if (jumpToMostFavorable) {
 			Preconditions.checkState(sectBySect);
 			FaultSection destSect = SectCoulombPathEvaluator.findMostFavorableJumpSect(curSects, alternateJump,
-					maxJumpDist, Range.atLeast(0f), aggCalc, distAzCalc, false);
-			return new PathAddition(testAddition.fromSect, testAddition.fromCluster, destSect, alternateJump.toCluster);
+					maxJumpDist, posRange, aggCalc, distAzCalc, false);
+			return new PathAddition(testAddition.fromSect, testAddition.fromCluster,
+					destSect, alternateJump.toCluster, alternateJump.distance);
 		}
 		return super.targetJumpToAddition(curSects, testAddition, alternateJump);
 	}

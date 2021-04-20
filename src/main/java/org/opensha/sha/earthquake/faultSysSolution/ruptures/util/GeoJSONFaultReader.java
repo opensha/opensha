@@ -6,6 +6,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -600,6 +602,47 @@ public class GeoJSONFaultReader {
 			return 0.5*(record.lowRate + record.highRate);
 		System.err.println("WARNING: Couldn't guess slip rate for "+record.faultID+". "+record.faultName+": "+record.slipRateID);
 		return null;
+	}
+	
+	public static List<FaultSection> buildSubSects(List<FaultSection> sects) {
+		Collections.sort(sects, new Comparator<FaultSection>() {
+
+			@Override
+			public int compare(FaultSection o1, FaultSection o2) {
+				return o1.getSectionName().compareTo(o2.getSectionName());
+			}
+		});
+		List<FaultSection> subSects = new ArrayList<>();
+		for (FaultSection sect : sects)
+			subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
+		System.out.println("Built "+subSects.size()+" subsections");
+		return subSects;
+	}
+	
+	public static List<FaultSection> buildSubSects(File sectsFile, File geoDBFile, String state) throws IOException {
+		List<FaultSection> sects;
+		if (state == null) {
+			sects = new ArrayList<>();
+			for (List<FaultSection> stateFaults : GeoJSONFaultReader.readFaultSections(sectsFile, false).values())
+				sects.addAll(stateFaults);
+		} else {
+			sects = GeoJSONFaultReader.readFaultSections(sectsFile, true).get(state);
+		}
+		System.out.println("Loaded "+sects.size()+" sections");
+		Collections.sort(sects, new Comparator<FaultSection>() {
+
+			@Override
+			public int compare(FaultSection o1, FaultSection o2) {
+				return o1.getSectionName().compareTo(o2.getSectionName());
+			}
+		});
+		// add slip rates
+		Map<Integer, List<GeoSlipRateRecord>> slipRates = GeoJSONFaultReader.readGeoDB(geoDBFile);
+		List<FaultSection> fallbacks = new ArrayList<>();
+		fallbacks.addAll(FaultModels.FM3_1.fetchFaultSections());
+		fallbacks.addAll(FaultModels.FM3_2.fetchFaultSections());
+		GeoJSONFaultReader.testMapSlipRates(sects, slipRates, 1d, fallbacks);
+		return buildSubSects(sects);
 	}
 
 	public static void main(String[] args) throws IOException {

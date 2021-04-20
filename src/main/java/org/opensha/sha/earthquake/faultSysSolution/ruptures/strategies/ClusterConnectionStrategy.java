@@ -48,19 +48,25 @@ public abstract class ClusterConnectionStrategy implements Named {
 
 	private List<? extends FaultSection> subSections;
 	private List<FaultSubsectionCluster> clusters;
+	private SectionDistanceAzimuthCalculator distCalc;
 	
 	protected transient HashSet<IDPairing> connectedParents;
 	protected transient boolean connectionsAdded = false;
 	protected transient Multimap<FaultSection, Jump> jumpsFrom;
 	
-	public ClusterConnectionStrategy(List<? extends FaultSection> subSections) {
-		this(subSections, buildClusters(subSections));
+	public ClusterConnectionStrategy(List<? extends FaultSection> subSections, SectionDistanceAzimuthCalculator distCalc) {
+		this(subSections, buildClusters(subSections), distCalc);
 	}
 	
 	public ClusterConnectionStrategy(List<? extends FaultSection> subSections,
-			List<FaultSubsectionCluster> clusters) {
+			List<FaultSubsectionCluster> clusters, SectionDistanceAzimuthCalculator distCalc) {
 		this.subSections = ImmutableList.copyOf(subSections);
 		this.clusters = ImmutableList.copyOf(clusters);
+		this.distCalc = distCalc;
+	}
+	
+	public SectionDistanceAzimuthCalculator getDistCalc() {
+		return distCalc;
 	}
 	
 	/**
@@ -281,9 +287,11 @@ public abstract class ClusterConnectionStrategy implements Named {
 	public static class ConnStratTypeAdapter extends TypeAdapter<ClusterConnectionStrategy> {
 
 		private List<? extends FaultSection> subSects;
+		private SectionDistanceAzimuthCalculator distCalc;
 
-		public ConnStratTypeAdapter(List<? extends FaultSection> subSects) {
+		public ConnStratTypeAdapter(List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distCalc) {
 			this.subSects = subSects;
+			this.distCalc = distCalc;
 		}
 
 		@Override
@@ -325,7 +333,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 			}
 			in.endObject();
 			Preconditions.checkNotNull(clusters);
-			return new PrecomputedClusterConnectionStrategy(name, subSects, clusters, maxJumpDist);
+			return new PrecomputedClusterConnectionStrategy(name, subSects, clusters, maxJumpDist, distCalc);
 		}
 		
 		private List<FaultSubsectionCluster> loadClusters(JsonReader in) throws IOException {
@@ -376,7 +384,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 		builder.registerTypeHierarchyAdapter(ClusterConnectionStrategy.class,
-				new ConnStratTypeAdapter(subSects));
+				new ConnStratTypeAdapter(subSects, distAzCalc));
 		
 		Gson gson = builder.create();
 		

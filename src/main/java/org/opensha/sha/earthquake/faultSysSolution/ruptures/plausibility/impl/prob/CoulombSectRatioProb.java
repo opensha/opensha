@@ -47,6 +47,10 @@ public class CoulombSectRatioProb implements RuptureProbabilityCalc {
 		this.distAzCalc = distAzCalc;
 	}
 	
+	public void setMaxJumpDist(float maxJumpDist) {
+		this.maxJumpDist = maxJumpDist;
+	}
+	
 	public AggregatedStiffnessCalculator getAggregator() {
 		return aggCalc;
 	}

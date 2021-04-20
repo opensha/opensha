@@ -249,7 +249,7 @@ public class RupCartoonGenerator {
 		
 		ConnectionPointsRuptureGrowingStrategy permStrat = new ConnectionPointsRuptureGrowingStrategy();
 		
-		ClusterRuptureBuilder build = new ClusterRuptureBuilder(clusters, filters, 0);
+		ClusterRuptureBuilder build = new ClusterRuptureBuilder(clusters, filters, 0, connStrat.getDistCalc());
 		System.out.println("Building ruptures with connStrat="+connStrat.getName());
 		List<ClusterRupture> rups = build.build(permStrat);
 		System.out.println("Built "+rups.size()+" ruptures");
@@ -576,7 +576,7 @@ public class RupCartoonGenerator {
 		TrackAllDebugCriteria tracker = new TrackAllDebugCriteria();
 		
 		ClusterRuptureBuilder builder = new ClusterRuptureBuilder(
-				connStrat.getClusters(), filters, maxNumSplays);
+				connStrat.getClusters(), filters, maxNumSplays, connStrat.getDistCalc());
 		builder.setDebugCriteria(tracker, false);
 		List<ClusterRupture> finalRups = builder.build(permStrat);
 		if (startSects != null) {
@@ -1041,7 +1041,7 @@ public class RupCartoonGenerator {
 			List<PlausibilityFilter> myFilters = new ArrayList<>(filters);
 			if (permStrat instanceof SectCountAdaptiveRuptureGrowingStrategy)
 				myFilters.add(((SectCountAdaptiveRuptureGrowingStrategy)permStrat).buildConnPointCleanupFilter(connStrat));
-			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(connStrat.getClusters(), myFilters, 0);
+			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(connStrat.getClusters(), myFilters, 0, connStrat.getDistCalc());
 			
 			List<ClusterRupture> rups = builder.build(permStrat);
 			List<ClusterRupture> matchingRups = new ArrayList<>();
@@ -1178,7 +1178,7 @@ public class RupCartoonGenerator {
 			List<PlausibilityFilter> myFilters = new ArrayList<>(filters);
 			if (permStrat instanceof SectCountAdaptiveRuptureGrowingStrategy)
 				myFilters.add(((SectCountAdaptiveRuptureGrowingStrategy)permStrat).buildConnPointCleanupFilter(connStrat));
-			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(connStrat.getClusters(), myFilters, 0);
+			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(connStrat.getClusters(), myFilters, 0, connStrat.getDistCalc());
 			
 			List<ClusterRupture> rups = builder.build(permStrat);
 			List<ClusterRupture> matchingRups = new ArrayList<>();
@@ -1478,11 +1478,11 @@ public class RupCartoonGenerator {
 		connTitles.add("Minimum Distance");
 		
 		JumpSelector singleSelect = new FallbackJumpSelector(true,
-				new PassesMinimizeFailedSelector(), new BestScalarSelector(2d));
+				new PassesMinimizeFailedSelector(true), new BestScalarSelector(2d));
 		JumpSelector multiSelect = new FallbackJumpSelector(false,
-				new PassesMinimizeFailedSelector(),
+				new PassesMinimizeFailedSelector(true),
 				new AllowMultiEndsSelector(r0, new FallbackJumpSelector(true, new BestScalarSelector(2d))));
-		JumpSelector allSelect = new AnyPassSelector();
+		JumpSelector allSelect = new AnyPassSelector(true);
 		JumpSelector withinSelect = new WithinDistanceSelector((float)maxDist);
 		
 		connStrats.add(new PlausibleClusterConnectionStrategy(rupBuild.subSectsList, distAzCalc, maxDist, singleSelect, filters));
@@ -1508,7 +1508,8 @@ public class RupCartoonGenerator {
 		List<PlotSpec> specs = new ArrayList<>();
 		
 		for (int i=0; i<connStrats.size(); i++)
-			specs.add(plotConnStrat(outputDir, connPrefixes.get(i), connTitles.get(i), connStrats.get(i), filters, false, allPossibleJumps, failedJumps));
+			specs.add(plotConnStrat(outputDir, connPrefixes.get(i), connTitles.get(i), connStrats.get(i), filters,
+					false, allPossibleJumps, failedJumps));
 		
 		for (int i=1; i<specs.size(); i++)
 			specs.get(i).setLegendVisible(false);
@@ -1753,7 +1754,7 @@ public class RupCartoonGenerator {
 		private boolean disableSkip = false;
 
 		public RelativeProbWrapper(AbstractRelativeProb relProb) {
-			super(relProb.getConnStrat(), relProb.isAllowNegative(), relProb.isRelativeToBest());
+			super(relProb.getConnStrat(), relProb.isAllowNegative(), relProb.isRelativeToBest(), true);
 			this.relProb = relProb;
 		}
 
@@ -1929,10 +1930,12 @@ public class RupCartoonGenerator {
 		
 	}
 	
-	private static List<ClusterRupture> getRelProbExampleRups(List<FaultSubsectionCluster> clusters) {
+	private static List<ClusterRupture> getRelProbExampleRups(List<FaultSubsectionCluster> clusters,
+			SectionDistanceAzimuthCalculator distCalc) {
 		List<PlausibilityFilter> buildFilters = new ArrayList<>();
 		buildFilters.add(new StartsWithFitler(clusters.get(0).startSect));
-		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsRuptureGrowingStrategy());
+		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0, distCalc)
+				.build(new ConnectionPointsRuptureGrowingStrategy());
 		
 		System.out.println("Building relative probability example ruptures");
 		
@@ -2017,9 +2020,9 @@ public class RupCartoonGenerator {
 		SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(rupBuild.subSectsList);
 		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(rupBuild.subSectsList, distCalc, 10d);
 		
-		RelativeSlipRateProb relProb = new RelativeSlipRateProb(connStrat, true);
+		RelativeSlipRateProb relProb = new RelativeSlipRateProb(connStrat, true, true);
 		
-		List<ClusterRupture> targetRups = getRelProbExampleRups(connStrat.getClusters());
+		List<ClusterRupture> targetRups = getRelProbExampleRups(connStrat.getClusters(), distCalc);
 		
 		List<PlotSpec> specs = new ArrayList<>();
 		
@@ -2067,7 +2070,7 @@ public class RupCartoonGenerator {
 //			else if (rup.getTotalNumSects() > targetRup.getTotalNumSects() && rup.getTotalNumJumps() == targetRup.getTotalNumJumps())
 //				targetRup = rup;
 //		}
-		List<ClusterRupture> targetRups = getRelProbExampleRups(connStrat.getClusters());
+		List<ClusterRupture> targetRups = getRelProbExampleRups(connStrat.getClusters(), distCalc);
 		
 		List<PlotSpec> specs = new ArrayList<>();
 		
@@ -2301,7 +2304,8 @@ public class RupCartoonGenerator {
 		List<PlausibilityFilter> buildFilters = new ArrayList<>();
 		buildFilters.add(new StartsWithFitler(clusters.get(0).startSect));
 		
-		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsRuptureGrowingStrategy());
+		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0, distAzCalc)
+				.build(new ConnectionPointsRuptureGrowingStrategy());
 		
 		List<ClusterRupture> plotRups = new ArrayList<>();
 		
@@ -2328,7 +2332,7 @@ public class RupCartoonGenerator {
 		}
 		
 		List<PlotSpec> specs = new ArrayList<>();
-		DirectPathPlausibilityFilter filter = new DirectPathPlausibilityFilter(connStrat);
+		DirectPathPlausibilityFilter filter = new DirectPathPlausibilityFilter(connStrat, false);
 
 		PlotCurveCharacterstics rupChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK);
 		PlotCurveCharacterstics otherChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.LIGHT_GRAY);
@@ -2440,7 +2444,8 @@ public class RupCartoonGenerator {
 		List<PlausibilityFilter> buildFilters = new ArrayList<>();
 		buildFilters.add(new StartsWithFitler(clusters.get(0).startSect));
 		
-		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0).build(new ConnectionPointsRuptureGrowingStrategy());
+		List<ClusterRupture> allRups = new ClusterRuptureBuilder(clusters, buildFilters, 0, distAzCalc)
+				.build(new ConnectionPointsRuptureGrowingStrategy());
 		
 		List<ClusterRupture> plotRups = new ArrayList<>();
 		// plot ruptures that add each cluster in order

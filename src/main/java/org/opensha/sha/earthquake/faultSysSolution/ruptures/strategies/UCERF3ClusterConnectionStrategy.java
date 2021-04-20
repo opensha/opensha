@@ -20,7 +20,7 @@ public class UCERF3ClusterConnectionStrategy extends ClusterConnectionStrategy {
 
 	public UCERF3ClusterConnectionStrategy(List<? extends FaultSection> subSects,
 			SectionDistanceAzimuthCalculator distCalc, double maxJumpDist, CoulombRates coulombRates) {
-		super(subSects);
+		super(subSects, distCalc);
 		this.distCalc = distCalc;
 		this.maxJumpDist = maxJumpDist;
 		this.coulombRates = coulombRates;

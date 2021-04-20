@@ -49,7 +49,11 @@ public class ClusterRupturePlausibilityDebug {
 //						+ "nz_demo5_crustal_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos_sectFractPerm0.05.zip"));
 //						+ "fm3_1_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip"));
 //						+ "fm3_1_plausibleMulti10km_direct_cmlRake180_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.25_sectFractPerm0.05.zip"));
-						+ "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
+//						+ "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
+//						+ "fm3_1_plausibleMulti15km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip"));
+						+ "fm3_1_plausibleMulti10km_adaptive5km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_"
+						+ "cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05_comp/alt_conn_Adaptive_r05p0km_sectMax1_Plausible_3filters_"
+						+ "maxDist15km_MultiEnds.zip"));
 		System.out.println("Loaded "+rupSet.getNumRuptures()+" ruptures");
 		
 		PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
@@ -65,7 +69,7 @@ public class ClusterRupturePlausibilityDebug {
 		}
 		
 //		int[] testIndexes = { 372703 };
-		int[] testIndexes = { 173179 };
+		int[] testIndexes = { 141968 };
 		
 		List<ClusterRupture> testRuptures = new ArrayList<>();
 		for (int testIndex : testIndexes)

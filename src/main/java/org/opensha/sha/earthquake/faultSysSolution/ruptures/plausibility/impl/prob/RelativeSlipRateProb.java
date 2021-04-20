@@ -24,8 +24,8 @@ public class RelativeSlipRateProb extends AbstractRelativeProb {
 	
 	private boolean onlyAtIncreases;
 
-	public RelativeSlipRateProb(ClusterConnectionStrategy connStrat, boolean onlyAtIncreases) {
-		super(connStrat, false, true); // never negative, always relative to best
+	public RelativeSlipRateProb(ClusterConnectionStrategy connStrat, boolean onlyAtIncreases, boolean includeLongerJumps) {
+		super(connStrat, false, true, includeLongerJumps); // never negative, always relative to best
 		this.onlyAtIncreases = onlyAtIncreases;
 	}
 	
