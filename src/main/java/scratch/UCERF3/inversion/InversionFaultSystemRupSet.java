@@ -219,10 +219,13 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 			List<List<Integer>> clusterSects) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
 		setPlausibilityConfiguration(rupSet.getPlausibilityConfiguration());
-		setClusterRuptures(rupSet.getClusterRuptures());
+
 		setParamsFromBranch(branch);
 		this.logicTreeBranch = branch;
 		init(rupSet);
+
+		//this must come after the init(rupSet) call.
+		setClusterRuptures(rupSet.getClusterRuptures());
 		
 		int numSects = rupSet.getNumSections();
 		int numRups = rupSet.getNumRuptures();
