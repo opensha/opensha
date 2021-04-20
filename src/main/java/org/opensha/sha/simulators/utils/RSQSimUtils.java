@@ -24,6 +24,7 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -37,6 +38,7 @@ import org.opensha.sha.simulators.Vertex;
 import org.opensha.sha.simulators.iden.EventTimeIdentifier;
 import org.opensha.sha.simulators.iden.LogicalAndRupIden;
 import org.opensha.sha.simulators.iden.MagRangeRuptureIdentifier;
+import org.opensha.sha.simulators.iden.SkipYearsLoadIden;
 import org.opensha.sha.simulators.parsers.RSQSimFileReader;
 import org.opensha.sha.simulators.utils.RSQSimSubSectionMapper.SubSectionMapping;
 
@@ -636,36 +638,50 @@ public class RSQSimUtils {
 //		File geomFile = new File(dir, "zfault_Deepen.in");
 //		File dir = new File("/home/kevin/Simulators/UCERF3_JG_supraSeisGeo2");
 //		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
-		File dir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
+//		File dir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
+//		File geomFile = new File(dir, "zfault_Deepen.in");
+		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir5133");
 		File geomFile = new File(dir, "zfault_Deepen.in");
-		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'S');
+		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'N');
 		System.out.println("Loaded "+elements.size()+" elements");
-		
-		File stlFile = new File("/home/kevin/markdown/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
-		writeSTLFile(elements, stlFile);
-		System.exit(0);
-//		for (Location loc : elements.get(0).getVertices())
-//			System.out.println(loc);
-		File eventDir = dir;
-		
 		double minMag = 6d;
-		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(eventDir, elements,
-				Lists.newArrayList(new LogicalAndRupIden(new EventTimeIdentifier(5000d, Double.POSITIVE_INFINITY, true),
+		int skipYears = 50000;
+		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(dir, elements,
+				Lists.newArrayList(new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
 						new MagRangeRuptureIdentifier(minMag, 10d))));
-		double duration = events.get(events.size()-1).getTimeInYears() - events.get(0).getTimeInYears();
-		System.out.println("First event time: "+events.get(0).getTimeInYears()+", duration: "+duration);
 		
-		FaultModels fm = FaultModels.FM3_1;
-		DeformationModels dm = DeformationModels.GEOLOGIC;
-		SlipEnabledSolution sol = buildFaultSystemSolution(getUCERF3SubSectsForComparison(
-				fm, dm), elements, events, minMag);
+		File nshmDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/NSHM2023_FaultSectionsEQGeoDB_08March2021");
+		File sectsFile = new File(nshmDir, "FaultSections/NSHM2023_FaultSections_v1p1.geojson");
+		File geoDBFile = new File(nshmDir, "EQGeoDB/NSHM2023_EQGeoDB_v1p1.geojson");
+		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(sectsFile, geoDBFile, null);
+		SlipEnabledSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, 0.5);
+		FaultSystemIO.writeSol(sol, new File(dir, "rsqsim_5133_m6_skip"+skipYears+"_sectArea0.5.zip"));
 		
-		File plotDir = new File(eventDir, "ucerf3_fss_comparison_plots");
-		Preconditions.checkState(plotDir.exists() ||  plotDir.mkdir());
-//		MFDCalc.writeMFDPlots(elements, events, plotDir, new CaliforniaRegions.RELM_SOCAL(),
-//				new CaliforniaRegions.RELM_NOCAL(), new CaliforniaRegions.LA_BOX(), new CaliforniaRegions.NORTHRIDGE_BOX(),
-//				new CaliforniaRegions.SF_BOX(), new CaliforniaRegions.RELM_TESTING());
-		writeUCERF3ComparisonPlots(sol, fm, dm, plotDir, "rsqsim_comparison");
+//		File stlFile = new File("/home/kevin/markdown/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
+//		writeSTLFile(elements, stlFile);
+//		System.exit(0);
+////		for (Location loc : elements.get(0).getVertices())
+////			System.out.println(loc);
+//		File eventDir = dir;
+//		
+//		double minMag = 6d;
+//		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(eventDir, elements,
+//				Lists.newArrayList(new LogicalAndRupIden(new EventTimeIdentifier(5000d, Double.POSITIVE_INFINITY, true),
+//						new MagRangeRuptureIdentifier(minMag, 10d))));
+//		double duration = events.get(events.size()-1).getTimeInYears() - events.get(0).getTimeInYears();
+//		System.out.println("First event time: "+events.get(0).getTimeInYears()+", duration: "+duration);
+//		
+//		FaultModels fm = FaultModels.FM3_1;
+//		DeformationModels dm = DeformationModels.GEOLOGIC;
+//		SlipEnabledSolution sol = buildFaultSystemSolution(getUCERF3SubSectsForComparison(
+//				fm, dm), elements, events, minMag);
+//		
+//		File plotDir = new File(eventDir, "ucerf3_fss_comparison_plots");
+//		Preconditions.checkState(plotDir.exists() ||  plotDir.mkdir());
+////		MFDCalc.writeMFDPlots(elements, events, plotDir, new CaliforniaRegions.RELM_SOCAL(),
+////				new CaliforniaRegions.RELM_NOCAL(), new CaliforniaRegions.LA_BOX(), new CaliforniaRegions.NORTHRIDGE_BOX(),
+////				new CaliforniaRegions.SF_BOX(), new CaliforniaRegions.RELM_TESTING());
+//		writeUCERF3ComparisonPlots(sol, fm, dm, plotDir, "rsqsim_comparison");
 	}
 
 }
