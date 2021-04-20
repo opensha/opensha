@@ -14,3 +14,20 @@ dependencies {
     testCompile 'org.mockito:mockito-core:3.5.13'
     testCompile 'junit:junit:4.12'
 }
+
+
+// The following section adds the new NSHM integration tests to the main 'test' task
+test {
+	// Uncomment the following to exclude slow tests (useful when modding this file.... 
+	//exclude "**/UCERF3/inversion"
+	//exclude "**/UCERF3/erf"
+    filter { 
+    	includeTestsMatching('**IntegrationTest**') 
+    }
+}
+
+//Run just the NZSHM22 integration tests
+task integrationTest(type: Test, dependsOn: testClasses) {
+    description = 'Runs NZSHM22 integration tests.' 
+ 	filter { includeTestsMatching('**IntegrationTest**') }
+}

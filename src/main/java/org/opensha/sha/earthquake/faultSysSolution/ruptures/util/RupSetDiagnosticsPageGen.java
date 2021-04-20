@@ -690,7 +690,7 @@ public class RupSetDiagnosticsPageGen {
 			for (HistScalar scalar : HistScalar.values()) {
 				if (skipBiasiWesnousky && scalar == HistScalar.BW_PROB)
 					continue;
-				lines.add("### "+scalar.name);
+				lines.add("### "+scalar.getName());
 				lines.add(topLink); lines.add("");
 				lines.add(scalar.description);
 				lines.add("");
@@ -707,8 +707,14 @@ public class RupSetDiagnosticsPageGen {
 					summary.compMeta.scalars.add(new ScalarRange(compScalars));
 					compScalarVals.add(compScalars);
 				}
-				plotRuptureHistograms(resourcesDir, "hist_"+scalar.name(), table, inputScalars,
+				
+				try {
+					plotRuptureHistograms(resourcesDir, "hist_"+scalar.name(), table, inputScalars,
 						inputUniques, compScalars, compUniques);
+				} catch (Exception err) {
+					 System.out.println("Caught exception: " + err.getLocalizedMessage());
+					 continue;
+				}
 				
 				lines.addAll(table.build());
 				lines.add("");
@@ -716,10 +722,10 @@ public class RupSetDiagnosticsPageGen {
 				double[] fractiles = scalar.getExampleRupPlotFractiles();
 				if (fractiles == null)
 					continue;
-				
-				lines.add("#### "+scalar.name+" Extremes & Examples");
+
+				lines.add("#### "+scalar.getName()+" Extremes & Examples");
 				lines.add(topLink); lines.add("");
-				lines.add("Example ruptures at varios percentiles of "+scalar.name);
+				lines.add("Example ruptures at various percentiles of "+scalar.getName());
 				lines.add("");
 				
 				List<List<ClusterRupture>> ruptureLists = new ArrayList<>();
@@ -734,8 +740,9 @@ public class RupSetDiagnosticsPageGen {
 				if (compRupSet == null)
 					headings.add(null);
 				else
-					headings.add("From the primary rupture set (*"+inputName+"*):");
-				scalarValsList.add(inputScalars.values);
+					headings.add("From the primary rupture set ("+inputName+"):");
+				scalarValsList.add(inputScalars.getValues());
+				
 				prefixes.add("hist_rup");
 				rupSets.add(inputRupSet);
 				if (compRupSet != null) {
@@ -748,8 +755,10 @@ public class RupSetDiagnosticsPageGen {
 						Preconditions.checkState(!includeUniques.isEmpty());
 						ruptureLists.add(inputRups);
 						uniqueLists.add(includeUniques);
-						headings.add("Ruptures that are unique to the primary rupture set (*"+inputName+"*):");
-						scalarValsList.add(inputScalars.values);
+
+						headings.add("Ruptures that are unique to the primary rupture set ("+inputName+"):");
+						scalarValsList.add(inputScalars.getValues());
+
 						prefixes.add("hist_rup");
 						rupSets.add(inputRupSet);
 					}
@@ -762,8 +771,10 @@ public class RupSetDiagnosticsPageGen {
 						Preconditions.checkState(!includeUniques.isEmpty());
 						ruptureLists.add(compRups);
 						uniqueLists.add(includeUniques);
-						headings.add("Ruptures that are unique to the comparison rupture set (*"+compName+"*):");
-						scalarValsList.add(compScalars.values);
+
+						headings.add("Ruptures that are unique to the comparison rupture set ("+compName+"):");
+						scalarValsList.add(compScalars.getValues());
+
 						prefixes.add("hist_comp_rup");
 						rupSets.add(compRupSet);
 					}
@@ -1368,11 +1379,12 @@ public class RupSetDiagnosticsPageGen {
 		for (int i=0; i<inputScalarVals.size(); i++) {
 			HistScalarValues inputScalars = inputScalarVals.get(i);
 			HistScalarValues compScalars = compScalarVals == null ? null : compScalarVals.get(i);
-			HistScalar scalar = inputScalars.scalar;
+
+			HistScalar scalar = inputScalars.getScalar();
 			if (scalar != HistScalar.MAG && scalar != HistScalar.LENGTH && scalar != HistScalar.CUM_JUMP_DIST
 					&& scalar != HistScalar.CUM_RAKE_CHANGE && scalar != HistScalar.CUM_AZ_CHANGE)
 				continue;
-			lines.add("### Subsection Maximum "+scalar.name);
+			lines.add("### Subsection Maximum "+scalar.getName());
 			lines.add(topLink); lines.add("");
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			if (compRups != null)
@@ -1643,7 +1655,7 @@ public class RupSetDiagnosticsPageGen {
 	
 	public static double DEFAULT_MAX_DIST = 10d;
 	
-	private static Options createOptions() {
+	public static Options createOptions() {
 		Options ops = new Options();
 
 		Option outDirOption = new Option("od", "output-dir", true,
@@ -1959,14 +1971,14 @@ public class RupSetDiagnosticsPageGen {
 			table.addColumn("![hist]("+outputDir.getName()+"/"+comp.getName()+")");
 		}
 		table.finalizeLine();
-		boolean hasCompSol = compScalars != null && compScalars.sol != null;
-		if (inputScalars.sol != null || hasCompSol) {
+		boolean hasCompSol = compScalars != null && compScalars.getSol() != null;
+		if (inputScalars.getSol() != null || hasCompSol) {
 			// rate-weighted hists
 			for (boolean logY : new boolean[] {false, true}) {
 				table.initNewLine();
 				
 				String logAdd = logY ? "_log" : "";
-				if (inputScalars.sol != null) {
+				if (inputScalars.getSol() != null) {
 					main = plotRuptureHistogram(outputDir, prefix+"_rates"+logAdd, inputScalars,
 							compScalars, compUniques, MAIN_COLOR, logY, true);
 					table.addColumn("![hist]("+outputDir.getName()+"/"+main.getName()+")");
@@ -1998,7 +2010,7 @@ public class RupSetDiagnosticsPageGen {
 		table.finalizeLine();
 	}
 	
-	private static class HistScalarValues {
+	public static class HistScalarValues {
 		private final HistScalar scalar;
 		private final FaultSystemRupSet rupSet;
 		private final FaultSystemSolution sol;
@@ -2014,15 +2026,50 @@ public class RupSetDiagnosticsPageGen {
 			this.rups = rups;
 			
 			values = new ArrayList<>();
-			System.out.println("Calculating "+scalar.name+" for "+rups.size()+" ruptures");
+			System.out.println("Calculating "+scalar.getName()+" for "+rups.size()+" ruptures");
 			for (int r=0; r<rups.size(); r++)
-				values.add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+				getValues().add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+		}
+
+		/**
+		 * @return the rupSet
+		 */
+		public FaultSystemRupSet getRupSet() {
+			return rupSet;
+		}
+
+		/**
+		 * @return the values
+		 */
+		public List<Double> getValues() {
+			return values;
+		}
+
+		/**
+		 * @return the scalar
+		 */
+		public HistScalar getScalar() {
+			return scalar;
+		}
+
+		/**
+		 * @return the sol
+		 */
+		public FaultSystemSolution getSol() {
+			return sol;
+		}
+
+		/**
+		 * @return the rups
+		 */
+		public List<ClusterRupture> getRups() {
+			return rups;
 		}
 	}
 	
 	private static double[] example_fractiles_default =  { 0d, 0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 1d };
 	
-	private enum HistScalar {
+	public enum HistScalar {
 		LENGTH("Rupture Length", "Length (km)",
 				"Total length (km) of the rupture, not including jumps or gaps.") {
 			@Override
@@ -2356,13 +2403,27 @@ public class RupSetDiagnosticsPageGen {
 				SectionDistanceAzimuthCalculator distAzCalc);
 		
 		public abstract double[] getExampleRupPlotFractiles();
+
+		/**
+		 * @return the name
+		 */
+		public String getName() {
+			return name;
+		}
+
+		/**
+		 * @return the xAxisLabel
+		 */
+		public String getxAxisLabel() {
+			return xAxisLabel;
+		}
 	}
 	
 	public static File plotRuptureHistogram(File outputDir, String prefix,
 			HistScalarValues scalarVals, HistScalarValues compScalarVals, HashSet<UniqueRupture> compUniques, Color color,
 			boolean logY, boolean rateWeighted) throws IOException {
 		List<Integer> includeIndexes = new ArrayList<>();
-		for (int r=0; r<scalarVals.rupSet.getNumRuptures(); r++)
+		for (int r=0; r<scalarVals.getRupSet().getNumRuptures(); r++)
 			includeIndexes.add(r);
 		return plotRuptureHistogram(outputDir, prefix, scalarVals, includeIndexes,
 				compScalarVals, compUniques, color, logY, rateWeighted);
@@ -2376,24 +2437,24 @@ public class RupSetDiagnosticsPageGen {
 				(List<Integer>)includeIndexes : new ArrayList<>(includeIndexes);
 		MinMaxAveTracker track = new MinMaxAveTracker();
 		for (int r : indexesList)
-			track.addValue(scalarVals.values.get(r)); 
+			track.addValue(scalarVals.getValues().get(r)); 
 		if (compScalarVals != null) {
 			// used only for bounds
-			for (double scalar : compScalarVals.values)
+			for (double scalar : compScalarVals.getValues())
 				track.addValue(scalar);
 		}
-		HistScalar histScalar = scalarVals.scalar;
+		HistScalar histScalar = scalarVals.getScalar();
 		HistogramFunction hist = histScalar.getHistogram(track);
 		boolean logX = histScalar.isLogX();
 		HistogramFunction commonHist = null;
 		if (compUniques != null)
 			commonHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 		HistogramFunction compHist = null;
-		if (compScalarVals != null && (!rateWeighted || compScalarVals.sol != null)) {
+		if (compScalarVals != null && (!rateWeighted || compScalarVals.getSol() != null)) {
 			compHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
-			for (int i=0; i<compScalarVals.values.size(); i++) {
-				double scalar = compScalarVals.values.get(i);
-				double y = rateWeighted ? compScalarVals.sol.getRateForRup(i) : 1d;
+			for (int i=0; i<compScalarVals.getValues().size(); i++) {
+				double scalar = compScalarVals.getValues().get(i);
+				double y = rateWeighted ? compScalarVals.getSol().getRateForRup(i) : 1d;
 				int index;
 				if (logX)
 					index = scalar <= 0 ? 0 : compHist.getClosestXIndex(Math.log10(scalar));
@@ -2405,15 +2466,15 @@ public class RupSetDiagnosticsPageGen {
 		
 		for (int i=0; i<indexesList.size(); i++) {
 			int rupIndex = indexesList.get(i);
-			double scalar = scalarVals.values.get(i);
-			double y = rateWeighted ? scalarVals.sol.getRateForRup(rupIndex) : 1;
+			double scalar = scalarVals.getValues().get(i);
+			double y = rateWeighted ? scalarVals.getSol().getRateForRup(rupIndex) : 1;
 			int index;
 			if (logX)
 				index = scalar <= 0 ? 0 : hist.getClosestXIndex(Math.log10(scalar));
 			else
 				index = hist.getClosestXIndex(scalar);
 			hist.add(index, y);
-			if (compUniques != null && compUniques.contains(scalarVals.rups.get(rupIndex).unique))
+			if (compUniques != null && compUniques.contains(scalarVals.getRups().get(rupIndex).unique))
 				commonHist.add(index, y);
 		}
 		
@@ -2449,8 +2510,8 @@ public class RupSetDiagnosticsPageGen {
 			}
 		}
 		
-		String title = histScalar.name+" Histogram";
-		String xAxisLabel = histScalar.xAxisLabel;
+		String title = histScalar.getName()+" Histogram";
+		String xAxisLabel = histScalar.getxAxisLabel();
 		String yAxisLabel = rateWeighted ? "Annual Rate" : "Count";
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
@@ -2528,7 +2589,7 @@ public class RupSetDiagnosticsPageGen {
 			HashSet<UniqueRupture> compUniques, Color color, boolean logY)
 					throws IOException {
 		List<Integer> includeIndexes = new ArrayList<>();
-		for (int r=0; r<scalarVals.rupSet.getNumRuptures(); r++)
+		for (int r=0; r<scalarVals.getRupSet().getNumRuptures(); r++)
 			includeIndexes.add(r);
 		return plotRuptureCumulatives(outputDir, prefix, scalarVals, includeIndexes, compScalarVals,
 				compUniques, color, logY);
@@ -2542,13 +2603,13 @@ public class RupSetDiagnosticsPageGen {
 				(List<Integer>)includeIndexes : new ArrayList<>(includeIndexes);
 		MinMaxAveTracker track = new MinMaxAveTracker();
 		for (int r : indexesList)
-			track.addValue(scalarVals.values.get(r)); 
+			track.addValue(scalarVals.getValues().get(r)); 
 		if (compScalarVals != null) {
 			// used only for bounds
-			for (double scalar : compScalarVals.values)
+			for (double scalar : compScalarVals.getValues())
 				track.addValue(scalar);
 		}
-		HistScalar histScalar = scalarVals.scalar;
+		HistScalar histScalar = scalarVals.getScalar();
 		HistogramFunction hist = histScalar.getHistogram(track);
 		// now super-sample it for the cumulative plot
 		double origDelta = hist.getDelta();
@@ -2563,14 +2624,14 @@ public class RupSetDiagnosticsPageGen {
 			commonHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 		HistogramFunction rateHist = null;
 		HistogramFunction commonRateHist = null;
-		if (scalarVals.sol != null) {
+		if (scalarVals.getSol() != null) {
 			rateHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 			commonRateHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 		}
 		
 		for (int i=0; i<indexesList.size(); i++) {
 			int rupIndex = indexesList.get(i);
-			double scalar = scalarVals.values.get(i);
+			double scalar = scalarVals.getValues().get(i);
 			int index;
 			if (logX)
 				index = scalar <= 0 ? 0 : hist.getClosestXIndex(Math.log10(scalar));
@@ -2578,11 +2639,11 @@ public class RupSetDiagnosticsPageGen {
 				index = hist.getClosestXIndex(scalar);
 			hist.add(index, 1d);
 			if (rateHist != null)
-				rateHist.add(index, scalarVals.sol.getRateForRup(rupIndex));
-			if (compUniques != null && compUniques.contains(scalarVals.rups.get(rupIndex).unique)) {
+				rateHist.add(index, scalarVals.getSol().getRateForRup(rupIndex));
+			if (compUniques != null && compUniques.contains(scalarVals.getRups().get(rupIndex).unique)) {
 				commonHist.add(index, 1d);
 				if (commonRateHist != null)
-					commonRateHist.add(index, scalarVals.sol.getRateForRup(rupIndex));
+					commonRateHist.add(index, scalarVals.getSol().getRateForRup(rupIndex));
 			}
 		}
 		
@@ -2650,8 +2711,8 @@ public class RupSetDiagnosticsPageGen {
 			}
 		}
 		
-		String title = histScalar.name+" Cumulative Distribution";
-		String xAxisLabel = histScalar.xAxisLabel;
+		String title = histScalar.getName()+" Cumulative Distribution";
+		String xAxisLabel = histScalar.getxAxisLabel();
 		String yAxisLabel = "Cumulative Fraction";
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
@@ -3229,11 +3290,11 @@ public class RupSetDiagnosticsPageGen {
 				TableBuilder table = MarkdownUtils.tableBuilder();
 				table.initNewLine();
 				for (HistScalarValues vals : scalarVals) {
-					HistScalar scalar = vals.scalar;
+					HistScalar scalar = vals.getScalar();
 					String prefix = "filter_hist_"+filterPrefix+"_"+scalar.name();
 					File plot = plotRuptureHistogram(resourcesDir, prefix, vals, combIndexes,
 							null, null, color, false, false);
-					table.addColumn("!["+scalar.name+"]("+resourcesDir.getName()+"/"+plot.getName()+")");
+					table.addColumn("!["+scalar.getName()+"]("+resourcesDir.getName()+"/"+plot.getName()+")");
 				}
 				table.finalizeLine();
 				lines.add("**Distributions of ruptures that failed ("+countDF.format(result.failCounts[i])+") or erred ("
@@ -4380,7 +4441,7 @@ public class RupSetDiagnosticsPageGen {
 		TableBuilder table = MarkdownUtils.tableBuilder().initNewLine();
 		HistScalar[] scalars = HistScalar.values();
 		for (HistScalar scalar : scalars)
-			table.addColumn("**"+scalar.xAxisLabel+"**");
+			table.addColumn("**"+scalar.getxAxisLabel()+"**");
 		table.finalizeLine().initNewLine();
 		for (HistScalar scalar : scalars) {
 			double val = scalar.getValue(rupIndex, rupSet, rupture, distAzCalc);
@@ -4524,7 +4585,7 @@ public class RupSetDiagnosticsPageGen {
 		for (int s=0; s<rupSet.getNumSections(); s++)
 			values.add(Double.NEGATIVE_INFINITY);
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
-			double value = scalarVals.values.get(r);
+			double value = scalarVals.getValues().get(r);
 			for (int s : rupSet.getSectionsIndicesForRup(r)) {
 				double prevMax = values.get(s);
 				if (value > prevMax)
@@ -4541,11 +4602,11 @@ public class RupSetDiagnosticsPageGen {
 		if (compScalarVals != null) {
 			// for consistent ranges
 			List<Double> compValues = new ArrayList<>();
-			for (int s=0; s<compScalarVals.rupSet.getNumSections(); s++)
+			for (int s=0; s<compScalarVals.getRupSet().getNumSections(); s++)
 				compValues.add(Double.NEGATIVE_INFINITY);
-			for (int r=0; r<compScalarVals.rupSet.getNumRuptures(); r++) {
-				double value = compScalarVals.values.get(r);
-				for (int s : compScalarVals.rupSet.getSectionsIndicesForRup(r)) {
+			for (int r=0; r<compScalarVals.getRupSet().getNumRuptures(); r++) {
+				double value = compScalarVals.getValues().get(r);
+				for (int s : compScalarVals.getRupSet().getSectionsIndicesForRup(r)) {
 					double prevMax = compValues.get(s);
 					if (value > prevMax)
 						compValues.set(s, value);
@@ -4565,7 +4626,7 @@ public class RupSetDiagnosticsPageGen {
 			}
 		}
 		
-		HistScalar histScalar = scalarVals.scalar;
+		HistScalar histScalar = scalarVals.getScalar();
 		
 		HistogramFunction hist;
 		CPT cpt;
@@ -4610,7 +4671,7 @@ public class RupSetDiagnosticsPageGen {
 		
 		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
 		
-		String cptTitle = "Section Max Participating "+histScalar.xAxisLabel;
+		String cptTitle = "Section Max Participating "+histScalar.getxAxisLabel();
 		if (difference)
 			cptTitle += ", Difference";
 		if (histScalar.isLogX())
@@ -4649,7 +4710,7 @@ public class RupSetDiagnosticsPageGen {
 			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, mainColor));
 		}
 		
-		String xAxisLabel = "Section Max "+histScalar.xAxisLabel;
+		String xAxisLabel = "Section Max "+histScalar.getxAxisLabel();
 		if (difference)
 			xAxisLabel += ", Difference";
 		String yAxisLabel = "Count";
@@ -5167,13 +5228,13 @@ public class RupSetDiagnosticsPageGen {
 		public ScalarRange(HistScalarValues values) {
 			double min = Double.POSITIVE_INFINITY;
 			double max = Double.NEGATIVE_INFINITY;
-			for (double val : values.values) {
+			for (double val : values.getValues()) {
 				min = Math.min(val, min);
 				max = Math.max(val, max);
 			}
 			this.min = min;
 			this.max = max;
-			this.scalar = values.scalar;
+			this.scalar = values.getScalar();
 		}
 	}
 	
@@ -5619,7 +5680,7 @@ public class RupSetDiagnosticsPageGen {
 				if (primaryScalar == null && compScalar == null)
 					continue;
 				table.initNewLine();
-				table.addColumn("**"+scalar.name+"**");
+				table.addColumn("**"+scalar.getName()+"**");
 				if (primaryScalar == null)
 					table.addColumn("");
 				else
@@ -5639,5 +5700,68 @@ public class RupSetDiagnosticsPageGen {
 
 	public void setAltFilters(List<PlausibilityFilter> altFilters) {
 		this.altFilters = altFilters;
+	}
+
+	/**
+	 * @return the outputDir
+	 */
+	public File getOutputDir() {
+		return outputDir;
+	}
+
+	/**
+	 * @return the inputRupSet
+	 */
+	public FaultSystemRupSet getInputRupSet() {
+		return inputRupSet;
+	}
+
+	/**
+	 * @return the inputSol
+	 */
+	public FaultSystemSolution getInputSol() {
+		return inputSol;
+	}
+
+	/**
+	 * @return the inputRups
+	 */
+	public List<ClusterRupture> getInputRups() {
+		return inputRups;
+	}
+
+	/**
+	 * @return the distAzCalc
+	 */
+	public SectionDistanceAzimuthCalculator getDistAzCalc() {
+		return distAzCalc;
+	}
+
+	/**
+	 * @return the mainColor
+	 */
+	public static Color getMainColor() {
+		return MAIN_COLOR;
+	}
+
+	/**
+	 * @return the inputUniques
+	 */
+	public HashSet<UniqueRupture> getInputUniques() {
+		return inputUniques;
+	}
+
+	/**
+	 * @return the commonColor
+	 */
+	public static Color getCommonColor() {
+		return COMMON_COLOR;
+	}
+
+	/**
+	 * @return the inputName
+	 */
+	public String getInputName() {
+		return inputName;
 	}
 }
