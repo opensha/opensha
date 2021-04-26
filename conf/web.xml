@@ -165,6 +165,22 @@
     <url-pattern>/DisaggregationPlotServlet</url-pattern>
   </servlet-mapping>
 
+  <!-- ** GMT Interpolation Service ** -->
+  <servlet>
+    <servlet-name>gmtInterp</servlet-name>
+    <servlet-class>org.opensha.commons.mapping.servlet.GME_InterpolationServlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>gmtInterp</servlet-name>
+    <url-pattern>/GME_InterpolationServlet</url-pattern>
+  </servlet-mapping>
+
   <!-- ** GMT HAZUS Web Service ** -->
   <servlet>
     <servlet-name>gmtHazusWS</servlet-name>
