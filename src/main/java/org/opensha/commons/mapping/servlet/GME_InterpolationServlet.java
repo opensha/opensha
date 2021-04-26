@@ -18,6 +18,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.util.RunScript;
@@ -154,7 +155,7 @@ public class GME_InterpolationServlet extends HttpServlet {
 		File interpFile = new File(outputDir, interpFileName);
 		System.out.println("DONE, loading map from "+interpFile.getAbsolutePath());
 		Preconditions.checkState(interpFile.exists(), "Interpolated file doesn't exist? %s", interpFile.getAbsoluteFile());
-		return GriddedGeoDataSet.loadXYZFile(interpFile, true);
+		return GriddedGeoDataSet.loadXYZFile(interpFile, false);
 	}
 	
 	public static GriddedGeoDataSet interpolate(GeoDataSet scatterData, Region region, double gridSpacing) {
@@ -216,6 +217,31 @@ public class GME_InterpolationServlet extends HttpServlet {
 					+ " you are using the latest version of our applications.");
 		}
 		return ret;
+	}
+	
+	public static void main(String[] args) {
+		Region region = new Region(new Location(34, -118), new Location(36, -120));
+		
+		double minLat = region.getMinLat();
+		double latSpan = region.getMaxLat() - minLat;
+		double minLon = region.getMinLon();
+		double lonSpan = region.getMaxLon() - minLon;
+		
+		int numScatter = 15;
+		GeoDataSet scatterData = new ArbDiscrGeoDataSet(false);
+		for (int i=0; i<numScatter; i++) {
+			double lat = minLat + Math.random()*latSpan;
+			double lon = minLon + Math.random()*lonSpan;
+			Location loc = new Location(lat, lon);
+			double val = Math.random();
+			System.out.println("Location "+i+": "+loc+" = "+val);
+			scatterData.set(loc, val);
+		}
+		
+		System.out.println("Interpolated:");
+		GriddedGeoDataSet interp = interpolate(scatterData, region, 0.2);
+		for (int i=0; i<interp.size(); i++)
+			System.out.println(interp.getLocation(i)+" =\t"+interp.get(i));
 	}
 
 }
