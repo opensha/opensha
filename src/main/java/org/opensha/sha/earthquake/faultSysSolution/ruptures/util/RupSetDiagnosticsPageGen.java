@@ -1417,44 +1417,51 @@ public class RupSetDiagnosticsPageGen {
 			if (scalar != HistScalar.MAG && scalar != HistScalar.LENGTH && scalar != HistScalar.CUM_JUMP_DIST
 					&& scalar != HistScalar.CUM_RAKE_CHANGE && scalar != HistScalar.CUM_AZ_CHANGE)
 				continue;
-			lines.add("### Subsection Maximum "+scalar.getName());
-			lines.add(topLink); lines.add("");
-			TableBuilder table = MarkdownUtils.tableBuilder();
-			if (compRups != null)
-				table.addLine(inputName, compName);
-			String prefix = "sect_max_"+scalar.name();
-			if (!plotScalarMaxMapView(inputRupSet, resourcesDir, prefix, getTruncatedTitle(inputName),
-					inputScalars, compScalars, region, MAIN_COLOR, false, false))
-				continue;
-			table.initNewLine();
-			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+".png)");
-			if (compScalars != null) {
-				plotScalarMaxMapView(compRupSet, resourcesDir, prefix+"_comp", getTruncatedTitle(compName),
-						compScalarVals.get(i), inputScalars, region, COMP_COLOR, false, false);
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp.png)");
-			}
-			table.finalizeLine().initNewLine();
-			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_hist.png)");
-			if (compScalarVals != null) {
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp_hist.png)");
-			}
-			table.finalizeLine();
-			if (compRups != null) {
-				table.addLine("**Difference**", "**Ratio**");
+
+			try {
+				lines.add("### Subsection Maximum "+scalar.getName());
+				lines.add(topLink); lines.add("");
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				if (compRups != null)
+					table.addLine(inputName, compName);
+				String prefix = "sect_max_"+scalar.name();
+				if (!plotScalarMaxMapView(inputRupSet, resourcesDir, prefix, getTruncatedTitle(inputName),
+						inputScalars, compScalars, region, MAIN_COLOR, false, false))
+					continue;
 				table.initNewLine();
-				plotScalarMaxMapView(inputRupSet, resourcesDir, prefix+"_diff", "Difference",
-						inputScalars, compScalars, region, MAIN_COLOR, true, false);
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff.png)");
-				plotScalarMaxMapView(inputRupSet, resourcesDir, prefix+"_ratio", "Ratio",
-						inputScalars, compScalars, region, MAIN_COLOR, false, true);
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio.png)");
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+".png)");
+				if (compScalars != null) {
+					plotScalarMaxMapView(compRupSet, resourcesDir, prefix+"_comp", getTruncatedTitle(compName),
+							compScalarVals.get(i), inputScalars, region, COMP_COLOR, false, false);
+					table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp.png)");
+				}
 				table.finalizeLine().initNewLine();
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff_hist.png)");
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio_hist.png)");
+				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_hist.png)");
+				if (compScalarVals != null) {
+					table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp_hist.png)");
+				}
 				table.finalizeLine();
-			}
-			lines.addAll(table.build());
-			lines.add("");
+				if (compRups != null) {
+					table.addLine("**Difference**", "**Ratio**");
+					table.initNewLine();
+					plotScalarMaxMapView(inputRupSet, resourcesDir, prefix+"_diff", "Difference",
+							inputScalars, compScalars, region, MAIN_COLOR, true, false);
+					table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff.png)");
+					plotScalarMaxMapView(inputRupSet, resourcesDir, prefix+"_ratio", "Ratio",
+							inputScalars, compScalars, region, MAIN_COLOR, false, true);
+					table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio.png)");
+					table.finalizeLine().initNewLine();
+					table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff_hist.png)");
+					table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio_hist.png)");
+					table.finalizeLine();
+				}
+				lines.addAll(table.build());
+				lines.add("");
+
+			} catch (Exception err) {
+				 System.out.println("Caught exception: " + err.getLocalizedMessage());
+				 continue;
+			}			
 		}
 		
 		// now jumps

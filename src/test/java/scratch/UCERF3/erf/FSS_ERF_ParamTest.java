@@ -150,6 +150,9 @@ public class FSS_ERF_ParamTest {
 			if (parentSect.getSectionId() != 301 && parentSect.getSectionId() != 32)
 				// only Mojave S and Parkfield
 				continue;
+			
+			parentSect.setSlipRateStdDev(3d*Math.random());
+			
 			double ddw = parentSect.getOrigDownDipWidth();
 			double maxSectLength = ddw*maxSubSectionLength;
 			// the "2" here sets a minimum number of sub sections
@@ -161,6 +164,7 @@ public class FSS_ERF_ParamTest {
 				sect.setDateOfLastEvent(epochTime);
 			subSections.addAll(newSubSects);
 			sectIndex += newSubSects.size();
+
 		}
 				
 		UCERF3PlausibilityConfig laughTest = UCERF3PlausibilityConfig.getDefault();

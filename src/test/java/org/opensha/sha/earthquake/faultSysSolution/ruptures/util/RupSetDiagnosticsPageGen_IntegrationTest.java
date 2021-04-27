@@ -52,7 +52,7 @@ public class RupSetDiagnosticsPageGen_IntegrationTest {
 		 *
 		 * alpineVernonRupturesUrl = Thread.currentThread().getContextClassLoader().getResource("testAlpineVernonInversion.zip");
 		*/ 
-		alpineVernonRupturesUrl = new File("test/resources/scratch/UCERF3/utils/testAlpineVernonInversion.zip").toURL();
+		alpineVernonRupturesUrl = new File("test/resources/scratch/UCERF3/utils/testAlpineVernonInversion.zip").toURI().toURL();
 		tempFolder = Files.createTempDirectory("_testNew").toFile();
 		
 		Options options = RupSetDiagnosticsPageGen.createOptions();
