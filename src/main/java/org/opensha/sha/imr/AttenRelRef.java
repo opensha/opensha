@@ -68,7 +68,7 @@ import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.CY_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.GK_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.Idriss_2014_Wrapper;
 import org.opensha.sha.imr.mod.ModAttenuationRelationship;
-import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.NonErgodicSiteResponseGMPE;
+import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017NonergodicGMPE;
 
 /**
  * This <code>enum</code> supplies references to
@@ -167,6 +167,8 @@ public enum AttenRelRef implements Named {
 	/** Dahle et al. (1995) */
 	DAHLE_1995(DahleEtAl_1995_AttenRel.class, DahleEtAl_1995_AttenRel.NAME,
 			DahleEtAl_1995_AttenRel.SHORT_NAME, PRODUCTION),
+	
+	NON_ERGODIC_2016(StewartAfshariGoulet2017NonergodicGMPE.class, StewartAfshariGoulet2017NonergodicGMPE.NAME, StewartAfshariGoulet2017NonergodicGMPE.SHORT_NAME, PRODUCTION),
 
 	// DEVELOPMENT
 
@@ -224,8 +226,6 @@ public enum AttenRelRef implements Named {
 	GK_2014(GK_2014_Wrapper.class, org.opensha.sha.imr.attenRelImpl.ngaw2.GK_2014.NAME, org.opensha.sha.imr.attenRelImpl.ngaw2.GK_2014.SHORT_NAME, EXPERIMENTAL),
 	
 	MOD_ATTEN_REL(ModAttenuationRelationship.class, ModAttenuationRelationship.NAME, ModAttenuationRelationship.SHORT_NAME, EXPERIMENTAL),
-	
-	NON_ERGODIC_2016(NonErgodicSiteResponseGMPE.class, NonErgodicSiteResponseGMPE.NAME, NonErgodicSiteResponseGMPE.SHORT_NAME, EXPERIMENTAL),
 	
 	AFSHARI_STEWART_2016(AfshariStewart_2016_AttenRel.class, AfshariStewart_2016_AttenRel.NAME, AfshariStewart_2016_AttenRel.SHORT_NAME, EXPERIMENTAL),
 

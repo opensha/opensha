@@ -18,22 +18,28 @@ import org.opensha.sha.imr.mod.ModAttenuationRelationship;
 import org.opensha.sha.imr.param.OtherParams.StdDevTypeParam;
 
 /**
- * Steward 2014 modified GMPE which can be used in the Attenuation Relationship app
- * @author kevin
+ * Stewart, Afshari, & Goulet (2017) Non-Ergodic site response GMPE, as described in:
+ * 
+ * Stewart, J. P., Afshari, K., & Goulet, C. A. (2017). Non-ergodic site response in seismic hazard analysis. Earthquake Spectra, 33(4), 1385-1414.
+ * https://doi.org/10.1193/081716eqs135m
+ * 
+ * This modifies an NGA-W2 GMPE to account for non-ergodic site response. Most of the link is done in {@code NonErgodicSiteResponseMod}.
+ * 
+ * @author Kevin Milner, Kioumars Afshari
  *
  */
-public class NonErgodicSiteResponseGMPE extends ModAttenuationRelationship {
+public class StewartAfshariGoulet2017NonergodicGMPE extends ModAttenuationRelationship {
 	
-	public static final String NAME = "Non Ergodic Site Response GMPE 2016";
-	public static final String SHORT_NAME = "NonErgodic2016";
+	public static final String NAME = "Stewart, Afshari, Goulet (2017) Non-Ergodic Site Response GMPE";
+	public static final String SHORT_NAME = "SAG_NonErgodic2017";
 	
 	private ParameterList refSiteParams;
 	
-	public NonErgodicSiteResponseGMPE() {
+	public StewartAfshariGoulet2017NonergodicGMPE() {
 		this(null);
 	}
 	
-	public NonErgodicSiteResponseGMPE(ParameterChangeWarningListener l) {
+	public StewartAfshariGoulet2017NonergodicGMPE(ParameterChangeWarningListener l) {
 //		super(l, EnumSet.copyOf(AttenRelRef.get(ServerPrefUtils.SERVER_PREFS)),
 //				EnumSet.of(ModAttenRelRef.STEWART_SITE_SPECIFIC));
 		// for now just BSSA 2014

@@ -44,6 +44,15 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Doubles;
 
+/**
+ * Non-Ergodic site response GMPE modifier described in Stewart, Afshari, & Goulet (2017):
+ * 
+ * Stewart, J. P., Afshari, K., & Goulet, C. A. (2017). Non-ergodic site response in seismic hazard analysis. Earthquake Spectra, 33(4), 1385-1414.
+ * https://doi.org/10.1193/081716eqs135m
+ * 
+ * @author Kevin Milner, Kioumars Afshari
+ *
+ */
 public class NonErgodicSiteResponseMod extends IML_DependentAttenRelMod implements ParameterChangeListener {
 	
 	private static final boolean D = false;
