@@ -125,7 +125,7 @@ import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.BSSA_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.CB_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.CY_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.Idriss_2014_Wrapper;
-import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.NonErgodicSiteResponseGMPE;
+import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017NonergodicGMPE;
 
 import com.google.common.collect.Lists;
 
@@ -327,8 +327,8 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 		attenRelClasses.add(KS_2006_AttenRel.class.getName());
 		imNames.add(BommerEtAl_2009_AttenRel.NAME);
 		attenRelClasses.add(BommerEtAl_2009_AttenRel.class.getName());
-		imNames.add(NonErgodicSiteResponseGMPE.NAME);
-		attenRelClasses.add(NonErgodicSiteResponseGMPE.class.getName());
+		imNames.add(StewartAfshariGoulet2017NonergodicGMPE.NAME);
+		attenRelClasses.add(StewartAfshariGoulet2017NonergodicGMPE.class.getName());
 		imNames.add(AfshariStewart_2016_AttenRel.NAME);
 		attenRelClasses.add(AfshariStewart_2016_AttenRel.class.getName());
 
