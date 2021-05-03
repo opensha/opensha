@@ -32,6 +32,7 @@ import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.imr.mod.ModAttenuationRelationship;
 import org.opensha.sha.imr.param.EqkRuptureParams.DipParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.RakeParam;
@@ -93,6 +94,9 @@ public class GeneralIMR_ParameterTests {
 		ArrayList<AttenRelRef[]> ret = new ArrayList<AttenRelRef[]>();
 
 		for (AttenRelRef ref : refs) {
+			if (ModAttenuationRelationship.class.isAssignableFrom(ref.getAttenRelClass()))
+				// these tests are not applicable to ModAttenuationRelationship
+				continue;
 			AttenRelRef[] theRef = { ref };
 			ret.add(theRef);
 		}
