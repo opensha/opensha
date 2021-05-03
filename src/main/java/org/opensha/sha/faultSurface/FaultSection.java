@@ -261,6 +261,14 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 		return getOrigSlipRateStdDev()*getCouplingCoeff();
 	}
 
+	
+	/**
+	 * This sets the slip rate standard deviation
+
+	 * @param slipRateStdDev
+	 */
+	public void setSlipRateStdDev(double slipRateStdDev);	
+	
 	/**
 	 * @return true if this is a connector fault
 	 */
