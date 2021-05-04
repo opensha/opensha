@@ -899,7 +899,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 			distAzCalc.loadCacheFile(distAzCacheFile);
 		}
 		
-		double maxJumpDist = 10d;
+		double maxJumpDist = 15d;
 		boolean favJump = true;
 		
 		float cffProb = 0.02f;
@@ -931,7 +931,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		PlausibleClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
 				JUMP_SELECTOR_DEFAULT,
 				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), combinedPathFilter, fractInts);
-		String origName = "10km";
+		String origName = "15km";
 //		String origName = "No CFF Prob";
 //				new CumulativeProbabilityFilter(cffRatio, sectRatioCalc), threeQuarters);
 //		ClusterConnectionStrategy orig = new PlausibleClusterConnectionStrategy(subSects, distAzCalc, maxJumpDist,
@@ -960,8 +960,8 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 //		String newName = "15km";
 		
 //		PlausibilityFilter filter = new CumulativeProbabilityFilter(0.5f, new CoulombSectRatioProb(sumAgg, 2));
-		ClusterConnectionStrategy newStrat = new AdaptiveClusterConnectionStrategy(orig, 5d, 1);
-		String newName = "Adaptive";
+		ClusterConnectionStrategy newStrat = new AdaptiveClusterConnectionStrategy(orig, 6d, 1);
+		String newName = "Adaptive 6-15km";
 		
 		int threads = Integer.max(1, Integer.min(31, Runtime.getRuntime().availableProcessors()-2));
 		orig.checkBuildThreaded(threads);

@@ -30,7 +30,7 @@ import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
  * Adaptive rupture growing strategy that requires that each subsequent variant increase the total subsection count
- * by at least the given fraction. The ends of fault sections will never be slipped, and if maintainConnectivity == true
+ * by at least the given fraction. The ends of fault sections will never be skipped, and if maintainConnectivity == true
  * then neither will connection points to other faults.
  * 
  * @author kevin
@@ -41,16 +41,29 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 	private float minFractSectIncrease;
 	private boolean maintainConnectivity;
 	private RuptureGrowingStrategy exhaustiveStrategy;
+	private int minSectsPerParent = 1;
 
-	public SectCountAdaptiveRuptureGrowingStrategy(float minFractSectIncrease, boolean maintainConnectivity) {
-		this(new ExhaustiveUnilateralRuptureGrowingStrategy(), minFractSectIncrease, maintainConnectivity);
+	public SectCountAdaptiveRuptureGrowingStrategy(float minFractSectIncrease, boolean maintainConnectivity, int minSectsPerParent) {
+		this(new ExhaustiveUnilateralRuptureGrowingStrategy(), minFractSectIncrease, maintainConnectivity, minSectsPerParent);
 	}
 
+	/**
+	 * 
+	 * @param exhaustiveStrategy exhaustive growing strategy that we will filter
+	 * @param minFractSectIncrease dictates that variants must increase the section count over the prior rupture by at least
+	 * this percent
+	 * @param maintainConnectivity if true, connection points will not be skipped
+	 * @param minSectsPerParent knowledge of the minimum sections per parents will help this strategy to return variants
+	 * that will pass plausibility filters. For example, if minSectsPerParent=2, minFractSectIncrease=0.1, and you are
+	 * adding sections to a 10 section rupture, the variant sizes returned would be [1,3,...]. But that first single
+	 * subsection variant would be filtered out, so a better set would be [2,4,...]
+	 */
 	public SectCountAdaptiveRuptureGrowingStrategy(RuptureGrowingStrategy exhaustiveStrategy,
-			float minFractSectIncrease, boolean maintainConnectivity) {
+			float minFractSectIncrease, boolean maintainConnectivity, int minSectsPerParent) {
 		this.exhaustiveStrategy = exhaustiveStrategy;
 		this.minFractSectIncrease = minFractSectIncrease;
 		this.maintainConnectivity = maintainConnectivity;
+		this.minSectsPerParent = minSectsPerParent;
 	}
 
 	@Override
@@ -61,10 +74,10 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 	}
 	
 	public static HashSet<Integer> getValidAdditionCounts(int originalRupSize, int newClusterSize,
-			float minFractSectIncrease) {
+			float minFractSectIncrease, int minSectsPerParent) {
 		HashSet<Integer> validAddSizes = new HashSet<>();
 		int lastValidSize = originalRupSize;
-		for (int i=0; i<newClusterSize; i++) {
+		for (int i=minSectsPerParent-1; i<newClusterSize; i++) {
 			int newSize = originalRupSize + i + 1;
 			int newDelta = newSize - lastValidSize;
 			double fractAdded = (double)newDelta/(double)lastValidSize;
@@ -93,7 +106,7 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 			return exhaustivePerms;
 		
 		HashSet<Integer> validAddSizes = getValidAdditionCounts(currentRupture.getTotalNumSects(),
-				fullCluster.subSects.size(), minFractSectIncrease);
+				fullCluster.subSects.size(), minFractSectIncrease, minSectsPerParent);
 //		boolean D = currentRupture != null && currentRupture.getTotalNumClusters() == 4
 //				&& fullCluster.parentSectionID == 219 && currentRupture.clusters[0].parentSectionID == 240
 //				&& currentRupture.getTotalNumSects() == 10
@@ -144,7 +157,7 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 	public ConnPointCleanupFilter buildConnPointCleanupFilter(ClusterConnectionStrategy connStrat) {
 		Preconditions.checkState(maintainConnectivity,
 				"Connection point cleanup filter only applies if we're maintaining connectivity");
-		return new ConnPointCleanupFilter(minFractSectIncrease, connStrat);
+		return new ConnPointCleanupFilter(minFractSectIncrease, minSectsPerParent, connStrat);
 	}
 	
 	private static final DecimalFormat optionalDigitPDF = new DecimalFormat("0.#%");
@@ -159,11 +172,13 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 	public static class ConnPointCleanupFilter implements PlausibilityFilter {
 		
 		private float minFractSectIncrease;
+		private int minSectsPerParent = 1;
 		private ClusterConnectionStrategy connStrat;
 		private transient Map<Integer, FaultSubsectionCluster> fullClusters;
 
-		public ConnPointCleanupFilter(float minFractSectIncrease, ClusterConnectionStrategy connStrat) {
+		public ConnPointCleanupFilter(float minFractSectIncrease, int minSectsPerParent, ClusterConnectionStrategy connStrat) {
 			this.minFractSectIncrease = minFractSectIncrease;
+			this.minSectsPerParent = minSectsPerParent;
 			this.connStrat = connStrat;
 		}
 
@@ -257,7 +272,7 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 			}
 			// check that it's a valid size
 			HashSet<Integer> validSizes = getValidAdditionCounts(
-					rupSizeBefore, fullCluster.subSects.size(), minFractSectIncrease);
+					rupSizeBefore, fullCluster.subSects.size(), minFractSectIncrease, minSectsPerParent);
 			if (validSizes.contains(newSize)) {
 				if (verbose) {
 					List<Integer> sizes = new ArrayList<>(validSizes);
@@ -305,6 +320,7 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 			ConnPointCleanupFilter filter = (ConnPointCleanupFilter)value;
 			out.beginObject();
 			out.name("minFractSectIncrease").value(filter.minFractSectIncrease);
+			out.name("minSectsPerParent").value(filter.minSectsPerParent);
 			out.endObject();
 		}
 
@@ -312,10 +328,25 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 		public PlausibilityFilter read(JsonReader in) throws IOException {
 			Preconditions.checkNotNull(connStrategy);
 			in.beginObject();
-			Preconditions.checkState(in.nextName().equals("minFractSectIncrease"));
-			float minFractSectIncrease = (float)in.nextDouble();
+			Float minFractSectIncrease = null;
+			int minSectsPerParent = 1;
+			while (in.hasNext()) {
+				String name = in.nextName();
+				switch (name) {
+				case "minFractSectIncrease":
+					minFractSectIncrease = (float)in.nextDouble();
+					break;
+				case "minSectsPerParent":
+					minSectsPerParent = in.nextInt();
+					break;
+
+				default:
+					throw new IllegalStateException("Unexpected name: "+name);
+				}
+			}
+			Preconditions.checkNotNull(minFractSectIncrease);
 			in.endObject();
-			return new ConnPointCleanupFilter(minFractSectIncrease, connStrategy);
+			return new ConnPointCleanupFilter(minFractSectIncrease, minSectsPerParent, connStrategy);
 		}
 		
 	}
@@ -323,14 +354,15 @@ public class SectCountAdaptiveRuptureGrowingStrategy implements RuptureGrowingSt
 	public static void main(String[] args) {
 		int[] origCounts = { 0, 5, 10, 15, 20, 30, 50, 100 };
 		int[] clusterSizes = { 5, 13, 20 };
-		float fract = 0.05f;
+		float fract = 0.1f;
+		int minSectsPerParent = 2;
 		
 		System.out.println("Fractional increase: "+fract);
 		for (int origCount : origCounts) {
 			System.out.println("Valid add counts for rupture of size "+origCount);
 			for (int clusterSize : clusterSizes) {
 				System.out.println("\tNext cluster size: "+clusterSize);
-				List<Integer> sizes = new ArrayList<>(getValidAdditionCounts(origCount, clusterSize, fract));
+				List<Integer> sizes = new ArrayList<>(getValidAdditionCounts(origCount, clusterSize, fract, minSectsPerParent));
 				Collections.sort(sizes);
 				System.out.println("\t\tValid additions: "+Joiner.on(",").join(sizes));
 			}
