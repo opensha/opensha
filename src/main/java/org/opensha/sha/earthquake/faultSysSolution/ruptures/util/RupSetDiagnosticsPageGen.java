@@ -148,10 +148,12 @@ public class RupSetDiagnosticsPageGen {
 			
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+			String inputName = "RSQSim 5212, SectArea=0.5";
+			File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
 //			String inputName = "RSQSim 4983, SectArea=0.5, Uniques";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
-			String inputName = "RSQSim 5133, SectArea=0.5";
-			File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
+//			String inputName = "RSQSim 5133, SectArea=0.5";
+//			File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
 			
 //			String inputName = "CmlAz Only";
 //			File inputFile = new File(rupSetsDir, "fm3_1_cmlAz.zip");
@@ -159,8 +161,8 @@ public class RupSetDiagnosticsPageGen {
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
-//			String inputName = "Plausible 10km (MultiEnds), Rake≤360, Jump P>0.005, Slip P>0.1 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 5% Fract Increase";
-//			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.005_slipP0.1incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
+//			String inputName = "Plausible 6-15km (MultiEnds), Rake≤360, Jump P>0.005, Slip P>0.1 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 10% Fract Increase";
+//			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 //			boolean skipPlausibility = true;
 //			File altPlausibilityCompareFile = null;
 //			String compName = "Jump P>0.001 & Slip P>0.05";
@@ -217,20 +219,20 @@ public class RupSetDiagnosticsPageGen {
 			
 			// common ones
 			boolean skipPlausibility = false;
-//			String compName = "UCERF3";
-//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
-			String compName = null;
-			File compareFile = null;
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
-			File altPlausibilityCompareFile = null;
+			String compName = "UCERF3";
+			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
+//			String compName = null;
+//			File compareFile = null;
+////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+//			File altPlausibilityCompareFile = null;
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
 //			String compName = "1km Coulomb Patches";
 //			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
 //			File altPlausibilityCompareFile = null;
 ////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
 //			String compName = "Current Preferred";
-//			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+//			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 //			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
@@ -302,6 +304,7 @@ public class RupSetDiagnosticsPageGen {
 	private boolean skipSegmentation = false;
 	
 	private List<PlausibilityFilter> altFilters;
+	private boolean applyAltToComparison = false;
 	
 	private double defaultMaxDist = DEFAULT_MAX_DIST;
 	
@@ -935,7 +938,12 @@ public class RupSetDiagnosticsPageGen {
 			}
 			
 			if (altFilters != null) {
-				lines.add("## Comparisons with Alternative filters");
+				if (applyAltToComparison)
+					Preconditions.checkNotNull(compSol);
+				if (applyAltToComparison)
+					lines.add("## "+compName+" comparisons with Alternative filters");
+				else
+					lines.add("## Comparisons with Alternative filters");
 				lines.add(topLink); lines.add("");
 				
 				// load in alternatives
@@ -944,20 +952,35 @@ public class RupSetDiagnosticsPageGen {
 //				if (coulombCacheDir != null)
 //					checkLoadCoulombCache(filters, coulombCacheDir, loadedCoulombCaches);
 				
-				RupSetPlausibilityResult result = testRupSetPlausibility(inputRups, altFilters, inputConfig, inputSearch);
+				RupSetPlausibilityResult result;
+				if (applyAltToComparison)
+					result = testRupSetPlausibility(compRups, altFilters, compConfig, compSearch);
+				else
+					result = testRupSetPlausibility(inputRups, altFilters, inputConfig, inputSearch);
 				File plot = plotRupSetPlausibility(result, resourcesDir, "alt_filter_compare",
 						"Comparison with Alternative Filters");
 				lines.add("![plot](resources/"+plot.getName()+")");
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityTable(result, inputSol, "Alternative").build());
+				if (applyAltToComparison)
+					lines.addAll(getRupSetPlausibilityTable(result, compSol, "Alternative").build());
+				else
+					lines.addAll(getRupSetPlausibilityTable(result, inputSol, "Alternative").build());
 				lines.add("");
 				lines.add("**Magnitude-filtered comparisons**");
 				lines.add("");
-				lines.addAll(getMagPlausibilityTable(inputRupSet, result, resourcesDir,
-						"alt_filter_mag_comp").wrap(2, 0).build());
+				if (applyAltToComparison)
+					lines.addAll(getMagPlausibilityTable(compRupSet, result, resourcesDir,
+							"alt_filter_mag_comp").wrap(2, 0).build());
+				else
+					lines.addAll(getMagPlausibilityTable(inputRupSet, result, resourcesDir,
+							"alt_filter_mag_comp").wrap(2, 0).build());
 				lines.add("");
-				lines.addAll(getRupSetPlausibilityDetailLines(result, false, inputRupSet, inputRups, 15,
-						resourcesDir, "### Alternative", topLink, inputSearch, inputScalarVals));
+				if (applyAltToComparison)
+					lines.addAll(getRupSetPlausibilityDetailLines(result, false, compRupSet, compRups, 15,
+							resourcesDir, "### Alternative", topLink, compSearch, compScalarVals));
+				else
+					lines.addAll(getRupSetPlausibilityDetailLines(result, false, inputRupSet, inputRups, 15,
+							resourcesDir, "### Alternative", topLink, inputSearch, inputScalarVals));
 				lines.add("");
 			}
 		}
@@ -2255,6 +2278,34 @@ public class RupSetDiagnosticsPageGen {
 				double idealLen = calcIdealMinLength(rupSet.getFaultSectionDataForRupture(index), distAzCalc);
 				double len = LENGTH.getValue(index, rupSet, rup, distAzCalc);
 				return len/idealLen;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
+			}
+		},
+		IDEAL_LEN_DIFF("Ideal Length Difference", "Ideal Length Difference",
+				"The difference between the total length of this rupture and the 'idealized length,' which we "
+				+ "define as the straight line distance between the furthest two subsections.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				HistogramFunction hist;
+				if (scalarTrack.getMax() <= 100d)
+					hist = HistogramFunction.getEncompassingHistogram(
+							scalarTrack.getMin(), 100d, 10d);
+				else
+					hist = HistogramFunction.getEncompassingHistogram(
+							scalarTrack.getMin(), scalarTrack.getMax(), 50d);
+				return hist;
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				double idealLen = calcIdealMinLength(rupSet.getFaultSectionDataForRupture(index), distAzCalc);
+				double len = LENGTH.getValue(index, rupSet, rup, distAzCalc);
+				return len - idealLen;
 			}
 
 			@Override
@@ -5711,6 +5762,10 @@ public class RupSetDiagnosticsPageGen {
 
 	public void setAltFilters(List<PlausibilityFilter> altFilters) {
 		this.altFilters = altFilters;
+	}
+	
+	public void setApplyAltToComparison(boolean applyAltToComparison) {
+		this.applyAltToComparison = applyAltToComparison;
 	}
 
 	/**
