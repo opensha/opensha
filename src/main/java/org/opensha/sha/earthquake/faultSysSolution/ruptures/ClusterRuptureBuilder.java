@@ -1156,7 +1156,7 @@ public class ClusterRuptureBuilder {
 		float cmlRakeThresh = 360f;				// PREF: 360
 		// CONNECTION STRATEGY
 		// maximum individual jump distance
-		double maxJumpDist = 15d;				// PREF: 10
+		double maxJumpDist = 15d;				// PREF: 15
 		// if true, connections happen at places that actually work and paths are optimized. if false, closest points
 		boolean plausibleConnections = true;	// PREF: true
 		// if >0 and <maxDist, connections will only be added above this distance when no other connections exist from
@@ -1164,7 +1164,7 @@ public class ClusterRuptureBuilder {
 		double adaptiveMinDist = 6d;			// PREF: 6
 		// GROWING STRATEGY
 		// if nonzero, apply thinning to growing strategy
-		float adaptiveSectFract = 0.05f;		// PREF: 0.05
+		float adaptiveSectFract = 0.1f;			// PREF: 0.1
 		// if true, allow bilateral rupture growing (using default settings)
 		boolean bilateral = false;				// PREF: false
 		// if true, allow splays (using default settings)
@@ -1175,7 +1175,7 @@ public class ClusterRuptureBuilder {
 		
 		// build stiffness calculator (used for new Coulomb)
 		double stiffGridSpacing = 2d;
-		double coeffOfFriction = 0.25;
+		double coeffOfFriction = 0.5;
 		SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
 				subSects, stiffGridSpacing, 3e4, 3e4, coeffOfFriction, PatchAlignment.FILL_OVERLAP, 1d);
 		AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
@@ -1426,7 +1426,7 @@ public class ClusterRuptureBuilder {
 		}
 		if (adaptiveSectFract > 0f) {
 			SectCountAdaptiveRuptureGrowingStrategy adaptiveStrat = new SectCountAdaptiveRuptureGrowingStrategy(
-					growingStrat, adaptiveSectFract, true);
+					growingStrat, adaptiveSectFract, true, minSectsPerParent);
 			configBuilder.add(adaptiveStrat.buildConnPointCleanupFilter(connectionStrategy));
 			outputName += "_sectFractGrow"+adaptiveSectFract;
 			growingStrat = adaptiveStrat;
