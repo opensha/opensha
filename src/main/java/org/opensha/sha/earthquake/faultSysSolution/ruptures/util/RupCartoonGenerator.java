@@ -239,7 +239,7 @@ public class RupCartoonGenerator {
 		PlotUtils.setAxisVisible(gp, axisLabels, axisLabels);
 		PlotUtils.setGridLinesVisible(gp, axisLabels, axisLabels);
 		
-		PlotUtils.writePlots(outputDir, prefix, gp, width, -1, true, write_pdfs, false);
+		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, write_pdfs, false);
 	}
 	
 	private static PlotSpec plotConnStrat(File outputDir, String prefix, String title,
@@ -703,7 +703,7 @@ public class RupCartoonGenerator {
 			PlotUtils.setAxisVisible(gp, axisLabels, axisLabels);
 			PlotUtils.setGridLinesVisible(gp, axisLabels, axisLabels);
 			
-			int height = PlotUtils.calcHeight(gp, width);
+			int height = PlotUtils.calcHeight(gp, width, true);
 			
 			gp.getChartPanel().setSize(width, height);
 			BufferedImage img = gp.getBufferedImage(width, height);
@@ -940,7 +940,7 @@ public class RupCartoonGenerator {
 		List<PlausibilityFilter> filters = new ArrayList<>();
 		filters.add(new MinSectsPerParentFilter(2, false, false, connStrat));
 		animateRuptureBuilding(outputDir, "system_build_anim_thin", rupBuild,
-				filters, connStrat, new SectCountAdaptiveRuptureGrowingStrategy(0.1f, true), 0, true, true, false, false, 2d,
+				filters, connStrat, new SectCountAdaptiveRuptureGrowingStrategy(0.1f, true, 2), 0, true, true, false, false, 2d,
 				s1Sects);
 		animateRuptureBuilding(outputDir, "system_build_anim_no_thin", rupBuild,
 				filters, connStrat, new ExhaustiveUnilateralRuptureGrowingStrategy(), 0, true, true, false, false, 2d,
@@ -1014,7 +1014,7 @@ public class RupCartoonGenerator {
 		List<RuptureGrowingStrategy> permStrats = new ArrayList<>();
 		List<String> prefixes = new ArrayList<>();
 		
-		permStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(fract, true));
+		permStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(fract, true, 1));
 		prefixes.add("perm_strat_adaptive");
 		permStrats.add(new ExhaustiveUnilateralRuptureGrowingStrategy());
 		prefixes.add("perm_strat_exhaustive");
@@ -1156,10 +1156,10 @@ public class RupCartoonGenerator {
 		permStrats.add(new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.EQUAL_LEN, false));
 		prefixes.add("perm_strat_bilateral_equal_len");
 		permStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(
-				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.SINGLE_FULL, false), fract, true));
+				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.SINGLE_FULL, false), fract, true, 1));
 		prefixes.add("perm_strat_bilateral_adaptive_single_full");
 		permStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(
-				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.EQUAL_LEN, false), fract, true));
+				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.EQUAL_LEN, false), fract, true, 1));
 		prefixes.add("perm_strat_bilateral_adaptive_equal_len");
 		
 		PlotCurveCharacterstics rupChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK);
@@ -2287,11 +2287,11 @@ public class RupCartoonGenerator {
 		SubSectBuilder rupBuild = new SubSectBuilder(fractDDW);
 		
 		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
-				loc(0d, 0d), loc(20d, 0d)));
+				loc(0d, 0d), loc(22d, 0d)));
 		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
-				loc(24d, 0d), loc(44d, 0d)));
+				loc(23d, 0d), loc(44d, 0d)));
 		rupBuild.addFault(buildSect(parentID++, dip, upperDepth, lowerDepth,
-				loc(19d, 0d), loc(30d, 4d)));
+				loc(18d, 0d), loc(28d, 4d)));
 		
 		List<? extends FaultSection> subSects = rupBuild.subSectsList;
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);

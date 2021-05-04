@@ -40,6 +40,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.Exhaustiv
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy.SecondaryVariations;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy.ConnPointCleanupFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveUnilateralRuptureGrowingStrategy;
@@ -55,7 +56,9 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -75,13 +78,30 @@ public class ClusterRupturePerturbationBuilder {
 //		File primaryFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
 //		String primaryName = "Plausible Adaptive 5-10km (MultiEnds), Rake≤360, Jump P>0.001, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 5% Fract Increase";
 //		File primaryFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_adaptive5km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
-		String primaryName = "Plausible Adaptive 6-15km (MultiEnds), Rake≤360, Jump P>0.001, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 5% Fract Increase";
-		File primaryFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
-		RuptureGrowingStrategy primaryGrowingStrat = new SectCountAdaptiveRuptureGrowingStrategy(0.05f, true);
+//		String primaryName = "Plausible Adaptive 6-15km (MultiEnds), Rake≤360, Jump P>0.001, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 5% Fract Increase";
+//		File primaryFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
+		String primaryName = "Plausible Adaptive 6-15km (MultiEnds), Rake≤360, Jump P>0.001, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 10% Fract Increase";
+		File primaryFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+		// MAKE SURE THESE ARE UP TO DATE ********************************************
+		float cffFractInts = 0.75f;
+		int cffRatioN = 2;
+		float cffRatioThresh = 0.5f;
+		float cffRelativeProb = 0.01f;
+		boolean favorableJumps = true;
+		float sectGrowFract = 0.1f;
+		double[] altJumpDists = { 5d, 6d, 8d, 10d, 15d, 20d };
+		double adaptiveR0 = 6d;
+		// END plausibility params
 		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
 		boolean rebuild = false;
 		boolean replot = false;
 		boolean skipPlausibility = true; // in plots
+		
+		RuptureGrowingStrategy primaryGrowingStrat;
+		if (sectGrowFract > 0f)
+			primaryGrowingStrat = new SectCountAdaptiveRuptureGrowingStrategy(sectGrowFract, true, 2);
+		else
+			primaryGrowingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(primaryFile);
 		PlausibilityConfiguration primaryConfig = rupSet.getPlausibilityConfiguration();
 		Preconditions.checkNotNull(primaryConfig);
@@ -96,14 +116,6 @@ public class ClusterRupturePerturbationBuilder {
 				AggregationMethod.FLATTEN, AggregationMethod.SUM, AggregationMethod.SUM, AggregationMethod.SUM);
 		AggregatedStiffnessCalculator fractIntsAgg = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 				AggregationMethod.FLATTEN, AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.NORM_BY_COUNT);
-		// MAKE SURE THESE ARE UP TO DATE ********************************************
-		float cffFractInts = 0.75f;
-		int cffRatioN = 2;
-		float cffRatioThresh = 0.5f;
-		float cffRelativeProb = 0.01f;
-		boolean favorableJumps = true;
-		double[] altJumpDists = { 5d, 6d, 8d, 10d, 15d, 20d };
-		double adaptiveR0 = 6d;
 		
 		System.out.println("Initializing alt connection strategies");
 		double origMaxJumpDist = primaryConfig.getConnectionStrategy().getMaxJumpDist();
@@ -155,13 +167,16 @@ public class ClusterRupturePerturbationBuilder {
 		// alternate growing strategies
 		List<RuptureGrowingStrategy> altGrowStrats = new ArrayList<>();
 		altGrowStrats.add(new ExhaustiveUnilateralRuptureGrowingStrategy());
-		altGrowStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(0.1f, true));
+		if (sectGrowFract != 0.1f)
+			altGrowStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(0.1f, true, 2));
+		if (sectGrowFract != 0.05f)
+			altGrowStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(0.05f, true, 2));
 		altGrowStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(
-				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.EQUAL_LEN, false), 0.05f, true));
+				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.EQUAL_LEN, false), sectGrowFract, true, 2));
 		altGrowStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(
-				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.SINGLE_FULL, false), 0.05f, true));
+				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.SINGLE_FULL, false), sectGrowFract, true, 2));
 		altGrowStrats.add(new SectCountAdaptiveRuptureGrowingStrategy(
-				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.ALL, false), 0.05f, true));
+				new ExhaustiveBilateralRuptureGrowingStrategy(SecondaryVariations.ALL, false), sectGrowFract, true, 2));
 		
 		System.out.println("Primnary has "+rupSet.getNumRuptures()+" ruptures");
 		List<PlausibilityFilter> filters = primaryConfig.getFilters();
@@ -394,6 +409,21 @@ public class ClusterRupturePerturbationBuilder {
 				RupSetDiagnosticsPageGen pageGen = new RupSetDiagnosticsPageGen(rupSet, null, primaryName, u3.getRupSet(), u3, "UCERF3", plotDir);
 				pageGen.setSkipPlausibility(false);
 				pageGen.setIndexDir(indexDir);
+				
+				// now add "alt" filters to test how many UCERF3 ruptures pass our filters (even if they use different connection points
+				// or growing strategies)
+				ClusterConnectionStrategy altConnStrat = new UCERF3ClusterConnectionStrategy(
+						subSects, distAzCalc, 5d, CoulombRates.loadUCERF3CoulombRates(FaultModels.FM3_1));
+				// get the new model filters but using the UCERF3 connection strategy instead
+				String filtersJSON = primaryConfig.filtersToJSON(filters);
+				List<PlausibilityFilter> altFilters = PlausibilityConfiguration.readFiltersJSON(filtersJSON, altConnStrat, distAzCalc);
+				for (int i=altFilters.size(); --i>=0;)
+					if (altFilters.get(i) instanceof ConnPointCleanupFilter)
+						// don't include this cleanup filter which is part of the adaptive growing strategy
+						altFilters.remove(i);
+				RupSetDiagnosticsPageGen.checkLoadCoulombCache(altFilters, rupSetsDir, loadedCoulombCaches);
+				pageGen.setAltFilters(altFilters);
+				pageGen.setApplyAltToComparison(true); // we want to apply these alt filters to UCERF3, which is comparison
 				pageGen.generatePage();
 			}
 		}

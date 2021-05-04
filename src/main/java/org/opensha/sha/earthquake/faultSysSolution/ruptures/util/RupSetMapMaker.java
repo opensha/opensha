@@ -444,7 +444,7 @@ public class RupSetMapMaker {
 		PlotUtils.setXTick(gp, tick);
 		PlotUtils.setYTick(gp, tick);
 		
-		PlotUtils.writePlots(outputDir, prefix, gp, width, -1, true, writePDFs, false);
+		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, writePDFs, false);
 	}
 
 }

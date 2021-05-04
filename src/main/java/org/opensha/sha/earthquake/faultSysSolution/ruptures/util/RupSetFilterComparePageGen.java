@@ -86,9 +86,12 @@ public class RupSetFilterComparePageGen {
 //		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 ////		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
 //		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
-		String inputName = "RSQSim 5133, SectArea=0.5";
-		File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
-		File distAzCache = null;
+//		String inputName = "RSQSim 5133, SectArea=0.5";
+//		File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
+//		File distAzCache = null;
+		String inputName = "RSQSim 5212, SectArea=0.5";
+		File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
+		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
 		
 		File altFiltersFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
 		String altName = "UCERF3";
