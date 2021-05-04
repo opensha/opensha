@@ -102,6 +102,58 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 		return region;
 	}
 	
+	/**
+	 * Bilinear interpolation. Algorithm taken from:<br>
+	 * http://docs.oracle.com/cd/E17802_01/products/products/java-media/jai/forDevelopers/jai-apidocs/javax/media/jai/InterpolationBilinear.html
+	 * 
+	 * @param loc
+	 * @return
+	 * @throws IllegalArgumentException if x or y is outside of the allowable range
+	 */
+	public double bilinearInterpolation(Location loc) {
+		if (!region.contains(loc))
+			return Double.NaN;
+		
+		int xInd = region.getLonIndex(loc);
+		int yInd = region.getLatIndex(loc);
+		Location closestPoint = region.getLocation(region.getNodeIndex(yInd, xInd));
+		
+		int x0 = closestPoint.getLongitude() <= loc.getLongitude() ? xInd : xInd-1;
+		int x1 = x0 + 1;
+		// handle edges
+		if (x1 >= region.getNumLonNodes())
+			x1 = x0;
+		int y0 = closestPoint.getLatitude() <= loc.getLatitude() ? yInd : yInd-1;
+		int y1 = y0 + 1;
+		// handle edges
+		if (y1 >= region.getNumLatNodes())
+			y1 = y0;
+		
+		int ind00  = region.getNodeIndex(y0, x0);
+		int ind01  = region.getNodeIndex(y0, x1);
+		int ind10  = region.getNodeIndex(y1, x0);
+		int ind11  = region.getNodeIndex(y1, x1);
+		if (ind00 < 0 || ind01 < 0 || ind10 < 0 || ind11 < 0)
+			return Double.NaN;
+		
+		// "central"
+		double s00 = get(ind00);
+		// to the right
+		double s01 = get(ind01);
+		// below
+		double s10 = get(ind10);
+		// below and to the right
+		double s11 = get(ind11);
+		
+//		double xfrac = (x - getX(x0))/gridSpacingX;
+//		double yfrac = (y - getY(y0))/gridSpacingY;
+		double xfrac = (loc.getLongitude() - region.getLocation(region.getNodeIndex(yInd, x0)).getLongitude())/region.getLonSpacing();
+		double yfrac = (loc.getLatitude() - region.getLocation(region.getNodeIndex(y0, xInd)).getLatitude())/region.getLatSpacing();
+		
+		return (1 - yfrac) * ((1 - xfrac)*s00 + xfrac*s01) + 
+			    yfrac * ((1 - xfrac)*s10 + xfrac*s11);
+	}
+	
 	public static GriddedGeoDataSet loadXYZFile(File file, boolean latitudeX)
 			throws FileNotFoundException, IOException {
 		int latCol, lonCol;

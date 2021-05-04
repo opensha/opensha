@@ -783,6 +783,37 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	}
 	
 	/**
+	 * Returns the latitude node index of the given location
+	 * @param loc
+	 * @return latitude index
+	 */
+	public int getLatIndex(Location loc) {
+		return getNodeIndex(latNodeCenters, loc.getLatitude(), latSpacing);
+	}
+	
+	/**
+	 * Returns the longitude node index of the given location
+	 * @param loc
+	 * @return latitude index
+	 */
+	public int getLonIndex(Location loc) {
+		return getNodeIndex(lonNodeCenters, loc.getLongitude(), lonSpacing);
+	}
+	
+	/**
+	 * Gets the node index for the given lat/lon indices
+	 * 
+	 * @param latIndex
+	 * @param lonIndex
+	 * @return the node index for the given latitude/longitude index
+	 */
+	public int getNodeIndex(int latIndex, int lonIndex) {
+		if (latIndex == -1 || latIndex == -1)
+			return -1;
+		return ((latIndex) * numLonNodes) + lonIndex;
+	}
+	
+	/**
 	 * Returns the total number of latitude nodes. For rectangular regions, nodeCount = numLatNodes * numLonNodes
 	 * @return total number of latitude nodes
 	 */
