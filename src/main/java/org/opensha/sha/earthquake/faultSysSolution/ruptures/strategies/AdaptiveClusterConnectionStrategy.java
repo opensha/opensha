@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -96,20 +97,27 @@ public class AdaptiveClusterConnectionStrategy extends ClusterConnectionStrategy
 				// sort by increasing distance
 				Collections.sort(jumps, Jump.dist_comparator);
 				Map<Integer, Integer> sectCounts = new HashMap<>();
+				Map<Integer, Double> sectMaxAlloweds = new HashMap<>();
 				for (Jump jump : jumps) {
 					int fromID = jump.fromSection.getSectionId();
 					int sectCount = sectCounts.containsKey(fromID) ? sectCounts.get(fromID) : 0;
+					double sectMaxAllowed = sectCount == 0 ? 0d : sectMaxAlloweds.get(fromID);
 					
 					boolean keep;
 					if ((float)jump.distance <= (float)r0) {
 						keep = true;
 					} else {
 						keep = sectMax < 0 || sectCount < sectMax;
+						if (!keep && !allowedJumps.isEmpty() && (float)jump.distance == (float)sectMaxAllowed)
+							// this is the same distance of one we kept, allow it as well
+							keep = true;
 					}
 					if (keep) {
 						sectCounts.put(fromID, sectCount+1);
 						allowedJumps.add(jump);
 						allowedJumps.add(jump.reverse());
+						
+						sectMaxAlloweds.put(fromID, Math.max(sectMaxAllowed, jump.distance));
 					}
 				}
 			}
@@ -127,9 +135,8 @@ public class AdaptiveClusterConnectionStrategy extends ClusterConnectionStrategy
 		}
 		return fromJumpsMap.get(cluster);
 	}
-
-	@Override
-	protected List<Jump> buildPossibleConnections(FaultSubsectionCluster from, FaultSubsectionCluster to) {
+	
+	private List<Jump> doBuildPossibleConnections(FaultSubsectionCluster from, FaultSubsectionCluster to) {
 		List<Jump> possibleJumpsFrom = getJumpsFrom(from);
 		if (possibleJumpsFrom == null)
 			return null;
@@ -142,6 +149,37 @@ public class AdaptiveClusterConnectionStrategy extends ClusterConnectionStrategy
 		if (allowed.isEmpty())
 			return null;
 		return allowed;
+	}
+
+	@Override
+	protected List<Jump> buildPossibleConnections(FaultSubsectionCluster from, FaultSubsectionCluster to) {
+		List<Jump> forwardJumps = doBuildPossibleConnections(from, to);
+		List<Jump> backwardJumps = doBuildPossibleConnections(to, from);
+		
+		List<Jump> allowed = new ArrayList<>();
+		if (forwardJumps != null)
+			allowed.addAll(forwardJumps);
+		// now see if there were any backward jumps
+		// this can happen if 'from' is not isolated, but 'to' is
+		if (backwardJumps != null && !backwardJumps.isEmpty()) {
+			HashSet<IDPairing> currentJumps = new HashSet<>();
+			for (Jump curJump : allowed)
+				currentJumps.add(pair(curJump));
+			for (Jump backwardJump : backwardJumps) {
+				if (!currentJumps.contains(pair(backwardJump))) {
+					// it's a new jump add it
+					allowed.add(backwardJump.reverse());
+				}
+			}
+		}
+		return allowed;
+	}
+	
+	private static IDPairing pair(Jump jump) {
+		IDPairing pair = new IDPairing(jump.fromSection.getSectionId(), jump.toSection.getSectionId());
+		if (pair.getID1() > pair.getID2())
+			pair = pair.getReversed();
+		return pair;
 	}
 
 	@Override
