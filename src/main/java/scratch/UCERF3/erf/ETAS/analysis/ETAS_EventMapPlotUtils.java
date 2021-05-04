@@ -26,6 +26,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
@@ -95,6 +96,71 @@ public class ETAS_EventMapPlotUtils {
 		buildEventPlot(events, funcs, chars, 0d);
 	}
 	
+	private static DiscretizedFunc getDefaultMagSizeFunc() {
+		DiscretizedFunc magSizeFunc = new ArbitrarilyDiscretizedFunc();
+		magSizeFunc.set(2d, 2d);
+		while (magSizeFunc.getMaxX() < 8d)
+			magSizeFunc.set(magSizeFunc.getMaxX()+1, magSizeFunc.getMaxY()*1.5);
+		return magSizeFunc;
+	}
+	
+	private static void initializeMagFuncs(List<Range> magRanges, List<PlotCurveCharacterstics> magChars, List<XY_DataSet> magXYs,
+			double maxMag, MinMaxAveTracker magTrack, CPT magCPT, Color fixedColor) {
+		DiscretizedFunc magSizeFunc = getDefaultMagSizeFunc();
+		
+		if (!(maxMag > 0))
+			maxMag = magTrack.getMax();
+		double minFilledMag = 5d;
+		if (maxMag <= 3) {
+			magSizeFunc.scale(2d);
+			minFilledMag = 2;
+		} else if (maxMag <= 4) {
+			magSizeFunc.scale(1.5);
+			minFilledMag = 3;
+		} else if (maxMag <= 5) {
+			magSizeFunc.scale(1.25);
+			minFilledMag = 4;
+		}
+
+		double magCeil = Math.ceil(maxMag);
+		double magFloor = Math.floor(magTrack.getMin());
+//		System.out.println("MaxMag: "+maxMag+", ceil: "+magCeil+", floor: "+magFloor);
+
+		if (magCeil == maxMag || magFloor == magCeil)
+			magCeil += 1;
+
+		if (magCPT != null) {
+			if (magCeil == magFloor+1)
+				magCPT = magCPT.rescale(magFloor-1, magFloor);
+			else
+				magCPT = magCPT.rescale(magFloor, magCeil-1);
+		}
+
+		for (double minMag=magFloor; (float)minMag<(float)magCeil; minMag++) {
+			double myMaxMag = minMag+1;
+			magRanges.add(new Range(minMag, myMaxMag));
+			PlotSymbol symbol = (float)minMag >= (float)minFilledMag ? PlotSymbol.FILLED_CIRCLE : PlotSymbol.CIRCLE;
+			double symbolWidth;
+			if (minMag < magSizeFunc.getMinX())
+				symbolWidth = magSizeFunc.getMinY();
+			else if (minMag > magSizeFunc.getMaxX())
+				symbolWidth = magSizeFunc.getMaxY();
+			else
+				symbolWidth = magSizeFunc.getInterpolatedY(minMag);
+			Color color = magCPT == null ? fixedColor : magCPT.getColor((float)minMag);
+			PlotCurveCharacterstics plotChar = new PlotCurveCharacterstics(symbol, (float)symbolWidth, color);
+			magChars.add(plotChar);
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			if (minMag == magFloor && magTrack.getMin() >= minMag + 0.11) {
+				// special case for first bin if it starts at a fractional value
+				xy.setName("M"+optionalDigitDF.format(magTrack.getMin()));
+			} else {
+				xy.setName("M"+(int)minMag);
+			}
+			magXYs.add(xy);
+		}
+	}
+	
 	public static void buildEventPlot(List<? extends ObsEqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
 			double maxMag) throws IOException {
 		if (events.isEmpty())
@@ -111,66 +177,15 @@ public class ETAS_EventMapPlotUtils {
 		List<XY_DataSet> magXYs = null;
 
 		CPT magCPT = GMT_CPT_Files.GMT_DRYWET.instance().reverse();
-		DiscretizedFunc magSizeFunc = new ArbitrarilyDiscretizedFunc();
-		magSizeFunc.set(2d, 2d);
-		while (magSizeFunc.getMaxX() < 8d)
-			magSizeFunc.set(magSizeFunc.getMaxX()+1, magSizeFunc.getMaxY()*1.5);
-
+		
 		if (events.size() > 1) {
-			if (!(maxMag > 0))
-				maxMag = magTrack.getMax();
-			double minFilledMag = 5d;
-			if (maxMag <= 3) {
-				magSizeFunc.scale(2d);
-				minFilledMag = 2;
-			} else if (maxMag <= 4) {
-				magSizeFunc.scale(1.5);
-				minFilledMag = 3;
-			} else if (maxMag <= 5) {
-				magSizeFunc.scale(1.25);
-				minFilledMag = 4;
-			}
-
 			magRanges = new ArrayList<>();
 			magChars = new ArrayList<>();
 			magXYs = new ArrayList<>();
-
-			double magCeil = Math.ceil(maxMag);
-			double magFloor = Math.floor(magTrack.getMin());
-//			System.out.println("MaxMag: "+maxMag+", ceil: "+magCeil+", floor: "+magFloor);
-
-			if (magCeil == maxMag || magFloor == magCeil)
-				magCeil += 1;
-
-			if (magCeil == magFloor+1)
-				magCPT = magCPT.rescale(magFloor-1, magFloor);
-			else
-				magCPT = magCPT.rescale(magFloor, magCeil-1);
-
-			for (double minMag=magFloor; (float)minMag<(float)magCeil; minMag++) {
-				double myMaxMag = minMag+1;
-				magRanges.add(new Range(minMag, myMaxMag));
-				PlotSymbol symbol = (float)minMag >= (float)minFilledMag ? PlotSymbol.FILLED_CIRCLE : PlotSymbol.CIRCLE;
-				double symbolWidth;
-				if (minMag < magSizeFunc.getMinX())
-					symbolWidth = magSizeFunc.getMinY();
-				else if (minMag > magSizeFunc.getMaxX())
-					symbolWidth = magSizeFunc.getMaxY();
-				else
-					symbolWidth = magSizeFunc.getInterpolatedY(minMag);
-				Color color = magCPT.getColor((float)minMag);
-				PlotCurveCharacterstics plotChar = new PlotCurveCharacterstics(symbol, (float)symbolWidth, color);
-				magChars.add(plotChar);
-				DefaultXY_DataSet xy = new DefaultXY_DataSet();
-				if (minMag == magFloor && magTrack.getMin() >= minMag + 0.11) {
-					// special case for first bin if it starts at a fractional value
-					xy.setName("M"+optionalDigitDF.format(magTrack.getMin()));
-				} else {
-					xy.setName("M"+(int)minMag);
-				}
-				magXYs.add(xy);
-			}
+			
+			initializeMagFuncs(magRanges, magChars, magXYs, maxMag, magTrack, magCPT, null);
 		} else {
+			DiscretizedFunc magSizeFunc = getDefaultMagSizeFunc();
 			double mag = events.get(0).getMag();
 			double symbolWidth;
 			if (mag < magSizeFunc.getMinX())
@@ -254,6 +269,153 @@ public class ETAS_EventMapPlotUtils {
 					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 127);
 				chars.add(new PlotCurveCharacterstics(surfChar.getLineType(), surfChar.getLineWidth(), c));
 			}
+		}
+	}
+	
+	public static void buildGenerationPlot(List<? extends ETAS_EqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
+			double maxMag, int maxGeneration) throws IOException {
+		if (events.isEmpty())
+			return;
+		
+		MinMaxAveTracker magTrack = new MinMaxAveTracker();
+		for (ObsEqkRupture rup : events)
+			magTrack.addValue(rup.getMag());
+
+		int minGeneration = maxGeneration-1;
+		for (ETAS_EqkRupture rup : events)
+			minGeneration = Integer.min(minGeneration, rup.getGeneration());
+		Color[] genColors = new Color[1+maxGeneration-minGeneration];
+		
+//		CPT genCPT = GMT_CPT_Files.GMT_DRYWET.instance().reverse();
+//		genCPT = genCPT.rescale(minGeneration, maxGeneration);
+//		for (int i=0; i<genColors.length; i++)
+//			genColors[i] = genCPT.getColor((float)(i+minGeneration));
+		Color[] rawGenColors = { Color.BLUE.darker(), Color.CYAN.darker(), Color.GREEN.darker(), Color.ORANGE.darker(), Color.RED.darker(),
+				Color.MAGENTA.darker()};
+		for (int i=0; i<genColors.length; i++)
+			genColors[i] = rawGenColors[i%rawGenColors.length];
+		
+		List<List<Range>> genMagRanges = new ArrayList<>();
+		List<List<PlotCurveCharacterstics>> genMagChars = new ArrayList<>();
+		List<List<XY_DataSet>> genMagXYs = new ArrayList<>();
+		
+		for (int g=0; g<=maxGeneration; g++) {
+			List<Range> magRanges = new ArrayList<>();
+			genMagRanges.add(magRanges);
+			List<PlotCurveCharacterstics> magChars = new ArrayList<>();
+			genMagChars.add(magChars);
+			List<XY_DataSet> magXYs = new ArrayList<>();
+			genMagXYs.add(magXYs);
+			
+			initializeMagFuncs(magRanges, magChars, magXYs, maxMag, magTrack, null, genColors[Integer.max(0, g-minGeneration)]);
+		}
+		
+		List<XY_DataSet> surfXYs = new ArrayList<>();
+		List<PlotCurveCharacterstics> surfChars = new ArrayList<>();
+		for (ETAS_EqkRupture event : events) {
+			int gen = event.getGeneration();
+			Preconditions.checkState(gen >= 0);
+			if (gen > maxGeneration)
+				gen = maxGeneration;
+			
+			List<Range> magRanges = genMagRanges.get(gen);
+			List<PlotCurveCharacterstics> magChars = genMagChars.get(gen);
+			List<XY_DataSet> magXYs = genMagXYs.get(gen);
+			
+			double mag = event.getMag();
+			XY_DataSet ptXY = null;
+			PlotCurveCharacterstics plotChar = null;
+			Location hypo = event.getHypocenterLocation();
+			for (int i=0; i<magRanges.size(); i++) {
+				Range magRange = magRanges.get(i);
+				if (mag >= magRange.getLowerBound() && mag < magRange.getUpperBound()) {
+					ptXY = magXYs.get(i);
+					plotChar = magChars.get(i);
+				}
+			}
+			Preconditions.checkNotNull(ptXY, "No mag ranges found which contain M=%s", mag);
+			RuptureSurface surf = event.getRuptureSurface();
+			if (surf != null && !surf.isPointSurface()) {
+				List<XY_DataSet> mySurfXYs = getSurfOutlines(surf);
+				PlotCurveCharacterstics surfChar = new PlotCurveCharacterstics(
+						PlotLineType.DOTTED, rup_surface_thickness-1f, plotChar.getColor());
+				for (XY_DataSet surfXY : mySurfXYs) {
+					surfXYs.add(surfXY);
+					surfChars.add(surfChar);
+				}
+				mySurfXYs = getSurfTraces(surf);
+				surfChar = new PlotCurveCharacterstics(
+						PlotLineType.SOLID, rup_surface_thickness, plotChar.getColor());
+				for (XY_DataSet surfXY : mySurfXYs) {
+					surfXYs.add(surfXY);
+					surfChars.add(surfChar);
+				}
+			}
+			if (hypo != null)
+				ptXY.set(hypo.getLongitude(), hypo.getLatitude());
+		}
+
+		// add finite surfaces below quakes
+		funcs.addAll(surfXYs);
+		chars.addAll(surfChars);
+		
+		// add by generation
+		boolean firstGen = true;
+		for (int gen=0; gen<=maxGeneration; gen++) {
+			boolean labeled = false;
+			List<XY_DataSet> magXYs = genMagXYs.get(gen);
+			
+			for (int m=0; m<magXYs.size(); m++) {
+				XY_DataSet magXY = magXYs.get(m);
+				if (magXY.size() == 0)
+					continue;
+				if (labeled) {
+					magXY.setName(null);
+				} else {
+					String name = firstGen ? "Generation " : "";
+					name += gen;
+					if (gen == maxGeneration)
+						name += "+";
+					magXY.setName(name);
+					labeled = true;
+					firstGen = false;
+				}
+			}
+		}
+		// add with smallest mag on bottom
+		for (int m=0; m<genMagXYs.get(0).size(); m++) {
+			for (int gen=0; gen<=maxGeneration; gen++) {
+//			for (int gen=maxGeneration; gen>=0; gen--) {
+				PlotCurveCharacterstics magChar = genMagChars.get(gen).get(m);
+				XY_DataSet magXY = genMagXYs.get(gen).get(m);
+				if (magXY.size() > 0) {
+					funcs.add(magXY);
+					chars.add(magChar);
+					if (magChar.getSymbol() != null && magChar.getSymbol().isFilled()) {
+						// add outline as well
+						PlotCurveCharacterstics outlineChar = new PlotCurveCharacterstics(PlotSymbol.CIRCLE,
+								magChar.getSymbolWidth(), new Color(0, 0, 0, 100));
+						if (magXY.getName() != null) {
+							magXY = magXY.deepClone();
+							magXY.setName(null);
+						}
+						funcs.add(magXY);
+						chars.add(outlineChar);
+					}
+				}
+			}
+		}
+		
+		// add transparent surfaces above quakes
+		for (int i=0; i<surfXYs.size(); i++) {
+			funcs.add(surfXYs.get(i));
+			PlotCurveCharacterstics surfChar = surfChars.get(i);
+			Color c = surfChar.getColor();
+			if (surfChar.getLineType() == PlotLineType.SOLID)
+				c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 220);
+			else
+				c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 127);
+			chars.add(new PlotCurveCharacterstics(surfChar.getLineType(), surfChar.getLineWidth(), c));
 		}
 	}
 	
@@ -375,7 +537,9 @@ public class ETAS_EventMapPlotUtils {
 		XYPlot plot = gp.getPlot();
 		plot.getRangeAxis().setStandardTickUnits(tus);
 		plot.getDomainAxis().setStandardTickUnits(tus);
-		gp.getChartPanel().setSize(width, (int)((double)(width)*latSpan/lonSpan));
+		
+		int height = PlotUtils.calcHeight(gp, width, true);
+		gp.getChartPanel().setSize(width, height);
 		
 		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());

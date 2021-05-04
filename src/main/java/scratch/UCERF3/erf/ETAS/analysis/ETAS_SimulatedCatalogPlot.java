@@ -67,6 +67,9 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	private boolean noTitles = false;
 	private boolean includeInputEvents = true;
 	private Region forceRegion = null;
+	
+	private static final int max_generation = 5;
+	private boolean plotGenerations = false;
 
 	public ETAS_SimulatedCatalogPlot(ETAS_Config config, ETAS_Launcher launcher, String prefix, double... percentiles) {
 		super(config, launcher);
@@ -149,6 +152,14 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	
 	public void setMaxMag(double maxMag) {
 		this.maxMag = maxMag;
+	}
+	
+	public void setPlotDurations(double[] durations) {
+		this.durations = durations;
+	}
+	
+	public void setPlotGenerations(boolean plotGenerations) {
+		this.plotGenerations = plotGenerations;
 	}
 
 	@Override
@@ -311,7 +322,16 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 						subCatalog.add(rup);
 				}
 				
-				runnables.add(new MapRunnable(outputDir, inputFuncs, inputChars, percentile, mapRegion, duration, subCatalog));
+				String myPrefix = prefix+"_p"+pLabel(percentile)+"_"+getTimeShortLabel(duration).replace(" ", "");
+				String title = noTitles ? " " : "p"+pLabel(percentile)+" %-ile Catalog, "+subCatalog.size()
+					+" Events, "+getTimeLabel(duration, false);
+				
+				runnables.add(new MapRunnable(outputDir, inputFuncs, inputChars, mapRegion, subCatalog, myPrefix, title, false));
+				
+				if (plotGenerations) {
+					myPrefix += "_generations";
+					runnables.add(new MapRunnable(outputDir, inputFuncs, inputChars, mapRegion, subCatalog, myPrefix, title, true));
+				}
 			}
 		}
 		return runnables;
@@ -322,20 +342,23 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		private File outputDir;
 		private List<XY_DataSet> inputFuncs;
 		private List<PlotCurveCharacterstics> inputChars;
-		private double percentile;
 		private Region mapRegion;
-		private double duration;
 		private List<ETAS_EqkRupture> subCatalog;
+		
+		private String title;
+		private String prefix;
+		private boolean generation;
 
 		public MapRunnable(File outputDir, List<XY_DataSet> inputFuncs, List<PlotCurveCharacterstics> inputChars,
-				double percentile, Region mapRegion, double duration, List<ETAS_EqkRupture> subCatalog) {
+				Region mapRegion, List<ETAS_EqkRupture> subCatalog, String prefix, String title, boolean generation) {
 			this.outputDir = outputDir;
 			this.inputFuncs = inputFuncs;
 			this.inputChars = inputChars;
-			this.percentile = percentile;
 			this.mapRegion = mapRegion;
-			this.duration = duration;
 			this.subCatalog = subCatalog;
+			this.prefix = prefix;
+			this.title = title;
+			this.generation = generation;
 		}
 
 		@Override
@@ -344,11 +367,11 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 			List<PlotCurveCharacterstics> chars = new ArrayList<>(inputChars);
 			
 			try {
-				ETAS_EventMapPlotUtils.buildEventPlot(subCatalog, funcs, chars, maxMag);
-				String myPrefix = prefix+"_p"+pLabel(percentile)+"_"+getTimeShortLabel(duration).replace(" ", "");
-				String title = noTitles ? " " : "p"+pLabel(percentile)+" %-ile Catalog, "+subCatalog.size()
-					+" Events, "+getTimeLabel(duration, false);
-				ETAS_EventMapPlotUtils.writeMapPlot(funcs, chars, mapRegion, title, outputDir, myPrefix, 700);
+				if (generation)
+					ETAS_EventMapPlotUtils.buildGenerationPlot(subCatalog, funcs, chars, maxMag, max_generation);
+				else
+					ETAS_EventMapPlotUtils.buildEventPlot(subCatalog, funcs, chars, maxMag);
+				ETAS_EventMapPlotUtils.writeMapPlot(funcs, chars, mapRegion, title, outputDir, prefix, 700);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -381,9 +404,19 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 				table.addColumn("![Map]("+relativePathToOutputDir+"/"+prefix+"_p"+pLabel(percentile)
 					+"_"+getTimeShortLabel(duration).replace(" ", "")+".png)");
 			table.finalizeLine();
+			if (plotGenerations) {
+				table.initNewLine();
+				table.addColumn("*Event Generations*");
+				for (double percentile : percentiles)
+					table.addColumn("![Map]("+relativePathToOutputDir+"/"+prefix+"_p"+pLabel(percentile)
+						+"_"+getTimeShortLabel(duration).replace(" ", "")+"_generations.png)");
+				table.finalizeLine();
+			}
 		}
 		
 		lines.addAll(table.build());
+		
+		
 		
 		return lines;
 	}
