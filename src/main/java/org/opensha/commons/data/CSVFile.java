@@ -1,6 +1,7 @@
 package org.opensha.commons.data;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -243,6 +244,8 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	 * @throws IOException
 	 */
 	public void writeToStream(OutputStream stream) throws IOException {
+		if (!(stream instanceof BufferedOutputStream))
+			stream = new BufferedOutputStream(stream);
 		writeWriter(new OutputStreamWriter(stream));
 	}
 	
