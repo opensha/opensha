@@ -647,7 +647,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		// Wrap this in an exception handler 
 		// as we have seen XML files with this attribute named incorrectly as 'slipRateStDev'
 		try { slipRateStdDev = Double.parseDouble(el.attributeValue("slipRateStdDev"));}
-			catch (NullPointerException err) {slipRateStdDev = Double.NaN;}
+		catch (NullPointerException err) {slipRateStdDev = Double.NaN;}
 		
 		double aveDip = Double.parseDouble(el.attributeValue("aveDip"));
 		double aveRake = Double.parseDouble(el.attributeValue("aveRake"));
