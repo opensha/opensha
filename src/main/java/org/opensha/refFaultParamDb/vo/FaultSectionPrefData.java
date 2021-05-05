@@ -442,7 +442,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	public double getOrigSlipRateStdDev() {
 		return slipRateStdDev;
 	}
-
+	
 	/**
 	 * This returns the product of the slip rate standard deviation (mm/yr) times the coupling coefficient
 	 * @return
@@ -638,10 +638,18 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	@SuppressWarnings("unchecked")
 	public static FaultSectionPrefData fromXMLMetadata(Element el) {
 
+		
 		int sectionId = Integer.parseInt(el.attributeValue("sectionId"));
 		String sectionName = el.attributeValue("sectionName");
 		String shortName = el.attributeValue("shortName");
 		double aveLongTermSlipRate = Double.parseDouble(el.attributeValue("aveLongTermSlipRate"));
+		
+		// Wrap this in an exception handler 
+		// as we have seen XML files with this attribute named incorrectly as 'slipRateStDev'
+		double slipRateStdDev;
+		try { slipRateStdDev = Double.parseDouble(el.attributeValue("slipRateStdDev"));}
+		catch (NullPointerException err) {slipRateStdDev = Double.NaN;}
+		
 		double aveDip = Double.parseDouble(el.attributeValue("aveDip"));
 		double aveRake = Double.parseDouble(el.attributeValue("aveRake"));
 		double aveUpperDepth = Double.parseDouble(el.attributeValue("aveUpperDepth"));
@@ -692,6 +700,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		data.setSectionName(sectionName);
 		data.setShortName(shortName);
 		data.setAveSlipRate(aveLongTermSlipRate);
+		data.setSlipRateStdDev(slipRateStdDev);
 		data.setAveDip(aveDip);
 		data.setAveRake(aveRake);
 		data.setAveUpperDepth(aveUpperDepth);
