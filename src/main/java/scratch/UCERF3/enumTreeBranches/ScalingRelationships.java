@@ -12,6 +12,8 @@ import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.Ellsworth_B_WG02_MagAreaRel;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.HanksBakun2002_MagAreaRel;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.Shaw_2009_ModifiedMagAreaRel;
+import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.TMG2017CruMagAreaRel;
+import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.TMG2017SubMagAreaRel;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -252,6 +254,59 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 			return map;
 		}
 
+	},
+
+	TMG_SUB_2017("Thingbaijam et al.(2017) Subduction", "TMG_SUB_2017") {
+
+		private TMG2017SubMagAreaRel tmg_sub_magArea = new TMG2017SubMagAreaRel(90); // interface
+
+		// units of the input dimensions are in m or m^2
+		public double getAveSlip(double area, double length, double origWidth) {
+			double mag = tmg_sub_magArea.getMedianMag(area * 1e-6);
+			double moment = MagUtils.magToMoment(mag);
+			return FaultMomentCalc.getSlip(area, moment);
+		}
+
+		public double getMag(double area, double origWidth) {
+			return tmg_sub_magArea.getMedianMag(area * 1e-6);
+		}
+
+		public double getArea(double mag, double origWidth) {
+			return tmg_sub_magArea.getMedianArea(mag) * 1e6;
+		}
+
+		@Override
+		public double getRelativeWeight(InversionModels im) {
+			// weight needs to be updated
+			return 1.0d;
+
+		}
+	},
+
+	TMG_CRU_2017("Thingbaijam et al.(2017) Crustal", "TMG_CRU_2017") {
+
+		private TMG2017CruMagAreaRel tmg_cru_magArea = new TMG2017CruMagAreaRel(0);
+
+		// units of the input dimensions are in m or m^2
+		public double getAveSlip(double area, double length, double origWidth) {
+			double mag = tmg_cru_magArea.getMedianMag(area * 1e-6);
+			double moment = MagUtils.magToMoment(mag);
+			return FaultMomentCalc.getSlip(area, moment);
+		}
+
+		public double getMag(double area, double origWidth) {
+			return tmg_cru_magArea.getMedianMag(area * 1e-6);
+		}
+
+		public double getArea(double mag, double origWidth) {
+			return tmg_cru_magArea.getMedianArea(mag) * 1e6;
+		}
+
+		@Override
+		public double getRelativeWeight(InversionModels im) {
+			// weight needs to be updated
+			return 1.0d;
+		}
 	};
 	
 	private static Ellsworth_B_WG02_MagAreaRel ellB_magArea = new Ellsworth_B_WG02_MagAreaRel();
