@@ -121,8 +121,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	private Map<IDPairing, Double> subSectionDistances;
 
 	public final static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6.0;
-
-	protected double[] minMagForSectArray;
+	protected double[] minMagForSectArray; //TODO: this is only used in one method, which we need to override in NSHM. 
 	private boolean[] isRupBelowMinMagsForSects;
 
  	/**
@@ -226,8 +225,8 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		init(rupSet);
 
 		//this must come after the init(rupSet) call.
-		setClusterRuptures(rupSet.getClusterRuptures());	
-
+		setClusterRuptures(rupSet.getClusterRuptures());
+		
 		int numSects = rupSet.getNumSections();
 		int numRups = rupSet.getNumRuptures();
 		
