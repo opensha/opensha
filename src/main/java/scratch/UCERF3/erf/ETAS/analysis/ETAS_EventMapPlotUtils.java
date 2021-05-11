@@ -290,7 +290,7 @@ public class ETAS_EventMapPlotUtils {
 //		genCPT = genCPT.rescale(minGeneration, maxGeneration);
 //		for (int i=0; i<genColors.length; i++)
 //			genColors[i] = genCPT.getColor((float)(i+minGeneration));
-		Color[] rawGenColors = { Color.BLUE.darker(), Color.CYAN.darker(), Color.GREEN.darker(), Color.ORANGE.darker(), Color.RED.darker(),
+		Color[] rawGenColors = { Color.BLUE.darker(), Color.CYAN.darker().darker(), Color.GREEN.darker(), Color.ORANGE.darker(), Color.RED.darker(),
 				Color.MAGENTA.darker()};
 		for (int i=0; i<genColors.length; i++)
 			genColors[i] = rawGenColors[i%rawGenColors.length];

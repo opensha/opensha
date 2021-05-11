@@ -41,8 +41,9 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 
 //			argz += " --event-id ci38443183"; // 2019 Searles Valley M6.4
 //			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
-			argz += " --event-id ci39838928"; // 4/5/2021 Inglewood M4
+//			argz += " --event-id ci39838928"; // 4/5/2021 Inglewood M4
 //			argz += " --event-id ci39462536"; // 2020 Ridgecrest M5.5
+			argz += " --event-id nc73559265"; // 2021 Truckee 4.7
 //			argz += " --mag-complete 3.5";
 //			argz += " --event-id nn00719663"; // 3/20/2020 Lake Tahoe area M5
 //			argz += " --event-id ci39126079"; // 4/4/2020 SJC Anza M4.9
@@ -124,7 +125,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --kml-surf-lower-depth 12";
 //			argz += " --kml-surf-name Field";
 //			argz += " --kml-surf-name-contains";
-//			argz += " --name-add Field-Verified";
+//			argz += " --name-add Updated-Depth";
 			
 //			argz += " --random-seed 123456789";
 			
