@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.Callable;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -31,6 +32,7 @@ import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.metadata.MetadataLoader;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.LazilyInitializedList;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -401,10 +403,22 @@ public class FaultSystemIO {
 		if (DD) System.out.println("loading cluster ruptures");
 		ZipEntry clustersEntry = zip.getEntry(getRemappedName("cluster_ruptures.json", nameRemappings));
 		if (clustersEntry != null) {
-			InputStreamReader json = new InputStreamReader(
-					new BufferedInputStream(zip.getInputStream(clustersEntry), 1024*128));
-			List<ClusterRupture> clusterRuptures = ClusterRupture.readJSON(json, faultSectionData);
-			rupSet.setClusterRuptures(clusterRuptures);
+//			InputStreamReader json = new InputStreamReader(
+//					new BufferedInputStream(zip.getInputStream(clustersEntry), 1024*128));
+//			List<ClusterRupture> clusterRuptures = ClusterRupture.readJSON(json, faultSectionData);
+//			rupSet.setClusterRuptures(clusterRuptures);
+			if (DD) System.out.println("will load cluster ruptures lazily");
+			Callable<List<ClusterRupture>> call = new Callable<List<ClusterRupture>>() {
+
+				@Override
+				public List<ClusterRupture> call() throws Exception {
+					System.out.println("Loading ClusterRupture list (lazily) from "+zip.getName());
+					InputStreamReader json = new InputStreamReader(
+							new BufferedInputStream(zip.getInputStream(clustersEntry), 1024*128));
+					return ClusterRupture.readJSON(json, faultSectionData);
+				}
+			};
+			rupSet.setClusterRuptures(new LazilyInitializedList<>(rupSet.getNumRuptures(), call));
 		}
 		
 		if (branch != null) {
