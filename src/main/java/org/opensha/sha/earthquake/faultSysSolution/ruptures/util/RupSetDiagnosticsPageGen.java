@@ -4724,7 +4724,10 @@ public class RupSetDiagnosticsPageGen {
 		} else {
 			hist = histScalar.getHistogram(maxTrack);
 			cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance();
-			cpt = cpt.rescale(hist.getMinX() - 0.5*hist.getDelta(), hist.getMaxX() + 0.5*hist.getDelta());
+			if (hist.size() == 1)
+				cpt = cpt.rescale(hist.getX(0), hist.getX(0) <= 0d ? 1d : hist.getX(0)*1.5);
+			else
+				cpt = cpt.rescale(hist.getMinX() - 0.5*hist.getDelta(), hist.getMaxX() + 0.5*hist.getDelta());
 		}
 		cpt.setBelowMinColor(cpt.getMinColor());
 		cpt.setAboveMaxColor(cpt.getMaxColor());
