@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.HistScalar;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.HistScalarValues;
 
+//import nz.cri.gns.NZSHM22.util.NZSHM22_InversionDiagnosticsReportBuilder;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 
 class ExampleSubclass extends RupSetDiagnosticsPageGen {
@@ -47,6 +48,9 @@ public class RupSetDiagnosticsPageGen_IntegrationTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws IOException, DocumentException, URISyntaxException, ParseException {
+		
+		System.setProperty("java.awt.headless", "true"); //We don't want modal dialogs in our automated tests.
+		
 		/*
 		 * TODO: we should be using java resources here, but some global gradle/eclipse configuration needs agreement
 		 *
@@ -65,16 +69,25 @@ public class RupSetDiagnosticsPageGen_IntegrationTest {
 				};
 
 		cmd = parser.parse(options, args);		
+	
 	}
 	
 	@AfterClass
 	public static void tearDownAfterClass() throws IOException {
-		//Clean up the temp folder
-		File[] files = tempFolder.listFiles();
-		for (File f : files) {
-			f.delete();
+		
+		File[] tmp_folders = {
+				new File(tempFolder, "resources"),
+				new File(tempFolder, "hist_rup_pages"),
+				tempFolder}; //this one must be last
+		
+		for (File folder : tmp_folders) {
+			File[] files = folder.listFiles();
+			for (File f : files) {
+				f.delete();
+			}		
+			Files.deleteIfExists(folder.toPath());
 		}		
-		Files.deleteIfExists(tempFolder.toPath());
+		
 	}
 	
 	@Test
@@ -125,4 +138,20 @@ public class RupSetDiagnosticsPageGen_IntegrationTest {
 
 	}	
 
+	/**
+	 * Build a diagnostics report from an InversionSolution.
+	 * 
+	 * This is actually a bit slow, perhaps could be built using a smaller inversion fixture.
+	 * 
+	 * @throws IOException
+	 * @throws DocumentException
+	 * @throws ParseException 
+	 */
+	@Test 
+	public void testRunReportForInversionSolution() throws IOException, DocumentException, ParseException {
+		new RupSetDiagnosticsPageGen(cmd).generatePage();
+		File index_html = new File(tempFolder, "index.html");	
+		assertTrue(index_html.exists());
+	}
+	
 }

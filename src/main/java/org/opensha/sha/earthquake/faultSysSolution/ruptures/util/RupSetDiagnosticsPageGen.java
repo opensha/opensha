@@ -1422,9 +1422,14 @@ public class RupSetDiagnosticsPageGen {
 			if (compRups != null)
 				table.addLine(inputName, compName);
 			String prefix = "sect_max_"+scalar.name();
-			if (!plotScalarMaxMapView(inputRupSet, resourcesDir, prefix, getTruncatedTitle(inputName),
-					inputScalars, compScalars, region, MAIN_COLOR, false, false))
+			try {			
+				if (!plotScalarMaxMapView(inputRupSet, resourcesDir, prefix, getTruncatedTitle(inputName),
+						inputScalars, compScalars, region, MAIN_COLOR, false, false))
+					continue;
+			} catch (Exception err) {
+				System.out.println("Caught exception: " + err.getLocalizedMessage());
 				continue;
+			}
 			table.initNewLine();
 			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+".png)");
 			if (compScalars != null) {
