@@ -1139,7 +1139,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	public enum SlipRateConstraintWeightingType {
 		NORMALIZED_BY_SLIP_RATE,  // Normalize each slip-rate constraint by the slip-rate target (So the inversion tries to minimize ratio of model to target)
 		UNNORMALIZED, // Do not normalize slip-rate constraint (inversion will minimize difference of model to target, effectively fitting fast faults better than slow faults on a ratio basis)
-		BOTH;  // Include both normalized and unnormalized constraints.  This doubles the number of slip-rate constraints, and is a compromise between normalized (which fits slow faults better on a difference basis) and the unnormalized constraint (which fits fast faults better on a ratio basis)
+		BOTH,  // Include both normalized and unnormalized constraints.  This doubles the number of slip-rate constraints, and is a compromise between normalized (which fits slow faults better on a difference basis) and the unnormalized constraint (which fits fast faults better on a ratio basis)
+		UNCERTAINTY_ADJUSTED; //Adjust section slip rate targets by their CoV (slip-rate/std-dev). This used by NZSHM22. 
 	}
 
 	public double getMFDTransitionMag() {

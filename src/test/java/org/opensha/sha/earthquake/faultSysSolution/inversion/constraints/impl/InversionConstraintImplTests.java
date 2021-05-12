@@ -66,6 +66,26 @@ public class InversionConstraintImplTests {
 			allParents.add(sect.getParentSectionId());
 	}
 
+	@Test 
+	public void testCreate_SlipRateUncertaintyAdjustedConstraint() {
+		
+		double[] slipRates = rupSet.getSlipRateForAllSections();
+		double[] stdDevs = rupSet.getSlipRateStdDevForAllSections();
+		
+		int weight = 100;
+		int weightScalingOrderOfMagnitude = 2;
+		
+		SlipRateUncertaintyInversionConstraint constr = new SlipRateUncertaintyInversionConstraint(
+				weight, weightScalingOrderOfMagnitude, rupSet, slipRates, stdDevs);
+		
+		testConstraint(constr);
+
+		//This constraint can produce a CSV for inspection
+		assertEquals("Counts inconsistent for CSV data "+constr.getName(), 
+				constr.getSubSectionWeightingsCSV().getNumRows(), 
+				rupSet.getFaultSectionDataList().size() +1 ); // there's a header row
+	}
+	
 	@Test
 	public void testAPriori() {
 		double[] aPrioriRates = new double[numRuptures];
