@@ -461,7 +461,7 @@ public class FileUtils {
 	/**
 	 * this is the path where images will be put into
 	 */
-	private static final String imagePath = "/resources/images/";
+	private static final String imagePath = "/images/";
 	
 	public static void downloadURL(String addr, File outFile) throws IOException {
 		downloadURL(new URL(addr), outFile);
