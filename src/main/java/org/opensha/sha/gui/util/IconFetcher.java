@@ -24,7 +24,7 @@ public class IconFetcher {
 	
 	public static ArrayList<BufferedImage> fetchIcons(String appShortName, ServerPrefs prefs) {
 		ArrayList<BufferedImage> images = new ArrayList<BufferedImage>();
-		String localBase = "/resources/images/icons/";
+		String localBase = "/images/icons/";
 		for (int size : JNLPGen.icon_sizes) {
 			URL url = null;
 			String fileName = JNLPGen.getIconName(appShortName, size);
@@ -54,7 +54,7 @@ public class IconFetcher {
 		if (images.size() == 0) {
 			try {
 				BufferedImage fallback = ImageIO.read(IconFetcher.class.getResourceAsStream(
-						"/resources/images/logos/opensha_64.png"));
+						"/images/logos/opensha_64.png"));
 				images.add(fallback);
 			} catch (IOException e) {
 				// print and return null;
