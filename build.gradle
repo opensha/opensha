@@ -32,7 +32,7 @@ dependencies {
     
     /* no remote repo */
     compileAndResource files('lib/ncCore-4.0.jar')
-    compileOnly files('lib/mpj-0.38.jar') // MPJ API
+    implementation files('lib/mpj-0.38.jar') // MPJ API
     compileAndResource files('lib/f2jutil.jar') // used by NNLS code
     compileAndResource files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
     compileAndResource files('lib/parallelcolt-0.9.4.jar')
@@ -44,7 +44,6 @@ dependencies {
 
     testCompileOnly 'junit:junit:4.12'
     testCompileOnly 'org.mockito:mockito-core:3.5.13'
-    testCompileOnly 'junit:junit:4.12'
 }
 
 // TODO: application build tasks
