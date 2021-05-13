@@ -1,23 +1,14 @@
-# opensha-commons
-Base OpenSHA Commons library
+# OpenSHA
+
+Primary [OpenSHA](https://opensha.org) code repository
 
 ## Compilation and project configuration
-OpenSHA is split into multiple projects with the following dependencies:
 
-| Name       | Depends On | Description                                      |
-|------------|------------|--------------------------------------------------|
-| commons    | -          | Base commons library (this project)              |
-| core       | commons    | Core OpenSHA library with calculators and models |
-| ucerf3     | core       | UCERF3 model code and data                       |
-| apps       | ucerf3     | GUI applications                                 |
-| dev        | apps       | Development sandbox for shared prototyping       |
-| cybershake | dev        | CyberShake interface code and calculators        |
-
-All users will need to clone the top level commons project, as well as any additional projects of interest. For example, if you need ucerf3 code, you will need to check out ucerf3, core, and commons (ucerf3 depends on core, which in turn depends on commons). Many users will need all projects (except CyberShake).
+This repository contains OpenSHA code and models implementations. This project is intended for the core APIs and stable models. Exploratory code or one-off tests should instead go in our development sandbox, [opensha-dev](https://github.com/opensha/opensha-dev), which has this project as a dependency.
 
 ### Requirements
 
-* Java 8 JDK or later, 64-bit: [Oracle](http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html) or [OpenJDK](http://openjdk.java.net/install/)
+* Java 11 JDK or later, 64-bit: [AdoptOpenJDK](https://adoptopenjdk.net/) or [OpenJDK](https://jdk.java.net/)
 * [Git](https://git-scm.com/downloads)
     - Git is included in the macOS [developer tools](https://developer.apple.com/xcode/).
     - Windows users may want to consider [Git for Windows](https://git-for-windows.github.io), which includes a linux-like terminal (Git BASH) in which subsequent commands listed here will work.
@@ -26,15 +17,11 @@ Other dependencies are managed with [Gradle](https://gradle.org/), which does no
 
 ### Cloning in a terminal
 
-To clone all projects in a terminal (simplest and quickest for most users):
+To clone this project in a terminal (simplest and quickest for most users):
 
 ```bash
 cd ~/git # create this directory or navigate an alternative directory of your choosing
-git clone https://github.com/opensha/opensha-commons.git
-git clone https://github.com/opensha/opensha-core.git
-git clone https://github.com/opensha/opensha-ucerf3.git
-git clone https://github.com/opensha/opensha-apps.git
-git clone https://github.com/opensha/opensha-dev.git
+git clone https://github.com/opensha/opensha.git
 ```
 
 ### Building in a terminal with Gradle
@@ -42,14 +29,14 @@ git clone https://github.com/opensha/opensha-dev.git
 OpenSHA uses Gradle to handle the build process from dependency management to compilation. You should compile OpenSHA from your lowest level project, *opensha-dev* for the example above.
 
 ```bash
-cd opensha-dev # or whichever project you are interested in
+cd opensha
 ./gradlew assemble
 ```
 
-This will build all source files in opensha-dev and parent projects. It will also build a jar file for each project, not including any dependencies. You can build a "fat jar" which includes dependent libraries as follows:
+This will build all source files in opensha. It will also build a jar file for each project, not including any dependencies. You can build a "fat jar" which includes dependent libraries as follows:
 
 ```bash
-cd opensha-dev # or whichever project you are interested in
+cd opensha
 ./gradlew fatJar
 ```
 
@@ -59,11 +46,17 @@ Most active OpenSHA development is done through [Eclipse](https://eclipse.org). 
 
 >**NOTE:** The following instructions assume that you have already cloned the OpenSHA projects on a terminal, though you can clone them through Eclipse. If you chose to go this route, be sure to leave the "Import all existing Eclipse projects after clone finishes" check-box **UNSELECTED**, as this feature will cause issues with gradle.
 
-For each project, you will need to do the following:
+Once you have eclipse installed and running, do the following:
+
 * `File > Import`  
 * Select `Gradle > Existing Gradle Project` and hit `Next`  
-* Browse to the location of `opensha-commons` under `Project root directory`  
+* Browse to the location of `opensha` under `Project root directory`  
 * Hit `Finish`  
-* Repeat for all sub-projects. **IMPORTANT: projects must be imported in order, dependent projects first. commons, then core, then ucerf3, then apps, then dev**  
 
-You can either use Eclipse's built in Git tools, or the Git command line client to pull/push changes. If any of the `.gradle` files are modified, right click on the project within eclipse and select `Gradle >  Refresh Gradle Project`
+You can either use Eclipse's built in Git tools, or the Git command line client to pull/push changes. Any time any of the `.gradle` files are modified, or you see many unexpected compilation errors, right click on the project within eclipse and select `Gradle >  Refresh Gradle Project`.
+
+## Repository history
+
+OpenSHA has been in active development since the early 2000's. It was originally in CVS version control, and was ported to [this SVN repository](https://source.usc.edu/svn/opensha/trunk/) circa 2008. In 2017, it was migrated to GitHub and split into a number of sub-projects. History from the SVN repository was not retained, but it is [archived here](https://github.com/opensha/opensha-svn-archive). The main codebase, which was re-unified into this repository in 2021, was previously stored in the now-archived [opensha-commons](https://github.com/opensha/opensha-commons), [opensha-core](https://github.com/opensha/opensha-core), [opensha-ucerf3](https://github.com/opensha/opensha-ucerf3), and [opensha-apps](https://github.com/opensha/opensha-apps).
+
+A development sandbox, with which we're more relaxed with write-permissions, can be found [here](https://github.com/opensha/opensha-dev). Otherwise, outside contributions should come in the form of pull requests on this repository.
