@@ -2,48 +2,119 @@
  * opensha dependencies
  */
 
-apply from: 'build-common.gradle'
+apply plugin: 'java-library'
+
+sourceCompatibility = JavaVersion.VERSION_11
+compileJava.options.encoding = "UTF-8"
+
+/*
+
+TODO: deal with exludes. this was:
+
+            exclude 'resources/data/ngaWest'
+            exclude 'resources/data/site/'
+            exclude 'resources/data/site/Wills2000'
+            exclude 'scratch/UCERF3/data/scratch'
+            exclude 'scratch/ned'
+            exclude 'org/opensha/sha/earthquake/rupForecastImpl/NSHMP_CEUS08'
+*/
+
+repositories {
+    jcenter()
+}
+
+task fatJar(type: Jar) {
+    baseName = project.name + '-all'
+    from {
+//        configurations.api.collect { it.isDirectory() ? it : zipTree(it).matching {
+//            exclude { it.path.contains('META-INF') }
+//        }}
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it).matching {
+            exclude { it.path.contains('META-INF') }
+        }}
+    }
+
+//    from { configurations.api.collect {
+//        it.isDirectory() ? it : zipTree(it).matching {
+//            exclude { it.path.contains('META-INF') }
+//        }
+//    }}
+    duplicatesStrategy = 'exclude'
+	from sourceSets.main.allJava
+    with jar
+}
+
+test {
+    filter {
+        includeTestsMatching "*Suite*"
+    }
+}
+
+task testOperational (type: Test) {
+    filter {
+        includeTestsMatching "*Operational*"
+    }
+}
+
+ext.getDate = {
+    new Date().format('yyyy_MM_dd')
+}
+
+ext.getGitHash = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--short', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Exception e) {
+        return ""
+    }
+    
+}
+
 
 dependencies {
 
-    compileAndResource 'com.google.guava:guava:26.0-jre'
-    compileAndResource 'com.google.code.gson:gson:2.8.5'
-    compileAndResource 'org.jfree:jfreechart:1.5.2'
-    compileAndResource 'org.dom4j:dom4j:2.1.1'
-    compileAndResource 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
-    compileAndResource 'com.itextpdf:itextpdf:5.5.13.2'
-    compileAndResource 'gov.nist.math:jama:1.0.3'
-    compileAndResource 'javax.servlet:javax.servlet-api:3.1.0'
-    compileAndResource 'javax.mail:mail:1.4.7'
-    compileAndResource 'org.apache.poi:poi:3.16'
+    api 'com.google.guava:guava:28.2-jre'
+    api 'com.google.code.gson:gson:2.8.5'
+    api 'org.jfree:jfreechart:1.5.2'
+    api 'org.dom4j:dom4j:2.1.1'
+    api 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
+    api 'com.itextpdf:itextpdf:5.5.13.2'
+    api 'gov.nist.math:jama:1.0.3'
+    api 'javax.servlet:javax.servlet-api:3.1.0'
+    api 'javax.mail:mail:1.4.7'
+    api 'org.apache.poi:poi:3.16'
     
     /* apache commons */
-    compileAndResource 'org.apache.commons:commons-lang3:3.6'
-    compileAndResource 'org.apache.commons:commons-text:1.8'
-    compileAndResource 'commons-codec:commons-codec:1.10'
-    compileAndResource 'commons-cli:commons-cli:1.4'
-    compileAndResource 'commons-io:commons-io:2.5'
-    compileAndResource 'org.apache.commons:commons-math3:3.6.1'
+    api 'org.apache.commons:commons-lang3:3.6'
+    api 'org.apache.commons:commons-text:1.8'
+    api 'commons-codec:commons-codec:1.10'
+    api 'commons-cli:commons-cli:1.4'
+    api 'commons-io:commons-io:2.5'
+    api 'org.apache.commons:commons-math3:3.6.1'
     
     /* Atlassan commonmark - Markdown utilities */
-    compileAndResource 'com.atlassian.commonmark:commonmark:0.10.0'
-    compileAndResource 'com.atlassian.commonmark:commonmark-ext-gfm-tables:0.10.0'
-    compileAndResource 'com.atlassian.commonmark:commonmark-ext-heading-anchor:0.10.0'
+    api 'com.atlassian.commonmark:commonmark:0.10.0'
+    api 'com.atlassian.commonmark:commonmark-ext-gfm-tables:0.10.0'
+    api 'com.atlassian.commonmark:commonmark-ext-heading-anchor:0.10.0'
     
     /* no remote repo */
-    compileAndResource files('lib/ncCore-4.0.jar')
-    implementation files('lib/mpj-0.38.jar') // MPJ API
-    compileAndResource files('lib/f2jutil.jar') // used by NNLS code
-    compileAndResource files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
-    compileAndResource files('lib/parallelcolt-0.9.4.jar')
-    compileAndResource files('lib/csparsej.jar')
-    compileAndResource files('lib/ojdbc5.jar')
-    compileAndResource files('lib/sdoapi.jar')
-    compileAndResource files('lib/EventWebService.jar')
-    compileAndResource files('lib/jpedal.jar')
+    api files('lib/ncCore-4.0.jar')
+    api files('lib/mpj-0.38.jar') // MPJ API
+    api files('lib/f2jutil.jar') // used by NNLS code
+    api files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
+    api files('lib/parallelcolt-0.9.4.jar')
+    api files('lib/csparsej.jar')
+    api files('lib/ojdbc5.jar')
+    api files('lib/sdoapi.jar')
+    api files('lib/EventWebService.jar')
+    api files('lib/jpedal.jar')
 
-    testCompileOnly 'junit:junit:4.12'
-    testCompileOnly 'org.mockito:mockito-core:3.5.13'
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.mockito:mockito-core:3.5.13'
 }
 
 // TODO: application build tasks
