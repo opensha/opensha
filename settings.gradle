@@ -1,7 +1,0 @@
-rootProject.name = 'opensha-apps'
-include ':opensha-commons'
-project(':opensha-commons').projectDir = new File(settingsDir, '../opensha-commons')
-include ':opensha-core'
-project(':opensha-core').projectDir = new File(settingsDir, '../opensha-core')
-include ':opensha-ucerf3'
-project(':opensha-ucerf3').projectDir = new File(settingsDir, '../opensha-ucerf3')
