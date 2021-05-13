@@ -14,10 +14,13 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.calc.HazardCurveCalculator;
+import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityOptions;
 import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
@@ -25,6 +28,10 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
+import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
 public class FSS_ERF_PrefBlendTest {
 	
@@ -46,11 +53,22 @@ public class FSS_ERF_PrefBlendTest {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		// use single branch ERF
-		erf = new UCERF3_CompoundSol_ERF();
+//		// use single branch ERF
+//		erf = new UCERF3_CompoundSol_ERF();
+		FaultSystemRupSet rupSet = FSS_ERF_ParamTest.buildSmallTestRupSet();
+		double[] rates = new double[rupSet.getNumRuptures()];
+		Random r = new Random(rates.length);
+		for (int i=0; i<rates.length; i++)
+			rates[i] = Math.pow(10, r.nextDouble()*5 - 8);
+		long startTime = 1325459622000l;
+		for (FaultSection sect : rupSet.getFaultSectionDataList())
+			if (r.nextDouble() < 0.2)
+				sect.setDateOfLastEvent(startTime - r.nextInt(250)*(long)ProbabilityModelsCalc.MILLISEC_PER_YEAR);
+		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		erf = new FaultSystemSolutionERF(sol);
 		
 		GriddedRegion reg = new CaliforniaRegions.RELM_TESTING_GRIDDED();
-		Random r = new Random();
+//		Random r = new Random();
 		for (int i=0; i<numSites; i++)
 			testLocs.add(reg.getNodeList().get(r.nextInt(reg.getNodeCount())));
 		
@@ -73,6 +91,7 @@ public class FSS_ERF_PrefBlendTest {
 	@Test
 	public void test() {
 		// first do preferred blend
+		erf.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.EXCLUDE);
 		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_PREF_BLEND);
 		erf.updateForecast();
 		
