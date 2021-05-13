@@ -1,3 +1,0 @@
-rootProject.name = 'opensha-core'
-include ':opensha-commons'
-project(':opensha-commons').projectDir = new File(settingsDir, '../opensha-commons')
