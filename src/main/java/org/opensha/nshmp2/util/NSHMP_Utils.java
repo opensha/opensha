@@ -45,7 +45,7 @@ public class NSHMP_Utils {
 	public static final String WARN_INDENT = "          ";
 
 	/** Path to NSHMP config file directory. */
-	public static final String CONF_DIR = "/resources/data/nshmp/sources/";
+	public static final String CONF_DIR = "/data/nshmp/sources/";
 
 	/**
 	 * Reads the specified number of lines into a new line list.

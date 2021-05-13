@@ -327,7 +327,7 @@ public class CaliforniaRegions {
 	private static LocationList readCoords(String filename) {
 		BufferedReader br;
 		try {
-			InputStream is = CaliforniaRegions.class.getResourceAsStream("/resources/data/region/" + filename);
+			InputStream is = CaliforniaRegions.class.getResourceAsStream("/data/region/" + filename);
 			br = new BufferedReader(new InputStreamReader(is));
 			LocationList ll = new LocationList();
 			String[] vals;

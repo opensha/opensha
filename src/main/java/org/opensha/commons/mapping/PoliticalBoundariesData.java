@@ -22,7 +22,7 @@ public class PoliticalBoundariesData {
 	 */
 	public synchronized static XY_DataSet[] loadCAOutlines() throws IOException {
 		if (caOutlines == null)
-			caOutlines = loadOutlinesFile(PoliticalBoundariesData.class.getResourceAsStream("/resources/data/boundaries/california.txt"));
+			caOutlines = loadOutlinesFile(PoliticalBoundariesData.class.getResourceAsStream("/data/boundaries/california.txt"));
 		return caOutlines;
 	}
 	
@@ -33,7 +33,7 @@ public class PoliticalBoundariesData {
 	 */
 	public synchronized static XY_DataSet[] loadNZOutlines() throws IOException {
 		if (nzOutlines == null)
-			nzOutlines = loadOutlinesFile(PoliticalBoundariesData.class.getResourceAsStream("/resources/data/boundaries/new_zealand.txt"));
+			nzOutlines = loadOutlinesFile(PoliticalBoundariesData.class.getResourceAsStream("/data/boundaries/new_zealand.txt"));
 		return nzOutlines;
 	}
 	

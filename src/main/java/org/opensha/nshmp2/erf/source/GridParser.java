@@ -48,7 +48,7 @@ public class GridParser {
 
 	private Logger log;
 	private static final String GRD_PATH = "../conf/";
-	private static final String DAT_PATH = "/resources/data/nshmp/sources/";
+	private static final String DAT_PATH = "/data/nshmp/sources/";
 
 	// parsed
 	private String srcName;

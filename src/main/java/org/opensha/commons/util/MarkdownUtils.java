@@ -538,7 +538,7 @@ public class MarkdownUtils {
 	}
 	
 	private static void copyCSS(File dest) throws IOException {
-		InputStream is = MarkdownUtils.class.getResourceAsStream("/resources/markdown/markdown.css");
+		InputStream is = MarkdownUtils.class.getResourceAsStream("/markdown/markdown.css");
 		OutputStream out = new BufferedOutputStream(new FileOutputStream(dest));
 		
 		IOUtils.copy(is, out);

@@ -16,7 +16,7 @@ import javax.swing.JLabel;
  */
 public class Resources {
 
-	private static String resPath = "/resources/";
+	private static String resPath = "/";
 	private static String imgPath = resPath + "images/";
 	private static URL license;
 

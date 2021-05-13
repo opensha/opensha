@@ -244,7 +244,7 @@ public class Utils {
 		return (Erf.erf((mean - value) / (std * SQRT_2)) + 1.0) * 0.5;
 	}
 
-	public static final String NSHMP_DAT_PATH = "/resources/data/nshmp";
+	public static final String NSHMP_DAT_PATH = "/data/nshmp";
 
 	/**
 	 * Returns the URL of an NSHMP resource. Path should be specified as
