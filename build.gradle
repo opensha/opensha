@@ -5,6 +5,7 @@
 apply plugin: 'java-library'
 
 sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
 compileJava.options.encoding = "UTF-8"
 
 /*
@@ -23,22 +24,22 @@ repositories {
     jcenter()
 }
 
+configurations {
+    apiResolvable {
+        description 'resolvable extension of the api classpath'
+        canBeResolved=true
+        extendsFrom api
+    }
+}
+
 task fatJar(type: Jar) {
     baseName = project.name + '-all'
     from {
-//        configurations.api.collect { it.isDirectory() ? it : zipTree(it).matching {
-//            exclude { it.path.contains('META-INF') }
-//        }}
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it).matching {
+        configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
             exclude { it.path.contains('META-INF') }
         }}
     }
 
-//    from { configurations.api.collect {
-//        it.isDirectory() ? it : zipTree(it).matching {
-//            exclude { it.path.contains('META-INF') }
-//        }
-//    }}
     duplicatesStrategy = 'exclude'
 	from sourceSets.main.allJava
     with jar
@@ -73,7 +74,6 @@ ext.getGitHash = { ->
     }
     
 }
-
 
 dependencies {
 
