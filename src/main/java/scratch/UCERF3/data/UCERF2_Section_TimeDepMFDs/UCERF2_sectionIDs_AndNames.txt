@@ -1,0 +1,191 @@
+237	Whittier, alt 2
+296	Elsinore (Glen Ivy) rev
+297	Elsinore (Glen Ivy stepover)
+298	Elsinore (Temecula stepover)
+299	Elsinore (Temecula) rev
+102	Elsinore (Julian)
+103	Elsinore (Coyote Mountain)
+48	Garlock (East)
+341	Garlock (Central)
+49	Garlock (West)
+119	San Jacinto (San Bernardino)
+289	San Jacinto (San Jacinto Valley) rev
+290	San Jacinto (San Jacinto Valley, stepover)
+291	San Jacinto (Anza, stepover)
+293	San Jacinto (Anza) rev
+292	San Jacinto (Clark) rev
+101	San Jacinto (Coyote Creek)
+99	San Jacinto (Borrego)
+28	San Jacinto (Superstition Mtn)
+26	San Andreas (Offshore)
+27	San Andreas (North Coast)
+67	San Andreas (Peninsula)
+56	San Andreas (Santa Cruz Mtn)
+32	San Andreas (Parkfield)
+285	San Andreas (Cholame) rev
+300	San Andreas (Carrizo) rev
+287	San Andreas (Big Bend)
+286	San Andreas (Mojave N)
+301	San Andreas (Mojave S)
+282	San Andreas (San Bernardino N)
+283	San Andreas (San Bernardino S)
+284	San Andreas (San Gorgonio Pass-Garnet HIll)
+295	San Andreas (Coachella) rev
+25	Rodgers Creek
+68	Hayward (No)
+69	Hayward (So)
+4	Calaveras (No)
+5	Calaveras (Central)
+55	Calaveras (So)
+112	Verdugo
+115	Simi-Santa Rosa
+116	Oak Ridge (Onshore)
+117	Ventura-Pitas Point
+118	Red Mountain
+39	Mono Lake
+40	Hartley Springs
+41	Hilton Creek
+42	Round Valley
+43	Fish Slough
+44	White Mountains
+47	Owl Lake
+51	Deep Springs
+52	Point Reyes
+53	Zayante-Vergeles
+54	Quien Sabe
+57	San Andreas (Creeping Segment)
+58	Pleito
+63	So Sierra Nevada
+64	Owens Valley
+65	Independence
+66	Birch Creek
+70	West Napa
+72	Hunting Creek-Berryessa
+73	Battle Creek
+74	Los Osos
+75	San Luis Range (So Margin)
+76	Lions Head
+78	Mission Ridge-Arroyo Parida-Santa Ana
+80	San Cayetano
+81	Cleghorn
+82	North Frontal  (West)
+83	North Frontal  (East)
+84	Helendale-So Lockhart
+85	Lenwood-Lockhart-Old Woman Springs
+86	Gravel Hills-Harper Lk
+87	Blackwater
+88	Calico-Hidalgo
+89	Pisgah-Bullion Mtn-Mesquite Lk
+90	So Emerson-Copper Mtn
+91	Johnson Valley (No)
+92	Landers
+93	Pinto Mtn
+94	Burnt Mtn
+95	Eureka Peak
+96	Elmore Ranch
+97	Imperial
+98	Superstition Hills
+104	Laguna Salada
+107	San Jose
+108	Hollywood
+110	Santa Rosa Island
+111	Santa Cruz Island
+240	Puente Hills
+247	San Gabriel
+249	Earthquake Valley
+253	White Wolf
+321	West Tahoe
+322	North Tahoe
+381	Great Valley 4b, Gordon Valley
+2	Mount Diablo Thrust
+8	Monte Vista-Shannon
+9	Ortigalita
+10	Rinconada
+11	Monterey Bay-Tularcitos
+14	Honey Lake
+15	Table Bluff
+18	Big Lagoon-Bald Mtn
+19	Trinidad
+20	Fickle Hill
+21	McKinleyville
+22	Mad River
+23	Collayomi
+24	Bartlett Springs
+30	Hosgri
+31	San Juan
+33	Gillem-Big Crack
+34	Cedar Mtn-Mahogany Mtn
+35	Likely
+36	Surprise Valley
+37	Hat Creek-McArthur-Mayfield
+38	Robinson Creek
+125	Cucamonga
+129	Channel Islands Thrust
+130	Northridge
+131	Great Valley 1
+132	Great Valley 3, Mysterious Ridge
+133	Great Valley 2
+134	Great Valley 4a, Trout Creek
+135	Great Valley 5, Pittsburg Kirby Hills
+136	Great Valley 7
+137	Great Valley 8
+138	Great Valley 10
+139	Great Valley 11
+140	Great Valley 12
+141	Great Valley 14 (Kettleman Hills)
+142	Great Valley 13 (Coalinga)
+143	San Joaquin Hills
+144	Little Lake
+145	Tank Canyon
+146	Elysian Park (Upper)
+149	Maacama-Garberville
+151	Great Valley 9
+152	Raymond
+153	Casmalia (Orcutt Frontal)
+154	Los Alamos-West Baseline
+212	Pitas Point (Lower, West)
+215	Pitas Point (Lower)-Montalvo
+124	Clamshell-Sawpit
+220	Malibu Coast, alt 1
+227	Santa Susana, alt 1
+228	Holser, alt 1
+238	Chino, alt 1
+109	Palos Verdes
+121	Coronado Bank
+123	Rose Canyon
+122	Newport-Inglewood (Offshore)
+235	Newport-Inglewood, alt 1
+219	Anacapa-Dume, alt 1
+226	Santa Monica, alt 1
+77	Santa Ynez (West)
+79	Santa Ynez (East)
+113	Sierra Madre (San Fernando)
+114	Sierra Madre
+45	Death Valley (No of Cucamongo)
+46	Death Valley (No)
+245	Death Valley (Black Mtns Frontal)
+246	Death Valley (So)
+50	Hunter Mountain-Saline Valley
+244	Panamint Valley
+7	Greenville (So)
+6	Greenville (No)
+3	Concord
+1	Green Valley (So)
+71	Green Valley (No)
+17	Little Salmon (Onshore)
+16	Little Salmon (Offshore)
+29	San Gregorio (So)
+12	San Gregorio (No)
+402	Elsinore (Stepovers Combined)
+401	San Jacinto (Stepovers Combined)
+239	Chino, alt 2
+241	Puente Hills (LA)
+242	Puente Hills (Santa Fe Springs)
+243	Puente Hills (Coyote Hills)
+216	North Channel
+223	Malibu Coast, alt 2
+234	Newport-Inglewood, alt 2
+222	Anacapa-Dume, alt 2
+225	Santa Monica, alt 2
+218	Oak Ridge (Offshore)
+217	Pitas Point (Upper)

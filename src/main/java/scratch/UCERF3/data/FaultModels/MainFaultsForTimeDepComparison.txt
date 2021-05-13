@@ -1,0 +1,11 @@
+Elsinore FM3.1	236	296	402	299	102	103
+Elsinore FM3.2	237	296	402	299	102	103
+Garlock	48	341	49
+San Jacinto	119	289	401	293	292	101	99	28
+N. San Andreas	653	654	655	657
+S. San Andreas	32	285	300	287	286	301	282	283	284	294	295
+Hayward-Rodgers Creek	651	639	638
+Calaveras	601	602	603
+Greenville	635	636
+Green Valley	622	623
+Mount Diablo	713	711

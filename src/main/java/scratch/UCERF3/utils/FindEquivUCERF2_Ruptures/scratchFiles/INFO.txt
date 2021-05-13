@@ -1,0 +1,115 @@
+On Nov 3, 2012 I discovered the following error in FM2to3_1_sectionNameChanges.txt and FM2to3_2_sectionNameChanges.txt:
+
+	Green Valley (So)	Green Valley 2011 CFM
+	Green Valley (No)	COMBINED
+
+(the first one should say COMBINED as well; I fixed this, and it shouldn't effect anything)
+
+************* Previous notes below:
+
+
+These are some files used in developing FM3_1_SectionsForUCERF2_Sources.txt & FM3_2_SectionsForUCERF2_Sources.txt.
+
+UCERF3_FaultSectAddAndRev_v3_2011_11_15.xlsx (renamed from "UCERF3 2011 Fault Section Additions and Revisions_ver 3_2011_11_15.xlsx") came from Tim via email on 2-17-12.
+
+AllFM3_sectNames.txt came from writing out unique names from:
+
+	FileMakingStuff.writeAllFM3_sectNames();
+
+I then checked whether each UCERF2 fault section listed in (data/FindEquivUCERF2_Ruptures/FM2_SectionsForUCERF2_Sources.txt, 
+which I obtained using the method FindEquivUCERF2_FM2pt1_Ruptures.getAllSectionNames()) still exist in AllFM3_sectNames.txt, and wrote 
+those that didn't to the first column of the file:
+
+	FM2to3_sectionNameChanges.txt
+
+I then added the second column to this file by hand (using obvious names and Tim's xlsx file above).
+
+After doing the step below I discovered that some sections/sources that were the same between FM 2.1 and 2.2 are now different between 
+FM3.1 and 3.2.  The associated UCERF2 sources are:
+
+	sourceName 	(userf2_sect for both; fm3.1_sect; and fm 3.2_sect)
+	----------
+	Elsinore;W	(Whittier, alt 2; Whittier alt 1; Whittier alt 2)
+	Coronado Bank	(Coronado Bank ; Coronado Bank alt1; Coronado Bank alt2)
+	Great Valley 5, Pittsburg Kirby Hills	(Great Valley 5, Pittsburg Kirby Hills; Great Valley 05 Pittsburg - Kirby Hills alt1; Great Valley 05 Pittsburg Kirby Hills alt2)
+	Mount Diablo Thrust	(Mount Diablo Thrust; Mount Diablo Thrust North CFM PLUS Mount Diablo Thrust South; Mount Diablo Thrust)
+	San Luis Range (So Margin)	(San Luis Range (So Margin); San Luis Range 2011 CFM; San Luis Range (So Margin))
+	Zayante-Vergeles	(Zayante-Vergeles; Zayante-Vergeles 2011 CFM; Zayante-Vergeles)
+	Fickle Hill	(Fickle Hill; Fickle Hill (alt1); REMOVED)
+	Mad River	(Mad River; Mad River (alt1); Mad River - Trinidad fault zone (alt2))
+	McKinleyville	(McKinleyville ; McKinleyville (alt1); REMOVED)
+	Trinidad	(Trinidad ; Trinidad (alt1); REMOVED)
+
+I therefore copied FM2to3_sectionNameChanges.txt into two files 
+
+	FM2to3_1_sectionNameChanges.txt
+	FM2to3_2_sectionNameChanges.txt
+
+changed the previous file to old_FM2to3_sectionNameChanges.txt, and made hand edits to these two new files to reflect the above differences.
+
+
+Finally, I created the files FM3_1_SectionsForUCERF2_Sources.txt and FM3_2_SectionsForUCERF2_Sources.txt by making the substitutions listed 
+in the above FM2to3_?_sectionNameChanges.txt files to the previous FM2_SectionsForUCERF2_Sources.txt using the following code:
+
+	FileMakingStuff.mkNewFilesBySubstitutingNames()
+	
+Following our preliminary model (and before the final model), two additional fault section name changes were made:
+
+	"Landers 2011 rev" changed to "Kickapoo"
+	"Oceanic 2011 CFM" changed to "Oceanic - West Huasna"
+	
+I update the FM3_1_SectionsForUCERF2_Sources.txt and FM3_2_SectionsForUCERF2_Sources.txt files accordingly 
+(only the first one exists in these files), but I did not redo all the above (meaning the files in this 
+directory are out of date).  I updated FM2to3_?sectionNameChanges.txt with the above name changes on 9/20/12.
+
+Results for FM3.1:
+------------------
+
+The only source listed under "Problem Sources (can't find associated inv section for one end of at least one rupture):" is
+
+	Birch Creek
+
+which was removed in going from UCERF2 to UCERF3 FM 3.1.
+
+Most of the ruptures listed under "Unassociated UCERF2 ruptures (not from other FM nor subseismogenic, so there should be a mapping?)" 
+have an endpoint this is the only subsection used from its parent section (and we require two subsection from every parent).  
+The exception are:
+
+	These only use one subsection of a parent (in the middle of the parent section due to a Y connection):
+
+	7283	193	3	Landers	(Johnson Valley (No) 2011 rev, Subsection 2	Homestead Valley 2011, Subsection 4);  onlyOneSubsectOfSect = false
+	7285	193	5	Landers	(Homestead Valley 2011, Subsection 4	Emerson-Copper Mtn 2011, Subsection 8);  onlyOneSubsectOfSect = false
+	7289	193	9	Landers	(Emerson-Copper Mtn 2011, Subsection 9	Camp Rock 2011, Subsection 1);  onlyOneSubsectOfSect = false
+	7304	193	24	Landers	(Emerson-Copper Mtn 2011, Subsection 7	Camp Rock 2011, Subsection 1);  onlyOneSubsectOfSect = false
+	7314	193	34	Landers	(Johnson Valley (No) 2011 rev, Subsection 2	Emerson-Copper Mtn 2011, Subsection 8);  onlyOneSubsectOfSect = false
+	7326	193	46	Landers	(Johnson Valley (No) 2011 rev, Subsection 1	Emerson-Copper Mtn 2011, Subsection 8);  onlyOneSubsectOfSect = false
+	7327	193	47	Landers	(Johnson Valley (No) 2011 rev, Subsection 2	Emerson-Copper Mtn 2011, Subsection 9);  onlyOneSubsectOfSect = false
+	7329	193	49	Landers	(Homestead Valley 2011, Subsection 4	Camp Rock 2011, Subsection 1);  onlyOneSubsectOfSect = false
+	7348	193	68	Landers	(Johnson Valley (No) 2011 rev, Subsection 1	Camp Rock 2011, Subsection 1);  onlyOneSubsectOfSect = false
+	7349	193	69	Landers	(Johnson Valley (No) 2011 rev, Subsection 2	Camp Rock 2011, Subsection 2);  onlyOneSubsectOfSect = false
+	7357	193	77	Landers	(Johnson Valley (No) 2011 rev, Subsection 2	Camp Rock 2011, Subsection 4);  onlyOneSubsectOfSect = false
+	8685	220	4	Ortigalita	(Ortigalita (North), Subsection 2	Ortigalita (South), Subsection 4);  onlyOneSubsectOfSect = false
+	8694	220	13	Ortigalita	(Ortigalita (North), Subsection 2	Ortigalita (South), Subsection 5);  onlyOneSubsectOfSect = false
+	8702	220	21	Ortigalita	(Ortigalita (North), Subsection 2	Ortigalita (South), Subsection 7);  onlyOneSubsectOfSect = false
+
+	Plus a bunch of "Palos Verdes Connected" ruptures because, in this fault model, "Coronado Bank alt1" 
+	no longer connects to "Palos Verdes" (but they should connect in FM 3.2).
+
+
+Results for FM3.2:
+------------------
+
+Same as for several above.
+
+The only sources listed under "Problem Sources (can't find associated inv section for one end of at least one rupture):" are
+
+	Birch Creek
+	Fickle Hill
+	McKinleyville
+	Trinidad
+
+which were removed in going from UCERF2 to UCERF3 FM 3.2.
+
+The following are problems not already identified for FM 3.1 above:
+
+"Oak Ridge Connected" are filtered out because "Oak Ridge (Offshore)" is too far from "Oak Ridge (Onshore)"

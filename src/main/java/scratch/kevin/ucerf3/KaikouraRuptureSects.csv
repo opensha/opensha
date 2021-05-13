@@ -1,0 +1,12 @@
+Fault Name,NZ FM ID,Extent,Rake,Dip,Mech,Start Rel SS,End,Start Abs SS,End
+TheHumps,435,Full,180,50,,0,3,2318,2321
+Leader,189,Full,180,55,,0,4,1109,1113
+StoneJug,420,Full,180,70,,0,2,2253,2255
+Hundalee,143,"Partial, NE",90,55,,4,6,853,855
+Papatea,335,Full,180,60,,0,2,1840,1842
+Jordan,156,"Partial, N (seems to be full?)",100,37,,0,2,922,924
+Kekerengu 1,172,Full,135,60,,0,3,1001,1004
+Needles,260,"Almost all, S",157,80,,2,5,1480,1483
+Fidget,100,"Partial, small part of central",180,90,,2,3,602,603
+HopeConwayOS,137,Very minor,173,80,,,,,
+LondonHill,200,Very minor,180,50,,3,3,1169,1169

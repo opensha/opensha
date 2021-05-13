@@ -1,0 +1,7 @@
+Start Year,End Year,Mc
+0,1850,9
+1850,1932,5.5
+1932,1984,4
+1984,,2.5
+,,
+"Data source: Arbitrarily chosen by Ned Field on 10/29/18 to have a less restrictive option (to include more historical data in ETAS simulations, but at the cost of under-estimating spontaneous rates in some regions",,
