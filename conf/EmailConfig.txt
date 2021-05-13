@@ -1,0 +1,6 @@
+EmailTo	      kmilner@usc.edu
+SmtpHost      email.usc.edu
+Subject	      Activity on CA Ref Fault Param DB
+EmailFrom     ucerf-database@ucerf.org
+EmailEnabled  true
+AccountInfoSubject Login information in CA Ref Fault Param GUI

@@ -1,0 +1,11 @@
+.classpath
+.project
+.settings
+.gradle
+bin
+build
+classes
+tmp
+Scratch*.java
+.*.html
+.DS_Store
