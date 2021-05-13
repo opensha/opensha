@@ -5,8 +5,9 @@ import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestCoulombFilter.class,
-	TestIncrementalVsFullTests.class,
+	// these are unique to the old UCERF3 way of doing things, now disabled
+//	TestCoulombFilter.class,
+//	TestIncrementalVsFullTests.class,
 	TestPlausbilityResult.class
 })
 
