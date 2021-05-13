@@ -1,0 +1,645 @@
+# Input file for wg99_v27, 1000 iterations, August 8, 2003.
+#
+1 icreep (1=scale area; 2 = scale slip-rate)
+12377  (seed for random number generator: large integer)
+*** Output files *** 
+base_mod_23_wgt_1K
+1 1 1 1 1 1 1 0 0 1    Output file control. 1=create file, 0=dont. (e.g., 0 0 1 0 1 0 0 0 0 0 makes out3 and out5 only.)
+*** General inputs *** 
+2002  today
+30    nYr (length of probability interval in years)
+0.025 0.50 0.975    Statistical points for output (percentiles, must list three)
+3.0e11  (shear modulus in dyne/cm**2)
+1  6.7  number of min mags and values of the min mags for computing the probabilities
+1000    number of Monte Carlo realizations
+*** Regional Slip-rate constraints ***
+36. 43.    min, max regional slip-rate constraints (in mm/yr)
+3          number of transects for slip-rate constraints
+5          number of segments in transect 1 [Central transect]
+1.0        additional slip-rate in transect 1 (in mm/yr)
+5 1 2 3 6   faults indices in transect 1
+2 2 1 3 2   segments indices in transect 1
+3          number of segments in transect 2 [Northern transect]
+3.0        additional slip-rate in transect 2 (in mm/yr)
+1 2 4      faults indices in transect 2
+3 3 3      segment indices in transect 2
+3          number of segments in transect 3 [Southern transect]
+2.0        additional slip-rate in transect 3 (in mm/yr)
+5 1 3       faults indices in transect 3
+2 1 2       segment indices in transect 3
+*** Magnitude PDF ***
+5          number of mag. pdf models [index (1=trunc exp, 2=Y&C), fract char, dummy, nSig1, nSig2, b-value (model 1)]
+1 0.96 0. 2. -2. 0.9 5.0      Bakun 3/7/01     (i.e., 96% characteristic, b=0.9)
+1 0.94 0. 2. -2. 0.9 5.0        "
+1 0.92 0. 2. -2. 0.9 5.0        "
+2 0.94 0. 1. -1. 0.9 5.0        (Youngs and Coppersmith interpretation by Norm A.)
+1 1.00 0. 2. -2. 0.9 5.0      For testing     
+0.13 0.74 0.13 0.0 0.0        weights for pdf models
+*** Fraction of Moment in aftershocks 
+1          number of moment fractions
+0.00       values of aftershock moment fractions
+1.0        weights for aftershock moment fractions
+*** Magnitude-Area Relations ***
+6      number of mag-area relations: M=c1+c2log(A), c3+c4log(A), c5=Atrans., c6=sigmaM
+4.1 1.0 0.0 0.0 100000. 0.12      c1, c2, c3, c4, A1, sigmaM (Ellsworth model 1)
+4.2 1.0 0.0 0.0 100000. 0.12      c1, c2, c3, c4, A1, sigmaM (Ellsworth model 2)
+4.3 1.0 0.0 0.0 100000. 0.12     c1, c2, c3, c4, A1, sigmaM (Ellsworth model 3)
+4.03 1.0 3.03 1.333 1000. 0.12      c1, c2, c3, c4, A1, sigmaM (Hanks model 1)  
+3.98 1.0 3.09 1.333 468. 0.12       c1, c2, c3, c4, A1, sigmaM (Hanks model 2)
+3.98 1.02 0.0 0.0 100000. 0.23    c1, c2, c3, c4, A1, sigmaM (Wells & Cprsmth., 1994)
+0.25 0.40 0.00 0.150 0.05 0.15   ###3/6/02###  "simplified" weights for mag-area relations
+*** Alpha ***
+3               number of alpha models
+0.3 0.5 0.7     alpha values      
+0.2 0.5 0.3     weights for alpha  ### Per 10/99  ###
+*** Base of seismogenic zone (seismogenic width) ***
+3              Number of base of seismogenic zone
+0.185 0.630 0.185    Weights for the base of seismogenic zone
+*** empirical interaction  model
+3     number of empirical models
+0.392  emp factor 1
+0.541  emp factor 2
+0.665  emp factor 3
+0.1 0.5 0.4  wts for scale factors
+*** Fault Inputs **********************************************************
+7               nFLt
+*** Fault 1 *****************************************************************
+San_Andreas
+4      number of segments for this fault
+SAS
+SAP
+SAN
+SAO
+*** Segmentation Points ***
+3      number of seg pts locations for seg pt 1 
+-121.4356 36.7793  location 1 for segpt 1 (x,y) for now
+-121.4816 36.8059  location 2 for segPt 1
+-121.5214 36.8375  location 3 for segPt 1
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 2 
+-121.9192 37.1134  location 1 for segpt 2
+-122.0036 37.1762  location 2 for segPt 2
+-122.0748 37.2412  location 3 for segPt 2
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 3 	
+-122.4844 37.6688  location 1 for segpt 3
+-122.5741 37.7856  location 2 for segPt 3
+-122.6653 37.8983  location 3 for segPt 3
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 4 	
+-123.8131 39.1320  location 1 for segpt 4
+-123.8407 39.1706  location 2 for segPt 4
+-123.8556 39.2139  location 3 for segPt 4
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 5 	
+-124.2612 40.1663  location 1 for segpt 5
+-124.4032 40.2440  location 2 for segPt 5
+-124.5436 40.3249  location 3 for segPt 5
+0.185 0.630 0.185  weights for seg pt locations
+*** Internal Faults Points ***
+4  internal fault points - SAS
+-121.5645 36.8701
+-121.6520 36.9260
+-121.8120 37.0530
+-121.9070 37.1040
+3  internal fault points - SAP
+-122.1400 37.2970 
+-122.2100 37.3670       
+-122.2830 37.4380       
+5  internal fault points - SAN
+-122.7224 37.9617
+-122.9170 38.1810
+-123.0419 38.3290
+-123.1144 38.4080
+-123.7894 39.1014
+7  internal fault points - SAO
+-123.8726 39.2589
+-123.9224 39.3965
+-123.9953 39.6730
+-124.0067 39.9135
+-124.0490 40.0259
+-124.0635 40.0506
+-124.1381 40.0965
+*** Seismogenic widths ***
+13 15 17       Width for SAS
+11 13 15       width for SAP
+ 9 11 13       width for SAN
+ 9 11 13       width for SAO
+*** Aseismic slip factors ***
+3              number of asf for SAS
+0.8 0.9 1.0    values of asf
+0.185 0.630 0.185    weights for asf 
+2              number of asf for SAP
+0.9 1.0        values of asf
+0.185 0.815        weights for asf 
+2              number of asf for SAN
+0.9 1.0        values of asf
+0.185 0.815        weights for asf 
+2              number of asf for SAO
+0.9 1.0        values of asf
+0.185 0.815        weights for asf 
+*** Slip-Rates ***
+5              number of slip-rates for San Andreas
+0.09 0.16 0.50 0.16 0.09  weights for slip-rates   (5-point approximation for 95% bounds)
+13. 15. 17. 19. 21.  SAS seg slip-rate
+13. 15. 17. 19. 21.  SAP seg slip-rate
+21. 22.5 24. 25.5 27.  SAN seg slip-rate
+21. 22.5 24. 25.5 27.  SAO seg slip-rate
+*** Segmentation model ***
+5            number of segmentation models
+0.76 0.05 0.14 0.00 0.00 0.00 0.00 0.00 0.05 0.00  model I 
+0.45 0.45 0.00 0.00 0.00 0.00 0.00 0.00 0.10 0.00  model II
+0.56 0.04 0.12 0.08 0.00 0.00 0.00 0.00 0.20 0.00  model III
+0.24 0.36 0.16 0.00 0.00 0.02 0.00 0.02 0.20 0.00  model IV
+0.49 0.08 0.04 0.00 0.08 0.03 0.00 0.03 0.25 0.00  model V
+ 0.15 0.23 0.31 0.08 0.23  Weights for models
+ 6.9 0.0  floating eqk magnitudes
+*** Date of last event ***
+1         number of dates of last eqk for SAS 
+1906.      values of date of last eqk
+1.0       weights for date of last eqk
+1         number of dates of last eqk for SAP
+1906.      values of date of last eqk
+1.0       weights for date of last eqk
+1         number of dates of last eqk for SAN
+1906.      values of date of last eqk
+1.0       weights for date of last eqk
+1         number of dates of last eqk for SAO 
+1906.      values of date of last eqk
+1.0       weights for date of last eqk
+*** Clock Advance ***
+3         number of clock advance values for SAS
+-229.0 -66.8 +127.3        values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for SAP
+-48.7 -0.5 +19.2        values of clock advance
+0.185 0.630 0.185       weights for clock advance
+1         number of clock advance values for SAN
+0.        values of clock advance
+1.0       weights for clock advance
+1         number of clock advance values for SAO
+0.        values of clock advance
+1.0       weights for clock advance
+*** Probability Model ***
+5              Number of probability models
+4 1 3 2 5              probability model indecies (1=poisson, 2 = BPT, 3 = BPT w/Step, 4=empirical interaction, 5=time pred)
+0.181 0.100 0.231 0.154 0.335            weights for probability models
+time_pred_2002_30yr_rand.dat
+*** Fault 2 ***********************************************************
+Hayward/RC
+3     number of segments for this fault
+HS
+HN
+RC
+*** Segmentation Points ***
+3       number of seg pts locations for seg pt 1 	
+-121.7903 37.3952  location 1 for segpt 1
+-121.8485 37.4535  location 2 for segPt 1
+-121.9055 37.5082  location 3 for segPt 1
+0.185 0.630 0.185  weights for seg pt locations
+3       number of seg pts locations for seg pt 2 1	
+-122.1463 37.7518  location 1 for segpt 2
+-122.2128 37.8273  location 2 for segPt 2
+-122.2726 37.9024  location 3 for segPt 2
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 3 	
+-122.4025 38.0478  location 1 for segpt 3
+-122.4342 38.0875  location 2 for segPt 3
+-122.4663 38.1237  location 3 for segPt 3
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 4 	
+-122.7598 38.5349  location 1 for segpt 4
+-122.7883 38.5752  location 2 for segPt 4
+-122.8178 38.6145  location 3 for segPt 4
+0.185 0.630 0.185  weights for seg pt locations
+*** Internal Faults Points ***
+2  Number of internal fault points - HS
+-122.0824 37.6760       
+-122.1284 37.7299       
+0  Number of internal fault points - HN
+1  Number of internal fault points - RC
+-122.6136 38.3315       
+*** Width of seismogenic zone ***
+10 12 14       Width for HS
+10 12 14       width for HN
+10 12 14       width for RC
+*** Aseismic slip factors ***
+3             number of asf for HS
+0.4 0.6 0.8    values of asf
+0.185 0.630 0.185    weights for asf 
+3             number of asf for HN
+0.4 0.6 0.8    values of asf
+0.185 0.630 0.185    weights for asf 
+2             number of asf for RC
+0.9 1.0    values of asf
+0.185 0.815    weights for asf 
+*** Slip-rates ***
+3          number of slip-rates for Hayward
+0.13 0.74 0.13  weights for slip-rates
+7. 9. 11.  HS seg slip-rate
+7. 9. 11.  HN seg slip-rate
+7. 9. 11.  RC seg slip-rate
+*** Segmentation models ***
+4   nModels
+0.09 0.55 0.25 0.06 0.00 0.00 0.00 0.00 0.05 0.00  model A 
+0.05 0.40 0.40 0.10 0.00 0.00 0.00 0.00 0.05 0.00  model B
+0.07 0.10 0.55 0.20 0.00 0.00 0.00 0.00 0.08 0.00  model C
+0.03 0.15 0.70 0.07 0.00 0.00 0.00 0.00 0.05 0.00  model D
+0.22 0.36 0.11 0.31  weights for models
+ 6.9 0.0  floating eqk magnitudes
+*** Date of last event ***
+1                        number of dates of last eqk for HS 
+1868.                     values of date of last eqk
+1.0                      weights for date of last eqk
+6                        number of dates of last eqk for HN
+1635. 1665. 1702. 1739. 1776. 1821. values of date of last eqk
+0.1 0.2 0.2 0.2 0.2 0.1      weights for date of last eqk
+5                        number of dates of last eqk for RC
+1670. 1705. 1740. 1776. 1824. values of date of last eqk
+0.1 0.2 0.3 0.3 0.1      weights for date of last eqk
+*** Clock Advance ***
+3                        number of clock advance values for HS
+-34.3 -14.7 -1.1         values of clock advance
+0.185 0.630 0.185              weights for clock advance
+3         number of clock advance values for HN
+-43.7 -25.5 -13.3        values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for RC
+-58.2 -27.6 -5.1        values of clock advance
+0.185 0.630 0.185      weights for clock advance
+*** Probability Model ***
+4              Number of probability models
+4 1 3 2             probability model indecies (1=poisson, 2 = BPT, 3 = BPT w/Step, 4=empirical interaction, 5=time pred)
+0.285 0.123 0.462 0.131            weights for probability models
+*** Fault 3 ***********************************************************
+Calaveras
+3         number of segments for this fault
+CS
+CC
+CN
+*** Segmentation Points ***
+3     number of seg pts locations for seg pt 1 	
+-121.3651 36.7876  location 1 for segpt 1
+-121.3956 36.8257  location 2 for segPt 1
+-121.4145 36.8682  location 3 for segPt 1
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 2 	
+-121.4474 36.9453  location 1 for segpt 2
+-121.4678 36.9898  location 2 for segPt 2
+-121.4960 37.0290  location 3 for segPt 2
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 3 	
+-121.7690 37.4078  location 1 for segpt 3
+-121.8071 37.4450  location 2 for segPt 3
+-121.8229 37.4895  location 3 for segPt 3
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 4 	
+-121.9823 37.7757  location 1 for segpt 4
+-122.0094 37.8173  location 2 for segPt 4
+-122.0368 37.8553  location 3 for segPt 4
+0.185 0.630 0.185  weights for seg pt locations
+*** Internal Faults Points ***
+0  number of internal points - CS
+5  number of internal points - CC
+-121.5424 37.0958
+-121.5801 37.1523
+-121.6483 37.2481
+-121.7149 37.3430
+-121.7618 37.3996
+6  number of internal points - CN
+-121.8235 37.4888
+-121.8349 37.5101
+-121.8511 37.5385
+-121.8620 37.5675
+-121.9327 37.6939
+-121.9379 37.7149
+*** Seismogenic widths ***
+9 11 13       Width for CS
+9 11 13       width for CC
+11 13 15      width for CN
+*** Aseismic slip factor ***
+3             number of asf for CS
+0.0 0.2 0.4    values of asf
+0.185 0.630 0.185    weights for asf 
+3             number of asf for CC [modified by WG concensus]
+0.1 0.3 0.5    values of asf
+0.4 0.5 0.1   weights for asf   
+3             number of asf for CN
+0.7 0.8 0.9    values of asf
+0.185 0.630 0.185    weights for asf 
+*** Slip-rate ***
+3          number of slip-rates for Calaveras
+0.13 0.74 0.13  weights for slip-rates
+13. 15. 17.  CS seg slip-rate
+13. 15. 17.  CC seg slip-rate
+4. 6. 8.     CN seg slip-rate
+*** Segmentation model ***
+4    nModels
+0.05 0.25 0.40 0.03 0.00 0.00 0.00 0.00 0.05 0.20  model A 
+0.00 0.00 0.20 0.00 0.00 0.00 0.00 0.00 0.10 0.70  model B
+0.05 0.05 0.40 0.05 0.00 0.00 0.00 0.00 0.05 0.40  model C
+0.05 0.05 0.60 0.05 0.00 0.00 0.00 0.00 0.10 0.15  model D
+0.1 0.5 0.3 0.1  weights for models
+ 6.2 6.2  floating eqk magnitudes
+*** Date of last event ***
+3         number of dates of last eqk for CS 
+1836. 1849. 1899.      values of date of last eqk
+0.3 0.3 0.4       weights for date of last eqk
+4         number of dates of last eqk for CC
+1776. 1836. 1904. 1982.      values of date of last eqk
+0.188 0.025 0.321 0.467       ###7/7/01### weights for date of last eqk
+5         number of dates of last eqk for CN 
+1670. 1710. 1750. 1790. 1830.      values of date of last eqk
+0.2 0.2 0.2 0.2 0.2       weights for date of last eqk
+*** Clock Advance ***
+3         number of clock advance values for CS
+-10.8 -2.8 0.0      values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for CC
+-23.9 -9.0 -0.6        values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for CN
+-35.8 -17.0 -4.5        values of clock advance
+0.185 0.630 0.185      weights for clock advance
+*** Probability Model ***
+4              Number of probability models
+4 1 3 2             probability model indecies (1=poisson, 2 = BPT, 3 = BPT w/Step, 4=empirical interaction, 5=time pred)
+0.315 0.227 0.315 0.142            weights for probability models
+*** Fault 4 ***********************************************************
+Concord/GV
+3        number of segments for this fault 
+CON
+GVS
+GVN
+*** Segmentation Points ***
+3     number of seg pts locations for seg pt 1  all ok 	
+-121.9618 37.8605  location 1 for segpt 1
+-121.9896 37.9003  location 2 for segPt 1
+-122.0150 37.9403  location 3 for segPt 1
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 2  *** corrected *** 	
+-122.0766 38.0389  location 1 for segPt 2
+-122.0928 38.0626  location 2 for segPt 2
+-122.1003 38.0893  location 3 for segPt 2
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 3 	
+-122.1386 38.2321  location 1 for segpt 3
+-122.1459 38.2587  location 2 for segPt 3
+-122.1526 38.2851  location 3 for segPt 3
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 4 	
+-122.1672 38.3387  location 1 for segpt 4
+-122.1789 38.3825  location 2 for segPt 4
+-122.1904 38.4263  location 3 for segPt 4
+0.185 0.630 0.185  weights for seg pt locations
+*** Internal Faults Points ***
+0 number of internal fault points - CON
+0 number of internal fault points - GVS
+0 number of internal fault points - GVN
+*** Seismogenic Widths ***
+14 16 18   *** Width for CON
+12 14 16       width for GVS
+12 14 16       width for GVN
+*** Aseismic slip factor ***
+3             number of asf for CON
+0.2 0.5 0.8    values of asf
+0.33 0.34 0.33    weights for asf  [thirds] 
+3             number of asf for GVS
+0.2 0.5 0.8    values of asf
+0.33 0.34 0.33    weights for asf 
+3             number of asf for GVN
+0.2 0.5 0.8    values of asf
+0.33 0.34 0.33    weights for asf 
+*** Slip-Rates ***
+3          number of slip-rates for Concord/GV
+0.13 0.74 0.13  weights for slip-rates
+2. 4. 6.  CON seg slip-rate
+2. 5. 8.  GVS seg slip-rate
+2. 5. 8.     GVN seg slip-rate
+*** Segmentation model ***
+3    nModels
+0.20 0.20 0.20 0.20 0.00 0.00 0.00 0.00 0.20 0.00  model A 
+0.80 0.05 0.05 0.05 0.00 0.00 0.00 0.00 0.05 0.00  model B
+0.05 0.05 0.05 0.05 0.00 0.00 0.00 0.00 0.80 0.00  model C
+0.5 0.3 0.2  weights for models
+ 6.2 0.0  floating eqk magnitudes
+*** Date of Last Event ***
+5         number of dates of last eqk for CON
+1687. 1728. 1768. 1808. 1849.      values of date of last eqk
+0.2 0.2 0.2 0.2 0.2       weights for date of last eqk
+5         number of dates of last eqk for GVS 
+1691. 1730. 1770. 1810. 1849.     values of date of last eqk
+0.2 0.2 0.2 0.2 0.2       weights for date of last eqk
+5         number of dates of last eqk for GVN
+1706. 1741. 1777. 1813. 1849.      values of date of last eqk
+0.2 0.2 0.2 0.2 0.2       weights for date of last eqk
+*** Clock Advance ***
+3         number of clock advance values for CON
+-35.6 -16.4 -5.1      values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for GVS
+-27.5 -9.5 -2.1        values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for GVN
+-16.9 -4.6 0.3        values of clock advance
+0.185 0.630 0.185      weights for clock advance
+*** Probability Model ***
+4              Number of probability models
+4 1 3 2             probability model indecies (1=poisson, 2 = BPT, 3 = BPT w/Step, 4=empirical interaction, 5=time pred)
+0.277 0.246 0.354 0.123            weights for probability models
+*** Fault 5 ***********************************************************
+San_Gregorio
+2     number of segments for this fault
+SGS
+SGN
+*** Segmentation Points ***
+3     number of seg pts locations for seg pt 1 	ok
+-121.7954 36.2376  location 1 for segPt 1
+-121.8593 36.3131  location 2 for segPt 1
+-121.9156 36.3893  location 3 for segpt 1
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 2  ok	
+-122.1330 36.7659  location 1 for segPt 2
+-122.1555 36.8528  location 2 for segPt 2
+-122.1982 36.9349  location 3 for segpt 2
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 3 	ok
+-122.5537 37.6401  location 1 for segpt 3
+-122.6166 37.7682  location 2 for segPt 3
+-122.6780 37.8924  location 3 for segPt 3
+0.185 0.630 0.185  weights for seg pt locations
+*** Internal Faults Points ***
+6  number of internal fault points - SGS
+-121.9351 36.4194
+-121.9538 36.4669
+-121.9804 36.5172
+-122.0212 36.5561
+-122.0945 36.6697
+-122.1295 36.7496
+1  number of internal fault points - SGN
+-122.3936 37.2906
+*** Seismogenic width ***
+10 12 14       Width for SGS
+11 13 15       width for SGN
+*** Aseismic Slip factor ***
+3             number of asf for SGS
+0.8 0.9 1.0    values of asf
+0.185 0.630 0.185    weights for asf 
+3             number of asf for SGN
+0.8 0.9 1.0    values of asf
+0.185 0.630 0.185    weights for asf 
+*** Slip-Rate ***
+3          number of slip-rates for San Gregorio
+0.13 0.74 0.13  weights for slip-rates
+1. 3. 5.  SGS seg slip-rate
+4. 7. 10.  SGN seg slip-rate
+*** Segmentation Model ***
+3    nModels
+0.70 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.30 0.00  model A 
+0.35 0.00 0.00 0.35 0.00 0.00 0.00 0.00 0.30 0.00  model B
+0.00 0.00 0.00 0.70 0.00 0.00 0.00 0.00 0.30 0.00  model C
+0.33 0.34 0.33  weights for models
+ 6.9 0.0  floating eqk magnitudes
+*** Date of Last Event ***
+4         number of dates of last eqk for SGS
+1306. 1541. 1776. 1836.      values of date of last eqk
+0.3 0.3 0.3 0.1       weights for date of last eqk
+6         number of dates of last eqk for SGN 
+1270. 1400. 1520. 1640. 1776. 1838.      values of date of last eqk
+0.1 0.2 0.2 0.2 0.2 0.1       weights for date of last eqk
+*** Clock Advance ***
+3         number of clock advance values for SGS
+-34.5 -11.9 10.4      values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for SGN
+-138.0 -57.4 -7.6       values of clock advance
+0.185 0.630 0.185       weights for clock advance
+*** Probability Model ***
+4              Number of probability models
+4 1 3 2             probability model indecies (1=poisson, 2 = BPT, 3 = BPT w/Step, 4=empirical interaction, 5=time pred)
+0.292 0.196 0.396 0.115            weights for probability models
+*** Fault 6 ***********************************************************
+Greenville
+2      number of segments for this fault 
+GS
+GN
+*** Segmentation Points ***
+3     number of seg pts locations for seg pt 1 	ok
+-121.5217 37.4767 location 1 for segpt 1 
+-121.5408 37.4994 location 2 for segPt 1 
+-121.5539 37.5256 location 3 for segPt 1 
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 2 	ok
+-121.6438 37.6439 location 1 for segpt 2 
+-121.6647 37.6858 location 2 for segPt 2
+-121.6997 37.7219 location 3 for segPt 2
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 3 	ok
+-121.8133 37.8419 location 1 for segpt 3
+-121.8328 37.8839 location 2 for segPt 3
+-121.8522 37.9273 location 3 for segPt 3
+0.185 0.630 0.185  weights for seg pt locations
+*** Internal Faults Points ***
+3 number of internal fault points - GS ok
+-121.5539 37.5256
+-121.5808 37.5754
+-121.6438 37.6439
+2 number of internal fault points - GN ok
+-121.6997 37.7219
+-121.7630 37.7930
+*** Seismogenic Widths ***
+12 15 18   *** Width for GS
+12 15 18       width for GN
+*** Aseismic Slip Factor ***
+3             number of asf for GS
+0.8 0.9 1.0    values of asf
+0.185 0.630 0.185    weights for asf 
+3             number of asf for GN
+0.8 0.9 1.0    values of asf
+0.185 0.630 0.185    weights for asf 
+*** Slip-Rates ***
+3          number of slip-rates for Greenville
+0.13 0.74 0.13  weights for slip-rates
+1. 2. 3.  GS seg slip-rate
+1. 2. 3.  GN seg slip-rate
+*** Segmentation Models ***
+1  1.0  nModels, model weights
+0.3 0.0 0.0 0.6 0.0 0.0 0.0 0.0 0.1 0.0  model A
+1.      weights for models
+ 6.2 0.0  floating eqk magnitudes
+*** Date of Last Event ***
+4         number of dates of last eqk for GS
+1164. 1470. 1776. 1830.      values of date of last eqk
+0.3 0.3 0.3 0.1       weights for date of last eqk
+4         number of dates of last eqk for GN 
+1169. 1472. 1776. 1830.      values of date of last eqk
+0.3 0.3 0.3 0.1       weights for date of last eqk
+*** Clock Advance ***
+3         number of clock advance values for GS
+-42.8 -22.6 -11.0      values of clock advance
+0.185 0.630 0.185       weights for clock advance
+3         number of clock advance values for GN
+-68.7 -32.1 -15.0        values of clock advance
+0.185 0.630 0.185       weights for clock advance
+*** Probability Model ***
+4              Number of probability models
+4 1 3 2             probability model indecies (1=poisson, 2 = BPT, 3 = BPT w/Step, 4=empirical interaction, 5=time pred)
+0.288 0.231 0.350 0.131            weights for probability models
+*** Fault 7 ***********************************************************
+Mt_Diablo
+1         number of segments for this fault
+MTD
+*** Segmentation Points *** 
+3     number of seg pts locations for seg pt 1 ok
+-121.7788 37.6997 location 1 for segpt 1
+-121.8229 37.7302  location 2 for segPt 1
+-121.8652 37.7590  location 3 for segPt 1
+0.185 0.630 0.185  weights for seg pt locations
+3     number of seg pts locations for seg pt 2 ok
+-121.9923 37.8460 location 1 for segpt 2
+-122.0388 37.8771  location 2 for segPt 2
+-122.0809 37.9074  location 3 for segPt 2
+0.185 0.630 0.185  weights for seg pt locations
+*** Internal Faults Points ***
+0    Number of internal fault points - MTD
+*** Seismogenic Width ***
+12.2 14.2 16.2   *** Width for MTD
+*** Aseismic Slip Factor ***
+1             number of asf for MTD [assumed not creeping]
+1.            values of asf
+1.            weights for asf 
+*** Slip-Rates ***
+3          number of slip-rates for MTD
+0.13 0.74 0.13  weights for slip-rates
+1. 3. 5.  MTD seg slip-rate
+*** Segmentation Model ***
+1  1.0  nModels, model weights
+1.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00  model A 
+1.      weights for models
+ 0.0 0.0  floating eqk magnitudes
+*** Date of Last Event ***
+4         number of dates of last eqk for MTD
+1547. 1661. 1776. 1830.      values of date of last eqk
+0.3 0.3 0.3 0.1       weights for date of last eqk
+*** Clock Advance ***
+3         number of clock advance values for MTD
+-10.1 -3.0 5.0      values of clock advance
+0.185 0.630 0.185       weights for clock advance
+*** Probability Model ***
+4              Number of probability models
+4 1 3 2             probability model indecies (1=poisson, 2 = BPT, 3 = BPT w/Step, 4=empirical interaction, 5=time pred)
+0.396 0.308 0.204 0.092            weights for probability models
+*** Background Source ****************************************************
+*** Seismicity rates ***
+6     number of seismicity rates (a-value,b-value pairs) for background
+.0222 0.89 6.7   {N (M>M1), b-value, M1}   [First 3 values:  M5.5 long-term.]
+.01 0.89 6.7
+.00454 0.89 6.7
+0.0060 0.9 6.7                 [Second 3 values:  instrumental short-term.]
+0.0051 0.9 6.7
+0.0043 0.9 6.7
+0.046 0.366 0.046 0.054 0.434 0.054   wts for param comb's (per expert vote)
+*** Maximum magnitude ***
+3    number of maximum magnitudes for background
+7.0 7.25 7.5   magnitudes 
+0.185 0.630 0.185  wts of max mag for background

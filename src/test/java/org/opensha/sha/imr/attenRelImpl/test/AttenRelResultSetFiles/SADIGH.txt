@@ -1,0 +1,634 @@
+SADIGH ET AL. (1997)
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 7.0
+SetParameter("Fault Type") = "Reverse"
+SetParameter("Sadigh Site Type") = "Rock"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.447033
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.699636
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.851361
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 1.031960
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 0.969675
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.845389
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.717367
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.497924
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.375828
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.236120
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.165128
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.093315
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.059864
+
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 7.0
+SetParameter("Fault Type") = "Other"
+SetParameter("Sadigh Site Type") = "Rock"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.372536
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.583042
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.709483
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 0.859985
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 0.808080
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.704506
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.597819
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.414945
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.313197
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.196771
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.137610
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.077764
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.049888
+
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 6.5
+SetParameter("Fault Type") = "Other"
+SetParameter("Sadigh Site Type") = "Rock"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.312275
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.499795
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.610350
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 0.710027
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 0.636563
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.533920
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.434076
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.288541
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.212184
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.127780
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.087217
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.047369
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.028472
+
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 6.0
+SetParameter("Fault Type") = "Other"
+SetParameter("Sadigh Site Type") = "Rock"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.223793
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.368195
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.450355
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 0.499522
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 0.422156
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.336985
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.259494
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.164308
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.117692
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.067539
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.044939
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.023286
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.012822
+
+SetIntensityMeasure(SA)
+SetParameter("Magnitude") = 7.5
+SetParameter("Std Dev Type") = Total
+SetParameter("Sadigh Site Type") = "Rock"
+
+
+SetParameter("SA Period") = 0.00
+GetValue("Std. Dev.") = 0.380000
+
+SetParameter("SA Period") = 0.075
+GetValue("Std. Dev.") = 0.390000
+
+SetParameter("SA Period") = 0.10
+GetValue("Std. Dev.") = 0.400000
+
+SetParameter("SA Period") = 0.20
+GetValue("Std. Dev.") = 0.420000
+
+SetParameter("SA Period") = 0.30
+GetValue("Std. Dev.") = 0.440000
+
+SetParameter("SA Period") = 0.40
+GetValue("Std. Dev.") = 0.470000
+
+SetParameter("SA Period") = 0.50
+GetValue("Std. Dev.") = 0.490000
+
+SetParameter("SA Period") = 0.75
+GetValue("Std. Dev.") = 0.510000
+
+SetParameter("SA Period") = 1.00
+GetValue("Std. Dev.") = 0.520000
+
+SetParameter("SA Period") = 1.50
+GetValue("Std. Dev.") = 0.520000
+
+SetParameter("SA Period") = 2.00
+GetValue("Std. Dev.") = 0.520000
+
+SetParameter("SA Period") = 3.00
+GetValue("Std. Dev.") = 0.520000
+
+SetParameter("SA Period") = 4.00
+GetValue("Std. Dev.") = 0.520000
+
+
+SetIntensityMeasure(SA)
+SetParameter("Magnitude") = 7.21
+SetParameter("Std Dev Type") = Total
+SetParameter("Sadigh Site Type") = "Rock"
+
+SetParameter("SA Period") = 0.00
+GetValue("Std. Dev.") = 0.380600
+
+SetParameter("SA Period") = 0.075
+GetValue("Std. Dev.") = 0.390600
+
+SetParameter("SA Period") = 0.10
+GetValue("Std. Dev.") = 0.400600
+
+SetParameter("SA Period") = 0.20
+GetValue("Std. Dev.") = 0.420600
+
+SetParameter("SA Period") = 0.30
+GetValue("Std. Dev.") = 0.440600
+
+SetParameter("SA Period") = 0.40
+GetValue("Std. Dev.") = 0.470600
+
+SetParameter("SA Period") = 0.50
+GetValue("Std. Dev.") = 0.490600
+
+SetParameter("SA Period") = 0.75
+GetValue("Std. Dev.") = 0.510600
+
+SetParameter("SA Period") = 1.00
+GetValue("Std. Dev.") = 0.520600
+
+SetParameter("SA Period") = 1.50
+GetValue("Std. Dev.") = 0.520600
+
+SetParameter("SA Period") = 2.00
+GetValue("Std. Dev.") = 0.520600
+
+SetParameter("SA Period") = 3.00
+GetValue("Std. Dev.") = 0.520600
+
+SetParameter("SA Period") = 4.00
+GetValue("Std. Dev.") = 0.520600
+
+SetIntensityMeasure(SA)
+SetParameter("Magnitude") = 6.0
+SetParameter("Std Dev Type") = Total
+SetParameter("Sadigh Site Type") = "Rock"
+
+SetParameter("SA Period") = 0.00
+GetValue("Std. Dev.") = 0.550000
+
+SetParameter("SA Period") = 0.075
+GetValue("Std. Dev.") = 0.560000
+
+SetParameter("SA Period") = 0.10
+GetValue("Std. Dev.") = 0.570000
+
+SetParameter("SA Period") = 0.20
+GetValue("Std. Dev.") = 0.590000
+
+SetParameter("SA Period") = 0.30
+GetValue("Std. Dev.") = 0.610000
+
+SetParameter("SA Period") = 0.40
+GetValue("Std. Dev.") = 0.640000
+
+SetParameter("SA Period") = 0.50
+GetValue("Std. Dev.") = 0.660000
+
+SetParameter("SA Period") = 0.75
+GetValue("Std. Dev.") = 0.680000
+
+SetParameter("SA Period") = 1.00
+GetValue("Std. Dev.") = 0.690000
+
+SetParameter("SA Period") = 1.50
+GetValue("Std. Dev.") = 0.690000
+
+SetParameter("SA Period") = 2.00
+GetValue("Std. Dev.") = 0.690000
+
+SetParameter("SA Period") = 3.00
+GetValue("Std. Dev.") = 0.690000
+
+SetParameter("SA Period") = 4.00
+GetValue("Std. Dev.") = 0.690000
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 7.0
+SetParameter("Fault Type") = "Reverse"
+SetParameter("Sadigh Site Type") = "Deep-Soil"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.411116
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.658427
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.790096
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 1.018976
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 1.027615
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.946944
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.859575
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.705239
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.570924
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.400360
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.289647
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.171629
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.108556
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 7.0
+SetParameter("Fault Type") = "Other"
+SetParameter("Sadigh Site Type") = "Deep-Soil"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.320178
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.512784
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.615327
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 0.793579
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 0.800308
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.755847
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.683576
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.560784
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.471659
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.345283
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.262792
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.164966
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.110010
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 6.5
+SetParameter("Fault Type") = "Reverse"
+SetParameter("Sadigh Site Type") = "Deep-Soil"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.348497
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.566294
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.679538
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 0.853804
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 0.836421
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.748719
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.662124
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.515599
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.400788
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.261390
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.179484
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.097205
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.057849
+
+SetIntensityMeasure(SA)
+SetParameter("DistanceRup") = 10
+SetParameter("Magnitude") = 6.0
+SetParameter("Fault Type") = "Reverse"
+SetParameter("Sadigh Site Type") = "Deep-Soil"
+
+SetParameter("SA Period") = 0.00
+GetValue("Median") = 0.250039
+
+SetParameter("SA Period") = 0.075
+GetValue("Median") = 0.414978
+
+SetParameter("SA Period") = 0.10
+GetValue("Median") = 0.497963
+
+SetParameter("SA Period") = 0.20
+GetValue("Median") = 0.602319
+
+SetParameter("SA Period") = 0.30
+GetValue("Median") = 0.565645
+
+SetParameter("SA Period") = 0.40
+GetValue("Median") = 0.485386
+
+SetParameter("SA Period") = 0.50
+GetValue("Median") = 0.413231
+
+SetParameter("SA Period") = 0.75
+GetValue("Median") = 0.298219
+
+SetParameter("SA Period") = 1.00
+GetValue("Median") = 0.218498
+
+SetParameter("SA Period") = 1.50
+GetValue("Median") = 0.128217
+
+SetParameter("SA Period") = 2.00
+GetValue("Median") = 0.081593
+
+SetParameter("SA Period") = 3.00
+GetValue("Median") = 0.038764
+
+SetParameter("SA Period") = 4.00
+GetValue("Median") = 0.021111
+
+
+SetIntensityMeasure(SA)
+SetParameter("Magnitude") = 7.5
+SetParameter("Sadigh Site Type") = "Deep-Soil"
+SetParameter("Std Dev Type") = "Total"
+
+SetParameter("SA Period") = 0.00
+GetValue("Std. Dev.") = 0.400000
+
+SetParameter("SA Period") = 0.075
+GetValue("Std. Dev.") = 0.420000
+
+SetParameter("SA Period") = 0.10
+GetValue("Std. Dev.") = 0.420000
+
+SetParameter("SA Period") = 0.20
+GetValue("Std. Dev.") = 0.445000
+
+SetParameter("SA Period") = 0.30
+GetValue("Std. Dev.") = 0.460000
+
+SetParameter("SA Period") = 0.40
+GetValue("Std. Dev.") = 0.475000
+
+SetParameter("SA Period") = 0.50
+GetValue("Std. Dev.") = 0.490000
+
+SetParameter("SA Period") = 0.75
+GetValue("Std. Dev.") = 0.515000
+
+SetParameter("SA Period") = 1.00
+GetValue("Std. Dev.") = 0.540000
+
+SetParameter("SA Period") = 1.50
+GetValue("Std. Dev.") = 0.570000
+
+SetParameter("SA Period") = 2.00
+GetValue("Std. Dev.") = 0.580000
+
+SetParameter("SA Period") = 3.00
+GetValue("Std. Dev.") = 0.590000
+
+SetParameter("SA Period") = 4.00
+GetValue("Std. Dev.") = 0.590000
+
+
+SetIntensityMeasure(SA)
+SetParameter("Magnitude") = 7.0
+SetParameter("Sadigh Site Type") = "Deep-Soil"
+SetParameter("Std Dev Type") = "Total"
+
+SetParameter("SA Period") = 0.00
+GetValue("Std. Dev.") = 0.400000
+
+SetParameter("SA Period") = 0.075
+GetValue("Std. Dev.") = 0.420000
+
+SetParameter("SA Period") = 0.10
+GetValue("Std. Dev.") = 0.420000
+
+SetParameter("SA Period") = 0.20
+GetValue("Std. Dev.") = 0.445000
+
+SetParameter("SA Period") = 0.30
+GetValue("Std. Dev.") = 0.460000
+
+SetParameter("SA Period") = 0.40
+GetValue("Std. Dev.") = 0.475000
+
+SetParameter("SA Period") = 0.50
+GetValue("Std. Dev.") = 0.490000
+
+SetParameter("SA Period") = 0.75
+GetValue("Std. Dev.") = 0.515000
+
+SetParameter("SA Period") = 1.00
+GetValue("Std. Dev.") = 0.540000
+
+SetParameter("SA Period") = 1.50
+GetValue("Std. Dev.") = 0.570000
+
+SetParameter("SA Period") = 2.00
+GetValue("Std. Dev.") = 0.580000
+
+SetParameter("SA Period") = 3.00
+GetValue("Std. Dev.") = 0.590000
+
+SetParameter("SA Period") = 4.00
+GetValue("Std. Dev.") = 0.590000
+
+
+SetIntensityMeasure(SA)
+SetParameter("Magnitude") = 6.0
+SetParameter("Sadigh Site Type") = "Deep-Soil"
+SetParameter("Std Dev Type") = "Total"
+
+
+SetParameter("SA Period") = 0.00
+GetValue("Std. Dev.") = 0.560000
+
+SetParameter("SA Period") = 0.075
+GetValue("Std. Dev.") = 0.580000
+
+SetParameter("SA Period") = 0.10
+GetValue("Std. Dev.") = 0.580000
+
+SetParameter("SA Period") = 0.20
+GetValue("Std. Dev.") = 0.605000
+
+SetParameter("SA Period") = 0.30
+GetValue("Std. Dev.") = 0.620000
+
+SetParameter("SA Period") = 0.40
+GetValue("Std. Dev.") = 0.635000
+
+SetParameter("SA Period") = 0.50
+GetValue("Std. Dev.") = 0.650000
+
+SetParameter("SA Period") = 0.75
+GetValue("Std. Dev.") = 0.675000
+
+SetParameter("SA Period") = 1.00
+GetValue("Std. Dev.") = 0.700000
+
+SetParameter("SA Period") = 1.50
+GetValue("Std. Dev.") = 0.730000
+
+SetParameter("SA Period") = 2.00
+GetValue("Std. Dev.") = 0.740000
+
+SetParameter("SA Period") = 3.00
+GetValue("Std. Dev.") = 0.750000
+
+SetParameter("SA Period") = 4.00
+GetValue("Std. Dev.") = 0.750000

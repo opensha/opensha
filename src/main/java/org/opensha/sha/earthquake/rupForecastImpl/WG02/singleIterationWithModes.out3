@@ -1,0 +1,110 @@
+ ********************************
+ *      Working Group 1999      *
+ *     Northern California      *
+ *                              *
+ *        Version: 27.0         *
+ *        July 23, 2003         *
+ ********************************
+
+  Conditional Probabilities
+  For    30.years
+  Today =    2002.00
+  For Magnitude >= 5.00
+
+  Probability model weights:
+                       San_And Hayward Calaver Concord San_Gre Greenvi Mt_Diab
+  Poisson:             0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  1.0000
+  BPT w/o Step:        0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000
+  BPT with Step:       0.0000  1.0000  1.0000  1.0000  1.0000  1.0000  0.0000
+  Empirical Interact:  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000
+  Time Predictable:    1.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000
+  Log normal      :    0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000
+  Log normal w/inter:  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000
+
+
+  Rupture Probabilities
+                                      --------- Probability ---------
+Fault Name    Rupture Source           Mean    0.025    0.500    0.975
+San_Andreas   SAS                   0.228240 0.000000 0.000000 0.000000
+San_Andreas   SAP                   0.232577 0.000000 0.000000 0.000000
+San_Andreas   SAN                   0.014863 0.000000 0.000000 0.000000
+San_Andreas   SAO                   0.003097 0.000000 0.000000 0.000000
+San_Andreas   SAS +SAP              0.225681 0.000000 0.000000 0.000000
+San_Andreas   SAP +SAN              0.000000 0.000000 0.000000 0.000000
+San_Andreas   SAN +SAO              0.762601 0.000000 0.000000 0.000000
+San_Andreas   SAS +SAP +SAN         0.000490 0.000000 0.000000 0.000000
+San_Andreas   SAP +SAN +SAO         0.511599 0.000000 0.000000 0.000000
+San_Andreas   SAS +SAP +SAN +SAO    0.999965 0.000000 0.000000 0.000000
+San_Andreas   floating              0.195623 0.000000 0.000000 0.000000
+Hayward/RC    HS                    0.273981 0.000000 0.000000 0.000000
+Hayward/RC    HN                    0.200367 0.000000 0.000000 0.000000
+Hayward/RC    HS  +HN               0.445161 0.000000 0.000000 0.000000
+Hayward/RC    RC                    0.665257 0.000000 0.000000 0.000000
+Hayward/RC    HN  +RC               0.174792 0.000000 0.000000 0.000000
+Hayward/RC    HS  +HN  +RC          0.144702 0.000000 0.000000 0.000000
+Hayward/RC    floating              0.037177 0.000000 0.000000 0.000000
+Calaveras     CS                    0.535349 0.000000 0.000000 0.000000
+Calaveras     CC                    0.588414 0.000000 0.000000 0.000000
+Calaveras     CS  +CC               0.000000 0.000000 0.000000 0.000000
+Calaveras     CN                    0.808542 0.000000 0.000000 0.000000
+Calaveras     CC  +CN               0.000000 0.000000 0.000000 0.000000
+Calaveras     CS  +CC  +CN          0.000000 0.000000 0.000000 0.000000
+Calaveras     floating              0.363881 0.000000 0.000000 0.000000
+Calaveras     floating CS  +CC      0.801178 0.000000 0.000000 0.000000
+Concord/GV    CON                   0.155321 0.000000 0.000000 0.000000
+Concord/GV    GVS                   0.074533 0.000000 0.000000 0.000000
+Concord/GV    CON +GVS              0.096803 0.000000 0.000000 0.000000
+Concord/GV    GVN                   0.146596 0.000000 0.000000 0.000000
+Concord/GV    GVS +GVN              0.154309 0.000000 0.000000 0.000000
+Concord/GV    CON +GVS +GVN         0.225543 0.000000 0.000000 0.000000
+Concord/GV    floating              0.050208 0.000000 0.000000 0.000000
+San_Gregorio  SGS                   0.096897 0.000000 0.000000 0.000000
+San_Gregorio  SGN                   0.359197 0.000000 0.000000 0.000000
+San_Gregorio  SGS +SGN              0.498583 0.000000 0.000000 0.000000
+San_Gregorio  floating              0.087339 0.000000 0.000000 0.000000
+Greenville    GS                    0.112406 0.000000 0.000000 0.000000
+Greenville    GN                    0.125292 0.000000 0.000000 0.000000
+Greenville    GS  +GN               0.162090 0.000000 0.000000 0.000000
+Greenville    floating              0.007191 0.000000 0.000000 0.000000
+Mt_Diablo     MTD                   0.183272 0.000000 0.000000 0.000000
+
+
+  Segment Probabilities
+                         --------- Probability ---------
+Fault Name    Segment    Mean    0.025    0.500    0.975
+San_Andreas   SAS       1.000    0.000    0.000    0.000
+San_Andreas   SAP       1.000    0.000    0.000    0.000
+San_Andreas   SAN       1.000    0.000    0.000    0.000
+San_Andreas   SAO       1.000    0.000    0.000    0.000
+Hayward/RC    HS        0.667    0.000    0.000    0.000
+Hayward/RC    HN        0.697    0.000    0.000    0.000
+Hayward/RC    RC        0.772    0.000    0.000    0.000
+Calaveras     CS        0.888    0.000    0.000    0.000
+Calaveras     CC        0.931    0.000    0.000    0.000
+Calaveras     CN        0.864    0.000    0.000    0.000
+Concord/GV    CON       0.429    0.000    0.000    0.000
+Concord/GV    GVS       0.471    0.000    0.000    0.000
+Concord/GV    GVN       0.458    0.000    0.000    0.000
+San_Gregorio  SGS       0.581    0.000    0.000    0.000
+San_Gregorio  SGN       0.705    0.000    0.000    0.000
+Greenville    GS        0.260    0.000    0.000    0.000
+Greenville    GN        0.271    0.000    0.000    0.000
+Mt_Diablo     MTD       0.183    0.000    0.000    0.000
+
+
+  Fault System Probabilities
+                   --------- Probability ---------
+Fault Name          Mean    0.025    0.500    0.975
+San_Andreas       1.000    0.000    0.000    0.000
+Hayward/RC        0.927    0.000    0.000    0.000
+Calaveras         0.995    0.000    0.000    0.000
+Concord/GV        0.625    0.000    0.000    0.000
+San_Gregorio      0.735    0.000    0.000    0.000
+Greenville        0.354    0.000    0.000    0.000
+Mt_Diablo         0.183    0.000    0.000    0.000
+Background        0.994    0.000    0.000    0.000
+
+
+  Regional Probability
+    Mean    0.025    0.500    0.975
+    1.000    0.000    0.000    0.000

@@ -1,0 +1,5 @@
+All the time-ind files came from the Frankel2002 ERF, except ca-amod3-char and the *30yr and *5yr time-dep files which came from the directory:
+
+	CEA_WGCEP/UCERF 1.0/FilesForOpenSHA
+
+on Ned's computer.

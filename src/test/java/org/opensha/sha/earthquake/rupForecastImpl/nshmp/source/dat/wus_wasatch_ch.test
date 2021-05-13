@@ -1,0 +1,31 @@
+#
+# CH
+#
+
+N:2351d Wasatch fault, Brigham City section
+D:50
+T:CH
+F:FALSE
+M:NORMAL
+1   6.9000001        1.99583999E-04
+2   6.6999998        6.65280022E-05
+3   7.0999999        6.65280022E-05
+
+N:2351i Wasatch fault, Levan section
+D:50
+T:CH
+F:FALSE
+M:NORMAL
+1   6.8000002        6.14304008E-05
+2   6.5999999        2.04768003E-05
+3   7.0000000        2.04768003E-05
+
+N:2351f Wasatch fault, Salt Lake City section
+D:60
+T:CH
+F:FALSE
+M:NORMAL
+1   7.0000000        6.65280022E-05
+2   7.1999998        2.21759983E-05
+3   6.8000002        2.21759983E-05
+

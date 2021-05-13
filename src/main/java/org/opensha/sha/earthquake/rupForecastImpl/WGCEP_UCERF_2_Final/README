@@ -1,0 +1,16 @@
+The only differences between the contents of this 
+folder and WGCEP_UCERF_2_3 are as follows:
+
+1) Fault Models and Deformation Models are no longer read 
+from the Oracle database, but rather from static XML files 
+using the classes in the data/finalReferenceFaultParamDb 
+folder here.  This way no Internet connections is required,
+and the model won't change if someone does something to the
+database.  Several checks were made, including using the
+MeanUCERF2.testFinalMeanUCERF2() method.
+
+2) The sources in MeanUCERF2 were put in alphabetical order 
+(in the updataForecast() method).  Results were checked using 
+the MeanUCERF2.testResortedSources() method.  However, it's 
+possible that some of the analysis results are now screwed up 
+(not everything was checked).

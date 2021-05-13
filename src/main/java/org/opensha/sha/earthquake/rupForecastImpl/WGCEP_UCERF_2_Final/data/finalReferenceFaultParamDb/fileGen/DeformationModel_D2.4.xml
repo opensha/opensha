@@ -1,0 +1,1943 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    Copyright 2009 OpenSHA.org in partnership with
+    the Southern California Earthquake Center (SCEC, http://www.scec.org)
+    at the University of Southern California and the UnitedStates Geological
+    Survey (USGS; http://www.usgs.gov)
+    
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+    
+      http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+
+<DeformationModel>
+  <DeformationModelSummary deformationModelId="85" deformationModelName="D2.4">
+    <Contributor id="21" name="chris.wills" email="" firstName="" lastName=""/>
+    <FaultModelSummary faultModelId="43" faultModelName="F2.2">
+      <Contributor id="21" name="chris.wills" email="" firstName="" lastName=""/>
+    </FaultModelSummary>
+  </DeformationModelSummary>
+  <FaultModelSummary faultModelId="43" faultModelName="F2.2">
+    <Contributor id="21" name="chris.wills" email="" firstName="" lastName=""/>
+  </FaultModelSummary>
+  <FaultSections/>
+  <FaultSectionPrefData sectionId="222" sectionName="Anacapa-Dume, alt 2" shortName="" aveLongTermSlipRate="3.0" slipRateStdDev="1.0" aveDip="41.0" aveRake="60.0" aveUpperDepth="1.2000000476837158" aveLowerDepth="11.399999618530273" aseismicSlipFactor="0.0" dipDirection="351.9268">
+    <FaultTrace name="Anacapa-Dume, alt 2">
+      <Location Latitude="34.0202" Longitude="-118.552" Depth="1.2000000476837158"/>
+      <Location Latitude="33.991923" Longitude="-118.649256" Depth="1.2000000476837158"/>
+      <Location Latitude="33.9731" Longitude="-118.743" Depth="1.2000000476837158"/>
+      <Location Latitude="33.9581" Longitude="-118.819" Depth="1.2000000476837158"/>
+      <Location Latitude="33.9474" Longitude="-118.935" Depth="1.2000000476837158"/>
+      <Location Latitude="33.9698" Longitude="-119.02" Depth="1.2000000476837158"/>
+      <Location Latitude="33.9748" Longitude="-119.145" Depth="1.2000000476837158"/>
+      <Location Latitude="33.9388" Longitude="-119.228" Depth="1.2000000476837158"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="24" sectionName="Bartlett Springs" shortName="" aveLongTermSlipRate="6.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.0" aseismicSlipFactor="0.5" dipDirection="60.279602">
+    <FaultTrace name="Bartlett Springs">
+      <Location Latitude="38.93338" Longitude="-122.50408" Depth="0.0"/>
+      <Location Latitude="39.566" Longitude="-123.0521" Depth="0.0"/>
+      <Location Latitude="39.5752" Longitude="-123.0397" Depth="0.0"/>
+      <Location Latitude="39.7193" Longitude="-123.1866" Depth="0.0"/>
+      <Location Latitude="39.8244" Longitude="-123.293" Depth="0.0"/>
+      <Location Latitude="39.9617" Longitude="-123.3956" Depth="0.0"/>
+      <Location Latitude="40.0063" Longitude="-123.4171" Depth="0.0"/>
+      <Location Latitude="40.1438" Longitude="-123.4399" Depth="0.0"/>
+      <Location Latitude="40.2649" Longitude="-123.5033" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="73" sectionName="Battle Creek" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.20000000298023224" aveDip="75.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.0" dipDirection="165.21614">
+    <FaultTrace name="Battle Creek">
+      <Location Latitude="40.40409" Longitude="-122.18365" Depth="0.0"/>
+      <Location Latitude="40.47029" Longitude="-121.85155" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="18" sectionName="Big Lagoon-Bald Mtn" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.25" aveDip="35.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="61.407433">
+    <FaultTrace name="Big Lagoon-Bald Mtn">
+      <Location Latitude="41.032982" Longitude="-123.934121" Depth="0.0"/>
+      <Location Latitude="41.10547" Longitude="-123.993266" Depth="0.0"/>
+      <Location Latitude="41.165454" Longitude="-124.094513" Depth="0.0"/>
+      <Location Latitude="41.525375" Longitude="-124.311293" Depth="0.0"/>
+      <Location Latitude="41.577" Longitude="-124.376" Depth="0.0"/>
+      <Location Latitude="41.662061" Longitude="-124.432278" Depth="0.0"/>
+      <Location Latitude="41.729545" Longitude="-124.443654" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="66" sectionName="Birch Creek" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.25" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="66.271805">
+    <FaultTrace name="Birch Creek">
+      <Location Latitude="36.97624" Longitude="-118.33651" Depth="0.0"/>
+      <Location Latitude="37.00376" Longitude="-118.34528" Depth="0.0"/>
+      <Location Latitude="37.03629" Longitude="-118.36655" Depth="0.0"/>
+      <Location Latitude="37.07131" Longitude="-118.40533" Depth="0.0"/>
+      <Location Latitude="37.09883" Longitude="-118.40408" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="87" sectionName="Blackwater" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.100000381469727" aseismicSlipFactor="0.0" dipDirection="54.891006">
+    <FaultTrace name="Blackwater">
+      <Location Latitude="35.0143" Longitude="-117.037" Depth="0.0"/>
+      <Location Latitude="35.1058" Longitude="-117.128" Depth="0.0"/>
+      <Location Latitude="35.2274" Longitude="-117.214" Depth="0.0"/>
+      <Location Latitude="35.3663" Longitude="-117.313" Depth="0.0"/>
+      <Location Latitude="35.4494" Longitude="-117.413" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="94" sectionName="Burnt Mtn" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.20000000298023224" aveDip="67.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.899999618530273" aseismicSlipFactor="0.0" dipDirection="264.56628">
+    <FaultTrace name="Burnt Mtn">
+      <Location Latitude="34.122116" Longitude="-116.411983" Depth="0.0"/>
+      <Location Latitude="34.093584" Longitude="-116.410079" Depth="0.0"/>
+      <Location Latitude="34.060684" Longitude="-116.412727" Depth="0.0"/>
+      <Location Latitude="34.034956" Longitude="-116.399837" Depth="0.0"/>
+      <Location Latitude="34.013122" Longitude="-116.39545" Depth="0.0"/>
+      <Location Latitude="33.989177" Longitude="-116.395506" Depth="0.0"/>
+      <Location Latitude="33.934795" Longitude="-116.390507" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="5" sectionName="Calaveras (Central)" shortName="" aveLongTermSlipRate="15.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.7599999904632568" dipDirection="239.20448">
+    <FaultTrace name="Calaveras (Central)">
+      <Location Latitude="37.445" Longitude="-121.8071" Depth="0.0"/>
+      <Location Latitude="37.3996" Longitude="-121.7618" Depth="0.0"/>
+      <Location Latitude="37.343" Longitude="-121.7149" Depth="0.0"/>
+      <Location Latitude="37.2481" Longitude="-121.6483" Depth="0.0"/>
+      <Location Latitude="37.1523" Longitude="-121.5801" Depth="0.0"/>
+      <Location Latitude="37.0958" Longitude="-121.5424" Depth="0.0"/>
+      <Location Latitude="36.9898" Longitude="-121.4678" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="4" sectionName="Calaveras (No)" shortName="" aveLongTermSlipRate="6.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.20000000298023224" dipDirection="246.65436">
+    <FaultTrace name="Calaveras (No)">
+      <Location Latitude="37.8173" Longitude="-122.0094" Depth="0.0"/>
+      <Location Latitude="37.7149" Longitude="-121.9379" Depth="0.0"/>
+      <Location Latitude="37.6939" Longitude="-121.9327" Depth="0.0"/>
+      <Location Latitude="37.5675" Longitude="-121.862" Depth="0.0"/>
+      <Location Latitude="37.5385" Longitude="-121.8511" Depth="0.0"/>
+      <Location Latitude="37.5101" Longitude="-121.8349" Depth="0.0"/>
+      <Location Latitude="37.4888" Longitude="-121.8235" Depth="0.0"/>
+      <Location Latitude="37.445" Longitude="-121.8071" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="55" sectionName="Calaveras (So)" shortName="" aveLongTermSlipRate="15.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.800000011920929" dipDirection="70.63949">
+    <FaultTrace name="Calaveras (So)">
+      <Location Latitude="36.8257" Longitude="-121.3956" Depth="0.0"/>
+      <Location Latitude="36.9898" Longitude="-121.4678" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="88" sectionName="Calico-Hidalgo" shortName="" aveLongTermSlipRate="1.7999999523162842" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.899999618530273" aseismicSlipFactor="0.0" dipDirection="52.41972">
+    <FaultTrace name="Calico-Hidalgo">
+      <Location Latitude="34.1726" Longitude="-116.153" Depth="0.0"/>
+      <Location Latitude="34.2872" Longitude="-116.222" Depth="0.0"/>
+      <Location Latitude="34.361" Longitude="-116.264" Depth="0.0"/>
+      <Location Latitude="34.4768" Longitude="-116.342" Depth="0.0"/>
+      <Location Latitude="34.5847" Longitude="-116.458" Depth="0.0"/>
+      <Location Latitude="34.6353" Longitude="-116.495" Depth="0.0"/>
+      <Location Latitude="34.6744" Longitude="-116.529" Depth="0.0"/>
+      <Location Latitude="34.7191" Longitude="-116.561" Depth="0.0"/>
+      <Location Latitude="34.7524" Longitude="-116.596" Depth="0.0"/>
+      <Location Latitude="34.8568" Longitude="-116.689" Depth="0.0"/>
+      <Location Latitude="34.9242" Longitude="-116.795" Depth="0.0"/>
+      <Location Latitude="34.9388" Longitude="-116.837" Depth="0.0"/>
+      <Location Latitude="34.9889" Longitude="-116.922" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="153" sectionName="Casmalia (Orcutt Frontal)" shortName="" aveLongTermSlipRate="0.25" slipRateStdDev="0.10000000149011612" aveDip="75.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="205.96315">
+    <FaultTrace name="Casmalia (Orcutt Frontal)">
+      <Location Latitude="34.93305" Longitude="-120.64818" Depth="0.0"/>
+      <Location Latitude="34.91466" Longitude="-120.57462" Depth="0.0"/>
+      <Location Latitude="34.87788" Longitude="-120.52067" Depth="0.0"/>
+      <Location Latitude="34.84723" Longitude="-120.45201" Depth="0.0"/>
+      <Location Latitude="34.84355" Longitude="-120.39684" Depth="0.0"/>
+      <Location Latitude="34.82148" Longitude="-120.36987" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="34" sectionName="Cedar Mtn-Mahogany Mtn" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="60.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="9.5" aseismicSlipFactor="0.0" dipDirection="76.68998">
+    <FaultTrace name="Cedar Mtn-Mahogany Mtn">
+      <Location Latitude="41.525668" Longitude="-121.901359" Depth="0.0"/>
+      <Location Latitude="41.819858" Longitude="-121.94468" Depth="0.0"/>
+      <Location Latitude="41.945268" Longitude="-121.963011" Depth="0.0"/>
+      <Location Latitude="42.198573" Longitude="-122.116304" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="129" sectionName="Channel Islands Thrust" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="20.0" aveRake="90.0" aveUpperDepth="5.0" aveLowerDepth="12.300000190734863" aseismicSlipFactor="0.0" dipDirection="354.46445">
+    <FaultTrace name="Channel Islands Thrust">
+      <Location Latitude="34.0258" Longitude="-119.263" Depth="5.0"/>
+      <Location Latitude="34.001" Longitude="-119.361" Depth="5.0"/>
+      <Location Latitude="33.9884" Longitude="-119.466" Depth="5.0"/>
+      <Location Latitude="33.9866" Longitude="-119.525" Depth="5.0"/>
+      <Location Latitude="33.9612" Longitude="-119.633" Depth="5.0"/>
+      <Location Latitude="33.9431" Longitude="-119.68" Depth="5.0"/>
+      <Location Latitude="33.9431" Longitude="-119.757" Depth="5.0"/>
+      <Location Latitude="33.9457" Longitude="-119.815" Depth="5.0"/>
+      <Location Latitude="33.9745" Longitude="-119.882" Depth="5.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="239" sectionName="Chino, alt 2" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.5" aveDip="65.0" aveRake="150.0" aveUpperDepth="0.0" aveLowerDepth="13.399999618530273" aseismicSlipFactor="0.0" dipDirection="234.439">
+    <FaultTrace name="Chino, alt 2">
+      <Location Latitude="34.033201" Longitude="-117.74547" Depth="0.0"/>
+      <Location Latitude="33.97237" Longitude="-117.710275" Depth="0.0"/>
+      <Location Latitude="33.885689" Longitude="-117.62862" Depth="0.0"/>
+      <Location Latitude="33.824237" Longitude="-117.565759" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="124" sectionName="Clamshell-Sawpit" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.25" aveDip="50.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="14.0" aseismicSlipFactor="0.0" dipDirection="333.78354">
+    <FaultTrace name="Clamshell-Sawpit">
+      <Location Latitude="34.24019" Longitude="-117.84576" Depth="0.0"/>
+      <Location Latitude="34.2218" Longitude="-117.88438" Depth="0.0"/>
+      <Location Latitude="34.21812" Longitude="-117.92792" Depth="0.0"/>
+      <Location Latitude="34.17766" Longitude="-117.99902" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="81" sectionName="Cleghorn" shortName="" aveLongTermSlipRate="3.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="15.5" aseismicSlipFactor="0.0" dipDirection="187.42274">
+    <FaultTrace name="Cleghorn">
+      <Location Latitude="34.31127" Longitude="-117.46439" Depth="0.0"/>
+      <Location Latitude="34.28579" Longitude="-117.38795" Depth="0.0"/>
+      <Location Latitude="34.29428" Longitude="-117.3455" Depth="0.0"/>
+      <Location Latitude="34.2773" Longitude="-117.31718" Depth="0.0"/>
+      <Location Latitude="34.27447" Longitude="-117.25774" Depth="0.0"/>
+      <Location Latitude="34.28296" Longitude="-117.20396" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="23" sectionName="Collayomi" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.15000000596046448" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="56.709503">
+    <FaultTrace name="Collayomi">
+      <Location Latitude="38.77886" Longitude="-122.68166" Depth="0.0"/>
+      <Location Latitude="38.99303" Longitude="-122.86272" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="3" sectionName="Concord" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="16.0" aseismicSlipFactor="0.5" dipDirection="63.698532">
+    <FaultTrace name="Concord">
+      <Location Latitude="37.9003" Longitude="-121.9896" Depth="0.0"/>
+      <Location Latitude="38.0389" Longitude="-122.0766" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="121" sectionName="Coronado Bank" shortName="" aveLongTermSlipRate="3.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="8.600000381469727" aseismicSlipFactor="0.0" dipDirection="236.5659">
+    <FaultTrace name="Coronado Bank">
+      <Location Latitude="33.2798" Longitude="-117.917" Depth="0.0"/>
+      <Location Latitude="33.2066" Longitude="-117.838" Depth="0.0"/>
+      <Location Latitude="33.0732" Longitude="-117.742" Depth="0.0"/>
+      <Location Latitude="33.0269" Longitude="-117.687" Depth="0.0"/>
+      <Location Latitude="32.952" Longitude="-117.616" Depth="0.0"/>
+      <Location Latitude="32.9251" Longitude="-117.574" Depth="0.0"/>
+      <Location Latitude="32.8655" Longitude="-117.52" Depth="0.0"/>
+      <Location Latitude="32.8085" Longitude="-117.507" Depth="0.0"/>
+      <Location Latitude="32.7524" Longitude="-117.467" Depth="0.0"/>
+      <Location Latitude="32.7235" Longitude="-117.433" Depth="0.0"/>
+      <Location Latitude="32.6786" Longitude="-117.413" Depth="0.0"/>
+      <Location Latitude="32.6238" Longitude="-117.344" Depth="0.0"/>
+      <Location Latitude="32.594" Longitude="-117.315" Depth="0.0"/>
+      <Location Latitude="32.5519" Longitude="-117.298" Depth="0.0"/>
+      <Location Latitude="32.4949" Longitude="-117.266" Depth="0.0"/>
+      <Location Latitude="31.89" Longitude="-116.84" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="125" sectionName="Cucamonga" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.0" aveDip="45.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="7.800000190734863" aseismicSlipFactor="0.0" dipDirection="347.0456">
+    <FaultTrace name="Cucamonga">
+      <Location Latitude="34.180379" Longitude="-117.441461" Depth="0.0"/>
+      <Location Latitude="34.173413" Longitude="-117.454072" Depth="0.0"/>
+      <Location Latitude="34.166992" Longitude="-117.477215" Depth="0.0"/>
+      <Location Latitude="34.16741" Longitude="-117.495397" Depth="0.0"/>
+      <Location Latitude="34.168284" Longitude="-117.520479" Depth="0.0"/>
+      <Location Latitude="34.170949" Longitude="-117.558241" Depth="0.0"/>
+      <Location Latitude="34.171789" Longitude="-117.568768" Depth="0.0"/>
+      <Location Latitude="34.165929" Longitude="-117.577327" Depth="0.0"/>
+      <Location Latitude="34.162916" Longitude="-117.633099" Depth="0.0"/>
+      <Location Latitude="34.148427" Longitude="-117.662658" Depth="0.0"/>
+      <Location Latitude="34.125321" Longitude="-117.728839" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="245" sectionName="Death Valley (Black Mtns Frontal)" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="1.5" aveDip="60.0" aveRake="-150.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="256.1691">
+    <FaultTrace name="Death Valley (Black Mtns Frontal)">
+      <Location Latitude="36.52913" Longitude="-116.88402" Depth="0.0"/>
+      <Location Latitude="36.48024" Longitude="-116.85824" Depth="0.0"/>
+      <Location Latitude="36.40468" Longitude="-116.83069" Depth="0.0"/>
+      <Location Latitude="36.32912" Longitude="-116.7818" Depth="0.0"/>
+      <Location Latitude="36.19489" Longitude="-116.75423" Depth="0.0"/>
+      <Location Latitude="36.144408" Longitude="-116.761017" Depth="0.0"/>
+      <Location Latitude="36.094185" Longitude="-116.724561" Depth="0.0"/>
+      <Location Latitude="36.048861" Longitude="-116.761017" Depth="0.0"/>
+      <Location Latitude="35.991288" Longitude="-116.723042" Depth="0.0"/>
+      <Location Latitude="35.891786" Longitude="-116.690384" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="46" sectionName="Death Valley (No)" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="50.52236">
+    <FaultTrace name="Death Valley (No)">
+      <Location Latitude="36.5615" Longitude="-116.892" Depth="0.0"/>
+      <Location Latitude="36.5928" Longitude="-116.944" Depth="0.0"/>
+      <Location Latitude="36.6234" Longitude="-116.988" Depth="0.0"/>
+      <Location Latitude="36.7068" Longitude="-117.1" Depth="0.0"/>
+      <Location Latitude="36.7577" Longitude="-117.156" Depth="0.0"/>
+      <Location Latitude="36.7968" Longitude="-117.18" Depth="0.0"/>
+      <Location Latitude="36.876" Longitude="-117.245" Depth="0.0"/>
+      <Location Latitude="36.9125" Longitude="-117.283" Depth="0.0"/>
+      <Location Latitude="36.9578" Longitude="-117.313" Depth="0.0"/>
+      <Location Latitude="37.0517" Longitude="-117.407" Depth="0.0"/>
+      <Location Latitude="37.0784" Longitude="-117.443" Depth="0.0"/>
+      <Location Latitude="37.2941" Longitude="-117.653" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="45" sectionName="Death Valley (No of Cucamongo)" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="-150.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="51.860447">
+    <FaultTrace name="Death Valley (No of Cucamongo)">
+      <Location Latitude="37.301939" Longitude="-117.66754" Depth="0.0"/>
+      <Location Latitude="37.320839" Longitude="-117.69734" Depth="0.0"/>
+      <Location Latitude="37.347459" Longitude="-117.762521" Depth="0.0"/>
+      <Location Latitude="37.367435" Longitude="-117.807314" Depth="0.0"/>
+      <Location Latitude="37.523329" Longitude="-117.963813" Depth="0.0"/>
+      <Location Latitude="37.589016" Longitude="-118.034014" Depth="0.0"/>
+      <Location Latitude="37.600119" Longitude="-118.05708" Depth="0.0"/>
+      <Location Latitude="37.61347" Longitude="-118.074665" Depth="0.0"/>
+      <Location Latitude="37.661433" Longitude="-118.093227" Depth="0.0"/>
+      <Location Latitude="37.716062" Longitude="-118.123992" Depth="0.0"/>
+      <Location Latitude="37.751708" Longitude="-118.154969" Depth="0.0"/>
+      <Location Latitude="37.828651" Longitude="-118.192306" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="246" sectionName="Death Valley (So)" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="50.916073">
+    <FaultTrace name="Death Valley (So)">
+      <Location Latitude="35.6015" Longitude="-116.399" Depth="0.0"/>
+      <Location Latitude="35.632136" Longitude="-116.44051" Depth="0.0"/>
+      <Location Latitude="35.667124" Longitude="-116.462535" Depth="0.0"/>
+      <Location Latitude="35.841452" Longitude="-116.62127" Depth="0.0"/>
+      <Location Latitude="35.8748" Longitude="-116.664" Depth="0.0"/>
+      <Location Latitude="35.891786" Longitude="-116.690384" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="51" sectionName="Deep Springs" shortName="" aveLongTermSlipRate="0.800000011920929" slipRateStdDev="0.30000001192092896" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="294.55493">
+    <FaultTrace name="Deep Springs">
+      <Location Latitude="37.434854" Longitude="-117.942479" Depth="0.0"/>
+      <Location Latitude="37.396842" Longitude="-117.956234" Depth="0.0"/>
+      <Location Latitude="37.381965" Longitude="-117.958985" Depth="0.0"/>
+      <Location Latitude="37.366649" Longitude="-117.973841" Depth="0.0"/>
+      <Location Latitude="37.349152" Longitude="-117.987046" Depth="0.0"/>
+      <Location Latitude="37.320704" Longitude="-117.99695" Depth="0.0"/>
+      <Location Latitude="37.286573" Longitude="-118.014556" Depth="0.0"/>
+      <Location Latitude="37.255067" Longitude="-118.032713" Depth="0.0"/>
+      <Location Latitude="37.230563" Longitude="-118.059673" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="249" sectionName="Earthquake Valley" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="18.799999237060547" aseismicSlipFactor="0.0" dipDirection="216.7504">
+    <FaultTrace name="Earthquake Valley">
+      <Location Latitude="33.180546" Longitude="-116.585929" Depth="0.0"/>
+      <Location Latitude="33.1626" Longitude="-116.565" Depth="0.0"/>
+      <Location Latitude="33.1369" Longitude="-116.527" Depth="0.0"/>
+      <Location Latitude="33.1106" Longitude="-116.497" Depth="0.0"/>
+      <Location Latitude="33.071769" Longitude="-116.412291" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="96" sectionName="Elmore Ranch" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="90.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="11.399999618530273" aseismicSlipFactor="0.0" dipDirection="309.65976">
+    <FaultTrace name="Elmore Ranch">
+      <Location Latitude="33.23095" Longitude="-115.65569" Depth="0.0"/>
+      <Location Latitude="33.0299" Longitude="-115.85434" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="103" sectionName="Elsinore (Coyote Mountain)" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="1.0" aveDip="82.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.199999809265137" aseismicSlipFactor="0.0" dipDirection="35.271294">
+    <FaultTrace name="Elsinore (Coyote Mountain)">
+      <Location Latitude="32.779" Longitude="-116.006" Depth="0.0"/>
+      <Location Latitude="32.8144" Longitude="-116.099" Depth="0.0"/>
+      <Location Latitude="32.8377" Longitude="-116.178" Depth="0.0"/>
+      <Location Latitude="32.889212" Longitude="-116.230217" Depth="0.0"/>
+      <Location Latitude="32.930814" Longitude="-116.264437" Depth="0.0"/>
+      <Location Latitude="32.974771" Longitude="-116.336673" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="296" sectionName="Elsinore (Glen Ivy) rev" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.199999809265137" aseismicSlipFactor="0.0" dipDirection="218.4343">
+    <FaultTrace name="Elsinore (Glen Ivy) rev">
+      <Location Latitude="33.8289" Longitude="-117.59" Depth="0.0"/>
+      <Location Latitude="33.8129" Longitude="-117.548" Depth="0.0"/>
+      <Location Latitude="33.745095" Longitude="-117.463316" Depth="0.0"/>
+      <Location Latitude="33.731832" Longitude="-117.445676" Depth="0.0"/>
+      <Location Latitude="33.71851" Longitude="-117.424151" Depth="0.0"/>
+      <Location Latitude="33.704534" Longitude="-117.402646" Depth="0.0"/>
+      <Location Latitude="33.685223" Longitude="-117.372703" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="297" sectionName="Elsinore (Glen Ivy stepover)" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.199999809265137" aseismicSlipFactor="0.0" dipDirection="215.66624">
+    <FaultTrace name="Elsinore (Glen Ivy stepover)">
+      <Location Latitude="33.685223" Longitude="-117.372703" Depth="0.0"/>
+      <Location Latitude="33.626458" Longitude="-117.274431" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="102" sectionName="Elsinore (Julian)" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.0" aveDip="84.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="18.799999237060547" aseismicSlipFactor="0.0" dipDirection="35.78518">
+    <FaultTrace name="Elsinore (Julian)">
+      <Location Latitude="32.949652" Longitude="-116.355681" Depth="0.0"/>
+      <Location Latitude="32.98262" Longitude="-116.407007" Depth="0.0"/>
+      <Location Latitude="33.010878" Longitude="-116.460233" Depth="0.0"/>
+      <Location Latitude="33.04934" Longitude="-116.519163" Depth="0.0"/>
+      <Location Latitude="33.1225" Longitude="-116.628" Depth="0.0"/>
+      <Location Latitude="33.178071" Longitude="-116.690249" Depth="0.0"/>
+      <Location Latitude="33.208684" Longitude="-116.729217" Depth="0.0"/>
+      <Location Latitude="33.2465" Longitude="-116.791" Depth="0.0"/>
+      <Location Latitude="33.279" Longitude="-116.844" Depth="0.0"/>
+      <Location Latitude="33.332" Longitude="-116.952" Depth="0.0"/>
+      <Location Latitude="33.3409" Longitude="-117.0082" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="299" sectionName="Elsinore (Temecula) rev" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="14.199999809265137" aseismicSlipFactor="0.0" dipDirection="229.87404">
+    <FaultTrace name="Elsinore (Temecula) rev">
+      <Location Latitude="33.6116" Longitude="-117.280987" Depth="0.0"/>
+      <Location Latitude="33.558972" Longitude="-117.204486" Depth="0.0"/>
+      <Location Latitude="33.528941" Longitude="-117.172139" Depth="0.0"/>
+      <Location Latitude="33.497543" Longitude="-117.141723" Depth="0.0"/>
+      <Location Latitude="33.422973" Longitude="-117.053329" Depth="0.0"/>
+      <Location Latitude="33.391404" Longitude="-117.030907" Depth="0.0"/>
+      <Location Latitude="33.370306" Longitude="-117.015177" Depth="0.0"/>
+      <Location Latitude="33.340914" Longitude="-117.008194" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="298" sectionName="Elsinore (Temecula stepover)" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="14.199999809265137" aseismicSlipFactor="0.0" dipDirection="211.9282">
+    <FaultTrace name="Elsinore (Temecula stepover)">
+      <Location Latitude="33.6677" Longitude="-117.389" Depth="0.0"/>
+      <Location Latitude="33.630983" Longitude="-117.315659" Depth="0.0"/>
+      <Location Latitude="33.6116" Longitude="-117.280987" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="146" sectionName="Elysian Park (Upper)" shortName="" aveLongTermSlipRate="1.2999999523162842" slipRateStdDev="0.20000000298023224" aveDip="50.0" aveRake="90.0" aveUpperDepth="3.0" aveLowerDepth="15.0" aseismicSlipFactor="0.0" dipDirection="15.228091">
+    <FaultTrace name="Elysian Park (Upper)">
+      <Location Latitude="34.06834" Longitude="-118.09977" Depth="3.0"/>
+      <Location Latitude="34.061222" Longitude="-118.130356" Depth="3.0"/>
+      <Location Latitude="34.067455" Longitude="-118.234761" Depth="3.0"/>
+      <Location Latitude="34.112583" Longitude="-118.29677" Depth="3.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="95" sectionName="Eureka Peak" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.0" aseismicSlipFactor="0.0" dipDirection="74.96224">
+    <FaultTrace name="Eureka Peak">
+      <Location Latitude="33.960741" Longitude="-116.342099" Depth="0.0"/>
+      <Location Latitude="33.994664" Longitude="-116.343171" Depth="0.0"/>
+      <Location Latitude="34.009912" Longitude="-116.346503" Depth="0.0"/>
+      <Location Latitude="34.023916" Longitude="-116.353152" Depth="0.0"/>
+      <Location Latitude="34.044542" Longitude="-116.355143" Depth="0.0"/>
+      <Location Latitude="34.122446" Longitude="-116.39458" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="20" sectionName="Fickle Hill" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.20000000298023224" aveDip="35.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="54.81835">
+    <FaultTrace name="Fickle Hill">
+      <Location Latitude="40.743939" Longitude="-123.964615" Depth="0.0"/>
+      <Location Latitude="40.784578" Longitude="-123.989634" Depth="0.0"/>
+      <Location Latitude="40.857894" Longitude="-124.047039" Depth="0.0"/>
+      <Location Latitude="40.978649" Longitude="-124.18397" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="43" sectionName="Fish Slough" shortName="" aveLongTermSlipRate="0.20000000298023224" slipRateStdDev="0.05000000074505806" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="89.236465">
+    <FaultTrace name="Fish Slough">
+      <Location Latitude="37.361297" Longitude="-118.390098" Depth="0.0"/>
+      <Location Latitude="37.39697" Longitude="-118.391949" Depth="0.0"/>
+      <Location Latitude="37.434482" Longitude="-118.404911" Depth="0.0"/>
+      <Location Latitude="37.459724" Longitude="-118.398341" Depth="0.0"/>
+      <Location Latitude="37.478206" Longitude="-118.399828" Depth="0.0"/>
+      <Location Latitude="37.497881" Longitude="-118.400572" Depth="0.0"/>
+      <Location Latitude="37.51686" Longitude="-118.399356" Depth="0.0"/>
+      <Location Latitude="37.52587" Longitude="-118.39218" Depth="0.0"/>
+      <Location Latitude="37.54058" Longitude="-118.395421" Depth="0.0"/>
+      <Location Latitude="37.557681" Longitude="-118.406994" Depth="0.0"/>
+      <Location Latitude="37.568831" Longitude="-118.406521" Depth="0.0"/>
+      <Location Latitude="37.586121" Longitude="-118.393879" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="341" sectionName="Garlock (Central)" shortName="" aveLongTermSlipRate="7.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="11.5" aseismicSlipFactor="0.0" dipDirection="161.01762">
+    <FaultTrace name="Garlock (Central)">
+      <Location Latitude="35.283464" Longitude="-118.023951" Depth="0.0"/>
+      <Location Latitude="35.423221" Longitude="-117.749306" Depth="0.0"/>
+      <Location Latitude="35.497199" Longitude="-117.486869" Depth="0.0"/>
+      <Location Latitude="35.567603" Longitude="-117.157923" Depth="0.0"/>
+      <Location Latitude="35.601818" Longitude="-117.010672" Depth="0.0"/>
+      <Location Latitude="35.598328" Longitude="-116.878945" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="48" sectionName="Garlock (East)" shortName="" aveLongTermSlipRate="3.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="11.5" aseismicSlipFactor="0.0" dipDirection="180.97339">
+    <FaultTrace name="Garlock (East)">
+      <Location Latitude="35.598328" Longitude="-116.878945" Depth="0.0"/>
+      <Location Latitude="35.596712" Longitude="-116.817963" Depth="0.0"/>
+      <Location Latitude="35.593578" Longitude="-116.59081" Depth="0.0"/>
+      <Location Latitude="35.586404" Longitude="-116.466969" Depth="0.0"/>
+      <Location Latitude="35.590401" Longitude="-116.379721" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="49" sectionName="Garlock (West)" shortName="" aveLongTermSlipRate="6.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="14.699999809265137" aseismicSlipFactor="0.10000000149011612" dipDirection="148.68246">
+    <FaultTrace name="Garlock (West)">
+      <Location Latitude="34.823616" Longitude="-118.918332" Depth="0.0"/>
+      <Location Latitude="34.828441" Longitude="-118.871234" Depth="0.0"/>
+      <Location Latitude="34.849237" Longitude="-118.822811" Depth="0.0"/>
+      <Location Latitude="34.882252" Longitude="-118.770808" Depth="0.0"/>
+      <Location Latitude="34.931375" Longitude="-118.666992" Depth="0.0"/>
+      <Location Latitude="34.995769" Longitude="-118.474655" Depth="0.0"/>
+      <Location Latitude="35.047698" Longitude="-118.375398" Depth="0.0"/>
+      <Location Latitude="35.078809" Longitude="-118.332596" Depth="0.0"/>
+      <Location Latitude="35.186465" Longitude="-118.119122" Depth="0.0"/>
+      <Location Latitude="35.223252" Longitude="-118.061341" Depth="0.0"/>
+      <Location Latitude="35.271292" Longitude="-118.010318" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="33" sectionName="Gillem-Big Crack" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="60.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.0" dipDirection="92.639366">
+    <FaultTrace name="Gillem-Big Crack">
+      <Location Latitude="41.68326" Longitude="-121.5884" Depth="0.0"/>
+      <Location Latitude="41.74523" Longitude="-121.55521" Depth="0.0"/>
+      <Location Latitude="41.77399" Longitude="-121.5707" Depth="0.0"/>
+      <Location Latitude="41.96874" Longitude="-121.5707" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="86" sectionName="Gravel Hills-Harper Lk" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.399999618530273" aseismicSlipFactor="0.0" dipDirection="41.35977">
+    <FaultTrace name="Gravel Hills-Harper Lk">
+      <Location Latitude="34.87243" Longitude="-116.91851" Depth="0.0"/>
+      <Location Latitude="34.88799" Longitude="-116.96001" Depth="0.0"/>
+      <Location Latitude="34.94894" Longitude="-117.01707" Depth="0.0"/>
+      <Location Latitude="35.17459" Longitude="-117.33739" Depth="0.0"/>
+      <Location Latitude="35.25629" Longitude="-117.4541" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="131" sectionName="Great Valley 1" shortName="" aveLongTermSlipRate="0.10000000149011612" slipRateStdDev="0.02500000037252903" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="267.87076">
+    <FaultTrace name="Great Valley 1">
+      <Location Latitude="39.67855" Longitude="-122.29969" Depth="7.0"/>
+      <Location Latitude="39.28571" Longitude="-122.28082" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="138" sectionName="Great Valley 10" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="242.04408">
+    <FaultTrace name="Great Valley 10">
+      <Location Latitude="36.79945" Longitude="-120.7585" Depth="7.0"/>
+      <Location Latitude="36.62798" Longitude="-120.64514" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="139" sectionName="Great Valley 11" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="221.41585">
+    <FaultTrace name="Great Valley 11">
+      <Location Latitude="36.64091" Longitude="-120.65305" Depth="7.0"/>
+      <Location Latitude="36.49507" Longitude="-120.44764" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="140" sectionName="Great Valley 12" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="242.7743">
+    <FaultTrace name="Great Valley 12">
+      <Location Latitude="36.47943" Longitude="-120.43829" Depth="7.0"/>
+      <Location Latitude="36.33982" Longitude="-120.34914" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="142" sectionName="Great Valley 13 (Coalinga)" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="15.0" aveRake="90.0" aveUpperDepth="9.100000381469727" aveLowerDepth="15.199999809265137" aseismicSlipFactor="0.0" dipDirection="226.07384">
+    <FaultTrace name="Great Valley 13 (Coalinga)">
+      <Location Latitude="36.3547" Longitude="-120.358" Depth="9.100000381469727"/>
+      <Location Latitude="36.2671" Longitude="-120.254" Depth="9.100000381469727"/>
+      <Location Latitude="36.1499" Longitude="-120.114" Depth="9.100000381469727"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="141" sectionName="Great Valley 14 (Kettleman Hills)" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="22.0" aveRake="90.0" aveUpperDepth="8.100000381469727" aveLowerDepth="22.5" aseismicSlipFactor="0.0" dipDirection="215.24353">
+    <FaultTrace name="Great Valley 14 (Kettleman Hills)">
+      <Location Latitude="36.1316" Longitude="-120.139" Depth="8.100000381469727"/>
+      <Location Latitude="36.0909" Longitude="-120.068" Depth="8.100000381469727"/>
+      <Location Latitude="36.0366" Longitude="-119.973" Depth="8.100000381469727"/>
+      <Location Latitude="36.0068" Longitude="-119.921" Depth="8.100000381469727"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="133" sectionName="Great Valley 2" shortName="" aveLongTermSlipRate="0.10000000149011612" slipRateStdDev="0.02500000037252903" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="272.56384">
+    <FaultTrace name="Great Valley 2">
+      <Location Latitude="39.28581" Longitude="-122.28084" Depth="7.0"/>
+      <Location Latitude="39.08907" Longitude="-122.29219" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="132" sectionName="Great Valley 3, Mysterious Ridge" shortName="" aveLongTermSlipRate="1.25" slipRateStdDev="0.75" aveDip="20.0" aveRake="90.0" aveUpperDepth="9.0" aveLowerDepth="14.0" aseismicSlipFactor="0.0" dipDirection="247.23471">
+    <FaultTrace name="Great Valley 3, Mysterious Ridge">
+      <Location Latitude="39.11694" Longitude="-122.27771" Depth="9.0"/>
+      <Location Latitude="38.690117" Longitude="-122.048356" Depth="9.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="134" sectionName="Great Valley 4a, Trout Creek" shortName="" aveLongTermSlipRate="1.25" slipRateStdDev="0.75" aveDip="20.0" aveRake="90.0" aveUpperDepth="9.0" aveLowerDepth="14.0" aseismicSlipFactor="0.0" dipDirection="245.02402">
+    <FaultTrace name="Great Valley 4a, Trout Creek">
+      <Location Latitude="38.688028" Longitude="-122.092133" Depth="9.0"/>
+      <Location Latitude="38.531579" Longitude="-121.998998" Depth="9.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="381" sectionName="Great Valley 4b, Gordon Valley" shortName="" aveLongTermSlipRate="1.25" slipRateStdDev="0.75" aveDip="20.0" aveRake="90.0" aveUpperDepth="9.0" aveLowerDepth="14.0" aseismicSlipFactor="0.0" dipDirection="251.83125">
+    <FaultTrace name="Great Valley 4b, Gordon Valley">
+      <Location Latitude="38.528456" Longitude="-122.047365" Depth="9.0"/>
+      <Location Latitude="38.439722" Longitude="-122.029403" Depth="9.0"/>
+      <Location Latitude="38.286695" Longitude="-121.946302" Depth="9.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="135" sectionName="Great Valley 5, Pittsburg Kirby Hills" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.75" aveDip="90.0" aveRake="180.0" aveUpperDepth="10.0" aveLowerDepth="20.0" aseismicSlipFactor="0.0" dipDirection="248.9504">
+    <FaultTrace name="Great Valley 5, Pittsburg Kirby Hills">
+      <Location Latitude="38.284082" Longitude="-121.975665" Depth="10.0"/>
+      <Location Latitude="38.016075" Longitude="-121.84478" Depth="10.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="136" sectionName="Great Valley 7" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="224.14954">
+    <FaultTrace name="Great Valley 7">
+      <Location Latitude="37.73443" Longitude="-121.52409" Depth="7.0"/>
+      <Location Latitude="37.45441" Longitude="-121.16144" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="137" sectionName="Great Valley 8" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="248.50945">
+    <FaultTrace name="Great Valley 8">
+      <Location Latitude="37.434" Longitude="-121.15798" Depth="7.0"/>
+      <Location Latitude="37.09232" Longitude="-120.98939" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="151" sectionName="Great Valley 9" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="15.0" aveRake="90.0" aveUpperDepth="7.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="237.12314">
+    <FaultTrace name="Great Valley 9">
+      <Location Latitude="37.10314" Longitude="-120.98671" Depth="7.0"/>
+      <Location Latitude="36.8083" Longitude="-120.74888" Depth="7.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="71" sectionName="Green Valley (No)" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="14.0" aseismicSlipFactor="0.5" dipDirection="78.19821">
+    <FaultTrace name="Green Valley (No)">
+      <Location Latitude="38.2587" Longitude="-122.1459" Depth="0.0"/>
+      <Location Latitude="38.3825" Longitude="-122.1789" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="1" sectionName="Green Valley (So)" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="14.0" aseismicSlipFactor="0.5" dipDirection="76.09606">
+    <FaultTrace name="Green Valley (So)">
+      <Location Latitude="38.0389" Longitude="-122.0766" Depth="0.0"/>
+      <Location Latitude="38.2587" Longitude="-122.1459" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="6" sectionName="Greenville (No)" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.0" aseismicSlipFactor="0.10000000149011612" dipDirection="236.10138">
+    <FaultTrace name="Greenville (No)">
+      <Location Latitude="37.8839" Longitude="-121.8328" Depth="0.0"/>
+      <Location Latitude="37.793" Longitude="-121.763" Depth="0.0"/>
+      <Location Latitude="37.7219" Longitude="-121.6997" Depth="0.0"/>
+      <Location Latitude="37.6858" Longitude="-121.6647" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="7" sectionName="Greenville (So)" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.0" aseismicSlipFactor="0.10000000149011612" dipDirection="242.187">
+    <FaultTrace name="Greenville (So)">
+      <Location Latitude="37.6858" Longitude="-121.6647" Depth="0.0"/>
+      <Location Latitude="37.6439" Longitude="-121.6438" Depth="0.0"/>
+      <Location Latitude="37.5754" Longitude="-121.5808" Depth="0.0"/>
+      <Location Latitude="37.5256" Longitude="-121.5539" Depth="0.0"/>
+      <Location Latitude="37.4994" Longitude="-121.5408" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="40" sectionName="Hartley Springs" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.15000000596046448" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="73.594826">
+    <FaultTrace name="Hartley Springs">
+      <Location Latitude="37.63944" Longitude="-118.99706" Depth="0.0"/>
+      <Location Latitude="37.69811" Longitude="-118.99706" Depth="0.0"/>
+      <Location Latitude="37.75678" Longitude="-119.02551" Depth="0.0"/>
+      <Location Latitude="37.84923" Longitude="-119.07529" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="37" sectionName="Hat Creek-McArthur-Mayfield" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="60.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="256.69092">
+    <FaultTrace name="Hat Creek-McArthur-Mayfield">
+      <Location Latitude="41.451073" Longitude="-121.63309" Depth="0.0"/>
+      <Location Latitude="41.108366" Longitude="-121.43314" Depth="0.0"/>
+      <Location Latitude="40.934529" Longitude="-121.439804" Depth="0.0"/>
+      <Location Latitude="40.616655" Longitude="-121.373156" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="68" sectionName="Hayward (No)" shortName="" aveLongTermSlipRate="9.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.4000000059604645" dipDirection="56.21057">
+    <FaultTrace name="Hayward (No)">
+      <Location Latitude="37.8273" Longitude="-122.2128" Depth="0.0"/>
+      <Location Latitude="38.0875" Longitude="-122.4342" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="69" sectionName="Hayward (So)" shortName="" aveLongTermSlipRate="9.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.4000000059604645" dipDirection="52.453403">
+    <FaultTrace name="Hayward (So)">
+      <Location Latitude="37.454" Longitude="-121.849" Depth="0.0"/>
+      <Location Latitude="37.676" Longitude="-122.0824" Depth="0.0"/>
+      <Location Latitude="37.7299" Longitude="-122.1284" Depth="0.0"/>
+      <Location Latitude="37.8273" Longitude="-122.2128" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="84" sectionName="Helendale-So Lockhart" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.800000190734863" aseismicSlipFactor="0.0" dipDirection="50.870785">
+    <FaultTrace name="Helendale-So Lockhart">
+      <Location Latitude="34.3248" Longitude="-116.815" Depth="0.0"/>
+      <Location Latitude="34.3757" Longitude="-116.857" Depth="0.0"/>
+      <Location Latitude="34.441" Longitude="-116.945" Depth="0.0"/>
+      <Location Latitude="34.5394" Longitude="-117.064" Depth="0.0"/>
+      <Location Latitude="34.6038" Longitude="-117.106" Depth="0.0"/>
+      <Location Latitude="34.7868" Longitude="-117.328" Depth="0.0"/>
+      <Location Latitude="34.9156" Longitude="-117.418" Depth="0.0"/>
+      <Location Latitude="35.0428" Longitude="-117.497" Depth="0.0"/>
+      <Location Latitude="35.1087" Longitude="-117.597" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="41" sectionName="Hilton Creek" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.30000001192092896" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="61.73736">
+    <FaultTrace name="Hilton Creek">
+      <Location Latitude="37.46165" Longitude="-118.72861" Depth="0.0"/>
+      <Location Latitude="37.49009" Longitude="-118.75348" Depth="0.0"/>
+      <Location Latitude="37.61988" Longitude="-118.8086" Depth="0.0"/>
+      <Location Latitude="37.65366" Longitude="-118.85661" Depth="0.0"/>
+      <Location Latitude="37.68922" Longitude="-118.88328" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="108" sectionName="Hollywood" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="70.0" aveRake="30.0" aveUpperDepth="0.0" aveLowerDepth="17.299999237060547" aseismicSlipFactor="0.0" dipDirection="346.47137">
+    <FaultTrace name="Hollywood">
+      <Location Latitude="34.1192" Longitude="-118.23019" Depth="0.0"/>
+      <Location Latitude="34.1104" Longitude="-118.31696" Depth="0.0"/>
+      <Location Latitude="34.09908" Longitude="-118.37228" Depth="0.0"/>
+      <Location Latitude="34.08399" Longitude="-118.40625" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="14" sectionName="Honey Lake" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.0" dipDirection="40.103096">
+    <FaultTrace name="Honey Lake">
+      <Location Latitude="39.994736" Longitude="-120.038104" Depth="0.0"/>
+      <Location Latitude="40.017829" Longitude="-120.073417" Depth="0.0"/>
+      <Location Latitude="40.062851" Longitude="-120.138999" Depth="0.0"/>
+      <Location Latitude="40.141319" Longitude="-120.239895" Depth="0.0"/>
+      <Location Latitude="40.182482" Longitude="-120.300431" Depth="0.0"/>
+      <Location Latitude="40.219786" Longitude="-120.408053" Depth="0.0"/>
+      <Location Latitude="40.229388" Longitude="-120.43664" Depth="0.0"/>
+      <Location Latitude="40.282747" Longitude="-120.479521" Depth="0.0"/>
+      <Location Latitude="40.32132" Longitude="-120.548466" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="30" sectionName="Hosgri" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.5" aveDip="80.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="6.800000190734863" aseismicSlipFactor="0.0" dipDirection="58.549744">
+    <FaultTrace name="Hosgri">
+      <Location Latitude="34.8548" Longitude="-120.746" Depth="0.0"/>
+      <Location Latitude="34.8931" Longitude="-120.766" Depth="0.0"/>
+      <Location Latitude="34.934" Longitude="-120.795" Depth="0.0"/>
+      <Location Latitude="34.9754" Longitude="-120.805" Depth="0.0"/>
+      <Location Latitude="35.0469" Longitude="-120.834" Depth="0.0"/>
+      <Location Latitude="35.1085" Longitude="-120.866" Depth="0.0"/>
+      <Location Latitude="35.1429" Longitude="-120.879" Depth="0.0"/>
+      <Location Latitude="35.1919" Longitude="-120.916" Depth="0.0"/>
+      <Location Latitude="35.2712" Longitude="-120.96" Depth="0.0"/>
+      <Location Latitude="35.3547" Longitude="-121.002" Depth="0.0"/>
+      <Location Latitude="35.4214" Longitude="-121.046" Depth="0.0"/>
+      <Location Latitude="35.4542" Longitude="-121.064" Depth="0.0"/>
+      <Location Latitude="35.502" Longitude="-121.091" Depth="0.0"/>
+      <Location Latitude="35.6027" Longitude="-121.158" Depth="0.0"/>
+      <Location Latitude="35.6523" Longitude="-121.194" Depth="0.0"/>
+      <Location Latitude="35.7005" Longitude="-121.241" Depth="0.0"/>
+      <Location Latitude="35.7437" Longitude="-121.286" Depth="0.0"/>
+      <Location Latitude="35.7685" Longitude="-121.319" Depth="0.0"/>
+      <Location Latitude="35.7917" Longitude="-121.365" Depth="0.0"/>
+      <Location Latitude="35.8356" Longitude="-121.418" Depth="0.0"/>
+      <Location Latitude="35.8623" Longitude="-121.453" Depth="0.0"/>
+      <Location Latitude="35.8946" Longitude="-121.494" Depth="0.0"/>
+      <Location Latitude="35.9287" Longitude="-121.517" Depth="0.0"/>
+      <Location Latitude="35.968" Longitude="-121.561" Depth="0.0"/>
+      <Location Latitude="36.1462" Longitude="-121.727" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="50" sectionName="Hunter Mountain-Saline Valley" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.5" aveDip="90.0" aveRake="-150.0" aveUpperDepth="0.0" aveLowerDepth="12.399999618530273" aseismicSlipFactor="0.0" dipDirection="47.290844">
+    <FaultTrace name="Hunter Mountain-Saline Valley">
+      <Location Latitude="36.475264" Longitude="-117.432487" Depth="0.0"/>
+      <Location Latitude="36.523263" Longitude="-117.540109" Depth="0.0"/>
+      <Location Latitude="36.569909" Longitude="-117.620825" Depth="0.0"/>
+      <Location Latitude="36.617232" Longitude="-117.681362" Depth="0.0"/>
+      <Location Latitude="36.660499" Longitude="-117.821774" Depth="0.0"/>
+      <Location Latitude="36.705117" Longitude="-117.84952" Depth="0.0"/>
+      <Location Latitude="36.754468" Longitude="-117.875585" Depth="0.0"/>
+      <Location Latitude="36.924155" Longitude="-117.952097" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="72" sectionName="Hunting Creek-Berryessa" shortName="" aveLongTermSlipRate="6.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.0" dipDirection="63.579746">
+    <FaultTrace name="Hunting Creek-Berryessa">
+      <Location Latitude="38.453" Longitude="-122.197" Depth="0.0"/>
+      <Location Latitude="38.93338" Longitude="-122.50408" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="97" sectionName="Imperial" shortName="" aveLongTermSlipRate="20.0" slipRateStdDev="2.5" aveDip="82.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="14.600000381469727" aseismicSlipFactor="0.10000000149011612" dipDirection="55.170914">
+    <FaultTrace name="Imperial">
+      <Location Latitude="32.589893" Longitude="-115.274088" Depth="0.0"/>
+      <Location Latitude="32.83587" Longitude="-115.499817" Depth="0.0"/>
+      <Location Latitude="32.880439" Longitude="-115.535858" Depth="0.0"/>
+      <Location Latitude="32.925506" Longitude="-115.552535" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="65" sectionName="Independence" shortName="" aveLongTermSlipRate="0.20000000298023224" slipRateStdDev="0.05000000074505806" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="14.600000381469727" aseismicSlipFactor="0.0" dipDirection="60.865086">
+    <FaultTrace name="Independence">
+      <Location Latitude="36.5015" Longitude="-118.092" Depth="0.0"/>
+      <Location Latitude="36.5586" Longitude="-118.168" Depth="0.0"/>
+      <Location Latitude="36.6239" Longitude="-118.224" Depth="0.0"/>
+      <Location Latitude="36.6634" Longitude="-118.234" Depth="0.0"/>
+      <Location Latitude="36.7735" Longitude="-118.302" Depth="0.0"/>
+      <Location Latitude="36.8287" Longitude="-118.32" Depth="0.0"/>
+      <Location Latitude="36.8802" Longitude="-118.304" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="91" sectionName="Johnson Valley (No)" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.899999618530273" aseismicSlipFactor="0.0" dipDirection="50.89371">
+    <FaultTrace name="Johnson Valley (No)">
+      <Location Latitude="34.313201" Longitude="-116.458202" Depth="0.0"/>
+      <Location Latitude="34.343383" Longitude="-116.481617" Depth="0.0"/>
+      <Location Latitude="34.375366" Longitude="-116.506919" Depth="0.0"/>
+      <Location Latitude="34.410503" Longitude="-116.55389" Depth="0.0"/>
+      <Location Latitude="34.430325" Longitude="-116.584535" Depth="0.0"/>
+      <Location Latitude="34.475372" Longitude="-116.63191" Depth="0.0"/>
+      <Location Latitude="34.49249" Longitude="-116.654236" Depth="0.0"/>
+      <Location Latitude="34.544745" Longitude="-116.694803" Depth="0.0"/>
+      <Location Latitude="34.556007" Longitude="-116.69808" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="104" sectionName="Laguna Salada" shortName="" aveLongTermSlipRate="3.5" slipRateStdDev="0.75" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.300000190734863" aseismicSlipFactor="0.0" dipDirection="40.77048">
+    <FaultTrace name="Laguna Salada">
+      <Location Latitude="32.1608" Longitude="-115.099" Depth="0.0"/>
+      <Location Latitude="32.2014" Longitude="-115.2" Depth="0.0"/>
+      <Location Latitude="32.222" Longitude="-115.244" Depth="0.0"/>
+      <Location Latitude="32.2432" Longitude="-115.287" Depth="0.0"/>
+      <Location Latitude="32.263" Longitude="-115.327" Depth="0.0"/>
+      <Location Latitude="32.2883" Longitude="-115.4" Depth="0.0"/>
+      <Location Latitude="32.5449" Longitude="-115.72" Depth="0.0"/>
+      <Location Latitude="32.5919" Longitude="-115.808" Depth="0.0"/>
+      <Location Latitude="32.6628" Longitude="-115.84" Depth="0.0"/>
+      <Location Latitude="32.7271" Longitude="-115.883" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="92" sectionName="Landers" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.100000381469727" aseismicSlipFactor="0.0" dipDirection="59.98048">
+    <FaultTrace name="Landers">
+      <Location Latitude="34.1682" Longitude="-116.421" Depth="0.0"/>
+      <Location Latitude="34.1967" Longitude="-116.437" Depth="0.0"/>
+      <Location Latitude="34.2736" Longitude="-116.441" Depth="0.0"/>
+      <Location Latitude="34.308166" Longitude="-116.453901" Depth="0.0"/>
+      <Location Latitude="34.364116" Longitude="-116.450801" Depth="0.0"/>
+      <Location Latitude="34.4418" Longitude="-116.495" Depth="0.0"/>
+      <Location Latitude="34.48985" Longitude="-116.527381" Depth="0.0"/>
+      <Location Latitude="34.520571" Longitude="-116.537289" Depth="0.0"/>
+      <Location Latitude="34.568548" Longitude="-116.573951" Depth="0.0"/>
+      <Location Latitude="34.614852" Longitude="-116.651362" Depth="0.0"/>
+      <Location Latitude="34.6475" Longitude="-116.674" Depth="0.0"/>
+      <Location Latitude="34.6994" Longitude="-116.734" Depth="0.0"/>
+      <Location Latitude="34.7525" Longitude="-116.808" Depth="0.0"/>
+      <Location Latitude="34.7831" Longitude="-116.857" Depth="0.0"/>
+      <Location Latitude="34.8312" Longitude="-116.884" Depth="0.0"/>
+      <Location Latitude="34.8715" Longitude="-116.917" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="85" sectionName="Lenwood-Lockhart-Old Woman Springs" shortName="" aveLongTermSlipRate="0.8999999761581421" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.199999809265137" aseismicSlipFactor="0.0" dipDirection="43.25409">
+    <FaultTrace name="Lenwood-Lockhart-Old Woman Springs">
+      <Location Latitude="34.3498" Longitude="-116.643" Depth="0.0"/>
+      <Location Latitude="34.4631" Longitude="-116.696" Depth="0.0"/>
+      <Location Latitude="34.5527" Longitude="-116.767" Depth="0.0"/>
+      <Location Latitude="34.6451" Longitude="-116.842" Depth="0.0"/>
+      <Location Latitude="34.7504" Longitude="-116.926" Depth="0.0"/>
+      <Location Latitude="34.8715" Longitude="-117.085" Depth="0.0"/>
+      <Location Latitude="34.9536" Longitude="-117.248" Depth="0.0"/>
+      <Location Latitude="35.0523" Longitude="-117.474" Depth="0.0"/>
+      <Location Latitude="35.2155" Longitude="-117.776" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="35" sectionName="Likely" shortName="" aveLongTermSlipRate="0.30000001192092896" slipRateStdDev="0.15000000596046448" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.0" dipDirection="50.90516">
+    <FaultTrace name="Likely">
+      <Location Latitude="40.891" Longitude="-120.2451" Depth="0.0"/>
+      <Location Latitude="40.9419" Longitude="-120.32034" Depth="0.0"/>
+      <Location Latitude="41.10124" Longitude="-120.47083" Depth="0.0"/>
+      <Location Latitude="41.33582" Longitude="-120.72754" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="76" sectionName="Lions Head" shortName="" aveLongTermSlipRate="0.019999999552965164" slipRateStdDev="0.009999999776482582" aveDip="75.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="29.052582">
+    <FaultTrace name="Lions Head">
+      <Location Latitude="34.69765" Longitude="-120.235" Depth="0.0"/>
+      <Location Latitude="34.71236" Longitude="-120.33431" Depth="0.0"/>
+      <Location Latitude="34.71604" Longitude="-120.40665" Depth="0.0"/>
+      <Location Latitude="34.72953" Longitude="-120.44097" Depth="0.0"/>
+      <Location Latitude="34.84232" Longitude="-120.55623" Depth="0.0"/>
+      <Location Latitude="34.86807" Longitude="-120.61017" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="144" sectionName="Little Lake" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="57.67209">
+    <FaultTrace name="Little Lake">
+      <Location Latitude="35.605158" Longitude="-117.647489" Depth="0.0"/>
+      <Location Latitude="35.811263" Longitude="-117.809069" Depth="0.0"/>
+      <Location Latitude="35.906877" Longitude="-117.88341" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="16" sectionName="Little Salmon (Offshore)" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.5" aveDip="30.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="37.883766">
+    <FaultTrace name="Little Salmon (Offshore)">
+      <Location Latitude="40.764" Longitude="-124.231" Depth="0.0"/>
+      <Location Latitude="40.796" Longitude="-124.352" Depth="0.0"/>
+      <Location Latitude="40.941" Longitude="-124.47499" Depth="0.0"/>
+      <Location Latitude="41.004" Longitude="-124.64099" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="17" sectionName="Little Salmon (Onshore)" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.5" aveDip="30.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="51.593708">
+    <FaultTrace name="Little Salmon (Onshore)">
+      <Location Latitude="40.534" Longitude="-123.99" Depth="0.0"/>
+      <Location Latitude="40.584" Longitude="-124.10399" Depth="0.0"/>
+      <Location Latitude="40.646" Longitude="-124.178" Depth="0.0"/>
+      <Location Latitude="40.764" Longitude="-124.231" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="154" sectionName="Los Alamos-West Baseline" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.3499999940395355" aveDip="30.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="211.35391">
+    <FaultTrace name="Los Alamos-West Baseline">
+      <Location Latitude="34.75895" Longitude="-120.31837" Depth="0.0"/>
+      <Location Latitude="34.73075" Longitude="-120.21172" Depth="0.0"/>
+      <Location Latitude="34.67191" Longitude="-120.14429" Depth="0.0"/>
+      <Location Latitude="34.63145" Longitude="-120.06458" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="74" sectionName="Los Osos" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.20000000298023224" aveDip="45.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="208.19328">
+    <FaultTrace name="Los Osos">
+      <Location Latitude="35.30209" Longitude="-120.86641" Depth="0.0"/>
+      <Location Latitude="35.29963" Longitude="-120.78181" Depth="0.0"/>
+      <Location Latitude="35.28492" Longitude="-120.73522" Depth="0.0"/>
+      <Location Latitude="35.24569" Longitude="-120.68373" Depth="0.0"/>
+      <Location Latitude="35.20891" Longitude="-120.6543" Depth="0.0"/>
+      <Location Latitude="35.16967" Longitude="-120.53171" Depth="0.0"/>
+      <Location Latitude="35.12554" Longitude="-120.48144" Depth="0.0"/>
+      <Location Latitude="35.12186" Longitude="-120.45692" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="149" sectionName="Maacama-Garberville" shortName="" aveLongTermSlipRate="9.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.4000000059604645" dipDirection="59.241615">
+    <FaultTrace name="Maacama-Garberville">
+      <Location Latitude="38.5755" Longitude="-122.693" Depth="0.0"/>
+      <Location Latitude="38.864452" Longitude="-123.001045" Depth="0.0"/>
+      <Location Latitude="39.99436" Longitude="-123.71935" Depth="0.0"/>
+      <Location Latitude="40.2653" Longitude="-124.01653" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="22" sectionName="Mad River" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.30000001192092896" aveDip="35.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="50.8018">
+    <FaultTrace name="Mad River">
+      <Location Latitude="40.747027" Longitude="-123.924553" Depth="0.0"/>
+      <Location Latitude="40.808491" Longitude="-123.959042" Depth="0.0"/>
+      <Location Latitude="40.837182" Longitude="-123.996325" Depth="0.0"/>
+      <Location Latitude="40.899533" Longitude="-124.06962" Depth="0.0"/>
+      <Location Latitude="40.933175" Longitude="-124.111699" Depth="0.0"/>
+      <Location Latitude="40.98371" Longitude="-124.148738" Depth="0.0"/>
+      <Location Latitude="41.032106" Longitude="-124.233198" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="223" sectionName="Malibu Coast, alt 2" shortName="" aveLongTermSlipRate="0.30000001192092896" slipRateStdDev="0.10000000149011612" aveDip="74.0" aveRake="30.0" aveUpperDepth="0.0" aveLowerDepth="16.600000381469727" aseismicSlipFactor="0.0" dipDirection="3.110971">
+    <FaultTrace name="Malibu Coast, alt 2">
+      <Location Latitude="34.0287" Longitude="-118.525" Depth="0.0"/>
+      <Location Latitude="34.0374" Longitude="-118.62" Depth="0.0"/>
+      <Location Latitude="34.0392" Longitude="-118.68" Depth="0.0"/>
+      <Location Latitude="34.0323" Longitude="-118.727" Depth="0.0"/>
+      <Location Latitude="34.033" Longitude="-118.798" Depth="0.0"/>
+      <Location Latitude="34.0464" Longitude="-118.933" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="21" sectionName="McKinleyville" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.10000000149011612" aveDip="35.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="48.038834">
+    <FaultTrace name="McKinleyville">
+      <Location Latitude="40.757123" Longitude="-123.863791" Depth="0.0"/>
+      <Location Latitude="40.791765" Longitude="-123.903432" Depth="0.0"/>
+      <Location Latitude="40.817474" Longitude="-123.941961" Depth="0.0"/>
+      <Location Latitude="40.858027" Longitude="-123.998518" Depth="0.0"/>
+      <Location Latitude="40.909512" Longitude="-124.051314" Depth="0.0"/>
+      <Location Latitude="40.962026" Longitude="-124.090756" Depth="0.0"/>
+      <Location Latitude="41.058082" Longitude="-124.183083" Depth="0.0"/>
+      <Location Latitude="41.065889" Longitude="-124.232728" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="13" sectionName="Mendocino" shortName="" aveLongTermSlipRate="35.0" slipRateStdDev="2.5" aveDip="90.0" aveRake="90.0" aveUpperDepth="15.0" aveLowerDepth="30.0" aseismicSlipFactor="0.0" dipDirection="6.3439045">
+    <FaultTrace name="Mendocino">
+      <Location Latitude="40.262165" Longitude="-124.411908" Depth="15.0"/>
+      <Location Latitude="40.3717" Longitude="-124.696" Depth="15.0"/>
+      <Location Latitude="40.399137" Longitude="-125.354058" Depth="15.0"/>
+      <Location Latitude="40.41508" Longitude="-125.840999" Depth="15.0"/>
+      <Location Latitude="40.412181" Longitude="-126.381199" Depth="15.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="78" sectionName="Mission Ridge-Arroyo Parida-Santa Ana" shortName="" aveLongTermSlipRate="0.4000000059604645" slipRateStdDev="0.10000000149011612" aveDip="70.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="7.599999904632568" aseismicSlipFactor="0.0" dipDirection="175.97858">
+    <FaultTrace name="Mission Ridge-Arroyo Parida-Santa Ana">
+      <Location Latitude="34.42981" Longitude="-119.89769" Depth="0.0"/>
+      <Location Latitude="34.42478" Longitude="-119.86875" Depth="0.0"/>
+      <Location Latitude="34.43359" Longitude="-119.80713" Depth="0.0"/>
+      <Location Latitude="34.43359" Longitude="-119.78575" Depth="0.0"/>
+      <Location Latitude="34.44113" Longitude="-119.75055" Depth="0.0"/>
+      <Location Latitude="34.44239" Longitude="-119.743" Depth="0.0"/>
+      <Location Latitude="34.44994" Longitude="-119.69144" Depth="0.0"/>
+      <Location Latitude="34.44113" Longitude="-119.61095" Depth="0.0"/>
+      <Location Latitude="34.43107" Longitude="-119.51036" Depth="0.0"/>
+      <Location Latitude="34.4273" Longitude="-119.47137" Depth="0.0"/>
+      <Location Latitude="34.41598" Longitude="-119.4261" Depth="0.0"/>
+      <Location Latitude="34.42353" Longitude="-119.34562" Depth="0.0"/>
+      <Location Latitude="34.42981" Longitude="-119.28778" Depth="0.0"/>
+      <Location Latitude="34.44994" Longitude="-119.20226" Depth="0.0"/>
+      <Location Latitude="34.47005" Longitude="-119.16579" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="39" sectionName="Mono Lake" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.625" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="72.674706">
+    <FaultTrace name="Mono Lake">
+      <Location Latitude="37.93457" Longitude="-119.10373" Depth="0.0"/>
+      <Location Latitude="38.02702" Longitude="-119.17307" Depth="0.0"/>
+      <Location Latitude="38.06258" Longitude="-119.18197" Depth="0.0"/>
+      <Location Latitude="38.10169" Longitude="-119.18019" Depth="0.0"/>
+      <Location Latitude="38.1497" Longitude="-119.18908" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="11" sectionName="Monterey Bay-Tularcitos" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="150.0" aveUpperDepth="0.0" aveLowerDepth="14.0" aseismicSlipFactor="0.0" dipDirection="49.28519">
+    <FaultTrace name="Monterey Bay-Tularcitos">
+      <Location Latitude="36.36826" Longitude="-121.52527" Depth="0.0"/>
+      <Location Latitude="36.40017" Longitude="-121.59573" Depth="0.0"/>
+      <Location Latitude="36.43872" Longitude="-121.6489" Depth="0.0"/>
+      <Location Latitude="36.46929" Longitude="-121.73531" Depth="0.0"/>
+      <Location Latitude="36.58495" Longitude="-121.86559" Depth="0.0"/>
+      <Location Latitude="36.8136" Longitude="-122.01049" Depth="0.0"/>
+      <Location Latitude="36.92128" Longitude="-122.12216" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="8" sectionName="Monte Vista-Shannon" shortName="" aveLongTermSlipRate="0.4000000059604645" slipRateStdDev="0.15000000596046448" aveDip="45.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="3.5" aseismicSlipFactor="0.0" dipDirection="214.61685">
+    <FaultTrace name="Monte Vista-Shannon">
+      <Location Latitude="37.4375" Longitude="-122.25001" Depth="0.0"/>
+      <Location Latitude="37.305" Longitude="-122.065" Depth="0.0"/>
+      <Location Latitude="37.265" Longitude="-122.00001" Depth="0.0"/>
+      <Location Latitude="37.2275" Longitude="-121.9275" Depth="0.0"/>
+      <Location Latitude="37.21" Longitude="-121.8375" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="2" sectionName="Mount Diablo Thrust" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="38.0" aveRake="90.0" aveUpperDepth="8.0" aveLowerDepth="16.0" aseismicSlipFactor="0.0" dipDirection="40.81874">
+    <FaultTrace name="Mount Diablo Thrust">
+      <Location Latitude="37.7301" Longitude="-121.8229" Depth="8.0"/>
+      <Location Latitude="37.8771" Longitude="-122.0388" Depth="8.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="234" sectionName="Newport-Inglewood, alt 2" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.100000381469727" aseismicSlipFactor="0.0" dipDirection="48.681343">
+    <FaultTrace name="Newport-Inglewood, alt 2">
+      <Location Latitude="33.605993" Longitude="-117.924673" Depth="0.0"/>
+      <Location Latitude="33.677996" Longitude="-117.994912" Depth="0.0"/>
+      <Location Latitude="33.695432" Longitude="-118.032638" Depth="0.0"/>
+      <Location Latitude="33.751214" Longitude="-118.09271" Depth="0.0"/>
+      <Location Latitude="33.820409" Longitude="-118.195121" Depth="0.0"/>
+      <Location Latitude="33.850256" Longitude="-118.215707" Depth="0.0"/>
+      <Location Latitude="33.87152" Longitude="-118.247909" Depth="0.0"/>
+      <Location Latitude="33.913183" Longitude="-118.281094" Depth="0.0"/>
+      <Location Latitude="33.956628" Longitude="-118.331504" Depth="0.0"/>
+      <Location Latitude="34.043309" Longitude="-118.389551" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="122" sectionName="Newport-Inglewood (Offshore)" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.25" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="10.199999809265137" aseismicSlipFactor="0.0" dipDirection="226.89299">
+    <FaultTrace name="Newport-Inglewood (Offshore)">
+      <Location Latitude="33.59104" Longitude="-117.91455" Depth="0.0"/>
+      <Location Latitude="33.50804" Longitude="-117.79886" Depth="0.0"/>
+      <Location Latitude="33.40241" Longitude="-117.68819" Depth="0.0"/>
+      <Location Latitude="33.2515" Longitude="-117.54735" Depth="0.0"/>
+      <Location Latitude="33.21629" Longitude="-117.48698" Depth="0.0"/>
+      <Location Latitude="33.15593" Longitude="-117.42914" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="216" sectionName="North Channel" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="26.0" aveRake="90.0" aveUpperDepth="1.100000023841858" aveLowerDepth="4.5" aseismicSlipFactor="0.0" dipDirection="9.937217">
+    <FaultTrace name="North Channel">
+      <Location Latitude="34.318778" Longitude="-119.425082" Depth="1.100000023841858"/>
+      <Location Latitude="34.301296" Longitude="-119.47553" Depth="1.100000023841858"/>
+      <Location Latitude="34.29743" Longitude="-119.509731" Depth="1.100000023841858"/>
+      <Location Latitude="34.300243" Longitude="-119.559277" Depth="1.100000023841858"/>
+      <Location Latitude="34.298087" Longitude="-119.604734" Depth="1.100000023841858"/>
+      <Location Latitude="34.294043" Longitude="-119.643678" Depth="1.100000023841858"/>
+      <Location Latitude="34.31109" Longitude="-119.717206" Depth="1.100000023841858"/>
+      <Location Latitude="34.333581" Longitude="-119.788528" Depth="1.100000023841858"/>
+      <Location Latitude="34.353726" Longitude="-119.909466" Depth="1.100000023841858"/>
+      <Location Latitude="34.39139" Longitude="-119.934633" Depth="1.100000023841858"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="83" sectionName="North Frontal  (East)" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.125" aveDip="41.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="16.600000381469727" aseismicSlipFactor="0.0" dipDirection="186.56236">
+    <FaultTrace name="North Frontal  (East)">
+      <Location Latitude="34.3369" Longitude="-116.79988" Depth="0.0"/>
+      <Location Latitude="34.33338" Longitude="-116.74353" Depth="0.0"/>
+      <Location Latitude="34.34571" Longitude="-116.71008" Depth="0.0"/>
+      <Location Latitude="34.33162" Longitude="-116.66958" Depth="0.0"/>
+      <Location Latitude="34.34042" Longitude="-116.64316" Depth="0.0"/>
+      <Location Latitude="34.33338" Longitude="-116.62204" Depth="0.0"/>
+      <Location Latitude="34.32105" Longitude="-116.58857" Depth="0.0"/>
+      <Location Latitude="34.31929" Longitude="-116.53925" Depth="0.0"/>
+      <Location Latitude="34.31049" Longitude="-116.52517" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="82" sectionName="North Frontal  (West)" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="49.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="15.699999809265137" aseismicSlipFactor="0.0" dipDirection="171.04308">
+    <FaultTrace name="North Frontal  (West)">
+      <Location Latitude="34.31693" Longitude="-117.26906" Depth="0.0"/>
+      <Location Latitude="34.34524" Longitude="-117.22661" Depth="0.0"/>
+      <Location Latitude="34.37072" Longitude="-117.22376" Depth="0.0"/>
+      <Location Latitude="34.37072" Longitude="-117.20113" Depth="0.0"/>
+      <Location Latitude="34.40468" Longitude="-117.20113" Depth="0.0"/>
+      <Location Latitude="34.43865" Longitude="-117.16715" Depth="0.0"/>
+      <Location Latitude="34.44431" Longitude="-117.14451" Depth="0.0"/>
+      <Location Latitude="34.44148" Longitude="-117.1077" Depth="0.0"/>
+      <Location Latitude="34.42167" Longitude="-117.05958" Depth="0.0"/>
+      <Location Latitude="34.39619" Longitude="-117.00297" Depth="0.0"/>
+      <Location Latitude="34.38204" Longitude="-116.98882" Depth="0.0"/>
+      <Location Latitude="34.36505" Longitude="-116.93785" Depth="0.0"/>
+      <Location Latitude="34.37072" Longitude="-116.85011" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="130" sectionName="Northridge" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="35.0" aveRake="90.0" aveUpperDepth="7.400000095367432" aveLowerDepth="16.799999237060547" aseismicSlipFactor="0.0" dipDirection="201.20674">
+    <FaultTrace name="Northridge">
+      <Location Latitude="34.4172" Longitude="-118.712" Depth="7.400000095367432"/>
+      <Location Latitude="34.404" Longitude="-118.634" Depth="7.400000095367432"/>
+      <Location Latitude="34.3837" Longitude="-118.596" Depth="7.400000095367432"/>
+      <Location Latitude="34.3541" Longitude="-118.545" Depth="7.400000095367432"/>
+      <Location Latitude="34.3421" Longitude="-118.478" Depth="7.400000095367432"/>
+      <Location Latitude="34.3282" Longitude="-118.424" Depth="7.400000095367432"/>
+      <Location Latitude="34.3097" Longitude="-118.378" Depth="7.400000095367432"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="322" sectionName="North Tahoe" shortName="" aveLongTermSlipRate="0.4300000071525574" slipRateStdDev="0.10000000149011612" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="107.333496">
+    <FaultTrace name="North Tahoe">
+      <Location Latitude="39.109999" Longitude="-120.044068" Depth="0.0"/>
+      <Location Latitude="39.135242" Longitude="-120.044879" Depth="0.0"/>
+      <Location Latitude="39.149125" Longitude="-120.049745" Depth="0.0"/>
+      <Location Latitude="39.178154" Longitude="-120.031902" Depth="0.0"/>
+      <Location Latitude="39.216019" Longitude="-119.992971" Depth="0.0"/>
+      <Location Latitude="39.270922" Longitude="-119.979184" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="218" sectionName="Oak Ridge (Offshore)" shortName="" aveLongTermSlipRate="3.0" slipRateStdDev="1.5" aveDip="32.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="7.900000095367432" aseismicSlipFactor="0.0" dipDirection="180.02295">
+    <FaultTrace name="Oak Ridge (Offshore)">
+      <Location Latitude="34.2523" Longitude="-119.678" Depth="0.0"/>
+      <Location Latitude="34.2614" Longitude="-119.606" Depth="0.0"/>
+      <Location Latitude="34.2504" Longitude="-119.515" Depth="0.0"/>
+      <Location Latitude="34.2338" Longitude="-119.432" Depth="0.0"/>
+      <Location Latitude="34.2315" Longitude="-119.351" Depth="0.0"/>
+      <Location Latitude="34.2515" Longitude="-119.273" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="116" sectionName="Oak Ridge (Onshore)" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="1.0" aveDip="65.0" aveRake="90.0" aveUpperDepth="1.0" aveLowerDepth="19.399999618530273" aseismicSlipFactor="0.0" dipDirection="159.26845">
+    <FaultTrace name="Oak Ridge (Onshore)">
+      <Location Latitude="34.24808" Longitude="-119.20502" Depth="1.0"/>
+      <Location Latitude="34.26305" Longitude="-119.15823" Depth="1.0"/>
+      <Location Latitude="34.31651" Longitude="-119.0974" Depth="1.0"/>
+      <Location Latitude="34.35225" Longitude="-119.04024" Depth="1.0"/>
+      <Location Latitude="34.36309" Longitude="-118.95891" Depth="1.0"/>
+      <Location Latitude="34.38133" Longitude="-118.88049" Depth="1.0"/>
+      <Location Latitude="34.38502" Longitude="-118.81043" Depth="1.0"/>
+      <Location Latitude="34.40132" Longitude="-118.77422" Depth="1.0"/>
+      <Location Latitude="34.39777" Longitude="-118.7227" Depth="1.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="9" sectionName="Ortigalita" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.0" dipDirection="240.14078">
+    <FaultTrace name="Ortigalita">
+      <Location Latitude="37.270543" Longitude="-121.280594" Depth="0.0"/>
+      <Location Latitude="37.192036" Longitude="-121.224823" Depth="0.0"/>
+      <Location Latitude="37.117611" Longitude="-121.151205" Depth="0.0"/>
+      <Location Latitude="37.038074" Longitude="-121.125922" Depth="0.0"/>
+      <Location Latitude="36.907055" Longitude="-121.011405" Depth="0.0"/>
+      <Location Latitude="36.793956" Longitude="-120.903581" Depth="0.0"/>
+      <Location Latitude="36.732164" Longitude="-120.895401" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="64" sectionName="Owens Valley" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.4000000059604645" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.5" aseismicSlipFactor="0.0" dipDirection="71.368065">
+    <FaultTrace name="Owens Valley">
+      <Location Latitude="36.5047" Longitude="-118.02" Depth="0.0"/>
+      <Location Latitude="36.5522" Longitude="-118.043" Depth="0.0"/>
+      <Location Latitude="36.6355" Longitude="-118.07" Depth="0.0"/>
+      <Location Latitude="36.6943" Longitude="-118.083" Depth="0.0"/>
+      <Location Latitude="36.7739" Longitude="-118.119" Depth="0.0"/>
+      <Location Latitude="36.8506" Longitude="-118.16" Depth="0.0"/>
+      <Location Latitude="36.9315" Longitude="-118.197" Depth="0.0"/>
+      <Location Latitude="37.234" Longitude="-118.329" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="47" sectionName="Owl Lake" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.0" dipDirection="147.57996">
+    <FaultTrace name="Owl Lake">
+      <Location Latitude="35.60639" Longitude="-116.87723" Depth="0.0"/>
+      <Location Latitude="35.72774" Longitude="-116.64142" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="109" sectionName="Palos Verdes" shortName="" aveLongTermSlipRate="3.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.600000381469727" aseismicSlipFactor="0.0" dipDirection="52.512447">
+    <FaultTrace name="Palos Verdes">
+      <Location Latitude="33.2798" Longitude="-117.917" Depth="0.0"/>
+      <Location Latitude="33.3184" Longitude="-117.943" Depth="0.0"/>
+      <Location Latitude="33.3546" Longitude="-117.986" Depth="0.0"/>
+      <Location Latitude="33.4428" Longitude="-118.06" Depth="0.0"/>
+      <Location Latitude="33.4816" Longitude="-118.08" Depth="0.0"/>
+      <Location Latitude="33.5449" Longitude="-118.119" Depth="0.0"/>
+      <Location Latitude="33.5835" Longitude="-118.146" Depth="0.0"/>
+      <Location Latitude="33.6919" Longitude="-118.233" Depth="0.0"/>
+      <Location Latitude="33.7472" Longitude="-118.254" Depth="0.0"/>
+      <Location Latitude="33.7895" Longitude="-118.334" Depth="0.0"/>
+      <Location Latitude="33.8175" Longitude="-118.4" Depth="0.0"/>
+      <Location Latitude="33.8637" Longitude="-118.439" Depth="0.0"/>
+      <Location Latitude="33.9021" Longitude="-118.496" Depth="0.0"/>
+      <Location Latitude="33.9702" Longitude="-118.557" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="244" sectionName="Panamint Valley" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.5" aveDip="90.0" aveRake="-150.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="63.795868">
+    <FaultTrace name="Panamint Valley">
+      <Location Latitude="35.612188" Longitude="-116.904637" Depth="0.0"/>
+      <Location Latitude="35.639785" Longitude="-116.942309" Depth="0.0"/>
+      <Location Latitude="35.659784" Longitude="-116.975937" Depth="0.0"/>
+      <Location Latitude="35.68278" Longitude="-117.051608" Depth="0.0"/>
+      <Location Latitude="35.711244" Longitude="-117.090485" Depth="0.0"/>
+      <Location Latitude="35.754475" Longitude="-117.121394" Depth="0.0"/>
+      <Location Latitude="35.860766" Longitude="-117.167982" Depth="0.0"/>
+      <Location Latitude="35.890425" Longitude="-117.171031" Depth="0.0"/>
+      <Location Latitude="35.920665" Longitude="-117.186459" Depth="0.0"/>
+      <Location Latitude="36.008113" Longitude="-117.214722" Depth="0.0"/>
+      <Location Latitude="36.038329" Longitude="-117.219646" Depth="0.0"/>
+      <Location Latitude="36.070863" Longitude="-117.196684" Depth="0.0"/>
+      <Location Latitude="36.206965" Longitude="-117.219767" Depth="0.0"/>
+      <Location Latitude="36.269868" Longitude="-117.264329" Depth="0.0"/>
+      <Location Latitude="36.307068" Longitude="-117.31814" Depth="0.0"/>
+      <Location Latitude="36.439636" Longitude="-117.411468" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="93" sectionName="Pinto Mtn" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="1.0" aveDip="90.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="15.5" aseismicSlipFactor="0.0" dipDirection="175.22577">
+    <FaultTrace name="Pinto Mtn">
+      <Location Latitude="34.054959" Longitude="-116.720392" Depth="0.0"/>
+      <Location Latitude="34.060183" Longitude="-116.701456" Depth="0.0"/>
+      <Location Latitude="34.072529" Longitude="-116.679651" Depth="0.0"/>
+      <Location Latitude="34.080127" Longitude="-116.638336" Depth="0.0"/>
+      <Location Latitude="34.078702" Longitude="-116.591283" Depth="0.0"/>
+      <Location Latitude="34.082976" Longitude="-116.558575" Depth="0.0"/>
+      <Location Latitude="34.110992" Longitude="-116.479389" Depth="0.0"/>
+      <Location Latitude="34.124288" Longitude="-116.459305" Depth="0.0"/>
+      <Location Latitude="34.130461" Longitude="-116.414547" Depth="0.0"/>
+      <Location Latitude="34.144707" Longitude="-116.283143" Depth="0.0"/>
+      <Location Latitude="34.147556" Longitude="-116.228631" Depth="0.0"/>
+      <Location Latitude="34.138059" Longitude="-116.081734" Depth="0.0"/>
+      <Location Latitude="34.130461" Longitude="-116.053617" Depth="0.0"/>
+      <Location Latitude="34.125713" Longitude="-116.011154" Depth="0.0"/>
+      <Location Latitude="34.108143" Longitude="-115.958937" Depth="0.0"/>
+      <Location Latitude="34.106244" Longitude="-115.943444" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="89" sectionName="Pisgah-Bullion Mtn-Mesquite Lk" shortName="" aveLongTermSlipRate="0.800000011920929" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.100000381469727" aseismicSlipFactor="0.0" dipDirection="59.91376">
+    <FaultTrace name="Pisgah-Bullion Mtn-Mesquite Lk">
+      <Location Latitude="34.13712" Longitude="-116.00425" Depth="0.0"/>
+      <Location Latitude="34.15398" Longitude="-116.02888" Depth="0.0"/>
+      <Location Latitude="34.20586" Longitude="-116.06131" Depth="0.0"/>
+      <Location Latitude="34.29145" Longitude="-116.12356" Depth="0.0"/>
+      <Location Latitude="34.3913" Longitude="-116.17543" Depth="0.0"/>
+      <Location Latitude="34.47041" Longitude="-116.25195" Depth="0.0"/>
+      <Location Latitude="34.47948" Longitude="-116.25713" Depth="0.0"/>
+      <Location Latitude="34.49116" Longitude="-116.25713" Depth="0.0"/>
+      <Location Latitude="34.56248" Longitude="-116.33364" Depth="0.0"/>
+      <Location Latitude="34.63381" Longitude="-116.37643" Depth="0.0"/>
+      <Location Latitude="34.69735" Longitude="-116.40627" Depth="0.0"/>
+      <Location Latitude="34.81796" Longitude="-116.48537" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="217" sectionName="Pitas Point (Upper)" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.5" aveDip="42.0" aveRake="90.0" aveUpperDepth="1.399999976158142" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="14.51099">
+    <FaultTrace name="Pitas Point (Upper)">
+      <Location Latitude="34.291888" Longitude="-119.589506" Depth="1.399999976158142"/>
+      <Location Latitude="34.302431" Longitude="-119.688413" Depth="1.399999976158142"/>
+      <Location Latitude="34.31109" Longitude="-119.717206" Depth="1.399999976158142"/>
+      <Location Latitude="34.316721" Longitude="-119.744723" Depth="1.399999976158142"/>
+      <Location Latitude="34.334536" Longitude="-119.839374" Depth="1.399999976158142"/>
+      <Location Latitude="34.343394" Longitude="-119.901058" Depth="1.399999976158142"/>
+      <Location Latitude="34.369389" Longitude="-119.954815" Depth="1.399999976158142"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="58" sectionName="Pleito" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="46.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.600000381469727" aseismicSlipFactor="0.0" dipDirection="180.96516">
+    <FaultTrace name="Pleito">
+      <Location Latitude="34.941519" Longitude="-119.295899" Depth="0.0"/>
+      <Location Latitude="34.956225" Longitude="-119.237059" Depth="0.0"/>
+      <Location Latitude="34.955636" Longitude="-119.206204" Depth="0.0"/>
+      <Location Latitude="34.986937" Longitude="-119.128158" Depth="0.0"/>
+      <Location Latitude="35.007082" Longitude="-119.080912" Depth="0.0"/>
+      <Location Latitude="35.007477" Longitude="-119.050539" Depth="0.0"/>
+      <Location Latitude="34.991677" Longitude="-119.036075" Depth="0.0"/>
+      <Location Latitude="34.978248" Longitude="-119.012934" Depth="0.0"/>
+      <Location Latitude="34.968373" Longitude="-118.994132" Depth="0.0"/>
+      <Location Latitude="34.943872" Longitude="-118.979456" Depth="0.0"/>
+      <Location Latitude="34.935049" Longitude="-118.968693" Depth="0.0"/>
+      <Location Latitude="34.93152" Longitude="-118.948601" Depth="0.0"/>
+      <Location Latitude="34.932696" Longitude="-118.927792" Depth="0.0"/>
+      <Location Latitude="34.939144" Longitude="-118.910727" Depth="0.0"/>
+      <Location Latitude="34.935049" Longitude="-118.878998" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="52" sectionName="Point Reyes" shortName="" aveLongTermSlipRate="0.30000001192092896" slipRateStdDev="0.10000000149011612" aveDip="50.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="9.0" aseismicSlipFactor="0.0" dipDirection="37.04354">
+    <FaultTrace name="Point Reyes">
+      <Location Latitude="37.94333" Longitude="-122.83367" Depth="0.0"/>
+      <Location Latitude="37.99077" Longitude="-123.06635" Depth="0.0"/>
+      <Location Latitude="38.18426" Longitude="-123.24097" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="243" sectionName="Puente Hills (Coyote Hills)" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.20000000298023224" aveDip="26.0" aveRake="90.0" aveUpperDepth="2.799999952316284" aveLowerDepth="14.600000381469727" aseismicSlipFactor="0.0" dipDirection="358.11902">
+    <FaultTrace name="Puente Hills (Coyote Hills)">
+      <Location Latitude="33.897733" Longitude="-117.867313" Depth="2.799999952316284"/>
+      <Location Latitude="33.871455" Longitude="-117.92065" Depth="2.799999952316284"/>
+      <Location Latitude="33.874065" Longitude="-117.966422" Depth="2.799999952316284"/>
+      <Location Latitude="33.892804" Longitude="-118.043521" Depth="2.799999952316284"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="241" sectionName="Puente Hills (LA)" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.20000000298023224" aveDip="27.0" aveRake="90.0" aveUpperDepth="2.0999999046325684" aveLowerDepth="15.0" aseismicSlipFactor="0.0" dipDirection="20.23787">
+    <FaultTrace name="Puente Hills (LA)">
+      <Location Latitude="33.968959" Longitude="-118.125953" Depth="2.0999999046325684"/>
+      <Location Latitude="33.957921" Longitude="-118.20062" Depth="2.0999999046325684"/>
+      <Location Latitude="34.032639" Longitude="-118.334955" Depth="2.0999999046325684"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="242" sectionName="Puente Hills (Santa Fe Springs)" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.20000000298023224" aveDip="29.0" aveRake="90.0" aveUpperDepth="2.799999952316284" aveLowerDepth="15.0" aseismicSlipFactor="0.0" dipDirection="346.55338">
+    <FaultTrace name="Puente Hills (Santa Fe Springs)">
+      <Location Latitude="33.931065" Longitude="-118.017825" Depth="2.799999952316284"/>
+      <Location Latitude="33.91569" Longitude="-118.078983" Depth="2.799999952316284"/>
+      <Location Latitude="33.907098" Longitude="-118.13831" Depth="2.799999952316284"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="54" sectionName="Quien Sabe" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="54.186577">
+    <FaultTrace name="Quien Sabe">
+      <Location Latitude="36.75898" Longitude="-121.21391" Depth="0.0"/>
+      <Location Latitude="36.92562" Longitude="-121.36441" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="152" sectionName="Raymond" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.5" aveDip="79.0" aveRake="60.0" aveUpperDepth="0.0" aveLowerDepth="15.600000381469727" aseismicSlipFactor="0.0" dipDirection="347.98438">
+    <FaultTrace name="Raymond">
+      <Location Latitude="34.162964" Longitude="-117.990061" Depth="0.0"/>
+      <Location Latitude="34.160883" Longitude="-118.002543" Depth="0.0"/>
+      <Location Latitude="34.155547" Longitude="-118.014949" Depth="0.0"/>
+      <Location Latitude="34.150715" Longitude="-118.02924" Depth="0.0"/>
+      <Location Latitude="34.140871" Longitude="-118.049336" Depth="0.0"/>
+      <Location Latitude="34.139141" Longitude="-118.057453" Depth="0.0"/>
+      <Location Latitude="34.129641" Longitude="-118.080546" Depth="0.0"/>
+      <Location Latitude="34.12288" Longitude="-118.115128" Depth="0.0"/>
+      <Location Latitude="34.121299" Longitude="-118.123121" Depth="0.0"/>
+      <Location Latitude="34.118318" Longitude="-118.128951" Depth="0.0"/>
+      <Location Latitude="34.1217" Longitude="-118.223" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="118" sectionName="Red Mountain" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="56.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="14.100000381469727" aseismicSlipFactor="0.0" dipDirection="1.5044075">
+    <FaultTrace name="Red Mountain">
+      <Location Latitude="34.3386" Longitude="-119.304" Depth="0.0"/>
+      <Location Latitude="34.337" Longitude="-119.38" Depth="0.0"/>
+      <Location Latitude="34.356" Longitude="-119.424" Depth="0.0"/>
+      <Location Latitude="34.3573" Longitude="-119.47" Depth="0.0"/>
+      <Location Latitude="34.3572" Longitude="-119.531" Depth="0.0"/>
+      <Location Latitude="34.3582" Longitude="-119.631" Depth="0.0"/>
+      <Location Latitude="34.3582" Longitude="-119.631" Depth="0.0"/>
+      <Location Latitude="34.3617" Longitude="-119.749" Depth="0.0"/>
+      <Location Latitude="34.3822" Longitude="-119.861" Depth="0.0"/>
+      <Location Latitude="34.3991" Longitude="-119.939" Depth="0.0"/>
+      <Location Latitude="34.3573" Longitude="-120.386" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="10" sectionName="Rinconada" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="233.31015">
+    <FaultTrace name="Rinconada">
+      <Location Latitude="36.67524" Longitude="-121.7565" Depth="0.0"/>
+      <Location Latitude="36.45199" Longitude="-121.46286" Depth="0.0"/>
+      <Location Latitude="35.61091" Longitude="-120.70242" Depth="0.0"/>
+      <Location Latitude="35.4455" Longitude="-120.662" Depth="0.0"/>
+      <Location Latitude="35.4022" Longitude="-120.615" Depth="0.0"/>
+      <Location Latitude="35.353" Longitude="-120.583" Depth="0.0"/>
+      <Location Latitude="35.3112" Longitude="-120.517" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="38" sectionName="Robinson Creek" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.15000000596046448" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="117.60097">
+    <FaultTrace name="Robinson Creek">
+      <Location Latitude="38.20659" Longitude="-119.31708" Depth="0.0"/>
+      <Location Latitude="38.23859" Longitude="-119.30286" Depth="0.0"/>
+      <Location Latitude="38.26348" Longitude="-119.30463" Depth="0.0"/>
+      <Location Latitude="38.3346" Longitude="-119.23174" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="25" sectionName="Rodgers Creek" shortName="" aveLongTermSlipRate="9.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.01850000023841858" dipDirection="60.44601">
+    <FaultTrace name="Rodgers Creek">
+      <Location Latitude="38.0875" Longitude="-122.4342" Depth="0.0"/>
+      <Location Latitude="38.3315" Longitude="-122.6136" Depth="0.0"/>
+      <Location Latitude="38.5752" Longitude="-122.7883" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="123" sectionName="Rose Canyon" shortName="" aveLongTermSlipRate="1.5" slipRateStdDev="0.25" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="7.699999809265137" aseismicSlipFactor="0.0" dipDirection="67.65571">
+    <FaultTrace name="Rose Canyon">
+      <Location Latitude="32.560298" Longitude="-117.14729" Depth="0.0"/>
+      <Location Latitude="32.60327" Longitude="-117.150521" Depth="0.0"/>
+      <Location Latitude="32.647766" Longitude="-117.165444" Depth="0.0"/>
+      <Location Latitude="32.709887" Longitude="-117.162085" Depth="0.0"/>
+      <Location Latitude="32.729042" Longitude="-117.170444" Depth="0.0"/>
+      <Location Latitude="32.759508" Longitude="-117.197599" Depth="0.0"/>
+      <Location Latitude="32.801083" Longitude="-117.20996" Depth="0.0"/>
+      <Location Latitude="32.835482" Longitude="-117.241287" Depth="0.0"/>
+      <Location Latitude="32.854538" Longitude="-117.263572" Depth="0.0"/>
+      <Location Latitude="33.018883" Longitude="-117.325147" Depth="0.0"/>
+      <Location Latitude="33.085781" Longitude="-117.376923" Depth="0.0"/>
+      <Location Latitude="33.097071" Longitude="-117.396095" Depth="0.0"/>
+      <Location Latitude="33.108255" Longitude="-117.410988" Depth="0.0"/>
+      <Location Latitude="33.122534" Longitude="-117.42337" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="42" sectionName="Round Valley" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="70.3639">
+    <FaultTrace name="Round Valley">
+      <Location Latitude="37.242436" Longitude="-118.599224" Depth="0.0"/>
+      <Location Latitude="37.251322" Longitude="-118.616177" Depth="0.0"/>
+      <Location Latitude="37.264669" Longitude="-118.635126" Depth="0.0"/>
+      <Location Latitude="37.278611" Longitude="-118.641108" Depth="0.0"/>
+      <Location Latitude="37.301507" Longitude="-118.638807" Depth="0.0"/>
+      <Location Latitude="37.326661" Longitude="-118.627613" Depth="0.0"/>
+      <Location Latitude="37.34512" Longitude="-118.615129" Depth="0.0"/>
+      <Location Latitude="37.357403" Longitude="-118.614993" Depth="0.0"/>
+      <Location Latitude="37.382486" Longitude="-118.629718" Depth="0.0"/>
+      <Location Latitude="37.397525" Longitude="-118.642509" Depth="0.0"/>
+      <Location Latitude="37.40476" Longitude="-118.650613" Depth="0.0"/>
+      <Location Latitude="37.413692" Longitude="-118.651195" Depth="0.0"/>
+      <Location Latitude="37.446111" Longitude="-118.637192" Depth="0.0"/>
+      <Location Latitude="37.481272" Longitude="-118.641574" Depth="0.0"/>
+      <Location Latitude="37.515172" Longitude="-118.650427" Depth="0.0"/>
+      <Location Latitude="37.524737" Longitude="-118.671781" Depth="0.0"/>
+      <Location Latitude="37.539727" Longitude="-118.702307" Depth="0.0"/>
+      <Location Latitude="37.548582" Longitude="-118.730855" Depth="0.0"/>
+      <Location Latitude="37.560275" Longitude="-118.742319" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="287" sectionName="San Andreas (Big Bend)" shortName="" aveLongTermSlipRate="34.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.100000381469727" aseismicSlipFactor="0.0" dipDirection="197.82658">
+    <FaultTrace name="San Andreas (Big Bend)">
+      <Location Latitude="34.94406" Longitude="-119.402865" Depth="0.0"/>
+      <Location Latitude="34.915714" Longitude="-119.362861" Depth="0.0"/>
+      <Location Latitude="34.8639" Longitude="-119.21" Depth="0.0"/>
+      <Location Latitude="34.828957" Longitude="-119.030091" Depth="0.0"/>
+      <Location Latitude="34.807599" Longitude="-118.890122" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="300" sectionName="San Andreas (Carrizo) rev" shortName="" aveLongTermSlipRate="34.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.100000381469727" aseismicSlipFactor="0.0" dipDirection="224.211">
+    <FaultTrace name="San Andreas (Carrizo) rev">
+      <Location Latitude="35.3142" Longitude="-119.8659" Depth="0.0"/>
+      <Location Latitude="35.1607" Longitude="-119.7068" Depth="0.0"/>
+      <Location Latitude="35.0475" Longitude="-119.5583" Depth="0.0"/>
+      <Location Latitude="34.9878" Longitude="-119.4711" Depth="0.0"/>
+      <Location Latitude="34.9441" Longitude="-119.4029" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="285" sectionName="San Andreas (Cholame) rev" shortName="" aveLongTermSlipRate="34.0" slipRateStdDev="2.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.0" dipDirection="51.227264">
+    <FaultTrace name="San Andreas (Cholame) rev">
+      <Location Latitude="35.314166" Longitude="-119.865953" Depth="0.0"/>
+      <Location Latitude="35.413909" Longitude="-119.970299" Depth="0.0"/>
+      <Location Latitude="35.533307" Longitude="-120.086757" Depth="0.0"/>
+      <Location Latitude="35.751982" Longitude="-120.300046" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="295" sectionName="San Andreas (Coachella) rev" shortName="" aveLongTermSlipRate="20.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.100000381469727" aseismicSlipFactor="0.10000000149011612" dipDirection="224.39233">
+    <FaultTrace name="San Andreas (Coachella) rev">
+      <Location Latitude="33.78825" Longitude="-116.24629" Depth="0.0"/>
+      <Location Latitude="33.35009" Longitude="-115.71192" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="57" sectionName="San Andreas (Creeping Segment)" shortName="" aveLongTermSlipRate="34.0" slipRateStdDev="2.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.9100000262260437" dipDirection="227.04672">
+    <FaultTrace name="San Andreas (Creeping Segment)">
+      <Location Latitude="36.8059" Longitude="-121.4816" Depth="0.0"/>
+      <Location Latitude="36.68287" Longitude="-121.28899" Depth="0.0"/>
+      <Location Latitude="36.2939" Longitude="-120.87239" Depth="0.0"/>
+      <Location Latitude="36.0019" Longitude="-120.56048" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="286" sectionName="San Andreas (Mojave N)" shortName="" aveLongTermSlipRate="27.0" slipRateStdDev="3.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.100000381469727" aseismicSlipFactor="0.0" dipDirection="199.0984">
+    <FaultTrace name="San Andreas (Mojave N)">
+      <Location Latitude="34.807599" Longitude="-118.890122" Depth="0.0"/>
+      <Location Latitude="34.807221" Longitude="-118.887642" Depth="0.0"/>
+      <Location Latitude="34.773248" Longitude="-118.767314" Depth="0.0"/>
+      <Location Latitude="34.698495" Longitude="-118.508948" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="301" sectionName="San Andreas (Mojave S)" shortName="" aveLongTermSlipRate="29.0" slipRateStdDev="3.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.100000381469727" aseismicSlipFactor="0.0" dipDirection="205.51503">
+    <FaultTrace name="San Andreas (Mojave S)">
+      <Location Latitude="34.698495" Longitude="-118.508948" Depth="0.0"/>
+      <Location Latitude="34.547849" Longitude="-118.103936" Depth="0.0"/>
+      <Location Latitude="34.402927" Longitude="-117.753579" Depth="0.0"/>
+      <Location Latitude="34.3163" Longitude="-117.549" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="27" sectionName="San Andreas (North Coast)" shortName="" aveLongTermSlipRate="24.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.01850000023841858" dipDirection="54.79259">
+    <FaultTrace name="San Andreas (North Coast)">
+      <Location Latitude="37.7856" Longitude="-122.5741" Depth="0.0"/>
+      <Location Latitude="37.9617" Longitude="-122.72245" Depth="0.0"/>
+      <Location Latitude="38.181" Longitude="-122.917" Depth="0.0"/>
+      <Location Latitude="38.329" Longitude="-123.0419" Depth="0.0"/>
+      <Location Latitude="38.408" Longitude="-123.1144" Depth="0.0"/>
+      <Location Latitude="39.1014" Longitude="-123.7894" Depth="0.0"/>
+      <Location Latitude="39.1706" Longitude="-123.8407" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="26" sectionName="San Andreas (Offshore)" shortName="" aveLongTermSlipRate="24.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="11.0" aseismicSlipFactor="0.01850000023841858" dipDirection="68.2224">
+    <FaultTrace name="San Andreas (Offshore)">
+      <Location Latitude="39.1706" Longitude="-123.8407" Depth="0.0"/>
+      <Location Latitude="39.2589" Longitude="-123.8726" Depth="0.0"/>
+      <Location Latitude="39.3965" Longitude="-123.9224" Depth="0.0"/>
+      <Location Latitude="39.673" Longitude="-123.9953" Depth="0.0"/>
+      <Location Latitude="39.9135" Longitude="-124.0067" Depth="0.0"/>
+      <Location Latitude="40.0259" Longitude="-124.049" Depth="0.0"/>
+      <Location Latitude="40.0506" Longitude="-124.0635" Depth="0.0"/>
+      <Location Latitude="40.0965" Longitude="-124.1381" Depth="0.0"/>
+      <Location Latitude="40.244" Longitude="-124.4032" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="32" sectionName="San Andreas (Parkfield)" shortName="" aveLongTermSlipRate="34.0" slipRateStdDev="2.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="10.199999809265137" aseismicSlipFactor="0.7900000214576721" dipDirection="49.939537">
+    <FaultTrace name="San Andreas (Parkfield)">
+      <Location Latitude="35.751982" Longitude="-120.300046" Depth="0.0"/>
+      <Location Latitude="36.002647" Longitude="-120.56089" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="67" sectionName="San Andreas (Peninsula)" shortName="" aveLongTermSlipRate="17.0" slipRateStdDev="2.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.01850000023841858" dipDirection="53.56453">
+    <FaultTrace name="San Andreas (Peninsula)">
+      <Location Latitude="37.1762" Longitude="-122.0036" Depth="0.0"/>
+      <Location Latitude="37.297" Longitude="-122.14" Depth="0.0"/>
+      <Location Latitude="37.367" Longitude="-122.21" Depth="0.0"/>
+      <Location Latitude="37.438" Longitude="-122.283" Depth="0.0"/>
+      <Location Latitude="37.7856" Longitude="-122.5741" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="282" sectionName="San Andreas (San Bernardino N)" shortName="" aveLongTermSlipRate="22.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.800000190734863" aseismicSlipFactor="0.0" dipDirection="211.50256">
+    <FaultTrace name="San Andreas (San Bernardino N)">
+      <Location Latitude="34.3163" Longitude="-117.549" Depth="0.0"/>
+      <Location Latitude="34.2709" Longitude="-117.451" Depth="0.0"/>
+      <Location Latitude="34.232843" Longitude="-117.388692" Depth="0.0"/>
+      <Location Latitude="34.173137" Longitude="-117.274161" Depth="0.0"/>
+      <Location Latitude="34.150027" Longitude="-117.222023" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="283" sectionName="San Andreas (San Bernardino S)" shortName="" aveLongTermSlipRate="16.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.800000190734863" aseismicSlipFactor="0.0" dipDirection="209.69507">
+    <FaultTrace name="San Andreas (San Bernardino S)">
+      <Location Latitude="34.150027" Longitude="-117.222023" Depth="0.0"/>
+      <Location Latitude="34.092795" Longitude="-117.067674" Depth="0.0"/>
+      <Location Latitude="34.073768" Longitude="-117.0139" Depth="0.0"/>
+      <Location Latitude="34.033837" Longitude="-116.90235" Depth="0.0"/>
+      <Location Latitude="34.011347" Longitude="-116.873541" Depth="0.0"/>
+      <Location Latitude="33.959114" Longitude="-116.819795" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="284" sectionName="San Andreas (San Gorgonio Pass-Garnet HIll)" shortName="" aveLongTermSlipRate="10.0" slipRateStdDev="3.0" aveDip="58.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.800000190734863" aseismicSlipFactor="0.0" dipDirection="19.841125">
+    <FaultTrace name="San Andreas (San Gorgonio Pass-Garnet HIll)">
+      <Location Latitude="33.78825" Longitude="-116.24629" Depth="0.0"/>
+      <Location Latitude="33.848518" Longitude="-116.383007" Depth="0.0"/>
+      <Location Latitude="33.848123" Longitude="-116.426527" Depth="0.0"/>
+      <Location Latitude="33.884664" Longitude="-116.516889" Depth="0.0"/>
+      <Location Latitude="33.907018" Longitude="-116.584856" Depth="0.0"/>
+      <Location Latitude="33.917569" Longitude="-116.623871" Depth="0.0"/>
+      <Location Latitude="33.944163" Longitude="-116.685809" Depth="0.0"/>
+      <Location Latitude="33.937411" Longitude="-116.778598" Depth="0.0"/>
+      <Location Latitude="33.953154" Longitude="-116.801391" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="56" sectionName="San Andreas (Santa Cruz Mtn)" shortName="" aveLongTermSlipRate="17.0" slipRateStdDev="2.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.0" aseismicSlipFactor="0.10000000149011612" dipDirection="41.76649">
+    <FaultTrace name="San Andreas (Santa Cruz Mtn)">
+      <Location Latitude="36.8059" Longitude="-121.4816" Depth="0.0"/>
+      <Location Latitude="36.8701" Longitude="-121.5645" Depth="0.0"/>
+      <Location Latitude="36.926" Longitude="-121.652" Depth="0.0"/>
+      <Location Latitude="36.989" Longitude="-121.733" Depth="0.0"/>
+      <Location Latitude="37.053" Longitude="-121.812" Depth="0.0"/>
+      <Location Latitude="37.104" Longitude="-121.907" Depth="0.0"/>
+      <Location Latitude="37.1762" Longitude="-122.0036" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="80" sectionName="San Cayetano" shortName="" aveLongTermSlipRate="6.0" slipRateStdDev="1.5" aveDip="42.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="16.0" aseismicSlipFactor="0.0" dipDirection="2.537202">
+    <FaultTrace name="San Cayetano">
+      <Location Latitude="34.4361" Longitude="-118.762" Depth="0.0"/>
+      <Location Latitude="34.4047" Longitude="-118.831" Depth="0.0"/>
+      <Location Latitude="34.4021" Longitude="-118.865" Depth="0.0"/>
+      <Location Latitude="34.41725" Longitude="-118.913042" Depth="0.0"/>
+      <Location Latitude="34.427038" Longitude="-118.923852" Depth="0.0"/>
+      <Location Latitude="34.449464" Longitude="-118.927914" Depth="0.0"/>
+      <Location Latitude="34.448406" Longitude="-118.943631" Depth="0.0"/>
+      <Location Latitude="34.4221" Longitude="-118.976854" Depth="0.0"/>
+      <Location Latitude="34.421776" Longitude="-119.007521" Depth="0.0"/>
+      <Location Latitude="34.422944" Longitude="-119.036709" Depth="0.0"/>
+      <Location Latitude="34.435734" Longitude="-119.081818" Depth="0.0"/>
+      <Location Latitude="34.432891" Longitude="-119.103758" Depth="0.0"/>
+      <Location Latitude="34.449967" Longitude="-119.159061" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="247" sectionName="San Gabriel" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="61.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="14.699999809265137" aseismicSlipFactor="0.0" dipDirection="39.11243">
+    <FaultTrace name="San Gabriel">
+      <Location Latitude="34.317807" Longitude="-118.280034" Depth="0.0"/>
+      <Location Latitude="34.3311" Longitude="-118.301" Depth="0.0"/>
+      <Location Latitude="34.3705" Longitude="-118.428" Depth="0.0"/>
+      <Location Latitude="34.3947" Longitude="-118.489" Depth="0.0"/>
+      <Location Latitude="34.4363" Longitude="-118.561" Depth="0.0"/>
+      <Location Latitude="34.5142" Longitude="-118.644" Depth="0.0"/>
+      <Location Latitude="34.5606" Longitude="-118.696" Depth="0.0"/>
+      <Location Latitude="34.6203" Longitude="-118.772" Depth="0.0"/>
+      <Location Latitude="34.6621" Longitude="-118.816" Depth="0.0"/>
+      <Location Latitude="34.714" Longitude="-118.875" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="12" sectionName="San Gregorio (No)" shortName="" aveLongTermSlipRate="7.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.10000000149011612" dipDirection="248.02715">
+    <FaultTrace name="San Gregorio (No)">
+      <Location Latitude="37.7682" Longitude="-122.6166" Depth="0.0"/>
+      <Location Latitude="37.2906" Longitude="-122.3936" Depth="0.0"/>
+      <Location Latitude="36.8528" Longitude="-122.1555" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="29" sectionName="San Gregorio (So)" shortName="" aveLongTermSlipRate="3.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.10000000149011612" dipDirection="66.30494">
+    <FaultTrace name="San Gregorio (So)">
+      <Location Latitude="36.3131" Longitude="-121.8593" Depth="0.0"/>
+      <Location Latitude="36.359" Longitude="-121.9" Depth="0.0"/>
+      <Location Latitude="36.4194" Longitude="-121.9351" Depth="0.0"/>
+      <Location Latitude="36.4669" Longitude="-121.9538" Depth="0.0"/>
+      <Location Latitude="36.5172" Longitude="-121.9803" Depth="0.0"/>
+      <Location Latitude="36.5561" Longitude="-122.0212" Depth="0.0"/>
+      <Location Latitude="36.6696" Longitude="-122.0945" Depth="0.0"/>
+      <Location Latitude="36.7496" Longitude="-122.1295" Depth="0.0"/>
+      <Location Latitude="36.8528" Longitude="-122.1555" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="291" sectionName="San Jacinto (Anza, stepover)" shortName="" aveLongTermSlipRate="9.0" slipRateStdDev="2.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="16.799999237060547" aseismicSlipFactor="0.0" dipDirection="223.68906">
+    <FaultTrace name="San Jacinto (Anza, stepover)">
+      <Location Latitude="33.890683" Longitude="-117.108288" Depth="0.0"/>
+      <Location Latitude="33.7778" Longitude="-116.979" Depth="0.0"/>
+      <Location Latitude="33.76173" Longitude="-116.961982" Depth="0.0"/>
+      <Location Latitude="33.736426" Longitude="-116.914297" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="293" sectionName="San Jacinto (Anza) rev" shortName="" aveLongTermSlipRate="18.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="16.799999237060547" aseismicSlipFactor="0.0" dipDirection="216.36292">
+    <FaultTrace name="San Jacinto (Anza) rev">
+      <Location Latitude="33.736426" Longitude="-116.914297" Depth="0.0"/>
+      <Location Latitude="33.696672" Longitude="-116.844717" Depth="0.0"/>
+      <Location Latitude="33.5112" Longitude="-116.549" Depth="0.0"/>
+      <Location Latitude="33.489548" Longitude="-116.513295" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="99" sectionName="San Jacinto (Borrego)" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.100000381469727" aseismicSlipFactor="0.10000000149011612" dipDirection="223.05913">
+    <FaultTrace name="San Jacinto (Borrego)">
+      <Location Latitude="33.2066" Longitude="-116.205" Depth="0.0"/>
+      <Location Latitude="33.1822" Longitude="-116.164" Depth="0.0"/>
+      <Location Latitude="33.1434" Longitude="-116.129" Depth="0.0"/>
+      <Location Latitude="33.0976" Longitude="-116.058" Depth="0.0"/>
+      <Location Latitude="33.0297" Longitude="-116.011" Depth="0.0"/>
+      <Location Latitude="33.001" Longitude="-115.943" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="292" sectionName="San Jacinto (Clark) rev" shortName="" aveLongTermSlipRate="14.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="16.799999237060547" aseismicSlipFactor="0.0" dipDirection="213.92917">
+    <FaultTrace name="San Jacinto (Clark) rev">
+      <Location Latitude="33.489548" Longitude="-116.513295" Depth="0.0"/>
+      <Location Latitude="33.4166" Longitude="-116.393" Depth="0.0"/>
+      <Location Latitude="33.396" Longitude="-116.339" Depth="0.0"/>
+      <Location Latitude="33.3839" Longitude="-116.297" Depth="0.0"/>
+      <Location Latitude="33.315" Longitude="-116.21" Depth="0.0"/>
+      <Location Latitude="33.2854" Longitude="-116.147" Depth="0.0"/>
+      <Location Latitude="33.2558" Longitude="-116.099" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="101" sectionName="San Jacinto (Coyote Creek)" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="15.899999618530273" aseismicSlipFactor="0.0" dipDirection="222.78476">
+    <FaultTrace name="San Jacinto (Coyote Creek)">
+      <Location Latitude="33.4688" Longitude="-116.543" Depth="0.0"/>
+      <Location Latitude="33.4204" Longitude="-116.47" Depth="0.0"/>
+      <Location Latitude="33.2636" Longitude="-116.283" Depth="0.0"/>
+      <Location Latitude="33.2066" Longitude="-116.205" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="119" sectionName="San Jacinto (San Bernardino)" shortName="" aveLongTermSlipRate="6.0" slipRateStdDev="2.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="16.100000381469727" aseismicSlipFactor="0.0" dipDirection="225.44872">
+    <FaultTrace name="San Jacinto (San Bernardino)">
+      <Location Latitude="34.2936" Longitude="-117.565" Depth="0.0"/>
+      <Location Latitude="34.182" Longitude="-117.403" Depth="0.0"/>
+      <Location Latitude="34.1917" Longitude="-117.389" Depth="0.0"/>
+      <Location Latitude="34.1588" Longitude="-117.364" Depth="0.0"/>
+      <Location Latitude="34.1013" Longitude="-117.325" Depth="0.0"/>
+      <Location Latitude="34.017" Longitude="-117.237" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="290" sectionName="San Jacinto (San Jacinto Valley, stepover)" shortName="" aveLongTermSlipRate="9.0" slipRateStdDev="2.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="16.100000381469727" aseismicSlipFactor="0.0" dipDirection="223.79541">
+    <FaultTrace name="San Jacinto (San Jacinto Valley, stepover)">
+      <Location Latitude="33.904534" Longitude="-117.08958" Depth="0.0"/>
+      <Location Latitude="33.849281" Longitude="-117.012051" Depth="0.0"/>
+      <Location Latitude="33.805362" Longitude="-116.939049" Depth="0.0"/>
+      <Location Latitude="33.75567" Longitude="-116.903016" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="289" sectionName="San Jacinto (San Jacinto Valley) rev" shortName="" aveLongTermSlipRate="18.0" slipRateStdDev="3.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="16.100000381469727" aseismicSlipFactor="0.0" dipDirection="222.56644">
+    <FaultTrace name="San Jacinto (San Jacinto Valley) rev">
+      <Location Latitude="34.017" Longitude="-117.237" Depth="0.0"/>
+      <Location Latitude="34.0067" Longitude="-117.222" Depth="0.0"/>
+      <Location Latitude="33.904534" Longitude="-117.08958" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="28" sectionName="San Jacinto (Superstition Mtn)" shortName="" aveLongTermSlipRate="5.0" slipRateStdDev="1.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.399999618530273" aseismicSlipFactor="0.0" dipDirection="209.53302">
+    <FaultTrace name="San Jacinto (Superstition Mtn)">
+      <Location Latitude="33.001" Longitude="-115.943" Depth="0.0"/>
+      <Location Latitude="32.93785" Longitude="-115.80666" Depth="0.0"/>
+      <Location Latitude="32.8842" Longitude="-115.698" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="143" sectionName="San Joaquin Hills" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.10000000149011612" aveDip="23.0" aveRake="90.0" aveUpperDepth="2.0" aveLowerDepth="12.399999618530273" aseismicSlipFactor="0.0" dipDirection="204.37102">
+    <FaultTrace name="San Joaquin Hills">
+      <Location Latitude="33.695" Longitude="-117.933" Depth="2.0"/>
+      <Location Latitude="33.688" Longitude="-117.823" Depth="2.0"/>
+      <Location Latitude="33.647" Longitude="-117.736" Depth="2.0"/>
+      <Location Latitude="33.597" Longitude="-117.674" Depth="2.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="107" sectionName="San Jose" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.25" aveDip="74.0" aveRake="30.0" aveUpperDepth="0.0" aveLowerDepth="15.800000190734863" aseismicSlipFactor="0.0" dipDirection="334.49857">
+    <FaultTrace name="San Jose">
+      <Location Latitude="34.11406" Longitude="-117.69006" Depth="0.0"/>
+      <Location Latitude="34.08464" Longitude="-117.73052" Depth="0.0"/>
+      <Location Latitude="34.06012" Longitude="-117.83841" Depth="0.0"/>
+      <Location Latitude="34.03928" Longitude="-117.87888" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="31" sectionName="San Juan" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="242.76013">
+    <FaultTrace name="San Juan">
+      <Location Latitude="35.6797" Longitude="-120.29537" Depth="0.0"/>
+      <Location Latitude="35.50193" Longitude="-120.22916" Depth="0.0"/>
+      <Location Latitude="35.30454" Longitude="-120.12495" Depth="0.0"/>
+      <Location Latitude="35.28247" Longitude="-120.08205" Depth="0.0"/>
+      <Location Latitude="35.14761" Longitude="-119.96066" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="75" sectionName="San Luis Range (So Margin)" shortName="" aveLongTermSlipRate="0.20000000298023224" slipRateStdDev="0.05000000074505806" aveDip="45.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="36.545853">
+    <FaultTrace name="San Luis Range (So Margin)">
+      <Location Latitude="34.84968" Longitude="-120.23746" Depth="0.0"/>
+      <Location Latitude="34.86439" Longitude="-120.26933" Depth="0.0"/>
+      <Location Latitude="34.91098" Longitude="-120.30979" Depth="0.0"/>
+      <Location Latitude="34.97596" Longitude="-120.41399" Depth="0.0"/>
+      <Location Latitude="35.10837" Longitude="-120.56358" Depth="0.0"/>
+      <Location Latitude="35.14148" Longitude="-120.64449" Depth="0.0"/>
+      <Location Latitude="35.16845" Longitude="-120.71314" Depth="0.0"/>
+      <Location Latitude="35.18193" Longitude="-120.78795" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="111" sectionName="Santa Cruz Island" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="90.0" aveRake="30.0" aveUpperDepth="0.0" aveLowerDepth="13.300000190734863" aseismicSlipFactor="0.0" dipDirection="188.20114">
+    <FaultTrace name="Santa Cruz Island">
+      <Location Latitude="34.0727" Longitude="-119.994" Depth="0.0"/>
+      <Location Latitude="34.0314" Longitude="-119.874" Depth="0.0"/>
+      <Location Latitude="34.0155" Longitude="-119.778" Depth="0.0"/>
+      <Location Latitude="34.0048" Longitude="-119.725" Depth="0.0"/>
+      <Location Latitude="33.9857" Longitude="-119.612" Depth="0.0"/>
+      <Location Latitude="33.9871" Longitude="-119.515" Depth="0.0"/>
+      <Location Latitude="33.9785" Longitude="-119.347" Depth="0.0"/>
+      <Location Latitude="33.9828" Longitude="-119.26" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="225" sectionName="Santa Monica, alt 2" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="50.0" aveRake="30.0" aveUpperDepth="0.0" aveLowerDepth="11.600000381469727" aseismicSlipFactor="0.0" dipDirection="338.2081">
+    <FaultTrace name="Santa Monica, alt 2">
+      <Location Latitude="34.1093" Longitude="-118.284" Depth="0.0"/>
+      <Location Latitude="34.0724" Longitude="-118.389" Depth="0.0"/>
+      <Location Latitude="34.0503" Longitude="-118.434" Depth="0.0"/>
+      <Location Latitude="34.033" Longitude="-118.458" Depth="0.0"/>
+      <Location Latitude="34.0419" Longitude="-118.467" Depth="0.0"/>
+      <Location Latitude="34.0364" Longitude="-118.498" Depth="0.0"/>
+      <Location Latitude="34.0302" Longitude="-118.541" Depth="0.0"/>
+      <Location Latitude="34.0202" Longitude="-118.552" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="110" sectionName="Santa Rosa Island" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="90.0" aveRake="30.0" aveUpperDepth="0.0" aveLowerDepth="8.699999809265137" aseismicSlipFactor="0.0" dipDirection="1.1631285">
+    <FaultTrace name="Santa Rosa Island">
+      <Location Latitude="34.0112" Longitude="-119.906" Depth="0.0"/>
+      <Location Latitude="33.9855" Longitude="-119.966" Depth="0.0"/>
+      <Location Latitude="33.9714" Longitude="-120.111" Depth="0.0"/>
+      <Location Latitude="33.9722" Longitude="-120.18" Depth="0.0"/>
+      <Location Latitude="33.9833" Longitude="-120.23" Depth="0.0"/>
+      <Location Latitude="33.9844" Longitude="-120.3" Depth="0.0"/>
+      <Location Latitude="33.9873" Longitude="-120.358" Depth="0.0"/>
+      <Location Latitude="33.9873" Longitude="-120.43" Depth="0.0"/>
+      <Location Latitude="34.0199" Longitude="-120.511" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="79" sectionName="Santa Ynez (East)" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="70.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="13.300000190734863" aseismicSlipFactor="0.0" dipDirection="171.79636">
+    <FaultTrace name="Santa Ynez (East)">
+      <Location Latitude="34.4992" Longitude="-119.636" Depth="0.0"/>
+      <Location Latitude="34.488" Longitude="-119.553" Depth="0.0"/>
+      <Location Latitude="34.4888" Longitude="-119.501" Depth="0.0"/>
+      <Location Latitude="34.4987" Longitude="-119.435" Depth="0.0"/>
+      <Location Latitude="34.5067" Longitude="-119.32" Depth="0.0"/>
+      <Location Latitude="34.5293" Longitude="-119.23" Depth="0.0"/>
+      <Location Latitude="34.5315" Longitude="-119.164" Depth="0.0"/>
+      <Location Latitude="34.5697" Longitude="-118.954" Depth="0.0"/>
+      <Location Latitude="34.5839" Longitude="-118.904" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="77" sectionName="Santa Ynez (West)" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="70.0" aveRake="0.0" aveUpperDepth="0.0" aveLowerDepth="9.199999809265137" aseismicSlipFactor="0.0" dipDirection="181.53917">
+    <FaultTrace name="Santa Ynez (West)">
+      <Location Latitude="34.5121" Longitude="-120.307" Depth="0.0"/>
+      <Location Latitude="34.5147" Longitude="-120.263" Depth="0.0"/>
+      <Location Latitude="34.5239" Longitude="-120.208" Depth="0.0"/>
+      <Location Latitude="34.5442" Longitude="-120.12" Depth="0.0"/>
+      <Location Latitude="34.5618" Longitude="-120.031" Depth="0.0"/>
+      <Location Latitude="34.5603" Longitude="-119.977" Depth="0.0"/>
+      <Location Latitude="34.5474" Longitude="-119.935" Depth="0.0"/>
+      <Location Latitude="34.5533" Longitude="-119.867" Depth="0.0"/>
+      <Location Latitude="34.5484" Longitude="-119.806" Depth="0.0"/>
+      <Location Latitude="34.5205" Longitude="-119.732" Depth="0.0"/>
+      <Location Latitude="34.4992" Longitude="-119.6355" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="114" sectionName="Sierra Madre" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="53.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="14.199999809265137" aseismicSlipFactor="0.0" dipDirection="18.630968">
+    <FaultTrace name="Sierra Madre">
+      <Location Latitude="34.1231" Longitude="-117.74" Depth="0.0"/>
+      <Location Latitude="34.1219" Longitude="-117.755" Depth="0.0"/>
+      <Location Latitude="34.1317" Longitude="-117.769" Depth="0.0"/>
+      <Location Latitude="34.1305" Longitude="-117.807" Depth="0.0"/>
+      <Location Latitude="34.1323" Longitude="-117.818" Depth="0.0"/>
+      <Location Latitude="34.1587" Longitude="-117.86" Depth="0.0"/>
+      <Location Latitude="34.147" Longitude="-117.881" Depth="0.0"/>
+      <Location Latitude="34.1501" Longitude="-117.94" Depth="0.0"/>
+      <Location Latitude="34.1611" Longitude="-117.985" Depth="0.0"/>
+      <Location Latitude="34.1752" Longitude="-118.003" Depth="0.0"/>
+      <Location Latitude="34.1758" Longitude="-118.068" Depth="0.0"/>
+      <Location Latitude="34.201" Longitude="-118.112" Depth="0.0"/>
+      <Location Latitude="34.2028" Longitude="-118.149" Depth="0.0"/>
+      <Location Latitude="34.210744" Longitude="-118.189023" Depth="0.0"/>
+      <Location Latitude="34.23489" Longitude="-118.222677" Depth="0.0"/>
+      <Location Latitude="34.249456" Longitude="-118.262344" Depth="0.0"/>
+      <Location Latitude="34.258494" Longitude="-118.279323" Depth="0.0"/>
+      <Location Latitude="34.2751" Longitude="-118.29" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="113" sectionName="Sierra Madre (San Fernando)" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="0.5" aveDip="45.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="9.279146">
+    <FaultTrace name="Sierra Madre (San Fernando)">
+      <Location Latitude="34.2782" Longitude="-118.2951" Depth="0.0"/>
+      <Location Latitude="34.27452" Longitude="-118.31963" Depth="0.0"/>
+      <Location Latitude="34.29046" Longitude="-118.39563" Depth="0.0"/>
+      <Location Latitude="34.30394" Longitude="-118.41894" Depth="0.0"/>
+      <Location Latitude="34.30272" Longitude="-118.43365" Depth="0.0"/>
+      <Location Latitude="34.29291" Longitude="-118.46185" Depth="0.0"/>
+      <Location Latitude="34.30272" Longitude="-118.47778" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="115" sectionName="Simi-Santa Rosa" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="60.0" aveRake="30.0" aveUpperDepth="1.0" aveLowerDepth="12.100000381469727" aseismicSlipFactor="0.0" dipDirection="345.50974">
+    <FaultTrace name="Simi-Santa Rosa">
+      <Location Latitude="34.3038" Longitude="-118.696" Depth="1.0"/>
+      <Location Latitude="34.2835" Longitude="-118.758" Depth="1.0"/>
+      <Location Latitude="34.2708" Longitude="-118.836" Depth="1.0"/>
+      <Location Latitude="34.2523" Longitude="-118.885" Depth="1.0"/>
+      <Location Latitude="34.2468" Longitude="-118.951" Depth="1.0"/>
+      <Location Latitude="34.2346" Longitude="-119.0" Depth="1.0"/>
+      <Location Latitude="34.2422" Longitude="-119.043" Depth="1.0"/>
+      <Location Latitude="34.2168" Longitude="-119.1" Depth="1.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="90" sectionName="So Emerson-Copper Mtn" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.20000000298023224" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="14.100000381469727" aseismicSlipFactor="0.0" dipDirection="51.39997">
+    <FaultTrace name="So Emerson-Copper Mtn">
+      <Location Latitude="34.15781" Longitude="-116.179282" Depth="0.0"/>
+      <Location Latitude="34.171795" Longitude="-116.205275" Depth="0.0"/>
+      <Location Latitude="34.211285" Longitude="-116.242097" Depth="0.0"/>
+      <Location Latitude="34.237947" Longitude="-116.266747" Depth="0.0"/>
+      <Location Latitude="34.25329" Longitude="-116.283789" Depth="0.0"/>
+      <Location Latitude="34.308123" Longitude="-116.304178" Depth="0.0"/>
+      <Location Latitude="34.333549" Longitude="-116.316808" Depth="0.0"/>
+      <Location Latitude="34.3728" Longitude="-116.350279" Depth="0.0"/>
+      <Location Latitude="34.406528" Longitude="-116.379193" Depth="0.0"/>
+      <Location Latitude="34.437626" Longitude="-116.417841" Depth="0.0"/>
+      <Location Latitude="34.450416" Longitude="-116.439143" Depth="0.0"/>
+      <Location Latitude="34.471298" Longitude="-116.478814" Depth="0.0"/>
+      <Location Latitude="34.486404" Longitude="-116.494833" Depth="0.0"/>
+      <Location Latitude="34.508724" Longitude="-116.522526" Depth="0.0"/>
+      <Location Latitude="34.529414" Longitude="-116.539872" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="63" sectionName="So Sierra Nevada" shortName="" aveLongTermSlipRate="0.10000000149011612" slipRateStdDev="0.05000000074505806" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.600000381469727" aseismicSlipFactor="0.0" dipDirection="91.64868">
+    <FaultTrace name="So Sierra Nevada">
+      <Location Latitude="35.2943" Longitude="-118.023" Depth="0.0"/>
+      <Location Latitude="35.347" Longitude="-118.04" Depth="0.0"/>
+      <Location Latitude="35.4261" Longitude="-118.051" Depth="0.0"/>
+      <Location Latitude="35.5384" Longitude="-118.034" Depth="0.0"/>
+      <Location Latitude="35.568" Longitude="-118.004" Depth="0.0"/>
+      <Location Latitude="35.61" Longitude="-117.909" Depth="0.0"/>
+      <Location Latitude="35.6839" Longitude="-117.869" Depth="0.0"/>
+      <Location Latitude="35.758284" Longitude="-117.895976" Depth="0.0"/>
+      <Location Latitude="35.934098" Longitude="-117.911981" Depth="0.0"/>
+      <Location Latitude="35.972588" Longitude="-117.945936" Depth="0.0"/>
+      <Location Latitude="36.08" Longitude="-117.985" Depth="0.0"/>
+      <Location Latitude="36.124" Longitude="-118.009" Depth="0.0"/>
+      <Location Latitude="36.2193" Longitude="-117.99" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="98" sectionName="Superstition Hills" shortName="" aveLongTermSlipRate="4.0" slipRateStdDev="1.0" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="12.600000381469727" aseismicSlipFactor="0.10000000149011612" dipDirection="220.0262">
+    <FaultTrace name="Superstition Hills">
+      <Location Latitude="33.0344" Longitude="-115.895" Depth="0.0"/>
+      <Location Latitude="33.008187" Longitude="-115.802388" Depth="0.0"/>
+      <Location Latitude="32.8999" Longitude="-115.664" Depth="0.0"/>
+      <Location Latitude="32.830261" Longitude="-115.606214" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="36" sectionName="Surprise Valley" shortName="" aveLongTermSlipRate="1.2999999523162842" slipRateStdDev="0.25" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="9.600000381469727" aseismicSlipFactor="0.0" dipDirection="81.530495">
+    <FaultTrace name="Surprise Valley">
+      <Location Latitude="41.13222" Longitude="-119.99061" Depth="0.0"/>
+      <Location Latitude="41.2827" Longitude="-120.10568" Depth="0.0"/>
+      <Location Latitude="41.50401" Longitude="-120.18092" Depth="0.0"/>
+      <Location Latitude="41.58146" Longitude="-120.18314" Depth="0.0"/>
+      <Location Latitude="41.61245" Longitude="-120.20747" Depth="0.0"/>
+      <Location Latitude="41.6899" Longitude="-120.21633" Depth="0.0"/>
+      <Location Latitude="41.87358" Longitude="-120.13888" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="15" sectionName="Table Bluff" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="0.30000001192092896" aveDip="45.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="25.637197">
+    <FaultTrace name="Table Bluff">
+      <Location Latitude="40.647781" Longitude="-124.179766" Depth="0.0"/>
+      <Location Latitude="40.696" Longitude="-124.282" Depth="0.0"/>
+      <Location Latitude="40.698" Longitude="-124.47499" Depth="0.0"/>
+      <Location Latitude="40.828" Longitude="-124.679" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="145" sectionName="Tank Canyon" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="8.300000190734863" aseismicSlipFactor="0.0" dipDirection="270.88467">
+    <FaultTrace name="Tank Canyon">
+      <Location Latitude="35.76897" Longitude="-117.25027" Depth="0.0"/>
+      <Location Latitude="35.74856" Longitude="-117.22935" Depth="0.0"/>
+      <Location Latitude="35.6805" Longitude="-117.21721" Depth="0.0"/>
+      <Location Latitude="35.64161" Longitude="-117.25269" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="19" sectionName="Trinidad" shortName="" aveLongTermSlipRate="0.699999988079071" slipRateStdDev="0.15000000596046448" aveDip="35.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="57.88185">
+    <FaultTrace name="Trinidad">
+      <Location Latitude="40.79" Longitude="-123.841" Depth="0.0"/>
+      <Location Latitude="40.854265" Longitude="-123.922142" Depth="0.0"/>
+      <Location Latitude="40.936522" Longitude="-123.999406" Depth="0.0"/>
+      <Location Latitude="40.982054" Longitude="-124.028671" Depth="0.0"/>
+      <Location Latitude="41.040406" Longitude="-124.111715" Depth="0.0"/>
+      <Location Latitude="41.187327" Longitude="-124.250653" Depth="0.0"/>
+      <Location Latitude="41.244234" Longitude="-124.318606" Depth="0.0"/>
+      <Location Latitude="41.297" Longitude="-124.343" Depth="0.0"/>
+      <Location Latitude="41.449" Longitude="-124.394" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="117" sectionName="Ventura-Pitas Point" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="64.0" aveRake="60.0" aveUpperDepth="1.0" aveLowerDepth="15.0" aseismicSlipFactor="0.0" dipDirection="353.08755">
+    <FaultTrace name="Ventura-Pitas Point">
+      <Location Latitude="34.3435" Longitude="-119.141" Depth="1.0"/>
+      <Location Latitude="34.291" Longitude="-119.224" Depth="1.0"/>
+      <Location Latitude="34.2874" Longitude="-119.303" Depth="1.0"/>
+      <Location Latitude="34.3077" Longitude="-119.413" Depth="1.0"/>
+      <Location Latitude="34.3027" Longitude="-119.463" Depth="1.0"/>
+      <Location Latitude="34.2974" Longitude="-119.593" Depth="1.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="112" sectionName="Verdugo" shortName="" aveLongTermSlipRate="0.5" slipRateStdDev="0.25" aveDip="55.0" aveRake="90.0" aveUpperDepth="0.0" aveLowerDepth="14.5" aseismicSlipFactor="0.0" dipDirection="30.52965">
+    <FaultTrace name="Verdugo">
+      <Location Latitude="34.13131" Longitude="-118.15357" Depth="0.0"/>
+      <Location Latitude="34.1496" Longitude="-118.18648" Depth="0.0"/>
+      <Location Latitude="34.15508" Longitude="-118.22854" Depth="0.0"/>
+      <Location Latitude="34.19714" Longitude="-118.29071" Depth="0.0"/>
+      <Location Latitude="34.22274" Longitude="-118.36569" Depth="0.0"/>
+      <Location Latitude="34.25383" Longitude="-118.40775" Depth="0.0"/>
+      <Location Latitude="34.26115" Longitude="-118.42055" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="70" sectionName="West Napa" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.5" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="10.0" aseismicSlipFactor="0.0" dipDirection="68.53745">
+    <FaultTrace name="West Napa">
+      <Location Latitude="38.16441" Longitude="-122.24451" Depth="0.0"/>
+      <Location Latitude="38.23397" Longitude="-122.28896" Depth="0.0"/>
+      <Location Latitude="38.41158" Longitude="-122.36856" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="321" sectionName="West Tahoe" shortName="" aveLongTermSlipRate="0.6000000238418579" slipRateStdDev="NaN" aveDip="50.0" aveRake="-90.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="80.34928">
+    <FaultTrace name="West Tahoe">
+      <Location Latitude="38.815288" Longitude="-120.022169" Depth="0.0"/>
+      <Location Latitude="38.884706" Longitude="-120.058666" Depth="0.0"/>
+      <Location Latitude="38.966114" Longitude="-120.074076" Depth="0.0"/>
+      <Location Latitude="38.999561" Longitude="-120.087864" Depth="0.0"/>
+      <Location Latitude="39.098008" Longitude="-120.105707" Depth="0.0"/>
+      <Location Latitude="39.182572" Longitude="-120.087864" Depth="0.0"/>
+      <Location Latitude="39.210339" Longitude="-120.104896" Depth="0.0"/>
+      <Location Latitude="39.23432" Longitude="-120.108951" Depth="0.0"/>
+      <Location Latitude="39.262087" Longitude="-120.120306" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="44" sectionName="White Mountains" shortName="" aveLongTermSlipRate="1.0" slipRateStdDev="0.25" aveDip="90.0" aveRake="180.0" aveUpperDepth="0.0" aveLowerDepth="13.0" aseismicSlipFactor="0.0" dipDirection="81.84475">
+    <FaultTrace name="White Mountains">
+      <Location Latitude="37.022093" Longitude="-118.166262" Depth="0.0"/>
+      <Location Latitude="37.039763" Longitude="-118.166591" Depth="0.0"/>
+      <Location Latitude="37.068579" Longitude="-118.187558" Depth="0.0"/>
+      <Location Latitude="37.171883" Longitude="-118.223668" Depth="0.0"/>
+      <Location Latitude="37.241491" Longitude="-118.258268" Depth="0.0"/>
+      <Location Latitude="37.302489" Longitude="-118.279221" Depth="0.0"/>
+      <Location Latitude="37.333451" Longitude="-118.293017" Depth="0.0"/>
+      <Location Latitude="37.378491" Longitude="-118.305146" Depth="0.0"/>
+      <Location Latitude="37.430143" Longitude="-118.318109" Depth="0.0"/>
+      <Location Latitude="37.484746" Longitude="-118.330145" Depth="0.0"/>
+      <Location Latitude="37.527544" Longitude="-118.335701" Depth="0.0"/>
+      <Location Latitude="37.575506" Longitude="-118.348663" Depth="0.0"/>
+      <Location Latitude="37.66848" Longitude="-118.367181" Depth="0.0"/>
+      <Location Latitude="37.735627" Longitude="-118.375514" Depth="0.0"/>
+      <Location Latitude="37.783909" Longitude="-118.41131" Depth="0.0"/>
+      <Location Latitude="37.831494" Longitude="-118.429054" Depth="0.0"/>
+      <Location Latitude="37.869922" Longitude="-118.413476" Depth="0.0"/>
+      <Location Latitude="37.900913" Longitude="-118.385699" Depth="0.0"/>
+      <Location Latitude="37.942973" Longitude="-118.345886" Depth="0.0"/>
+      <Location Latitude="37.964371" Longitude="-118.337553" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="253" sectionName="White Wolf" shortName="" aveLongTermSlipRate="2.0" slipRateStdDev="1.0" aveDip="75.0" aveRake="60.0" aveUpperDepth="0.0" aveLowerDepth="14.600000381469727" aseismicSlipFactor="0.0" dipDirection="140.72427">
+    <FaultTrace name="White Wolf">
+      <Location Latitude="35.0276" Longitude="-119.007" Depth="0.0"/>
+      <Location Latitude="35.1464" Longitude="-118.811" Depth="0.0"/>
+      <Location Latitude="35.1776" Longitude="-118.779" Depth="0.0"/>
+      <Location Latitude="35.2097" Longitude="-118.735" Depth="0.0"/>
+      <Location Latitude="35.2322" Longitude="-118.672" Depth="0.0"/>
+      <Location Latitude="35.2673" Longitude="-118.602" Depth="0.0"/>
+      <Location Latitude="35.3204" Longitude="-118.538" Depth="0.0"/>
+      <Location Latitude="35.3711" Longitude="-118.487" Depth="0.0"/>
+      <Location Latitude="35.383905" Longitude="-118.470829" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="237" sectionName="Whittier, alt 2" shortName="" aveLongTermSlipRate="2.5" slipRateStdDev="0.5" aveDip="75.0" aveRake="150.0" aveUpperDepth="0.0" aveLowerDepth="14.100000381469727" aseismicSlipFactor="0.0" dipDirection="23.732927">
+    <FaultTrace name="Whittier, alt 2">
+      <Location Latitude="33.8289" Longitude="-117.59" Depth="0.0"/>
+      <Location Latitude="33.8511" Longitude="-117.636" Depth="0.0"/>
+      <Location Latitude="33.8733" Longitude="-117.717" Depth="0.0"/>
+      <Location Latitude="33.9074" Longitude="-117.792" Depth="0.0"/>
+      <Location Latitude="33.9297" Longitude="-117.852" Depth="0.0"/>
+      <Location Latitude="33.9712" Longitude="-117.992" Depth="0.0"/>
+      <Location Latitude="33.995" Longitude="-118.048" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+  <FaultSectionPrefData sectionId="53" sectionName="Zayante-Vergeles" shortName="" aveLongTermSlipRate="0.10000000149011612" slipRateStdDev="0.05000000074505806" aveDip="90.0" aveRake="150.0" aveUpperDepth="0.0" aveLowerDepth="12.0" aseismicSlipFactor="0.0" dipDirection="36.164307">
+    <FaultTrace name="Zayante-Vergeles">
+      <Location Latitude="36.79268" Longitude="-121.46381" Depth="0.0"/>
+      <Location Latitude="36.81287" Longitude="-121.60956" Depth="0.0"/>
+      <Location Latitude="36.93775" Longitude="-121.74194" Depth="0.0"/>
+      <Location Latitude="37.08872" Longitude="-121.9734" Depth="0.0"/>
+    </FaultTrace>
+  </FaultSectionPrefData>
+</DeformationModel>

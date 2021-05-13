@@ -1,0 +1,30 @@
+#
+# CH M7.4 Wasatch
+#
+
+N:Wasatch fault, all segs
+D:50
+T:CH
+F:TRUE
+M:NORMAL
+1   7.2000003        4.77332615E-05
+2   7.4000001        7.17697258E-05
+3   7.5999999        1.19900433E-05
+
+N:Wasatch fault, all segs
+D:40
+T:CH
+F:TRUE
+M:NORMAL
+1   7.2000003        2.41634698E-05
+2   7.4000001        3.63311774E-05
+3   7.5999999        6.06958474E-06
+
+N:Wasatch fault, all segs
+D:60
+T:CH
+F:TRUE
+M:NORMAL
+1   7.2000003        8.75746991E-06
+2   7.4000001        1.31673623E-05
+3   7.5999999        2.19977528E-06

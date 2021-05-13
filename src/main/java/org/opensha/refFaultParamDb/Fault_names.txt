@@ -1,0 +1,58 @@
+Bartlett Springs fault system	;	29
+Black Mountain fault zone	;	142
+Calaveras fault zone	;	54
+Camp Rock-Emerson fault zone	;	114
+Cleghorn fault zone	;	108
+Concord fault	;	38
+Cordelia fault zone	;	219
+Elsinore fault zone	;	126
+Fish Lake Valley fault zone	;	49
+Fish Slough fault	;	48
+Garlock fault zone	;	69
+Green Valley fault	;	37
+Greenville fault zone	;	53
+Greenville fault zone	;	53
+Hayward fault zone	;	55
+Healdsburg fault	;	31
+Helendale-South Lockhart fault zone	;	110
+Hilton Creek fault	;	44
+Hollywood fault	;	102
+Homestead Valley fault zone	;	116
+Honey Lake fault zone	;	22
+Hunting Creek-Berryessa fault system	;	35
+Imperial fault	;	132
+Johnson Valley fault zone	;	115
+Lavic Lake fault	;	351
+Lenwood-Lockhart fault zone	;	111
+Little Lake fault zone	;	72
+Little Salmon fault zone	;	15
+Los Osos fault zone	;	79
+Maacama fault zone	;	30
+Mad River fault zone	;	13
+Malibu Coast fault zone	;	99
+Mesquite Lake fault	;	123
+Mohawk Valley fault zone	;	25
+Mono Lake fault	;	41
+Monte Vista-Shannon fault zone	;	56
+Newport-Inglewood-Rose Canyon fault zone	;	127
+North Frontal thrust system	;	109
+Ortigalita fault zone	;	52
+Owens Valley fault zone	;	51
+Owl Lake fault	;	70
+Palos Verdes fault zone	;	128
+Panamint Valley fault zone	;	67
+Pisgah-Bullion fault zone	;	122
+Pleito fault zone	;	76
+Raymond fault	;	103
+Rodgers Creek fault	;	32
+San Andreas fault zone	;	1
+San Gabriel fault	;	89
+San Gregorio fault zone	;	60
+San Jacinto fault zone	;	125
+San Simeon fault	;	80
+Santa Monica fault	;	101
+Santa Ynez fault zone	;	87
+Sargent fault zone	;	58
+Sierra Madre fault zone	;	105
+Simi-Santa Rosa fault zone	;	98
+Zayante-Vergeles fault zone	;	59

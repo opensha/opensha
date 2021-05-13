@@ -1,0 +1,86 @@
+YUCCA MOUNTAIN FAULT SOURCE PARAMETERS. 3 Options are given for the parameters of magnitude (Mag) and seismic moment rate (Morate). In the same order
+they are
+preferred mag and weight
+min mag and weight
+max mag and weight
+
+preferred morate and weight
+min morate and weight
+max morate and weight
+
+FAULT SOURCES
+Row1 = fault code, fault name
+Row2-9 preferred, min and max values of Mag, and preferred, min and max values of Morate.
+
+SCIR   Solitario Canyon-Iron Ridge Fault Zone     
+Mag 	Weight      
+6.70	0.6
+6.50	0.2
+6.90	0.2 
+Morate	Weight
+0.2e+13	0.6
+0.1e+13	0.2
+0.4e+13	0.2
+SRPB   Stagecoach Road-Paintbrush Canyon Fault Zone                  
+Mag 	Weight           
+6.90	0.6
+6.70	0.2
+7.10	0.2 
+Morate	Weight
+0.4e+13	0.6
+0.2e+13	0.2
+0.8e+13	0.2
+WWFW   Windy Wash - Fatigue Wash Fault Zone                   
+Mag 	Weight           
+6.70	0.6
+6.50	0.2
+7.00	0.2 
+Morate	Weight
+0.4e+13	0.6
+0.2e+13	0.2
+0.8e+13	0.2
+BAMF   Bare Mountain Fault Zone                
+Mag 	Weight           
+6.90	0.6
+6.70	0.2
+7.10	0.2 
+Morate	Weight
+1.6e+13	0.6
+0.8e+13	0.2
+3.2e+13	0.2
+PAVF   Pahrump Valley Fault Zone            
+Mag 	Weight           
+7.10	0.6
+6.90	0.2
+7.30	0.2 
+Morate	Weight
+3.5e+15	0.6
+1.7e+15	0.2
+7.0e+15	0.2
+YFFZ   Yucca Flat Fault Zone                           
+Mag 	Weight           
+6.90	0.6
+6.70	0.2
+7.10	0.2 
+Morate	Weight
+2.3e+14	0.6
+1.1e+14	0.2
+4.6e+14	0.2
+ROVF   Rock Valley Fault Zone    
+Mag 	Weight           
+7.20	0.6
+7.00	0.2
+7.40	0.2 
+Morate	Weight
+2.0e+15	0.6
+1.0e+15	0.2
+4.0e+15	0.2
+DVFS   Death Valley Fault System      
+Mag 	Weight           
+7.90	0.6
+7.70	0.2
+8.10	0.2 
+Morate	Weight
+2.0e+17	0.6
+1.0e+17	0.2
+4.0e+17	0.2

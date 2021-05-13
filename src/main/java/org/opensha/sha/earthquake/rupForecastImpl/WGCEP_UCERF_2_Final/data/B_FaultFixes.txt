@@ -1,0 +1,17 @@
+# File For B Fault Fixes
+# Column 1 is Fault name, Column 2 is Mag, Column 3 is Rate
+Owens Valley, 7.6, 0.00025 
+Cucamonga, 6.9, 0.00154 
+Sierra Madre (San Fernando), 6.7, 0.001 
+Palos Verdes, 7.3, 0.00154
+Blackwater,  6.9, 0.0002
+Calico-Hidalgo, 7.2, 0.0002 
+Gravel Hills-Harper Lk, 7.0, 0.0002  
+Helendale-So Lockhart, 7.2, 0.0002
+Lenwood-Lockhart-Old Woman Springs, 7.5, 0.0002
+Pisgah-Bullion Mtn-Mesquite Lk, 7.2, 0.0002
+Landers, 7.3, 0.0002
+So Emerson-Copper Mtn,  6.9, 0.0002 
+Johnson Valley (No),  6.7, 0.0002
+Eureka Peak,  6.4,  0.0002
+Burnt Mtn, 6.5, 0.0002

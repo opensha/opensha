@@ -1,0 +1,121 @@
+#FaultName, Index, RELM Region,North Region,San Francisco Region,Central Coast Region,Los Angeles Region,Mojave Region,Mid Region,Northeast Region,Rest of state
+944 Algodones fault zone  Char,0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1073 West Spring Mountains fault  Char,1,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1079 Bare Mountain fault  Char,2,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1117 Frenchman Mountain fault  Char,3,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1285 Carson Range fault  Char,4,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1285_1654 Carson Range-Kings Canyon faults  Char,5,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1287 Antelope Valley  Char,6,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1291abc Smith Valley fault  Char,7,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1294 Singatse Range fault zone  Char,8,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1300 Wassuk Range fault zone  Char,9,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1302 Huntoon Valley fault system  Char,10,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1303 Unnamed faults  Char,11,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1312 Hot Springs fault zone  Char,12,0.04,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.04
+1316 faults in Excelsior Mountains  Char,13,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1320 Benton Spring fault, southern section  Char,14,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1325 Monte Cristo Valley fault zone  Char,15,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1326 Bettles Well-Petrified Springs fault  Char,16,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1329 Emigrant Peak fault zone  Char,17,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1338 Lone Mountain fault zone  Char,18,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1340 Crescent Dunes fault  Char,19,0.3478261,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.3478261
+1485 Black Rock fault zone  Char,20,0.9259259,0.0,0.0,0.0,0.0,0.0,0.0,0.72839504,0.19753087
+1601 Bonham Ranch fault zone  Char,21,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.2631579,0.7368421
+1602 Dry Valley-Smoke Creek Ranch fault zone  Char,22,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.019607844,0.98039216
+1605 Warm Springs Valley fault zone  Char,23,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1607 Eastern Pyramid Lake fault  Char,24,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1608 Fox Range fault zone  Char,25,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1610 Western Granite Range fault  Char,26,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.9310345,0.06896552
+1611 Eastern Granite Range fault  Char,27,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+1613 San Emidio fault zone  Char,28,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1614 Nightingale Mountains fault  Char,29,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1617 Selenite Range fault zone  Char,30,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1622 Granite Springs Valley fault zone  Char,31,0.78,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.78
+1640 Petersen Mountain fault  Char,32,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1647 Mount Rose fault zone  Char,33,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1648 Little Valley fault  Char,34,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1654 Kings Canyon fault zone  Char,35,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1656 Spanish Springs Valley fault  Char,36,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1657 Freds Mountain fault  Char,37,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1669 Pyramid Lake fault zone  Char,38,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+NV1 Coaldale fault 1  Char,39,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+NV2 Coaldale fault 2  Char,40,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+NV4 Western Smoke Creek Desert fault 2  Char,41,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.85,0.15
+827b Warner Valley faults (west)  Char,42,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+828 Goose Lake  Char,43,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+829ab Abert Rim fault  Char,44,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+831abc Winter Rim fault system  Char,45,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+839a Chemult graben fault system (west)  Char,46,0.028985508,0.0,0.0,0.0,0.0,0.0,0.0,0.028985508,0.0
+843a Klamath graben fault system (west)  Char,47,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+843bc Klamath graben fault system (east)  Char,48,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+844 Sky Lakes fault zone  Char,49,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+894 Cape Blanco anticline  Char,50,0.875,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.875
+895 Beaver Creek fault zone  Char,51,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+896 Battle Rock fault zone  Char,52,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+897 Whaleshead fault zone  Char,53,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1116 Black Hills fault  Char,54,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1304 Rattlesnake Flat fault  Char,55,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1307 Indian Head fault  Char,56,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1472 Duck Flat fault  Char,57,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+1644 Peavine Peak fault zone  Char,58,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1652 Indian Hills fault  Char,59,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1653 Carson City fault  Char,60,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1660 Spanish Springs Peak fault  Char,61,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+NV3 Petersen Mountain fault 2  Char,62,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1733 Eglington fault  Char,63,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+944 Algodones fault zone  GR,64,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1073 West Spring Mountains fault  GR,65,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1079 Bare Mountain fault  GR,66,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1117 Frenchman Mountain fault  GR,67,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1285 Carson Range fault  GR,68,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1285_1654 Carson Range-Kings Canyon faults  GR,69,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1287 Antelope Valley  GR,70,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1291abc Smith Valley fault  GR,71,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1294 Singatse Range fault zone  GR,72,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1300 Wassuk Range fault zone  GR,73,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1302 Huntoon Valley fault system  GR,74,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1303 Unnamed faults  GR,75,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1312 Hot Springs fault zone  GR,76,0.04,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.04
+1316 faults in Excelsior Mountains  GR,77,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1320 Benton Spring fault, southern section  GR,78,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1325 Monte Cristo Valley fault zone  GR,79,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1326 Bettles Well-Petrified Springs fault  GR,80,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1329 Emigrant Peak fault zone  GR,81,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1338 Lone Mountain fault zone  GR,82,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1340 Crescent Dunes fault  GR,83,0.3478261,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.3478261
+1485 Black Rock fault zone  GR,84,0.9259259,0.0,0.0,0.0,0.0,0.0,0.0,0.72839504,0.19753087
+1601 Bonham Ranch fault zone  GR,85,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.2631579,0.7368421
+1602 Dry Valley-Smoke Creek Ranch fault zone  GR,86,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.019607844,0.98039216
+1605 Warm Springs Valley fault zone  GR,87,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1607 Eastern Pyramid Lake fault  GR,88,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1608 Fox Range fault zone  GR,89,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1610 Western Granite Range fault  GR,90,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.9310345,0.06896552
+1611 Eastern Granite Range fault  GR,91,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+1613 San Emidio fault zone  GR,92,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1614 Nightingale Mountains fault  GR,93,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1617 Selenite Range fault zone  GR,94,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1622 Granite Springs Valley fault zone  GR,95,0.78,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.78
+1640 Petersen Mountain fault  GR,96,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1647 Mount Rose fault zone  GR,97,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1648 Little Valley fault  GR,98,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1654 Kings Canyon fault zone  GR,99,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1656 Spanish Springs Valley fault  GR,100,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1657 Freds Mountain fault  GR,101,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+1669 Pyramid Lake fault zone  GR,102,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+NV1 Coaldale fault 1  GR,103,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+NV2 Coaldale fault 2  GR,104,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+NV4 Western Smoke Creek Desert fault 2  GR,105,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.85,0.15
+827ac Warner Valley faults (east)  GR,106,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+827ac Warner Valley faults (east)  GR,107,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+827b Warner Valley faults (west)  GR,108,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+828 Goose Lake  GR,109,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+829ab Abert Rim fault  GR,110,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+831abc Winter Rim fault system  GR,111,1.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0
+839a Chemult graben fault system (west)  GR,112,0.028985508,0.0,0.0,0.0,0.0,0.0,0.0,0.028985508,0.0
+843a Klamath graben fault system (west)  GR,113,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+843bc Klamath graben fault system (east)  GR,114,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+844 Sky Lakes fault zone  GR,115,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+894 Cape Blanco anticline  GR,116,0.875,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.875
+895 Beaver Creek fault zone  GR,117,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+896 Battle Rock fault zone  GR,118,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0
+897 Whaleshead fault zone  GR,119,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0

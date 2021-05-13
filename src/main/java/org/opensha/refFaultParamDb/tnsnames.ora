@@ -1,0 +1,1 @@
+faultdb = (DESCRIPTION = (ADDRESS_LIST = (ADDRESS = (PROTOCOL = TCP)(HOST = iron.gps.caltech.edu)(PORT = 1521)))(CONNECT_DATA = (SERVICE_NAME = irondb.iron.gps.caltech.edu)(SERVER = DEDICATED)))

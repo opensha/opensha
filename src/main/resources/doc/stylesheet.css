@@ -1,0 +1,151 @@
+/* Javadoc style sheet */
+
+@import url("http://fonts.googleapis.com/css?family=Droid+Sans:regular,bold");
+@import url("http://fonts.googleapis.com/css?family=Droid+Serif:regular,bold");
+
+
+/* A table with bold 2px underline header, and 1px underline rows */
+#table-a
+{ margin: 20px; width: 480px; border-collapse: collapse; text-align: center; clear: all; 
+  margin-left:auto; 
+  margin-right:auto;}
+#table-a th
+{ font-weight: bold; padding: 10px 8px; border-bottom: 2px solid #CCCCCC; }
+#table-a td
+{ padding: 6px 8px; border-bottom: 1px solid #CCCCCC; }
+
+a         { color: #225DA7; text-decoration: none; }
+a:hover   { color: #000000; }
+a:focus   { color: #000000; }
+a:visited { color: #A8003B; }
+
+body      { background-color: #FFFFFF; font-family: "Droid Serif"; font-size: 0.95em;}
+code, pre { font-family: "Droid Sans"; font-size: 0.95em; line-height: 1.3em; }
+sub       { font-size: 0.7em; }
+hr        { height: 1px; border-width: 0; color: #CBD4E4; background-color: #CBD4E4; }
+table[border="1"] { border: 0px solid #91a4c5; border-collapse:collapse; }
+table[border="1"] td { padding: 4px 6px; }
+
+/* Table colors */
+.TableHeadingColor, .TableSubHeadingColor { background: #CBD4E4; }
+.TableRowColor    { background: #FFF; }
+
+.TableRowColor td:first-child font[size="-1"] code { line-height: 1.6em; white-space:nowrap; }
+
+/* Font used in left-hand frame lists */
+.FrameTitleFont   { font-size: 100%; font-family: Helvetica, Arial, sans-serif; }
+.FrameHeadingFont { font-size:  90%; font-family: Helvetica, Arial, sans-serif; }
+.FrameItemFont    { font-size:  90%; font-family: Helvetica, Arial, sans-serif; }
+
+/* Navigation bar fonts and colors */
+.NavBarCell1    { background-color: #FFFFFF; }
+/* .NavBarCell1Rev { background-color:#00008B;} */
+.NavBarFont1    { font-family: Arial, Helvetica, sans-serif; }
+.NavBarFont1Rev { font-family: Arial, Helvetica, sans-serif; color:#FFFFFF; }
+
+.NavBarCell2    { font-family: Arial, Helvetica, sans-serif; color: #DDD; background-color:#FFFFFF; }
+.NavBarCell3    { font-family: Arial, Helvetica, sans-serif; background-color:#FFFFFF; }
+
+.TableHeadingColor font  { font-size: 1.1em; }
+.TableHeadingColor th    { padding: 4px 6px; }
+.TableSubHeadingColor th { font-size: 0.9em; padding: 4px 6px; }
+
+.NavBarCell1Rev font
+{
+	font-weight: bold;
+	font-size: 0.9em;
+	background: #CBD4E4;
+	border: 1px solid #91a4c5;
+	color: #333;
+	display: inline-block;
+	padding: 2px 12px;
+	margin-right: 2px;
+	text-decoration: none;
+	text-shadow: 0 1px 0 #EEE;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+}
+
+.NavBarCell1 > font
+{
+	font-weight: bold;
+	font-size: 0.9em;
+	background: #EEE;
+	border: 1px solid #DDD;
+	color: #999;
+	display: inline-block;
+	padding: 2px 12px;
+	margin-right: 2px;
+	text-decoration: none;
+	text-shadow: 0 1px 0 #EEE;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+}
+
+.NavBarCell1 table
+{
+	border-collapse: collapse;
+	margin-bottom: 4px;
+	border: 0px;
+}
+
+.NavBarCell1 table a {
+	cursor: pointer;
+	font-weight: bold;
+	font-size: 0.9em;
+	background: #2b3b70;
+	background: -moz-linear-gradient(top, #91a4c5, #2b3b70);
+	background: -webkit-gradient(linear, left top, left bottom, from(#91a4c5), to(#2b3b70));
+	border: 1px solid #354370;
+	color: #EEE;
+	display: inline-block;
+	filter: progid:DXImageTransform.Microsoft.Gradient(StartColorStr='#91a4c5', EndColorStr='#2b3b70');
+	padding: 2px 12px;
+	margin-right: 2px;
+	text-decoration: none;
+	text-shadow: 0 -1px 0 #354370;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+}
+
+.NavBarCell1 table a:hover
+{
+	cursor: pointer;
+	background: #192859;
+	background: -moz-linear-gradient(top, #798aa8, #192859);
+	background: -webkit-gradient(linear, left top, left bottom, from(#798aa8), to(#192859));
+	border: 1px solid #354370;
+	color: #DDD;
+	filter: progid:DXImageTransform.Microsoft.Gradient(StartColorStr='#798aa8', EndColorStr='#192859');
+	text-shadow: 0 -1px 0 #354370;
+}
+
+#copyright
+{
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: 0.8em;
+	color: #555;
+	background-color: #d7dbe3;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	padding: 10px 0px 10px 0px;
+	line-height: 1.4em;
+}
+  
+#copyright a
+{
+	color: #777;
+}
+ 
+#copyright a:hover
+{
+	color: #555;
+}
+  
+#copyright img
+{
+	float: left; 
+	margin: 0px 10px;
+}
+
+

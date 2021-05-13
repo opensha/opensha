@@ -1,0 +1,10 @@
+The base_mod_23_wgt_n100.OpenSHA.*yr.txt files were made by Ned by running the Neds.shscr (located here) in the wg99_src_v27 directory (the one on Ned's computer, but it should do the same thing elsewhere).
+
+These files allow the time span to be adjusted in our non-fortran-wrapper ERF.
+
+
+The file
+
+	singleIterationWithModes.OpenSHA.30yr.txt
+
+was also created by Neds.shscr.  This is a single-iteration run for 30 years where the modes at each branch tip are given unit weight (and all others are zero).  This file is used by the no-argument constructor for the WG02_EqkRupForecast, and this is used by the scenarioShakeMapApp (we only want one iteration in this app so it might as well use the model values).  The file singleIterationWithModes.out3 is one of the Fortran output files, and can be used to check our total probabilities for each source.
