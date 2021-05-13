@@ -1,5 +1,5 @@
 /*
- * opensha-commons dependencies
+ * opensha dependencies
  */
 
 apply from: 'build-common.gradle'
@@ -7,6 +7,7 @@ apply from: 'build-common.gradle'
 dependencies {
 
     compileAndResource 'com.google.guava:guava:26.0-jre'
+    compileAndResource 'com.google.code.gson:gson:2.8.5'
     compileAndResource 'org.jfree:jfreechart:1.5.2'
     compileAndResource 'org.dom4j:dom4j:2.1.1'
     compileAndResource 'edu.stanford.ejalbert:BrowserLauncher2:1.3'
@@ -14,6 +15,7 @@ dependencies {
     compileAndResource 'gov.nist.math:jama:1.0.3'
     compileAndResource 'javax.servlet:javax.servlet-api:3.1.0'
     compileAndResource 'javax.mail:mail:1.4.7'
+    compileAndResource 'org.apache.poi:poi:3.16'
     
     /* apache commons */
     compileAndResource 'org.apache.commons:commons-lang3:3.6'
@@ -33,6 +35,16 @@ dependencies {
     compileOnly files('lib/mpj-0.38.jar') // MPJ API
     compileAndResource files('lib/f2jutil.jar') // used by NNLS code
     compileAndResource files('lib/mpj-task-calculator-1.1.jar') // MPJTaskCalculator
+    compileAndResource files('lib/parallelcolt-0.9.4.jar')
+    compileAndResource files('lib/csparsej.jar')
+    compileAndResource files('lib/ojdbc5.jar')
+    compileAndResource files('lib/sdoapi.jar')
+    compileAndResource files('lib/EventWebService.jar')
+    compileAndResource files('lib/jpedal.jar')
 
-    testCompile 'junit:junit:4.12'
+    testCompileOnly 'junit:junit:4.12'
+    testCompileOnly 'org.mockito:mockito-core:3.5.13'
+    testCompileOnly 'junit:junit:4.12'
 }
+
+// TODO: application build tasks
