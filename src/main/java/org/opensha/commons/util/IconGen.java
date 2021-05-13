@@ -19,7 +19,7 @@ import javax.imageio.ImageIO;
 
 public class IconGen {
 	
-	private static final String resourcesDir = "/resources/images";
+	private static final String resourcesDir = "/images";
 	private static final String shareURL = "http://opensha.usc.edu/shared";
 	
 	private Map<int[], ? extends Image> backgrounds;

@@ -183,7 +183,7 @@ public class BugReportDialog extends JDialog implements ActionListener, Hyperlin
 		messageLabel.setBackground(topBottomColor);
 		try {
 			BufferedImage cautionImage = ImageIO.read(
-					this.getClass().getResource("/resources/images/icons/software_bug.png"));
+					this.getClass().getResource("/images/icons/software_bug.png"));
 			ImagePanel imagePanel = new ImagePanel(cautionImage);
 			imagePanel.setBackground(topBottomColor);
 			topPanel.add(imagePanel);

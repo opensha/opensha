@@ -29,7 +29,7 @@ public class NSHMP_Util {
 	private static Map<Integer, Map<Integer, Map<Integer, Double>>> cbhw_map;
 	private static Map<Integer, Map<Integer, Map<Integer, Double>>> cyhw_map;
 
-	private static String datPath = "/resources/data/nshmp/";
+	private static String datPath = "/data/nshmp/";
 	private static String rjbDatPath = datPath + "rjbmean.dat";
 	private static String cbhwDatPath = datPath + "avghw_cb.dat";
 	private static String cyhwDatPath = datPath + "avghw_cy.dat";

@@ -66,7 +66,7 @@ public enum GMT_CPT_Files {
 	}
 	
 	public CPT instance() throws IOException {
-		CPT cpt = CPT.loadFromStream(this.getClass().getResourceAsStream("/resources/cpt/"+fname));
+		CPT cpt = CPT.loadFromStream(this.getClass().getResourceAsStream("/cpt/"+fname));
 		cpt.setName(fname);
 		return cpt;
 	}
