@@ -31,7 +31,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
  * @author Edward H. Field
  * @version 1.0
  */
-
+@Deprecated
 public class Shaw_2009_MagAreaRel extends MagAreaRelationship {
 
     final static String C = "Shaw_2009_MagAreaRel";

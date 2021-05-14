@@ -43,6 +43,7 @@ public class Shaw_2007_MagAreaRel extends MagAreaRelationship {
      * @param area in km
      * @return median magnitude
      */
+    @Deprecated
     public double getMedianMag(double area){
     	double alpha=6;
     	double h=15;
