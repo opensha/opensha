@@ -9,7 +9,7 @@ targetCompatibility = JavaVersion.VERSION_11
 compileJava.options.encoding = "UTF-8"
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 // TODO: Remove these custom source sets, which make 'src/main/java' a resource. see issue #3
