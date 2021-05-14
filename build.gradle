@@ -4,13 +4,11 @@
 
 apply plugin: 'java-library'
 
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
-compileJava.options.encoding = "UTF-8"
-
-repositories {
-    mavenCentral()
+ext {
+    parentProject = null
 }
+
+apply from: 'build-common.gradle'
 
 // TODO: Remove these custom source sets, which make 'src/main/java' a resource. see issue #3
 sourceSets {
@@ -39,31 +37,6 @@ sourceSets {
     }
 }
 
-
-configurations {
-    apiResolvable {
-        description 'resolvable view of the api classpath'
-        canBeResolved=true
-
-        extendsFrom api
-    }
-}
-
-task fatJar(type: Jar) {
-    archiveBaseName = project.name + '-all'
-    // include all 'api' dependencies
-    from {
-        configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
-            exclude { it.path.contains('META-INF') }
-        }}
-    }
-    // include compiled source from this project
-    from sourceSets.main.allJava
-
-    duplicatesStrategy = 'exclude'
-    with jar
-}
-
 test {
     filter {
         includeTestsMatching "*Suite*"
@@ -74,24 +47,6 @@ task testOperational (type: Test) {
     filter {
         includeTestsMatching "*Operational*"
     }
-}
-
-ext.getDate = {
-    new Date().format('yyyy_MM_dd')
-}
-
-ext.getGitHash = { ->
-    try {
-        def stdout = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'rev-parse', '--short', 'HEAD'
-            standardOutput = stdout
-        }
-        return stdout.toString().trim()
-    } catch (Exception e) {
-        return ""
-    }
-    
 }
 
 dependencies {
