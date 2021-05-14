@@ -50,7 +50,7 @@ configurations {
 }
 
 task fatJar(type: Jar) {
-    baseName = project.name + '-all'
+    archiveBaseName = project.name + '-all'
     // include all 'api' dependencies
     from {
         configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
