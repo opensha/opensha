@@ -92,3 +92,29 @@ dependencies {
 }
 
 // TODO: application build tasks
+ext {
+    appSuffix = '-'+getDate()+'-'+getGitHash()
+}
+createAppTask("appJarHC", "HazardCurveGUI"+appSuffix, "org.opensha.sha.gui.HazardCurveApplication")
+createAppTask("appJarHS", "HazardSpectrumGUI"+appSuffix, "org.opensha.sha.gui.HazardSpectrumApplication")
+createAppTask("appJarAR", "AttenuationRelationshipGUI"+appSuffix, "org.opensha.sha.imr.attenRelImpl.gui.AttenuationRelationshipApplet")
+createAppTask("appJarSM", "ShakeMapGUI"+appSuffix, "org.opensha.sha.gui.ScenarioShakeMapApp")
+createAppTask("appJarSD", "SiteDataGUI"+appSuffix, "org.opensha.commons.data.siteData.gui.SiteDataCombinedApp")
+createAppTask("appJarGMT", "GMTMapApp"+appSuffix, "org.opensha.commons.mapping.gmt.gui.GMT_MapGeneratorApplet")
+createAppTask("appJarIM", "IMEventSetAppV3"+appSuffix, "org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_ASCII")
+
+task appZipIM(type: Zip) {
+    dependsOn 'appJarIM'
+    from ('build/libs/') {
+        include 'IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'
+        rename (('IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'), 'IM_EventSetCalc_v3_0_ASCII.jar')
+        }
+        from ('src/org/opensha/sha/calc/IM_EventSet/v03/') {
+        include '*.txt'
+    }
+    archiveFileName = 'IM_EventSetCalc_v3_0_ASCII.zip'
+}
+
+task appJars(type: GradleBuild) {
+     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT']
+}

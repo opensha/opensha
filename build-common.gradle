@@ -91,3 +91,57 @@ if (project.parentProject != null) {
         with jar
     }
 }
+
+void createAppTask(String taskName, String prefix, String mainClass) {
+    // old default prefix was: prefix+'-'+getDate()+'-'+getGitHash()
+    if (project.parentProject != null) {
+        task (taskName, type: Jar, dependsOn: ':'+project.parentProject+':fatJar') {
+            archiveBaseName = prefix
+            from { configurations.apiResolvable.collect {
+                it.isDirectory() ? it : zipTree(it).matching {
+                    exclude { it.path.contains('META-INF') }
+                }
+            }}
+            // include compiled source from this project
+            from sourceSets.main.allJava
+            // include upstream project fat jar
+            from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar'))
+            from(project(':opensha').projectDir) {
+                include 'build.version'
+            }
+            manifest {
+                attributes(
+                    'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
+                    'Main-Class': mainClass
+                )
+            }
+            with jar
+        }
+    } else {
+        task (taskName, type: Jar) {
+            archiveBaseName = prefix
+            from { configurations.apiResolvable.collect {
+                it.isDirectory() ? it : zipTree(it).matching {
+                    exclude { it.path.contains('META-INF') }
+                }
+            }}
+            // include compiled source from this project
+            from sourceSets.main.allJava
+            from(project.projectDir) {
+                include 'build.version'
+            }
+            manifest {
+                attributes(
+                    'Class-Path': configurations.apiResolvable.collect { it.getName() }.join(' '),
+                    'Main-Class': mainClass
+                )
+            }
+            with jar
+        }
+    }
+}
+
+// make that method visible
+ext {
+    createAppTask = this.&createAppTask
+}
