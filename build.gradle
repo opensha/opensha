@@ -51,14 +51,16 @@ configurations {
 
 task fatJar(type: Jar) {
     baseName = project.name + '-all'
+    // include all 'api' dependencies
     from {
         configurations.apiResolvable.collect { it.isDirectory() ? it : zipTree(it).matching {
             exclude { it.path.contains('META-INF') }
         }}
     }
+    // include compiled source from this project
+    from sourceSets.main.allJava
 
     duplicatesStrategy = 'exclude'
-    from sourceSets.main.allJava
     with jar
 }
 
