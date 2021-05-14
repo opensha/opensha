@@ -108,11 +108,12 @@ task appZipIM(type: Zip) {
     from ('build/libs/') {
         include 'IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'
         rename (('IMEventSetAppV3-'+getDate()+'-'+getGitHash()+'.jar'), 'IM_EventSetCalc_v3_0_ASCII.jar')
-        }
-        from ('src/org/opensha/sha/calc/IM_EventSet/v03/') {
+    }
+    from ('src/main/java/org/opensha/sha/calc/IM_EventSet/v03/') {
         include '*.txt'
     }
     archiveFileName = 'IM_EventSetCalc_v3_0_ASCII.zip'
+    System.out.println("Assembling IM Event Set zip file: ./build/distributions/IM_EventSetCalc_v3_0_ASCII.zip")
 }
 
 task appJars(type: GradleBuild) {
