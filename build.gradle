@@ -113,7 +113,9 @@ task appZipIM(type: Zip) {
         include '*.txt'
     }
     archiveFileName = 'IM_EventSetCalc_v3_0_ASCII.zip'
-    System.out.println("Assembling IM Event Set zip file: ./build/distributions/IM_EventSetCalc_v3_0_ASCII.zip")
+    doFirst {
+        System.out.println("Assembling IM Event Set zip file: ./build/distributions/IM_EventSetCalc_v3_0_ASCII.zip")
+    }
 }
 
 task appJars(type: GradleBuild) {
