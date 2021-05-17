@@ -47,6 +47,8 @@ import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.OriginalModWriter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
+import org.opensha.sha.earthquake.param.BackgroundRupParam;
+import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
@@ -514,10 +516,13 @@ implements ParameterChangeWarningListener {
 			if (forecast.getAdjustableParameterList().containsParameter(
 					Frankel02_AdjustableEqkRupForecast.
 					BACK_SEIS_RUP_NAME)) { 	
-				forecast.getAdjustableParameterList().getParameter(
-						Frankel02_AdjustableEqkRupForecast.
-						BACK_SEIS_RUP_NAME).setValue(Frankel02_AdjustableEqkRupForecast.
+				Parameter param = forecast.getAdjustableParameterList().getParameter(
+						Frankel02_AdjustableEqkRupForecast.BACK_SEIS_RUP_NAME);
+				if (param instanceof StringParameter)
+					param.setValue(Frankel02_AdjustableEqkRupForecast.
 								BACK_SEIS_RUP_FINITE);
+				else if (param instanceof BackgroundRupParam)
+					param.setValue(BackgroundRupType.FINITE);
 			}
 		}
 
