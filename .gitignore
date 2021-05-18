@@ -10,3 +10,5 @@ Scratch*.java
 .*.html
 .DS_Store
 .idea/
+build.date
+build.githash
