@@ -70,15 +70,23 @@ public class ETAS_CatalogIO {
 	public static void writeEventDataToFile(File file, Collection<ETAS_EqkRupture> simulatedRupsQueue)
 			throws IOException {
 		FileWriter fw1 = new FileWriter(file);
-		if (simulatedRupsQueue instanceof ETAS_Catalog && ((ETAS_Catalog)simulatedRupsQueue).getSimulationMetadata() != null) {
-			writeMetadataToFile(fw1, ((ETAS_Catalog)simulatedRupsQueue).getSimulationMetadata());
-			fw1.write("% \n");
-		}
-		ETAS_CatalogIO.writeEventHeaderToFile(fw1);
-		for(ETAS_EqkRupture rup:simulatedRupsQueue) {
-			ETAS_CatalogIO.writeEventToFile(fw1, rup);
-		}
+		writeEventDataToWriter(fw1, simulatedRupsQueue);
 		fw1.close();
+	}
+
+	/**
+	 * This writes simulated event data to a file.
+	 */
+	public static void writeEventDataToWriter(Writer writer, Collection<ETAS_EqkRupture> simulatedRupsQueue)
+			throws IOException {
+		if (simulatedRupsQueue instanceof ETAS_Catalog && ((ETAS_Catalog)simulatedRupsQueue).getSimulationMetadata() != null) {
+			writeMetadataToFile(writer, ((ETAS_Catalog)simulatedRupsQueue).getSimulationMetadata());
+			writer.write("% \n");
+		}
+		ETAS_CatalogIO.writeEventHeaderToFile(writer);
+		for(ETAS_EqkRupture rup:simulatedRupsQueue) {
+			ETAS_CatalogIO.writeEventToFile(writer, rup);
+		}
 	}
 
 	/**
