@@ -4,7 +4,7 @@ Primary [OpenSHA](https://opensha.org) code repository
 
 ## Compilation and project configuration
 
-This repository contains OpenSHA code and models implementations. This project is intended for the core APIs and stable models. Exploratory code or one-off tests should instead go in our development sandbox, [opensha-dev](https://github.com/opensha/opensha-dev), which has this project as a dependency.
+This repository contains OpenSHA code and model implementations. This project is intended for the core APIs and stable models. Exploratory code or one-off tests should instead go in our development sandbox, [opensha-dev](https://github.com/opensha/opensha-dev), which has this project as a dependency.
 
 ### Requirements
 
