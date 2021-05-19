@@ -36,8 +36,8 @@ public class YuccaMountainERF_List  extends AbstractEpistemicListERF{
 
 	private final static double DELTA_MAG = 0.1;
 
-	private String FAULT_LOGIC_TREE_FILENAME = "org/opensha/sha/earthquake/rupForecastImpl/YuccaMountain/FaultsLogicTree.txt";
-	private String BACKGROUND_LOGIC_TREE_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/YuccaMountain/BackgroundLogicTree.txt";
+	private String FAULT_LOGIC_TREE_FILENAME = "/data/erf/yucca_mountain/FaultsLogicTree.txt";
+	private String BACKGROUND_LOGIC_TREE_FILE_NAME = "/data/erf/yucca_mountain/BackgroundLogicTree.txt";
 
 	private final static String MAG="Mag-";
 	private final static String MOMENT_RATE="MomentRate-";
