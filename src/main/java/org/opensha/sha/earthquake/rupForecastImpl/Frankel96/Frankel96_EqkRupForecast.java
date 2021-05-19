@@ -86,8 +86,8 @@ public class Frankel96_EqkRupForecast extends AbstractERF{
   /**
    * Static variable for input file names
    */
-  private final static String INPUT_FAULT_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/Frankel96/Frankel96_CAL_all.txt";
-  private final static String INPUT_BACK_SEIS_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/Frankel96/CAagrid.asc";
+  private final static String INPUT_FAULT_FILE_NAME = "/data/erf/frankel_1996/Frankel96_CAL_all.txt";
+  private final static String INPUT_BACK_SEIS_FILE_NAME = "/data/erf/frankel_1996/CAagrid.asc";
 
   /**
    * Vectors for holding the various sources, separated by type

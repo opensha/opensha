@@ -29,9 +29,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.final
  *
  */
 public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializable {
-	private final static String RUP_RATE_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/A_Faults_aPrioriRates.xls";
-	private final static String SEG_RATE_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/Appendix_C_Table7_091807.xls";
-	private final static String SEG_TIME_DEP_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/SegmentTimeDepData_v06.xls";
+	private final static String RUP_RATE_FILE_NAME = "/data/erf/ucerf2/A_Faults_aPrioriRates.xls";
+	private final static String SEG_RATE_FILE_NAME = "/data/erf/ucerf2/Appendix_C_Table7_091807.xls";
+	private final static String SEG_TIME_DEP_FILE_NAME = "/data/erf/ucerf2/SegmentTimeDepData_v06.xls";
 	private HashMap<String,A_PrioriRupRates> aPrioriRupRatesMap;
 	private HashMap<String,ArrayList> segEventRatesMap;
 	private HashMap<String, ArrayList> segTimeDepDataMap;
@@ -39,8 +39,8 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 	public final static String MAX_RATE_RUP_MODEL = "Max Rate Model";
 	public final static String GEOL_INSIGHT_RUP_MODEL = "Geol Insight Solution";
 	private PrefFaultSectionDataFinal faultSectionPrefDataFinal = new PrefFaultSectionDataFinal();
-	private final static String A_FAULT_SEGMENTS_MODEL = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/SegmentModels.txt";
-	private final static String UNSEGMENTED_MODEL = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/A_FaultUnsegmentedModels.txt";
+	private final static String A_FAULT_SEGMENTS_MODEL = "/data/erf/ucerf2/SegmentModels.txt";
+	private final static String UNSEGMENTED_MODEL = "/data/erf/ucerf2/A_FaultUnsegmentedModels.txt";
 
 	private ArrayList<EventRates> eventRatesList; // Location list where event rates are available
 
@@ -83,7 +83,7 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 	 */
 	private void readA_PrioriRupRates() {
 		try {
-			POIFSFileSystem fs = new POIFSFileSystem(getClass().getClassLoader().getResourceAsStream(RUP_RATE_FILE_NAME));
+			POIFSFileSystem fs = new POIFSFileSystem(getClass().getResourceAsStream(RUP_RATE_FILE_NAME));
 			HSSFWorkbook wb = new HSSFWorkbook(fs);
 			HSSFSheet sheet = wb.getSheetAt(0);
 			int lastIndex = sheet.getLastRowNum();
@@ -144,7 +144,7 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 		while(it.hasNext()) this.segEventRatesMap.put(it.next(),new  ArrayList());
 		eventRatesList = new ArrayList<EventRates>();
 		try {				
-			POIFSFileSystem fs = new POIFSFileSystem(getClass().getClassLoader().getResourceAsStream(SEG_RATE_FILE_NAME));
+			POIFSFileSystem fs = new POIFSFileSystem(getClass().getResourceAsStream(SEG_RATE_FILE_NAME));
 			HSSFWorkbook wb = new HSSFWorkbook(fs);
 			HSSFSheet sheet = wb.getSheetAt(0);
 			int lastRowIndex = sheet.getLastRowNum();
@@ -182,7 +182,7 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 	private void readSegTimeDepData() {
 		segTimeDepDataMap = new HashMap<String, ArrayList>();
 		try {
-			POIFSFileSystem fs = new POIFSFileSystem(getClass().getClassLoader().getResourceAsStream(SEG_TIME_DEP_FILE_NAME));
+			POIFSFileSystem fs = new POIFSFileSystem(getClass().getResourceAsStream(SEG_TIME_DEP_FILE_NAME));
 			HSSFWorkbook wb = new HSSFWorkbook(fs);
 			HSSFSheet sheet = wb.getSheetAt(0);
 			int lastIndex = sheet.getLastRowNum();

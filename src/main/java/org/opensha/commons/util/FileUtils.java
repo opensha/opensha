@@ -205,7 +205,9 @@ public class FileUtils {
 	throws  FileNotFoundException, IOException {
 		try {
 			if(D) System.out.println("FileUtils:filename="+fileName);
-			return loadFile(FileUtils.class.getResource("/"+fileName));
+			if (!fileName.startsWith("/"))
+				fileName = "/"+fileName;
+			return loadFile(FileUtils.class.getResource(fileName));
 		}catch(Exception e) {
 			e.printStackTrace();
 			return null;

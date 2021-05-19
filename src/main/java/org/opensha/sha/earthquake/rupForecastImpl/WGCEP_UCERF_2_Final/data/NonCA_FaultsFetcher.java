@@ -200,7 +200,7 @@ public class NonCA_FaultsFetcher  implements java.io.Serializable {
 	
 	public static void main(String args[]) {
 		NonCA_FaultsFetcher nonCA_FaultsFetcher = new NonCA_FaultsFetcher();
-		String fileName = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/NearCA_NSHMP/NonCA_Faults.txt";
+		String fileName = "/data/erf/ucerf2/NonCA_Faults.txt";
 		nonCA_FaultsFetcher.getSources(fileName, 1.0, 0.12, 2, 1, null);
 	}
 }

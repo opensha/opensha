@@ -17,7 +17,7 @@ import org.opensha.commons.util.FileUtils;
  *
  */
 public class UCERF1MfdReader {
-	private final static String UCERF1_RATE_FILE = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/UCERF1_MFDs.txt";
+	private final static String UCERF1_RATE_FILE = "/data/erf/ucerf2/UCERF1_MFDs.txt";
 	private static HashMap<String, ArbitrarilyDiscretizedFunc> incrMFD_Map = new HashMap<String, ArbitrarilyDiscretizedFunc>();
 	private static HashMap<String, ArbitrarilyDiscretizedFunc> cumMFD_Map = new HashMap<String, ArbitrarilyDiscretizedFunc>();
 

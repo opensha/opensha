@@ -100,7 +100,8 @@ public class Frankel02_AdjustableEqkRupForecast extends AbstractERF{
 	 * Static variables for input files
 	 */
 	//private final static String IN_FILE_PATH = "/opt/install/apache-tomcat-5.5.20/webapps/OpenSHA/WEB-INF/dataFiles/frankel02_inputfiles/";
-	private final static String IN_FILE_PATH = "org/opensha/sha/earthquake/rupForecastImpl/Frankel02/InputFiles/";
+//	private final static String IN_FILE_PATH = "org/opensha/sha/earthquake/rupForecastImpl/Frankel02/InputFiles/";
+	private final static String IN_FILE_PATH = "/data/erf/frankel_2002/";
 
 
 	/**
@@ -1331,25 +1332,26 @@ public class Frankel02_AdjustableEqkRupForecast extends AbstractERF{
 
 	// this is temporary for testing purposes
 	public static void main(String[] args) {
-
-
-		// THIS GENERATES THE BACKGROUND MFD WITHOUT THE TYPE-C ZONES, AND SHIFTS THE MFD BY 0.05 MAG UNITS
-		// THIS WAS FOR WGCEP Earthquake Rate Model 2.1
 		Frankel02_AdjustableEqkRupForecast frankCast = new Frankel02_AdjustableEqkRupForecast();
-		IncrementalMagFreqDist totBackgroundMFD = frankCast.getTotalBackgroundMFD_InsideRELM_region();
-		//System.out.println(totBackgroundMFD.toString());
-		// translate mags by 0.05 units
-		// get rate at 5.0 from rate at 5.05 using bValue=0.8
-		double rate = totBackgroundMFD.getY(0) * Math.pow(10,0.8*0.05);
-		double mag = 5;
-		System.out.println("nshmp02_Backgr_MFD.set("+(float)mag+", "+(float)rate+");");
-		//System.out.println("5.0\t"+(float)rate);
-		for(int i=0;i<totBackgroundMFD.size()-1;i++) {
-			rate = Math.sqrt(totBackgroundMFD.getY(i)*totBackgroundMFD.getY(i+1));
-			mag = totBackgroundMFD.getX(i)+0.05;
-			System.out.println("nshmp02_Backgr_MFD.set("+(float)mag+", "+(float)rate+");");
-			//System.out.println((float)mag+"\t"+(float)rate);
-		}
+		frankCast.updateForecast();
+
+//		// THIS GENERATES THE BACKGROUND MFD WITHOUT THE TYPE-C ZONES, AND SHIFTS THE MFD BY 0.05 MAG UNITS
+//		// THIS WAS FOR WGCEP Earthquake Rate Model 2.1
+//		Frankel02_AdjustableEqkRupForecast frankCast = new Frankel02_AdjustableEqkRupForecast();
+//		IncrementalMagFreqDist totBackgroundMFD = frankCast.getTotalBackgroundMFD_InsideRELM_region();
+//		//System.out.println(totBackgroundMFD.toString());
+//		// translate mags by 0.05 units
+//		// get rate at 5.0 from rate at 5.05 using bValue=0.8
+//		double rate = totBackgroundMFD.getY(0) * Math.pow(10,0.8*0.05);
+//		double mag = 5;
+//		System.out.println("nshmp02_Backgr_MFD.set("+(float)mag+", "+(float)rate+");");
+//		//System.out.println("5.0\t"+(float)rate);
+//		for(int i=0;i<totBackgroundMFD.size()-1;i++) {
+//			rate = Math.sqrt(totBackgroundMFD.getY(i)*totBackgroundMFD.getY(i+1));
+//			mag = totBackgroundMFD.getX(i)+0.05;
+//			System.out.println("nshmp02_Backgr_MFD.set("+(float)mag+", "+(float)rate+");");
+//			//System.out.println((float)mag+"\t"+(float)rate);
+//		}
 
 
 		/*

@@ -172,7 +172,8 @@ public class PrefFaultSectionDataFinal implements Serializable {
 		faultSectionsList = new ArrayList<FaultSectionPrefData>();
 		indexForID_Map = new HashMap();
         try {
-			URL xmlURL = PrefFaultSectionDataFinal.class.getResource(XML_DATA_FILENAME);
+			URL xmlURL = PrefFaultSectionDataFinal.class.getResource(
+					"/data/erf/ucerf2/finalReferenceFaultParamDb/"+XML_DATA_FILENAME);
 			Document document = reader.read(xmlURL);
 			Element root = document.getRootElement();
 			

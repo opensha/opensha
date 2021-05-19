@@ -47,7 +47,7 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 
 	private final WC1994_MagLengthRelationship magLenRel = new WC1994_MagLengthRelationship();
 
-	private final static String PATH = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/griddedSeis/";
+	private final static String PATH = "/data/erf/ucerf2/griddedSeis/";
 	private final static String LAT_LON_FILENAME = PATH + "LonsLats.txt";
 
 	private int[] aValIndexForLocIndex;
@@ -372,7 +372,7 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 
 		try { 
 			// Region filename
-			InputStreamReader regionFileReader = new InputStreamReader(getClass().getClassLoader().getResourceAsStream(LAT_LON_FILENAME));
+			InputStreamReader regionFileReader = new InputStreamReader(getClass().getResourceAsStream(LAT_LON_FILENAME));
 			BufferedReader br = new BufferedReader(regionFileReader);
 			String latlonLine = br.readLine(); // skip header line
 			Location loc;
@@ -496,7 +496,7 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 		double[] allGridVals = new double[numAvals];
 //		System.out.println("    Working on "+fileName);
 		try { 
-			InputStreamReader ratesFileReader = new InputStreamReader(getClass().getClassLoader().getResourceAsStream(fileName));
+			InputStreamReader ratesFileReader = new InputStreamReader(getClass().getResourceAsStream(fileName));
 			BufferedReader ratesFileBufferedReader = new BufferedReader(ratesFileReader);
 			String ratesLine = ratesFileBufferedReader.readLine(); // skip header
 			ratesLine = ratesFileBufferedReader.readLine();

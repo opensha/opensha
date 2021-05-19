@@ -80,9 +80,9 @@ public class NewZealandERF2015_ChchAftershock extends AbstractERF{
 	public final static String NAME = new String("NewZealand_ERF_2015ChristchurchAftershock");
 
 
-	private final static String FAULT_SOURCE_FILENAME = "org/opensha/sha/earthquake/rupForecastImpl/NewZealand/NZ_FLTmodel_2010.txt";
-	private final static String BG_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/NewZealand/NZBCK2015_Chch50yearsAftershock_OpenSHA_modType4.txt";
-//	private final static String BG_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/NewZealand/NZ_BKmodeldraft.txt";
+	private final static String FAULT_SOURCE_FILENAME = "/data/erf/new_zealand_2010/NZ_FLTmodel_2010.txt";
+	private final static String BG_FILE_NAME = "/data/erf/new_zealand_2010/NZBCK2015_Chch50yearsAftershock_OpenSHA_modType4.txt";
+//	private final static String BG_FILE_NAME = "/data/erf/new_zealand_2010/NZ_BKmodeldraft.txt";
 	
 	// Min/Max/Num Mags for Mag Freq Dist for making fault sources
 	private final static double MIN_MAG = 5.0;
