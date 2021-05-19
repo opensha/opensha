@@ -21,7 +21,7 @@ import org.opensha.commons.util.FileUtils;
  *
  */
 public class EmpiricalModelDataFetcher  implements java.io.Serializable {
-	public static String FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/EmpiricalModelData.txt";
+	public static String FILE_NAME = "/data/erf/ucerf2/EmpiricalModelData.txt";
 	private ArrayList<Region> geographicRegionList = new ArrayList<Region>();
 	private ArrayList<Double> rates = new ArrayList<Double>();
 	private ArrayList<Double> stdDevs = new ArrayList<Double>();

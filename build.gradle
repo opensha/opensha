@@ -17,8 +17,7 @@ sourceSets {
             srcDirs = ['src/main/java']
         }
         resources {
-            srcDirs = ['src/main/java', 'src/main/resources']
-            exclude '**/*.java'
+            srcDirs = ['src/main/resources']
             exclude '**/doc'
             exclude '**/data/ngaWest'
             exclude '**/data/site/'
