@@ -10,27 +10,15 @@ ext {
 
 apply from: 'build-common.gradle'
 
-// TODO: Remove these custom source sets, which make 'src/main/java' a resource. see issue #3
+// added any resource exclusions here that we don't need in builds
 sourceSets {
     main {
-        java {
-            srcDirs = ['src/main/java']
-        }
         resources {
-            srcDirs = ['src/main/resources']
             exclude '**/doc'
             exclude '**/data/ngaWest'
             exclude '**/data/site'
             exclude '**/data/erf/new_zealand_2010'
             exclude '**/data/erf/step/AllCal96ModelDaily.txt'
-        }
-    }
-    test {
-        java {
-            srcDirs = ['src/test/java']
-        }
-        resources {
-            srcDirs = ['src/test/resources']
         }
     }
 }
