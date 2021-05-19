@@ -64,14 +64,14 @@ public class PDF_UTF8_FontMapper implements FontMapper {
 	public static final String LIBERATION_MONO_ITALIC = "LiberationMono-Italic";
 	
 	static {
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-Regular.ttf").toString(), LIBERATION_SANS);
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-Bold.ttf").toString(), LIBERATION_SANS_BOLD);
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-BoldItalic.ttf").toString(), LIBERATION_SANS_BOLD_ITALIC);
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-Italic.ttf").toString(), LIBERATION_SANS_ITALIC);
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-Regular.ttf").toString(), LIBERATION_MONO);
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-Bold.ttf").toString(), LIBERATION_MONO_BOLD);
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-BoldItalic.ttf").toString(), LIBERATION_MONO_BOLD_ITALIC);
-		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-Italic.ttf").toString(), LIBERATION_MONO_ITALIC);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-Regular.ttf").toString(), LIBERATION_SANS);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-Bold.ttf").toString(), LIBERATION_SANS_BOLD);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-BoldItalic.ttf").toString(), LIBERATION_SANS_BOLD_ITALIC);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-Italic.ttf").toString(), LIBERATION_SANS_ITALIC);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-Regular.ttf").toString(), LIBERATION_MONO);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-Bold.ttf").toString(), LIBERATION_MONO_BOLD);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-BoldItalic.ttf").toString(), LIBERATION_MONO_BOLD_ITALIC);
+		FontFactory.register(PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-Italic.ttf").toString(), LIBERATION_MONO_ITALIC);
 	}
 	
 	/**
@@ -93,16 +93,16 @@ public class PDF_UTF8_FontMapper implements FontMapper {
 
 				if (font.isItalic()) {
 					if (font.isBold()) {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-BoldItalic.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-BoldItalic.ttf").toString();
 					} else {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-Italic.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-Italic.ttf").toString();
 					}
 
 				} else {
 					if (font.isBold()) {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-Bold.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-Bold.ttf").toString();
 					} else {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationMono-Regular.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationMono-Regular.ttf").toString();
 					}
 				}
 
@@ -129,16 +129,16 @@ public class PDF_UTF8_FontMapper implements FontMapper {
 
 				if (font.isItalic()) {
 					if (font.isBold()) {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-BoldItalic.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-BoldItalic.ttf").toString();
 					} else {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-Italic.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-Italic.ttf").toString();
 					}
 
 				} else {
 					if (font.isBold()) {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-Bold.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-Bold.ttf").toString();
 					} else {
-						fontKey = PDF_UTF8_FontMapper.class.getResource("fonts/LiberationSans-Regular.ttf").toString();
+						fontKey = PDF_UTF8_FontMapper.class.getResource("/fonts/LiberationSans-Regular.ttf").toString();
 					}
 				}
 			}
