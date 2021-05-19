@@ -169,11 +169,13 @@ public class NonErgodicSiteResponseMod extends IML_DependentAttenRelMod implemen
 	
 	private ParameterList referenceSiteParams;
 	private boolean refSiteParamsStale = true;
+	static final String RESOURCES_DIR = "/data/imr/sag_2017_nonergodic";
 	
 	public NonErgodicSiteResponseMod() {
 		// this is for loading defaults from CSV
 		try {
-			periodParams = PeriodDependentParamSet.loadCSV(Params.values(), this.getClass().getResourceAsStream("params.csv"));
+			periodParams = PeriodDependentParamSet.loadCSV(Params.values(), this.getClass().getResourceAsStream(
+					NonErgodicSiteResponseMod.RESOURCES_DIR+"/params.csv"));
 			if (DD) System.out.println("Loaded default params:\n"+periodParams);
 		} catch (IOException e) {
 			System.err.println("Error loading default params:");
@@ -222,7 +224,8 @@ public class NonErgodicSiteResponseMod extends IML_DependentAttenRelMod implemen
 		paramList.addParameter(refIMTParam);
 		
 		try {
-			imtRatios = PeriodDependentParamSet.loadCSV(RatioParams.values(), this.getClass().getResourceAsStream("ratios.csv"));
+			imtRatios = PeriodDependentParamSet.loadCSV(RatioParams.values(), this.getClass().getResourceAsStream(
+					NonErgodicSiteResponseMod.RESOURCES_DIR+"/ratios.csv"));
 		} catch (IOException e) {
 			System.err.println("Error loading default ratios:");
 			e.printStackTrace();

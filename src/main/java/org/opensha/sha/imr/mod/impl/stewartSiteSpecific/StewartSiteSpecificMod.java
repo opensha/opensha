@@ -23,6 +23,7 @@ import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
+@Deprecated
 public class StewartSiteSpecificMod extends AbstractAttenRelMod implements ParameterChangeListener {
 	
 	private static final boolean D = true;
@@ -65,7 +66,8 @@ public class StewartSiteSpecificMod extends AbstractAttenRelMod implements Param
 	
 	public StewartSiteSpecificMod() {
 		try {
-			periodParams = PeriodDependentParamSet.loadCSV(Params.values(), this.getClass().getResourceAsStream("./params.csv"));
+			periodParams = PeriodDependentParamSet.loadCSV(Params.values(),
+					this.getClass().getResourceAsStream(NonErgodicSiteResponseMod.RESOURCES_DIR+"/params.csv"));
 			System.out.println("Loaded default params:\n"+periodParams);
 		} catch (IOException e) {
 			System.err.println("Error loading default params:");

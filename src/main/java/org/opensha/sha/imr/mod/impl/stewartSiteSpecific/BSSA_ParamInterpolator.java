@@ -361,13 +361,14 @@ public class BSSA_ParamInterpolator implements ParamInterpolator<Params> {
 	
 	public static void main(String[] args) throws IOException {
 		PeriodDependentParamSet<Params> periodParams = PeriodDependentParamSet.loadCSV(
-				Params.values(), PeriodDependentParamSet.class.getResourceAsStream("params.csv"));
+				Params.values(), PeriodDependentParamSet.class.getResourceAsStream(
+						NonErgodicSiteResponseMod.RESOURCES_DIR+"/params.csv"));
 		for (double period : periodParams.getPeriods())
 			periodParams.set(period, Params.F3, 0.25 + Math.random()*0.5);
 		File outputDir = new File("/tmp");
 //		plotInterpolation(periodParams, paramsToPlot, outputDir);
 		PeriodDependentParamSet<RatioParams> imtRatios = PeriodDependentParamSet.loadCSV(RatioParams.values(),
-				NonErgodicSiteResponseMod.class.getResourceAsStream("ratios.csv"));
+				NonErgodicSiteResponseMod.class.getResourceAsStream(NonErgodicSiteResponseMod.RESOURCES_DIR+"/ratios.csv"));
 		BSSA_ParamInterpolator interp = new BSSA_ParamInterpolator(imtRatios);
 		
 		Site site = new Site();
