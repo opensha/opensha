@@ -14,3 +14,4 @@ build.date
 build.githash
 src/main/resources/scratch/**/*
 !src/main/resources/scratch/README.md
+db_log.log
