@@ -20,11 +20,7 @@ sourceSets {
             srcDirs = ['src/main/resources']
             exclude '**/doc'
             exclude '**/data/ngaWest'
-            exclude '**/data/site/'
-            exclude '**/data/site/Wills2000'
-            exclude '**/scratch/UCERF3/data/scratch'
-            exclude '**/scratch/ned'
-            exclude '**/org/opensha/sha/earthquake/rupForecastImpl/NSHMP_CEUS08'
+            exclude '**/data/site'
         }
     }
     test {

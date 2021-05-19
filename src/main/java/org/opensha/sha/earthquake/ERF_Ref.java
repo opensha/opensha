@@ -154,9 +154,11 @@ public enum ERF_Ref {
 	// EXPERIMENTAL
 	
 	/** NSHMP CEUS 2008 ERF */
-	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, EXPERIMENTAL, false);
+//	NSHMP_CEUS_08(NSHMP08_CEUS_ERF.class, NSHMP08_CEUS_ERF.NAME, EXPERIMENTAL, false),
 		
-//	TEST_ETAS1_ERF(TestModel1_ERF.class, TestModel1_ERF.NAME, EXPERIMENTAL, false);
+//	TEST_ETAS1_ERF(TestModel1_ERF.class, TestModel1_ERF.NAME, EXPERIMENTAL, false),
+	
+	;
 
 	
 	private Class<? extends BaseERF> clazz;
