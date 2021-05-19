@@ -18,13 +18,13 @@ public class UCERF3_DataUtils {
 	 * The local scratch data directory that is ignored by repository commits.
 	 */
 	public static File DEFAULT_SCRATCH_DATA_DIR =
-		new File("src"+s+"scratch"+s+"UCERF3"+s+"data"+s+"scratch");
+		new File("src"+s+"main"+s+"resources"+s+"scratch"+s+"ucerf3");
 	
 	/**
 	 * The URL prefix for loading file from the persistent data directory. This MUST have forward slashes
 	 * as it is for jar file loading. It cannot use File.separator.
 	 */
-	public static String DATA_URL_PREFIX = "/scratch/UCERF3/data";
+	public static String DATA_URL_PREFIX = "/data/erf/ucerf3";
 	
 	/**
 	 * This gives the URL of a file in the specified sub directory of our UCERF3 data directory.
@@ -65,6 +65,7 @@ public class UCERF3_DataUtils {
 	 */
 	public static InputStream locateResourceAsStream(String... pathElements) {
 		String relativePath = getRelativePath(pathElements);
+//		System.out.println("Loading stream for path: "+relativePath);
 		InputStream stream = UCERF3_DataUtils.class.getResourceAsStream(relativePath);
 		Preconditions.checkNotNull(stream, "Resource '"+pathElements[pathElements.length-1]+"' could not be located: "+relativePath);
 		return stream;
