@@ -60,7 +60,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
   // Input file name
   //private final static String INPUT_FILE_NAME = "/opt/install/apache-tomcat-5.5.20/webapps/OpenSHA/WEB-INF/dataFiles/PipelineGrid.txt";
-  private final static String INPUT_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/step/PipelineGrid.txt";
+  private final static String INPUT_FILE_NAME = "/data/erf/step/PipelineGrid.txt";
 
 
   // ArrayList of input file lines
