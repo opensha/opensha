@@ -29,15 +29,14 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 
 /**
  * <p>Title: NSHMP08_CEUS_ERF</p>
- * </p>
- * <p>Copyright: Copyright (c) 2002</p>
- * <p>Company: </p>
+ * 
+ * @deprecated this is a partial model, only for a single sub region, and should not be used
  * @author : Edward Field
  * @Date : Aug, 2008
  * @version 1.0
  * 
  */
-
+@Deprecated
 public class NSHMP08_CEUS_ERF extends AbstractERF {
 
 	//for Debug purposes

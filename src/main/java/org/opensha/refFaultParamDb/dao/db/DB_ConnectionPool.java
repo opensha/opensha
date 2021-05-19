@@ -181,8 +181,8 @@ public class DB_ConnectionPool implements Runnable, DB_AccessAPI {
 	private final int DEFAULTMAXCHECKOUTSECONDS=60;
 	private final int DEFAULTDEBUGLEVEL=1;
 
-	public static final String db_prop_3_ro_file = "/org/opensha/refFaultParamDb/dao/db/DB_AccessProp_3.0_ro.dat";
-	public static final String db_prop_2_file = "/org/opensha/refFaultParamDb/dao/db/DB_AccessProp_2.0.dat";
+	public static final String db_prop_3_ro_file = "/refFaultParamDb/DB_AccessProp_3.0_ro.dat";
+	public static final String db_prop_2_file = "/refFaultParamDb/DB_AccessProp_2.0.dat";
 
 	public DB_ConnectionPool() {
 		this(db_prop_2_file);

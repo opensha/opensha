@@ -50,8 +50,8 @@ public class YuccaMountainERF extends AbstractERF{
 	public final static String NAME = new String("Yucca mountain Adj. ERF");
 
 
-	private final static String FAULT_SOURCE_FILENAME = "org/opensha/sha/earthquake/rupForecastImpl/YuccaMountain/FAULTmodelYM.txt";
-	private final static String BG_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/YuccaMountain/BACKGROUNDmodelYM.txt";
+	private final static String FAULT_SOURCE_FILENAME = "/data/erf/yucca_mountain/FAULTmodelYM.txt";
+	private final static String BG_FILE_NAME = "/data/erf/yucca_mountain/BACKGROUNDmodelYM.txt";
 
 	// Min/Max/Num Mags for Mag Freq Dist for making fault sources
 	private final static double MIN_MAG = 5.5;

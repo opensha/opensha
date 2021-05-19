@@ -82,7 +82,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	// this is the old path on gravity
 	//  private final static String WG02_CODE_PATH ="/opt/install/apache-tomcat-5.5.20/webapps/OpenSHA/wg99/wg99_src_v27/";
 	private final static String WG02_INPUT_FILE ="base_OpenSHA.inp";   // the templet WG02-code input file modified for OpenSHA purposes
-	private final static String WG02_LOCAL_INPUT_FILE ="base_OpenSHA.txt";   // the templet WG02-code input file modified for OpenSHA purposes
+	private final static String WG02_LOCAL_INPUT_FILE ="/data/erf/wgcep_2002/base_OpenSHA.txt";   // the templet WG02-code input file modified for OpenSHA purposes
 	private final static String WG02_OPENSHA_INPUT_FILE = "OpenSHA.inp";     // the WG02-code input file that we create on the fly
 	public final static String INPUT_FILE_NAME_1 = "WG02_WRAPPER_INPUT.DAT"; // the WG02-code output file that we read
 	// output file from WG-02 code that contains substanial info., not used anywhere in OpenSHA just created for info purposes

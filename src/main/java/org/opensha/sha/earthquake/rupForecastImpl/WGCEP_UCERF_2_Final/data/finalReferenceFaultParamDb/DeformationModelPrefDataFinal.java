@@ -208,7 +208,8 @@ public class DeformationModelPrefDataFinal implements Serializable {
 		
 		SAXReader reader = new SAXReader();
 		try {
-			URL xmlURL = DeformationModelPrefDataFinal.class.getResource(XML_DATA_FILENAME);
+			URL xmlURL = DeformationModelPrefDataFinal.class.getResource(
+					"/data/erf/ucerf2/finalReferenceFaultParamDb/"+XML_DATA_FILENAME);
 			Document document = reader.read(xmlURL);
 			Element root = document.getRootElement();
 

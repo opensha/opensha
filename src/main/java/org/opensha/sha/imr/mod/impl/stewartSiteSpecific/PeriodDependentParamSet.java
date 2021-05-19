@@ -289,7 +289,8 @@ public class PeriodDependentParamSet<E extends Enum<E>> {
 	}
 	
 	public void loadCSV(CSVFile<String> csv) throws IOException {
-		Preconditions.checkState(csv.getNumCols() == params.length+1, "Param count mismatch");
+		Preconditions.checkState(csv.getNumCols() == params.length+1, "Param count mismatch: %s cols, %s params",
+				csv.getNumCols(), params.length);
 		
 		for (int i=0; i<params.length; i++) {
 			String paramName = params[i].name().trim();
@@ -408,7 +409,7 @@ public class PeriodDependentParamSet<E extends Enum<E>> {
 	
 	public static void main(String[] args) throws IOException {
 		PeriodDependentParamSet<Params> periodParams = PeriodDependentParamSet.loadCSV(
-				Params.values(), PeriodDependentParamSet.class.getResourceAsStream("params.csv"));
+				Params.values(), PeriodDependentParamSet.class.getResourceAsStream(NonErgodicSiteResponseMod.RESOURCES_DIR+"/params.csv"));
 		Params[] paramsToPlot = { Params.F1, Params.F2 };
 		File outputDir = new File("/tmp");
 		plotInterpolation(periodParams, paramsToPlot, outputDir);

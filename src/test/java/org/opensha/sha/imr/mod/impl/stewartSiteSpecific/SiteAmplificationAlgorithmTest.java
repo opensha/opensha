@@ -31,8 +31,10 @@ import com.google.common.collect.Maps;
 /**
  * This tests the site amplification algorithm itself, not necessarily it's integration with OpenSHA GMPEs 
  * @author kevin
+ * @deprecated this tests an old version, not the actual version in use. See NonErgodicSiteResponseMod
  *
  */
+@Deprecated
 public class SiteAmplificationAlgorithmTest {
 	
 	private StewartSiteSpecificMod mod;

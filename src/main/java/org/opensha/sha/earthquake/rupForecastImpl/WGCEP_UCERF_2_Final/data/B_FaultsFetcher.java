@@ -34,9 +34,9 @@ public  class B_FaultsFetcher extends FaultsFetcher  implements java.io.Serializ
 	// This holds the special, multi-section B Faults
 	private ArrayList allSpecialFaultIds;
 
-	private final static String B_CONNECT_MINIMAL = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/B_FaultConnectionsMinimum.txt";
-	private final static String B_CONNECT_MODEL1 = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/B_FaultConnectionsF2.1.txt";
-	private final static String B_CONNECT_MODEL2 = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/B_FaultConnectionsF2.2.txt";
+	private final static String B_CONNECT_MINIMAL = "/data/erf/ucerf2/B_FaultConnectionsMinimum.txt";
+	private final static String B_CONNECT_MODEL1 = "/data/erf/ucerf2/B_FaultConnectionsF2.1.txt";
+	private final static String B_CONNECT_MODEL2 = "/data/erf/ucerf2/B_FaultConnectionsF2.2.txt";
 		
 	/**
 	 * default constructor

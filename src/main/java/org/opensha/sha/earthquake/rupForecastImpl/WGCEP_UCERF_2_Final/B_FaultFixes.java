@@ -14,7 +14,7 @@ import org.opensha.commons.util.FileUtils;
  *
  */
 public class B_FaultFixes  implements java.io.Serializable {
-	private final static String IN_FILE = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/B_FaultFixes.txt";
+	private final static String IN_FILE = "/data/erf/ucerf2/B_FaultFixes.txt";
 	private final static String DELIMITER=",";
 	private ArrayList sectionNames;
 	private ArrayList rates;

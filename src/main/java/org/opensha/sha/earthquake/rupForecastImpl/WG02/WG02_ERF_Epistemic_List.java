@@ -56,11 +56,11 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
   /**
    * Static variable for input file name
    */
-  private final static String INPUT_FILE_NAME_30yr = "org/opensha/sha/earthquake/rupForecastImpl/WG02/base_mod_23_wgt_n100.OpenSHA.30yr.txt";
-  private final static String INPUT_FILE_NAME_20yr = "org/opensha/sha/earthquake/rupForecastImpl/WG02/base_mod_23_wgt_n100.OpenSHA.20yr.txt";
-  private final static String INPUT_FILE_NAME_10yr = "org/opensha/sha/earthquake/rupForecastImpl/WG02/base_mod_23_wgt_n100.OpenSHA.10yr.txt";
-  private final static String INPUT_FILE_NAME_5yr  = "org/opensha/sha/earthquake/rupForecastImpl/WG02/base_mod_23_wgt_n100.OpenSHA.5yr.txt";
-  private final static String INPUT_FILE_NAME_1yr  = "org/opensha/sha/earthquake/rupForecastImpl/WG02/base_mod_23_wgt_n100.OpenSHA.1yr.txt";
+  private final static String INPUT_FILE_NAME_30yr = "/data/erf/wgcep_2002/base_mod_23_wgt_n100.OpenSHA.30yr.txt";
+  private final static String INPUT_FILE_NAME_20yr = "/data/erf/wgcep_2002/base_mod_23_wgt_n100.OpenSHA.20yr.txt";
+  private final static String INPUT_FILE_NAME_10yr = "/data/erf/wgcep_2002/base_mod_23_wgt_n100.OpenSHA.10yr.txt";
+  private final static String INPUT_FILE_NAME_5yr  = "/data/erf/wgcep_2002/base_mod_23_wgt_n100.OpenSHA.5yr.txt";
+  private final static String INPUT_FILE_NAME_1yr  = "/data/erf/wgcep_2002/base_mod_23_wgt_n100.OpenSHA.1yr.txt";
   private String INPUT_FILE_NAME;
 
   // vector to hold the line numbers where each iteration starts

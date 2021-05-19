@@ -100,7 +100,7 @@ public class WGCEP_UCERF1_EqkRupForecast extends AbstractERF{
    * Static variables for input files
    */
   //private final static String IN_FILE_PATH = "/opt/install/apache-tomcat-5.5.20/webapps/OpenSHA/WEB-INF/dataFiles/InputFiles_WGCEP_UCERF1/";
-  private final static String IN_FILE_PATH = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF1/InputFiles_WGCEP_UCERF1/";
+  private final static String IN_FILE_PATH = "/data/erf/ucerf1/";
 
 
   /**

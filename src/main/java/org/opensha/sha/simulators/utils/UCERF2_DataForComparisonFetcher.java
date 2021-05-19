@@ -23,7 +23,7 @@ import org.opensha.commons.gui.plot.GraphWindow;
 
 public class UCERF2_DataForComparisonFetcher {
 	
-	private final static String SEG_RATE_FILE_NAME = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/Appendix_C_Table7_091807.xls";
+	private final static String SEG_RATE_FILE_NAME = "/data/erf/ucerf2/Appendix_C_Table7_091807.xls";
 	private final static String PARSONS_PDF_DATA_DIR = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/ParsonsMRI_PDFs";
 	ArrayList<String> parsonsSiteNames;
 	ArrayList<String> parsonsPDF_FileNamesPois;

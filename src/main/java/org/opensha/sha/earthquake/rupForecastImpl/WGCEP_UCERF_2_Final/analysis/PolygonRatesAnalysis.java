@@ -36,7 +36,7 @@ public class PolygonRatesAnalysis {
 	private EmpiricalModelDataFetcher empiricalModelFetcher = new EmpiricalModelDataFetcher();
 	private ERF2GriddedSeisRatesCalc erf2GriddedSeisRatesCalc = new ERF2GriddedSeisRatesCalc(); 
 	private final static double MIN_MAG = 5.0;
-	private final static String PATH = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/";
+	private final static String PATH = "/data/erf/ucerf2/";
 	private final static String A_FAULT_FILENAME = PATH+"A_FaultsPolygonFractions.txt";
 	private final static String B_FAULT_FILENAME = PATH+"B_FaultsPolygonFractions.txt";
 	private final static String NON_CA_B_FAULT_FILENAME = PATH+"NonCA_B_FaultsPolygonFractions.txt";

@@ -39,7 +39,7 @@ public abstract class Coefficients {
 //	private static final String C_DIR = "/data/nshmp/gmpe/";
 	
 	// If you move this, you must update the build.xml resources.imr target as well!
-	private static final String C_DIR = "coeff/";
+	private static final String C_DIR = "/data/imr/ngaw2/coeff/";
 	private Table<IMT, String, Double> table;
 	private IMT imt;
 
@@ -101,9 +101,7 @@ public abstract class Coefficients {
 		Splitter split = Splitter.on(',');
 		List<String> lines = null;
 		try {
-			URL url = Resources.getResource(
-				Coefficients.class, 
-				C_DIR + resource);
+			URL url = Coefficients.class.getResource(C_DIR+resource);
 			lines = Resources.readLines(url, US_ASCII);
 		} catch (IOException ioe) {
 			Throwables.propagate(ioe);

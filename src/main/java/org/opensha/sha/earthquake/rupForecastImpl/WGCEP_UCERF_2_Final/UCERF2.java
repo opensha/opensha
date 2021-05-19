@@ -90,8 +90,8 @@ public class UCERF2 extends AbstractERF {
 	 * Static variables for input files
 	 */
 	//private final static String IN_FILE_PATH = "/opt/install/apache-tomcat-5.5.20/webapps/OpenSHA/WEB-INF/dataFiles/frankel02_inputfiles/";
-	private final static String IN_FILE_PATH = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/";
-	public final static String NON_CA_SOURCES_FILENAME = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/data/NearCA_NSHMP/NonCA_Faults.txt";
+//	private final static String IN_FILE_PATH = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/";
+	public final static String NON_CA_SOURCES_FILENAME = "/data/erf/ucerf2/NonCA_Faults.txt";
 	
 	private ArrayList allSources;
 

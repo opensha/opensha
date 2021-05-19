@@ -133,7 +133,8 @@ public class DeformationModelSummaryFinal implements Serializable {
 		deformationModelSummariesList = new ArrayList<DeformationModelSummary>();
 
 		try {
-			URL xmlURL = DeformationModelSummaryFinal.class.getResource(XML_DATA_FILENAME);
+			URL xmlURL = DeformationModelSummaryFinal.class.getResource(
+					"/data/erf/ucerf2/finalReferenceFaultParamDb/"+XML_DATA_FILENAME);
 			Document document = reader.read(xmlURL);
 			Element root = document.getRootElement();
 
