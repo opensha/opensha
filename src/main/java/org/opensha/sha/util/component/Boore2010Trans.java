@@ -39,7 +39,7 @@ public class Boore2010Trans extends ComponentTranslation {
 	
 	private DiscretizedFunc convFunc;
 	
-	private static final String FILE_NAME = "boore_2010_conversions.xls";
+	private static final String FILE_NAME = "/data/imr/component/boore_2010_conversions.xls";
 	private static HSSFSheet sheet;
 	
 	private Boore2010Trans(Component from, Component to, int column) {
