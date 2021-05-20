@@ -13,7 +13,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 
 public class BugReport {
 
-	public static String GITHUB_ISSUES_URL = "https://github.com/opensha/opensha-apps/issues";
+	public static String GITHUB_ISSUES_URL = "https://github.com/opensha/opensha/issues";
 	public static String GITHUB_NEW_ISSUE_URL = GITHUB_ISSUES_URL+"/new";
 	private static String enc = "UTF-8";
 	
