@@ -28,10 +28,15 @@ import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.param.BackgroundRupParam;
+import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_AreaForecast;
 import org.opensha.sha.earthquake.rupForecastImpl.PEER_TestCases.PEER_MultiSourceForecast;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.util.TectonicRegionType;
+
+import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 /**
  * Tests the following criteria for each {@link DevStatus}.PRODUCTION ERF.
@@ -177,16 +182,21 @@ public class ProductionERFsInstantiationTest {
 
 	private final static String TREAT_BACK_SEIS_AS = "Treat Background Seismicity As";
 
-	public static List<String> getBackSeisTypes(ERF erf) {
+	public static List<?> getBackSeisTypes(ERF erf) {
 		ParameterList params = erf.getAdjustableParameterList();
 		if (!params.containsParameter(TREAT_BACK_SEIS_AS)) {
 			ArrayList<String> strings = new ArrayList<String>();
 			strings.add(null);
 			return strings;
 		}
-		Parameter<String> param = params.getParameter(String.class, TREAT_BACK_SEIS_AS);
-		StringConstraint sconst = (StringConstraint) param.getConstraint();
-		return sconst.getAllowedStrings();
+		if (params.getParameter(TREAT_BACK_SEIS_AS) instanceof BackgroundRupParam) {
+			BackgroundRupParam param = (BackgroundRupParam)params.getParameter(TREAT_BACK_SEIS_AS);
+			return param.getConstraint().getAllowedValues();
+		} else {
+			Parameter<String> param = params.getParameter(String.class, TREAT_BACK_SEIS_AS);
+			StringConstraint sconst = (StringConstraint) param.getConstraint();
+			return sconst.getAllowedStrings();
+		}
 	}
 
 	@Test
@@ -264,19 +274,24 @@ public class ProductionERFsInstantiationTest {
 	}
 	
 	private static ArrayList<String> offendingSources = new ArrayList<String>();
+	
+	private static final String bg_param_name = "Background Seismicity";
 
 	private void doThreadSourceSafetyTest(ERF erf) {
 		String name = erf.getName()+" ("+erf.getClass().getName()+")";
 
 		// try to enable background seismicity first
-		if (erf.getAdjustableParameterList().containsParameter("Background Seismicity")) {
+		if (erf.getAdjustableParameterList().containsParameter(bg_param_name)) {
 			try {
-				erf.setParameter("Background Seismicity", "Include");
+				if (erf.getAdjustableParameterList().getParameter(bg_param_name) instanceof IncludeBackgroundParam)
+					erf.setParameter(bg_param_name, IncludeBackgroundOption.INCLUDE);
+				else
+					erf.setParameter(bg_param_name, "Include");
 			} catch (Exception e) {
 				System.out.println("Tried setting background seismicity but failed for: "+name);
 			}
 		}
-		for (String backSeisType : getBackSeisTypes(erf)) {
+		for (Object backSeisType : getBackSeisTypes(erf)) {
 			if (backSeisType != null)
 				erf.setParameter(TREAT_BACK_SEIS_AS, backSeisType);
 			System.out.println("Testing Sources "+name+": "+backSeisType);
@@ -320,14 +335,17 @@ public class ProductionERFsInstantiationTest {
 		String name = erf.getName();
 
 		// try to enable background seismicity first
-		if (erf.getAdjustableParameterList().containsParameter("Background Seismicity")) {
+		if (erf.getAdjustableParameterList().containsParameter(bg_param_name)) {
 			try {
-				erf.setParameter("Background Seismicity", "Include");
+				if (erf.getAdjustableParameterList().getParameter(bg_param_name) instanceof IncludeBackgroundParam)
+					erf.setParameter(bg_param_name, IncludeBackgroundOption.INCLUDE);
+				else
+					erf.setParameter(bg_param_name, "Include");
 			} catch (Exception e) {
 				System.out.println("Tried setting background seismicity but failed for: "+name);
 			}
 		}
-		for (String backSeisType : getBackSeisTypes(erf)) {
+		for (Object backSeisType : getBackSeisTypes(erf)) {
 			if (backSeisType != null)
 				erf.setParameter(TREAT_BACK_SEIS_AS, backSeisType);
 			System.out.println("Testing Ruptures "+name+": "+backSeisType);
@@ -387,6 +405,7 @@ public class ProductionERFsInstantiationTest {
 		ERFsToSkip.add(PEER_MultiSourceForecast.NAME);
 		ERFsToSkip.add(FloatingPoissonFaultERF.NAME);
 		ERFsToSkip.add(PoissonFaultERF.NAME);
+		ERFsToSkip.add(FaultSystemSolutionERF.NAME);
 	}
 
 }
