@@ -29,7 +29,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 public class WillsMap2000Servlet extends AbstractSiteDataServlet<String> {
 	
 	public static final String ABSOLUTE_FILE = ServerPrefUtils.SERVER_PREFS.getTomcatProjectDir().getAbsolutePath()
-							+File.separator+"src/resources/data/site/Wills2000/usgs_cgs_geology_60s_mod.txt";
+							+File.separator+"src/main/resources/data/site/Wills2000/usgs_cgs_geology_60s_mod.txt";
 	
 	public WillsMap2000Servlet() throws IOException {
 		super(new WillsMap2000(ABSOLUTE_FILE));

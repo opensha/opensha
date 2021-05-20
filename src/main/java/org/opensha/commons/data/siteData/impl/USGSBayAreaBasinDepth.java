@@ -54,8 +54,8 @@ public class USGSBayAreaBasinDepth extends AbstractSiteData<Double> {
 	
 	public static final double gridSpacing = 0.01;
 	
-	public static final String DEPTH_2_5_FILE = "src/resources/data/site/SF06/depth_2.5.bin";
-	public static final String DEPTH_1_0_FILE = "src/resources/data/site/SF06/depth_1.0.bin";
+	public static final String DEPTH_2_5_FILE = "src/main/resources/data/site/SF06/depth_2.5.bin";
+	public static final String DEPTH_1_0_FILE = "src/main/resources/data/site/SF06/depth_1.0.bin";
 	
 	public static final String SERVLET_2_5_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/SF06_2_5";
 	public static final String SERVLET_1_0_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/SF06_1_0";

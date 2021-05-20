@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import org.opensha.commons.util.cpt.CPT;
 
 /**
- * Enum for GMT CPT files stored in the src/resources/cpt folder. These are used by the
+ * Enum for GMT CPT files stored in the src/main/resources/cpt folder. These are used by the
  * GMT map plotter.
  * 
  * @author kevin

@@ -17,7 +17,7 @@ public class ShakeMapStableTectonicPolygons extends AbstractSiteData<Boolean> {
 	public static final String NAME = "ShakeMap Stable Continent Regions";
 	public static final String SHORT_NAME = "ShakeMapContinentRegions";
 	
-	public static final String CRATON_FILENAME = "src/resources/data/site/ShakeMapTectonicPolygons/craton.txt";
+	public static final String CRATON_FILENAME = "src/main/resources/data/site/ShakeMapTectonicPolygons/craton.txt";
 	
 	ArrayList<Region> polys;
 	
