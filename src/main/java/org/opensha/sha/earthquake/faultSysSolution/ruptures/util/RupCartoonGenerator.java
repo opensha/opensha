@@ -2859,7 +2859,7 @@ public class RupCartoonGenerator {
 	}
 
 	public static void main(String[] args) throws IOException, DocumentException {
-		File mainDir = new File("/home/kevin/workspace/opensha-ucerf3/src/org/opensha/sha/"
+		File mainDir = new File("/home/kevin/workspace/opensha/src/main/java/org/opensha/sha/"
 				+ "earthquake/faultSysSolution/ruptures");
 //		File mainDir = new File("/tmp/cartoons");
 		File rupDocsDir = new File(mainDir, "doc");

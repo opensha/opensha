@@ -122,7 +122,7 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 	private static final String[] possible_version_files = 
 			{	"ant/include/build.version",
 				"build.version",
-				"../opensha-commons/build.version"};
+				"../opensha/build.version"};
 	private static final String[] possible_version_resources = 
 		{	"/ant/include/build.version",
 			"/build.version"};

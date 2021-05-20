@@ -89,18 +89,10 @@ public enum ServerPrefs {
 	
 	/**
 	 * 
-	 * @return path to the WEB-INF/opensha-commons dir for this tomcat configuration
+	 * @return path to the WEB-INF/opensha dir for this tomcat configuration
 	 */
-	public File getTomcatCommonsDir() {
-		return new File(tomcatDir, "opensha-commons");
-	}
-	
-	/**
-	 * 
-	 * @return path to the WEB-INF/opensha-core dir for this tomcat configuration
-	 */
-	public File getTomcatCoreDir() {
-		return new File(tomcatDir, "opensha-core");
+	public File getTomcatProjectDir() {
+		return new File(tomcatDir, "opensha");
 	}
 	
 	/**

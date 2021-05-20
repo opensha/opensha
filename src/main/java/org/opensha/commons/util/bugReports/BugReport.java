@@ -41,7 +41,6 @@ public class BugReport {
 		FAULT_DB("fault DB", "refFaultParamDb"),
 		SHA("sha", "sha"),
 		SRA("sra", "sra"),
-		TRAC_SITE("trac site"),
 		WEBSITE("website");
 		
 		private String compStr;
