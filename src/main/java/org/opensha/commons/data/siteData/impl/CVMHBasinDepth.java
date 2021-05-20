@@ -39,7 +39,7 @@ public class CVMHBasinDepth extends AbstractBinarySiteDataLoader implements Para
 	
 	private static final double grid_spacing = 0.005;
 	
-	public static final String DEFAULT_DATA_DIR = "src"+s+"resources"+s+"data"+s+"site"+s+"CVMH"+s;
+	public static final String DEFAULT_DATA_DIR = "src"+s+"main"+s+"resources"+s+"data"+s+"site"+s+"CVMH"+s;
 	public static final String DEPTH_2_5_FILE_PREFIX = "depth_2.5";
 	public static final String DEPTH_1_0_FILE_PREFIX = "depth_1.0";
 	

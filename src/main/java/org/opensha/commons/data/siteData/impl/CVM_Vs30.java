@@ -55,7 +55,7 @@ public class CVM_Vs30 extends AbstractBinarySiteDataLoader implements ParameterC
 		}
 	}
 	
-	public static final String DEFAULT_RESOURCE_DIR = "src"+s+"resources"+s+"data"+s+"site"+s;
+	public static final String DEFAULT_RESOURCE_DIR = "src"+s+"main"+s+"resources"+s+"data"+s+"site"+s;
 	
 	public static final String SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/CVM_Vs30";
 	
