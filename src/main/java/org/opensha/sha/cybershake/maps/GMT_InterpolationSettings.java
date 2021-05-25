@@ -1,6 +1,7 @@
 package org.opensha.sha.cybershake.maps;
 
 import java.io.Serializable;
+import java.text.DecimalFormat;
 
 public class GMT_InterpolationSettings implements Serializable {
 	
@@ -43,9 +44,17 @@ public class GMT_InterpolationSettings implements Serializable {
 	public static final String INTERP_XYZ_FILE_NAME = "map_data_interpolated.txt";
 	
 	public static GMT_InterpolationSettings getDefaultSettings() {
-		return new GMT_InterpolationSettings(0.02, 0.0, 0.1, -1.0, 1.0);
+		return new GMT_InterpolationSettings(0.02, 0.0, 0.1, -1.0, 20.0);
 	}
 	
+	/**
+	 * 
+	 * @param interpSpacing
+	 * @param interiorTension
+	 * @param exteriorTension
+	 * @param convergenceLimit
+	 * @param searchRadius in arc-minutes
+	 */
 	public GMT_InterpolationSettings(double interpSpacing, double interiorTension, double exteriorTension,
 			double convergenceLimit, double searchRadius) {
 		this.interpSpacing = interpSpacing;
@@ -106,7 +115,7 @@ public class GMT_InterpolationSettings implements Serializable {
 	}
 	
 	public String getSearchArg() {
-		return "-S\""+(float)getSearchRadius()+" \""; // surround in quotes, otherwise unit detection but in GMT 5
+		return "-S"+new DecimalFormat("0.#").format(getSearchRadius())+"m";
 	}
 
 	public boolean isSaveInterpSurface() {
