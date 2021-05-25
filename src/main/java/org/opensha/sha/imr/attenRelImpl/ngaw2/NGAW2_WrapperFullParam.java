@@ -166,7 +166,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
 		
-		magParam.setValue(eqkRupture.getMag());
+		magParam.setValueIgnoreWarning(eqkRupture.getMag());
 		rakeParam.setValue(eqkRupture.getAveRake());
 		dipParam.setValueIgnoreWarning(surf.getAveDip());
 		double width = surf.getAveWidth();

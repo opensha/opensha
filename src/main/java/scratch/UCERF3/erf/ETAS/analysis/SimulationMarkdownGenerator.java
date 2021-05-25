@@ -866,7 +866,7 @@ public class SimulationMarkdownGenerator {
 	
 	public static String getGitHash(File launcherDir) {
 		String[] command = { "/bin/bash", "-c",
-				"cd "+launcherDir.getAbsolutePath()+"; git log -n 1 --pretty='%H' lib/opensha-ucerf3-all.jar" };
+				"cd "+launcherDir.getAbsolutePath()+"; git log -n 1 --pretty='%H' opensha/opensha-all.jar" };
 		
 		try {
 			Process p = Runtime.getRuntime().exec(command);

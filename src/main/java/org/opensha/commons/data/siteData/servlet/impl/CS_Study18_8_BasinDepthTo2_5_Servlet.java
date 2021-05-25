@@ -30,7 +30,7 @@ import org.opensha.commons.util.ServerPrefUtils;
 public class CS_Study18_8_BasinDepthTo2_5_Servlet extends
 		AbstractSiteDataServlet<Double> {
 	
-	private static final File FILE = new File(ServerPrefUtils.SERVER_PREFS.getTomcatCommonsDir(),
+	private static final File FILE = new File(ServerPrefUtils.SERVER_PREFS.getTomcatProjectDir(),
 			CS_Study18_8_BasinDepth.DEPTH_2_5_FILE);
 	
 	public CS_Study18_8_BasinDepthTo2_5_Servlet() throws IOException {

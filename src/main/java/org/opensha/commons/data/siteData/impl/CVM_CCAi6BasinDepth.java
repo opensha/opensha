@@ -51,8 +51,8 @@ public class CVM_CCAi6BasinDepth extends AbstractBinarySiteDataLoader {
 	
 	public static final double gridSpacing = 0.005;
 	
-	public static final String DEPTH_2_5_FILE = "src/resources/data/site/CCAi6/depth_2.5.bin";
-	public static final String DEPTH_1_0_FILE = "src/resources/data/site/CCAi6/depth_1.0.bin";
+	public static final String DEPTH_2_5_FILE = "src/main/resources/data/site/CCAi6/depth_2.5.bin";
+	public static final String DEPTH_1_0_FILE = "src/main/resources/data/site/CCAi6/depth_1.0.bin";
 	
 	public static final String SERVLET_2_5_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/CVM_CCAi6_2_5";
 	public static final String SERVLET_1_0_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/CVM_CCAi6_1_0";

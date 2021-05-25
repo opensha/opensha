@@ -45,7 +45,7 @@ public class CVM2BasinDepth extends AbstractSiteData<Double> {
 	public static final String NAME = "SCEC Community Velocity Model Version 2 Basin Depth";
 	public static final String SHORT_NAME = "CVM2";
 	
-	public static final String FILE_NAME = "src/resources/data/site/CVM2/depth_2.5.bin";
+	public static final String FILE_NAME = "src/main/resources/data/site/CVM2/depth_2.5.bin";
 	
 	private boolean useServlet;
 	

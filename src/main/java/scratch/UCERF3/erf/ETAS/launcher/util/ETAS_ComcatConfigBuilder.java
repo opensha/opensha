@@ -30,8 +30,8 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
 			String argz = "";
 			
-//			argz += " --start-after-historical";
-//			argz += " --end-now";
+			argz += " --start-after-historical";
+			argz += " --end-now";
 ////			argz += " --end-date 2018-01-01";
 //			argz += " --historical-catalog";
 //			argz += " --include-spontaneous";
@@ -43,17 +43,18 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 //			argz += " --region 38.5,-122.75,36.25,-120.5";
 			
 			// 11/7-8/2019 Ventura M3's
-			argz += " --start-at ci38229234";
-			argz += " --end-now";
-			argz += " --region 34.4,-119.5,34.15,-119.1";
+//			argz += " --start-at ci38229234";
+//			argz += " --end-now";
+//			argz += " --region 34.4,-119.5,34.15,-119.1";
 			
-			argz += " --num-simulations 100000";
-//			argz += " --num-simulations 1000";
+//			argz += " --num-simulations 100000";
+			argz += " --num-simulations 1000";
 			
 //			argz += " --gridded-only";
 //			argz += " --impose-gr";
 //			argz += " --prob-model NO_ERT";
-//			argz += " --include-spontaneous";
+			argz += " --include-spontaneous";
+			argz += " --duration 1.0";
 //			argz += " --scale-factor 1.0";
 //			argz += " --name-add CulledSurface";
 //			argz += " --fault-model FM3_2";
@@ -68,7 +69,7 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 			
 			// hpc options
 			argz += " --hpc-site USC_HPC";
-			argz += " --nodes 17";
+			argz += " --nodes 32";
 			argz += " --hours 24";
 //			argz += " --queue scec_hiprio";
 			argz += " --queue scec";

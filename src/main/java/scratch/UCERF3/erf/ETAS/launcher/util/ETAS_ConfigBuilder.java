@@ -37,6 +37,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxPointSourceMagParam;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
+import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_TotalRateScaleFactorParam;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.KML_RuptureLoader.KML_Node;
@@ -81,7 +82,6 @@ public class ETAS_ConfigBuilder {
 	
 	protected static Map<FaultModels, File> fmFSSfileMap;
 	private static Map<FaultModels, File> fmCacheDirMap;
-	private static Map<U3ETAS_ProbabilityModelOptions, Double> probModelScaleMap;
 	
 	private static String INPUTS_DIR = "${ETAS_LAUNCHER}/inputs";
 	
@@ -97,11 +97,6 @@ public class ETAS_ConfigBuilder {
 		fmCacheDirMap.put(FaultModels.FM2_1, new File(INPUTS_DIR+"/cache_u2_mapped_fm3p1"));
 		fmCacheDirMap.put(FaultModels.FM3_1, new File(INPUTS_DIR+"/cache_fm3p1_ba"));
 		fmCacheDirMap.put(FaultModels.FM3_2, new File(INPUTS_DIR+"/cache_fm3p2_ba"));
-		
-		probModelScaleMap = new HashMap<>();
-		probModelScaleMap.put(U3ETAS_ProbabilityModelOptions.FULL_TD, 1.14);
-		probModelScaleMap.put(U3ETAS_ProbabilityModelOptions.NO_ERT, 1d);
-		probModelScaleMap.put(U3ETAS_ProbabilityModelOptions.POISSON, 1d);
 	}
 	
 	public static final DateFormat df = new SimpleDateFormat("yyyy_MM_dd");
@@ -248,7 +243,7 @@ public class ETAS_ConfigBuilder {
 		U3ETAS_ProbabilityModelOptions probModel = cmd.hasOption("prob-model") ?
 				U3ETAS_ProbabilityModelOptions.valueOf(cmd.getOptionValue("prob-model")) : PROB_MODEL_DEFAULT;
 		double scaleFactor = cmd.hasOption("scale-factor") ?
-				Double.parseDouble(cmd.getOptionValue("scale-factor")) : probModelScaleMap.get(probModel);
+				Double.parseDouble(cmd.getOptionValue("scale-factor")) : U3ETAS_TotalRateScaleFactorParam.getDefault(probModel);
 		FaultModels fm = cmd.hasOption("fault-model") ?
 				FaultModels.valueOf(cmd.getOptionValue("fault-model")) : FM_DEFAULT;
 		
@@ -278,7 +273,7 @@ public class ETAS_ConfigBuilder {
 		if (probModel != PROB_MODEL_DEFAULT && !griddedOnly)
 			ops.add(probModel.toString());
 		boolean spont = cmd.hasOption("include-spontaneous");
-		if (cmd.hasOption("scale-factor") && (float)scaleFactor != probModelScaleMap.get(probModel).floatValue() && spont)
+		if (cmd.hasOption("scale-factor") && (float)scaleFactor != (float)U3ETAS_TotalRateScaleFactorParam.getDefault(probModel) && spont)
 			ops.add("Scale "+(float)scaleFactor);
 		if (spont)
 			ops.add("Spontaneous");
@@ -306,7 +301,7 @@ public class ETAS_ConfigBuilder {
 		if (griddedOnly)
 			probModel = U3ETAS_ProbabilityModelOptions.POISSON;
 		double scaleFactor = cmd.hasOption("scale-factor") ? Double.parseDouble(cmd.getOptionValue("scale-factor"))
-				: probModelScaleMap.get(probModel);
+				: U3ETAS_TotalRateScaleFactorParam.getDefault(probModel);
 		
 		boolean histCatalog = cmd.hasOption("historical-catalog");
 		File triggerCatalog = null;

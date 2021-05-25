@@ -76,7 +76,7 @@ class UCERF2_GridBuilder {
 		
 		// set up grid arrays and a-value totals
 		for (String gridName : gridNames) {
-			File gridFile = new File("src/resources/data/nshmp/sources/" + 
+			File gridFile = new File("src/main/resources/data/nshmp/sources/" + 
 				gridName);
 			double[] aDat = readGrid(gridFile, nRows, nCols);
 			aGrids.add(aDat);
@@ -192,7 +192,7 @@ class UCERF2_GridBuilder {
 		double[] gridSum = null;
 		
 		for (String gridName : gridNames) {
-			File gridFile = new File("src/resources/data/nshmp/sources/" + 
+			File gridFile = new File("src/main/resources/data/nshmp/sources/" + 
 				gridName);
 			double[] aDat = readGrid(gridFile, nRows, nCols);
 			if (gridSum == null) {

@@ -120,11 +120,11 @@ public class ETAS_PrimaryEventSampler {
 	
 	double trulyOffFaultGR_Corr = Double.NaN;
 	
-	String defaultSectDistForCubeCacheFilename="src/scratch/UCERF3/data/scratch/InversionSolutions/sectDistForCubeCache";
-	String defaultSectInCubeCacheFilename="src/scratch/UCERF3/data/scratch/InversionSolutions/sectInCubeCache";
-	public static final String defaultGriddedCorrFilename="src/scratch/UCERF3/data/scratch/InversionSolutions/griddedSeisCorrectionCache";
+	String defaultSectDistForCubeCacheFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/sectDistForCubeCache";
+	String defaultSectInCubeCacheFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/sectInCubeCache";
+	public static final String defaultGriddedCorrFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/griddedSeisCorrectionCache";
 	
-	String defaultCubeInsidePolyCacheFilename="src/scratch/UCERF3/data/scratch/InversionSolutions/cubeInsidePolyCache";
+	String defaultCubeInsidePolyCacheFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/cubeInsidePolyCache";
 	
 	// these define the cubes in space
 	int numCubeDepths, numCubesPerDepth, numCubes, numParDepths, numParLocsPerDepth, numParLocs;
