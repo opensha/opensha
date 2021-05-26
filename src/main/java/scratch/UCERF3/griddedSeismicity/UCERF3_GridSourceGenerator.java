@@ -34,21 +34,21 @@ import com.google.common.collect.Maps;
  */
 public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 
-	private final CaliforniaRegions.RELM_TESTING_GRIDDED region = RELM_RegionUtils.getGriddedRegionInstance();
+	protected GriddedRegion region = RELM_RegionUtils.getGriddedRegionInstance();
 
 	private static double[] fracStrikeSlip,fracNormal,fracReverse;
-	private LogicTreeBranch branch;
-	private FaultPolyMgr polyMgr;
+	protected LogicTreeBranch branch;
+	protected FaultPolyMgr polyMgr;
 	
 	// spatial pdfs of seismicity, orginal and revised (reduced and
 	// renormalized) to avoid double counting with fault polygons
-	private double[] srcSpatialPDF;
+	protected double[] srcSpatialPDF;
 	private double[] revisedSpatialPDF;
 	
 //	private double totalMgt5_Rate;
 
 	// total off-fault MFD (sub-seismo + background)
-	private IncrementalMagFreqDist realOffFaultMFD;
+	protected IncrementalMagFreqDist realOffFaultMFD;
 
 	// the sub-seismogenic MFDs for those nodes that have them
 	private Map<Integer, SummedMagFreqDist> nodeSubSeisMFDs;
@@ -57,9 +57,14 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	private Map<Integer, IncrementalMagFreqDist> sectSubSeisMFDs;
 
 	// reference mfd values
-	private double mfdMin = 5.05;
-	private double mfdMax = 8.45;
-	private int mfdNum = 35;
+	protected double mfdMin = 5.05;
+	protected double mfdMax = 8.45;
+	protected int mfdNum = 35;
+
+	/**
+	 * for inheritance
+	 */
+	public UCERF3_GridSourceGenerator(){}
 
 	/**
 	 * Options:
@@ -99,7 +104,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 * Initialize the sub-seismogenic MFDs for each fault section
 	 * (sectSubSeisMFDs)
 	 */
-	private void initSectionMFDs(InversionFaultSystemSolution ifss) {
+	protected void initSectionMFDs(InversionFaultSystemSolution ifss) {
 
 		List<GutenbergRichterMagFreqDist> subSeisMFD_list = 
 				ifss.getFinalSubSeismoOnFaultMFD_List();
@@ -118,7 +123,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 * (nodeSubSeisMFDs) by partitioning the sectSubSeisMFDs according to
 	 * the overlapping fraction of each fault section and grid node.
 	 */
-	private void initNodeMFDs(InversionFaultSystemSolution ifss) {
+	protected void initNodeMFDs(InversionFaultSystemSolution ifss) {
 		nodeSubSeisMFDs = Maps.newHashMap();
 		for (FaultSection sect : ifss.getRupSet().getFaultSectionDataList()) {
 			int id = sect.getSectionId();
@@ -143,7 +148,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 * are partially of fully occupied by faults to whom all small magnitude
 	 * events will have been apportioned.
 	 */
-	private void updateSpatialPDF() {
+	protected void updateSpatialPDF() {
 		// update pdf
 		revisedSpatialPDF = new double[srcSpatialPDF.length];
 		for (int i=0; i<region.getNodeCount(); i++) {
