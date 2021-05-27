@@ -134,7 +134,7 @@ public enum SpatialSeisPDF implements LogicTreeBranchNode<SpatialSeisPDF> {
 
 	@Override
 	public double getRelativeWeight(InversionModels im) {
-		if (im.isCharacteristic())
+		if (im == null || im.isCharacteristic())
 			return charWeight;
 		else
 			return grWeight;

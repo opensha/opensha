@@ -40,7 +40,7 @@ public enum MaxMagOffFault implements LogicTreeBranchNode<MaxMagOffFault> {
 
 	@Override
 	public double getRelativeWeight(InversionModels im) {
-		if (im.isCharacteristic())
+		if (im == null || im.isCharacteristic())
 			return charWeight;
 		else
 			return grWeight;
