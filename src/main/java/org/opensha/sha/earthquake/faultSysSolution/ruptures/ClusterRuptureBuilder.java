@@ -26,6 +26,7 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.impl.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.impl.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.impl.PlausibilityConfigurationModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -1539,6 +1540,7 @@ public class ClusterRuptureBuilder {
 				rupsIDsList, rupMags, rupRakes, rupAreas, rupLengths, "");
 		rupSet.addModule(new PlausibilityConfigurationModule(rupSet, config));
 		rupSet.addModule(new ClusterRuptures(rupSet, rups));
+		rupSet.addModule(AveSlipModule.forModel(rupSet, scale));
 		return rupSet;
 	}
 
