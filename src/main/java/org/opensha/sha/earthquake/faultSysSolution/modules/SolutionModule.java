@@ -7,6 +7,12 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * Abstract base class for a module that can be attached to a fault system solution
+ * 
+ * @author kevin
+ *
+ */
 public abstract class SolutionModule implements Named {
 	
 	private FaultSystemSolution sol;
@@ -16,6 +22,7 @@ public abstract class SolutionModule implements Named {
 	}
 	
 	protected void setSolution(FaultSystemSolution sol) {
+		Preconditions.checkNotNull(sol, "Solution cannot be null");
 		Preconditions.checkState(this.sol == null, "Solution should only be set once");
 		this.sol = sol;
 	}

@@ -8,7 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import com.google.common.base.Preconditions;
 
 /**
- * Abstract base class for a rupture that can be attached to a FaultSystemRupSet
+ * Abstract base class for a module that can be attached to a FaultSystemRupSet
  * 
  * @author kevin
  *
@@ -22,6 +22,7 @@ public abstract class RupSetModule implements Named {
 	}
 	
 	protected void setRupSet(FaultSystemRupSet rupSet) {
+		Preconditions.checkNotNull(rupSet, "Rupture set cannot be null");
 		Preconditions.checkState(this.rupSet == null, "Rupture set should only be set once");
 		this.rupSet = rupSet;
 	}

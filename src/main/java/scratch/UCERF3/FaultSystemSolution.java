@@ -57,6 +57,7 @@ import com.google.common.collect.Maps;
  * @author Field, Milner, Page, and Powers
  *
  */
+@Deprecated
 public class FaultSystemSolution implements Serializable {
 	
 	private FaultSystemRupSet rupSet;

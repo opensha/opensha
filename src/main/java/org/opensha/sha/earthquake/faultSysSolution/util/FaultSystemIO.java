@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.lang.reflect.Constructor;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
@@ -411,6 +412,13 @@ public class FaultSystemIO {
 				StatefulModule stateful = (StatefulModule)module;
 				stateful.writeToArchive(zout, null);
 				written.add(new StatefulModuleRecord(stateful));
+				try {
+					Constructor<? extends StatefulModule> constructor = stateful.getLoadingClass().getConstructor();
+					Preconditions.checkState(constructor.canAccess(null));
+				} catch (Throwable t) {
+					System.err.println("WARNING: Loading class for module doesn't contain a public no-arg constructor, "
+							+ "loading from a zip file will fail: "+stateful.getLoadingClass().getName());
+				}
 			} else {
 				System.out.println("Skipping transient module: "+module.getName());
 			}
@@ -429,12 +437,12 @@ public class FaultSystemIO {
 	}
 	
 	private static class StatefulModuleRecord {
-		public final String className;
 		public final String name;
+		public final String className;
 		
 		public StatefulModuleRecord(StatefulModule module) {
-			this.className = module.getLoadingClass().getName();
 			this.name = module.getName();
+			this.className = module.getLoadingClass().getName();
 		}
 	}
 	
@@ -453,6 +461,8 @@ public class FaultSystemIO {
 		zin.close();
 		return records;
 	}
+	
+	/// TODO: should module loading be lazy? e.g., wrap them in stubs and only load when queried
 	
 	@SuppressWarnings("unchecked")
 	private static void loadRupSetModules(FaultSystemRupSet rupSet, List<StatefulModuleRecord> records, ZipFile zip)
