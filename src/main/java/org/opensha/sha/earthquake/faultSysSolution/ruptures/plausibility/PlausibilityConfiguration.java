@@ -425,7 +425,7 @@ public class PlausibilityConfiguration {
 	private static Gson prevGson;
 	private static List<? extends FaultSection> prevSubSects;
 	
-	private synchronized static Gson buildGson(List<? extends FaultSection> subSects) {
+	public synchronized static Gson buildGson(List<? extends FaultSection> subSects) {
 		if (prevGson != null && prevSubSects != null && prevSubSects.size() == subSects.size()) {
 			// see if we can reuse
 //			System.out.println("Lets se if we can reuse Gson....");

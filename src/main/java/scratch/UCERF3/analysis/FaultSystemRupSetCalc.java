@@ -120,7 +120,7 @@ public class FaultSystemRupSetCalc {
 				System.out.println(i+" has NaN moRate; "+faultSystemRupSet.getFaultSectionData(i).getName()+
 						"\tarea="+(float)faultSystemRupSet.getAreaForSection(i)+"\tslipRate="+(float)faultSystemRupSet.getSlipRateForSection(i));
 			}
-			double min = faultSystemRupSet.getOrigMinMagForSection(i);
+			double min = getOrigMinMagForSection(faultSystemRupSet, i);
 			if(!Double.isNaN(wt)) {
 				hist.add(min, wt);
 			}
@@ -1716,7 +1716,7 @@ public class FaultSystemRupSetCalc {
 		List<? extends FaultSection> sectDataList = faultSystemRupSet.getFaultSectionDataList();
 		for(int s=0; s< sectDataList.size();s++) {
 			String parSectName = sectDataList.get(s).getParentSectionName();
-			minSectMag = faultSystemRupSet.getOrigMinMagForSection(s);
+			minSectMag = getOrigMinMagForSection(faultSystemRupSet, s);
 			maxSectMag = faultSystemRupSet.getMaxMagForSection(s);
 			if(!parSectName.equals(prevParSectName)) { // if it's a new parent section
 				if(!prevParSectName.equals("junk")) { // Process results
@@ -1857,6 +1857,26 @@ public class FaultSystemRupSetCalc {
 
 	}
 	
+	/**
+	 * This returns the magnitude of the smallest rupture involving this section or NaN
+	 * if no ruptures involve this section.  This is called "Orig" because subclasses
+	 * may filter the minimum magnitudes further (e.g., so they don't fall below some
+	 * threshold).
+	 * @param sectIndex
+	 * @return
+	 */
+	private static double getOrigMinMagForSection(FaultSystemRupSet rupSet, int sectIndex) {
+		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
+		if (rups.isEmpty())
+			return Double.NaN;
+		double minMag = Double.POSITIVE_INFINITY;
+		for (int rupIndex : rupSet.getRupturesForSection(sectIndex)) {
+			double mag = rupSet.getMagForRup(rupIndex);
+			if (mag < minMag)
+				minMag = mag;
+		}
+		return minMag;
+	}
 	
 	/**
 	 * This computes the final minimum seismogenic rupture mag for each section,
@@ -1889,7 +1909,7 @@ public class FaultSystemRupSetCalc {
 		double minMinSeismoMag=0;	// this is for testing
 		for(int s=0; s< sectDataList.size();s++) {
 			String parSectName = sectDataList.get(s).getParentSectionName();
-			double minSeismoMag = fltSystRupSet.getOrigMinMagForSection(s);
+			double minSeismoMag = getOrigMinMagForSection(fltSystRupSet, s);
 			if(!parSectName.equals(prevParSectName)) { // it's a new parent section
 				// set the previous result
 				if(!prevParSectName.equals("junk")) {

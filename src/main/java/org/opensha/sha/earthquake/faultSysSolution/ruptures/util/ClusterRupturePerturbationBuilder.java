@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.impl.PlausibilityConfigurationModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder.*;
@@ -41,6 +44,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.Plausible
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.UCERF3ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSystemIO;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy.SecondaryVariations;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy.ConnPointCleanupFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveUnilateralRuptureGrowingStrategy;
@@ -54,13 +58,10 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
 
 public class ClusterRupturePerturbationBuilder {
 
@@ -103,7 +104,7 @@ public class ClusterRupturePerturbationBuilder {
 		else
 			primaryGrowingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(primaryFile);
-		PlausibilityConfiguration primaryConfig = rupSet.getPlausibilityConfiguration();
+		PlausibilityConfiguration primaryConfig = rupSet.getModule(PlausibilityConfigurationModule.class).getConfiguration();
 		Preconditions.checkNotNull(primaryConfig);
 		
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
@@ -406,7 +407,8 @@ public class ClusterRupturePerturbationBuilder {
 			if (replot || !new File(plotDir, "README.md").exists()) {
 				FaultSystemSolution u3 = FaultSystemIO.loadSol(new File(rupSetsDir, "fm3_1_ucerf3.zip"));
 				System.out.println("Plotting UCERF3");
-				RupSetDiagnosticsPageGen pageGen = new RupSetDiagnosticsPageGen(rupSet, null, primaryName, u3.getRupSet(), u3, "UCERF3", plotDir);
+				RupSetDiagnosticsPageGen pageGen = new RupSetDiagnosticsPageGen(rupSet.toOldRupSet(), null, primaryName,
+						u3.getRupSet().toOldRupSet(), u3.toOldSol(), "UCERF3", plotDir);
 				pageGen.setSkipPlausibility(false);
 				pageGen.setIndexDir(indexDir);
 				
@@ -464,7 +466,7 @@ public class ClusterRupturePerturbationBuilder {
 					altRupSet = FaultSystemIO.loadRupSet(outputFile);
 				}
 				System.out.println("Plotting "+name);
-				RupSetDiagnosticsPageGen pageGen = new RupSetDiagnosticsPageGen(rupSet, null, primaryName, altRupSet, null, name, plotDir);
+				RupSetDiagnosticsPageGen pageGen = new RupSetDiagnosticsPageGen(rupSet.toOldRupSet(), null, primaryName, altRupSet.toOldRupSet(), null, name, plotDir);
 				pageGen.setSkipPlausibility(skipPlausibility);
 				pageGen.setIndexDir(indexDir);
 				pageGen.generatePage();

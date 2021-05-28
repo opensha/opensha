@@ -1,9 +1,5 @@
-/**
- * 
- */
-package scratch.UCERF3;
+package org.opensha.sha.earthquake.faultSysSolution;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,22 +7,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+
+import javax.annotation.Nullable;
 
 import org.apache.commons.math3.stat.StatUtils;
-import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
-import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModuleManager;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.impl.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.impl.PlausibilityConfigurationModule;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -40,40 +31,39 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
-import scratch.UCERF3.analysis.DeformationModelsCalc;
-
-
 /**
  * This class represents the attributes of ruptures in a fault system, 
  * where the latter is composed of some number of fault sections.
+ * <p>
+ * Only the core fields common to rupture sets from all models are included. Extra attributes can be attached to this
+ * rupture set as RupSetModule instances. Examples of modules include: logic tree branches, gridded seismicity,
+ * plausibility configurations, cluster rupture representations, RSQSim event mappings
  * 
  * @author Field, Milner, Page, & Powers
  *
  */
-@Deprecated
-public class FaultSystemRupSet implements Serializable {
+public final class FaultSystemRupSet {
+// TODO: should this be final?
 	
 	// data arrays/lists
 	private List<? extends FaultSection> faultSectionData;
 	private double[] mags;
 	private double[] sectSlipRates;
-	private double[] sectSlipRateStdDevs;
+	private double[] sectSlipRateStdDevs; // TODO: make a module?
 	private double[] rakes;
 	private double[] rupAreas;
 	private double[] rupLengths;
 	private double[] sectAreas;
 	private List<List<Integer>> sectionForRups;
 	private String info;
-
-	private PlausibilityConfiguration plausibilityConfig;
-	private List<ClusterRupture> clusterRuptures;
 	
-	// for caching
+	// if true, caching operations will show a graphical progress bar
 	protected boolean showProgress = false;
 	
-	// NOTE: copy param documentation to init() method if you make any changes below
+	private ModuleManager<RupSetModule> moduleManager;
+	
 	/**
-	 * Constructor for precomputed data where everything is passed in.
+	 * Initialized a FaultSystemRupSet object with all core data.
 	 * 
 	 * @param faultSectionData fault section data list (CANNOT be null)
 	 * @param sectSlipRates slip rates for each fault section with any reductions applied (CAN be null)
@@ -88,65 +78,15 @@ public class FaultSystemRupSet implements Serializable {
 	 */
 	public FaultSystemRupSet(
 			List<? extends FaultSection> faultSectionData,
-			double[] sectSlipRates,
-			double[] sectSlipRateStdDevs,
-			double[] sectAreas,
+			@Nullable double[] sectSlipRates,
+			@Nullable double[] sectSlipRateStdDevs,
+			@Nullable double[] sectAreas,
 			List<List<Integer>> sectionForRups,
 			double[] mags,
 			double[] rakes,
 			double[] rupAreas,
-			double[] rupLengths,
-			String info) {
-		init(faultSectionData, sectSlipRates, sectSlipRateStdDevs, sectAreas,
-				sectionForRups, mags, rakes, rupAreas, rupLengths, info);
-	}
-	
-	/**
-	 * Default constructor for subclasses which will call init on their own.
-	 * 
-	 * Protected so it can only be invoked by subclasses.
-	 */
-	protected FaultSystemRupSet() {
-		// do nothing, it's up to subclass to call init.
-	}
-	
-	/**
-	 * Initialize from another rupSet
-	 * @param rupSet
-	 */
-	protected void init(FaultSystemRupSet rupSet) {
-		init(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
-				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
-				rupSet.getAreaForAllRups(), rupSet.getLengthForAllRups(), rupSet.getInfoString());
-		copyCacheFrom(rupSet);
-	}
-	
-	/**
-	 * Sets all parameters
-	 * 
-	 * @param faultSectionData fault section data list (CANNOT be null)
-	 * @param sectSlipRates slip rates for each fault section with any reductions applied (CAN be null)
-	 * @param sectSlipRateStdDevs slip rate std deviations for each fault section (CAN be null)
-	 * @param sectAreas areas for each fault section (CAN be null)
-	 * @param sectionForRups list of fault section indexes for each rupture (CANNOT be null)
-	 * @param mags magnitudes for each rupture (CANNOT be null)
-	 * @param rakes rakes for each rupture (CANNOT be null)
-	 * @param rupAreas areas for each rupture (CANNOT be null)
-	 * @param rupLengths lengths for each rupture (CAN be null)
-	 * @param info metadata string
-	 */
-	protected void init(
-			List<? extends FaultSection> faultSectionData,
-			double[] sectSlipRates,
-			double[] sectSlipRateStdDevs,
-			double[] sectAreas,
-			List<List<Integer>> sectionForRups,
-			double[] mags,
-			double[] rakes,
-			double[] rupAreas,
-			double[] rupLengths,
-			String info) {
+			@Nullable double[] rupLengths,
+			@Nullable String info) {
 		Preconditions.checkNotNull(faultSectionData, "Fault Section Data cannot be null");
 		this.faultSectionData = faultSectionData;
 		Preconditions.checkNotNull(faultSectionData, "Magnitudes cannot be null");
@@ -182,6 +122,8 @@ public class FaultSystemRupSet implements Serializable {
 		this.sectionForRups = sectionForRups;
 		
 		this.info = info;
+		
+		this.moduleManager = new ModuleManager<>(RupSetModule.class);
 	}
 	
 	/**
@@ -246,28 +188,6 @@ public class FaultSystemRupSet implements Serializable {
 	}
 	
 	/**
-	 * This returns the magnitude of the smallest rupture involving this section or NaN
-	 * if no ruptures involve this section.  This is called "Orig" because subclasses
-	 * may filter the minimum magnitudes further (e.g., so they don't fall below some
-	 * threshold).
-	 * @param sectIndex
-	 * @return
-	 */
-	public double getOrigMinMagForSection(int sectIndex) {
-		List<Integer> rups = getRupturesForSection(sectIndex);
-		if (rups.isEmpty())
-			return Double.NaN;
-		double minMag = Double.POSITIVE_INFINITY;
-		for (int rupIndex : getRupturesForSection(sectIndex)) {
-			double mag = getMagForRup(rupIndex);
-			if (mag < minMag)
-				minMag = mag;
-		}
-		return minMag;
-	}
-	
-	
-	/**
 	 * This returns the magnitude of the largest rupture involving this section or NaN
 	 * if no ruptures involve this section.
 	 * @param sectIndex
@@ -284,104 +204,6 @@ public class FaultSystemRupSet implements Serializable {
 				maxMag = mag;
 		}
 		return maxMag;
-	}
-	
-	
-	/**
-	 * This computes the fractional slip rate (or moment rate) taken away for sub-seismogenic ruptures
-	 * (relative to creep reduced moment rate).  Actually, this will also include any additional coupling
-	 * coefficient reductions applied by subclasses (e.g., InversionFaultSystemRuptureSet has the option
-	 * of also applying an implied coupling coefficient that will be reflected in getSlipRateForSection(sectIndex))
-	 * @param sectIndex
-	 * @return
-	 */
-	public double getMomentRateReductionFraction(int sectIndex) {
-		double origSlipRate = getFaultSectionData(sectIndex).getReducedAveSlipRate() * 1e-3; // convert to meters
-		double reducedSlipRate = getSlipRateForSection(sectIndex);
-		return 1d - reducedSlipRate/origSlipRate;
-	}
-	
-	/**
-	 * This returns the total reduction in moment rate for subseimogenic ruptures
-	 * and any coupling coefficient applied (the amount removed).  Actually, this 
-	 * reduction also includes any additional coupling coefficient reductions applied 
-	 * by subclasses (e.g., InversionFaultSystemRuptureSet has the option of also 
-	 * applying an implied coupling coefficient that will be reflected in 
-	 * getSlipRateForSection(sectIndex))
-	 * 
-	 * @return
-	 */
-	public double getTotalMomentRateReduction() {
-		return getTotalOrigMomentRate() - getTotalReducedMomentRate();
-	}
-	
-	/**
-	 * This returns the total fraction of moment that is reduced by subseismogenic ruptures.
-	 * Actually, this reduction also includes any additional coupling coefficient reductions  
-	 * applied by subclasses (e.g., InversionFaultSystemRuptureSet has the option of also 
-	 * applying an implied coupling coefficient that will be reflected in 
-	 * getSlipRateForSection(sectIndex))
-	 * 
-	 */
-	public double getTotalMomentRateReductionFraction() {
-		return getTotalMomentRateReduction() / getTotalOrigMomentRate();
-	}
-
-	/**
-	 * This returns the original moment rate (with creep reductions but without subseismogenic
-	 * rupture reductions) for a fault subsection
-	 */
-	public double getOrigMomentRate(int sectIndex) {
-		FaultSection sectData = getFaultSectionData(sectIndex);
-		double moRate = sectData.calcMomentRate(true);
-		if (Double.isNaN(moRate))
-			return 0;
-		return moRate;
-	}
-	
-	/**
-	 * This returns the total moment rate for the given rupSet without taking into account any
-	 * moment rate reductions for subseismogenic ruptures (but does include all default creep reductions).<br>
-	 * <br>
-	 * This simply calls <code>DeformationModelsCalc.calculateTotalMomentRate(sectData, true)</code> 
-	 * 
-	 * @param rupSet
-	 * @return
-	 */
-	public double getTotalOrigMomentRate() {
-		return DeformationModelsCalc.calculateTotalMomentRate(getFaultSectionDataList(), true);
-	}
-	
-	/**
-	 * This returns the moment rate after removing that for subseimogenic ruptures 
-	 * (and default creep effects). This also include any additional
-	 * coupling coefficients applied by subclasses (e.g., InversionFaultSystemRuptureSet 
-	 * has the option of also applying an implied coupling coefficient that will be 
-	 * reflected in getSlipRateForSection(sectIndex)).
-	 * 
-	 * @param sectIndex
-	 * @return
-	 */
-	public double getReducedMomentRate(int sectIndex) {
-		return getOrigMomentRate(sectIndex) * (1 - getMomentRateReductionFraction(sectIndex));
-	}
-	
-	/**
-	 * This returns the total moment rate after removing that for subseismogenic  
-	 * ruptures (and default creep influences).  This also include any additional
-	 * coupling coefficients applied by subclasses; e.g., InversionFaultSystemRuptureSet 
-	 * has the option of also applying an implied coupling coefficient that will be 
-	 * reflected in getSlipRateForSection(sectIndex)).
-	 * @return
-	 */
-	public double getTotalReducedMomentRate() {
-		double totMoRate = 0d;
-		for (int sectIndex=0; sectIndex<getNumSections(); sectIndex++) {
-			double sectMoment = getReducedMomentRate(sectIndex);
-			if (!Double.isNaN(sectMoment))
-				totMoRate += sectMoment;
-		}
-		return totMoRate;
 	}
 	
 	/**
@@ -410,22 +232,6 @@ public class FaultSystemRupSet implements Serializable {
 	 */
 	public double getMagForRup(int rupIndex) {
 		return mags[rupIndex];
-	}
-	
-	/**
-	 * This represents the total moment rate available to the rupture (with creep and 
-	 * subseis ruptures removed), assuming it is the only event to occur along the sections it uses.
-	 * @param rupIndex
-	 * @return
-	 */
-	protected double calcTotalAvailableMomentRate(int rupIndex) {
-		List<Integer> sectsInRup = getSectionsIndicesForRup(rupIndex);
-		double totMoRate = 0;
-		for(Integer sectID:sectsInRup) {
-			double area = getAreaForSection(sectID);
-			totMoRate += FaultMomentCalc.getMoment(area, getSlipRateForSection(sectID));
-		}
-		return totMoRate;
 	}
 	
 	/**
@@ -624,7 +430,7 @@ public class FaultSystemRupSet implements Serializable {
 		this.info = info;
 	}
 	
-	private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
+private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
 	
 	/**
 	 * 
@@ -798,140 +604,103 @@ public class FaultSystemRupSet implements Serializable {
 		return StatUtils.min(getMagForAllRups());
 	}
 	
+	/*
+	 * Modules
+	 */
+	
 	/**
-	 * This gives the plausibility configuration used to create this rupture set if available,
-	 * otherwise null
+	 * Adds the given module to this rupture set
+	 * 
+	 * @param module
+	 */
+	public void addModule(RupSetModule module) {
+		Preconditions.checkNotNull(module.getRupSet());
+		Preconditions.checkState(module.getRupSet() == this || this.areRupturesEquivalent(module.getRupSet()),
+				"This module was created with a different rupture set, and that rupture set is not equivalent.");
+		moduleManager.addModule(module);
+	}
+	
+	/**
+	 * 
+	 * @param clazz
+	 * @return true if this rupture set has a module of the given type
+	 */
+	public boolean hasModule(Class<? extends RupSetModule> clazz) {
+		return moduleManager.hasModule(clazz);
+	}
+	
+	/**
+	 * Retrieve a module matching the given type
+	 * 
+	 * @param <M>
+	 * @param clazz type of module to get
+	 * @return module matching that type, or null if none exist
+	 */
+	public <M extends RupSetModule> M getModule(Class<M> clazz) {
+		return moduleManager.getModule(clazz);
+	}
+	
+	/**
+	 * 
+	 * @return unmodifiable view of all modules added to this rupture set
+	 */
+	public List<RupSetModule> getModules() {
+		return moduleManager.getModules();
+	}
+	
+	/**
+	 * Returns true if the given rupture set is equivalent to this one. Equivalence is determined by the following
+	 * criteria:
+	 * 
+	 * * Same number of ruptures
+	 * * Each rupture uses the same fault sections, listed in the same order
+	 * * Same number of sections
+	 * * Each section has the same name & parent section ID
+	 * 
+	 * @param other
+	 * @return true if the given rupture set is equivalent to this one (same ruptures and sections in same order,
+	 *  maybe different properties)
+	 */
+	public boolean areRupturesEquivalent(FaultSystemRupSet other) {
+		// check sections
+		if (getNumSections() != other.getNumSections())
+			return false;
+		for (int s=0; s<getNumSections(); s++) {
+			FaultSection mySect = getFaultSectionData(s);
+			FaultSection oSect = other.getFaultSectionData(s);
+			if (mySect.getParentSectionId() != oSect.getParentSectionId())
+				return false;
+			if (!mySect.getParentSectionName().equals(oSect.getSectionName()))
+				return false;
+		}
+		
+		// check ruptures
+		if (getNumRuptures() != other.getNumRuptures())
+			return false;
+		for (int r=0; r<getNumRuptures(); r++) {
+			List<Integer> mySects = getSectionsIndicesForRup(r);
+			List<Integer> oSects = other.getSectionsIndicesForRup(r);
+			if (!mySects.equals(oSects))
+				return false;
+		}
+		return true;
+	}
+	
+	/**
+	 * Temporary method to transform this to the old version, to reduce compile errors during initial refactoring
 	 * 
 	 * @return
 	 */
-	public PlausibilityConfiguration getPlausibilityConfiguration() {
-		return plausibilityConfig;
-	}
-	
-	/**
-	 * Sets the plausibility configuration used to create this rupture set
-	 * 
-	 * @param plausibilityConfig
-	 */
-	public void setPlausibilityConfiguration(PlausibilityConfiguration plausibilityConfig) {
-		this.plausibilityConfig = plausibilityConfig;
-	}
-
-	/**
-	 * This gives a list of ClusterRupture instances if available, otherwise null. This list can be
-	 * built if needed via the buildClusterRuptures(...) method.
-	 * 
-	 * @return
-	 */
-	public List<ClusterRupture> getClusterRuptures() {
-		return clusterRuptures;
-	}
-
-	/**
-	 * Sets the list of ClusterRupture instances
-	 * 
-	 * @param clusterRuptures
-	 */
-	public void setClusterRuptures(List<ClusterRupture> clusterRuptures) {
-		if (clusterRuptures != null)
-			Preconditions.checkState(clusterRuptures.size() == getNumRuptures(),
-					"Cluster ruptures list is of size=%s but numRuptures=%s",
-					clusterRuptures.size(), getNumRuptures());
-		this.clusterRuptures = clusterRuptures;
-	}
-	
-	/**
-	 * Builds cluster ruptures for this RuptureSet. If the plausibility configuration has been set
-	 * and no splays are allowed, then they will be built assuming an ordered single strand rupture.
-	 * Otherwise, the given RuptureConnectionSearch will be used to construct ClusterRupture representations
-	 * 
-	 * @param search
-	 */
-	public void buildClusterRups(RuptureConnectionSearch search) {
-		PlausibilityConfiguration config = getPlausibilityConfiguration();
-		System.out.println("Building ClusterRuptures for "+getNumRuptures()+" ruptures");
-		if (config != null && config.getMaxNumSplays() == 0) {
-			// if splays aren't allowed and we have a plausibility configuration, then simple strand ruptures
-			System.out.println("Assuming simple single strand ruptures");
-			List<ClusterRupture> rups = new ArrayList<>();
-			
-			for (int r=0; r<getNumRuptures(); r++) {
-				List<FaultSection> rupSects = getFaultSectionDataForRupture(r);
-//				System.out.println("rupture "+r);
-				rups.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, search.getDistAzCalc()));
-			}
-			
-			setClusterRuptures(rups);
-			return;
-		}
-		ExecutorService exec = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-		
-		List<Future<ClusterRupture>> futures = new ArrayList<>();
-		for (int r=0; r<getNumRuptures(); r++)
-			futures.add(exec.submit(new ClusterRupCalc(search, r)));
-		
-		List<ClusterRupture> ruptures = new ArrayList<>();
-		
-		for (int r=0; r<futures.size(); r++) {
-			if (r % 1000 == 0)
-				System.out.println("Calculating for rupture "+r+"/"+getNumRuptures());
-			Future<ClusterRupture> future = futures.get(r);
-			try {
-				ruptures.add(future.get());
-			} catch (InterruptedException | ExecutionException e) {
-				exec.shutdown();
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-		}
-		
-		System.out.println("Built "+ruptures.size()+" ruptures");
-		
-		exec.shutdown();
-		
-		setClusterRuptures(ruptures);
-	}
-	
-	private static class ClusterRupCalc implements Callable<ClusterRupture> {
-		
-		private RuptureConnectionSearch search;
-		private int rupIndex;
-
-		public ClusterRupCalc(RuptureConnectionSearch search, int rupIndex) {
-			this.search = search;
-			this.rupIndex = rupIndex;
-		}
-
-		@Override
-		public ClusterRupture call() throws Exception {
-			ClusterRupture rupture = search.buildClusterRupture(rupIndex, true, false);
-			
-			int numSplays = rupture.getTotalNumSplays();
-			if (numSplays > 0) {
-				// see if there is an alternative route through this rupture with fewer splays
-				double mainStrandLen = 0d;
-				for (FaultSubsectionCluster cluster : rupture.clusters)
-					for (FaultSection sect : cluster.subSects)
-						mainStrandLen += sect.getTraceLength();
-				for (ClusterRupture alternative : rupture.getPreferredAltRepresentations(search)) {
-					int altNumSplays = alternative.getTotalNumSplays();
-					double altStrandLen = 0d;
-					for (FaultSubsectionCluster cluster : alternative.clusters)
-						for (FaultSection sect : cluster.subSects)
-							altStrandLen += sect.getTraceLength();
-					if (altNumSplays < numSplays ||
-							(altNumSplays == numSplays && altStrandLen > mainStrandLen)) {
-						// switch to this representation if it has fewer splays, or the same number
-						// of splays but a longer primary strand
-						rupture = alternative;
-						numSplays = altNumSplays;
-						break;
-					}
-				}
-			}
-			
-			return rupture;
-		}
-		
+	@Deprecated
+	public scratch.UCERF3.FaultSystemRupSet toOldRupSet() {
+		scratch.UCERF3.FaultSystemRupSet old = new scratch.UCERF3.FaultSystemRupSet(
+				faultSectionData, sectSlipRates, sectSlipRateStdDevs, sectAreas, sectionForRups,
+				mags, rakes, rupAreas, rupLengths, info);
+		if (hasModule(PlausibilityConfigurationModule.class))
+			old.setPlausibilityConfiguration(getModule(PlausibilityConfigurationModule.class).getConfiguration());
+		if (hasModule(ClusterRuptures.class))
+			old.setClusterRuptures(getModule(ClusterRuptures.class).getClusterRuptures());
+		return old;
 	}
 	
 }
