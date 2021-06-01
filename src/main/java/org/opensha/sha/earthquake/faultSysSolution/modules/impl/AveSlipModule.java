@@ -78,7 +78,7 @@ public abstract class AveSlipModule extends RupSetModule {
 		
 		private double[] aveSlips;
 
-		public Precomputed() {
+		private Precomputed() {
 			super(null);
 		}
 

@@ -11,6 +11,13 @@ import org.opensha.commons.data.Named;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * This class handles modules and mapping them to any assignable super classes.
+ * 
+ * @author kevin
+ *
+ * @param <E>
+ */
 public class ModuleManager<E extends Named> {
 	
 	private Class<E> baseClass;

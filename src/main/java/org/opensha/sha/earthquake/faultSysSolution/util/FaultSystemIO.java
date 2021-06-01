@@ -9,10 +9,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Constructor;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.zip.ZipEntry;
@@ -45,12 +48,20 @@ public class FaultSystemIO {
 	
 	public static void writeRupSet(FaultSystemRupSet rupSet, File outputFile) throws IOException {
 		System.out.println("Writing rupture set to"+outputFile.getAbsolutePath());
-		ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outputFile)));
+		EntryTrackingZOUT zout = new EntryTrackingZOUT(new BufferedOutputStream(new FileOutputStream(outputFile)));
 		writeRupSet(rupSet, zout);
+		if (rupSet.hasModule(CopyOverModule.class))
+			rupSet.getModule(CopyOverModule.class).copyOver(zout);
 		zout.close();
 	}
 	
 	public static void writeRupSet(FaultSystemRupSet rupSet, ZipOutputStream zout) throws IOException {
+		writeRupSetNoModules(rupSet, zout);
+		
+		writeModules(zout, rupSet.getModules(), "modules.json");
+	}
+	
+	private static void writeRupSetNoModules(FaultSystemRupSet rupSet, ZipOutputStream zout) throws IOException {
 		// ruptures CSV
 		System.out.println("Writing ruptures.csv");
 		zout.putNextEntry(new ZipEntry("ruptures.csv"));
@@ -82,8 +93,6 @@ public class FaultSystemIO {
 		String info = rupSet.getInfoString();
 		if (info != null && !info.isBlank())
 			writeInfoToZip(zout, info, "rupture_info.txt");
-		
-		writeModules(zout, rupSet.getModules(), "rupture_modules.json");
 	}
 	
 	public static FaultSystemRupSet loadRupSet(File rupSetFile) throws IOException {
@@ -92,14 +101,30 @@ public class FaultSystemIO {
 	}
 	
 	public static FaultSystemRupSet loadRupSet(ZipFile zip) throws IOException {
+		FaultSystemRupSet rupSet = loadRupSetWithoutModules(zip);
+		
+		if (zip.getEntry("modules.json") != null) {
+			List<StatefulModuleRecord> records = loadModuleRecords(zip, "modules.json");
+			loadModules(rupSet, null, records, zip);
+		}
+		
+		rupSet.addModule(new CopyOverModule(rupSet, zip));
+		
+		return rupSet;
+	}
+	
+	private static FaultSystemRupSet loadRupSetWithoutModules(ZipFile zip) throws IOException {
+		System.out.println("\tLoading ruptures CSV...");
 		ZipEntry rupsEntry = new ZipEntry("ruptures.csv");
-		CSVFile<String> rupsCSV = CSVFile.readStream(zip.getInputStream(rupsEntry), true);
+		CSVFile<String> rupsCSV = CSVFile.readStream(zip.getInputStream(rupsEntry), false);
+		System.out.println("\tLoading sections CSV...");
 		ZipEntry sectsEntry = new ZipEntry("sections.csv");
 		CSVFile<String> sectsCSV = CSVFile.readStream(zip.getInputStream(sectsEntry), true);
 		
 		// fault sections
 		// TODO: retire old XML format
 		ZipEntry fsdEntry = zip.getEntry("fault_sections.xml");
+		System.out.println("\tLoading sections XML...");
 		Document doc;
 		try {
 			doc = XMLUtils.loadDocument(
@@ -113,14 +138,7 @@ public class FaultSystemIO {
 		// info
 		String info = loadInfoFromZip(zip, "rupture_info.txt");
 		
-		FaultSystemRupSet rupSet = loadRupSetCSVs(sections, rupsCSV, sectsCSV, info);
-		
-		if (zip.getEntry("modules.json") != null) {
-			List<StatefulModuleRecord> records = loadModuleRecords(zip, "rupture_modules.json");
-			loadRupSetModules(rupSet, records, zip);
-		}
-		
-		return rupSet;
+		return loadRupSetCSVs(sections, rupsCSV, sectsCSV, info);
 	}
 	
 	private static CSVFile<String> buildRupturesCSV(FaultSystemRupSet rupSet) {
@@ -187,6 +205,7 @@ public class FaultSystemIO {
 		double[] lengths = null;
 		List<List<Integer>> rupSectsList = new ArrayList<>(numRuptures);
 		boolean shortSafe = numSections < Short.MAX_VALUE;
+		System.out.println("\tParsing ruptures CSV");
 		for (int r=0; r<numRuptures; r++) {
 			int row = r+1;
 			int col = 0;
@@ -196,13 +215,16 @@ public class FaultSystemIO {
 			rakes[r] = rupturesCSV.getDouble(row, col++);
 			areas[r] = rupturesCSV.getDouble(row, col++);
 			String lenStr = rupturesCSV.get(row, col++);
-			if ((r == 0 && !lenStr.isBlank()) || lengths != null) {
+			if ((r == 0 && !lenStr.isBlank())) {
 				lengths = new double[numRuptures];
 				lengths[r] = Double.parseDouble(lenStr);
 			} else {
-				Preconditions.checkState(lenStr.isBlank(),
-						"Rupture lenghts must be populated for all ruptures, or omitted for all. We have a length for "
-						+ "rupture %s but the first rupture did not have a length.", r);
+				if (lengths != null)
+					lengths[r] = Double.parseDouble(lenStr);
+				else
+					Preconditions.checkState(lenStr.isBlank(),
+							"Rupture lenghts must be populated for all ruptures, or omitted for all. We have a length for "
+							+ "rupture %s but the first rupture did not have a length.", r);
 			}
 			int numRupSects = rupturesCSV.getInt(row, col++);
 			Preconditions.checkState(numRupSects > 0, "Rupture %s has no sections!", r);
@@ -220,13 +242,14 @@ public class FaultSystemIO {
 			}
 			int rowSize = rupturesCSV.getLine(row).size();
 			Preconditions.checkState(col == rowSize,
-					"Unexpected line lenth for rupture %s, have %s columns but expected %s", r, col, rowSize);
+					"Unexpected line lenth for rupture %s, have %s columns but expected %s", r, rowSize, col);
 			rupSectsList.add(rupSects);
 		}
 		
 		double[] sectAreas = null;
 		double[] sectSlipRates = null;
 		double[] sectSlipRateStdDevs = null;
+		System.out.println("\tParsing sections CSV");
 		for (int s=0; s<numSections; s++) {
 			int row = s+1;
 			int col = 0;
@@ -253,13 +276,13 @@ public class FaultSystemIO {
 				sectSlipRates[s] = Double.parseDouble(rateStr);
 			if (sectSlipRateStdDevs != null)
 				sectSlipRateStdDevs[s] = Double.parseDouble(rateStdDevStr);
-			int rowSize = rupturesCSV.getLine(row).size();
+			int rowSize = sectsCSV.getLine(row).size();
 			Preconditions.checkState(col == rowSize,
-					"Unexpected line lenth for rupture %s, have %s columns but expected %s", s, col, rowSize);
+					"Unexpected line lenth for section %s, have %s columns but expected %s", s, rowSize, col);
 		}
 		
 		return new FaultSystemRupSet(sections, sectSlipRates, sectSlipRateStdDevs, sectAreas,
-				rupSectsList, mags, rakes, sectAreas, lengths, info);
+				rupSectsList, mags, rakes, areas, lengths, info);
 	}
 	
 	/**
@@ -350,9 +373,8 @@ public class FaultSystemIO {
 	
 	public static void writeSol(FaultSystemSolution sol, File outputFile) throws IOException {
 		System.out.println("Writing solution to"+outputFile.getAbsolutePath());
-		ZipOutputStream zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outputFile)));
-		writeRupSet(sol.getRupSet(), zout);
-		zout.close();
+		EntryTrackingZOUT zout = new EntryTrackingZOUT(new BufferedOutputStream(new FileOutputStream(outputFile)));
+		writeRupSetNoModules(sol.getRupSet(), zout);
 		
 		// sections CSV
 		System.out.println("Writing rates.csv");
@@ -370,7 +392,11 @@ public class FaultSystemIO {
 		if (info != null && !info.isBlank())
 			writeInfoToZip(zout, info, "solution_info.txt");
 		
-		writeModules(zout, sol.getModules(), "solution_modules.json");
+		writeModules(zout, sol.getModules(), "modules.json");
+		
+		if (sol.getRupSet().hasModule(CopyOverModule.class))
+			sol.getRupSet().getModule(CopyOverModule.class).copyOver(zout);
+		zout.close();
 	}
 	
 	public static FaultSystemSolution loadSol(File solFile) throws IOException {
@@ -378,7 +404,7 @@ public class FaultSystemIO {
 		
 		ZipFile zip = new ZipFile(solFile);
 		
-		FaultSystemRupSet rupSet = loadRupSet(zip);
+		FaultSystemRupSet rupSet = loadRupSetWithoutModules(zip);
 		
 		ZipEntry ratesEntry = new ZipEntry("rates.csv");
 		CSVFile<String> ratesCSV = CSVFile.readStream(zip.getInputStream(ratesEntry), true);
@@ -397,9 +423,11 @@ public class FaultSystemIO {
 			sol.setInfoString(info);
 		
 		if (zip.getEntry("modules.json") != null) {
-			List<StatefulModuleRecord> records = loadModuleRecords(zip, "solution_modules.json");
-			loadSolutionModules(sol, records, zip);
+			List<StatefulModuleRecord> records = loadModuleRecords(zip, "modules.json");
+			loadModules(rupSet, sol, records, zip);
 		}
+		
+		rupSet.addModule(new CopyOverModule(rupSet, zip));
 		
 		return sol;
 	}
@@ -413,10 +441,9 @@ public class FaultSystemIO {
 				stateful.writeToArchive(zout, null);
 				written.add(new StatefulModuleRecord(stateful));
 				try {
-					Constructor<? extends StatefulModule> constructor = stateful.getLoadingClass().getConstructor();
-					Preconditions.checkState(constructor.canAccess(null));
+					Preconditions.checkNotNull(stateful.getLoadingClass().getDeclaredConstructor());
 				} catch (Throwable t) {
-					System.err.println("WARNING: Loading class for module doesn't contain a public no-arg constructor, "
+					System.err.println("WARNING: Loading class for module doesn't contain a no-arg constructor, "
 							+ "loading from a zip file will fail: "+stateful.getLoadingClass().getName());
 				}
 			} else {
@@ -465,8 +492,8 @@ public class FaultSystemIO {
 	/// TODO: should module loading be lazy? e.g., wrap them in stubs and only load when queried
 	
 	@SuppressWarnings("unchecked")
-	private static void loadRupSetModules(FaultSystemRupSet rupSet, List<StatefulModuleRecord> records, ZipFile zip)
-			throws IOException {
+	private static void loadModules(FaultSystemRupSet rupSet, FaultSystemSolution sol,
+			List<StatefulModuleRecord> records, ZipFile zip) throws IOException {
 		for (StatefulModuleRecord record : records) {
 			System.out.println("Loading module: "+record.name);
 			Class<?> clazz;
@@ -477,55 +504,41 @@ public class FaultSystemIO {
 						+"', couldn't locate class: "+record.className);
 				continue;
 			}
-			if (!RupSetModule.class.isAssignableFrom(clazz)) {
-				System.err.println("WARNING: Skipping module '"+record.name
-						+"' as the specified class isn't a RupSetModule: "+record.className);
-				continue;
-			}
 			try {
-				RupSetModule module = RupSetModule.instance((Class<? extends RupSetModule>)clazz, rupSet);
-				if (!(module instanceof StatefulModule)) {
-					System.err.println("WARNING: Module class is not stateful, skipping: "+record.className);
+				if (RupSetModule.class.isAssignableFrom(clazz)) {
+					RupSetModule module = RupSetModule.instance((Class<? extends RupSetModule>)clazz, rupSet);
+					if (!(module instanceof StatefulModule)) {
+						System.err.println("WARNING: Module class is not stateful, skipping: "+record.className);
+						continue;
+					}
+					((StatefulModule)module).initFromArchive(zip, null);
+					rupSet.addModule(module);
+				} else if (SolutionModule.class.isAssignableFrom(clazz)) {
+					if (sol == null) {
+						System.err.println("WARNING: Skipping loading module '"+record.name+"' as it applies to solutions, "
+								+ "but we only have a rupture set.");
+						continue;
+					}
+					SolutionModule module = SolutionModule.instance((Class<? extends SolutionModule>)clazz, sol);
+					if (!(module instanceof StatefulModule)) {
+						System.err.println("WARNING: Module class is not stateful, skipping: "+record.className);
+						continue;
+					}
+					((StatefulModule)module).initFromArchive(zip, null);
+					sol.addModule(module);
+				} else {
+					System.err.println("WARNING: Skipping module '"+record.name
+							+"' as the specified class isn't a RupSetModule: "+record.className);
 					continue;
 				}
-				((StatefulModule)module).initFromArchive(zip, null);
-				rupSet.addModule(module);
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.err.println("Error loading module '"+record.name+"', skipping.");
 			}
-		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	private static void loadSolutionModules(FaultSystemSolution sol, List<StatefulModuleRecord> records, ZipFile zip)
-			throws IOException {
-		for (StatefulModuleRecord record : records) {
-			System.out.println("Loading module: "+record.name);
-			Class<?> clazz;
 			try {
-				clazz = Class.forName(record.className);
-			} catch(Exception e) {
-				System.err.println("WARNING: Skipping module '"+record.name
-						+"', couldn't locate class: "+record.className);
-				continue;
-			}
-			if (!SolutionModule.class.isAssignableFrom(clazz)) {
-				System.err.println("WARNING: Skipping module '"+record.name
-						+"' as the specified class isn't a RupSetModule: "+record.className);
-				continue;
-			}
-			try {
-				SolutionModule module = SolutionModule.instance((Class<? extends SolutionModule>)clazz, sol);
-				if (!(module instanceof StatefulModule)) {
-					System.err.println("WARNING: Module class is not stateful, skipping: "+record.className);
-					continue;
-				}
-				((StatefulModule)module).initFromArchive(zip, null);
-				sol.addModule(module);
+				
 			} catch (Exception e) {
-				e.printStackTrace();
-				System.err.println("Error loading module '"+record.name+"', skipping.");
+				
 			}
 		}
 	}
@@ -558,6 +571,73 @@ public class FaultSystemIO {
 		writer.flush();
 		zout.flush();
 		zout.closeEntry();
+	}
+	
+	/**
+	 * Special utility module class to copy over any information stored in an input zip file when writing a new output.
+	 * This will copy over modules that could not be loaded at runtime, e.g., because the referenced class wass missing,
+	 * or any other custom data stored in the zip file.
+	 * 
+	 * @author kevin
+	 *
+	 */
+	private static class CopyOverModule extends RupSetModule {
+
+		private ZipFile zip;
+//		private ZipO
+
+		public CopyOverModule(FaultSystemRupSet rupSet, ZipFile zip) {
+			super(rupSet);
+			this.zip = zip;
+		}
+
+		@Override
+		public String getName() {
+			return "Zip Copy-Over";
+		}
+		
+		public void copyOver(EntryTrackingZOUT zout) throws IOException {
+			Enumeration<? extends ZipEntry> entries = zip.entries();
+			while (entries.hasMoreElements()) {
+				ZipEntry entry = entries.nextElement();
+				
+				if (!zout.entries.containsKey(entry.getName())) {
+					// need to copy this over
+					System.out.println("Copying over unknown file from previous archive: "+entry.getName());
+					zout.putNextEntry(new ZipEntry(entry.getName()));
+					
+					BufferedInputStream bin = new BufferedInputStream(zip.getInputStream(entry));
+					bin.transferTo(zout);
+					zout.flush();
+					
+					zout.closeEntry();
+				}
+			}
+		}
+		
+	}
+	
+	private static class EntryTrackingZOUT extends ZipOutputStream {
+		
+		private final HashMap<String, ZipEntry> entries;
+
+		public EntryTrackingZOUT(OutputStream out) {
+			super(out);
+			this.entries = new HashMap<>();
+		}
+
+		@Override
+		public void putNextEntry(ZipEntry e) throws IOException {
+			this.entries.put(e.getName(), e);
+			super.putNextEntry(e);
+		}
+		
+	}
+	
+	public static void main(String[] args) throws Exception {
+		Thread.sleep(3000);
+		FaultSystemRupSet rupSet = loadRupSet(new File("/tmp/test_rup_set.zip"));
+		writeRupSet(rupSet, new File("/tmp/test_rup_set_2.zip"));
 	}
 
 }

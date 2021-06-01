@@ -697,9 +697,9 @@ private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable
 				faultSectionData, sectSlipRates, sectSlipRateStdDevs, sectAreas, sectionForRups,
 				mags, rakes, rupAreas, rupLengths, info);
 		if (hasModule(PlausibilityConfigurationModule.class))
-			old.setPlausibilityConfiguration(getModule(PlausibilityConfigurationModule.class).getConfiguration());
+			old.setPlausibilityConfiguration(getModule(PlausibilityConfigurationModule.class).get());
 		if (hasModule(ClusterRuptures.class))
-			old.setClusterRuptures(getModule(ClusterRuptures.class).getClusterRuptures());
+			old.setClusterRuptures(getModule(ClusterRuptures.class).get());
 		return old;
 	}
 	

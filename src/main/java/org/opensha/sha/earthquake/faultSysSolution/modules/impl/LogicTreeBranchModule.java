@@ -22,7 +22,7 @@ public class LogicTreeBranchModule extends RupSetModule implements JSON_BackedMo
 	
 	private LogicTreeBranch branch;
 
-	public LogicTreeBranchModule() {
+	private LogicTreeBranchModule() {
 		super(null);
 	}
 	

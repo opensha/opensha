@@ -104,7 +104,7 @@ public class ClusterRupturePerturbationBuilder {
 		else
 			primaryGrowingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(primaryFile);
-		PlausibilityConfiguration primaryConfig = rupSet.getModule(PlausibilityConfigurationModule.class).getConfiguration();
+		PlausibilityConfiguration primaryConfig = rupSet.getModule(PlausibilityConfigurationModule.class).get();
 		Preconditions.checkNotNull(primaryConfig);
 		
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();

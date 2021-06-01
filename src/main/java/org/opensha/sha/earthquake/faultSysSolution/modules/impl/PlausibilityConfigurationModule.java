@@ -15,7 +15,7 @@ public class PlausibilityConfigurationModule extends RupSetModule implements JSO
 	
 	private PlausibilityConfiguration config;
 
-	public PlausibilityConfigurationModule() {
+	private PlausibilityConfigurationModule() {
 		super(null);
 	}
 	
@@ -34,7 +34,7 @@ public class PlausibilityConfigurationModule extends RupSetModule implements JSO
 		return "plausibility.json";
 	}
 	
-	public PlausibilityConfiguration getConfiguration() {
+	public PlausibilityConfiguration get() {
 		return config;
 	}
 
@@ -50,7 +50,7 @@ public class PlausibilityConfigurationModule extends RupSetModule implements JSO
 
 	@Override
 	public void initFromJSON(JsonReader in, Gson gson) throws IOException {
-		PlausibilityConfiguration config = gson.fromJson(in, PlausibilityConfiguration.class);
+		this.config = gson.fromJson(in, PlausibilityConfiguration.class);
 	}
 
 }

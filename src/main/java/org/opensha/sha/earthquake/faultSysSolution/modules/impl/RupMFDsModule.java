@@ -23,7 +23,7 @@ public class RupMFDsModule extends SolutionModule implements CSV_BackedModule {
 	
 	private DiscretizedFunc[] rupMFDs;
 	
-	public RupMFDsModule() {
+	private RupMFDsModule() {
 		super(null);
 	}
 

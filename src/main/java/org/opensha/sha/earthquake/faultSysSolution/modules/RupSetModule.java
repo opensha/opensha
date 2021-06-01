@@ -42,7 +42,13 @@ public abstract class RupSetModule implements Named {
 	 * @throws Exception
 	 */
 	public static <M extends RupSetModule> M instance(Class<M> clazz, FaultSystemRupSet rupSet) throws Exception {
-		Constructor<M> constructor = clazz.getConstructor();
+		Constructor<M> constructor = clazz.getDeclaredConstructor();
+		
+		try {
+			constructor.setAccessible(true);
+		} catch (Exception e) {
+			System.err.println("WANRING: couldn't make constructor accessible: "+e.getMessage());
+		}
 		
 		M module = constructor.newInstance();
 		

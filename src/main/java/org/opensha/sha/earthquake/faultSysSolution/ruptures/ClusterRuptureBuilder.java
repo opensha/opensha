@@ -1539,7 +1539,7 @@ public class ClusterRuptureBuilder {
 		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, null, sectAreasReduced, 
 				rupsIDsList, rupMags, rupRakes, rupAreas, rupLengths, "");
 		rupSet.addModule(new PlausibilityConfigurationModule(rupSet, config));
-		rupSet.addModule(new ClusterRuptures(rupSet, rups));
+		rupSet.addModule(ClusterRuptures.instance(rupSet, rups));
 		rupSet.addModule(AveSlipModule.forModel(rupSet, scale));
 		return rupSet;
 	}

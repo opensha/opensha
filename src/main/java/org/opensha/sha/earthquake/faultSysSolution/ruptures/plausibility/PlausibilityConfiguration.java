@@ -508,6 +508,7 @@ public class PlausibilityConfiguration {
 
 		@Override
 		public void write(JsonWriter out, PlausibilityConfiguration config) throws IOException {
+			Preconditions.checkNotNull(config);
 			out.beginObject();
 			
 			out.name("connectionStrategy");
