@@ -42,13 +42,7 @@ public class ModuleManager<E extends Named> {
 			E oModule = modules.get(m);
 			if (oModule.getClass().equals(module.getClass())) {
 				System.out.println("Overriding previous modlue: "+oModule.getName());
-				modules.remove(m);
-				List<Class<? extends E>> oldMappings = new ArrayList<>();
-				for (Class<? extends E> clazz : mappings.keySet())
-					if (mappings.get(clazz).equals(oModule))
-						oldMappings.add(clazz);
-				for (Class<? extends E> oldMapping : oldMappings)
-					mappings.remove(oldMapping);
+				removeMappings(modules.remove(m));
 			}
 		}
 		modules.add(module);
@@ -83,7 +77,7 @@ public class ModuleManager<E extends Named> {
 	}
 	
 	/**
-	 * Retrieve a module matching the given type
+	 * Retrieve a module matching the given type, or null if no match exists
 	 * 
 	 * @param <M>
 	 * @param clazz type of module to get
@@ -101,6 +95,55 @@ public class ModuleManager<E extends Named> {
 	 */
 	public List<E> getModules() {
 		return Collections.unmodifiableList(modules);
+	}
+	
+	/**
+	 * Remove the given module and any mappings to that module.
+	 * 
+	 * @param module
+	 * @return true if the module was present
+	 */
+	public boolean removeModule(E module) {
+		boolean ret = modules.remove(module);
+		if (ret)
+			removeMappings(module);
+		return ret;
+	}
+	
+	/**
+	 * Remove any mappings to the given module class (or its subclasses)
+	 * 
+	 * @param clazz
+	 * @return
+	 */
+	public boolean removeModuleInstances(Class<? extends E> clazz) {
+		boolean ret = false;
+		for (int m=modules.size(); --m>=0;) {
+			E module = modules.get(m);
+			if (clazz.isAssignableFrom(module.getClass())) {
+				ret = true;
+				modules.remove(m);
+				removeMappings(module);
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * Removes all modules
+	 */
+	public void clearModules() {
+		modules.clear();
+		mappings.clear();
+	}
+	
+	private void removeMappings(E module) {
+		List<Class<? extends E>> oldMappings = new ArrayList<>();
+		for (Class<? extends E> clazz : mappings.keySet())
+			if (mappings.get(clazz).equals(module))
+				oldMappings.add(clazz);
+		for (Class<? extends E> oldMapping : oldMappings)
+			mappings.remove(oldMapping);
 	}
 
 }

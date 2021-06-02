@@ -1496,51 +1496,8 @@ public class ClusterRuptureBuilder {
 
 	public static FaultSystemRupSet buildClusterRupSet(ScalingRelationships scale, List<? extends FaultSection> subSects,
 			PlausibilityConfiguration config, List<ClusterRupture> rups) {
-		double[] sectSlipRates = new double[subSects.size()];
-		double[] sectAreasReduced = new double[subSects.size()];
-		double[] sectAreasOrig = new double[subSects.size()];
-		for (int s=0; s<sectSlipRates.length; s++) {
-			FaultSection sect = subSects.get(s);
-			sectAreasReduced[s] = sect.getArea(true);
-			sectAreasOrig[s] = sect.getArea(false);
-			sectSlipRates[s] = sect.getReducedAveSlipRate()*1e-3; // mm/yr => m/yr
-		}
-		double[] rupMags = new double[rups.size()];
-		double[] rupRakes = new double[rups.size()];
-		double[] rupAreas = new double[rups.size()];
-		double[] rupLengths = new double[rups.size()];
-		List<List<Integer>> rupsIDsList = new ArrayList<>();
-		for (int r=0; r<rups.size(); r++) {
-			ClusterRupture rup = rups.get(r);
-			List<FaultSection> rupSects = rup.buildOrderedSectionList();
-			List<Integer> sectIDs = new ArrayList<>();
-			double totLength = 0d;
-			double totArea = 0d;
-			double totOrigArea = 0d; // not reduced for aseismicity
-			List<Double> sectAreas = new ArrayList<>();
-			List<Double> sectRakes = new ArrayList<>();
-			for (FaultSection sect : rupSects) {
-				sectIDs.add(sect.getSectionId());
-				double length = sect.getTraceLength()*1e3;	// km --> m
-				totLength += length;
-				double area = sectAreasReduced[sect.getSectionId()];	// sq-m
-				totArea += area;
-				totOrigArea += sectAreasOrig[sect.getSectionId()];	// sq-m
-				sectAreas.add(area);
-				sectRakes.add(sect.getAveRake());
-			}
-			rupAreas[r] = totArea;
-			rupLengths[r] = totLength;
-			rupRakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(sectAreas, sectRakes));
-			double origDDW = totOrigArea/totLength;
-			rupMags[r] = scale.getMag(totArea, origDDW);
-			rupsIDsList.add(sectIDs);
-		}
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, null, sectAreasReduced, 
-				rupsIDsList, rupMags, rupRakes, rupAreas, rupLengths, "");
+		FaultSystemRupSet rupSet = FaultSystemRupSet.builderForClusterRups(subSects, rups).forScalingRelationship(scale).build();
 		rupSet.addModule(new PlausibilityConfigurationModule(rupSet, config));
-		rupSet.addModule(ClusterRuptures.instance(rupSet, rups));
-		rupSet.addModule(AveSlipModule.forModel(rupSet, scale));
 		return rupSet;
 	}
 

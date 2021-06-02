@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
 import javax.annotation.Nullable;
 
@@ -14,10 +15,13 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModuleManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.impl.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.impl.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.impl.PlausibilityConfigurationModule;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -26,10 +30,13 @@ import org.opensha.sha.gui.infoTools.CalcProgressBar;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
+
+import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
 /**
  * This class represents the attributes of ruptures in a fault system, 
@@ -42,25 +49,23 @@ import com.google.common.collect.Table.Cell;
  * @author Field, Milner, Page, & Powers
  *
  */
-public final class FaultSystemRupSet {
+public final class FaultSystemRupSet extends ModuleManager<RupSetModule> {
 // TODO: should this be final?
 	
 	// data arrays/lists
-	private List<? extends FaultSection> faultSectionData;
-	private double[] mags;
-	private double[] sectSlipRates;
-	private double[] sectSlipRateStdDevs; // TODO: make a module?
-	private double[] rakes;
-	private double[] rupAreas;
-	private double[] rupLengths;
-	private double[] sectAreas;
-	private List<List<Integer>> sectionForRups;
+	private final List<? extends FaultSection> faultSectionData;
+	private final double[] mags;
+	private final double[] sectSlipRates;
+	private final double[] sectSlipRateStdDevs; // TODO: make a module?
+	private final double[] rakes;
+	private final double[] rupAreas;
+	private final double[] rupLengths;
+	private final double[] sectAreas;
+	private final List<List<Integer>> sectionForRups;
 	private String info;
 	
 	// if true, caching operations will show a graphical progress bar
 	protected boolean showProgress = false;
-	
-	private ModuleManager<RupSetModule> moduleManager;
 	
 	/**
 	 * Initialized a FaultSystemRupSet object with all core data.
@@ -87,13 +92,14 @@ public final class FaultSystemRupSet {
 			double[] rupAreas,
 			@Nullable double[] rupLengths,
 			@Nullable String info) {
+		super(RupSetModule.class);
 		Preconditions.checkNotNull(faultSectionData, "Fault Section Data cannot be null");
-		this.faultSectionData = faultSectionData;
+		this.faultSectionData = ImmutableList.copyOf(faultSectionData);
 		Preconditions.checkNotNull(faultSectionData, "Magnitudes cannot be null");
 		this.mags = mags;
 		
 		int numRups = mags.length;
-		int numSects = faultSectionData.size();
+		int numSects = this.faultSectionData.size();
 		
 		Preconditions.checkArgument(sectSlipRates == null
 				|| sectSlipRates.length == numSects, "array sizes inconsistent!");
@@ -119,11 +125,9 @@ public final class FaultSystemRupSet {
 		this.sectAreas = sectAreas;
 		
 		Preconditions.checkArgument(sectionForRups.size() == numRups, "array sizes inconsistent!");
-		this.sectionForRups = sectionForRups;
+		this.sectionForRups = ImmutableList.copyOf(sectionForRups);
 		
 		this.info = info;
-		
-		this.moduleManager = new ModuleManager<>(RupSetModule.class);
 	}
 	
 	/**
@@ -204,17 +208,6 @@ public final class FaultSystemRupSet {
 				maxMag = mag;
 		}
 		return maxMag;
-	}
-	
-	/**
-	 * This sets the magnitudes for each rupture. This is needed for special cases where magnitudes are
-	 * overridden, for example UCERF2 comparison solutions.
-	 * @param mags
-	 */
-	public void setMagForallRups(double[] mags) {
-		Preconditions.checkArgument(mags.length == getNumRuptures(),
-				"Called setMag for "+mags.length+" rups but rup set has "+getNumRuptures()+" rups!");
-		this.mags = mags;
 	}
 	
 	/**
@@ -379,31 +372,29 @@ public final class FaultSystemRupSet {
 	public double getAveWidthForRup(int rupIndex) {
 		return getAreaForRup(rupIndex)/getLengthForRup(rupIndex);
 	}
-
-	
 	
 	/**
-	 * This returns the section slip rate after reductions for subseismogenic ruptures
-	 * (it differs from what is returned by getFaultSectionData(int).getReducedAveSlipRate())
-	 * @return
+	 * This returns the section slip rate of the given section. It can differ from what is returned by
+	 * getFaultSectionData(index).get*AveSlipRate() if there are any reductions for creep or subseismogenic ruptures.
+	 * @return slip rate (SI units: m)
 	 */
 	public double getSlipRateForSection(int sectIndex) {
 		return sectSlipRates[sectIndex];
 	}
 	
 	/**
-	 * This differs from what is returned by getFaultSectionData(int).getAveLongTermSlipRate()
-	 * where there has been a modification (i.e., moment rate reductions for smaller events).
-	 * @return
+	 * This returns the section slip rate of all sections. It can differ from what is returned by
+	 * getFaultSectionData(index).get*AveSlipRate() if there are any reductions for creep or subseismogenic ruptures.
+	 * @return slip rate (SI units: m)
 	 */
 	public double[] getSlipRateForAllSections() {
 		return sectSlipRates;
 	}
 	
 	/**
-	 * This differs from what is returned by getFaultSectionData(int).getSlipRateStdDev()
-	 * where there has been a modification (i.e., moment rate reductions for smaller events).
-	 * @return
+	 * This returns the standard deviation of the the slip rate for the given section. It can differ from what is returned by
+	 * getFaultSectionData(index).getSlipRateStdDev() if there are any reductions for creep or subseismogenic ruptures.
+	 * @return slip rate standard deviation (SI units: m)
 	 */
 	public double getSlipRateStdDevForSection(int sectIndex) {
 		return sectSlipRateStdDevs[sectIndex];
@@ -412,7 +403,7 @@ public final class FaultSystemRupSet {
 	/**
 	 * This differs from what is returned by getFaultSectionData(int).getSlipRateStdDev()
 	 * where there has been a modification (i.e., moment rate reductions for smaller events).
-	 * @return
+	 * @return slip rate standard deviation (SI units: m)
 	 */
 	public double[] getSlipRateStdDevForAllSections() {
 		return sectSlipRateStdDevs;
@@ -430,7 +421,7 @@ public final class FaultSystemRupSet {
 		this.info = info;
 	}
 	
-private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
+	private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
 	
 	/**
 	 * 
@@ -613,39 +604,12 @@ private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable
 	 * 
 	 * @param module
 	 */
+	@Override
 	public void addModule(RupSetModule module) {
 		Preconditions.checkNotNull(module.getRupSet());
 		Preconditions.checkState(module.getRupSet() == this || this.areRupturesEquivalent(module.getRupSet()),
 				"This module was created with a different rupture set, and that rupture set is not equivalent.");
-		moduleManager.addModule(module);
-	}
-	
-	/**
-	 * 
-	 * @param clazz
-	 * @return true if this rupture set has a module of the given type
-	 */
-	public boolean hasModule(Class<? extends RupSetModule> clazz) {
-		return moduleManager.hasModule(clazz);
-	}
-	
-	/**
-	 * Retrieve a module matching the given type
-	 * 
-	 * @param <M>
-	 * @param clazz type of module to get
-	 * @return module matching that type, or null if none exist
-	 */
-	public <M extends RupSetModule> M getModule(Class<M> clazz) {
-		return moduleManager.getModule(clazz);
-	}
-	
-	/**
-	 * 
-	 * @return unmodifiable view of all modules added to this rupture set
-	 */
-	public List<RupSetModule> getModules() {
-		return moduleManager.getModules();
+		super.addModule(module);
 	}
 	
 	/**
@@ -701,6 +665,233 @@ private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable
 		if (hasModule(ClusterRuptures.class))
 			old.setClusterRuptures(getModule(ClusterRuptures.class).get());
 		return old;
+	}
+	
+	public static Builder builderFromExisting(FaultSystemRupSet rupSet) {
+		return new Builder(rupSet.faultSectionData, rupSet.sectSlipRates, rupSet.sectSlipRateStdDevs, rupSet.sectAreas,
+				rupSet.sectionForRups, rupSet.mags, rupSet.rakes, rupSet.rupAreas, rupSet.rupLengths, rupSet.info);
+	}
+	
+	public static Builder builder(List<? extends FaultSection> faultSectionData, List<List<Integer>> sectionForRups) {
+		return new Builder(faultSectionData, null, null, null, sectionForRups, null, null, null, null, null);
+	}
+	
+	public static Builder builderForClusterRups(List<? extends FaultSection> faultSectionData, List<ClusterRupture> rups) {
+		List<List<Integer>> sectionForRups = new ArrayList<>();
+		for (ClusterRupture rup : rups) {
+			List<Integer> ids = new ArrayList<>();
+			for (FaultSection sect : rup.buildOrderedSectionList())
+				ids.add(sect.getSectionId());
+			sectionForRups.add(ids);
+		}
+		Builder builder = new Builder(faultSectionData, null, null, null, sectionForRups, null, null, null, null, null);
+		builder.addModule(new ModuleBuilder() {
+			
+			@Override
+			public RupSetModule build(FaultSystemRupSet rupSet) {
+				return ClusterRuptures.instance(rupSet, rups);
+			}
+		});
+		return builder;
+	}
+	
+	public static interface ModuleBuilder {
+		public RupSetModule build(FaultSystemRupSet rupSet);
+	}
+	
+	public static class Builder {
+		
+		// core data objects
+		private List<? extends FaultSection> faultSectionData;
+		private double[] mags;
+		private double[] sectSlipRates;
+		private double[] sectSlipRateStdDevs;
+		private double[] rakes;
+		private double[] rupAreas;
+		private double[] rupLengths;
+		private double[] sectAreas;
+		private List<List<Integer>> sectionForRups;
+		private String info;
+		
+		private List<ModuleBuilder> modules;
+		
+		private Builder (
+				List<? extends FaultSection> faultSectionData,
+				@Nullable double[] sectSlipRates,
+				@Nullable double[] sectSlipRateStdDevs,
+				@Nullable double[] sectAreas,
+				List<List<Integer>> sectionForRups,
+				@Nullable double[] mags,
+				@Nullable double[] rakes,
+				@Nullable double[] rupAreas,
+				@Nullable double[] rupLengths,
+				@Nullable String info) {
+			Preconditions.checkState(faultSectionData != null && !faultSectionData.isEmpty(),
+					"Must supply fault sections");
+			this.faultSectionData = faultSectionData;
+			this.mags = mags;
+			this.sectSlipRates = sectSlipRates;
+			this.sectSlipRateStdDevs = sectSlipRateStdDevs;
+			this.rakes = rakes;
+			this.rupAreas = rupAreas;
+			this.rupLengths = rupLengths;
+			this.sectAreas = sectAreas;
+			Preconditions.checkState(sectionForRups != null && !sectionForRups.isEmpty(),
+					"Must supply ruptures");
+			this.sectionForRups = sectionForRups;
+			this.info = info;
+			
+			modules = new ArrayList<>();
+		}
+		
+		/**
+		 * Sets magnitudes from the given UCERF3 scaling relationships enum
+		 * @param scale
+		 * @return
+		 */
+		public Builder forScalingRelationship(ScalingRelationships scale) {
+			this.mags = new double[sectionForRups.size()];
+			for (int r=0; r<mags.length; r++) {
+				double totArea = 0d;
+				double aveWidth = 0d;
+				for (int s : sectionForRups.get(r)) {
+					FaultSection sect = faultSectionData.get(s);
+					double area = faultSectionData.get(s).getArea(true);	// sq-m
+					totArea += area;
+					aveWidth += sect.getOrigDownDipWidth()*1e3*area;
+				}
+				aveWidth /= totArea;
+				mags[r] = scale.getMag(totArea, aveWidth);
+			}
+			modules.add(new ModuleBuilder() {
+				
+				@Override
+				public RupSetModule build(FaultSystemRupSet rupSet) {
+					return AveSlipModule.forModel(rupSet, scale);
+				}
+			});
+			return this;
+		}
+		
+		public Builder rupMags(double[] mags) {
+			Preconditions.checkArgument(mags.length == this.sectionForRups.size());
+			this.mags = mags;
+			return this;
+		}
+		
+		public Builder rupRakes(double[] rakes) {
+			Preconditions.checkArgument(rakes.length == this.sectionForRups.size());
+			this.rakes = rakes;
+			return this;
+		}
+		
+		public Builder rupAreas(double[] rupAreas) {
+			Preconditions.checkArgument(rupAreas.length == this.sectionForRups.size());
+			this.rupAreas = rupAreas;
+			return this;
+		}
+		
+		public Builder rupLengths(double[] rupLengths) {
+			Preconditions.checkArgument(rupLengths == null
+					|| rupLengths.length == this.sectionForRups.size());
+			this.rupLengths = rupLengths;
+			return this;
+		}
+		
+		public Builder sectSlipRates(double[] sectSlipRates) {
+			Preconditions.checkArgument(sectSlipRates == null
+					|| sectSlipRates.length == this.faultSectionData.size());
+			this.sectSlipRates = sectSlipRates;
+			return this;
+		}
+		
+		public Builder sectSlipRateStdDevs(double[] sectSlipRateStdDevs) {
+			Preconditions.checkArgument(sectSlipRateStdDevs == null
+					|| sectSlipRateStdDevs.length == this.faultSectionData.size());
+			this.sectSlipRateStdDevs = sectSlipRateStdDevs;
+			return this;
+		}
+		
+		public Builder sectAreas(double[] sectAreas) {
+			Preconditions.checkArgument(sectAreas == null
+					|| sectAreas.length == this.faultSectionData.size());
+			this.sectAreas = sectAreas;
+			return this;
+		}
+		
+		public Builder addModule(ModuleBuilder module) {
+			this.modules.add(module);
+			return this;
+		}
+		
+		public FaultSystemRupSet build() {
+			Preconditions.checkNotNull(mags, "Must set magnitudes");
+			int numSects = faultSectionData.size();
+			
+			double[] sectSlipRates= this.sectSlipRates;
+			if (sectSlipRates == null) {
+				sectSlipRates = new double[numSects];
+				for (int s=0; s<numSects; s++)
+					sectSlipRates[s] = faultSectionData.get(s).getReducedAveSlipRate()*1e-3; // mm/yr => m/yr
+			}
+			double[] sectSlipRateStdDevs = this.sectSlipRateStdDevs;
+			if (sectSlipRateStdDevs == null) {
+				sectSlipRateStdDevs = new double[numSects];
+				for (int s=0; s<numSects; s++)
+					sectSlipRateStdDevs[s] = faultSectionData.get(s).getReducedSlipRateStdDev()*1e-3; // mm/yr => m/yr
+			}
+			double[] sectAreas = this.sectAreas;
+			if (sectAreas == null) {
+				sectAreas = new double[numSects];
+				for (int s=0; s<numSects; s++)
+					sectSlipRateStdDevs[s] = faultSectionData.get(s).getArea(true);
+			}
+			
+			int numRups = sectionForRups.size();
+			double[] rakes = this.rakes;
+			double[] rupAreas = this.rupAreas;
+			if (rakes == null || rupAreas == null) {
+				if (rakes == null)
+					rakes = new double[numRups];
+				if (rupAreas == null)
+					rupAreas =new double[numRups];
+				for (int r=0; r<numRups; r++) {
+					List<Double> mySectAreas = new ArrayList<>();
+					List<Double> mySectRakes = new ArrayList<>();
+					double totArea = 0d;
+					for (int s : sectionForRups.get(r)) {
+						FaultSection sect = faultSectionData.get(s);
+						double area = sectAreas[s];	// sq-m
+						totArea += area;
+						mySectAreas.add(area);
+						mySectRakes.add(sect.getAveRake());
+					}
+					if (rupAreas[r] == 0d)
+						rupAreas[r] = totArea;
+					if (rakes[r] == 0d)
+						rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(mySectAreas, mySectRakes));
+				}
+			}
+			
+			double[] rupLengths = this.rupLengths;
+			if (rupLengths == null) {
+				rupLengths = new double[numRups];
+				for (int r=0; r<numRups; r++) {
+					for (int s : sectionForRups.get(r)) {
+						FaultSection sect = faultSectionData.get(s);
+						double length = sect.getTraceLength()*1e3;	// km --> m
+						rupLengths[r] += length;
+					}
+				}
+			}
+			
+			FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, sectSlipRates, sectSlipRateStdDevs,
+					sectAreas, sectionForRups, mags, rakes, rupAreas, rupLengths, info);
+			for (ModuleBuilder module : modules)
+				rupSet.addModule(module.build(rupSet));
+			return rupSet;
+		}
+		
 	}
 	
 }

@@ -16,7 +16,7 @@ import com.google.common.base.Preconditions;
  * @author Field, Milner, Page, and Powers
  *
  */
-public final class FaultSystemSolution {
+public final class FaultSystemSolution extends ModuleManager<SolutionModule> {
 	// TODO: should this be final?
 	// TODO: add MFD calculation methods, or throw them in a utility class instead?
 
@@ -25,14 +25,11 @@ public final class FaultSystemSolution {
 	// this is separate from the rupSet info string as you can have multiple solutions with one rupSet
 	private String infoString;
 	
-	private ModuleManager<SolutionModule> moduleManager;
-	
 	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates) {
+		super(SolutionModule.class);
 		this.rupSet = rupSet;
 		this.rates = rates;
 		Preconditions.checkArgument(rates.length == rupSet.getNumRuptures(), "# rates and ruptures is inconsistent!");
-		
-		moduleManager = new ModuleManager<>(SolutionModule.class);
 	}
 	
 	/**
@@ -90,40 +87,13 @@ public final class FaultSystemSolution {
 	 * 
 	 * @param module
 	 */
+	@Override
 	public void addModule(SolutionModule module) {
 		Preconditions.checkNotNull(module.getSolution());
 		Preconditions.checkState(module.getSolution() == this || module.getSolution().getRupSet() == getRupSet()
 				|| getRupSet().areRupturesEquivalent(module.getSolution().getRupSet()),
 				"This module was created with a different solution, and that solution's rupture set is not equivalent.");
-		moduleManager.addModule(module);
-	}
-	
-	/**
-
-	 * @param clazz
-	 * @return true if this rupture set has a module of the given type
-	 */
-	public boolean hasModule(Class<? extends SolutionModule> clazz) {
-		return moduleManager.hasModule(clazz);
-	}
-	
-	/**
-	 * Retrieve a module matching the given type
-	 * 
-	 * @param <M>
-	 * @param clazz type of module to get
-	 * @return module matching that type, or null if none exist
-	 */
-	public <M extends SolutionModule> M getModule(Class<M> clazz) {
-		return moduleManager.getModule(clazz);
-	}
-	
-	/**
-	 * 
-	 * @return unmodifiable view of all modules added to this solution
-	 */
-	public List<SolutionModule> getModules() {
-		return moduleManager.getModules();
+		super.addModule(module);
 	}
 	
 	/**
