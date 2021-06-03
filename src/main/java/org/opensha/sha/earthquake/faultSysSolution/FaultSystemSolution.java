@@ -8,7 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionModule;
 import com.google.common.base.Preconditions;
 
 /**
- * This class is represents an Earthquake Rate Model solution for a fault system, possibly coming from an Inversion
+ * This class represents an Earthquake Rate Model solution for a fault system, possibly coming from an Inversion
  * or from a physics-based earthquake simulator.
  * <p>
  * It adds rate information to a FaultSystemRupSet.

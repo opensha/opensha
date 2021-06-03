@@ -535,11 +535,6 @@ public class FaultSystemIO {
 				e.printStackTrace();
 				System.err.println("Error loading module '"+record.name+"', skipping.");
 			}
-			try {
-				
-			} catch (Exception e) {
-				
-			}
 		}
 	}
 	
