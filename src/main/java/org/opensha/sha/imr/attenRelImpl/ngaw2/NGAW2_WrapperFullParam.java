@@ -423,6 +423,8 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 	    		EnumSet.allOf(EpistemicOption.class), null, "(Disabled)");
 	    epiParam.setValue(null);
 	    epiParam.addParameterChangeListener(this);
+	    epiParam.setInfo("Additional epistemic uncertainty branch as implemented in the "
+	    		+ "2014 USGS NSHM and described in Rezaeian et al., 2014");
 	    otherParams.addParameter(epiParam);
 	}
 
@@ -498,6 +500,14 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		imlAtExceedProbIndependentParams.addParameter(exceedProbParam);
 	}
 	
+	
+	/*
+	 * from Rezaeian, S., Petersen, M. D., Moschetti, M. P., Powers, P., Harmsen, S. C., & Frankel, A. D. (2014).
+	 * Implementation of NGA-West2 ground motion models in the 2014 US National Seismic Hazard Maps.
+	 * Earthquake Spectra, 30(3), 1319-1333.
+	 * 
+	 * https://journals.sagepub.com/doi/full/10.1193/062913EQS177M
+	 */
 	private static final double[][] EPI_VAL = {
 			{0.375, 0.250, 0.400},
 			{0.220, 0.230, 0.360},
