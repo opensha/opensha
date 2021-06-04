@@ -2489,43 +2489,31 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 
 		String calcType = probDeterComboBox.getSelectedItem().toString();
 
-		return "<br>" + "Cacluation Type = " + calcType
-		+ "<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>"+ imrMetadata
-		+ "<br><br>"
-		+ "Site Param List: "
-		+ "<br>"
-		+ "----------------"
-		+ "<br>"
-		+ siteGuiBean.getParameterListEditor()
-		.getVisibleParametersCloned()
-		.getParameterListMetadataString()
-		+ "<br><br>"
-		+ "IMT Param List: "
-		+ "<br>"
-		+ "---------------"
-		+ "<br>"
-		+ imtGuiBean.getVisibleParametersCloned()
-		.getParameterListMetadataString()
-		+ "<br><br>"
-		+ "Forecast Param List: "
-		+ "<br>"
-		+ "--------------------"
-		+ "<br>"
-		+ erfGuiBean.getERFParameterList()
-		.getParameterListMetadataString()
-		+ "<br><br>"
-		+ "TimeSpan Param List: "
-		+ "<br>"
-		+ "--------------------"
-		+ "<br>"
-		+ erfGuiBean.getSelectedERFTimespanGuiBean()
-		.getParameterListMetadataString() 
-		+ "<br><br>"
-		+ "Calculation Settings: "
-		+ "<br>"
-		+ "--------------------"
-		+ "<br>"
-		+ getCalcParamMetadataString();
+		StringBuilder str = new java.lang.StringBuilder();
+
+		str.append("<br>" + "Cacluation Type = ").append(calcType)
+		.append("<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>").append(imrMetadata)
+		.append("<br><br>")
+		.append("Site Param List: ")
+		.append("<br>")
+		.append("----------------")
+		.append("<br>")
+		.append(siteGuiBean.getParameterListEditor().getVisibleParametersCloned().getParameterListMetadataString())
+		.append("<br><br>")
+		.append("IMT Param List: ")
+		.append("<br>")
+		.append("---------------")
+		.append("<br>")
+		.append(imtGuiBean.getVisibleParametersCloned().getParameterListMetadataString())
+		.append("<br><br>")
+		.append(getERFParametersInfoAsHTML())
+		.append("Calculation Settings: ")
+		.append("<br>")
+		.append("--------------------")
+		.append("<br>")
+		.append(getCalcParamMetadataString());
+		
+		return str.toString();
 
 	}
 
