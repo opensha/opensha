@@ -4,11 +4,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 
 /**

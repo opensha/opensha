@@ -3,9 +3,8 @@ package scratch.UCERF3.utils.paleoRateConstraints;
 import java.util.List;
 
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
-
-import scratch.UCERF3.FaultSystemRupSet;
 
 public class UCERF2_PaleoProbabilityModel extends PaleoProbabilityModel {
 

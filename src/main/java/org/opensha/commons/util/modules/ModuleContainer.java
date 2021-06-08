@@ -96,6 +96,17 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param module
 	 */
 	public void addModule(E module) {
+		SubModule<ModuleContainer<E>> subModule = null;
+		if (module instanceof SubModule<?>) {
+			// make sure that the module is applicable to this container, and either set it or clone it
+			
+			subModule = getAsSubModule(module);
+			
+			module = checkCopySubModule(subModule);
+			if (module != subModule)
+				subModule = getAsSubModule(module);
+		}
+		
 		List<Class<?>> assignableClasses = getAssignableClasses(module.getClass());
 		
 		// fully remove any duplicate associations
@@ -108,8 +119,30 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		for (Class<?> clazz : assignableClasses)
 			mapModule(module, clazz);
 		
+		if (subModule != null && subModule.getParent() == null)
+			subModule.setParent(this);
+		
 		// remove any available modules that are mapped to this
 		removeAvailableModuleInstances(module.getClass());
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected SubModule<ModuleContainer<E>> getAsSubModule(E module) {
+		try {
+			return (SubModule<ModuleContainer<E>>)module;
+		} catch (Exception e) {
+			throw new IllegalStateException("Can't add a sub-module that is not applicable to this container", e);
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	private E checkCopySubModule(SubModule<ModuleContainer<E>> subModule) {
+		ModuleContainer<E> parent = subModule.getParent();
+		if (parent != null && !parent.equals(this)) {
+			debug("Getting copy of sub-module '"+subModule.getName()+"' with updated parent");
+			subModule = subModule.copy(this);
+		}
+		return (E)subModule;
 	}
 	
 	/**

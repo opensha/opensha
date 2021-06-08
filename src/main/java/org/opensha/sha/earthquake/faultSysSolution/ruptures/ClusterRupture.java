@@ -662,7 +662,7 @@ public class ClusterRupture {
 		return ruptures;
 	}
 	
-	private static Gson buildGson(List<? extends FaultSection> subSects, boolean pretty) {
+	public static Gson buildGson(List<? extends FaultSection> subSects, boolean pretty) {
 		GsonBuilder builder = new GsonBuilder();
 		if (pretty)
 			builder.setPrettyPrinting(); // extra whitespace makes these large files large

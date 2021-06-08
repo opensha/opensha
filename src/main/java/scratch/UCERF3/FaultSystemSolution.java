@@ -21,6 +21,7 @@ import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -53,22 +54,20 @@ import com.google.common.collect.Maps;
  * 
  * 2) calc methods here are untested
  * 
+ * TODO: deprecate
  * 
  * @author Field, Milner, Page, and Powers
  *
  */
-public class FaultSystemSolution implements Serializable {
-	
-	private FaultSystemRupSet rupSet;
-	private double[] rates;
-	// this is separate from the rupSet info string as you can have multiple solutions with one rupSet
-	private String infoString;
+public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution implements Serializable {
 	
 	// grid sources, can be null
+	// TODO make this a module
 	private GridSourceProvider gridSourceProvider;
 	
 	// MFDs for each rupture (mags from different scaling relationships for example)
 	// usually null.
+	// TODO make this a module
 	private DiscretizedFunc[] rupMFDs;
 	
 	protected List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs;
@@ -90,7 +89,16 @@ public class FaultSystemSolution implements Serializable {
 	 */
 	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates,
 			List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
+		super(rupSet, rates);
 		init(rupSet, rates, null, subSeismoOnFaultMFDs);
+	}
+	
+	/**
+	 * Returns the fault system rupture set for this solution
+	 * @return
+	 */
+	public FaultSystemRupSet getRupSet() {
+		return (FaultSystemRupSet)rupSet;
 	}
 	
 	/**
@@ -115,63 +123,13 @@ public class FaultSystemSolution implements Serializable {
 	
 	protected void init(FaultSystemRupSet rupSet, double[] rates, String infoString,
 			List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
-		this.rupSet = rupSet;
-		this.rates = rates;
-		Preconditions.checkArgument(rates.length == rupSet.getNumRuptures(), "# rates and ruptures is inconsistent!");
-		if (infoString == null)
-			this.infoString = rupSet.getInfoString();
-		else
-			this.infoString = infoString;
+		super.init(rupSet, rates);
+		if (infoString != null && !infoString.isBlank())
+			addModule(new InfoModule(infoString));
 		if (subSeismoOnFaultMFDs != null)
 			Preconditions.checkState(subSeismoOnFaultMFDs.size() == rupSet.getNumSections(),
 					"Sub seismo MFD count and sub section count inconsistent");
 		this.subSeismoOnFaultMFDs = subSeismoOnFaultMFDs;
-	}
-	
-	/**
-	 * Returns the fault system rupture set for this solution
-	 * @return
-	 */
-	public FaultSystemRupSet getRupSet() {
-		return rupSet;
-	}
-	
-	/**
-	 * These gives the long-term rate (events/yr) of the rth rupture
-	 * @param rupIndex
-	 * @return
-	 */
-	public double getRateForRup(int rupIndex) {
-		return rates[rupIndex];
-	}
-	
-	/**
-	 * This gives the long-term rate (events/yr) of all ruptures
-	 * @param rupIndex
-	 * @return
-	 */
-	public double[] getRateForAllRups() {
-		return rates;
-	}
-	
-	/**
-	 * This returns the total long-term rate (events/yr) of all fault-based ruptures
-	 * (fault based in case off-fault ruptures are added to subclass)
-	 * @return
-	 */
-	public double getTotalRateForAllFaultSystemRups() {
-		double totRate=0;
-		for(double rate:getRateForAllRups())
-			totRate += rate;
-		return totRate;
-	}
-	
-	public String getInfoString() {
-		return infoString;
-	}
-
-	public void setInfoString(String infoString) {
-		this.infoString = infoString;
 	}
 
 	/**

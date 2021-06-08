@@ -21,6 +21,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import org.opensha.commons.util.ExceptionUtils;
+
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
@@ -53,7 +55,19 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public ModuleArchive(File file) throws IOException {
-		this(new ZipFile(file));
+		this(file, null);
+	}
+	
+	/**
+	 * Load modules from an existing archive. Modules themselves will be lazily loaded on demand, unless they
+	 * are assignable from the given preload class
+	 * 
+	 * @param file
+	 * @param preloadClass class to preload
+	 * @throws IOException
+	 */
+	public ModuleArchive(File file, Class<? extends E> preloadClass) throws IOException {
+		this(new ZipFile(file), preloadClass);
 	}
 	
 	/**
@@ -63,12 +77,29 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public ModuleArchive(ZipFile zip) throws IOException {
+		this(zip, null);
+	}
+	
+	/**
+	 * Load modules from an existing archive. Modules themselves will be lazily loaded on demand, unless they
+	 * are assignable from the given preload class
+	 * 
+	 * @param zip
+	 * @param preloadClass class to preload
+	 * @throws IOException
+	 */
+	public ModuleArchive(ZipFile zip, Class<? extends E> preloadClass) throws IOException {
 		super();
 		this.zip = zip;
 		System.out.println("------------ LOADING ARCHIVE ------------");
 		System.out.println("Archive: "+zip.getName());
-		loadModules(this, zip, getPrefix(null, getNestingPrefix()));
-		System.out.println("Loaded "+getAvailableModules().size()+" available top-level modules");
+		loadModules(this, zip, getPrefix(null, getNestingPrefix()), preloadClass);
+		List<E> modules = getModules();
+		if (!modules.isEmpty())
+			System.out.println("Loaded "+modules.size()+" top-level modules");
+		List<Callable<E>> availableModules = getAvailableModules();
+		if (!availableModules.isEmpty())
+			System.out.println("Loaded "+availableModules.size()+" available top-level modules");
 		System.out.println("---------- END LOADING ARCHIVE ----------");
 	}
 	
@@ -87,14 +118,17 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unchecked")
-	private static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ZipFile zip, String prefix)
-			throws IOException {
+	private static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ZipFile zip, String prefix,
+			Class<? extends E> preloadClass) throws IOException {
 //		System.out.println("Loading modules for "+container.getClass().getName()+" with prefix="+prefix);
 		if (prefix ==null)
 			prefix = "";
 		String entryName = prefix+MODULE_FILE_NAME;
 		ZipEntry modulesEntry = zip.getEntry(entryName);
-		Preconditions.checkNotNull(modulesEntry, "Modules file not found in zip file: %s", entryName);
+		if (modulesEntry == null) {
+			System.out.println("Modules index not found in zip file, skipping loading sub-modules: "+entryName);
+			return;
+		}
 		
 		Gson gson = new GsonBuilder().create();
 		
@@ -133,7 +167,17 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 						+ "module's path ('%s')", record.name, record.path, prefix);
 			}
 			
-			container.addAvailableModule(new ZipLoadCallable<E>(record, moduleClass, zip), moduleClass);
+			ZipLoadCallable<E> call = new ZipLoadCallable<E>(record, moduleClass, zip, container);
+			if (preloadClass != null && preloadClass.isAssignableFrom(moduleClass)) {
+				// load it now
+				try {
+					container.addModule(call.call());
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			} else {
+				container.addAvailableModule(call, moduleClass);
+			}
 		}
 		zin.close();
 	}
@@ -143,11 +187,13 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		private ModuleRecord record;
 		private Class<E> clazz;
 		private ZipFile zip;
+		private ModuleContainer<E> container;
 
-		public ZipLoadCallable(ModuleRecord record, Class<E> clazz, ZipFile zip) {
+		public ZipLoadCallable(ModuleRecord record, Class<E> clazz, ZipFile zip, ModuleContainer<E> container) {
 			this.record = record;
 			this.clazz = clazz;
 			this.zip = zip;
+			this.container = container;
 		}
 
 		@Override
@@ -173,10 +219,27 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			}
 			
 			try {
+				System.out.println("Building instance: "+clazz.getName());
 				E module = constructor.newInstance();
+				if (module instanceof SubModule<?>) {
+					SubModule<ModuleContainer<E>> subModule;
+					try {
+						subModule = container.getAsSubModule(module);
+					} catch (Exception e) {
+						System.err.println("WARNING: cannot load module '"+record.name+"' of type '"+clazz.getName()
+								+"' as the it is a sub-module that is not applicable to the container of type '"
+								+container.getClass().getName()+"'");
+						return null;
+					}
+					subModule.setParent(container);
+				}
 				((ArchivableModule)module).initFromArchive(zip, record.path);
 				if (module instanceof ModuleContainer<?>) {
-					loadModules((ModuleContainer<?>)module, zip, record.path);
+					ModuleContainer<?> moduleContainer = (ModuleContainer<?>)module;
+					loadModules(moduleContainer, zip, record.path, null);
+					int availableModules = moduleContainer.getAvailableModules().size();
+					if (availableModules > 0)
+						System.out.println("Loaded "+availableModules+" available sub-modules");
 				}
 				return (E)module;
 			} catch (Exception e) {

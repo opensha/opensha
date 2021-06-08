@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
@@ -59,7 +60,8 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 
-public class PlausibilityConfiguration {
+// TODO make archivable
+public class PlausibilityConfiguration implements OpenSHA_Module {
 	
 	public static PlausibilityConfiguration getUCERF3(
 			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
@@ -1195,6 +1197,11 @@ public class PlausibilityConfiguration {
 		System.out.println("Filters JSON:\n"+json);
 		System.out.println("Deserializing filters JSON");
 		readFiltersJSON(json, config.getConnectionStrategy(), config.getDistAzCalc());
+	}
+
+	@Override
+	public String getName() {
+		return "Plausibility Configuration";
 	}
 
 }
