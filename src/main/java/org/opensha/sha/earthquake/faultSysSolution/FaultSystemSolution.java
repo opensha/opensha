@@ -99,9 +99,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		// TODO make final or allow subclasses to do extra stuff at the write stage?
-		
+	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 		CSVFile<String> ratesCSV = new CSVFile<>(true);
 		ratesCSV.addLine("Rupture Index", "Annual Rate");
 		for (int r=0; r<rates.length; r++)
@@ -112,7 +110,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
 		Preconditions.checkNotNull(archive, "archive must be set before initialization");
 		if (rupSet == null)
 			rupSet = archive.getModule(FaultSystemRupSet.class);
@@ -126,6 +124,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			Preconditions.checkState(ratesCSV.getInt(r+1, 0) == r, "Rates CSV out of order or not 0-based");
 			rates[r] = ratesCSV.getDouble(r+1, 1);
 		}
+	}
+
+	@Override
+	public final Class<? extends ArchivableModule> getLoadingClass() {
+		// never let a subclass supply it's own loader, must always load as a regular FaultSystemSolution
+		return FaultSystemSolution.class;
 	}
 
 	@Override

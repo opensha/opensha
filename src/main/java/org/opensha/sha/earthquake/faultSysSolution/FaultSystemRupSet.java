@@ -188,7 +188,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		FaultSystemRupSet rupSet = archive.getModule(FaultSystemRupSet.class);
 		Preconditions.checkState(rupSet != null, "Failed to load rupture set module from archive (see above error messages)");
-		rupSet.archive = archive;
+		Preconditions.checkNotNull(rupSet.archive, "archive should have been set automatically");
 		
 		return rupSet;
 	}
@@ -204,9 +204,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		// TODO make final or allow subclasses to do extra stuff at the write stage?
-		
+	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 		// CSV Files
 		CSV_BackedModule.writeToArchive(buildRupturesCSV(), zout, entryPrefix, "ruptures.csv");
 		CSV_BackedModule.writeToArchive(buildSectsCSV(), zout, entryPrefix, "sections.csv");
