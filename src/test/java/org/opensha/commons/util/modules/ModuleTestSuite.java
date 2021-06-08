@@ -5,7 +5,8 @@ import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	ModuleContainerTest.class
+	ModuleContainerTest.class,
+	ModuleArchiveTest.class
 })
 
 public class ModuleTestSuite {

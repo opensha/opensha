@@ -283,8 +283,6 @@ public class ModuleContainerTest {
 	 * These methods test available module logic
 	 */
 	
-
-	
 	/* 
 	 * These methods test adding and retrieval logic
 	 */
@@ -375,6 +373,78 @@ public class ModuleContainerTest {
 			return instance;
 		}
 		
+	}
+	
+	/* 
+	 * These methods test sub-module logic
+	 */
+
+	@Test
+	public void testLoadSubModule() {
+		System.out.println("*** testLoadSubModule() ***");
+		System.out.println("Testing that loading a sub module sets the parent");
+		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
+		
+		Module_E eInst1 = new Module_E();
+		container.addModule(eInst1);
+		
+		assertEquals("Container should now have 1 loaded module", 1, container.getModules().size());
+		assertTrue("Added module but it's not in the list", contains(container, eInst1));
+		assertTrue("Cannot retrieve a module by its class", containsInstance(container, Module_E.class));
+		
+		assertNotNull("Parent wasn't set when sub-module was added", eInst1.parent);
+		assertTrue("Parent wasn't set correctly when sub-module was added", eInst1.parent == container);
+		
+		// add again and make sure that it didn't call copy
+		container.addModule(eInst1);
+		
+		assertEquals("Container should now have 1 loaded module", 1, container.getModules().size());
+		assertTrue("Added module but it's not in the list", contains(container, eInst1));
+		assertTrue("Cannot retrieve a module by its class", containsInstance(container, Module_E.class));
+		
+		// now load it into a new container, make sure it was copied
+		ModuleContainer<OpenSHA_Module> container2 = new ModuleContainer<>();
+		container2.addModule(eInst1);
+		
+		assertEquals("Container should now have 1 loaded module", 1, container2.getModules().size());
+		assertTrue("Cannot retrieve a module by its class", containsInstance(container2, Module_E.class));
+		Module_E eInst2 = container2.getModule(Module_E.class);
+		assertTrue("Sub-module wasn't copied when added to a new container", eInst1 != eInst2);
+		assertTrue("Added module but it's not in the list", contains(container2, eInst2));
+		
+		assertNotNull("Parent wasn't set when sub-module was added", eInst2.parent);
+		assertTrue("Parent wasn't set correctly when sub-module was added", eInst2.parent == container2);
+		
+		System.out.println("*** END testLoadSubModule() ***");
+	}
+	
+	private static class Module_E implements SubModule<ModuleContainer<?>> {
+		
+		private ModuleContainer<?> parent;
+		
+		public String getName() {
+			return "Module E";
+		}
+
+		@Override
+		public void setParent(ModuleContainer<?> parent) throws IllegalStateException {
+			System.out.println(getName()+": setParent called");
+			this.parent = parent;
+		}
+
+		@Override
+		public ModuleContainer<?> getParent() {
+			System.out.println(getName()+": getParent() called");
+			return this.parent; 
+		}
+
+		@Override
+		public SubModule<ModuleContainer<?>> copy(ModuleContainer<?> newParent) throws IllegalStateException {
+			System.out.println(getName()+": copy() called");
+			Module_E copy = new Module_E();
+			copy.parent = newParent;
+			return copy;
+		}
 	}
 
 }
