@@ -44,7 +44,7 @@ public class DemoFSRS extends ModuleContainer<OpenSHA_Module> implements Archiva
 			archive = new ModuleArchive<>();
 		if (!archive.hasModule(DemoFSRS.class))
 			archive.addModule(this);
-		archive.writeArchive(file);
+		archive.write(file);
 	}
 
 	@Override

@@ -223,7 +223,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		File inputFile = new File(baseDir, "fm3_1_ucerf3.zip");
 		File destFile = new File("/tmp/new_format_u3.zip");
 		FaultSystemSolution orig = FaultSystemIO.loadSol(inputFile);
-		orig.getArchive().writeArchive(destFile);
+		orig.getArchive().write(destFile);
 		FaultSystemSolution loaded = load(destFile);
 		Preconditions.checkState(orig.rupSet.isEquivalentTo(loaded.rupSet));
 	}

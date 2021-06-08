@@ -256,12 +256,12 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * copied to /path/to/output_file.zip after a successful write.
 	 * <p>
 	 * If this archive was initialized with an existing archive, then any unused files from the original archive will
-	 * also be copied over (call {@link ModuleArchive#writeArchive(File,boolean)} instead to control this behavior).
+	 * also be copied over (call {@link ModuleArchive#write(File,boolean)} instead to control this behavior).
 	 * @param outputFile
 	 * @throws IOException
 	 */
-	public void writeArchive(File outputFile) throws IOException {
-		writeArchive(outputFile, zip != null);
+	public void write(File outputFile) throws IOException {
+		write(outputFile, zip != null);
 	}
 
 	/**
@@ -275,7 +275,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @param copySourceFiles
 	 * @throws IOException
 	 */
-	public void writeArchive(File outputFile, boolean copySourceFiles) throws IOException {
+	public void write(File outputFile, boolean copySourceFiles) throws IOException {
 		System.out.println("------------ WRITING ARCHIVE ------------");
 		File tmpOutput = new File(outputFile.getAbsolutePath()+".tmp");
 		System.out.println("Temporary archive: "+tmpOutput.getAbsolutePath());

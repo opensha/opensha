@@ -58,7 +58,7 @@ public class DemoFSS extends ModuleContainer<OpenSHA_Module> implements Archivab
 			archive.addModule(this);
 			archive.addModule(rupSet);
 		}
-		archive.writeArchive(file, existing);
+		archive.write(file, existing);
 	}
 
 	@Override
