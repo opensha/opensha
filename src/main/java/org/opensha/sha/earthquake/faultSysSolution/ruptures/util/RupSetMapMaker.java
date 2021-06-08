@@ -29,6 +29,7 @@ import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -36,8 +37,6 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
-
-import scratch.UCERF3.FaultSystemRupSet;
 
 /**
  * Utility class for making map view plots of rupture sets

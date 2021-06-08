@@ -25,6 +25,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
@@ -53,7 +55,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Range;
 import com.google.common.primitives.Ints;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
@@ -1473,7 +1474,7 @@ public class ClusterRuptureBuilder {
 		if (writeRupSet) {
 			File outputFile = new File(outputDir, outputName);
 			FaultSystemRupSet rupSet = buildClusterRupSet(scale, subSects, config, rups);
-			FaultSystemIO.writeRupSet(rupSet, outputFile);
+			rupSet.getArchive().write(outputFile);
 		}
 
 		if (numAzCached < distAzCalc.getNumCachedAzimuths()
@@ -1534,9 +1535,11 @@ public class ClusterRuptureBuilder {
 			rupsIDsList.add(sectIDs);
 		}
 		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, null, sectAreasReduced, 
-				rupsIDsList, rupMags, rupRakes, rupAreas, rupLengths, "");
-		rupSet.setPlausibilityConfiguration(config);
-		rupSet.setClusterRuptures(rups);
+				rupsIDsList, rupMags, rupRakes, rupAreas, rupLengths);
+		rupSet.addModule(config.getDistAzCalc());
+		rupSet.addModule(config);
+		rupSet.addModule(ClusterRuptures.instance(rupSet, rups));
+		rupSet.addModule(AveSlipModule.forModel(rupSet, scale));
 		return rupSet;
 	}
 

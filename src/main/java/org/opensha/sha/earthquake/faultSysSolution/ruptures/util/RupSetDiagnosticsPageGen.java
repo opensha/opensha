@@ -6,7 +6,6 @@ import java.awt.Stroke;
 import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -26,7 +25,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.regex.Matcher;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -35,7 +33,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYBoxAnnotation;
@@ -45,9 +42,9 @@ import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.title.PaintScaleLegend;
-import org.jfree.data.Range;
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.chart.ui.TextAnchor;
+import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -55,7 +52,6 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
@@ -65,7 +61,6 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
-import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.AlphanumComparator;
 import org.opensha.commons.util.ClassUtils;
@@ -76,6 +71,9 @@ import org.opensha.commons.util.FileNameComparator;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -88,47 +86,38 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.GapWithinSectFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayCountFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.NucleationClusterEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.ScalarCoulombPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb.BiasiWesnousky2016CombJumpDistProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb.BiasiWesnousky2016SSJumpProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CoulombSectRatioProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeCoulombProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayCountFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
-import org.opensha.sha.simulators.utils.RupturePlotGenerator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.inversion.SectionConnectionStrategy;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -466,7 +455,7 @@ public class RupSetDiagnosticsPageGen {
 		this.compSol = compSol;
 		this.compName = compName;
 		this.outputDir = outputDir;
-		inputConfig = inputRupSet.getPlausibilityConfiguration();
+		inputConfig = inputRupSet.getModule(PlausibilityConfiguration.class);
 		this.summary = new DiagnosticSummary();
 		summary.primaryName = inputName;
 		List<? extends FaultSection> subSects = inputRupSet.getFaultSectionDataList();
@@ -486,7 +475,7 @@ public class RupSetDiagnosticsPageGen {
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				inputRupSet.setPlausibilityConfiguration(inputConfig);
+				inputRupSet.addModule(inputConfig);
 			}
 		}
 		summary.primaryMeta = new RupSetMetadata(inputRupSet, inputSol);
@@ -494,10 +483,11 @@ public class RupSetDiagnosticsPageGen {
 		inputSearch = new RuptureConnectionSearch(
 				inputRupSet, distAzCalc, getSearchMaxJumpDist(inputConfig), false);
 		System.out.println("Building input cluster ruptures");
-		inputRups = inputRupSet.getClusterRuptures();
+		inputRups = inputRupSet.getModule(ClusterRuptures.class).get();
 		if (inputRups == null) {
-			inputRupSet.buildClusterRups(inputSearch);
-			inputRups = inputRupSet.getClusterRuptures();
+			ClusterRuptures cRups = ClusterRuptures.instance(inputRupSet, inputSearch);
+			inputRupSet.addModule(cRups);
+			inputRups = cRups.get();
 		}
 		inputUniques = new HashSet<>();
 		for (ClusterRupture rup : inputRups)
@@ -509,7 +499,7 @@ public class RupSetDiagnosticsPageGen {
 		if (compRupSet != null) {
 			Preconditions.checkState(compRupSet.getNumSections() == subSects.size(),
 					"comp has different sub sect count");
-			compConfig = compRupSet.getPlausibilityConfiguration();
+			compConfig = compRupSet.getModule(PlausibilityConfiguration.class);
 			if (compConfig == null) {
 				// see if it's UCERF3
 				FaultModels fm = getUCERF3FM(compRupSet);
@@ -519,15 +509,16 @@ public class RupSetDiagnosticsPageGen {
 					} catch (IOException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
-					compRupSet.setPlausibilityConfiguration(compConfig);
+					compRupSet.addModule(compConfig);
 				}
 			}
 			compSearch = new RuptureConnectionSearch(
 					compRupSet, distAzCalc, getSearchMaxJumpDist(compConfig), false);
-			compRups = compRupSet.getClusterRuptures();
+			compRups = compRupSet.getModule(ClusterRuptures.class).get();
 			if (compRups == null) {
-				compRupSet.buildClusterRups(compSearch);
-				compRups = compRupSet.getClusterRuptures();
+				ClusterRuptures cRups = ClusterRuptures.instance(compRupSet, compSearch);
+				compRupSet.addModule(cRups);
+				compRups = cRups.get();
 			}
 			compUniques = new HashSet<>();
 			for (ClusterRupture rup : compRups)
@@ -4005,9 +3996,10 @@ public class RupSetDiagnosticsPageGen {
 		System.out.println("Plotting "+rupsToPlot+" ruptures");
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
+		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).get();
 		for (int rupIndex : rupsToPlot) {
 			String rupPrefix = prefix+"_"+rupIndex;
-			ClusterRupture rupture = rupSet.getClusterRuptures().get(rupIndex);
+			ClusterRupture rupture = rups.get(rupIndex);
 			search.plotConnections(resourcesDir, rupPrefix, rupIndex, rupture, pairings, "Unique Connections");
 			table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
 					"("+ generateRuptureInfoPage(rupSet, rupture, rupIndex, rupHtmlDir, rupPrefix, null, search.getDistAzCalc())+ ")");
@@ -5282,7 +5274,7 @@ public class RupSetDiagnosticsPageGen {
 			this.rupCount = rupSet.getNumRuptures();
 			this.maxJumpDist = Double.NaN;
 			this.maxNumSplays = -1;
-			PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
+			PlausibilityConfiguration config = rupSet.getModule(PlausibilityConfiguration.class);
 			if (config != null) {
 				if (config.getConnectionStrategy() != null)
 					maxJumpDist = config.getConnectionStrategy().getMaxJumpDist();

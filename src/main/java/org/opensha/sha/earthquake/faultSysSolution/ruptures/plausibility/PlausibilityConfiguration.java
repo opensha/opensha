@@ -14,7 +14,11 @@ import java.util.Collection;
 import java.util.List;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.JSON_BackedModule;
+import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.SubModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
@@ -60,8 +64,7 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 
-// TODO make archivable
-public class PlausibilityConfiguration implements OpenSHA_Module {
+public class PlausibilityConfiguration implements SubModule<ModuleContainer<OpenSHA_Module>>, JSON_BackedModule {
 	
 	public static PlausibilityConfiguration getUCERF3(
 			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
@@ -992,6 +995,86 @@ public class PlausibilityConfiguration implements OpenSHA_Module {
 		}
 		
 	}
+
+	/*
+	 * Module methods
+	 */
+	
+	@Override
+	public String getName() {
+		return "Plausibility Configuration";
+	}
+
+	@Override
+	public String getFileName() {
+		return "plausibility.json";
+	}
+
+	@Override
+	public Gson buildGson() {
+		List<? extends FaultSection> subSects;
+		if (distAzCalc == null) {
+			// need to locate subsections
+			Preconditions.checkNotNull(parent, "Can't [de]serialize plausibility configuration without either first "
+					+ "supplying a sub-sections, or a parent module from which we can retrieve them");
+			distAzCalc = parent.getModule(SectionDistanceAzimuthCalculator.class);
+			if (distAzCalc == null) {
+				Preconditions.checkState(parent instanceof FaultSystemRupSet,
+						"Can't [de]serialize plausibility configuration without either first supplying sub-sections,"
+						+ " or a parent module from which we can retrieve them (a rupture set, or something with"
+						+ " a distance-azimuth cache)");
+				subSects = ((FaultSystemRupSet)parent).getFaultSectionDataList();
+			} else {
+				subSects = distAzCalc.getSubSections();
+			}
+		} else {
+			subSects = distAzCalc.getSubSections();
+		}
+		return buildGson(subSects, distAzCalc, connectionStrategy);
+	}
+
+	@Override
+	public void writeToJSON(JsonWriter out, Gson gson) throws IOException {
+		gson.toJson(this, PlausibilityConfiguration.class, out);
+	}
+
+	@Override
+	public void initFromJSON(JsonReader in, Gson gson) throws IOException {
+		PlausibilityConfiguration config = gson.fromJson(in, PlausibilityConfiguration.class);
+		this.connectionStrategy = config.connectionStrategy;
+		this.distAzCalc = config.distAzCalc;
+		this.filters = config.filters;
+		this.maxNumSplays = config.maxNumSplays;
+	}
+	
+	private ModuleContainer<OpenSHA_Module> parent;
+
+	@Override
+	public void setParent(ModuleContainer<OpenSHA_Module> parent) throws IllegalStateException {
+		this.parent = parent;
+	}
+
+	@Override
+	public ModuleContainer<OpenSHA_Module> getParent() {
+		return parent;
+	}
+
+	@Override
+	public SubModule<ModuleContainer<OpenSHA_Module>> copy(ModuleContainer<OpenSHA_Module> newParent) throws IllegalStateException {
+		SectionDistanceAzimuthCalculator distAzCalc = this.distAzCalc;
+		if (distAzCalc != null) {
+			// make sure we're compatible
+			SectionDistanceAzimuthCalculator oCalc = newParent.getModule(SectionDistanceAzimuthCalculator.class);
+			if (oCalc != null) {
+				Preconditions.checkState(oCalc.getSubSections().size() == distAzCalc.getSubSections().size());
+				distAzCalc = oCalc;
+			} else if (newParent instanceof FaultSystemRupSet) {
+				Preconditions.checkState(((FaultSystemRupSet)newParent).getNumSections() == distAzCalc.getSubSections().size());
+			}
+		}
+		
+		return new PlausibilityConfiguration(filters, maxNumSplays, connectionStrategy, distAzCalc);
+	}
 	
 	public static void main(String[] args) throws IOException {
 		
@@ -1197,11 +1280,6 @@ public class PlausibilityConfiguration implements OpenSHA_Module {
 		System.out.println("Filters JSON:\n"+json);
 		System.out.println("Deserializing filters JSON");
 		readFiltersJSON(json, config.getConnectionStrategy(), config.getDistAzCalc());
-	}
-
-	@Override
-	public String getName() {
-		return "Plausibility Configuration";
 	}
 
 }

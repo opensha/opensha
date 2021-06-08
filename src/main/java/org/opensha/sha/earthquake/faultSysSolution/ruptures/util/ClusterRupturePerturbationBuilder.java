@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder.*;
@@ -54,8 +56,6 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
@@ -103,7 +103,7 @@ public class ClusterRupturePerturbationBuilder {
 		else
 			primaryGrowingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
 		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(primaryFile);
-		PlausibilityConfiguration primaryConfig = rupSet.getPlausibilityConfiguration();
+		PlausibilityConfiguration primaryConfig = rupSet.getModule(PlausibilityConfiguration.class);
 		Preconditions.checkNotNull(primaryConfig);
 		
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
@@ -452,7 +452,7 @@ public class ClusterRupturePerturbationBuilder {
 				altRupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, rupSet.getFaultSectionDataList(), altConfig, rups);
 				
 				System.out.println("Writing to "+outputFile.getAbsolutePath());
-				FaultSystemIO.writeRupSet(altRupSet, outputFile);
+				altRupSet.getArchive().write(outputFile);
 			}
 			
 			File plotDir = new File(indexDir, prefix);
