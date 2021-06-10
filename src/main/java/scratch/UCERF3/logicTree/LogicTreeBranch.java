@@ -1,6 +1,7 @@
 package scratch.UCERF3.logicTree;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -8,6 +9,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.dom4j.Element;
+import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.ClassUtils;
 
@@ -34,8 +37,10 @@ import com.google.common.collect.Table;
  * @author kevin
  *
  */
-public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends Enum<?>>>,
-	Cloneable, Serializable, Comparable<LogicTreeBranch>, XMLSaveable {
+public class LogicTreeBranch extends org.opensha.commons.logicTree.LogicTreeBranch<LogicTreeBranchNode<? extends Enum<?>>>
+implements XMLSaveable {
+//public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends Enum<?>>>,
+//	Cloneable, Serializable, Comparable<LogicTreeBranch>, XMLSaveable {
 	
 	public static final String XML_METADATA_NAME = "LogicTreeBranch";
 	
@@ -71,6 +76,7 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	}
 	
 	private static List<Class<? extends LogicTreeBranchNode<?>>> logicTreeClasses;
+	private static List<LogicTreeLevel> levels;
 	
 	/**
 	 * List of Logic Tree node classes
@@ -91,6 +97,10 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 			logicTreeClasses.add(SpatialSeisPDF.class);
 			
 			logicTreeClasses = Collections.unmodifiableList(logicTreeClasses);
+			
+			levels = new ArrayList<>();
+			for (Class<? extends LogicTreeBranchNode<?>> clazz : logicTreeClasses)
+				levels.add(LogicTreeLevel.forEnumUnchecked(clazz, XML_METADATA_NAME, XML_METADATA_NAME));
 		}
 		
 		return logicTreeClasses;
@@ -98,83 +108,21 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	
 	private static Table<Class<? extends LogicTreeBranchNode<?>>, InversionModels, Double> classWeightTotals;
 	
-	private List<LogicTreeBranchNode<? extends Enum<?>>> branch;
-	
 	protected LogicTreeBranch(LogicTreeBranch branch) {
-		this(branch.branch);
+		super(branch);
 	}
 	
 	protected LogicTreeBranch(List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
-		this.branch = branch;
-	}
-	
-	@SuppressWarnings("unchecked")
-//	public <E extends Enum<?>> E getValue(Class<? extends LogicTreeBranchNode<?>> clazz) {
-	public <E extends Enum<E>> E getValue(Class<? extends LogicTreeBranchNode<E>> clazz) {
-		return getValue(clazz, branch);
-	}
-	
-	/**
-	 * 
-	 * @param clazz
-	 * @return true of the value for the given class is not null
-	 */
-	public boolean hasNonNullValue(Class<? extends LogicTreeBranchNode<?>> clazz) {
-		return getValueUnchecked(clazz) != null;
-	}
-	
-	/**
-	 * Get the value for the given class. This unchecked version can be useful to get around
-	 * Java generics issues (use getValue(...) if possible)
-	 * @param clazz
-	 * @return
-	 */
-	public LogicTreeBranchNode<?> getValueUnchecked(Class<? extends LogicTreeBranchNode<?>> clazz) {
-		return getValueUnchecked(clazz, branch);
-	}
-	
-	private static <E extends Enum<E>> E getValue(Class<? extends LogicTreeBranchNode<E>> clazz,
-		List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
-	clazz = getEnumEnclosingClass(clazz);
-	for (LogicTreeBranchNode<?> node : branch) {
-		if (node != null && getEnumEnclosingClass(node.getClass()).equals(clazz)) {
-			return (E)node;
-		}
-	}
-	return null;
-}
-		
-	private static LogicTreeBranchNode<?> getValueUnchecked(Class<? extends LogicTreeBranchNode<?>> clazz,
-			List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
-		clazz = getEnumEnclosingClass(clazz);
-		for (LogicTreeBranchNode<?> node : branch) {
-			if (node != null && getEnumEnclosingClass(node.getClass()).equals(clazz)) {
-				return node;
-			}
-		}
-		return null;
-	}
-	
-	/**
-	 * 
-	 * @return number of logic tree branch nodes (including nulls)
-	 */
-	public int size() {
-		return branch.size();
-	}
-	
-	/**
-	 * 
-	 * @param index
-	 * @return Logic tree branch node value at the given index
-	 */
-	public LogicTreeBranchNode<?> getValue(int index) {
-		return branch.get(index);
+		super(levels, branch);
 	}
 	
 	@SuppressWarnings("rawtypes")
 	private Class<? extends LogicTreeBranchNode> getClass(int index) {
 		return getEnumEnclosingClass(getValue(index).getClass());
+	}
+	
+	public int getNumAwayFrom(LogicTreeBranch branch) {
+		return super.getNumAwayFrom(branch);
 	}
 	
 	/**
@@ -192,124 +140,14 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	}
 	
 	/**
-	 * Sets the value for the given class to null.
-	 * @param clazz
-	 */
-	public void clearValue(Class<? extends LogicTreeBranchNode<?>> clazz) {
-		clazz = getEnumEnclosingClass(clazz);
-		for (int i=0; i<size(); i++) {
-			if (clazz.equals(getClass(i))) {
-				branch.set(i, null);
-				return;
-			}
-		}
-		throw new NoSuchElementException("Class not in logic tree: "+clazz);
-	}
-	
-	/**
-	 * Sets the value at the given index to null.
-	 * @param index
-	 */
-	public void clearValue(int index) {
-		branch.set(index, null);
-	}
-	
-	/**
-	 * Sets the given value in the branch. Cannot be null (use clearValue(clazz)).
-	 * @param value
-	 */
-	@SuppressWarnings("rawtypes")
-	public void setValue(LogicTreeBranchNode<?> value) {
-		Class<? extends LogicTreeBranchNode> clazz = getEnumEnclosingClass(value.getClass());
-		
-//		System.out.println("Clazz? "+clazz);
-		
-//		List<Class<? extends LogicTreeBranchNode<?>>> branchClasses = getLogicTreeNodeClasses();
-//		Preconditions.checkState(branch.size() == branchClasses.size());
-		for (int i=0; i<branch.size(); i++) {
-			Class<? extends LogicTreeBranchNode> nodeClazz = getClass(i);
-//			System.out.println("testing: "+nodeClazz);
-			if (nodeClazz.equals(clazz)) {
-				branch.set(i, value);
-				return;
-			}
-		}
-		throw new IllegalArgumentException("Class '"+clazz+"' not part of logic tree node classes");
-	}
-	
-	/**
-	 * 
-	 * @return true if all branch values are non-null
-	 */
-	public boolean isFullySpecified() {
-		for (LogicTreeBranchNode<?> val : branch)
-			if (val == null)
-				return false;
-		return true;
-	}
-	/**
-	 * @param branch
-	 * @return the number of logic tree branches that are non null in this branch and differ from the given
-	 * branch.
-	 */
-	public int getNumAwayFrom(LogicTreeBranch o) {
-		Preconditions.checkArgument(branch.size() == o.branch.size(), "branch sizes inconsistant!");
-		int away = 0;
-		
-		for (int i=0; i<branch.size(); i++) {
-			Object mine = branch.get(i);
-			Object theirs = o.branch.get(i);
-			
-			if (mine != null && !mine.equals(theirs))
-				away++;
-		}
-		
-		return away;
-	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((branch == null) ? 0 : branch.hashCode());
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (!(obj instanceof LogicTreeBranch))
-			return false;
-		LogicTreeBranch other = (LogicTreeBranch) obj;
-		if (branch == null) {
-			if (other.branch != null)
-				return false;
-		} else if (!branch.equals(other.branch))
-			return false;
-		return true;
-	}
-
-	/**
-	 * 
-	 * @param branch
-	 * @return true if every non null value of this branch matches the given branch
-	 */
-	public boolean matchesNonNulls(LogicTreeBranch branch) {
-		return getNumAwayFrom(branch) == 0;
-	}
-	
-	/**
 	 * Builds a file name using the encodeChoiceString method on each branch value, separated by undercores.
 	 * Can be parsed with fromFileName(String).
 	 * @return
 	 */
 	public String buildFileName() {
 		String str = null;
-		for (int i=0; i<branch.size(); i++) {
-			LogicTreeBranchNode<?> value = branch.get(i);
+		for (int i=0; i<size(); i++) {
+			LogicTreeBranchNode<?> value = getValue(i);
 			if (value == null)
 				throw new IllegalStateException("Must be fully specified to build file name! (missing="
 					+ClassUtils.getClassNameWithoutPackage(getLogicTreeNodeClasses().get(i))+")");
@@ -362,9 +200,9 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
 		
 		// initialize branch with null
-		List<LogicTreeBranchNode<? extends Enum<?>>> branch = Lists.newArrayList();
+		List<LogicTreeBranchNode<? extends Enum<?>>> values = Lists.newArrayList();
 		for (int i=0; i<classes.size(); i++)
-			branch.add(null);
+			values.add(null);
 		
 		// now add each value
 		for (LogicTreeBranchNode<?> val : vals) {
@@ -382,27 +220,29 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 				}
 			}
 			Preconditions.checkArgument(ind >= 0, "Value of class '"+valClass+"' not a valid logic tree branch class");
-			branch.set(ind, val);
+			values.set(ind, val);
 		}
+		
+		LogicTreeBranch branch = new LogicTreeBranch(values);
 		
 		if (setNullToDefault) {
 			// little fault model hack, since fault model can be dependent on deformation model if DM is specified
-			if (getValue(FaultModels.class, branch) == null && getValue(DeformationModels.class, branch) != null) {
+			if (branch.getValue(FaultModels.class) == null && branch.getValue(DeformationModels.class) != null) {
 				int fmIndex = getLogicTreeNodeClasses().indexOf(FaultModels.class);
-				DeformationModels dm = getValue(DeformationModels.class, branch);
+				DeformationModels dm = branch.getValue(DeformationModels.class);
 				FaultModels defaultFM = DEFAULT.getValue(FaultModels.class);
 				if (dm.getApplicableFaultModels().contains(defaultFM))
-					branch.set(fmIndex, defaultFM);
+					branch.setValue(fmIndex, defaultFM);
 				else
-					branch.set(fmIndex, dm.getApplicableFaultModels().get(0));
+					branch.setValue(fmIndex, dm.getApplicableFaultModels().get(0));
 			}
 			for (int i=0; i<classes.size(); i++) {
-				if (branch.get(i) == null)
-					branch.set(i, DEFAULT.branch.get(i));
+				if (branch.getValue(i) == null)
+					branch.setValue(i, DEFAULT.getValue(i));
 			}
 		}
 		
-		return new LogicTreeBranch(branch);
+		return branch;
 	}
 	
 	/**
@@ -465,23 +305,6 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 		return null;
 	}
 	
-	@Override
-	public String toString() {
-		String str = null;
-		for (LogicTreeBranchNode<?> val : branch) {
-			if (str == null)
-				str = ClassUtils.getClassNameWithoutPackage(getClass())+"[";
-			else
-				str += ", ";
-//			str += ClassUtils.getClassNameWithoutPackage(getEnumEnclosingClass(val.getClass()))+"="+val.getShortName();
-			if (val == null)
-				str += "(null)";
-			else
-				str += val.encodeChoiceString();
-		}
-		return str+"]";
-	}
-	
 	/**
 	 * Used for Pre Inversion Analysis
 	 * @return
@@ -497,7 +320,7 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	public String getTabSepValString() {
 		String str = "";
 		boolean first = true;
-		for (LogicTreeBranchNode<?> val : branch) {
+		for (LogicTreeBranchNode<?> val : this) {
 			if (!first)
 				str += "\t";
 			else
@@ -534,16 +357,11 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	}
 
 	@Override
-	public Iterator<LogicTreeBranchNode<? extends Enum<?>>> iterator() {
-		return branch.iterator();
-	}
-
-	@Override
 	public Object clone() {
 		List<LogicTreeBranchNode<? extends Enum<?>>> newBranches = Lists.newArrayList();
 		
 		for (int i=0; i<size(); i++)
-			newBranches.add(branch.get(i));
+			newBranches.add(getValue(i));
 		
 		return new LogicTreeBranch(newBranches);
 	}
@@ -557,7 +375,7 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 	public double getAprioriBranchWt() {
 		double wt = 1;
 		InversionModels im = getValue(InversionModels.class);
-		for (LogicTreeBranchNode<?> node : branch)
+		for (LogicTreeBranchNode<?> node : this)
 			wt *= getNormalizedWt(node, im);
 		return wt;
 	}
@@ -590,27 +408,6 @@ public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends E
 			return 0d;
 		Class<? extends LogicTreeBranchNode> clazz = getEnumEnclosingClass(node.getClass());
 		return node.getRelativeWeight(im) / getClassWeightTotal(clazz, im);
-	}
-
-	@Override
-	public int compareTo(LogicTreeBranch o) {
-		int size = Integer.min(size(), o.size());
-		for (int i=0; i<size; i++) {
-			LogicTreeBranchNode<?> val = getValue(i);
-			LogicTreeBranchNode<?> oval = o.getValue(i);
-			int cmp;
-			if (val == null || oval == null) {
-				if (val == null)
-					cmp = oval == null ? 0 : -1;
-				else
-					cmp = 1;
-			} else {
-				cmp = val.getShortName().compareTo(oval.getShortName());
-			}
-			if (cmp != 0)
-				return cmp;
-		}
-		return 0;
 	}
 
 	@Override

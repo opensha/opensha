@@ -14,7 +14,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 	 * @param fullBranch full logic tree branch, in case the weight of this node depends on other branch choices
 	 * @return the relative weight assigned to this branch choice
 	 */
-	public double getNodeWeight(LogicTreeBranch fullBranch);
+	public double getNodeWeight(LogicTreeBranch<?> fullBranch);
 	
 	/**
 	 * This encodes the choice as a string that can be used in file names
@@ -47,7 +47,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch fullBranch) {
+		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
 			return weight;
 		}
 

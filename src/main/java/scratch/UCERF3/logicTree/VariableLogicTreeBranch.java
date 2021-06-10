@@ -72,7 +72,7 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 	}
 	
 	@Override
-	public int compareTo(LogicTreeBranch o) {
+	public int compareTo(org.opensha.commons.logicTree.LogicTreeBranch o) {
 		int lBranchComp = super.compareTo(o);
 		if (lBranchComp != 0)
 			return lBranchComp;
@@ -93,7 +93,7 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 		}
 		return 0;
 	}
-	
+
 	private static List<String> parseVariations(String name) {
 		ArrayList<String> vars = null;
 		while (name.contains("_Var")) {

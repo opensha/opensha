@@ -37,7 +37,7 @@ public interface LogicTreeBranchNode<E extends Enum<E>> extends LogicTreeNode, S
 	public String getBranchLevelName();
 
 	@Override
-	public default double getNodeWeight(LogicTreeBranch fullBranch) {
+	public default double getNodeWeight(LogicTreeBranch<?> fullBranch) {
 		InversionModels im = fullBranch.getValue(InversionModels.class);
 		return getRelativeWeight(im);
 	}

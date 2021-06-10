@@ -254,23 +254,23 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	}
 
 	private void setParamsFromBranch(LogicTreeBranch branch) {
-		if (branch.hasNonNullValue(FaultModels.class))
+		if (branch.hasValue(FaultModels.class))
 			this.faultModel = branch.getValue(FaultModels.class);
-		if (branch.hasNonNullValue(DeformationModels.class))
+		if (branch.hasValue(DeformationModels.class))
 			this.defModName = branch.getValue(DeformationModels.class);
-		if (branch.hasNonNullValue(ScalingRelationships.class))
+		if (branch.hasValue(ScalingRelationships.class))
 			this.scalingRelationship = branch.getValue(ScalingRelationships.class);
-		if (branch.hasNonNullValue(SlipAlongRuptureModels.class))
+		if (branch.hasValue(SlipAlongRuptureModels.class))
 			this.slipModelType = branch.getValue(SlipAlongRuptureModels.class);
-		if (branch.hasNonNullValue(InversionModels.class))
+		if (branch.hasValue(InversionModels.class))
 			this.inversionModel = branch.getValue(InversionModels.class);
-		if (branch.hasNonNullValue(TotalMag5Rate.class))
+		if (branch.hasValue(TotalMag5Rate.class))
 			this.totalRegionRateMgt5 = branch.getValue(TotalMag5Rate.class).getRateMag5();
-		if (branch.hasNonNullValue(MaxMagOffFault.class))
+		if (branch.hasValue(MaxMagOffFault.class))
 			this.mMaxOffFault = branch.getValue(MaxMagOffFault.class).getMaxMagOffFault();
-		if (branch.hasNonNullValue(MomentRateFixes.class))
+		if (branch.hasValue(MomentRateFixes.class))
 			this.applyImpliedCouplingCoeff = branch.getValue(MomentRateFixes.class).isApplyCC();
-		if (branch.hasNonNullValue(SpatialSeisPDF.class))
+		if (branch.hasValue(SpatialSeisPDF.class))
 			this.spatialSeisPDF = branch.getValue(SpatialSeisPDF.class);
 	}
 

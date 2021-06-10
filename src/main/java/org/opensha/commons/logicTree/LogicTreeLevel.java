@@ -106,8 +106,8 @@ public abstract class LogicTreeLevel implements ShortNamed {
 	}
 	
 	@SuppressWarnings("unchecked")
-	static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> rawTypedEnumInstance(
-			String name, String shortName, Class<?> type) {
+	public static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> forEnumUnchecked(
+			Class<?> type, String name, String shortName) {
 		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
 	}
 	
