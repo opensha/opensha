@@ -15,6 +15,7 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.zip.ZipEntry;
@@ -93,7 +94,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		this.zip = zip;
 		System.out.println("------------ LOADING ARCHIVE ------------");
 		System.out.println("Archive: "+zip.getName());
-		loadModules(this, zip, getPrefix(null, getNestingPrefix()), preloadClass);
+		loadModules(this, zip, getPrefix(null, getNestingPrefix()), preloadClass, new HashSet<>());
 		List<E> modules = getModules();
 		if (!modules.isEmpty())
 			System.out.println("Loaded "+modules.size()+" top-level modules");
@@ -119,10 +120,17 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 */
 	@SuppressWarnings("unchecked")
 	private static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ZipFile zip, String prefix,
-			Class<? extends E> preloadClass) throws IOException {
+			Class<? extends E> preloadClass, HashSet<String> prevPrefixes) throws IOException {
 //		System.out.println("Loading modules for "+container.getClass().getName()+" with prefix="+prefix);
 		if (prefix ==null)
 			prefix = "";
+		else
+			prefix = prefix.trim();
+		
+		Preconditions.checkState(!prevPrefixes.contains(prefix),
+				"Found container with duplicate path, we've already loaded a container with path: '%s'", prefix);
+		prevPrefixes.add(prefix);
+		
 		String entryName = prefix+MODULE_FILE_NAME;
 		ZipEntry modulesEntry = zip.getEntry(entryName);
 		if (modulesEntry == null) {
@@ -137,6 +145,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		List<ModuleRecord> records = gson.fromJson(reader,
 				TypeToken.getParameterized(List.class, ModuleRecord.class).getType());
 		for (ModuleRecord record : records) {
+			System.out.println("\tFound available module '"+record.name+"' with path='"+record.path+"'");
 			Class<?> clazz;
 			try {
 				clazz = Class.forName(record.className);
@@ -158,6 +167,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			
 			if (ModuleContainer.class.isAssignableFrom(moduleClass)) {
 				// make sure that this record has a path, otherwise we could get stuck in an infinite loading loop
+				record.path = record.path.trim();
 				Preconditions.checkState(!record.path.isBlank(),
 						"Module '%s' is also a container but does not supply a path.Container modules must always "
 						+ "supply a custom path, otherwise we would keep loading the same top-level modules.json "
@@ -165,16 +175,25 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 				Preconditions.checkState(prefix.isBlank() || record.path.startsWith(prefix),
 						"Module '%s' is a container but it's supplied path ('%s') is not nested within the parent "
 						+ "module's path ('%s')", record.name, record.path, prefix);
+				Preconditions.checkState(!prevPrefixes.contains(record.path),
+						"Module '%s' is a container with a duplicate path, we've already loaded a container with path: '%s'",
+						record.name, record.path);
 			}
 			
-			ZipLoadCallable<E> call = new ZipLoadCallable<E>(record, moduleClass, zip, container);
+			ZipLoadCallable<E> call = new ZipLoadCallable<E>(record, moduleClass, zip, container, prevPrefixes);
 			if (preloadClass != null && preloadClass.isAssignableFrom(moduleClass)) {
 				// load it now
+				E module = null;
 				try {
-					container.addModule(call.call());
+					module = call.call();
 				} catch (Exception e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
+				if (module == null) {
+					// error loading preload module, throw that exception
+					throw new IllegalStateException("Failed to load module that matches pre-load class", call.t);
+				}
+				container.addModule(module);
 			} else {
 				container.addAvailableModule(call, moduleClass);
 			}
@@ -188,12 +207,17 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		private Class<E> clazz;
 		private ZipFile zip;
 		private ModuleContainer<E> container;
+		private HashSet<String> prevPrefixes;
+		
+		private Throwable t;
 
-		public ZipLoadCallable(ModuleRecord record, Class<E> clazz, ZipFile zip, ModuleContainer<E> container) {
+		public ZipLoadCallable(ModuleRecord record, Class<E> clazz, ZipFile zip, ModuleContainer<E> container,
+				HashSet<String> prevPrefixes) {
 			this.record = record;
 			this.clazz = clazz;
 			this.zip = zip;
 			this.container = container;
+			this.prevPrefixes = prevPrefixes;
 		}
 
 		@Override
@@ -209,6 +233,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			} catch (Exception e) {
 				System.err.println("WARNING: cannot load module '"+record.name
 						+"' as the loading class doesn't have a no-arg constructor: "+clazz.getName()+"");
+				t = e;
 				return null;
 			}
 			
@@ -216,6 +241,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 				constructor.setAccessible(true);
 			} catch (Exception e) {
 				System.err.println("WANRING: couldn't make constructor accessible, loading will likely fail: "+e.getMessage());
+				t = e;
 			}
 			
 			try {
@@ -229,6 +255,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 						System.err.println("WARNING: cannot load module '"+record.name+"' of type '"+clazz.getName()
 								+"' as the it is a sub-module that is not applicable to the container of type '"
 								+container.getClass().getName()+"'");
+						t = e;
 						return null;
 					}
 					subModule.setParent(container);
@@ -236,7 +263,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 				((ArchivableModule)module).initFromArchive(zip, record.path);
 				if (module instanceof ModuleContainer<?>) {
 					ModuleContainer<?> moduleContainer = (ModuleContainer<?>)module;
-					loadModules(moduleContainer, zip, record.path, null);
+					loadModules(moduleContainer, zip, record.path, null, prevPrefixes);
 					int availableModules = moduleContainer.getAvailableModules().size();
 					if (availableModules > 0)
 						System.out.println("Loaded "+availableModules+" available sub-modules");
@@ -245,6 +272,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.err.println("Error loading module '"+record.name+"', skipping.");
+				t = e;
 			}
 			return null;
 		}
@@ -291,7 +319,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			zout = new ZipOutputStream(bout);
 		
 		// no prefix=null for top level container
-		writeModules(this, zout, null);
+		writeModules(this, zout, null, new HashSet<>());
 		
 		if (copySourceFiles) {
 			EntryTrackingZOUT trackZOUT = (EntryTrackingZOUT)zout;
@@ -321,11 +349,16 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	}
 	
 	private static <E extends OpenSHA_Module> void writeModules(ModuleContainer<E> container, ZipOutputStream zout,
-			String prefix) throws IOException {
+			String prefix, HashSet<String> prevPrefixes) throws IOException {
 		List<ModuleRecord> records = new ArrayList<>();
 		
 		if (prefix == null)
 			prefix = "";
+		else
+			prefix = prefix.trim();
+		
+		Preconditions.checkState(!prevPrefixes.contains(prefix), "Duplicate prefix detected in archive: %s", prefix);
+		prevPrefixes.add(prefix);
 		
 		String moduleStr;
 		if (container.getClass().equals(ModuleArchive.class))
@@ -342,20 +375,29 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 				ArchivableModule archivable = (ArchivableModule)module;
 				System.out.println("\tWriting module: "+module.getName());
 				
+				// check for no-arg constructor
+				try {
+					Preconditions.checkNotNull(archivable.getLoadingClass().getDeclaredConstructor());
+				} catch (Throwable t) {
+					System.err.println("WARNING: Loading class for module doesn't contain a no-arg constructor, "
+							+ "loading from a zip file will fail: "+archivable.getLoadingClass().getName());
+				}
+				
 				if (module instanceof ModuleContainer && module != container) {
 					ModuleContainer<?> archive = (ModuleContainer<?>)module;
 					String nestingPrefix = archive.getNestingPrefix();
 //					System.out.println("\tWriting nested module container '"+module.getName()
 //						+"' with nesting prefix: '"+nestingPrefix+"'");
 					Preconditions.checkState(nestingPrefix != null && !nestingPrefix.isEmpty(),
-							"Module '%s' is a nested archive but does not override getNestingPrefix()",
-							module.getName());
+							"Module '%s' is a nested archive but does not override getNestingPrefix() "
+							+ "to provide a non-empty nesting prefix (supplied: '%s')",
+							module.getName(), nestingPrefix);
 					
 					String downstreamPrefix = prefix+nestingPrefix;
 //					System.out.println("ds pre: "+downstreamPrefix);
 //					if (downstreamPrefix.length() > 20)
 //						throw new IllegalStateException("here I be");
-					writeModules(archive, zout, downstreamPrefix);
+					writeModules(archive, zout, downstreamPrefix, prevPrefixes);
 					
 					archivable.writeToArchive(zout, downstreamPrefix);
 					

@@ -1,4 +1,4 @@
-package org.opensha.commons.util.modules;
+package org.opensha.commons.util.modules.helpers;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -7,6 +7,8 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleHelper;
 
 /**
  * Helper interface for {@link ArchivableModule}'s that are backed by a single CSV file. Implementations need only

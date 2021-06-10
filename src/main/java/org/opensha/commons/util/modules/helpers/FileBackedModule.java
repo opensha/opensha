@@ -1,4 +1,4 @@
-package org.opensha.commons.util.modules;
+package org.opensha.commons.util.modules.helpers;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
+
+import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleHelper;
 
 import com.google.common.base.Preconditions;
 
@@ -48,6 +51,7 @@ public interface FileBackedModule extends ArchivableModule {
 	public static void initEntry(ZipOutputStream zout, String entryPrefix, String fileName)
 			throws IOException {
 		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
+		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
 		
 		ZipEntry entry = new ZipEntry(entryName);
 		zout.putNextEntry(entry);
@@ -72,6 +76,7 @@ public interface FileBackedModule extends ArchivableModule {
 	
 	public static BufferedInputStream getInputStream(ZipFile zip, String entryPrefix, String fileName) throws IOException {
 		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
+		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
 		ZipEntry entry = zip.getEntry(entryName);
 		Preconditions.checkNotNull(entry, "Entry not found in zip archive: %s", entryName);
 		

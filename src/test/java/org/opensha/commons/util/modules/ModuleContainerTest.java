@@ -19,7 +19,7 @@ public class ModuleContainerTest {
 	@Test
 	public void testAddRetrieve() {
 		System.out.println("*** testAddRetrieve() ***");
-		System.out.println("Testing simple adding a retrieval");
+		System.out.println("Testing simple adding and retrieval");
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
 		assertEquals("Container should start empty", 0, container.getModules().size());
@@ -444,6 +444,35 @@ public class ModuleContainerTest {
 			Module_E copy = new Module_E();
 			copy.parent = newParent;
 			return copy;
+		}
+	}
+	
+	/* 
+	 * This tests that we can't create an infinite module loop
+	 */
+
+	@Test
+	public void testAddModuleToItself() {
+		System.out.println("*** testAddModuleToItself() ***");
+		System.out.println("Testing ...");
+		
+		Module_F f = new Module_F();
+		try {
+			f.addModule(f);
+			fail("Should have thrown an IllegalStateException");
+		} catch (IllegalStateException e) {
+			System.out.println("Caught expected IllegalStateException: "+e.getMessage());
+		}
+
+		System.out.println("*** END testAddModuleToItself() ***");
+	}
+	
+	private static class Module_F extends ModuleContainer<OpenSHA_Module> implements OpenSHA_Module {
+		
+		private ModuleContainer<?> parent;
+		
+		public String getName() {
+			return "Module E";
 		}
 	}
 

@@ -96,6 +96,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param module
 	 */
 	public void addModule(E module) {
+		Preconditions.checkState(module != this, "Cannot add a module to itself!");
 		SubModule<ModuleContainer<E>> subModule = null;
 		if (module instanceof SubModule<?>) {
 			// make sure that the module is applicable to this container, and either set it or clone it

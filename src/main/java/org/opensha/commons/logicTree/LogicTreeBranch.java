@@ -11,7 +11,7 @@ import java.util.NoSuchElementException;
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.util.ClassUtils;
-import org.opensha.commons.util.modules.JSON_BackedModule;
+import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;

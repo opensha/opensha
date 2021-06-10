@@ -1,6 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
-import org.opensha.commons.util.modules.TextBackedModule;
+import org.opensha.commons.util.modules.helpers.TextBackedModule;
 
 public class InfoModule implements TextBackedModule {
 	

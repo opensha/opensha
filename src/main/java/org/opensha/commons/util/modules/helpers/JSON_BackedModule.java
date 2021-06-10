@@ -1,4 +1,4 @@
-package org.opensha.commons.util.modules;
+package org.opensha.commons.util.modules.helpers;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -8,17 +8,21 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
+import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleHelper;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 /**
- * Helper interface for {@link ArchivableModule}'s that are backed by a single CSV file. Implementations need only
+ * Helper interface for {@link ArchivableModule}'s that are backed by a single JSON file. Implementations need only
  * implement {@link #getFileName()}, {@link #writeToJSON(JsonWriter, Gson)}, and {@link #initFromJSON(JsonReader, Gson)}.
  * <p>
  * Implementations can also attach any custom TypeAdapters, or otherwise control Gson settings by overriding
- * {@link #buildGson()}.
+ * {@link #buildGson()}. Simple TypeAdapter-based implementations can use {@link JSON_TypeAdapterBackedModule} for
+ * added convenience.
  * 
  * @author kevin
  *
@@ -59,16 +63,17 @@ public interface JSON_BackedModule extends FileBackedModule {
 	}
 
 	@Override
-	default void writeToStream(BufferedOutputStream out) throws IOException {
+	public default void writeToStream(BufferedOutputStream out) throws IOException {
 		Gson gson = buildGson();
 		
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 		JsonWriter jout = gson.newJsonWriter(writer);
 		writeToJSON(jout, gson);
+		writer.flush();
 	}
 
 	@Override
-	default void initFromStream(BufferedInputStream in) throws IOException {
+	public default void initFromStream(BufferedInputStream in) throws IOException {
 		Gson gson = buildGson();
 		
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
