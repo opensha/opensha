@@ -8,15 +8,15 @@ import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 
 import com.google.common.base.Preconditions;
 
-public abstract class LogicTreeLevel<E extends LogicTreeNode<?>> implements ShortNamed {
+public abstract class LogicTreeLevel implements ShortNamed {
 	
-	public abstract Class<E> getType();
+	public abstract Class<? extends LogicTreeNode> getType();
 	
-	public abstract List<E> getNodes();
+	public abstract List<LogicTreeNode> getNodes();
 	
-	public abstract boolean isMember(E node);
+	public abstract boolean isMember(LogicTreeNode node);
 	
-	static class FileBackedLevel extends LogicTreeLevel<FileBackedNode> {
+	static class FileBackedLevel extends LogicTreeLevel {
 		
 		private String name;
 		private String shortName;
@@ -48,26 +48,26 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode<?>> implements Shor
 		}
 
 		@Override
-		public List<FileBackedNode> getNodes() {
+		public List<LogicTreeNode> getNodes() {
 			if (choice == null)
 				return Collections.emptyList();
 			return Collections.singletonList(choice);
 		}
 
 		@Override
-		public boolean isMember(FileBackedNode node) {
+		public boolean isMember(LogicTreeNode node) {
 			return choice != null && choice.equals(node);
 		}
 		
 	}
 	
 	@SuppressWarnings("unchecked")
-	static <E extends Enum<E> & LogicTreeNode<E>> EnumBackedLevel<E> rawTypedEnumInstance(
+	static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> rawTypedEnumInstance(
 			String name, String shortName, Class<?> type) {
 		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
 	}
 	
-	static class EnumBackedLevel<E extends Enum<E> & LogicTreeNode<E>> extends LogicTreeLevel<E> {
+	static class EnumBackedLevel<E extends Enum<E> & LogicTreeNode> extends LogicTreeLevel {
 		
 		private String name;
 		private String shortName;
@@ -96,12 +96,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode<?>> implements Shor
 		}
 
 		@Override
-		public List<E> getNodes() {
+		public List<LogicTreeNode> getNodes() {
 			return List.of(type.getEnumConstants());
 		}
 
 		@Override
-		public boolean isMember(E node) {
+		public boolean isMember(LogicTreeNode node) {
 			return node != null && type.isAssignableFrom(node.getClass());
 		}
 		

@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 import org.opensha.commons.data.ShortNamed;
 
-public interface LogicTreeNode<E> extends ShortNamed, Serializable {
+public interface LogicTreeNode extends ShortNamed, Serializable {
 	
 	/**
 	 * This returns the relative weight assigned to this branch node.
@@ -14,7 +14,7 @@ public interface LogicTreeNode<E> extends ShortNamed, Serializable {
 	 * @param fullBranch full logic tree branch, in case the weight of this node depends on other branch choices
 	 * @return the relative weight assigned to this branch choice
 	 */
-	public double getNodeWeight(LogicTreeBranch<?> fullBranch); // TODO: rethink generics here
+	public double getNodeWeight(LogicTreeBranch fullBranch);
 	
 	/**
 	 * This encodes the choice as a string that can be used in file names
@@ -22,7 +22,7 @@ public interface LogicTreeNode<E> extends ShortNamed, Serializable {
 	 */
 	public String getFilePrefix();
 	
-	static class FileBackedNode implements LogicTreeNode<FileBackedNode> {
+	static class FileBackedNode implements LogicTreeNode{
 		
 		private String name;
 		private String shortName;
@@ -47,7 +47,7 @@ public interface LogicTreeNode<E> extends ShortNamed, Serializable {
 		}
 
 		@Override
-		public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+		public double getNodeWeight(LogicTreeBranch fullBranch) {
 			return weight;
 		}
 
