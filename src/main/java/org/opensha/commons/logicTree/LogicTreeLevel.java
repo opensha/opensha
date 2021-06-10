@@ -16,6 +16,10 @@ public abstract class LogicTreeLevel implements ShortNamed {
 	
 	public abstract boolean isMember(LogicTreeNode node);
 	
+	public String toString() {
+		return getName();
+	}
+	
 	static class FileBackedLevel extends LogicTreeLevel {
 		
 		private String name;
@@ -30,12 +34,12 @@ public abstract class LogicTreeLevel implements ShortNamed {
 
 		@Override
 		public String getShortName() {
-			return name;
+			return shortName;
 		}
 
 		@Override
 		public String getName() {
-			return shortName;
+			return name;
 		}
 
 		@Override
@@ -58,7 +62,47 @@ public abstract class LogicTreeLevel implements ShortNamed {
 		public boolean isMember(LogicTreeNode node) {
 			return choice != null && choice.equals(node);
 		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((name == null) ? 0 : name.hashCode());
+			result = prime * result + ((shortName == null) ? 0 : shortName.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			FileBackedLevel other = (FileBackedLevel) obj;
+			if (choice != null && other.choice != null) {
+				if (!choice.equals(other.choice))
+					return false;
+			}
+			if (name == null) {
+				if (other.name != null)
+					return false;
+			} else if (!name.equals(other.name))
+				return false;
+			if (shortName == null) {
+				if (other.shortName != null)
+					return false;
+			} else if (!shortName.equals(other.shortName))
+				return false;
+			return true;
+		}
 		
+	}
+	
+	public static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> forEnum(
+			Class<E> type, String name, String shortName) {
+		return new EnumBackedLevel<>(name, shortName, type);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -103,6 +147,43 @@ public abstract class LogicTreeLevel implements ShortNamed {
 		@Override
 		public boolean isMember(LogicTreeNode node) {
 			return node != null && type.isAssignableFrom(node.getClass());
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((name == null) ? 0 : name.hashCode());
+			result = prime * result + ((shortName == null) ? 0 : shortName.hashCode());
+			result = prime * result + ((type == null) ? 0 : type.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			EnumBackedLevel other = (EnumBackedLevel) obj;
+			if (name == null) {
+				if (other.name != null)
+					return false;
+			} else if (!name.equals(other.name))
+				return false;
+			if (shortName == null) {
+				if (other.shortName != null)
+					return false;
+			} else if (!shortName.equals(other.shortName))
+				return false;
+			if (type == null) {
+				if (other.type != null)
+					return false;
+			} else if (!type.equals(other.type))
+				return false;
+			return true;
 		}
 		
 	}

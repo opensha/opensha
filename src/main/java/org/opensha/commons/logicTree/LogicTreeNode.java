@@ -38,12 +38,12 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 
 		@Override
 		public String getShortName() {
-			return name;
+			return shortName;
 		}
 
 		@Override
 		public String getName() {
-			return shortName;
+			return name;
 		}
 
 		@Override
@@ -54,6 +54,48 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		@Override
 		public String getFilePrefix() {
 			return choiceStr;
+		}
+		
+		@Override
+		public String toString() {
+			return getName();
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((choiceStr == null) ? 0 : choiceStr.hashCode());
+			result = prime * result + ((name == null) ? 0 : name.hashCode());
+			result = prime * result + ((shortName == null) ? 0 : shortName.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			FileBackedNode other = (FileBackedNode) obj;
+			if (choiceStr == null) {
+				if (other.choiceStr != null)
+					return false;
+			} else if (!choiceStr.equals(other.choiceStr))
+				return false;
+			if (name == null) {
+				if (other.name != null)
+					return false;
+			} else if (!name.equals(other.name))
+				return false;
+			if (shortName == null) {
+				if (other.shortName != null)
+					return false;
+			} else if (!shortName.equals(other.shortName))
+				return false;
+			return true;
 		}
 		
 	}

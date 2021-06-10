@@ -21,6 +21,10 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
+import scratch.UCERF3.enumTreeBranches.DeformationModels;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.InversionModels;
+
 public class LogicTreeBranch implements Iterable<LogicTreeNode>, Cloneable, Serializable,
 Comparable<LogicTreeBranch>, JSON_BackedModule {
 	
@@ -247,6 +251,18 @@ Comparable<LogicTreeBranch>, JSON_BackedModule {
 	 * @return true if the given branch has the same branch levels as this branch
 	 */
 	public boolean areLevelsEqual(LogicTreeBranch o) {
+//		for (int i=0; i<levels.size(); i++) {
+//			LogicTreeLevel mine = levels.get(i);
+//			LogicTreeLevel theirs = o.levels.size() > i ? o.levels.get(i) : null;
+//			System.out.println("MY LEVEL: "+mine);
+//			System.out.println("THEIR LEVEL: "+theirs);
+//			System.out.println("\tEQUAL? "+mine.equals(theirs));
+//			LogicTreeNode myVal = values.get(i);
+//			LogicTreeNode theirVal = theirs == null ? null : o.values.get(i);
+//			System.out.println("MY VALUE: "+myVal);
+//			System.out.println("THEIR VALUE: "+theirVal);
+//			System.out.println("\tEQUAL? "+(myVal == null ? null : myVal.equals(theirVal)));
+//		}
 		return levels.equals(o.levels);
 	}
 	
@@ -476,6 +492,8 @@ Comparable<LogicTreeBranch>, JSON_BackedModule {
 				}
 			}
 			
+			in.endObject();
+			
 			if (enumClass != null && enumName != null) {
 				// load it as an enum
 				for (Enum<? extends LogicTreeNode> option : enumClass.getEnumConstants())
@@ -623,7 +641,7 @@ Comparable<LogicTreeBranch>, JSON_BackedModule {
 					}
 					if (level == null) {
 						// file-backed
-						level = new FileBackedLevel(className, shortName, null);
+						level = new FileBackedLevel(name, shortName, null);
 					}
 					
 					in.endObject();
@@ -648,6 +666,8 @@ Comparable<LogicTreeBranch>, JSON_BackedModule {
 			}
 			levels.add(level);
 			values.add(value);
+//			System.out.println("Loaded level: "+level);
+//			System.out.println("Loaded value: "+value);
 			
 			in.endObject();
 		}
@@ -656,5 +676,56 @@ Comparable<LogicTreeBranch>, JSON_BackedModule {
 		init(ImmutableList.copyOf(levels), values);
 	}
 	
+	public static void main(String[] args) throws IOException {
+		List<LogicTreeLevel> levels = new ArrayList<>();
+		List<LogicTreeNode> values = new ArrayList<>();
+		
+		FileBackedNode node = new FileBackedNode("Node 1", "Node1", 1d, "n1");
+		levels.add(new FileBackedLevel("Level 1", "Level1", node));
+		values.add(node);
+		
+		node = new FileBackedNode("Node 2", "Node2", 1d, "n2");
+		levels.add(new FileBackedLevel("Level 2", "Level2", node));
+		values.add(node);
+		
+		node = null;
+		levels.add(new FileBackedLevel("Level 3", "Level3", node));
+		values.add(node);
+		
+		LogicTreeBranch branch = new LogicTreeBranch(levels, values);
+		String json = branch.getJSON();
+		System.out.println(json);
+		
+		LogicTreeBranch branch2 = new LogicTreeBranch();
+		branch2.initFromJSON(json);
+		String json2 = branch2.getJSON();
+		System.out.println("Branch equal? "+branch2.equals(branch));
+		System.out.println("Num away? "+branch.getNumAwayFrom(branch2));
+		System.out.println("JSON equal? "+json.equals(json2));
+		
+		System.out.println("***** ENUM test *****");
+		
+		levels.clear();
+		values.clear();
+		
+		levels.add(LogicTreeLevel.forEnum(FaultModels.class, "Fault Model", "FM"));
+		values.add(FaultModels.FM3_1);
+		levels.add(LogicTreeLevel.forEnum(DeformationModels.class, "Deformation Model", "DM"));
+		values.add(DeformationModels.GEOLOGIC);
+		levels.add(LogicTreeLevel.forEnum(InversionModels.class, "Inversion Model", "IM"));
+		values.add(null);
+		
+		branch = new LogicTreeBranch(levels, values);
+		
+		json = branch.getJSON();
+		System.out.println(json);
+		
+		branch2 = new LogicTreeBranch();
+		branch2.initFromJSON(json);
+		json2 = branch2.getJSON();
+		System.out.println("Branch equal? "+branch2.equals(branch));
+		System.out.println("Num away? "+branch.getNumAwayFrom(branch2));
+		System.out.println("JSON equal? "+json.equals(json2));
+	}
 	
 }

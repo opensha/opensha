@@ -3,10 +3,12 @@ package scratch.UCERF3.logicTree;
 import java.io.Serializable;
 
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 
-public interface LogicTreeBranchNode<E extends Enum<E>> extends ShortNamed, Serializable {
+public interface LogicTreeBranchNode<E extends Enum<E>> extends LogicTreeNode, Serializable {
 	
 	/**
 	 * This returns the relative weight of the logic tree branch. Now dependent on Inversion Model as weights may change.
@@ -33,5 +35,16 @@ public interface LogicTreeBranchNode<E extends Enum<E>> extends ShortNamed, Seri
 	 * @return
 	 */
 	public String getBranchLevelName();
+
+	@Override
+	public default double getNodeWeight(LogicTreeBranch fullBranch) {
+		InversionModels im = fullBranch.getValue(InversionModels.class);
+		return getRelativeWeight(im);
+	}
+
+	@Override
+	public default String getFilePrefix() {
+		return getBranchLevelName();
+	}
 
 }
