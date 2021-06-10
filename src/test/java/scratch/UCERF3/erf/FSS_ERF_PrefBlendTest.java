@@ -29,7 +29,6 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
@@ -55,7 +54,7 @@ public class FSS_ERF_PrefBlendTest {
 	public static void setUpBeforeClass() throws Exception {
 //		// use single branch ERF
 //		erf = new UCERF3_CompoundSol_ERF();
-		FaultSystemRupSet rupSet = FSS_ERF_ParamTest.buildSmallTestRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = FSS_ERF_ParamTest.buildSmallTestRupSet();
 		double[] rates = new double[rupSet.getNumRuptures()];
 		Random r = new Random(rates.length);
 		for (int i=0; i<rates.length; i++)
@@ -64,7 +63,7 @@ public class FSS_ERF_PrefBlendTest {
 		for (FaultSection sect : rupSet.getFaultSectionDataList())
 			if (r.nextDouble() < 0.2)
 				sect.setDateOfLastEvent(startTime - r.nextInt(250)*(long)ProbabilityModelsCalc.MILLISEC_PER_YEAR);
-		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		erf = new FaultSystemSolutionERF(sol);
 		
 		GriddedRegion reg = new CaliforniaRegions.RELM_TESTING_GRIDDED();

@@ -61,7 +61,6 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.SlipEnabledRupSet;
 import scratch.UCERF3.SlipEnabledSolution;
 import scratch.UCERF3.analysis.CompoundFSSPlots;
@@ -810,7 +809,7 @@ public class CommandLineInversionRunner {
 	 * @param prefix
 	 * @throws IOException
 	 */
-	public static void writeJumpPlots(FaultSystemSolution sol, Map<IDPairing, Double> distsMap, File dir, String prefix) throws IOException {
+	public static void writeJumpPlots(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Map<IDPairing, Double> distsMap, File dir, String prefix) throws IOException {
 		// use UCERF2 here because it doesn't depend on distance along
 		PaleoProbabilityModel paleoProbModel = new UCERF2_PaleoProbabilityModel();
 		writeJumpPlot(sol, distsMap, dir, prefix, 1d, 7d, null);
@@ -827,14 +826,14 @@ public class CommandLineInversionRunner {
 	 * @param paleoProbModel if non null thn rates will be multiplied by their probability of observance
 	 * @return
 	 */
-	public static EvenlyDiscretizedFunc[] getJumpFuncs(FaultSystemSolution sol,
+	public static EvenlyDiscretizedFunc[] getJumpFuncs(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
 			Map<IDPairing, Double> distsMap, double jumpDist, double minMag,
 			PaleoProbabilityModel paleoProbModel) {
 		EvenlyDiscretizedFunc solFunc = new EvenlyDiscretizedFunc(0d, 4, 1d);
 		EvenlyDiscretizedFunc rupSetFunc = new EvenlyDiscretizedFunc(0d, 4, 1d);
 		int maxX = solFunc.size()-1;
 		
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
 			double mag = rupSet.getMagForRup(r);
@@ -885,7 +884,7 @@ public class CommandLineInversionRunner {
 		return ret;
 	}
 
-	public static void writeJumpPlot(FaultSystemSolution sol, Map<IDPairing, Double> distsMap, File dir, String prefix,
+	public static void writeJumpPlot(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Map<IDPairing, Double> distsMap, File dir, String prefix,
 			double jumpDist, double minMag, PaleoProbabilityModel paleoProbModel) throws IOException {
 		EvenlyDiscretizedFunc[] funcsArray = getJumpFuncs(sol, distsMap, jumpDist, minMag, paleoProbModel);
 		writeJumpPlot(dir, prefix, funcsArray, jumpDist, minMag, paleoProbModel != null);
@@ -1017,7 +1016,7 @@ public class CommandLineInversionRunner {
 		return new File(dir, getMFDPrefix(prefix, RELM_RegionUtils.getGriddedRegionInstance())+".png").exists();
 	}
 
-	public static ArrayList<PaleoRateConstraint> getPaleoConstraints(FaultModels fm, FaultSystemRupSet rupSet) throws IOException {
+	public static ArrayList<PaleoRateConstraint> getPaleoConstraints(FaultModels fm, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) throws IOException {
 		if (fm == FaultModels.FM2_1)
 			return UCERF2_PaleoRateConstraintFetcher.getConstraints(rupSet.getFaultSectionDataList());
 		return UCERF3_PaleoRateConstraintFetcher.getConstraints(rupSet.getFaultSectionDataList());
@@ -1053,7 +1052,7 @@ public class CommandLineInversionRunner {
 		writeSAFSegPlots(sol, sol.getRupSet().getFaultModel(), dir, prefix);
 	}
 	
-	public static void writeSAFSegPlots(FaultSystemSolution sol, FaultModels fm, File dir, String prefix) throws IOException {
+	public static void writeSAFSegPlots(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, FaultModels fm, File dir, String prefix) throws IOException {
 		List<Integer> parentSects = FaultSpecificSegmentationPlotGen.getSAFParents(fm);
 
 		writeSAFSegPlot(sol, dir, prefix, parentSects, 0, false);
@@ -1062,7 +1061,7 @@ public class CommandLineInversionRunner {
 
 	}
 
-	public static void writeSAFSegPlot(FaultSystemSolution sol, File dir, String prefix,
+	public static void writeSAFSegPlot(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, File dir, String prefix,
 			List<Integer> parentSects, double minMag, boolean endsOnly) throws IOException {
 		HeadlessGraphPanel gp = FaultSpecificSegmentationPlotGen.getSegmentationHeadlessGP(parentSects, sol, minMag, endsOnly);
 		
@@ -1149,7 +1148,7 @@ public class CommandLineInversionRunner {
 	 * @param dir
 	 * @throws IOException
 	 */
-	public static void writeParentSectionMFDPlots(FaultSystemSolution sol, File dir) throws IOException {
+	public static void writeParentSectionMFDPlots(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, File dir) throws IOException {
 		Map<Integer, String> parentSects = Maps.newHashMap();
 		
 		if (!dir.exists())
@@ -1418,7 +1417,7 @@ public class CommandLineInversionRunner {
 		int numSols = avgSol.getNumSolutions();
 		double mfdVals[][] = new double[numMag][numSols];
 		int cnt = 0;
-		for (FaultSystemSolution sol : avgSol) {
+		for (org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol : avgSol) {
 			IncrementalMagFreqDist mfd;
 			if (participation)
 				mfd = sol.calcParticipationMFD_forParentSect(parentSectionID, minMag, maxMag, numMag);
@@ -1845,7 +1844,7 @@ public class CommandLineInversionRunner {
 		}
 	}
 	
-	public static void writeRupPairingSmoothnessPlot(FaultSystemSolution sol, String prefix, File dir)
+	public static void writeRupPairingSmoothnessPlot(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, String prefix, File dir)
 			throws IOException {
 		List<IDPairing> pairings = RupRateSmoothingInversionConstraint.getRupSmoothingPairings(sol.getRupSet());
 		

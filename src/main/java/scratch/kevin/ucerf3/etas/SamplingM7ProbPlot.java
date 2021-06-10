@@ -20,7 +20,6 @@ import org.opensha.commons.gui.plot.PlotSpec;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
@@ -62,7 +61,7 @@ public class SamplingM7ProbPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			FaultSystemSolution fss) {
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		boolean[] hasIts = new boolean[maxOTs.length];
 		for (ETAS_EqkRupture rup : completeCatalog) {
 			if (rup.getMag() >= minMag) {
@@ -77,7 +76,7 @@ public class SamplingM7ProbPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		for (int d=0; d<maxOTs.length; d++) {
 			double totalProb = calcProb(0, hasMatches.get(d))*100d;

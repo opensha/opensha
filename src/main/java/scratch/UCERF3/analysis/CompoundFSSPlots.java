@@ -85,6 +85,9 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
@@ -116,8 +119,6 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -1986,7 +1987,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 		
 		public static void calcFaultProbs(EvenlyDiscretizedFunc probFunc, EvenlyDiscretizedFunc rateFunc, FaultSystemSolutionERF erf,
-				FaultSystemRupSet rupSet, Collection<Integer> faultRups) {
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, Collection<Integer> faultRups) {
 			List<List<Double>> probs = Lists.newArrayList();
 			for (int i=0; i<probFunc.size(); i++)
 				probs.add(new ArrayList<Double>());
@@ -2060,7 +2061,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				rupsCache = rupInRegionsCaches.get(fm);
 			}
 			
-			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 			
 			Map<String, HashSet<Integer>> fmRups = mainFaultsRuptures.get(fm);
 			if (fmRups == null) {
@@ -5823,7 +5824,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		protected void doFinalizePlot() {
 			// this builds the CSV files and also calculates UCERF2 comparisons.
 			
-			InversionFaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher
+			FaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher
 					.getUCERF2Solution(FaultModels.FM2_1);
 			List<AveSlipConstraint> ucerf2AveSlipConstraints;
 			List<PaleoRateConstraint> ucerf2PaleoConstraints;
@@ -6108,15 +6109,18 @@ public abstract class CompoundFSSPlots implements Serializable {
 			FaultSystemRupSet rupSet = new FaultSystemRupSet(reference.getFaultSectionDataList(),
 					reference.getSlipRateForAllSections(), reference.getSlipRateStdDevForAllSections(),
 					reference.getAreaForAllSections(), reference.getSectionIndicesForAllRups(), mags,
-					reference.getAveRakeForAllRups(), reference.getAreaForAllRups(), reference.getLengthForAllRups(), info);
+					reference.getAveRakeForAllRups(), reference.getAreaForAllRups(), reference.getLengthForAllRups());
+			rupSet.setInfoString(info);
 			
 			GridSourceProvider gridSources = new GridSourceFileReader(region,
 					plot.nodeSubSeisMFDsMap.get(fm), plot.nodeUnassociatedMFDsMap.get(fm));
 //			InversionFaultSystemSolution sol = new InversionFaultSystemSolution(rupSet, rates);
-			FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates, plot.subSeisMFDsMap.get(fm));
+			FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+			sol.addModule(new SubSeismoOnFaultMFDs(plot.subSeisMFDsMap.get(fm)));
 			sol.setGridSourceProvider(gridSources);
 			
-			FaultSystemIO.writeSol(sol, outputFile);
+//			FaultSystemIO.writeSol(sol, outputFile);
+			sol.getArchive().write(outputFile);
 			
 			DeformationModelFetcher.IMPERIAL_DDW_HACK = false;
 		}
@@ -7282,7 +7286,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				List<List<double[]>> valuesList = valuesMap.get(fm);
 				List<Double> weightsList = weightsMap.get(fm);
 
-				FaultSystemSolution ucerf2 = UCERF2_ComparisonSolutionFetcher
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2 = UCERF2_ComparisonSolutionFetcher
 						.getUCERF2Solution(fm);
 
 				for (int i = 0; i < ranges.size(); i++) {
@@ -7607,7 +7611,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private List<GeoDataSet> calcProbsSupraSubSeis(
 				FaultPolyMgr polys, FaultSystemSolutionERF erf, List<GriddedGeoDataSet> subSeisProbs) {
 			List<GeoDataSet> datas = Lists.newArrayList();
-			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 			
 			for (int i=0; i<ranges.size(); i++) {
 				double minMag = ranges.get(i)[0];

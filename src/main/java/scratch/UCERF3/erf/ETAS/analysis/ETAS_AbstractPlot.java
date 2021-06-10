@@ -17,11 +17,11 @@ import java.util.concurrent.TimeUnit;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
@@ -103,7 +103,7 @@ public abstract class ETAS_AbstractPlot {
 		getLauncher().checkInFSS(fss);
 	}
 	
-	public final void processCatalog(ETAS_Catalog catalog, FaultSystemSolution fss) {
+	public final void processCatalog(ETAS_Catalog catalog, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		ETAS_Catalog triggeredOnlyCatalog = null;
 		if (isFilterSpontaneous())
 			triggeredOnlyCatalog = ETAS_Launcher.getFilteredNoSpontaneous(config, catalog);
@@ -111,7 +111,7 @@ public abstract class ETAS_AbstractPlot {
 	}
 	
 	public final void processCatalog(ETAS_Catalog completeCatalog,
-			ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
+			ETAS_Catalog triggeredOnlyCatalog, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		processStopwatch.start();
 		try {
 			if (asyncManager == null)
@@ -138,7 +138,7 @@ public abstract class ETAS_AbstractPlot {
 	}
 	
 	protected abstract void doProcessCatalog(ETAS_Catalog completeCatalog,
-			ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss);
+			ETAS_Catalog triggeredOnlyCatalog, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss);
 	
 	public ETAS_Config getConfig() {
 		return config;
@@ -162,7 +162,7 @@ public abstract class ETAS_AbstractPlot {
 	 * @param fss
 	 * @throws IOException
 	 */
-	public final void finalize(File outputDir, FaultSystemSolution fss) throws IOException {
+	public final void finalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) throws IOException {
 		int threads = Integer.min(8, Runtime.getRuntime().availableProcessors());
 		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		List<? extends Runnable> runnables = finalize(outputDir, fss, exec);
@@ -191,14 +191,14 @@ public abstract class ETAS_AbstractPlot {
 	 * @return list of Runnable instances to be executed in parallel before generateMarkdown is called, or null
 	 * @throws IOException
 	 */
-	public final List<? extends Runnable> finalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+	public final List<? extends Runnable> finalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		if (asyncManager != null)
 			asyncManager.waitOnFutures();
 		return doFinalize(outputDir, fss, exec);
 	}
 	
-	protected abstract List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec) throws IOException;
+	protected abstract List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec) throws IOException;
 	
 	public abstract List<String> generateMarkdown(String relativePathToOutputDir, String topLevelHeading, String topLink) throws IOException;
 	
@@ -383,7 +383,7 @@ public abstract class ETAS_AbstractPlot {
 		}
 		
 		public void processAsync(ETAS_Catalog completeCatalog,
-				ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
+				ETAS_Catalog triggeredOnlyCatalog, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 			futures.add(exec.submit(new ProcessRunnable(completeCatalog, triggeredOnlyCatalog, fss)));
 		}
 		
@@ -401,10 +401,10 @@ public abstract class ETAS_AbstractPlot {
 	private class ProcessRunnable implements Runnable {
 		private final ETAS_Catalog completeCatalog;
 		private final ETAS_Catalog triggeredOnlyCatalog;
-		private final FaultSystemSolution fss;
+		private final org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
 		
 		public ProcessRunnable(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-				FaultSystemSolution fss) {
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 			this.completeCatalog = completeCatalog;
 			this.triggeredOnlyCatalog = triggeredOnlyCatalog;
 			this.fss = fss;

@@ -10,7 +10,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
 import org.opensha.commons.calc.FaultMomentCalc;
@@ -21,8 +24,15 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.SubModule;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -34,7 +44,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.SlipAlongRuptureModelRupSet;
 import scratch.UCERF3.SlipEnabledRupSet;
 import scratch.UCERF3.analysis.DeformationModelsCalc;
@@ -112,16 +121,11 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	private List<List<Integer>> clusterRups;
 	private List<List<Integer>> clusterSects;
 
-	// this holds the various MFDs implied by the inversion fault system rupture set 
-	// (e.g., we need to know the sub-seismo on-fault moment rates to reduce slip rates accordingly)
-	private InversionTargetMFDs inversionMFDs;
-
 	private List<List<Integer>> sectionConnectionsListList;
 
 	private Map<IDPairing, Double> subSectionDistances;
 
 	public final static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6.0;
-	protected double[] minMagForSectArray; //TODO: this is only used in one method, which we need to override in NSHM. 
 	private boolean[] isRupBelowMinMagsForSects;
 
  	/**
@@ -133,8 +137,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
  	@SuppressWarnings("unused")
 	public InversionFaultSystemRupSet(FaultSystemRupSet rupSet, LogicTreeBranch branch) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
-		setLogicTreeBranch(branch);
-		setParamsFromBranch(branch);		
+		init(branch);		
 		init(rupSet);
 		
 		/*
@@ -148,19 +151,22 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		 * As I did this first and got it working, I decided to leave this here for now - CBC.
 		 * 
 		 */
-		if (rupSet.getClusterRuptures() == null) {
-			 SectionDistanceAzimuthCalculator distCalc = rupSet.getPlausibilityConfiguration().getDistAzCalc(); 
-			 double maxDist = rupSet.getPlausibilityConfiguration().getConnectionStrategy().getMaxJumpDist();
-			 boolean cumulativeJumps = true;
-			 RuptureConnectionSearch search = new RuptureConnectionSearch(
-					 rupSet,
-					 distCalc, maxDist, cumulativeJumps); 
-			 buildClusterRups(search);
+		//		if (rupSet.getClusterRuptures() == null) {
+		if (!rupSet.hasModule(ClusterRuptures.class)) {
+			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+			if (plausibility != null) {
+				SectionDistanceAzimuthCalculator distCalc = plausibility.getDistAzCalc(); 
+				double maxDist = plausibility.getConnectionStrategy().getMaxJumpDist();
+				boolean cumulativeJumps = true;
+				RuptureConnectionSearch search = new RuptureConnectionSearch(rupSet,
+						distCalc, maxDist, cumulativeJumps); 
+				rupSet.addModule(ClusterRuptures.instance(this, search));
+			}
 		} else {
 			// When we have a rupset loaded from disk with cluster_ruptures.json, this should be enough...
-			setClusterRuptures(rupSet.getClusterRuptures()); 			
+			addModule(rupSet.getModule(ClusterRuptures.class)); 			
 		}
-	}		
+ 	}
 	
 	/**
 	 * This creates a new InversionFaultSystemRupSet for the given cluster list, which may or may have been
@@ -183,8 +189,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		
 		this.faultSectionData = faultSectionData;
 
-		this.logicTreeBranch = branch;
-		setParamsFromBranch(branch);
+		init(branch);
 		this.filter = sectionClusterList.getPlausibilityConfiguration();
 		this.subSectionDistances = sectionClusterList.getSubSectionDistances();
 		this.sectionConnectionsListList = sectionClusterList.getSectionConnectionsListList();
@@ -218,14 +223,15 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 			List<List<Integer>> clusterRups,
 			List<List<Integer>> clusterSects) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
-		setPlausibilityConfiguration(rupSet.getPlausibilityConfiguration());
+		if (rupSet.hasModule(PlausibilityConfiguration.class))
+			addModule(rupSet.getModule(PlausibilityConfiguration.class));
 
-		setParamsFromBranch(branch);
-		this.logicTreeBranch = branch;
+		init(branch);
 		init(rupSet);
 
 		//this must come after the init(rupSet) call.
-		setClusterRuptures(rupSet.getClusterRuptures());
+		if (rupSet.hasModule(ClusterRuptures.class))
+			addModule(rupSet.getModule(ClusterRuptures.class));
 		
 		int numSects = rupSet.getNumSections();
 		int numRups = rupSet.getNumRuptures();
@@ -253,13 +259,15 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		this.clusterSects = clusterSects;
 	}
 
-	private void setParamsFromBranch(LogicTreeBranch branch) {
+	private void init(LogicTreeBranch branch) {
 		if (branch.hasValue(FaultModels.class))
 			this.faultModel = branch.getValue(FaultModels.class);
 		if (branch.hasValue(DeformationModels.class))
 			this.defModName = branch.getValue(DeformationModels.class);
-		if (branch.hasValue(ScalingRelationships.class))
+		if (branch.hasValue(ScalingRelationships.class)) {
 			this.scalingRelationship = branch.getValue(ScalingRelationships.class);
+			addModule(AveSlipModule.forModel(this, scalingRelationship));
+		}
 		if (branch.hasValue(SlipAlongRuptureModels.class))
 			this.slipModelType = branch.getValue(SlipAlongRuptureModels.class);
 		if (branch.hasValue(InversionModels.class))
@@ -272,6 +280,21 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 			this.applyImpliedCouplingCoeff = branch.getValue(MomentRateFixes.class).isApplyCC();
 		if (branch.hasValue(SpatialSeisPDF.class))
 			this.spatialSeisPDF = branch.getValue(SpatialSeisPDF.class);
+		setLogicTreeBranch(branch);
+		addAvailableModule(new Callable<ModSectMinMags>() {
+
+			@Override
+			public ModSectMinMags call() throws Exception {
+				return ModSectMinMags.instance(InversionFaultSystemRupSet.this, calcFinalMinMagForSections());
+			}
+		}, ModSectMinMags.class);
+		addAvailableModule(new Callable<InversionTargetMFDs>() {
+
+			@Override
+			public InversionTargetMFDs call() throws Exception {
+				return new InversionTargetMFDs(InversionFaultSystemRupSet.this);
+			}
+		}, InversionTargetMFDs.class);
 	}
 
 	// TODO [re]move (put in FaultSectionPrefData class?)
@@ -394,7 +417,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		// set with what he have now before inversionMFDs instantiation (we'll set again with slips later)
 		init(faultSectionData, null, null, sectAreasReduced, sectionsForRups, rupMeanMag, rupRake, rupArea, rupLength, infoString);
 		
-		inversionMFDs = new InversionTargetMFDs(this);
+		InversionTargetMFDs inversionMFDs = getInversionTargetMFDs();
 
 		ArrayList<GutenbergRichterMagFreqDist> subSeismoOnFaultMFD_List = inversionMFDs.getSubSeismoOnFaultMFD_List();
 		double impliedOnFaultCouplingCoeff = inversionMFDs.getImpliedOnFaultCouplingCoeff();
@@ -491,7 +514,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	// Ave Slip and Slip On Sections Methods
 
 	@Override
-	public void copyCacheFrom(FaultSystemRupSet rupSet) {
+	public void copyCacheFrom(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 		super.copyCacheFrom(rupSet);
 		if (rupSet instanceof InversionFaultSystemRupSet) {
 			FaultModels myFM = getFaultModel();
@@ -629,6 +652,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	public LogicTreeBranch getLogicTreeBranch() { return logicTreeBranch; }
 	
 	public void setLogicTreeBranch(LogicTreeBranch logicTreeBranch) {
+		addModule(logicTreeBranch);
 		this.logicTreeBranch = logicTreeBranch;
 	}
 
@@ -647,9 +671,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	}
 
 	public InversionTargetMFDs getInversionTargetMFDs() {
-		if (inversionMFDs == null)
-			inversionMFDs = new InversionTargetMFDs(this);
-		return inversionMFDs;
+		return getModule(InversionTargetMFDs.class);
 	}
 
 	/**
@@ -682,6 +704,16 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				"\t"+(float)getTotalReducedMomentRate()+"\t"+(float)getInversionTargetMFDs().getOffFaultMmaxIfOrigMoRateSatisfied();
 		return str;
 	}
+	
+	/**
+	 * This computes the final minimum mag for eachfault section.
+	 * See doc for FaultSystemRupSetCalc.computeMinSeismoMagForSections() for details.
+	 * @param sectIndex
+	 * @return
+	 */
+	protected double[] calcFinalMinMagForSections() {
+		return FaultSystemRupSetCalc.computeMinSeismoMagForSections(this,MIN_MAG_FOR_SEISMOGENIC_RUPS);
+	}
 
 	/**
 	 * This returns the final minimum mag for a given fault section.
@@ -690,10 +722,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return
 	 */
 	public synchronized double getFinalMinMagForSection(int sectIndex) {
-		if(minMagForSectArray == null) {
-			minMagForSectArray = FaultSystemRupSetCalc.computeMinSeismoMagForSections(this,MIN_MAG_FOR_SEISMOGENIC_RUPS);
-		}
-		return minMagForSectArray[sectIndex];
+		return getModule(ModSectMinMags.class).getMinMagForSection(sectIndex);
 	}
 
 
@@ -709,10 +738,8 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 
 		// see if it needs to be computed
 		if(isRupBelowMinMagsForSects == null) {
-			if(minMagForSectArray == null) {
-				minMagForSectArray = FaultSystemRupSetCalc.computeMinSeismoMagForSections(this,MIN_MAG_FOR_SEISMOGENIC_RUPS);
-			}
-			isRupBelowMinMagsForSects = FaultSystemRupSetCalc.computeWhichRupsFallBelowSectionMinMags(this, minMagForSectArray);
+			ModSectMinMags minMagsModule = getModule(ModSectMinMags.class);
+			isRupBelowMinMagsForSects = FaultSystemRupSetCalc.computeWhichRupsFallBelowSectionMinMags(this, minMagsModule);
 		}
 
 		return isRupBelowMinMagsForSects[rupIndex];
@@ -734,7 +761,11 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return
 	 */
 	public double getUpperMagForSubseismoRuptures(int sectIndex) {
-		return SectionMFD_constraint.getLowerEdgeOfFirstBin(getFinalMinMagForSection(sectIndex)) - InversionTargetMFDs.DELTA_MAG/2;
+		return getUpperMagForSubseismoRuptures(getFinalMinMagForSection(sectIndex));
+	}
+	
+	public static double getUpperMagForSubseismoRuptures(double finalMinMag) {
+		return SectionMFD_constraint.getLowerEdgeOfFirstBin(finalMinMag) - InversionTargetMFDs.DELTA_MAG/2;
 	}
 
 

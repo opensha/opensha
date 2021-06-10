@@ -30,8 +30,6 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.FSSRupsInRegionCache;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -75,13 +73,13 @@ public class HaywiredSRL_PaperCalc {
 	private static final double gridRegDiscr = 0.02;
 	
 	public static GriddedGeoDataSet calcTINucleation(
-			GriddedRegion reg, FaultSystemSolution sol, double duration, double minMag) {
+			GriddedRegion reg, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, double duration, double minMag) {
 		// first ruptures
 		
 		// cache fraction of each subsection surface associated with each node
 		System.out.println("Caching sect to node mappings with "+reg.getNodeCount()+" nodes");
 		List<Map<Integer, Double>> sectFractNodesMaps = new ArrayList<>();
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		for (int s=0; s<rupSet.getNumSections(); s++) {
 			Map<Integer, Double> sectFractNodesMap = new HashMap<>();
 			sectFractNodesMaps.add(sectFractNodesMap);
@@ -242,7 +240,7 @@ public class HaywiredSRL_PaperCalc {
 		File fssFile = new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		FaultSystemSolution refSol = null;
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution refSol = null;
 		
 		if (calcFractInReg)
 			calcFractWithinRegion(new double[] {2.5, 5},  faultFullFile, new CaliforniaRegions.SF_BOX(), otScenarioOneWeek);

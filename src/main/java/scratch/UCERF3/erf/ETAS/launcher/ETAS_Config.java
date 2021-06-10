@@ -31,7 +31,6 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
@@ -1114,8 +1113,8 @@ public class ETAS_Config {
 		this.configTime = configTime;
 	}
 
-	private transient FaultSystemSolution fss;
-	public synchronized FaultSystemSolution loadFSS() {
+	private transient org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
+	public synchronized org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution loadFSS() {
 		if (fss == null) {
 			Preconditions.checkNotNull(fssFile, "Must specify fault system solution file");
 			Preconditions.checkState(fssFile.exists(), "FSS file doesn't exist");

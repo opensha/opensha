@@ -407,6 +407,8 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 					
 					records.add(new ModuleRecord(archivable.getName(), archivable.getLoadingClass().getName(), prefix));
 				}
+			} else {
+				System.out.println("\tSkipping transient module: "+module.getName());
 			}
 		}
 		

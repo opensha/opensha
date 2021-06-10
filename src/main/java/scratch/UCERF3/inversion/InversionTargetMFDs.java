@@ -5,7 +5,10 @@ import java.util.List;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -16,6 +19,7 @@ import org.opensha.sha.magdist.TaperedGR_MagFreqDist;
 import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
@@ -94,14 +98,13 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
  * @author field
  *
  */
-public class InversionTargetMFDs {
+public class InversionTargetMFDs implements OpenSHA_Module { // TODO serialization if we intend to keep this class
 	
 	// debugging flag
 	protected final static boolean D = false;
 	final static boolean GR_OFF_FAULT_IS_TAPERED = true;
 	protected String debugString;
 	
-	protected InversionFaultSystemRupSet invRupSet;
 	protected double totalRegionRateMgt5;
 	protected double onFaultRegionRateMgt5;
 	protected double offFaultRegionRateMgt5;
@@ -150,10 +153,10 @@ public class InversionTargetMFDs {
 	 * @param invRupSet
 	 */
 	public InversionTargetMFDs(InversionFaultSystemRupSet invRupSet) {
-		
-		this.invRupSet=invRupSet;
-		
-		LogicTreeBranch logicTreeBranch = invRupSet.getLogicTreeBranch();
+		init(invRupSet, invRupSet.getModule(LogicTreeBranch.class), invRupSet.getModule(ModSectMinMags.class));
+	}
+	
+	private void init(FaultSystemRupSet rupSet, LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
 		this.inversionModel = logicTreeBranch.getValue(InversionModels.class);
 		this.totalRegionRateMgt5 = logicTreeBranch.getValue(TotalMag5Rate.class).getRateMag5();
 		this.mMaxOffFault = logicTreeBranch.getValue(MaxMagOffFault.class).getMaxMagOffFault();
@@ -176,11 +179,11 @@ public class InversionTargetMFDs {
 
 		
 		// test to make sure it's a statewide deformation model
-		DeformationModels dm = invRupSet.getDeformationModel();
+		DeformationModels dm = logicTreeBranch.getValue(DeformationModels.class);
 		if(dm == DeformationModels.UCERF2_BAYAREA || dm == DeformationModels.UCERF2_NCAL)
 			throw new RuntimeException("Error - "+dm+" not yet supported by InversionMFD");
 		
-		List<? extends FaultSection> faultSectionData =  invRupSet.getFaultSectionDataList();
+		List<? extends FaultSection> faultSectionData =  rupSet.getFaultSectionDataList();
 		
 		gridSeisUtils = new GriddedSeisUtils(faultSectionData, spatialSeisPDFforOnFaultRates, FAULT_BUFFER);
 		
@@ -194,11 +197,12 @@ public class InversionTargetMFDs {
 		onFaultRegionRateMgt5 = totalRegionRateMgt5*fractionSeisOnFault;
 		offFaultRegionRateMgt5 = totalRegionRateMgt5-onFaultRegionRateMgt5;
 		origOnFltDefModMoRate = DeformationModelsCalc.calculateTotalMomentRate(faultSectionData,true);
-		offFltDefModMoRate = DeformationModelsCalc.calcMoRateOffFaultsForDefModel(invRupSet.getFaultModel(), invRupSet.getDeformationModel());
+		offFltDefModMoRate = DeformationModelsCalc.calcMoRateOffFaultsForDefModel(
+				logicTreeBranch.getValue(FaultModels.class), logicTreeBranch.getValue(DeformationModels.class));
 
 		// make the total target GR for region
 		totalTargetGR = new GutenbergRichterMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
-		roundedMmaxOnFault = totalTargetGR.getX(totalTargetGR.getClosestXIndex(invRupSet.getMaxMag()));
+		roundedMmaxOnFault = totalTargetGR.getX(totalTargetGR.getClosestXIndex(rupSet.getMaxMag()));
 		totalTargetGR.setAllButTotMoRate(MIN_MAG, roundedMmaxOnFault, totalRegionRateMgt5*1e5, 1.0);
 		
 		totalTargetGR_NoCal = new GutenbergRichterMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);	
@@ -209,7 +213,7 @@ public class InversionTargetMFDs {
 		totalTargetGR_SoCal.setAllButTotMoRate(MIN_MAG, roundedMmaxOnFault, totalRegionRateMgt5*fractSeisInSoCal*1e5, 1.0);
 		
 		// get ave min seismo mag for region
-		double tempMag = FaultSystemRupSetCalc.getMeanMinMag(invRupSet, true);
+		double tempMag = FaultSystemRupSetCalc.getMeanMinMag(rupSet, finalMinMags, true);
 		
 		// This is a test of applying the minimum rather than average among section min mags in the tri-linear target
 		// (increases on fault target by up to 11% (at mean mag) by doing this for case tested; not a big diff, and will make implied off-fault CC worse)
@@ -249,7 +253,8 @@ public class InversionTargetMFDs {
 			trulyOffFaultMFD = FaultSystemRupSetCalc.getTriLinearCharOffFaultTargetMFD(totalTargetGR, onFaultRegionRateMgt5, aveMinSeismoMag, mMaxOffFault);
 
 //			subSeismoOnFaultMFD_List = FaultSystemRupSetCalc.getCharSubSeismoOnFaultMFD_forEachSection(invRupSet, spatialSeisPDF, totalTargetGR);
-			subSeismoOnFaultMFD_List = FaultSystemRupSetCalc.getCharSubSeismoOnFaultMFD_forEachSection(invRupSet, gridSeisUtils, totalTargetGR);
+			subSeismoOnFaultMFD_List = FaultSystemRupSetCalc.getCharSubSeismoOnFaultMFD_forEachSection(
+					rupSet, finalMinMags, gridSeisUtils, totalTargetGR);
 
 			totalSubSeismoOnFaultMFD = new SummedMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
 			for(int m=0; m<subSeismoOnFaultMFD_List.size(); m++) {
@@ -284,7 +289,7 @@ public class InversionTargetMFDs {
 			// GR
 			
 			// get the total GR nucleation MFD for all fault sections based on their orig (creep reduced) slip rates and max mags
-			SummedMagFreqDist impliedOnFault_GR_NuclMFD = FaultSystemRupSetCalc.calcImpliedGR_NucleationMFD(invRupSet, MIN_MAG, NUM_MAG, DELTA_MAG);
+			SummedMagFreqDist impliedOnFault_GR_NuclMFD = FaultSystemRupSetCalc.calcImpliedGR_NucleationMFD(rupSet, MIN_MAG, NUM_MAG, DELTA_MAG);
 
 			// compute coupling coefficient
 			impliedOnFaultCouplingCoeff = onFaultRegionRateMgt5/impliedOnFault_GR_NuclMFD.getCumRate(5.05);
@@ -298,7 +303,7 @@ public class InversionTargetMFDs {
 			}
 
 			// split the on-fault MFDs into supra- vs sub-seismo MFDs, and apply tempCoupCoeff
-			ArrayList<GutenbergRichterMagFreqDist> grNuclMFD_List = FaultSystemRupSetCalc.calcImpliedGR_NuclMFD_ForEachSection(invRupSet, MIN_MAG, NUM_MAG, DELTA_MAG);
+			ArrayList<GutenbergRichterMagFreqDist> grNuclMFD_List = FaultSystemRupSetCalc.calcImpliedGR_NuclMFD_ForEachSection(rupSet, MIN_MAG, NUM_MAG, DELTA_MAG);
 			subSeismoOnFaultMFD_List = new ArrayList<GutenbergRichterMagFreqDist>();
 			totalSubSeismoOnFaultMFD = new SummedMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
 			targetOnFaultSupraSeisMFD = new SummedMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
@@ -309,7 +314,8 @@ public class InversionTargetMFDs {
 				GutenbergRichterMagFreqDist grNuclMFD = grNuclMFD_List.get(s);
 //				int minSupraMagIndex = grNuclMFD.getClosestXIndex(invRupSet.getMinMagForSection(s));
 //				double maxMagSubSeismo = grNuclMFD.getX(minSupraMagIndex-1);
-				double maxMagSubSeismo = invRupSet.getUpperMagForSubseismoRuptures(s);
+//				double maxMagSubSeismo = invRupSet.getUpperMagForSubseismoRuptures(s);
+				double maxMagSubSeismo = InversionFaultSystemRupSet.getUpperMagForSubseismoRuptures(finalMinMags.getMinMagForSection(s));
 				int minSupraMagIndex = grNuclMFD.getXIndex(maxMagSubSeismo)+1;
 				GutenbergRichterMagFreqDist subSeisGR = new GutenbergRichterMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG, MIN_MAG, maxMagSubSeismo, 1.0, 1.0);
 				double rateAtZeroMagBin = grNuclMFD.getY(0)*tempCoupCoeff;
@@ -564,6 +570,11 @@ public class InversionTargetMFDs {
 				new GutenbergRichterMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG, 1.0, 1.0);
 		gr.scaleToCumRate(0, totalRegionRateMgt5*1e5);
 		return gr;
+	}
+
+	@Override
+	public String getName() {
+		return "UCERF3 Inversion Target MFDs";
 	}
 
 

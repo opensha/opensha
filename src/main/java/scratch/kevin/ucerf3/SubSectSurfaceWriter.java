@@ -19,7 +19,6 @@ import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -47,7 +46,7 @@ public class SubSectSurfaceWriter {
 		
 		for (FaultModels fm : sols.keySet()) {
 			System.out.println(fm);
-			FaultSystemRupSet rupSet = sols.get(fm).getRupSet();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sols.get(fm).getRupSet();
 			for (boolean reduce : new boolean[] {false, true}) {
 				String dirName = fm.encodeChoiceString()+"_"+(float)gridSpacing+"km";
 				if (reduce)

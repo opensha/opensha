@@ -100,7 +100,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 	 * Initialize from another rupSet
 	 * @param rupSet
 	 */
-	protected void init(FaultSystemRupSet rupSet) {
+	protected void init(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 		init(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
@@ -138,27 +138,6 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 		
 		if (info != null && !info.isBlank())
 			addModule(new InfoModule(info));
-	}
-	
-	/**
-	 * This returns the magnitude of the smallest rupture involving this section or NaN
-	 * if no ruptures involve this section.  This is called "Orig" because subclasses
-	 * may filter the minimum magnitudes further (e.g., so they don't fall below some
-	 * threshold).
-	 * @param sectIndex
-	 * @return
-	 */
-	public double getOrigMinMagForSection(int sectIndex) {
-		List<Integer> rups = getRupturesForSection(sectIndex);
-		if (rups.isEmpty())
-			return Double.NaN;
-		double minMag = Double.POSITIVE_INFINITY;
-		for (int rupIndex : getRupturesForSection(sectIndex)) {
-			double mag = getMagForRup(rupIndex);
-			if (mag < minMag)
-				minMag = mag;
-		}
-		return minMag;
 	}
 	
 	
@@ -306,7 +285,10 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 	 */
 	@Deprecated
 	public void setPlausibilityConfiguration(PlausibilityConfiguration plausibilityConfig) {
-		addModule(plausibilityConfig);
+		if (plausibilityConfig == null)
+			removeModuleInstances(PlausibilityConfiguration.class);
+		else
+			addModule(plausibilityConfig);
 	}
 
 	/**
@@ -351,7 +333,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 		addModule(ClusterRuptures.instance(this, search));
 	}
 
-	public void copyCacheFrom(FaultSystemRupSet rupSet) {
+	public void copyCacheFrom(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 		super.copyCacheFrom(rupSet);
 	}
 	

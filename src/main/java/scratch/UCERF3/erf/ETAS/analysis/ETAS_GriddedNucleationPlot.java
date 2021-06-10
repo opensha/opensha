@@ -23,12 +23,11 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
@@ -105,7 +104,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			FaultSystemSolution fss) {
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		if (hasSpont)
 			doProcessCatalog(completeCatalog, totalXYZs, null, totalIncrCounts);
 		if (hasTriggered)
@@ -140,7 +139,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	private boolean ratio_spread_across_poly = false;
 
 	@Override
-	protected List<MapRunnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+	protected List<MapRunnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		if (numRupsSkipped > 0)
 			System.out.println("GriddedNucleation: skipped "+numRupsSkipped+" ruptures outside of region");
@@ -155,7 +154,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 				fssXYZs = new GriddedGeoDataSet[totalXYZs.length];
 				System.out.println("Calculating FSS mfds");
 				GriddedRegion gridReg = gridProv.getGriddedRegion();
-				FaultSystemRupSet rupSet = fss.getRupSet();
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
 				FaultPolyMgr polyMGR = null;
 				if (ratio_spread_across_poly)
 					polyMGR = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);

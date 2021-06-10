@@ -19,8 +19,6 @@ import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -98,9 +96,9 @@ public class StandaloneCalc {
 		
 		Map<Integer, List<LastEventData>> lastEventData = LastEventData.load();
 		
-		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
 		
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		double[] gridSeisCorrections = null;
 		

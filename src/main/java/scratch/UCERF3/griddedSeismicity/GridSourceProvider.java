@@ -1,6 +1,7 @@
 package scratch.UCERF3.griddedSeismicity;
 
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -12,7 +13,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @author Peter Powers
  * @version $Id:$
  */
-public interface GridSourceProvider {
+public interface GridSourceProvider extends OpenSHA_Module { // TODO serialization
 
 	/**
 	 * Returns the number of sources in the provider.

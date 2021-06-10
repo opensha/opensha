@@ -23,7 +23,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -231,7 +230,7 @@ public class GMT_CA_Maps {
 	 * @param dirName
 	 * @throws IOException
 	 */
-	public static void plotRatioOfNucleationRateMaps(FaultSystemSolution faultSysSolution1, FaultSystemSolution faultSysSolution2, double minMag, 
+	public static void plotRatioOfNucleationRateMaps(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution faultSysSolution1, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution faultSysSolution2, double minMag, 
 			double maxMag, String scaleLabel,
 			String metadata, String dirName) throws IOException {
 		
@@ -283,7 +282,7 @@ public class GMT_CA_Maps {
 	 * @param dirName
 	 * @throws IOException
 	 */
-	public static void plotRatioOfParticipationRateMaps(FaultSystemSolution faultSysSolution1, FaultSystemSolution faultSysSolution2, 
+	public static void plotRatioOfParticipationRateMaps(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution faultSysSolution1, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution faultSysSolution2, 
 			double minMag, double maxMag, String scaleLabel,
 			String metadata, String dirName) throws IOException {
 		
@@ -331,7 +330,7 @@ public class GMT_CA_Maps {
 	 * @param dirName
 	 * @throws IOException 
 	 */
-	public static void plotNucleationRateMap(FaultSystemSolution faultSysSolution, double minMag, double maxMag, String scaleLabel,
+	public static void plotNucleationRateMap(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution faultSysSolution, double minMag, double maxMag, String scaleLabel,
 			String metadata, String dirName) throws IOException {
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(faultSysSolution);
 		erf.updateForecast();
@@ -402,7 +401,7 @@ public class GMT_CA_Maps {
 	 * @param dirName
 	 * @throws IOException 
 	 */
-	public static void plotParticipationRateMap(FaultSystemSolution faultSysSolution, double minMag, double maxMag, String scaleLabel,
+	public static void plotParticipationRateMap(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution faultSysSolution, double minMag, double maxMag, String scaleLabel,
 			String metadata, String dirName) throws IOException {
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(faultSysSolution);
 		erf.updateForecast();

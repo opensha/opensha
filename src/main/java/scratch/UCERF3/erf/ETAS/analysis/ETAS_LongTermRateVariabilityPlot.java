@@ -33,7 +33,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -155,7 +154,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			FaultSystemSolution fss) {
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		long simStartTime = getConfig().getSimulationStartTimeMillis();
 		double simDuration = getConfig().getDuration();
 		// pad by 1s for rounding errors
@@ -212,7 +211,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		

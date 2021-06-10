@@ -71,8 +71,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
@@ -647,7 +645,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			FaultSystemSolution fss) {
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		getPlotter(); // will initialize if not done yet
 		short[][][] magGridCounts = new short[durations.length][magBins.length][];
 		IncrementalMagFreqDist catMFD = new IncrementalMagFreqDist(
@@ -781,7 +779,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	boolean forecastOnly;
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 //		forecastOnly = getConfig().getSimulationStartTimeMillis() <= plotter.getEndTime()+60000l;
 		// if the simulation is less than 10 minutes old, don't bother with comparison plots
@@ -1130,7 +1128,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	}
 	
 	private String[][] writeMapPlots(File outputDir, String prefix, String zName, double[][][] data, boolean isProb,
-			FaultSystemRupSet rupSet, List<Runnable> mapRunnables) throws IOException {
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, List<Runnable> mapRunnables) throws IOException {
 		CPT cpt = baseCPT;
 		cpt.setBelowMinColor(Color.WHITE);
 		cpt.setNanColor(Color.WHITE);
@@ -1579,7 +1577,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
-			FaultSystemSolution fss = launcher.checkOutFSS();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = launcher.checkOutFSS();
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;

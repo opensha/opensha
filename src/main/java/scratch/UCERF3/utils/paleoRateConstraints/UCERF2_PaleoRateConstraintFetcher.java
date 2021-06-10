@@ -29,7 +29,6 @@ import org.opensha.commons.gui.plot.GraphWindow;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -101,7 +100,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 		Preconditions.checkState(solutions.size() > 0, "Must have at least one solution");
 
 		int numSolSects = -1;
-		for (FaultSystemSolution sol : solutions) {
+		for (org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol : solutions) {
 			if (numSolSects < 0)
 				numSolSects = sol.getRupSet().getNumSections();
 			Preconditions.checkArgument(sol.getRupSet().getNumSections() == numSolSects,
@@ -177,8 +176,8 @@ public class UCERF2_PaleoRateConstraintFetcher {
 				paleoRateX = x + relConstSect;
 
 				for (int i=0; i<solutions.size(); i++) {
-					FaultSystemSolution sol = solutions.get(i);
-					FaultSystemRupSet rupSet = sol.getRupSet();
+					org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = solutions.get(i);
+					org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 					Color color = GraphPanel.defaultColor[i % GraphPanel.defaultColor.length];
 
 					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc((double)x, numSects, 1d);

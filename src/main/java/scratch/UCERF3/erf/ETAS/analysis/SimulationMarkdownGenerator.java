@@ -41,6 +41,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileNameComparator;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 
 import com.google.common.base.Preconditions;
@@ -50,7 +51,6 @@ import com.google.common.primitives.Doubles;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -292,14 +292,14 @@ public class SimulationMarkdownGenerator {
 		
 		private ETAS_AbstractPlot plot;
 		private File plotsDir;
-		private FaultSystemSolution fss;
+		private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
 		
 		private Stopwatch finalizeSubWatch;
 
 		private ExecutorService exec;
 		private List<Future<?>> finalizeFutures;
 
-		public PlotFinalizeCallable(ETAS_AbstractPlot plot, File plotsDir, FaultSystemSolution fss,
+		public PlotFinalizeCallable(ETAS_AbstractPlot plot, File plotsDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss,
 				ExecutorService exec) {
 			this.plot = plot;
 			this.plotsDir = plotsDir;

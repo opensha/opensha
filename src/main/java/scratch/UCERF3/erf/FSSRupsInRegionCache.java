@@ -9,6 +9,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -16,9 +17,6 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RupInRegionCache;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
-
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -69,7 +67,7 @@ public class FSSRupsInRegionCache implements RupInRegionCache {
 		return false;
 	}
 	
-	public boolean isRupInRegion(FaultSystemSolution sol, int fssIndex, Region region, double surfGridSpacing) {
+	public boolean isRupInRegion(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, int fssIndex, Region region, double surfGridSpacing) {
 		Preconditions.checkArgument(fssIndex >= 0 && fssIndex < sol.getRupSet().getNumRuptures());
 		synchronized (this) {
 			// check if the solution has changed
@@ -82,7 +80,7 @@ public class FSSRupsInRegionCache implements RupInRegionCache {
 		synchronized (region) {
 			if (!sectsInRegions.containsKey(region)) {
 				// calculate sections in regions
-				FaultSystemRupSet rupSet = sol.getRupSet();
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 				boolean[] sects = new boolean[rupSet.getNumSections()];
 				for (int i=0; i<sects.length; i++) {
 					FaultSection sect = rupSet.getFaultSectionData(i);

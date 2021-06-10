@@ -98,7 +98,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	private boolean ignoreCache;
 	
 	private File storeDir;
-	private FaultSystemSolution meanTotalSol;
+	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanTotalSol;
 	private DiscretizedFunc[] meanTotalMFDs;
 	
 	private Map<Integer, List<LastEventData>> lastEventData;
@@ -181,11 +181,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		this(null, storeDir);
 	}
 
-	public MeanUCERF3(FaultSystemSolution meanTotalSol) {
+	public MeanUCERF3(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanTotalSol) {
 		this(meanTotalSol, getStoreDir());
 	}
 	
-	public MeanUCERF3(FaultSystemSolution meanTotalSol, File storeDir) {
+	public MeanUCERF3(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanTotalSol, File storeDir) {
 		super();
 		this.fileParamChanged = false;
 		this.meanTotalSol = meanTotalSol;
@@ -678,7 +678,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static void main(String[] args) {
 		File solFile = new File(getStoreDir(), "mean_ucerf3_sol.zip");
-		FaultSystemSolution sol;
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
 		try {
 			sol = FaultSystemIO.loadSol(solFile);
 		} catch (Exception e) {

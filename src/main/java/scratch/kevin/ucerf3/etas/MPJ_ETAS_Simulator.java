@@ -37,8 +37,6 @@ import com.google.common.io.Files;
 import com.google.common.primitives.Ints;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
@@ -64,7 +62,7 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
 public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	
 	private int numSims;
-	private FaultSystemSolution[] sols;
+	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution[] sols;
 //	private FaultSystemSolutionERF_ETAS erf;
 	private Map<Integer, List<LastEventData>> lastEventData;
 	private File inputDir;
@@ -150,7 +148,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		
 		File solFile = new File(cmd.getOptionValue("sol-file"));
 		Preconditions.checkArgument(solFile.exists(), "Solution file doesn't exist: "+solFile.getAbsolutePath());
-		sols = new FaultSystemSolution[getNumThreads()];
+		sols = new org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution[getNumThreads()];
 		// must load in solution for each thread as last even data will be overridden/updated
 		for (int i=0; i<sols.length; i++)
 			sols[i] = FaultSystemIO.loadSol(solFile);
@@ -194,8 +192,8 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 				int[] sects = resetMap.get(time);
 				if (rank == 0)
 					debug("Resetting "+sects.length+" sects to "+time);
-				for (FaultSystemSolution sol : sols) {
-					FaultSystemRupSet rupSet = sol.getRupSet();
+				for (org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol : sols) {
+					org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 					for (int s : sects)
 						rupSet.getFaultSectionData(s).setDateOfLastEvent(time);
 				}
@@ -221,7 +219,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		
 		fssScenarioRupID = -1;
 		
-		FaultSystemRupSet rupSet = sols[0].getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sols[0].getRupSet();
 		
 		histQkList = Lists.newArrayList();
 		if (cmd.hasOption("trigger-catalog")) {
@@ -396,11 +394,11 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	private class CalcThread extends Thread {
 		
 		private File outputDir;
-		private FaultSystemSolution sol;
+		private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
 		private Deque<Integer> queue;
 		private Map<Integer, Integer> restartsMap;
 		
-		private CalcThread(File outputDir, FaultSystemSolution sol,
+		private CalcThread(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
 				Deque<Integer> queue, Map<Integer, Integer> restartsMap) {
 			this.outputDir = outputDir;
 			this.sol = sol;

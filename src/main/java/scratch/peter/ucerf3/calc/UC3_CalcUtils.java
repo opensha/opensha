@@ -27,7 +27,6 @@ import com.google.common.io.Resources;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -82,7 +81,7 @@ public class UC3_CalcUtils {
 			boolean filterAftShk,
 			double duration) {
 		
-		FaultSystemSolution fss = getSolution(solPath);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = getSolution(solPath);
 		FaultSystemSolutionERF erf = new NSHMP_UCERF3_ERF(fss);
 		erf.setName(nameFromPath(solPath));
 		initUC3(erf, bgOpt, aleatoryMagArea, filterAftShk, duration);
@@ -229,7 +228,7 @@ public class UC3_CalcUtils {
 	 * @param path
 	 * @return an AFSS
 	 */
-	public static FaultSystemSolution getSolution(String path) {
+	public static org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution getSolution(String path) {
 		try {
 			File file = new File(path);
 			return FaultSystemIO.loadSol(file);

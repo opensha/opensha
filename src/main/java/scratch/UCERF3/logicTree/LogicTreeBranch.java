@@ -116,6 +116,10 @@ implements XMLSaveable {
 		super(levels, branch);
 	}
 	
+	private LogicTreeBranch() {
+		super();
+	}
+	
 	@SuppressWarnings("rawtypes")
 	private Class<? extends LogicTreeBranchNode> getClass(int index) {
 		return getEnumEnclosingClass(getValue(index).getClass());

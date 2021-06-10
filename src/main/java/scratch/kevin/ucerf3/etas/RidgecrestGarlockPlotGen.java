@@ -46,8 +46,6 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
@@ -128,8 +126,8 @@ public class RidgecrestGarlockPlotGen {
 		
 		double minMag = 7d;
 		
-		FaultSystemSolution fss = null;
-		FaultSystemRupSet rupSet = null;
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = null;
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = null;
 		FaultSystemSolutionERF erf = null;
 		List<Integer> garlockSources = null;
 		

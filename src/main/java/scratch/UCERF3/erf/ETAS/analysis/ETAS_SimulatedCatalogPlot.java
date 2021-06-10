@@ -28,7 +28,6 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -97,7 +96,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			FaultSystemSolution fss) {
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		if (Double.isNaN(maxMag)) {
 			maxMag = 0d;
 			if (getConfig().hasTriggers())
@@ -163,7 +162,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		List<XY_DataSet> inputFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> inputChars = new ArrayList<>();
@@ -450,7 +449,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
-			FaultSystemSolution fss = launcher.checkOutFSS();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = launcher.checkOutFSS();
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;

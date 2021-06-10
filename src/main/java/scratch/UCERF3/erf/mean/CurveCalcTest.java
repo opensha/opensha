@@ -22,7 +22,6 @@ import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -81,15 +80,15 @@ public class CurveCalcTest {
 		File outputDir = new File(args[1]);
 		
 		System.out.println("Loading solution...");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		System.out.println("done.");
 		
 		boolean gridded = args[2].trim().equals("gridded");
 		boolean truemean = args[2].trim().equals("truemean");
 		
 		String subdirName;
-		FaultSystemSolution calcSol;
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution calcSol;
 		
 		if (gridded) {
 			calcSol = sol;
@@ -117,7 +116,7 @@ public class CurveCalcTest {
 			System.out.println("Combining rups for tol="+upperDepthTol+", combineRakes="+combineRakes);
 			Stopwatch watch = Stopwatch.createStarted();
 			FaultSystemSolution reducedSol = RuptureCombiner.getCombinedSolution(sol, upperDepthTol, false, combineRakes, rakeBasis);
-			FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
 			watch.stop();
 			System.out.println("DONE. Took "+watch.elapsed(TimeUnit.SECONDS)+"s to reduce to "
 					+reducedRupSet.getNumRuptures()+"/"+rupSet.getNumRuptures()+" rups and "

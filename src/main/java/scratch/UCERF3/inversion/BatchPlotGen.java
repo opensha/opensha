@@ -24,6 +24,7 @@ import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -33,7 +34,6 @@ import com.google.common.collect.Maps;
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
 import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FileBasedFSSIterator;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -80,7 +80,7 @@ public class BatchPlotGen {
 		FaultBasedMapGen.plotSolutionSlipRates(sol, region, dir, prefix, false);
 		FaultBasedMapGen.plotSolutionSlipMisfit(sol, region, dir, prefix, false, true);
 		FaultBasedMapGen.plotSolutionSlipMisfit(sol, region, dir, prefix, false, false);
-		FaultSystemSolution ucerf2 = getUCERF2Comparision(sol.getRupSet().getFaultModel(), dir);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2 = getUCERF2Comparision(sol.getRupSet().getFaultModel(), dir);
 		for (double[] range : partic_mag_ranges) {
 			FaultBasedMapGen.plotParticipationRates(sol, region, dir, prefix, false, range[0], range[1]);
 			FaultBasedMapGen.plotParticipationRatios(sol, ucerf2, region, dir, prefix, false, range[0], range[1], true);
@@ -91,20 +91,21 @@ public class BatchPlotGen {
 		FaultBasedMapGen.plotSegmentation(sol, region, dir, prefix, false, 7.5, 10);
 	}
 	
-	private static HashMap<FaultModels, InversionFaultSystemSolution> ucerf2SolutionCache = Maps.newHashMap();
+	private static HashMap<FaultModels, FaultSystemSolution> ucerf2SolutionCache = Maps.newHashMap();
 	
-	private static InversionFaultSystemSolution getUCERF2Comparision(FaultModels fm, File dir) throws IOException, DocumentException {
+	private static FaultSystemSolution getUCERF2Comparision(FaultModels fm, File dir) throws IOException, DocumentException {
 		if (ucerf2SolutionCache.containsKey(fm))
 			return ucerf2SolutionCache.get(fm);
 		File cachedFile = new File(dir, fm.getShortName()+"_UCERF2_COMPARISON_SOL.zip");
-		InversionFaultSystemSolution sol;
+		FaultSystemSolution sol;
 		if (cachedFile.exists()) {
 			System.out.println("Loading UCERF2 comparison from: "+cachedFile.getName());
-			sol = FaultSystemIO.loadInvSol(cachedFile);
+//			sol = FaultSystemIO.loadInvSol(cachedFile);
+			sol = FaultSystemSolution.load(cachedFile);
 		} else {
 			sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(fm);
 			try {
-				FaultSystemIO.writeSol(sol, cachedFile);
+				sol.getArchive().write(cachedFile);
 			} catch (Exception e) {
 				// don't fail on a cache attempt
 				e.printStackTrace();

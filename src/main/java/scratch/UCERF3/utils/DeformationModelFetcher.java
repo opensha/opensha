@@ -124,6 +124,11 @@ public class DeformationModelFetcher {
 	public DeformationModelFetcher(FaultModels faultModel, DeformationModels deformationModel,
 			File precomputedDataDir, double defaultAseismicityValue) {
 		double maxSubSectionLength = 0.5; // in units of DDW
+		if (precomputedDataDir != null && !precomputedDataDir.exists()) {
+			File parent = precomputedDataDir.getParentFile();
+			if (parent != null && parent.getName().equals("scratch"))
+				precomputedDataDir.mkdir();
+		}
 		this.precomputedDataDir = new File(precomputedDataDir, SUB_DIR_NAME);
 //		if (!this.precomputedDataDir.exists())
 //			this.precomputedDataDir.mkdir();
@@ -1318,11 +1323,15 @@ public class DeformationModelFetcher {
 				distances = calculateDistances(maxDistance, faultSubSectPrefDataList);
 				// Now save to a binary file
 				try {
-					Preconditions.checkState(precomputedDataDir.exists() || precomputedDataDir.mkdir());
+					Preconditions.checkState(precomputedDataDir.exists() || precomputedDataDir.mkdir(),
+							"Couldn't create data dir: %s", precomputedDataDir.getAbsolutePath());
 					writeMapFile(distances, file);
-				}
-				catch (IOException e) {
+				} catch (IOException e) {
 					System.out.println ("IO exception = " + e );
+					// an IO exception is actually OK here, it just means we'll have to recreate it next time.
+//					ExceptionUtils.throwAsRuntimeException(e);
+				} catch (IllegalStateException e) {
+					System.out.println ("exception = " + e );
 					// an IO exception is actually OK here, it just means we'll have to recreate it next time.
 //					ExceptionUtils.throwAsRuntimeException(e);
 				}

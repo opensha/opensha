@@ -13,8 +13,6 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.utils.DeformationModelFileParser;
@@ -36,7 +34,7 @@ public class MiniSectRecurrenceGen {
 		File file = new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/" +
 				"2013_01_14-stampede_3p2_production_runs_combined_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
 		
-		FaultSystemSolution sol = FaultSystemIO.loadSol(file);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(file);
 		Map<Integer, DeformationSection> origDM =
 				DeformationModelFileParser.load(DeformationModels.GEOLOGIC.getDataFileURL(FaultModels.FM3_1));
 		
@@ -49,15 +47,15 @@ public class MiniSectRecurrenceGen {
 	}
 	
 	public static Map<Integer, List<Double>> calcMinisectionParticRates(
-			Map<Integer, DeformationSection> dm, FaultSystemSolution sol, double minMag, boolean ri) {
+			Map<Integer, DeformationSection> dm, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, double minMag, boolean ri) {
 		Map<Integer, List<List<Integer>>> mappings =
 				buildSubSectMappings(dm, sol.getRupSet().getFaultSectionDataList());
 		return calcMinisectionParticRates(sol, mappings, minMag, ri);
 	}
 	
 	public static Map<Integer, List<Double>> calcMinisectionParticRates(
-			FaultSystemSolution sol, Map<Integer, List<List<Integer>>> mappings, double minMag, boolean ri) {
-		FaultSystemRupSet rupSet = sol.getRupSet();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Map<Integer, List<List<Integer>>> mappings, double minMag, boolean ri) {
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		Map<Integer, List<Double>> ratesMap = Maps.newHashMap();
 		

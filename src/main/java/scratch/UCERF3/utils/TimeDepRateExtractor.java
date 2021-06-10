@@ -25,7 +25,6 @@ import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 import com.google.common.base.Joiner;
@@ -42,7 +41,7 @@ public class TimeDepRateExtractor {
 	private static final int START_YEAR_DEFAULT = 2014;
 	private static final int HIST_OPEN_INTERVAL_BASIS_DEFAULT = 1875;
 	
-	private FaultSystemSolution sol;
+	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
 	
 	private double duration;
 	private int startYear;

@@ -8,7 +8,6 @@ import javax.swing.JFrame;
 import org.dom4j.DocumentException;
 import org.opensha.sha.earthquake.ProbEqkSource;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -26,7 +25,7 @@ public class MemoryDebug {
 		File meanTotalSolFile = new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
 		System.out.println("Loading sol");
-		FaultSystemSolution meanTotalSol = FaultSystemIO.loadSol(meanTotalSolFile);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanTotalSol = FaultSystemIO.loadSol(meanTotalSolFile);
 		System.out.println("Done");
 //		while (1 < 10) {
 //			meanTotalSol.getRateForAllRups()[0] = Math.random();

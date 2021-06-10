@@ -3,10 +3,10 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 
 /**

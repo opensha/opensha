@@ -55,7 +55,7 @@ public class CacheFileGen {
 		parentIDs.add(286);
 		parentIDs.add(301);
 		List<Integer> validRupIDs = new ArrayList<>();
-		FaultSystemRupSet origRupSet = origFSS.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet origRupSet = origFSS.getRupSet();
 		for (int r=0; r<origRupSet.getNumRuptures(); r++) {
 			boolean match = true;
 			for (FaultSection sect : origRupSet.getFaultSectionDataForRupture(r)) {
@@ -111,7 +111,7 @@ public class CacheFileGen {
 			sectionForRups.add(rupSections);
 			rates[r] = origFSS.getRateForRup(rupIndex);
 		}
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, sectSlipRateStdDevs, sectAreas, sectionForRups,
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, sectSlipRateStdDevs, sectAreas, sectionForRups,
 				mags, rakes, rupAreas, rupLengths, "Fake reduced rup set");
 		// now override some rates to make them really likely
 		// but can't go over sum of 1, or things will fail?

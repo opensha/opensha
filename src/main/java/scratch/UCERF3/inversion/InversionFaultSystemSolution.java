@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.dom4j.DocumentException;
 import org.jfree.chart.plot.DatasetRenderingOrder;
@@ -22,6 +23,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
@@ -180,6 +182,14 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		// these can all be null
 		this.inversionConfiguration = config;
 		this.energies = energies;
+		
+		addAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
+
+			@Override
+			public SubSeismoOnFaultMFDs call() throws Exception {
+				return new SubSeismoOnFaultMFDs(getFinalSubSeismoOnFaultMFD_List());
+			}
+		}, SubSeismoOnFaultMFDs.class);
 	}
 	
 	@Override
@@ -694,14 +704,6 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			subSeisMFD_list = rupSet.getInversionTargetMFDs().getSubSeismoOnFaultMFD_List();
 		}
 		return subSeisMFD_list;
-	}
-	
-	
-	@Override
-	public synchronized List<? extends IncrementalMagFreqDist> getSubSeismoOnFaultMFD_List() {
-		if (subSeismoOnFaultMFDs == null)
-			subSeismoOnFaultMFDs = getFinalSubSeismoOnFaultMFD_List();
-		return super.getSubSeismoOnFaultMFD_List();
 	}
 
 	/**

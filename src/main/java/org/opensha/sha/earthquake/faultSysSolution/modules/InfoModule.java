@@ -5,6 +5,12 @@ import org.opensha.commons.util.modules.helpers.TextBackedModule;
 public class InfoModule implements TextBackedModule {
 	
 	private String info;
+	
+	
+	@SuppressWarnings("unused") // used by Gson
+	private InfoModule() {
+		
+	}
 
 	public InfoModule(String info) {
 		this.info = info;

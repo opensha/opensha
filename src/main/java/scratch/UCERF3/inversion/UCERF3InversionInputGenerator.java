@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.APrioriInversionConstraint;
@@ -25,6 +26,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Ru
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -37,9 +40,9 @@ import cern.colt.function.tdouble.IntIntDoubleFunction;
 import cern.colt.list.tdouble.DoubleArrayList;
 import cern.colt.list.tint.IntArrayList;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
+import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
@@ -69,7 +72,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	private static final boolean QUICK_GETS_SETS = true;
 	
 	// inputs
-	private InversionFaultSystemRupSet rupSet;
+	private FaultSystemRupSet rupSet;
 	private UCERF3InversionConfiguration config;
 	private List<PaleoRateConstraint> paleoRateConstraints;
 	private List<AveSlipConstraint> aveSlipConstraints;
@@ -77,7 +80,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	private PaleoProbabilityModel paleoProbabilityModel;
 	
 	public UCERF3InversionInputGenerator(
-			InversionFaultSystemRupSet rupSet,
+			FaultSystemRupSet rupSet,
 			UCERF3InversionConfiguration config,
 			List<PaleoRateConstraint> paleoRateConstraints,
 			List<AveSlipConstraint> aveSlipConstraints,
@@ -108,7 +111,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	}
 	
 	private static List<InversionConstraint> buildConstraints(
-			InversionFaultSystemRupSet rupSet,
+			FaultSystemRupSet rupSet,
 			UCERF3InversionConfiguration config,
 			List<PaleoRateConstraint> paleoRateConstraints,
 			List<AveSlipConstraint> aveSlipConstraints,
@@ -123,15 +126,15 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// add slip rate constraint
 			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_normalized(),
 					config.getSlipRateConstraintWt_unnormalized(), config.getSlipRateWeightingType(),
-					rupSet, sectSlipRateReduced));
+					rupSet, rupSet.getModule(SlipAlongRuptureModule.class), sectSlipRateReduced));
 		
 		if (config.getPaleoRateConstraintWt() > 0d)
 			constraints.add(new PaleoRateInversionConstraint(rupSet, config.getPaleoRateConstraintWt(),
 					paleoRateConstraints, paleoProbabilityModel));
 		
 		if (config.getPaleoSlipConstraintWt() > 0d)
-			constraints.add(new PaleoSlipInversionConstraint(rupSet, config.getPaleoSlipConstraintWt(),
-					aveSlipConstraints, sectSlipRateReduced));
+			constraints.add(new PaleoSlipInversionConstraint(rupSet, rupSet.getModule(SlipAlongRuptureModule.class),
+					config.getPaleoSlipConstraintWt(), aveSlipConstraints, sectSlipRateReduced));
 		
 		if (config.getRupRateConstraintWt() > 0d) {
 			// This is the RupRateConstraintWt for ruptures not in UCERF2
@@ -148,9 +151,12 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// Rupture rate minimization constraint
 		// Minimize the rates of ruptures below SectMinMag (strongly so that they have zero rates)
 		if (config.getMinimizationConstraintWt() > 0.0) {
+			ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
+			Preconditions.checkNotNull(modMinMags, "Rupture set must supply ModSectMinMags if minimization constraint is enabled");
 			List<Integer> belowMinIndexes = new ArrayList<>();
 			for (int r=0; r<rupSet.getNumRuptures(); r++)
-				if (rupSet.isRuptureBelowSectMinMag(r))
+//				if (rupSet.isRuptureBelowSectMinMag(r))
+				if (FaultSystemRupSetCalc.isRuptureBelowSectMinMag(rupSet, r, modMinMags))
 					belowMinIndexes.add(r);
 			constraints.add(new RupRateMinimizationConstraint(config.getMinimizationConstraintWt(), belowMinIndexes));
 		}
@@ -226,7 +232,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		// Constraint solution moment to equal deformation-model moment
 		if (config.getMomentConstraintWt() > 0.0)
-			constraints.add(new TotalMomentInversionConstraint(rupSet, config.getMomentConstraintWt(), rupSet.getTotalReducedMomentRate()));
+			constraints.add(new TotalMomentInversionConstraint(rupSet, config.getMomentConstraintWt(),
+					FaultSystemRupSetCalc.getTotalReducedMomentRate(rupSet)));
 		
 		// Constraint rupture-rate for M~6 Parkfield earthquakes
 		// The Parkfield eqs are defined as rates of 6, 7, and 8 subsection ruptures in the Parkfield parent section (which has 8 subsections in total)
@@ -282,6 +289,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	
 	@Deprecated
 	public void generateInputsOld(Class<? extends DoubleMatrix2D> clazz) {
+		Preconditions.checkState(rupSet instanceof InversionFaultSystemRupSet);
+		InversionFaultSystemRupSet rupSet = (InversionFaultSystemRupSet)this.rupSet;
 		/*
 		 * This is a very important part of our code. There are a few key rules we should abide by here
 		 * to make sure it continues to operate correctly.

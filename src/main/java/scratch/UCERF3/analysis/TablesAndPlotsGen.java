@@ -45,8 +45,6 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapBasedPlot;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapPlotData;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -1081,7 +1079,7 @@ public class TablesAndPlotsGen {
 
 	}
 	
-	public static void writeSubSectRITable(FaultSystemSolution sol, File csvFile) throws IOException {
+	public static void writeSubSectRITable(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, File csvFile) throws IOException {
 		CSVFile<String> csv = new CSVFile<String>(true);
 		
 		csv.addLine("Subsection Index", "Subsection Name", "Supra-Seis Annual Participation Rate", "Supra-Seis Partitipation RI",
@@ -1089,7 +1087,7 @@ public class TablesAndPlotsGen {
 		
 		double[] particRates = sol.calcParticRateForAllSects(0d, 10d);
 		
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		for (int i=0; i<particRates.length; i++) {
 			FaultSection subsect = rupSet.getFaultSectionData(i);

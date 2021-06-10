@@ -11,7 +11,6 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -42,7 +41,7 @@ public class FSS_CSV_ZipTest {
 			subSeismoMFDCSV.addLine(line);
 		}
 		
-		FaultSystemRupSet rupSet = fss.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
 			List<String> line = new ArrayList<>();
 			line.add(r+"");

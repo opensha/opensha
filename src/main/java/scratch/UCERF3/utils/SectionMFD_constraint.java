@@ -13,14 +13,14 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
@@ -744,9 +744,9 @@ public class SectionMFD_constraint {
 		// TODO Auto-generated method stub
 		
 		
-		InversionFaultSystemSolution testFltSysSol =
-				UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
-		
+//		InversionFaultSystemSolution testFltSysSol =
+//				UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
+//		
 		// list the parent names
 //		ArrayList<String> parSectNames = new ArrayList<String>();
 //		for(int s=0; s<testFltSysSol.getNumSections();s++) {
@@ -766,10 +766,10 @@ public class SectionMFD_constraint {
 //						"\t"+testFltSysSol.getFaultSectionData(s).getSectionName());
 //		}
 		
-		int sectIndex = 1159; // "San Andreas (Mojave S), Subsection 0"
-		SectionMFD_constraint test = new SectionMFD_constraint(testFltSysSol,1159);
-		test.plotMFDs();
-		test.getResampledToEventlyDiscrMFD(0.05, 100, 0.1);
+//		int sectIndex = 1159; // "San Andreas (Mojave S), Subsection 0"
+//		SectionMFD_constraint test = new SectionMFD_constraint(testFltSysSol,1159);
+//		test.plotMFDs();
+//		test.getResampledToEventlyDiscrMFD(0.05, 100, 0.1);
 		
 		
 		

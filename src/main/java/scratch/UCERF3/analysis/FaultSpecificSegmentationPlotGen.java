@@ -30,6 +30,7 @@ import org.opensha.commons.gui.plot.PlotMultiDataLayer;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
@@ -39,8 +40,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
@@ -61,12 +60,12 @@ public class FaultSpecificSegmentationPlotGen {
 		gw.setVisible(true);
 	}
 	
-	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, FaultSystemSolution sol,
+	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
 			double minMag, boolean endsOnly) throws IOException {
 		return getSegmentationHeadlessGP(parentSects, sol, minMag, endsOnly, null);
 	}
 	
-	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, FaultSystemSolution sol,
+	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
 			double minMag, boolean endsOnly, CSVFile<String> csv) throws IOException {
 		PlotSpec spec = buildSegmentationPlot(parentSects, sol, minMag, endsOnly, csv);
 		
@@ -80,9 +79,9 @@ public class FaultSpecificSegmentationPlotGen {
 		return gp;
 	}
 	
-	private static PlotSpec buildSegmentationPlot(List<Integer> parentSects, FaultSystemSolution sol, double minMag, boolean endsOnly,
+	private static PlotSpec buildSegmentationPlot(List<Integer> parentSects, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, double minMag, boolean endsOnly,
 			CSVFile<String> csv) {
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		// first assemble subsections by parent
 		Map<Integer, List<FaultSection>> subSectsByParent = Maps.newHashMap();
 		int prevParentID = -2;
@@ -455,9 +454,9 @@ public class FaultSpecificSegmentationPlotGen {
 	}
 	
 	private static boolean hasConnectionOnOtherParent(List<Integer> parents,
-			FaultSection subSect, FaultSystemSolution sol) {
+			FaultSection subSect, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) {
 		Collection<Integer> connections;
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		if (rupSet instanceof InversionFaultSystemRupSet) {
 			connections = ((InversionFaultSystemRupSet)rupSet).getCloseSectionsList(subSect.getSectionId());
 		} else {
@@ -519,14 +518,14 @@ public class FaultSpecificSegmentationPlotGen {
 //		File solFile = new File("/tmp/FM3_1_NEOK_EllB_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol_high_a_priori.zip");
 		File solFile = new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
 		List<Integer> safParentSects31 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM3_1);
 		List<Integer> safParentSects21 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM2_1);
 		
 		File writeDir = new File("/tmp/branch_avg");
 		Preconditions.checkState(writeDir.exists() || writeDir.mkdir());
 		
-		InversionFaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
+		FaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
 		
 		double[] minMags = { 0, 7d, 7.5d };
 		

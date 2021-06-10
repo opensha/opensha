@@ -21,6 +21,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
@@ -395,11 +396,6 @@ private static File parentDir;
 		}
 
 		@Override
-		public TypeAdapter<TestClass> getTypeAdapter() {
-			return adapter;
-		}
-
-		@Override
 		public Type getType() {
 			return TestClass.class;
 		}
@@ -412,6 +408,11 @@ private static File parentDir;
 		@Override
 		public void set(TestClass value) {
 			this.obj = value;
+		}
+
+		@Override
+		public void registerTypeAdapters(GsonBuilder builder) {
+			builder.registerTypeAdapter(getType(), adapter);
 		}
 		
 	}

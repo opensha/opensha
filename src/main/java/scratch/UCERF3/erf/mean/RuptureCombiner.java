@@ -23,6 +23,7 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -70,13 +71,13 @@ public class RuptureCombiner {
 	 * @param rake basis map from hashset of subsection names to rakes, or null to use weighted average rakes
 	 * @return
 	 */
-	public static FaultSystemSolution getCombinedSolution(FaultSystemSolution meanSol,
+	public static FaultSystemSolution getCombinedSolution(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol,
 			double upperDepthTol, boolean useAvgUpperDepth,
 			boolean combineRakes, Map<Set<String>, Double> rakesBasis) {
 		
 		final boolean D = true;
 		
-		FaultSystemRupSet origRupSet = meanSol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet origRupSet = meanSol.getRupSet();
 		
 		// old sect => new sect (if upper depth combining, else null)
 		Map<Integer, Integer> sectIndexMapping = null;
@@ -311,6 +312,7 @@ public class RuptureCombiner {
 		double[] rakes = new double[numCombinedRups];
 		double[] rupAreas = new double[numCombinedRups];
 		double[] rates = new double[numCombinedRups];
+		RupMFDsModule meanMFDsModule = meanSol.requireModule(RupMFDsModule.class);
 		DiscretizedFunc[] mfds = new DiscretizedFunc[numCombinedRups];
 		int runningRupIndex = 0;
 		for (Cell<IntHashSet, Double, List<Integer>> cell : combinedRupsMap.cellSet()) {
@@ -325,7 +327,7 @@ public class RuptureCombiner {
 				mag = origRupSet.getMagForRup(myRupIndex);
 				area = origRupSet.getAreaForRup(myRupIndex);
 				rate = meanSol.getRateForRup(myRupIndex);
-				mfd = meanSol.getRupMagDist(myRupIndex);
+				mfd = meanMFDsModule.getRuptureMFD(myRupIndex);
 			} else {
 				double[] myRates = new double[combinedRups.size()];
 				double[] myAreas = new double[combinedRups.size()];
@@ -334,7 +336,7 @@ public class RuptureCombiner {
 					int r = combinedRups.get(i);
 					myRates[i] = meanSol.getRateForRup(r);
 					myAreas[i] = origRupSet.getAreaForRup(r);
-					DiscretizedFunc func = meanSol.getRupMagDist(r);
+					DiscretizedFunc func = meanMFDsModule.getRuptureMFD(r);
 					if (func == null) {
 						double[] xVals = { origRupSet.getMagForRup(r) };
 						double[] yVals = { meanSol.getRateForRup(r) };
@@ -393,7 +395,7 @@ public class RuptureCombiner {
 		}
 		String info = "Combined Solution";
 		
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(combinedSects, null, null, null, combinedMappedSectionsForRups,
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = new FaultSystemRupSet(combinedSects, null, null, null, combinedMappedSectionsForRups,
 				mags, rakes, rupAreas, null, info);
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		sol.setGridSourceProvider(meanSol.getGridSourceProvider());
@@ -679,8 +681,8 @@ public class RuptureCombiner {
 	
 	static void checkIdentical(FaultSystemSolution sol1, FaultSystemSolution sol2, boolean checkERF) {
 		System.out.println("Doing Identical Check");
-		FaultSystemRupSet rupSet1 = sol1.getRupSet();
-		FaultSystemRupSet rupSet2 = sol2.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet1 = sol1.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet2 = sol2.getRupSet();
 		
 		Preconditions.checkState(rupSet1.getNumRuptures() == rupSet2.getNumRuptures(), "Rup count wrong");
 		Preconditions.checkState(rupSet1.getNumSections() == rupSet2.getNumSections(), "Sect count wrong");
@@ -863,7 +865,7 @@ public class RuptureCombiner {
 	
 	public static class SubsetRupSet extends FaultSystemRupSet {
 
-		public SubsetRupSet(FaultSystemRupSet rupSet, List<Integer> rups) {
+		public SubsetRupSet(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, List<Integer> rups) {
 			super(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(), rupSet.getSlipRateForAllSections(),
 					rupSet.getAreaForAllSections(), getSubList(rupSet.getSectionIndicesForAllRups(), rups),
 					getSubArray(rupSet.getMagForAllRups(), rups),

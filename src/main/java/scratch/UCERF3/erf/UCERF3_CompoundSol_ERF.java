@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.zip.ZipException;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -202,7 +201,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		LogicTreeBranch branch = LogicTreeBranch.fromValues(vals);
 		Preconditions.checkState(branch.isFullySpecified(), "Somehow branch from enums isn't fully specified");
 		
-		FaultSystemSolution sol = fetch.getSolution(branch);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = fetch.getSolution(branch);
 		setSolution(sol);
 		solutionStale = false;
 	}

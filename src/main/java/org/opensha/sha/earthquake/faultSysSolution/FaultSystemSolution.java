@@ -1,12 +1,18 @@
 package org.opensha.sha.earthquake.faultSysSolution;
 
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.ModuleContainer;
@@ -14,10 +20,18 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 
+import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 
 /**
  * This class represents an Earthquake Rate Model solution for a fault system, possibly coming from an Inversion
@@ -215,6 +229,453 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			removeModuleInstances(InfoModule.class);
 		else
 			addModule(new InfoModule(info));
+	}
+	
+	/**
+	 * Returns GridSourceProvider
+	 * @return
+	 */
+	public GridSourceProvider getGridSourceProvider() {
+		return getModule(GridSourceProvider.class);
+	}
+	
+	public void setGridSourceProvider(GridSourceProvider gridSourceProvider) {
+		addModule(gridSourceProvider);
+	}
+	
+	/*
+	 * TODO move these to a helper class?
+	 */
+	
+
+
+	/**
+	 * This enables/disables visible progress bars for long calculations
+	 * 
+	 * @param showProgress
+	 */
+	public void setShowProgress(boolean showProgress) {
+		rupSet.setShowProgress(showProgress);
+	}
+	
+	public void clearCache() {
+		rupSet.clearCache();
+		clearSolutionCacheOnly();
+	}
+	
+	public void clearSolutionCacheOnly() {
+		particRatesCache.clear();
+		nucleationRatesCache.clear();
+		totParticRatesCache = null;
+		paleoVisibleRatesCache = null;
+	}
+
+	/**
+	 * This returns the rate that pairs of section rupture together.  
+	 * Most entries are zero because the sections are far from each other, 
+	 * so a sparse matrix might be in order if this bloats memory.
+	 * @return
+	 * TODO move?
+	 */
+	public double[][] getSectionPairRupRates() {
+		double[][] rates = new double[rupSet.getNumSections()][rupSet.getNumSections()];
+		for(int r=0; r<rupSet.getNumRuptures(); r++) {
+			List<Integer> indices = rupSet.getSectionsIndicesForRup(r);
+			double rate = getRateForRup(r);
+			if (rate == 0)
+				continue;
+			for(int s=1;s<indices.size();s++) {
+				rates[indices.get(s-1)][indices.get(s)] += rate;
+				rates[indices.get(s)][indices.get(s-1)] += rate;    // fill in the symmetric point
+			}
+		}
+		return rates;
+	}
+
+	private HashMap<String, double[]> particRatesCache = new HashMap<String, double[]>();
+	
+	/**
+	 * This computes the participation rate (events/yr) of the sth section for magnitudes 
+	 * greater and equal to magLow and less than magHigh.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public double calcParticRateForSect(int sectIndex, double magLow, double magHigh) {
+		return calcParticRateForAllSects(magLow, magHigh)[sectIndex];
+	}
+		
+	private double doCalcParticRateForSect(int sectIndex, double magLow, double magHigh) {
+		double partRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex)) {
+			double mag = rupSet.getMagForRup(r);
+			DiscretizedFunc mfd = getRupMagDist(r);
+			if (mfd == null || mfd.size() == 1) {
+				if(mag>=magLow && mag<magHigh)
+					partRate += getRateForRup(r);
+			} else {
+				// use rup MFDs
+				for (Point2D pt : mfd) {
+					if(pt.getX()>=magLow && pt.getX()<magHigh)
+						partRate += pt.getY();
+				}
+			}
+		}
+		return partRate;
+	}
+	
+	/**
+	 * This computes the participation rate (events/yr) of all sections for magnitudes 
+	 * greater and equal to magLow and less than magHigh.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public synchronized double[] calcParticRateForAllSects(double magLow, double magHigh) {
+		String key = (float)magLow+"_"+(float)magHigh;
+		if (!particRatesCache.containsKey(key)) {
+			double[] particRates = new double[rupSet.getNumSections()];
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Participation Rates", "Calculating Participation Rates");
+			}
+			for (int i=0; i<particRates.length; i++) {
+				if (p != null) p.updateProgress(i, particRates.length);
+				particRates[i] = doCalcParticRateForSect(i, magLow, magHigh);
+			}
+			if (p != null) p.dispose();
+			particRatesCache.put(key, particRates);
+		}
+		return particRatesCache.get(key);
+	}
+
+	private HashMap<String, double[]> nucleationRatesCache = new HashMap<String, double[]>();
+	
+	/**
+	 * This computes the nucleation rate (events/yr) of the sth section for magnitudes 
+	 * greater and equal to magLow and less than magHigh. This assumes a uniform distribution
+	 * of possible hypocenters over the rupture surface.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public double calcNucleationRateForSect(int sectIndex, double magLow, double magHigh) {
+		return calcNucleationRateForAllSects(magLow, magHigh)[sectIndex];
+	}
+		
+	private double doCalcNucleationRateForSect(int sectIndex, double magLow, double magHigh) {
+		double nucleationRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex)) {
+			double mag = rupSet.getMagForRup(r);
+			DiscretizedFunc mfd = getRupMagDist(r);
+			if (mfd == null || mfd.size() == 1) {
+				if(mag>=magLow && mag<magHigh) {
+					double rate = getRateForRup(r);
+					double sectArea = rupSet.getAreaForSection(sectIndex);
+					double rupArea = rupSet.getAreaForRup(r);
+					nucleationRate += rate * (sectArea / rupArea);
+				}
+			} else {
+				// use rup MFDs
+				double sectArea = rupSet.getAreaForSection(sectIndex);
+				double rupArea = rupSet.getAreaForRup(r);
+				for (Point2D pt : mfd) {
+					if(pt.getX()>=magLow && pt.getX()<magHigh)
+						nucleationRate += pt.getY() * (sectArea / rupArea);
+				}
+			}
+			
+		}
+		return nucleationRate;
+	}
+	
+	
+	/**
+	 * This computes the nucleation rate (events/yr) of all sections for magnitudes 
+	 * greater and equal to magLow and less than magHigh.   This assumes a uniform distribution
+	 * of possible hypocenters over the rupture surface.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public synchronized double[] calcNucleationRateForAllSects(double magLow, double magHigh) {
+		String key = (float)magLow+"_"+(float)magHigh;
+		if (!nucleationRatesCache.containsKey(key)) {
+			double[] nucleationRates = new double[rupSet.getNumSections()];
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Nucleation Rates", "Calculating Participation Rates");
+			}
+			for (int i=0; i<nucleationRates.length; i++) {
+				if (p != null) p.updateProgress(i, nucleationRates.length);
+				nucleationRates[i] = doCalcNucleationRateForSect(i, magLow, magHigh);
+			}
+			if (p != null) p.dispose();
+			nucleationRatesCache.put(key, nucleationRates);
+		}
+		return nucleationRatesCache.get(key);
+	}
+	
+	private double[] totParticRatesCache;
+	
+	/**
+	 * This computes the total participation rate (events/yr) of the sth section.
+	 * 
+	 * @param sectIndex
+	 * @return
+	 */
+	public double calcTotParticRateForSect(int sectIndex) {
+		return calcTotParticRateForAllSects()[sectIndex];
+	}
+	
+	private double doCalcTotParticRateForSect(int sectIndex) {
+		double partRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex))
+			partRate += getRateForRup(r);
+		return partRate;
+	}
+	
+	
+	/**
+	 * This computes the total participation rate (events/yr) for all sections.
+	 * 
+	 * @return
+	 */
+	public synchronized double[] calcTotParticRateForAllSects() {
+		if (totParticRatesCache == null) {
+			totParticRatesCache = new double[rupSet.getNumSections()];
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Total Participation Rates", "Calculating Total Participation Rates");
+			}
+			for (int i=0; i<totParticRatesCache.length; i++) {
+				if (p != null) p.updateProgress(i, totParticRatesCache.length);
+				totParticRatesCache[i] = doCalcTotParticRateForSect(i);
+			}
+			if (p != null) p.dispose();
+		}
+		return totParticRatesCache;
+	}
+	
+	private Map<PaleoProbabilityModel, double[]> paleoVisibleRatesCache;
+	
+	/**
+	 * This gives the total paleoseismically observable rate (events/yr) of the sth section.
+	 * the probability of observing an event is given by the getProbPaleoVisible(mag)
+	 * method.
+	 * 
+	 * @param sectIndex
+	 * @return
+	 */
+	public double calcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
+		return calcTotPaleoVisibleRateForAllSects(paleoProbModel)[sectIndex];
+	}
+	
+	public double doCalcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
+		double partRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex))
+			partRate += getRateForRup(r)*paleoProbModel.getProbPaleoVisible(rupSet, r, sectIndex);
+		return partRate;
+	}
+
+	
+	/**
+	 * This gives the total paleoseismically observable rate of all sections.
+	 * the probability of observing an event is given by the getProbPaleoVisible(mag)
+	 * method
+	 * 
+	 * @return
+	 */
+	public synchronized double[] calcTotPaleoVisibleRateForAllSects(PaleoProbabilityModel paleoProbModel) {
+		if (paleoVisibleRatesCache == null) {
+			paleoVisibleRatesCache = Maps.newHashMap();
+		}
+		
+		double[] paleoRates = paleoVisibleRatesCache.get(paleoProbModel);
+		
+		if (paleoRates == null) {
+			paleoRates = new double[rupSet.getNumSections()];
+			paleoVisibleRatesCache.put(paleoProbModel, paleoRates);
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Paleo Visible Rates", "Calculating Paleo Visible Rates");
+			}
+			for (int i=0; i<paleoRates.length; i++) {
+				if (p != null) p.updateProgress(i, paleoRates.length);
+				paleoRates[i] = doCalcTotPaleoVisibleRateForSect(i, paleoProbModel);
+			}
+			if (p != null) p.dispose();
+		}
+		return paleoRates;
+	}
+	
+	/**
+	 * This assumes a uniform probability of hypocenter location over the rupture surface
+	 * @param parentSectionID
+	 * @param minMag
+	 * @param maxMag
+	 * @param numMag
+	 * @return
+	 */
+	public SummedMagFreqDist calcNucleationMFD_forParentSect(int parentSectionID, double minMag, double maxMag, int numMag) {
+		SummedMagFreqDist mfd = new SummedMagFreqDist(minMag, maxMag, numMag);
+		
+		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
+			if (rupSet.getFaultSectionData(sectIndex).getParentSectionId() != parentSectionID)
+				continue;
+			IncrementalMagFreqDist subMFD = calcNucleationMFD_forSect(sectIndex, minMag, maxMag, numMag);
+			mfd.addIncrementalMagFreqDist(subMFD);
+		}
+		
+		return mfd;
+	}
+
+	/**
+	 * This give a Nucleation Mag Freq Dist (MFD) for the specified section.  Nucleation probability 
+	 * is defined as the area of the section divided by the area of the rupture.  
+	 * This preserves rates rather than moRates (can't have both)
+	 * @param sectIndex
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public  IncrementalMagFreqDist calcNucleationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
+		if (rups != null) {
+			for (int r : rups) {
+				double nucleationScalar = rupSet.getAreaForSection(sectIndex)/rupSet.getAreaForRup(r);
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r)*nucleationScalar, true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY()*nucleationScalar, true);
+			}
+		}
+		return mfd;
+	}
+	
+	
+	/**
+	 * This give a Participation Mag Freq Dist for the specified section.
+	 * This preserves rates rather than moRates (can't have both).
+	 * @param sectIndex
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcParticipationMFD_forParentSect(int parentSectionID, double minMag, double maxMag, int numMag) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		List<Integer> rups = rupSet.getRupturesForParentSection(parentSectionID);
+		if (rups != null) {
+			for (int r : rups) {
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY(), true);
+			}
+		}
+		return mfd;
+	}
+	
+	
+	/**
+	 * This give a Participation Mag Freq Dist for the specified section.
+	 * This preserves rates rather than moRates (can't have both).
+	 * @param sectIndex
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcParticipationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
+		if (rups != null) {
+			for (int r : rups) {
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY(), true);
+			}
+		}
+		return mfd;
+	}
+	
+	/**
+	 * This gives the total nucleation Mag Freq Dist of this solution.  
+	 * This preserves rates rather than moRates (can't have both).
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param delta - width of each mfd bin
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcTotalNucleationMFD(double minMag, double maxMag, double delta) {
+		return calcNucleationMFD_forRegion(null, minMag, maxMag, delta, true);
+	}
+
+	/**
+	 * This gives the total nucleation Mag Freq Dist inside the supplied region.  
+	 * If <code>traceOnly == true</code>, only the rupture trace is examined in computing the fraction of the rupture 
+	 * inside the region.  This preserves rates rather than moRates (can't have both).
+	 * @param region - a Region object
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param delta - width of each mfd bin
+	 * @param traceOnly - if true only fault traces will be used for fraction inside region calculations, otherwise the
+	 * entire rupture surfaces will be used (slower)
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, double delta, boolean traceOnly) {
+		int numMag = (int)((maxMag - minMag) / delta+0.5) + 1;
+		return calcNucleationMFD_forRegion(region, minMag, maxMag, numMag, traceOnly);
+	}
+
+	/**
+	 * This gives the total nucleation Mag Freq Dist inside the supplied region.  
+	 * If <code>traceOnly == true</code>, only the rupture trace is examined in computing the fraction of the rupture
+	 * inside the region.  This preserves rates rather than moRates (can't have both).
+	 * @param region - a Region object
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @param traceOnly - if true only fault traces will be used for fraction inside region calculations, otherwise the
+	 * entire rupture surfaces will be used (slower)
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, int numMag, boolean traceOnly) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		double[] fractRupsInside = null;
+		if (region != null)
+			fractRupsInside = rupSet.getFractRupsInsideRegion(region, traceOnly);
+		for(int r=0;r<rupSet.getNumRuptures();r++) {
+			double fractInside = 1;
+			if (region != null)
+				fractInside = fractRupsInside[r];
+			double rateInside=getRateForRup(r)*fractInside;
+//			if (fractInside < 1)
+//				System.out.println("inside: "+fractInside+"\trate: "+rateInside+"\tID: "+r);
+			mfd.addResampledMagRate(rupSet.getMagForRup(r), rateInside, true);
+		}
+		return mfd;
+	}
+	
+	private DiscretizedFunc getRupMagDist(int rupIndex) {
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
+		if (mfds != null)
+			return mfds.getRuptureMFD(rupIndex);
+		return null;
 	}
 	
 	public static void main(String[] args) throws Exception {

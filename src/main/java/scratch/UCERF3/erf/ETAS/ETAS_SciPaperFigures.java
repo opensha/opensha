@@ -30,7 +30,6 @@ import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator.TestScenario;
@@ -53,7 +52,7 @@ public class ETAS_SciPaperFigures {
 		File fssFile = new File("dev/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
 		
 		File outputDir = new File(mainDir, "science_paper");
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
@@ -211,7 +210,7 @@ public class ETAS_SciPaperFigures {
 	}
 	
 	public static void plotMagNumWithConf(List<? extends List<ETAS_EqkRupture>> fullTDCatalogs, List<? extends List<ETAS_EqkRupture>> noERTCatalogs,
-			File outputDir, String name, String prefix, TestScenario scenario, double expNumForM2p5, FaultSystemSolution fss,
+			File outputDir, String name, String prefix, TestScenario scenario, double expNumForM2p5, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss,
 			long maxOT) 	throws IOException {
 		double minMag = mfdMinMag;
 		int numMag = mfdNumMag;

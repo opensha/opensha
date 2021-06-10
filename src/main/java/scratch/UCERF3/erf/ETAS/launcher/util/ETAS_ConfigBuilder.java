@@ -32,7 +32,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxPointSourceMagParam;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
@@ -750,7 +749,7 @@ public class ETAS_ConfigBuilder {
 						fssFile = ETAS_Config.resolvePath(fssFile);
 					}
 					if (fssFile.exists()) {
-						FaultSystemSolution fss;
+						org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
 						try {
 							fss = FaultSystemIO.loadSol(fssFile);
 							mag = fss.getRupSet().getMagForRup(fssIndex);

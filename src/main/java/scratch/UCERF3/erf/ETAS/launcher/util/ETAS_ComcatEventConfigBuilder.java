@@ -22,7 +22,6 @@ import org.opensha.sha.faultSurface.SimpleFaultData;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -449,7 +448,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				if (fssFile != null) {
 					fssFile = ETAS_Config.resolvePath(fssFile);
 				}
-				FaultSystemRupSet rupSet;
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
 				try {
 					rupSet = FaultSystemIO.loadRupSet(fssFile);
 				} catch (IOException | DocumentException e) {

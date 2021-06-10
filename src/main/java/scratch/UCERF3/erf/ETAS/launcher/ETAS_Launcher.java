@@ -41,6 +41,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
@@ -66,8 +67,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.io.Files;
 import com.google.common.primitives.Floats;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
@@ -348,7 +347,7 @@ public class ETAS_Launcher {
 			if (triggerRuptureConfigs != null && !triggerRuptureConfigs.isEmpty()) {
 				debug(DebugLevel.INFO, "Building "+triggerRuptureConfigs.size()+" trigger ruptures");
 				FaultSystemSolution fss = checkOutFSS();
-				FaultSystemRupSet rupSet = fss.getRupSet();
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
 				
 				triggerRuptures = new ArrayList<>();
 				triggerRupturesMap = new HashMap<>();
@@ -482,12 +481,12 @@ public class ETAS_Launcher {
 			}
 		}
 		// reset last event data
-		FaultSystemRupSet rupSet = fss.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
 		resetLastEventData(rupSet);
 		return fss;
 	}
 
-	private void resetLastEventData(FaultSystemRupSet rupSet) {
+	private void resetLastEventData(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 		if (config.isTimeIndependentERF()) {
 			for (int s=0; s<rupSet.getNumSections(); s++)
 				rupSet.getFaultSectionData(s).setDateOfLastEvent(Long.MIN_VALUE);
@@ -508,7 +507,7 @@ public class ETAS_Launcher {
 		fssDeque.push(fss);
 	}
 	
-	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, FaultSystemSolution sol,
+	public static List<ETAS_EqkRupture> loadHistoricalCatalog(File catFile, File surfsFile, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
 			long ot, Map<Long, List<Integer>> resetSubSectsMap, U3_EqkCatalogStatewideCompleteness completenessModel)
 					throws IOException, DocumentException {
 		List<ETAS_EqkRupture> histQkList = new ArrayList<>();
@@ -561,7 +560,7 @@ public class ETAS_Launcher {
 	 * @param sol
 	 * @return
 	 */
-	private static FaultModels getFaultModel(FaultSystemSolution sol) {
+	private static FaultModels getFaultModel(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) {
 		int numRups = sol.getRupSet().getNumRuptures();
 		if (sol instanceof InversionFaultSystemSolution)
 			return ((InversionFaultSystemSolution)sol).getLogicTreeBranch().getValue(FaultModels.class);
@@ -615,14 +614,14 @@ public class ETAS_Launcher {
 	 * @param duration
 	 * @return
 	 */	
-	public static FaultSystemSolutionERF_ETAS buildERF(FaultSystemSolution sol, boolean timeIndep, double duration,
+	public static FaultSystemSolutionERF_ETAS buildERF(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, boolean timeIndep, double duration,
 			int startYear) {
 		long ot = Math.round((startYear-1970.0)*ProbabilityModelsCalc.MILLISEC_PER_YEAR);
 		return buildERF_millis(sol, timeIndep, duration, ot);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static FaultSystemSolutionERF_ETAS buildERF_millis(FaultSystemSolution sol, boolean timeIndep, double duration,
+	public static FaultSystemSolutionERF_ETAS buildERF_millis(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, boolean timeIndep, double duration,
 			long ot) {
 		FaultSystemSolutionERF_ETAS erf = new FaultSystemSolutionERF_ETAS(sol);
 		// set parameters
@@ -669,7 +668,7 @@ public class ETAS_Launcher {
 		if (erf == null) {
 			// load a new one
 			debug(DebugLevel.FINE, "Loading a new ERF");
-			FaultSystemSolution sol = null;
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = null;
 			if (config.isGriddedOnly()) {
 				erf = buildGriddedERF(simulationOT, config.getDuration());
 			} else {
@@ -689,7 +688,7 @@ public class ETAS_Launcher {
 			if (!config.isGriddedOnly()) {
 				// reset all time of last event data
 				FaultSystemSolutionERF_ETAS fssERF = (FaultSystemSolutionERF_ETAS)erf;
-				FaultSystemRupSet rupSet = fssERF.getSolution().getRupSet();
+				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fssERF.getSolution().getRupSet();
 				resetLastEventData(rupSet);
 				for (int s=0; s<rupSet.getNumSections(); s++)
 					fssERF.setFltSectOccurranceTime(s, rupSet.getFaultSectionData(s).getDateOfLastEvent());

@@ -67,6 +67,9 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -105,8 +108,6 @@ import com.google.common.collect.Range;
 import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.analysis.FaultSystemSolutionCalc;
@@ -1227,7 +1228,7 @@ public class ETAS_Simulator {
 
 		GriddedSeisUtils griddedSeisUtils = new GriddedSeisUtils(sol.getRupSet().getFaultSectionDataList(), nodeRatePDF, InversionTargetMFDs.FAULT_BUFFER);
 		
-		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = sol.getSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = sol.requireModule(SubSeismoOnFaultMFDs.class).getAll();
 		
 		double[] oldRateArray = new double[longTermSubSeisMFD_OnSectList.size()];
 		double[] newRateArray = new double[longTermSubSeisMFD_OnSectList.size()];

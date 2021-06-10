@@ -68,6 +68,20 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	/**
+	 * Throws an {@link IllegalStateException} if the supplied module is not present, otherwise returns that module
+	 * 
+	 * @param clazz
+	 * @return requested module
+	 * @throws IllegalStateException if given module is not present
+	 */
+	public <M extends E> M requireModule(Class<M> clazz) throws IllegalStateException {
+		M module = getModule(null);
+		if (module == null)
+			throw new IllegalStateException("Missing required module: "+clazz.getName());
+		return module;
+	}
+	
+	/**
 	 * Retrieves a module that matches the given class if it exists, otherwise null.
 	 * <p>
 	 * If no current instance matches, but an available module loader does, then we will attempt to load that available

@@ -36,8 +36,6 @@ import org.opensha.sha.faultSurface.PointSurface;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -130,7 +128,7 @@ public class U3TD_ComparisonLauncher {
 		boolean ti = cmd.hasOption("time-independent");
 		
 		System.out.println("Loading FSS file");
-		FaultSystemSolution fss = null;
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = null;
 		try {
 			fss = FaultSystemIO.loadSol(fssFile);
 		} catch (IOException | DocumentException e1) {
@@ -197,7 +195,7 @@ public class U3TD_ComparisonLauncher {
 		
 		System.out.println("Converting output to ETAS ASCII format (with random hypocenters)");
 		try {
-			FaultSystemRupSet rupSet = fss.getRupSet();
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
 			File outputFile = new File(outputDir, "sampledEventsData.txt");
 			List<ETAS_EqkRupture> etasRups = new ArrayList<>();
 			Random r = new Random();

@@ -18,7 +18,6 @@ import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 
@@ -70,7 +69,7 @@ public abstract class TriggerRupture {
 		return etas_c;
 	}
 
-	public ETAS_EqkRupture buildRupture(FaultSystemRupSet rupSet, long simulationStartTime, ETAS_ParameterList etasParams) {
+	public ETAS_EqkRupture buildRupture(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, long simulationStartTime, ETAS_ParameterList etasParams) {
 		ETAS_EqkRupture rupture = new ETAS_EqkRupture();
 		long ot = getOccurrenceTime(simulationStartTime);
 		rupture.setOriginTime(ot);
@@ -86,15 +85,15 @@ public abstract class TriggerRupture {
 		return rupture;
 	}
 	
-	protected abstract void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture);
+	protected abstract void populateRupture(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, ETAS_EqkRupture rupture);
 	
 	/**
 	 * @param rupSet
 	 * @return magnitude of this rupture, or null if dependent on rupture set and rupSet not supplied
 	 */
-	public abstract Double getMag(FaultSystemRupSet rupSet);
+	public abstract Double getMag(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet);
 	
-	public abstract int[] getSectionsRuptured(FaultSystemRupSet rupSet);
+	public abstract int[] getSectionsRuptured(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet);
 	
 	public static class FSS extends TriggerRupture {
 		
@@ -112,7 +111,7 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+		public void populateRupture(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
 			double origMag = rupSet.getMagForRup(fssIndex);
 			
 			System.out.println("Building FSS rupture with index="+fssIndex+", OT="+rupture.getOriginTime()+", original M="+(float)origMag);
@@ -129,12 +128,12 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
+		public int[] getSectionsRuptured(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return Ints.toArray(rupSet.getSectionsIndicesForRup(fssIndex));
 		}
 
 		@Override
-		public Double getMag(FaultSystemRupSet rupSet) {
+		public Double getMag(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			if (overrideMag != null && overrideMag > 0)
 				return overrideMag;
 			if (rupSet != null)
@@ -157,7 +156,7 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+		public void populateRupture(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
 			System.out.println("Building rupture from "+subSects.length+" specified subsections with OT="+rupture.getOriginTime()+" and M="+(float)mag);
 			
 			rupture.setMag(mag);
@@ -184,12 +183,12 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
+		public int[] getSectionsRuptured(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return subSects;
 		}
 
 		@Override
-		public Double getMag(FaultSystemRupSet rupSet) {
+		public Double getMag(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return mag;
 		}
 		
@@ -213,7 +212,7 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+		public void populateRupture(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
 //			System.out.println("Building point rupture hypo="+hypocenter+", OT="+ot+", M="+(float)mag);
 			
 			rupture.setAveRake(0.0); // not used
@@ -223,12 +222,12 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
+		public int[] getSectionsRuptured(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return sectsReset;
 		}
 
 		@Override
-		public Double getMag(FaultSystemRupSet rupSet) {
+		public Double getMag(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return mag;
 		}
 		
@@ -255,7 +254,7 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+		public void populateRupture(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
 			System.out.println("Building rupture from "+sfds.length+" simple faults OT="+rupture.getOriginTime()+" and M="+(float)mag);
 			
 			rupture.setMag(mag);
@@ -272,12 +271,12 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
+		public int[] getSectionsRuptured(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return sectsReset;
 		}
 
 		@Override
-		public Double getMag(FaultSystemRupSet rupSet) {
+		public Double getMag(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return mag;
 		}
 		
@@ -304,7 +303,7 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public void populateRupture(FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
+		public void populateRupture(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, ETAS_EqkRupture rupture) {
 			System.out.println("Building rupture from "+outlines.length+" fault outlines, OT="+rupture.getOriginTime()+" and M="+(float)mag);
 			
 			rupture.setMag(mag);
@@ -321,12 +320,12 @@ public abstract class TriggerRupture {
 		}
 
 		@Override
-		public int[] getSectionsRuptured(FaultSystemRupSet rupSet) {
+		public int[] getSectionsRuptured(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return sectsReset;
 		}
 
 		@Override
-		public Double getMag(FaultSystemRupSet rupSet) {
+		public Double getMag(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 			return mag;
 		}
 		

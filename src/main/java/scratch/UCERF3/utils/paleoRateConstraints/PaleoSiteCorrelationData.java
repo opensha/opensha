@@ -31,12 +31,11 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
@@ -359,11 +358,11 @@ public class PaleoSiteCorrelationData implements Serializable {
 		return resultsMap;
 	}
 	
-	public static double getRateCorrelated(PaleoProbabilityModel paleoProb, FaultSystemSolution sol, int sectIndex1, int sectIndex2) {
+	public static double getRateCorrelated(PaleoProbabilityModel paleoProb, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, int sectIndex1, int sectIndex2) {
 		double rateTogether = 0d;
 		double totRate = 0d;
 
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		HashSet<Integer> rups1 = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex1));
 		HashSet<Integer> rups2 = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex2));
@@ -455,7 +454,7 @@ public class PaleoSiteCorrelationData implements Serializable {
 	public static PlotSpec getCorrelationPlotSpec(
 			String faultName,
 			Table<String, String,PaleoSiteCorrelationData> table,
-			FaultSystemSolution sol)
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol)
 			throws IOException {
 		PaleoProbabilityModel paleoProb = UCERF3_PaleoProbabilityModel.load();
 		return getCorrelationPlotSpec(faultName, table, sol, paleoProb);
@@ -464,7 +463,7 @@ public class PaleoSiteCorrelationData implements Serializable {
 	public static PlotSpec getCorrelationPlotSpec(
 			String faultName,
 			Table<String, String,PaleoSiteCorrelationData> table,
-			FaultSystemSolution sol,
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
 			PaleoProbabilityModel paleoProb) {
 		List<PaleoSiteCorrelationData> corrs = getCorrelataionsToPlot(table);
 		List<double[]> solValues = Lists.newArrayList(); 
@@ -475,7 +474,7 @@ public class PaleoSiteCorrelationData implements Serializable {
 				AverageFaultSystemSolution avgSol = (AverageFaultSystemSolution)sol;
 				double minAvgRate = Double.MAX_VALUE;
 				double maxAvgRate = 0d;
-				for (FaultSystemSolution subSol : avgSol) {
+				for (org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution subSol : avgSol) {
 					double avgRate = getRateCorrelated(
 							paleoProb, subSol, corr.getSite1SubSect(), corr.getSite2SubSect());
 					if (avgRate < minAvgRate)

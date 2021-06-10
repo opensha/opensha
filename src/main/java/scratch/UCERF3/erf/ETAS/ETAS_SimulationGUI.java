@@ -32,7 +32,6 @@ import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParse
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -75,7 +74,7 @@ public class ETAS_SimulationGUI extends JFrame implements ParameterChangeListene
 	
 	private ConsoleWindow console;
 	
-	private FaultSystemSolution sol;
+	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
 	private List<float[]> fractionSectInCubeCache;
 	private List<int[]> sectInCubeCache;
 	private int[] cubeInsidePolyCache;

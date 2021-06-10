@@ -36,6 +36,11 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider {
 	}
 	
 	@Override
+	public String getName() {
+		return "Grid Source Provider";
+	}
+	
+	@Override
 	public int size() {
 		return getGriddedRegion().getNodeCount();
 	}

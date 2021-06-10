@@ -68,8 +68,6 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
@@ -762,7 +760,7 @@ public class ETAS_SimAnalysisTools {
 	 * @return
 	 */
 	public static IncrementalMagFreqDist getTotalAftershockMFD_ForU3_RegionalGR(double mainshockMag, double expNumForM2p5,
-			FaultSystemSolution fss) {
+			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
 		//FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(fss, 2012, 1.0);
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF(fss, false, 1.0, 2012);
 		erf.updateForecast();
@@ -2096,7 +2094,7 @@ public class ETAS_SimAnalysisTools {
 	 * @param erf
 	 */
 	public static void loadFSSRupSurfaces(List<ETAS_EqkRupture> catalog, FaultSystemSolutionERF erf) {
-		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		for (ETAS_EqkRupture rup : catalog) {
 			int fssIndex = getFSSIndex(rup, erf);
 			if (fssIndex >= 0) {

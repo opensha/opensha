@@ -15,16 +15,14 @@ import com.google.gson.stream.JsonWriter;
 
 /**
  * Helper interface for {@link ArchivableModule}'s that are backed by a single JSON file and serialized via a
- * {@link TypeAdapter}. Implementations need only implement {@link #getFileName()}, {@link #getTypeAdapter()},
- * {@link #get()} and {@link #set(Object)}.
+ * {@link TypeAdapter}. Implementations need only implement {@link #getFileName()},
+ * {@link #registerTypeAdapters(GsonBuilder)}, {@link #get()}, and {@link #set(Object)}.
  * 
  * @author kevin
  *
  */
 @ModuleHelper // don't map this class to any implementation in ModuleContainer
 public interface JSON_TypeAdapterBackedModule<E> extends JSON_BackedModule {
-	
-	public TypeAdapter<E> getTypeAdapter();
 	
 	public Type getType();
 	
@@ -44,15 +42,15 @@ public interface JSON_TypeAdapterBackedModule<E> extends JSON_BackedModule {
 		E value = gson.fromJson(in, getType());
 		set(value);
 	}
+	
+	public void registerTypeAdapters(GsonBuilder builder);
 
 	@Override
 	public default Gson buildGson() {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 		
-		TypeAdapter<E> adapter = getTypeAdapter();
-		Preconditions.checkNotNull(adapter, "getTypeAdapter() cannot return null!");
-		builder.registerTypeAdapter(getType(), adapter);
+		registerTypeAdapters(builder);
 		
 		return builder.create();
 	}

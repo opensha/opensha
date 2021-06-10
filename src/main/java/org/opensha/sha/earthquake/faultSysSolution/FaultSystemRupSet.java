@@ -53,6 +53,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
+import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
+import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.utils.FaultSystemIO;
 
 /**
@@ -635,6 +637,25 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		return maxMag;
 	}
+	
+	/**
+	 * This returns the magnitude of the smallest rupture involving this section or NaN
+	 * if no ruptures involve this section.
+	 * @param sectIndex
+	 * @return
+	 */
+	public double getMinMagForSection(int sectIndex) {
+		List<Integer> rups = getRupturesForSection(sectIndex);
+		if (rups.isEmpty())
+			return Double.NaN;
+		double minMag = Double.POSITIVE_INFINITY;
+		for (int rupIndex : getRupturesForSection(sectIndex)) {
+			double mag = getMagForRup(rupIndex);
+			if (mag < minMag)
+				minMag = mag;
+		}
+		return minMag;
+	}
 
 	/**
 	 * This gives the magnitude for each rth rupture
@@ -1066,14 +1087,21 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+//		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+//		
+//		File inputFile = new File(baseDir, "fm3_1_ucerf3.zip");
+//		File destFile = new File("/tmp/new_format_u3.zip");
+//		FaultSystemRupSet orig = FaultSystemIO.loadRupSet(inputFile);
+//		orig.getArchive().write(destFile);
+//		FaultSystemRupSet loaded = load(destFile);
+//		Preconditions.checkState(orig.isEquivalentTo(loaded));
 		
-		File inputFile = new File(baseDir, "fm3_1_ucerf3.zip");
-		File destFile = new File("/tmp/new_format_u3.zip");
-		FaultSystemRupSet orig = FaultSystemIO.loadRupSet(inputFile);
-		orig.getArchive().write(destFile);
+		FaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(LogicTreeBranch.DEFAULT);
+		File destFile = new File("/tmp/new_ivfss.zip");
+		rupSet.getArchive().write(destFile);
 		FaultSystemRupSet loaded = load(destFile);
-		Preconditions.checkState(orig.isEquivalentTo(loaded));
+		loaded.loadAllAvailableModules();
+		System.out.println(loaded.getModule(LogicTreeBranch.class));
 	}
 
 }

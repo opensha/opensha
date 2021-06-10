@@ -16,8 +16,6 @@ import org.opensha.sha.faultSurface.FaultTrace;
 
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 
 /**
@@ -145,7 +143,7 @@ public class FaultSectionDataWriter {
 	 * @param filePathAndName
 	 * @throws IOException 
 	 */
-	public static void writeRupsToFiles(String filePathAndName, FaultSystemRupSet rupSet) throws IOException {
+	public static void writeRupsToFiles(String filePathAndName, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) throws IOException {
 		FileWriter fw = new FileWriter(filePathAndName);
 		fw.write(getRupsASCII(rupSet).toString());
 		fw.close();
@@ -155,7 +153,7 @@ public class FaultSectionDataWriter {
 	 * This writes the rupture sections to an ASCII file
 	 * @param filePathAndName
 	 */
-	public static StringBuffer getRupsASCII(FaultSystemRupSet rupSet) {
+	public static StringBuffer getRupsASCII(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
 		return getRupsASCII(rupSet, null);
 	}
 
@@ -163,7 +161,7 @@ public class FaultSectionDataWriter {
 	 * This writes the rupture sections to an ASCII file
 	 * @param filePathAndName
 	 */
-	public static StringBuffer getRupsASCII(FaultSystemRupSet rupSet, FaultSystemSolution sol) {
+	public static StringBuffer getRupsASCII(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) {
 		StringBuffer buff = new StringBuffer();
 		buff.append("rupID\tclusterID\trupInClustID\tmag\t");
 		if (sol != null)

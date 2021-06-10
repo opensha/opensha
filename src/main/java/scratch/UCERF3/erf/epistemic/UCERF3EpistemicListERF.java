@@ -39,7 +39,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -243,7 +242,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	private FaultSystemSolutionERF loadERF(LogicTreeBranch branch) {
 		System.out.println("LoadERF for "+branch.buildFileName());
 		System.out.println("Loading solution...");
-		FaultSystemSolution sol = fetch.getSolution(branch);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = fetch.getSolution(branch);
 		System.out.println("DONE loading");
 		
 		System.out.println("Building ERF...");

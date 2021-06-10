@@ -32,7 +32,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	private List<E> values;
 	
 	@SuppressWarnings("unused") // used by Gson
-	private LogicTreeBranch() {
+	protected LogicTreeBranch() {
 		
 	}
 	

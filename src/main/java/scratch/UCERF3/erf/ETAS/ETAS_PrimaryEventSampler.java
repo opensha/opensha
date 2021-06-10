@@ -53,6 +53,7 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
@@ -66,7 +67,6 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.analysis.GMT_CA_Maps;
@@ -137,7 +137,7 @@ public class ETAS_PrimaryEventSampler {
 	AbstractNthRupERF erf;
 	FaultSystemSolutionERF fssERF;
 	int numFltSystSources=-1, totNumSrc;
-	FaultSystemRupSet rupSet;
+	org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
 	FaultPolyMgr faultPolyMgr;
 
 	
@@ -5480,7 +5480,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 	public void testSubSeisMFD_ForSect(int sectIndex) {
 		
 		// this is the target MFD
-		IncrementalMagFreqDist mfd2 = ((FaultSystemSolutionERF)erf).getSolution().getSubSeismoOnFaultMFD_List().get(sectIndex);
+		IncrementalMagFreqDist mfd2 = ((FaultSystemSolutionERF)erf).getSolution().requireModule(SubSeismoOnFaultMFDs.class).get(sectIndex);
 		mfd2.setName("Subseis MFD from erf.getSolution().getSubSeismoOnFaultMFD_List().get(sectIndex) for "+sectIndex+"; "+rupSet.getFaultSectionData(sectIndex).getName());
 
 		// Now we will make this from the source MFDs

@@ -20,7 +20,6 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -89,7 +88,7 @@ public class ETAS_SectionSearch {
 		Preconditions.checkArgument(fssFile.exists(), "FSS file doesn't exist: %s", fssFile.getAbsolutePath());
 		
 		System.out.println("Loading fault system solution from "+fssFile.getAbsolutePath());
-		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
 		
 		Region searchReg = null;
 		Location centerLoc = null;

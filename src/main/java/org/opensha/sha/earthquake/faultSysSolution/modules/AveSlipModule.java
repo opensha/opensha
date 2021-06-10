@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures;
+package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.io.IOException;
 import java.util.zip.ZipFile;

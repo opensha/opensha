@@ -24,13 +24,13 @@ import scratch.UCERF3.utils.FaultSystemIO;
 
 public class RupSetDownsampler {
 	
-	private FaultSystemRupSet rupSet;
+	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
 	private double deltaMag;
 	
 	private Map<String, List<Integer>> parentSectsToRupsMap;
 	private HashSet<Integer> rupsToKeep;
 
-	public RupSetDownsampler(FaultSystemRupSet rupSet, double deltaMag) {
+	public RupSetDownsampler(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double deltaMag) {
 		this.rupSet = rupSet;
 		this.deltaMag = deltaMag;
 	}
@@ -140,7 +140,7 @@ public class RupSetDownsampler {
 	}
 
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/"
+		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/"
 				+ "InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		RupSetDownsampler sampler = new RupSetDownsampler(rupSet, 0.05);
 		sampler.calculate();
