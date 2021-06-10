@@ -219,13 +219,11 @@ private static File parentDir;
 		
 		File outputFile = new File(parentDir, "json_test.zip");
 		archive.write(outputFile);
-		
-		ZipFile zip = new ZipFile(outputFile);
 		System.out.println("JSON FILE -------");
-		System.out.println(TextBackedModule.readFromStream(zip.getInputStream(zip.getEntry(module.getFileName()))));
+		System.out.println(module.getJSON());
 		System.out.println("-----------------");
 		
-		archive = new ModuleArchive<>(zip);
+		archive = new ModuleArchive<>(outputFile);
 		
 		JSON_Module newModule = archive.getModule(JSON_Module.class);
 		assertNotNull("Failed to load JSON module", newModule);
@@ -315,12 +313,11 @@ private static File parentDir;
 		archive.write(outputFile);
 		assertTrue("Adapter wasn't used in writing", module.adapter.written);
 		
-		ZipFile zip = new ZipFile(outputFile);
 		System.out.println("JSON FILE -------");
-		System.out.println(TextBackedModule.readFromStream(zip.getInputStream(zip.getEntry(module.getFileName()))));
+		System.out.println(module.getJSON());
 		System.out.println("-----------------");
 		
-		archive = new ModuleArchive<>(zip);
+		archive = new ModuleArchive<>(outputFile);
 		
 		JSON_AdapterModule newModule = archive.getModule(JSON_AdapterModule.class);
 		assertNotNull("Failed to load JSON module", newModule);

@@ -7,6 +7,10 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
 
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleHelper;
@@ -63,20 +67,38 @@ public interface JSON_BackedModule extends FileBackedModule {
 	}
 
 	@Override
-	public default void writeToStream(BufferedOutputStream out) throws IOException {
+	public default void writeToStream(BufferedOutputStream out) throws IOException { 
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+		writeToWriter(writer);
+	}
+	
+	public default String getJSON() throws IOException {
+		StringWriter writer = new StringWriter();
+		writeToWriter(writer);
+		return writer.toString();
+	}
+	
+	private void writeToWriter(Writer writer) throws IOException {
 		Gson gson = buildGson();
 		
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 		JsonWriter jout = gson.newJsonWriter(writer);
 		writeToJSON(jout, gson);
 		writer.flush();
 	}
+	
+	public default void initFromJSON(String json) throws IOException {
+		initFromReader(new StringReader(json));
+	}
 
 	@Override
 	public default void initFromStream(BufferedInputStream in) throws IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+		initFromReader(reader);
+	}
+	
+	private void initFromReader(Reader reader) throws IOException {
 		Gson gson = buildGson();
 		
-		BufferedReader reader = new BufferedReader(new InputStreamReader(in));
 		JsonReader jin = gson.newJsonReader(reader);
 		initFromJSON(jin, gson);
 	}
