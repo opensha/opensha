@@ -85,7 +85,7 @@ public class RunInversion {
 		
 		// get the inversion configuration
 		UCERF3InversionConfiguration config;
-		config = UCERF3InversionConfiguration.forModel(inversionModel, rupSet);
+		config = UCERF3InversionConfiguration.forModel(inversionModel, rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
 		config.updateRupSetInfoString(rupSet);
 		
 		File precomputedDataDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;

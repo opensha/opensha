@@ -50,7 +50,7 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 
 		@Override
 		public String getFileName() {
-			return "sect_min_mags.csv";
+			return "mod_sect_min_mags.csv";
 		}
 
 		@Override

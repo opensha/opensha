@@ -379,7 +379,7 @@ public class CommandLineInversionRunner {
 			System.out.println("Building Inversion Configuration");
 			// this contains all inversion weights
 			UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(branch.getValue(InversionModels.class),
-					rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt, cmd);
+					rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs(), mfdEqualityConstraintWt, mfdInequalityConstraintWt, cmd);
 
 			// load paleo rate constraints
 			ArrayList<PaleoRateConstraint> paleoRateConstraints = getPaleoConstraints(branch.getValue(FaultModels.class), rupSet);

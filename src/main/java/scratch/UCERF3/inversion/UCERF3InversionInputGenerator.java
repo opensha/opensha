@@ -1,5 +1,6 @@
 package scratch.UCERF3.inversion;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.eq.MagUtils;
+import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
@@ -35,12 +37,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.Files;
 
 import cern.colt.function.tdouble.IntIntDoubleFunction;
 import cern.colt.list.tdouble.DoubleArrayList;
 import cern.colt.list.tint.IntArrayList;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
@@ -126,14 +130,14 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// add slip rate constraint
 			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_normalized(),
 					config.getSlipRateConstraintWt_unnormalized(), config.getSlipRateWeightingType(),
-					rupSet, rupSet.getModule(SlipAlongRuptureModule.class), sectSlipRateReduced));
+					rupSet, rupSet.requireModule(SlipAlongRuptureModule.class), sectSlipRateReduced));
 		
 		if (config.getPaleoRateConstraintWt() > 0d)
 			constraints.add(new PaleoRateInversionConstraint(rupSet, config.getPaleoRateConstraintWt(),
 					paleoRateConstraints, paleoProbabilityModel));
 		
 		if (config.getPaleoSlipConstraintWt() > 0d)
-			constraints.add(new PaleoSlipInversionConstraint(rupSet, rupSet.getModule(SlipAlongRuptureModule.class),
+			constraints.add(new PaleoSlipInversionConstraint(rupSet, rupSet.requireModule(SlipAlongRuptureModule.class),
 					config.getPaleoSlipConstraintWt(), aveSlipConstraints, sectSlipRateReduced));
 		
 		if (config.getRupRateConstraintWt() > 0d) {
@@ -151,7 +155,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// Rupture rate minimization constraint
 		// Minimize the rates of ruptures below SectMinMag (strongly so that they have zero rates)
 		if (config.getMinimizationConstraintWt() > 0.0) {
-			ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
+			ModSectMinMags modMinMags = rupSet.requireModule(ModSectMinMags.class);
 			Preconditions.checkNotNull(modMinMags, "Rupture set must supply ModSectMinMags if minimization constraint is enabled");
 			List<Integer> belowMinIndexes = new ArrayList<>();
 			for (int r=0; r<rupSet.getNumRuptures(); r++)
@@ -1503,11 +1507,11 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		return parkfieldRups;
 	}
 	
-	public static void main(String[] args) throws IOException {
+	private static void validateNewVsOld() throws IOException {
 		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
 		InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
-				branch.getValue(InversionModels.class), rupSet);
+				branch.getValue(InversionModels.class), rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
 		// first enable all other constraints
 		config.setRupRateSmoothingConstraintWt(1d);
 		config.setMagnitudeEqualityConstraintWt(1d);
@@ -1547,38 +1551,165 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 
 		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+
+		System.out.println("BUILDING ORIGINAL");
+		UCERF3InversionInputGenerator origGen = getTestConfig(rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
+		origGen.generateInputsOld(null);
+		
+		System.out.println("BUILDING NEW");
+		UCERF3InversionInputGenerator newGen = getTestConfig(rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
+		newGen.generateInputs(true);
+		
+		validate(origGen, newGen);
+	}
+	
+	private static void testConfigureNewFileFormat() throws IOException {
+		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
+		FaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
+		InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
+		
+		UCERF3InversionInputGenerator origGen = getTestConfig(rupSet, branch.getValue(FaultModels.class), targetMFDs);
+		
+		File tempDir = Files.createTempDir();
+		
+		File tempFile = new File(tempDir, "ivfrs.zip");
+		rupSet.getArchive().write(tempFile);
+		rupSet = FaultSystemRupSet.load(tempFile);
+		branch = rupSet.requireModule(LogicTreeBranch.class);
+		if (!rupSet.hasModule(InversionTargetMFDs.class)) {
+			System.out.println("TODO: serialize target MFDs?");
+			rupSet.addModule(targetMFDs);
+		}
+		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, branch.getValue(FaultModels.class),
+				rupSet.requireModule(InversionTargetMFDs.class));
+		System.out.println("Generating mod inputs");
+		modGen.generateInputs();
+		System.out.println("Generating orig inputs");
+		origGen.generateInputs();
+		
+		validate(origGen, modGen);
+		
+		FileUtils.deleteRecursive(tempDir);
+	}
+	
+	private static UCERF3InversionInputGenerator getTestConfig(FaultSystemRupSet rupSet, FaultModels fm,
+			InversionTargetMFDs targetMFDs) throws IOException {
+		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
+		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
+				branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);
+		// first enable all other constraints
+		config.setRupRateSmoothingConstraintWt(1d);
+		config.setMagnitudeEqualityConstraintWt(1d);
+		config.setSmoothnessWt(10000);
+		config.setMomentConstraintWt(1d);
+		config.setRupRateConstraintWt(1d);
+		config.setEventRateSmoothnessWt(1d);
+		config.setParticipationSmoothnessConstraintWt(1d);
+		// disable any/all constraints below
+//		config.setEventRateSmoothnessWt(0d);
+//		config.setMFDSmoothnessConstraintWt(0d);
+//		config.setMFDSmoothnessConstraintWtForPaleoParents(0d);
+//		config.setMinimizationConstraintWt(0d);
+//		config.setMomentConstraintWt(0d);
+//		config.setNucleationMFDConstraintWt(0d);
+//		config.setMagnitudeEqualityConstraintWt(0d);
+//		config.setMagnitudeInequalityConstraintWt(0d);
+//		config.setPaleoRateConstraintWt(0d);
+//		config.setPaleoSlipWt(0d);
+//		config.setParkfieldConstraintWt(0d);
+//		config.setParticipationSmoothnessConstraintWt(0d);
+//		config.setRupRateConstraintWt(0d);
+//		config.setRupRateSmoothingConstraintWt(0d);
+//		config.setSmoothnessWt(0d);
+		// always need these on for old to work
+//		config.setSlipRateConstraintWt_normalized(0d);
+//		config.setSlipRateConstraintWt_unnormalized(0d);
+		
+		// get the paleo rate constraints
+		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+					fm, rupSet);
+
+		// get the improbability constraints
+		double[] improbabilityConstraint = null; // null for now
+
+		// paleo probability model
+		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+
+		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+
+		return new UCERF3InversionInputGenerator(
+				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
+	}
+	
+	private static UCERF3InversionInputGenerator generate(UCERF3InversionConfiguration config,
+			FaultSystemRupSet rupSet, FaultModels fm) throws IOException {
+
+		// first enable all other constraints
+		config.setRupRateSmoothingConstraintWt(1d);
+		config.setMagnitudeEqualityConstraintWt(1d);
+		config.setSmoothnessWt(10000);
+		config.setMomentConstraintWt(1d);
+		config.setRupRateConstraintWt(1d);
+		config.setEventRateSmoothnessWt(1d);
+		config.setParticipationSmoothnessConstraintWt(1d);
+		// disable any/all constraints below
+//		config.setEventRateSmoothnessWt(0d);
+//		config.setMFDSmoothnessConstraintWt(0d);
+//		config.setMFDSmoothnessConstraintWtForPaleoParents(0d);
+//		config.setMinimizationConstraintWt(0d);
+//		config.setMomentConstraintWt(0d);
+//		config.setNucleationMFDConstraintWt(0d);
+//		config.setMagnitudeEqualityConstraintWt(0d);
+//		config.setMagnitudeInequalityConstraintWt(0d);
+//		config.setPaleoRateConstraintWt(0d);
+//		config.setPaleoSlipWt(0d);
+//		config.setParkfieldConstraintWt(0d);
+//		config.setParticipationSmoothnessConstraintWt(0d);
+//		config.setRupRateConstraintWt(0d);
+//		config.setRupRateSmoothingConstraintWt(0d);
+//		config.setSmoothnessWt(0d);
+		// always need these on for old to work
+//		config.setSlipRateConstraintWt_normalized(0d);
+//		config.setSlipRateConstraintWt_unnormalized(0d);
+		
+		// get the paleo rate constraints
+		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+					fm, rupSet);
+
+		// get the improbability constraints
+		double[] improbabilityConstraint = null; // null for now
+
+		// paleo probability model
+		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+
+		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 		
 		UCERF3InversionInputGenerator gen = new UCERF3InversionInputGenerator(
 				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
 		
 		double[] preGenInitial = gen.initialSolution;
 		
-		System.out.println("BUILDING ORIGINAL");
-		gen.generateInputsOld(null);
-		DoubleMatrix2D A_orig = gen.A;
-		DoubleMatrix2D A_ineq_orig = gen.A_ineq;
-		double[] d_orig = gen.d;
-		double[] d_ineq_orig = gen.d_ineq;
-		List<ConstraintRange> origRanges = gen.constraintRowRanges;
-		
-		double[] initial_orig = gen.initialSolution;
-		
-		gen.A = null;
-		gen.A_ineq = null;
-		gen.d = null;
-		gen.d_ineq = null;
-		gen.initialSolution = preGenInitial;
-		gen.constraintRowRanges = null;
-		
-		System.out.println("BUILDING NEW");
+		System.out.println("BUILDING INPUTS");
 		gen.generateInputs(true);
-		DoubleMatrix2D A_new = gen.A;
-		DoubleMatrix2D A_ineq_new = gen.A_ineq;
-		double[] d_new = gen.d;
-		double[] d_ineq_new = gen.d_ineq;
-		List<ConstraintRange> newRanges = gen.constraintRowRanges;
+		return gen;
+	}
+	
+	private static void validate(UCERF3InversionInputGenerator origGen, UCERF3InversionInputGenerator modGen) {
+		DoubleMatrix2D A_orig = origGen.A;
+		DoubleMatrix2D A_ineq_orig = origGen.A_ineq;
+		double[] d_orig = origGen.d;
+		double[] d_ineq_orig = origGen.d_ineq;
+		List<ConstraintRange> origRanges = origGen.constraintRowRanges;
 		
-		double[] initial_new = gen.initialSolution;
+		double[] initial_orig = origGen.initialSolution;
+		
+		DoubleMatrix2D A_new = modGen.A;
+		DoubleMatrix2D A_ineq_new = modGen.A_ineq;
+		double[] d_new = modGen.d;
+		double[] d_ineq_new = modGen.d_ineq;
+		List<ConstraintRange> newRanges = modGen.constraintRowRanges;
+		
+		double[] initial_new = modGen.initialSolution;
 
 		System.out.println("A orig size: "+A_orig.rows()+" x "+A_orig.columns());
 		System.out.println("A new size: "+A_new.rows()+" x "+A_new.columns());
@@ -1618,6 +1749,11 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 
 		System.out.println("Validating initial");
 		validateRates(initial_orig, initial_new);
+	}
+	
+	public static void main(String[] args) throws IOException {
+//		validateNewVsOld();
+		testConfigureNewFileFormat();
 	}
 	
 	private static List<ConstraintRange> getMatches(List<ConstraintRange> ranges, boolean ineq) {

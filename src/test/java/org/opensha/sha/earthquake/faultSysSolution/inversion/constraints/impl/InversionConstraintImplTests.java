@@ -57,7 +57,8 @@ public class InversionConstraintImplTests {
 		System.out.println("Test rupSet has "+numRuptures+" rups and "+numSections+" sects");
 		System.out.println("Mag range: "+rupSet.getMinMag()+" "+rupSet.getMaxMag());
 		
-		config = UCERF3InversionConfiguration.forModel(InversionModels.CHAR_CONSTRAINED, rupSet);
+		config = UCERF3InversionConfiguration.forModel(InversionModels.CHAR_CONSTRAINED, rupSet,
+				rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
 		
 		testMFD = new GutenbergRichterMagFreqDist(1d, 10d, 5.05, 8.95, 50);
 		
