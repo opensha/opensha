@@ -396,38 +396,54 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 
 	}
 
+	// never used
 	public double getTotalRegionRateMgt5() {return totalRegionRateMgt5;}
 	
+	// used in 1 plotting routine
 	public double getMmaxOffFault() {return mMaxOffFault;}
 	
+	// never used
 	public boolean getApplyImpliedCouplingCoeffBoolean() {return applyImpliedCouplingCoeff;}
 	
+	// never used
 	public SpatialSeisPDF getSpatialSeisPDF() {return spatialSeisPDF;}
 	
+	// used in 1 plotting routine
 	public double getFractionSeisOnFault() {return fractionSeisOnFault;}
 	
+	// used in InversionFaultSystemRupSet.calcRuptureAttributes if <1
 	public double getImpliedOnFaultCouplingCoeff() {return impliedOnFaultCouplingCoeff;}
 	
+	// never used
 	public double getImpliedTotalCouplingCoeff() {return impliedTotalCouplingCoeff;}
 	
+	// never used
 	public double getFinalOffFaultCouplingCoeff() {return finalOffFaultCouplingCoeff;}
 	
+	// widely used for plotting
+	// used for smooth starting solution in UCERF3InversionInputGenerator
 	public SummedMagFreqDist getOnFaultSupraSeisMFD() {return targetOnFaultSupraSeisMFD;}
 	
+	// used by grid source generators
 	public IncrementalMagFreqDist getTrulyOffFaultMFD() {return trulyOffFaultMFD;}
 	
+	// used by InversionFaultSystemRupSet.calcRuptureAttributes, but only for G-R branches (so unused in final U3 model)
+	// supplies the sub-seismo on fault MFDs to InversionFaultSystemSolution, which is then used widely in analysis
+	// and by UCERF3-ETAS
 	/**
 	 * See class description above for details on what this returns in different situations
 	 * @return
 	 */
 	public ArrayList<GutenbergRichterMagFreqDist> getSubSeismoOnFaultMFD_List() {return subSeismoOnFaultMFD_List;}
 	
+	// used by InversionFaultSystemRupSet.calcRuptureAttributes for characteristic branches (thus used in final U3 model)
 	/**
 	 * See class description above for details on what this returns in different situations
 	 * @return
 	 */
 	public SummedMagFreqDist getTotalSubSeismoOnFaultMFD() {return totalSubSeismoOnFaultMFD;}
 
+	// only used for plots
 	/**
 	 * This returns the sum of getTotalSubSeismoOnFaultMFD() and getTrulyOffFaultMFD()
 	 * @return
@@ -440,6 +456,7 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 		return totGridSeisMFD;
 	}
 
+	// never used
 	/**
 	 * This returns the sum of getTotalSubSeismoOnFaultMFD() and getOnFaultSupraSeisMFD()
 	 * @return
@@ -452,13 +469,17 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 		return totOnMFD;
 	}
 
-	
+	// widely used in plots
+	// used by IVFSS.getFinalTrulyOffFaultMFD(), which is integral to U3 grid source provider
 	public GutenbergRichterMagFreqDist getTotalTargetGR() {return totalTargetGR;}
 	
+	// only used for plots
 	public GutenbergRichterMagFreqDist getTotalTargetGR_NoCal() {return totalTargetGR_NoCal;}
 	
+	// only used for plots
 	public GutenbergRichterMagFreqDist getTotalTargetGR_SoCal() {return totalTargetGR_SoCal;}
 	
+	// used by InversionFaultSystemRupSet.calcRuptureAttributes for characteristic branches (thus used in final U3 model)
 	/**
 	 * This has been reduced by creep (aseismicity and coupling coefficient in FaultSectionPrefData),
 	 * but not by subseismo rupture or any implied coupling coefficients.
@@ -467,7 +488,7 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 	public double getOrigOnFltDefModMoRate() {return origOnFltDefModMoRate; }
 	
 	
-	
+	// used directly by U3 inversion configuration
 	/**
 	 * This returns the northern and southern RELM region MFD_InversionConstraint 
 	 * (as the 0th and 1st List elements, respectively).  The associated MFDs have been reduced
@@ -523,6 +544,7 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 		return str;
 	}
 
+	// used only for U3 pre-inversion analysis
 	/**
 	 * This returns the maximum magnitude off fault if the total original off-fault 
 	 * moment rate is satisfied.  If (inversionModel.isCharacteristic() == true), Double.NaN 
@@ -549,8 +571,10 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 
 	}
 	
+	// used only for 1 plot
 	public double getOffFaultRegionRateMgt5() {return offFaultRegionRateMgt5; }
 	
+	// used by UCERF3_GridSourceGenerator
 	/**
 	 * Returns the utility GriddedSeisUtils instance for reuse elsewhere.
 	 * @return
@@ -558,7 +582,8 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 	public GriddedSeisUtils getGridSeisUtils() {
 		return gridSeisUtils;
 	}
-	
+
+	// used only for 1 plot
 	/**
 	 * This returns an incremental GR with b=1 up to Mag 9 for the given rate above M 5
 	 * (e.g., useful for guiding eyes in plots).
