@@ -75,7 +75,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @throws IllegalStateException if given module is not present
 	 */
 	public <M extends E> M requireModule(Class<M> clazz) throws IllegalStateException {
-		M module = getModule(null);
+		M module = getModule(clazz);
 		if (module == null)
 			throw new IllegalStateException("Missing required module: "+clazz.getName());
 		return module;
