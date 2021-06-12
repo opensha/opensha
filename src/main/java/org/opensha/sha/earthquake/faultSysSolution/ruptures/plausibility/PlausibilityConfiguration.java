@@ -84,6 +84,11 @@ public class PlausibilityConfiguration implements SubModule<ModuleContainer<Open
 	private int maxNumSplays;
 	private ClusterConnectionStrategy connectionStrategy;
 	private SectionDistanceAzimuthCalculator distAzCalc;
+	
+	@SuppressWarnings("unused") // used for deserialization
+	private PlausibilityConfiguration() {
+		
+	}
 
 	public PlausibilityConfiguration(List<PlausibilityFilter> filters, int maxNumSplays,
 			ClusterConnectionStrategy connectionStrategy, SectionDistanceAzimuthCalculator distAzCalc) {
