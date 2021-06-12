@@ -571,6 +571,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 		String name = this.name;
 		if (name == null) name = "";
 		xml.addAttribute("name", name);
+		if (type != null)
+			xml.addAttribute("borderType", type.name());
 		return root;
 	}
 
@@ -582,7 +584,11 @@ public class Region implements Serializable, XMLSaveable, Named {
 	public static Region fromXMLMetadata(Element e) {
 		LocationList list = LocationList.fromXMLMetadata(e
 			.element(LocationList.XML_METADATA_NAME));
-		Region region = new Region(list, BorderType.MERCATOR_LINEAR);
+		BorderType type = BorderType.MERCATOR_LINEAR;
+		Attribute typeAtt = e.attribute("borderType");
+		if (typeAtt != null)
+			type = BorderType.valueOf(typeAtt.getValue());
+		Region region = new Region(list, type);
 		Attribute nameAtt = e.attribute("name");
 		if (nameAtt != null) {
 			String name = nameAtt.getValue();
@@ -632,6 +638,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 	
 	// subtraction is tricky, this flag enables easier debugging
 	private static final boolean SUBTRACT_DEBUG = false;
+
+	private BorderType type;
 
 	/**
 	 * Returns the first {@code Region} subtracted by the second, or null if no they don't intersect.
@@ -872,7 +880,7 @@ public class Region implements Serializable, XMLSaveable, Named {
 	 * java.awt.geom.Area is generated from the border.
 	 */
 	private void initBorderedRegion(LocationList border, BorderType type) {
-
+		this.type = type;
 		// first remove last point in list if it is the same as
 		// the first point
 		int lastIndex = border.size() - 1;
