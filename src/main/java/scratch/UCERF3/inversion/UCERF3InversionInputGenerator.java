@@ -1,5 +1,6 @@
 package scratch.UCERF3.inversion;
 
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.eq.MagUtils;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -49,6 +51,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.logicTree.LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
+import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
@@ -1507,6 +1510,11 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		return parkfieldRups;
 	}
 	
+	/**
+	 * This tests that the legacy generateInputsOld() method is identical to the new generateInputs() method
+	 * 
+	 * @throws IOException
+	 */
 	private static void validateNewVsOld() throws IOException {
 		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
 		InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
@@ -1563,25 +1571,74 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		validate(origGen, newGen);
 	}
 	
-	private static void testConfigureNewFileFormat() throws IOException {
-		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
-		FaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
-		InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
-		
-		UCERF3InversionInputGenerator origGen = getTestConfig(rupSet, branch.getValue(FaultModels.class), targetMFDs);
-		
+	/**
+	 * This tests that an old style inversion rupture set, when written to and loaded from a new modular archive,
+	 * can be used to reproduce the same inversion inputs as the original representation
+	 * 
+	 * @throws Exception
+	 */
+	private static void testConfigureNewFileFormat() throws Exception {
 		File tempDir = Files.createTempDir();
 		
-		File tempFile = new File(tempDir, "ivfrs.zip");
-		rupSet.getArchive().write(tempFile);
-		rupSet = FaultSystemRupSet.load(tempFile);
-		branch = rupSet.requireModule(LogicTreeBranch.class);
-		if (!rupSet.hasModule(InversionTargetMFDs.class)) {
-			System.out.println("TODO: serialize target MFDs?");
-			rupSet.addModule(targetMFDs);
+		LogicTreeBranch origBranch = LogicTreeBranch.DEFAULT;
+		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
+		
+//		File tempIVFRS = new File(tempDir, "ivfrs.zip");
+//		FaultSystemIO.writeRupSet((InversionFaultSystemRupSet)origRupSet, tempIVFRS);
+//		origRupSet = FaultSystemIO.loadInvRupSet(tempIVFRS);
+		
+		InversionTargetMFDs origTargetMFDs = origRupSet.getModule(InversionTargetMFDs.class);
+		ModSectMinMags origMinMags = origRupSet.requireModule(ModSectMinMags.class);
+		
+		UCERF3InversionInputGenerator origGen = getTestConfig(origRupSet, origBranch.getValue(FaultModels.class), origTargetMFDs);
+		
+		File tempFile = new File(tempDir, "ivfrs_new.zip");
+		origRupSet.getArchive().write(tempFile);
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(tempFile);
+		
+		// copy zone polygons over for issue #25
+		System.out.println("Copying original zone polygons and traces so that opensha issue #25 doesn't affect comparisons");
+		for (int s=0; s<rupSet.getNumSections(); s++) {
+			FaultSection origSect = origRupSet.getFaultSectionData(s);
+			FaultSection newSect = rupSet.getFaultSectionData(s);
+			newSect.setZonePolygon(origSect.getZonePolygon());
+			for (int i=0; i<newSect.getFaultTrace().size(); i++) {
+				Location origLoc = origSect.getFaultTrace().get(i);
+				Location newLoc = newSect.getFaultTrace().get(i);
+				boolean equals = newLoc.equals(origLoc);
+				equals = equals && origLoc.getLatRad() == newLoc.getLatRad();
+				equals = equals && origLoc.getLonRad() == newLoc.getLonRad();
+				if (!equals) {
+					System.err.println("Trace location differs for "+origSect.getName()+", location "+i);
+					System.err.println("\tORIG DEGs\t"+origLoc.getLatitude()+"\t"+origLoc.getLongitude()+"\t"+origLoc.getDepth());
+					System.err.println("\tNEW DEGs\t"+newLoc.getLatitude()+"\t"+newLoc.getLongitude()+"\t"+newLoc.getDepth());
+					System.err.println("\tORIG RADs\t"+origLoc.getLatRad()+"\t"+origLoc.getLonRad());
+					System.err.println("\tNEW RADs\t"+newLoc.getLatRad()+"\t"+newLoc.getLonRad());
+					newSect.getFaultTrace().set(i, origLoc);
+				}
+			}
 		}
-		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, branch.getValue(FaultModels.class),
-				rupSet.requireModule(InversionTargetMFDs.class));
+		
+		LogicTreeBranch newBranch = rupSet.requireModule(LogicTreeBranch.class);
+		Preconditions.checkState(newBranch.equals(origBranch));
+		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+		
+		System.out.println("Validating modified min mags");
+		validateMinMags(origMinMags, rupSet.requireModule(ModSectMinMags.class));
+		
+		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
+		
+		System.out.println("Validating target MFD constraints");
+		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
+		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
+		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
+		for (int i=0; i<origConstrs.size(); i++) {
+			MFD_InversionConstraint origConstr = origConstrs.get(i);
+			MFD_InversionConstraint newConstr = newConstrs.get(i);
+			Preconditions.checkState(origConstr.getRegion().equals(newConstr.getRegion()), "Region mismatch");
+			validateMFD(origConstr.getMagFreqDist(), newConstr.getMagFreqDist());
+		}
+		
 		System.out.println("Generating mod inputs");
 		modGen.generateInputs();
 		System.out.println("Generating orig inputs");
@@ -1591,6 +1648,63 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		FileUtils.deleteRecursive(tempDir);
 	}
+	
+	/**
+	 * This tests creating a U3-style rupture set and configuring an inversion, without using any of the old legacy
+	 * U3 rupture set subclasses.
+	 * 
+	 * @throws Exception
+	 */
+	private static void testBuildNewFormat() throws Exception {
+		LogicTreeBranch origBranch = LogicTreeBranch.DEFAULT;
+		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
+		
+		InversionTargetMFDs origTargetMFDs = origRupSet.getModule(InversionTargetMFDs.class);
+		ModSectMinMags origMinMags = origRupSet.requireModule(ModSectMinMags.class);
+		
+		UCERF3InversionInputGenerator origGen = getTestConfig(origRupSet, origBranch.getValue(FaultModels.class), origTargetMFDs);
+		
+		FaultSystemRupSet.Builder builder = FaultSystemRupSet.builder(
+				origRupSet.getFaultSectionDataList(), origRupSet.getSectionIndicesForAllRups());
+		builder.forU3Branch(origBranch);
+		
+		FaultSystemRupSet rupSet = builder.build();
+		
+		LogicTreeBranch newBranch = rupSet.requireModule(LogicTreeBranch.class);
+		Preconditions.checkState(newBranch.equals(origBranch));
+		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+		
+		System.out.println("Validating modified min mags");
+		validateMinMags(origMinMags, rupSet.requireModule(ModSectMinMags.class));
+		
+		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
+		
+		System.out.println("Validating target MFD constraints");
+		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
+		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
+		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
+		for (int i=0; i<origConstrs.size(); i++) {
+			MFD_InversionConstraint origConstr = origConstrs.get(i);
+			MFD_InversionConstraint newConstr = newConstrs.get(i);
+			Preconditions.checkState(origConstr.getRegion().equals(newConstr.getRegion()), "Region mismatch");
+			validateMFD(origConstr.getMagFreqDist(), newConstr.getMagFreqDist());
+		}
+		
+		System.out.println("Generating mod inputs");
+		modGen.generateInputs();
+		System.out.println("Generating orig inputs");
+		origGen.generateInputs();
+		
+		validate(origGen, modGen);
+	}
+	
+	public static void main(String[] args) throws Exception {
+//		validateNewVsOld();
+//		testConfigureNewFileFormat();
+		testBuildNewFormat();
+	}
+	
+	private static boolean test_double_percision = true; // true: test do double precision, false float
 	
 	private static UCERF3InversionInputGenerator getTestConfig(FaultSystemRupSet rupSet, FaultModels fm,
 			InversionTargetMFDs targetMFDs) throws IOException {
@@ -1620,7 +1734,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 //		config.setParticipationSmoothnessConstraintWt(0d);
 //		config.setRupRateConstraintWt(0d);
 //		config.setRupRateSmoothingConstraintWt(0d);
-//		config.setSmoothnessWt(0d);
+		config.setSmoothnessWt(0d); // uses a lot of memory
 		// always need these on for old to work
 //		config.setSlipRateConstraintWt_normalized(0d);
 //		config.setSlipRateConstraintWt_unnormalized(0d);
@@ -1639,59 +1753,6 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 
 		return new UCERF3InversionInputGenerator(
 				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
-	}
-	
-	private static UCERF3InversionInputGenerator generate(UCERF3InversionConfiguration config,
-			FaultSystemRupSet rupSet, FaultModels fm) throws IOException {
-
-		// first enable all other constraints
-		config.setRupRateSmoothingConstraintWt(1d);
-		config.setMagnitudeEqualityConstraintWt(1d);
-		config.setSmoothnessWt(10000);
-		config.setMomentConstraintWt(1d);
-		config.setRupRateConstraintWt(1d);
-		config.setEventRateSmoothnessWt(1d);
-		config.setParticipationSmoothnessConstraintWt(1d);
-		// disable any/all constraints below
-//		config.setEventRateSmoothnessWt(0d);
-//		config.setMFDSmoothnessConstraintWt(0d);
-//		config.setMFDSmoothnessConstraintWtForPaleoParents(0d);
-//		config.setMinimizationConstraintWt(0d);
-//		config.setMomentConstraintWt(0d);
-//		config.setNucleationMFDConstraintWt(0d);
-//		config.setMagnitudeEqualityConstraintWt(0d);
-//		config.setMagnitudeInequalityConstraintWt(0d);
-//		config.setPaleoRateConstraintWt(0d);
-//		config.setPaleoSlipWt(0d);
-//		config.setParkfieldConstraintWt(0d);
-//		config.setParticipationSmoothnessConstraintWt(0d);
-//		config.setRupRateConstraintWt(0d);
-//		config.setRupRateSmoothingConstraintWt(0d);
-//		config.setSmoothnessWt(0d);
-		// always need these on for old to work
-//		config.setSlipRateConstraintWt_normalized(0d);
-//		config.setSlipRateConstraintWt_unnormalized(0d);
-		
-		// get the paleo rate constraints
-		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
-					fm, rupSet);
-
-		// get the improbability constraints
-		double[] improbabilityConstraint = null; // null for now
-
-		// paleo probability model
-		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
-
-		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-		
-		UCERF3InversionInputGenerator gen = new UCERF3InversionInputGenerator(
-				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
-		
-		double[] preGenInitial = gen.initialSolution;
-		
-		System.out.println("BUILDING INPUTS");
-		gen.generateInputs(true);
-		return gen;
 	}
 	
 	private static void validate(UCERF3InversionInputGenerator origGen, UCERF3InversionInputGenerator modGen) {
@@ -1749,11 +1810,9 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 
 		System.out.println("Validating initial");
 		validateRates(initial_orig, initial_new);
-	}
-	
-	public static void main(String[] args) throws IOException {
-//		validateNewVsOld();
-		testConfigureNewFileFormat();
+		
+		System.out.println("Validating waterlevel");
+		validateRates(origGen.getWaterLevelRates(), modGen.getWaterLevelRates());
 	}
 	
 	private static List<ConstraintRange> getMatches(List<ConstraintRange> ranges, boolean ineq) {
@@ -1788,7 +1847,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 						if (range.contains(row, ineq))
 							matchRange = range;
 				}
-				Preconditions.checkState(val == oVal,
+				Preconditions.checkState(val == oVal || (!test_double_percision && (float)val == (float) oVal),
 						"Value mismatch at row=%s, col=%s: %s != %s\nConstraint: %s",
 						row, col, val, oVal, matchRange);
 			}
@@ -1829,19 +1888,57 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					if (range.contains(i, ineq))
 						matchRange = range;
 			}
-			Preconditions.checkState(d_orig[i] == d_new[i], "d mismatch at %s: %s != %s\nConstraint: %s",
-					i, d_orig[i], d_new[i], matchRange);
+			validate(d_orig[i], d_new[i], "d", i, "\nConstraint: "+matchRange);
 		}
 		System.out.println("Validated "+d_orig.length+" data values");
 	}
 	
 	private static void validateRates(double[] origRates, double[] newRates) {
+		if (origRates == null) {
+			Preconditions.checkState(newRates == null, "orig is null but new isn't");
+			System.out.println("Both are null, skipping");
+			return;
+		} else {
+			Preconditions.checkNotNull(newRates, "orig is non-null but new is null");
+		}
 		Preconditions.checkState(origRates != newRates, "orig and new are same instance!");
 		Preconditions.checkState(origRates.length == newRates.length,
 				"rates length mismatch: %s != %s", origRates.length, newRates.length);
 		for (int i=0; i<newRates.length; i++)
-			Preconditions.checkState(origRates[i] == newRates[i], "rate mismatch at %s: %s != %s",
-					i, origRates[i], newRates[i]);
+			validate(origRates[i], newRates[i], "rate", i);
 		System.out.println("Validated "+origRates.length+" rate values");
+	}
+	
+	private static void validateMinMags(ModSectMinMags origMinMags, ModSectMinMags newMinMags) {
+		double[] origVals = origMinMags.getMinMagForSections();
+		double[] newVals = newMinMags.getMinMagForSections();
+		Preconditions.checkState(origVals != newVals, "orig and new are same instance!");
+		Preconditions.checkState(origVals.length == newVals.length,
+				"rates length mismatch: %s != %s", origVals.length, newVals.length);
+		for (int i=0; i<origVals.length; i++)
+			validate(origVals[i], newVals[i], "min mag", i);
+		System.out.println("Validated "+origVals.length+" rate values");
+	}
+	
+	private static void validateMFD(IncrementalMagFreqDist origMFD, IncrementalMagFreqDist newMFD) {
+		Preconditions.checkState(origMFD != newMFD, "orig and new are same instance!");
+		Preconditions.checkState(origMFD.size() == newMFD.size(),
+				"rates length mismatch: %s != %s", origMFD.size(), newMFD.size());
+		for (int i=0; i<newMFD.size(); i++) {
+			Point2D origPt = origMFD.get(i);
+			Point2D newPt = newMFD.get(i);
+			validate(origPt.getX(), newPt.getX(), "x", i);
+			validate(origPt.getY(), newPt.getY(), "y", i, " at x="+(float)origPt.getX());
+		}
+	}
+	
+	private static void validate(double val1, double val2, String type, int index) {
+		validate(val1, val2, type, index, "");
+	}
+	
+	private static void validate(double val1, double val2, String type, int index, String extra) {
+		Preconditions.checkState(val1 == val2 || (!test_double_percision && (float)val1 == (float) val2),
+				type+" mismatch at %s: %s != %s"+extra,
+						index, val1, val2);
 	}
 }

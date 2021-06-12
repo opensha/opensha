@@ -1,11 +1,16 @@
 package scratch.UCERF3.inversion;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.SubModule;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -15,6 +20,8 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.magdist.TaperedGR_MagFreqDist;
+
+import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
@@ -98,7 +105,7 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
  * @author field
  *
  */
-public class InversionTargetMFDs implements OpenSHA_Module { // TODO serialization if we intend to keep this class
+public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSystemRupSet> {
 	
 	// debugging flag
 	protected final static boolean D = false;
@@ -140,23 +147,39 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 	public final static double DELTA_MAG = 0.1;
 	
 	public final static double FAULT_BUFFER = 12d;	// buffer for fault polygons
+	private FaultSystemRupSet rupSet;
+	private LogicTreeBranch logicTreeBranch;
+	private ModSectMinMags finalMinMags;
 
 	/**
 	 * Implicit constructor required for subclassing
 	 */
 	protected InversionTargetMFDs() {
-		//do nothing, this is here so subclasses can do their own setup
-	}		
+		// do nothing, this is here so subclasses can do their own setup
+	}
 	
 	/**
 	 * 
 	 * @param invRupSet
 	 */
 	public InversionTargetMFDs(InversionFaultSystemRupSet invRupSet) {
-		init(invRupSet, invRupSet.getModule(LogicTreeBranch.class), invRupSet.getModule(ModSectMinMags.class));
+		this(invRupSet, invRupSet.getModule(LogicTreeBranch.class), invRupSet.getModule(ModSectMinMags.class));
+	}
+	
+	/**
+	 * 
+	 * @param rupSet
+	 * @param logicTreeBranch
+	 * @param finalMinMags
+	 */
+	public InversionTargetMFDs(FaultSystemRupSet rupSet, LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
+		init(rupSet, logicTreeBranch, finalMinMags);
 	}
 	
 	private void init(FaultSystemRupSet rupSet, LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
+		this.rupSet = rupSet;
+		this.logicTreeBranch = logicTreeBranch;
+		this.finalMinMags = finalMinMags;
 		this.inversionModel = logicTreeBranch.getValue(InversionModels.class);
 		this.totalRegionRateMgt5 = logicTreeBranch.getValue(TotalMag5Rate.class).getRateMag5();
 		this.mMaxOffFault = logicTreeBranch.getValue(MaxMagOffFault.class).getMaxMagOffFault();
@@ -574,7 +597,7 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 	// used only for 1 plot
 	public double getOffFaultRegionRateMgt5() {return offFaultRegionRateMgt5; }
 	
-	// used by UCERF3_GridSourceGenerator
+	// used by UCERF3_GridSourceGenerator to get the FaultPolyMgr instance
 	/**
 	 * Returns the utility GriddedSeisUtils instance for reuse elsewhere.
 	 * @return
@@ -600,6 +623,38 @@ public class InversionTargetMFDs implements OpenSHA_Module { // TODO serializati
 	@Override
 	public String getName() {
 		return "UCERF3 Inversion Target MFDs";
+	}
+
+	@Override
+	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		// TODO actually serialize if we intend to keep this class
+	}
+
+	@Override
+	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		// TODO actually serialize if we intend to keep this class
+		Preconditions.checkNotNull(rupSet, "Rupture set not initialized");
+		init(rupSet, rupSet.requireModule(LogicTreeBranch.class), rupSet.requireModule(ModSectMinMags.class));
+	}
+
+	@Override
+	public void setParent(FaultSystemRupSet parent) throws IllegalStateException {
+		this.rupSet = parent;
+	}
+
+	@Override
+	public FaultSystemRupSet getParent() {
+		return rupSet;
+	}
+
+	@Override
+	public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
+		Preconditions.checkState(rupSet == null || rupSet.isEquivalentTo(newParent));
+		if (!newParent.hasModule(LogicTreeBranch.class))
+			newParent.addModule(logicTreeBranch);
+		if (!newParent.hasModule(ModSectMinMags.class))
+			newParent.addModule(finalMinMags);
+		return new InversionTargetMFDs(newParent, logicTreeBranch, finalMinMags);
 	}
 
 

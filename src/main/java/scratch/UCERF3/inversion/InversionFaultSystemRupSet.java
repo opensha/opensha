@@ -346,10 +346,14 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		double[] sectAreasOrig = new double[numSections];
 		for (int sectIndex=0; sectIndex<numSections; sectIndex++) {
 			FaultSection sectData = faultSectionData.get(sectIndex);
+			// modified these 6/11/21 to use the standard method,
+			// which can differ slightly due to floating point order of operations
 			// aseismicity reduces area; km --> m on length & DDW
-			sectAreasReduced[sectIndex] = sectData.getTraceLength()*1e3*sectData.getReducedDownDipWidth()*1e3;
+//			sectAreasReduced[sectIndex] = sectData.getTraceLength()*1e3*sectData.getReducedDownDipWidth()*1e3;
+			sectAreasReduced[sectIndex] = sectData.getArea(true);
 			// km --> m on length & DDW
-			sectAreasOrig[sectIndex] = sectData.getTraceLength()*1e3*sectData.getOrigDownDipWidth()*1e3;
+//			sectAreasOrig[sectIndex] = sectData.getTraceLength()*1e3*sectData.getOrigDownDipWidth()*1e3;
+			sectAreasOrig[sectIndex] = sectData.getArea(false);
 		}
 
 		int numRuptures = 0;
@@ -411,20 +415,75 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				// rupMeanMoment[rupIndex] = MomentMagCalc.getMoment(rupMeanMag[rupIndex])* gaussMFD_slipCorr; // increased if magSigma >0
 				//				rupMeanSlip[rupIndex] = rupMeanMoment[rupIndex]/(rupArea[rupIndex]*FaultMomentCalc.SHEAR_MODULUS);
 				rupMeanSlip[rupIndex] = scalingRelationship.getAveSlip(totArea, totLength, origDDW);
+//				if (rupIndex == 0)
+//					System.out.println("Orig:\tarea="+totArea+"\torigArea="+totOrigArea
+//							+"\tlength="+totLength+"\torigDDW="+origDDW+"\tslip="+rupMeanSlip[rupIndex]);
 			}
 		}
 		
-		// set with what he have now before inversionMFDs instantiation (we'll set again with slips later)
+		// set with what we have now before inversionMFDs instantiation (we'll set again with slips later)
 		init(faultSectionData, null, null, sectAreasReduced, sectionsForRups, rupMeanMag, rupRake, rupArea, rupLength, infoString);
 		
-		InversionTargetMFDs inversionMFDs = getInversionTargetMFDs();
+		double[][] slipTargets = computeTargetSlipRates(faultSectionData, inversionModel.isCharacteristic(), applyImpliedCouplingCoeff, getInversionTargetMFDs());
+		double[] targetSlipRate = slipTargets[0];
+		double[] targetSlipRateStdDev = slipTargets[1];
+		
+		if (D) System.out.println("DONE creating "+getNumRuptures()+" ruptures!");
 
-		ArrayList<GutenbergRichterMagFreqDist> subSeismoOnFaultMFD_List = inversionMFDs.getSubSeismoOnFaultMFD_List();
-		double impliedOnFaultCouplingCoeff = inversionMFDs.getImpliedOnFaultCouplingCoeff();
-
+		init(faultSectionData, targetSlipRate, targetSlipRateStdDev, sectAreasReduced, sectionsForRups, rupMeanMag, rupRake, rupArea, rupLength, infoString);
+	}
+	
+	/**
+	 * Computes UCERF3 target slip rates for the given fault section data, inversion target MFDs, inversion model,
+	 * and moment rate fixes branch.
+	 * <p>
+	 * A 2D array is returned where the first value is the array of target slip rates, and the second is the array of
+	 * target slip rate standard deviations. Extract as:
+	 * <p>
+	 * <code>
+	 * double[][] slipTargets = computeTargetSlipRates(...);
+	 * double[] targetSlipRate = slipTargets[0];
+	 * double[] targetSlipRateStdDev = slipTargets[1];
+	 * </code>
+	 * 
+	 * @param faultSectionData
+	 * @param inversionModel
+	 * @param momentRateFixes
+	 * @param inversionMFDs
+	 * @return 2D array containing {targetSlipRates[], targetSlipRateStdDevs[]}
+	 */
+	public static double[][] computeTargetSlipRates(List<? extends FaultSection> faultSectionData,
+			InversionModels inversionModel, MomentRateFixes momentRateFixes, InversionTargetMFDs inversionMFDs) {
+		return computeTargetSlipRates(faultSectionData, inversionModel.isCharacteristic(), momentRateFixes.isApplyCC(), inversionMFDs);
+	}
+	
+	/**
+	 * Computes UCERF3 target slip rates for the given fault section data, inversion target MFDs and inversion settings.
+	 * <p>
+	 * A 2D array is returned where the first value is the array of target slip rates, and the second is the array of
+	 * target slip rate standard deviations. Extract as:
+	 * <p>
+	 * <code>
+	 * double[][] slipTargets = computeTargetSlipRates(...);
+	 * double[] targetSlipRate = slipTargets[0];
+	 * double[] targetSlipRateStdDev = slipTargets[1];
+	 * </code>
+	 * 
+	 * @param faultSectionData
+	 * @param characteristic characteristic branch if true, G-R branch if false
+	 * @param applyImpliedCouplingCoeff if true, apply the implied coupling-coefficient
+	 * @param inversionMFDs
+	 * @return 2D array containing {targetSlipRates[], targetSlipRateStdDevs[]}
+	 */
+	public static double[][] computeTargetSlipRates(List<? extends FaultSection> faultSectionData,
+			boolean characteristic, boolean applyImpliedCouplingCoeff, InversionTargetMFDs inversionMFDs) {
+		int numSections = faultSectionData.size();
 		// compute target slip rate and stdDev (reduced for subseismo ruptures)
 		double[] targetSlipRate = new double[numSections];
 		double[] targetSlipRateStdDev = new double[numSections];
+		Preconditions.checkState(targetSlipRate.length == targetSlipRateStdDev.length);
+		ArrayList<GutenbergRichterMagFreqDist> subSeismoOnFaultMFD_List = inversionMFDs.getSubSeismoOnFaultMFD_List();
+		double impliedOnFaultCouplingCoeff = inversionMFDs.getImpliedOnFaultCouplingCoeff();
 
 		// first get the implied coupling coeff reduction factor
 		double impliedCC_reduction = 1.0;
@@ -448,10 +507,9 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 
 			double fractionalSlipRateReduction=1.0;	// default if next is false
 			if(origSectMoRate > 0) { // avoid division by zero
-				if(inversionModel.isCharacteristic()) {
+				if (characteristic) {
 					fractionalSlipRateReduction = impliedCC_reducedSectMoRate*(1.0-aveCharSubSeismoMoRateFraction)/origSectMoRate;	// reduced by subseismo and any implied CC
-				}
-				else {
+				} else {
 					double subSeismoMoRate = subSeismoOnFaultMFD_List.get(s).getTotalMomentRate(); 	// implied CC already applied if applicable
 					fractionalSlipRateReduction = (impliedCC_reducedSectMoRate-subSeismoMoRate)/origSectMoRate;	// reduced by subseismo and any implied CC
 				}				
@@ -459,10 +517,10 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 			targetSlipRate[s] = faultSectionData.get(s).getReducedAveSlipRate()*1e-3*fractionalSlipRateReduction; // mm/yr --> m/yr; includes moRateReduction
 			targetSlipRateStdDev[s] = faultSectionData.get(s).getReducedSlipRateStdDev()*1e-3*fractionalSlipRateReduction; // mm/yr --> m/yr; includes moRateReduction
 		}
-		
-		if (D) System.out.println("DONE creating "+getNumRuptures()+" ruptures!");
-
-		init(faultSectionData, targetSlipRate, targetSlipRateStdDev, sectAreasReduced, sectionsForRups, rupMeanMag, rupRake, rupArea, rupLength, infoString);
+		double[][] ret = new double[2][];
+		ret[0] = targetSlipRate;
+		ret[1] = targetSlipRateStdDev;
+		return ret;
 	}
 
 	/**
