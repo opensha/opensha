@@ -72,9 +72,9 @@ public class GriddedSeisUtils {
 	public double pdfInPolys() {
 		double fraction = 0;
 		Map<Integer, Double> nodeMap = polyMgr.getNodeExtents();
-		for (int idx : nodeMap.keySet()) {
-			fraction += nodeMap.get(idx) * pdf[idx];
-		}
+		for (int idx=0; idx<pdf.length; idx++)
+			if (nodeMap.containsKey(idx))
+				fraction += nodeMap.get(idx) * pdf[idx];
 		return fraction;
 	}
 
@@ -90,9 +90,9 @@ public class GriddedSeisUtils {
 	public double pdfValForSection(int idx) {
 		Map<Integer, Double> nodeMap = polyMgr.getScaledNodeFractions(idx);
 		double sum = 0.0;
-		for (int iNode : nodeMap.keySet()) {
-			sum += pdf[iNode] * nodeMap.get(iNode);
-		}
+		for (int iNode=0; iNode<pdf.length; iNode++)
+			if (nodeMap.containsKey(iNode))
+				sum += pdf[iNode] * nodeMap.get(iNode);
 		return sum;
 	}
 	
