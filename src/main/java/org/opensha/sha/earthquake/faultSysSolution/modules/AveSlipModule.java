@@ -66,12 +66,13 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
 		@Override
 		public double getAveSlip(int rupIndex) {
 			Preconditions.checkNotNull(rupSet, "Parent rupture set not set");
+			double totArea = rupSet.getAreaForRup(rupIndex);
+			double length = rupSet.getLengthForRup(rupIndex);
 			double totOrigArea = 0d;
 			for (FaultSection sect : rupSet.getFaultSectionDataForRupture(rupIndex))
-				totOrigArea += sect.getTraceLength()*1e3*sect.getOrigDownDipWidth()*1e3;
+				totOrigArea += sect.getArea(false);
 			double origDDW = totOrigArea/rupSet.getLengthForRup(rupIndex);
-			double aveSlip = scale.getAveSlip(rupSet.getAreaForRup(rupIndex),
-					rupSet.getLengthForRup(rupIndex), origDDW);
+			double aveSlip = scale.getAveSlip(totArea, length, origDDW);
 			return aveSlip;
 		}
 		
