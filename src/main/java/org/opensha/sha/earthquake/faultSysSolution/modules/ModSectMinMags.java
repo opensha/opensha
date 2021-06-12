@@ -23,6 +23,8 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 	
 	public abstract double getMinMagForSection(int sectIndex);
 	
+	public abstract double[] getMinMagForSections();
+	
 	public static ModSectMinMags instance(FaultSystemRupSet rupSet, double[] sectMinMags) {
 		return new Precomputed(rupSet, sectMinMags);
 	}
@@ -49,6 +51,11 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 		}
 
 		@Override
+		public double[] getMinMagForSections() {
+			return sectMinMags;
+		}
+
+		@Override
 		public String getFileName() {
 			return "mod_sect_min_mags.csv";
 		}
@@ -69,8 +76,11 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 					"Expected 1 header row and %s section rows, have %s", numSects, csv.getNumRows());
 
 			double[] sectMinMags = new double[numSects];
-			for (int r=0; r<numSects; r++)
-				sectMinMags[r] = csv.getDouble(r+1, 1);
+			for (int r=0; r<numSects; r++) {
+				int row = r+1;
+				Preconditions.checkState(csv.getInt(row, 0) == r, "Data not in order (or not 0-based)");
+				sectMinMags[r] = csv.getDouble(row, 1);
+			}
 			this.sectMinMags = sectMinMags;
 		}
 		
