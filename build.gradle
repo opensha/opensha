@@ -24,12 +24,20 @@ sourceSets {
 }
 
 test {
+//    testLogging {
+//        events "passed", "skipped", "failed"
+//    }
     filter {
         includeTestsMatching "*Suite*"
     }
 }
 
 task testOperational (type: Test) {
+    // this forces it to always be rerun
+    systemProperty "random.testing.seed", new Random().nextInt()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
     filter {
         includeTestsMatching "*Operational*"
     }
