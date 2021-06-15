@@ -572,7 +572,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	// Ave Slip and Slip On Sections Methods
 
 	@Override
-	public void copyCacheFrom(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
+	public void copyCacheFrom(FaultSystemRupSet rupSet) {
 		super.copyCacheFrom(rupSet);
 		if (rupSet instanceof InversionFaultSystemRupSet) {
 			FaultModels myFM = getFaultModel();

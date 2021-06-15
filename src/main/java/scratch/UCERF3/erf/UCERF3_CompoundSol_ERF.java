@@ -29,6 +29,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
@@ -201,7 +202,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		LogicTreeBranch branch = LogicTreeBranch.fromValues(vals);
 		Preconditions.checkState(branch.isFullySpecified(), "Somehow branch from enums isn't fully specified");
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = fetch.getSolution(branch);
+		FaultSystemSolution sol = fetch.getSolution(branch);
 		setSolution(sol);
 		solutionStale = false;
 	}

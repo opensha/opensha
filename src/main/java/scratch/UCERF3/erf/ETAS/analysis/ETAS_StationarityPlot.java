@@ -20,6 +20,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.base.Preconditions;
 
@@ -79,7 +80,7 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			FaultSystemSolution fss) {
 		long simStartTime = getConfig().getSimulationStartTimeMillis();
 		
 		EvenlyDiscretizedFunc[] magFuncs = new EvenlyDiscretizedFunc[mags.length];
@@ -110,7 +111,7 @@ public class ETAS_StationarityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		plotMinMag = totalCountHist.getX(numToTrim)-totalCountHist.getDelta();

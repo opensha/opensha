@@ -58,6 +58,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -93,7 +94,7 @@ public class RidgecrestStatsCalc {
 //		System.exit(0);
 		boolean redoPaperFigs = false;
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
+		FaultSystemSolution fss = FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 		
 		File outputDir = new File(gitDir, "ridgecrest_tables_figures");
@@ -145,7 +146,7 @@ public class RidgecrestStatsCalc {
 	private final static Color[] colors = { Color.DARK_GRAY, Color.RED, Color.BLUE, Color.GREEN.darker(), Color.CYAN, Color.ORANGE };
 	
 	private static List<String> writeSummaryTableStats(File gitDir, File outputDir, File resourcesDir,
-			String heading, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) throws IOException {
+			String heading, FaultSystemSolution fss) throws IOException {
 		List<List<Results>> resultSets = new ArrayList<>();
 		List<String> resultSetNames = new ArrayList<>();
 		
@@ -758,7 +759,7 @@ public class RidgecrestStatsCalc {
 		List<PlotCurveCharacterstics> inputChars = new ArrayList<>();
 		ETAS_Config initialConfig = ETAS_Config.readJSON(
 				new File(gitDir, "2019_09_04-ComCatM7p1_ci38457511_ShakeMapSurfaces/config.json"));
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = initialConfig.loadFSS();
+		FaultSystemSolution fss = initialConfig.loadFSS();
 		ETAS_Config sevenDayConfig = ETAS_Config.readJSON(
 				new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces/config.json"));
 		List<? extends FaultSection> sects = FaultModels.FM3_1.fetchFaultSections();
@@ -1119,7 +1120,7 @@ public class RidgecrestStatsCalc {
 	}
 	
 	private static void processPlots(ETAS_Config config, File inputFile, File outputDir,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec, ETAS_AbstractPlot... plots) throws IOException {
+			FaultSystemSolution fss, ExecutorService exec, ETAS_AbstractPlot... plots) throws IOException {
 		int numProcessed = ETAS_CatalogIteration.processCatalogs(inputFile, new ETAS_CatalogIteration.Callback() {
 			
 			@Override

@@ -46,6 +46,7 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
@@ -1231,7 +1232,7 @@ public class SubSectStiffnessCalculator {
 //		System.exit(0);
 		File fssFile = new File("/home/kevin/Simulators/catalogs/rundir4983_stitched/fss/"
 				+ "rsqsim_sol_m6.5_skip5000_sectArea0.2.zip");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
+		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
 		double lambda = 30000;
 		double mu = 30000;
 		double coeffOfFriction = 0.5;

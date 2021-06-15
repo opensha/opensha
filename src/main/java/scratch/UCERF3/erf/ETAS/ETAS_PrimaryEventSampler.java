@@ -53,6 +53,7 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
@@ -137,7 +138,7 @@ public class ETAS_PrimaryEventSampler {
 	AbstractNthRupERF erf;
 	FaultSystemSolutionERF fssERF;
 	int numFltSystSources=-1, totNumSrc;
-	org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
+	FaultSystemRupSet rupSet;
 	FaultPolyMgr faultPolyMgr;
 
 	

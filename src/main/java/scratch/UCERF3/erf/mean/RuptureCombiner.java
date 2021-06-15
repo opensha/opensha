@@ -23,13 +23,13 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -71,13 +71,13 @@ public class RuptureCombiner {
 	 * @param rake basis map from hashset of subsection names to rakes, or null to use weighted average rakes
 	 * @return
 	 */
-	public static FaultSystemSolution getCombinedSolution(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol,
+	public static FaultSystemSolution getCombinedSolution(FaultSystemSolution meanSol,
 			double upperDepthTol, boolean useAvgUpperDepth,
 			boolean combineRakes, Map<Set<String>, Double> rakesBasis) {
 		
 		final boolean D = true;
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet origRupSet = meanSol.getRupSet();
+		FaultSystemRupSet origRupSet = meanSol.getRupSet();
 		
 		// old sect => new sect (if upper depth combining, else null)
 		Map<Integer, Integer> sectIndexMapping = null;
@@ -395,11 +395,11 @@ public class RuptureCombiner {
 		}
 		String info = "Combined Solution";
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = new FaultSystemRupSet(combinedSects, null, null, null, combinedMappedSectionsForRups,
-				mags, rakes, rupAreas, null, info);
+		FaultSystemRupSet rupSet = new FaultSystemRupSet(combinedSects, null, null, null, combinedMappedSectionsForRups,
+				mags, rakes, rupAreas, null);
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		sol.setGridSourceProvider(meanSol.getGridSourceProvider());
-		sol.setRupMagDists(mfds);
+		sol.addModule(new RupMFDsModule(mfds));
 		
 		// now check total rates
 		double origTotRate = 0;
@@ -681,8 +681,8 @@ public class RuptureCombiner {
 	
 	static void checkIdentical(FaultSystemSolution sol1, FaultSystemSolution sol2, boolean checkERF) {
 		System.out.println("Doing Identical Check");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet1 = sol1.getRupSet();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet2 = sol2.getRupSet();
+		FaultSystemRupSet rupSet1 = sol1.getRupSet();
+		FaultSystemRupSet rupSet2 = sol2.getRupSet();
 		
 		Preconditions.checkState(rupSet1.getNumRuptures() == rupSet2.getNumRuptures(), "Rup count wrong");
 		Preconditions.checkState(rupSet1.getNumSections() == rupSet2.getNumSections(), "Sect count wrong");
@@ -710,6 +710,8 @@ public class RuptureCombiner {
 		// rup1 -> rup2
 		Map<Integer, Integer> rupIDMapping = Maps.newHashMap();
 		boolean idsIdentical = true;
+		RupMFDsModule mfds1 = sol1.requireModule(RupMFDsModule.class);
+		RupMFDsModule mfds2 = sol2.requireModule(RupMFDsModule.class);
 		for (int r=0; r<rupSet1.getNumRuptures(); r++) {
 			IntHashSet rupSects = new IntHashSet(rupSet1.getSectionsIndicesForRup(r));
 			Double rake = rupSet1.getAveRakeForRup(r);
@@ -747,8 +749,8 @@ public class RuptureCombiner {
 			checkFloatTolerance(rupSet1.getAreaForRup(r), rupSet2.getAreaForRup(index), "Areas wrong for rup "+r+"/"+index);
 			
 			// check MFDs
-			DiscretizedFunc mfd1 = sol1.getRupMagDist(r);
-			DiscretizedFunc mfd2 = sol2.getRupMagDist(index);
+			DiscretizedFunc mfd1 = mfds1.getRuptureMFD(r);
+			DiscretizedFunc mfd2 = mfds2.getRuptureMFD(index);
 			Preconditions.checkState(mfd1.size() == mfd2.size(), "MFD sizes inconsistant");
 			for (int i=0; i<mfd1.size(); i++) {
 				checkFloatTolerance(mfd1.getX(i), mfd2.getX(i), "Mags wrong for rup "+r+"/"+index+" mfd "+i);
@@ -859,19 +861,19 @@ public class RuptureCombiner {
 	public static class SubsetSolution extends FaultSystemSolution {
 		public SubsetSolution(FaultSystemSolution sol, List<Integer> rups) {
 			super(new SubsetRupSet(sol.getRupSet(), rups), getSubArray(sol.getRateForAllRups(), rups));
-			setRupMagDists(getSubArray(sol.getRupMagDists(), rups));
+			addModule(new RupMFDsModule(getSubArray(sol.getModule(RupMFDsModule.class).getRuptureMFDs(), rups)));
 		}
 	}
 	
 	public static class SubsetRupSet extends FaultSystemRupSet {
 
-		public SubsetRupSet(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, List<Integer> rups) {
+		public SubsetRupSet(FaultSystemRupSet rupSet, List<Integer> rups) {
 			super(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(), rupSet.getSlipRateForAllSections(),
 					rupSet.getAreaForAllSections(), getSubList(rupSet.getSectionIndicesForAllRups(), rups),
 					getSubArray(rupSet.getMagForAllRups(), rups),
 					getSubArray(rupSet.getAveRakeForAllRups(), rups),
 					getSubArray(rupSet.getAreaForAllRups(), rups),
-					getSubArray(rupSet.getLengthForAllRups(), rups), "Subset");
+					getSubArray(rupSet.getLengthForAllRups(), rups));
 			Preconditions.checkState(getNumRuptures() == rups.size());
 		}
 		

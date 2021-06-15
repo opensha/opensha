@@ -9,6 +9,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
@@ -67,7 +68,7 @@ public class FSSRupsInRegionCache implements RupInRegionCache {
 		return false;
 	}
 	
-	public boolean isRupInRegion(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, int fssIndex, Region region, double surfGridSpacing) {
+	public boolean isRupInRegion(FaultSystemSolution sol, int fssIndex, Region region, double surfGridSpacing) {
 		Preconditions.checkArgument(fssIndex >= 0 && fssIndex < sol.getRupSet().getNumRuptures());
 		synchronized (this) {
 			// check if the solution has changed
@@ -80,7 +81,7 @@ public class FSSRupsInRegionCache implements RupInRegionCache {
 		synchronized (region) {
 			if (!sectsInRegions.containsKey(region)) {
 				// calculate sections in regions
-				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+				FaultSystemRupSet rupSet = sol.getRupSet();
 				boolean[] sects = new boolean[rupSet.getNumSections()];
 				for (int i=0; i<sects.length; i++) {
 					FaultSection sect = rupSet.getFaultSectionData(i);

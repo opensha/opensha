@@ -21,6 +21,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
@@ -304,7 +305,7 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 	
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		File rupSetFile = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(rupSetFile);
+		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(rupSetFile);
 		SectionDistanceAzimuthCalculator calc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 		System.out.println("516=>521: "+calc.getDistance(516, 521));
 		System.out.println("516=>522: "+calc.getDistance(516, 522));

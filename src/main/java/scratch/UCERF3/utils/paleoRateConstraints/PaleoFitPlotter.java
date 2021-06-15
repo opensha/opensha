@@ -34,12 +34,13 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.StatUtil;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.SlipEnabledRupSet;
 import scratch.UCERF3.SlipEnabledSolution;
@@ -106,7 +107,7 @@ public class PaleoFitPlotter {
 			Preconditions.checkState(paleoRateConstraint.size() > 0, "Must have at least one rate constraint");
 			Preconditions.checkNotNull(sol, "Solution cannot me null!");
 			
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+			FaultSystemRupSet rupSet = sol.getRupSet();
 			
 			boolean plotAveSlipBars = true;
 			
@@ -319,9 +320,9 @@ public class PaleoFitPlotter {
 		return gp;
 	}
 	
-	public static double getPaleoRateForSect(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, int sectIndex,
+	public static double getPaleoRateForSect(FaultSystemSolution sol, int sectIndex,
 			PaleoProbabilityModel paleoProbModel) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		double rate = 0;
 		for (int rupID : rupSet.getRupturesForSection(sectIndex)) {
 			double rupRate = sol.getRateForRup(rupID);
@@ -1106,7 +1107,7 @@ public class PaleoFitPlotter {
 			InversionFaultSystemSolution sol,
 			List<AveSlipConstraint> aveSlipConstraints,
 			List<PaleoRateConstraint> paleoRateConstraints,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2Sol,
+			FaultSystemSolution ucerf2Sol,
 			List<AveSlipConstraint> ucerf2AveSlipConstraints,
 			List<PaleoRateConstraint> ucerf2PaleoRateConstraints,
 			PaleoProbabilityModel paleoProbModel) throws IOException {
@@ -1124,7 +1125,7 @@ public class PaleoFitPlotter {
 	
 	public static CSVFile<String> buildAveSlipTable(
 			InversionFaultSystemSolution sol, List<AveSlipConstraint> constraints,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2Sol, List<AveSlipConstraint> ucerf2AveSlipConstraints) {
+			FaultSystemSolution ucerf2Sol, List<AveSlipConstraint> ucerf2AveSlipConstraints) {
 		InversionFaultSystemRupSet rupSet = sol.getRupSet();
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
@@ -1196,7 +1197,7 @@ public class PaleoFitPlotter {
 	
 	public static CSVFile<String> buildPaleoRateTable(
 			InversionFaultSystemSolution sol, List<PaleoRateConstraint> constraints,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2Sol, List<PaleoRateConstraint> ucerf2PaleoConstraints,
+			FaultSystemSolution ucerf2Sol, List<PaleoRateConstraint> ucerf2PaleoConstraints,
 			PaleoProbabilityModel paleoProbModel) {
 		InversionFaultSystemRupSet rupSet = sol.getRupSet();
 		CSVFile<String> csv = new CSVFile<String>(true);

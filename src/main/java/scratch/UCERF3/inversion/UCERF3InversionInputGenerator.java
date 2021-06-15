@@ -1704,7 +1704,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		testBuildNewFormat();
 	}
 	
-	private static boolean test_double_percision = true; // true: test do double precision, false float
+	private static boolean test_double_percision = true; // true: test to double precision, false: float precision
 	
 	private static UCERF3InversionInputGenerator getTestConfig(FaultSystemRupSet rupSet, FaultModels fm,
 			InversionTargetMFDs targetMFDs) throws IOException {

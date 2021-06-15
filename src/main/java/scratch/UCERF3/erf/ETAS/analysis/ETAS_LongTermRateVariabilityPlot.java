@@ -27,6 +27,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.MarkdownUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Joiner;
@@ -154,7 +155,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			FaultSystemSolution fss) {
 		long simStartTime = getConfig().getSimulationStartTimeMillis();
 		double simDuration = getConfig().getDuration();
 		// pad by 1s for rounding errors
@@ -211,7 +212,7 @@ public class ETAS_LongTermRateVariabilityPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		int numToTrim = ETAS_MFD_Plot.calcNumToTrim(totalCountHist);
 		

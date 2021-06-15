@@ -30,6 +30,7 @@ import org.opensha.commons.param.impl.CPTParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
@@ -212,7 +213,7 @@ public class MiscInfoAndPlotsCalc {
 	 */
 	public static void writeTotRateRupOccurOnTheseTwoSections(FaultSystemSolutionERF erf, int firstSectID, int secondSectID) {
 		System.out.println("Looking for source...");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		double totRate=0;
 		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
 			List<Integer> sectListForSrc = rupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
@@ -279,7 +280,7 @@ public class MiscInfoAndPlotsCalc {
 	 * @param maxMag
 	 */
 	public static void writeInfoAboutSourcesThatUseSection(FaultSystemSolutionERF erf, int sectID, double minMag, double maxMag) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		System.out.println("srcIndex\tfssIndex\tprob\tmag\tname\t"+rupSet.getFaultSectionData(sectID).getName());
 		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
 			List<Integer> sectListForSrc = rupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
@@ -309,7 +310,7 @@ public class MiscInfoAndPlotsCalc {
 	public static void writeInfoAboutSourceWithThisFirstAndLastSection(FaultSystemSolutionERF erf, int firstSectID, int secondSectID) {
 		System.out.println("Looking for source...");
 		for(int s=0; s<erf.getNumFaultSystemSources();s++) {
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 			List<Integer> sectListForSrc = rupSet.getSectionsIndicesForRup(erf.getFltSysRupIndexForSource(s));
 			boolean firstIsIt = rupSet.getFaultSectionData(sectListForSrc.get(0)).getSectionId() == firstSectID;
 			boolean lastIsIt = rupSet.getFaultSectionData(sectListForSrc.get(sectListForSrc.size()-1)).getSectionId() == secondSectID;
@@ -346,7 +347,7 @@ public class MiscInfoAndPlotsCalc {
 		erf.updateForecast();
 		double[] ti_rates = FaultSysSolutionERF_Calc.calcParticipationRateForAllSects(erf, 6.7);
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		for(int i=0;i<ti_rates.length;i++)
 			System.out.println(td_rates[i]+"\t"+td_postScen_rates[i]+"\t"+ti_rates[i]+"\t"+rupSet.getFaultSectionData(i).getName());
@@ -398,7 +399,7 @@ public class MiscInfoAndPlotsCalc {
 		ArrayList<PlotCurveCharacterstics> plotCharList = new ArrayList<PlotCurveCharacterstics>();
 		plotCharList.add(new PlotCurveCharacterstics(PlotSymbol.BOLD_CROSS, 1f, Color.RED));
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = ((FaultSystemSolutionERF)erf).getSolution().getRupSet();
+		FaultSystemRupSet rupSet = ((FaultSystemSolutionERF)erf).getSolution().getRupSet();
 		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);	// this works for U3, but not generalized
 
 		for(int i=1042;i<=1056;i++) {

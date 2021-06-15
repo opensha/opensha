@@ -292,14 +292,14 @@ public class SimulationMarkdownGenerator {
 		
 		private ETAS_AbstractPlot plot;
 		private File plotsDir;
-		private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
+		private FaultSystemSolution fss;
 		
 		private Stopwatch finalizeSubWatch;
 
 		private ExecutorService exec;
 		private List<Future<?>> finalizeFutures;
 
-		public PlotFinalizeCallable(ETAS_AbstractPlot plot, File plotsDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss,
+		public PlotFinalizeCallable(ETAS_AbstractPlot plot, File plotsDir, FaultSystemSolution fss,
 				ExecutorService exec) {
 			this.plot = plot;
 			this.plotsDir = plotsDir;

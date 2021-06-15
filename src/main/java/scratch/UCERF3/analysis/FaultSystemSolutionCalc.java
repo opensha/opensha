@@ -25,6 +25,8 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -57,8 +59,8 @@ public class FaultSystemSolutionCalc {
 	 * This was for looking for transitions to water level rates, but Kevin has a better way of getting exact numbers
 	 * @param fltSysSol
 	 */
-	public static void writeRupRatesToFile(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fltSysSol) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fltSysSol.getRupSet();
+	public static void writeRupRatesToFile(FaultSystemSolution fltSysSol) {
+		FaultSystemRupSet rupSet = fltSysSol.getRupSet();
 		File dataFile = new File("tempFSS_Rates.txt");
 		try {
 			FileWriter fw = new FileWriter(dataFile);
@@ -168,7 +170,7 @@ public class FaultSystemSolutionCalc {
 	
 	
 	
-	public static void plotRupLengthRateHistogram(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+	public static void plotRupLengthRateHistogram(FaultSystemSolution fss) {
 		
 //		double minLength=Double.MAX_VALUE;
 //		double maxLength=Double.MIN_VALUE;
@@ -198,7 +200,7 @@ public class FaultSystemSolutionCalc {
 	
 	
 	
-	public static void testHeadlessMFD_Plot(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+	public static void testHeadlessMFD_Plot(FaultSystemSolution fss) {
 		IncrementalMagFreqDist mfd = fss.calcNucleationMFD_forRegion(RELM_RegionUtils.getGriddedRegionInstance(), 5.05, 8.95, 0.1, true);
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setYLog(true);
@@ -357,7 +359,7 @@ public class FaultSystemSolutionCalc {
 	public static void countNumRupsOnSubSectionForFM3pt1(int sectID) {
 		String f ="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
 		File file = new File(f);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss=null;
+		FaultSystemSolution fss=null;
 		try {
 			fss = FaultSystemIO.loadSol(file);
 		} catch (IOException e1) {
@@ -367,7 +369,7 @@ public class FaultSystemSolutionCalc {
 		}
 		
 		int num=0;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+		FaultSystemRupSet rupSet = fss.getRupSet();
 		for(int r=0;r<rupSet.getNumRuptures();r++)
 			if(rupSet.getSectionsIndicesForRup(r).contains(sectID))
 				num+=1;
@@ -382,7 +384,7 @@ public class FaultSystemSolutionCalc {
 		
 		String f ="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
 		File file = new File(f);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss=null;
+		FaultSystemSolution fss=null;
 		try {
 			fss = FaultSystemIO.loadSol(file);
 		} catch (IOException e1) {
@@ -391,7 +393,7 @@ public class FaultSystemSolutionCalc {
 			e1.printStackTrace();
 		}
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+		FaultSystemRupSet rupSet = fss.getRupSet();
 		ArrayList<String> lineList = new ArrayList<String>();
 
 		for(int s=0;s<rupSet.getNumSections();s++) {

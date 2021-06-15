@@ -55,6 +55,8 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
@@ -760,7 +762,7 @@ public class ETAS_SimAnalysisTools {
 	 * @return
 	 */
 	public static IncrementalMagFreqDist getTotalAftershockMFD_ForU3_RegionalGR(double mainshockMag, double expNumForM2p5,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			FaultSystemSolution fss) {
 		//FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(fss, 2012, 1.0);
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF(fss, false, 1.0, 2012);
 		erf.updateForecast();
@@ -2094,7 +2096,7 @@ public class ETAS_SimAnalysisTools {
 	 * @param erf
 	 */
 	public static void loadFSSRupSurfaces(List<ETAS_EqkRupture> catalog, FaultSystemSolutionERF erf) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		for (ETAS_EqkRupture rup : catalog) {
 			int fssIndex = getFSSIndex(rup, erf);
 			if (fssIndex >= 0) {

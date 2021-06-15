@@ -25,6 +25,8 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
@@ -53,7 +55,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -230,7 +231,7 @@ public class FSS_ERF_ParamTest {
 	
 	private static void populateMFDS(FaultSystemSolution sol) {
 		Random rand = new Random();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		DiscretizedFunc[] rupMFDs = new DiscretizedFunc[rupSet.getNumRuptures()];
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
 			double mag = rupSet.getMagForRup(r);
@@ -247,7 +248,7 @@ public class FSS_ERF_ParamTest {
 			}
 			rupMFDs[r] = new LightFixedXFunc(mags, relativeWts);
 		}
-		sol.setRupMagDists(rupMFDs);
+		sol.addModule(new RupMFDsModule(rupMFDs));
 	}
 
 	@Test
@@ -274,15 +275,15 @@ public class FSS_ERF_ParamTest {
 		validateSol(erf, ivfss_1, false);
 	}
 	
-	private static void validateSol(FaultSystemSolutionERF erf, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
+	private static void validateSol(FaultSystemSolutionERF erf, FaultSystemSolution sol,
 			boolean checkSameInstance) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution erfSol = erf.getSolution();
+		FaultSystemSolution erfSol = erf.getSolution();
 		if (checkSameInstance)
 			assertTrue("erf.getSolution() failed instance test", sol == erfSol);
 		else
 			assertFalse("erf.getSolution() shouldn't be same instance!", sol == erfSol);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet erfRupSet = erfSol.getRupSet();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet solRupSet = sol.getRupSet();
+		FaultSystemRupSet erfRupSet = erfSol.getRupSet();
+		FaultSystemRupSet solRupSet = sol.getRupSet();
 		assertEquals(erfRupSet.getNumRuptures(), solRupSet.getNumRuptures());
 		// check certain rups
 		Random rand = new Random();
@@ -437,8 +438,8 @@ public class FSS_ERF_ParamTest {
 				IncludeBackgroundOption.class, IncludeBackgroundParam.NAME).getValue() != IncludeBackgroundOption.ONLY)
 			// only check if we actually have fault system sources
 			assertEquals("Num fault system sources inconsistent!", erf.getNumFaultSystemSources(), numFaultSources);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemSolution sol = erf.getSolution();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		double duration = erf.getTimeSpan().getDuration();
 		
 		String setMessage = "Setting '"+paramName+"' to '"+paramVal+"' failed.";

@@ -28,6 +28,7 @@ import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EpistemicListERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.gui.infoTools.IMT_Info;
@@ -242,7 +243,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	private FaultSystemSolutionERF loadERF(LogicTreeBranch branch) {
 		System.out.println("LoadERF for "+branch.buildFileName());
 		System.out.println("Loading solution...");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = fetch.getSolution(branch);
+		FaultSystemSolution sol = fetch.getSolution(branch);
 		System.out.println("DONE loading");
 		
 		System.out.println("Building ERF...");

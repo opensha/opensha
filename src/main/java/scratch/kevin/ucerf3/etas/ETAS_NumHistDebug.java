@@ -24,6 +24,8 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -137,10 +139,10 @@ public class ETAS_NumHistDebug extends ETAS_AbstractPlot {
 
 	@Override
 	protected synchronized void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			FaultSystemSolution fss) {
 		if (garlockRups == null) {
 			garlockRups = new HashSet<>();
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+			FaultSystemRupSet rupSet = fss.getRupSet();
 			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				if (sect.getName().startsWith("Garlock"))
 					garlockRups.addAll(rupSet.getRupturesForSection(sect.getSectionId()));
@@ -222,7 +224,7 @@ public class ETAS_NumHistDebug extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		System.out.println("Maximum rupture count: "+maxRuptureCount);
 		

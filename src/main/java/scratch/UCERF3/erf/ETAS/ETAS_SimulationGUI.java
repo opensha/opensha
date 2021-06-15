@@ -26,6 +26,7 @@ import org.opensha.commons.param.impl.FileParameter;
 import org.opensha.commons.param.impl.LongParameter;
 import org.opensha.commons.param.impl.ParameterListParameter;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
@@ -74,7 +75,7 @@ public class ETAS_SimulationGUI extends JFrame implements ParameterChangeListene
 	
 	private ConsoleWindow console;
 	
-	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
+	private FaultSystemSolution sol;
 	private List<float[]> fractionSectInCubeCache;
 	private List<int[]> sectInCubeCache;
 	private int[] cubeInsidePolyCache;

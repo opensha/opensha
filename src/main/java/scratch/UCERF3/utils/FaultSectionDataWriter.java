@@ -11,6 +11,8 @@ import java.util.List;
 
 import org.opensha.refFaultParamDb.gui.infotools.GUI_Utils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
@@ -143,7 +145,7 @@ public class FaultSectionDataWriter {
 	 * @param filePathAndName
 	 * @throws IOException 
 	 */
-	public static void writeRupsToFiles(String filePathAndName, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) throws IOException {
+	public static void writeRupsToFiles(String filePathAndName, FaultSystemRupSet rupSet) throws IOException {
 		FileWriter fw = new FileWriter(filePathAndName);
 		fw.write(getRupsASCII(rupSet).toString());
 		fw.close();
@@ -153,7 +155,7 @@ public class FaultSectionDataWriter {
 	 * This writes the rupture sections to an ASCII file
 	 * @param filePathAndName
 	 */
-	public static StringBuffer getRupsASCII(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
+	public static StringBuffer getRupsASCII(FaultSystemRupSet rupSet) {
 		return getRupsASCII(rupSet, null);
 	}
 
@@ -161,7 +163,7 @@ public class FaultSectionDataWriter {
 	 * This writes the rupture sections to an ASCII file
 	 * @param filePathAndName
 	 */
-	public static StringBuffer getRupsASCII(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) {
+	public static StringBuffer getRupsASCII(FaultSystemRupSet rupSet, FaultSystemSolution sol) {
 		StringBuffer buff = new StringBuffer();
 		buff.append("rupID\tclusterID\trupInClustID\tmag\t");
 		if (sol != null)

@@ -51,7 +51,7 @@ public class CompareClusterRuptureBuild {
 //				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 //		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(rupSetsDir, "fm3_2_ucerf3.zip"));
 //		boolean isCompUCERF3 = true;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(rupSetsDir,
+		FaultSystemRupSet compRupSet = FaultSystemIO.loadRupSet(new File(rupSetsDir,
 //				"/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz_cmlRake_cffClusterPositive.zip"));
 				"fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffCPathRPatchHalfPos_cffRatioN2P0.1.zip"));
 		boolean isCompUCERF3 = false;

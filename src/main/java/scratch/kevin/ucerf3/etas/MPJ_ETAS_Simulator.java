@@ -23,6 +23,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -192,8 +194,8 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 				int[] sects = resetMap.get(time);
 				if (rank == 0)
 					debug("Resetting "+sects.length+" sects to "+time);
-				for (org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol : sols) {
-					org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+				for (FaultSystemSolution sol : sols) {
+					FaultSystemRupSet rupSet = sol.getRupSet();
 					for (int s : sects)
 						rupSet.getFaultSectionData(s).setDateOfLastEvent(time);
 				}
@@ -219,7 +221,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		
 		fssScenarioRupID = -1;
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sols[0].getRupSet();
+		FaultSystemRupSet rupSet = sols[0].getRupSet();
 		
 		histQkList = Lists.newArrayList();
 		if (cmd.hasOption("trigger-catalog")) {
@@ -394,11 +396,11 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	private class CalcThread extends Thread {
 		
 		private File outputDir;
-		private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
+		private FaultSystemSolution sol;
 		private Deque<Integer> queue;
 		private Map<Integer, Integer> restartsMap;
 		
-		private CalcThread(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
+		private CalcThread(File outputDir, FaultSystemSolution sol,
 				Deque<Integer> queue, Map<Integer, Integer> restartsMap) {
 			this.outputDir = outputDir;
 			this.sol = sol;

@@ -23,6 +23,7 @@ import org.apache.commons.cli.ParseException;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -749,7 +750,7 @@ public class ETAS_ConfigBuilder {
 						fssFile = ETAS_Config.resolvePath(fssFile);
 					}
 					if (fssFile.exists()) {
-						org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
+						FaultSystemSolution fss;
 						try {
 							fss = FaultSystemIO.loadSol(fssFile);
 							mag = fss.getRupSet().getMagForRup(fssIndex);

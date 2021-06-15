@@ -16,6 +16,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.SimpleFaultData;
@@ -448,7 +449,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				if (fssFile != null) {
 					fssFile = ETAS_Config.resolvePath(fssFile);
 				}
-				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
+				FaultSystemRupSet rupSet;
 				try {
 					rupSet = FaultSystemIO.loadRupSet(fssFile);
 				} catch (IOException | DocumentException e) {

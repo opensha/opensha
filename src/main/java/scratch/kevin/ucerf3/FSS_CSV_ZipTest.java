@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -41,7 +42,7 @@ public class FSS_CSV_ZipTest {
 			subSeismoMFDCSV.addLine(line);
 		}
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+		FaultSystemRupSet rupSet = fss.getRupSet();
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
 			List<String> line = new ArrayList<>();
 			line.add(r+"");

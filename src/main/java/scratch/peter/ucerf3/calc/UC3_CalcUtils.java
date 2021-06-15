@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -81,7 +82,7 @@ public class UC3_CalcUtils {
 			boolean filterAftShk,
 			double duration) {
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = getSolution(solPath);
+		FaultSystemSolution fss = getSolution(solPath);
 		FaultSystemSolutionERF erf = new NSHMP_UCERF3_ERF(fss);
 		erf.setName(nameFromPath(solPath));
 		initUC3(erf, bgOpt, aleatoryMagArea, filterAftShk, duration);
@@ -228,7 +229,7 @@ public class UC3_CalcUtils {
 	 * @param path
 	 * @return an AFSS
 	 */
-	public static org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution getSolution(String path) {
+	public static FaultSystemSolution getSolution(String path) {
 		try {
 			File file = new File(path);
 			return FaultSystemIO.loadSol(file);

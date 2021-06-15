@@ -73,5 +73,9 @@ public class RupMFDsModule implements CSV_BackedModule {
 	public DiscretizedFunc getRuptureMFD(int rupIndex) {
 		return rupMFDs[rupIndex];
 	}
+	
+	public DiscretizedFunc[] getRuptureMFDs() {
+		return rupMFDs;
+	}
 
 }

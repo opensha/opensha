@@ -51,6 +51,8 @@ import org.opensha.commons.util.XMLUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -192,7 +194,7 @@ public class FaultBasedMapGen {
 		return normalizedPairRatesCPT;
 	}
 	
-	public static void plotOrigNonReducedSlipRates(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
+	public static void plotOrigNonReducedSlipRates(FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
@@ -203,7 +205,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, getTraces(faults), values, region, saveDir, prefix+"_orig_non_reduced_slip", display, false, "Original Non Reduced Slip Rate (mm/yr)");
 	}
 	
-	public static void plotOrigCreepReducedSlipRates(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
+	public static void plotOrigCreepReducedSlipRates(FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
@@ -214,7 +216,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, getTraces(faults), values, region, saveDir, prefix+"_orig_creep_reduced_slip", display, false, "Orig Creep Reduced Slip Rate (mm/yr)");
 	}
 	
-	public static void plotTargetSlipRates(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
+	public static void plotTargetSlipRates(FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
@@ -369,7 +371,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, getTraces(faults), values, region, saveDir, prefix, display, false, name);
 	}
 	
-	public static void plotParticipationRates(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display,
+	public static void plotParticipationRates(FaultSystemSolution sol, Region region, File saveDir, String prefix, boolean display,
 			double minMag, double maxMag)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getParticipationCPT();
@@ -395,7 +397,7 @@ public class FaultBasedMapGen {
 	
 	
 	
-	public static void plotParticipationStdDevs(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double[][] partRates, Region region, File saveDir,
+	public static void plotParticipationStdDevs(FaultSystemRupSet rupSet, double[][] partRates, Region region, File saveDir,
 			String prefix, boolean display, double minMag, double maxMag)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getParticipationCPT();
@@ -456,7 +458,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, getTraces(faults), logSDOMOverMeans, region, saveDir, name, display, false, title);
 	}
 	
-	public static void plotSolutionSlipRateStdDevs(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double[][] slipRates, Region region, File saveDir, String prefix, boolean display)
+	public static void plotSolutionSlipRateStdDevs(FaultSystemRupSet rupSet, double[][] slipRates, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getParticipationCPT().rescale(-4, 1);
 		List<? extends FaultSection> faults = rupSet.getFaultSectionDataList();
@@ -483,7 +485,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, getTraces(faults), norm, region, saveDir, prefix+"_solution_slip_std_dev_norm", display, false, "Log10(Solution Slip Rate Std Dev / Mean)");
 	}
 	
-	public static void plotParticipationRatios(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution referenceSol, Region region,
+	public static void plotParticipationRatios(FaultSystemSolution sol, FaultSystemSolution referenceSol, Region region,
 			File saveDir, String prefix, boolean display, double minMag, double maxMag, boolean omitInfinites)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getLogRatioCPT();
@@ -514,7 +516,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, getTraces(faults), values, region, saveDir, name, display, true, title);
 	}
 	
-	public static double plotParticipationDiffs(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution referenceSol, Region region,
+	public static double plotParticipationDiffs(FaultSystemSolution sol, FaultSystemSolution referenceSol, Region region,
 			File saveDir, String prefix, boolean display, double minMag, double maxMag)
 			throws GMT_MapException, RuntimeException, IOException {
 //		CPT cpt = getLinearRatioCPT().rescale(-3, 3);
@@ -548,7 +550,7 @@ public class FaultBasedMapGen {
 		return total;
 	}
 	
-	public static void plotSectionPairRates(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Region region,
+	public static void plotSectionPairRates(FaultSystemSolution sol, Region region,
 			File saveDir, String prefix, boolean display) throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getNormalizedPairRatesCPT();
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
@@ -591,10 +593,10 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, lines, values, region, saveDir, prefix+"_sect_pairs", display, true, "Normalized Section Pair Rates");
 	}
 	
-	public static void plotSegmentation(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, Region region,
+	public static void plotSegmentation(FaultSystemSolution sol, Region region,
 			File saveDir, String prefix, boolean display, double minMag, double maxMag)
 					throws GMT_MapException, RuntimeException, IOException {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		CPT cpt = getNormalizedPairRatesCPT();
 		
@@ -1248,7 +1250,7 @@ public class FaultBasedMapGen {
 //		plotParticipationRates(sol, region, saveDir, prefix, display, 7, 8);
 //		plotParticipationRates(sol, region, saveDir, prefix, display, 8, 10);
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2Sol =
+		FaultSystemSolution ucerf2Sol =
 				UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(sol.getRupSet());
 //		for (int r=0; r<ucerf2Sol.getNumRuptures(); r++) {
 //			double mag = ucerf2Sol.getMagForRup(r);

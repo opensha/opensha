@@ -24,6 +24,8 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -73,13 +75,13 @@ public class HaywiredSRL_PaperCalc {
 	private static final double gridRegDiscr = 0.02;
 	
 	public static GriddedGeoDataSet calcTINucleation(
-			GriddedRegion reg, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, double duration, double minMag) {
+			GriddedRegion reg, FaultSystemSolution sol, double duration, double minMag) {
 		// first ruptures
 		
 		// cache fraction of each subsection surface associated with each node
 		System.out.println("Caching sect to node mappings with "+reg.getNodeCount()+" nodes");
 		List<Map<Integer, Double>> sectFractNodesMaps = new ArrayList<>();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		for (int s=0; s<rupSet.getNumSections(); s++) {
 			Map<Integer, Double> sectFractNodesMap = new HashMap<>();
 			sectFractNodesMaps.add(sectFractNodesMap);
@@ -240,7 +242,7 @@ public class HaywiredSRL_PaperCalc {
 		File fssFile = new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution refSol = null;
+		FaultSystemSolution refSol = null;
 		
 		if (calcFractInReg)
 			calcFractWithinRegion(new double[] {2.5, 5},  faultFullFile, new CaliforniaRegions.SF_BOX(), otScenarioOneWeek);

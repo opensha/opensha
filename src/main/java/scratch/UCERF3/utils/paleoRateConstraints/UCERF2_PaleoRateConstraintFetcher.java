@@ -24,6 +24,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
@@ -100,7 +101,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 		Preconditions.checkState(solutions.size() > 0, "Must have at least one solution");
 
 		int numSolSects = -1;
-		for (org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol : solutions) {
+		for (FaultSystemSolution sol : solutions) {
 			if (numSolSects < 0)
 				numSolSects = sol.getRupSet().getNumSections();
 			Preconditions.checkArgument(sol.getRupSet().getNumSections() == numSolSects,
@@ -176,8 +177,8 @@ public class UCERF2_PaleoRateConstraintFetcher {
 				paleoRateX = x + relConstSect;
 
 				for (int i=0; i<solutions.size(); i++) {
-					org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = solutions.get(i);
-					org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+					FaultSystemSolution sol = solutions.get(i);
+					FaultSystemRupSet rupSet = sol.getRupSet();
 					Color color = GraphPanel.defaultColor[i % GraphPanel.defaultColor.length];
 
 					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc((double)x, numSects, 1d);

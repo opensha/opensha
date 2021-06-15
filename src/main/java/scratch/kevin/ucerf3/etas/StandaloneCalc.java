@@ -11,6 +11,8 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -96,9 +98,9 @@ public class StandaloneCalc {
 		
 		Map<Integer, List<LastEventData>> lastEventData = LastEventData.load();
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		double[] gridSeisCorrections = null;
 		

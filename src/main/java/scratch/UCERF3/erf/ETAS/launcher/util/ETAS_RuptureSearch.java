@@ -19,6 +19,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -97,7 +99,7 @@ public class ETAS_RuptureSearch {
 		Preconditions.checkArgument(fssFile.exists(), "FSS file doesn't exist: %s", fssFile.getAbsolutePath());
 		
 		System.out.println("Loading fault system solution from "+fssFile.getAbsolutePath());
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
 		
 		double lat = Double.parseDouble(cmd.getOptionValue("latitude"));
 		double lon = Double.parseDouble(cmd.getOptionValue("longitude"));
@@ -114,7 +116,7 @@ public class ETAS_RuptureSearch {
 		double minMag = Double.parseDouble(cmd.getOptionValue("min-mag"));
 		double maxMag = Double.parseDouble(cmd.getOptionValue("max-mag"));
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+		FaultSystemRupSet rupSet = fss.getRupSet();
 		List<? extends FaultSection> sects = rupSet.getFaultSectionDataList();
 		HashSet<Integer> rupsForSects = new HashSet<>();
 		for (FaultSection sect : sects) {

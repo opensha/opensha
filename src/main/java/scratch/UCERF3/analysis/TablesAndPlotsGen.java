@@ -38,6 +38,8 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
@@ -1079,7 +1081,7 @@ public class TablesAndPlotsGen {
 
 	}
 	
-	public static void writeSubSectRITable(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, File csvFile) throws IOException {
+	public static void writeSubSectRITable(FaultSystemSolution sol, File csvFile) throws IOException {
 		CSVFile<String> csv = new CSVFile<String>(true);
 		
 		csv.addLine("Subsection Index", "Subsection Name", "Supra-Seis Annual Participation Rate", "Supra-Seis Partitipation RI",
@@ -1087,7 +1089,7 @@ public class TablesAndPlotsGen {
 		
 		double[] particRates = sol.calcParticRateForAllSects(0d, 10d);
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		for (int i=0; i<particRates.length; i++) {
 			FaultSection subsect = rupSet.getFaultSectionData(i);

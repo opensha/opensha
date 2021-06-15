@@ -35,6 +35,8 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -156,11 +158,11 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected synchronized void doProcessCatalog(ETAS_Catalog completeCatalog,
-			ETAS_Catalog triggeredOnlyCatalog, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
 		if (subSectStats == null) {
 			System.out.println("Initializing section stats/mappings");
 			// initialize
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+			FaultSystemRupSet rupSet = fss.getRupSet();
 			
 			subSectStats = new FaultStats[rupSet.getNumSections()];
 			parentSectStats = new HashMap<>();
@@ -388,11 +390,11 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			}
 		}
 		
-		public IncrementalMagFreqDist getFSS_IncrMFD(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+		public IncrementalMagFreqDist getFSS_IncrMFD(FaultSystemSolution fss) {
 			if (fssIncrMFD == null) {
 				IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(mfdMinMag, mfdNumMag, mfdDeltaMag);
 				
-				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+				FaultSystemRupSet rupSet = fss.getRupSet();
 				for (int rup : allRupIDs) {
 					double mag = rupSet.getMagForRup(rup);
 					double rate = fss.getRateForRup(rup);
@@ -422,7 +424,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		}
 	}
 	
-	private CSVFile<String> buildCSV(FaultStats[] stats, boolean parents, double minMag, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+	private CSVFile<String> buildCSV(FaultStats[] stats, boolean parents, double minMag, FaultSystemSolution fss) {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
@@ -517,7 +519,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	private Table<String, Double, String> faultMFDPrefixes;
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		if (!hasAny)
 			return null;
@@ -540,7 +542,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 	
 	private static boolean MAP_D = false;
 
-	private void writeMaps(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) throws IOException {
+	private void writeMaps(File outputDir, FaultSystemSolution fss) throws IOException {
 		CPT cpt = GMT_CPT_Files.MAX_SPECTRUM.instance();
 		CPT ratioCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
 		ratioCPT.setNanColor(Color.GRAY);
@@ -588,7 +590,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		cpt = cpt.rescale(cptMin, cptMax);
 		cpt.setBelowMinColor(Color.LIGHT_GRAY);
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+		FaultSystemRupSet rupSet = fss.getRupSet();
 		
 		List<LocationList> faults = Lists.newArrayList();
 		for (int sectIndex = 0; sectIndex < rupSet.getNumSections(); sectIndex++)
@@ -709,7 +711,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		}
 	}
 
-	private void writeCSVs(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) throws IOException {
+	private void writeCSVs(File outputDir, FaultSystemSolution fss) throws IOException {
 		sectionCSVs = new HashMap<>();
 		parentCSVs = new HashMap<>();
 		FaultStats[] parentStatsArray = new ArrayList<>(parentSectStats.values()).toArray(new FaultStats[0]);
@@ -779,7 +781,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		return durations;
 	}
 	
-	private void writeFaultMFDs(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) throws IOException {
+	private void writeFaultMFDs(File outputDir, FaultSystemSolution fss) throws IOException {
 		faultMFDPrefixes = HashBasedTable.create();
 		File subDir = new File(outputDir, "parent_sect_mpds");
 		Preconditions.checkState(subDir.exists() || subDir.mkdir());
@@ -843,7 +845,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 		MarkdownUtils.writeReadmeAndHTML(lines, subDir);
 	}
 	
-	private void writeFaultMFD(FaultStats stats, File outputDir, String prefix, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss,
+	private void writeFaultMFD(FaultStats stats, File outputDir, String prefix, FaultSystemSolution fss,
 			Table<Integer, Double, EvenlyDiscretizedFunc> tdFuncs, List<String> lines) throws IOException {
 		int parentSectID = stats.id;
 		
@@ -1207,7 +1209,7 @@ public class ETAS_FaultParticipationPlot extends ETAS_AbstractPlot {
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = launcher.checkOutFSS();
+			FaultSystemSolution fss = launcher.checkOutFSS();
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;

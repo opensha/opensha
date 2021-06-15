@@ -20,6 +20,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 
@@ -1113,8 +1114,8 @@ public class ETAS_Config {
 		this.configTime = configTime;
 	}
 
-	private transient org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
-	public synchronized org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution loadFSS() {
+	private transient FaultSystemSolution fss;
+	public synchronized FaultSystemSolution loadFSS() {
 		if (fss == null) {
 			Preconditions.checkNotNull(fssFile, "Must specify fault system solution file");
 			Preconditions.checkState(fssFile.exists(), "FSS file doesn't exist");

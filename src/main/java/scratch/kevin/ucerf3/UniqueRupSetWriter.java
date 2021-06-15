@@ -24,9 +24,9 @@ public class UniqueRupSetWriter {
 		File solFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 		File outFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		List<UniqueRupture> uniques = new ArrayList<>();
 		Map<UniqueRupture, Integer> uniqueIndexes = new HashMap<>();
@@ -87,7 +87,7 @@ public class UniqueRupSetWriter {
 		}
 		
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet modRupSet = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
+		FaultSystemRupSet modRupSet = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
 				rupSet.getSlipRateForAllSections(), null, rupSet.getAreaForAllSections(),
 				sectsList, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
 		FaultSystemSolution modSol = new FaultSystemSolution(modRupSet, rates);

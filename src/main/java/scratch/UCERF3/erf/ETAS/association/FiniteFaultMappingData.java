@@ -20,6 +20,7 @@ import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.LogPrintStream;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -71,7 +72,7 @@ public class FiniteFaultMappingData implements XMLSaveable {
 		mappedSurfaces.add(surface);
 	}
 	
-	private RuptureSurface getSurface(ObsEqkRupture rup, FaultModels fm, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
+	private RuptureSurface getSurface(ObsEqkRupture rup, FaultModels fm, FaultSystemRupSet rupSet) {
 		int index = rupIndexMap.get(rup);
 		
 		Map<FaultModels, Integer> mappings = mappedRupIndexes.get(index);
@@ -122,17 +123,17 @@ public class FiniteFaultMappingData implements XMLSaveable {
 	}
 	
 	public static void loadRuptureSurfaces(File xmlFile, ObsEqkRupList ruptures,
-			FaultModels fm, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) throws MalformedURLException, DocumentException {
+			FaultModels fm, FaultSystemRupSet rupSet) throws MalformedURLException, DocumentException {
 		loadRuptureSurfaces(XMLUtils.loadDocument(xmlFile), ruptures, fm, rupSet);
 	}
 	
 	public static void loadRuptureSurfaces(InputStream is, ObsEqkRupList ruptures,
-			FaultModels fm, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) throws DocumentException {
+			FaultModels fm, FaultSystemRupSet rupSet) throws DocumentException {
 		loadRuptureSurfaces(XMLUtils.loadDocument(is), ruptures, fm, rupSet);
 	}
 	
 	public static void loadRuptureSurfaces(Document doc, ObsEqkRupList ruptures,
-			FaultModels fm, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
+			FaultModels fm, FaultSystemRupSet rupSet) {
 		FiniteFaultMappingData data = load(doc, ruptures);
 		
 		int count = 0;
@@ -232,10 +233,10 @@ public class FiniteFaultMappingData implements XMLSaveable {
 				new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt"));
 		File outputFile = new File(outputDir, "finite_fault_mappings.xml");
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet31 = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
+		FaultSystemRupSet rupSet31 = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
 				+ "UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_"
 				+ "FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet32 = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
+		FaultSystemRupSet rupSet32 = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
 				+ "UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_"
 				+ "FM3_2_MEAN_BRANCH_AVG_SOL.zip"));
 		

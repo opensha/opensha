@@ -1,6 +1,7 @@
 package scratch.UCERF3.erf.ETAS;
 
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -16,7 +17,7 @@ public class FaultSystemSolutionERF_ETAS extends FaultSystemSolutionERF {
 	
 	protected final static int START_TIME_MAX = FaultSystemSolutionERF.START_TIME_MAX+(int)DURATION_MAX;
 
-	public FaultSystemSolutionERF_ETAS(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution faultSysSolution) {
+	public FaultSystemSolutionERF_ETAS(FaultSystemSolution faultSysSolution) {
 		super(faultSysSolution);
 	}
 

@@ -30,6 +30,7 @@ import org.opensha.commons.gui.plot.PlotMultiDataLayer;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -60,12 +61,12 @@ public class FaultSpecificSegmentationPlotGen {
 		gw.setVisible(true);
 	}
 	
-	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
+	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, FaultSystemSolution sol,
 			double minMag, boolean endsOnly) throws IOException {
 		return getSegmentationHeadlessGP(parentSects, sol, minMag, endsOnly, null);
 	}
 	
-	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol,
+	public static HeadlessGraphPanel getSegmentationHeadlessGP(List<Integer> parentSects, FaultSystemSolution sol,
 			double minMag, boolean endsOnly, CSVFile<String> csv) throws IOException {
 		PlotSpec spec = buildSegmentationPlot(parentSects, sol, minMag, endsOnly, csv);
 		
@@ -79,9 +80,9 @@ public class FaultSpecificSegmentationPlotGen {
 		return gp;
 	}
 	
-	private static PlotSpec buildSegmentationPlot(List<Integer> parentSects, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, double minMag, boolean endsOnly,
+	private static PlotSpec buildSegmentationPlot(List<Integer> parentSects, FaultSystemSolution sol, double minMag, boolean endsOnly,
 			CSVFile<String> csv) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		// first assemble subsections by parent
 		Map<Integer, List<FaultSection>> subSectsByParent = Maps.newHashMap();
 		int prevParentID = -2;
@@ -454,9 +455,9 @@ public class FaultSpecificSegmentationPlotGen {
 	}
 	
 	private static boolean hasConnectionOnOtherParent(List<Integer> parents,
-			FaultSection subSect, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) {
+			FaultSection subSect, FaultSystemSolution sol) {
 		Collection<Integer> connections;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		if (rupSet instanceof InversionFaultSystemRupSet) {
 			connections = ((InversionFaultSystemRupSet)rupSet).getCloseSectionsList(subSect.getSectionId());
 		} else {
@@ -518,7 +519,7 @@ public class FaultSpecificSegmentationPlotGen {
 //		File solFile = new File("/tmp/FM3_1_NEOK_EllB_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol_high_a_priori.zip");
 		File solFile = new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
 		List<Integer> safParentSects31 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM3_1);
 		List<Integer> safParentSects21 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM2_1);
 		

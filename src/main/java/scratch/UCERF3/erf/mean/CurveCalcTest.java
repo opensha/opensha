@@ -18,11 +18,13 @@ import org.opensha.nshmp2.calc.HazardResultWriterSites;
 import org.opensha.nshmp2.calc.ThreadedHazardCalc;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.sha.earthquake.EpistemicListERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -80,15 +82,15 @@ public class CurveCalcTest {
 		File outputDir = new File(args[1]);
 		
 		System.out.println("Loading solution...");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		System.out.println("done.");
 		
 		boolean gridded = args[2].trim().equals("gridded");
 		boolean truemean = args[2].trim().equals("truemean");
 		
 		String subdirName;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution calcSol;
+		FaultSystemSolution calcSol;
 		
 		if (gridded) {
 			calcSol = sol;
@@ -116,7 +118,7 @@ public class CurveCalcTest {
 			System.out.println("Combining rups for tol="+upperDepthTol+", combineRakes="+combineRakes);
 			Stopwatch watch = Stopwatch.createStarted();
 			FaultSystemSolution reducedSol = RuptureCombiner.getCombinedSolution(sol, upperDepthTol, false, combineRakes, rakeBasis);
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
+			FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
 			watch.stop();
 			System.out.println("DONE. Took "+watch.elapsed(TimeUnit.SECONDS)+"s to reduce to "
 					+reducedRupSet.getNumRuptures()+"/"+rupSet.getNumRuptures()+" rups and "
@@ -125,7 +127,9 @@ public class CurveCalcTest {
 //			if (combineMags)
 //				reducedSol.setRupMagDists(null);
 			if (magTol > 0)
-				reducedSol.setRupMagDists(RuptureCombiner.combineMFDs(magTol, reducedSol.getRupMagDists()));
+				reducedSol.addModule(new RupMFDsModule(RuptureCombiner.combineMFDs(magTol,
+						reducedSol.getModule(RupMFDsModule.class).getRuptureMFDs())));
+//				reducedSol.setRupMagDists(RuptureCombiner.combineMFDs(magTol, reducedSol.getRupMagDists()));
 			
 			calcSol = reducedSol;
 //			RuptureCombiner.checkIdentical(sol, reducedSol, true);

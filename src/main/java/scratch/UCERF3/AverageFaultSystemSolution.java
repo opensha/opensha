@@ -265,7 +265,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 	}
 	
 	private IncrementalMagFreqDist[] calcMFDs(final boolean parent, final boolean nucleation, final int id) {
-		final org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = getRupSet();
+		final FaultSystemRupSet rupSet = getRupSet();
 		final double minMag = getRupSet().getMinMag();
 		final double maxMag = getRupSet().getMaxMag();
 		final int numMag = (int)((maxMag - minMag) / 0.1d)+1;
@@ -280,7 +280,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 				
 				@Override
 				public void compute() {
-					org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution mySol = getSolution(solIndex);
+					FaultSystemSolution mySol = getSolution(solIndex);
 					mySol.getRupSet().copyCacheFrom(rupSet);
 					IncrementalMagFreqDist mfd;
 					if (nucleation) {

@@ -105,7 +105,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
 		try {
 			Map<String, String> nameRemappings = getRemappings(branch);
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSolAsApplicable(zip, nameRemappings);
+			FaultSystemSolution sol = FaultSystemIO.loadSolAsApplicable(zip, nameRemappings);
 			Preconditions.checkState(sol instanceof InversionFaultSystemSolution,
 					"Non IVFSS in Compound Sol?");
 			

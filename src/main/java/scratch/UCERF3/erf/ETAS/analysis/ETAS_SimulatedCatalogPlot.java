@@ -22,6 +22,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -96,7 +97,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			FaultSystemSolution fss) {
 		if (Double.isNaN(maxMag)) {
 			maxMag = 0d;
 			if (getConfig().hasTriggers())
@@ -162,7 +163,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		List<XY_DataSet> inputFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> inputChars = new ArrayList<>();
@@ -449,7 +450,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = launcher.checkOutFSS();
+			FaultSystemSolution fss = launcher.checkOutFSS();
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;

@@ -49,6 +49,8 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
@@ -62,7 +64,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
@@ -71,7 +72,7 @@ import scratch.UCERF3.utils.FaultSystemIO;
 
 public class FiniteFaultSectionResetCalc {
 	
-	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
+	private FaultSystemRupSet rupSet;
 	
 	// parameters
 	private double minFractionalAreaInPolygon;
@@ -92,7 +93,7 @@ public class FiniteFaultSectionResetCalc {
 	 * @param faultBuffer fault section polygon buffer in KM (must be >0)
 	 * @param removeOverlapsWithDist flag to remove overlaps in polygons by prioritizing sections with lower mean distance to rupture
 	 */
-	public FiniteFaultSectionResetCalc(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double minFractionalAreaInPolygon, double faultBuffer,
+	public FiniteFaultSectionResetCalc(FaultSystemRupSet rupSet, double minFractionalAreaInPolygon, double faultBuffer,
 			boolean removeOverlapsWithDist) {
 		this.rupSet = rupSet;
 		Preconditions.checkArgument(minFractionalAreaInPolygon > 0d && minFractionalAreaInPolygon <= 1d,
@@ -948,7 +949,7 @@ public class FiniteFaultSectionResetCalc {
 	}
 	
 	private static class ParamSweepCallable implements Callable<ParamSweepCallable> {
-		private final org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
+		private final FaultSystemSolution sol;
 		private final RuptureSurface[] surfs;
 		private final int bufferIndex;
 		private final double faultBuffer;
@@ -958,7 +959,7 @@ public class FiniteFaultSectionResetCalc {
 		private double[] matchRates;
 		private int[] matchCounts;
 		
-		public ParamSweepCallable(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, RuptureSurface[] surfs, int bufferIndex,double faultBuffer,
+		public ParamSweepCallable(FaultSystemSolution sol, RuptureSurface[] surfs, int bufferIndex,double faultBuffer,
 				EvenlyDiscretizedFunc fractAreas, boolean removeOverlap) {
 			this.sol = sol;
 			this.surfs = surfs;
@@ -970,7 +971,7 @@ public class FiniteFaultSectionResetCalc {
 
 		@Override
 		public ParamSweepCallable call() throws Exception {
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+			FaultSystemRupSet rupSet = sol.getRupSet();
 			
 			FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, fractAreas.getX(0), faultBuffer, removeOverlap);
 			matchRates = new double[fractAreas.size()];
@@ -1115,7 +1116,7 @@ public class FiniteFaultSectionResetCalc {
 		return lines;
 	}
 	
-	public static void writeParamSweepMarkdown(File markdownDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, int threads) throws IOException {
+	public static void writeParamSweepMarkdown(File markdownDir, FaultSystemSolution sol, int threads) throws IOException {
 		Preconditions.checkState(markdownDir.exists() || markdownDir.mkdir());
 		File resourcesDir = new File(markdownDir, "resources");
 		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
@@ -1128,7 +1129,7 @@ public class FiniteFaultSectionResetCalc {
 		EvenlyDiscretizedFunc faultBufferFunc = new EvenlyDiscretizedFunc(1d, 12d, 12);
 		EvenlyDiscretizedFunc fractAreaFunc = new EvenlyDiscretizedFunc(0.1d, 1d, 10);
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		RuptureSurface[] surfs = new RuptureSurface[rupSet.getNumRuptures()];
 		double totRate = sol.getTotalRateForAllFaultSystemRups();
 		for (int r=0; r<rupSet.getNumRuptures(); r++)
@@ -1199,7 +1200,7 @@ public class FiniteFaultSectionResetCalc {
 		if (doSweep) {
 			System.out.println("Doing sweep");
 			
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(new File(etasInputDir,
+			FaultSystemSolution sol = FaultSystemIO.loadSol(new File(etasInputDir,
 					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 			
 			File markdownDir = new File("/home/kevin/git/misc-research/ucerf3_etas/finite_section_mapping/param_sweep");
@@ -1232,7 +1233,7 @@ public class FiniteFaultSectionResetCalc {
 			
 			for (FaultModels fm : rupSetMap.keySet()) {
 				System.out.println("Doing "+fm);
-				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = rupSetMap.get(fm);
+				FaultSystemRupSet rupSet = rupSetMap.get(fm);
 				ObsEqkRupList inputRups = UCERF3_CatalogParser.loadCatalog(catFile);
 				FiniteFaultMappingData.loadRuptureSurfaces(xmlFile, inputRups, fm, rupSet);
 				

@@ -71,6 +71,8 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -577,12 +579,12 @@ public class ETAS_MultiSimAnalysisTools {
 	}
 
 	public static void plotMagNum(List<? extends List<ETAS_EqkRupture>> catalogs, File outputDir, String name, String prefix,
-			TestScenario scenario, double expNumForM2p5, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) throws IOException {
+			TestScenario scenario, double expNumForM2p5, FaultSystemSolution fss) throws IOException {
 		plotMagNum(catalogs, outputDir, name, prefix, scenario, expNumForM2p5, fss, Long.MAX_VALUE);
 	}
 
 	public static void plotMagNum(List<? extends List<ETAS_EqkRupture>> catalogs, File outputDir, String name, String prefix,
-			TestScenario scenario, double expNumForM2p5, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, long maxOT) throws IOException {
+			TestScenario scenario, double expNumForM2p5, FaultSystemSolution fss, long maxOT) throws IOException {
 		double minMag = mfdMinMag;
 		int numMag = mfdNumMag;
 
@@ -1117,7 +1119,7 @@ public class ETAS_MultiSimAnalysisTools {
 	 * @throws RuntimeException
 	 * @throws GMT_MapException
 	 */
-	public static void plotSectRates(List<List<ETAS_EqkRupture>> catalogs, double duration, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet,
+	public static void plotSectRates(List<List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
 			double[] minMags, File outputDir, String titleAdd, String prefix)
 			throws IOException, GMT_MapException, RuntimeException {
 		plotSectRates(catalogs, duration, rupSet, minMags, outputDir, titleAdd, prefix, Long.MIN_VALUE,
@@ -1125,9 +1127,9 @@ public class ETAS_MultiSimAnalysisTools {
 
 	}
 
-	public static void plotSectRates(List<? extends List<ETAS_EqkRupture>> catalogs, double duration, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet,
+	public static void plotSectRates(List<? extends List<ETAS_EqkRupture>> catalogs, double duration, FaultSystemRupSet rupSet,
 			double[] minMags, File outputDir, String titleAdd, String prefix, long maxOT,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution refSol, boolean addRefForRatio, CPT cpt, CPT logGainCPT)
+			FaultSystemSolution refSol, boolean addRefForRatio, CPT cpt, CPT logGainCPT)
 					throws IOException, GMT_MapException, RuntimeException {
 		List<double[]> particRatesList = Lists.newArrayList();
 		for (int i = 0; i < minMags.length; i++)
@@ -1289,7 +1291,7 @@ public class ETAS_MultiSimAnalysisTools {
 			
 			if (maxOT > 0)
 				Preconditions.checkState(duration >= 0d);
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet refRupSet = refSol.getRupSet();
+			FaultSystemRupSet refRupSet = refSol.getRupSet();
 			for (int r=0; r<refRupSet.getNumRuptures(); r++) {
 				double rate = refSol.getRateForRup(r);
 				if (maxOT > 0)
@@ -2041,7 +2043,7 @@ public class ETAS_MultiSimAnalysisTools {
 			FaultSystemSolutionERF erf, File outputDir) throws IOException, GMT_MapException, RuntimeException {
 		double[] minMags = { 0d };
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		// this is for map plotting
 		CPT logRatioCPT = FaultBasedMapGen.getLogRatioCPT().rescale(-1, 1);
@@ -2262,7 +2264,7 @@ public class ETAS_MultiSimAnalysisTools {
 			throws IOException, GMT_MapException, RuntimeException {
 		double[] minMags = { 0d };
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		// this is for map plotting
 		CPT logRatioCPT = FaultBasedMapGen.getLogRatioCPT().rescale(-1, 1);
@@ -2539,7 +2541,7 @@ public class ETAS_MultiSimAnalysisTools {
 			FaultSystemSolutionERF erf, File outputDir, String prefix)
 			throws IOException, GMT_MapException, RuntimeException {
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		// this is used to fliter Mendocino sections
 		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = erf.getSolution()
@@ -3038,7 +3040,7 @@ public class ETAS_MultiSimAnalysisTools {
 		gp.saveAsTXT(new File(outputDir, prefix + ".txt").getAbsolutePath());
 	}
 
-	public static void plotSubSectRecurrenceHist(List<? extends List<ETAS_EqkRupture>> catalogs, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet,
+	public static void plotSubSectRecurrenceHist(List<? extends List<ETAS_EqkRupture>> catalogs, FaultSystemRupSet rupSet,
 			int sectIndex, File outputDir, double targetRI) throws IOException {
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 
@@ -3256,7 +3258,7 @@ public class ETAS_MultiSimAnalysisTools {
 	}
 
 	public static void plotSubSectRecurrenceIntervalVsTime(List<? extends List<ETAS_EqkRupture>> catalogs,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, int sectIndex, File outputDir, double targetRI) throws IOException {
+			FaultSystemRupSet rupSet, int sectIndex, File outputDir, double targetRI) throws IOException {
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 
 		DefaultXY_DataSet riVsTimeScatterFunc = new DefaultXY_DataSet();
@@ -3349,7 +3351,7 @@ public class ETAS_MultiSimAnalysisTools {
 	public static void plotNormRecurrenceIntForAllSubSectHist(List<? extends List<ETAS_EqkRupture>> catalogs,
 			FaultSystemSolutionERF_ETAS erf, File outputDir) throws IOException {
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		// compute the long-term rate of each section
 		double[] longTermRateOfFltSysRup = erf.getLongTermRateOfFltSysRupInERF();
@@ -3446,7 +3448,7 @@ public class ETAS_MultiSimAnalysisTools {
 	public static void plotSubSectNuclMagFreqDist(List<? extends List<ETAS_EqkRupture>> catalogs, FaultSystemSolutionERF_ETAS erf,
 			int sectIndex, File outputDir) throws IOException {
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
 				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
@@ -3533,7 +3535,7 @@ public class ETAS_MultiSimAnalysisTools {
 	public static void plotSubSectPartMagFreqDist(List<? extends List<ETAS_EqkRupture>> catalogs, FaultSystemSolutionERF_ETAS erf,
 			int sectIndex, File outputDir) throws IOException {
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 
 		SummedMagFreqDist mfd = new SummedMagFreqDist(5.05, 8.45, 35);
@@ -3618,7 +3620,7 @@ public class ETAS_MultiSimAnalysisTools {
 	public static void plotCumNumWithTimeForSection(List<? extends List<ETAS_EqkRupture>> catalogs,
 			FaultSystemSolutionERF_ETAS erf, int sectIndex, File outputDir) throws IOException {
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 
 		ArbitrarilyDiscretizedFunc cumNumWithTimeFunc = new ArbitrarilyDiscretizedFunc();
@@ -3688,7 +3690,7 @@ public class ETAS_MultiSimAnalysisTools {
 	}
 
 	public static void plotConditionalHypocenterDist(List<? extends List<ETAS_EqkRupture>> catalogs, File outputDir,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) throws IOException {
+			FaultSystemRupSet rupSet) throws IOException {
 		HistogramFunction hist = new HistogramFunction(0.025, 0.475, 10);
 
 		for (List<ETAS_EqkRupture> catalog : catalogs) {
@@ -3853,7 +3855,7 @@ public class ETAS_MultiSimAnalysisTools {
 			u3TimesFunc.set(x, 0);
 
 		double minDist = 30d;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		Map<Integer, String> sectNamesMap = Maps.newHashMap();
 		if (sects == null) {
 			sects = new HashSet<Integer>();
@@ -4450,7 +4452,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		// now etas
 		HashSet<Integer> rupsToInclude = new HashSet<Integer>();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
+		FaultSystemSolution sol = erf.getSolution();
 		for (int fssIndex = 0; fssIndex < sol.getRupSet().getNumRuptures(); fssIndex++)
 			if (cache.isRupInRegion(sol, fssIndex, region, 1d))
 				rupsToInclude.add(fssIndex);
@@ -4585,7 +4587,7 @@ public class ETAS_MultiSimAnalysisTools {
 		System.out.println("Making ERF");
 		double duration = 10;
 		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration, false);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		String dir = "/Users/field/Field_Other/CEA_WGCEP/UCERF3/UCERF3-ETAS/ResultsAndAnalysis/ScenarioSimulations";
 
@@ -4627,7 +4629,7 @@ public class ETAS_MultiSimAnalysisTools {
 		System.out.println("Making ERF");
 		double duration = 10;
 		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(2012d, duration, false);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		//// // THIS WAS TO TEST WHETHER TIME DEPENDENCE CAN EXPLAIN
 		//// SYSTEMATICLY LOW SIMULATED SECTION RATES; IT CAN'T
@@ -4820,7 +4822,7 @@ public class ETAS_MultiSimAnalysisTools {
 		int srcID = erf.getSrcIndexForFltSysRup(fssIndex);
 		erf.setFltSystemSourceOccurranceTime(srcID, ot);
 		erf.updateForecast();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
 		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
@@ -4974,7 +4976,7 @@ public class ETAS_MultiSimAnalysisTools {
 		// erf.setFltSystemSourceOccurranceTime(srcID, ot); // don't apply
 		// because we want relative to pre-event probabilities
 		erf.updateForecast();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
 		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
@@ -5281,7 +5283,7 @@ public class ETAS_MultiSimAnalysisTools {
 		File fssFile = new File("dev/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
 
 		// only for spontaneous
 		boolean skipEmpty = true;

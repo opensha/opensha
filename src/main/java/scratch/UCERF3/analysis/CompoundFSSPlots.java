@@ -1987,7 +1987,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 		
 		public static void calcFaultProbs(EvenlyDiscretizedFunc probFunc, EvenlyDiscretizedFunc rateFunc, FaultSystemSolutionERF erf,
-				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, Collection<Integer> faultRups) {
+				FaultSystemRupSet rupSet, Collection<Integer> faultRups) {
 			List<List<Double>> probs = Lists.newArrayList();
 			for (int i=0; i<probFunc.size(); i++)
 				probs.add(new ArrayList<Double>());
@@ -2061,7 +2061,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				rupsCache = rupInRegionsCaches.get(fm);
 			}
 			
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 			
 			Map<String, HashSet<Integer>> fmRups = mainFaultsRuptures.get(fm);
 			if (fmRups == null) {
@@ -7286,7 +7286,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				List<List<double[]>> valuesList = valuesMap.get(fm);
 				List<Double> weightsList = weightsMap.get(fm);
 
-				org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2 = UCERF2_ComparisonSolutionFetcher
+				FaultSystemSolution ucerf2 = UCERF2_ComparisonSolutionFetcher
 						.getUCERF2Solution(fm);
 
 				for (int i = 0; i < ranges.size(); i++) {
@@ -7611,7 +7611,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private List<GeoDataSet> calcProbsSupraSubSeis(
 				FaultPolyMgr polys, FaultSystemSolutionERF erf, List<GriddedGeoDataSet> subSeisProbs) {
 			List<GeoDataSet> datas = Lists.newArrayList();
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 			
 			for (int i=0; i<ranges.size(); i++) {
 				double minMag = ranges.get(i)[0];

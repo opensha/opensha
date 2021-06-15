@@ -22,11 +22,12 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -98,7 +99,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	private boolean ignoreCache;
 	
 	private File storeDir;
-	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanTotalSol;
+	private FaultSystemSolution meanTotalSol;
 	private DiscretizedFunc[] meanTotalMFDs;
 	
 	private Map<Integer, List<LastEventData>> lastEventData;
@@ -181,11 +182,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		this(null, storeDir);
 	}
 
-	public MeanUCERF3(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanTotalSol) {
+	public MeanUCERF3(FaultSystemSolution meanTotalSol) {
 		this(meanTotalSol, getStoreDir());
 	}
 	
-	public MeanUCERF3(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanTotalSol, File storeDir) {
+	public MeanUCERF3(FaultSystemSolution meanTotalSol, File storeDir) {
 		super();
 		this.fileParamChanged = false;
 		this.meanTotalSol = meanTotalSol;
@@ -453,8 +454,10 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		this.meanTotalSol = meanTotalSol;
 		if (meanTotalSol == null)
 			this.meanTotalMFDs = null;
+		else if (meanTotalSol.hasModule(RupMFDsModule.class))
+			this.meanTotalMFDs = meanTotalSol.getModule(RupMFDsModule.class).getRuptureMFDs();
 		else
-			this.meanTotalMFDs = meanTotalSol.getRupMagDists();
+			this.meanTotalMFDs = null;
 	}
 	
 	/**
@@ -540,7 +543,8 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			// cache it
 			try {
 				if (D) System.out.println("caching reduced sol to: "+solFile.getName());
-				FaultSystemIO.writeSol(reducedSol, solFile);
+//				FaultSystemIO.writeSol(reducedSol, solFile);
+				reducedSol.getArchive().write(solFile);
 			} catch (Exception e) {
 				// don't fail on caching
 				e.printStackTrace();
@@ -549,7 +553,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			// must be just mags, create a new sol
 			if (D) System.out.println("no reduce, just copying");
 			reducedSol = new FaultSystemSolution(meanTotalSol.getRupSet(), meanTotalSol.getRateForAllRups());
-			reducedSol.setRupMagDists(meanTotalMFDs);
+			reducedSol.addModule(new RupMFDsModule(meanTotalMFDs));
 			reducedSol.setGridSourceProvider(meanTotalSol.getGridSourceProvider());
 		}
 		
@@ -577,9 +581,9 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		if (magTol > 0) {
 			if (D) System.out.println("combining mags");
 			if (magTol >= 10)
-				sol.setRupMagDists(null);
-			else
-				sol.setRupMagDists(RuptureCombiner.combineMFDs(magTol, sol.getRupMagDists()));
+				sol.removeModuleInstances(RupMFDsModule.class);
+			else if (sol.hasModule(RupMFDsModule.class))
+				sol.addModule(new RupMFDsModule(RuptureCombiner.combineMFDs(magTol, sol.getModule(RupMFDsModule.class).getRuptureMFDs())));
 		}
 	}
 	
@@ -678,7 +682,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static void main(String[] args) {
 		File solFile = new File(getStoreDir(), "mean_ucerf3_sol.zip");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
+		FaultSystemSolution sol;
 		try {
 			sol = FaultSystemIO.loadSol(solFile);
 		} catch (Exception e) {

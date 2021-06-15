@@ -88,6 +88,8 @@ import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
@@ -696,7 +698,7 @@ public class FaultSysSolutionERF_Calc {
 	 * @return
 	 */
 	public static SummedMagFreqDist[] calcParticipationMFDForAllSects(FaultSystemSolutionERF erf, double min,double max,int num) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		SummedMagFreqDist[] mfdArray = new SummedMagFreqDist[rupSet.getNumSections()];
 		for(int i=0;i<mfdArray.length;i++) {
@@ -722,7 +724,7 @@ public class FaultSysSolutionERF_Calc {
 	 * @return
 	 */
 	public static double[] calcParticipationRateForAllSects(FaultSystemSolutionERF erf, double minMag) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		double[] rates = new double[rupSet.getNumSections()];
 		double duration = erf.getTimeSpan().getDuration();
@@ -748,7 +750,7 @@ public class FaultSysSolutionERF_Calc {
 	 * @return
 	 */
 	public static double calcParticipationRateForParentSect(FaultSystemSolutionERF erf, int parentID, double minMag) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		double duration = erf.getTimeSpan().getDuration();
 		
@@ -777,7 +779,7 @@ public class FaultSysSolutionERF_Calc {
 	 */
 	public static double calcParticipationRateForParentSects(
 			FaultSystemSolutionERF erf, double minMag, int... parentIDs) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		double duration = erf.getTimeSpan().getDuration();
 		
@@ -808,7 +810,7 @@ public class FaultSysSolutionERF_Calc {
 	 */
 	public static double calcParticipationProbForParentSects(
 			FaultSystemSolutionERF erf, double minMag, int... parentIDs) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		HashSet<Integer> rupIndexes = new HashSet<Integer>();
 		for (Integer parentID : parentIDs)
@@ -829,7 +831,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 	
 	public static double calcParticipationProbForSect(FaultSystemSolutionERF erf, double minMag, int sectionIndex) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		HashSet<Integer> rupIndexes = new HashSet<Integer>(rupSet.getRupturesForSection(sectionIndex));
 		
@@ -855,7 +857,7 @@ public class FaultSysSolutionERF_Calc {
 	 * @return
 	 */
 	public static double calcNucleationRateForParentSect(FaultSystemSolutionERF erf, int parentID, double minMag) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		double duration = erf.getTimeSpan().getDuration();
 		
@@ -907,7 +909,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		IncludeBackgroundOption origOption = (IncludeBackgroundOption)erf.getParameter(IncludeBackgroundParam.NAME).getValue();
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);	// this works for U3, but not generalized
 		double duration = erf.getTimeSpan().getDuration();
 		
@@ -963,7 +965,7 @@ public class FaultSysSolutionERF_Calc {
 	 * @return
 	 */
 	public static SummedMagFreqDist[] calcNucleationMFDForAllSects(FaultSystemSolutionERF erf, double min,double max,int num) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		SummedMagFreqDist[] mfdArray = new SummedMagFreqDist[rupSet.getNumSections()];
 		for(int i=0;i<mfdArray.length;i++) {
@@ -997,7 +999,7 @@ public class FaultSysSolutionERF_Calc {
 	 * @return
 	 */
 	public static double[] tempCalcParticipationRateForAllSects(FaultSystemSolutionERF erf) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		double[] rateArraySmall = new double[rupSet.getNumSections()];
 		double[] rateArray = new double[rupSet.getNumSections()];
@@ -1646,7 +1648,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 	
 	private static void testProbSumMethods() throws IOException, DocumentException {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol = FaultSystemIO.loadSol(
+		FaultSystemSolution meanSol = FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		
@@ -1750,7 +1752,7 @@ public class FaultSysSolutionERF_Calc {
 	public static EvenlyDiscretizedFunc[] calcSubSectSupraSeisMagProbDists(
 			FaultSystemSolutionERF erf, double minMag, int numMag, double deltaMag, double overallMaxMag) {
 		erf.updateForecast();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		int numSects = rupSet.getNumSections();
 		
 		// create a list of all rupture probs for each section
@@ -1805,7 +1807,7 @@ public class FaultSysSolutionERF_Calc {
 	private static Map<Integer, EvenlyDiscretizedFunc> calcParentSectSupraSeisMagProbDists(
 			FaultSystemSolutionERF erf, double minMag, int numMag, double deltaMag, double overallMaxMag) {
 		erf.updateForecast();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		HashSet<Integer> parentIDs = new HashSet<Integer>();
 		for (FaultSection sect : rupSet.getFaultSectionDataList())
@@ -1867,7 +1869,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		double duration = erf.getTimeSpan().getDuration();
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
+		FaultSystemSolution sol = erf.getSolution();
 		
 		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 		erf.getTimeSpan().setDuration(duration);
@@ -1954,7 +1956,7 @@ public class FaultSysSolutionERF_Calc {
 		ProbabilityModelsCalc calc = new ProbabilityModelsCalc(erf);
 		double[] sectImpliedProbGain = new double[poissonAllMags.length];
 		long curTime = System.currentTimeMillis();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		double[] partRates = sol.calcTotParticRateForAllSects();
 		for (int i=0; i<normTimeSinceLast.length; i++) {
 			FaultSection sect = rupSet.getFaultSectionData(i);
@@ -2004,7 +2006,7 @@ public class FaultSysSolutionERF_Calc {
 			saveDir.mkdir();
 		
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol=null;
+		FaultSystemSolution meanSol=null;
 		try {
 			meanSol = FaultSystemIO.loadSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
@@ -2021,7 +2023,7 @@ public class FaultSysSolutionERF_Calc {
 		erf.getTimeSpan().setDuration(duration);
 
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
+		FaultSystemSolution sol = erf.getSolution();
 		
 		// Poisson values
 		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
@@ -2188,7 +2190,7 @@ public class FaultSysSolutionERF_Calc {
 //		CPT ratioCPT = getScaledLinearRatioCPT(0.02, 0.8d, 1.2d);
 		CPT ratioCPT = getScaledLinearRatioCPT(0.02);
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
+		FaultSystemSolution sol = erf.getSolution();
 		
 		List<LocationList> faults = Lists.newArrayList();
 		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
@@ -2403,7 +2405,7 @@ public class FaultSysSolutionERF_Calc {
 		int numMag = 4;
 		double deltaMag = 0.5;
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
+		FaultSystemSolution sol = erf.getSolution();
 		double duration = erf.getTimeSpan().getDuration();
 		
 		double allMagMin = 5.2d;
@@ -2757,7 +2759,7 @@ public class FaultSysSolutionERF_Calc {
 		if (!outputDir.exists())
 			outputDir.mkdir();
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol;
+		FaultSystemSolution meanSol;
 		try {
 			meanSol = FaultSystemIO.loadSol(new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
@@ -4175,7 +4177,7 @@ public class FaultSysSolutionERF_Calc {
 		// ver 9 / ver 8
 		// ver 9 with RCF / ver 9
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(
+		FaultSystemSolution sol = FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		
@@ -4325,7 +4327,7 @@ public class FaultSysSolutionERF_Calc {
 	public static void writeTimeDepPlotsForWeb(List<BPTAveragingTypeOptions> aveTypes, boolean skipAvgMethods,
 			String dirPrefix, File outputDir)
 			throws IOException, DocumentException, GMT_MapException, RuntimeException {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol = FaultSystemIO.loadSol(
+		FaultSystemSolution meanSol = FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		writeTimeDepPlotsForWeb(aveTypes, skipAvgMethods, dirPrefix, outputDir, meanSol);
@@ -4347,7 +4349,7 @@ public class FaultSysSolutionERF_Calc {
 	 * @throws RuntimeException
 	 */
 	public static void writeTimeDepPlotsForWeb(List<BPTAveragingTypeOptions> aveTypes, boolean skipAvgMethods,
-			String dirPrefix, File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol)
+			String dirPrefix, File outputDir, FaultSystemSolution meanSol)
 			throws IOException, DocumentException, GMT_MapException, RuntimeException {
 		if (!outputDir.exists())
 			outputDir.mkdir();
@@ -4849,7 +4851,7 @@ public class FaultSysSolutionERF_Calc {
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip")));
 	}
 	
-	private static void debugAvgMethods(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) {
+	private static void debugAvgMethods(FaultSystemSolution sol) {
 		// choose a subsection, lets do first subsection on Mojave as that lights up in the map
 		// debugging: http://opensha.usc.edu/ftp/kmilner/ucerf3/TimeDependent_preview/m6.7_30yr/
 		// 		OtherSensitivityTests/AveragingMethods/30.0yr_6.7+_AveRate_AveNormTS_vs_AveRI_AveTS.pdf
@@ -4911,7 +4913,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol=null;
+		FaultSystemSolution meanSol=null;
 		try {
 			meanSol = FaultSystemIO.loadSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
@@ -4926,7 +4928,7 @@ public class FaultSysSolutionERF_Calc {
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(meanSol);
 		erf.getTimeSpan().setDuration(duration);
 
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
+		FaultSystemSolution sol = erf.getSolution();
 		
 		// NoOpenInterval
 		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_BPT);
@@ -5091,7 +5093,7 @@ public class FaultSysSolutionERF_Calc {
 			saveDir.mkdir();
 		
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol=null;
+		FaultSystemSolution meanSol=null;
 		try {
 			meanSol = FaultSystemIO.loadSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
@@ -5108,7 +5110,7 @@ public class FaultSysSolutionERF_Calc {
 		erf.getTimeSpan().setDuration(duration);
 
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = erf.getSolution();
+		FaultSystemSolution sol = erf.getSolution();
 		
 		// NoOpenInterval
 		erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_BPT);
@@ -5191,7 +5193,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 
 	public static void writeFullModelRegionalMagProbDists(String dirPrefix, BPTAveragingTypeOptions[] avgTypes,
-			File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet fm31RupSet, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet fm32RupSet) {
+			File outputDir, FaultSystemRupSet fm31RupSet, FaultSystemRupSet fm32RupSet) {
 		File[] csvDirs = { new File(dirPrefix+"-5yr"), new File(dirPrefix+"-30yr")};
 		
 		
@@ -5240,7 +5242,7 @@ public class FaultSysSolutionERF_Calc {
 		// average solution for FM 3.1
 		String f ="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
 		File file = new File(f);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol;
+		FaultSystemSolution meanSol;
 		try {
 			meanSol = FaultSystemIO.loadSol(file);
 		} catch (Exception e) {
@@ -5933,7 +5935,7 @@ public class FaultSysSolutionERF_Calc {
 //		String dirPrefix = "/home/kevin/OpenSHA/UCERF3/probGains/2013_12_14-ucerf3-prob-gains-open1875";
 		String dirPrefix = "/home/kevin/OpenSHA/UCERF3/probGains/2014_02_15-ucerf3-prob-gains-open1875";
 //		File outputMainDir = new File("/home/kevin/OpenSHA/UCERF3");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution meanSol = FaultSystemIO.loadSol(
+		FaultSystemSolution meanSol = FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 //		String dirPrefix = "/home/scec-02/kmilner/ucerf3/prob_gains/2013_12_24-ucerf3-prob-gains-open1875";

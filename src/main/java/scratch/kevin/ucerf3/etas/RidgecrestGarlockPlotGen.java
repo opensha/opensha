@@ -35,6 +35,8 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
@@ -126,8 +128,8 @@ public class RidgecrestGarlockPlotGen {
 		
 		double minMag = 7d;
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = null;
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = null;
+		FaultSystemSolution fss = null;
+		FaultSystemRupSet rupSet = null;
 		FaultSystemSolutionERF erf = null;
 		List<Integer> garlockSources = null;
 		

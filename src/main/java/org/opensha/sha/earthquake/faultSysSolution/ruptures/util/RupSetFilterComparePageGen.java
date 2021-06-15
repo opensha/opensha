@@ -1490,7 +1490,7 @@ public class RupSetFilterComparePageGen {
 		
 	}
 	
-	private static EvenlyDiscretizedFunc getSubsetFailsFunc(List<ClusterRupture> rups, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet,
+	private static EvenlyDiscretizedFunc getSubsetFailsFunc(List<ClusterRupture> rups, FaultSystemRupSet rupSet,
 			RupSetPlausibilityResult results, int numToRemove, Map<Integer, Future<SubsetCallable>> failsRemovedMap,
 			EvenlyDiscretizedFunc refMagFunc, boolean isPrimary) {
 		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(refMagFunc.getMinX(), refMagFunc.getMaxX(), refMagFunc.size());

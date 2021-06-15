@@ -12,12 +12,14 @@ import java.util.zip.ZipFile;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -27,7 +29,7 @@ import com.google.common.base.Stopwatch;
 public class ERF_Tester {
 	
 	private static void asdf(FaultSystemSolution sol) throws ZipException, IOException {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 //		double upperDepthTol = 1000d;
 		double upperDepthTol = 0d;
 		boolean combineRakes = false;
@@ -43,8 +45,9 @@ public class ERF_Tester {
 		Stopwatch watch = Stopwatch.createStarted();
 		FaultSystemSolution reducedSol = RuptureCombiner.getCombinedSolution(sol, upperDepthTol, false, combineRakes, rakeBasis);
 		if (combineMags > 0)
-			reducedSol.setRupMagDists(RuptureCombiner.combineMFDs(combineMags, reducedSol.getRupMagDists()));
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
+			reducedSol.addModule(new RupMFDsModule(RuptureCombiner.combineMFDs(combineMags,
+					reducedSol.getModule(RupMFDsModule.class).getRuptureMFDs())));
+		FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
 		watch.stop();
 		System.out.println("DONE. Took "+watch.elapsed(TimeUnit.SECONDS)+"s to reduce to "
 				+reducedRupSet.getNumRuptures()+"/"+rupSet.getNumRuptures()+" rups and "
@@ -55,9 +58,9 @@ public class ERF_Tester {
 		System.exit(0);
 	}
 	
-	private static void debugOrig(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) {
+	private static void debugOrig(FaultSystemSolution sol) {
 		HashSet<HashSet<Integer>> rupsList = new HashSet<HashSet<Integer>>();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		for (int i=0; i<rupSet.getNumRuptures(); i++) {
 			HashSet<Integer> sects = new HashSet<Integer>(rupSet.getSectionsIndicesForRup(i));
 			
@@ -77,7 +80,7 @@ public class ERF_Tester {
 		System.out.println("Loading solution...");
 		FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
 		asdf(sol);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		System.out.println("done.");
 		
 		System.out.println("Instantiating ERF...");
@@ -117,7 +120,7 @@ public class ERF_Tester {
 				System.out.println("Combining rups for tol="+upperDepthTol+", combineRakes="+combineRakes);
 				Stopwatch watch = Stopwatch.createStarted();
 				FaultSystemSolution reducedSol = RuptureCombiner.getCombinedSolution(sol, upperDepthTol, false, combineRakes, null);
-				org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
+				FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
 				watch.stop();
 				System.out.println("DONE. Took "+watch.elapsed(TimeUnit.SECONDS)+"s to reduce to "
 						+reducedRupSet.getNumRuptures()+"/"+rupSet.getNumRuptures()+" rups and "
@@ -142,7 +145,7 @@ public class ERF_Tester {
 				
 				// clear rup MFDs for averaged mags
 				System.out.println("Clearning rup MFDs for mean mags");
-				reducedSol.setRupMagDists(null);
+				reducedSol.removeModuleInstances(RupMFDsModule.class);
 				
 				System.out.println("Instantiating ERF...");
 				erf = new MeanUCERF3(reducedSol);

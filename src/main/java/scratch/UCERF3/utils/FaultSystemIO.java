@@ -90,7 +90,7 @@ public class FaultSystemIO {
 	 * @throws ZipException 
 	 */
 	public static InversionFaultSystemRupSet loadInvRupSet(File file) throws ZipException, IOException, DocumentException {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = loadRupSetAsApplicable(file);
+		FaultSystemRupSet rupSet = loadRupSetAsApplicable(file);
 		Preconditions.checkArgument(rupSet instanceof InversionFaultSystemRupSet,
 				"Rupture set cannot be loaded as an InversionFaultSystemRupSet");
 		return (InversionFaultSystemRupSet)rupSet;
@@ -115,7 +115,7 @@ public class FaultSystemIO {
 	 * @throws IOException 
 	 */
 	public static InversionFaultSystemSolution loadInvSol(File file) throws IOException, DocumentException {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = loadSolAsApplicable(file);
+		FaultSystemSolution sol = loadSolAsApplicable(file);
 		Preconditions.checkArgument(sol instanceof InversionFaultSystemSolution,
 				"Solution cannot be loaded as an InversionFaultSystemSolution");
 		return (InversionFaultSystemSolution)sol;
@@ -151,7 +151,7 @@ public class FaultSystemIO {
 	 * @throws IOException 
 	 */
 	public static AverageFaultSystemSolution loadAvgInvSol(File file) throws IOException, DocumentException {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = loadSolAsApplicable(file);
+		FaultSystemSolution sol = loadSolAsApplicable(file);
 		Preconditions.checkArgument(sol instanceof AverageFaultSystemSolution,
 				"Solution cannot be loaded as an AverageFaultSystemSolution");
 		return (AverageFaultSystemSolution)sol;
@@ -589,7 +589,7 @@ public class FaultSystemIO {
 	public static FaultSystemSolution loadSolAsApplicable(ZipFile zip, Map<String, String> nameRemappings)
 			throws IOException, DocumentException {
 		// first load the rupture set
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = loadRupSetAsApplicable(zip, nameRemappings);
+		FaultSystemRupSet rupSet = loadRupSetAsApplicable(zip, nameRemappings);
 		
 		// safe to use rupSet info string as we just loaded it from the same zip file
 		String infoString = rupSet.getInfoString();
@@ -924,7 +924,7 @@ public class FaultSystemIO {
 		}
 	}
 	
-	public static void fsDataToXML(Element parent, String elName, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
+	public static void fsDataToXML(Element parent, String elName, FaultSystemRupSet rupSet) {
 		FaultModels fm = null;
 		DeformationModels dm = null;
 		if (rupSet instanceof InversionFaultSystemRupSet) {

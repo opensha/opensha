@@ -7,6 +7,7 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
@@ -102,7 +103,7 @@ public class ETAS_LongTermMFDs {
 	 */
 	private  SummedMagFreqDist[] calcNucleationMFDForAllSectsWtedBySubSeisRates(
 			FaultSystemSolutionERF erf, double min, double max,int num) {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
+		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		
 		SummedMagFreqDist[] mfdArray = new SummedMagFreqDist[rupSet.getNumSections()];
 		for(int i=0;i<mfdArray.length;i++) {

@@ -80,7 +80,7 @@ public class BatchPlotGen {
 		FaultBasedMapGen.plotSolutionSlipRates(sol, region, dir, prefix, false);
 		FaultBasedMapGen.plotSolutionSlipMisfit(sol, region, dir, prefix, false, true);
 		FaultBasedMapGen.plotSolutionSlipMisfit(sol, region, dir, prefix, false, false);
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution ucerf2 = getUCERF2Comparision(sol.getRupSet().getFaultModel(), dir);
+		FaultSystemSolution ucerf2 = getUCERF2Comparision(sol.getRupSet().getFaultModel(), dir);
 		for (double[] range : partic_mag_ranges) {
 			FaultBasedMapGen.plotParticipationRates(sol, region, dir, prefix, false, range[0], range[1]);
 			FaultBasedMapGen.plotParticipationRatios(sol, ucerf2, region, dir, prefix, false, range[0], range[1], true);

@@ -21,6 +21,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -299,11 +300,11 @@ public class LastEventData {
 				&& LocationUtils.horzDistanceFast(sectEndLoc, startLoc) <= toleranceKM;
 	}
 	
-	public static void writeOpenRecurrRatioTable(File file, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol) throws IOException {
+	public static void writeOpenRecurrRatioTable(File file, FaultSystemSolution sol) throws IOException {
 		writeOpenRecurrRatioTable(file, sol, SHEET_NUMS);
 	}
 	
-	public static void writeOpenRecurrRatioTable(File file, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol, int[] sheets) throws IOException {
+	public static void writeOpenRecurrRatioTable(File file, FaultSystemSolution sol, int[] sheets) throws IOException {
 		CSVFile<String> csv = new CSVFile<String>(true);
 		
 		csv.addLine("Parent Section Name", "Parent Section ID", "Sub Section ID",
@@ -375,7 +376,7 @@ public class LastEventData {
 //		populateSubSects(subSects, datas);
 		
 		File solDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = FaultSystemIO.loadSol(new File(solDir,
+		FaultSystemSolution sol = FaultSystemIO.loadSol(new File(solDir,
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		File csvFile = new File("/tmp/open_interval_ratios.csv");
 		writeOpenRecurrRatioTable(csvFile, sol);

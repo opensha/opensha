@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import org.opensha.commons.eq.MagUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -13,11 +14,11 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  */
 public class TotalMomentInversionConstraint extends InversionConstraint {
 	
-	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
+	private FaultSystemRupSet rupSet;
 	private double weight;
 	private double totalMomentTarget;
 
-	public TotalMomentInversionConstraint(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double weight,
+	public TotalMomentInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			double totalMomentTarget) {
 		this.rupSet = rupSet;
 		this.weight = weight;

@@ -18,6 +18,7 @@ import java.util.zip.ZipException;
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
@@ -1197,7 +1198,7 @@ public class AggregatedStiffnessCalculator {
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		File fssFile = new File("/home/kevin/Simulators/catalogs/rundir4983_stitched/fss/"
 				+ "rsqsim_sol_m6.5_skip5000_sectArea0.2.zip");
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
+		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
 		double lambda = 30000;
 		double mu = 30000;
 		double coeffOfFriction = 0.5;

@@ -15,6 +15,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -41,7 +42,7 @@ public class TimeDepRateExtractor {
 	private static final int START_YEAR_DEFAULT = 2014;
 	private static final int HIST_OPEN_INTERVAL_BASIS_DEFAULT = 1875;
 	
-	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol;
+	private FaultSystemSolution sol;
 	
 	private double duration;
 	private int startYear;

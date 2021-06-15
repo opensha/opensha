@@ -68,7 +68,7 @@ public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolu
 	 * @param rupSet
 	 * @param rates
 	 */
-	public FaultSystemSolution(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double[] rates) {
+	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates) {
 		this(rupSet, rates, null);
 	}
 	
@@ -78,7 +78,7 @@ public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolu
 	 * @param rates
 	 * @param subSeismoOnFaultMFDs
 	 */
-	public FaultSystemSolution(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double[] rates,
+	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates,
 			List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
 		super(rupSet, rates);
 		init(rupSet, rates, null, subSeismoOnFaultMFDs);
@@ -99,7 +99,7 @@ public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolu
 	 * @param rates
 	 * @return
 	 */
-	public static FaultSystemSolution buildSolAsApplicable(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double[] rates) {
+	public static FaultSystemSolution buildSolAsApplicable(FaultSystemRupSet rupSet, double[] rates) {
 		if (rupSet instanceof InversionFaultSystemRupSet)
 			return new InversionFaultSystemSolution((InversionFaultSystemRupSet)rupSet, rates);
 		return new FaultSystemSolution(rupSet, rates);
@@ -112,7 +112,7 @@ public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolu
 		
 	}
 	
-	protected void init(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, double[] rates, String infoString,
+	protected void init(FaultSystemRupSet rupSet, double[] rates, String infoString,
 			List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
 		super.init(rupSet, rates);
 		if (infoString != null && !infoString.isBlank())

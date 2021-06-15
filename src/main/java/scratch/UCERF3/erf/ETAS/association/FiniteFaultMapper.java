@@ -17,6 +17,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
@@ -44,7 +45,7 @@ public class FiniteFaultMapper {
 	
 	private static final boolean D = true;
 	
-	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet;
+	private FaultSystemRupSet rupSet;
 	
 	// max difference in fault length allowed
 	private static final double maxLengthDiff = 50d;
@@ -77,7 +78,7 @@ public class FiniteFaultMapper {
 	private List<FaultSection> sectsWithDate;
 	private List<Long> dates;
 	
-	public FiniteFaultMapper(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, boolean filterLastEventParents, boolean matchLastEventExactly) {
+	public FiniteFaultMapper(FaultSystemRupSet rupSet, boolean filterLastEventParents, boolean matchLastEventExactly) {
 		this.rupSet = rupSet;
 		this.filterLastEventParents = filterLastEventParents;
 		this.matchLastEventExactly = matchLastEventExactly;
@@ -515,7 +516,7 @@ public class FiniteFaultMapper {
 //		finiteRups = finiteRups.subList(0, 1);
 		System.out.println("Loaded "+finiteRups.size()+" finite rups");
 		
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
+		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
 				+ "UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_"
 				+ "FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		

@@ -7,6 +7,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -34,13 +36,13 @@ public class NSHMP_UCERF3_ERF extends FaultSystemSolutionERF {
 	private GridSourceProvider gridSources;
 	private List<Integer> indices;
 	
-	public NSHMP_UCERF3_ERF(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+	public NSHMP_UCERF3_ERF(FaultSystemSolution fss) {
 		super(fss);
 		
 		// manipulate fss prior to updateForecast being called which will build
 		// all the required fault sources
 		double[] rates = fss.getRateForAllRups();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet fsrs =  fss.getRupSet();
+		FaultSystemRupSet fsrs =  fss.getRupSet();
 		List<Integer> rupIDs = Lists.newArrayList();
 		
 		// Carson and Klamath IDs are the same across both fault models

@@ -36,6 +36,8 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -200,9 +202,9 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			FaultSystemSolution fss) {
 		if (fssIndexesInside == null) {
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+			FaultSystemRupSet rupSet = fss.getRupSet();
 			fssIndexesInside = new HashSet<>();
 			for (int s=0; s<rupSet.getNumSections(); s++)
 				for (Location loc : rupSet.getFaultSectionData(s).getFaultTrace())
@@ -238,7 +240,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		if (tiFuncs != null)
 			return null;
@@ -393,7 +395,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		return null;
 	}
 	
-	private ArbitrarilyDiscretizedFunc[] calcUCERF3(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, boolean timeIndep, ExecutorService exec) {
+	private ArbitrarilyDiscretizedFunc[] calcUCERF3(FaultSystemSolution fss, boolean timeIndep, ExecutorService exec) {
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF_millis(fss, timeIndep, timeIndep ? 1d : u3TimesFunc.getMinX(), simOT);
 		erf.updateForecast();
 		
@@ -481,14 +483,14 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 	
 	private class U3CalcRunnable implements Runnable {
 		
-		private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss;
+		private FaultSystemSolution fss;
 		private boolean timeIndep;
 		private List<Integer> sourceIDs;
 		private ArrayDeque<FaultSystemSolutionERF_ETAS> erfDeque;
 		private double duration;
 		private ArbitrarilyDiscretizedFunc[] ret;
 
-		public U3CalcRunnable(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, boolean timeIndep, List<Integer> sourceIDs,
+		public U3CalcRunnable(FaultSystemSolution fss, boolean timeIndep, List<Integer> sourceIDs,
 				ArrayDeque<FaultSystemSolutionERF_ETAS> erfDeque, double duration, ArbitrarilyDiscretizedFunc[] ret) {
 			this.fss = fss;
 			this.timeIndep = timeIndep;

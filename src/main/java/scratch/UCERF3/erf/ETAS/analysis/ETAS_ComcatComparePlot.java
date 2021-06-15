@@ -60,6 +60,8 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.magComplete.Helmstetter2006_TimeDepMc;
@@ -645,7 +647,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 
 	@Override
 	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+			FaultSystemSolution fss) {
 		getPlotter(); // will initialize if not done yet
 		short[][][] magGridCounts = new short[durations.length][magBins.length][];
 		IncrementalMagFreqDist catMFD = new IncrementalMagFreqDist(
@@ -779,7 +781,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	boolean forecastOnly;
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 //		forecastOnly = getConfig().getSimulationStartTimeMillis() <= plotter.getEndTime()+60000l;
 		// if the simulation is less than 10 minutes old, don't bother with comparison plots
@@ -1128,7 +1130,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 	}
 	
 	private String[][] writeMapPlots(File outputDir, String prefix, String zName, double[][][] data, boolean isProb,
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, List<Runnable> mapRunnables) throws IOException {
+			FaultSystemRupSet rupSet, List<Runnable> mapRunnables) throws IOException {
 		CPT cpt = baseCPT;
 		cpt.setBelowMinColor(Color.WHITE);
 		cpt.setNanColor(Color.WHITE);
@@ -1577,7 +1579,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			File outputDir = new File(simDir, "plots");
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 			
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss = launcher.checkOutFSS();
+			FaultSystemSolution fss = launcher.checkOutFSS();
 			
 			File inputFile = SimulationMarkdownGenerator.locateInputFile(config);
 			int processed = 0;

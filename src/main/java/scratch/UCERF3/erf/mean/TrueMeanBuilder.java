@@ -265,7 +265,7 @@ public class TrueMeanBuilder {
 		Map<FaultModels, List<List<Integer>>> subSectIndexesMap = Maps.newHashMap();
 		int globalSectCount = 0;
 		for (FaultModels fm : fms) {
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = null;
+			FaultSystemRupSet rupSet = null;
 			for (LogicTreeBranch branch : branches) {
 				if (branch.getValue(FaultModels.class) == fm) {
 					rupSet = cfss.getSolution(branch).getRupSet();
@@ -591,7 +591,7 @@ public class TrueMeanBuilder {
 		String info = "UCERF3 Mean Solution";
 		
 		// assemble rupSet/solution
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, null, null, null, sectionForRups,
+		FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, null, null, null, sectionForRups,
 				mags, rakes, rupAreas, null, info);
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		

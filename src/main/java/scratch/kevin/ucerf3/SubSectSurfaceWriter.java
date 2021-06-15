@@ -12,6 +12,7 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -46,7 +47,7 @@ public class SubSectSurfaceWriter {
 		
 		for (FaultModels fm : sols.keySet()) {
 			System.out.println(fm);
-			org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sols.get(fm).getRupSet();
+			FaultSystemRupSet rupSet = sols.get(fm).getRupSet();
 			for (boolean reduce : new boolean[] {false, true}) {
 				String dirName = fm.encodeChoiceString()+"_"+(float)gridSpacing+"km";
 				if (reduce)

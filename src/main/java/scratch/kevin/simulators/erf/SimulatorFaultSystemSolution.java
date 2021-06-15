@@ -19,6 +19,8 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.simulators.SimulatorEvent;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.SimulatorElement;
@@ -35,8 +37,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -53,11 +53,11 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 	
 	public static SimulatorFaultSystemSolution build(SubSectionBiulder subSectBuilder, List<? extends SimulatorEvent> events,
 			double durationYears)  {
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = buildRupSet(subSectBuilder.getElements(), events, durationYears, subSectBuilder);
+		FaultSystemRupSet rupSet = buildRupSet(subSectBuilder.getElements(), events, durationYears, subSectBuilder);
 		return new SimulatorFaultSystemSolution(rupSet, subSectBuilder, events, durationYears);
 	}
 	
-	SimulatorFaultSystemSolution(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet, SubSectionBiulder subSectBuilder,
+	SimulatorFaultSystemSolution(FaultSystemRupSet rupSet, SubSectionBiulder subSectBuilder,
 			List<? extends SimulatorEvent> events, double durationYears) {
 		super(rupSet, buildRates(rupSet.getNumRuptures(), durationYears));
 		this.events = events;
@@ -66,7 +66,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 	
 	public List<double[]> getSlipAlongRupVals(boolean max) {
 		List<double[]> vals = Lists.newArrayList();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = getRupSet();
+		FaultSystemRupSet rupSet = getRupSet();
 		Map<Integer, Integer> elemToSubMap = subSectBuilder.getElemIDToSubSectsMap();
 		Preconditions.checkState(events.size() == rupSet.getNumRuptures());
 		
@@ -110,14 +110,14 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		return vals;
 	}
 	
-	static org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet buildRupSet(List<SimulatorElement> elements, List<SimulatorEvent> events,
+	static FaultSystemRupSet buildRupSet(List<SimulatorElement> elements, List<SimulatorEvent> events,
 			double durationYears) {
 		System.out.print("Building FSD...");
 		SubSectionBiulder subSectBuilder = new SubSectionBiulder(elements);
 		return buildRupSet(elements, events, durationYears, subSectBuilder);
 	}
 	
-	static org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet buildRupSet(List<SimulatorElement> elements, List<? extends SimulatorEvent> events,
+	static FaultSystemRupSet buildRupSet(List<SimulatorElement> elements, List<? extends SimulatorEvent> events,
 			double durationYears, SubSectionBiulder subSectBuilder) {
 		List<? extends FaultSection> fsd = subSectBuilder.getSubSectsList();
 		Map<Integer, Integer> elemIDsMap = subSectBuilder.getElemIDToSubSectsMap();
@@ -225,8 +225,10 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 				+ "Duration: "+durationYears+"\n"
 				+ "Indv. Rup Rate: "+(1d/durationYears);
 		
-		return new FaultSystemRupSet(fsd, sectSlipRates, sectSlipRateStdDevs, sectAreas,
-				sectionForRups,mags, rupRakes, rupAreas, rupLengths, info);
+		FaultSystemRupSet rupSet = new FaultSystemRupSet(fsd, sectSlipRates, sectSlipRateStdDevs, sectAreas,
+				sectionForRups,mags, rupRakes, rupAreas, rupLengths);
+		rupSet.setInfoString(info);
+		return rupSet;
 	}
 	
 	private static double[] buildRates(int num, double durationYears) {
@@ -475,7 +477,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 //		FaultSystemIO.writeSol(fss, new File("/tmp/simulators_long_sol.zip"));
 		
 		Map<String, Integer> rupCounts = Maps.newHashMap();
-		org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = fss.getRupSet();
+		FaultSystemRupSet rupSet = fss.getRupSet();
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
 			String key = uniqueRupHash(rupSet.getSectionsIndicesForRup(r));
 			Integer count = rupCounts.get(key);

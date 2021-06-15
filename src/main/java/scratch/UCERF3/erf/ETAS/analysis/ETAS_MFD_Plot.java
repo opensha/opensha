@@ -30,6 +30,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Joiner;
@@ -135,7 +136,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+	protected void doProcessCatalog(ETAS_Catalog completeCatalog, ETAS_Catalog triggeredOnlyCatalog, FaultSystemSolution fss) {
 		for (int i=0; i<durations.length; i++) {
 			long maxOT = getConfig().getSimulationStartTimeMillis() + (long)(ProbabilityModelsCalc.MILLISEC_PER_YEAR*durations[i]+0.5);
 			if (totalWithSpontStats != null) {
@@ -225,7 +226,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 
 	@Override
-	protected List<? extends Runnable> doFinalize(File outputDir, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, ExecutorService exec)
+	protected List<? extends Runnable> doFinalize(File outputDir, FaultSystemSolution fss, ExecutorService exec)
 			throws IOException {
 		int numToTrim = calcNumToTrim();
 		
@@ -406,7 +407,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		return Joiner.on(",").join(percents);
 	}
 	
-	private EvenlyDiscretizedFunc calcFSS(org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss) {
+	private EvenlyDiscretizedFunc calcFSS(FaultSystemSolution fss) {
 		Region region = getLauncher().getRegion();
 		IncrementalMagFreqDist fssIncrMFD = fss.calcNucleationMFD_forRegion(region, 5.05, 8.95, 0.1, true);
 		GridSourceProvider gridProv = fss.getGridSourceProvider();
@@ -427,7 +428,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	}
 	
 	private void plot(File outputDir, String prefix, String title, MFD_Stats stats, MFD_Stats primaryStats, MFD_Stats supraStats,
-			int numToTrim, org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution fss, double duration) throws IOException {
+			int numToTrim, FaultSystemSolution fss, double duration) throws IOException {
 		stats.calcStats(annualize, getConfig());
 		supraStats.calcStats(annualize, getConfig());
 		

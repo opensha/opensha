@@ -18,6 +18,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
@@ -174,7 +176,7 @@ public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 					if (mainFaults && mainOutputFile.exists() || !mainFaults && parentOutputFile.exists())
 						continue;
 					
-					org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution sol = cfss.getSolution(branch);
+					FaultSystemSolution sol = cfss.getSolution(branch);
 					erf.setSolution(sol);
 					erf.getTimeSpan().setDuration(duration);
 					
@@ -188,7 +190,7 @@ public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 					} else {
 						double[] minMags = {0d, 6.7d, 7.2d, 7.7d, 8.2d};
 						FaultModels fm = branch.getValue(FaultModels.class);
-						org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet = sol.getRupSet();
+						FaultSystemRupSet rupSet = sol.getRupSet();
 						Map<String, Collection<Integer>> mappings = mainFaultsRupMappings.get(fm);
 						if (mappings == null) {
 							mappings = Maps.newHashMap();
@@ -239,7 +241,7 @@ public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 		
 	}
 	
-	private Table<String, Double, Double> calcFaultProbs(FaultSystemSolutionERF erf, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet,
+	private Table<String, Double, Double> calcFaultProbs(FaultSystemSolutionERF erf, FaultSystemRupSet rupSet,
 			double[] minMags, Map<String, Collection<Integer>> mappings) {
 		Table<String, Double, Double> bptTable = ArrayTable.create(mainFaultsSorted, Doubles.asList(minMags));
 		for (double minMag : minMags) {
@@ -256,7 +258,7 @@ public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 		return bptTable;
 	}
 	
-	public static double calcFaultProb(FaultSystemSolutionERF erf, org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet,
+	public static double calcFaultProb(FaultSystemSolutionERF erf, FaultSystemRupSet rupSet,
 			Collection<Integer> rups, double minMag) {
 		List<Double> probs = Lists.newArrayList();
 		for (int sourceID=0; sourceID<erf.getNumFaultSystemSources(); sourceID++) {

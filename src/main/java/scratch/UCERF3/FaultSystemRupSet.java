@@ -100,7 +100,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 	 * Initialize from another rupSet
 	 * @param rupSet
 	 */
-	protected void init(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
+	protected void init(FaultSystemRupSet rupSet) {
 		init(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
@@ -333,7 +333,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 		addModule(ClusterRuptures.instance(this, search));
 	}
 
-	public void copyCacheFrom(org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet rupSet) {
+	public void copyCacheFrom(FaultSystemRupSet rupSet) {
 		super.copyCacheFrom(rupSet);
 	}
 	
