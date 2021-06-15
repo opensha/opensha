@@ -6,9 +6,12 @@ name: Run scheduled operational tests
 on:
   schedule:
     # * is a special character in YAML so you have to quote this string
-    # 4 UTC = 9pm PDT = 8am PST
-    # 16 UTC = 9am PDT = 8am PST
-    - cron:  '43 4,16 * * *'
+    # 4:43 UTC = 9:43 pm PDT = 8:43 pm PST
+    # 10:43 UTC = 3:43 am PDT = 2:43 am PST
+    # 16:43 UTC = 9:43 am PDT = 8:43 am PST
+    # 22:43 UTC = 3:43 pm PDT = 2:43 pm PDT
+    # these are requests, scheduled tasks are not guarenteed. They are usually delayed and sometimes skipped (if load is high)
+    - cron:  '43 4,10,16,22 * * *'
 
 jobs:
   build:
