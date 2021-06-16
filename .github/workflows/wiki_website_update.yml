@@ -1,0 +1,27 @@
+name: OpenSHA wiki-website update
+
+# Controls when the action will run. 
+on:
+  # Updates on wiki updates
+  gollum:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: Wiki-Website update
+        uses: opensha/wiki-website-update-action@master
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          wiki-repository: 'opensha/opensha.wiki'
+          user-email: 'kmilner@usc.edu'
+          user-name: 'kevinmilner'
+          destination-repository: 'opensha/opensha.github.io'
+          destination-branch: 'master'
