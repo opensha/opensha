@@ -12,6 +12,8 @@ on:
     # 22:43 UTC = 3:43 pm PDT = 2:43 pm PDT
     # these are requests, scheduled tasks are not guarenteed. They are usually delayed and sometimes skipped (if load is high)
     - cron:  '43 4,10,16,22 * * *'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   build:
