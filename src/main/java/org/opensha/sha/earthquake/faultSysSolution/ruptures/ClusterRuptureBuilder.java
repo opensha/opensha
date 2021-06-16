@@ -1263,7 +1263,7 @@ public class ClusterRuptureBuilder {
 		 */
 //		configBuilder.u3All(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_ucerf3";
 		if (minSectsPerParent > 1) {
-			configBuilder.minSectsPerParent(2, true, true); // always do this one
+			configBuilder.minSectsPerParent(minSectsPerParent, true, true); // always do this one
 		}
 		if (noIndirectPaths) {
 			configBuilder.noIndirectPaths(true);
