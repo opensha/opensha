@@ -21,7 +21,7 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
         with:
           wiki-repository: 'opensha/opensha.wiki'
-          user-email: 'kmilner@usc.edu'
-          user-name: 'kevinmilner'
+          user-email: 'opensha.org@gmail.com'
+          user-name: 'opensha-website-robot'
           destination-repository: 'opensha/opensha.github.io'
           destination-branch: 'master'
