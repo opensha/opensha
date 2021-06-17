@@ -44,7 +44,7 @@ import org.opensha.commons.metadata.XMLSaveable;
 public class Location implements 
 		Serializable, XMLSaveable, Cloneable, Comparable<Location> {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 2L;
 
 	public final static String XML_METADATA_NAME = "Location";
 	public final static String XML_METADATA_LONGITUDE = "Longitude";
