@@ -51,11 +51,20 @@ public class Location implements
 	public final static String XML_METADATA_LATITUDE = "Latitude";
 	public final static String XML_METADATA_DEPTH = "Depth";
 
-	private final double latDeg;
-	private final double lonDeg;
-	private final double latRad;
-	private final double lonRad;
-	private final double depth;
+	/**
+	 * Latitude of this <code>Location</code> in decimal degrees
+	 */
+	public final double lat;
+	/**
+	 * Longitude of this <code>Location</code> in decimal degrees
+	 */
+	public final double lon;
+	final double latRad;
+	final double lonRad;
+	/**
+	 * depth of this <code>Location</code> in km (positive-down)
+	 */
+	public final double depth;
 	
 	/**
 	 * Constructs a new <code>Location</code> with the supplied latitude and
@@ -84,8 +93,8 @@ public class Location implements
 		GeoTools.validateLat(lat);
 		GeoTools.validateLon(lon);
 		GeoTools.validateDepth(depth);
-		this.latDeg = lat;
-		this.lonDeg = lon;
+		this.lat = lat;
+		this.lon = lon;
 		this.latRad = Math.toRadians(lat);
 		this.lonRad = Math.toRadians(lon);
 		this.depth = depth;
@@ -94,8 +103,8 @@ public class Location implements
 	// internal for clone use()
 	private Location(double latDeg, double lonDeg, double latRad, double lonRad, double depth) {
 		super();
-		this.latDeg = latDeg;
-		this.lonDeg = lonDeg;
+		this.lat = latDeg;
+		this.lon = lonDeg;
 		this.latRad = latRad;
 		this.lonRad = lonRad;
 		this.depth = depth;
@@ -116,7 +125,7 @@ public class Location implements
 	 * @return the <code>Location</code> latitude in decimal degrees
 	 */
 	public final double getLatitude() {
-		return latDeg;
+		return lat;
 	}
 
 	/**
@@ -125,7 +134,7 @@ public class Location implements
 	 * @return the <code>Location</code> longitude in decimal degrees
 	 */
 	public final double getLongitude() {
-		return lonDeg;
+		return lon;
 	}
 
 	/**
@@ -174,7 +183,7 @@ public class Location implements
 	
 	@Override
 	public Location clone() {
-		Location clone = new Location(latDeg, lonDeg, latRad, lonRad, depth);
+		Location clone = new Location(lat, lon, latRad, lonRad, depth);
 		return clone;
 	}
 
@@ -183,8 +192,8 @@ public class Location implements
 		if (this == obj) return true;
 		if (!(obj instanceof Location)) return false;
 		Location loc = (Location) obj;
-		if (latDeg != loc.latDeg) return false;
-		if (lonDeg != loc.lonDeg) return false;
+		if (lat != loc.lat) return false;
+		if (lon != loc.lon) return false;
 		if (depth != loc.depth) return false;
 		return true;
 	}
@@ -192,8 +201,8 @@ public class Location implements
 	@Override
 	public int hashCode() {
 		// edit did same fix as for equals, now uses getters
-		long latHash = Double.doubleToLongBits(latDeg);
-		long lonHash = Double.doubleToLongBits(lonDeg + 1000);
+		long latHash = Double.doubleToLongBits(lat);
+		long lonHash = Double.doubleToLongBits(lon + 1000);
 		long depHash = Double.doubleToLongBits(depth + 2000);
 		long v = latHash + lonHash + depHash;
 		return (int) (v^(v>>>32));
@@ -214,7 +223,7 @@ public class Location implements
 	 */
 	@Override
 	public int compareTo(Location loc) {
-		double d = (latDeg == loc.latDeg) ? lonDeg - loc.lonDeg : latDeg - loc.latDeg;
+		double d = (lat == loc.lat) ? lon - loc.lon : lat - loc.lat;
 		return (d != 0) ? (d < 0) ? -1 : 1 : 0;
 	}
 	
