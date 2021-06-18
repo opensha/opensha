@@ -565,13 +565,14 @@ public class SimulationMarkdownGenerator {
 		double sumProcessTimes = 0d;
 		Map<ETAS_AbstractPlot, PlotFinalizeCallable> plotCallables = new HashMap<>();
 		ExecutorService exec = Executors.newFixedThreadPool(threads);
-		Map<ETAS_AbstractPlot, Future<PlotMarkdownBuilder>> futures = new HashMap<>();
+		Map<ETAS_AbstractPlot, Future<PlotMarkdownBuilder>> futures = threads > 1 ? new HashMap<>() : null;
 		List<PlotResult> plotResults = new ArrayList<>();
 		for (ETAS_AbstractPlot plot : plotsToProcess) {
 			sumProcessTimes += seconds(plot.getProcessTimeMS());
 			PlotFinalizeCallable call = new PlotFinalizeCallable(plot, plotsDir, fss, exec);
 			plotCallables.put(plot, call);
-			futures.put(plot, exec.submit(call));
+			if (futures != null)
+				futures.put(plot, exec.submit(call));
 		}
 		for (ETAS_AbstractPlot plot : plots) {
 			PlotResult result = null;
@@ -579,7 +580,11 @@ public class SimulationMarkdownGenerator {
 			if (plotCallables.containsKey(plot)) {
 				// we processed it this time and it succeeded (to this point at least)
 				try {
-					PlotMarkdownBuilder builder = futures.get(plot).get();
+					PlotMarkdownBuilder builder;
+					if (futures == null)
+						builder = plotCallables.get(plot).call();
+					else
+						builder = futures.get(plot).get();
 					if (builder != null) {
 						List<String> plotLines = builder.buildMarkdown(plotsDir.getName(), "##", topLink);
 						if (plotLines != null && !plotLines.isEmpty()) {
@@ -795,7 +800,7 @@ public class SimulationMarkdownGenerator {
 		public final List<PlotResult> plots;
 		
 		public PlotMetadata(long plotStartTime, long plotEndTime, int simulationsProcessed,
-				File dataFile, String launcherGitHash, long launcherGitTime, List<PlotResult> plots) {
+				File dataFile, String launcherGitHash, Long launcherGitTime, List<PlotResult> plots) {
 			this.plotStartTime = plotStartTime;
 			this.plotEndTime = plotEndTime;
 			this.simulationsProcessed = simulationsProcessed;

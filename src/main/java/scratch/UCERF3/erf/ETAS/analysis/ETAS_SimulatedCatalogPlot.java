@@ -105,6 +105,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 					maxMag = Math.max(maxMag, trigger.getMag());
 		}
 		double myCount = completeCatalog.size();
+		boolean newSmallLarge = myCount < smallest || myCount > largest;
 		smallest = Math.min(myCount, smallest);
 		largest = Math.max(myCount, largest);
 		if (matchingCatalogs == null) {
@@ -117,7 +118,7 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 		catalogCount++;
 		catalogSizes = Doubles.ensureCapacity(catalogSizes, catalogCount, 1000);
 		catalogSizes[catalogCount-1] = myCount;
-		if (catalogCount % percentileRecalcModulus == 0 || myCount == smallest || myCount == largest)
+		if (catalogCount % percentileRecalcModulus == 0 || newSmallLarge)
 			// recalculate percentiles periodically, or when a new largest or smallest is encountered
 			percentileCalc.setData(catalogSizes, 0, catalogCount);
 		if (catalogCount == 100)
@@ -126,6 +127,10 @@ public class ETAS_SimulatedCatalogPlot extends ETAS_AbstractPlot {
 			percentileRecalcModulus = 50;
 		if (catalogCount == 10000)
 			percentileRecalcModulus = 100;
+		if (catalogCount == 50000)
+			percentileRecalcModulus = 500;
+		if (catalogCount == 100000)
+			percentileRecalcModulus = 1000;
 		
 		for (int p=0; p<percentiles.length; p++) {
 			double expected = percentiles[p] == 0d ? 0d : percentileCalc.evaluate(percentiles[p]);

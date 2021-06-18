@@ -409,36 +409,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 					yRange = new Range(minProb, 1d);
 				}
 
-				double annY1 = Math.pow(10, Math.log10(yRange.getLowerBound())+0.985*(
-						Math.log10(yRange.getUpperBound()) - Math.log10(yRange.getLowerBound())));
-				double annY2 = Math.pow(10, Math.log10(yRange.getLowerBound())+0.94*(
-						Math.log10(yRange.getUpperBound()) - Math.log10(yRange.getLowerBound())));
-				//			System.out.println("Ann Y's: "+annY1+" "+annY2);
-
-				List<XYTextAnnotation> annotations = new ArrayList<>();
-
-				Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 20);
-				for (int i = 0; i < times.length; i++) {
-					double time = times[i];
-					String label = getTimeShortLabel(time);
-
-					DefaultXY_DataSet xy = new DefaultXY_DataSet();
-					xy.set(time, yRange.getLowerBound());
-					xy.set(time, yRange.getUpperBound());
-					funcs.add(xy);
-					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY));
-
-					XYTextAnnotation ann = new XYTextAnnotation(label, time, annY1);
-					if (i == 0 && xAxisInverted || i == (times.length - 1) && !xAxisInverted) {
-						ann.setTextAnchor(TextAnchor.TOP_RIGHT);
-						if (!xAxisInverted)
-							ann.setY(annY2); // put it below
-					} else {
-						ann.setTextAnchor(TextAnchor.TOP_LEFT);
-					}
-					ann.setFont(annFont);
-					annotations.add(ann);
-				}
+				List<XYTextAnnotation> annotations = buildPlotAnnotations(xAxisInverted, funcs, chars, yRange);
 
 				for (XY_DataSet func : funcs)
 					Preconditions.checkState(func.size() > 0, "Empty func with name: %s", func.getName());
@@ -469,6 +440,41 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 			}
 		}
 		return null;
+	}
+
+	public static List<XYTextAnnotation> buildPlotAnnotations(boolean xAxisInverted, List<XY_DataSet> funcs,
+			List<PlotCurveCharacterstics> chars, Range yRange) {
+		double annY1 = Math.pow(10, Math.log10(yRange.getLowerBound())+0.985*(
+				Math.log10(yRange.getUpperBound()) - Math.log10(yRange.getLowerBound())));
+		double annY2 = Math.pow(10, Math.log10(yRange.getLowerBound())+0.94*(
+				Math.log10(yRange.getUpperBound()) - Math.log10(yRange.getLowerBound())));
+		//			System.out.println("Ann Y's: "+annY1+" "+annY2);
+
+		List<XYTextAnnotation> annotations = new ArrayList<>();
+
+		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 20);
+		for (int i = 0; i < times.length; i++) {
+			double time = times[i];
+			String label = getTimeShortLabel(time);
+
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			xy.set(time, yRange.getLowerBound());
+			xy.set(time, yRange.getUpperBound());
+			funcs.add(xy);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY));
+
+			XYTextAnnotation ann = new XYTextAnnotation(label, time, annY1);
+			if (i == 0 && xAxisInverted || i == (times.length - 1) && !xAxisInverted) {
+				ann.setTextAnchor(TextAnchor.TOP_RIGHT);
+				if (!xAxisInverted)
+					ann.setY(annY2); // put it below
+			} else {
+				ann.setTextAnchor(TextAnchor.TOP_LEFT);
+			}
+			ann.setFont(annFont);
+			annotations.add(ann);
+		}
+		return annotations;
 	}
 	
 	private ArbitrarilyDiscretizedFunc[] calcUCERF3(FaultSystemSolution fss, boolean timeIndep, ExecutorService exec) {

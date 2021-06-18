@@ -963,17 +963,33 @@ public class ClusterRuptureBuilder {
 		// END U3
 		
 		// for NZ tests
-//		File xmlFile = new File(rupSetsDir, "DEMO5_SANSTVZ_crustal_opensha.xml");
+////		boolean areSubSects = false;
+////		File xmlFile = new File(rupSetsDir, "DEMO5_SANSTVZ_crustal_opensha.xml");
+////		String fmPrefix = "nz_demo5_crustal";
+////		boolean areSubSects = true;
+////		File xmlFile = new File(rupSetsDir, "nz_CFM_0_9_SANSTVZ_D90.xml");
+////		String fmPrefix = "nz_cfm_0_9_D90";
+//		boolean areSubSects = true;
+//		File xmlFile = new File(rupSetsDir, "nz_CFM_0_9_SANSTVZ_2010.xml");
+//		String fmPrefix = "nz_cfm_0_9_2010";
 //		Document fsDoc = XMLUtils.loadDocument(xmlFile);
-//		Element fsEl = fsDoc.getRootElement().element("FaultModel");
+//		Element fsEl = fsDoc.getRootElement().element(areSubSects ? "FaultSectionPrefDataList" : "FaultModel");
 //		List<FaultSection> sects = FaultSystemIO.fsDataFromXML(fsEl);
 //		System.out.println("Loaded "+sects.size()+" sections");
-//		List<FaultSection> subSects = new ArrayList<>();
-//		for (FaultSection sect : sects)
-//			subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
-//		System.out.println("Built "+subSects.size()+" subsections");
-//		Preconditions.checkState(!subSects.isEmpty());
-//		String fmPrefix = "nz_demo5_crustal";
+//		Preconditions.checkState(!sects.isEmpty());
+//		List<FaultSection> subSects;
+//		if (areSubSects) {
+//			Preconditions.checkState(sects.get(0).getSectionId() == 0);
+//			Preconditions.checkState(sects.get(sects.size()-1).getSectionId() == sects.size()-1);
+//			subSects = sects;
+//			System.out.println("Loaded "+subSects.size()+" subsections");
+//		} else {
+//			subSects = new ArrayList<>();
+//			for (FaultSection sect : sects)
+//				subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
+//			System.out.println("Built "+subSects.size()+" subsections");
+//			Preconditions.checkState(!subSects.isEmpty());
+//		}
 //		File distAzCacheFile = new File(rupSetsDir, fmPrefix+"_dist_az_cache.csv");
 //		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
 		// END NZ
@@ -1265,7 +1281,7 @@ public class ClusterRuptureBuilder {
 		 */
 //		configBuilder.u3All(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_ucerf3";
 		if (minSectsPerParent > 1) {
-			configBuilder.minSectsPerParent(2, true, true); // always do this one
+			configBuilder.minSectsPerParent(minSectsPerParent, true, true); // always do this one
 		}
 		if (noIndirectPaths) {
 			configBuilder.noIndirectPaths(true);
