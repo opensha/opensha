@@ -1,8 +1,10 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,10 +24,16 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 
+import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.utils.DeformationModelFetcher;
 
 public class GeoJSONFaultReader {
 	
@@ -33,25 +41,16 @@ public class GeoJSONFaultReader {
 	 * Fault sections GeoJSON
 	 */
 	
-	public static List<FaultSection> readFaultSections(File file, String state, boolean includeSecondary) throws IOException {
-		return readFaultSections(file, includeSecondary).get(state);
-	}
-	
-	public static List<FaultSection> readFaultSections(JsonReader reader, String state, boolean includeSecondary) throws IOException {
-		return readFaultSections(reader, includeSecondary).get(state);
-	}
-	
 	/**
-	 * Loads all fault sections from the given GeoJSON. Results are grouped by state. If includceSecondary is true, then
-	 * faults will also be added to the lists for their secondary states if supplied
+	 * Loads all fault sections from the given GeoJSON.
 	 *  
 	 * @param reader
 	 * @param includeSecondary
 	 * @return
 	 * @throws IOException
 	 */
-	public static Map<String, List<FaultSection>> readFaultSections(File file, boolean includeSecondary) throws IOException {
-		return readFaultSections(reader(file), includeSecondary);
+	public static List<GeoJSONFaultSection> readFaultSections(File file) throws IOException {
+		return readFaultSections(reader(file));
 	}
 	
 	private static JsonReader reader(File file) throws IOException {
@@ -59,18 +58,19 @@ public class GeoJSONFaultReader {
 	}
 	
 	/**
-	 * Loads all fault sections from the given GeoJSON. Results are grouped by state. If includceSecondary is true, then
-	 * faults will also be added to the lists for their secondary states if supplied
+	 * Loads all fault sections from the given GeoJSON.
 	 *  
 	 * @param reader
 	 * @param includeSecondary
 	 * @return
 	 * @throws IOException
 	 */
-	public static Map<String, List<FaultSection>> readFaultSections(JsonReader reader, boolean includeSecondary) throws IOException {
-		Map<String, List<FaultSection>> ret = new HashMap<>();
+	public static List<GeoJSONFaultSection> readFaultSections(JsonReader reader) throws IOException {
+		List<GeoJSONFaultSection> ret = new ArrayList<>();
 		
 		HashSet<Integer> prevIDs = new HashSet<>();
+		
+		TypeAdapter<GeoJSONFaultSection> adapter = new GeoJSONFaultSection.Adapter();
 		
 		reader.beginObject();
 		while (reader.hasNext()) {
@@ -80,207 +80,10 @@ public class GeoJSONFaultReader {
 				Preconditions.checkState(reader.peek() == JsonToken.BEGIN_ARRAY);
 				reader.beginArray();
 				while (reader.hasNext()) {
-					Integer id = null;
-					String name = null;
-					String primState = null;
-					String secState = null;
-					Double dipDeg = null;
-					Double rake = null;
-					Double upDepth = null;
-					Double lowDepth = null;
-					Boolean proxy = false;
-					
-					FaultTrace trace = null;
-					
-					reader.beginObject();
-					
-					while (reader.hasNext()) {
-						switch (reader.nextName()) {
-						case "type":
-							String type = reader.nextString();
-							Preconditions.checkState(type.equals("Feature"), "Expected 'Feature' but was '%s'", type);
-							break;
-						case "properties":
-							reader.beginObject();
-							while (reader.hasNext()) {
-								switch (reader.nextName()) {
-								case "FaultID":
-									id = reader.nextInt();
-									break;
-								case "FaultName":
-									name = reader.nextString();
-									break;
-								case "PrimState":
-									primState = reader.nextString();
-									break;
-								case "SecState":
-									if (reader.peek() == JsonToken.NULL)
-										reader.nextNull();
-									else
-										secState = reader.nextString();
-									break;
-								case "DipDeg":
-									dipDeg = reader.nextDouble();
-									break;
-								case "Rake":
-									rake = reader.nextDouble();
-									break;
-								case "LowDepth":
-									lowDepth = reader.nextDouble();
-									break;
-								case "UpDepth":
-									upDepth = reader.nextDouble();
-									break;
-								case "Proxy":
-									if (reader.peek() == JsonToken.NULL)
-										reader.nextNull();
-									else
-										proxy = reader.nextString().equals("yes");
-									break;
-									
-
-								default:
-									reader.skipValue();
-									break;
-								}
-							}
-							reader.endObject();
-							break;
-							
-						case "geometry":
-							reader.beginObject();
-							
-							while (reader.hasNext()) {
-								switch (reader.nextName()) {
-								case "type":
-									String gType = reader.nextString();
-									Preconditions.checkState(gType.equals("MultiLineString"), "Only MultiLineString supported, given: %s", gType);
-									break;
-								case "coordinates":
-									reader.beginArray();
-//									System.out.println("Loading trace for "+name);
-									reader.beginArray();
-									trace = new FaultTrace(name);
-									while (reader.hasNext()) {
-										reader.beginArray();
-										double lon = reader.nextDouble();
-										double lat = reader.nextDouble();
-										trace.add(new Location(lat, lon));
-										reader.endArray();
-									}
-									Preconditions.checkState(!trace.isEmpty(), "Trace is empty");
-									reader.endArray();
-									if (reader.peek() != JsonToken.END_ARRAY) {
-//										System.err.println("WARNING: skipping mult-trace for "+name+" ("+id+")");
-//										while (reader.peek() != JsonToken.END_ARRAY) {
-////											System.out.println("Skipping "+reader.peek());
-//											reader.skipValue();
-//										}
-										System.err.println("WARNING: concatenating multi-trace for "+name+" ("+id+")");
-										int extraLocs = 0;
-										List<FaultTrace> extraTraces = new ArrayList<>();
-										while (reader.hasNext()) {
-											reader.beginArray();
-											FaultTrace extraTrace = new FaultTrace(null);
-											while (reader.hasNext()) {
-												reader.beginArray();
-												double lon = reader.nextDouble();
-												double lat = reader.nextDouble();
-												Location newLoc = new Location(lat, lon);
-												extraLocs++;
-												extraTrace.add(newLoc);
-												reader.endArray();
-											}
-											extraTraces.add(extraTrace);
-											reader.endArray();
-										}
-										// figure out where they go
-										while (!extraTraces.isEmpty()) {
-											int bestIndex = -1;
-											boolean bestAtEnd = false;
-											double bestDistance = Double.POSITIVE_INFINITY;
-											for (int i=0; i<extraTraces.size(); i++) {
-												FaultTrace extraTrace = extraTraces.get(i);
-												double beforeDist = LocationUtils.horzDistanceFast(extraTrace.last(), trace.first());
-												double afterDist = LocationUtils.horzDistanceFast(extraTrace.first(), trace.last());
-												if (beforeDist < afterDist && beforeDist < bestDistance) {
-													bestIndex = i;
-													bestAtEnd = false;
-													bestDistance = beforeDist;
-												} else if (afterDist <= beforeDist && afterDist < bestDistance) {
-													bestIndex = i;
-													bestAtEnd = true;
-													bestDistance = afterDist;
-												}
-											}
-											FaultTrace addTrace = extraTraces.remove(bestIndex);
-//											System.err.println("\tadding extra trace with inOrder="+bestAtEnd+", dist="+bestDistance);
-											if (bestAtEnd) {
-												System.err.println("\tadding extra trace to end:\n\t\tprevLoc="+trace.last()+"\n\t\tnextLoc="
-														+addTrace.first()+"\t(dist="+bestDistance+")");
-												trace.addAll(addTrace);
-											} else {
-												System.err.println("\tadding extra trace to start (before previous):\n\t\tprevLoc="
-													+trace.last()+"\n\t\tnextLoc="+addTrace.first()+"\t(dist="+bestDistance+")");
-												trace.addAll(0, addTrace);
-											}
-											if (bestIndex != 0)
-												System.out.println("\t\tWARNING: didn't add new traces in order");
-										}
-//										System.err.println("\tAdded "+extraTraces+" traces w/ "+extraLocs+" locs. "
-//												+ "Max dist from prevLast to new trace: "+(float)maxDistFromPrev);
-									}
-									reader.endArray();
-									break;
-
-								default:
-									break;
-								}
-							}
-							
-							reader.endObject();
-							break;
-							
-						default:
-							reader.skipValue();
-							break;
-						}
-					}
-					
-					reader.endObject();
-					
-					Preconditions.checkNotNull(name);
-					Preconditions.checkNotNull(id);
-					Preconditions.checkNotNull(primState);
-					Preconditions.checkNotNull(dipDeg);
-					Preconditions.checkNotNull(rake);
-					Preconditions.checkNotNull(lowDepth);
-					Preconditions.checkNotNull(upDepth);
-					Preconditions.checkNotNull(trace);
-					FaultSectionPrefData sect = new FaultSectionPrefData();
-					sect.setSectionId(id);
-					sect.setSectionName(name);
-					sect.setAveDip(dipDeg);
-					sect.setAveRake(rake);
-					sect.setAveLowerDepth(lowDepth);
-					sect.setAveUpperDepth(upDepth);
-					sect.setFaultTrace(trace);
-					sect.setDipDirection((float)(trace.getAveStrike()+90d));
-					List<FaultSection> stateList = ret.get(primState);
-					if (stateList == null) {
-						stateList = new ArrayList<>();
-						ret.put(primState, stateList); 
-					}
-					stateList.add(sect);
-					if (includeSecondary && secState != null) {
-						stateList = ret.get(secState);
-						if (stateList == null) {
-							stateList = new ArrayList<>();
-							ret.put(secState, stateList);
-						}
-						stateList.add(sect);
-					}
-					Preconditions.checkState(!prevIDs.contains(id));
+					GeoJSONFaultSection sect = adapter.read(reader);
+					int id = sect.getSectionId();
+					Preconditions.checkState(!prevIDs.contains(id), "Duplicate fault ID detected: %s", id);
+					ret.add(sect);
 					prevIDs.add(id);
 				}
 				reader.endArray();
@@ -297,6 +100,69 @@ public class GeoJSONFaultReader {
 //		System.out.println("Ending object");
 		reader.endObject();
 		reader.close();
+		return ret;
+	}
+	
+	public static void writeFaultSections(File file, List<? extends FaultSection> sects) throws IOException {
+		JsonWriter writer = writer(file);
+		writeFaultSections(writer, sects);
+		writer.close();
+	}
+	
+	private static JsonWriter writer(File file) throws IOException {
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		
+		JsonWriter jout = gson.newJsonWriter(new BufferedWriter(new FileWriter(file)));
+		return jout;
+	}
+	
+	public static void writeFaultSections(JsonWriter writer, List<? extends FaultSection> sects) throws IOException {
+		writer.beginObject();
+		
+		writer.name("type").value("FeatureCollection");
+		
+		writer.name("crs").beginObject();
+		writer.name("type").value("name");
+		writer.name("properties").beginObject().name("name").value("urn:ogc:def:crs:OGC:1.3:CRS84").endObject();
+		writer.endObject(); // end crs
+		
+		writer.name("features").beginArray();
+		
+		TypeAdapter<GeoJSONFaultSection> adapter = new GeoJSONFaultSection.Adapter();
+		
+		for (FaultSection sect : sects) {
+			GeoJSONFaultSection geoSect;
+			if (sect instanceof GeoJSONFaultSection)
+				geoSect = (GeoJSONFaultSection)sect;
+			else
+				geoSect = new GeoJSONFaultSection(sect);
+			adapter.write(writer, geoSect);
+		}
+		
+		writer.endArray(); // end features
+		
+		writer.endObject();
+		
+		writer.flush();
+	}
+	
+	/**
+	 * Filters the given list of GeoJSON fault sections by state. Sections must have the 'PrimState' property.
+	 * 
+	 * @param sects
+	 * @param state state abbreviation, e.g., 'CA' (not case sensitive)
+	 * @param includeSecondary if true, also include any sections where the 'SecState' property matches the supplied state
+	 * @return
+	 */
+	public static List<GeoJSONFaultSection> filterByState(List<GeoJSONFaultSection> sects, String state, boolean includeSecondary) {
+		List<GeoJSONFaultSection> ret = new ArrayList<>();
+		for (GeoJSONFaultSection sect : sects) {
+			String primState = sect.getProperty("PrimState", null);
+			Preconditions.checkNotNull(primState, "Fault does not contain 'PrimState' property: %s", sect.getSectionId());
+			String secState = sect.getProperty("SecState", null);
+			if (state.equalsIgnoreCase(primState) || (includeSecondary && state.equalsIgnoreCase(secState)))
+				ret.add(sect);
+		}
 		return ret;
 	}
 	
@@ -604,7 +470,7 @@ public class GeoJSONFaultReader {
 		return null;
 	}
 	
-	public static List<FaultSection> buildSubSects(List<FaultSection> sects) {
+	public static List<FaultSection> buildSubSects(List<? extends FaultSection> sects) {
 		Collections.sort(sects, new Comparator<FaultSection>() {
 
 			@Override
@@ -620,14 +486,9 @@ public class GeoJSONFaultReader {
 	}
 	
 	public static List<FaultSection> buildSubSects(File sectsFile, File geoDBFile, String state) throws IOException {
-		List<FaultSection> sects;
-		if (state == null) {
-			sects = new ArrayList<>();
-			for (List<FaultSection> stateFaults : GeoJSONFaultReader.readFaultSections(sectsFile, false).values())
-				sects.addAll(stateFaults);
-		} else {
-			sects = GeoJSONFaultReader.readFaultSections(sectsFile, true).get(state);
-		}
+		List<GeoJSONFaultSection> sects = readFaultSections(sectsFile);
+		if (state != null)
+			sects = filterByState(sects, state, true);
 		System.out.println("Loaded "+sects.size()+" sections");
 		Collections.sort(sects, new Comparator<FaultSection>() {
 
@@ -648,13 +509,11 @@ public class GeoJSONFaultReader {
 	public static void main(String[] args) throws IOException {
 		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/NSHM2023_FaultSectionsEQGeoDB_v1p2_29March2021");
 		File sectFile = new File(baseDir, "NSHM2023_FaultSections_v1p2.geojson");
-		Map<String, List<FaultSection>> sectsMap = readFaultSections(sectFile, false);
-		for (String state : sectsMap.keySet()) {
-			System.out.println(state+":");
-			for (FaultSection sect : sectsMap.get(state)) {
-				System.out.println("\t"+sect.getSectionId()+". "+sect.getSectionName());
-			}
-		}
+		List<GeoJSONFaultSection> sects = readFaultSections(sectFile);
+		for (FaultSection sect : sects)
+			System.out.println("\t"+sect.getSectionId()+". "+sect.getSectionName());
+		
+		writeFaultSections(new File("/tmp/sects.json"), sects);
 
 		File geoFile = new File(baseDir, "NSHM2023_EQGeoDB_v1p2.geojson");
 		Map<Integer, List<GeoSlipRateRecord>> slipRecords = readGeoDB(geoFile);
@@ -666,28 +525,28 @@ public class GeoJSONFaultReader {
 		List<FaultSection> fallbacks = new ArrayList<>();
 		fallbacks.addAll(FaultModels.FM3_1.fetchFaultSections());
 		fallbacks.addAll(FaultModels.FM3_2.fetchFaultSections());
-		for (String state : sectsMap.keySet()) {
-			System.out.println("Testing "+state);
-			int largestNum = 0;
-			FaultSection largest = null;
-			List<FaultSection> testSects = sectsMap.get(state);
-			System.out.println("\t"+testSects.size()+" faults");
-			testMapSlipRates(testSects, slipRecords, 1d, fallbacks);
-			for (FaultSection sect : testSects) {
-				try {
-					RuptureSurface surf = sect.getFaultSurface(1d, false, false);
-					int num = surf.getEvenlyDiscretizedNumLocs();
-					if (num > largestNum) {
-						largestNum = num;
-						largest = sect;
-					}
-				} catch (Exception e) {
-					System.out.println("Exception building surface for: "+sect);
-					System.out.println(e.getMessage());
+		int largestNum = 0;
+		FaultSection largest = null;
+		System.out.println("\t"+sects.size()+" faults");
+		testMapSlipRates(sects, slipRecords, 1d, fallbacks);
+		for (FaultSection sect : sects) {
+			try {
+				RuptureSurface surf = sect.getFaultSurface(1d, false, false);
+				int num = surf.getEvenlyDiscretizedNumLocs();
+				if (num > largestNum) {
+					largestNum = num;
+					largest = sect;
 				}
+			} catch (Exception e) {
+				System.out.println("Exception building surface for: "+sect);
+				System.out.println(e.getMessage());
 			}
-			System.out.println("\tLargest has "+largestNum+" points: "+largest.getName());
 		}
+		System.out.println("\tLargest has "+largestNum+" points: "+largest.getName());
+		
+		DeformationModelFetcher dmFetch = new DeformationModelFetcher(FaultModels.FM3_1, DeformationModels.GEOLOGIC, null, 0.1);
+		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
+		writeFaultSections(new File("/tmp/fm_3_1.json"), subSects);
 	}
 
 }
