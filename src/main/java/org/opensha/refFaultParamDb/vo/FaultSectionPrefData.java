@@ -696,18 +696,11 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(parentSectionId, sectionId);
+		return FaultSection.hashCode(this);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		FaultSectionPrefData other = (FaultSectionPrefData) obj;
-		return parentSectionId == other.parentSectionId && sectionId == other.sectionId;
+		return FaultSection.equals(this, obj);
 	}
 }

@@ -24,6 +24,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
@@ -76,6 +77,9 @@ public class GeoJSONFaultReader {
 		while (reader.hasNext()) {
 			String nextName = reader.nextName();
 			switch (nextName) {
+			case "type":
+				Preconditions.checkState(reader.nextString().equals("FeatureCollection"), "Top level type must be a FeatureCollection");
+				break;
 			case "features":
 				Preconditions.checkState(reader.peek() == JsonToken.BEGIN_ARRAY);
 				reader.beginArray();
@@ -121,10 +125,11 @@ public class GeoJSONFaultReader {
 		
 		writer.name("type").value("FeatureCollection");
 		
-		writer.name("crs").beginObject();
-		writer.name("type").value("name");
-		writer.name("properties").beginObject().name("name").value("urn:ogc:def:crs:OGC:1.3:CRS84").endObject();
-		writer.endObject(); // end crs
+		// don't write CRS, it's unused as of RFC 7946
+//		writer.name("crs").beginObject();
+//		writer.name("type").value("name");
+//		writer.name("properties").beginObject().name("name").value("urn:ogc:def:crs:OGC:1.3:CRS84").endObject();
+//		writer.endObject(); // end crs
 		
 		writer.name("features").beginArray();
 		
@@ -547,6 +552,10 @@ public class GeoJSONFaultReader {
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(FaultModels.FM3_1, DeformationModels.GEOLOGIC, null, 0.1);
 		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
 		writeFaultSections(new File("/tmp/fm_3_1.json"), subSects);
+		
+		GeoJSONFaultSection sect0 = new GeoJSONFaultSection(subSects.get(0));
+//		sect0.setZonePolygon(null);
+		writeFaultSections(new File("/tmp/fm_3_1_single.json"), List.of(sect0));
 	}
 
 }

@@ -1,6 +1,7 @@
 package org.opensha.sha.faultSurface;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.dom4j.Element;
 import org.opensha.commons.calc.FaultMomentCalc;
@@ -400,5 +401,32 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 			quadSurf = new QuadSurface(sect, aseisReducesArea);
 			return quadSurf;
 		}
+	}
+
+	/**
+	 * Default hashCode() implementation for a fault section, just hashes parent/section IDs
+	 * 
+	 * @param sect
+	 * @return
+	 */
+	public static int hashCode(FaultSection sect) {
+		return Objects.hash(sect.getParentSectionId(), sect.getSectionId());
+	}
+
+	/**
+	 * Default equals() implementation for a fault section, just checks parent/section IDs
+	 * 
+	 * @param sect
+	 * @return
+	 */
+	public static boolean equals(FaultSection sect, Object obj) {
+		if (sect == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!FaultSection.class.isAssignableFrom(obj.getClass()))
+			return false;
+		FaultSection other = (FaultSection) obj;
+		return sect.getParentSectionId() == other.getParentSectionId() && sect.getSectionId() == other.getSectionId();
 	}
 }

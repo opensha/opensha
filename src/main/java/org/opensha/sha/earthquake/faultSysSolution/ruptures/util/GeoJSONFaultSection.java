@@ -1,5 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
+import java.awt.geom.Area;
+import java.awt.geom.PathIterator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -74,6 +76,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 			setSlipRateStdDev(sect.getOrigSlipRateStdDev());
 			if (sect.isConnector())
 				setProperty(CONNECTOR, true);
+			setZonePolygon(sect.getZonePolygon());
 		}
 	}
 
@@ -98,6 +101,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			
 			out.name("type").value("Feature");
 			
+			out.name("id").value(sect.id);
+			
 			out.name("properties").beginObject();
 			
 			out.name("FaultID").value(sect.id); // TODO: RFC says this should just be 'id'
@@ -113,6 +118,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 					out.name(property).nullValue();
 				else if (value instanceof Number)
 					out.name(property).value((Number)value);
+				else if (value instanceof Boolean)
+					out.name(property).value((Boolean)value);
 				else
 					out.name(property).value(value.toString());
 			}
@@ -135,6 +142,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			for (Location loc : sect.trace) {
 				out.beginArray();
 				out.value(loc.getLongitude()).value(loc.getLatitude());
+				if (loc.getDepth() != 0d)
+					out.value(-loc.getDepth()*1e3); // elevation in meters
 				out.endArray();
 			}
 			
@@ -150,20 +159,27 @@ public final class GeoJSONFaultSection implements FaultSection {
 				
 				out.name("coordinates").beginArray();
 				
-				for (Location loc : sect.zonePolygon.getBorder()) {
+				out.beginArray(); // first coord array
+				LocationList border = getPolygonBorder(sect.zonePolygon);
+				for (Location loc : border) {
 					out.beginArray();
 					out.value(loc.getLongitude()).value(loc.getLatitude());
+					if (loc.getDepth() != 0d)
+						out.value(-loc.getDepth()*1e3); // elevation in meters
 					out.endArray();
 				}
+				out.endArray(); // end first coord array
 				
 				out.endArray(); // end coordinates
 				
-				out.endObject();// end geometry
+				out.endObject();// end this geometry
 				
 				out.endArray(); // end geometries
+				
+				out.endObject();// end geometry collection
 			}
 			
-			out.endObject();
+			out.endObject(); // end geometry
 		}
 
 		@Override
@@ -251,6 +267,18 @@ public final class GeoJSONFaultSection implements FaultSection {
 					trace = geomContainer.trace;
 					zonePolygon = geomContainer.polygon;
 					break;
+				case "id":
+					if (id != null) {
+						// use the global 'id' field of the feature object
+						try {
+							id = in.nextInt();
+						} catch (NumberFormatException e) {
+							System.err.println("Tried to parse feature 'id' field as an interger ID, but failed: "+e.getMessage());
+						}
+					} else {
+						in.skipValue();
+					}
+					break;
 					
 				default:
 					in.skipValue();
@@ -274,6 +302,34 @@ public final class GeoJSONFaultSection implements FaultSection {
 			return sect;
 		}
 		
+	}
+	
+	/**
+	 * 
+	 * @param region
+	 * @return a valid GeoJSON polygon border, closed and following their right-hand rule
+	 */
+	static LocationList getPolygonBorder(Region region) {
+		LocationList border = new LocationList();
+		border.addAll(region.getBorder());
+		// close it
+		if (!border.first().equals(border.last()))
+			border.add(border.first());
+		Location prev = null;
+		
+		// figire out the direction
+		double directionTest = 0d;
+		for (Location loc : border) {
+			if (prev != null)
+				directionTest += (loc.getLongitude()-prev.getLongitude())*(loc.getLatitude()+prev.getLatitude());
+			prev = loc;
+		}
+//		System.out.println("Direction test: "+directionTest);
+		if (directionTest > 0)
+			// directionTest > 0 indicates positive, RFC 7946 states that exteriors must be counter-clockwise
+			border.reverse();
+		
+		return border;
 	}
 	
 	private static class GeometryContainer {
@@ -300,6 +356,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	}
 	
 	private static void doReadGeometry(JsonReader reader, GeometryContainer container) throws IOException {
+//		System.out.println("doReadGeometry at "+reader.getPath());
 		reader.beginObject();
 
 		String type = null;
@@ -344,7 +401,10 @@ public final class GeoJSONFaultSection implements FaultSection {
 								reader.beginArray();
 								double lon = reader.nextDouble();
 								double lat = reader.nextDouble();
-								Location newLoc = new Location(lat, lon);
+								double depth = 0d;
+								if (reader.peek() != JsonToken.END_ARRAY)
+									depth = -reader.nextDouble()*1e-3; // elev in m -> depth in km
+								Location newLoc = new Location(lat, lon, depth);
 								extraLocs++;
 								extraTrace.add(newLoc);
 								reader.endArray();
@@ -392,19 +452,23 @@ public final class GeoJSONFaultSection implements FaultSection {
 					break;
 				case "Polygon":
 					reader.beginArray();
+					reader.beginArray();
 					Preconditions.checkState(container.polygon == null,
 							"We already have a polygon for %s but encountered a Polygon geometry");
 					border = loadCoordinatesArray(reader);
 					container.polygon = new Region(border, BorderType.MERCATOR_LINEAR);
 					reader.endArray();
+					reader.endArray();
 					break;
 				case "MultiPolygon":
+					reader.beginArray();
 					reader.beginArray();
 					reader.beginArray();
 					Preconditions.checkState(container.polygon == null,
 							"We already have a polygon for %s but encountered a MultiPolygon geometry");
 					border = loadCoordinatesArray(reader);
 					container.polygon = new Region(border, BorderType.MERCATOR_LINEAR);
+					reader.endArray();
 					reader.endArray();
 					Preconditions.checkState(reader.peek() == JsonToken.END_ARRAY,
 							"Although MultiPolygon is technically supported, it must consist of a single polygon");
@@ -429,6 +493,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		}
 		
 		reader.endObject();
+//		System.out.println("END doReadGeometry at "+reader.getPath());
 	}
 	
 	static LocationList loadCoordinatesArray(JsonReader reader) throws IOException {
@@ -437,11 +502,33 @@ public final class GeoJSONFaultSection implements FaultSection {
 			reader.beginArray();
 			double lon = reader.nextDouble();
 			double lat = reader.nextDouble();
-			list.add(new Location(lat, lon));
+			double depth = 0d;
+			if (reader.peek() != JsonToken.END_ARRAY)
+				depth = -reader.nextDouble()*1e-3; // elev in m -> depth in km
+			list.add(new Location(lat, lon, depth));
 			reader.endArray();
 		}
 		Preconditions.checkState(!list.isEmpty(), "Coordinate array is empty");
 		return list;
+	}
+	
+	public boolean getBooleanProperty(String name, boolean defaultValue) {
+		Object val = properties.get(name);
+		if (val == null)
+			return defaultValue;
+		if (val instanceof String) {
+			String str = (String)val;
+			str = str.trim().toLowerCase();
+			if (str.equals("true") || str.equals("yes"))
+				return true;
+			return false;
+		}
+		try {
+			return (Boolean)val;
+		} catch (ClassCastException e) {
+			System.err.println("Fault property with name '"+name+"' is of an unexpected type: "+e.getMessage());
+			return defaultValue;
+		}
 	}
 	
 	public double getDoubleProperty(String name, double defaultValue) {
@@ -460,6 +547,19 @@ public final class GeoJSONFaultSection implements FaultSection {
 		Object val = properties.get(name);
 		if (val == null)
 			return defaultValue;
+		if (val instanceof String) {
+			// try to parse string
+			try {
+				String str = (String)val;
+				if (str.contains(".") || str.toLowerCase().contains("e"))
+					return Double.parseDouble(str);
+				return Long.parseLong(str);
+			} catch (NumberFormatException e) {
+				System.err.println("Fault property with name '"+name
+						+"' is of a string that could not be parsed to a number: "+e.getMessage());
+				return defaultValue;
+			}
+		}
 		try {
 			return (Number)val;
 		} catch (ClassCastException e) {
@@ -663,7 +763,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public boolean isConnector() {
-		return getProperty(CONNECTOR, false);
+		return getBooleanProperty(CONNECTOR, false);
 	}
 
 	@Override
@@ -721,4 +821,13 @@ public final class GeoJSONFaultSection implements FaultSection {
 		return null;
 	}
 
+	@Override
+	public int hashCode() {
+		return FaultSection.hashCode(this);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		return FaultSection.equals(this, obj);
+	}
 }
