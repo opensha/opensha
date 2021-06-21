@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
+package org.opensha.sha.faultSurface;
 
 import static org.junit.Assert.*;
 
@@ -12,9 +12,10 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultSection.Adapter;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection.Adapter;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -23,38 +24,6 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.utils.LastEventData;
 
 public class GeoJSONFaultSectionTest {
-	
-	private static final String default_json = "    {" +
-			"      \"type\": \"Feature\"," +
-			"      \"properties\": {" +
-			"        \"FaultID\": 0," +
-			"        \"FaultName\": \"Airport Lake, Subsection 0\"," +
-			"        \"DipDeg\": 50.0," +
-			"        \"DipDir\": 89.45939636230469," +
-			"        \"Rake\": -90.0," +
-			"        \"LowDepth\": 13.0," +
-			"        \"UpDepth\": 0.0," +
-			"        \"SlipRate\": 0.39," +
-			"        \"ParentID\": 861," +
-			"        \"AseismicSlipFactor\": 0.1," +
-			"        \"CouplingCoeff\": 1.0," +
-			"        \"ParentName\": \"Airport Lake\"," +
-			"        \"SlipRateStdDev\": 0.0" +
-			"      }," +
-			"      \"geometry\": {" +
-			"        \"type\": \"LineString\"," +
-			"        \"coordinates\": [" +
-			"          [" +
-			"            -117.74953000000001," +
-			"            35.74054" +
-			"          ]," +
-			"          [" +
-			"            -117.76365068593667," +
-			"            35.81037829696144" +
-			"          ]" +
-			"        ]" +
-			"      }" +
-			"    }";
 	
 	private static Adapter adapter;
 	private static Gson gson;

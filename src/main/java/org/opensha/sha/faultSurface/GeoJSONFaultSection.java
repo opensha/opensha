@@ -1,7 +1,5 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
+package org.opensha.sha.faultSurface;
 
-import java.awt.geom.Area;
-import java.awt.geom.PathIterator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -15,9 +13,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
@@ -101,12 +97,19 @@ public final class GeoJSONFaultSection implements FaultSection {
 			
 			out.name("type").value("Feature");
 			
+			
+			/*
+			 * If a Feature has a commonly used identifier, that identifier
+      		 * SHOULD be included as a member of the Feature object with the name
+      		 * "id", and the value of this member is either a JSON string or
+      		 * number.
+			 */
 			out.name("id").value(sect.id);
 			
 			out.name("properties").beginObject();
 			
-			out.name("FaultID").value(sect.id); // TODO: RFC says this should just be 'id'
-			out.name("FaultName").value(sect.name); // TODO: maybe change to 'name'
+			out.name("FaultID").value(sect.id);
+			out.name("FaultName").value(sect.name);
 			out.name("DipDeg").value(sect.dip);
 			out.name("DipDir").value(sect.dipDirection);
 			out.name("Rake").value(sect.rake);
@@ -738,11 +741,15 @@ public final class GeoJSONFaultSection implements FaultSection {
 		for(int i=0; i<equalLengthSubsTrace.size(); ++i) {
 			int myID = startId + i;
 			String myName = name+", Subsection "+(i);
-			Map<String, Object> myProperties = new HashMap<>(properties);
-			// TODO set ID and name in properties?
-			// TODO polygons?
-			GeoJSONFaultSection subSection = new GeoJSONFaultSection(myID, myName, dip, rake,
-					upperDepth, lowerDepth, dipDirection, equalLengthSubsTrace.get(i), myProperties);
+			GeoJSONFaultSection subSection = new GeoJSONFaultSection(this);
+			
+			// clear these just in case they were somehow set externally
+			subSection.properties.remove("FaultID");
+			subSection.properties.remove("FaultName");
+			
+			subSection.id = myID;
+			subSection.name = myName;
+			subSection.trace = equalLengthSubsTrace.get(i);
 			subSection.setParentSectionId(this.id);
 			subSection.setParentSectionName(this.name);
 			subSectionList.add(subSection);
@@ -805,20 +812,28 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public FaultSection clone() {
-		// TODO Auto-generated method stub
-		return null;
+		return new GeoJSONFaultSection(this);
 	}
 
 	@Override
 	public Element toXMLMetadata(Element root, String name) {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO remove
+		FaultSectionPrefData prefData = new FaultSectionPrefData();
+		prefData.setFaultSectionPrefData(this);
+		return prefData.toXMLMetadata(root, name);
 	}
 
 	@Override
 	public Element toXMLMetadata(Element root) {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO remove
+		FaultSectionPrefData prefData = new FaultSectionPrefData();
+		prefData.setFaultSectionPrefData(this);
+		return prefData.toXMLMetadata(root, name);
+	}
+	
+	// TODO remove
+	public static GeoJSONFaultSection fromXMLMetadata(Element el) {
+		return new GeoJSONFaultSection(FaultSectionPrefData.fromXMLMetadata(el));
 	}
 
 	@Override
