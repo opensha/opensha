@@ -36,7 +36,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator.TestScenario;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.kevin.ucerf3.etas.MPJ_ETAS_Simulator;
 
 public class ETAS_SciPaperFigures {
@@ -53,7 +53,7 @@ public class ETAS_SciPaperFigures {
 		File fssFile = new File("dev/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(fssFile);
 		
 		File outputDir = new File(mainDir, "science_paper");
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());

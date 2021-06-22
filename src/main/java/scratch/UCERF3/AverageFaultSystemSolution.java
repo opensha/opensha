@@ -34,7 +34,7 @@ import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
@@ -265,7 +265,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 	}
 	
 	private IncrementalMagFreqDist[] calcMFDs(final boolean parent, final boolean nucleation, final int id) {
-		final FaultSystemRupSet rupSet = getRupSet();
+		final U3FaultSystemRupSet rupSet = getRupSet();
 		final double minMag = getRupSet().getMinMag();
 		final double maxMag = getRupSet().getMaxMag();
 		final int numMag = (int)((maxMag - minMag) / 0.1d)+1;
@@ -280,7 +280,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 				
 				@Override
 				public void compute() {
-					FaultSystemSolution mySol = getSolution(solIndex);
+					U3FaultSystemSolution mySol = getSolution(solIndex);
 					mySol.getRupSet().copyCacheFrom(rupSet);
 					IncrementalMagFreqDist mfd;
 					if (nucleation) {
@@ -626,7 +626,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 //		File file = new File("/tmp/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip");
 		File file = new File("/tmp/asdf/file.zip");
 		
-		AverageFaultSystemSolution avg = FaultSystemIO.loadAvgInvSol(file);
+		AverageFaultSystemSolution avg = U3FaultSystemIO.loadAvgInvSol(file);
 //		File dir = new File("/home/kevin/OpenSHA/UCERF3/inversions/2012_07_21-zeng-ref-lowpaleo-100runs/paleo");
 //		File dir = new File("/home/kevin/OpenSHA/UCERF3/inversions/2012_07_31-zeng-ref-char-unconst-lowpaleo-100runs/results");
 //		FaultSystemRupSet rupSet = SimpleFaultSystemRupSet.fromFile(new File(dir,

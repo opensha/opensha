@@ -38,7 +38,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 	

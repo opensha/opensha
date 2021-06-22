@@ -33,7 +33,7 @@ import com.google.common.collect.Maps;
 
 import scratch.UCERF3.erf.ETAS.association.JeanneFileLoader.LocComparator;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * This class maps Jeanne's Finite Fault surfaces to the closest UCERF3 ruptures. It has been validated in SCEC-VDO to provide
@@ -516,7 +516,7 @@ public class FiniteFaultMapper {
 //		finiteRups = finiteRups.subList(0, 1);
 		System.out.println("Loaded "+finiteRups.size()+" finite rups");
 		
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
 				+ "UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_"
 				+ "FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		

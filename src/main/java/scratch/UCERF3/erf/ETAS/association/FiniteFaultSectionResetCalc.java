@@ -68,7 +68,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class FiniteFaultSectionResetCalc {
 	
@@ -1200,7 +1200,7 @@ public class FiniteFaultSectionResetCalc {
 		if (doSweep) {
 			System.out.println("Doing sweep");
 			
-			FaultSystemSolution sol = FaultSystemIO.loadSol(new File(etasInputDir,
+			FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(etasInputDir,
 					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 			
 			File markdownDir = new File("/home/kevin/git/misc-research/ucerf3_etas/finite_section_mapping/param_sweep");
@@ -1219,7 +1219,7 @@ public class FiniteFaultSectionResetCalc {
 			
 			Map<FaultModels, FaultSystemRupSet> rupSetMap = new HashMap<>();
 			
-			FaultSystemRupSet rupSet31 = FaultSystemIO.loadRupSet(new File(etasInputDir,
+			FaultSystemRupSet rupSet31 = U3FaultSystemIO.loadRupSet(new File(etasInputDir,
 					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 			rupSetMap.put(FaultModels.FM3_1, rupSet31);
 //			FaultSystemRupSet rupSet32 = FaultSystemIO.loadRupSet(new File(etasInputDir,

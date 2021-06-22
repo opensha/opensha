@@ -46,7 +46,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.utils.MatrixIO;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Preconditions;
@@ -105,7 +105,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 		try {
 			Map<String, String> nameRemappings = getRemappings(branch);
-			FaultSystemSolution sol = FaultSystemIO.loadSolAsApplicable(zip, nameRemappings);
+			U3FaultSystemSolution sol = U3FaultSystemIO.loadSolAsApplicable(zip, nameRemappings);
 			Preconditions.checkState(sol instanceof InversionFaultSystemSolution,
 					"Non IVFSS in Compound Sol?");
 			
@@ -170,7 +170,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 				new BufferedInputStream(zip.getInputStream(fsdEntry)));
 		Element fsEl = doc.getRootElement().element(FaultSectionPrefData.XML_METADATA_NAME+"List");
 		Preconditions.checkNotNull(fsEl, "Fault sections element not found");
-		return FaultSystemIO.fsDataFromXML(fsEl);
+		return U3FaultSystemIO.fsDataFromXML(fsEl);
 	}
 	
 	public GridSourceProvider loadGridSourceProviderFile(U3LogicTreeBranch branch) throws DocumentException, IOException {
@@ -276,11 +276,11 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		HashSet<String> zipFileNames = new HashSet<String>();
 		
 		for (U3LogicTreeBranch branch : fetcher.getBranches()) {
-			FaultSystemSolution sol = fetcher.getSolution(branch);
+			U3FaultSystemSolution sol = fetcher.getSolution(branch);
 			
 			Map<String, String> remappings = getRemappings(branch);
 			
-			FaultSystemIO.writeSolFilesForZip(sol, tempDir, zipFileNames, remappings);
+			U3FaultSystemIO.writeSolFilesForZip(sol, tempDir, zipFileNames, remappings);
 		}
 		
 		FileUtils.createZipFile(file.getAbsolutePath(), tempDir.getAbsolutePath(), zipFileNames);

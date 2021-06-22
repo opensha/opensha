@@ -33,7 +33,7 @@ import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.peter.nshmp.NSHMP_UCERF3_ERF;
 
 /**
@@ -232,7 +232,7 @@ public class UC3_CalcUtils {
 	public static FaultSystemSolution getSolution(String path) {
 		try {
 			File file = new File(path);
-			return FaultSystemIO.loadSol(file);
+			return U3FaultSystemIO.loadSol(file);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -247,7 +247,7 @@ public class UC3_CalcUtils {
 	public static InversionFaultSystemSolution getInvSolution(String path) {
 		try {
 			File file = new File(path);
-			return FaultSystemIO.loadInvSol(file);
+			return U3FaultSystemIO.loadInvSol(file);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -262,7 +262,7 @@ public class UC3_CalcUtils {
 	public static AverageFaultSystemSolution getAvgSolution(String path) {
 		try {
 			File file = new File(path);
-			return FaultSystemIO.loadAvgInvSol(file);
+			return U3FaultSystemIO.loadAvgInvSol(file);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;

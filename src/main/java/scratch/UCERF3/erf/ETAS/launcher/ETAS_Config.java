@@ -38,7 +38,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
 public class ETAS_Config {
@@ -1120,7 +1120,7 @@ public class ETAS_Config {
 			Preconditions.checkNotNull(fssFile, "Must specify fault system solution file");
 			Preconditions.checkState(fssFile.exists(), "FSS file doesn't exist");
 			try {
-				fss = FaultSystemIO.loadSol(fssFile);
+				fss = U3FaultSystemIO.loadSol(fssFile);
 			} catch (Exception e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}

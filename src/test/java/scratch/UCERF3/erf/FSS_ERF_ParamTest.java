@@ -68,7 +68,7 @@ import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class FSS_ERF_ParamTest {
 	
@@ -115,7 +115,7 @@ public class FSS_ERF_ParamTest {
 		
 		// now save ivfss_1 to a file
 		ivfss_1_file = File.createTempFile("openSHA", "test_sol.zip");
-		FaultSystemIO.writeSol(ivfss_1, ivfss_1_file);
+		U3FaultSystemIO.writeSol(ivfss_1, ivfss_1_file);
 		
 		// now initialze parameter options
 		paramsOptionsMap = Maps.newHashMap();

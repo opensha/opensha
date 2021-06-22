@@ -10,7 +10,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
@@ -25,7 +25,7 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
 
@@ -103,7 +103,7 @@ public class InversionFaultSystemRupSetFactory {
 			System.out.println("Loading cached rup set from file: "+file.getAbsolutePath());
 			
 			try {
-				InversionFaultSystemRupSet rupSet = FaultSystemIO.loadInvRupSet(file);
+				InversionFaultSystemRupSet rupSet = U3FaultSystemIO.loadInvRupSet(file);
 				
 				return rupSet;
 			} catch (Exception e) {
@@ -116,7 +116,7 @@ public class InversionFaultSystemRupSetFactory {
 		System.out.println("Caching rup set to file: "+file.getAbsolutePath());
 		if (!directory.exists())
 			directory.mkdir();
-		FaultSystemIO.writeRupSet(rupSet, file);
+		U3FaultSystemIO.writeRupSet(rupSet, file);
 		return rupSet;
 	}
 	
@@ -271,13 +271,13 @@ public class InversionFaultSystemRupSetFactory {
 			UCERF3PlausibilityConfig filter = UCERF3PlausibilityConfig.getDefault();
 //			LaughTestFilter filter = LaughTestFilter.getUCERF3p2Filter();
 //			filter.setCoulombFilter(new CoulombRatesTester(TestType.COULOMB_STRESS, 0.05, 0.05, 1.25, true));
-			FaultSystemRupSet rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, U3LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_1));
+			U3FaultSystemRupSet rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, U3LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_1));
 			System.out.println("FM3.1: "+rupSet.getNumRuptures()+" rups, "+rupSet.getNumSections()+" sects");
 			rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, U3LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_2));
 			System.out.println("FM3.2: "+rupSet.getNumRuptures()+" rups, "+rupSet.getNumSections()+" sects");
-			FaultSystemIO.writeRupSet(rupSet, new File("/tmp/mean_rupSet.zip"));
+			U3FaultSystemIO.writeRupSet(rupSet, new File("/tmp/mean_rupSet.zip"));
 			// test loading
-			InversionFaultSystemRupSet invRupSet = FaultSystemIO.loadInvRupSet(new File("/tmp/mean_rupSet.zip"));
+			InversionFaultSystemRupSet invRupSet = U3FaultSystemIO.loadInvRupSet(new File("/tmp/mean_rupSet.zip"));
 			System.out.println(invRupSet.getLogicTreeBranch());
 			System.out.println(invRupSet.getOldPlausibilityConfiguration());
 			System.exit(0);

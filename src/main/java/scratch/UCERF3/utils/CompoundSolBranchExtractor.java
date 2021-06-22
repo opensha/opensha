@@ -6,7 +6,7 @@ import java.io.IOException;
 import org.opensha.commons.util.ClassUtils;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 import com.google.common.base.Preconditions;
@@ -44,7 +44,7 @@ public class CompoundSolBranchExtractor {
 		}
 		Preconditions.checkState(branch.isFullySpecified(), "Branch is not fully specified:\n\tInput: "+args[1]+"\n\tParsed: "+branch);
 		
-		FaultSystemSolution sol;
+		U3FaultSystemSolution sol;
 		try {
 			sol = cfss.getSolution(branch);
 		} catch (Exception e) {
@@ -57,7 +57,7 @@ public class CompoundSolBranchExtractor {
 		
 		System.out.println("Writing branch solution to: "+outputFile.getAbsolutePath());
 		try {
-			FaultSystemIO.writeSol(sol, outputFile);
+			U3FaultSystemIO.writeSol(sol, outputFile);
 		} catch (IOException e) {
 			throw new IllegalStateException("Error writing solution file.", e);
 		}

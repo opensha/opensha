@@ -51,7 +51,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;

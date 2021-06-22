@@ -32,7 +32,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 
@@ -305,7 +305,7 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 	
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		File rupSetFile = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip");
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(rupSetFile);
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(rupSetFile);
 		SectionDistanceAzimuthCalculator calc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 		System.out.println("516=>521: "+calc.getDistance(516, 521));
 		System.out.println("516=>522: "+calc.getDistance(516, 522));

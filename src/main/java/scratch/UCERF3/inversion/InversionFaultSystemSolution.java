@@ -33,8 +33,8 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.SlipEnabledSolution;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -48,7 +48,7 @@ import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.OLD_UCERF3_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.SectionMFD_constraint;
@@ -960,7 +960,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 //						"/tmp/ucerf2_fm2_compare.zip"));
 //		simple.plotMFDs(Lists.newArrayList(OLD_UCERF3_MFD_ConstraintFetcher.getTargetMFDConstraint(TimeAndRegion.ALL_CA_1850)));
 		
-		InversionFaultSystemSolution inv = FaultSystemIO.loadInvSol(new File(
+		InversionFaultSystemSolution inv = U3FaultSystemIO.loadInvSol(new File(
 				"/tmp/FM2_1_UC2ALL_ShConStrDrp_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_" +
 				"SpatSeisU2_VarPaleo0.1_VarSectNuclMFDWt0.01_VarParkfield10000_sol.zip"));
 		

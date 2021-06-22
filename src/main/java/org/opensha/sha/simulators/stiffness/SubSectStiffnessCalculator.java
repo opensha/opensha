@@ -65,7 +65,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * This class calculates stiffness aggregated between fault subsections. First, each subsection is divided
@@ -1232,7 +1232,7 @@ public class SubSectStiffnessCalculator {
 //		System.exit(0);
 		File fssFile = new File("/home/kevin/Simulators/catalogs/rundir4983_stitched/fss/"
 				+ "rsqsim_sol_m6.5_skip5000_sectArea0.2.zip");
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(fssFile);
 		double lambda = 30000;
 		double mu = 30000;
 		double coeffOfFriction = 0.5;

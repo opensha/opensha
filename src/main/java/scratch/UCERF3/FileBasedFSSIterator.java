@@ -18,7 +18,7 @@ import scratch.UCERF3.inversion.BatchPlotGen;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 
 import com.google.common.base.Preconditions;
@@ -154,7 +154,7 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 		try {
 			File[] files = filesMap.get(branch);
 			Arrays.sort(files, new FileNameComparator());
-			InversionFaultSystemSolution sol = FaultSystemIO.loadInvSol(files[0]);
+			InversionFaultSystemSolution sol = U3FaultSystemIO.loadInvSol(files[0]);
 			if (files.length > 1) {
 				List<double[]> ratesList = Lists.newArrayList(sol.getRateForAllRups());
 				for (int i=1; i<files.length; i++) {

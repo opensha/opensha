@@ -27,7 +27,7 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ETAS_RuptureSearch {
 	
@@ -99,7 +99,7 @@ public class ETAS_RuptureSearch {
 		Preconditions.checkArgument(fssFile.exists(), "FSS file doesn't exist: %s", fssFile.getAbsolutePath());
 		
 		System.out.println("Loading fault system solution from "+fssFile.getAbsolutePath());
-		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(fssFile);
 		
 		double lat = Double.parseDouble(cmd.getOptionValue("latitude"));
 		double lon = Double.parseDouble(cmd.getOptionValue("longitude"));

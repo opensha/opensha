@@ -33,7 +33,7 @@ import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -98,7 +98,7 @@ public class StandaloneCalc {
 		
 		Map<Integer, List<LastEventData>> lastEventData = LastEventData.load();
 		
-		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(solFile);
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		

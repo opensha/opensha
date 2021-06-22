@@ -81,7 +81,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;

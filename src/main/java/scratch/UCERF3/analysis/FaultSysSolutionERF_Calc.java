@@ -154,7 +154,7 @@ import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
@@ -176,7 +176,7 @@ public class FaultSysSolutionERF_Calc {
 	public static FaultSystemSolutionERF getUCERF3_ERF_Instance(File faultSysSolZipFile) {
 		InversionFaultSystemSolution invFss;
 		try {
-			invFss = FaultSystemIO.loadInvSol(faultSysSolZipFile);
+			invFss = U3FaultSystemIO.loadInvSol(faultSysSolZipFile);
 		} catch (Exception e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -262,7 +262,7 @@ public class FaultSysSolutionERF_Calc {
 //			String fileName = "UCERF2";
 
 			File file = new File("/Users/field/Neds_Creations/CEA_WGCEP/UCERF3/draftFinalModelReport/FaultSystemSolutions/FM3_1_ZENG_EllB_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_sol.zip");
-			FaultSystemSolutionERF erf = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file));
+			FaultSystemSolutionERF erf = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file));
 			erf.updateForecast();
 			String fileName = "UCERF3_Char_Ref_Zeng_Model";
 			
@@ -307,7 +307,7 @@ public class FaultSysSolutionERF_Calc {
 			String f1 ="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
 			File file1 = new File(f1);
 			System.out.println("Instantiating ERF1...");
-			FaultSystemSolutionERF erf1 = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file1));
+			FaultSystemSolutionERF erf1 = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file1));
 			erf1.getParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME).setValue(!includeAftershocks);
 			erf1.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
 			erf1.getParameter(BackgroundRupParam.NAME).setValue(BackgroundRupType.POINT);	
@@ -346,7 +346,7 @@ public class FaultSysSolutionERF_Calc {
 			String f2 ="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip";
 			File file2 = new File(f2);
 			System.out.println("Instantiating ERF2...");
-			FaultSystemSolutionERF erf2 = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file2));
+			FaultSystemSolutionERF erf2 = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file2));
 			erf2.getParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME).setValue(!includeAftershocks);
 			erf2.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
 			erf2.getParameter(BackgroundRupParam.NAME).setValue(BackgroundRupType.POINT);	
@@ -449,7 +449,7 @@ public class FaultSysSolutionERF_Calc {
 			File file = new File(f);
 
 			System.out.println("Instantiating ERF...");
-			FaultSystemSolutionERF erf = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file));
+			FaultSystemSolutionERF erf = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file));
 			erf.getParameter(AleatoryMagAreaStdDevParam.NAME).setValue(0.12);
 			erf.getParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME).setValue(false);
 			erf.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.ONLY);	// don't include fault based sources here
@@ -553,7 +553,7 @@ public class FaultSysSolutionERF_Calc {
 			String f1 ="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
 			File file1 = new File(f1);
 			System.out.println("Instantiating ERF1...");
-			FaultSystemSolutionERF erf1 = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file1));
+			FaultSystemSolutionERF erf1 = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file1));
 			erf1.getParameter(AleatoryMagAreaStdDevParam.NAME).setValue(magAreaAleatory);
 			erf1.getParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME).setValue(!includeAftershocks);
 			erf1.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
@@ -589,7 +589,7 @@ public class FaultSysSolutionERF_Calc {
 			String f2 ="dev/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip";
 			File file2 = new File(f2);
 			System.out.println("Instantiating ERF1...");
-			FaultSystemSolutionERF erf2 = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file2));
+			FaultSystemSolutionERF erf2 = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file2));
 			erf2.getParameter(AleatoryMagAreaStdDevParam.NAME).setValue(magAreaAleatory);
 			erf2.getParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME).setValue(!includeAftershocks);
 			erf2.getParameter(IncludeBackgroundParam.NAME).setValue(IncludeBackgroundOption.INCLUDE);
@@ -1371,7 +1371,7 @@ public class FaultSysSolutionERF_Calc {
 		File file = new File("/Users/field/Downloads/FaultSystemSolutions/FM3_1_NEOK_EllB_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip");
 		FaultSystemSolutionERF ucerf3_erf;
 		try {
-			ucerf3_erf = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file));
+			ucerf3_erf = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file));
 		} catch (Exception e1) {
 			throw ExceptionUtils.asRuntimeException(e1);
 		}
@@ -1648,7 +1648,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 	
 	private static void testProbSumMethods() throws IOException, DocumentException {
-		FaultSystemSolution meanSol = FaultSystemIO.loadSol(
+		FaultSystemSolution meanSol = U3FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		
@@ -2008,7 +2008,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		FaultSystemSolution meanSol=null;
 		try {
-			meanSol = FaultSystemIO.loadSol(
+			meanSol = U3FaultSystemIO.loadSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 							"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		} catch (DocumentException e) {
@@ -2761,7 +2761,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		FaultSystemSolution meanSol;
 		try {
-			meanSol = FaultSystemIO.loadSol(new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
+			meanSol = U3FaultSystemIO.loadSol(new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		} catch (Exception e) {
 			throw ExceptionUtils.asRuntimeException(e);
@@ -4177,7 +4177,7 @@ public class FaultSysSolutionERF_Calc {
 		// ver 9 / ver 8
 		// ver 9 with RCF / ver 9
 		
-		FaultSystemSolution sol = FaultSystemIO.loadSol(
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		
@@ -4327,7 +4327,7 @@ public class FaultSysSolutionERF_Calc {
 	public static void writeTimeDepPlotsForWeb(List<BPTAveragingTypeOptions> aveTypes, boolean skipAvgMethods,
 			String dirPrefix, File outputDir)
 			throws IOException, DocumentException, GMT_MapException, RuntimeException {
-		FaultSystemSolution meanSol = FaultSystemIO.loadSol(
+		FaultSystemSolution meanSol = U3FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		writeTimeDepPlotsForWeb(aveTypes, skipAvgMethods, dirPrefix, outputDir, meanSol);
@@ -4846,7 +4846,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 	
 	private static void debugAvgMethods() throws IOException, DocumentException {
-		debugAvgMethods(FaultSystemIO.loadSol(
+		debugAvgMethods(U3FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip")));
 	}
@@ -4915,7 +4915,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		FaultSystemSolution meanSol=null;
 		try {
-			meanSol = FaultSystemIO.loadSol(
+			meanSol = U3FaultSystemIO.loadSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 							"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		} catch (DocumentException e) {
@@ -5095,7 +5095,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		FaultSystemSolution meanSol=null;
 		try {
-			meanSol = FaultSystemIO.loadSol(
+			meanSol = U3FaultSystemIO.loadSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 							"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		} catch (DocumentException e) {
@@ -5244,7 +5244,7 @@ public class FaultSysSolutionERF_Calc {
 		File file = new File(f);
 		FaultSystemSolution meanSol;
 		try {
-			meanSol = FaultSystemIO.loadSol(file);
+			meanSol = U3FaultSystemIO.loadSol(file);
 		} catch (Exception e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -5831,10 +5831,10 @@ public class FaultSysSolutionERF_Calc {
 		
 		File invDir = new File("/home/kevin/OpenSHA/UCERF3/fss_csvs/");
 		
-		List<? extends FaultSection> subSects_3_1 = FaultSystemIO.loadRupSet(new File(invDir,
+		List<? extends FaultSection> subSects_3_1 = U3FaultSystemIO.loadRupSet(new File(invDir,
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"))
 				.getFaultSectionDataList();
-		List<? extends FaultSection> subSects_3_2 = FaultSystemIO.loadRupSet(new File(invDir,
+		List<? extends FaultSection> subSects_3_2 = U3FaultSystemIO.loadRupSet(new File(invDir,
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip"))
 				.getFaultSectionDataList();
 //		File pressReleaseDir = new File("/home/kevin/OpenSHA/UCERF3/press_release/");
@@ -5935,7 +5935,7 @@ public class FaultSysSolutionERF_Calc {
 //		String dirPrefix = "/home/kevin/OpenSHA/UCERF3/probGains/2013_12_14-ucerf3-prob-gains-open1875";
 		String dirPrefix = "/home/kevin/OpenSHA/UCERF3/probGains/2014_02_15-ucerf3-prob-gains-open1875";
 //		File outputMainDir = new File("/home/kevin/OpenSHA/UCERF3");
-		FaultSystemSolution meanSol = FaultSystemIO.loadSol(
+		FaultSystemSolution meanSol = U3FaultSystemIO.loadSol(
 				new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 						"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 //		String dirPrefix = "/home/scec-02/kmilner/ucerf3/prob_gains/2013_12_24-ucerf3-prob-gains-open1875";

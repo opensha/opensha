@@ -54,7 +54,7 @@ import org.opensha.sha.magdist.GaussianMagFreqDist;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 
 import com.google.common.base.Preconditions;
@@ -688,7 +688,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		if (D) System.out.println("Loading solution from: "+file.getAbsolutePath());
 		long runTime = System.currentTimeMillis();
 		try {
-			setSolution(FaultSystemIO.loadSol(file), false);
+			setSolution(U3FaultSystemIO.loadSol(file), false);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

@@ -12,13 +12,13 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.U3FaultSystemSolution;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class FSS_CSV_ZipTest {
 
 	public static void main(String[] args) throws IOException, DocumentException {
-		FaultSystemSolution fss = FaultSystemIO.loadSol(new File(
+		U3FaultSystemSolution fss = U3FaultSystemIO.loadSol(new File(
 				"/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip"));
 
 		CSVFile<String> rupMetaCSV = new CSVFile<>(true);

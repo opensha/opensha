@@ -58,7 +58,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RidgecrestGarlockPlotGen {
 
@@ -163,7 +163,7 @@ public class RidgecrestGarlockPlotGen {
 			Preconditions.checkState(resultsFile.exists(), "%s doesn't exist", resultsFile.getAbsoluteFile());
 			
 			if (fss == null) {
-				fss = FaultSystemIO.loadSol(config.getFSS_File());
+				fss = U3FaultSystemIO.loadSol(config.getFSS_File());
 				rupSet = fss.getRupSet();
 				erf = new FaultSystemSolutionERF_ETAS(fss);
 				erf.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.U3_PREF_BLEND);

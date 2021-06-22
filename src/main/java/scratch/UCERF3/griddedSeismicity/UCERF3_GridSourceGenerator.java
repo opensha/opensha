@@ -16,12 +16,12 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 
 import com.google.common.collect.Maps;
@@ -250,7 +250,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 //			File f = new File("/Users/pmpowers/projects/OpenSHA/tmp/invSols/refCH/FM3_1_NEOK_EllB_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip");
 			File f = new File("/Users/pmpowers/projects/OpenSHA/tmp/invSols/refGR/FM3_1_NEOK_EllB_DsrUni_GRUnconst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip");
 			System.out.println(f.exists());
-			invFss = FaultSystemIO.loadInvSol(f);
+			invFss = U3FaultSystemIO.loadInvSol(f);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

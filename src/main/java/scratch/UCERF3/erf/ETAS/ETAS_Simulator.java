@@ -131,7 +131,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
@@ -1138,7 +1138,7 @@ public class ETAS_Simulator {
 		String fileName="src/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip";
 		FaultSystemSolution fss;
 		try {
-			fss = FaultSystemIO.loadSol(new File(fileName));
+			fss = U3FaultSystemIO.loadSol(new File(fileName));
 		} catch (Exception e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}

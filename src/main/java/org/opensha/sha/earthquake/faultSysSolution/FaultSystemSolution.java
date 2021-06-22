@@ -30,7 +30,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 
 /**
@@ -683,7 +683,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		File inputFile = new File(baseDir, "fm3_1_ucerf3.zip");
 		File destFile = new File("/tmp/new_format_u3.zip");
-		FaultSystemSolution orig = FaultSystemIO.loadSol(inputFile);
+		FaultSystemSolution orig = U3FaultSystemIO.loadSol(inputFile);
 		orig.getArchive().write(destFile);
 		FaultSystemSolution loaded = load(destFile);
 		Preconditions.checkState(orig.rupSet.isEquivalentTo(loaded.rupSet));

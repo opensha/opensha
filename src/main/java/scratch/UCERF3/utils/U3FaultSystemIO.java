@@ -46,8 +46,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
@@ -60,7 +60,7 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
-public class FaultSystemIO {
+public class U3FaultSystemIO {
 	
 	private static final boolean D = true;
 	private static final boolean DD = D && false;
@@ -77,7 +77,7 @@ public class FaultSystemIO {
 	 * @throws IOException 
 	 * @throws ZipException 
 	 */
-	public static FaultSystemRupSet loadRupSet(File file) throws ZipException, IOException, DocumentException {
+	public static U3FaultSystemRupSet loadRupSet(File file) throws ZipException, IOException, DocumentException {
 		return loadRupSetAsApplicable(file);
 	}
 	
@@ -90,7 +90,7 @@ public class FaultSystemIO {
 	 * @throws ZipException 
 	 */
 	public static InversionFaultSystemRupSet loadInvRupSet(File file) throws ZipException, IOException, DocumentException {
-		FaultSystemRupSet rupSet = loadRupSetAsApplicable(file);
+		U3FaultSystemRupSet rupSet = loadRupSetAsApplicable(file);
 		Preconditions.checkArgument(rupSet instanceof InversionFaultSystemRupSet,
 				"Rupture set cannot be loaded as an InversionFaultSystemRupSet");
 		return (InversionFaultSystemRupSet)rupSet;
@@ -103,7 +103,7 @@ public class FaultSystemIO {
 	 * @throws DocumentException 
 	 * @throws IOException 
 	 */
-	public static FaultSystemSolution loadSol(File file) throws IOException, DocumentException {
+	public static U3FaultSystemSolution loadSol(File file) throws IOException, DocumentException {
 		return loadSolAsApplicable(file);
 	}
 	
@@ -115,7 +115,7 @@ public class FaultSystemIO {
 	 * @throws IOException 
 	 */
 	public static InversionFaultSystemSolution loadInvSol(File file) throws IOException, DocumentException {
-		FaultSystemSolution sol = loadSolAsApplicable(file);
+		U3FaultSystemSolution sol = loadSolAsApplicable(file);
 		Preconditions.checkArgument(sol instanceof InversionFaultSystemSolution,
 				"Solution cannot be loaded as an InversionFaultSystemSolution");
 		return (InversionFaultSystemSolution)sol;
@@ -151,7 +151,7 @@ public class FaultSystemIO {
 	 * @throws IOException 
 	 */
 	public static AverageFaultSystemSolution loadAvgInvSol(File file) throws IOException, DocumentException {
-		FaultSystemSolution sol = loadSolAsApplicable(file);
+		U3FaultSystemSolution sol = loadSolAsApplicable(file);
 		Preconditions.checkArgument(sol instanceof AverageFaultSystemSolution,
 				"Solution cannot be loaded as an AverageFaultSystemSolution");
 		return (AverageFaultSystemSolution)sol;
@@ -168,7 +168,7 @@ public class FaultSystemIO {
 	 * @return
 	 * @throws IOException 
 	 */
-	public static void writeRupSet(FaultSystemRupSet rupSet, File file) throws IOException {
+	public static void writeRupSet(U3FaultSystemRupSet rupSet, File file) throws IOException {
 		File tempDir = FileUtils.createTempDir();
 		
 		HashSet<String> zipFileNames = new HashSet<String>();
@@ -183,7 +183,7 @@ public class FaultSystemIO {
 	 * @return
 	 * @throws IOException 
 	 */
-	public static void writeSol(FaultSystemSolution sol, File file) throws IOException {
+	public static void writeSol(U3FaultSystemSolution sol, File file) throws IOException {
 		File tempDir = FileUtils.createTempDir();
 		
 		HashSet<String> zipFileNames = new HashSet<String>();
@@ -204,7 +204,7 @@ public class FaultSystemIO {
 	 * @throws ZipException 
 	 * @throws DocumentException 
 	 */
-	private static FaultSystemRupSet loadRupSetAsApplicable(File file) throws ZipException, IOException, DocumentException {
+	private static U3FaultSystemRupSet loadRupSetAsApplicable(File file) throws ZipException, IOException, DocumentException {
 		return loadRupSetAsApplicable(new ZipFile(file), null);
 	}
 	
@@ -216,7 +216,7 @@ public class FaultSystemIO {
 	 * @throws IOException 
 	 * @throws DocumentException 
 	 */
-	private static FaultSystemRupSet loadRupSetAsApplicable(ZipFile zip, Map<String, String> nameRemappings) throws IOException, DocumentException {
+	private static U3FaultSystemRupSet loadRupSetAsApplicable(ZipFile zip, Map<String, String> nameRemappings) throws IOException, DocumentException {
 		if (DD) System.out.println("loadRupSetAsApplicable started");
 		
 		if (DD) System.out.println("loading mags");
@@ -381,7 +381,7 @@ public class FaultSystemIO {
 		}
 		
 		if (DD) System.out.println("instantiating FSRS");
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, sectSlipRates,
+		U3FaultSystemRupSet rupSet = new U3FaultSystemRupSet(faultSectionData, sectSlipRates,
 				sectSlipRateStdDevs, sectAreas, sectionForRups, mags, rakes, rupAreas, rupLengths, info);
 
 		if (DD) System.out.println("loading plausibility");
@@ -558,7 +558,7 @@ public class FaultSystemIO {
 	 * @throws DocumentException 
 	 * @throws IOException 
 	 */
-	private static FaultSystemSolution loadSolAsApplicable(File file) throws IOException, DocumentException {
+	private static U3FaultSystemSolution loadSolAsApplicable(File file) throws IOException, DocumentException {
 		return loadSolAsApplicable(file, null);
 	}
 	
@@ -571,7 +571,7 @@ public class FaultSystemIO {
 	 * @throws DocumentException 
 	 * @throws IOException 
 	 */
-	private static FaultSystemSolution loadSolAsApplicable(File file, Map<String, String> nameRemappings)
+	private static U3FaultSystemSolution loadSolAsApplicable(File file, Map<String, String> nameRemappings)
 			throws IOException, DocumentException {
 		ZipFile zip = new ZipFile(file);
 		return loadSolAsApplicable(zip, nameRemappings);
@@ -586,10 +586,10 @@ public class FaultSystemIO {
 	 * @throws IOException
 	 * @throws DocumentException
 	 */
-	public static FaultSystemSolution loadSolAsApplicable(ZipFile zip, Map<String, String> nameRemappings)
+	public static U3FaultSystemSolution loadSolAsApplicable(ZipFile zip, Map<String, String> nameRemappings)
 			throws IOException, DocumentException {
 		// first load the rupture set
-		FaultSystemRupSet rupSet = loadRupSetAsApplicable(zip, nameRemappings);
+		U3FaultSystemRupSet rupSet = loadRupSetAsApplicable(zip, nameRemappings);
 		
 		// safe to use rupSet info string as we just loaded it from the same zip file
 		String infoString = rupSet.getInfoString();
@@ -600,7 +600,7 @@ public class FaultSystemIO {
 		double[] rates = MatrixIO.doubleArrayFromInputStream(
 					new BufferedInputStream(zip.getInputStream(ratesEntry)), ratesEntry.getSize());
 		
-		FaultSystemSolution sol;
+		U3FaultSystemSolution sol;
 		
 		if (rupSet instanceof InversionFaultSystemRupSet) {
 			// it's an IVFSS
@@ -651,7 +651,7 @@ public class FaultSystemIO {
 				// it's a regular IFSS
 				sol = new InversionFaultSystemSolution(invRupSet, rates, conf, energies);
 		} else {
-			sol = new FaultSystemSolution(rupSet, rates);
+			sol = new U3FaultSystemSolution(rupSet, rates);
 		}
 		
 		// look for rup MFDs
@@ -726,7 +726,7 @@ public class FaultSystemIO {
 	 * 		FILE WRITING UTIL METHODS
 	 *	******************************************/
 	
-	private static void toZipFile(FaultSystemRupSet rupSet, File file, File tempDir, HashSet<String> zipFileNames) throws IOException {
+	private static void toZipFile(U3FaultSystemRupSet rupSet, File file, File tempDir, HashSet<String> zipFileNames) throws IOException {
 		final boolean D = true;
 		if (D) System.out.println("Saving rup set with "+rupSet.getNumRuptures()+" rups to: "+file.getAbsolutePath());
 		writeRupSetFilesForZip(rupSet, tempDir, zipFileNames, null);
@@ -740,7 +740,7 @@ public class FaultSystemIO {
 		if (D) System.out.println("Done saving!");
 	}
 	
-	public static void writeRupSetFilesForZip(FaultSystemRupSet rupSet, File tempDir,
+	public static void writeRupSetFilesForZip(U3FaultSystemRupSet rupSet, File tempDir,
 			HashSet<String> zipFileNames, Map<String, String> nameRemappings) throws IOException {
 		// first save fault section data as XML
 		if (D) System.out.println("Saving fault section xml");
@@ -924,7 +924,7 @@ public class FaultSystemIO {
 		}
 	}
 	
-	public static void fsDataToXML(Element parent, String elName, FaultSystemRupSet rupSet) {
+	public static void fsDataToXML(Element parent, String elName, U3FaultSystemRupSet rupSet) {
 		FaultModels fm = null;
 		DeformationModels dm = null;
 		if (rupSet instanceof InversionFaultSystemRupSet) {
@@ -970,7 +970,7 @@ public class FaultSystemIO {
 		return nameRemappings.get(name);
 	}
 	
-	private static void toZipFile(FaultSystemSolution sol, File file, File tempDir, HashSet<String> zipFileNames) throws IOException {
+	private static void toZipFile(U3FaultSystemSolution sol, File file, File tempDir, HashSet<String> zipFileNames) throws IOException {
 		final boolean D = true;
 		if (D) System.out.println("Saving solution with "+sol.getRupSet().getNumRuptures()+" rups to: "+file.getAbsolutePath());
 		writeSolFilesForZip(sol, tempDir, zipFileNames, null);
@@ -984,7 +984,7 @@ public class FaultSystemIO {
 		if (D) System.out.println("Done saving!");
 	}
 	
-	public static void writeSolFilesForZip(FaultSystemSolution sol, File tempDir,
+	public static void writeSolFilesForZip(U3FaultSystemSolution sol, File tempDir,
 			HashSet<String> zipFileNames, Map<String, String> nameRemappings) throws IOException {
 		// first save rup set files
 		writeRupSetFilesForZip(sol.getRupSet(), tempDir, zipFileNames, nameRemappings);

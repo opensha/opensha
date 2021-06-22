@@ -46,7 +46,7 @@ import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class FaultSpecificSegmentationPlotGen {
@@ -519,7 +519,7 @@ public class FaultSpecificSegmentationPlotGen {
 //		File solFile = new File("/tmp/FM3_1_NEOK_EllB_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol_high_a_priori.zip");
 		File solFile = new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(solFile);
 		List<Integer> safParentSects31 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM3_1);
 		List<Integer> safParentSects21 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM2_1);
 		

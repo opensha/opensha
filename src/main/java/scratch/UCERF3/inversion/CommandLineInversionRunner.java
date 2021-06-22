@@ -78,7 +78,7 @@ import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.UCERF2_Section_MFDs.UCERF2_Section_MFDsCalc;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
@@ -423,7 +423,7 @@ public class CommandLineInversionRunner {
 			info += "\n\n"+getPreInversionInfo(rupSet);
 
 			File rupSetFile = new File(subDir, prefix+"_rupSet.zip");
-			FaultSystemIO.writeRupSet(rupSet, rupSetFile);
+			U3FaultSystemIO.writeRupSet(rupSet, rupSetFile);
 			// now clear it out of memory
 			rupSet = null;
 			System.gc();
@@ -573,7 +573,7 @@ public class CommandLineInversionRunner {
 			if (!lightweight) {
 				System.out.println("Loading RupSet");
 				// load the RupSet back in for plotting and solution file creation
-				InversionFaultSystemRupSet loadedRupSet = FaultSystemIO.loadInvRupSet(rupSetFile);
+				InversionFaultSystemRupSet loadedRupSet = U3FaultSystemIO.loadInvRupSet(rupSetFile);
 				loadedRupSet.setInfoString(info);
 				double[] rupRateSolution = tsa.getBestSolution();
 				// this adds back in the minimum rupture rates (waterlevel) if present
@@ -685,7 +685,7 @@ public class CommandLineInversionRunner {
 
 				// actually write the solution
 				System.out.println("Writing solution");
-				FaultSystemIO.writeSol(sol, solutionFile);
+				U3FaultSystemIO.writeSol(sol, solutionFile);
 				
 				if (!noPlots) {
 					// now write out plots

@@ -45,7 +45,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.peter.ucerf3.calc.UC3_CalcUtils;
@@ -361,7 +361,7 @@ public class FaultSystemSolutionCalc {
 		File file = new File(f);
 		FaultSystemSolution fss=null;
 		try {
-			fss = FaultSystemIO.loadSol(file);
+			fss = U3FaultSystemIO.loadSol(file);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		} catch (DocumentException e1) {
@@ -386,7 +386,7 @@ public class FaultSystemSolutionCalc {
 		File file = new File(f);
 		FaultSystemSolution fss=null;
 		try {
-			fss = FaultSystemIO.loadSol(file);
+			fss = U3FaultSystemIO.loadSol(file);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		} catch (DocumentException e1) {

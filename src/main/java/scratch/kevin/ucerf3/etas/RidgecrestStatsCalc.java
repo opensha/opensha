@@ -84,7 +84,7 @@ import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration.Callback;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RidgecrestStatsCalc {
 
@@ -94,7 +94,7 @@ public class RidgecrestStatsCalc {
 //		System.exit(0);
 		boolean redoPaperFigs = false;
 		
-		FaultSystemSolution fss = FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 		
 		File outputDir = new File(gitDir, "ridgecrest_tables_figures");

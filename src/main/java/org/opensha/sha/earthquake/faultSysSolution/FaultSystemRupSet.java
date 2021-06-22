@@ -1155,6 +1155,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					return new InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class));
 				}
 			});
+			// add target slip rates (modified for sub-seismogenic ruptures)
 			addModule(new ModuleBuilder() {
 				
 				@Override

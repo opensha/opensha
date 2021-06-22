@@ -41,7 +41,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_TotalRateScaleFactorParam;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.KML_RuptureLoader.KML_Node;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
 public class ETAS_ConfigBuilder {
@@ -752,7 +752,7 @@ public class ETAS_ConfigBuilder {
 					if (fssFile.exists()) {
 						FaultSystemSolution fss;
 						try {
-							fss = FaultSystemIO.loadSol(fssFile);
+							fss = U3FaultSystemIO.loadSol(fssFile);
 							mag = fss.getRupSet().getMagForRup(fssIndex);
 						} catch (Exception e) {
 							System.err.println("Error determining magnitude for FSS rupture");

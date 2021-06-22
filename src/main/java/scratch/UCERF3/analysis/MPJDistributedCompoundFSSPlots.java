@@ -47,7 +47,7 @@ import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.UCERF3p2BranchWeightProvider;
 import scratch.UCERF3.logicTree.UniformBranchWeightProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
@@ -469,7 +469,7 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 				int num = Integer.parseInt(cmd.getOptionValue("rand"));
 				if (cmd.hasOption("mean")) {
 					final InversionFaultSystemSolution meanSol =
-							FaultSystemIO.loadInvSol(new File(cmd.getOptionValue("mean")));
+							U3FaultSystemIO.loadInvSol(new File(cmd.getOptionValue("mean")));
 					fetcher = FaultSystemSolutionFetcher.getRandomSample(fetcher, num,
 							meanSol.getLogicTreeBranch().getValue(FaultModels.class));
 					final Collection<U3LogicTreeBranch> branches = fetcher.getBranches();

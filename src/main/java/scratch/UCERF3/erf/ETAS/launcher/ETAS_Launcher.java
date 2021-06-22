@@ -94,7 +94,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -463,7 +463,7 @@ public class ETAS_Launcher {
 			// load a new one
 			try {
 				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+fssFile.getAbsolutePath());
-				fss = FaultSystemIO.loadSol(fssFile);
+				fss = U3FaultSystemIO.loadSol(fssFile);
 				
 				if (config.isGridSeisCorr() && !config.isGriddedOnly()) {
 					if (gridSeisCorrections == null) {

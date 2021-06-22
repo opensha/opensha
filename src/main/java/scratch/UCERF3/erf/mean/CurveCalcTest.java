@@ -27,7 +27,7 @@ import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.peter.ucerf3.calc.UC3_CalcUtils;
 
 import com.google.common.base.Enums;
@@ -82,7 +82,7 @@ public class CurveCalcTest {
 		File outputDir = new File(args[1]);
 		
 		System.out.println("Loading solution...");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(meanSolFile);
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		System.out.println("done.");
 		

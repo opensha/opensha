@@ -146,7 +146,7 @@ import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.DeformationModelFileParser;
 import scratch.UCERF3.utils.DeformationModelFileParser.DeformationSection;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.GardnerKnopoffAftershockFilter;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
@@ -9605,7 +9605,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		boolean meanDebug = false;
 		if (meanDebug) {
 			final Collection<U3LogicTreeBranch> branches = fetch.getBranches();
-			final InversionFaultSystemSolution meanSol = FaultSystemIO.loadInvSol(
+			final InversionFaultSystemSolution meanSol = U3FaultSystemIO.loadInvSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 							"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 			

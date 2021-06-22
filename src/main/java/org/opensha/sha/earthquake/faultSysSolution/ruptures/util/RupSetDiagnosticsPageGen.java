@@ -119,7 +119,7 @@ import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RupSetDiagnosticsPageGen {
 
@@ -384,21 +384,21 @@ public class RupSetDiagnosticsPageGen {
 		FaultSystemSolution compSol = null;
 		
 		System.out.println("Loading input");
-		if (FaultSystemIO.isSolution(inputFile)) {
+		if (U3FaultSystemIO.isSolution(inputFile)) {
 			System.out.println("Input is a solution");
-			inputSol = FaultSystemIO.loadSol(inputFile);
+			inputSol = U3FaultSystemIO.loadSol(inputFile);
 			inputRupSet = inputSol.getRupSet();
 		} else {
-			inputRupSet = FaultSystemIO.loadRupSet(inputFile);
+			inputRupSet = U3FaultSystemIO.loadRupSet(inputFile);
 		}
 		if (compareFile != null) {
 			System.out.println("Loading comparison");
-			if (FaultSystemIO.isSolution(compareFile)) {
+			if (U3FaultSystemIO.isSolution(compareFile)) {
 				System.out.println("comp is a solution");
-				compSol = FaultSystemIO.loadSol(compareFile);
+				compSol = U3FaultSystemIO.loadSol(compareFile);
 				compRupSet = compSol.getRupSet();
 			} else {
-				compRupSet = FaultSystemIO.loadRupSet(compareFile);
+				compRupSet = U3FaultSystemIO.loadRupSet(compareFile);
 			}
 		}
 		

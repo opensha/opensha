@@ -42,7 +42,7 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class U3TD_ComparisonLauncher {
 	
@@ -132,7 +132,7 @@ public class U3TD_ComparisonLauncher {
 		System.out.println("Loading FSS file");
 		FaultSystemSolution fss = null;
 		try {
-			fss = FaultSystemIO.loadSol(fssFile);
+			fss = U3FaultSystemIO.loadSol(fssFile);
 		} catch (IOException | DocumentException e1) {
 			e1.printStackTrace();
 			System.exit(1);

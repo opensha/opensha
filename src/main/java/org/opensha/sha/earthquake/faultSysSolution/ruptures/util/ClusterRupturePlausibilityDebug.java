@@ -28,15 +28,15 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 
 import com.google.common.collect.Range;
 
-import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ClusterRupturePlausibilityDebug {
 
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		System.out.println("Loading rupture set...");
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(
+		U3FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(
 //				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz.zip"));
 				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
 //						+ "fm3_1_adapt5_10km_sMax1_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.2.zip"));

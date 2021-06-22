@@ -61,14 +61,14 @@ import com.google.common.collect.Maps;
  * @author Field, Milner, Page, and Powers
  *
  */
-public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution implements Serializable {
+public class U3FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution implements Serializable {
 	
 	/**
 	 * Default constructor, validates inputs
 	 * @param rupSet
 	 * @param rates
 	 */
-	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates) {
+	public U3FaultSystemSolution(U3FaultSystemRupSet rupSet, double[] rates) {
 		this(rupSet, rates, null);
 	}
 	
@@ -78,7 +78,7 @@ public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolu
 	 * @param rates
 	 * @param subSeismoOnFaultMFDs
 	 */
-	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates,
+	public U3FaultSystemSolution(U3FaultSystemRupSet rupSet, double[] rates,
 			List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
 		super(rupSet, rates);
 		init(rupSet, rates, null, subSeismoOnFaultMFDs);
@@ -88,8 +88,8 @@ public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolu
 	 * Returns the fault system rupture set for this solution
 	 * @return
 	 */
-	public FaultSystemRupSet getRupSet() {
-		return (FaultSystemRupSet)rupSet;
+	public U3FaultSystemRupSet getRupSet() {
+		return (U3FaultSystemRupSet)rupSet;
 	}
 	
 	/**
@@ -99,20 +99,20 @@ public class FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSolu
 	 * @param rates
 	 * @return
 	 */
-	public static FaultSystemSolution buildSolAsApplicable(FaultSystemRupSet rupSet, double[] rates) {
+	public static U3FaultSystemSolution buildSolAsApplicable(U3FaultSystemRupSet rupSet, double[] rates) {
 		if (rupSet instanceof InversionFaultSystemRupSet)
 			return new InversionFaultSystemSolution((InversionFaultSystemRupSet)rupSet, rates);
-		return new FaultSystemSolution(rupSet, rates);
+		return new U3FaultSystemSolution(rupSet, rates);
 	}
 	
 	/**
 	 * Not recommended, must call init
 	 */
-	protected FaultSystemSolution() {
+	protected U3FaultSystemSolution() {
 		
 	}
 	
-	protected void init(FaultSystemRupSet rupSet, double[] rates, String infoString,
+	protected void init(U3FaultSystemRupSet rupSet, double[] rates, String infoString,
 			List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
 		super.init(rupSet, rates);
 		if (infoString != null && !infoString.isBlank())

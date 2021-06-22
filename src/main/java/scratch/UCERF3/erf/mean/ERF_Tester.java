@@ -21,7 +21,7 @@ import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Stopwatch;
@@ -78,7 +78,7 @@ public class ERF_Tester {
 		File meanSolFile = new File(invDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_TRUE_HAZARD_MEAN_SOL.zip");
 		
 		System.out.println("Loading solution...");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(meanSolFile);
 		asdf(sol);
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		System.out.println("done.");

@@ -39,8 +39,8 @@ import com.google.common.collect.Table;
 import com.google.common.primitives.Ints;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
@@ -52,7 +52,7 @@ import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
@@ -265,7 +265,7 @@ public class TrueMeanBuilder {
 		Map<FaultModels, List<List<Integer>>> subSectIndexesMap = Maps.newHashMap();
 		int globalSectCount = 0;
 		for (FaultModels fm : fms) {
-			FaultSystemRupSet rupSet = null;
+			U3FaultSystemRupSet rupSet = null;
 			for (U3LogicTreeBranch branch : branches) {
 				if (branch.getValue(FaultModels.class) == fm) {
 					rupSet = cfss.getSolution(branch).getRupSet();
@@ -591,9 +591,9 @@ public class TrueMeanBuilder {
 		String info = "UCERF3 Mean Solution";
 		
 		// assemble rupSet/solution
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, null, null, null, sectionForRups,
+		U3FaultSystemRupSet rupSet = new U3FaultSystemRupSet(faultSectionData, null, null, null, sectionForRups,
 				mags, rakes, rupAreas, null, info);
-		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		U3FaultSystemSolution sol = new U3FaultSystemSolution(rupSet, rates);
 		
 		// load in branch averages and build average grid source provider
 		Map<FaultModels, File> branchAvgFiles = Maps.newHashMap();
@@ -606,7 +606,7 @@ public class TrueMeanBuilder {
 		
 		String outputFilePrefix = compoundFile.getName().replaceAll(".zip", "")+nameAdd+"_TRUE_HAZARD_MEAN_SOL";
 		File outputFile = new File(outputDir, outputFilePrefix+".zip");
-		FaultSystemIO.writeSol(sol, outputFile);
+		U3FaultSystemIO.writeSol(sol, outputFile);
 		
 		// write branch specific data
 		// unzip true mean to temp dir
@@ -732,7 +732,7 @@ public class TrueMeanBuilder {
 		List<GridSourceProvider> providers = Lists.newArrayList();
 		for (FaultModels fm : fms)
 //			providers.add(FaultSystemIO.loadInvSol(branchAvgFiles.get(fm)).getGridSourceProvider());
-			providers.add(FaultSystemIO.loadSol(branchAvgFiles.get(fm)).getGridSourceProvider());
+			providers.add(U3FaultSystemIO.loadSol(branchAvgFiles.get(fm)).getGridSourceProvider());
 		
 		// FAULT MODELS ASSUMED TO HAVE EQUAL WEIGHT (currently true)
 		double weight = 1d/(double)providers.size();

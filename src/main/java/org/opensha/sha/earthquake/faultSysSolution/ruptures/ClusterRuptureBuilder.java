@@ -62,7 +62,7 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * Code to recursively build ClusterRuptures, applying any rupture plausibility filters

@@ -30,7 +30,7 @@ import scratch.UCERF3.analysis.DeformationModelsCalc;
  * @author Field, Milner, Page, & Powers
  *
  */
-public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet implements Serializable {
+public class U3FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet implements Serializable {
 
 	/**
 	 * Constructor for precomputed data where everything is passed in.
@@ -46,7 +46,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 	 * @param rupLengths lengths for each rupture (CAN be null)
 	 * @param info metadata string
 	 */
-	public FaultSystemRupSet(
+	public U3FaultSystemRupSet(
 			List<? extends FaultSection> faultSectionData,
 			double[] sectSlipRates,
 			double[] sectSlipRateStdDevs,
@@ -67,7 +67,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 	 * 
 	 * Protected so it can only be invoked by subclasses.
 	 */
-	protected FaultSystemRupSet() {
+	protected U3FaultSystemRupSet() {
 		super();
 		// do nothing, it's up to subclass to call init.
 	}
@@ -76,7 +76,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 	 * Initialize from another rupSet
 	 * @param rupSet
 	 */
-	protected void init(FaultSystemRupSet rupSet) {
+	protected void init(U3FaultSystemRupSet rupSet) {
 		init(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
@@ -314,7 +314,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 		addModule(ClusterRuptures.instance(this, search));
 	}
 
-	public void copyCacheFrom(FaultSystemRupSet rupSet) {
+	public void copyCacheFrom(U3FaultSystemRupSet rupSet) {
 		super.copyCacheFrom(rupSet);
 	}
 	

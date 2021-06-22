@@ -64,7 +64,7 @@ import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.SlipEnabledSolution;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SegmentationCalculator {
 	
@@ -1397,7 +1397,7 @@ public class SegmentationCalculator {
 	
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(new File(
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(
 				rupSetDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
 		double jumpDist = 15d;
 		File distCacheFile = new File(rupSetDir, "fm3_1_dist_az_cache.csv");

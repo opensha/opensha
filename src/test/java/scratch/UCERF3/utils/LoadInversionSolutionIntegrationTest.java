@@ -38,7 +38,7 @@ public class LoadInversionSolutionIntegrationTest {
 	@Test
 	public void testLoadInversionSolutionHasClusterRuptures() throws IOException, DocumentException, URISyntaxException {
 		FaultSystemSolution loadedSolution =
-				FaultSystemIO.loadSol(new File(alpineVernonRupturesUrl.toURI()));
+				U3FaultSystemIO.loadSol(new File(alpineVernonRupturesUrl.toURI()));
 		assertEquals(3101, loadedSolution.getRupSet().getModule(ClusterRuptures.class).get().size());
 	}
 

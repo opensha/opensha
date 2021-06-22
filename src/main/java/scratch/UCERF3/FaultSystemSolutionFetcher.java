@@ -24,7 +24,7 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	
 	private boolean cacheCopying = true;
 	// this is for copying caches from previous rup sets of the same fault model
-	private Map<FaultModels, FaultSystemRupSet> rupSetCacheMap = Maps.newHashMap();
+	private Map<FaultModels, U3FaultSystemRupSet> rupSetCacheMap = Maps.newHashMap();
 	
 	public abstract Collection<U3LogicTreeBranch> getBranches();
 	

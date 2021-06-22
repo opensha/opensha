@@ -95,9 +95,9 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 
-import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RupCartoonGenerator {
 	

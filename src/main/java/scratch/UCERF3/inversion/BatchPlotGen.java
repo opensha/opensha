@@ -33,7 +33,7 @@ import com.google.common.collect.Maps;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.FileBasedFSSIterator;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -46,7 +46,7 @@ import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
@@ -346,7 +346,7 @@ public class BatchPlotGen {
 					continue;
 				}
 				// this is an average of many runs
-				InversionFaultSystemRupSet rupSet = FaultSystemIO.loadInvRupSet(file);
+				InversionFaultSystemRupSet rupSet = U3FaultSystemIO.loadInvRupSet(file);
 				AverageFaultSystemSolution avgSol = AverageFaultSystemSolution.fromDirectory(rupSet, myDir, prefix);
 				if (!doAvgPlotsExist(meanSolDir, meanPrefix))
 					try {
@@ -354,7 +354,7 @@ public class BatchPlotGen {
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-				FaultSystemIO.writeSol(avgSol, avgSolFile);
+				U3FaultSystemIO.writeSol(avgSol, avgSolFile);
 				// write bin file as well
 				MatrixIO.doubleArrayToFile(avgSol.getRateForAllRups(), new File(meanSolDir, meanPrefix+".bin"));
 				handleSolutionFile(avgSolFile, meanPrefix, avgSol, null);
@@ -403,7 +403,7 @@ public class BatchPlotGen {
 		
 		if (misfitsMap != null) {
 			if (sol == null)
-				sol = FaultSystemIO.loadInvSol(file);
+				sol = U3FaultSystemIO.loadInvSol(file);
 			VariableLogicTreeBranch branch = null;
 			try {
 //				System.out.println("Prefix: "+prefix);
@@ -453,7 +453,7 @@ public class BatchPlotGen {
 		System.out.println("Processing: "+prefix);
 		
 		if (sol == null)
-			sol = FaultSystemIO.loadInvSol(file);
+			sol = U3FaultSystemIO.loadInvSol(file);
 		
 		if (!hasMapPlots) {
 			makeMapPlots(sol, dir, prefix);

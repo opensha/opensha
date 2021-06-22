@@ -9,7 +9,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 
-public abstract class SlipEnabledSolution extends FaultSystemSolution {
+public abstract class SlipEnabledSolution extends U3FaultSystemSolution {
 	
 	private double[] slipRatesCache;
 	

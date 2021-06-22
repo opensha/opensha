@@ -55,7 +55,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RuptureConnectionSearch {
 	
@@ -960,7 +960,7 @@ public class RuptureConnectionSearch {
 //		double maxPossibleJumpDist = 15d;
 //		File outputDir = new File("/tmp/rup_conn_u3");
 		
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(fssFile);
 		
 		SectionDistanceAzimuthCalculator distCalc =
 				new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());

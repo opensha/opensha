@@ -20,7 +20,7 @@ import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -190,7 +190,7 @@ public class BranchAveragedFSSBuilder {
 		
 		InversionFaultSystemSolution sol = build(fetcher, laughTest, weightProvider, fm, branchNames);
 		
-		FaultSystemIO.writeSol(sol, outputFile);
+		U3FaultSystemIO.writeSol(sol, outputFile);
 	}
 
 }

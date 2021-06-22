@@ -49,7 +49,7 @@ import com.google.common.collect.Range;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * This connection strategy uses one or more plausibility filters to determine the best jumping point between each pair

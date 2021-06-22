@@ -31,7 +31,7 @@ import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.EdgeFault;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.SectionBased;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.SimpleFault;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 
@@ -451,7 +451,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				}
 				FaultSystemRupSet rupSet;
 				try {
-					rupSet = FaultSystemIO.loadRupSet(fssFile);
+					rupSet = U3FaultSystemIO.loadRupSet(fssFile);
 				} catch (IOException | DocumentException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}

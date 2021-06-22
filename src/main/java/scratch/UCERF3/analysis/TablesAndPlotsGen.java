@@ -66,7 +66,7 @@ import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 
@@ -1063,7 +1063,7 @@ public class TablesAndPlotsGen {
 		System.out.println("Instantiating ERF...");
 		FaultSystemSolutionERF erf=null;
 		try {
-			erf = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file));
+			erf = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

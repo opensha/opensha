@@ -35,7 +35,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 
 import com.google.common.base.Joiner;
@@ -905,7 +905,7 @@ public class RuptureCombiner {
 	
 	public static void main(String[] args) throws IOException, DocumentException {
 		File cacheDir = MeanUCERF3.getStoreDir();
-		FaultSystemSolution trueMean = FaultSystemIO.loadSol(new File(cacheDir, "mean_ucerf3_sol.zip"));
+		FaultSystemSolution trueMean = U3FaultSystemIO.loadSol(new File(cacheDir, "mean_ucerf3_sol.zip"));
 		FaultSystemSolution reduced = getCombinedSolution(trueMean, 1e-10, true, false, null);
 //		FaultSystemSolution reduced = FaultSystemIO.loadSol(new File(cacheDir, "cached_dep1.0E-10_depShallow_rakeAll.zip"));
 		
