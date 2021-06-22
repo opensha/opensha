@@ -336,7 +336,8 @@ public class CaliforniaRegions {
 	        	vals = s.trim().split(",");
 	        	double lat = Double.valueOf(vals[0]);
 	        	double lon = Double.valueOf(vals[1]);
-	        	Location loc = new Location(lat, lon);
+	        	// keep backwards compatibility
+	        	Location loc = Location.backwardsCompatible(lat, lon, 0d);
 	        	ll.add(loc);
 	        }
 	        br.close();
@@ -347,6 +348,8 @@ public class CaliforniaRegions {
 		}
 	}
 	public static void main(String[] args) {
+		System.out.println(new RELM_TESTING_GRIDDED().getNodeCount());
+		System.exit(0);
 		RegionUtils.regionToKML(new RELM_GRIDDED(), "Relm Gridded", Color.BLUE);
 		RegionUtils.regionToKML(new RELM_TESTING_GRIDDED(), "Relm Testing", Color.RED);
 		
