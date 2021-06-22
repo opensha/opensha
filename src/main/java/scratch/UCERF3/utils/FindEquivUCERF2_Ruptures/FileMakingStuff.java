@@ -25,7 +25,7 @@ import scratch.UCERF3.utils.DeformationModelFetcher;
  * @author field
  *
  */
-public class FileMakingStuff {
+class FileMakingStuff {
 	
 	
 	public static void mkNewFilesBySubstitutingNames() {

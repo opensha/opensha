@@ -38,12 +38,12 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	private Map<IDPairing, Double> subSectionDistances;
 	
 	public SectionClusterList(FaultModels faultModel, DeformationModels defModel, File precomputedDataDir,
-			SectionConnectionStrategy connectionStrategy, OldPlausibilityConfiguration plausibility) {
+			OldSectionConnectionStrategy connectionStrategy, OldPlausibilityConfiguration plausibility) {
 		this(new DeformationModelFetcher(faultModel, defModel, precomputedDataDir,
 				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE), connectionStrategy, plausibility);
 	}
 	
-	public SectionClusterList(DeformationModelFetcher defModelFetcher, SectionConnectionStrategy connectionStrategy,
+	public SectionClusterList(DeformationModelFetcher defModelFetcher, OldSectionConnectionStrategy connectionStrategy,
 			OldPlausibilityConfiguration plausibility) {
 		faultSectionData = defModelFetcher.getSubSectionList();
 		Map<IDPairing, Double> subSectionDistances = defModelFetcher.getSubSectionDistanceMap(plausibility.getMaxJumpDist());
@@ -51,14 +51,14 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 		init(connectionStrategy, plausibility, faultSectionData, subSectionDistances, subSectionAzimuths);
 	}
 	
-	public SectionClusterList(SectionConnectionStrategy connectionStrategy, OldPlausibilityConfiguration plausibility,
+	public SectionClusterList(OldSectionConnectionStrategy connectionStrategy, OldPlausibilityConfiguration plausibility,
 			List<? extends FaultSection> faultSectionData, Map<IDPairing, Double> subSectionDistances,
 			Map<IDPairing, Double> subSectionAzimuths) {
 		init(connectionStrategy, plausibility, faultSectionData,
 				subSectionDistances, subSectionAzimuths);
 	}
 
-	private void init(SectionConnectionStrategy connectionStrategy,
+	private void init(OldSectionConnectionStrategy connectionStrategy,
 			OldPlausibilityConfiguration plausibility,
 			List<? extends FaultSection> faultSectionData,
 			Map<IDPairing, Double> subSectionDistances,
@@ -83,7 +83,7 @@ public class SectionClusterList extends ArrayList<SectionCluster> {
 	}
 	
 	private void makeClusterList(
-			SectionConnectionStrategy connectionStrategy,
+			OldSectionConnectionStrategy connectionStrategy,
 			Map<IDPairing, Double> subSectionAzimuths,
 			Map<IDPairing, Double> subSectionDistances) {
 		

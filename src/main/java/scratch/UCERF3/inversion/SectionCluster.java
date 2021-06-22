@@ -12,6 +12,7 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
@@ -26,7 +27,6 @@ import scratch.UCERF3.inversion.laughTest.CoulombFilter;
 import scratch.UCERF3.inversion.laughTest.AbstractPlausibilityFilter;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
  * 
@@ -55,7 +55,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	private Map<IDPairing, Double> subSectionDistances;
 	
 	private List<List<Integer>> sectionConnectionsListList;
-	private SectionConnectionStrategy connStrategy;
+	private OldSectionConnectionStrategy connStrategy;
 
 	/**
 	 * 
@@ -68,7 +68,7 @@ public class SectionCluster extends ArrayList<Integer> {
 	 * @param maxRakeDiff
 	 */
 	public SectionCluster(OldPlausibilityConfiguration plausibility, List<? extends FaultSection> sectionDataList,
-			SectionConnectionStrategy connStrategy, List<List<Integer>> sectionConnectionsListList, Map<IDPairing, Double> subSectionAzimuths,
+			OldSectionConnectionStrategy connStrategy, List<List<Integer>> sectionConnectionsListList, Map<IDPairing, Double> subSectionAzimuths,
 			Map<IDPairing, Double> subSectionDistances) {
 		this.sectionDataList = sectionDataList;
 		this.plausibility = plausibility;

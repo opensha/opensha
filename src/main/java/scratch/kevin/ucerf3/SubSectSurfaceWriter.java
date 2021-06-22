@@ -24,7 +24,7 @@ import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class SubSectSurfaceWriter {
+class SubSectSurfaceWriter {
 	
 	public static void main(String[] args) throws IOException, DocumentException {
 		Map<FaultModels, U3FaultSystemSolution> sols = new HashedMap<>();

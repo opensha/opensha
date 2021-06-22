@@ -17,7 +17,7 @@ import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class UniqueRupSetWriter {
+class UniqueRupSetWriter {
 
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");

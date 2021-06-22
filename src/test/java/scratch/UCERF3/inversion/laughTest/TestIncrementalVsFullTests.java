@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -18,7 +19,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.inversion.SectionClusterList;
-import scratch.UCERF3.inversion.SectionConnectionStrategy;
+import scratch.UCERF3.inversion.OldSectionConnectionStrategy;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.SectionCluster.FailureHandler;
@@ -32,7 +33,7 @@ public class TestIncrementalVsFullTests implements FailureHandler {
 	private UCERF3PlausibilityConfig laughTest;
 	private DeformationModelFetcher fetcher;
 	private long failCheckCount = 0;
-	private SectionConnectionStrategy connectionStrategy;
+	private OldSectionConnectionStrategy connectionStrategy;
 	private CoulombRates coulombRates;
 
 	@Before

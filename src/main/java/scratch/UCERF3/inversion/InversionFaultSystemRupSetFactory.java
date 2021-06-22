@@ -217,7 +217,7 @@ public class InversionFaultSystemRupSetFactory {
 				ExceptionUtils.throwAsRuntimeException(e);
 			}
 		}
-		SectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
+		OldSectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
 				laughTest.getMaxAzimuthChange(), coulombRates);
 		laughTest.setCoulombRates(coulombRates);
 //		System.out.println("Creating clusters with filter basis: "+filterBasis+", Fault Model: "+faultModel);

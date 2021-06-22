@@ -23,7 +23,7 @@ import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
-public class UCERF3_MFD_CSV_Writer {
+class UCERF3_MFD_CSV_Writer {
 
 	public static void main(String[] args) throws ZipException, IOException {
 		CompoundFaultSystemSolution cfss = CompoundFaultSystemSolution.fromZipFile(

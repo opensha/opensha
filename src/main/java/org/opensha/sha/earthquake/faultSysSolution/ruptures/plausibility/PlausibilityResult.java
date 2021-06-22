@@ -1,4 +1,4 @@
-package scratch.UCERF3.inversion.laughTest;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility;
 
 import com.google.common.base.Preconditions;
 

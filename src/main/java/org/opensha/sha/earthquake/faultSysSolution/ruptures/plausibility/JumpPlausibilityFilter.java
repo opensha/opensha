@@ -3,8 +3,6 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-
 /**
  * Plausibility filter which is applied independently at each jump
  * 

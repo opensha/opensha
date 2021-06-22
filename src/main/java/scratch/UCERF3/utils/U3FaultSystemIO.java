@@ -60,6 +60,12 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
+/**
+ * I/O class for reading in UCERF3 FaultSystemRupSet and FaultSystemSolution instances.
+ * 
+ * @author kevin
+ *
+ */
 public class U3FaultSystemIO {
 	
 	private static final boolean D = true;

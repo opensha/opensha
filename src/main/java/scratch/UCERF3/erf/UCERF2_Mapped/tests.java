@@ -12,7 +12,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.utils.ModUCERF2.ModMeanUCERF2_FM2pt1_wOutAftershocks;
 
-public class tests {
+class tests {
 	
 	
 	public static void testMFDs() {

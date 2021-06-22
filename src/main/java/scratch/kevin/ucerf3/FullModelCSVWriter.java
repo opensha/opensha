@@ -20,7 +20,7 @@ import scratch.UCERF3.CompoundFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MatrixIO;
 
-public class FullModelCSVWriter {
+class FullModelCSVWriter {
 
 	public static void main(String[] args) throws ZipException, IOException {
 		

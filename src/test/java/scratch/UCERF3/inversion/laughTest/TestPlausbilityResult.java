@@ -1,6 +1,8 @@
 package scratch.UCERF3.inversion.laughTest;
 
 import org.junit.Test;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
+
 import static org.junit.Assert.*;
 
 public class TestPlausbilityResult {

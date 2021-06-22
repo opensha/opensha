@@ -63,7 +63,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.inversion.SectionClusterList;
-import scratch.UCERF3.inversion.SectionConnectionStrategy;
+import scratch.UCERF3.inversion.OldSectionConnectionStrategy;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
@@ -183,7 +183,7 @@ public class FSS_ERF_ParamTest {
 		Map<IDPairing, Double> subSectionAzimuths = DeformationModelFetcher.getSubSectionAzimuthMap(
 				subSectionDistances.keySet(), subSections);
 		
-		SectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
+		OldSectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
 				laughTest.getMaxJumpDist(), null);
 		
 		SectionClusterList clusters = new SectionClusterList(connectionStrategy,

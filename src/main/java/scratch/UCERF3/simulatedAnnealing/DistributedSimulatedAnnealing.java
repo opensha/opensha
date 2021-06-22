@@ -21,6 +21,8 @@ import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
 import scratch.UCERF3.utils.MatrixIO;
 import mpi.MPI;
 
+// never necessary to do this across nodes anymore, threaded is more than enough
+@Deprecated
 public class DistributedSimulatedAnnealing {
 	
 	private static final boolean D = true;

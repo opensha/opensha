@@ -14,7 +14,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class SubSectCoruptureRateCalc {
+class SubSectCoruptureRateCalc {
 
 	public static void main(String[] args) throws IOException, DocumentException {
 		int[] indexes = null;
