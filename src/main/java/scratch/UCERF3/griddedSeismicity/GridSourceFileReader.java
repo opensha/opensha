@@ -6,21 +6,31 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.AbstractDiscretizedFunc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -32,7 +42,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-public class GridSourceFileReader extends AbstractGridSourceProvider implements XMLSaveable {
+public class GridSourceFileReader extends AbstractGridSourceProvider implements XMLSaveable, ArchivableModule {
 	
 	private static final String NODE_MFD_LIST_EL_NAME = "MFDNodeList";
 	private static final String NODE_MFD_ITEM_EL_NAME = "MFDNode";
@@ -44,6 +54,11 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	private Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs;
 	
 	private double[] fracStrikeSlip,fracNormal,fracReverse;
+	
+	@SuppressWarnings("unused")
+	private GridSourceFileReader() {
+		// for serialization
+	}
 	
 	public GridSourceFileReader(GriddedRegion region,
 			Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
@@ -404,6 +419,167 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 					mfd.scale(valuesArray[i]);;
 			}
 		}
+	}
+	
+	private CSVFile<String> buildCSV(Map<Integer, IncrementalMagFreqDist> mfds) {
+		IncrementalMagFreqDist xVals = null;
+		for (IncrementalMagFreqDist mfd : mfds.values()) {
+			if (mfd != null) {
+				xVals = mfd;
+				break;
+			}
+		}
+		if (xVals == null)
+			// no actual MFDs
+			return null;
+		CSVFile<String> csv = new CSVFile<>(true);
+		List<String> header = new ArrayList<>();
+		header.add("Node Index");
+		header.add("Latitude");
+		header.add("Longitude");
+		for (int i=0; i<xVals.size(); i++)
+			header.add(xVals.getX(i)+"");
+		csv.addLine(header);
+		
+		final String empty = "";
+		for (int i=0; i<region.getNodeCount(); i++) {
+			IncrementalMagFreqDist mfd = mfds.get(i);
+			Location loc = region.getLocation(i);
+			List<String> line = new ArrayList<>(header.size());
+			line.add(i+"");
+			line.add(loc.getLatitude()+"");
+			line.add(loc.getLongitude()+"");
+			if (mfd == null) {
+				while (line.size() < header.size())
+					line.add(empty);
+			} else {
+				Preconditions.checkState(mfd.size() == xVals.size(),
+						"MFD sizes inconsistent. Expected %s values, have %s", xVals.size(), mfd.size());
+				for (int j=0; j<xVals.size(); j++) {
+					Preconditions.checkState((float)mfd.getX(j) == (float)xVals.getX(j),
+							"MFD x value mismatch for node %s value %s", i, j);
+					line.add(mfd.getY(j)+"");
+				}
+			}
+			csv.addLine(line);
+		}
+		return csv;
+	}
+	
+	private CSVFile<String> buildWeightsCSV() {
+		CSVFile<String> csv = new CSVFile<>(true);
+		List<String> header = new ArrayList<>();
+		header.add("Node Index");
+		header.add("Latitude");
+		header.add("Longitude");
+		header.add("Fraction Strike-Slip");
+		header.add("Fraction Reverse");
+		header.add("Fraction Normal");
+		csv.addLine(header);
+		
+		for (int i=0; i<region.getNodeCount(); i++) {
+			Location loc = region.getLocation(i);
+			List<String> line = new ArrayList<>(header.size());
+			line.add(i+"");
+			line.add(loc.getLatitude()+"");
+			line.add(loc.getLongitude()+"");
+			line.add(getFracStrikeSlip(i)+"");
+			line.add(getFracReverse(i)+"");
+			line.add(getFracNormal(i)+"");
+			csv.addLine(line);
+		}
+		return csv;
+	}
+
+	@Override
+	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		CSVFile<String> subSeisCSV = buildCSV(nodeSubSeisMFDs);
+		CSVFile<String> unassociatedCSV = buildCSV(nodeUnassociatedMFDs);
+		
+		// TODO: write region
+		System.err.println("TODO: serialization of GridSourceFileReader is incomplete and currently assumes RELM region");
+		
+		if (subSeisCSV != null)
+			CSV_BackedModule.writeToArchive(subSeisCSV, zout, entryPrefix, "grid_sub_seis_mfds.csv");
+		if (unassociatedCSV != null)
+			CSV_BackedModule.writeToArchive(unassociatedCSV, zout, entryPrefix, "grid_unassociated_mfds.csv");
+		CSV_BackedModule.writeToArchive(buildWeightsCSV(), zout, entryPrefix, "grid_mech_weights.csv");
+	}
+
+	@Override
+	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		// TODO load region
+		System.err.println("TODO: serialization of GridSourceFileReader is incomplete and currently assumes RELM region");
+		region = new CaliforniaRegions.RELM_TESTING_GRIDDED();
+		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = loadCSV(
+				region, zip, entryPrefix, "grid_sub_seis_mfds.csv");
+		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = loadCSV(
+				region, zip, entryPrefix, "grid_unassociated_mfds.csv");
+		if (nodeSubSeisMFDs == null)
+			this.nodeSubSeisMFDs = new HashMap<>();
+		else
+			this.nodeSubSeisMFDs = nodeSubSeisMFDs;
+		if (nodeUnassociatedMFDs == null)
+			this.nodeUnassociatedMFDs = new HashMap<>();
+		else
+			this.nodeUnassociatedMFDs = nodeUnassociatedMFDs;
+		
+		// load mechanisms
+		CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, "grid_mech_weights.csv");
+		Preconditions.checkState(mechCSV.getNumRows() == region.getNodeCount()+1,
+				"Mechanism node count mismatch, expected %s, have %s", region.getNodeCount(), mechCSV.getNumRows()-1);
+		fracStrikeSlip = new double[region.getNodeCount()];
+		fracReverse = new double[region.getNodeCount()];
+		fracNormal = new double[region.getNodeCount()];
+		for (int i=0; i<region.getNodeCount(); i++) {
+			int row = i+1;
+			int index = mechCSV.getInt(row, 0);
+			Preconditions.checkState(index == i, "Mechanism row indexes must be in order and 0-based");
+			double lat = mechCSV.getDouble(row, 1);
+			double lon = mechCSV.getDouble(row, 2);
+			Location loc = region.getLocation(index);
+			Preconditions.checkState((float)lat == (float)loc.getLatitude(), "Latitude mismatch at index %s: %s != %s",
+					index, lat, loc.getLatitude());
+			Preconditions.checkState((float)lon == (float)loc.getLongitude(), "Longitude mismatch at index %s: %s != %s",
+					index, lon, loc.getLongitude());
+			fracStrikeSlip[i] = mechCSV.getDouble(row, 3);
+			fracReverse[i] = mechCSV.getDouble(row, 4);
+			fracNormal[i] = mechCSV.getDouble(row, 5);
+		}
+	}
+	
+	private static Map<Integer, IncrementalMagFreqDist> loadCSV(GriddedRegion region,
+			ZipFile zip, String entryPrefix, String fileName) throws IOException {
+		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
+		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
+		ZipEntry entry = zip.getEntry(entryName);
+		if (entry == null)
+			return null;
+		
+		CSVFile<String> csv = CSVFile.readStream(new BufferedInputStream(zip.getInputStream(entry)), true);
+		Map<Integer, IncrementalMagFreqDist> mfds = new HashMap<>();
+		double minX = csv.getDouble(0, 3);
+		double maxX = csv.getDouble(0, csv.getNumCols()-1);
+		int numX = csv.getNumCols()-3;
+		for (int row=1; row<csv.getNumRows(); row++) {
+			int index = csv.getInt(row, 0);
+			Preconditions.checkState(index >= 0 && index <= region.getNodeCount(),
+					"Bad grid node index: %s (max=%s)", index, region.getNodeCount());
+			double lat = csv.getDouble(row, 1);
+			double lon = csv.getDouble(row, 2);
+			Location loc = region.getLocation(index);
+			Preconditions.checkState((float)lat == (float)loc.getLatitude(), "Latitude mismatch at index %s: %s != %s",
+					index, lat, loc.getLatitude());
+			Preconditions.checkState((float)lon == (float)loc.getLongitude(), "Longitude mismatch at index %s: %s != %s",
+					index, lon, loc.getLongitude());
+			if (csv.get(row, 3).isBlank())
+				continue;
+			IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(minX, maxX, numX);
+			for (int i=0; i<numX; i++)
+				mfd.set(i, csv.getInt(row, 3+i));
+			mfds.put(index, mfd);
+		}
+		return mfds;
 	}
 
 }
