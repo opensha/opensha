@@ -1018,7 +1018,8 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		Location loc;
 		for (double lat : latNodeCenters) {
 			for (double lon : lonNodeCenters) {
-				loc = new Location(lat, lon);
+//				loc = new Location(lat, lon);
+				loc = Location.backwardsCompatible(lat, lon, 0d);
 				if (contains(loc)) {
 					nodeList.add(loc);
 					gridIndices[grid_idx] = node_idx++;
