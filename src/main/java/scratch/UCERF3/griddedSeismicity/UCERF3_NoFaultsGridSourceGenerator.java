@@ -19,7 +19,7 @@ import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 

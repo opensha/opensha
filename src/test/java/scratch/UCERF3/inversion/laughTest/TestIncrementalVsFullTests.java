@@ -22,13 +22,13 @@ import scratch.UCERF3.inversion.SectionConnectionStrategy;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.SectionCluster.FailureHandler;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class TestIncrementalVsFullTests implements FailureHandler {
 	
-	private LogicTreeBranch branch;
+	private U3LogicTreeBranch branch;
 	private UCERF3PlausibilityConfig laughTest;
 	private DeformationModelFetcher fetcher;
 	private long failCheckCount = 0;
@@ -37,7 +37,7 @@ public class TestIncrementalVsFullTests implements FailureHandler {
 
 	@Before
 	public void setUp() throws Exception {
-		branch = LogicTreeBranch.fromValues(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
+		branch = U3LogicTreeBranch.fromValues(FaultModels.FM3_1, DeformationModels.GEOLOGIC);
 		
 		FaultModels faultModel = branch.getValue(FaultModels.class);
 		DeformationModels deformationModel = branch.getValue(DeformationModels.class);

@@ -151,7 +151,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -2884,22 +2884,22 @@ public class FaultSysSolutionERF_Calc {
 //		int magRangeIndex = 0; // 6.7+
 		
 		Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-				Map<LogicTreeBranch, SectProbGainResults[]>> table = loadBranchCSVVals(
+				Map<U3LogicTreeBranch, SectProbGainResults[]>> table = loadBranchCSVVals(
 				zipFile, new int[] {magRangeIndex}, parents).get(0);
 		
 		return writeBranchAggregatedTimeDepFigs(table, outputDir, parents, minMag, duration);
 	}
 	
-	static Map<LogicTreeBranch, SectProbGainResults[]> calcPoissonValues(
+	static Map<U3LogicTreeBranch, SectProbGainResults[]> calcPoissonValues(
 			Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-			Map<LogicTreeBranch, SectProbGainResults[]>> table) {
-		Map<LogicTreeBranch, SectProbGainResults[]> poisMap;
+			Map<U3LogicTreeBranch, SectProbGainResults[]>> table) {
+		Map<U3LogicTreeBranch, SectProbGainResults[]> poisMap;
 		
 		// bpt is the same among all, so it doesn't matter which one we get
-		Map<LogicTreeBranch, SectProbGainResults[]> refMap =
+		Map<U3LogicTreeBranch, SectProbGainResults[]> refMap =
 				table.get(table.rowKeySet().iterator().next(), table.columnKeySet().iterator().next());
 		poisMap = Maps.newHashMap();
-		for (LogicTreeBranch branch : refMap.keySet()) {
+		for (U3LogicTreeBranch branch : refMap.keySet()) {
 			SectProbGainResults[] refResults = refMap.get(branch);
 			SectProbGainResults[] poisResults = new SectProbGainResults[refResults.length];
 			for (int i=0; i<refResults.length; i++) {
@@ -2917,11 +2917,11 @@ public class FaultSysSolutionERF_Calc {
 	
 	public static Map<Integer, List<Double>> writeBranchAggregatedTimeDepFigs(
 			Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-			Map<LogicTreeBranch, SectProbGainResults[]>> table, File outputDir,
+			Map<U3LogicTreeBranch, SectProbGainResults[]>> table, File outputDir,
 			boolean parents, double minMag, double duration)
 					throws ZipException, IOException, GMT_MapException, RuntimeException {
 		
-		Map<LogicTreeBranch, SectProbGainResults[]> branchVals;
+		Map<U3LogicTreeBranch, SectProbGainResults[]> branchVals;
 		branchVals = Maps.newHashMap();
 		double avgTypeWeight = 1d/(double)table.columnKeySet().size();
 		double totCellWeight = 0d; // check that it all adds up to 1
@@ -2931,7 +2931,7 @@ public class FaultSysSolutionERF_Calc {
 					&& table.rowKeySet().contains(MagDependentAperiodicityOptions.LOW_VALUES)
 					&& table.rowKeySet().contains(MagDependentAperiodicityOptions.MID_VALUES)
 					&& table.rowKeySet().contains(MagDependentAperiodicityOptions.HIGH_VALUES);
-		Map<LogicTreeBranch, SectProbGainResults[]> poisMap;
+		Map<U3LogicTreeBranch, SectProbGainResults[]> poisMap;
 		if (isWeightedMultiCOV) {
 			// calculate the Poisson branch
 			System.out.println("Multiple/Weighted COV!");
@@ -2939,7 +2939,7 @@ public class FaultSysSolutionERF_Calc {
 			poisMap = calcPoissonValues(table);
 			// now add it in
 			double pw = FaultSystemSolutionERF.PREF_BLEND_POISSON_WEIGHT;
-			for (LogicTreeBranch branch : poisMap.keySet()) {
+			for (U3LogicTreeBranch branch : poisMap.keySet()) {
 				SectProbGainResults[] poisResults = poisMap.get(branch);
 				SectProbGainResults[] scaledResults = new SectProbGainResults[poisResults.length];
 				for (int i=0; i<poisResults.length; i++) {
@@ -2954,9 +2954,9 @@ public class FaultSysSolutionERF_Calc {
 			// add in the weighting from poisson that we just added in
 			totCellWeight += pw;
 		}
-		HashSet<LogicTreeBranch> mojaveNaNBranches = new HashSet<LogicTreeBranch>();
+		HashSet<U3LogicTreeBranch> mojaveNaNBranches = new HashSet<U3LogicTreeBranch>();
 		for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-				Map<LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet()) {
+				Map<U3LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet()) {
 			double cellWeight = avgTypeWeight;
 			if (isWeightedMultiCOV) {
 				cellWeight *= FaultSystemSolutionERF.getWeightForCOV(cell.getRowKey());
@@ -2966,8 +2966,8 @@ public class FaultSysSolutionERF_Calc {
 				// equal weighting
 				cellWeight *= 1d/(double)table.rowKeySet().size();
 			}
-			Map<LogicTreeBranch, SectProbGainResults[]> subBranchMap = cell.getValue();
-			for (LogicTreeBranch branch : subBranchMap.keySet()) {
+			Map<U3LogicTreeBranch, SectProbGainResults[]> subBranchMap = cell.getValue();
+			for (U3LogicTreeBranch branch : subBranchMap.keySet()) {
 				SectProbGainResults[] vals = subBranchMap.get(branch);
 				
 				SectProbGainResults[] curVals = branchVals.get(branch);
@@ -2997,14 +2997,14 @@ public class FaultSysSolutionERF_Calc {
 		
 		if (debug_saf_nan_check && parents) {
 			System.out.println("Branches:");
-			for (LogicTreeBranch branch : mojaveNaNBranches)
+			for (U3LogicTreeBranch branch : mojaveNaNBranches)
 				System.out.println("\t"+branch.buildFileName());
 			System.out.println("End SAF NaN check");
 			System.exit(0);
 		}
 		
 		HashSet<FaultModels> fms = new HashSet<FaultModels>();
-		for (LogicTreeBranch branch : branchVals.keySet()) {
+		for (U3LogicTreeBranch branch : branchVals.keySet()) {
 			FaultModels fm = branch.getValue(FaultModels.class);
 			if (!fms.contains(fm))
 				fms.add(fm);
@@ -3158,10 +3158,10 @@ public class FaultSysSolutionERF_Calc {
 			if (meanBPT_COVVals != null || meanBPT_CalcVals != null) {
 				bptOpsValsTable = HashBasedTable.create();
 				for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-						Map<LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet())
+						Map<U3LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet())
 					bptOpsValsTable.put(cell.getRowKey(), cell.getColumnKey(), new ArrayList<Double>());
 			}
-			for (LogicTreeBranch branch : branchVals.keySet()) {
+			for (U3LogicTreeBranch branch : branchVals.keySet()) {
 				FaultModels fm = branch.getValue(FaultModels.class);
 				Integer index = fmIndexMaps.get(fm).get(trace);
 				if (index == null)
@@ -3184,7 +3184,7 @@ public class FaultSysSolutionERF_Calc {
 				fmTimeDepWeights.add(weight);
 				if (bptOpsValsTable != null) {
 					for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-							Map<LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet())
+							Map<U3LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet())
 						bptOpsValsTable.get(cell.getRowKey(), cell.getColumnKey()).add(
 								table.get(cell.getRowKey(), cell.getColumnKey()).get(branch)[index].pTimeDep);
 				}
@@ -3215,10 +3215,10 @@ public class FaultSysSolutionERF_Calc {
 			} else {
 				List<Double> timeDepAllVals = Lists.newArrayList();
 				// loop over everything. weights not important as only used for min/max
-				for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<LogicTreeBranch,
+				for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<U3LogicTreeBranch,
 						SectProbGainResults[]>> cell : table.cellSet()) {
-					Map<LogicTreeBranch, SectProbGainResults[]> cellMap = cell.getValue();
-					for (LogicTreeBranch branch : cellMap.keySet()) {
+					Map<U3LogicTreeBranch, SectProbGainResults[]> cellMap = cell.getValue();
+					for (U3LogicTreeBranch branch : cellMap.keySet()) {
 						FaultModels fm = branch.getValue(FaultModels.class);
 						Integer index = fmIndexMaps.get(fm).get(trace);
 						if (index == null)
@@ -3316,7 +3316,7 @@ public class FaultSysSolutionERF_Calc {
 				// now add in Poisson
 				if (isWeightedMultiCOV) {
 					List<Double> branchPoisVals = Lists.newArrayList();
-					for (LogicTreeBranch branch : branchVals.keySet()) {
+					for (U3LogicTreeBranch branch : branchVals.keySet()) {
 						FaultModels fm = branch.getValue(FaultModels.class);
 						Integer index = fmIndexMaps.get(fm).get(trace);
 						if (index == null)
@@ -3392,7 +3392,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		BranchSensitivityHistogram branchSensHist = new BranchSensitivityHistogram("Ratio");
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses()) {
+		for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 			if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 				continue;
 			String className = ClassUtils.getClassNameWithoutPackage(clazz);
@@ -3404,7 +3404,7 @@ public class FaultSysSolutionERF_Calc {
 					continue;
 				double[] choiceVals = new double[meanTimeDepVals.length];
 				double[] weightTots = new double[meanTimeDepVals.length];
-				for (LogicTreeBranch branch : branchVals.keySet()) {
+				for (U3LogicTreeBranch branch : branchVals.keySet()) {
 					if (branch.getValueUnchecked(clazz) != choice)
 						continue;
 					FaultModels fm = branch.getValue(FaultModels.class);
@@ -3629,7 +3629,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		List<String> classNames = Lists.newArrayList();
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses()) {
+		for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 			if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 				continue;
 			String name = ClassUtils.getClassNameWithoutPackage(clazz);
@@ -3765,10 +3765,10 @@ public class FaultSysSolutionERF_Calc {
 	
 	private static void writeBranchAggregatedFaultResults(
 			Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-			Map<LogicTreeBranch, SectProbGainResults[]>> table, File outputDir,
+			Map<U3LogicTreeBranch, SectProbGainResults[]>> table, File outputDir,
 			double minMag, double duration) throws IOException {
 		
-		Map<LogicTreeBranch, SectProbGainResults[]> branchVals;
+		Map<U3LogicTreeBranch, SectProbGainResults[]> branchVals;
 		branchVals = Maps.newHashMap();
 		double avgTypeWeight = 1d/(double)table.columnKeySet().size();
 		double totCellWeight = 0d; // check that it all adds up to 1
@@ -3778,7 +3778,7 @@ public class FaultSysSolutionERF_Calc {
 					&& table.rowKeySet().contains(MagDependentAperiodicityOptions.LOW_VALUES)
 					&& table.rowKeySet().contains(MagDependentAperiodicityOptions.MID_VALUES)
 					&& table.rowKeySet().contains(MagDependentAperiodicityOptions.HIGH_VALUES);
-		Map<LogicTreeBranch, SectProbGainResults[]> poisMap;
+		Map<U3LogicTreeBranch, SectProbGainResults[]> poisMap;
 		if (isWeightedMultiCOV) {
 			// calculate the Poisson branch
 			System.out.println("Multiple/Weighted COV!");
@@ -3786,7 +3786,7 @@ public class FaultSysSolutionERF_Calc {
 			poisMap = calcPoissonValues(table);
 			// now add it in
 			double pw = FaultSystemSolutionERF.PREF_BLEND_POISSON_WEIGHT;
-			for (LogicTreeBranch branch : poisMap.keySet()) {
+			for (U3LogicTreeBranch branch : poisMap.keySet()) {
 				SectProbGainResults[] poisResults = poisMap.get(branch);
 				SectProbGainResults[] scaledResults = new SectProbGainResults[poisResults.length];
 				for (int i=0; i<poisResults.length; i++) {
@@ -3803,7 +3803,7 @@ public class FaultSysSolutionERF_Calc {
 		}
 		
 		for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-				Map<LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet()) {
+				Map<U3LogicTreeBranch, SectProbGainResults[]>> cell : table.cellSet()) {
 			double cellWeight = avgTypeWeight;
 			if (isWeightedMultiCOV) {
 				cellWeight *= FaultSystemSolutionERF.getWeightForCOV(cell.getRowKey());
@@ -3814,8 +3814,8 @@ public class FaultSysSolutionERF_Calc {
 				cellWeight *= 1d/(double)table.rowKeySet().size();
 			}
 			totCellWeight += cellWeight;
-			Map<LogicTreeBranch, SectProbGainResults[]> subBranchMap = cell.getValue();
-			for (LogicTreeBranch branch : subBranchMap.keySet()) {
+			Map<U3LogicTreeBranch, SectProbGainResults[]> subBranchMap = cell.getValue();
+			for (U3LogicTreeBranch branch : subBranchMap.keySet()) {
 				SectProbGainResults[] vals = subBranchMap.get(branch);
 				
 				SectProbGainResults[] curVals = branchVals.get(branch);
@@ -3876,7 +3876,7 @@ public class FaultSysSolutionERF_Calc {
 			List<Double> poisVals = Lists.newArrayList();
 			List<Double> gainVals = Lists.newArrayList();
 			List<Double> weights = Lists.newArrayList();
-			for (LogicTreeBranch branch : branchVals.keySet()) {
+			for (U3LogicTreeBranch branch : branchVals.keySet()) {
 				FaultModels fm = branch.getValue(FaultModels.class);
 				if ((name.contains("FM3.1") && fm == FaultModels.FM3_2)
 						|| (name.contains("FM3.2") && fm == FaultModels.FM3_1))
@@ -3900,10 +3900,10 @@ public class FaultSysSolutionERF_Calc {
 			} else {
 				List<Double> timeDepAllVals = Lists.newArrayList();
 				// loop over everything. weights not important as only used for min/max
-				for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<LogicTreeBranch,
+				for (Cell<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<U3LogicTreeBranch,
 						SectProbGainResults[]>> cell : table.cellSet()) {
-					Map<LogicTreeBranch, SectProbGainResults[]> cellMap = cell.getValue();
-					for (LogicTreeBranch branch : cellMap.keySet()) {
+					Map<U3LogicTreeBranch, SectProbGainResults[]> cellMap = cell.getValue();
+					for (U3LogicTreeBranch branch : cellMap.keySet()) {
 						FaultModels fm = branch.getValue(FaultModels.class);
 						if ((name.contains("FM3.1") && fm == FaultModels.FM3_2)
 								|| (name.contains("FM3.2") && fm == FaultModels.FM3_1))
@@ -4068,23 +4068,23 @@ public class FaultSysSolutionERF_Calc {
 	}
 
 	private static List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-	Map<LogicTreeBranch, SectProbGainResults[]>>> loadBranchCSVVals(
+	Map<U3LogicTreeBranch, SectProbGainResults[]>>> loadBranchCSVVals(
 			File file, int[] magRangeIndexes, boolean parents) throws ZipException, IOException {
 		return loadBranchCSVVals(new File[] {file}, magRangeIndexes, parents);
 	}
 
 	private static List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-	Map<LogicTreeBranch, SectProbGainResults[]>>> loadBranchCSVVals(
+	Map<U3LogicTreeBranch, SectProbGainResults[]>>> loadBranchCSVVals(
 			File[] files, int[] magRangeIndexes, boolean parents) throws ZipException, IOException {
 		// first '2' is for subsection indexes
 		// the other '1' is for the blank col at the start of each mag range
 		int[] colStarts = new int[magRangeIndexes.length];
 		List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-		Map<LogicTreeBranch, SectProbGainResults[]>>> maps = Lists.newArrayList();
+		Map<U3LogicTreeBranch, SectProbGainResults[]>>> maps = Lists.newArrayList();
 		for (int i=0; i<magRangeIndexes.length; i++) {
 			colStarts[i] = 2 + magRangeIndexes[i]*7 + 1;
 			Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-				Map<LogicTreeBranch, SectProbGainResults[]>> table = HashBasedTable.create();
+				Map<U3LogicTreeBranch, SectProbGainResults[]>> table = HashBasedTable.create();
 			maps.add(table);
 		}
 		
@@ -4122,14 +4122,14 @@ public class FaultSysSolutionERF_Calc {
 						}
 					}
 					Preconditions.checkNotNull(aveType);
-					LogicTreeBranch branch = LogicTreeBranch.fromFileName(name);
+					U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(name);
 					Preconditions.checkNotNull(branch);
 //				System.out.println("Loading "+branch.buildFileName()+", cov="+cov.name());
 					CSVFile<String> csv = CSVFile.readStream(zip.getInputStream(entry), true);
 					for (int i=0; i<magRangeIndexes.length; i++) {
 						int colStart = colStarts[i];
 						Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-							Map<LogicTreeBranch, SectProbGainResults[]>> table = maps.get(i);
+							Map<U3LogicTreeBranch, SectProbGainResults[]>> table = maps.get(i);
 						
 						Preconditions.checkState(csv.get(0, colStart).startsWith("Recur"));
 						SectProbGainResults[] vals = new SectProbGainResults[csv.getNumRows()-1];
@@ -4149,7 +4149,7 @@ public class FaultSysSolutionERF_Calc {
 							vals[index] = new SectProbGainResults(recurrInt, openInt, pPois, pBPT, pGain, implGain);
 						}
 						
-						Map<LogicTreeBranch, SectProbGainResults[]> branchVals = table.get(cov, aveType);
+						Map<U3LogicTreeBranch, SectProbGainResults[]> branchVals = table.get(cov, aveType);
 						if (branchVals == null) {
 							branchVals = Maps.newHashMap();
 							table.put(cov, aveType, branchVals);
@@ -4242,17 +4242,17 @@ public class FaultSysSolutionERF_Calc {
 	private static final boolean debug_saf_nan_check = false;
 
 	public static List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-	Map<LogicTreeBranch, SectProbGainResults[]>>>
+	Map<U3LogicTreeBranch, SectProbGainResults[]>>>
 	loadBranchFaultCSVVals(File[] files, int[] magRangeIndexes) throws ZipException, IOException {
 		int[] colStarts = new int[magRangeIndexes.length];
 		List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-		Map<LogicTreeBranch, SectProbGainResults[]>>> maps = Lists.newArrayList();
+		Map<U3LogicTreeBranch, SectProbGainResults[]>>> maps = Lists.newArrayList();
 		for (int i=0; i<magRangeIndexes.length; i++) {
 			// first '1' is for name
 						// the other '1' is for the blank col at the start of each mag range
 						colStarts[i] = 1 + magRangeIndexes[i]*3 + 1;
 			Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions,
-				Map<LogicTreeBranch, SectProbGainResults[]>> table = HashBasedTable.create();
+				Map<U3LogicTreeBranch, SectProbGainResults[]>> table = HashBasedTable.create();
 			maps.add(table);
 		}
 		
@@ -4287,13 +4287,13 @@ public class FaultSysSolutionERF_Calc {
 					}
 				}
 				Preconditions.checkNotNull(aveType);
-				LogicTreeBranch branch = LogicTreeBranch.fromFileName(name);
+				U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(name);
 				Preconditions.checkNotNull(branch);
 //				System.out.println("Loading "+branch.buildFileName()+", cov="+cov.name());
 				CSVFile<String> csv = CSVFile.readStream(zip.getInputStream(entry), true);
 				for (int i=0; i<magRangeIndexes.length; i++) {
 					int colStart = colStarts[i];
-					Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<LogicTreeBranch, SectProbGainResults[]>> table = maps.get(i);
+					Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<U3LogicTreeBranch, SectProbGainResults[]>> table = maps.get(i);
 					
 //					System.out.println("Col start: "+colStart);
 					
@@ -4310,7 +4310,7 @@ public class FaultSysSolutionERF_Calc {
 					}
 //					System.exit(0);
 					
-					Map<LogicTreeBranch, SectProbGainResults[]> branchVals = table.get(cov, aveType);
+					Map<U3LogicTreeBranch, SectProbGainResults[]> branchVals = table.get(cov, aveType);
 					if (branchVals == null) {
 						branchVals = Maps.newHashMap();
 						table.put(cov, aveType, branchVals);
@@ -4449,15 +4449,15 @@ public class FaultSysSolutionERF_Calc {
 			// average cov's
 			System.out.println("Loading all parent sect results from "+csvDirs[i].getAbsolutePath()
 					+" ("+Joiner.on(",").join(csvZipNames)+")");
-			List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<LogicTreeBranch, SectProbGainResults[]>>> parentMaps =
+			List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<U3LogicTreeBranch, SectProbGainResults[]>>> parentMaps =
 					loadBranchCSVVals(csvZipFiles, csvMagRangeIndexes, true);
 			System.out.println("Loading all sub sect results from "+csvDirs[i].getAbsolutePath()
 					+" ("+Joiner.on(",").join(csvZipNames)+")");
-			List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<LogicTreeBranch, SectProbGainResults[]>>> subSectMaps =
+			List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<U3LogicTreeBranch, SectProbGainResults[]>>> subSectMaps =
 					loadBranchCSVVals(csvZipFiles, csvMagRangeIndexes, false);
 			System.out.println("Loading all main fault results from "+csvMainFaultDirs[i].getAbsolutePath()
 					+" ("+Joiner.on(",").join(csvZipNames)+")");
-			List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<LogicTreeBranch, SectProbGainResults[]>>> mainFaultMaps =
+			List<Table<MagDependentAperiodicityOptions, BPTAveragingTypeOptions, Map<U3LogicTreeBranch, SectProbGainResults[]>>> mainFaultMaps =
 					loadBranchFaultCSVVals(csvMainFualtZipFiles, csvFaultMagRangeIndexes);
 			
 			if (debug_zip_file_check)

@@ -395,7 +395,7 @@ public class RuptureCombiner {
 		}
 		String info = "Combined Solution";
 		
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(combinedSects, null, null, null, combinedMappedSectionsForRups,
+		FaultSystemRupSet rupSet = new FaultSystemRupSet(combinedSects, combinedMappedSectionsForRups,
 				mags, rakes, rupAreas, null);
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		sol.setGridSourceProvider(meanSol.getGridSourceProvider());
@@ -868,8 +868,7 @@ public class RuptureCombiner {
 	public static class SubsetRupSet extends FaultSystemRupSet {
 
 		public SubsetRupSet(FaultSystemRupSet rupSet, List<Integer> rups) {
-			super(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(), rupSet.getSlipRateForAllSections(),
-					rupSet.getAreaForAllSections(), getSubList(rupSet.getSectionIndicesForAllRups(), rups),
+			super(rupSet.getFaultSectionDataList(), getSubList(rupSet.getSectionIndicesForAllRups(), rups),
 					getSubArray(rupSet.getMagForAllRups(), rups),
 					getSubArray(rupSet.getAveRakeForAllRups(), rups),
 					getSubArray(rupSet.getAreaForAllRups(), rups),

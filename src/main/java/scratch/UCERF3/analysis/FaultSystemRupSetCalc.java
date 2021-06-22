@@ -59,7 +59,7 @@ import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.SectionMFD_constraint;
@@ -990,7 +990,7 @@ public class FaultSystemRupSetCalc {
 							for(MaxMagOffFault mMaxOff : mMaxOffList) {
 								for(MomentRateFixes moRateFix : moRateFixList) {
 									for(SpatialSeisPDF seisPDF : seisPDFList) {
-										LogicTreeBranch ltb = LogicTreeBranch.fromValues(fm,dm,sr,invMod,r5,mMaxOff,moRateFix,seisPDF);
+										U3LogicTreeBranch ltb = U3LogicTreeBranch.fromValues(fm,dm,sr,invMod,r5,mMaxOff,moRateFix,seisPDF);
 										InversionFaultSystemRupSet faultSysRupSet = InversionFaultSystemRupSetFactory.forBranch(ltb);
 										if(first) {
 											strings.add(faultSysRupSet.getPreInversionAnalysisData(true));
@@ -1062,7 +1062,7 @@ public class FaultSystemRupSetCalc {
 		for(DeformationModels dm :defModList) {
 			for(ScalingRelationships sr:scalingRelList) {
 				for(MaxMagOffFault mMaxOff : mMaxOffList) {
-					LogicTreeBranch ltb = LogicTreeBranch.fromValues(FaultModels.FM3_1,dm,sr,InversionModels.CHAR_CONSTRAINED,TotalMag5Rate.RATE_7p9,mMaxOff,MomentRateFixes.NONE,SpatialSeisPDF.UCERF3);
+					U3LogicTreeBranch ltb = U3LogicTreeBranch.fromValues(FaultModels.FM3_1,dm,sr,InversionModels.CHAR_CONSTRAINED,TotalMag5Rate.RATE_7p9,mMaxOff,MomentRateFixes.NONE,SpatialSeisPDF.UCERF3);
 					InversionFaultSystemRupSet faultSysRupSet = InversionFaultSystemRupSetFactory.forBranch(ltb);
 					double offFltDefModMoRate = DeformationModelsCalc.calcMoRateOffFaultsForDefModel(FaultModels.FM3_1, dm);
 					SummedMagFreqDist impliedOnFault_GR_NuclMFD = FaultSystemRupSetCalc.calcImpliedGR_NucleationMFD(faultSysRupSet, MIN_MAG, NUM_MAG, DELTA_MAG);
@@ -1324,7 +1324,7 @@ public class FaultSystemRupSetCalc {
 			double upperMag = InversionFaultSystemRupSet.getUpperMagForSubseismoRuptures(finalMinMags.getMinMagForSection(s));
 			int mMaxIndex = totalTargetGR.getXIndex(upperMag);
 			if(mMaxIndex == -1) throw new RuntimeException("Problem Mmax: "
-					+upperMag+"\t"+invRupSet.getFaultSectionData(s).getName()+"\tBRANCH: "+invRupSet.getModule(LogicTreeBranch.class));
+					+upperMag+"\t"+invRupSet.getFaultSectionData(s).getName()+"\tBRANCH: "+invRupSet.getModule(U3LogicTreeBranch.class));
 			double mMax = totalTargetGR.getX(mMaxIndex); // rounded to nearest MFD value
 //if(mMax<5.85)
 //	System.out.println("PROBLEM SubSesMmax=\t"+mMax+"\tMinSeismoRupMag=\t"
@@ -2117,7 +2117,7 @@ public class FaultSystemRupSetCalc {
 	 * @return
 	 */
 	public static ArrayList<SectionMFD_constraint> getCharInversionSectMFD_Constraints(FaultSystemRupSet fltSystRupSet) {
-		LogicTreeBranch branch = fltSystRupSet.requireModule(LogicTreeBranch.class);
+		U3LogicTreeBranch branch = fltSystRupSet.requireModule(U3LogicTreeBranch.class);
 		AveSlipModule aveSlipModule = fltSystRupSet.requireModule(AveSlipModule.class);
 		ModSectMinMags finalMinMags = fltSystRupSet.requireModule(ModSectMinMags.class);
 		double fractGR = 0.33333;

@@ -22,7 +22,7 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSystemIO;
@@ -93,7 +93,7 @@ public class InversionFaultSystemRupSetFactory {
 	public static InversionFaultSystemRupSet cachedForBranch(
 			File directory, boolean forceRebuild, LogicTreeBranchNode<?>... branchNodes)
 			throws IOException {
-		LogicTreeBranch branch = LogicTreeBranch.fromValues(branchNodes);
+		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(branchNodes);
 		FaultModels faultModel = branch.getValue(FaultModels.class);
 		DeformationModels deformationModel = branch.getValue(DeformationModels.class);
 		InversionModels invModel = branch.getValue(InversionModels.class);
@@ -140,7 +140,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * specified by <code>LogicTreeBranch.DEFAULT</code>
 	 * @return
 	 */
-	public static InversionFaultSystemRupSet forBranch(LogicTreeBranch branch) {
+	public static InversionFaultSystemRupSet forBranch(U3LogicTreeBranch branch) {
 		return forBranch(UCERF3PlausibilityConfig.getDefault(), DEFAULT_ASEIS_VALUE, branch);
 	}
 	
@@ -157,7 +157,7 @@ public class InversionFaultSystemRupSetFactory {
 			UCERF3PlausibilityConfig laughTest,
 			double defaultAseismicityValue,
 			LogicTreeBranchNode<?>... branchesChoices) {
-		LogicTreeBranch branch = LogicTreeBranch.fromValues(branchesChoices);
+		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(branchesChoices);
 		return forBranch(laughTest, defaultAseismicityValue, branch);
 	}
 	
@@ -172,7 +172,7 @@ public class InversionFaultSystemRupSetFactory {
 	public static InversionFaultSystemRupSet forBranch(
 			UCERF3PlausibilityConfig laughTest,
 			double defaultAseismicityValue,
-			LogicTreeBranch branch) {
+			U3LogicTreeBranch branch) {
 		return forBranch(laughTest, defaultAseismicityValue, branch, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR);
 	}
 	
@@ -188,7 +188,7 @@ public class InversionFaultSystemRupSetFactory {
 	public static InversionFaultSystemRupSet forBranch(
 			UCERF3PlausibilityConfig laughTest,
 			double defaultAseismicityValue,
-			LogicTreeBranch branch,
+			U3LogicTreeBranch branch,
 			File scratchDir) {
 		Preconditions.checkArgument(branch.isFullySpecified(), "Logic tree must be fully specified (no null values) in order " +
 				"to create an InversionFaultSystemRupSet.");
@@ -244,7 +244,7 @@ public class InversionFaultSystemRupSetFactory {
 		
 		info += "\n****** Logic Tree Branch ******";
 		for (LogicTreeBranchNode<?> node : branch)
-			info += "\n"+ClassUtils.getClassNameWithoutPackage(LogicTreeBranch.getEnumEnclosingClass(node.getClass()))
+			info += "\n"+ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(node.getClass()))
 							+": "+node.name();
 		info += "\n*******************************";
 		rupSet.setInfoString(info);
@@ -271,9 +271,9 @@ public class InversionFaultSystemRupSetFactory {
 			UCERF3PlausibilityConfig filter = UCERF3PlausibilityConfig.getDefault();
 //			LaughTestFilter filter = LaughTestFilter.getUCERF3p2Filter();
 //			filter.setCoulombFilter(new CoulombRatesTester(TestType.COULOMB_STRESS, 0.05, 0.05, 1.25, true));
-			FaultSystemRupSet rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_1));
+			FaultSystemRupSet rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, U3LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_1));
 			System.out.println("FM3.1: "+rupSet.getNumRuptures()+" rups, "+rupSet.getNumSections()+" sects");
-			rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_2));
+			rupSet = forBranch(filter, DEFAULT_ASEIS_VALUE, U3LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_2));
 			System.out.println("FM3.2: "+rupSet.getNumRuptures()+" rups, "+rupSet.getNumSections()+" sects");
 			FaultSystemIO.writeRupSet(rupSet, new File("/tmp/mean_rupSet.zip"));
 			// test loading

@@ -282,10 +282,6 @@ public class ModuleContainerTest {
 	/* 
 	 * These methods test available module logic
 	 */
-	
-	/* 
-	 * These methods test adding and retrieval logic
-	 */
 
 	@Test
 	public void testAddRetrieveAvailable() {
@@ -317,6 +313,36 @@ public class ModuleContainerTest {
 		}
 		
 		System.out.println("*** END testAddRetrieveAvailable() ***");
+	}
+
+	@Test
+	public void testHasAvailable() {
+		System.out.println("*** testHasAvailable() ***");
+		System.out.println("Testing has*Module() with available modules");
+		
+		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
+		
+		assertEquals("Container should start empty", 0, container.getModules().size());
+		
+		Module_A_A_A aaaInst1 = new Module_A_A_A();
+		container.addAvailableModule(new Loader<>(aaaInst1), Module_A_A_A.class);
+		
+		assertEquals("Container should still be empty after adding avaialable", 0, container.getModules().size());
+		assertEquals("Container should now have 1 available module", 1, container.getAvailableModules().size());
+		
+		assertTrue("hasAvailableModule() should return true", container.hasAvailableModule(aaaInst1.getClass()));
+		
+		assertEquals("hasAvailableModule() should not load the available module", 0, container.getModules().size());
+		assertEquals("hasAvailableModule() should not load the available module", 1, container.getAvailableModules().size());
+		
+		assertTrue("hasModule() should return true", container.hasModule(aaaInst1.getClass()));
+		
+		assertEquals("hasModule() should load the available module", 1, container.getModules().size());
+		assertEquals("hasModule() should load the available module", 0, container.getAvailableModules().size());
+		
+		assertTrue("hasAvailableModule() should return true even after loaded", container.hasAvailableModule(aaaInst1.getClass()));
+		
+		System.out.println("*** END testHasAvailable() ***");
 	}
 
 	@Test

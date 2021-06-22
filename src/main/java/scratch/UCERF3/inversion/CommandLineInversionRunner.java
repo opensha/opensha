@@ -71,7 +71,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
@@ -293,7 +293,7 @@ public class CommandLineInversionRunner {
 				dir.mkdir();
 			String prefix = cmd.getOptionValue("branch-prefix");
 			// parse logic tree branch from prefix
-			LogicTreeBranch branch = LogicTreeBranch.fromFileName(prefix);
+			U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(prefix);
 			// ensure that branch is fully specified (no nulls)
 			Preconditions.checkState(branch.isFullySpecified(),
 					"Branch is not fully fleshed out! Prefix: "+prefix+", branch: "+branch);
@@ -1936,8 +1936,7 @@ public class CommandLineInversionRunner {
 			cnt++;
 		}
 		
-		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
+		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths);
 		subset.setInfoString(rupSet.getInfoString());
 		
@@ -1980,8 +1979,7 @@ public class CommandLineInversionRunner {
 			rupAveSlips[i] = rupSet.getAveSlipForRup(rupIndex);
 		}
 		
-		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
+		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths);
 		subset.setInfoString(rupSet.getInfoString());
 		
@@ -2009,8 +2007,7 @@ public class CommandLineInversionRunner {
 			rupAveSlips[i] = rupSet.getAveSlipForRup(rupIndex);
 		}
 		
-		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
+		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
 				sectionForRups, mags, rakes, rupAreas, rupLengths);
 		subset.setInfoString(rupSet.getInfoString());
 		

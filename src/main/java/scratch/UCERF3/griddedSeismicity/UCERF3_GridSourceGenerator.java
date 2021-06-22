@@ -20,7 +20,7 @@ import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 
@@ -37,7 +37,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	private final CaliforniaRegions.RELM_TESTING_GRIDDED region = RELM_RegionUtils.getGriddedRegionInstance();
 
 	private static double[] fracStrikeSlip,fracNormal,fracReverse;
-	private LogicTreeBranch branch;
+	private U3LogicTreeBranch branch;
 	private FaultPolyMgr polyMgr;
 	
 	// spatial pdfs of seismicity, orginal and revised (reduced and

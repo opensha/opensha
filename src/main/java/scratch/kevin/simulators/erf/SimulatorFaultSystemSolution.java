@@ -207,17 +207,6 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		}
 		System.out.println("DONE.");
 		
-		// for each section
-		double[] sectSlipRates = new double[fsd.size()];
-		double[] sectSlipRateStdDevs = null;
-		double[] sectAreas = new double[fsd.size()];
-		
-		for (int s=0; s<fsd.size(); s++) {
-			FaultSection sect = fsd.get(s);
-			sectSlipRates[s] = sect.getReducedAveSlipRate();
-			sectAreas[s] = sect.getReducedDownDipWidth()*sect.getTraceLength()*1e6; // in meters
-		}
-		
 		String info = "Fault Simulators Solution\n"
 				+ "# Elements: "+elements.size()+"\n"
 				+ "# Sub Sections: "+fsd.size()+"\n"
@@ -225,8 +214,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 				+ "Duration: "+durationYears+"\n"
 				+ "Indv. Rup Rate: "+(1d/durationYears);
 		
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(fsd, sectSlipRates, sectSlipRateStdDevs, sectAreas,
-				sectionForRups,mags, rupRakes, rupAreas, rupLengths);
+		FaultSystemRupSet rupSet = new FaultSystemRupSet(fsd, sectionForRups,mags, rupRakes, rupAreas, rupLengths);
 		rupSet.setInfoString(info);
 		return rupSet;
 	}

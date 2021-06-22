@@ -21,7 +21,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 public class UCERF3_MFD_CSV_Writer {
 
@@ -50,7 +50,7 @@ public class UCERF3_MFD_CSV_Writer {
 		
 		double totWeight = 0d;
 		
-		for (LogicTreeBranch branch : cfss.getBranches()) {
+		for (U3LogicTreeBranch branch : cfss.getBranches()) {
 			if (fm != null && branch.getValue(FaultModels.class) != fm)
 				continue;
 			if (dm != null && branch.getValue(DeformationModels.class) != dm)

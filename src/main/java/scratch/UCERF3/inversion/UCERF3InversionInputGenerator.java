@@ -49,7 +49,7 @@ import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
@@ -1516,7 +1516,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	 * @throws IOException
 	 */
 	private static void validateNewVsOld() throws IOException {
-		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
+		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
 		InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
 				branch.getValue(InversionModels.class), rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
@@ -1580,7 +1580,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	private static void testConfigureNewFileFormat() throws Exception {
 		File tempDir = Files.createTempDir();
 		
-		LogicTreeBranch origBranch = LogicTreeBranch.DEFAULT;
+		U3LogicTreeBranch origBranch = U3LogicTreeBranch.DEFAULT;
 		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
 		
 //		File tempIVFRS = new File(tempDir, "ivfrs.zip");
@@ -1619,7 +1619,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			}
 		}
 		
-		LogicTreeBranch newBranch = rupSet.requireModule(LogicTreeBranch.class);
+		U3LogicTreeBranch newBranch = rupSet.requireModule(U3LogicTreeBranch.class);
 		Preconditions.checkState(newBranch.equals(origBranch));
 		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 		
@@ -1656,7 +1656,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	 * @throws Exception
 	 */
 	private static void testBuildNewFormat() throws Exception {
-		LogicTreeBranch origBranch = LogicTreeBranch.DEFAULT;
+		U3LogicTreeBranch origBranch = U3LogicTreeBranch.DEFAULT;
 		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
 		
 		InversionTargetMFDs origTargetMFDs = origRupSet.getModule(InversionTargetMFDs.class);
@@ -1670,7 +1670,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		FaultSystemRupSet rupSet = builder.build();
 		
-		LogicTreeBranch newBranch = rupSet.requireModule(LogicTreeBranch.class);
+		U3LogicTreeBranch newBranch = rupSet.requireModule(U3LogicTreeBranch.class);
 		Preconditions.checkState(newBranch.equals(origBranch));
 		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 		
@@ -1708,7 +1708,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	
 	private static UCERF3InversionInputGenerator getTestConfig(FaultSystemRupSet rupSet, FaultModels fm,
 			InversionTargetMFDs targetMFDs) throws IOException {
-		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
+		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
 				branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);
 		// first enable all other constraints

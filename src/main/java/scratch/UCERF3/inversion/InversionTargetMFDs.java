@@ -33,7 +33,7 @@ import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 
@@ -148,7 +148,7 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	
 	public final static double FAULT_BUFFER = 12d;	// buffer for fault polygons
 	private FaultSystemRupSet rupSet;
-	private LogicTreeBranch logicTreeBranch;
+	private U3LogicTreeBranch logicTreeBranch;
 	private ModSectMinMags finalMinMags;
 
 	/**
@@ -163,7 +163,7 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	 * @param invRupSet
 	 */
 	public InversionTargetMFDs(InversionFaultSystemRupSet invRupSet) {
-		this(invRupSet, invRupSet.getModule(LogicTreeBranch.class), invRupSet.getModule(ModSectMinMags.class));
+		this(invRupSet, invRupSet.getModule(U3LogicTreeBranch.class), invRupSet.getModule(ModSectMinMags.class));
 	}
 	
 	/**
@@ -172,11 +172,11 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	 * @param logicTreeBranch
 	 * @param finalMinMags
 	 */
-	public InversionTargetMFDs(FaultSystemRupSet rupSet, LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
+	public InversionTargetMFDs(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
 		init(rupSet, logicTreeBranch, finalMinMags);
 	}
 	
-	private void init(FaultSystemRupSet rupSet, LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
+	private void init(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
 		this.rupSet = rupSet;
 		this.logicTreeBranch = logicTreeBranch;
 		this.finalMinMags = finalMinMags;
@@ -634,7 +634,7 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
 		// TODO actually serialize if we intend to keep this class
 		Preconditions.checkNotNull(rupSet, "Rupture set not initialized");
-		init(rupSet, rupSet.requireModule(LogicTreeBranch.class), rupSet.requireModule(ModSectMinMags.class));
+		init(rupSet, rupSet.requireModule(U3LogicTreeBranch.class), rupSet.requireModule(ModSectMinMags.class));
 	}
 
 	@Override
@@ -650,7 +650,7 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	@Override
 	public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
 		Preconditions.checkState(rupSet == null || rupSet.isEquivalentTo(newParent));
-		if (!newParent.hasModule(LogicTreeBranch.class))
+		if (!newParent.hasModule(U3LogicTreeBranch.class))
 			newParent.addModule(logicTreeBranch);
 		if (!newParent.hasModule(ModSectMinMags.class))
 			newParent.addModule(finalMinMags);

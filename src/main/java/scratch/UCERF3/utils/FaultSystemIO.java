@@ -58,7 +58,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 public class FaultSystemIO {
 	
@@ -316,15 +316,15 @@ public class FaultSystemIO {
 		
 		if (DD) System.out.println("loading inv matadata");
 		ZipEntry invXMLEntry = zip.getEntry(getRemappedName("inv_rup_set_metadata.xml", nameRemappings));
-		LogicTreeBranch branch = null;
+		U3LogicTreeBranch branch = null;
 		UCERF3PlausibilityConfig filter = null;
 		if (invXMLEntry != null) {
 			Document invDoc = XMLUtils.loadDocument(zip.getInputStream(invXMLEntry));
 			Element invRoot = invDoc.getRootElement().element("InversionFaultSystemRupSet");
 			
-			Element branchEl = invRoot.element(LogicTreeBranch.XML_METADATA_NAME);
+			Element branchEl = invRoot.element(U3LogicTreeBranch.XML_METADATA_NAME);
 			if (branchEl != null)
-				branch = LogicTreeBranch.fromXMLMetadata(branchEl);
+				branch = U3LogicTreeBranch.fromXMLMetadata(branchEl);
 			
 			Element filterEl = invRoot.element(UCERF3PlausibilityConfig.XML_METADATA_NAME);
 			if (filterEl != null)
@@ -376,7 +376,7 @@ public class FaultSystemIO {
 			
 			// we need at least a FM and Scaling Relationship to load this as an IVFSRS
 			if (faultModel != null && slipModelType != null) {
-				branch = LogicTreeBranch.fromValues(false, faultModel, defModName, slipModelType);
+				branch = U3LogicTreeBranch.fromValues(false, faultModel, defModName, slipModelType);
 			}
 		}
 		
@@ -954,7 +954,7 @@ public class FaultSystemIO {
 		Element el = root.addElement("InversionFaultSystemRupSet");
 		
 		// add LogicTreeBranch
-		LogicTreeBranch branch = invRupSet.getLogicTreeBranch();
+		U3LogicTreeBranch branch = invRupSet.getLogicTreeBranch();
 		if (branch != null)
 			branch.toXMLMetadata(el);
 		

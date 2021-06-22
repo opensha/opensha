@@ -46,7 +46,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 
 public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChangeListener {
@@ -54,7 +54,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	public static final String NAME = "UCERF3 Epistemic List ERF";
 	
 	private FaultSystemSolutionFetcher fetch;
-	private LogicTreeBranch branch0;
+	private U3LogicTreeBranch branch0;
 	
 	private FaultSystemSolutionERF paramERF;
 	private ParameterList paramList;
@@ -63,7 +63,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	
 	private Map<Class<? extends LogicTreeBranchNode<?>>, EnumParameter<?>> enumParamsMap;
 	
-	private List<LogicTreeBranch> branches;
+	private List<U3LogicTreeBranch> branches;
 	
 	private static final String COMPOUND_FILE_NAME = "full_ucerf3_compound_sol.zip";
 	
@@ -96,8 +96,8 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		enumParamsMap = new HashMap<>();
 		
 		// build enum paramters, allow every option in the fetcher
-		Collection<LogicTreeBranch> branches = fetch.getBranches();
-		List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = LogicTreeBranch.getLogicTreeNodeClasses();
+		Collection<U3LogicTreeBranch> branches = fetch.getBranches();
+		List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		for (int i=0; i < logicTreeNodeClasses.size(); i++) {
 			Class<? extends LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
 			EnumParameter<?> param = buildParam(clazz, branches);
@@ -127,7 +127,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 			}
 		}
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses()) {
+		for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 			EnumParameter<?> param = enumParamsMap.get(clazz);
 			if (param != null)
 				paramList.addParameter(param);
@@ -136,14 +136,14 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private static EnumParameter buildParam(
-			Class<? extends LogicTreeBranchNode<?>> clazz, Collection<LogicTreeBranch> branches) {
+			Class<? extends LogicTreeBranchNode<?>> clazz, Collection<U3LogicTreeBranch> branches) {
 		HashSet<Enum> set = new HashSet<Enum>();
 		
 		Enum defaultValue = null;
 		
 		String name = null;
 		
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			Preconditions.checkState(branch.isFullySpecified());
 			LogicTreeBranchNode<?> val = branch.getValueUnchecked(clazz);
 			Preconditions.checkNotNull(val);
@@ -167,7 +167,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		if (branches != null)
 			return;
 		branches = new ArrayList<>();
-		for (LogicTreeBranch branch : fetch.getBranches()) {
+		for (U3LogicTreeBranch branch : fetch.getBranches()) {
 			boolean keep = true;
 			for (Class<? extends LogicTreeBranchNode<?>> clazz : enumParamsMap.keySet()) {
 				EnumParameter<?> enumParam = enumParamsMap.get(clazz);
@@ -236,11 +236,11 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	@Override
 	public ERF getERF(int index) {
 		updateBranches();
-		LogicTreeBranch branch = branches.get(index);
+		U3LogicTreeBranch branch = branches.get(index);
 		return loadERF(branch);
 	}
 	
-	private FaultSystemSolutionERF loadERF(LogicTreeBranch branch) {
+	private FaultSystemSolutionERF loadERF(U3LogicTreeBranch branch) {
 		System.out.println("LoadERF for "+branch.buildFileName());
 		System.out.println("Loading solution...");
 		FaultSystemSolution sol = fetch.getSolution(branch);
@@ -269,7 +269,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	public ArrayList<Double> getRelativeWeightsList() {
 		updateBranches();
 		ArrayList<Double> weights = new ArrayList<>();
-		for (LogicTreeBranch branch : branches)
+		for (U3LogicTreeBranch branch : branches)
 			weights.add(branch.getAprioriBranchWt());
 		return weights;
 	}

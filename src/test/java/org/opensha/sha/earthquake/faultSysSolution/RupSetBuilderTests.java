@@ -10,7 +10,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModul
 
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 public class RupSetBuilderTests {
 	
@@ -20,11 +20,11 @@ public class RupSetBuilderTests {
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		System.out.println("Building original U3 InversionFaultSystemRupSet");
-		u3Default = InversionFaultSystemRupSetFactory.forBranch(LogicTreeBranch.DEFAULT);
+		u3Default = InversionFaultSystemRupSetFactory.forBranch(U3LogicTreeBranch.DEFAULT);
 		System.out.println("Building reproduction");
 		reproduced = FaultSystemRupSet.builder(
 				u3Default.getFaultSectionDataList(), u3Default.getSectionIndicesForAllRups())
-				.forU3Branch(LogicTreeBranch.DEFAULT).build();
+				.forU3Branch(U3LogicTreeBranch.DEFAULT).build();
 	}
 
 	@Test

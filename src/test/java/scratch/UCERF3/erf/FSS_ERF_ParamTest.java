@@ -66,7 +66,7 @@ import scratch.UCERF3.inversion.SectionClusterList;
 import scratch.UCERF3.inversion.SectionConnectionStrategy;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -136,7 +136,7 @@ public class FSS_ERF_ParamTest {
 	}
 	
 	public static InversionFaultSystemRupSet buildSmallTestRupSet() {
-		LogicTreeBranch branch = LogicTreeBranch.UCERF2;
+		U3LogicTreeBranch branch = U3LogicTreeBranch.UCERF2;
 		// this list will store our subsections
 		List<FaultSection> subSections = Lists.newArrayList();
 		

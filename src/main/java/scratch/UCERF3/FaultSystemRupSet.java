@@ -4,43 +4,19 @@
 package scratch.UCERF3;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
-import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
-import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.Region;
-import org.opensha.commons.geo.RegionUtils;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
-import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.gui.infoTools.CalcProgressBar;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Table;
-import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.analysis.DeformationModelsCalc;
 
@@ -133,8 +109,14 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 			double[] rupAreas,
 			double[] rupLengths,
 			String info) {
-		init(faultSectionData, sectSlipRates, sectSlipRateStdDevs, sectAreas, sectionForRups,
+		init(faultSectionData, sectionForRups,
 				mags, rakes, rupAreas, rupLengths);
+		
+		if (sectSlipRates != null || sectSlipRateStdDevs != null)
+			addModule(SectSlipRates.precomputed(this, sectSlipRates, sectSlipRateStdDevs));
+		
+		if (sectAreas != null)
+			addModule(SectAreas.precomputed(this, sectAreas));
 		
 		if (info != null && !info.isBlank())
 			addModule(new InfoModule(info));
@@ -246,8 +228,7 @@ public class FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSoluti
 	public void setMagForallRups(double[] mags) {
 		Preconditions.checkArgument(mags.length == getNumRuptures(),
 				"Called setMag for "+mags.length+" rups but rup set has "+getNumRuptures()+" rups!");
-		super.init(getFaultSectionDataList(), getSlipRateForAllSections(), getSlipRateStdDevForAllSections(),
-				getAreaForAllSections(), getSectionIndicesForAllRups(), mags, getAveRakeForAllRups(),
+		super.init(getFaultSectionDataList(), getSectionIndicesForAllRups(), mags, getAveRakeForAllRups(),
 				getAreaForAllRups(), getLengthForAllRups());
 	}
 	

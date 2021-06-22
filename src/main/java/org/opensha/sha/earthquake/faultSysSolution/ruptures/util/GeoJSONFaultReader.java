@@ -6,6 +6,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -53,6 +57,18 @@ public class GeoJSONFaultReader {
 	
 	private static JsonReader reader(File file) throws IOException {
 		return new JsonReader(new BufferedReader(new FileReader(file)));
+	}
+	
+	/**
+	 * Write fault section data list as a GeoJSON FeatureCollection to the given output stream
+	 * 
+	 * @param file
+	 * @param sects
+	 * @throws IOException
+	 */
+	public static List<GeoJSONFaultSection> readFaultSections(InputStream in) throws IOException {
+		JsonReader reader = buildGson().newJsonReader(new BufferedReader(new InputStreamReader(in)));
+		return readFaultSections(reader);
 	}
 	
 	/**
@@ -104,17 +120,34 @@ public class GeoJSONFaultReader {
 		return ret;
 	}
 	
+	private static Gson buildGson() {
+		return new GsonBuilder().setPrettyPrinting().create();
+	}
+	
+	/**
+	 * Write fault section data list as a GeoJSON FeatureCollection to the given file
+	 * 
+	 * @param file
+	 * @param sects
+	 * @throws IOException
+	 */
 	public static void writeFaultSections(File file, List<? extends FaultSection> sects) throws IOException {
-		JsonWriter writer = writer(file);
+		JsonWriter writer = buildGson().newJsonWriter(new BufferedWriter(new FileWriter(file)));
 		writeFaultSections(writer, sects);
 		writer.close();
 	}
 	
-	private static JsonWriter writer(File file) throws IOException {
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		
-		JsonWriter jout = gson.newJsonWriter(new BufferedWriter(new FileWriter(file)));
-		return jout;
+	/**
+	 * Write fault section data list as a GeoJSON FeatureCollection to the given output stream. The stream will
+	 * be left open.
+	 * 
+	 * @param file
+	 * @param sects
+	 * @throws IOException
+	 */
+	public static void writeFaultSections(OutputStream out, List<? extends FaultSection> sects) throws IOException {
+		JsonWriter writer = buildGson().newJsonWriter(new BufferedWriter(new OutputStreamWriter(out)));
+		writeFaultSections(writer, sects);
 	}
 	
 	public static void writeFaultSections(JsonWriter writer, List<? extends FaultSection> sects) throws IOException {

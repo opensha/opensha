@@ -1,10 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,47 +10,43 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipEntry;
+import java.util.concurrent.Callable;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import javax.annotation.Nullable;
 
 import org.apache.commons.math3.stat.StatUtils;
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.Element;
-import org.dom4j.io.OutputFormat;
-import org.dom4j.io.XMLWriter;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.commons.util.XMLUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
@@ -67,8 +60,7 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 /**
  * This class represents the attributes of ruptures in a fault system, 
@@ -87,17 +79,17 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	// data arrays/lists
 	private List<? extends FaultSection> faultSectionData;
 	private double[] mags;
-	private double[] sectSlipRates;
-	private double[] sectSlipRateStdDevs; // TODO: make a module?
 	private double[] rakes;
 	private double[] rupAreas;
 	private double[] rupLengths;
-	private double[] sectAreas;
 	private List<List<Integer>> sectionForRups;
 	
 	// archive that this came from
 	ModuleArchive<OpenSHA_Module> archive;
 	
+	/**
+	 * Protected constructor, must call one of the init(...) methods externally
+	 */
 	protected FaultSystemRupSet() {
 		
 	}
@@ -106,9 +98,6 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * Initialized a FaultSystemRupSet object with all core data.
 	 * 
 	 * @param faultSectionData fault section data list (CANNOT be null)
-	 * @param sectSlipRates slip rates for each fault section with any reductions applied (CAN be null)
-	 * @param sectSlipRateStdDevs slip rate std deviations for each fault section (CAN be null)
-	 * @param sectAreas areas for each fault section (CAN be null)
 	 * @param sectionForRups list of fault section indexes for each rupture (CANNOT be null)
 	 * @param mags magnitudes for each rupture (CANNOT be null)
 	 * @param rakes rakes for each rupture (CANNOT be null)
@@ -118,47 +107,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public FaultSystemRupSet(
 			List<? extends FaultSection> faultSectionData,
-			@Nullable double[] sectSlipRates,
-			@Nullable double[] sectSlipRateStdDevs,
-			@Nullable double[] sectAreas,
 			List<List<Integer>> sectionForRups,
 			double[] mags,
 			double[] rakes,
 			double[] rupAreas,
 			@Nullable double[] rupLengths) {
-		Preconditions.checkNotNull(faultSectionData, "Fault Section Data cannot be null");
-		this.faultSectionData = ImmutableList.copyOf(faultSectionData);
-		Preconditions.checkNotNull(faultSectionData, "Magnitudes cannot be null");
-		this.mags = mags;
-
-		int numRups = mags.length;
-		int numSects = this.faultSectionData.size();
-
-		Preconditions.checkArgument(sectSlipRates == null
-				|| sectSlipRates.length == numSects, "array sizes inconsistent!");
-		this.sectSlipRates = sectSlipRates;
-
-		Preconditions.checkArgument(sectSlipRateStdDevs == null
-				|| sectSlipRateStdDevs.length == numSects, "array sizes inconsistent!");
-		this.sectSlipRateStdDevs = sectSlipRateStdDevs;
-
-		Preconditions.checkArgument(rakes.length == numRups, "array sizes inconsistent!");
-		this.rakes = rakes;
-
-		Preconditions.checkArgument(rupAreas == null ||
-				rupAreas.length == numRups, "array sizes inconsistent!");
-		this.rupAreas = rupAreas;
-
-		Preconditions.checkArgument(rupLengths == null ||
-				rupLengths.length == numRups, "array sizes inconsistent!");
-		this.rupLengths = rupLengths;
-
-		Preconditions.checkArgument(sectAreas == null ||
-				sectAreas.length == numSects, "array sizes inconsistent!");
-		this.sectAreas = sectAreas;
-
-		Preconditions.checkArgument(sectionForRups.size() == numRups, "array sizes inconsistent!");
-		this.sectionForRups = ImmutableList.copyOf(sectionForRups);
+		init(faultSectionData, sectionForRups, mags, rakes, rupAreas, rupLengths);
 	}
 	
 	/**
@@ -222,19 +176,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 		// CSV Files
 		CSV_BackedModule.writeToArchive(buildRupturesCSV(), zout, entryPrefix, "ruptures.csv");
-		CSV_BackedModule.writeToArchive(buildSectsCSV(), zout, entryPrefix, "sections.csv");
 		
 		// fault sections
-		// TODO: retire the old XML format
-		Document doc = XMLUtils.createDocumentWithRoot();
-		Element root = doc.getRootElement();
-		scratch.UCERF3.utils.FaultSystemIO.fsDataToXML(root, FaultSectionPrefData.XML_METADATA_NAME+"List",
-				null, null, getFaultSectionDataList());
-		zout.putNextEntry(new ZipEntry(ArchivableModule.getEntryName(entryPrefix, "fault_sections.xml")));
-		XMLWriter writer = new XMLWriter(new BufferedWriter(new OutputStreamWriter(zout)),
-				OutputFormat.createPrettyPrint());
-		writer.write(doc);
-		writer.flush();
+		FileBackedModule.initEntry(zout, entryPrefix, "fault_sections.geojson");
+		GeoJSONFaultReader.writeFaultSections(zout, faultSectionData);
 		zout.flush();
 		zout.closeEntry();
 	}
@@ -266,54 +211,21 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		return csv;
 	}
-	
-	private CSVFile<String> buildSectsCSV() {
-		CSVFile<String> csv = new CSVFile<>(true);
-		
-		// TODO: what should we put in here? how should we represent sections in these files?
-		csv.addLine("Section Index", "Section Name", "Area (m^2)", "Slip Rate (m/yr)", "Slip Rate Standard Deviation (m/yr)");
-		double[] sectAreas = getAreaForAllSections();
-		double[] sectSlipRates = getSlipRateForAllSections();
-		double[] sectSlipRateStdDevs = getSlipRateStdDevForAllSections();
-		for (int s=0; s<getNumSections(); s++) {
-			FaultSection sect = getFaultSectionData(s);
-			Preconditions.checkState(sect.getSectionId() == s, "Section ID mismatch, expected %s but is %s", s, sect.getSectionId());
-			List<String> line = new ArrayList<>(5);
-			line.add(s+"");
-			line.add(sect.getSectionName());
-			line.add(sectAreas == null ? "" : sectAreas[s]+"");
-			line.add(sectSlipRates == null ? "" : sectSlipRates[s]+"");
-			line.add(sectSlipRateStdDevs == null ? "" : sectSlipRateStdDevs[s]+"");
-			csv.addLine(line);
-		}
-		
-		return csv;
-	}
 
 	@Override
 	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
 		System.out.println("\tLoading ruptures CSV...");
 		CSVFile<String> rupturesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, "ruptures.csv");
-		System.out.println("\tLoading sections CSV...");
-		CSVFile<String> sectsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, "sections.csv");
 		
 		// fault sections
-		// TODO: retire old XML format
-		ZipEntry fsdEntry = zip.getEntry(ArchivableModule.getEntryName(entryPrefix, "fault_sections.xml"));
-		System.out.println("\tLoading sections XML...");
-		Document doc;
-		try {
-			doc = XMLUtils.loadDocument(
-					new BufferedInputStream(zip.getInputStream(fsdEntry)));
-		} catch (DocumentException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-		Element fsEl = doc.getRootElement().element(FaultSectionPrefData.XML_METADATA_NAME+"List");
-		List<FaultSection> sections = scratch.UCERF3.utils.FaultSystemIO.fsDataFromXML(fsEl);
+		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
+				FileBackedModule.getInputStream(zip, entryPrefix, "fault_sections.geojson"));
+		for (int s=0; s<sections.size(); s++)
+			Preconditions.checkState(sections.get(s).getSectionId() == s,
+			"Fault sections must be provided in order starting with ID=0");
 		
 		int numRuptures = rupturesCSV.getNumRows()-1;
 		Preconditions.checkState(numRuptures > 0, "No ruptures found in CSV file");
-		int numSections = sectsCSV.getNumRows()-1;
 		
 		// load rupture data
 		double[] mags = new double[numRuptures];
@@ -321,7 +233,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		double[] areas = new double[numRuptures];
 		double[] lengths = null;
 		List<List<Integer>> rupSectsList = new ArrayList<>(numRuptures);
-		boolean shortSafe = numSections < Short.MAX_VALUE;
+		boolean shortSafe = sections.size() < Short.MAX_VALUE;
 		System.out.println("\tParsing ruptures CSV");
 		for (int r=0; r<numRuptures; r++) {
 			int row = r+1;
@@ -363,43 +275,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			rupSectsList.add(rupSects);
 		}
 		
-		double[] sectAreas = null;
-		double[] sectSlipRates = null;
-		double[] sectSlipRateStdDevs = null;
-		System.out.println("\tParsing sections CSV");
-		for (int s=0; s<numSections; s++) {
-			int row = s+1;
-			int col = 0;
-			Preconditions.checkState(s == sectsCSV.getInt(row, col++),
-					"Sections out of order or not 0-based in CSV file, expected id=%s at row %s", s, row);
-			
-			col++; // don't need name
-			String areaStr = sectsCSV.get(row, col++);
-			String rateStr = sectsCSV.get(row, col++);
-			String rateStdDevStr = sectsCSV.get(row, col++);
-			
-			
-			if (s == 0) {
-				if (!areaStr.isBlank())
-					sectAreas = new double[numSections];
-				if (!rateStr.isBlank())
-					sectSlipRates = new double[numSections];
-				if (!rateStdDevStr.isBlank())
-					sectSlipRateStdDevs = new double[numSections];
-			}
-			if (sectAreas != null)
-				sectAreas[s] = Double.parseDouble(areaStr);
-			if (sectSlipRates != null)
-				sectSlipRates[s] = Double.parseDouble(rateStr);
-			if (sectSlipRateStdDevs != null)
-				sectSlipRateStdDevs[s] = Double.parseDouble(rateStdDevStr);
-			int rowSize = sectsCSV.getLine(row).size();
-			Preconditions.checkState(col == rowSize,
-					"Unexpected line lenth for section %s, have %s columns but expected %s", s, rowSize, col);
-		}
-		
-		init(sections, sectSlipRates, sectSlipRateStdDevs, sectAreas,
-				rupSectsList, mags, rakes, areas, lengths);
+		init(sections, rupSectsList, mags, rakes, areas, lengths);
 	}
 	
 	/**
@@ -499,10 +375,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @param rupSet
 	 */
 	protected void init(FaultSystemRupSet rupSet) {
-		init(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
-				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
-				rupSet.getAreaForAllRups(), rupSet.getLengthForAllRups());
+		init(rupSet.getFaultSectionDataList(), rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(),
+				rupSet.getAveRakeForAllRups(), rupSet.getAreaForAllRups(), rupSet.getLengthForAllRups());
 		copyCacheFrom(rupSet);
 		loadAllAvailableModules();
 		for (OpenSHA_Module module : rupSet.getModules())
@@ -513,21 +387,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * Sets all parameters
 	 * 
 	 * @param faultSectionData fault section data list (CANNOT be null)
-	 * @param sectSlipRates slip rates for each fault section with any reductions applied (CAN be null)
-	 * @param sectSlipRateStdDevs slip rate std deviations for each fault section (CAN be null)
-	 * @param sectAreas areas for each fault section (CAN be null)
 	 * @param sectionForRups list of fault section indexes for each rupture (CANNOT be null)
 	 * @param mags magnitudes for each rupture (CANNOT be null)
 	 * @param rakes rakes for each rupture (CANNOT be null)
 	 * @param rupAreas areas for each rupture (CANNOT be null)
 	 * @param rupLengths lengths for each rupture (CAN be null)
-	 * @param info metadata string
 	 */
 	protected void init(
 			List<? extends FaultSection> faultSectionData,
-			double[] sectSlipRates,
-			double[] sectSlipRateStdDevs,
-			double[] sectAreas,
 			List<List<Integer>> sectionForRups,
 			double[] mags,
 			double[] rakes,
@@ -539,15 +406,6 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		this.mags = mags;
 		
 		int numRups = mags.length;
-		int numSects = faultSectionData.size();
-		
-		Preconditions.checkArgument(sectSlipRates == null
-				|| sectSlipRates.length == numSects, "array sizes inconsistent!");
-		this.sectSlipRates = sectSlipRates;
-		
-		Preconditions.checkArgument(sectSlipRateStdDevs == null
-				|| sectSlipRateStdDevs.length == numSects, "array sizes inconsistent!");
-		this.sectSlipRateStdDevs = sectSlipRateStdDevs;
 		
 		Preconditions.checkArgument(rakes.length == numRups, "array sizes inconsistent!");
 		this.rakes = rakes;
@@ -560,12 +418,29 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				rupLengths.length == numRups, "array sizes inconsistent!");
 		this.rupLengths = rupLengths;
 		
-		Preconditions.checkArgument(sectAreas == null ||
-				sectAreas.length == numSects, "array sizes inconsistent!");
-		this.sectAreas = sectAreas;
-		
 		Preconditions.checkArgument(sectionForRups.size() == numRups, "array sizes inconsistent!");
 		this.sectionForRups = sectionForRups;
+		
+		if (!hasAvailableModule(SectAreas.class)) {
+			addAvailableModule(new Callable<SectAreas>() {
+
+				@Override
+				public SectAreas call() throws Exception {
+					return SectAreas.fromFaultSectData(FaultSystemRupSet.this);
+				}
+				
+			}, SectAreas.class);
+		}
+		if (!hasAvailableModule(SectSlipRates.class)) {
+			addAvailableModule(new Callable<SectSlipRates>() {
+
+				@Override
+				public SectSlipRates call() throws Exception {
+					return SectSlipRates.fromFaultSectData(FaultSystemRupSet.this);
+				}
+				
+			}, SectSlipRates.class);
+		}
 	}
 
 	// if true, caching operations will show a graphical progress bar
@@ -718,12 +593,18 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public double getAreaForRup(int rupIndex) {
 		return rupAreas[rupIndex];
 	}
+	
+	private SectAreas getSectAreas() {
+		if (!hasModule(SectAreas.class))
+			addModule(SectAreas.fromFaultSectData(this));
+		return requireModule(SectAreas.class);
+	}
 
 	/**
 	 * @return Area (SI units: sq-m)
 	 */
 	public double[] getAreaForAllSections() {
-		return sectAreas;
+		return getSectAreas().getSectAreas();
 	}
 
 	/**
@@ -731,7 +612,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return Area (SI units: sq-m)
 	 */
 	public double getAreaForSection(int sectIndex) {
-		return sectAreas[sectIndex];
+		return getSectAreas().getSectArea(sectIndex);
 	}
 
 	/**
@@ -832,6 +713,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public double getAveWidthForRup(int rupIndex) {
 		return getAreaForRup(rupIndex)/getLengthForRup(rupIndex);
 	}
+	
+	private SectSlipRates getSectSlipRates() {
+		if (!hasModule(SectSlipRates.class))
+			addModule(SectSlipRates.fromFaultSectData(this));
+		return requireModule(SectSlipRates.class);
+	}
 
 	/**
 	 * This returns the section slip rate of the given section. It can differ from what is returned by
@@ -839,7 +726,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return slip rate (SI units: m)
 	 */
 	public double getSlipRateForSection(int sectIndex) {
-		return sectSlipRates[sectIndex];
+		return getSectSlipRates().getSlipRate(sectIndex);
 	}
 
 	/**
@@ -848,7 +735,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return slip rate (SI units: m)
 	 */
 	public double[] getSlipRateForAllSections() {
-		return sectSlipRates;
+		return getSectSlipRates().getSlipRates();
 	}
 
 	/**
@@ -857,7 +744,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return slip rate standard deviation (SI units: m)
 	 */
 	public double getSlipRateStdDevForSection(int sectIndex) {
-		return sectSlipRateStdDevs[sectIndex];
+		return getSectSlipRates().getSlipRateStdDev(sectIndex);
 	}
 
 	/**
@@ -866,7 +753,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return slip rate standard deviation (SI units: m)
 	 */
 	public double[] getSlipRateStdDevForAllSections() {
-		return sectSlipRateStdDevs;
+		return getSectSlipRates().getSlipRateStdDevs();
 	}
 
 	/**
@@ -1124,8 +1011,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return builder instance
 	 */
 	public static Builder buildFromExisting(FaultSystemRupSet rupSet, boolean copyModules) {
-		Builder builder = new Builder(rupSet.faultSectionData, rupSet.sectSlipRates, rupSet.sectSlipRateStdDevs, rupSet.sectAreas,
-				rupSet.sectionForRups, rupSet.mags, rupSet.rakes, rupSet.rupAreas, rupSet.rupLengths);
+		Builder builder = new Builder(rupSet.faultSectionData, rupSet.sectionForRups, rupSet.mags, rupSet.rakes,
+				rupSet.rupAreas, rupSet.rupLengths);
 		
 		if (copyModules)
 			for (OpenSHA_Module module : rupSet.getModules())
@@ -1186,12 +1073,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		// core data objects
 		private List<? extends FaultSection> faultSectionData;
 		private double[] mags;
-		private double[] sectSlipRates;
-		private double[] sectSlipRateStdDevs;
 		private double[] rakes;
 		private double[] rupAreas;
 		private double[] rupLengths;
-		private double[] sectAreas;
 		private List<List<Integer>> sectionForRups;
 		
 		private List<ModuleBuilder> modules;
@@ -1212,9 +1096,6 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		private Builder(
 				List<? extends FaultSection> faultSectionData,
-				@Nullable double[] sectSlipRates,
-				@Nullable double[] sectSlipRateStdDevs,
-				@Nullable double[] sectAreas,
 				List<List<Integer>> sectionForRups,
 				@Nullable double[] mags,
 				@Nullable double[] rakes,
@@ -1224,12 +1105,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					"Must supply fault sections");
 			this.faultSectionData = faultSectionData;
 			this.mags = mags;
-			this.sectSlipRates = sectSlipRates;
-			this.sectSlipRateStdDevs = sectSlipRateStdDevs;
 			this.rakes = rakes;
 			this.rupAreas = rupAreas;
 			this.rupLengths = rupLengths;
-			this.sectAreas = sectAreas;
 			Preconditions.checkState(sectionForRups != null && !sectionForRups.isEmpty(),
 					"Must supply ruptures");
 			this.sectionForRups = sectionForRups;
@@ -1253,7 +1131,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			return this;
 		}
 		
-		public Builder forU3Branch(LogicTreeBranch branch) {
+		public Builder forU3Branch(U3LogicTreeBranch branch) {
 			// set logic tree branch
 			addModule(branch);
 			// build magnitudes from the scaling relationship and add ave slip module
@@ -1277,15 +1155,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					return new InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class));
 				}
 			});
-			// build a temporary rupture set, so that we can get an InversionTargetMFDs instance
-			System.out.println("Building intermediate U3 rupture set, necessary to get InversionTargetMFDs "
-					+ "for slip rate reduction calculation");
-			FaultSystemRupSet tmpRupSet = build();
-			InversionTargetMFDs invMFDs = tmpRupSet.requireModule(InversionTargetMFDs.class);
-			double[][] tempSlips = InversionFaultSystemRupSet.computeTargetSlipRates(faultSectionData,
-					branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), invMFDs);
-			sectSlipRates(tempSlips[0]).sectSlipRateStdDevs(tempSlips[1]);
-			addModule(invMFDs);
+			addModule(new ModuleBuilder() {
+				
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					InversionTargetMFDs invMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+					return InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
+							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), invMFDs);
+				}
+			});
 			return this;
 		}
 		
@@ -1368,27 +1246,6 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			return this;
 		}
 		
-		public Builder sectSlipRates(double[] sectSlipRates) {
-			Preconditions.checkArgument(sectSlipRates == null
-					|| sectSlipRates.length == this.faultSectionData.size());
-			this.sectSlipRates = sectSlipRates;
-			return this;
-		}
-		
-		public Builder sectSlipRateStdDevs(double[] sectSlipRateStdDevs) {
-			Preconditions.checkArgument(sectSlipRateStdDevs == null
-					|| sectSlipRateStdDevs.length == this.faultSectionData.size());
-			this.sectSlipRateStdDevs = sectSlipRateStdDevs;
-			return this;
-		}
-		
-		public Builder sectAreas(double[] sectAreas) {
-			Preconditions.checkArgument(sectAreas == null
-					|| sectAreas.length == this.faultSectionData.size());
-			this.sectAreas = sectAreas;
-			return this;
-		}
-		
 		public Builder addModule(ModuleBuilder module) {
 			this.modules.add(module);
 			return this;
@@ -1407,27 +1264,6 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		public FaultSystemRupSet build() {
 			Preconditions.checkNotNull(mags, "Must set magnitudes");
-			int numSects = faultSectionData.size();
-			
-			double[] sectSlipRates= this.sectSlipRates;
-			if (sectSlipRates == null) {
-				sectSlipRates = new double[numSects];
-				for (int s=0; s<numSects; s++)
-					sectSlipRates[s] = faultSectionData.get(s).getReducedAveSlipRate()*1e-3; // mm/yr => m/yr
-			}
-			double[] sectSlipRateStdDevs = this.sectSlipRateStdDevs;
-			if (sectSlipRateStdDevs == null) {
-				sectSlipRateStdDevs = new double[numSects];
-				for (int s=0; s<numSects; s++)
-					sectSlipRateStdDevs[s] = faultSectionData.get(s).getReducedSlipRateStdDev()*1e-3; // mm/yr => m/yr
-			}
-			double[] sectAreas = this.sectAreas;
-			if (sectAreas == null) {
-				sectAreas = new double[numSects];
-				for (int s=0; s<numSects; s++)
-					sectAreas[s] = faultSectionData.get(s).getArea(true);
-			}
-			
 			int numRups = sectionForRups.size();
 			double[] rakes = this.rakes;
 			double[] rupAreas = this.rupAreas;
@@ -1448,7 +1284,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					double totArea = 0d;
 					for (int s : sectionForRups.get(r)) {
 						FaultSection sect = faultSectionData.get(s);
-						double area = sectAreas[s];	// sq-m
+						double area = sect.getArea(true);	// sq-m
 						totArea += area;
 						mySectAreas.add(area);
 						mySectRakes.add(sect.getAveRake());
@@ -1472,8 +1308,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 			}
 			
-			FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, sectSlipRates, sectSlipRateStdDevs,
-					sectAreas, sectionForRups, mags, rakes, rupAreas, rupLengths);
+			FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, sectionForRups, mags,
+					rakes, rupAreas, rupLengths);
 			for (ModuleBuilder module : modules)
 				rupSet.addModule(module.build(rupSet));
 			return rupSet;
@@ -1491,12 +1327,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 //		FaultSystemRupSet loaded = load(destFile);
 //		Preconditions.checkState(orig.isEquivalentTo(loaded));
 		
-		FaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(LogicTreeBranch.DEFAULT);
+		FaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(U3LogicTreeBranch.DEFAULT);
 		File destFile = new File("/tmp/new_ivfss.zip");
 		rupSet.getArchive().write(destFile);
 		FaultSystemRupSet loaded = load(destFile);
 		loaded.loadAllAvailableModules();
-		System.out.println(loaded.getModule(LogicTreeBranch.class));
+		System.out.println(loaded.getModule(U3LogicTreeBranch.class));
 	}
 
 }

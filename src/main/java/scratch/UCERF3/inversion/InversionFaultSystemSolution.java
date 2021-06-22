@@ -46,7 +46,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
@@ -73,7 +73,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	private InversionFaultSystemRupSet rupSet;
 	
 	private InversionModels invModel;
-	private LogicTreeBranch branch;
+	private U3LogicTreeBranch branch;
 	
 	/**
 	 * Inversion constraint weights and such. Note that this won't include the initial rup model or
@@ -150,7 +150,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 				branch = rupSet.getLogicTreeBranch();
 			} else {
 				// see if we can fill anything in from the rupSet
-				LogicTreeBranch rBranch = rupSet.getLogicTreeBranch();
+				U3LogicTreeBranch rBranch = rupSet.getLogicTreeBranch();
 				for (int i=0; i<branch.size(); i++) {
 					if (branch.getValue(i) == null && rBranch.getValue(i) != null)
 						branch.setValue(rBranch.getValue(i));
@@ -252,8 +252,8 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * @param props
 	 * @return
 	 */
-	private LogicTreeBranch loadBranch(Map<String, String> props) {
-		List<Class<? extends LogicTreeBranchNode<?>>> classes = LogicTreeBranch.getLogicTreeNodeClasses();
+	private U3LogicTreeBranch loadBranch(Map<String, String> props) {
+		List<Class<? extends LogicTreeBranchNode<?>>> classes = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		
 		List<LogicTreeBranchNode<?>> values = Lists.newArrayList();
 		
@@ -284,7 +284,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			values.add(value);
 		}
 		
-		return LogicTreeBranch.fromValues(values);
+		return U3LogicTreeBranch.fromValues(values);
 	}
 	
 //	private double offFaultAseisFactor = Double.NaN;
@@ -512,7 +512,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		return invModel;
 	}
 
-	public LogicTreeBranch getLogicTreeBranch() {
+	public U3LogicTreeBranch getLogicTreeBranch() {
 		return branch;
 	}
 

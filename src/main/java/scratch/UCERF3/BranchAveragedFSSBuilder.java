@@ -18,7 +18,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.FaultSystemIO;
 
@@ -49,10 +49,10 @@ public class BranchAveragedFSSBuilder {
 		
 		double weightSum = 0d;
 		List<Double> weightsList = Lists.newArrayList();
-		List<LogicTreeBranch> branches = Lists.newArrayList();
+		List<U3LogicTreeBranch> branches = Lists.newArrayList();
 		
 		branchLoop:
-		for (LogicTreeBranch branch : fetch.getBranches()) {
+		for (U3LogicTreeBranch branch : fetch.getBranches()) {
 			if (branch.getValue(FaultModels.class) != fm)
 				continue;
 			
@@ -84,7 +84,7 @@ public class BranchAveragedFSSBuilder {
 		System.out.println(branches.size()+" match criteria");
 		
 		for (int i=0; i<branches.size(); i++) {
-			LogicTreeBranch branch = branches.get(i);
+			U3LogicTreeBranch branch = branches.get(i);
 			if ((i+1) % 10 == 0) {
 				System.out.println("Loading solution "+(i+1));
 				System.gc();
@@ -114,7 +114,7 @@ public class BranchAveragedFSSBuilder {
 //				fm, DeformationModels.GEOLOGIC);
 		
 		InversionFaultSystemRupSet reference = InversionFaultSystemRupSetFactory.forBranch(laughTest,
-				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE, LogicTreeBranch.getMEAN_UCERF3(fm));
+				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE, U3LogicTreeBranch.getMEAN_UCERF3(fm));
 		
 		Preconditions.checkState(reference.getNumRuptures() == rates.length,
 				"Rupture count for Branch Averaged reference different than from FSS fetcher! ("

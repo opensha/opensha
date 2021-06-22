@@ -132,8 +132,10 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
 					"Expected 1 header row and %s rupture rows, have %s", numRups, csv.getNumRows());
 
 			double[] aveSlips = new double[numRups];
-			for (int r=0; r<numRups; r++)
+			for (int r=0; r<numRups; r++) {
+				Preconditions.checkState(csv.getInt(r+1, 0) == r, "Rows out of order or not 0-based");
 				aveSlips[r] = csv.getDouble(r+1, 1);
+			}
 			this.aveSlips = aveSlips;
 		}
 		

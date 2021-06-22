@@ -17,7 +17,7 @@ abstract class LogicalAndOrTrimmer implements TreeTrimmer {
 	}
 
 	@Override
-	public boolean isTreeValid(LogicTreeBranch branch) {
+	public boolean isTreeValid(U3LogicTreeBranch branch) {
 		if (and) {
 			for (TreeTrimmer trimmer : trimmers)
 				if (!trimmer.isTreeValid(branch))

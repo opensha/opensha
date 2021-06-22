@@ -29,7 +29,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 
 import com.google.common.base.Preconditions;
@@ -63,7 +63,7 @@ public class BranchSensitivityHistogram implements Serializable {
 		weightsTable = HashBasedTable.create();
 	}
 	
-	public void addValues(LogicTreeBranch branch, Double val, Double weight) {
+	public void addValues(U3LogicTreeBranch branch, Double val, Double weight) {
 		addValues(branch, val, weight, new String[0]);
 	}
 	
@@ -74,7 +74,7 @@ public class BranchSensitivityHistogram implements Serializable {
 	 * @param weight
 	 * @param extraValues
 	 */
-	public void addValues(LogicTreeBranch branch, Double val, Double weight, String... extraValues) {
+	public void addValues(U3LogicTreeBranch branch, Double val, Double weight, String... extraValues) {
 		Preconditions.checkState(extraValues == null || extraValues.length % 2 == 0,
 				"Extra values must be empty/null or supplied in category/choice pairs.");
 		
@@ -90,7 +90,7 @@ public class BranchSensitivityHistogram implements Serializable {
 		// populate each branch level
 		for (int i=0; i<branch.size(); i++) {
 			LogicTreeBranchNode<?> choice = branch.getValue(i);
-			String categoryName = ClassUtils.getClassNameWithoutPackage(LogicTreeBranch.getEnumEnclosingClass(choice.getClass()));
+			String categoryName = ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(choice.getClass()));
 			addValue(categoryName, choice.getShortName(), val, weight);
 		}
 		

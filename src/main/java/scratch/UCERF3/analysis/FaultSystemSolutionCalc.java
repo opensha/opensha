@@ -44,7 +44,7 @@ import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -149,7 +149,7 @@ public class FaultSystemSolutionCalc {
 	 */
 	public static void writePaleoObsSlipCOV_ForScalingRels(
 			FaultSystemSolutionFetcher fetcher, File outputDir) {
-		LogicTreeBranch ref = LogicTreeBranch.DEFAULT;
+		U3LogicTreeBranch ref = U3LogicTreeBranch.DEFAULT;
 		
 		for (ScalingRelationships scale : ScalingRelationships.values()) {
 //		ScalingRelationships scale = ScalingRelationships.SHAW_2009_MOD;

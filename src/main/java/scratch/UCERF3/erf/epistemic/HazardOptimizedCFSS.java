@@ -15,13 +15,13 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 
 public class HazardOptimizedCFSS extends FaultSystemSolutionFetcher {
 	
 	private CompoundFaultSystemSolution cfss;
-	private List<LogicTreeBranch> branches;
+	private List<U3LogicTreeBranch> branches;
 	
 	private InversionFaultSystemRupSet prevRupSet = null;
 
@@ -33,12 +33,12 @@ public class HazardOptimizedCFSS extends FaultSystemSolutionFetcher {
 	}
 
 	@Override
-	public Collection<LogicTreeBranch> getBranches() {
+	public Collection<U3LogicTreeBranch> getBranches() {
 		return branches;
 	}
 
 	@Override
-	protected synchronized InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+	protected synchronized InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 		if (prevRupSet == null) {
 			// do a full load
 			System.out.println("Loading first rupture set");
@@ -49,7 +49,7 @@ public class HazardOptimizedCFSS extends FaultSystemSolutionFetcher {
 		FaultModels fm = branch.getValue(FaultModels.class);
 		DeformationModels dm = branch.getValue(DeformationModels.class);
 		ScalingRelationships scale = branch.getValue(ScalingRelationships.class);
-		LogicTreeBranch prevBranch = prevRupSet.getLogicTreeBranch();
+		U3LogicTreeBranch prevBranch = prevRupSet.getLogicTreeBranch();
 		if (fm != prevBranch.getValue(FaultModels.class) || dm != prevBranch.getValue(DeformationModels.class)
 				|| scale != prevBranch.getValue(ScalingRelationships.class)) {
 			System.out.println("New FM, DM, or Scaling Relationship, must load full new rupture set");
@@ -65,18 +65,18 @@ public class HazardOptimizedCFSS extends FaultSystemSolutionFetcher {
 		return new InversionFaultSystemSolution(invRupSet, rates);
 	}
 	
-	private class ReadOptimizedBranchComparator implements Comparator<LogicTreeBranch> {
+	private class ReadOptimizedBranchComparator implements Comparator<U3LogicTreeBranch> {
 		
 		List<Class<? extends LogicTreeBranchNode<?>>> sortOrderClasses;
 		
 		public ReadOptimizedBranchComparator() {
 			sortOrderClasses = new ArrayList<>();
 			// default order is ideal
-			sortOrderClasses.addAll(LogicTreeBranch.getLogicTreeNodeClasses());
+			sortOrderClasses.addAll(U3LogicTreeBranch.getLogicTreeNodeClasses());
 		}
 
 		@Override
-		public int compare(LogicTreeBranch b1, LogicTreeBranch b2) {
+		public int compare(U3LogicTreeBranch b1, U3LogicTreeBranch b2) {
 			Preconditions.checkState(b1.size() == sortOrderClasses.size());
 			Preconditions.checkState(b2.size() == sortOrderClasses.size());
 			for (Class<? extends LogicTreeBranchNode<?>> clazz : sortOrderClasses) {

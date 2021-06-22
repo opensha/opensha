@@ -3,7 +3,7 @@ package scratch.UCERF3.logicTree;
 public class APrioriBranchWeightProvider implements BranchWeightProvider {
 
 	@Override
-	public double getWeight(LogicTreeBranch branch) {
+	public double getWeight(U3LogicTreeBranch branch) {
 		return branch.getAprioriBranchWt();
 	}
 

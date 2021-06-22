@@ -14,7 +14,7 @@ public class LogicalNotTreeTrimmer implements TreeTrimmer {
 	}
 
 	@Override
-	public boolean isTreeValid(LogicTreeBranch branch) {
+	public boolean isTreeValid(U3LogicTreeBranch branch) {
 		return !trimmer.isTreeValid(branch);
 	}
 

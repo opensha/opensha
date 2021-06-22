@@ -7,7 +7,7 @@ import org.opensha.commons.util.ClassUtils;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 import com.google.common.base.Preconditions;
 
@@ -36,9 +36,9 @@ public class CompoundSolBranchExtractor {
 		}
 		
 		// parse branch
-		LogicTreeBranch branch;
+		U3LogicTreeBranch branch;
 		try {
-			branch = LogicTreeBranch.fromFileName(args[1]);
+			branch = U3LogicTreeBranch.fromFileName(args[1]);
 		} catch (Exception e) {
 			throw new IllegalStateException("Could not parse Logic Tree Branch from: "+args[1], e);
 		}

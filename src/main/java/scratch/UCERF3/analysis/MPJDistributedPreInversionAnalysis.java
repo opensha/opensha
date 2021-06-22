@@ -26,7 +26,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.logicTree.ListBasedTreeTrimmer;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchIterator;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 
@@ -38,7 +38,7 @@ import com.google.common.collect.Maps;
 public class MPJDistributedPreInversionAnalysis extends MPJTaskCalculator {
 
 	private File file;
-	private List<LogicTreeBranch> branches;
+	private List<U3LogicTreeBranch> branches;
 
 	private Map<Integer, String> results;
 
@@ -99,7 +99,7 @@ public class MPJDistributedPreInversionAnalysis extends MPJTaskCalculator {
 		trimmer = new ListBasedTreeTrimmer(limitationsList);
 //		trimmer = ListBasedTreeTrimmer.getNonZeroWeightsTrimmer();
 
-		for (LogicTreeBranch branch : new LogicTreeBranchIterator(trimmer)) {
+		for (U3LogicTreeBranch branch : new LogicTreeBranchIterator(trimmer)) {
 			branches.add(branch);
 		}
 
@@ -152,7 +152,7 @@ public class MPJDistributedPreInversionAnalysis extends MPJTaskCalculator {
 			map = Maps.newHashMap();
 
 			for (int index : batch) {
-				LogicTreeBranch branch = branches.get(index);
+				U3LogicTreeBranch branch = branches.get(index);
 
 				InversionFaultSystemRupSet faultSysRupSet;
 				try {

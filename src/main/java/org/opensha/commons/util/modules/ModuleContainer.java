@@ -58,7 +58,9 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	
 	/**
 	 * Helper method to determine if a module exists that maps to the given class, equivalent to
-	 * {@code getModule(clazz) != null}.
+	 * {@code getModule(clazz) != null}. If there is a not-yet-loaded available module that matches
+	 * this type, it will be loaded and will return true if loading is successful. Use
+	 * {@link #hasAvailableModule(Class)} instead if you do not wish to load available modules.
 	 * 
 	 * @param clazz
 	 * @return true if a module exists for the given class, false otherwise
@@ -294,6 +296,27 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		
 		for (Class<?> clazz : assignableClasses)
 			mapAvailableModule(call, clazz);
+	}
+	
+	/**
+	 * Determine if a module exists that maps to the given class, or if we have an available
+	 * module that is not yet loaded of that type. This differs from {@link ModuleContainer#hasModule(Class)}
+	 * in that it only tests for existence of an available module, but will not load it. Use this if you only
+	 * need to test that a module is available, but loading might be expensive.
+	 * 
+	 * @param clazz
+	 * @return true if a module exists for the given class, false otherwise
+	 */
+	public boolean hasAvailableModule(Class<? extends E> clazz) {
+		E module = mappings.get(clazz);
+		if (module != null)
+			return true;
+		
+		// see if we have a loader for it
+		Callable<E> call = availableMappings.get(clazz);
+		if (call != null)
+			return true;
+		return false;
 	}
 	
 	/**

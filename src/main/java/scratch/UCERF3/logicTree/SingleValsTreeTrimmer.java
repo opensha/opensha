@@ -9,7 +9,7 @@ public class SingleValsTreeTrimmer implements TreeTrimmer {
 	}
 
 	@Override
-	public boolean isTreeValid(LogicTreeBranch branch) {
+	public boolean isTreeValid(U3LogicTreeBranch branch) {
 		for (LogicTreeBranchNode<?> val : values) {
 			LogicTreeBranchNode<?> oVal = branch.getValueUnchecked((Class<? extends LogicTreeBranchNode<?>>) val.getClass());
 			if (oVal == null || !val.equals(oVal))

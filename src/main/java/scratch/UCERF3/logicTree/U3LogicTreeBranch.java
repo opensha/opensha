@@ -1,18 +1,22 @@
 package scratch.UCERF3.logicTree;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 import org.dom4j.Element;
 import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.ClassUtils;
+
+import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Table;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -24,20 +28,13 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Table;
-
 /**
  * Stores LogicTreeBranch choices. Each node is an enum which implements the LogicTreeBranchNode interface.
  * 
  * @author kevin
  *
  */
-public class LogicTreeBranch extends org.opensha.commons.logicTree.LogicTreeBranch<LogicTreeBranchNode<? extends Enum<?>>>
+public class U3LogicTreeBranch extends org.opensha.commons.logicTree.LogicTreeBranch<LogicTreeBranchNode<? extends Enum<?>>>
 implements XMLSaveable {
 //public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends Enum<?>>>,
 //	Cloneable, Serializable, Comparable<LogicTreeBranch>, XMLSaveable {
@@ -47,14 +44,14 @@ implements XMLSaveable {
 	/**
 	 * This is the default UCERF3 reference branch
 	 */
-	public static final LogicTreeBranch DEFAULT = fromValues(FaultModels.FM3_1, DeformationModels.ZENGBB,
+	public static final U3LogicTreeBranch DEFAULT = fromValues(FaultModels.FM3_1, DeformationModels.ZENGBB,
 			ScalingRelationships.SHAW_2009_MOD, SlipAlongRuptureModels.TAPERED, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_7p9,
 			MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3);
 	
 	/**
 	 * This is the default UCERF2 reference branch
 	 */
-	public static final LogicTreeBranch UCERF2 = fromValues(FaultModels.FM2_1, DeformationModels.UCERF2_ALL,
+	public static final U3LogicTreeBranch UCERF2 = fromValues(FaultModels.FM2_1, DeformationModels.UCERF2_ALL,
 			ScalingRelationships.AVE_UCERF2, SlipAlongRuptureModels.UNIFORM, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_6p5,
 			MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF2);
 	// this one is when we are just using UCERF2 DM
@@ -65,11 +62,11 @@ implements XMLSaveable {
 	/**
 	 * This is the Mean UCERF3 reference branch
 	 */
-	public static LogicTreeBranch getMEAN_UCERF3(FaultModels fm) {
+	public static U3LogicTreeBranch getMEAN_UCERF3(FaultModels fm) {
 		return getMEAN_UCERF3(fm, DeformationModels.MEAN_UCERF3);
 	}
 	
-	public static LogicTreeBranch getMEAN_UCERF3(FaultModels fm, DeformationModels dm) {
+	public static U3LogicTreeBranch getMEAN_UCERF3(FaultModels fm, DeformationModels dm) {
 		return fromValues(fm, dm, ScalingRelationships.MEAN_UCERF3,
 				SlipAlongRuptureModels.MEAN_UCERF3, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_6p5,
 				MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF2);
@@ -108,15 +105,15 @@ implements XMLSaveable {
 	
 	private static Table<Class<? extends LogicTreeBranchNode<?>>, InversionModels, Double> classWeightTotals;
 	
-	protected LogicTreeBranch(LogicTreeBranch branch) {
+	protected U3LogicTreeBranch(U3LogicTreeBranch branch) {
 		super(branch);
 	}
 	
-	protected LogicTreeBranch(List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
+	protected U3LogicTreeBranch(List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
 		super(levels, branch);
 	}
 	
-	private LogicTreeBranch() {
+	private U3LogicTreeBranch() {
 		super();
 	}
 	
@@ -125,7 +122,7 @@ implements XMLSaveable {
 		return getEnumEnclosingClass(getValue(index).getClass());
 	}
 	
-	public int getNumAwayFrom(LogicTreeBranch branch) {
+	public int getNumAwayFrom(U3LogicTreeBranch branch) {
 		return super.getNumAwayFrom(branch);
 	}
 	
@@ -171,7 +168,7 @@ implements XMLSaveable {
 	 * @param vals
 	 * @return
 	 */
-	public static LogicTreeBranch fromValues(List<LogicTreeBranchNode<?>> vals) {
+	public static U3LogicTreeBranch fromValues(List<LogicTreeBranchNode<?>> vals) {
 		LogicTreeBranchNode<?>[] valsArray = new LogicTreeBranchNode[vals.size()];
 		
 		for (int i=0; i<vals.size(); i++)
@@ -187,7 +184,7 @@ implements XMLSaveable {
 	 * @param vals
 	 * @return
 	 */
-	public static LogicTreeBranch fromValues(LogicTreeBranchNode<?>... vals) {
+	public static U3LogicTreeBranch fromValues(LogicTreeBranchNode<?>... vals) {
 		return fromValues(true, vals);
 	}
 	
@@ -200,7 +197,7 @@ implements XMLSaveable {
 	 * @param vals
 	 * @return
 	 */
-	public static LogicTreeBranch fromValues(boolean setNullToDefault, LogicTreeBranchNode<?>... vals) {
+	public static U3LogicTreeBranch fromValues(boolean setNullToDefault, LogicTreeBranchNode<?>... vals) {
 		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
 		
 		// initialize branch with null
@@ -227,7 +224,7 @@ implements XMLSaveable {
 			values.set(ind, val);
 		}
 		
-		LogicTreeBranch branch = new LogicTreeBranch(values);
+		U3LogicTreeBranch branch = new U3LogicTreeBranch(values);
 		
 		if (setNullToDefault) {
 			// little fault model hack, since fault model can be dependent on deformation model if DM is specified
@@ -255,7 +252,7 @@ implements XMLSaveable {
 	 * @param strings
 	 * @return
 	 */
-	public static LogicTreeBranch fromStringValues(List<String> strings) {
+	public static U3LogicTreeBranch fromStringValues(List<String> strings) {
 		return fromFileName(Joiner.on("_").join(strings));
 	}
 	
@@ -267,7 +264,7 @@ implements XMLSaveable {
 	 * @param fileName
 	 * @return
 	 */
-	public static LogicTreeBranch fromFileName(String fileName) {
+	public static U3LogicTreeBranch fromFileName(String fileName) {
 		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
 		List<LogicTreeBranchNode<? extends Enum<?>>> branch = Lists.newArrayList();
 		
@@ -283,7 +280,7 @@ implements XMLSaveable {
 			}
 			branch.add(value);
 		}
-		return new LogicTreeBranch(branch);
+		return new U3LogicTreeBranch(branch);
 	}
 	
 	private static boolean doesStringContainOption(LogicTreeBranchNode<?> option, String str) {
@@ -342,7 +339,7 @@ implements XMLSaveable {
 //		String str = "FM3_1_GLpABM_MaEllB_DsrTap_DrEllB_Char";
 		String str = DEFAULT.buildFileName();
 		System.out.println("PARSING: "+str);
-		LogicTreeBranch br = fromFileName(str);
+		U3LogicTreeBranch br = fromFileName(str);
 		
 		FaultModels fm = parseValue(FaultModels.class, str);
 		System.out.println("FM? "+fm);
@@ -352,7 +349,7 @@ implements XMLSaveable {
 		
 		System.out.println("Num away? "+br.getNumAwayFrom(br));
 		
-		LogicTreeBranch br2 = fromFileName(str);
+		U3LogicTreeBranch br2 = fromFileName(str);
 		System.out.println(br2);
 		System.out.println("Num away? "+br.getNumAwayFrom(br2));
 		br2.setValue(FaultModels.FM3_2);
@@ -367,7 +364,7 @@ implements XMLSaveable {
 		for (int i=0; i<size(); i++)
 			newBranches.add(getValue(i));
 		
-		return new LogicTreeBranch(newBranches);
+		return new U3LogicTreeBranch(newBranches);
 	}
 	
 	/**
@@ -453,7 +450,7 @@ implements XMLSaveable {
 		return root;
 	}
 	
-	public static LogicTreeBranch fromXMLMetadata(Element branchEl) {
+	public static U3LogicTreeBranch fromXMLMetadata(Element branchEl) {
 		Element nodesEl = branchEl.element("Nodes");
 		
 		// first load in names
@@ -502,7 +499,7 @@ implements XMLSaveable {
 			branchList.add(value);
 		}
 		
-		LogicTreeBranch branch = new LogicTreeBranch(branchList);
+		U3LogicTreeBranch branch = new U3LogicTreeBranch(branchList);
 		
 		// now look for Variations
 		Element varsEl = branchEl.element("Variations");
