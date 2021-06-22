@@ -99,6 +99,26 @@ public class Location implements
 		this.lonRad = Math.toRadians(lon);
 		this.depth = depth;
 	}
+	
+	/**
+	 * Creates a backwards compatible <code>Location</code> where getLatitude/getLongitude will
+	 * return the same values as the prior OpenSHA implementation where values were only stored
+	 * in radians, and converted back to degrees when requested. Note that returned latitude/longitude
+	 * values here will not always exactly match the passed in lat/lon values (they are converted
+	 * to radians and then back).
+	 * 
+	 * @param lat
+	 * @param lon
+	 * @param depth
+	 * @return
+	 */
+	public static Location backwardsCompatible(double lat, double lon, double depth) {
+		double latRad = lat * GeoTools.TO_RAD;
+		double lonRad = lon * GeoTools.TO_RAD;
+		double latDeg = latRad * GeoTools.TO_DEG;
+		double lonDeg = lonRad * GeoTools.TO_DEG;
+		return new Location(latDeg, lonDeg, latRad, lonRad, depth);
+	}
 
 	// internal for clone use()
 	private Location(double latDeg, double lonDeg, double latRad, double lonRad, double depth) {
