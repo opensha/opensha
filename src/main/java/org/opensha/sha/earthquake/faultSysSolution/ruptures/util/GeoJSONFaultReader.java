@@ -6,6 +6,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -17,6 +19,10 @@ import java.util.Map;
 
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -48,11 +54,7 @@ public class GeoJSONFaultReader {
 	 * @throws IOException
 	 */
 	public static List<GeoJSONFaultSection> readFaultSections(File file) throws IOException {
-		return readFaultSections(reader(file));
-	}
-	
-	private static JsonReader reader(File file) throws IOException {
-		return new JsonReader(new BufferedReader(new FileReader(file)));
+		return readFaultSections(new BufferedReader(new FileReader(file)));
 	}
 	
 	/**
@@ -63,88 +65,38 @@ public class GeoJSONFaultReader {
 	 * @return
 	 * @throws IOException
 	 */
-	public static List<GeoJSONFaultSection> readFaultSections(JsonReader reader) throws IOException {
+	public static List<GeoJSONFaultSection> readFaultSections(Reader reader) throws IOException {
+		if (!(reader instanceof BufferedReader))
+			reader = new BufferedReader(reader);
+		FeatureCollection features = FeatureCollection.read(reader);
+		
 		List<GeoJSONFaultSection> ret = new ArrayList<>();
 		
 		HashSet<Integer> prevIDs = new HashSet<>();
 		
-		TypeAdapter<GeoJSONFaultSection> adapter = new GeoJSONFaultSection.Adapter();
-		
-		reader.beginObject();
-		while (reader.hasNext()) {
-			String nextName = reader.nextName();
-			switch (nextName) {
-			case "type":
-				Preconditions.checkState(reader.nextString().equals("FeatureCollection"), "Top level type must be a FeatureCollection");
-				break;
-			case "features":
-				Preconditions.checkState(reader.peek() == JsonToken.BEGIN_ARRAY);
-				reader.beginArray();
-				while (reader.hasNext()) {
-					GeoJSONFaultSection sect = adapter.read(reader);
-					int id = sect.getSectionId();
-					Preconditions.checkState(!prevIDs.contains(id), "Duplicate fault ID detected: %s", id);
-					ret.add(sect);
-					prevIDs.add(id);
-				}
-				reader.endArray();
-				break;
-				
-			default:
-//				System.out.println("Skipping "+nextName+" ("+reader.peek()+") at "+reader.getPath());
-				
-				reader.skipValue();
-				break;
-			}
-//			System.out.println("Ending feature");
+		for (Feature feature : features.features) {
+			GeoJSONFaultSection sect = GeoJSONFaultSection.fromFeature(feature);
+			int id = sect.getSectionId();
+			Preconditions.checkState(!prevIDs.contains(id), "Duplicate fault ID detected: %s", id);
+			ret.add(sect);
+			prevIDs.add(id);
 		}
-//		System.out.println("Ending object");
-		reader.endObject();
 		reader.close();
 		return ret;
 	}
 	
 	public static void writeFaultSections(File file, List<? extends FaultSection> sects) throws IOException {
-		JsonWriter writer = writer(file);
+		Writer writer = new BufferedWriter(new FileWriter(file));
 		writeFaultSections(writer, sects);
 		writer.close();
 	}
 	
-	private static JsonWriter writer(File file) throws IOException {
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		
-		JsonWriter jout = gson.newJsonWriter(new BufferedWriter(new FileWriter(file)));
-		return jout;
-	}
-	
-	public static void writeFaultSections(JsonWriter writer, List<? extends FaultSection> sects) throws IOException {
-		writer.beginObject();
-		
-		writer.name("type").value("FeatureCollection");
-		
-		// don't write CRS, it's unused as of RFC 7946
-//		writer.name("crs").beginObject();
-//		writer.name("type").value("name");
-//		writer.name("properties").beginObject().name("name").value("urn:ogc:def:crs:OGC:1.3:CRS84").endObject();
-//		writer.endObject(); // end crs
-		
-		writer.name("features").beginArray();
-		
-		TypeAdapter<GeoJSONFaultSection> adapter = new GeoJSONFaultSection.Adapter();
-		
-		for (FaultSection sect : sects) {
-			GeoJSONFaultSection geoSect;
-			if (sect instanceof GeoJSONFaultSection)
-				geoSect = (GeoJSONFaultSection)sect;
-			else
-				geoSect = new GeoJSONFaultSection(sect);
-			adapter.write(writer, geoSect);
-		}
-		
-		writer.endArray(); // end features
-		
-		writer.endObject();
-		
+	public static void writeFaultSections(Writer writer, List<? extends FaultSection> sects) throws IOException {
+		List<Feature> features = new ArrayList<>(sects.size());
+		for (FaultSection sect : sects)
+			features.add(GeoJSONFaultSection.toFeature(sect));
+		FeatureCollection collection = new FeatureCollection(features);
+		FeatureCollection.write(collection, writer);
 		writer.flush();
 	}
 	
@@ -177,91 +129,20 @@ public class GeoJSONFaultReader {
 		public final int faultID;
 		public final String faultName;
 		public final String state;
-		public final String siteName;
 		public final String dataType;
 		public final String observation;
-		public final Double prefRate;
-		public final Double lowRate;
-		public final Double highRate;
-		public final Double rate2014;
+		public final double prefRate;
+		public final double lowRate;
+		public final double highRate;
+		public final double rate2014;
 		public final Location location;
 		
-		public GeoSlipRateRecord(String slipRateID, int faultID, String faultName, String state, String siteName,
-				String dataType, String observation, Double prefRate, Double lowRate, Double highRate, Double rate2014,
-				Location location) {
-			super();
-			this.slipRateID = slipRateID;
-			this.faultID = faultID;
-			this.faultName = faultName;
-			this.state = state;
-			this.siteName = siteName;
-			this.dataType = dataType;
-			this.observation = observation;
-			this.prefRate = prefRate;
-			this.lowRate = lowRate;
-			this.highRate = highRate;
-			this.rate2014 = rate2014;
-			this.location = location;
-		}
-	}
-	
-	/**
-	 * Loads all fault geologic slip rate records from the given GeoJSON reader. Results are mapped from fault ID to 
-	 * records for that fault.
-	 * 
-	 * @param file
-	 * @return map of fault ID to geologic records for that fault
-	 * @throws IOException
-	 */
-	public static Map<Integer, List<GeoSlipRateRecord>> readGeoDB(File file) throws IOException {
-		return readGeoDB(reader(file));
-	}
-	
-	/**
-	 * Loads all fault geologic slip rate records from the given GeoJSON reader. Results are mapped from fault ID to 
-	 * records for that fault.
-	 * 
-	 * @param reader
-	 * @return map of fault ID to geologic records for that fault
-	 * @throws IOException
-	 */
-	public static Map<Integer, List<GeoSlipRateRecord>> readGeoDB(JsonReader reader) throws IOException {
-		Map<Integer, List<GeoSlipRateRecord>> ret = new HashMap<>();
-		
-		reader.beginObject();
-		while (reader.hasNext()) {
-			switch (reader.nextName()) {
-			case "features":
-				Preconditions.checkState(reader.peek() == JsonToken.BEGIN_ARRAY);
-				reader.beginArray();
-				while (reader.hasNext()) {
-					String slipRateID = null;
-					Integer faultID = null;
-					String faultName = null;
-					String state = null;
-					String siteName = null;
-					String dataType = null;
-					String observation = null;
-					Double prefRate = null;
-					Double lowRate = null;
-					Double highRate = null;
-					Double rate2014 = null;
-					Location location = null;
-					
-					reader.beginObject();
-					
-					while (reader.hasNext()) {
-						switch (reader.nextName()) {
-						case "type":
-							String type = reader.nextString();
-							Preconditions.checkState(type.equals("Feature"), "Expected 'Feature' but was '%s'", type);
-							break;
-						case "properties":
-							reader.beginObject();
-							while (reader.hasNext()) {
-								String nextName = reader.nextName();
-								switch (nextName) {
-								case "SlipRateID":
+		public GeoSlipRateRecord(Feature feature) {
+			Preconditions.checkNotNull(feature);
+			FeatureProperties properties = feature.properties;
+			Preconditions.checkNotNull(properties);
+			/*
+			 * case "SlipRateID":
 									slipRateID = reader.nextString();
 									break;
 								case "FaultID":
@@ -294,93 +175,81 @@ public class GeoJSONFaultReader {
 								case "2014rate":
 									rate2014 = tryReadSlipRateDouble(reader);
 									break;
-									
-
-								default:
-									reader.skipValue();
-									break;
-								}
-							}
-							reader.endObject();
-							break;
-							
-						case "geometry":
-							reader.beginObject();
-							
-							while (reader.hasNext()) {
-								switch (reader.nextName()) {
-								case "type":
-									String gType = reader.nextString();
-									Preconditions.checkState(gType.equals("Point"), "Only Point supported, given: %s", gType);
-									break;
-								case "coordinates":
-									reader.beginArray();
-									double lon = reader.nextDouble();
-									double lat = reader.nextDouble();
-									location = new Location(lat, lon);
-									reader.endArray();
-									break;
-
-								default:
-									break;
-								}
-							}
-							
-							reader.endObject();
-							break;
-							
-						default:
-							reader.skipValue();
-							break;
-						}
-					}
-					
-					reader.endObject();
-
-					Preconditions.checkNotNull(slipRateID);
-					Preconditions.checkNotNull(faultID);
-					Preconditions.checkNotNull(faultName);
-					Preconditions.checkNotNull(state);
-					GeoSlipRateRecord record = new GeoSlipRateRecord(slipRateID, faultID, faultName, state, siteName,
-							dataType, observation, prefRate, lowRate, highRate, rate2014, location);
-					List<GeoSlipRateRecord> faultRecords = ret.get(faultID);
-					if (faultRecords == null) {
-						faultRecords = new ArrayList<>();
-						ret.put(faultID, faultRecords);
-					}
-					faultRecords.add(record);
+			 */
+			// these are required
+			slipRateID = properties.get("SlipRateID").toString();
+			faultID = properties.getInt("FaultID", -1);
+			Preconditions.checkState(faultID > 0);
+			faultName = properties.get("FaultName").toString();
+			state = properties.get("State").toString();
+			// these are optional
+			dataType = properties.get("DataType", null);
+			observation = properties.get("Observn", null);
+			prefRate = tryGetDouble(properties, "PrefRate");
+			lowRate = tryGetDouble(properties, "LowRate");
+			highRate = tryGetDouble(properties, "HighRate");
+			rate2014 = tryGetDouble(properties, "2014rate");
+			
+			Preconditions.checkNotNull(feature.geometry);
+			Preconditions.checkState(feature.geometry instanceof Point, "Only Point geometry supported");
+			location = ((Point)feature.geometry).point;
+		}
+		
+		private double tryGetDouble(FeatureProperties properties, String name) {
+			Object value = properties.get(name);
+			if (value == null) {
+				return Double.NaN;
+			} else if (value instanceof Number) {
+				return ((Number)value).doubleValue();
+			} else {
+				String str = value.toString();
+				try {
+					return Double.parseDouble(str);
+				} catch (NumberFormatException e) {
+					return Double.NaN;
 				}
-				reader.endArray();
-				break;
-				
-			default:
-				reader.skipValue();
-				break;
 			}
 		}
-		reader.endObject();
-		reader.close();
-		return ret;
 	}
 	
-	private static Double tryReadSlipRateDouble(JsonReader reader) throws IOException {
-		JsonToken peek = reader.peek();
-		if (peek == JsonToken.NULL) {
-			reader.skipValue();
-			return null;
-		}
-		if (peek == JsonToken.STRING) {
-			// could be a number, as a string...arg
-			String str = reader.nextString();
-			try {
-				return Double.parseDouble(str);
-			} catch (NumberFormatException e) {
-				return null;
+	/**
+	 * Loads all fault geologic slip rate records from the given GeoJSON reader. Results are mapped from fault ID to 
+	 * records for that fault.
+	 * 
+	 * @param file
+	 * @return map of fault ID to geologic records for that fault
+	 * @throws IOException
+	 */
+	public static Map<Integer, List<GeoSlipRateRecord>> readGeoDB(File file) throws IOException {
+		return readGeoDB(new BufferedReader(new FileReader(file)));
+	}
+	
+	/**
+	 * Loads all fault geologic slip rate records from the given GeoJSON reader. Results are mapped from fault ID to 
+	 * records for that fault.
+	 * 
+	 * @param reader
+	 * @return map of fault ID to geologic records for that fault
+	 * @throws IOException
+	 */
+	public static Map<Integer, List<GeoSlipRateRecord>> readGeoDB(Reader reader) throws IOException {
+		if (!(reader instanceof BufferedReader))
+			reader = new BufferedReader(reader);
+		Map<Integer, List<GeoSlipRateRecord>> ret = new HashMap<>();
+		
+		FeatureCollection features = FeatureCollection.read(reader);
+		
+		for (Feature feature : features.features) {
+			GeoSlipRateRecord record = new GeoSlipRateRecord(feature);
+			List<GeoSlipRateRecord> faultRecords = ret.get(record.faultID);
+			if (faultRecords == null) {
+				faultRecords = new ArrayList<>();
+				ret.put(record.faultID, faultRecords);
 			}
+			faultRecords.add(record);
 		}
-		Preconditions.checkState(peek == JsonToken.NUMBER,
-				"Expected STRING, NULL, or NUMBER for slip rate. Have %s at %s", peek, reader.getPath());
-		return reader.nextDouble();
+		reader.close();
+		return ret;
 	}
 	
 	public static void testMapSlipRates(Collection<? extends FaultSection> sects, Map<Integer, List<GeoSlipRateRecord>> recsMap,
@@ -461,12 +330,12 @@ public class GeoJSONFaultReader {
 	}
 	
 	private static Double bestGuessSlipRate(GeoSlipRateRecord record) {
-		if (record.prefRate != null)
+		if (Double.isFinite(record.prefRate))
 			return record.prefRate;
-		if (record.rate2014 != null)
+		if (Double.isFinite(record.rate2014))
 			return record.rate2014;
 		// try bounds
-		if (record.lowRate != null && record.highRate != null)
+		if (Double.isFinite(record.lowRate) && Double.isFinite(record.highRate))
 			return 0.5*(record.lowRate + record.highRate);
 		System.err.println("WARNING: Couldn't guess slip rate for "+record.faultID+". "+record.faultName+": "+record.slipRateID);
 		return null;
