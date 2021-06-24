@@ -2,6 +2,8 @@ package scratch.UCERF3.griddedSeismicity;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +16,8 @@ import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_Mag
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -39,7 +43,7 @@ import scratch.UCERF3.utils.GardnerKnopoffAftershockFilter;
  * @author Peter Powers
  * @version $Id:$
  */
-public abstract class AbstractGridSourceProvider implements GridSourceProvider {
+public abstract class AbstractGridSourceProvider implements GridSourceProvider, ArchivableModule {
 
 	private final WC1994_MagLengthRelationship magLenRel = new WC1994_MagLengthRelationship();
 	private double ptSrcCutoff = 6.0;
@@ -271,7 +275,22 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider {
 //		}
 	}
 
-	public static class Precomputed extends AbstractGridSourceProvider implements ArchivableModule {
+	@Override
+	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		new Precomputed(this).writeToArchive(zout, entryPrefix);
+	}
+
+	@Override
+	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		throw new IllegalStateException("This should not be called (loaded as Precomputed instance)");
+	}
+
+	@Override
+	public Class<? extends ArchivableModule> getLoadingClass() {
+		return Precomputed.class;
+	}
+
+	private static class Precomputed extends AbstractGridSourceProvider implements ArchivableModule {
 		
 		private GriddedRegion region;
 		private ImmutableMap<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs;
@@ -285,7 +304,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider {
 			// for serialization
 		}
 
-		public Precomputed(GridSourceProvider prov) {
+		private Precomputed(GridSourceProvider prov) {
 			this.region = prov.getGriddedRegion();
 			int nodeCount = region.getNodeCount();
 			Builder<Integer, IncrementalMagFreqDist> subSeisBuilder = ImmutableMap.builder();
@@ -303,19 +322,6 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider {
 			}
 			this.nodeSubSeisMFDs = subSeisBuilder.build();
 			this.nodeUnassociatedMFDs = unassociatedBuilder.build();
-		}
-		
-		public Precomputed(GriddedRegion region,
-				Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
-				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs,
-				double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse) {
-			this.region = region;
-			this.nodeSubSeisMFDs = ImmutableMap.copyOf(nodeSubSeisMFDs);
-			this.nodeUnassociatedMFDs = ImmutableMap.copyOf(nodeUnassociatedMFDs);
-			this.fracStrikeSlip = fracStrikeSlip;
-			this.fracNormal = fracNormal;
-			this.fracReverse = fracReverse;
-			
 		}
 
 		@Override
@@ -428,11 +434,13 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider {
 			CSVFile<String> subSeisCSV = buildCSV(nodeSubSeisMFDs);
 			CSVFile<String> unassociatedCSV = buildCSV(nodeUnassociatedMFDs);
 			
-			// TODO region serialization
-//			FileBackedModule.initEntry(zout, entryPrefix, "grid_region.geojson");
-//			GeoJSONFaultReader.writeFaultSections(zout, faultSectionData);
-//			zout.flush();
-//			zout.closeEntry();
+			FileBackedModule.initEntry(zout, entryPrefix, "grid_region.geojson");
+			Feature regFeature = region.toFeature();
+			OutputStreamWriter writer = new OutputStreamWriter(zout);
+			Feature.write(regFeature, writer);
+			writer.flush();
+			zout.flush();
+			zout.closeEntry();
 			
 			if (subSeisCSV != null)
 				CSV_BackedModule.writeToArchive(subSeisCSV, zout, entryPrefix, "grid_sub_seis_mfds.csv");
@@ -443,9 +451,11 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider {
 
 		@Override
 		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-			// TODO load region
-			System.err.println("TODO: serialization of GridSourceFileReader is incomplete and currently assumes RELM region");
-			region = null;
+			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, "grid_region.geojson");
+			InputStreamReader regionReader = new InputStreamReader(regionIS);
+			Feature regFeature = Feature.read(regionReader);
+			region = GriddedRegion.fromFeature(regFeature);
+			
 			Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = loadCSV(
 					region, zip, entryPrefix, "grid_sub_seis_mfds.csv");
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = loadCSV(

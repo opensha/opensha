@@ -158,6 +158,7 @@ public class FeatureCollection {
 	 */
 	public static void write(FeatureCollection features, File jsonFile) throws IOException {
 		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		write(features, writer);
 		writer.close();
 	}
 	

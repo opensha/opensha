@@ -1,8 +1,17 @@
 package org.opensha.commons.geo.json;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
@@ -164,6 +173,62 @@ public class Feature {
 		
 	}
 	
+	/**
+	 * Reads a FeatureCollection from the given GeoJSON file
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Feature read(File jsonFile) throws IOException {
+		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		return read(reader);
+	}
 	
+	/**
+	 * Reads a FeatureCollection from the given reader
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Feature read(Reader reader) throws IOException {
+		if (!(reader instanceof BufferedReader))
+			reader = new BufferedReader(reader);
+		Gson gson = new GsonBuilder().create();
+		Feature ret = gson.fromJson(reader, Feature.class);
+		reader.close();
+		return ret;
+	}
+	
+	/**
+	 * Writes a FeatureCollection to the given GeoJSON file
+	 * 
+	 * @param features
+	 * @param jsonFile
+	 * @throws IOException
+	 */
+	public static void write(Feature feature, File jsonFile) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		write(feature, writer);
+		writer.close();
+	}
+	
+	/**
+	 * Writes a FeatureCollection to the given writer
+	 * 
+	 * @param features
+	 * @param writer
+	 * @throws IOException
+	 */
+	public static void write(Feature feature, Writer writer) throws IOException {
+		if (!(writer instanceof BufferedWriter))
+			writer = new BufferedWriter(writer);
+		
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		gson.toJson(feature, Feature.class, writer);
+		
+		writer.flush();
+	}
 
 }

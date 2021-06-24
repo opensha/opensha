@@ -2,6 +2,8 @@ package org.opensha.sha.earthquake.faultSysSolution;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -179,7 +181,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		// fault sections
 		FileBackedModule.initEntry(zout, entryPrefix, "fault_sections.geojson");
-		GeoJSONFaultReader.writeFaultSections(zout, faultSectionData);
+		OutputStreamWriter writer = new OutputStreamWriter(zout);
+		GeoJSONFaultReader.writeFaultSections(writer, faultSectionData);
+		writer.flush();
 		zout.flush();
 		zout.closeEntry();
 	}
@@ -219,7 +223,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		// fault sections
 		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
-				FileBackedModule.getInputStream(zip, entryPrefix, "fault_sections.geojson"));
+				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, "fault_sections.geojson")));
 		for (int s=0; s<sections.size(); s++)
 			Preconditions.checkState(sections.get(s).getSectionId() == s,
 			"Fault sections must be provided in order starting with ID=0");
@@ -1329,7 +1333,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 //		Preconditions.checkState(orig.isEquivalentTo(loaded));
 		
 		FaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(U3LogicTreeBranch.DEFAULT);
-		File destFile = new File("/tmp/new_ivfss.zip");
+		File destFile = new File("/tmp/new_ivfrs.zip");
 		rupSet.getArchive().write(destFile);
 		FaultSystemRupSet loaded = load(destFile);
 		loaded.loadAllAvailableModules();

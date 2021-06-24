@@ -14,6 +14,11 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 	
 	private ImmutableList<IncrementalMagFreqDist> subSeismoOnFaultMFDs;
 	
+	@SuppressWarnings("unused")
+	private SubSeismoOnFaultMFDs() {
+		// used for deserialization
+	}
+	
 	public SubSeismoOnFaultMFDs(List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
 		this.subSeismoOnFaultMFDs = ImmutableList.copyOf(subSeismoOnFaultMFDs);
 	}
