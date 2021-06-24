@@ -23,6 +23,7 @@ import java.awt.Color;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
@@ -347,7 +348,7 @@ public class CaliforniaRegions {
 			return null;
 		}
 	}
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 //		RegionUtils.regionToKML(new RELM_GRIDDED(), "Relm Gridded", Color.BLUE);
 //		RegionUtils.regionToKML(new RELM_TESTING_GRIDDED(), "Relm Testing", Color.RED);
 		
