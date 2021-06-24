@@ -1,6 +1,7 @@
 package org.opensha.sha.faultSurface;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.dom4j.Element;
 import org.opensha.commons.calc.FaultMomentCalc;
@@ -283,7 +284,10 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 * @param creepReduced 0 whether or not to apply aseismicity
 	 * @return area of this section in square meters
 	 */
-	public double getArea(boolean creepReduced);
+	public default double getArea(boolean creepReduced) {
+		double ddw = creepReduced ? getReducedDownDipWidth() : getOrigDownDipWidth();
+		return ddw * getTraceLength() * 1e6;
+	}
 	
 	/**
 	 * This calculates the moment rate of this fault section
@@ -318,12 +322,111 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 			boolean aseisReducesArea);
 	
 	/**
-	 * This returns a simple fault data object
+	 * This returns a simple fault data object.  This version applies aseismicity as in increase of the
+	 * upper-lower seismogenic depth only (no change to lower seismogenic depth)
 	 *
 	 * @param faultSection
 	 * @return
 	 */
-	public SimpleFaultData getSimpleFaultData(boolean aseisReducesArea);
+	public default SimpleFaultData getSimpleFaultData(boolean aseisReducesArea) {
+		double upperDepth = getOrigAveUpperDepth();
+		if (aseisReducesArea) {
+			upperDepth = getReducedAveUpperDepth();
+		}
+		return new SimpleFaultData(getAveDip(), getAveLowerDepth(), upperDepth, getFaultTrace(), getDipDirection());
+	}
 	
 	public FaultSection clone();
+	
+	public static class StirlingSurfaceCache {
+		
+		double lastGridSpacing = Double.NaN; 
+		boolean lastPreserveGridSpacingExactly;
+		boolean lastAseisReducesArea;
+		private StirlingGriddedSurface stirlingGriddedSurface = null;
+		private FaultSection sect;
+		
+		public StirlingSurfaceCache(FaultSection sect) {
+			this.sect = sect;
+		}
+		
+		/**
+		 * This returns a StirlingGriddedSurface with the specified grid spacing, where aseismicSlipFactor
+		 * is applied as a reduction of down-dip-width (an increase of the upper seis depth).
+		 * @param gridSpacing
+		 * @param preserveGridSpacingExactly - if false, this will decrease the grid spacing to fit the length 
+		 * and ddw exactly (otherwise trimming occurs)
+		 * @return
+		 */
+		public synchronized StirlingGriddedSurface getStirlingGriddedSurface(
+				double gridSpacing, boolean preserveGridSpacingExactly,
+				boolean aseisReducesArea) {
+			// return cached surface?
+			if( (gridSpacing==lastGridSpacing && stirlingGriddedSurface != null)
+					&& (preserveGridSpacingExactly== lastPreserveGridSpacingExactly)
+					&& (aseisReducesArea == lastAseisReducesArea)) {
+				return stirlingGriddedSurface;
+			} else {		// make the surface
+				// make sure quad surf is null since things changed
+				if (preserveGridSpacingExactly)
+					stirlingGriddedSurface = new StirlingGriddedSurface(sect.getSimpleFaultData(aseisReducesArea), gridSpacing);
+				else
+					stirlingGriddedSurface = new StirlingGriddedSurface(sect.getSimpleFaultData(aseisReducesArea), gridSpacing, gridSpacing);
+				// set the last values used
+				lastPreserveGridSpacingExactly = preserveGridSpacingExactly;
+				lastAseisReducesArea = aseisReducesArea;
+				lastGridSpacing = gridSpacing;
+			}
+			return stirlingGriddedSurface;
+		}
+	}
+	
+	public static class QuadSurfaceCache {
+		
+		boolean lastPreserveGridSpacingExactly;
+		boolean lastAseisReducesArea;
+		private QuadSurface quadSurf = null;
+		private FaultSection sect;
+		
+		public QuadSurfaceCache(FaultSection sect) {
+			this.sect = sect;
+		}
+		
+		public synchronized QuadSurface getQuadSurface(boolean aseisReducesArea, double spacingForGridOperations) {
+			if (lastAseisReducesArea == aseisReducesArea && quadSurf != null) {
+				quadSurf.setAveGridSpacing(spacingForGridOperations);
+				return quadSurf;
+			}
+			lastAseisReducesArea = aseisReducesArea;
+			quadSurf = new QuadSurface(sect, aseisReducesArea);
+			return quadSurf;
+		}
+	}
+
+	/**
+	 * Default hashCode() implementation for a fault section, just hashes parent/section IDs
+	 * 
+	 * @param sect
+	 * @return
+	 */
+	public static int hashCode(FaultSection sect) {
+		return Objects.hash(sect.getParentSectionId(), sect.getSectionId());
+	}
+
+	/**
+	 * Default equals() implementation for a fault section, just checks parent/section IDs
+	 * 
+	 * @param sect
+	 * @return
+	 */
+	public static boolean equals(FaultSection sect, Object obj) {
+		if (sect == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!FaultSection.class.isAssignableFrom(obj.getClass()))
+			return false;
+		FaultSection other = (FaultSection) obj;
+		return sect.getParentSectionId() == other.getParentSectionId() && sect.getSectionId() == other.getSectionId();
+	}
 }

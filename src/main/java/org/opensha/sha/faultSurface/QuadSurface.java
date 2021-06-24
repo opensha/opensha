@@ -120,17 +120,17 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	 */
 	private boolean distX_useAvgStrike = true;
 	
-	private static double calcWidth(FaultSectionPrefData prefData, boolean aseisReducesArea) {
+	private static double calcWidth(FaultSection sect, boolean aseisReducesArea) {
 		double upperDepth;
 		if (aseisReducesArea)
-			upperDepth = prefData.getReducedAveUpperDepth();
+			upperDepth = sect.getReducedAveUpperDepth();
 		else
-			upperDepth = prefData.getOrigAveUpperDepth();
-		double lowerDepth = prefData.getAveLowerDepth();
+			upperDepth = sect.getOrigAveUpperDepth();
+		double lowerDepth = sect.getAveLowerDepth();
 //		System.out.println("Wdith calc: ("+lowerDepth+"-"+upperDepth+") * "
 //				+Math.sin(Math.toRadians(prefData.getAveDip())));
 //		System.out.println("Dip: "+prefData.getAveDip());
-		return (lowerDepth-upperDepth) / Math.sin(Math.toRadians(prefData.getAveDip()));
+		return (lowerDepth-upperDepth) / Math.sin(Math.toRadians(sect.getAveDip()));
 	}
 	
 	/**
@@ -139,16 +139,16 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	 * @param aseisReducesArea
 	 * @return
 	 */
-	private static FaultTrace getTraceBelowSeismogenic(FaultSectionPrefData prefData, boolean aseisReducesArea) {
+	private static FaultTrace getTraceBelowSeismogenic(FaultSection sect, boolean aseisReducesArea) {
 		double upperSeismogenicDepth;
 		if (aseisReducesArea)
-			upperSeismogenicDepth = prefData.getReducedAveUpperDepth();
+			upperSeismogenicDepth = sect.getReducedAveUpperDepth();
 		else
-			upperSeismogenicDepth = prefData.getOrigAveUpperDepth();
+			upperSeismogenicDepth = sect.getOrigAveUpperDepth();
 
-		double aveDipRadians = Math.toRadians(prefData.getAveDip());
-		double aveDipDirection = prefData.getDipDirection();
-		return getTraceBelowDepth(prefData.getFaultTrace(), upperSeismogenicDepth, aveDipRadians, aveDipDirection);
+		double aveDipRadians = Math.toRadians(sect.getAveDip());
+		double aveDipDirection = sect.getDipDirection();
+		return getTraceBelowDepth(sect.getFaultTrace(), upperSeismogenicDepth, aveDipRadians, aveDipDirection);
 	}
 	
 	private static FaultTrace getTraceBelowDepth(FaultTrace trace, double depth, double avgDipRad, double dipDirDeg) {
@@ -159,9 +159,9 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		return belowTrace;
 	}
 	
-	public QuadSurface(FaultSectionPrefData prefData, boolean aseisReducesArea) {
-		this(getTraceBelowSeismogenic(prefData, aseisReducesArea),
-				prefData.getAveDip(), calcWidth(prefData, aseisReducesArea));
+	public QuadSurface(FaultSection sect, boolean aseisReducesArea) {
+		this(getTraceBelowSeismogenic(sect, aseisReducesArea),
+				sect.getAveDip(), calcWidth(sect, aseisReducesArea));
 //		this(prefData.getFaultTrace(),
 //				prefData.getAveDip(), calcWidth(prefData, aseisReducesArea));
 	}
