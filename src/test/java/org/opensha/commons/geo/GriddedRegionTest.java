@@ -51,8 +51,8 @@ public class GriddedRegionTest {
 	static GriddedRegion octRegionML;
 	static GriddedRegion octRegionGC;
 
-	static int octRegionNodeCountML = 683;
-	static int octRegionNodeCountGC = 689;
+	static int octRegionNodeCountML = 700;
+	static int octRegionNodeCountGC = 691;
 
 	@BeforeClass
 	public static void setUp(){
@@ -66,7 +66,7 @@ public class GriddedRegionTest {
 	}
 	
 	private static Location loc(double lat, double lon) {
-		return Location.backwardsCompatible(lat, lon, 0d);
+		return new Location(lat, lon);
 	}
 	
 	private static LocationList createOctLocList() {
@@ -325,8 +325,8 @@ public class GriddedRegionTest {
 
 	@Test
 	public final void testGetNodeList() {
-		assertTrue(octRegionML.getNodeList().size() == octRegionNodeCountML);
-		assertTrue(octRegionGC.getNodeList().size() == octRegionNodeCountGC);
+		assertEquals("octRegionNodeCountML", octRegionNodeCountML, octRegionML.getNodeList().size());
+		assertEquals("octRegionNodeCountGC", octRegionNodeCountGC, octRegionGC.getNodeList().size());
 	}
 
 	@Test
@@ -335,17 +335,17 @@ public class GriddedRegionTest {
 		Location l2 = loc(15,15);
 		GriddedRegion gr1 = new GriddedRegion(l1,l2,1,null);
 		Location loc0 = gr1.locationForIndex(0);
-		assertTrue(loc0.equals(l1));
+		assertEquals("l1", loc0, l1);
 		loc0 = gr1.locationForIndex(35);
-		assertTrue(loc0.equals(l2));
+		assertEquals("l2", loc0, l2);
 		
 		l1 = loc(10.1,10.1);
 		l2 = loc(15,15);
 		GriddedRegion gr2 = new GriddedRegion(l1,l2,1,null);
 		loc0 = gr2.locationForIndex(0);
-		assertTrue(loc0.equals(loc(10.1,10.1)));
+		assertEquals("10.1, 10.1", loc0, loc(10.1,10.1));
 		loc0 = gr2.locationForIndex(24);
-		assertTrue(loc0.equals(loc(14.1,14.1)));
+		assertEquals("14.1, 14.1", loc0, loc(14.1,14.1));
 	}
 
 	@Test
@@ -420,17 +420,17 @@ public class GriddedRegionTest {
 	@Test
 	public final void testGetMinGridLon() {
 		assertTrue(Precision.equals(
-				octRegionML.getMinGridLon(), -119.5, TOLERANCE));
+				octRegionML.getMinGridLon(), -120.0, TOLERANCE));
 		assertTrue(Precision.equals(
-				octRegionGC.getMinGridLon(), -119.5, TOLERANCE));
+				octRegionGC.getMinGridLon(), -120.0, TOLERANCE));
 	}
 
 	@Test
 	public final void testGetMaxGridLon() {
 		assertTrue(Precision.equals(
-				octRegionML.getMaxGridLon(), -105.5, TOLERANCE));
+				octRegionML.getMaxGridLon(), -105.0, TOLERANCE));
 		assertTrue(Precision.equals(
-				octRegionGC.getMaxGridLon(), -105.5, TOLERANCE));
+				octRegionGC.getMaxGridLon(), -105.0, TOLERANCE));
 	}
 
 	
