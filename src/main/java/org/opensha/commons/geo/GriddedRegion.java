@@ -1081,8 +1081,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		Location loc;
 		for (double lat : latNodeCenters) {
 			for (double lon : lonNodeCenters) {
-				// create nodes with backwards compatible locations so-as to preserve gridding of pre-2021 regions
-				loc = Location.backwardsCompatible(lat, lon, 0d);
+				loc = new Location(lat, lon, 0d);
 				if (contains(loc)) {
 					nodeList.add(loc);
 					gridIndices[grid_idx] = node_idx++;
