@@ -522,6 +522,8 @@ public class CaliforniaRegions {
 				type = GriddedRegion.class;
 			}
 			System.out.println(region.getName()+" has prefix "+prefix);
+			if (region instanceof GriddedRegion)
+				System.out.println("\t"+((GriddedRegion)region).getNodeCount()+" grid nodes");
 			File jsonFile = new File(outputDir, prefix+".geojson");
 			if (jsonFile.exists()) {
 				// try reading it
