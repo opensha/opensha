@@ -1,6 +1,9 @@
 package org.opensha.sha.faultSurface;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.List;
@@ -11,11 +14,9 @@ import org.junit.Test;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.Geometry;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.GeoJSONFaultSection;
-import org.opensha.sha.faultSurface.GeoJSONFaultSection.Adapter;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -25,7 +26,6 @@ import scratch.UCERF3.utils.LastEventData;
 
 public class GeoJSONFaultSectionTest {
 	
-	private static Adapter adapter;
 	private static Gson gson;
 	private static Random r = new Random();
 	
@@ -33,10 +33,8 @@ public class GeoJSONFaultSectionTest {
 	
 	@BeforeClass
 	public static void beforeClass() throws IOException {
-		adapter = new Adapter();
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
-		builder.registerTypeAdapter(GeoJSONFaultSection.class, adapter);
 		gson = builder.create();
 		
 		faultModel = FaultModels.FM3_1.fetchFaultSections();
@@ -50,11 +48,12 @@ public class GeoJSONFaultSectionTest {
 		else
 			jsonSect = new GeoJSONFaultSection(sect);
 		
-		return gson.toJson(jsonSect);
+		return gson.toJson(jsonSect.toFeature());
 	}
 	
 	private static GeoJSONFaultSection fromJSON(String json) {
-		return gson.fromJson(json, GeoJSONFaultSection.class);
+		Feature feature = gson.fromJson(json, Feature.class);
+		return GeoJSONFaultSection.fromFeature(feature);
 	}
 
 	@Test
@@ -99,8 +98,8 @@ public class GeoJSONFaultSectionTest {
 			assertNull("Had no polygon but serialized has one?", testPoly);
 		} else {
 			assertNotNull("Had a polygon but serialized doesn't", testPoly);
-			LocationList origBorder = GeoJSONFaultSection.getPolygonBorder(origPoly);
-			LocationList testBorder = GeoJSONFaultSection.getPolygonBorder(testPoly);
+			LocationList origBorder = Geometry.getPolygonBorder(origPoly.getBorder(), false);
+			LocationList testBorder = Geometry.getPolygonBorder(testPoly.getBorder(), false);
 			locListTest("poly border", origBorder, testBorder);
 		}
 		
@@ -265,7 +264,7 @@ public class GeoJSONFaultSectionTest {
 			assertTrue(propName+" should be deserialized as a Long, type is "+actual.getClass().getName(), actual instanceof Long);
 		}
 		assertEquals(propName+" wasn't deserialized correctly",
-				expected, sect.getLongProperty(propName, -1));
+				expected, sect.getProperties().getLong(propName, -1));
 	}
 	
 	private static void testDoubleProperty(String propName, GeoJSONFaultSection sect, double expected) {
@@ -275,7 +274,7 @@ public class GeoJSONFaultSectionTest {
 			assertTrue(propName+" should be deserialized as a Number, type is "+actual.getClass().getName(), actual instanceof Number);
 			assertTrue(propName+" should be deserialized as a Double, type is "+actual.getClass().getName(), actual instanceof Double);
 		}
-		doubleTest(propName, expected, sect.getDoubleProperty(propName, Double.NaN));
+		doubleTest(propName, expected, sect.getProperties().getDouble(propName, Double.NaN));
 	}
 	
 	private static void testFloatProperty(String propName, GeoJSONFaultSection sect, float expected) {
@@ -285,7 +284,7 @@ public class GeoJSONFaultSectionTest {
 			assertTrue(propName+" should be deserialized as a Number, type is "+actual.getClass().getName(), actual instanceof Number);
 			assertTrue(propName+" should be deserialized as a Double, type is "+actual.getClass().getName(), actual instanceof Double);
 		}
-		doubleTest(propName, expected, (float)sect.getDoubleProperty(propName, Double.NaN));
+		doubleTest(propName, expected, (float)sect.getProperties().getDouble(propName, Double.NaN));
 	}
 	
 	private static void testStringProperty(String propName, GeoJSONFaultSection sect, String expected) {
@@ -304,7 +303,7 @@ public class GeoJSONFaultSectionTest {
 						actual instanceof Boolean);
 			}
 			assertEquals(propName+" wasn't deserialized correctly",
-					expected, sect.getBooleanProperty(propName, !expected));
+					expected, sect.getProperties().getBoolean(propName, !expected));
 		} else {
 			assertNull(propName+" is false and shouldn't have been serialized", actual);
 		}

@@ -38,11 +38,18 @@ import java.util.List;
 import org.dom4j.Attribute;
 import org.dom4j.Element;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.Geometry.MultiPolygon;
+import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.metadata.XMLSaveable;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * A {@code Region} is a polygonal area on the surface of the earth. The
@@ -81,6 +88,7 @@ import com.google.common.primitives.Doubles;
  * @see Area
  * @see BorderType
  */
+@JsonAdapter(Region.Adapter.class)
 public class Region implements Serializable, XMLSaveable, Named {
 
 	private static final long serialVersionUID = 1L;
@@ -104,7 +112,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 	public final static String XML_METADATA_NAME = "Region";
 	public final static String XML_METADATA_OUTLINE_NAME = "OutlineLocations";
 
-	private String name = "Unnamed Region";
+	protected final static String NAME_DEFAULT = "Unnamed Region";
+	private String name = NAME_DEFAULT;
 
 	/* empty constructor for internal use */
 	private Region() {}
@@ -417,8 +426,34 @@ public class Region implements Serializable, XMLSaveable, Named {
 
 	public static void main(String[] args) {
 		// Region r = new CaliforniaRegions.RELM_TESTING();
-		Region r = new Region(new Location(20, 20), new Location(21, 21));
-		System.out.println(r.getExtent());
+//		Region r = new Region(new Location(20, 20), new Location(21, 21));
+//		System.out.println(r.getExtent());
+		
+		LocationList border = new LocationList();
+		border.add(new Location(34, -118));
+		border.add(new Location(34.5, -118.5));
+		border.add(new Location(35, -118));
+		border.add(new Location(34.5, -117.5));
+		border.add(new Location(34, -118));
+		Region reg = new Region(border, BorderType.MERCATOR_LINEAR);
+		
+		border = border.clone();
+		border.reverse();
+		Region reg2 = new Region(border, BorderType.MERCATOR_LINEAR);
+		
+		System.out.println(reg.getBorder().get(1));
+		System.out.println(reg2.getBorder().get(1));
+		System.out.println();
+		System.out.println(reg.getExtent());
+		System.out.println(reg2.getExtent());
+		System.out.println();
+		System.out.println(reg.equalsRegion(reg2));
+		System.out.println();
+		System.out.println(reg.area.isSingular());
+		System.out.println(reg2.area.isSingular());
+		System.out.println();
+		System.out.println(reg.area.isEmpty());
+		System.out.println(reg2.area.isEmpty());
 	}
 
 	/*
@@ -1046,6 +1081,66 @@ public class Region implements Serializable, XMLSaveable, Named {
 				area.subtract(intArea);
 			}
 		}
+	}
+	
+	/*
+	 * GeoJSON related methods
+	 */
+	
+	/**
+	 * Converts this region to a GeoJSON feature object for serialization
+	 * 
+	 * @return
+	 */
+	public Feature toFeature() {
+		String name = getName();
+		if (name != null && name.equals(NAME_DEFAULT))
+			name = null;
+		return new Feature(name, new Polygon(this), null);
+	}
+	
+	/**
+	 * Converts GeoJSON feature object back to a region.
+	 * 
+	 * @return
+	 */
+	public static Region fromFeature(Feature feature) {
+		Preconditions.checkNotNull(feature.geometry, "Feature is missing geometry");
+		Preconditions.checkState(feature.geometry instanceof Polygon || feature.geometry instanceof MultiPolygon,
+				"Unexpected geometry type for Region: %s", feature.geometry.type);
+		if (feature.geometry instanceof MultiPolygon) {
+			List<Region> list = ((MultiPolygon)feature.geometry).polygons;
+			Preconditions.checkState(list.size() == 1, "Must have exactly 1 polygon, have %s", list.size());
+			return list.get(0);
+		}
+		Region region = ((Polygon)feature.geometry).polygon;
+		if (feature.id != null)
+			region.setName(feature.id.toString());
+		return region;
+	}
+	
+	public static class Adapter extends TypeAdapter<Region> {
+		
+		private Feature.FeatureAdapter featureAdapter;
+		
+		public Adapter() {
+			featureAdapter = new Feature.FeatureAdapter();
+		}
+
+		@Override
+		public void write(JsonWriter out, Region value) throws IOException {
+			if (value == null)
+				out.nullValue();
+			else
+				featureAdapter.write(out, value.toFeature());
+		}
+
+		@Override
+		public Region read(JsonReader in) throws IOException {
+			Feature feature = featureAdapter.read(in);
+			return fromFeature(feature);
+		}
+		
 	}
 
 }
