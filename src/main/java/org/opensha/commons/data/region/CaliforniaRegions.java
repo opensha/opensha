@@ -348,10 +348,8 @@ public class CaliforniaRegions {
 		}
 	}
 	public static void main(String[] args) {
-		System.out.println(new RELM_TESTING_GRIDDED().getNodeCount());
-		System.exit(0);
-		RegionUtils.regionToKML(new RELM_GRIDDED(), "Relm Gridded", Color.BLUE);
-		RegionUtils.regionToKML(new RELM_TESTING_GRIDDED(), "Relm Testing", Color.RED);
+//		RegionUtils.regionToKML(new RELM_GRIDDED(), "Relm Gridded", Color.BLUE);
+//		RegionUtils.regionToKML(new RELM_TESTING_GRIDDED(), "Relm Testing", Color.RED);
 		
 		
 		
