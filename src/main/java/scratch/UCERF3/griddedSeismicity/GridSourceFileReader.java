@@ -32,6 +32,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+@Deprecated // old formats and UCERF3 specific
 public class GridSourceFileReader extends AbstractGridSourceProvider implements XMLSaveable {
 	
 	private static final String NODE_MFD_LIST_EL_NAME = "MFDNodeList";
@@ -389,21 +390,6 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		fracReverse = gRead.getValues();
 		gRead = new GridReader("NormalWts.txt");
 		fracNormal = gRead.getValues();
-	}
-	
-	public void scaleAllNodeMFDs(double[] valuesArray) {
-		if(valuesArray.length != getGriddedRegion().getNodeCount())
-			throw new RuntimeException("Error: valuesArray must have same length as getGriddedRegion().getNodeCount()");
-		for(int i=0;i<valuesArray.length;i++) {
-			if(valuesArray[i] != 1.0) {
-				IncrementalMagFreqDist mfd = getNodeUnassociatedMFD(i);
-				if(mfd != null)
-					mfd.scale(valuesArray[i]);;
-				mfd = getNodeSubSeisMFD(i);				
-				if(mfd != null)
-					mfd.scale(valuesArray[i]);;
-			}
-		}
 	}
 
 }

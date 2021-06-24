@@ -289,6 +289,22 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 	public Class<? extends ArchivableModule> getLoadingClass() {
 		return Precomputed.class;
 	}
+	
+	@Override
+	public void scaleAllNodeMFDs(double[] valuesArray) {
+		if(valuesArray.length != getGriddedRegion().getNodeCount())
+			throw new RuntimeException("Error: valuesArray must have same length as getGriddedRegion().getNodeCount()");
+		for(int i=0;i<valuesArray.length;i++) {
+			if(valuesArray[i] != 1.0) {
+				IncrementalMagFreqDist mfd = getNodeUnassociatedMFD(i);
+				if(mfd != null)
+					mfd.scale(valuesArray[i]);;
+				mfd = getNodeSubSeisMFD(i);				
+				if(mfd != null)
+					mfd.scale(valuesArray[i]);;
+			}
+		}
+	}
 
 	private static class Precomputed extends AbstractGridSourceProvider implements ArchivableModule {
 		
@@ -319,6 +335,9 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 				IncrementalMagFreqDist unassociated = prov.getNodeUnassociatedMFD(i);
 				if (unassociated != null)
 					unassociatedBuilder.put(i, unassociated);
+				fracStrikeSlip[i] = prov.getFracStrikeSlip(i);
+				fracNormal[i] = prov.getFracNormal(i);
+				fracReverse[i] = prov.getFracReverse(i);
 			}
 			this.nodeSubSeisMFDs = subSeisBuilder.build();
 			this.nodeUnassociatedMFDs = unassociatedBuilder.build();

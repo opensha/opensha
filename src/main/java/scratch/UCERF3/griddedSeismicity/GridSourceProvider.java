@@ -130,5 +130,13 @@ public interface GridSourceProvider extends OpenSHA_Module { // TODO serializati
 	 * @return
 	 */
 	public abstract double getFracNormal(int idx);
+	
+	/**
+	 * Scales all MFDs by the given values, and throws an exception if the array size is not equal to the
+	 * number of nodes in the gridded region
+	 * 
+	 * @param valuesArray
+	 */
+	public void scaleAllNodeMFDs(double[] valuesArray);
 
 }
