@@ -189,19 +189,11 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		this.aseismicSlipFactor = aseismicSlipFactor;
 	}
 
-	/**
-	 * Defined as a reduction of area between the upper and lower seismogenic depths
-	 * @return
-	 */
 	public void setCouplingCoeff(double couplingCoeff) {
 		this.couplingCoeff = couplingCoeff;
 	}
 
 
-	/**
-	 * Defined as a reduction of area between the upper and lower seismogenic depths
-	 * @return
-	 */
 	public double getCouplingCoeff() {
 		return couplingCoeff;
 	}
