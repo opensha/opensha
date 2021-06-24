@@ -86,8 +86,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		}
 		Preconditions.checkState(id >= 0, "ID must be >= 0");
 		
-		name = properties.get(FAULT_NAME, null);
-		checkPropNonNull(FAULT_NAME, name);
+		name = properties.get(FAULT_NAME, null); // can be null
 		
 		dip = properties.getDouble(DIP, Double.NaN);
 		checkPropFinite(DIP, dip);
