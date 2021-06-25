@@ -306,7 +306,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 		}
 	}
 
-	private static class Precomputed extends AbstractGridSourceProvider implements ArchivableModule {
+	public static class Precomputed extends AbstractGridSourceProvider implements ArchivableModule {
 		
 		private GriddedRegion region;
 		private ImmutableMap<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs;
@@ -320,7 +320,19 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			// for serialization
 		}
 
-		private Precomputed(GridSourceProvider prov) {
+		public Precomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip,
+				double[] fracNormal, double[] fracReverse) {
+			super();
+			this.region = region;
+			this.nodeSubSeisMFDs = ImmutableMap.copyOf(nodeSubSeisMFDs);
+			this.nodeUnassociatedMFDs = ImmutableMap.copyOf(nodeUnassociatedMFDs);
+			this.fracStrikeSlip = fracStrikeSlip;
+			this.fracNormal = fracNormal;
+			this.fracReverse = fracReverse;
+		}
+
+		public Precomputed(GridSourceProvider prov) {
 			this.region = prov.getGriddedRegion();
 			int nodeCount = region.getNodeCount();
 			Builder<Integer, IncrementalMagFreqDist> subSeisBuilder = ImmutableMap.builder();

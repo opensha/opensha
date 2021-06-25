@@ -155,6 +155,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	public static FaultSystemRupSet load(File file) throws IOException {
+		// TODO: make this work if modules.json is missing but 'ruptures/' exists
 		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(file, FaultSystemRupSet.class);
 		
 		FaultSystemRupSet rupSet = archive.getModule(FaultSystemRupSet.class);
@@ -191,8 +192,17 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	private CSVFile<String> buildRupturesCSV() {
 		CSVFile<String> csv = new CSVFile<>(false);
 		
-		csv.addLine("Rupture Index", "Magnitude", "Average Rake (degrees)", "Area (m^2)", "Length (m)",
-				"Num Sections", "Section Index 1", "Section Index N");
+		int maxNumSects = 0;
+		for (int r=0; r<getNumRuptures(); r++)
+			maxNumSects = Integer.max(maxNumSects, getSectionsIndicesForRup(r).size());
+		
+		List<String> header = new ArrayList<>(List.of("Rupture Index", "Magnitude", "Average Rake (degrees)",
+				"Area (m^2)", "Length (m)", "Num Sections"));
+		
+		for (int s=0; s<maxNumSects; s++)
+			header.add("# "+(s+1));
+		
+		csv.addLine(header);
 		
 		double[] lengths = getLengthForAllRups();
 		for (int r=0; r<getNumRuptures(); r++) {

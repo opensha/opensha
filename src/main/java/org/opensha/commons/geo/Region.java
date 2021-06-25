@@ -424,36 +424,48 @@ public class Region implements Serializable, XMLSaveable, Named {
 		return area;
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		// Region r = new CaliforniaRegions.RELM_TESTING();
 //		Region r = new Region(new Location(20, 20), new Location(21, 21));
 //		System.out.println(r.getExtent());
 		
-		LocationList border = new LocationList();
-		border.add(new Location(34, -118));
-		border.add(new Location(34.5, -118.5));
-		border.add(new Location(35, -118));
-		border.add(new Location(34.5, -117.5));
-		border.add(new Location(34, -118));
-		Region reg = new Region(border, BorderType.MERCATOR_LINEAR);
+//		LocationList border = new LocationList();
+//		border.add(new Location(34, -118));
+//		border.add(new Location(34.5, -118.5));
+//		border.add(new Location(35, -118));
+//		border.add(new Location(34.5, -117.5));
+//		border.add(new Location(34, -118));
+//		Region reg = new Region(border, BorderType.MERCATOR_LINEAR);
+//		
+//		border = border.clone();
+//		border.reverse();
+//		Region reg2 = new Region(border, BorderType.MERCATOR_LINEAR);
+//		
+//		System.out.println(reg.getBorder().get(1));
+//		System.out.println(reg2.getBorder().get(1));
+//		System.out.println();
+//		System.out.println(reg.getExtent());
+//		System.out.println(reg2.getExtent());
+//		System.out.println();
+//		System.out.println(reg.equalsRegion(reg2));
+//		System.out.println();
+//		System.out.println(reg.area.isSingular());
+//		System.out.println(reg2.area.isSingular());
+//		System.out.println();
+//		System.out.println(reg.area.isEmpty());
+//		System.out.println(reg2.area.isEmpty());
 		
-		border = border.clone();
-		border.reverse();
-		Region reg2 = new Region(border, BorderType.MERCATOR_LINEAR);
+		Region region = new Region(new Location(34, -118), new Location(36, -120));
+		region.setName("Simple region");
+		System.out.println(region.toFeature().toJSON());
 		
-		System.out.println(reg.getBorder().get(1));
-		System.out.println(reg2.getBorder().get(1));
-		System.out.println();
-		System.out.println(reg.getExtent());
-		System.out.println(reg2.getExtent());
-		System.out.println();
-		System.out.println(reg.equalsRegion(reg2));
-		System.out.println();
-		System.out.println(reg.area.isSingular());
-		System.out.println(reg2.area.isSingular());
-		System.out.println();
-		System.out.println(reg.area.isEmpty());
-		System.out.println(reg2.area.isEmpty());
+//		region.addInterior(new Region(new Location(34.5, -118.5), new Location(35.5, -119.5)));
+//		region.setName("Regin with a hole");
+//		System.out.println(region.toFeature().toJSON());
+		
+		GriddedRegion gridReg = new GriddedRegion(region, 0.5, null);
+		gridReg.setName("Example gridded region");
+		System.out.println(gridReg.toFeature().toJSON());
 	}
 
 	/*
