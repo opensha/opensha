@@ -295,9 +295,12 @@ public class Geometry {
 		out.value(loc.getLongitude());
 		out.value(loc.getLatitude());
 		if (loc.getDepth() != 0d)
-			out.value(-loc.getDepth()*1000d); // elevation, in m
+			out.value(loc.getDepth()*LOC_DEPTH_TO_ELEV);
 		out.endArray();
 	}
+	
+	static final double LOC_DEPTH_TO_ELEV = -1e3d; // elevation, in m
+	static final double LOC_ELEV_TO_DEPTH = -1e-3d; // elevation, in m
 	
 	public static Location deserializeLoc(JsonReader in) throws IOException {
 		if (in.peek() == JsonToken.NULL)
@@ -307,7 +310,7 @@ public class Geometry {
 		double lat = in.nextDouble();
 		double depth = 0d;
 		if (in.peek() != JsonToken.END_ARRAY)
-			depth = -in.nextDouble()*1e-3; // elev in m -> depth in km
+			depth = in.nextDouble()*LOC_ELEV_TO_DEPTH;
 		in.endArray();
 		return new Location(lat, lon, depth);
 	}

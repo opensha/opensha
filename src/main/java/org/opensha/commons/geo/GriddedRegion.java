@@ -1215,11 +1215,11 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		Location anchor = null;
 		
 		if (properties != null) {
-			latNodeCenters = properties.get(JSON_LAT_NODES, null);
-			lonNodeCenters = properties.get(JSON_LON_NODES, null);
+			latNodeCenters = properties.getDoubleArray(JSON_LAT_NODES, null);
+			lonNodeCenters = properties.getDoubleArray(JSON_LON_NODES, null);
 			latSpacing = properties.getDouble(JSON_LAT_SPACING, Double.NaN);
 			lonSpacing = properties.getDouble(JSON_LON_SPACING, Double.NaN);
-			anchor = properties.get(JSON_ANCHOR, null);
+			anchor = properties.getLocation(JSON_ANCHOR, null);
 		}
 
 		if (latNodeCenters == null) {
@@ -1288,7 +1288,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		private Feature.FeatureAdapter featureAdapter;
 		
 		public Adapter() {
-			featureAdapter = new Feature.FeatureAdapter(new CustomPropertyAdapter());
+			featureAdapter = new Feature.FeatureAdapter();
 		}
 
 		@Override
@@ -1312,31 +1312,5 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	private static final String JSON_LAT_SPACING = "LatSpacing";
 	private static final String JSON_LON_SPACING = "LonSpacing";
 	private static final String JSON_ANCHOR = "Anchor";
-	
-	private static class CustomPropertyAdapter extends FeatureProperties.PropertiesAdapter {
-		
-		// default serialization works, but need custom deserialization
-
-		@Override
-		protected Object deserialize(JsonReader in, String name) throws IOException {
-			if (name.equals(JSON_LAT_NODES) || name.equals(JSON_LON_NODES))
-				return deserializeArray(in);
-			if (name.equals(JSON_ANCHOR))
-				return Geometry.deserializeLoc(in);
-			return super.deserialize(in, name);
-		}
-		
-		private double[] deserializeArray(JsonReader in) throws IOException {
-			if (in.peek() == JsonToken.NULL)
-				return null;
-			in.beginArray();
-			List<Double> values = new ArrayList<>();
-			while (in.hasNext())
-				values.add(in.nextDouble());
-			in.endArray();
-			return Doubles.toArray(values);
-		}
-		
-	}
 
 }
