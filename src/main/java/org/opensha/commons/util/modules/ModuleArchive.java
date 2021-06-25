@@ -201,6 +201,44 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		zin.close();
 	}
 	
+	/**
+	 * Attempts to load a module from the current zip archive that was not listed in any modules.json files
+	 * 
+	 * @param <M>
+	 * @param loadingClass loading class for the given module
+	 * @param entryPrefix prefix for the given module inside this archive.
+	 * @return
+	 */
+	public <M extends E> M loadUnlistedModule(Class<? extends M> loadingClass, String entryPrefix) {
+		return loadUnlistedModule(loadingClass, entryPrefix, this);
+	}
+	
+	/**
+	 * Attempts to load a module from the current zip archive that was not listed in any modules.json files
+	 * 
+	 * @param <M>
+	 * @param loadingClass loading class for the given module
+	 * @param entryPrefix prefix for the given module inside this archive.
+	 * @container container container to add the module to
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public <M extends E> M loadUnlistedModule(Class<? extends M> loadingClass, String entryPrefix,
+			ModuleContainer<E> container) {
+		ModuleRecord record = new ModuleRecord("Unlisted Module", loadingClass.getName(), entryPrefix);
+		Preconditions.checkNotNull(zip, "Can only unlisted modules for an archives created from a zip file");
+		ZipLoadCallable<E> call = new ZipLoadCallable<>(record, (Class<E>)loadingClass, zip, container, new HashSet<>());
+		try {
+			M module = (M)call.call();
+			container.addModule(module);
+			return module;
+		} catch (ClassCastException e) {
+			throw e;
+		} catch (Exception e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+	}
+	
 	private static class ZipLoadCallable<E extends OpenSHA_Module> implements Callable<E> {
 		
 		private ModuleRecord record;
