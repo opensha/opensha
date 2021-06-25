@@ -101,9 +101,13 @@ public class RupSetBuilderTests {
 		assertEquals(name+": length mismatch", expected.length, actual.length);
 		if (expected == actual)
 			throw new IllegalStateException("expected and actual are the same object!");
-		for (int i=0; i<expected.length; i++)
-			assertTrue(name+"["+i+"]: values not exactly identical. Expected "+expected[i]+", have "+actual[i]+". Difference: "
-					+Math.abs(expected[i]-actual[i]), expected[i] == actual[i]);
+		for (int i=0; i<expected.length; i++) {
+			if (Double.isNaN(expected[i]))
+				assertTrue(name+"["+i+"]: NaN expected, have "+actual[i], Double.isNaN(actual[i]));
+			else
+				assertTrue(name+"["+i+"]: values not exactly identical. Expected "+expected[i]+", have "+actual[i]
+						+". Difference: "+Math.abs(expected[i]-actual[i]), expected[i] == actual[i]);
+		}
 	}
 
 }

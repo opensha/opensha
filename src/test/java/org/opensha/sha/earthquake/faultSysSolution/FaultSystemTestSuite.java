@@ -6,7 +6,7 @@ import org.junit.runners.Suite;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
 	RupSetBuilderTests.class,
-	RupSetSaveLoadTests.class
+//	RupSetSaveLoadTests.class // requires too much memory
 })
 
 public class FaultSystemTestSuite {
