@@ -305,6 +305,11 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			}
 		}
 	}
+	
+	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
+	public static final String ARCHIVE_MECH_WEIGHT_FILE_NAME = "grid_mech_weights.csv";
+	public static final String ARCHIVE_SUB_SEIS_FILE_NAME = "grid_sub_seis_mfds.csv";
+	public static final String ARCHIVE_UNASSOCIATED_FILE_NAME = "grid_unassociated_mfds.csv";
 
 	public static class Precomputed extends AbstractGridSourceProvider implements ArchivableModule {
 		
@@ -465,7 +470,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			CSVFile<String> subSeisCSV = buildCSV(nodeSubSeisMFDs);
 			CSVFile<String> unassociatedCSV = buildCSV(nodeUnassociatedMFDs);
 			
-			FileBackedModule.initEntry(zout, entryPrefix, "grid_region.geojson");
+			FileBackedModule.initEntry(zout, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
 			Feature regFeature = region.toFeature();
 			OutputStreamWriter writer = new OutputStreamWriter(zout);
 			Feature.write(regFeature, writer);
@@ -474,23 +479,23 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			zout.closeEntry();
 			
 			if (subSeisCSV != null)
-				CSV_BackedModule.writeToArchive(subSeisCSV, zout, entryPrefix, "grid_sub_seis_mfds.csv");
+				CSV_BackedModule.writeToArchive(subSeisCSV, zout, entryPrefix, ARCHIVE_SUB_SEIS_FILE_NAME);
 			if (unassociatedCSV != null)
-				CSV_BackedModule.writeToArchive(unassociatedCSV, zout, entryPrefix, "grid_unassociated_mfds.csv");
-			CSV_BackedModule.writeToArchive(buildWeightsCSV(), zout, entryPrefix, "grid_mech_weights.csv");
+				CSV_BackedModule.writeToArchive(unassociatedCSV, zout, entryPrefix, ARCHIVE_UNASSOCIATED_FILE_NAME);
+			CSV_BackedModule.writeToArchive(buildWeightsCSV(), zout, entryPrefix, ARCHIVE_MECH_WEIGHT_FILE_NAME);
 		}
 
 		@Override
 		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, "grid_region.geojson");
+			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
 			InputStreamReader regionReader = new InputStreamReader(regionIS);
 			Feature regFeature = Feature.read(regionReader);
 			region = GriddedRegion.fromFeature(regFeature);
 			
 			Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = loadCSV(
-					region, zip, entryPrefix, "grid_sub_seis_mfds.csv");
+					region, zip, entryPrefix, ARCHIVE_SUB_SEIS_FILE_NAME);
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = loadCSV(
-					region, zip, entryPrefix, "grid_unassociated_mfds.csv");
+					region, zip, entryPrefix, ARCHIVE_UNASSOCIATED_FILE_NAME);
 			if (nodeSubSeisMFDs == null)
 				this.nodeSubSeisMFDs = ImmutableMap.of();
 			else
@@ -501,7 +506,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 				this.nodeUnassociatedMFDs = ImmutableMap.copyOf(nodeUnassociatedMFDs);
 			
 			// load mechanisms
-			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, "grid_mech_weights.csv");
+			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_MECH_WEIGHT_FILE_NAME);
 			Preconditions.checkState(mechCSV.getNumRows() == region.getNodeCount()+1,
 					"Mechanism node count mismatch, expected %s, have %s", region.getNodeCount(), mechCSV.getNumRows()-1);
 			fracStrikeSlip = new double[region.getNodeCount()];
@@ -552,7 +557,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 					continue;
 				IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(minX, maxX, numX);
 				for (int i=0; i<numX; i++)
-					mfd.set(i, csv.getInt(row, 3+i));
+					mfd.set(i, csv.getDouble(row, 3+i));
 				mfds.put(index, mfd);
 			}
 			return mfds;

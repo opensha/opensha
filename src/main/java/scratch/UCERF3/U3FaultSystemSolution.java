@@ -351,7 +351,10 @@ public class U3FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSo
 	 * @return
 	 */
 	public List<? extends IncrementalMagFreqDist> getSubSeismoOnFaultMFD_List() {
-		return getModule(SubSeismoOnFaultMFDs.class).getAll();
+		SubSeismoOnFaultMFDs subSeismoMFDs = getModule(SubSeismoOnFaultMFDs.class);
+		if (subSeismoMFDs == null)
+			return null;
+		return subSeismoMFDs.getAll();
 	}
 	
 	public void setSubSeismoOnFaultMFD_List(List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {

@@ -30,10 +30,12 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 	public ImmutableList<IncrementalMagFreqDist> getAll() {
 		return subSeismoOnFaultMFDs;
 	}
+	
+	public static final String DATA_FILE_NAME = "sub_seismo_on_fault_mfds.csv";
 
 	@Override
 	public String getFileName() {
-		return "sub_seismo_on_fault_mfds.csv";
+		return DATA_FILE_NAME;
 	}
 
 	@Override

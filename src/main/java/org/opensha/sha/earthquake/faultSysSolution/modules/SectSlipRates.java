@@ -111,7 +111,9 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 		
 	}
 	
-	private static class Precomputed extends SectSlipRates implements CSV_BackedModule {
+	public static final String DATA_FILE_NAME = "sect_slip_rates.csv";
+	
+	public static class Precomputed extends SectSlipRates implements CSV_BackedModule {
 		
 		private double[] slipRates;
 		private double[] slipRateStdDevs;
@@ -164,7 +166,7 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 
 		@Override
 		public String getFileName() {
-			return "sect_slip_rates.csv";
+			return DATA_FILE_NAME;
 		}
 
 		@Override

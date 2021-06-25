@@ -19,10 +19,12 @@ import java.util.zip.ZipOutputStream;
 import javax.annotation.Nullable;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
@@ -63,6 +65,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * This class represents the attributes of ruptures in a fault system, 
@@ -134,6 +137,16 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			Preconditions.checkState(rupSet == this);
 		return archive;
 	}
+	
+	/**
+	 * Writes this rupture set to a zip file. This is an alias to <code>getArchive().write(File)</code>.
+	 * See {@link #getArchive()}.
+	 * @param file
+	 * @throws IOException
+	 */
+	public void write(File file) throws IOException {
+		getArchive().write(file);
+	}
 
 	@Override
 	public void setParent(ModuleArchive<OpenSHA_Module> parent) throws IllegalStateException {
@@ -154,11 +167,47 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return copy;
 	}
 	
+	/**
+	 * Loads a FaultSystemRupSet from a zip file
+	 * 
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 */
 	public static FaultSystemRupSet load(File file) throws IOException {
-		// TODO: make this work if modules.json is missing but 'ruptures/' exists
-		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(file, FaultSystemRupSet.class);
+		return load(new ZipFile(file));
+	}
+	
+	/**
+	 * Loads a FaultSystemRupSet from a zip file
+	 * 
+	 * @param zip
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemRupSet load(ZipFile zip) throws IOException {
+		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(zip, FaultSystemRupSet.class);
 		
 		FaultSystemRupSet rupSet = archive.getModule(FaultSystemRupSet.class);
+		if (rupSet == null) {
+			// see if it's an old rupture set
+			if (zip.getEntry("rup_sections.bin") != null) {
+				System.err.println("WARNING: this is a legacy fault sytem rupture set, that file format is deprecated. "
+						+ "Will attempt to load it using the legacy file loader. "
+						+ "See https://opensha.org/File-Formats for more information.");
+				try {
+					return U3FaultSystemIO.loadRupSetAsApplicable(zip, null);
+				} catch (DocumentException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+			if (zip.getEntry("modules.json") == null && zip.getEntry("ruptures/ruptures.csv") != null) {
+				// missing modules.json, try to load it as an unlisted module
+				System.err.println("WARNING: rupture set archive is missing modules.json, trying to load it anyway");
+				archive.loadUnlistedModule(FaultSystemRupSet.class, "ruptures/");
+				rupSet = archive.getModule(FaultSystemRupSet.class);
+			}
+		}
 		Preconditions.checkState(rupSet != null, "Failed to load rupture set module from archive (see above error messages)");
 		Preconditions.checkNotNull(rupSet.archive, "archive should have been set automatically");
 		
@@ -290,6 +339,28 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		init(sections, rupSectsList, mags, rakes, areas, lengths);
+		
+		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
+			// we're missing an index, see if any default modules are present that we can manually load
+			
+			if (zip.getEntry(entryPrefix+SectAreas.DATA_FILE_NAME) != null) {
+				try {
+					System.out.println("Trying to load unlisted SectAreas module");
+					archive.loadUnlistedModule(SectAreas.Precomputed.class, entryPrefix, this);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			if (zip.getEntry(entryPrefix+SectSlipRates.DATA_FILE_NAME) != null) {
+				try {
+					System.out.println("Trying to load unlisted SectSlipRates module");
+					archive.loadUnlistedModule(SectSlipRates.Precomputed.class, entryPrefix, this);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
 	}
 	
 	/**
@@ -324,7 +395,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	        List<?> oList = (List<?>)o;
 	        if (size() != oList.size())
 	        	return false;
-	        if (Integer.class.isAssignableFrom(oList.get(0).getClass()))
+	        if (size() == 0)
+	        	return true;
+	        if (!Integer.class.isAssignableFrom(oList.get(0).getClass()))
 	        	return false;
 	        
 	        for (int i=0; i<vals.length; i++)
@@ -367,7 +440,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	        List<?> oList = (List<?>)o;
 	        if (size() != oList.size())
 	        	return false;
-	        if (Integer.class.isAssignableFrom(oList.get(0).getClass()))
+	        if (size() == 0)
+	        	return true;
+	        if (!Integer.class.isAssignableFrom(oList.get(0).getClass()))
 	        	return false;
 	        
 	        for (int i=0; i<vals.length; i++)
@@ -979,6 +1054,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		// check sections
 		if (getNumSections() != other.getNumSections())
 			return false;
+//		System.out.println("sect count equal");
 		for (int s=0; s<getNumSections(); s++) {
 			FaultSection mySect = getFaultSectionData(s);
 			FaultSection oSect = other.getFaultSectionData(s);
@@ -987,16 +1063,23 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			if (!mySect.getSectionName().equals(oSect.getSectionName()))
 				return false;
 		}
+//		System.out.println("sects equal");
 		
 		// check ruptures
 		if (getNumRuptures() != other.getNumRuptures())
 			return false;
+//		System.out.println("rupture count equal");
 		for (int r=0; r<getNumRuptures(); r++) {
 			List<Integer> mySects = getSectionsIndicesForRup(r);
 			List<Integer> oSects = other.getSectionsIndicesForRup(r);
-			if (!mySects.equals(oSects))
+			if (!mySects.equals(oSects)) {
+//				System.out.println("Sects different!");
+//				System.out.println("\tMINE:\t"+mySects);
+//				System.out.println("\tOTHER:\t"+oSects);
 				return false;
+			}
 		}
+//		System.out.println("rupture sects equal");
 		return true;
 	}
 	

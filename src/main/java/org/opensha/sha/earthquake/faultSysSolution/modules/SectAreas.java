@@ -78,7 +78,9 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 		
 	}
 	
-	private static class Precomputed extends SectAreas implements CSV_BackedModule {
+	public static final String DATA_FILE_NAME = "sect_areas.csv";
+	
+	public static class Precomputed extends SectAreas implements CSV_BackedModule {
 		
 		private double[] sectAreas;
 
@@ -114,7 +116,7 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 
 		@Override
 		public String getFileName() {
-			return "sect_areas.csv";
+			return DATA_FILE_NAME;
 		}
 
 		@Override

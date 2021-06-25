@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -32,13 +33,17 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
+import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class DemoFileCreator {
 
@@ -102,6 +107,23 @@ public class DemoFileCreator {
 				.forScalingRelationship(ScalingRelationships.SHAW_2009_MOD)
 				.slipAlongRupture(SlipAlongRuptureModels.UNIFORM).build();
 		rupSet.getArchive().write(new File(outputDir, "demo_rup_set.zip"));
+		// write old style
+		/*
+		 * 			double[] sectSlipRates,
+			double[] sectSlipRateStdDevs,
+			double[] sectAreas,
+			List<List<Integer>> sectionForRups,
+			double[] mags,
+			double[] rakes,
+			double[] rupAreas,
+			double[] rupLengths,
+			String info) {
+		 */
+		U3FaultSystemRupSet oldRupSet = new U3FaultSystemRupSet(subSects, rupSet.getSlipRateForAllSections(),
+				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
+				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
+				rupSet.getAreaForAllRups(), rupSet.getLengthForAllRups(), rupSet.getInfoString());
+		U3FaultSystemIO.writeRupSet(oldRupSet, new File(outputDir, "demo_old_rup_set.zip"));
 		
 		List<InversionConstraint> constraints = new ArrayList<>();
 		double[] targetSlipRates = rupSet.getSlipRateForAllSections();
@@ -112,11 +134,12 @@ public class DemoFileCreator {
 		invGen.generateInputs(true);
 		
 		int threads = 32;
-		CompletionCriteria subCompletion = TimeCompletionCriteria.getInSeconds(5);
-		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(1);
+		CompletionCriteria subCompletion = new IterationCompletionCriteria(1000000l);
+		CompletionCriteria completion = new IterationCompletionCriteria(20000000l); // about 45s
 //		CompletionCriteria completion = TimeCompletionCriteria.getInSeconds(10);
 		ThreadedSimulatedAnnealing tsa = new ThreadedSimulatedAnnealing(
 				invGen.getA(), invGen.getD(), invGen.getInitialSolution(), threads, subCompletion);
+		tsa.setRandom(new Random(123456789l));
 		long iterations = tsa.iterate(completion);
 		System.out.println("Completed "+iterations+" iterations");
 		double[] rates = invGen.adjustSolutionForWaterLevel(tsa.getBestSolution());
@@ -130,7 +153,7 @@ public class DemoFileCreator {
 		GutenbergRichterMagFreqDist unassociatedMFD =
 				new GutenbergRichterMagFreqDist(1d, 0.05d, demoMFD.getMinX(), demoMFD.getMaxX(), demoMFD.size());
 		
-		double associationDist = 10d;
+		double associationDist = 15d;
 		
 		List<RuptureSurface> sectSurfs = new ArrayList<>();
 		for (FaultSection sect : subSects)
@@ -161,6 +184,8 @@ public class DemoFileCreator {
 			}
 			
 			if (minDist < associationDist) {
+				// don't use this as a guide for how gridded seismicity should be handled, it's just a demo intended
+				// to look lik a real model might
 				System.out.println("Grid node "+i+" is associated with section "+closestSect+" (dist="+(float)minDist+")");
 				IncrementalMagFreqDist subSeisMFD =
 						new GutenbergRichterMagFreqDist(1d, 0.05d, demoMFD.getMinX(), demoMFD.getMaxX(), demoMFD.size());
@@ -182,6 +207,9 @@ public class DemoFileCreator {
 		sol.addModule(new AbstractGridSourceProvider.Precomputed(gridReg, subSeisMFDs, otherMFDs, fractSS, fractN, fractR));
 		
 		sol.getArchive().write(new File(outputDir, "demo_sol.zip"));
+		U3FaultSystemSolution oldSol = new U3FaultSystemSolution(oldRupSet, rates);
+		oldSol.setGridSourceProvider(sol.getGridSourceProvider());
+		U3FaultSystemIO.writeSol(oldSol, new File(outputDir, "demo_old_sol.zip"));
 	}
 
 }

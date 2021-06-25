@@ -222,7 +222,7 @@ public class U3FaultSystemIO {
 	 * @throws IOException 
 	 * @throws DocumentException 
 	 */
-	private static U3FaultSystemRupSet loadRupSetAsApplicable(ZipFile zip, Map<String, String> nameRemappings) throws IOException, DocumentException {
+	public static U3FaultSystemRupSet loadRupSetAsApplicable(ZipFile zip, Map<String, String> nameRemappings) throws IOException, DocumentException {
 		if (DD) System.out.println("loadRupSetAsApplicable started");
 		
 		if (DD) System.out.println("loading mags");

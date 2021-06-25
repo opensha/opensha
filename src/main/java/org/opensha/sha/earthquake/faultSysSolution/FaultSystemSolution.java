@@ -10,9 +10,11 @@ import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.ModuleContainer;
@@ -21,6 +23,7 @@ import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -29,6 +32,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 
+import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
@@ -91,10 +95,63 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return archive;
 	}
 	
+	/**
+	 * Writes this solution to a zip file. This is an alias to <code>getArchive().write(File)</code>.
+	 * See {@link #getArchive()}.
+	 * @param file
+	 * @throws IOException
+	 */
+	public void write(File file) throws IOException {
+		getArchive().write(file);
+	}
+	
+	/**
+	 * Loads a FaultSystemSolution from a zip file
+	 * 
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 */
 	public static FaultSystemSolution load(File file) throws IOException {
-		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(file, FaultSystemSolution.class);
+		return load(new ZipFile(file));
+	}
+
+	/**
+	 * Loads a FaultSystemSolution from a zip file
+	 * 
+	 * @param zip
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution load(ZipFile zip) throws IOException {
+		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(zip, FaultSystemSolution.class);
 		
 		FaultSystemSolution sol = archive.getModule(FaultSystemSolution.class);
+		if (sol == null) {
+			// see if it's an old rupture set
+			if (zip.getEntry("rup_sections.bin") != null && zip.getEntry("rates.bin") != null) {
+				System.err.println("WARNING: this is a legacy fault sytem solution, that file format is deprecated. "
+						+ "Will attempt to load it using the legacy file loader. "
+						+ "See https://opensha.org/File-Formats for more information.");
+				try {
+					return U3FaultSystemIO.loadSolAsApplicable(zip, null);
+				} catch (DocumentException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+			if (zip.getEntry("modules.json") == null && zip.getEntry("ruptures/ruptures.csv") != null
+					&& zip.getEntry("solution/rates.csv") != null) {
+				// missing modules.json, try to load it as an unlisted module
+				System.err.println("WARNING: solution archive is missing modules.json, trying to load it anyway");
+				archive.loadUnlistedModule(FaultSystemRupSet.class, "ruptures/");
+				Preconditions.checkState(archive.hasModule(FaultSystemRupSet.class),
+						"Failed to load unlisted rupture set module");
+				archive.loadUnlistedModule(FaultSystemSolution.class, "solution/");
+				Preconditions.checkState(archive.hasModule(FaultSystemSolution.class),
+						"Failed to load unlisted solution module");
+				sol = archive.getModule(FaultSystemSolution.class);
+			}
+		}
 		Preconditions.checkState(sol != null, "Failed to load solution module from archive (see above error messages)");
 		Preconditions.checkNotNull(sol.rupSet, "rupture set not loaded?");
 		Preconditions.checkNotNull(sol.archive, "archive should have been set automatically");
@@ -137,6 +194,28 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		for (int r=0; r<rates.length; r++) {
 			Preconditions.checkState(ratesCSV.getInt(r+1, 0) == r, "Rates CSV out of order or not 0-based");
 			rates[r] = ratesCSV.getDouble(r+1, 1);
+		}
+		
+		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
+			// we're missing an index, see if any common modules are present that we can manually load
+			
+			if (zip.getEntry(entryPrefix+AbstractGridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME) != null) {
+				try {
+					System.out.println("Trying to load unlisted GridSourceProvider module");
+					archive.loadUnlistedModule(AbstractGridSourceProvider.Precomputed.class, entryPrefix, this);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			if (zip.getEntry(entryPrefix+SubSeismoOnFaultMFDs.DATA_FILE_NAME) != null) {
+				try {
+					System.out.println("Trying to load unlisted SubSeismoOnFaultMFDs module");
+					archive.loadUnlistedModule(SubSeismoOnFaultMFDs.class, entryPrefix, this);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 
