@@ -1,5 +1,7 @@
 package scratch.UCERF3.simulatedAnnealing;
 
+import java.util.Random;
+
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
@@ -59,6 +61,12 @@ public interface SimulatedAnnealing {
 	 * @return
 	 */
 	public long iterate(CompletionCriteria completion);
+	
+	/**
+	 * Sets the random number generator used - helpful for reproducing results for testing purposes
+	 * @param r
+	 */
+	public void setRandom(Random r);
 
 	public long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria);
 

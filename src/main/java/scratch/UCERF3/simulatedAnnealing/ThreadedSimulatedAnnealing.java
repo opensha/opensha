@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -425,6 +426,19 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		long[] ret = { iter, perturbs };
 		return ret;
+	}
+	
+	/**
+	 * Sets the random number generator used - helpful for reproducing results for testing purposes
+	 * @param r
+	 */
+	public void setRandom(Random r) {
+		if (sas.size() == 1) {
+			sas.get(0).setRandom(r);
+		} else {
+			for (SerialSimulatedAnnealing sa : sas)
+				sa.setRandom(new Random(r.nextLong()));
+		}
 	}
 	
 	public int getNumThreads() {
