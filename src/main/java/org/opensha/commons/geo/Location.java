@@ -18,9 +18,6 @@
 
 package org.opensha.commons.geo;
 
-import static org.opensha.commons.geo.GeoTools.TO_DEG;
-import static org.opensha.commons.geo.GeoTools.TO_RAD;
-
 import java.io.Serializable;
 
 import org.dom4j.Element;
@@ -33,9 +30,9 @@ import org.opensha.commons.metadata.XMLSaveable;
  * positive-down, always. All utility methods in this package assume this to be
  * the case.<br/>
  * <br/>
- * For computational cenvenience, latitude and longitude values are converted
- * and stored internally in radians. Special <code>get***Rad()</code> methods
- * are provided to access this native format. <br/>
+ * For computational convenience and speed, latitude and longitude values are converted
+ * and stored internally in radians as well as degrees. Special
+ * <code>get***Rad()</code> methods are provided to access this native format. <br/>
  * <br/>
  * <code>Location</code> instances are immutable.
  * 
@@ -47,19 +44,27 @@ import org.opensha.commons.metadata.XMLSaveable;
 public class Location implements 
 		Serializable, XMLSaveable, Cloneable, Comparable<Location> {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 2L;
 
 	public final static String XML_METADATA_NAME = "Location";
 	public final static String XML_METADATA_LONGITUDE = "Longitude";
 	public final static String XML_METADATA_LATITUDE = "Latitude";
 	public final static String XML_METADATA_DEPTH = "Depth";
 
-	private double lat;
-	private double lon;
-	private double depth;
-
-	// for internal use by clone()
-	private Location() {}
+	/**
+	 * Latitude of this <code>Location</code> in decimal degrees
+	 */
+	public final double lat;
+	/**
+	 * Longitude of this <code>Location</code> in decimal degrees
+	 */
+	public final double lon;
+	final double latRad;
+	final double lonRad;
+	/**
+	 * depth of this <code>Location</code> in km (positive-down)
+	 */
+	public final double depth;
 	
 	/**
 	 * Constructs a new <code>Location</code> with the supplied latitude and
@@ -88,8 +93,40 @@ public class Location implements
 		GeoTools.validateLat(lat);
 		GeoTools.validateLon(lon);
 		GeoTools.validateDepth(depth);
-		this.lat = lat * TO_RAD;
-		this.lon = lon * TO_RAD;
+		this.lat = lat;
+		this.lon = lon;
+		this.latRad = Math.toRadians(lat);
+		this.lonRad = Math.toRadians(lon);
+		this.depth = depth;
+	}
+	
+	/**
+	 * Creates a backwards compatible <code>Location</code> where getLatitude/getLongitude will
+	 * return the same values as the prior OpenSHA implementation where values were only stored
+	 * in radians, and converted back to degrees when requested. Note that returned latitude/longitude
+	 * values here will not always exactly match the passed in lat/lon values (they are converted
+	 * to radians and then back).
+	 * 
+	 * @param lat
+	 * @param lon
+	 * @param depth
+	 * @return
+	 */
+	public static Location backwardsCompatible(double lat, double lon, double depth) {
+		double latRad = lat * GeoTools.TO_RAD;
+		double lonRad = lon * GeoTools.TO_RAD;
+		double latDeg = latRad * GeoTools.TO_DEG;
+		double lonDeg = lonRad * GeoTools.TO_DEG;
+		return new Location(latDeg, lonDeg, latRad, lonRad, depth);
+	}
+
+	// internal for clone use()
+	private Location(double latDeg, double lonDeg, double latRad, double lonRad, double depth) {
+		super();
+		this.lat = latDeg;
+		this.lon = lonDeg;
+		this.latRad = latRad;
+		this.lonRad = lonRad;
 		this.depth = depth;
 	}
 
@@ -98,7 +135,7 @@ public class Location implements
 	 * 
 	 * @return the <code>Location</code> depth in km
 	 */
-	public double getDepth() {
+	public final double getDepth() {
 		return depth;
 	}
 
@@ -107,8 +144,8 @@ public class Location implements
 	 * 
 	 * @return the <code>Location</code> latitude in decimal degrees
 	 */
-	public double getLatitude() {
-		return lat * TO_DEG;
+	public final double getLatitude() {
+		return lat;
 	}
 
 	/**
@@ -116,8 +153,8 @@ public class Location implements
 	 * 
 	 * @return the <code>Location</code> longitude in decimal degrees
 	 */
-	public double getLongitude() {
-		return lon * TO_DEG;
+	public final double getLongitude() {
+		return lon;
 	}
 
 	/**
@@ -126,7 +163,7 @@ public class Location implements
 	 * @return the <code>Location</code> latitude in radians
 	 */
 	public double getLatRad() {
-		return lat;
+		return latRad;
 	}
 
 	/**
@@ -135,7 +172,7 @@ public class Location implements
 	 * @return the <code>Location</code> longitude in radians
 	 */
 	public double getLonRad() {
-		return lon;
+		return lonRad;
 	}
 
 	/**
@@ -166,10 +203,7 @@ public class Location implements
 	
 	@Override
 	public Location clone() {
-		Location clone = new Location();
-		clone.lat = this.lat;
-		clone.lon = this.lon;
-		clone.depth = this.depth;
+		Location clone = new Location(lat, lon, latRad, lonRad, depth);
 		return clone;
 	}
 
@@ -178,23 +212,18 @@ public class Location implements
 		if (this == obj) return true;
 		if (!(obj instanceof Location)) return false;
 		Location loc = (Location) obj;
-		// NOTE because rounding errors may give rise to very slight 
-		// differences in radian values that disappear when converting back 
-		// to decimal degrees, and because most Locations are initialized 
-		// with decimal degree values, equals() compares decimal degrees
-		// rather than the native radian values. ppowers 4/12/2010
-		if (getLatitude() != loc.getLatitude()) return false;
-		if (getLongitude() != loc.getLongitude()) return false;
-		if (getDepth() != loc.getDepth()) return false;
+		if (lat != loc.lat) return false;
+		if (lon != loc.lon) return false;
+		if (depth != loc.depth) return false;
 		return true;
 	}
 	
 	@Override
 	public int hashCode() {
 		// edit did same fix as for equals, now uses getters
-		long latHash = Double.doubleToLongBits(getLatitude());
-		long lonHash = Double.doubleToLongBits(getLongitude() + 1000);
-		long depHash = Double.doubleToLongBits(getDepth() + 2000);
+		long latHash = Double.doubleToLongBits(lat);
+		long lonHash = Double.doubleToLongBits(lon + 1000);
+		long depHash = Double.doubleToLongBits(depth + 2000);
 		long v = latHash + lonHash + depHash;
 		return (int) (v^(v>>>32));
 	}

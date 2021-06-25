@@ -51,8 +51,8 @@ public class GriddedRegionTest {
 	static GriddedRegion octRegionML;
 	static GriddedRegion octRegionGC;
 
-	static int octRegionNodeCountML = 683;
-	static int octRegionNodeCountGC = 689;
+	static int octRegionNodeCountML = 700;
+	static int octRegionNodeCountGC = 691;
 
 	@BeforeClass
 	public static void setUp(){
@@ -65,16 +65,20 @@ public class GriddedRegionTest {
 		
 	}
 	
+	private static Location loc(double lat, double lon) {
+		return new Location(lat, lon);
+	}
+	
 	private static LocationList createOctLocList() {
 		LocationList ll = new LocationList();
-		ll.add(new Location(25,-115));
-		ll.add(new Location(25,-110));
-		ll.add(new Location(30,-105));
-		ll.add(new Location(35,-105));
-		ll.add(new Location(40,-110));
-		ll.add(new Location(40,-115));
-		ll.add(new Location(35,-120));
-		ll.add(new Location(30,-120));
+		ll.add(loc(25,-115));
+		ll.add(loc(25,-110));
+		ll.add(loc(30,-105));
+		ll.add(loc(35,-105));
+		ll.add(loc(40,-110));
+		ll.add(loc(40,-115));
+		ll.add(loc(35,-120));
+		ll.add(loc(30,-120));
 		return ll;
 	}
 
@@ -84,9 +88,9 @@ public class GriddedRegionTest {
 	
 	@Test
 	public final void testGriddedRegionLocationLocationDoubleLocation() {
-		Location l1 = new Location(10,10);
-		Location l2 = new Location(10.1,10.1);
-		Location l3 = new Location(15,15);
+		Location l1 = loc(10,10);
+		Location l2 = loc(10.1,10.1);
+		Location l3 = loc(15,15);
 		GriddedRegion gr;
 		
 		// test spacing range
@@ -113,7 +117,7 @@ public class GriddedRegionTest {
 		loc = gr.locationForIndex(0);
 		assertTrue(loc.getLatitude() % 1 == 0);
 		assertTrue(loc.getLongitude() % 1 == 0);
-		gr = new GriddedRegion(l2, l3, 1, new Location(0.65, 0.65));
+		gr = new GriddedRegion(l2, l3, 1, loc(0.65, 0.65));
 		loc = gr.locationForIndex(0);
 		assertTrue(loc.getLatitude() == 10.65);
 		assertTrue(loc.getLongitude() == 10.65);
@@ -122,10 +126,10 @@ public class GriddedRegionTest {
 		gr = new GriddedRegion(l1, l3, 1, GriddedRegion.ANCHOR_0_0);
 		assertTrue(LocationUtils.areSimilar(
 				gr.locationForIndex(33),
-				new Location(15,13)));
+				loc(15,13)));
 		assertTrue(LocationUtils.areSimilar(
 				gr.locationForIndex(23),
-				new Location(13,15)));
+				loc(13,15)));
 	}
 
 	@Test
@@ -181,8 +185,8 @@ public class GriddedRegionTest {
 	public final void testGetNodeCount() {
 		assertTrue(octRegionML.getNodeCount() == octRegionNodeCountML);
 		assertTrue(octRegionGC.getNodeCount() == octRegionNodeCountGC);
-		Location l1 = new Location(10,10);
-		Location l2 = new Location(15,15);
+		Location l1 = loc(10,10);
+		Location l2 = loc(15,15);
 		GriddedRegion gr = new GriddedRegion(
 				l1, l2, 1, GriddedRegion.ANCHOR_0_0);
 		assertTrue(gr.getNodeCount() == 36);
@@ -191,8 +195,8 @@ public class GriddedRegionTest {
 	@Test
 	public final void testIsEmpty() {
 		assertTrue(!octRegionML.isEmpty());
-		Location l1 = new Location(0.2, 0.2);
-		Location l2 = new Location(0.3, 0.3);
+		Location l1 = loc(0.2, 0.2);
+		Location l2 = loc(0.3, 0.3);
 		GriddedRegion gr = new GriddedRegion(l1,l2,1,GriddedRegion.ANCHOR_0_0);
 		assertTrue(gr.isEmpty());
 	}
@@ -210,7 +214,7 @@ public class GriddedRegionTest {
 
 		// test different anchors
 		GriddedRegion gr2 = new GriddedRegion(
-				grLL, null, 0.5, new Location(0.1,0.1));
+				grLL, null, 0.5, loc(0.1,0.1));
 		assertTrue(!gr2.equalsRegion(octRegionML));
 		
 		// test different grid spacing
@@ -219,7 +223,7 @@ public class GriddedRegionTest {
 		assertTrue(!gr3.equalsRegion(octRegionML));
 		
 		// test different areas
-		grLL.add(new Location(25,-120));
+		grLL.add(loc(25,-120));
 		gr1 = new GriddedRegion(
 				grLL, null, 0.5, GriddedRegion.ANCHOR_0_0);
 		assertTrue(!gr1.equalsRegion(octRegionML));
@@ -278,24 +282,24 @@ public class GriddedRegionTest {
 		assertTrue(gr3 == null);
 		
 		// test an intersection that yields an ampty region
-		Location l1 = new Location(27.2, -112.2);
-		Location l2 = new Location(27.3, -112.1);
+		Location l1 = loc(27.2, -112.2);
+		Location l2 = loc(27.3, -112.1);
 		Region r1 = new Region(l1,l2);
 		GriddedRegion gr5 = octRegionML.subRegion(r1);
 		assertTrue(gr5.isEmpty());
 		
 		// test sub region that shoul dhave one node -- the center of octRegion
-		Location l3 = new Location(32.4, -112.6);
-		Location l4 = new Location(32.6, -112.4);
+		Location l3 = loc(32.4, -112.6);
+		Location l4 = loc(32.6, -112.4);
 		Region r2 = new Region(l3,l4);
 		GriddedRegion gr6 = octRegionML.subRegion(r2);
-		assertTrue(gr6.indexForLocation(new Location(32.5, -112.5)) == 0);
+		assertTrue(gr6.indexForLocation(loc(32.5, -112.5)) == 0);
 	}
 
 	@Test
 	public final void testSetInterior() {
-		Location l1 = new Location(0, 0);
-		Location l2 = new Location(5, 5);
+		Location l1 = loc(0, 0);
+		Location l2 = loc(5, 5);
 		GriddedRegion gr = new GriddedRegion(l1, l2, 0.1, null);
 		try {
 			octRegionML.addInterior(gr);
@@ -321,83 +325,83 @@ public class GriddedRegionTest {
 
 	@Test
 	public final void testGetNodeList() {
-		assertTrue(octRegionML.getNodeList().size() == octRegionNodeCountML);
-		assertTrue(octRegionGC.getNodeList().size() == octRegionNodeCountGC);
+		assertEquals("octRegionNodeCountML", octRegionNodeCountML, octRegionML.getNodeList().size());
+		assertEquals("octRegionNodeCountGC", octRegionNodeCountGC, octRegionGC.getNodeList().size());
 	}
 
 	@Test
 	public final void testLocationForIndex() {
-		Location l1 = new Location(10,10);
-		Location l2 = new Location(15,15);
+		Location l1 = loc(10,10);
+		Location l2 = loc(15,15);
 		GriddedRegion gr1 = new GriddedRegion(l1,l2,1,null);
 		Location loc0 = gr1.locationForIndex(0);
-		assertTrue(loc0.equals(l1));
+		assertEquals("l1", loc0, l1);
 		loc0 = gr1.locationForIndex(35);
-		assertTrue(loc0.equals(l2));
+		assertEquals("l2", loc0, l2);
 		
-		l1 = new Location(10.1,10.1);
-		l2 = new Location(15,15);
+		l1 = loc(10.1,10.1);
+		l2 = loc(15,15);
 		GriddedRegion gr2 = new GriddedRegion(l1,l2,1,null);
 		loc0 = gr2.locationForIndex(0);
-		assertTrue(loc0.equals(new Location(10.1,10.1)));
+		assertEquals("10.1, 10.1", loc0, loc(10.1,10.1));
 		loc0 = gr2.locationForIndex(24);
-		assertTrue(loc0.equals(new Location(14.1,14.1)));
+		assertEquals("14.1, 14.1", loc0, loc(14.1,14.1));
 	}
 
 	@Test
 	public final void testIndexForLocation() {
-		Location l1 = new Location(10,10);
-		Location l2 = new Location(15,15);
-		Location l3 = new Location(10.9, 10.9);
-		Location l4 = new Location(11, 11);
+		Location l1 = loc(10,10);
+		Location l2 = loc(15,15);
+		Location l3 = loc(10.9, 10.9);
+		Location l4 = loc(11, 11);
 		GriddedRegion gr = new GriddedRegion(l1,l2,1,null);
 		Location result = gr.locationForIndex(gr.indexForLocation(l3));
 		assertTrue(result.equals(l4));
 		// test low outside values checking insidedness and bin splitting
 		result = gr.locationForIndex(gr.indexForLocation(
-			new Location(9.5, 10.49)));
+			loc(9.5, 10.49)));
 		assertTrue(result.equals(l1));
-		int idx = gr.indexForLocation(new Location(9.5, 10.5));
+		int idx = gr.indexForLocation(loc(9.5, 10.5));
 		assertTrue(idx == 1);
 		result = gr.locationForIndex(gr.indexForLocation(
-			new Location(9.5, 9.5)));
+			loc(9.5, 9.5)));
 		assertTrue(result.equals(l1));
 		result = gr.locationForIndex(gr.indexForLocation(
-			new Location(10.49, 9.5)));
+			loc(10.49, 9.5)));
 		assertTrue(result.equals(l1));
-		idx = gr.indexForLocation(new Location(10.5, 9.5));
+		idx = gr.indexForLocation(loc(10.5, 9.5));
 		assertTrue(idx == 6);
-		idx = gr.indexForLocation(new Location(9.5, 9.49));
+		idx = gr.indexForLocation(loc(9.5, 9.49));
 		assertTrue(idx == -1);
-		idx = gr.indexForLocation(new Location( 9.49, 9.5));
+		idx = gr.indexForLocation(loc( 9.49, 9.5));
 		assertTrue(idx == -1);
 		// test high outside values checking insidedness and bin splitting
 		result = gr.locationForIndex(gr.indexForLocation(
-			new Location(15.49, 15)));
+			loc(15.49, 15)));
 		assertTrue(result.equals(l2));
-		idx = gr.indexForLocation(new Location(15, 14.49));
+		idx = gr.indexForLocation(loc(15, 14.49));
 		assertTrue(idx == 34);
 		result = gr.locationForIndex(gr.indexForLocation(
-			new Location(15.49, 15.49)));
+			loc(15.49, 15.49)));
 		assertTrue(result.equals(l2));
 		result = gr.locationForIndex(gr.indexForLocation(
-			new Location(10.49, 9.5)));
+			loc(10.49, 9.5)));
 		assertTrue(result.equals(l1));
-		idx = gr.indexForLocation(new Location(15, 14.5));
+		idx = gr.indexForLocation(loc(15, 14.5));
 		assertTrue(idx == 35);
-		idx = gr.indexForLocation(new Location(15.49, 15.49));
+		idx = gr.indexForLocation(loc(15.49, 15.49));
 		assertTrue(idx == 35);
-		idx = gr.indexForLocation(new Location(15.5, 15.5));
+		idx = gr.indexForLocation(loc(15.5, 15.5));
 		assertTrue(idx == -1);
-		idx = gr.indexForLocation(new Location(15.5, 15.49));
+		idx = gr.indexForLocation(loc(15.5, 15.49));
 		assertTrue(idx == -1);
-		idx = gr.indexForLocation(new Location( 15.49, 15.5));
+		idx = gr.indexForLocation(loc( 15.49, 15.5));
 		assertTrue(idx == -1);
-		idx = gr.indexForLocation(new Location( 15.49, 15.51));
+		idx = gr.indexForLocation(loc( 15.49, 15.51));
 		assertTrue(idx == -1);
-		idx = gr.indexForLocation(new Location( 15.51, 15.49));
+		idx = gr.indexForLocation(loc( 15.51, 15.49));
 		assertTrue(idx == -1);
-		idx = gr.indexForLocation(new Location( 15.51, 15.51));
+		idx = gr.indexForLocation(loc( 15.51, 15.51));
 		assertTrue(idx == -1);
 	}
 
@@ -416,17 +420,17 @@ public class GriddedRegionTest {
 	@Test
 	public final void testGetMinGridLon() {
 		assertTrue(Precision.equals(
-				octRegionML.getMinGridLon(), -119.5, TOLERANCE));
+				octRegionML.getMinGridLon(), -120.0, TOLERANCE));
 		assertTrue(Precision.equals(
-				octRegionGC.getMinGridLon(), -119.5, TOLERANCE));
+				octRegionGC.getMinGridLon(), -120.0, TOLERANCE));
 	}
 
 	@Test
 	public final void testGetMaxGridLon() {
 		assertTrue(Precision.equals(
-				octRegionML.getMaxGridLon(), -105.5, TOLERANCE));
+				octRegionML.getMaxGridLon(), -105.0, TOLERANCE));
 		assertTrue(Precision.equals(
-				octRegionGC.getMaxGridLon(), -105.5, TOLERANCE));
+				octRegionGC.getMaxGridLon(), -105.0, TOLERANCE));
 	}
 
 	
@@ -438,9 +442,9 @@ public class GriddedRegionTest {
 		GriddedRegionTest.setUp();
 
 		// TODO clean
-//		Location l1 = new Location(10,10);
-//		Location l2 = new Location(10.1,10.1);
-//		Location l3 = new Location(15,15);
+//		Location l1 = loc(10,10);
+//		Location l2 = loc(10.1,10.1);
+//		Location l3 = loc(15,15);
 //		GriddedRegion gr;
 //		// test anchor setting by examining nodes
 //		// TODO the values are currently inset 

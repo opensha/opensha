@@ -470,7 +470,8 @@ public class CaliforniaRegions {
 	        	vals = s.trim().split(",");
 	        	double lat = Double.valueOf(vals[0]);
 	        	double lon = Double.valueOf(vals[1]);
-	        	Location loc = new Location(lat, lon);
+	        	// keep backwards compatibility
+	        	Location loc = Location.backwardsCompatible(lat, lon, 0d);
 	        	ll.add(loc);
 	        }
 	        br.close();
@@ -521,6 +522,8 @@ public class CaliforniaRegions {
 				type = GriddedRegion.class;
 			}
 			System.out.println(region.getName()+" has prefix "+prefix);
+			if (region instanceof GriddedRegion)
+				System.out.println("\t"+((GriddedRegion)region).getNodeCount()+" grid nodes");
 			File jsonFile = new File(outputDir, prefix+".geojson");
 			if (jsonFile.exists()) {
 				// try reading it

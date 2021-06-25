@@ -56,7 +56,13 @@ public class SiteDataServletAccessor<Element> {
 	}
 
 	public Element getValue(Location loc) throws IOException {
-		return (Element)getResult(loc);
+		return (Element)getResult(locToArray(loc));
+	}
+	
+	private static double[] locToArray(Location loc) {
+		if (loc.getDepth() == 0d)
+			return new double[] {loc.getLatitude(), loc.getLongitude()};
+		return new double[] {loc.getLatitude(), loc.getLongitude(), loc.getDepth()};
 	}
 	
 	public Location getClosestLocation(Location loc) throws IOException {
@@ -74,15 +80,22 @@ public class SiteDataServletAccessor<Element> {
 			for (LocationList partialLocs : locs.split(maxLocsPerRequest)) {
 				float frac = (float)done / (float)tot * 100f;
 //				System.out.println("Requesting " + partialLocs.size() + " values (" + frac + " % done)");
-				result.addAll((ArrayList<Element>)getResult(partialLocs));
+				result.addAll((ArrayList<Element>)getResult(locListToArrays(partialLocs)));
 				done += partialLocs.size();
 			}
 		} else {
 //			System.out.println("Requesting " + locs.size() + " values");
-			result = (ArrayList<Element>)getResult(locs);
+			result = (ArrayList<Element>)getResult(locListToArrays(locs));
 		}
 		
 		return result;
+	}
+	
+	private static List<double[]> locListToArrays(LocationList locs) {
+		List<double[]> ret = new ArrayList<>();
+		for (Location loc : locs)
+			ret.add(locToArray(loc));
+		return ret;
 	}
 	
 	private Object getResult(Object request) throws IOException {
