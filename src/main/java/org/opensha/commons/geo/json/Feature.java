@@ -7,11 +7,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 
 import com.google.common.base.Preconditions;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
@@ -62,8 +62,6 @@ public class Feature {
 		this.properties = properties;
 	}
 	
-	
-	
 	private static final Geometry.GeometryAdapter geomAdapter = new Geometry.GeometryAdapter();
 	
 	public static class FeatureAdapter extends TypeAdapter<Feature> {
@@ -99,7 +97,7 @@ public class Feature {
 			
 			out.name("properties");
 			if (value.properties == null)
-				out.nullValue();
+				out.beginObject().endObject();
 			else
 				propsAdapter.write(out, value.properties);
 			
@@ -174,7 +172,29 @@ public class Feature {
 	}
 	
 	/**
-	 * Reads a FeatureCollection from the given GeoJSON file
+	 * @return GeoJSON representation of this Feature
+	 * @throws IOException
+	 */
+	public String toJSON() throws IOException {
+		StringWriter writer = new StringWriter();
+		write(this, writer);
+		return writer.toString();
+	}
+	
+	/**
+	 * Parses a Feature from GeoJSON
+	 * 
+	 * @param json
+	 * @return
+	 * @throws IOException
+	 */
+	public static Feature fromJSON(String json) throws IOException {
+		StringReader reader = new StringReader(json);
+		return read(reader);
+	}
+	
+	/**
+	 * Reads a Feature from the given GeoJSON file
 	 * 
 	 * @param jsonFile
 	 * @return
@@ -186,7 +206,7 @@ public class Feature {
 	}
 	
 	/**
-	 * Reads a FeatureCollection from the given reader
+	 * Reads a Feature from the given reader
 	 * 
 	 * @param jsonFile
 	 * @return
@@ -195,14 +215,16 @@ public class Feature {
 	public static Feature read(Reader reader) throws IOException {
 		if (!(reader instanceof BufferedReader))
 			reader = new BufferedReader(reader);
-		Gson gson = new GsonBuilder().create();
-		Feature ret = gson.fromJson(reader, Feature.class);
-		reader.close();
+		Feature ret;
+		synchronized (FeatureCollection.gson_default) {
+			ret = FeatureCollection.gson_default.fromJson(reader, Feature.class);
+			reader.close();
+		}
 		return ret;
 	}
 	
 	/**
-	 * Writes a FeatureCollection to the given GeoJSON file
+	 * Writes a Feature to the given GeoJSON file
 	 * 
 	 * @param features
 	 * @param jsonFile
@@ -215,7 +237,7 @@ public class Feature {
 	}
 	
 	/**
-	 * Writes a FeatureCollection to the given writer
+	 * Writes a Feature to the given writer
 	 * 
 	 * @param features
 	 * @param writer
@@ -224,11 +246,11 @@ public class Feature {
 	public static void write(Feature feature, Writer writer) throws IOException {
 		if (!(writer instanceof BufferedWriter))
 			writer = new BufferedWriter(writer);
-		
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		gson.toJson(feature, Feature.class, writer);
-		
-		writer.flush();
+
+		synchronized (FeatureCollection.gson_default) {
+			FeatureCollection.gson_default.toJson(feature, Feature.class, writer);
+			writer.flush();
+		}
 	}
 
 }

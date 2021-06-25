@@ -1,6 +1,15 @@
 package org.opensha.commons.geo.json;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.List;
 
 import org.opensha.commons.geo.Location;
@@ -384,6 +393,88 @@ public class Geometry {
 			border.reverse();
 		
 		return border;
+	}
+	
+	/**
+	 * @return GeoJSON representation of this Geometry
+	 * @throws IOException
+	 */
+	public String toJSON() throws IOException {
+		StringWriter writer = new StringWriter();
+		write(this, writer);
+		return writer.toString();
+	}
+	
+	/**
+	 * Parses a Geometry from GeoJSON
+	 * 
+	 * @param json
+	 * @return
+	 * @throws IOException
+	 */
+	public static Geometry fromJSON(String json) throws IOException {
+		StringReader reader = new StringReader(json);
+		return read(reader);
+	}
+	
+	/**
+	 * Reads a FeatureCollection from the given GeoJSON file
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Geometry read(File jsonFile) throws IOException {
+		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		return read(reader);
+	}
+	
+	/**
+	 * Reads a Geometry from the given reader
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Geometry read(Reader reader) throws IOException {
+		if (!(reader instanceof BufferedReader))
+			reader = new BufferedReader(reader);
+		Geometry ret;
+		synchronized (FeatureCollection.gson_default) {
+			ret = FeatureCollection.gson_default.fromJson(reader, Geometry.class);
+			reader.close();
+		}
+		return ret;
+	}
+	
+	/**
+	 * Writes a Geometry to the given GeoJSON file
+	 * 
+	 * @param features
+	 * @param jsonFile
+	 * @throws IOException
+	 */
+	public static void write(Geometry geometry, File jsonFile) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		write(geometry, writer);
+		writer.close();
+	}
+	
+	/**
+	 * Writes a Geometry to the given writer
+	 * 
+	 * @param features
+	 * @param writer
+	 * @throws IOException
+	 */
+	public static void write(Geometry geometry, Writer writer) throws IOException {
+		if (!(writer instanceof BufferedWriter))
+			writer = new BufferedWriter(writer);
+
+		synchronized (FeatureCollection.gson_default) {
+			FeatureCollection.gson_default.toJson(geometry, Geometry.class, writer);
+			writer.flush();
+		}
 	}
 
 }
