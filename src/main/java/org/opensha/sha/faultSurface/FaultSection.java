@@ -60,13 +60,13 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public void setAseismicSlipFactor(double aseismicSlipFactor);
 	
 	/**
-	 * Defined as a reduction of area between the upper and lower seismogenic depths
+	 * Defined as a reduction of slip rate between the upper and lower seismogenic depths
 	 * @return
 	 */
 	public double getCouplingCoeff();
 
 	/**
-	 * Defined as a reduction of area between the upper and lower seismogenic depths
+	 * Defined as a reduction of slip rate between the upper and lower seismogenic depths
 	 * @return
 	 */
 	public void setCouplingCoeff(double couplingCoeff);
