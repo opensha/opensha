@@ -33,7 +33,21 @@ test {
 
 task testVerbose (type: Test) {
     testLogging {
-        events "passed", "skipped", "failed"
+        events "failed"
+    }
+    beforeSuite { descr ->
+        println("Executing suite: $descr.className > $descr.displayName")
+    }
+    beforeTest { descr ->
+        println("Executing test: $descr.className > $descr.displayName")
+    }
+    afterTest { descr, result ->
+        def time = (result.endTime - result.startTime)/1000.0
+        println("\tresult: $result.resultType in $time s")
+    }
+    afterSuite { descr, result ->
+        def time = (result.endTime - result.startTime)/1000.0
+        println("Suite $descr.className took $time s")
     }
     minHeapSize = "128m"
     maxHeapSize = "2048m"
