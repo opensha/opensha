@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -147,6 +148,27 @@ public class StandardFaultSysModulesTest {
 	public void testGriddedSeis() throws IOException {
 		GridSourceProvider gridSources = demoSol.getGridSourceProvider();
 		testModuleSerialization(demoSol.getArchive(), demoSol, gridSources, GridSourceProvider.class);
+	}
+
+	@Test
+	public void testIndividualSolRates() throws IOException {
+		double[] origRates = demoSol.getRateForAllRups();
+		int numSols = 10;
+		int numRups = demoSol.getRupSet().getNumRuptures();
+		List<double[]> indvRates = new ArrayList<>();
+		for (int s=0; s<numSols; s++)
+			indvRates.add(new double[numRups]);
+		for (int r=0; r<numRups; r++) {
+			double[] weights = new double[numSols];
+			for (int s=0; s<numSols; s++)
+				weights[s] = Math.random();
+			double totWeight = StatUtils.sum(weights);
+			double scale = (double)numSols/totWeight;
+			for (int s=0; s<numSols; s++)
+				indvRates.get(s)[r] = origRates[r]*weights[s]*scale;
+		}
+		IndividualSolutionRates module = new IndividualSolutionRates(demoSol, indvRates);
+		testModuleSerialization(demoSol.getArchive(), demoSol, module, IndividualSolutionRates.class);
 	}
 	
 	private static double[] randArray(int len) {
