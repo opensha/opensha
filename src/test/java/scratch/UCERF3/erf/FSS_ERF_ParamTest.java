@@ -310,7 +310,7 @@ public class FSS_ERF_ParamTest {
 	public void testBaseERFParamSetting() {
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF();
 		erf.setSolution(ivfss_1);
-		int numTests = 100;
+		int numTests = 10;
 		int maxSetsPerTest = 10;
 		testParamSetting(erf, numTests, maxSetsPerTest);
 	}

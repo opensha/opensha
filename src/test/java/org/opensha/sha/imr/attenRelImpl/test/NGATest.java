@@ -52,6 +52,9 @@ public abstract class NGATest implements ParameterChangeWarningListener {
 	public void tearDown() {
 
 	}
+	
+	// these are old models, don't waste a bunch of time testing them
+	protected static int max_num_tests = 500;
 
 	/**
 	 * Tests a single file

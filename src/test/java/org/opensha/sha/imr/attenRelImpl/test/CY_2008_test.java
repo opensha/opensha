@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.StringTokenizer;
 
 import org.junit.Before;
@@ -151,9 +153,17 @@ public class CY_2008_test extends NGATest {
 		
 		try {
 			ArrayList<String> testDataLines = FileUtils.loadFile(file.getAbsolutePath());
-			int numLines = testDataLines.size();
 			double period[] = this.loadPeriods((String)testDataLines.get(0));
-			for(int j=1;j<numLines;++j){
+			int numLines = testDataLines.size();
+			List<String> testLines = testDataLines.subList(1, numLines);
+			if (numLines > max_num_tests) {
+				System.out.println("Downsampling "+cy_08.getName()+" tests to "+max_num_tests);
+				Collections.shuffle(testLines);
+				testLines = testLines.subList(0, max_num_tests);
+			}
+			int count = -1;
+			for (String fileLine : testLines) {
+				count++;
 				StringTokenizer st;
 				double mag;
 				//((WarningDoublePropagationEffectParameter)as_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(rrup));
@@ -161,7 +171,6 @@ public class CY_2008_test extends NGATest {
 				double vs30;
 				try {
 					//System.out.println("Doing "+j+" of "+numLines);
-					String fileLine = (String)testDataLines.get(j);
 					st = new StringTokenizer(fileLine);
 					mag = Double.parseDouble(st.nextToken().trim());
 					((WarningDoubleParameter)cy_08.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
@@ -244,7 +253,7 @@ public class CY_2008_test extends NGATest {
 							testValString+" from OpenSHA = "+openSHA_Val+"  should be = "+tested_Val;
 							failLine = fileLine;
 							failMetadata = "Line: " + fileLine;
-							failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+							failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 							//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 							failMetadata += "\n" + getOpenSHAParams(cy_08);
 							
@@ -276,7 +285,7 @@ public class CY_2008_test extends NGATest {
 						testValString+" from OpenSHA = "+openSHA_Val+"  should be = "+tested_Val;
 						failLine = fileLine;
 						failMetadata = "Line: " + fileLine;
-						failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+						failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 						//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 						failMetadata += "\n" + getOpenSHAParams(cy_08);
 						
@@ -307,7 +316,7 @@ public class CY_2008_test extends NGATest {
 						testValString+" from OpenSHA = "+openSHA_Val+"  should be = "+tested_Val;
 						failLine = fileLine;
 						failMetadata = "Line: " + fileLine;
-						failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+						failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 						//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 						failMetadata += "\n" + getOpenSHAParams(cy_08);
 						

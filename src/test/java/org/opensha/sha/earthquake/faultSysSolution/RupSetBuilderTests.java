@@ -76,9 +76,12 @@ public class RupSetBuilderTests {
 	public void testReproduceU3SlipAlongs() {
 		SlipAlongRuptureModule slipModule = reproduced.getModule(SlipAlongRuptureModule.class);
 		assertNotNull("Reproduction doesn't have SlipAlongRuptureModule module", slipModule);
-		for (int r=0; r<reproduced.getNumRuptures(); r++)
+		for (int r=0; r<reproduced.getNumRuptures(); r++) {
+			if (reproduced.getNumRuptures() > 50000 && Math.random() > 0.1)
+				continue;
 			testExactlyEqual(u3Default.getSlipOnSectionsForRup(r), slipModule.getSlipOnSectionsForRup(r),
 					"Rupture "+r+" Dsr");
+		}
 	}
 	
 	@Test
