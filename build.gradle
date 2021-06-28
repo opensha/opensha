@@ -24,9 +24,17 @@ sourceSets {
 }
 
 test {
-//    testLogging {
-//        events "passed", "skipped", "failed"
-//    }
+    minHeapSize = "128m"
+    maxHeapSize = "2048m"
+    filter {
+        includeTestsMatching "*Suite*"
+    }
+}
+
+task testVerbose (type: Test) {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
     minHeapSize = "128m"
     maxHeapSize = "2048m"
     filter {
