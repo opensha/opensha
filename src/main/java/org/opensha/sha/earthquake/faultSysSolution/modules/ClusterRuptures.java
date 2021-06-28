@@ -132,15 +132,22 @@ public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
 	}
 	
 	public static ClusterRuptures instance(FaultSystemRupSet rupSet, List<ClusterRupture> clusterRuptures) {
-		boolean singleStrand = true;
-		for (ClusterRupture rup : clusterRuptures) {
-			if (!rup.singleStrand) {
-				singleStrand = false;
-				break;
+		return instance(rupSet, clusterRuptures, false);
+	}
+	
+	public static ClusterRuptures instance(FaultSystemRupSet rupSet, List<ClusterRupture> clusterRuptures,
+			boolean forceSerialization) {
+		if (!forceSerialization) {
+			boolean singleStrand = true;
+			for (ClusterRupture rup : clusterRuptures) {
+				if (!rup.singleStrand) {
+					singleStrand = false;
+					break;
+				}
 			}
+			if (singleStrand)
+				return new SingleStranded(rupSet, clusterRuptures);
 		}
-		if (singleStrand)
-			return new SingleStranded(rupSet, clusterRuptures);
 		return new Precomputed(rupSet, clusterRuptures);
 	}
 
@@ -155,7 +162,8 @@ public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
 
 		public SingleStranded(FaultSystemRupSet rupSet, List<ClusterRupture> clusterRuptures) {
 			super(rupSet);
-			Preconditions.checkNotNull(rupSet);
+			if (clusterRuptures != null)
+				Preconditions.checkNotNull(rupSet);
 			this.clusterRuptures = clusterRuptures;
 		}
 

@@ -95,8 +95,24 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 */
 	@SuppressWarnings("unchecked")
 	public <M extends E> M getModule(Class<M> clazz) {
+		return getModule(clazz, true);
+	}
+	
+	/**
+	 * Retrieves a module that matches the given class if it exists, otherwise null.
+	 * <p>
+	 * If no current instance matches, but an available module loader does, then we will attempt to load that available
+	 * module first. 
+	 * 
+	 * @param <M> the type to be returned
+	 * @param clazz module class to look up
+	 * @param loadAvailable if true, load available modules if needed
+	 * @return module mapping the given class, or null if no match
+	 */
+	@SuppressWarnings("unchecked")
+	public <M extends E> M getModule(Class<M> clazz, boolean loadAvailable) {
 		E module = mappings.get(clazz);
-		if (module == null && !availableMappings.isEmpty()) {
+		if (loadAvailable && module == null && !availableMappings.isEmpty()) {
 			// see if we have it, and then load it lazily
 			Callable<E> call = availableMappings.get(clazz);
 			if (call != null && loadAvilableModule(call))

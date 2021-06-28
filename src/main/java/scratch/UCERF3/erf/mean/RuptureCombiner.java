@@ -399,7 +399,7 @@ public class RuptureCombiner {
 				mags, rakes, rupAreas, null);
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		sol.setGridSourceProvider(meanSol.getGridSourceProvider());
-		sol.addModule(new RupMFDsModule(mfds));
+		sol.addModule(new RupMFDsModule(sol, mfds));
 		
 		// now check total rates
 		double origTotRate = 0;
@@ -861,7 +861,7 @@ public class RuptureCombiner {
 	public static class SubsetSolution extends FaultSystemSolution {
 		public SubsetSolution(FaultSystemSolution sol, List<Integer> rups) {
 			super(new SubsetRupSet(sol.getRupSet(), rups), getSubArray(sol.getRateForAllRups(), rups));
-			addModule(new RupMFDsModule(getSubArray(sol.getModule(RupMFDsModule.class).getRuptureMFDs(), rups)));
+			addModule(new RupMFDsModule(this, getSubArray(sol.getModule(RupMFDsModule.class).getRuptureMFDs(), rups)));
 		}
 	}
 	

@@ -97,6 +97,8 @@ public class Feature {
 			
 			out.name("properties");
 			if (value.properties == null)
+				// some parsers fail on null properties, even though the spec says null is file
+				// just give an empty properties object instead
 				out.beginObject().endObject();
 			else
 				propsAdapter.write(out, value.properties);

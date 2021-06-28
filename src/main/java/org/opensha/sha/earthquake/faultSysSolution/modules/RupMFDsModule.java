@@ -5,6 +5,7 @@ import java.awt.geom.Point2D;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
@@ -18,15 +19,22 @@ import com.google.common.base.Preconditions;
  * @author kevin
  *
  */
-public class RupMFDsModule implements CSV_BackedModule {
+public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSolution> {
 	
 	private DiscretizedFunc[] rupMFDs;
+	
+	private FaultSystemSolution parent;
 	
 	private RupMFDsModule() {
 	}
 
-	public RupMFDsModule(DiscretizedFunc[] rupMFDs) {
+	public RupMFDsModule(FaultSystemSolution sol, DiscretizedFunc[] rupMFDs) {
 		super();
+		if (rupMFDs != null) {
+			Preconditions.checkNotNull(sol);
+			Preconditions.checkState(rupMFDs.length == sol.getRupSet().getNumRuptures());
+		}
+		this.parent = sol;
 		this.rupMFDs = rupMFDs;
 	}
 
@@ -55,7 +63,8 @@ public class RupMFDsModule implements CSV_BackedModule {
 
 	@Override
 	public void initFromCSV(CSVFile<String> csv) {
-		DiscretizedFunc[] rupMFDs = new DiscretizedFunc[csv.getNumRows()-1];
+		Preconditions.checkNotNull(parent, "Cannot init from CSV without parent solution set");
+		DiscretizedFunc[] rupMFDs = new DiscretizedFunc[parent.getRupSet().getNumRuptures()];
 		for (int row=1; row<csv.getNumRows(); row++) {
 			int r = csv.getInt(row, 0);
 			double mag = csv.getDouble(row, 1);
@@ -76,6 +85,25 @@ public class RupMFDsModule implements CSV_BackedModule {
 	
 	public DiscretizedFunc[] getRuptureMFDs() {
 		return rupMFDs;
+	}
+
+	@Override
+	public void setParent(FaultSystemSolution parent) throws IllegalStateException {
+		if (parent != null && this.parent != null)
+			Preconditions.checkState(this.parent.getRupSet().isEquivalentTo(parent.getRupSet()));
+		this.parent = parent;
+	}
+
+	@Override
+	public FaultSystemSolution getParent() {
+		return parent;
+	}
+
+	@Override
+	public RupMFDsModule copy(FaultSystemSolution newParent) throws IllegalStateException {
+		if (parent != null)
+			Preconditions.checkState(this.parent.getRupSet().isEquivalentTo(newParent.getRupSet()));
+		return new RupMFDsModule(newParent, rupMFDs);
 	}
 
 }

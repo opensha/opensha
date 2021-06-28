@@ -37,16 +37,17 @@ public class RupSetSaveLoadTests {
 	private static FaultSystemRupSet demoRupSet;
 	private static FaultSystemSolution demoSol;
 	
+	public static final File FSS_TEST_RESOURCES_DIR =
+			new File("src/test/resources/org/opensha/sha/earthquake/faultSysSolution");
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		tempDir = Files.createTempDir();
 		
-		File testResourcesDir = new File("src/test/resources/org/opensha/sha/earthquake/faultSysSolution");
-		
-		demoRupSetZip = new ZipFile(new File(testResourcesDir, "demo_rup_set.zip"));
-		demoSolZip = new ZipFile(new File(testResourcesDir, "demo_sol.zip"));
-		demoOldRupSetZip = new ZipFile(new File(testResourcesDir, "demo_old_rup_set.zip"));
-		demoOldSolZip = new ZipFile(new File(testResourcesDir, "demo_old_sol.zip"));
+		demoRupSetZip = new ZipFile(new File(FSS_TEST_RESOURCES_DIR, "demo_rup_set.zip"));
+		demoSolZip = new ZipFile(new File(FSS_TEST_RESOURCES_DIR, "demo_sol.zip"));
+		demoOldRupSetZip = new ZipFile(new File(FSS_TEST_RESOURCES_DIR, "demo_old_rup_set.zip"));
+		demoOldSolZip = new ZipFile(new File(FSS_TEST_RESOURCES_DIR, "demo_old_sol.zip"));
 		
 		try {
 			demoRupSet = FaultSystemRupSet.load(demoRupSetZip);

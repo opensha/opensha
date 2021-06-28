@@ -77,15 +77,17 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 
 	@Override
 	public void initFromCSV(CSVFile<String> csv) {
-		double min = csv.getDouble(0, 1);
-		double delta = csv.getDouble(0, 2) - min;
+		List<String> header = csv.getLine(0);
+		double min = Double.parseDouble(header.get(1));
+		double max = Double.parseDouble(header.get(header.size()-1));
+		int num = header.size()-1;
 		
 		List<IncrementalMagFreqDist> mfds = new ArrayList<>();
 		for (int row=1; row<csv.getNumRows(); row++) {
 			List<String> line = csv.getLine(row);
 			Preconditions.checkState(Integer.parseInt(line.get(0)) == row-1, "File out of order or not 0-based");
-			IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(min, line.size()-1, delta);
-			for (int i=0; i<line.size(); i++)
+			IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(min, max, num);
+			for (int i=0; i<mfd.size(); i++)
 				mfd.set(i, Double.parseDouble(line.get(i+1)));
 			mfds.add(mfd);
 		}

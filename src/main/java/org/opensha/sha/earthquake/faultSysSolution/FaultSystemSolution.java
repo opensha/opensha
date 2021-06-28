@@ -227,7 +227,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 
 	@Override
 	public void setParent(ModuleArchive<OpenSHA_Module> parent) throws IllegalStateException {
-		FaultSystemSolution oSol = parent.getModule(FaultSystemSolution.class);
+		FaultSystemSolution oSol = parent.getModule(FaultSystemSolution.class, false);
 		Preconditions.checkState(oSol == null || oSol == this);
 		this.archive = parent;
 	}

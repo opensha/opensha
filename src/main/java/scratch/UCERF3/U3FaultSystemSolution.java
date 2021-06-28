@@ -342,7 +342,7 @@ public class U3FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSo
 	public void setRupMagDists(DiscretizedFunc[] rupMFDs) {
 		Preconditions.checkArgument(rupMFDs == null || rupMFDs.length == getRupSet().getNumRuptures());
 //		this.rupMFDs = rupMFDs;
-		addModule(new RupMFDsModule(rupMFDs));
+		addModule(new RupMFDsModule(this, rupMFDs));
 	}
 	
 	/**

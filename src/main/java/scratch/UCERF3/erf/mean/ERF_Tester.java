@@ -45,7 +45,7 @@ public class ERF_Tester {
 		Stopwatch watch = Stopwatch.createStarted();
 		FaultSystemSolution reducedSol = RuptureCombiner.getCombinedSolution(sol, upperDepthTol, false, combineRakes, rakeBasis);
 		if (combineMags > 0)
-			reducedSol.addModule(new RupMFDsModule(RuptureCombiner.combineMFDs(combineMags,
+			reducedSol.addModule(new RupMFDsModule(reducedSol, RuptureCombiner.combineMFDs(combineMags,
 					reducedSol.getModule(RupMFDsModule.class).getRuptureMFDs())));
 		FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
 		watch.stop();

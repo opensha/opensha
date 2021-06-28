@@ -13,7 +13,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @author Peter Powers
  * @version $Id:$
  */
-public interface GridSourceProvider extends OpenSHA_Module { // TODO serialization
+public interface GridSourceProvider extends OpenSHA_Module {
 
 	/**
 	 * Returns the number of sources in the provider.

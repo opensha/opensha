@@ -150,6 +150,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 
 	@Override
 	public void setParent(ModuleArchive<OpenSHA_Module> parent) throws IllegalStateException {
+		FaultSystemRupSet oRupSet = parent.getModule(FaultSystemRupSet.class, false);
+		Preconditions.checkState(oRupSet == null || oRupSet == this);
 		this.archive = parent;
 	}
 

@@ -248,7 +248,7 @@ public class FSS_ERF_ParamTest {
 			}
 			rupMFDs[r] = new LightFixedXFunc(mags, relativeWts);
 		}
-		sol.addModule(new RupMFDsModule(rupMFDs));
+		sol.addModule(new RupMFDsModule(sol, rupMFDs));
 	}
 
 	@Test

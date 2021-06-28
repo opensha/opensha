@@ -553,7 +553,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			// must be just mags, create a new sol
 			if (D) System.out.println("no reduce, just copying");
 			reducedSol = new FaultSystemSolution(meanTotalSol.getRupSet(), meanTotalSol.getRateForAllRups());
-			reducedSol.addModule(new RupMFDsModule(meanTotalMFDs));
+			reducedSol.addModule(new RupMFDsModule(reducedSol, meanTotalMFDs));
 			reducedSol.setGridSourceProvider(meanTotalSol.getGridSourceProvider());
 		}
 		
@@ -583,7 +583,8 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			if (magTol >= 10)
 				sol.removeModuleInstances(RupMFDsModule.class);
 			else if (sol.hasModule(RupMFDsModule.class))
-				sol.addModule(new RupMFDsModule(RuptureCombiner.combineMFDs(magTol, sol.getModule(RupMFDsModule.class).getRuptureMFDs())));
+				sol.addModule(new RupMFDsModule(sol,
+						RuptureCombiner.combineMFDs(magTol, sol.getModule(RupMFDsModule.class).getRuptureMFDs())));
 		}
 	}
 	
