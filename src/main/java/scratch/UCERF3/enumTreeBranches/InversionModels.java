@@ -76,4 +76,9 @@ public enum InversionModels implements LogicTreeBranchNode<InversionModels> {
 	public String getBranchLevelName() {
 		return "Inversion Model";
 	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "IM";
+	}
 }

@@ -149,6 +149,11 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 		return "Deformation Model";
 	}
 	
+	@Override
+	public String getShortBranchLevelName() {
+		return "DM";
+	}
+	
 	private static File getCacheDir() {
 		File scratchDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
 		if (scratchDir.exists()) {

@@ -122,12 +122,23 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <E extends Enum<E> & LogicTreeNode> LogicTreeLevel<E> forEnumUnchecked(
+	public static <E extends LogicTreeNode> LogicTreeLevel<E> forEnumUnchecked(
 			Class<?> type, String name, String shortName) {
 		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
 	}
 	
-	static class EnumBackedLevel<E extends Enum<E> & LogicTreeNode> extends LogicTreeLevel<E> {
+	@SuppressWarnings("unchecked")
+	public static <E extends LogicTreeNode> LogicTreeLevel<E> forEnumUnchecked(
+			Object enumValue, String name, String shortName) {
+		Class<? extends Object> type = enumValue.getClass();
+		if (!type.isEnum())
+			type = (Class<E>) type.getEnclosingClass();
+		Preconditions.checkState(enumValue.getClass().isEnum());
+		Preconditions.checkState(enumValue instanceof LogicTreeNode);
+		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
+	}
+	
+	static class EnumBackedLevel<E extends LogicTreeNode> extends LogicTreeLevel<E> {
 		
 		private String name;
 		private String shortName;

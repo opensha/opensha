@@ -59,4 +59,9 @@ public enum MaxMagOffFault implements LogicTreeBranchNode<MaxMagOffFault> {
 	public String getBranchLevelName() {
 		return "MMax Off Fault";
 	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "MMaxOFf";
+	}
 }

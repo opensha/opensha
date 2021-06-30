@@ -57,6 +57,11 @@ public enum SlipAlongRuptureModels implements LogicTreeBranchNode<SlipAlongRuptu
 		return "Slip Along Rupture Model (Dsr)";
 	}
 	
+	@Override
+	public String getShortBranchLevelName() {
+		return "Dsr";
+	}
+	
 	private static EvenlyDiscretizedFunc taperedSlipPDF, taperedSlipCDF;
 
 	public static double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,

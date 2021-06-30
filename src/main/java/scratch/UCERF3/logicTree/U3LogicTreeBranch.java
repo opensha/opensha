@@ -9,6 +9,7 @@ import java.util.Map;
 import org.dom4j.Element;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.ClassUtils;
 
@@ -104,9 +105,9 @@ implements XMLSaveable {
 		if (levels == null) {
 			levels = new ArrayList<>();
 			for (Class<? extends LogicTreeBranchNode<?>> clazz : getLogicTreeNodeClasses()) {
-				@SuppressWarnings("unchecked")
-				LogicTreeLevel<LogicTreeBranchNode<?>> level = (LogicTreeLevel<LogicTreeBranchNode<?>>)
-					LogicTreeLevel.forEnumUnchecked(clazz, XML_METADATA_NAME, XML_METADATA_NAME);
+				LogicTreeBranchNode<?> value0 = clazz.getEnumConstants()[0];
+				LogicTreeLevel<LogicTreeBranchNode<?>> level = LogicTreeLevel.forEnumUnchecked(
+						value0, value0.getBranchLevelName(), value0.getShortBranchLevelName());
 				levels.add(level);
 			}
 		}

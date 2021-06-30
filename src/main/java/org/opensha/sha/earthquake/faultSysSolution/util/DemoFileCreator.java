@@ -107,18 +107,7 @@ public class DemoFileCreator {
 				.forScalingRelationship(ScalingRelationships.SHAW_2009_MOD)
 				.slipAlongRupture(SlipAlongRuptureModels.UNIFORM).build();
 		rupSet.getArchive().write(new File(outputDir, "demo_rup_set.zip"));
-		// write old style
-		/*
-		 * 			double[] sectSlipRates,
-			double[] sectSlipRateStdDevs,
-			double[] sectAreas,
-			List<List<Integer>> sectionForRups,
-			double[] mags,
-			double[] rakes,
-			double[] rupAreas,
-			double[] rupLengths,
-			String info) {
-		 */
+		// write old style as well
 		U3FaultSystemRupSet oldRupSet = new U3FaultSystemRupSet(subSects, rupSet.getSlipRateForAllSections(),
 				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
 				rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(), rupSet.getAveRakeForAllRups(),
