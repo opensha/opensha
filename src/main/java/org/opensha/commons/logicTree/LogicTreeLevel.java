@@ -133,7 +133,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		Class<? extends Object> type = enumValue.getClass();
 		if (!type.isEnum())
 			type = (Class<E>) type.getEnclosingClass();
-		Preconditions.checkState(enumValue.getClass().isEnum());
+		Preconditions.checkState(type.isEnum(), "Class is not an enum: %s", type);
 		Preconditions.checkState(enumValue instanceof LogicTreeNode);
 		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
 	}
