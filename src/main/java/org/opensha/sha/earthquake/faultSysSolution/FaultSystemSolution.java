@@ -139,7 +139,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
-			if (zip.getEntry("modules.json") == null && zip.getEntry("ruptures/ruptures.csv") != null
+			if (zip.getEntry("modules.json") == null
+					&& zip.getEntry("ruptures/"+FaultSystemRupSet.RUP_SECTS_FILE_NAME) != null
 					&& zip.getEntry("solution/rates.csv") != null) {
 				// missing modules.json, try to load it as an unlisted module
 				System.err.println("WARNING: solution archive is missing modules.json, trying to load it anyway");
