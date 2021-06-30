@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.dom4j.Element;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.ClassUtils;
@@ -34,7 +35,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
  * @author kevin
  *
  */
-public class U3LogicTreeBranch extends org.opensha.commons.logicTree.LogicTreeBranch<LogicTreeBranchNode<? extends Enum<?>>>
+public class U3LogicTreeBranch extends LogicTreeBranch<LogicTreeBranchNode<?>>
 implements XMLSaveable {
 //public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends Enum<?>>>,
 //	Cloneable, Serializable, Comparable<LogicTreeBranch>, XMLSaveable {
@@ -73,7 +74,7 @@ implements XMLSaveable {
 	}
 	
 	private static List<Class<? extends LogicTreeBranchNode<?>>> logicTreeClasses;
-	private static List<LogicTreeLevel> levels;
+	private static List<LogicTreeLevel<? extends LogicTreeBranchNode<?>>> levels;
 	
 	/**
 	 * List of Logic Tree node classes
@@ -94,13 +95,23 @@ implements XMLSaveable {
 			logicTreeClasses.add(SpatialSeisPDF.class);
 			
 			logicTreeClasses = Collections.unmodifiableList(logicTreeClasses);
-			
-			levels = new ArrayList<>();
-			for (Class<? extends LogicTreeBranchNode<?>> clazz : logicTreeClasses)
-				levels.add(LogicTreeLevel.forEnumUnchecked(clazz, XML_METADATA_NAME, XML_METADATA_NAME));
 		}
 		
 		return logicTreeClasses;
+	}
+		
+	public static synchronized List<LogicTreeLevel<? extends LogicTreeBranchNode<?>>> getLogicTreeLevels() {
+		if (levels == null) {
+			levels = new ArrayList<>();
+			for (Class<? extends LogicTreeBranchNode<?>> clazz : getLogicTreeNodeClasses()) {
+				@SuppressWarnings("unchecked")
+				LogicTreeLevel<LogicTreeBranchNode<?>> level = (LogicTreeLevel<LogicTreeBranchNode<?>>)
+					LogicTreeLevel.forEnumUnchecked(clazz, XML_METADATA_NAME, XML_METADATA_NAME);
+				levels.add(level);
+			}
+		}
+		
+		return levels;
 	}
 	
 	private static Table<Class<? extends LogicTreeBranchNode<?>>, InversionModels, Double> classWeightTotals;
@@ -109,8 +120,8 @@ implements XMLSaveable {
 		super(branch);
 	}
 	
-	protected U3LogicTreeBranch(List<LogicTreeBranchNode<? extends Enum<?>>> branch) {
-		super(levels, branch);
+	protected U3LogicTreeBranch(List<LogicTreeBranchNode<?>> branch) {
+		super(getLogicTreeLevels(), branch);
 	}
 	
 	private U3LogicTreeBranch() {
@@ -201,7 +212,7 @@ implements XMLSaveable {
 		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
 		
 		// initialize branch with null
-		List<LogicTreeBranchNode<? extends Enum<?>>> values = Lists.newArrayList();
+		List<LogicTreeBranchNode<?>> values = Lists.newArrayList();
 		for (int i=0; i<classes.size(); i++)
 			values.add(null);
 		
@@ -266,7 +277,7 @@ implements XMLSaveable {
 	 */
 	public static U3LogicTreeBranch fromFileName(String fileName) {
 		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
-		List<LogicTreeBranchNode<? extends Enum<?>>> branch = Lists.newArrayList();
+		List<LogicTreeBranchNode<?>> branch = Lists.newArrayList();
 		
 		for (Class<? extends LogicTreeBranchNode<?>> clazz : classes) {
 //			LogicTreeBranchNode<?> value = parseValue(clazz, fileName);
@@ -359,7 +370,7 @@ implements XMLSaveable {
 
 	@Override
 	public Object clone() {
-		List<LogicTreeBranchNode<? extends Enum<?>>> newBranches = Lists.newArrayList();
+		List<LogicTreeBranchNode<?>> newBranches = Lists.newArrayList();
 		
 		for (int i=0; i<size(); i++)
 			newBranches.add(getValue(i));
@@ -470,7 +481,7 @@ implements XMLSaveable {
 		
 		// now populate branch
 		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
-		List<LogicTreeBranchNode<? extends Enum<?>>> branchList = Lists.newArrayList();
+		List<LogicTreeBranchNode<?>> branchList = Lists.newArrayList();
 		
 		for (Class<? extends LogicTreeBranchNode<?>> clazz : classes) {
 			String className = ClassUtils.getClassNameWithoutPackage(clazz);

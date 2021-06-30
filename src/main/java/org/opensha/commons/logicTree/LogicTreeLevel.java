@@ -1,18 +1,23 @@
 package org.opensha.commons.logicTree;
 
-import java.util.Collections;
+import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
-public abstract class LogicTreeLevel implements ShortNamed {
+public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNamed {
 	
-	public abstract Class<? extends LogicTreeNode> getType();
+	public abstract Class<? extends E> getType();
 	
-	public abstract List<LogicTreeNode> getNodes();
+	public abstract List<? extends E> getNodes();
 	
 	public abstract boolean isMember(LogicTreeNode node);
 	
@@ -20,16 +25,28 @@ public abstract class LogicTreeLevel implements ShortNamed {
 		return getName();
 	}
 	
-	static class FileBackedLevel extends LogicTreeLevel {
+	static class FileBackedLevel extends LogicTreeLevel<FileBackedNode> {
 		
 		private String name;
 		private String shortName;
-		private FileBackedNode choice;
+		private List<FileBackedNode> choices;
+
+		FileBackedLevel(String name, String shortName) {
+			this(name, shortName, new ArrayList<>());
+		}
 
 		FileBackedLevel(String name, String shortName, FileBackedNode choice) {
+			this(name, shortName, new ArrayList<>());
+			if (choice != null)
+				addChoice(choice);
+		}
+
+		FileBackedLevel(String name, String shortName, List<FileBackedNode> choices) {
 			this.name = name;
 			this.shortName = shortName;
-			this.choice = choice;
+			if (choices == null)
+				choices = new ArrayList<>();
+			this.choices = choices;
 		}
 
 		@Override
@@ -47,20 +64,19 @@ public abstract class LogicTreeLevel implements ShortNamed {
 			return FileBackedNode.class;
 		}
 		
-		void setChoice(FileBackedNode choice) {
-			this.choice = choice;
+		void addChoice(FileBackedNode choice) {
+			Preconditions.checkNotNull(choice);
+			choices.add(choice);
 		}
 
 		@Override
-		public List<LogicTreeNode> getNodes() {
-			if (choice == null)
-				return Collections.emptyList();
-			return Collections.singletonList(choice);
+		public List<FileBackedNode> getNodes() {
+			return choices;
 		}
 
 		@Override
 		public boolean isMember(LogicTreeNode node) {
-			return choice != null && choice.equals(node);
+			return choices.contains(node);
 		}
 
 		@Override
@@ -81,8 +97,8 @@ public abstract class LogicTreeLevel implements ShortNamed {
 			if (getClass() != obj.getClass())
 				return false;
 			FileBackedLevel other = (FileBackedLevel) obj;
-			if (choice != null && other.choice != null) {
-				if (!choice.equals(other.choice))
+			if (choices != null && other.choices != null) {
+				if (!choices.equals(other.choices))
 					return false;
 			}
 			if (name == null) {
@@ -100,18 +116,18 @@ public abstract class LogicTreeLevel implements ShortNamed {
 		
 	}
 	
-	public static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> forEnum(
+	public static <E extends Enum<E> & LogicTreeNode> LogicTreeLevel<E> forEnum(
 			Class<E> type, String name, String shortName) {
 		return new EnumBackedLevel<>(name, shortName, type);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> forEnumUnchecked(
+	public static <E extends Enum<E> & LogicTreeNode> LogicTreeLevel<E> forEnumUnchecked(
 			Class<?> type, String name, String shortName) {
 		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
 	}
 	
-	static class EnumBackedLevel<E extends Enum<E> & LogicTreeNode> extends LogicTreeLevel {
+	static class EnumBackedLevel<E extends Enum<E> & LogicTreeNode> extends LogicTreeLevel<E> {
 		
 		private String name;
 		private String shortName;
@@ -140,7 +156,7 @@ public abstract class LogicTreeLevel implements ShortNamed {
 		}
 
 		@Override
-		public List<LogicTreeNode> getNodes() {
+		public List<E> getNodes() {
 			return List.of(type.getEnumConstants());
 		}
 
@@ -167,7 +183,7 @@ public abstract class LogicTreeLevel implements ShortNamed {
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
-			EnumBackedLevel other = (EnumBackedLevel) obj;
+			EnumBackedLevel<?> other = (EnumBackedLevel<?>) obj;
 			if (name == null) {
 				if (other.name != null)
 					return false;
@@ -184,6 +200,98 @@ public abstract class LogicTreeLevel implements ShortNamed {
 			} else if (!type.equals(other.type))
 				return false;
 			return true;
+		}
+		
+	}
+	
+	public static class Adapter<E extends LogicTreeNode> extends TypeAdapter<LogicTreeLevel<? extends E>> {
+
+		@Override
+		public void write(JsonWriter out, LogicTreeLevel<? extends E> level) throws IOException {
+			out.beginObject();
+			
+			out.name("name").value(level.getName());
+			out.name("shortName").value(level.getShortName());
+			if (level.getType().isEnum()) {
+				// it's an enum
+				out.name("enumClass").value(level.getType().getName());
+			} else if (!(level instanceof FileBackedLevel)) {
+				out.name("class").value(level.getClass().getName());
+			}
+			out.endObject();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public LogicTreeLevel<E> read(JsonReader in) throws IOException {
+			String name = null;
+			String shortName = null;
+			String enumClassName = null;
+			String className = null;
+			in.beginObject();
+			
+			while (in.hasNext()) {
+				switch (in.nextName()) {
+				case "name":
+					name = in.nextString();
+					break;
+				case "shortName":
+					shortName = in.nextString();
+					break;
+				case "enumClass":
+					enumClassName = in.nextString();
+					break;
+				case "className":
+					className = in.nextString();
+					break;
+
+				default:
+					break;
+				}
+			}
+			
+			LogicTreeLevel<E> level = null;
+			
+			if (enumClassName != null) {
+				// load it as an enum
+				try {
+					Class<?> rawClass = Class.forName(enumClassName);
+					level = (LogicTreeLevel<E>) LogicTreeLevel.forEnumUnchecked(rawClass, name, shortName);
+				} catch (ClassNotFoundException e) {
+					System.err.println("WARNING: couldn't locate logic tree branch node enum class '"+enumClassName+"', "
+							+ "loading plain/hardcoded version instead");
+				} catch (ClassCastException e) {
+					System.err.println("WARNING: logic tree branch node class '"+enumClassName+"' is of the wrong type, "
+							+ "loading plain/hardcoded version instead");
+				}
+			}
+			if (level == null && className != null) {
+				// try to load it as a class via default constructor
+				try {
+					Class<?> rawClass = Class.forName(className);
+					Class<? extends LogicTreeLevel<E>> clazz = (Class<? extends LogicTreeLevel<E>>)rawClass;
+					Constructor<? extends LogicTreeLevel<E>> constructor = clazz.getDeclaredConstructor();
+					constructor.setAccessible(true);
+					
+					level = constructor.newInstance();
+				} catch (ClassNotFoundException e) {
+					System.err.println("WARNING: couldn't locate logic tree branch node class '"+className+"', "
+							+ "loading plain/hardcoded version instead");
+				} catch (ClassCastException e) {
+					System.err.println("WARNING: logic tree branch node class '"+className+"' is of the wrong type, "
+							+ "loading plain/hardcoded version instead");
+				} catch (Exception e) {
+					System.err.println("Couldn't instantiate default no-arg constructor of declared logic tree node class, "
+								+ "loading plain/hardcoded version instead");
+				}
+			}
+			if (level == null) {
+				// file-backed
+				level = (LogicTreeLevel<E>) new FileBackedLevel(name, shortName);
+			}
+			
+			in.endObject();
+			return level;
 		}
 		
 	}

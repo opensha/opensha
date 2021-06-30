@@ -44,7 +44,7 @@ public interface LogicTreeBranchNode<E extends Enum<E>> extends LogicTreeNode, S
 
 	@Override
 	public default String getFilePrefix() {
-		return getBranchLevelName();
+		return encodeChoiceString();
 	}
 
 }

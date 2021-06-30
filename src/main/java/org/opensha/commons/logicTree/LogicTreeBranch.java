@@ -28,7 +28,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 public class LogicTreeBranch<E extends LogicTreeNode> implements Iterable<E>, Cloneable, Serializable,
 Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	
-	private ImmutableList<LogicTreeLevel> levels;
+	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private List<E> values;
 	
 	@SuppressWarnings("unused") // used by Gson
@@ -50,7 +50,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 * 
 	 * @param levels
 	 */
-	public LogicTreeBranch(List<LogicTreeLevel> levels) {
+	public LogicTreeBranch(List<LogicTreeLevel<? extends E>> levels) {
 		this(levels, null);
 	}
 	
@@ -60,11 +60,11 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 * @param levels
 	 * @param values
 	 */
-	public LogicTreeBranch(List<LogicTreeLevel> levels, List<E> values) {
+	public LogicTreeBranch(List<LogicTreeLevel<? extends E>> levels, List<E> values) {
 		init(levels, values);
 	}
 	
-	private void init(List<LogicTreeLevel> levels, List<E> values) {
+	private void init(List<LogicTreeLevel<? extends E>> levels, List<E> values) {
 		Preconditions.checkNotNull(levels);
 		Preconditions.checkState(!levels.isEmpty(), "Must supply at least 1 branch level");
 		for (int i=0; i<levels.size(); i++)
@@ -80,7 +80,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			for (int i=0; i<values.size(); i++) {
 				LogicTreeNode value = values.get(i);
 				if (value != null) {
-					LogicTreeLevel level = levels.get(i);
+					LogicTreeLevel<? extends E> level = levels.get(i);
 					Class<?> type = level.getType();
 					Preconditions.checkState(type.isAssignableFrom(value.getClass()),
 							"Value '%s' is not the correct type for '%s'", value.getName(), level.getName());
@@ -115,6 +115,19 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 */
 	public boolean hasValue(Class<? extends LogicTreeNode> clazz) {
 		return getValue(clazz) != null;
+	}
+	
+	/**
+	 * Shortcut to getValue(clazz) != null
+	 * 
+	 * @param clazz
+	 * @return
+	 */
+	public boolean hasValue(E value) {
+		for (LogicTreeNode node : values)
+			if (node != null && node.equals(value))
+				return true;
+		return false;
 	}
 	
 	/**
@@ -153,7 +166,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 * @param index
 	 * @return level at the given index
 	 */
-	public LogicTreeLevel getLevel(int index) {
+	public LogicTreeLevel<? extends E> getLevel(int index) {
 		return levels.get(index);
 	}
 	
@@ -193,7 +206,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 */
 	public void setValue(E value) {
 		for (int i=0; i<levels.size(); i++) {
-			LogicTreeLevel level = levels.get(i);
+			LogicTreeLevel<? extends E> level = levels.get(i);
 			if (level.getType().isAssignableFrom(value.getClass()) && level.isMember(value)) {
 				values.set(i, value);
 				return;
@@ -204,7 +217,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	}
 	
 	public void setValue(int index, E value) {
-		LogicTreeLevel level = levels.get(index);
+		LogicTreeLevel<? extends E> level = levels.get(index);
 		Preconditions.checkState(level.getType().isAssignableFrom(value.getClass()) && level.isMember(value));
 		values.set(index, value);
 	}
@@ -237,7 +250,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		LogicTreeBranch other = (LogicTreeBranch) obj;
+		LogicTreeBranch<?> other = (LogicTreeBranch<?>) obj;
 		if (levels == null) {
 			if (other.levels != null)
 				return false;
@@ -256,7 +269,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 * @param o
 	 * @return true if the given branch has the same branch levels as this branch
 	 */
-	public boolean areLevelsEqual(LogicTreeBranch o) {
+	public boolean areLevelsEqual(LogicTreeBranch<?> o) {
 //		for (int i=0; i<levels.size(); i++) {
 //			LogicTreeLevel mine = levels.get(i);
 //			LogicTreeLevel theirs = o.levels.size() > i ? o.levels.get(i) : null;
@@ -297,7 +310,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 * @param branch
 	 * @return true if every non null value of this branch matches the given branch
 	 */
-	public boolean matchesNonNulls(LogicTreeBranch branch) {
+	public boolean matchesNonNulls(LogicTreeBranch<?> branch) {
 		return getNumAwayFrom(branch) == 0;
 	}
 	
@@ -339,8 +352,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		return str+"]";
 	}
 	
-	public LogicTreeBranch copy() {
-		return new LogicTreeBranch(levels, values);
+	public LogicTreeBranch<E> copy() {
+		return new LogicTreeBranch<>(levels, values);
 	}
 
 	@Override
@@ -361,7 +374,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	}
 
 	@Override
-	public int compareTo(LogicTreeBranch o) {
+	public int compareTo(LogicTreeBranch<E> o) {
 		int size = Integer.min(size(), o.size());
 		for (int i=0; i<size; i++) {
 			LogicTreeNode val = getValue(i);
@@ -401,15 +414,16 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 		builder.registerTypeHierarchyAdapter(LogicTreeNode.class, new NodeTypeAdapter(this));
+		builder.registerTypeHierarchyAdapter(LogicTreeLevel.class, new LogicTreeLevel.Adapter());
 		
 		return builder.create();
 	}
 	
 	private static class NodeTypeAdapter extends TypeAdapter<LogicTreeNode> {
 		
-		private LogicTreeBranch branch;
+		private LogicTreeBranch<?> branch;
 
-		public NodeTypeAdapter(LogicTreeBranch branch) {
+		public NodeTypeAdapter(LogicTreeBranch<?> branch) {
 			this.branch = branch;
 		}
 
@@ -541,19 +555,11 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			out.beginObject();
 			
 			// branch level
-			LogicTreeLevel level = levels.get(i);
+			LogicTreeLevel<? extends E> level = levels.get(i);
 			
-			out.name("level").beginObject();
+			out.name("level");
 			
-			out.name("name").value(level.getName());
-			out.name("shortName").value(level.getShortName());
-			if (level.getType().isEnum()) {
-				// it's an enum
-				out.name("enumClass").value(level.getType().getName());
-			} else if (!(level instanceof FileBackedLevel)) {
-				out.name("class").value(level.getClass().getName());
-			}
-			out.endObject();
+			gson.toJson(level, LogicTreeLevel.class, out);
 			
 			// node value
 			LogicTreeNode node = values.get(i);
@@ -573,7 +579,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void initFromJSON(JsonReader in, Gson gson) throws IOException {
-		List<LogicTreeLevel> levels = new ArrayList<>();
+		List<LogicTreeLevel<E>> levels = new ArrayList<>();
 		List<E> values = new ArrayList<>();
 		
 		in.beginArray();
@@ -581,77 +587,13 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		while (in.hasNext()) {
 			in.beginObject();
 			
-			LogicTreeLevel level = null;
+			LogicTreeLevel<E> level = null;
 			LogicTreeNode value = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "level":
-					String name = null;
-					String shortName = null;
-					String enumClassName = null;
-					String className = null;
-					in.beginObject();
-					
-					while (in.hasNext()) {
-						switch (in.nextName()) {
-						case "name":
-							name = in.nextString();
-							break;
-						case "shortName":
-							shortName = in.nextString();
-							break;
-						case "enumClass":
-							enumClassName = in.nextString();
-							break;
-						case "className":
-							className = in.nextString();
-							break;
-
-						default:
-							break;
-						}
-					}
-					
-					if (enumClassName != null) {
-						// load it as an enum
-						try {
-							Class<?> rawClass = Class.forName(enumClassName);
-							level = LogicTreeLevel.forEnumUnchecked(rawClass, name, shortName);
-						} catch (ClassNotFoundException e) {
-							System.err.println("WARNING: couldn't locate logic tree branch node enum class '"+enumClassName+"', "
-									+ "loading plain/hardcoded version instead");
-						} catch (ClassCastException e) {
-							System.err.println("WARNING: logic tree branch node class '"+enumClassName+"' is of the wrong type, "
-									+ "loading plain/hardcoded version instead");
-						}
-					}
-					if (level == null && className != null) {
-						// try to load it as a class via default constructor
-						try {
-							Class<?> rawClass = Class.forName(className);
-							Class<? extends LogicTreeLevel> clazz = (Class<? extends LogicTreeLevel>)rawClass;
-							Constructor<? extends LogicTreeLevel> constructor = clazz.getDeclaredConstructor();
-							constructor.setAccessible(true);
-							
-							level = constructor.newInstance();
-						} catch (ClassNotFoundException e) {
-							System.err.println("WARNING: couldn't locate logic tree branch node class '"+className+"', "
-									+ "loading plain/hardcoded version instead");
-						} catch (ClassCastException e) {
-							System.err.println("WARNING: logic tree branch node class '"+className+"' is of the wrong type, "
-									+ "loading plain/hardcoded version instead");
-						} catch (Exception e) {
-							System.err.println("Couldn't instantiate default no-arg constructor of declared logic tree node class, "
-										+ "loading plain/hardcoded version instead");
-						}
-					}
-					if (level == null) {
-						// file-backed
-						level = new FileBackedLevel(name, shortName, null);
-					}
-					
-					in.endObject();
+					level = gson.fromJson(in, LogicTreeLevel.class);
 					break;
 				case "value":
 					value = gson.fromJson(in, LogicTreeNode.class);
@@ -665,11 +607,13 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			E typedValue = null;
 			if (value != null) {
 				if (value instanceof FileBackedNode) {
-					if (level instanceof FileBackedLevel)
-						((FileBackedLevel)level).setChoice((FileBackedNode)value);
-					else
+					if (level instanceof FileBackedLevel) {
+						((FileBackedLevel)level).addChoice((FileBackedNode)value);
+					} else {
 						// convert to a hardcoded version
-						level = new FileBackedLevel(level.getName(), level.getShortName(), (FileBackedNode)value);
+						level = (LogicTreeLevel<E>) new FileBackedLevel(
+								level.getName(), level.getShortName(), (FileBackedNode)value);
+					}
 				}
 				try {
 					typedValue = (E)value;
@@ -690,7 +634,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		List<LogicTreeLevel> levels = new ArrayList<>();
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 		List<LogicTreeNode> values = new ArrayList<>();
 		
 		FileBackedNode node = new FileBackedNode("Node 1", "Node1", 1d, "n1");
@@ -705,11 +649,11 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		levels.add(new FileBackedLevel("Level 3", "Level3", node));
 		values.add(node);
 		
-		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels, values);
+		LogicTreeBranch<?> branch = new LogicTreeBranch<>(levels, values);
 		String json = branch.getJSON();
 		System.out.println(json);
 		
-		LogicTreeBranch<LogicTreeNode> branch2 = new LogicTreeBranch<>();
+		LogicTreeBranch<?> branch2 = new LogicTreeBranch<>();
 		branch2.initFromJSON(json);
 		String json2 = branch2.getJSON();
 		System.out.println("Branch equal? "+branch2.equals(branch));
