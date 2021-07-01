@@ -1,6 +1,9 @@
 package scratch.UCERF3.griddedSeismicity;
 
 import java.awt.geom.Area;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -8,15 +11,22 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipException;
 
+import org.dom4j.DocumentException;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.utils.FaultSystemIO;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashBasedTable;
@@ -441,10 +451,29 @@ public class FaultPolyMgr implements Iterable<Area> {
 		return values;
 	}	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		//FaultPolyMgr mgr = new FaultPolyMgr(FaultModels.FM3_1, 7);
 		
-		System.out.println(Arrays.toString(getNodeFractions(FaultModels.FM3_1, 0d, 7d)));
+		File outputDir = new File("/tmp/fm_poly");
+		outputDir.mkdir();
+		for (FaultModels fm : new FaultModels[] {FaultModels.FM3_1, FaultModels.FM3_2}) {
+			String fName = fm.name().toLowerCase()+"_ucerf3.zip";
+			File file = new File("/home/kevin/OpenSHA/UCERF4/rup_sets", fName);
+			FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(file);
+			FaultPolyMgr mgr = create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+			
+			File outputFile = new File(outputDir, fm.name().toLowerCase()+"_sect_polygons.geojson");
+			List<Feature> features = new ArrayList<>();
+			for (int id : mgr.indices()) {
+				Region polygon = mgr.getPoly(id);
+				Feature feature = polygon.toFeature();
+				feature = new Feature(id, feature.geometry, feature.properties);
+				features.add(feature);
+			}
+			FeatureCollection.write(new FeatureCollection(features), outputFile);
+		}
+		
+//		System.out.println(Arrays.toString(getNodeFractions(FaultModels.FM3_1, 0d, 7d)));
 //		mgr.sectInNodePartic
 //		mgr.nodeInSectPartic
 		
