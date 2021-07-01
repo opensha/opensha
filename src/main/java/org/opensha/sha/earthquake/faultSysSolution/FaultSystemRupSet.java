@@ -241,7 +241,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		zout.closeEntry();
 	}
 	
-	public static final String RUP_SECTS_FILE_NAME = "rupture_section_indices.csv";
+	public static final String RUP_SECTS_FILE_NAME = "section_indices.csv";
 	
 	private CSVFile<String> buildRupSectsCSV() {
 		CSVFile<String> csv = new CSVFile<>(false);
@@ -271,7 +271,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return csv;
 	}
 	
-	public static final String RUP_PROPS_FILE_NAME = "rupture_properties.csv";
+	public static final String RUP_PROPS_FILE_NAME = "properties.csv";
 	
 	private CSVFile<String> buildRupPropsCSV() {
 		CSVFile<String> csv = new CSVFile<>(true);
