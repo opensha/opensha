@@ -14,6 +14,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
@@ -145,7 +146,7 @@ public class CacheFileGen {
 		GriddedRegion region = origGridProv.getGriddedRegion();
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = new HashMap<>();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = new HashMap<>();
-		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);
+		FaultGridAssociations faultPolyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);
 		for (int index=0; index<region.getNodeCount(); index++) {
 			Location loc = region.getLocation(index);
 			IncrementalMagFreqDist subSeisMFD = origGridProv.getNodeSubSeisMFD(index);

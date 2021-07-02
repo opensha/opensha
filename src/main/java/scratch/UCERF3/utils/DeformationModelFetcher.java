@@ -27,6 +27,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.DeformationModelPrefDataFinal;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.PrefFaultSectionDataFinal;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -37,7 +38,6 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.SectionClusterList;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
@@ -90,7 +90,7 @@ public class DeformationModelFetcher {
 	
 	private DeformationModels chosenDefModName;
 	private FaultModels faultModel;
-	private FaultPolyMgr polyMgr;
+	private FaultGridAssociations polyMgr;
 
 
 	String fileNamePrefix;
@@ -228,7 +228,7 @@ public class DeformationModelFetcher {
 		return faultModel;
 	}
 	
-	public FaultPolyMgr getPolyMgr() {
+	public FaultGridAssociations getPolyMgr() {
 		return polyMgr;
 	}
 

@@ -41,6 +41,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -64,6 +65,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
@@ -179,6 +181,7 @@ public class ETAS_Simulator {
 		if(erf instanceof FaultSystemSolutionERF) {
 			fssERF = (FaultSystemSolutionERF)erf;
 			numFaultSysSources = fssERF.getNumFaultSystemSources();
+			getPolyManager(fssERF.getSolution()); // enusre we have a polygon manager
 		}
 		
 		// TODO:
@@ -1142,7 +1145,16 @@ public class ETAS_Simulator {
 		return erf;
 	}
 	
-
+	private static PolygonFaultGridAssociations getPolyManager(FaultSystemSolution sol) {
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		PolygonFaultGridAssociations faultPolyMgr = rupSet.getModule(PolygonFaultGridAssociations.class);
+		if (faultPolyMgr == null) {
+			// this works for U3, but not generalized
+			faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+			rupSet.addModule(faultPolyMgr);
+		}
+		return faultPolyMgr;
+	}
 	
 	public static void correctGriddedSeismicityRatesInERF(FaultSystemSolution sol, boolean plotRateRatio,
 			double[] gridSeisCorrValsArray) {
@@ -1161,7 +1173,9 @@ public class ETAS_Simulator {
 			nodeRatePDF[i] = nodeRateArray[i]/totalRate;
 		}
 
-		GriddedSeisUtils griddedSeisUtils = new GriddedSeisUtils(sol.getRupSet().getFaultSectionDataList(), nodeRatePDF, InversionTargetMFDs.FAULT_BUFFER);
+		
+		GriddedSeisUtils griddedSeisUtils = new GriddedSeisUtils(
+				sol.getRupSet().getFaultSectionDataList(), nodeRatePDF, getPolyManager(sol));
 		
 		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = sol.requireModule(SubSeismoOnFaultMFDs.class).getAll();
 		

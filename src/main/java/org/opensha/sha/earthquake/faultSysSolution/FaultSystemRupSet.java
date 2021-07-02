@@ -37,6 +37,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
@@ -57,10 +58,12 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
@@ -1285,12 +1288,28 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 							rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
 				}
 			});
+			FaultModels fm = branch.getValue(FaultModels.class);
+			addModule(new ModuleBuilder() {
+				
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					if (fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
+						try {
+							return FaultPolyMgr.loadSerializedUCERF3(fm);
+						} catch (IOException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
+					}
+					return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+				}
+			});
 			// add inversion target MFDs
 			addModule(new ModuleBuilder() {
 				
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					return new InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class));
+					return new InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
+							rupSet.requireModule(PolygonFaultGridAssociations.class));
 				}
 			});
 			// add target slip rates (modified for sub-seismogenic ruptures)

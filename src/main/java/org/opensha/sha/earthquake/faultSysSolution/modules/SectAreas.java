@@ -45,7 +45,7 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 
 	@Override
 	public String getName() {
-		return "Section Slip Rates";
+		return "Section Areas";
 	}
 
 	@Override

@@ -36,7 +36,9 @@ import com.google.common.io.Files;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 public class StandardFaultSysModulesTest {
 
@@ -110,6 +112,18 @@ public class StandardFaultSysModulesTest {
 		SectSlipRates module = SectSlipRates.precomputed(demoRupSet, randArray(demoRupSet.getNumSections()),
 				randArray(demoRupSet.getNumSections()));
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, SectSlipRates.class);
+	}
+
+	@Test
+	public void testLogicTreeBranch() throws IOException {
+		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, branch, U3LogicTreeBranch.class);
+	}
+
+	@Test
+	public void testPolygonAssociations() throws IOException {
+		PolygonFaultGridAssociations module = FaultPolyMgr.create(demoRupSet.getFaultSectionDataList(), 10d);
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, PolygonFaultGridAssociations.class);
 	}
 
 	/*
@@ -190,7 +204,12 @@ public class StandardFaultSysModulesTest {
 		File withFile = new File(tempDir, "with_"+cname+".zip");
 		container.addModule(module);
 		archive.write(withFile, false);
-		ModuleArchive<OpenSHA_Module> loaded = new ModuleArchive<>(withFile);
+		ModuleArchive<OpenSHA_Module> loaded;
+		if (container instanceof OpenSHA_Module)
+			loaded = new ModuleArchive<>(withFile, (Class<E>)container.getClass());
+		else
+			loaded = new ModuleArchive<>(withFile);
+		
 		File rewrittenFile = new File(tempDir, "rewritten_"+cname+".zip");
 		loaded.write(rewrittenFile, false);
 		
@@ -246,7 +265,7 @@ public class StandardFaultSysModulesTest {
 					// compare them
 //					System.out.println(i1+":\t"+line1);
 //					System.out.println(i2+":\t"+line2);
-					assertEquals("Mismatch in "+name+" at line "+i1+"/"+i2, line1, line2);
+					assertEquals("Mismatch in "+name+" at line "+i1+"/"+i2+"\n"+line1+"\n"+line2+"\n", line1, line2);
 				}
 			}
 			numTests++;

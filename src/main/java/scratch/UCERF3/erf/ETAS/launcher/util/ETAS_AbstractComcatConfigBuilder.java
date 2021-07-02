@@ -32,7 +32,9 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -779,9 +781,10 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 				boolean primary = primaryRupture != null && trigger.getComcatEventID().equals(primaryEventID);
 				if (primary || !surface.isPointSurface() || rup.getMag() >= 6d) {
 					if (mapper == null) {
-						double faultBuffer = InversionTargetMFDs.FAULT_BUFFER;
 						double minFractionalAreaInPolygon = 0.5;
-						mapper = new FiniteFaultSectionResetCalc(fss.getRupSet(), minFractionalAreaInPolygon, faultBuffer, true);
+						FaultSystemRupSet rupSet = fss.getRupSet();
+						mapper = new FiniteFaultSectionResetCalc(rupSet,
+								rupSet.getModule(PolygonFaultGridAssociations.class), minFractionalAreaInPolygon, true);
 					}
 					lines.add("");
 					lines.addAll(mapper.writeSectionResetMarkdown(plotDir, ".", "##", topLink, surface,

@@ -54,6 +54,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
@@ -139,7 +140,7 @@ public class ETAS_PrimaryEventSampler {
 	FaultSystemSolutionERF fssERF;
 	int numFltSystSources=-1, totNumSrc;
 	FaultSystemRupSet rupSet;
-	FaultPolyMgr faultPolyMgr;
+	PolygonFaultGridAssociations faultPolyMgr;
 
 	
 	int numPtSrcSubPts;
@@ -268,7 +269,7 @@ public class ETAS_PrimaryEventSampler {
 		// fill in rupSet and faultPolyMgr is erf is a FaultSystemSolutionERF
 		if(erf instanceof FaultSystemSolutionERF) {
 			rupSet = ((FaultSystemSolutionERF)erf).getSolution().getRupSet();
-			faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);	// this works for U3, but not generalized
+			faultPolyMgr = rupSet.requireModule(PolygonFaultGridAssociations.class);
 			fssERF = (FaultSystemSolutionERF) erf;
 			numFltSystSources = fssERF.getNumFaultSystemSources();
 		}

@@ -14,6 +14,7 @@ import org.opensha.commons.util.modules.SubModule;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -32,6 +33,7 @@ import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
@@ -150,6 +152,7 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	private FaultSystemRupSet rupSet;
 	private U3LogicTreeBranch logicTreeBranch;
 	private ModSectMinMags finalMinMags;
+	private PolygonFaultGridAssociations polygons;
 
 	/**
 	 * Implicit constructor required for subclassing
@@ -163,7 +166,8 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	 * @param invRupSet
 	 */
 	public InversionTargetMFDs(InversionFaultSystemRupSet invRupSet) {
-		this(invRupSet, invRupSet.getModule(U3LogicTreeBranch.class), invRupSet.getModule(ModSectMinMags.class));
+		this(invRupSet, invRupSet.requireModule(U3LogicTreeBranch.class), invRupSet.requireModule(ModSectMinMags.class),
+				invRupSet.requireModule(PolygonFaultGridAssociations.class));
 	}
 	
 	/**
@@ -172,12 +176,15 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	 * @param logicTreeBranch
 	 * @param finalMinMags
 	 */
-	public InversionTargetMFDs(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
-		init(rupSet, logicTreeBranch, finalMinMags);
+	public InversionTargetMFDs(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags,
+			PolygonFaultGridAssociations polygons) {
+		init(rupSet, logicTreeBranch, finalMinMags, polygons);
 	}
 	
-	private void init(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags) {
+	private void init(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags,
+			PolygonFaultGridAssociations polygons) {
 		this.rupSet = rupSet;
+		this.polygons = polygons;
 		this.logicTreeBranch = logicTreeBranch;
 		this.finalMinMags = finalMinMags;
 		this.inversionModel = logicTreeBranch.getValue(InversionModels.class);
@@ -208,7 +215,7 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 		
 		List<? extends FaultSection> faultSectionData =  rupSet.getFaultSectionDataList();
 		
-		gridSeisUtils = new GriddedSeisUtils(faultSectionData, spatialSeisPDFforOnFaultRates, FAULT_BUFFER);
+		gridSeisUtils = new GriddedSeisUtils(faultSectionData, spatialSeisPDFforOnFaultRates, polygons);
 		
 		GriddedRegion noCalGrid = RELM_RegionUtils.getNoCalGriddedRegionInstance();
 		GriddedRegion soCalGrid = RELM_RegionUtils.getSoCalGriddedRegionInstance();
@@ -634,7 +641,8 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
 		// TODO actually serialize if we intend to keep this class
 		Preconditions.checkNotNull(rupSet, "Rupture set not initialized");
-		init(rupSet, rupSet.requireModule(U3LogicTreeBranch.class), rupSet.requireModule(ModSectMinMags.class));
+		init(rupSet, rupSet.requireModule(U3LogicTreeBranch.class), rupSet.requireModule(ModSectMinMags.class), 
+				rupSet.requireModule(PolygonFaultGridAssociations.class));
 	}
 
 	@Override
@@ -654,7 +662,9 @@ public class InversionTargetMFDs implements ArchivableModule, SubModule<FaultSys
 			newParent.addModule(logicTreeBranch);
 		if (!newParent.hasModule(ModSectMinMags.class))
 			newParent.addModule(finalMinMags);
-		return new InversionTargetMFDs(newParent, logicTreeBranch, finalMinMags);
+		if (!newParent.hasModule(PolygonFaultGridAssociations.class))
+			newParent.addModule(polygons);
+		return new InversionTargetMFDs(newParent, logicTreeBranch, finalMinMags, polygons);
 	}
 
 

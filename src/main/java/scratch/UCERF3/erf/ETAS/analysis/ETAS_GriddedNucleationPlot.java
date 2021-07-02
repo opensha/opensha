@@ -25,6 +25,7 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -145,6 +146,9 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		if (numRupsSkipped > 0)
 			System.out.println("GriddedNucleation: skipped "+numRupsSkipped+" ruptures outside of region");
 		
+		if (ratio_spread_across_poly)
+			ratio_spread_across_poly = fss.getRupSet().hasModule(FaultGridAssociations.class);
+		
 		double scalar;
 		GriddedGeoDataSet[] fssXYZs = null;
 		if (annualize) {
@@ -156,9 +160,9 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 				System.out.println("Calculating FSS mfds");
 				GriddedRegion gridReg = gridProv.getGriddedRegion();
 				FaultSystemRupSet rupSet = fss.getRupSet();
-				FaultPolyMgr polyMGR = null;
+				FaultGridAssociations polyMGR = null;
 				if (ratio_spread_across_poly)
-					polyMGR = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+					polyMGR = rupSet.getModule(FaultGridAssociations.class);
 				Map<Integer, HashSet<Integer>> rupToGridNodes = new HashMap<>();
 				for (int r=0; r<rupSet.getNumRuptures(); r++) {
 					HashSet<Integer> nodes = new HashSet<>();

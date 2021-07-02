@@ -1,22 +1,27 @@
 package scratch.UCERF3.griddedSeismicity;
 
 import java.awt.geom.Area;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchive;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.faultSurface.FaultSection;
-
-import scratch.UCERF3.enumTreeBranches.FaultModels;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashBasedTable;
@@ -28,6 +33,9 @@ import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.Table;
 
+import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.utils.UCERF3_DataUtils;
+
 /**
  * Class maintains collections of the polygonal relationships between grid nodes
  * and fault sections. Use of the word 'node' in this class generally referes to
@@ -36,11 +44,13 @@ import com.google.common.collect.Table;
  * @author Peter Powers
  * @version $Id:$
  */
-public class FaultPolyMgr implements Iterable<Area> {
+public class FaultPolyMgr implements Iterable<Area>, PolygonFaultGridAssociations, ArchivableModule {
 
 	private static boolean log = false;
 	
 	private SectionPolygons polys;
+	
+	private Double buffer;
 	
 	// both are Table<SubSectionID, NodeIndex, Value>
 	//
@@ -61,83 +71,33 @@ public class FaultPolyMgr implements Iterable<Area> {
 	private GriddedRegion region;
 	private FaultPolyMgr() {}
 	
-	/**
-	 * Returns the region used by this fault polygon manager
-	 * @return
-	 */
+	@Override
 	public GriddedRegion getRegion() {
 		return region;
 	}
 	
-	/**
-	 * Returns a map of nodes (indices of nodes intersected by faults) to the
-	 * fraction of each node that intersects faults.
-	 * 
-	 * In other words, the fraction of each node that is covered by one or more fault polygons.
-	 * @return the node extent map
-	 */
+	@Override
 	public Map<Integer, Double> getNodeExtents() {
 		return ImmutableMap.copyOf(nodeExtents);
 	}
 	
-	/**
-	 * Returns the fraction of the node at nodeIdx that participates in fault
-	 * section related seismicity (i.e. the percent of cell represented by a 
-	 * node that is spanned by fault-section polygons).
-	 * 
-	 * In other words, the fraction of the node that is covered by one or more fault polygons.
-	 * 
-	 * @param nodeIdx
-	 * @return the fraction of the node area at {@code nodeIdx} occupied by faults
-	 */
+	@Override
 	public double getNodeFraction(int nodeIdx) {
 		Double fraction = nodeExtents.get(nodeIdx);
 		return (fraction == null) ? 0.0 : fraction;
 	}
 	
-	/**
-	 * Returns a map of the indices of nodes that intersect the fault-section at
-	 * {@code sectIdx} where the values are the (weighted) fraction of the area of
-	 * the node occupied by the fault-section.
-	 * 
-	 * In other words, this returns a list of nodes and the faction of each node assigned 
-	 * to the fault polygon (where each fraction is reduced by extent to which each node
-	 * is also covered by other fault polygons).
-	 * 
-	 * <p>Use this method when distributing some property of a node across the fault
-	 * sections it intersects.</p>
-	 * 
-	 * @param idx fault-section index
-	 * @return a map of fault-section participation in nodes
-	 */
+	@Override
 	public Map<Integer, Double> getScaledNodeFractions(int sectIdx) {
 		return sectInNodePartic.row(sectIdx);
 	}
 	
-	/**
-	 * Returns a map of the indices of nodes that intersect the fault-section at
-	 * {@code sectIdx} where the values are the fraction of the area of the
-	 * fault-section occupied by each node. The values in the map sum to 1.
-	 * 
-	 * In other words, the fraction of the fault polygon occupied by each node,
-	 * where fractions sum to 1.0. 
-	 * 
-	 * <p>Use this method when distributing some property of a fault section across
-	 * the nodes it intersects.</p>
-	 * 
-	 * @param idx section index
-	 * @return a map of node participation in a fault-section
-	 */
+	@Override
 	public Map<Integer, Double> getNodeFractions(int sectIdx) {
 		return nodeInSectPartic.row(sectIdx);
 	}
 	
-	
-	/**
-	 * This provides the sections and fraction of each section that contributes to the node.
-	 * @param nodeIdx
-	 * @return
-	 */
+	@Override
 	public Map<Integer, Double> getSectionFracsOnNode(int nodeIdx) {
 		return nodeInSectPartic.column(nodeIdx);
 	}
@@ -159,13 +119,21 @@ public class FaultPolyMgr implements Iterable<Area> {
 	 * Returns the indices of all polygons
 	 * @return
 	 */
-	public Set<Integer> indices() {
+	public Set<Integer> sectIndices() {
 		return polys.indices();
 	}
 	
 	@Override
 	public Iterator<Area> iterator() {
 		return polys.polys().iterator();
+	}
+	
+	/**
+	 * 
+	 * @return the buffer used to create these polygons, or null if no such buffer was supplied
+	 */
+	public Double getBuffer() {
+		return buffer;
 	}
 	
 	/**
@@ -184,6 +152,7 @@ public class FaultPolyMgr implements Iterable<Area> {
 		mgr.region = region;
 		mgr.polys = SectionPolygons.create(fspd, buf, null);
 		mgr.init();
+		mgr.buffer = buf;
 		return mgr;
 	}
 	
@@ -219,6 +188,7 @@ public class FaultPolyMgr implements Iterable<Area> {
 		mgr.region = region;
 		mgr.polys = SectionPolygons.create(faults, buf, len);
 		mgr.init();
+		mgr.buffer = buf;
 		return mgr;
 	}
 	
@@ -441,6 +411,20 @@ public class FaultPolyMgr implements Iterable<Area> {
 		return values;
 	}	
 	
+	public static PolygonFaultGridAssociations loadSerializedUCERF3(FaultModels fm) throws IOException {
+		// load in serialized version that is impervious to changes in location class & polygon construction
+		InputStream zipIS = UCERF3_DataUtils.locateResourceAsStream("seismicityGrids",
+				fm.name().toLowerCase()+"_fault_polygon_grid_node_associations.zip");
+		File tmpFile = File.createTempFile("u3_poly_associations", ".zip");
+		FileOutputStream tmpOut = new FileOutputStream(tmpFile);
+		zipIS.transferTo(tmpOut);
+		tmpOut.close();
+		ModuleArchive<PolygonFaultGridAssociations> archive = new ModuleArchive<>(tmpFile);
+		PolygonFaultGridAssociations associations = archive.requireModule(PolygonFaultGridAssociations.class);
+		tmpFile.delete();
+		return associations;
+	}
+	
 	public static void main(String[] args) {
 		//FaultPolyMgr mgr = new FaultPolyMgr(FaultModels.FM3_1, 7);
 		
@@ -457,6 +441,27 @@ public class FaultPolyMgr implements Iterable<Area> {
 //			Map<Integer, Double> nodeVals = mgr.nodeInSectPartic.row(sectIdx);
 //			System.out.println(sum(nodeVals.values()));
 //		}
+	}
+
+	@Override
+	public String getName() {
+		return "Polygon Fault Association Manager";
+	}
+
+	@Override
+	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		new PolygonFaultGridAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
+	}
+
+	@Override
+	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		throw new IllegalStateException("Should be loaded back in via the Precomputed class");
+	}
+
+	@Override
+	public Class<? extends ArchivableModule> getLoadingClass() {
+		// use this class to initially build polygons and associations, but always load it back in as precomputed one
+		return PolygonFaultGridAssociations.Precomputed.class;
 	}
 
 	

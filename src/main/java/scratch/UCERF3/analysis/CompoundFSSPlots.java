@@ -87,6 +87,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
@@ -127,7 +128,6 @@ import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.FSSRupsInRegionCache;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceFileReader;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.BatchPlotGen;
@@ -7498,7 +7498,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				FaultSystemSolutionERF erf, int solIndex) {
 			
 			InversionFaultSystemRupSet rupSet = ((InversionFaultSystemSolution)erf.getSolution()).getRupSet();
-			FaultPolyMgr polyManager = rupSet.getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+			FaultGridAssociations polyManager = rupSet.getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 
 			debug(solIndex, "cache check");
 			FaultModels fm = branch.getValue(FaultModels.class);
@@ -7608,7 +7608,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 //		}
 		
 		private List<GeoDataSet> calcProbsSupraSubSeis(
-				FaultPolyMgr polys, FaultSystemSolutionERF erf, List<GriddedGeoDataSet> subSeisProbs) {
+				FaultGridAssociations polys, FaultSystemSolutionERF erf, List<GriddedGeoDataSet> subSeisProbs) {
 			List<GeoDataSet> datas = Lists.newArrayList();
 			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 			

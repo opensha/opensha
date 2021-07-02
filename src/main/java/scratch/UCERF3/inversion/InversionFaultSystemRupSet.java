@@ -20,6 +20,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
@@ -42,6 +43,7 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
@@ -264,22 +266,32 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		if (branch.hasValue(SpatialSeisPDF.class))
 			this.spatialSeisPDF = branch.getValue(SpatialSeisPDF.class);
 		setLogicTreeBranch(branch);
-		
-		addAvailableModule(new Callable<ModSectMinMags>() {
+
+		offerAvailableModule(new Callable<PolygonFaultGridAssociations>() {
+
+			@Override
+			public PolygonFaultGridAssociations call() throws Exception {
+				if (faultModel == FaultModels.FM3_1 || faultModel == FaultModels.FM3_2)
+					return FaultPolyMgr.loadSerializedUCERF3(faultModel);
+				System.err.println("WARNING: rupture set doesn't have polygons attached, building with default buffer");
+				return FaultPolyMgr.create(faultSectionData, InversionTargetMFDs.FAULT_BUFFER);
+			}
+		}, PolygonFaultGridAssociations.class);
+		offerAvailableModule(new Callable<ModSectMinMags>() {
 
 			@Override
 			public ModSectMinMags call() throws Exception {
 				return ModSectMinMags.instance(InversionFaultSystemRupSet.this, calcFinalMinMagForSections());
 			}
 		}, ModSectMinMags.class);
-		addAvailableModule(new Callable<InversionTargetMFDs>() {
+		offerAvailableModule(new Callable<InversionTargetMFDs>() {
 
 			@Override
 			public InversionTargetMFDs call() throws Exception {
 				return new InversionTargetMFDs(InversionFaultSystemRupSet.this);
 			}
 		}, InversionTargetMFDs.class);
-		addAvailableModule(new Callable<SectSlipRates>() {
+		offerAvailableModule(new Callable<SectSlipRates>() {
 
 			@Override
 			public SectSlipRates call() throws Exception {

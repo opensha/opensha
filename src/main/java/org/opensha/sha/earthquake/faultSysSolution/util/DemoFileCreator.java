@@ -66,6 +66,7 @@ public class DemoFileCreator {
 		fault1.setAveLowerDepth(12d);
 		fault1.setAveSlipRate(10d);
 		fault1.setSlipRateStdDev(1d);
+		fault1.setDipDirection((float)(trace1.getAveStrike()+90d));
 		
 		FaultSectionPrefData fault2 = new FaultSectionPrefData();
 		fault2.setSectionName("Demo Reverse Fault");
@@ -80,6 +81,7 @@ public class DemoFileCreator {
 		fault2.setAveLowerDepth(12d);
 		fault2.setAveSlipRate(3d);
 		fault2.setSlipRateStdDev(0.5d);
+		fault2.setDipDirection((float)(trace2.getAveStrike()+90d));
 		
 		List<FaultSection> sects = new ArrayList<>();
 		sects.add(fault1);

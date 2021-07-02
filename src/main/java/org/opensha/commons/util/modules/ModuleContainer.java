@@ -315,6 +315,22 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	/**
+	 * Similar to {@link #addAvailableModule(Callable, Class)} except that the available module will only be registered
+	 * if no matching module or available module exists that maps to this class.
+	 * <p>
+	 * Alias to:<code>
+	 * if (!hasAvailableModule(moduleClass)) addAvailableModule(call, moduleClass);
+	 * </code>
+	 * 
+	 * @param call
+	 * @param moduleClass
+	 */
+	public <M extends E> void offerAvailableModule(Callable<M> call, Class<M> moduleClass) {
+		if (!hasAvailableModule(moduleClass))
+			addAvailableModule(call, moduleClass);
+	}
+	
+	/**
 	 * Determine if a module exists that maps to the given class, or if we have an available
 	 * module that is not yet loaded of that type. This differs from {@link ModuleContainer#hasModule(Class)}
 	 * in that it only tests for existence of an available module, but will not load it. Use this if you only

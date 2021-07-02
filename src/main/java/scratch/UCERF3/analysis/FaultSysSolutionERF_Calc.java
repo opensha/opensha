@@ -90,6 +90,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
@@ -321,7 +322,7 @@ public class FaultSysSolutionERF_Calc {
 			
 			// get the fault system solution and the polygon manager
 			InversionFaultSystemSolution fss1 = (InversionFaultSystemSolution) erf1.getSolution();
-			FaultPolyMgr fltPolyMgr1 = fss1.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+			FaultGridAssociations fltPolyMgr1 = fss1.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 			
 			// compute moment rates for supra-seis rups mapped onto grid nodes inside polygons
 			System.out.println("calculation section moment rates...");
@@ -360,7 +361,7 @@ public class FaultSysSolutionERF_Calc {
 			
 			// get the fault system solution and the polygon manager
 			InversionFaultSystemSolution fss2 = (InversionFaultSystemSolution) erf2.getSolution();
-			FaultPolyMgr fltPolyMgr2 = fss2.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+			FaultGridAssociations fltPolyMgr2 = fss2.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 			
 			// compute moment rates for supra-seis rups mapped onto grid nodes inside polygons
 			System.out.println("calculation section moment rates 2...");
@@ -465,7 +466,7 @@ public class FaultSysSolutionERF_Calc {
 			
 			// get the fault system solution and the polygon manager
 			InversionFaultSystemSolution fss = (InversionFaultSystemSolution) erf.getSolution();
-			FaultPolyMgr fltPolyMgr = fss.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+			FaultGridAssociations fltPolyMgr = fss.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 			
 			for(double minMag: minMagArray) {
 				
@@ -563,7 +564,7 @@ public class FaultSysSolutionERF_Calc {
 			
 			// get the fault system solution and the polygon manager
 			InversionFaultSystemSolution fss1 = (InversionFaultSystemSolution) erf1.getSolution();
-			FaultPolyMgr fltPolyMgr1 = fss1.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+			FaultGridAssociations fltPolyMgr1 = fss1.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 			
 			// compute nucleation rates for supra-seis rups mapped onto grid nodes inside polygons
 			System.out.println("calculation section nucleation rates...");
@@ -599,7 +600,7 @@ public class FaultSysSolutionERF_Calc {
 			
 			// get the fault system solution and the polygon manager
 			InversionFaultSystemSolution fss2 = (InversionFaultSystemSolution) erf2.getSolution();
-			FaultPolyMgr fltPolyMgr2 = fss2.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+			FaultGridAssociations fltPolyMgr2 = fss2.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 			
 			// compute nucleation rates for supra-seis rups mapped onto grid nodes inside polygons
 			System.out.println("calculation section nucleation rates 2...");
@@ -910,7 +911,7 @@ public class FaultSysSolutionERF_Calc {
 		IncludeBackgroundOption origOption = (IncludeBackgroundOption)erf.getParameter(IncludeBackgroundParam.NAME).getValue();
 		
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
-		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);	// this works for U3, but not generalized
+		FaultGridAssociations polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);	// this works for U3, but not generalized
 		double duration = erf.getTimeSpan().getDuration();
 		
 		// Get Gridded Seis Rates

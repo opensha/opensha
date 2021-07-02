@@ -73,6 +73,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -4825,7 +4826,7 @@ public class ETAS_MultiSimAnalysisTools {
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
-		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
+		FaultGridAssociations polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
 				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		double[] zCount = new double[griddedRegion.getNodeCount()];
@@ -4979,7 +4980,7 @@ public class ETAS_MultiSimAnalysisTools {
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
-		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
+		FaultGridAssociations polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
 				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		double[] zCount = new double[griddedRegion.getNodeCount()];

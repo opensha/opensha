@@ -10,6 +10,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -38,7 +39,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 
 	private static double[] fracStrikeSlip,fracNormal,fracReverse;
 	private U3LogicTreeBranch branch;
-	private FaultPolyMgr polyMgr;
+	private FaultGridAssociations polyMgr;
 	
 	// spatial pdfs of seismicity, orginal and revised (reduced and
 	// renormalized) to avoid double counting with fault polygons
