@@ -328,7 +328,10 @@ public class Geometry {
 		out.beginArray();
 		
 		out.beginArray();
-		for (Location loc : getPolygonBorder(polygon.getBorder(), false))
+		LocationList origBorder = polygon.getBorder();
+		LocationList polyBorder = getPolygonBorder(origBorder, false);
+//		System.out.println(origBorder.size()+" ORIG\t"+polyBorder.size()+" PLYBRDR");
+		for (Location loc : polyBorder)
 			serializeLoc(out, loc);
 		out.endArray();
 		

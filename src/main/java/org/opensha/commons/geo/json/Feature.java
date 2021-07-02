@@ -254,5 +254,13 @@ public class Feature {
 			writer.flush();
 		}
 	}
+	
+	public static Feature getWithID(Feature feature, Number id) {
+		return new Feature(id, feature.geometry, feature.properties);
+	}
+	
+	public static Feature getWithID(Feature feature, String id) {
+		return new Feature(id, feature.geometry, feature.properties);
+	}
 
 }

@@ -39,6 +39,7 @@ import org.dom4j.Attribute;
 import org.dom4j.Element;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry.MultiPolygon;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.metadata.XMLSaveable;
@@ -1108,7 +1109,7 @@ public class Region implements Serializable, XMLSaveable, Named {
 		String name = getName();
 		if (name != null && name.equals(NAME_DEFAULT))
 			name = null;
-		return new Feature(name, new Polygon(this), null);
+		return new Feature(name, new Polygon(this), new FeatureProperties());
 	}
 	
 	/**

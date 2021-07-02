@@ -1,5 +1,6 @@
 package org.opensha.commons.geo.json;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -242,6 +243,29 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		return new Location(lat, lon, depth);
 	}
 	
+	public static final String STROKE_COLOR_PROP = "stroke";
+	public static final String STROKE_WIDTH_PROP = "stroke-width";
+	public static final String STROKE_OPACITY_PROP = "stroke-opacity";
+	public static final String FILL_COLOR_PROP = "fill";
+	public static final String FILL_OPACITY_PROP = "fill-opacity";
+	
+	public Color getColor(String name, Color defaultValue) {
+		Object val = get(name);
+		if (val == null)
+			return defaultValue;
+		if (val instanceof Color)
+			return (Color)val;
+		// try loading it as a Color
+		String str = val.toString();
+		try {
+			return Color.decode(str);
+		} catch (NumberFormatException e) {
+			System.err.println("Feature property with name '"+name+"' and value '"
+					+str+"' could not be parsed as a color, returning default: "+e.getMessage());
+			return defaultValue;
+		}
+	}
+	
 	/**
 	 * Returns the value of the given parameter, cast to the expected type. Returns the default value if a ClassCastException
 	 * is encountered or the value is null.
@@ -380,6 +404,8 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			out.value((Boolean)value);
 		} else if (value instanceof Location) {
 			Geometry.serializeLoc(out, (Location)value);
+		} else if (value instanceof Color) {
+			out.value("#"+Integer.toHexString(((Color)value).getRGB()).substring(2));
 		} else if (value.getClass().isArray()) {
 			Object[] array;
 			if (value.getClass().getComponentType().isPrimitive()) {
