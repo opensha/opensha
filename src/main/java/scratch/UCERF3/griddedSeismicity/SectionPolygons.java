@@ -168,9 +168,9 @@ class SectionPolygons {
 
 			// merge buf and fault polys if buf > 0 (i.e. dip > 45)
 			double scaledBuf = scale * buf;
-			LocationList buffPoly = buildBufferPoly(trace, dipDir, scaledBuf);
+			Area buffArea = buildBufferPoly(trace, dipDir, scaledBuf);
 			Area pArea = parentAreaMap.get(pID);
-			pArea = merge(pArea, new Area(buffPoly.toPath()));
+			pArea = merge(pArea, buffArea);
 			pArea = cleanBorder(pArea);
 			if (!pArea.isSingular()) {
 				pArea = removeNests(pArea);
@@ -185,27 +185,28 @@ class SectionPolygons {
 	}
 	
 	/*
-	 * Builds a buffer polygon around a trace by creating lists of points
-	 * offset on either side of the trace and then reversing one lists and
-	 * then merging both.
+	 * Builds a buffer polygon around a trace by taking each section of the trace
+	 * and stretching it out in the dipDir direction into a polygon.
 	 */
-	private static LocationList buildBufferPoly(LocationList trace,
-			double dipDir, double buf) {
+	public static Area buildBufferPoly(LocationList trace, double dipDir, double buf) {
 		checkArgument(trace.size() > 1);
-		LocationList one = new LocationList();
-		LocationList two = new LocationList();
-		Location bufPt;
-		for (Location p : trace) {
+		Area buffer = null;
+		for (int i = 1; i < trace.size(); i++) {
+			Location a = trace.get(i - 1);
+			Location b = trace.get(i);
+			LocationList points = new LocationList();
 			LocationVector v = new LocationVector(dipDir, buf, 0);
-			bufPt = LocationUtils.location(p, v);
-			one.add(bufPt);
+
+			points.add(a);
+			points.add(LocationUtils.location(a, v));
+			points.add(LocationUtils.location(b, v));
+			points.add(b);
 			v.reverse();
-			bufPt = LocationUtils.location(p, v);
-			two.add(bufPt);
+			points.add(LocationUtils.location(b, v));
+			points.add(LocationUtils.location(a, v));
+			buffer = merge(buffer, new Area(points.toPath()));
 		}
-		two.reverse();
-		one.addAll(two);
-		return one;
+		return buffer;
 	}
 	
 	
