@@ -274,7 +274,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				if (faultModel == FaultModels.FM3_1 || faultModel == FaultModels.FM3_2)
 					return FaultPolyMgr.loadSerializedUCERF3(faultModel);
 				System.err.println("WARNING: rupture set doesn't have polygons attached, building with default buffer");
-				return FaultPolyMgr.create(faultSectionData, InversionTargetMFDs.FAULT_BUFFER);
+				return FaultPolyMgr.create(getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
 			}
 		}, PolygonFaultGridAssociations.class);
 		offerAvailableModule(new Callable<ModSectMinMags>() {
