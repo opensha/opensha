@@ -169,6 +169,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	protected String getNestingPrefix() {
 		return "solution/";
 	}
+	
+	public static final String RATES_FILE_NAME = "rates.csv";
 
 	@Override
 	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
@@ -178,7 +180,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			ratesCSV.addLine(r+"", rates[r]+"");
 		
 		// CSV Files
-		CSV_BackedModule.writeToArchive(ratesCSV, zout, entryPrefix, "rates.csv");
+		CSV_BackedModule.writeToArchive(ratesCSV, zout, entryPrefix, RATES_FILE_NAME);
 	}
 
 	@Override
@@ -189,7 +191,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		Preconditions.checkNotNull(rupSet, "Rupture set not found in archive");
 		
 		System.out.println("\tLoading rates CSV...");
-		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, "rates.csv");
+		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RATES_FILE_NAME);
 		rates = new double[rupSet.getNumRuptures()];
 		Preconditions.checkState(ratesCSV.getNumRows() == rupSet.getNumRuptures()+1, "Unexpected number of rows in rates CSV");
 		for (int r=0; r<rates.length; r++) {

@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -63,7 +64,9 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
+import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
+import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
@@ -228,6 +231,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	protected String getNestingPrefix() {
 		return "ruptures/";
 	}
+	
+	public static final String SECTS_FILE_NAME = "fault_sections.geojson";
 
 	@Override
 	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
@@ -236,9 +241,54 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		CSV_BackedModule.writeToArchive(buildRupPropsCSV(), zout, entryPrefix, RUP_PROPS_FILE_NAME);
 		
 		// fault sections
-		FileBackedModule.initEntry(zout, entryPrefix, "fault_sections.geojson");
+		FileBackedModule.initEntry(zout, entryPrefix, SECTS_FILE_NAME);
 		OutputStreamWriter writer = new OutputStreamWriter(zout);
 		GeoJSONFaultReader.writeFaultSections(writer, faultSectionData);
+		writer.flush();
+		zout.flush();
+		zout.closeEntry();
+		
+		// write README
+		FileBackedModule.initEntry(zout, null, "README");
+		BufferedWriter readme = new BufferedWriter(writer);
+		FaultSystemSolution solution = this.archive == null ? null : this.archive.getModule(FaultSystemSolution.class);
+		if (solution != null) {
+			readme.write("This is an OpenSHA Fault System Solution zip file.\n\n");
+		} else {
+			readme.write("This is an OpenSHA Fault System Rupture Set zip file.\n\n");
+		}
+		readme.write("The file format is described in detail at https://opensha.org/Modular-Fault-System-Solution\n\n");
+		readme.write("Rupture information is stored in the '"+entryPrefix+"' sub-directory. Optional files may exist, "
+				+ "but the core (required) files are:\n");
+		readme.write(" - "+ArchivableModule.getEntryName(entryPrefix, SECTS_FILE_NAME
+				+": GeoJSON file listing the fault trace and properties of each fault section\n"));
+		readme.write(" - "+ArchivableModule.getEntryName(entryPrefix, RUP_SECTS_FILE_NAME
+				+": CSV file listing the fault section indices that comprise each rupture\n"));
+		readme.write(" - "+ArchivableModule.getEntryName(entryPrefix, RUP_PROPS_FILE_NAME
+				+": CSV file listing the properties of each rupture, including magnitude and rake\n"));
+		if (solution != null) {
+			readme.write("\n");
+			String solPrefix = solution.getNestingPrefix();
+			readme.write("Rate information is stored in the '"+solPrefix+"' sub-directory. "
+					+ "Optional files may exist, but there is only one required file:\n");
+			readme.write(" - "+ArchivableModule.getEntryName(solPrefix, FaultSystemSolution.RATES_FILE_NAME
+					+": CSV file giving the annual rate of occurence for each rupture\n"));
+			if (solution.hasAvailableModule(GridSourceProvider.class)) {
+				readme.write("This solution has optional gridded seismicity information. Files related to that are:\n");
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
+						+": GeoJSON file giving the location of each gridded seismicity node\n"));
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
+						+": CSV file giving the relative weights of each gridded seismicity focal mechanism at each grid node\n"));
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+						+": CSV file giving the magnitude-frequency distribution of sub-seismogenic ruptures at each gridded "
+						+ "seismicity node that are associated with at least one fault\n"));
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+						+": CSV file giving the magnitude-frequency distribution of off-fault ruptures at each gridded "
+						+ "seismicity node (those that are not associated with at any fault)\n"));
+			}
+			
+		}
+		readme.flush();
 		writer.flush();
 		zout.flush();
 		zout.closeEntry();
@@ -315,7 +365,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		// fault sections
 		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
-				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, "fault_sections.geojson")));
+				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, SECTS_FILE_NAME)));
 		for (int s=0; s<sections.size(); s++)
 			Preconditions.checkState(sections.get(s).getSectionId() == s,
 			"Fault sections must be provided in order starting with ID=0");
