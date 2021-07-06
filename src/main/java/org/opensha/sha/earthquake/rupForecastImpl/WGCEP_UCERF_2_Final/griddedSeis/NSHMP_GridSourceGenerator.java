@@ -384,7 +384,8 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 				StringTokenizer tokenizer = new StringTokenizer(latlonLine);
 				lon = Double.parseDouble(tokenizer.nextToken());
 				lat = Double.parseDouble(tokenizer.nextToken());
-				loc = new Location(lat, lon);
+//				loc = new Location(lat, lon);
+				loc = Location.backwardsCompatible(lat, lon, 0d);
 				
 				if(region.contains(loc)) {
 					aValIndexForLocIndex[region.indexForLocation(loc)] = fileIndex;
