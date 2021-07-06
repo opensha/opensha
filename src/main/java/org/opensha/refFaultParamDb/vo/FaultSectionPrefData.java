@@ -66,13 +66,10 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	private double slipInLastEvent = Double.NaN;
 	
 	// for the stirling surface:
-	double lastGridSpacing = Double.NaN; 
-	boolean lastPreserveGridSpacingExactly;
-	boolean lastAseisReducesArea;
-	StirlingGriddedSurface stirlingGriddedSurface=null;
+	private StirlingSurfaceCache stirlingCache;
 	
 	// or for a quad surface
-	QuadSurface quadSurf=null;
+	private QuadSurfaceCache quadCache;
 
 	public String getShortName() {
 		return this.shortName;
@@ -192,19 +189,11 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		this.aseismicSlipFactor = aseismicSlipFactor;
 	}
 
-	/**
-	 * Defined as a reduction of area between the upper and lower seismogenic depths
-	 * @return
-	 */
 	public void setCouplingCoeff(double couplingCoeff) {
 		this.couplingCoeff = couplingCoeff;
 	}
 
 
-	/**
-	 * Defined as a reduction of area between the upper and lower seismogenic depths
-	 * @return
-	 */
 	public double getCouplingCoeff() {
 		return couplingCoeff;
 	}
@@ -501,21 +490,6 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 		}
 	}
 	
-	/**
-	 * This returns a simple fault data object.  This version applies aseismicity as in increase of the
-	 * upper-lower seismogenic depth only (no change to lower seismogenic depth)
-	 *
-	 * @param faultSection
-	 * @return
-	 */
-	public SimpleFaultData getSimpleFaultData(boolean aseisReducesArea) {
-		double upperDepth = getOrigAveUpperDepth();
-		if (aseisReducesArea) {
-			upperDepth = getReducedAveUpperDepth();
-		}
-		return new SimpleFaultData(getAveDip(), getAveLowerDepth(), upperDepth, getFaultTrace(), getDipDirection());
-	}
-	
 	public StirlingGriddedSurface getFaultSurface(double gridSpacing) {
 		return getStirlingGriddedSurface(gridSpacing, true, true);
 	}
@@ -537,25 +511,9 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	public synchronized StirlingGriddedSurface getStirlingGriddedSurface(
 			double gridSpacing, boolean preserveGridSpacingExactly,
 			boolean aseisReducesArea) {
-		// return cached surface?
-		if( (gridSpacing==lastGridSpacing && stirlingGriddedSurface != null)
-				&& (preserveGridSpacingExactly== lastPreserveGridSpacingExactly)
-				&& (aseisReducesArea == lastAseisReducesArea)) {
-			return stirlingGriddedSurface;
-		}
-		else {		// make the surface
-			// make sure quad surf is null since things changed
-			quadSurf = null;
-			if(preserveGridSpacingExactly)
-				stirlingGriddedSurface = new StirlingGriddedSurface(getSimpleFaultData(aseisReducesArea), gridSpacing);
-			else
-				stirlingGriddedSurface = new StirlingGriddedSurface(getSimpleFaultData(aseisReducesArea), gridSpacing, gridSpacing);
-			// set the last values used
-			lastPreserveGridSpacingExactly = preserveGridSpacingExactly;
-			lastAseisReducesArea = aseisReducesArea;
-			lastGridSpacing = gridSpacing;
-		}
-		return stirlingGriddedSurface;
+		if (stirlingCache == null)
+			stirlingCache = new StirlingSurfaceCache(this);
+		return stirlingCache.getStirlingGriddedSurface(gridSpacing, preserveGridSpacingExactly, aseisReducesArea);
 	}
 	
 	/**
@@ -575,16 +533,9 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	}
 	
 	public synchronized QuadSurface getQuadSurface(boolean aseisReducesArea, double spacingForGridOperations) {
-		if (lastAseisReducesArea == aseisReducesArea && quadSurf != null) {
-			quadSurf.setAveGridSpacing(spacingForGridOperations);
-			return quadSurf;
-		}
-		if (lastAseisReducesArea != aseisReducesArea)
-			// make sure stirling is null since aseis changed
-			stirlingGriddedSurface = null;
-		lastAseisReducesArea = aseisReducesArea;
-		quadSurf = new QuadSurface(this, aseisReducesArea);
-		return quadSurf;
+		if (quadCache == null)
+			quadCache = new QuadSurfaceCache(this);
+		return quadCache.getQuadSurface(aseisReducesArea, spacingForGridOperations);
 	}
 
 	
@@ -736,25 +687,12 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	}
 
 	@Override
-	public double getArea(boolean creepReduced) {
-		double ddw = creepReduced ? getReducedDownDipWidth() : getOrigDownDipWidth();
-		return ddw * getTraceLength() * 1e6;
-	}
-
-	@Override
 	public int hashCode() {
-		return Objects.hash(parentSectionId, sectionId);
+		return FaultSection.hashCode(this);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		FaultSectionPrefData other = (FaultSectionPrefData) obj;
-		return parentSectionId == other.parentSectionId && sectionId == other.sectionId;
+		return FaultSection.equals(this, obj);
 	}
 }

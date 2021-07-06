@@ -23,15 +23,32 @@ import static com.google.common.base.Preconditions.*;
 import java.awt.Shape;
 import java.awt.geom.Area;
 import java.awt.geom.Rectangle2D;
-import java.util.Arrays;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
 import org.apache.commons.math3.util.Precision;
 import org.dom4j.Element;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.geo.json.Geometry;
+import org.opensha.commons.geo.json.Geometry.GeometryCollection;
+import org.opensha.commons.geo.json.Geometry.MultiPoint;
+import org.opensha.commons.geo.json.Geometry.MultiPolygon;
+import org.opensha.commons.geo.json.Geometry.Point;
+import org.opensha.commons.geo.json.Geometry.Polygon;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.primitives.Doubles;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * A <code>GriddedRegion</code> is a <code>Region</code> that has been
@@ -86,7 +103,7 @@ import com.google.common.collect.Lists;
  * @version $Id: GriddedRegion.java 11540 2017-07-05 16:45:49Z kmilner $
  * @see Region
  */
-
+@JsonAdapter(GriddedRegion.Adapter.class)
 public class GriddedRegion extends Region implements Iterable<Location> {
 
 	private static final long serialVersionUID = 1L;
@@ -106,10 +123,6 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	// the lat-lon arrays of node centers
 	private double[] lonNodeCenters;
 	private double[] latNodeCenters;
-
-	// the lat-lon arrays of node edges
-	private double[] lonNodeEdges;
-	private double[] latNodeEdges;
 
 	// Location at lower left corner of region bounding rect
 	private Location anchor;
@@ -398,6 +411,62 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	public GriddedRegion(Region region, double spacing, Location anchor) {
 		this(region, spacing, spacing, anchor);
 	}
+	
+	/**
+	 * Initializes a <code>GriddedRegion</code> as a copy of another <code>GriddedRegion</code>.
+	 * 
+	 * @param gridRegion
+	 * @throws NullPointerException if <code>gridRegion</code> is <code>null</code>
+	 */
+	public GriddedRegion(GriddedRegion gridRegion) {
+		this(gridRegion, gridRegion.latNodeCenters, gridRegion.lonNodeCenters,
+				gridRegion.latSpacing, gridRegion.lonSpacing, gridRegion.anchor, gridRegion.nodeList);
+	}
+	
+	/**
+	 * Private constructor for deserialization or cloning
+	 * 
+	 * @param region
+	 * @param latNodeCenters
+	 * @param lonNodeCenters
+	 * @param latSpacing
+	 * @param lonSpacing
+	 * @param anchor
+	 * @param nodeList
+	 */
+	private GriddedRegion(Region region, double[] latNodeCenters, double[] lonNodeCenters,
+			double latSpacing, double lonSpacing, Location anchor, LocationList nodeList) {
+		super(region);
+		this.latNodeCenters = latNodeCenters;
+		this.lonNodeCenters = lonNodeCenters;
+		setSpacing(latSpacing, lonSpacing);
+		if (anchor == null)
+			setAnchor(null);
+		else
+			// keep exact anchor
+			this.anchor = anchor;
+		initGridRange();
+		int gridSize = numLonNodes * numLatNodes;
+		this.nodeList = nodeList;
+		nodeCount = nodeList.size();
+		// figure out gridIndexes
+		gridIndices = new int[gridSize];
+		// initialize to -1
+		for (int i=0; i<gridSize; i++)
+			gridIndices[i] = -1;
+		// now associate nodes to gridIndexes
+		for (int node_idx=0; node_idx<nodeCount; node_idx++) {
+			Location node = nodeList.get(node_idx);
+			int latIndex = getLatIndex(node);
+			Preconditions.checkState(latIndex >= 0, "Couldn't find latitude index for grid node %s: %s", node_idx, node);
+			int lonIndex = getLonIndex(node);
+			Preconditions.checkState(lonIndex >= 0, "Couldn't find longitude index for grid node %s: %s", node_idx, node);
+			
+			int grid_idx = ((latIndex) * numLonNodes) + lonIndex;
+			Preconditions.checkState(gridIndices[grid_idx] == -1, "Multiple nodes map to the same grid index");
+			gridIndices[grid_idx] = node_idx;
+		}
+	}
 
 	/**
 	 * Returns the longitudinal grid node spacing for this region.
@@ -519,7 +588,9 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	 */
 	@Override
 	public GriddedRegion clone() {
-		return new GriddedRegion(this, latSpacing, lonSpacing, anchor);
+		// TODO
+//		return new GriddedRegion(this, latSpacing, lonSpacing, anchor);
+		return new GriddedRegion(this);
 	}
 
 	/**
@@ -909,24 +980,24 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 			gridSpacing, gridSpacing, xml_anchor);
 	}
 
-	/*
-	 * Returns the node index of the value or -1 if the value is out of range.
-	 * Expects the array of edge values.
-	 */
-	private static int getNodeIndex(double[] edgeVals, double value) {
-		// If a value exists in an array, binary search returns the index
-		// of the value. If the value is less than the lowest array value,
-		// binary search returns -1. If the value is within range or
-		// greater than the highest array value, binary search returns
-		// (-insert_point-1). The SHA rule of thumb follows the java rules
-		// of insidedness, so any exact node edge value is associated with
-		// the node above. Therefore, the negative within range values are
-		// adjusted to the correct node index with (-idx-2). Below range
-		// values are already -1; above range values are corrected to -1.
-		int idx = Arrays.binarySearch(edgeVals, value);
-		idx = (idx < -1) ? (-idx - 2) : idx;
-		return (idx == edgeVals.length - 1) ? -1 : idx;
-	}
+//	/*
+//	 * Returns the node index of the value or -1 if the value is out of range.
+//	 * Expects the array of edge values.
+//	 */
+//	private static int getNodeIndex(double[] edgeVals, double value) {
+//		// If a value exists in an array, binary search returns the index
+//		// of the value. If the value is less than the lowest array value,
+//		// binary search returns -1. If the value is within range or
+//		// greater than the highest array value, binary search returns
+//		// (-insert_point-1). The SHA rule of thumb follows the java rules
+//		// of insidedness, so any exact node edge value is associated with
+//		// the node above. Therefore, the negative within range values are
+//		// adjusted to the correct node index with (-idx-2). Below range
+//		// values are already -1; above range values are corrected to -1.
+//		int idx = Arrays.binarySearch(edgeVals, value);
+//		idx = (idx < -1) ? (-idx - 2) : idx;
+//		return (idx == edgeVals.length - 1) ? -1 : idx;
+//	}
 	
 	private static final double PRECISION_SCALE = 1 + 1e-14;
 	private static int getNodeIndex(double[] nodes, double value, double spacing) {
@@ -993,21 +1064,13 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 			latSpacing);
 
 		// node edge arrays
-		lonNodeEdges = initNodeEdges(anchor.getLongitude(), getMaxLon(),
-			lonSpacing);
-		latNodeEdges = initNodeEdges(anchor.getLatitude(), getMaxLat(),
-			latSpacing);
+//		lonNodeEdges = initNodeEdges(anchor.getLongitude(), getMaxLon(),
+//			lonSpacing);
+//		latNodeEdges = initNodeEdges(anchor.getLatitude(), getMaxLat(),
+//			latSpacing);
 
 		// range data
-		numLatNodes = latNodeCenters.length;
-		numLonNodes = lonNodeCenters.length;
-//		System.out.println("numLat="+numLatNodes+", numLon="+numLonNodes);
-		minGridLat = (numLatNodes != 0) ? latNodeCenters[0] : Double.NaN;
-		maxGridLat = (numLatNodes != 0) ? latNodeCenters[numLatNodes - 1]
-			: Double.NaN;
-		minGridLon = (numLonNodes != 0) ? lonNodeCenters[0] : Double.NaN;
-		maxGridLon = (numLonNodes != 0) ? lonNodeCenters[numLonNodes - 1]
-			: Double.NaN;
+		initGridRange();
 		int gridSize = numLonNodes * numLatNodes;
 
 		// node data
@@ -1018,7 +1081,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		Location loc;
 		for (double lat : latNodeCenters) {
 			for (double lon : lonNodeCenters) {
-				loc = new Location(lat, lon);
+				loc = new Location(lat, lon, 0d);
 				if (contains(loc)) {
 					nodeList.add(loc);
 					gridIndices[grid_idx] = node_idx++;
@@ -1029,6 +1092,18 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 			}
 		}
 		nodeCount = node_idx;
+	}
+	
+	private void initGridRange() {
+		numLatNodes = latNodeCenters.length;
+		numLonNodes = lonNodeCenters.length;
+//		System.out.println("numLat="+numLatNodes+", numLon="+numLonNodes);
+		minGridLat = (numLatNodes != 0) ? latNodeCenters[0] : Double.NaN;
+		maxGridLat = (numLatNodes != 0) ? latNodeCenters[numLatNodes - 1]
+			: Double.NaN;
+		minGridLon = (numLonNodes != 0) ? lonNodeCenters[0] : Double.NaN;
+		maxGridLon = (numLonNodes != 0) ? lonNodeCenters[numLonNodes - 1]
+			: Double.NaN;
 	}
 
 	/*
@@ -1042,17 +1117,17 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		return buildArray(firstCenterVal, nodeCount, width);
 	}
 
-	/*
-	 * Initializes an array of node edges which can be used to associate a value
-	 * with a particular node using binary search.
-	 */
-	private static double[] initNodeEdges(double min, double max, double width) {
-		// edges is binCount + 1
-		int edgeCount = (int) Math.floor((max - min) / width) + 2;
-		// offset first bin edge half a binWidth
-		double firstEdgeVal = min - (width / 2);
-		return buildArray(firstEdgeVal, edgeCount, width);
-	}
+//	/*
+//	 * Initializes an array of node edges which can be used to associate a value
+//	 * with a particular node using binary search.
+//	 */
+//	private static double[] initNodeEdges(double min, double max, double width) {
+//		// edges is binCount + 1
+//		int edgeCount = (int) Math.floor((max - min) / width) + 2;
+//		// offset first bin edge half a binWidth
+//		double firstEdgeVal = min - (width / 2);
+//		return buildArray(firstEdgeVal, edgeCount, width);
+//	}
 
 	/* Node edge and center array builder. */
 	private static double[] buildArray(double startVal, int count,
@@ -1066,6 +1141,202 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 			val += interval;
 		}
 		return values;
+	}
+	
+	/*
+	 * GeoJSON related methods
+	 */
+	
+	/**
+	 * Converts this gridded region to a GeoJSON feature object for serialization
+	 * 
+	 * @return
+	 */
+	public Feature toFeature() {
+		List<Geometry> geometries = new ArrayList<>();
+		geometries.add(new Polygon(this)); // polygon border
+		geometries.add(new MultiPoint(nodeList)); // nodes
+		GeometryCollection geometry = new GeometryCollection(geometries);
+		FeatureProperties properties = new FeatureProperties();
+		
+		properties.put(JSON_LAT_NODES, latNodeCenters);
+		properties.put(JSON_LON_NODES, lonNodeCenters);
+		properties.put(JSON_LAT_SPACING, latSpacing);
+		properties.put(JSON_LON_SPACING, lonSpacing);
+		properties.put(JSON_ANCHOR, anchor);
+		
+		String name = getName();
+		if (name != null && name.equals(NAME_DEFAULT))
+			name = null;
+		return new Feature(name, geometry, properties);
+	}
+	
+	/**
+	 * Converts GeoJSON feature object back to a region.
+	 * 
+	 * @return
+	 */
+	public static GriddedRegion fromFeature(Feature feature) {
+		Preconditions.checkNotNull(feature.geometry, "Feature is missing geometry");
+		Preconditions.checkState(feature.geometry instanceof GeometryCollection,
+				"Unexpected geometry type for GriddedRegion, should be GeometryCollection: %s", feature.geometry.type);
+		GeometryCollection geometries = (GeometryCollection)feature.geometry;
+		Region region = null;
+		LocationList nodeList = null;
+		for (Geometry geometry : geometries.geometries) {
+			if (geometry instanceof Polygon) {
+				Preconditions.checkState(region == null, "Multiple region polygons found for GriddedRegion");
+				region = ((Polygon)geometry).polygon;
+			} else if (geometry instanceof MultiPolygon) {
+				Preconditions.checkState(region == null, "Multiple region polygons found for GriddedRegion");
+				List<Region> list = ((MultiPolygon)feature.geometry).polygons;
+				Preconditions.checkState(list.size() == 1, "Must have exactly 1 polygon, have %s", list.size());
+				region = list.get(0);
+			} else if (geometry instanceof MultiPoint) {
+				Preconditions.checkState(nodeList == null, "Multiple node lists found");
+				nodeList = ((MultiPoint)geometry).points;
+			} else if (geometry instanceof Point) {
+				Preconditions.checkState(nodeList == null, "Multiple node lists found");
+				nodeList = new LocationList();
+				nodeList.add(((Point)geometry).point);
+			} else {
+				System.err.println("Warning: skipping unexpected geometry type when loading GriddedRegion: "+geometry.type);
+			}
+		}
+		Preconditions.checkNotNull(region, "Region polygon not found in GriddedRegion feature");
+		Preconditions.checkNotNull(nodeList, "Node list (MultiPoint geometry) not found in GriddedRegion feature");
+		
+		FeatureProperties properties = feature.properties;
+		// determine lat/lon nodes and spacing
+		double[] latNodeCenters = null;
+		double[] lonNodeCenters = null;
+		double latSpacing = Double.NaN;
+		double lonSpacing = Double.NaN;
+		Location anchor = null;
+		
+		if (properties != null) {
+			latNodeCenters = properties.get(JSON_LAT_NODES, null);
+			lonNodeCenters = properties.get(JSON_LON_NODES, null);
+			latSpacing = properties.getDouble(JSON_LAT_SPACING, Double.NaN);
+			lonSpacing = properties.getDouble(JSON_LON_SPACING, Double.NaN);
+			anchor = properties.get(JSON_ANCHOR, null);
+		}
+
+		if (latNodeCenters == null) {
+			System.err.println("Warning: "+JSON_LAT_NODES+" not specified in GriddedRegion GeoJSON properties, "
+					+ "inferring from node list");
+			latNodeCenters = inferNodeCenters(nodeList, true);
+		}
+		if (lonNodeCenters == null) {
+			System.err.println("Warning: "+JSON_LON_NODES+" not specified in GriddedRegion GeoJSON properties, "
+					+ "inferring from node list");
+			lonNodeCenters = inferNodeCenters(nodeList, false);
+		}
+		if (Double.isNaN(latSpacing)) {
+			System.err.println("Warning: "+JSON_LAT_SPACING+" not specified in GriddedRegion GeoJSON properties, "
+					+ "inferring from nodes");
+			latSpacing = inferSpacing(latNodeCenters);
+		}
+		if (Double.isNaN(lonSpacing)) {
+			System.err.println("Warning: "+JSON_LON_SPACING+" not specified in GriddedRegion GeoJSON properties, "
+					+ "inferring from nodes");
+			lonSpacing = inferSpacing(lonNodeCenters);
+		}
+		GriddedRegion gridRegion = new GriddedRegion(
+				region, latNodeCenters, lonNodeCenters, latSpacing, lonSpacing, anchor, nodeList);
+		if (feature.id != null)
+			gridRegion.setName(feature.id.toString());
+		return gridRegion;
+	}
+	
+	private static double[] inferNodeCenters(LocationList gridNodes, boolean latitude) {
+		if (gridNodes.isEmpty())
+			return new double[0];
+		List<Double> values = new ArrayList<>();
+		HashSet<Float> uniques = new HashSet<>();
+		for (Location loc : gridNodes) {
+			double val = latitude ? loc.getLatitude() : loc.getLongitude();
+			if (!uniques.contains((float)val)) {
+				uniques.add((float)val);
+				values.add(val);
+			}
+		}
+		Collections.sort(values);
+		double[] array = Doubles.toArray(values);
+		
+		// verify that it is evenly spaced
+		inferSpacing(array);
+		
+		return array;
+	}
+	
+	private static double inferSpacing(double[] values) {
+		if (values.length < 1)
+			return 0d;
+		double spacing = Math.abs(values[values.length-1] - values[0])/(values.length-1);
+		for (int i=1; i<values.length; i++) {
+			float calcSpacing = (float)Math.abs(values[i] - values[i-1]);
+			Preconditions.checkState(calcSpacing == (float)spacing, 
+					"Cannot infer spacing. Implied spacing from whole node array is %s, "
+					+ "but spacing between elements %s and %s is %s", (float)spacing, i-1, i, calcSpacing);
+		}
+		return spacing;
+	}
+	
+	public static class Adapter extends TypeAdapter<GriddedRegion> {
+		
+		private Feature.FeatureAdapter featureAdapter;
+		
+		public Adapter() {
+			featureAdapter = new Feature.FeatureAdapter(new CustomPropertyAdapter());
+		}
+
+		@Override
+		public void write(JsonWriter out, GriddedRegion value) throws IOException {
+			if (value == null)
+				out.nullValue();
+			else
+				featureAdapter.write(out, value.toFeature());
+		}
+
+		@Override
+		public GriddedRegion read(JsonReader in) throws IOException {
+			Feature feature = featureAdapter.read(in);
+			return fromFeature(feature);
+		}
+		
+	}
+	
+	private static final String JSON_LAT_NODES = "LatNodes";
+	private static final String JSON_LON_NODES = "LonNodes";
+	private static final String JSON_LAT_SPACING = "LatSpacing";
+	private static final String JSON_LON_SPACING = "LonSpacing";
+	private static final String JSON_ANCHOR = "Anchor";
+	
+	private static class CustomPropertyAdapter extends FeatureProperties.PropertiesAdapter {
+		
+		// default serialization works, but need custom deserialization
+
+		@Override
+		protected Object deserialize(JsonReader in, String name) throws IOException {
+			if (name.equals(JSON_LAT_NODES) || name.equals(JSON_LON_NODES))
+				return deserializeArray(in);
+			if (name.equals(JSON_ANCHOR))
+				return Geometry.deserializeLoc(in);
+			return super.deserialize(in, name);
+		}
+		
+		private double[] deserializeArray(JsonReader in) throws IOException {
+			if (in.peek() == JsonToken.NULL)
+				return null;
+			in.beginArray();
+			List<Double> values = new ArrayList<>();
+			while (in.hasNext())
+				values.add(in.nextDouble());
+			in.endArray();
+			return Doubles.toArray(values);
+		}
+		
 	}
 
 }

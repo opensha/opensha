@@ -17,6 +17,8 @@ import java.util.concurrent.Future;
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.ui.TextAnchor;
+import org.jfree.data.Range;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
@@ -174,7 +176,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 
 	@Override
 	public int getVersion() {
-		return 1;
+		return 2;
 	}
 	
 	private static boolean isHardcodedTime(double time) {
@@ -261,13 +263,27 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		simLowerFuncs = new ArbitrarilyDiscretizedFunc[minMags.length];
 		simUpperFuncs = new ArbitrarilyDiscretizedFunc[minMags.length];
 		simOnlyFuncs = new ArbitrarilyDiscretizedFunc[minMags.length];
+		
+		ArbitrarilyDiscretizedFunc[] gainFuncs = new ArbitrarilyDiscretizedFunc[minMags.length];
+		ArbitrarilyDiscretizedFunc[] gainLowerFuncs = new ArbitrarilyDiscretizedFunc[minMags.length];
+		ArbitrarilyDiscretizedFunc[] gainUpperFuncs = new ArbitrarilyDiscretizedFunc[minMags.length];
+		ArbitrarilyDiscretizedFunc[] gainOnlyFuncs = new ArbitrarilyDiscretizedFunc[minMags.length];
 		for (int m=0; m<minMags.length; m++) {
 			if (!hasMags[m])
 				continue;
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			csv.addLine("Duration (years)", "TI Prob", "TD Prob", "ETAS Prob", "ETAS p2.5", "ETAS p97.5", "ETAS Only Prob");
+			
 			simFuncs[m] = new ArbitrarilyDiscretizedFunc();
 			simLowerFuncs[m] = new ArbitrarilyDiscretizedFunc();
 			simUpperFuncs[m] = new ArbitrarilyDiscretizedFunc();
 			simOnlyFuncs[m] = new ArbitrarilyDiscretizedFunc();
+			
+			gainFuncs[m] = new ArbitrarilyDiscretizedFunc();
+			gainLowerFuncs[m] = new ArbitrarilyDiscretizedFunc();
+			gainUpperFuncs[m] = new ArbitrarilyDiscretizedFunc();
+			gainOnlyFuncs[m] = new ArbitrarilyDiscretizedFunc();
 			for (int t=0; t<etasTimesFunc.size(); t++) {
 				double duration = etasTimesFunc.getX(t);
 				
@@ -293,15 +309,39 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				
 				double[] conf = ETAS_Utils.getBinomialProportion95confidenceInterval(simProb, totalNum);
 				
+				double tiProb = tiFuncs[m].getInterpolatedY(duration);
+				double tdProb = tdFuncs == null ? Double.NaN : tdFuncs[m].getInterpolatedY(duration);
+				
+				List<String> line = new ArrayList<>();
+				line.add((float)duration+"");
+				line.add(tiProb+"");
+				line.add(tdProb+"");
+				
+				double denom = tiFuncs == null ? tiProb : tdProb;
+				
 				double prob = 1d - (1d - simProb )*(1d - u3Prob);
+				line.add(prob+"");
 				simFuncs[m].set(duration, prob);
+				gainFuncs[m].set(duration, prob/denom);
 				double lowerProb = 1d - (1d - conf[0])*(1d - u3Prob);
+				line.add(lowerProb+"");
 				simLowerFuncs[m].set(duration, lowerProb);
+				gainLowerFuncs[m].set(duration, lowerProb/denom);
 				double upperProb = 1d - (1d - conf[1])*(1d - u3Prob);
+				line.add(upperProb+"");
 				simUpperFuncs[m].set(duration, upperProb);
-				if ((float)duration <= (float)getConfig().getDuration())
+				gainUpperFuncs[m].set(duration, upperProb/denom);
+				if ((float)duration <= (float)getConfig().getDuration()) {
+					line.add(simProb+"");
 					simOnlyFuncs[m].set(duration, simProb);
+					gainOnlyFuncs[m].set(duration, simProb/denom);
+				} else {
+					line.add(Double.NaN+"");
+				}
+				csv.addLine(line);
 			}
+			String fileName = prefix+"_m"+(float)minMags[m]+".csv";
+			csv.writeToFile(new File(outputDir, fileName));
 		}
 		
 		// now plot
@@ -309,90 +349,132 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 		for (int m=0; m<minMags.length; m++) {
 			if (!hasMags[m])
 				continue;
-			List<XY_DataSet> funcs = new ArrayList<>();
-			List<PlotCurveCharacterstics> chars = new ArrayList<>();
-			
-			tiFuncs[m].setName("UCERF3-TI");
-			funcs.add(tiFuncs[m]);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+			for (boolean gain : new boolean[] {false, true}) {
+				List<XY_DataSet> funcs = new ArrayList<>();
+				List<PlotCurveCharacterstics> chars = new ArrayList<>();
 
-			if (tdFuncs != null) {
-				tdFuncs[m].setName("UCERF3-TD");
-				funcs.add(tdFuncs[m]);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
-			}
-			
-			simFuncs[m].setName("UCERF3-ETAS");
-			funcs.add(simFuncs[m]);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
-			
-			UncertainArbDiscDataset simConfFunc = new UncertainArbDiscDataset(simFuncs[m], simLowerFuncs[m], simUpperFuncs[m]);
-			simConfFunc.setName("95% Conf");
-			funcs.add(simConfFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));
-			
-			double minProb = 1d;
-			for (XY_DataSet func : funcs)
-				for (Point2D pt : func)
-					if (pt.getY() > 0)
-						minProb = Math.min(minProb, pt.getY());
-			minProb *= 0.5;
-
-			simOnlyFuncs[m].setName("UCERF3-ETAS Triggered Only");
-			funcs.add(simOnlyFuncs[m]);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
-			
-			double annY1 = Math.pow(10, Math.log10(minProb)+0.985*(Math.log10(1d) - Math.log10(minProb)));
-			double annY2 = Math.pow(10, Math.log10(minProb)+0.94*(Math.log10(1d) - Math.log10(minProb)));
-//			System.out.println("Ann Y's: "+annY1+" "+annY2);
-			
-			List<XYTextAnnotation> annotations = new ArrayList<>();
-
-			Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 20);
-			for (int i = 0; i < times.length; i++) {
-				double time = times[i];
-				String label = getTimeShortLabel(time);
+				Range yRange;
 				
-				DefaultXY_DataSet xy = new DefaultXY_DataSet();
-				xy.set(time, minProb);
-				xy.set(time, 1d);
-				funcs.add(xy);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY));
+				if (gain) {
+					gainFuncs[m].setName("UCERF3-ETAS");
+					funcs.add(gainFuncs[m]);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
 
-				XYTextAnnotation ann = new XYTextAnnotation(label, time, annY1);
-				if (i == 0 && xAxisInverted || i == (times.length - 1) && !xAxisInverted) {
-					ann.setTextAnchor(TextAnchor.TOP_RIGHT);
-					if (!xAxisInverted)
-						ann.setY(annY2); // put it below
+					UncertainArbDiscDataset gainConfFunc = new UncertainArbDiscDataset(gainFuncs[m], gainLowerFuncs[m], gainUpperFuncs[m]);
+					gainConfFunc.setName("95% Conf");
+					funcs.add(gainConfFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));
+
+					double maxGain = 10d;
+					for (XY_DataSet func : funcs)
+						for (Point2D pt : func)
+							maxGain = Math.max(maxGain, pt.getY());
+					maxGain = Math.pow(10, Math.ceil(Math.log10(maxGain)));
+
+					gainOnlyFuncs[m].setName("UCERF3-ETAS Triggered Only");
+					funcs.add(gainOnlyFuncs[m]);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
+					
+					yRange = new Range(1d, maxGain);
 				} else {
-					ann.setTextAnchor(TextAnchor.TOP_LEFT);
+					tiFuncs[m].setName("UCERF3-TI");
+					funcs.add(tiFuncs[m]);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+
+					if (tdFuncs != null) {
+						tdFuncs[m].setName("UCERF3-TD");
+						funcs.add(tdFuncs[m]);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
+					}
+
+					simFuncs[m].setName("UCERF3-ETAS");
+					funcs.add(simFuncs[m]);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
+
+					UncertainArbDiscDataset simConfFunc = new UncertainArbDiscDataset(simFuncs[m], simLowerFuncs[m], simUpperFuncs[m]);
+					simConfFunc.setName("95% Conf");
+					funcs.add(simConfFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));
+
+					double minProb = 1d;
+					for (XY_DataSet func : funcs)
+						for (Point2D pt : func)
+							if (pt.getY() > 0)
+								minProb = Math.min(minProb, pt.getY());
+					minProb *= 0.5;
+
+					simOnlyFuncs[m].setName("UCERF3-ETAS Triggered Only");
+					funcs.add(simOnlyFuncs[m]);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.RED));
+					yRange = new Range(minProb, 1d);
 				}
-				ann.setFont(annFont);
-				annotations.add(ann);
+
+				List<XYTextAnnotation> annotations = buildPlotAnnotations(xAxisInverted, funcs, chars, yRange);
+
+				for (XY_DataSet func : funcs)
+					Preconditions.checkState(func.size() > 0, "Empty func with name: %s", func.getName());
+
+				String yAxisLabel = "M≥"+(float)minMags[m];
+				if (gain)
+					yAxisLabel += " Probability Gain";
+				else
+					yAxisLabel += " Participation Probability";
+				PlotSpec spec = new PlotSpec(funcs, chars, "M≥"+(float)minMags[m]+" Simulation Hazard Change",
+						"Forecast Timespan (years)", yAxisLabel);
+				spec.setPlotAnnotations(annotations);
+				spec.setLegendVisible(true);
+
+				HeadlessGraphPanel gp = buildGraphPanel();
+				gp.setxAxisInverted(xAxisInverted);
+				gp.setUserBounds(new Range(times[0], times[times.length - 1]), yRange);
+
+				gp.drawGraphPanel(spec, true, true);
+				gp.getChartPanel().setSize(1000, 800);
+
+				String myPrefix = prefix+"_m"+(float)minMags[m];
+				if (gain)
+					myPrefix += "_gain";
+				gp.saveAsPNG(new File(outputDir, myPrefix+".png").getAbsolutePath());
+				gp.saveAsPDF(new File(outputDir, myPrefix+".pdf").getAbsolutePath());
+				gp.saveAsTXT(new File(outputDir, myPrefix+".txt").getAbsolutePath());
 			}
-
-			for (XY_DataSet func : funcs)
-				Preconditions.checkState(func.size() > 0, "Empty func with name: %s", func.getName());
-
-			String yAxisLabel = "M≥"+(float)minMags[m]+" Participation Probability";
-			PlotSpec spec = new PlotSpec(funcs, chars, "M≥"+(float)minMags[m]+" Simulation Hazard Change",
-					"Forecast Timespan (years)", yAxisLabel);
-			spec.setPlotAnnotations(annotations);
-			spec.setLegendVisible(true);
-
-			HeadlessGraphPanel gp = buildGraphPanel();
-			gp.setxAxisInverted(xAxisInverted);
-			gp.setUserBounds(times[0], times[times.length - 1], minProb, 1d);
-
-			gp.drawGraphPanel(spec, true, true);
-			gp.getChartPanel().setSize(1000, 800);
-			
-			String myPrefix = prefix+"_m"+(float)minMags[m];
-			gp.saveAsPNG(new File(outputDir, myPrefix+".png").getAbsolutePath());
-			gp.saveAsPDF(new File(outputDir, myPrefix+".pdf").getAbsolutePath());
-			gp.saveAsTXT(new File(outputDir, myPrefix+".txt").getAbsolutePath());
 		}
 		return null;
+	}
+
+	public static List<XYTextAnnotation> buildPlotAnnotations(boolean xAxisInverted, List<XY_DataSet> funcs,
+			List<PlotCurveCharacterstics> chars, Range yRange) {
+		double annY1 = Math.pow(10, Math.log10(yRange.getLowerBound())+0.985*(
+				Math.log10(yRange.getUpperBound()) - Math.log10(yRange.getLowerBound())));
+		double annY2 = Math.pow(10, Math.log10(yRange.getLowerBound())+0.94*(
+				Math.log10(yRange.getUpperBound()) - Math.log10(yRange.getLowerBound())));
+		//			System.out.println("Ann Y's: "+annY1+" "+annY2);
+
+		List<XYTextAnnotation> annotations = new ArrayList<>();
+
+		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 20);
+		for (int i = 0; i < times.length; i++) {
+			double time = times[i];
+			String label = getTimeShortLabel(time);
+
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			xy.set(time, yRange.getLowerBound());
+			xy.set(time, yRange.getUpperBound());
+			funcs.add(xy);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GRAY));
+
+			XYTextAnnotation ann = new XYTextAnnotation(label, time, annY1);
+			if (i == 0 && xAxisInverted || i == (times.length - 1) && !xAxisInverted) {
+				ann.setTextAnchor(TextAnchor.TOP_RIGHT);
+				if (!xAxisInverted)
+					ann.setY(annY2); // put it below
+			} else {
+				ann.setTextAnchor(TextAnchor.TOP_LEFT);
+			}
+			ann.setFont(annFont);
+			annotations.add(ann);
+		}
+		return annotations;
 	}
 	
 	private ArbitrarilyDiscretizedFunc[] calcUCERF3(FaultSystemSolution fss, boolean timeIndep, ExecutorService exec) {
@@ -586,10 +668,16 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 				continue;
 			lines.add(topLevelHeading+"# M&ge;"+(float)minMags[m]+" "+title);
 			lines.add(topLink); lines.add("");
-			lines.add("![Hazard Change]("+relativePathToOutputDir+"/"+prefix+"_m"+(float)minMags[m]+".png)");
-			lines.add("");
 			
 			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.initNewLine();
+			table.addColumn("![Hazard Change]("+relativePathToOutputDir+"/"+prefix+"_m"+(float)minMags[m]+".png)");
+			table.addColumn("![Gain]("+relativePathToOutputDir+"/"+prefix+"_m"+(float)minMags[m]+"_gain.png)");
+			table.finalizeLine();
+			lines.addAll(table.build());
+			lines.add("");
+			
+			table = MarkdownUtils.tableBuilder();
 			table.initNewLine();
 			table.addColumn("Forecast Duration");
 			table.addColumn("UCERF3-ETAS [95% Conf]");

@@ -11,7 +11,7 @@ import org.opensha.refFaultParamDb.dao.db.DB_ConnectionPool;
 
 import util.TestUtils;
 
-public class TestDBConnectionOperational {
+public class TestDBConnectionOld {
 
 	private DB_AccessAPI db;
 	

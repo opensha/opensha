@@ -2148,6 +2148,34 @@ ScalarIMRChangeListener {
 		return getMapParametersInfoAsHTML().replaceAll("<br>",
 				SystemUtils.LINE_SEPARATOR);
 	}
+	
+	public String getERFParametersInfoAsHTML() {
+		String calcType = probDeterComboBox.getSelectedItem().toString();
+		StringBuilder str = new StringBuilder();
+		if (calcType.equalsIgnoreCase(DETERMINISTIC)) {
+			erfRupSelectorGuiBean.getParameterListMetadataString();
+			str.append("Deterministic Earthquake Rupture Param List: ")
+			.append("<br>")
+			.append("--------------------")
+			.append("<br>")
+			.append(erfRupSelectorGuiBean.getParameterListMetadataString())
+			.append("<br><br>");
+		} else {
+			str.append("Forecast Param List: ")
+			.append("<br>")
+			.append("--------------------")
+			.append("<br>")
+			.append(erfGuiBean.getERFParameterList().getParameterListMetadataString())
+			.append("<br><br>")
+			.append("TimeSpan Param List: ")
+			.append("<br>")
+			.append("--------------------")
+			.append("<br>")
+			.append(erfGuiBean.getSelectedERFTimespanGuiBean().getParameterListMetadataString()) 
+			.append("<br><br>");
+		}
+		return str.toString();
+	}
 
 	/**
 	 * 
@@ -2166,45 +2194,32 @@ ScalarIMRChangeListener {
 		}
 
 		String calcType = probDeterComboBox.getSelectedItem().toString();
+		
+		StringBuilder str = new java.lang.StringBuilder();
 
-		return "<br>" + "Cacluation Type = " + calcType
-		+ "<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>"+ imrMetadata
-		+ "<br><br>"
-		+ "Site Param List: "
-		+ "<br>"
-		+ "----------------"
-		+ "<br>"
-		+ siteGuiBean.getParameterListEditor()
-		.getVisibleParametersCloned()
-		.getParameterListMetadataString()
-		+ "<br><br>"
-		+ "IMT Param List: "
-		+ "<br>"
-		+ "---------------"
-		+ "<br>"
-		+ imtGuiBean.getVisibleParametersCloned()
-		.getParameterListMetadataString()
-		+ "<br><br>"
-		+ "Forecast Param List: "
-		+ "<br>"
-		+ "--------------------"
-		+ "<br>"
-		+ erfGuiBean.getERFParameterList()
-		.getParameterListMetadataString()
-		+ "<br><br>"
-		+ "TimeSpan Param List: "
-		+ "<br>"
-		+ "--------------------"
-		+ "<br>"
-		+ erfGuiBean.getSelectedERFTimespanGuiBean()
-		.getParameterListMetadataString() 
-		+ "<br><br>"
-		+ "Calculation Settings: "
-		+ "<br>"
-		+ "--------------------"
-		+ "<br>"
-		+ getCalcParamMetadataString();
-
+		str.append("<br>" + "Cacluation Type = ").append(calcType)
+		.append("<br><br>" + "IMR Param List:" + "<br>" + "---------------" + "<br>").append(imrMetadata)
+		.append("<br><br>")
+		.append("Site Param List: ")
+		.append("<br>")
+		.append("----------------")
+		.append("<br>")
+		.append(siteGuiBean.getParameterListEditor().getVisibleParametersCloned().getParameterListMetadataString())
+		.append("<br><br>")
+		.append("IMT Param List: ")
+		.append("<br>")
+		.append("---------------")
+		.append("<br>")
+		.append(imtGuiBean.getVisibleParametersCloned().getParameterListMetadataString())
+		.append("<br><br>")
+		.append(getERFParametersInfoAsHTML())
+		.append("Calculation Settings: ")
+		.append("<br>")
+		.append("--------------------")
+		.append("<br>")
+		.append(getCalcParamMetadataString());
+		
+		return str.toString();
 	}
 
 	/**

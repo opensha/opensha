@@ -179,6 +179,23 @@ public class LocationTest {
 		assertTrue(locList.get(2) == l1);
 		assertTrue(locList.get(3) == l0);
 		assertTrue(locList.get(4) == l4);
-	}	
+	}
+	
+	@Test
+	public final void testDegreeSerialization() {
+		// test that new Locations created with the result of getL*titude() methods are identical
+		Location[] inputLocs = {
+				location, // standard test loc
+				new Location(37.09084333164281, V, V) // a latitude known to fail this test if values only stored in radians
+		};
+		for (Location testLoc : inputLocs) {
+			Location loc = new Location(testLoc.getLatitude(), testLoc.getLongitude(), testLoc.getDepth());
+			assertTrue(testLoc.equals(loc));
+			assertTrue(testLoc.lat == loc.lat);
+			assertTrue(testLoc.lon == loc.lon);
+			assertTrue(testLoc.latRad == loc.latRad);
+			assertTrue(testLoc.lonRad == loc.lonRad);
+		}
+	}
 
 }
