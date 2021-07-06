@@ -65,7 +65,7 @@ public class FaultSystemSolution implements Serializable {
 	private String infoString;
 	
 	// grid sources, can be null
-	private GridSourceProvider gridSourceProvider;
+	protected GridSourceProvider gridSourceProvider;
 	
 	// MFDs for each rupture (mags from different scaling relationships for example)
 	// usually null.
