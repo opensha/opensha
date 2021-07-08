@@ -423,7 +423,44 @@ public class Geometry {
 		 * Depth below the surface of the earth in kilometers. This goes against the GeoJSON spec,
 		 * but is used by some USGS web services
 		 */
-		DEPTH_KM
+		DEPTH_KM;
+		
+		/**
+		 * Converts the given OpenSHA depth (in km) to a JSON depth/elevation, according to the type
+		 * 
+		 * @param depth
+		 * @return
+		 */
+		public double toGeoJSON(double depth) {
+			switch (this) {
+			case ELEVATION_M:
+				return -depth*1000d; // elevation, in m
+			case DEPTH_M:
+				return depth*1000d; // depth, in m
+			case DEPTH_KM:
+				return depth; // depth, in km
+			default:
+				throw new IllegalStateException();
+			}
+		}
+		
+		/**
+		 * Converts a JSON depth/elevation to an OpenSHA depth (in km), according to the type
+		 * @param depth
+		 * @return
+		 */
+		public double fromGeoJSON(double depth) {
+			switch (this) {
+			case ELEVATION_M:
+				return depth*-1e-3; // elev in m -> depth in km
+			case DEPTH_M:
+				return depth *1e-3; // depth in m -> depth in km
+			case DEPTH_KM:
+				return depth; // depth in km
+			default:
+				throw new IllegalStateException();
+			}
+		}
 	}
 	
 	public static final DepthSerializationType DEPTH_SERIALIZATION_DEFAULT = DepthSerializationType.ELEVATION_M;
@@ -437,21 +474,8 @@ public class Geometry {
 		out.beginArray();
 		out.value(loc.getLongitude());
 		out.value(loc.getLatitude());
-		if (loc.getDepth() != 0d) {
-			switch (depthType) {
-			case ELEVATION_M:
-				out.value(-loc.getDepth()*1000d); // elevation, in m
-				break;
-			case DEPTH_M:
-				out.value(loc.getDepth()*1000d); // depth, in m
-				break;
-			case DEPTH_KM:
-				out.value(loc.getDepth()); // depth, in km
-				break;
-			default:
-				throw new IllegalStateException();
-			}
-		}
+		if (loc.getDepth() != 0d)
+			out.value(depthType.toGeoJSON(loc.getDepth()));
 		out.endArray();
 	}
 	
@@ -468,21 +492,8 @@ public class Geometry {
 		double lon = in.nextDouble();
 		double lat = in.nextDouble();
 		double depth = 0d;
-		if (in.peek() != JsonToken.END_ARRAY) {
-			switch (depthType) {
-			case ELEVATION_M:
-				depth = -in.nextDouble()*1e-3; // elev in m -> depth in km
-				break;
-			case DEPTH_M:
-				depth = in.nextDouble()*1e-3; // depth in m -> depth in km
-				break;
-			case DEPTH_KM:
-				depth = in.nextDouble(); // depth in km
-				break;
-			default:
-				throw new IllegalStateException();
-			}
-		}
+		if (in.peek() != JsonToken.END_ARRAY)
+			depth = depthType.fromGeoJSON(in.nextDouble());
 		return new Location(lat, lon, depth);
 	}
 	

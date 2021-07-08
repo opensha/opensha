@@ -239,7 +239,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			return null;
 		double lon = array[0];
 		double lat = array[1];
-		double depth = array.length == 3 ? array[2] * Geometry.LOC_ELEV_TO_DEPTH : 0d;
+		double depth = array.length == 3 ? Geometry.DEPTH_SERIALIZATION_DEFAULT.fromGeoJSON(array[2]) : 0d;
 		return new Location(lat, lon, depth);
 	}
 	
