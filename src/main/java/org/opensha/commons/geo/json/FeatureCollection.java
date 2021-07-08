@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.geo.json.Feature.FeatureAdapter;
+import org.opensha.commons.geo.json.Geometry.DepthSerializationType;
+import org.opensha.commons.geo.json.Geometry.GeometryAdapter;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -45,9 +47,17 @@ public class FeatureCollection {
 		this.features = features == null ? null : ImmutableList.copyOf(features);
 	}
 	
-	private static FeatureAdapter featureAdapter = new FeatureAdapter();
-	
 	public static class FeatureCollectionAdapter extends TypeAdapter<FeatureCollection> {
+		
+		private FeatureAdapter featureAdapter = new FeatureAdapter();
+		
+		public FeatureCollectionAdapter() {
+			this.featureAdapter = new FeatureAdapter();
+		}
+		
+		public FeatureCollectionAdapter(FeatureAdapter featureAdapter) {
+			this.featureAdapter = featureAdapter;
+		}
 
 		@Override
 		public void write(JsonWriter out, FeatureCollection value) throws IOException {
@@ -206,6 +216,31 @@ public class FeatureCollection {
 			gson_default.toJson(features, FeatureCollection.class, writer);
 			writer.flush();
 		}
+	}
+	
+	public static Gson buildGson() {
+		return buildGson(Geometry.DEPTH_SERIALIZATION_DEFAULT);
+	}
+	
+	public static Gson buildGson(DepthSerializationType depthType) {
+		return buildGson(depthType, null);
+	}
+	
+	public static Gson buildGson(DepthSerializationType depthType, TypeAdapter<FeatureProperties> propsAdapter) {
+		if (propsAdapter == null)
+			propsAdapter = new FeatureProperties.PropertiesAdapter();
+		
+		GsonBuilder builder = new GsonBuilder();
+		builder.setPrettyPrinting();
+		
+		GeometryAdapter geomAdapter = new GeometryAdapter(depthType);
+		FeatureAdapter featureAdapter = new FeatureAdapter(propsAdapter, geomAdapter);
+		
+		builder.registerTypeAdapter(FeatureCollection.class, new FeatureCollectionAdapter(featureAdapter));
+		builder.registerTypeAdapter(Feature.class, featureAdapter);
+		builder.registerTypeAdapter(FeatureProperties.class, propsAdapter);
+		builder.registerTypeAdapter(Geometry.class, geomAdapter);
+		return builder.create();
 	}
 
 }

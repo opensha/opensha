@@ -403,7 +403,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		} else if (value instanceof Boolean) {
 			out.value((Boolean)value);
 		} else if (value instanceof Location) {
-			Geometry.serializeLoc(out, (Location)value);
+			Geometry.serializeLoc(out, (Location)value, Geometry.DEPTH_SERIALIZATION_DEFAULT);
 		} else if (value instanceof Color) {
 			out.value("#"+Integer.toHexString(((Color)value).getRGB()).substring(2));
 		} else if (value.getClass().isArray()) {

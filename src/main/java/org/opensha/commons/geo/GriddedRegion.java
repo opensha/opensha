@@ -1186,10 +1186,10 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		for (Geometry geometry : geometries.geometries) {
 			if (geometry instanceof Polygon) {
 				Preconditions.checkState(region == null, "Multiple region polygons found for GriddedRegion");
-				region = ((Polygon)geometry).polygon;
+				region = ((Polygon)geometry).asRegion();
 			} else if (geometry instanceof MultiPolygon) {
 				Preconditions.checkState(region == null, "Multiple region polygons found for GriddedRegion");
-				List<Region> list = ((MultiPolygon)feature.geometry).polygons;
+				List<Region> list = ((MultiPolygon)feature.geometry).asRegions();
 				Preconditions.checkState(list.size() == 1, "Must have exactly 1 polygon, have %s", list.size());
 				region = list.get(0);
 			} else if (geometry instanceof MultiPoint) {

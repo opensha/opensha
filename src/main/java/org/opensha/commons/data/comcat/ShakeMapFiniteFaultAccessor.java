@@ -1,5 +1,7 @@
 package org.opensha.commons.data.comcat;
 
+import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -17,11 +19,18 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.geo.json.Geometry;
+import org.opensha.commons.geo.json.Geometry.DepthSerializationType;
+import org.opensha.commons.geo.json.Geometry.MultiPolygon;
+import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
 
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
@@ -246,77 +255,37 @@ public class ShakeMapFiniteFaultAccessor {
 	}
 	
 	private static LocationList[] parseFaultJSON(URL url) throws IOException {
-		JSONParser parser = new JSONParser();
+		System.out.println("Parsing "+url);
 		InputStream input = UrlUtil.getInputStream(url);
+		if ((input instanceof BufferedInputStream))
+			input = new BufferedInputStream(input);
+		Gson gson = FeatureCollection.buildGson(DepthSerializationType.DEPTH_KM); // ShakeMap stores depths in KM
 		// parse feature collection into objects
-		JSONObject feed;
-		try {
-			feed = JsonUtil.getJsonObject(parser
-					.parse(new InputStreamReader(input)));
-		} catch (ParseException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		} finally {
-			if (input != null)
-				input.close();
-		}
-		JSONArray featuresArray = JsonUtil.getJsonArray(feed.get("features"));
+		FeatureCollection collection = gson.fromJson(new InputStreamReader(input), FeatureCollection.class);
+		
 		List<LocationList> ret = new ArrayList<>();
-		for (Object featureObj : featuresArray) {
-			JSONObject feature = (JSONObject)featureObj;
-			LocationList[] locLists = parsePolygonFeature(feature);
-			if (locLists == null)
-				return null;
-			for (LocationList l : locLists)
-				ret.add(l);
+		for (Feature feature : collection.features) {
+			Geometry geom = feature.geometry;
+			if (geom instanceof Polygon) {
+				Polygon poly = (Polygon)geom;
+				if (poly.polygon != null)
+					ret.add(poly.polygon);
+			} else if (geom instanceof MultiPolygon) {
+				for (Polygon poly : ((MultiPolygon)geom).polygons)
+					if (poly != null)
+						ret.add(poly.polygon);
+			} else {
+				throw new IllegalStateException("Unexpected ShakeMap geometry type: "+geom.type);
+			}
 		}
 		return ret.toArray(new LocationList[0]);
 	}
 	
-	static LocationList[] parsePolygonFeature(JSONObject feature) {
-		JSONObject geom = JsonUtil.getJsonObject(feature.get("geometry"));
-		Preconditions.checkNotNull(geom);
-		String type = JsonUtil.getString(geom.get("type"));
-		boolean multi = type.equals("MultiPolygon");
-		boolean poly = type.equals("Polygon");
-		if (!poly && !multi) {
-			System.out.println("Cannot fetch ShakeMap source with geometry type '"+type
-					+"'. Currently supported geometry types are 'Polygon' and 'MultiPolygon'");
-			return null;
-		}
-		JSONArray coordsOuter = JsonUtil.getJsonArray(geom.get("coordinates"));
-		JSONArray coordsInner = JsonUtil.getJsonArray(coordsOuter.get(0));
-		LocationList[] ret;
-		if (multi) {
-			ret = new LocationList[coordsInner.size()];
-			for (int i=0; i<ret.length; i++)
-				ret[i] = parseLocList((JSONArray)coordsInner.get(i));
-		} else {
-			ret = new LocationList[] {
-					parseLocList(coordsInner)
-			};
-		}
-		
-		return ret;
-	}
-	
-	private static LocationList parseLocList(JSONArray array) {
-		LocationList ret = new LocationList();
-		for (Object coordsObj : array) {
-			JSONArray coords = JsonUtil.getJsonArray(coordsObj);
-			Preconditions.checkState(coords.size() == 3,
-					"Expected 3 values (lon, lat, depth), have %s", coords.size());
-			double lon = ((Number)coords.get(0)).doubleValue();
-			double lat = ((Number)coords.get(1)).doubleValue();
-			double depth = ((Number)coords.get(2)).doubleValue()/1000d; // m to km
-			ret.add(new Location(lat, lon, depth));
-		}
-		return ret;
-	}
-	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		ShakeMapFiniteFaultAccessor source = new ShakeMapFiniteFaultAccessor();
 //		source.fetchShakemapSourceOutlines("ci38443183", 6);
 		source.fetchShakemapSourceOutlines("ci38457511");
+		FeatureCollection.read(new File("/tmp/rupture.json"));
 	}
 
 }
