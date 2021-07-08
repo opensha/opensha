@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
@@ -356,8 +357,24 @@ public class GeoJSONFaultReader {
 		return subSects;
 	}
 	
+	public static final String NSHM23_CUR_VERSION = "v1p2";
+	public static final String NSHM23_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
+	
+	public static List<FaultSection> buildNSHM23SubSects(String version, String state) throws IOException {
+		Reader sectsReader = new BufferedReader(new InputStreamReader(GeoJSONFaultReader.class.getResourceAsStream(
+				NSHM23_PATH_PREFIX+version+"/NSHM2023_FaultSections_"+version+".geojson")));
+		Reader geoDBReader = new BufferedReader(new InputStreamReader(GeoJSONFaultReader.class.getResourceAsStream(
+				NSHM23_PATH_PREFIX+version+"/NSHM2023_EQGeoDB_"+version+".geojson")));
+		return buildSubSects(sectsReader, geoDBReader, state);
+	}
+	
 	public static List<FaultSection> buildSubSects(File sectsFile, File geoDBFile, String state) throws IOException {
-		List<GeoJSONFaultSection> sects = readFaultSections(sectsFile);
+		return buildSubSects(new BufferedReader(new FileReader(sectsFile)),
+				new BufferedReader(new FileReader(geoDBFile)), state);
+	}
+	
+	public static List<FaultSection> buildSubSects(Reader sectsReader, Reader geoDBReader, String state) throws IOException {
+		List<GeoJSONFaultSection> sects = readFaultSections(sectsReader);
 		if (state != null)
 			sects = filterByState(sects, state, true);
 		System.out.println("Loaded "+sects.size()+" sections");
@@ -369,7 +386,7 @@ public class GeoJSONFaultReader {
 			}
 		});
 		// add slip rates
-		Map<Integer, List<GeoSlipRateRecord>> slipRates = GeoJSONFaultReader.readGeoDB(geoDBFile);
+		Map<Integer, List<GeoSlipRateRecord>> slipRates = GeoJSONFaultReader.readGeoDB(geoDBReader);
 		List<FaultSection> fallbacks = new ArrayList<>();
 		fallbacks.addAll(FaultModels.FM3_1.fetchFaultSections());
 		fallbacks.addAll(FaultModels.FM3_2.fetchFaultSections());
