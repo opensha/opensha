@@ -183,18 +183,18 @@ public final class GeoJSONFaultSection implements FaultSection {
 				}
 			}
 		} else if (geometry instanceof Polygon) {
-			Region polygon = ((Polygon)geometry).polygon;
+			Region polygon = ((Polygon)geometry).asRegion();
 			Preconditions.checkNotNull(polygon, "Polygon has null geometry");
 			Preconditions.checkState(zonePolygon == null, "Encountered a Polygon but already have a zone polygon");
 			zonePolygon = polygon;
 		} else if (geometry instanceof MultiPolygon) {
-			List<Region> polygons = ((MultiPolygon)geometry).polygons;
+			List<Polygon> polygons = ((MultiPolygon)geometry).polygons;
 			Preconditions.checkNotNull(polygons, "MultiPolygon has null geometry");
 			Preconditions.checkState(!polygons.isEmpty(), "MultiPolygon is empty");
 			Preconditions.checkState(polygons.size() == 1,
 					"Only support 1 zone polygon, this MultiPolygon has %s", polygons.size());
 			Preconditions.checkState(zonePolygon == null, "Encountered a MultiPolygon but already have a zone polygon");
-			zonePolygon = polygons.get(0);
+			zonePolygon = polygons.get(0).asRegion();
 		} else {
 			System.err.println("Skipping unexpected FaultSection geometry type: "+geometry.type);
 		}

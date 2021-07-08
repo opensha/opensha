@@ -53,20 +53,19 @@ public class Feature {
 		this.properties = properties;
 	}
 	
-	
-	
-	private static final Geometry.GeometryAdapter geomAdapter = new Geometry.GeometryAdapter();
-	
 	public static class FeatureAdapter extends TypeAdapter<Feature> {
 		
 		private TypeAdapter<FeatureProperties> propsAdapter;
+		private Geometry.GeometryAdapter geomAdapter = new Geometry.GeometryAdapter();
 		
 		public FeatureAdapter() {
 			this.propsAdapter = new FeatureProperties.PropertiesAdapter();
+			this.geomAdapter = new Geometry.GeometryAdapter();
 		}
 		
-		public FeatureAdapter(TypeAdapter<FeatureProperties> propsAdapter) {
+		public FeatureAdapter(TypeAdapter<FeatureProperties> propsAdapter, Geometry.GeometryAdapter geomAdapter) {
 			this.propsAdapter = propsAdapter;
+			this.geomAdapter = geomAdapter;
 		}
 
 		@Override

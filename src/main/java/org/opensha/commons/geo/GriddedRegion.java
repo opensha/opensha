@@ -1186,10 +1186,10 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		for (Geometry geometry : geometries.geometries) {
 			if (geometry instanceof Polygon) {
 				Preconditions.checkState(region == null, "Multiple region polygons found for GriddedRegion");
-				region = ((Polygon)geometry).polygon;
+				region = ((Polygon)geometry).asRegion();
 			} else if (geometry instanceof MultiPolygon) {
 				Preconditions.checkState(region == null, "Multiple region polygons found for GriddedRegion");
-				List<Region> list = ((MultiPolygon)feature.geometry).polygons;
+				List<Region> list = ((MultiPolygon)feature.geometry).asRegions();
 				Preconditions.checkState(list.size() == 1, "Must have exactly 1 polygon, have %s", list.size());
 				region = list.get(0);
 			} else if (geometry instanceof MultiPoint) {
@@ -1288,7 +1288,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		private Feature.FeatureAdapter featureAdapter;
 		
 		public Adapter() {
-			featureAdapter = new Feature.FeatureAdapter(new CustomPropertyAdapter());
+			featureAdapter = new Feature.FeatureAdapter(new CustomPropertyAdapter(), new Geometry.GeometryAdapter());
 		}
 
 		@Override
@@ -1322,7 +1322,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 			if (name.equals(JSON_LAT_NODES) || name.equals(JSON_LON_NODES))
 				return deserializeArray(in);
 			if (name.equals(JSON_ANCHOR))
-				return Geometry.deserializeLoc(in);
+				return Geometry.deserializeLoc(in, Geometry.DEPTH_SERIALIZATION_DEFAULT);
 			return super.deserialize(in, name);
 		}
 		

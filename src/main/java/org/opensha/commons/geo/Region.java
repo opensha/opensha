@@ -1101,11 +1101,11 @@ public class Region implements Serializable, XMLSaveable, Named {
 		Preconditions.checkState(feature.geometry instanceof Polygon || feature.geometry instanceof MultiPolygon,
 				"Unexpected geometry type for Region: %s", feature.geometry.type);
 		if (feature.geometry instanceof MultiPolygon) {
-			List<Region> list = ((MultiPolygon)feature.geometry).polygons;
+			List<Region> list = ((MultiPolygon)feature.geometry).asRegions();
 			Preconditions.checkState(list.size() == 1, "Must have exactly 1 polygon, have %s", list.size());
 			return list.get(0);
 		}
-		Region region = ((Polygon)feature.geometry).polygon;
+		Region region = ((Polygon)feature.geometry).asRegion();
 		if (feature.id != null)
 			region.setName(feature.id.toString());
 		return region;
