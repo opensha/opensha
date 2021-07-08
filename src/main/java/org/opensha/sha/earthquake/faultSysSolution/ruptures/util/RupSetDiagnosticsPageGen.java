@@ -25,6 +25,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -119,7 +120,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RupSetDiagnosticsPageGen {
 
@@ -384,21 +384,23 @@ public class RupSetDiagnosticsPageGen {
 		FaultSystemSolution compSol = null;
 		
 		System.out.println("Loading input");
-		if (U3FaultSystemIO.isSolution(inputFile)) {
+		ZipFile inputZip = new ZipFile(inputFile);
+		if (FaultSystemSolution.isSolution(inputZip)) {
 			System.out.println("Input is a solution");
-			inputSol = U3FaultSystemIO.loadSol(inputFile);
+			inputSol = FaultSystemSolution.load(inputZip);
 			inputRupSet = inputSol.getRupSet();
 		} else {
-			inputRupSet = U3FaultSystemIO.loadRupSet(inputFile);
+			inputRupSet = FaultSystemRupSet.load(inputZip);
 		}
 		if (compareFile != null) {
 			System.out.println("Loading comparison");
-			if (U3FaultSystemIO.isSolution(compareFile)) {
+			ZipFile compZip = new ZipFile(compareFile);
+			if (FaultSystemSolution.isSolution(compZip)) {
 				System.out.println("comp is a solution");
-				compSol = U3FaultSystemIO.loadSol(compareFile);
+				compSol = FaultSystemSolution.load(compZip);
 				compRupSet = compSol.getRupSet();
 			} else {
-				compRupSet = U3FaultSystemIO.loadRupSet(compareFile);
+				compRupSet = FaultSystemRupSet.load(compZip);
 			}
 		}
 		

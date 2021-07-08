@@ -105,6 +105,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		getArchive().write(file);
 	}
 	
+	public static boolean isSolution(ZipFile zip) {
+		return zip.getEntry("solution/"+RATES_FILE_NAME) != null || zip.getEntry("rates.bin") != null;
+	}
+	
 	/**
 	 * Loads a FaultSystemSolution from a zip file
 	 * 
