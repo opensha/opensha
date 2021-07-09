@@ -68,7 +68,7 @@ import com.google.common.collect.Table;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class FiniteFaultSectionResetCalc {
@@ -1238,7 +1238,7 @@ public class FiniteFaultSectionResetCalc {
 //			rupSetMap.put(FaultModels.FM3_2, rupSet32);
 			
 			double[] minFracts = { 0.5 };
-			double[] faultBuffers = { InversionTargetMFDs.FAULT_BUFFER, 1d };
+			double[] faultBuffers = { U3InversionTargetMFDs.FAULT_BUFFER, 1d };
 			boolean[] removeOverlaps = { true, false };
 			boolean replot = true;
 			

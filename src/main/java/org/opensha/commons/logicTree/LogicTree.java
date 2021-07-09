@@ -68,6 +68,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	/**
+	 * @return immutable list of levels for this logic tree
+	 */
+	public ImmutableList<LogicTreeLevel<? extends E>> getLevels() {
+		return levels;
+	}
+	
+	/**
 	 * @return immutable list of branches for this logic tree
 	 */
 	public ImmutableList<LogicTreeBranch<E>> getBranches() {

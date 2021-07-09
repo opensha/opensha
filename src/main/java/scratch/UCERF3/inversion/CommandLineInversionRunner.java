@@ -610,7 +610,7 @@ public class CommandLineInversionRunner {
 				double totalSolutionMoment = sol.getTotalFaultSolutionMomentRate();
 				info += "\nFault Solution Supra Seis Moment Rate: "+totalSolutionMoment;
 				info += "\nFault Target Sub Seis Moment Rate: "
-						+loadedRupSet.getInversionTargetMFDs().getTotalSubSeismoOnFaultMFD().getTotalMomentRate();
+						+loadedRupSet.getInversionTargetMFDs().getTotalOnFaultSubSeisMFD().getTotalMomentRate();
 				info += "\nFault Solution Sub Seis Moment Rate: "
 						+sol.getFinalTotalSubSeismoOnFaultMFD().getTotalMomentRate();
 				info += "\nTruly Off Fault Target Moment Rate: "
@@ -988,7 +988,7 @@ public class CommandLineInversionRunner {
 				RELM_RegionUtils.getSoCalGriddedRegionInstance(), ucerf2Fetch);
 		
 		// statewide
-		return writeMFDPlot(invSol, dir, prefix, invSol.getRupSet().getInversionTargetMFDs().getTotalTargetGR(), invSol.getRupSet().getInversionTargetMFDs().getOnFaultSupraSeisMFD(),
+		return writeMFDPlot(invSol, dir, prefix, invSol.getRupSet().getInversionTargetMFDs().getTotalRegionalMFD(), invSol.getRupSet().getInversionTargetMFDs().getTotalOnFaultSupraSeisMFD(),
 						RELM_RegionUtils.getGriddedRegionInstance(), ucerf2Fetch);
 	}
 

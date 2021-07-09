@@ -100,7 +100,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -1156,7 +1156,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		double maxDuration = 0;
 		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER);
+				U3InversionTargetMFDs.FAULT_BUFFER);
 
 		for (List<ETAS_EqkRupture> catalog : catalogs) {
 			double fractionalRate;
@@ -3452,7 +3452,7 @@ public class ETAS_MultiSimAnalysisTools {
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
+				U3InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		Region subSectPoly = faultPolyMgr.getPoly(sectIndex);
 
@@ -4827,7 +4827,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
 		FaultGridAssociations polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
+				U3InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		double[] zCount = new double[griddedRegion.getNodeCount()];
 
@@ -4981,7 +4981,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
 		FaultGridAssociations polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
+				U3InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		double[] zCount = new double[griddedRegion.getNodeCount()];
 

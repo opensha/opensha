@@ -257,7 +257,7 @@ public class FaultBasedMapGen {
 
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 
-		List<GutenbergRichterMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
 		List<IncrementalMagFreqDist> supraSeisMFD_List = sol.getFinalSupraSeismoOnFaultMFD_List(5.05, 8.95, 40);
 
 		double[] values = new double[faults.size()];
@@ -289,7 +289,7 @@ public class FaultBasedMapGen {
 		double mag = 6.75;
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 
-		List<GutenbergRichterMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
 		List<IncrementalMagFreqDist> supraSeisMFD_List = sol.getFinalSupraSeismoOnFaultMFD_List(5.05, 8.95, 40);
 
 		double[] values = new double[faults.size()];
@@ -298,7 +298,7 @@ public class FaultBasedMapGen {
 
 		for(int i=0;i<subSeisMFD_List.size();i++) {
 			
-			GutenbergRichterMagFreqDist subSeisMFD = subSeisMFD_List.get(i);
+			IncrementalMagFreqDist subSeisMFD = subSeisMFD_List.get(i);
 			IncrementalMagFreqDist supraSeisMFD = supraSeisMFD_List.get(i);
 			double minMag = subSeisMFD.getMinX();
 			double maxMagWithNonZeroRate = supraSeisMFD.getMaxMagWithNonZeroRate();

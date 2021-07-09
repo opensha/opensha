@@ -245,12 +245,12 @@ public class FaultSystemSolutionCalc {
 		SummedMagFreqDist[] mfdInCellArray = new SummedMagFreqDist[numGridCells];
 		
 		// get Subseismo nucleation MFD for each subsection
-		List<GutenbergRichterMagFreqDist> subSeisMFD_List = invSol.getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_List = invSol.getFinalSubSeismoOnFaultMFD_List();
 		
 		// loop over each
 		for(int s=0; s<subSeisMFD_List.size(); s++ ) {
 			LocationList locList = invSol.getRupSet().getFaultSectionData(s).getFaultSurface(1.0, false, true).getEvenlyDiscritizedListOfLocsOnSurface();
-			GutenbergRichterMagFreqDist sectMFD = subSeisMFD_List.get(s);
+			IncrementalMagFreqDist sectMFD = subSeisMFD_List.get(s);
 			sectMFD.scale(1.0/(double)locList.size());
 			for(Location loc: locList) {
 				int regIndex = griddedRegion.indexForLocation(loc);
@@ -339,7 +339,7 @@ public class FaultSystemSolutionCalc {
 		System.out.println("Starting check");
 		
 		if(invSol instanceof InversionFaultSystemSolution) {
-			List<GutenbergRichterMagFreqDist>  grList = invSol.getFinalSubSeismoOnFaultMFD_List();
+			List<? extends IncrementalMagFreqDist>  grList = invSol.getFinalSubSeismoOnFaultMFD_List();
 			for(int s=0;s<grList.size();s++) {
 				double rate = grList.get(s).getTotalIncrRate();
 				System.out.println(s+"\t"+(float)rate+"\t"+invSol.getRupSet().getFaultSectionData(s).getName());

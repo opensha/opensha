@@ -68,7 +68,7 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -1150,7 +1150,7 @@ public class ETAS_Simulator {
 		PolygonFaultGridAssociations faultPolyMgr = rupSet.getModule(PolygonFaultGridAssociations.class);
 		if (faultPolyMgr == null) {
 			// this works for U3, but not generalized
-			faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+			faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
 			rupSet.addModule(faultPolyMgr);
 		}
 		return faultPolyMgr;

@@ -260,7 +260,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double parkfieldConstraintWt = 1000;
 		
 		// get MFD constraints
-		List<MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_ConstraintsForNoAndSoCal();
+		List<MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_Constraints();
 		
 		double MFDTransitionMag = 7.85; // magnitude to switch from MFD equality to MFD inequality
 		
@@ -297,7 +297,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double[] initialRupModel;
 		double[] minimumRuptureRateBasis;
 		
-		SummedMagFreqDist targetOnFaultMFD =  targetMFDs.getOnFaultSupraSeisMFD();
+		IncrementalMagFreqDist targetOnFaultMFD =  targetMFDs.getTotalOnFaultSupraSeisMFD();
 //		System.out.println("SUPRA SEIS MFD = ");
 //		System.out.println(rupSet.getInversionMFDs().getTargetOnFaultSupraSeisMFD());
 		

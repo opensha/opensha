@@ -40,7 +40,7 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceFileReader;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -146,7 +146,7 @@ public class CacheFileGen {
 		GriddedRegion region = origGridProv.getGriddedRegion();
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = new HashMap<>();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = new HashMap<>();
-		FaultGridAssociations faultPolyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);
+		FaultGridAssociations faultPolyMgr = FaultPolyMgr.create(subSects, U3InversionTargetMFDs.FAULT_BUFFER);
 		for (int index=0; index<region.getNodeCount(); index++) {
 			Location loc = region.getLocation(index);
 			IncrementalMagFreqDist subSeisMFD = origGridProv.getNodeSubSeisMFD(index);

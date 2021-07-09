@@ -55,8 +55,9 @@ import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
@@ -361,18 +362,18 @@ public class FaultSystemRupSetCalc {
 	 * maximum magnitude the section participates in.
 	 */
 	public static void plotImpliedTotalSectGR_MFD(InversionFaultSystemRupSet faultSysRupSet, String label) {
-		SummedMagFreqDist impliedGR = calcImpliedGR_NucleationMFD(faultSysRupSet, InversionTargetMFDs.MIN_MAG,InversionTargetMFDs.NUM_MAG, InversionTargetMFDs.DELTA_MAG);
+		SummedMagFreqDist impliedGR = calcImpliedGR_NucleationMFD(faultSysRupSet, U3InversionTargetMFDs.MIN_MAG,U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
 		
 		double mMax = faultSysRupSet.getMaxMag();
 		double mMaxRounded = impliedGR.getX(impliedGR.getClosestXIndex(mMax));
 		
-		GutenbergRichterMagFreqDist totTargetMoMatched = new GutenbergRichterMagFreqDist(InversionTargetMFDs.MIN_MAG,InversionTargetMFDs.NUM_MAG, 
-				InversionTargetMFDs.DELTA_MAG, InversionTargetMFDs.MIN_MAG, mMaxRounded, impliedGR.getTotalMomentRate(), 1.0);
+		GutenbergRichterMagFreqDist totTargetMoMatched = new GutenbergRichterMagFreqDist(U3InversionTargetMFDs.MIN_MAG,U3InversionTargetMFDs.NUM_MAG, 
+				U3InversionTargetMFDs.DELTA_MAG, U3InversionTargetMFDs.MIN_MAG, mMaxRounded, impliedGR.getTotalMomentRate(), 1.0);
 		totTargetMoMatched.setName("Perfect GR, matching def mod moment");
 		totTargetMoMatched.setInfo("(up to mag of largest event in fault system; MoRate ="+(float)totTargetMoMatched.getTotalMomentRate()+"; Rate ge M5 = "+(float)totTargetMoMatched.getCumRate(5.05)+")");
 		
-		GutenbergRichterMagFreqDist totTargetRateMatched = new GutenbergRichterMagFreqDist(InversionTargetMFDs.MIN_MAG,InversionTargetMFDs.NUM_MAG, 
-				InversionTargetMFDs.DELTA_MAG, InversionTargetMFDs.MIN_MAG, mMaxRounded, 1.0, 1.0);
+		GutenbergRichterMagFreqDist totTargetRateMatched = new GutenbergRichterMagFreqDist(U3InversionTargetMFDs.MIN_MAG,U3InversionTargetMFDs.NUM_MAG, 
+				U3InversionTargetMFDs.DELTA_MAG, U3InversionTargetMFDs.MIN_MAG, mMaxRounded, 1.0, 1.0);
 		TotalMag5Rate rate = TotalMag5Rate.RATE_7p9;
 		totTargetRateMatched.scaleToCumRate(0, rate.getRateMag5()*1e5);
 		totTargetRateMatched.setName("Perfect GR, matching regional rate");
@@ -380,16 +381,16 @@ public class FaultSystemRupSetCalc {
 
 		double fractOn = faultSysRupSet.getInversionTargetMFDs().getFractionSeisOnFault();
 		
-		GutenbergRichterMagFreqDist totTargetOnFault = new GutenbergRichterMagFreqDist(InversionTargetMFDs.MIN_MAG,InversionTargetMFDs.NUM_MAG, 
-				InversionTargetMFDs.DELTA_MAG, InversionTargetMFDs.MIN_MAG, mMaxRounded, 1.0, 1.0);
+		GutenbergRichterMagFreqDist totTargetOnFault = new GutenbergRichterMagFreqDist(U3InversionTargetMFDs.MIN_MAG,U3InversionTargetMFDs.NUM_MAG, 
+				U3InversionTargetMFDs.DELTA_MAG, U3InversionTargetMFDs.MIN_MAG, mMaxRounded, 1.0, 1.0);
 		totTargetOnFault.scaleToCumRate(0, fractOn*rate.getRateMag5()*1e5);
 		totTargetOnFault.setName("On Fault Target");
 		totTargetOnFault.setInfo("(MoRate ="+(float)totTargetOnFault.getTotalMomentRate()+"; Rate ge M5 = "+(float)totTargetOnFault.getCumRate(5.05)+")");
 
 		double mMaxOff = faultSysRupSet.getInversionTargetMFDs().getMmaxOffFault();
 
-		GutenbergRichterMagFreqDist totTargetOffFault = new GutenbergRichterMagFreqDist(InversionTargetMFDs.MIN_MAG,InversionTargetMFDs.NUM_MAG, 
-				InversionTargetMFDs.DELTA_MAG, InversionTargetMFDs.MIN_MAG, mMaxRounded, 1.0, 1.0);
+		GutenbergRichterMagFreqDist totTargetOffFault = new GutenbergRichterMagFreqDist(U3InversionTargetMFDs.MIN_MAG,U3InversionTargetMFDs.NUM_MAG, 
+				U3InversionTargetMFDs.DELTA_MAG, U3InversionTargetMFDs.MIN_MAG, mMaxRounded, 1.0, 1.0);
 		totTargetOffFault.scaleToCumRate(0, (1.0-fractOn)*rate.getRateMag5()*1e5);
 		totTargetOffFault.zeroAboveMag(mMaxOff);
 		totTargetOffFault.setName("Off Fault Target");
@@ -1359,7 +1360,7 @@ public class FaultSystemRupSetCalc {
 		
 		InversionTargetMFDs inversionMFDs = invFltSysRupSet.getInversionTargetMFDs();
 		
-		SummedMagFreqDist targetOnFaultSupraSeisMFD  =inversionMFDs.getOnFaultSupraSeisMFD();
+		IncrementalMagFreqDist targetOnFaultSupraSeisMFD  =inversionMFDs.getTotalOnFaultSupraSeisMFD();
 		targetOnFaultSupraSeisMFD.setInfo("Rate(M>=5)="+(float)targetOnFaultSupraSeisMFD.getCumRate(5.05)+"\tMoRate="+(float)targetOnFaultSupraSeisMFD.getTotalMomentRate());
 		
 		IncrementalMagFreqDist trulyOffFaultMFD = inversionMFDs.getTrulyOffFaultMFD();
@@ -1369,10 +1370,10 @@ public class FaultSystemRupSetCalc {
 		}
 		trulyOffFaultMFD.setInfo(infoString);
 				
-		SummedMagFreqDist totalSubSeismoOnFaultMFD = inversionMFDs.getTotalSubSeismoOnFaultMFD();
+		IncrementalMagFreqDist totalSubSeismoOnFaultMFD = inversionMFDs.getTotalOnFaultSubSeisMFD();
 		totalSubSeismoOnFaultMFD.setInfo("Rate(M>=5)="+(float)totalSubSeismoOnFaultMFD.getCumRate(5.05)+"\tMoRate="+(float)totalSubSeismoOnFaultMFD.getTotalMomentRate());
 		
-		GutenbergRichterMagFreqDist totalTargetGR = inversionMFDs.getTotalTargetGR();
+		IncrementalMagFreqDist totalTargetGR = inversionMFDs.getTotalRegionalMFD();
 		totalTargetGR.setInfo("Rate(M>=5)="+(float)totalTargetGR.getCumRate(5.05)+"\tMoRate="+(float)totalTargetGR.getTotalMomentRate());
 		
 		SummedMagFreqDist totalGridSeis = new SummedMagFreqDist(totalTargetGR.getX(0),totalTargetGR.size(),totalTargetGR.getDelta());
@@ -1431,10 +1432,10 @@ public class FaultSystemRupSetCalc {
 
 		
 		if(plotNvsScalTargets) {
-			IncrementalMagFreqDist noCalTargetFaultMFD  =inversionMFDs.getMFD_ConstraintsForNoAndSoCal().get(0).getMagFreqDist();
+			IncrementalMagFreqDist noCalTargetFaultMFD  =inversionMFDs.getMFD_Constraints().get(0).getMagFreqDist();
 			noCalTargetFaultMFD.setName("noCalTargetFaultMFD");
 			noCalTargetFaultMFD.setInfo("Rate(M>=5)="+(float)noCalTargetFaultMFD.getCumRate(5.05)+"\tMoRate="+(float)noCalTargetFaultMFD.getTotalMomentRate());
-			IncrementalMagFreqDist soCalTargetFaultMFD  =inversionMFDs.getMFD_ConstraintsForNoAndSoCal().get(1).getMagFreqDist();
+			IncrementalMagFreqDist soCalTargetFaultMFD  =inversionMFDs.getMFD_Constraints().get(1).getMagFreqDist();
 			soCalTargetFaultMFD.setName("soCalTargetFaultMFD");
 			soCalTargetFaultMFD.setInfo("Rate(M>=5)="+(float)soCalTargetFaultMFD.getCumRate(5.05)+"\tMoRate="+(float)soCalTargetFaultMFD.getTotalMomentRate());
 			mfds.add(noCalTargetFaultMFD);
@@ -1467,7 +1468,7 @@ public class FaultSystemRupSetCalc {
 
 		// plot orig GR nucleation MFD if GR branch
 		if(isGR) {
-			SummedMagFreqDist impliedOnFault_GR_NuclMFD = calcImpliedGR_NucleationMFD(invFltSysRupSet, InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG, InversionTargetMFDs.DELTA_MAG);
+			SummedMagFreqDist impliedOnFault_GR_NuclMFD = calcImpliedGR_NucleationMFD(invFltSysRupSet, U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
 			impliedOnFault_GR_NuclMFD.setName("ImpliedGR_NucleationMFD");
 			impliedOnFault_GR_NuclMFD.setInfo("(if every section nucleates a GR with no implied coupling coeff)");
 			mfds.add(impliedOnFault_GR_NuclMFD);
@@ -1661,7 +1662,7 @@ public class FaultSystemRupSetCalc {
 	}
 	
 	public static void plotOffFaultTaperedGR_Comparisons(InversionFaultSystemRupSet invFltSysRupSet, String fileNamePrefix) {
-		InversionTargetMFDs invMFDs = invFltSysRupSet.getInversionTargetMFDs();
+		U3InversionTargetMFDs invMFDs = invFltSysRupSet.getInversionTargetMFDs();
 		
 		double totalRateOffFault = invMFDs.getOffFaultRegionRateMgt5()*1e5;
 		
@@ -1669,13 +1670,13 @@ public class FaultSystemRupSetCalc {
 		ArrayList<EvenlyDiscretizedFunc> cumMFDs = new ArrayList<EvenlyDiscretizedFunc>();
 
 		for(MaxMagOffFault mMaxVals : MaxMagOffFault.values()) {
-			double mMaxOff = mMaxVals.getMaxMagOffFault()-InversionTargetMFDs.DELTA_MAG/2.0;
-			GutenbergRichterMagFreqDist offFaultMFD_Truncated = new GutenbergRichterMagFreqDist(InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG, 
-					InversionTargetMFDs.DELTA_MAG, InversionTargetMFDs.MIN_MAG, mMaxOff, 1.0, 1.0);
+			double mMaxOff = mMaxVals.getMaxMagOffFault()-U3InversionTargetMFDs.DELTA_MAG/2.0;
+			GutenbergRichterMagFreqDist offFaultMFD_Truncated = new GutenbergRichterMagFreqDist(U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG, 
+					U3InversionTargetMFDs.DELTA_MAG, U3InversionTargetMFDs.MIN_MAG, mMaxOff, 1.0, 1.0);
 			offFaultMFD_Truncated.scaleToCumRate(0, totalRateOffFault);
 			offFaultMFD_Truncated.setName("Truncated GR with Mmax="+mMaxOff);
-			TaperedGR_MagFreqDist	offFaultMFD_Tapered = new TaperedGR_MagFreqDist(InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG, InversionTargetMFDs.DELTA_MAG);
-			offFaultMFD_Tapered.setAllButCornerMag(InversionTargetMFDs.MIN_MAG, offFaultMFD_Truncated.getTotalMomentRate(), totalRateOffFault, 1.0);
+			TaperedGR_MagFreqDist	offFaultMFD_Tapered = new TaperedGR_MagFreqDist(U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
+			offFaultMFD_Tapered.setAllButCornerMag(U3InversionTargetMFDs.MIN_MAG, offFaultMFD_Truncated.getTotalMomentRate(), totalRateOffFault, 1.0);
 			offFaultMFD_Tapered.setName("Tapered GR with Corner Mag ="+offFaultMFD_Tapered.getMagCorner());
 
 			mfds.add(offFaultMFD_Truncated);
@@ -2377,7 +2378,7 @@ public class FaultSystemRupSetCalc {
 		summedMFD.setInfo("Rate(M>=6.5)="+(float)summedMFD.getCumRate(6.55));
 
 		// make range of target GRs
-		GutenbergRichterMagFreqDist totalTargetGR = fltSystRupSet.getInversionTargetMFDs().getTotalTargetGR();
+		IncrementalMagFreqDist totalTargetGR = fltSystRupSet.getInversionTargetMFDs().getTotalRegionalMFD();
 		totalTargetGR.setInfo("Rate(M>=6.5)="+(float)totalTargetGR.getCumRate(6.55));
 
 		// make range of target GRs
@@ -2385,7 +2386,7 @@ public class FaultSystemRupSetCalc {
 //		subSeisAndOffFaultTarget.setName("subSeisAndOffFaultTarget");
 //		subSeisAndOffFaultTarget.setInfo("Rate(M>=6.5)="+(float)subSeisAndOffFaultTarget.getCumRate(6.55));
 		
-		SummedMagFreqDist targetOnFaultSupraSeisMFD = fltSystRupSet.getInversionTargetMFDs().getOnFaultSupraSeisMFD();
+		IncrementalMagFreqDist targetOnFaultSupraSeisMFD = fltSystRupSet.getInversionTargetMFDs().getTotalOnFaultSupraSeisMFD();
 		targetOnFaultSupraSeisMFD.setInfo("Rate(M>=6.5)="+(float)targetOnFaultSupraSeisMFD.getCumRate(6.55));
 
 
@@ -2724,8 +2725,8 @@ public class FaultSystemRupSetCalc {
 					}
 				}
 				// now get targets
-				totalTargetGR.addResampledMagFreqDist(fltSystRupSet.getInversionTargetMFDs().getTotalTargetGR(), true);
-				targetOnFaultSupraSeisMFD.addResampledMagFreqDist(fltSystRupSet.getInversionTargetMFDs().getOnFaultSupraSeisMFD(), true);
+				totalTargetGR.addResampledMagFreqDist(fltSystRupSet.getInversionTargetMFDs().getTotalRegionalMFD(), true);
+				targetOnFaultSupraSeisMFD.addResampledMagFreqDist(fltSystRupSet.getInversionTargetMFDs().getTotalOnFaultSupraSeisMFD(), true);
 				subSeisAndOffFaultTarget.addResampledMagFreqDist(fltSystRupSet.getInversionTargetMFDs().getTotalGriddedSeisMFD(), true);
 			}
 		}
@@ -2816,7 +2817,7 @@ public class FaultSystemRupSetCalc {
 		summedMFD.setInfo("Rate(M>=6.5)="+(float)summedMFD.getCumRate(6.55));
 
 		// add target GR
-		GutenbergRichterMagFreqDist totalTargetGR = fltSystRupSet.getInversionTargetMFDs().getTotalTargetGR();
+		IncrementalMagFreqDist totalTargetGR = fltSystRupSet.getInversionTargetMFDs().getTotalRegionalMFD();
 		totalTargetGR.setInfo("Rate(M>=6.5)="+(float)totalTargetGR.getCumRate(6.55));
 
 		// add what's returned by calcImpliedGR_NucleationMFD(*)

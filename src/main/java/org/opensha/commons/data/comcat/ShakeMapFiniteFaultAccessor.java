@@ -24,6 +24,7 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.geo.json.Geometry.DepthSerializationType;
 import org.opensha.commons.geo.json.Geometry.MultiPolygon;
+import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -117,7 +118,11 @@ public class ShakeMapFiniteFaultAccessor {
 				for (int i=0; i<shakemaps.size(); i++) {
 					JSONObject smObj = (JSONObject)shakemaps.get(i);
 					String smVersionStr = ((JSONObject)smObj.get("properties")).get("version").toString();
-					int smVersion = Integer.parseInt(smVersionStr);
+					int smVersion;
+					if (smVersionStr.contains("."))
+						smVersion = (int)Double.parseDouble(smVersionStr);
+					else
+						smVersion = Integer.parseInt(smVersionStr);
 //					System.out.println("ShakMap Version: "+smVersionStr);
 //					for (Object key : smObj.keySet())
 //						System.out.println("\t"+key+": "+smObj.get(key));
@@ -274,6 +279,8 @@ public class ShakeMapFiniteFaultAccessor {
 				for (Polygon poly : ((MultiPolygon)geom).polygons)
 					if (poly != null)
 						ret.add(poly.polygon);
+			} else if (geom instanceof Point) {
+				return null;
 			} else {
 				throw new IllegalStateException("Unexpected ShakeMap geometry type: "+geom.type);
 			}

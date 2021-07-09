@@ -42,16 +42,12 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 
 import cern.colt.function.tdouble.IntIntDoubleFunction;
-import cern.colt.list.tdouble.DoubleArrayList;
-import cern.colt.list.tint.IntArrayList;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
@@ -1629,8 +1625,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
 		
 		System.out.println("Validating target MFD constraints");
-		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
-		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
+		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
 		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
 		for (int i=0; i<origConstrs.size(); i++) {
 			MFD_InversionConstraint origConstr = origConstrs.get(i);
@@ -1659,7 +1655,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		U3LogicTreeBranch origBranch = U3LogicTreeBranch.DEFAULT;
 		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
 		
-		InversionTargetMFDs origTargetMFDs = origRupSet.getModule(InversionTargetMFDs.class);
+		InversionTargetMFDs origTargetMFDs = origRupSet.getModule(U3InversionTargetMFDs.class);
 		ModSectMinMags origMinMags = origRupSet.requireModule(ModSectMinMags.class);
 		
 		UCERF3InversionInputGenerator origGen = getTestConfig(origRupSet, origBranch.getValue(FaultModels.class), origTargetMFDs);
@@ -1672,7 +1668,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		U3LogicTreeBranch newBranch = rupSet.requireModule(U3LogicTreeBranch.class);
 		Preconditions.checkState(newBranch.equals(origBranch));
-		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(U3InversionTargetMFDs.class);
 		
 		System.out.println("Validating modified min mags");
 		validateMinMags(origMinMags, rupSet.requireModule(ModSectMinMags.class));
@@ -1680,8 +1676,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
 		
 		System.out.println("Validating target MFD constraints");
-		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
-		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_ConstraintsForNoAndSoCal();
+		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
 		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
 		for (int i=0; i<origConstrs.size(); i++) {
 			MFD_InversionConstraint origConstr = origConstrs.get(i);

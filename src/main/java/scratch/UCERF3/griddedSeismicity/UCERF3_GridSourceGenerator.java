@@ -102,7 +102,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 */
 	private void initSectionMFDs(InversionFaultSystemSolution ifss) {
 
-		List<GutenbergRichterMagFreqDist> subSeisMFD_list = 
+		List<? extends IncrementalMagFreqDist> subSeisMFD_list = 
 				ifss.getFinalSubSeismoOnFaultMFD_List();
 
 		sectSubSeisMFDs = Maps.newHashMap();

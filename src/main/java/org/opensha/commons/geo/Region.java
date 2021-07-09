@@ -1151,6 +1151,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 		@Override
 		public Region read(JsonReader in) throws IOException {
 			Feature feature = featureAdapter.read(in);
+			if (feature == null)
+				return null;
 			return fromFeature(feature);
 		}
 		

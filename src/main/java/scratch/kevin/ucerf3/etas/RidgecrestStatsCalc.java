@@ -83,7 +83,7 @@ import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration.Callback;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RidgecrestStatsCalc {
@@ -488,7 +488,7 @@ public class RidgecrestStatsCalc {
 		List<Region> polys = null;
 		if (polygonColor != null) {
 			faultPolyChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 1.5f, polygonColor);
-			FaultPolyMgr polyMgr = FaultPolyMgr.create(sects, InversionTargetMFDs.FAULT_BUFFER);
+			FaultPolyMgr polyMgr = FaultPolyMgr.create(sects, U3InversionTargetMFDs.FAULT_BUFFER);
 			polys = new ArrayList<>();
 			for (int s=0; s<sects.size(); s++)
 				polys.add(polyMgr.getPoly(s));

@@ -69,7 +69,7 @@ import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
@@ -1350,7 +1350,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 							throw ExceptionUtils.asRuntimeException(e);
 						}
 					}
-					return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+					return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
 				}
 			});
 			// add inversion target MFDs
@@ -1358,7 +1358,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					return new InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
+					return new U3InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
 							rupSet.requireModule(PolygonFaultGridAssociations.class));
 				}
 			});
@@ -1367,7 +1367,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					InversionTargetMFDs invMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+					U3InversionTargetMFDs invMFDs = rupSet.requireModule(U3InversionTargetMFDs.class);
 					return InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
 							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), invMFDs);
 				}

@@ -52,7 +52,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_AbstractComcatConfigBuilder.RuptureBuilder;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
 public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilder {
 	

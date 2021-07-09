@@ -27,7 +27,7 @@ public class ETAS_HardCodedConfigGenerator {
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws IOException {
 		boolean mpj = true;
-		HPC_Sites hpcSite = HPC_Sites.USC_HPC;
+		HPC_Sites hpcSite = HPC_Sites.USC_CARC;
 		
 		FaultModels fm = FaultModels.FM3_1;
 		boolean u2 = false;
@@ -90,13 +90,13 @@ public class ETAS_HardCodedConfigGenerator {
 		// only if mpj == true
 		int nodes = 36;
 		int hours = 24;
-		String queue = hpcSite == HPC_Sites.USC_HPC ? "scec_hiprio" : null;
+		String queue = hpcSite == HPC_Sites.USC_CARC ? "scec_hiprio" : null;
 //		String queue = "scec_hiprio";
 		Integer threads = null;
 		
 //		Integer threads = 12;
 		
-		if (hpcSite == HPC_Sites.USC_HPC && threads != null && threads > 12)
+		if (hpcSite == HPC_Sites.USC_CARC && threads != null && threads > 12)
 			throw new IllegalStateException("did you set the threads right?");
 		
 //		nameAdd = nodes+"nodes_"+threads+"threads";

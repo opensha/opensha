@@ -20,6 +20,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
@@ -38,7 +40,9 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.utils.MFD_InversionConstraint;
 
 public class StandardFaultSysModulesTest {
 
@@ -126,6 +130,27 @@ public class StandardFaultSysModulesTest {
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, PolygonFaultGridAssociations.class);
 	}
 
+	@Test
+	public void testInvTargetMFDs() throws IOException {
+		List<MFD_InversionConstraint> constrs = new ArrayList<>();
+		for (Region reg : new Region[] {null, new CaliforniaRegions.LA_BOX(), new CaliforniaRegions.RELM_NOCAL_GRIDDED()})
+			constrs.add(new MFD_InversionConstraint(fakeMFD(), reg));
+		InversionTargetMFDs.Precomputed module = new InversionTargetMFDs.Precomputed(demoRupSet, fakeMFD(), fakeMFD(),
+				fakeMFD(), fakeMFD(), constrs, fakeSubSeismoMFDs());
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, InversionTargetMFDs.class);
+	}
+	
+	private static IncrementalMagFreqDist fakeMFD() {
+		return new GutenbergRichterMagFreqDist(1d, Math.random(), 5.05, 7.05, 21);
+	}
+	
+	private static SubSeismoOnFaultMFDs fakeSubSeismoMFDs() {
+		List<IncrementalMagFreqDist> subSeismoMFDs = new ArrayList<>();
+		for (int s=0; s<demoRupSet.getNumSections(); s++)
+			subSeismoMFDs.add(fakeMFD());
+		return new SubSeismoOnFaultMFDs(subSeismoMFDs);
+	}
+
 	/*
 	 * Solution modules
 	 */
@@ -151,10 +176,7 @@ public class StandardFaultSysModulesTest {
 	
 	@Test
 	public void testSubSeismoMFDs() throws IOException {
-		List<IncrementalMagFreqDist> subSeismoMFDs = new ArrayList<>();
-		for (int s=0; s<demoRupSet.getNumSections(); s++)
-			subSeismoMFDs.add(new GutenbergRichterMagFreqDist(1d, Math.random(), 5.05, 7.05, 21));
-		SubSeismoOnFaultMFDs mfds = new SubSeismoOnFaultMFDs(subSeismoMFDs);
+		SubSeismoOnFaultMFDs mfds = fakeSubSeismoMFDs();
 		testModuleSerialization(demoSol.getArchive(), demoSol, mfds, SubSeismoOnFaultMFDs.class);
 	}
 

@@ -14,7 +14,6 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 	
 	private ImmutableList<IncrementalMagFreqDist> subSeismoOnFaultMFDs;
 	
-	@SuppressWarnings("unused")
 	private SubSeismoOnFaultMFDs() {
 		// used for deserialization
 	}
@@ -25,6 +24,10 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 	
 	public IncrementalMagFreqDist get(int sectIndex) {
 		return subSeismoOnFaultMFDs.get(sectIndex);
+	}
+	
+	public int size() {
+		return subSeismoOnFaultMFDs.size();
 	}
 	
 	public ImmutableList<IncrementalMagFreqDist> getAll() {
@@ -92,6 +95,12 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 			mfds.add(mfd);
 		}
 		this.subSeismoOnFaultMFDs = ImmutableList.copyOf(mfds);
+	}
+	
+	public static SubSeismoOnFaultMFDs fromCSV(CSVFile<String> csv) {
+		SubSeismoOnFaultMFDs mfds = new SubSeismoOnFaultMFDs();
+		mfds.initFromCSV(csv);
+		return mfds;
 	}
 
 }
