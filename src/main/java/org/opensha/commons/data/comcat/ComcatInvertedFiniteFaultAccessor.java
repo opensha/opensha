@@ -1,5 +1,6 @@
 package org.opensha.commons.data.comcat;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -17,12 +18,20 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.geo.json.Geometry;
+import org.opensha.commons.geo.json.Geometry.DepthSerializationType;
+import org.opensha.commons.geo.json.Geometry.MultiPolygon;
+import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
 
 import gov.usgs.earthquake.event.EventQuery;
 import gov.usgs.earthquake.event.EventWebService;
@@ -152,29 +161,30 @@ public class ComcatInvertedFiniteFaultAccessor {
 //	}
 	
 	private static ComcatInvertedFiniteFault parseFaultJSON(URL url) throws IOException {
-		JSONParser parser = new JSONParser();
 		InputStream input = UrlUtil.getInputStream(url);
+		if ((input instanceof BufferedInputStream))
+			input = new BufferedInputStream(input);
+		Gson gson = FeatureCollection.buildGson(DepthSerializationType.DEPTH_M); // finite-fault inversions store depths in m
 		// parse feature collection into objects
-		JSONObject feed;
-		try {
-			feed = JsonUtil.getJsonObject(parser
-					.parse(new InputStreamReader(input)));
-		} catch (ParseException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		} finally {
-			if (input != null)
-				input.close();
-		}
-		JSONArray featuresArray = JsonUtil.getJsonArray(feed.get("features"));
+		FeatureCollection collection = gson.fromJson(new InputStreamReader(input), FeatureCollection.class);
 		ComcatInvertedFiniteFault ret = new ComcatInvertedFiniteFault();
-		for (Object featureObj : featuresArray) {
-			JSONObject feature = (JSONObject)featureObj;
-			LocationList[] outline = ShakeMapFiniteFaultAccessor.parsePolygonFeature(feature);
-			JSONObject props = JsonUtil.getJsonObject(feature.get("properties"));
-			double slip = ((Number)props.get("slip")).doubleValue();
-			double moment = ((Number)props.get("sf_moment")).doubleValue();
-			for (LocationList o : outline)
-				ret.addRecord(o, slip, moment);
+		for (Feature feature : collection.features) {
+			FeatureProperties props = feature.properties;
+//			LocationList[] outline = ShakeMapFiniteFaultAccessor.parsePolygonFeature(feature);
+			double slip = props.getDouble("slip", 0d);
+			double moment = props.getDouble("sf_moment", 0d);
+			Geometry geom = feature.geometry;
+			if (geom instanceof Polygon) {
+				Polygon poly = (Polygon)geom;
+				if (poly.polygon != null)
+					ret.addRecord(poly.polygon, slip, moment);
+			} else if (geom instanceof MultiPolygon) {
+				for (Polygon poly : ((MultiPolygon)geom).polygons)
+					if (poly != null)
+						ret.addRecord(poly.polygon, slip, moment);
+			} else {
+				throw new IllegalStateException("Unexpected finite fault geometry type: "+geom.type);
+			}
 		}
 		
 		return ret;

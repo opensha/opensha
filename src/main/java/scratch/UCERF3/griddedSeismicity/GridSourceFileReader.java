@@ -18,6 +18,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
@@ -189,16 +190,23 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 				new BufferedInputStream(new FileInputStream(regXMLFile)));
 	}
 	
+	private static GriddedRegion loadU3RegionJSON() {
+		System.out.println("Avoided GriddedRegion XML deserialization issue due to new location, loading GeoJSON instead");
+		return new CaliforniaRegions.RELM_TESTING_GRIDDED();
+	}
+	
 	public static GridSourceFileReader fromBinStreams(InputStream binFileStream, InputStream regXMLFileStream)
 			throws IOException, DocumentException {
 		// load region
 		Document doc = XMLUtils.loadDocument(regXMLFileStream);
 		Element regionEl = doc.getRootElement().element(GriddedRegion.XML_METADATA_NAME);
 		
-		GriddedRegion region = GriddedRegion.fromXMLMetadata(regionEl);
-		
 		List<double[]> arrays = MatrixIO.doubleArraysListFromInputStream(binFileStream);
-		Preconditions.checkState(arrays.size() == region.getNodeCount()*2+1); // +1 for the x values
+		int calcNumNodes = (arrays.size()-1)/2; // -1 for the x values, divide by to for associated and unassocaited
+		GriddedRegion region = GriddedRegion.fromXMLMetadata(regionEl);
+		if (region.getNodeCount() == 7637 && calcNumNodes == 7636)
+			region = loadU3RegionJSON();
+		Preconditions.checkState(calcNumNodes == region.getNodeCount()); // +1 for the x values
 		int cnt = 0;
 		double[] xVals = arrays.get(cnt++);
 		
@@ -280,6 +288,8 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		Element regionEl = root.element(GriddedRegion.XML_METADATA_NAME);
 		
 		GriddedRegion region = GriddedRegion.fromXMLMetadata(regionEl);
+		if (region.getNodeCount() == 7637 && region.getName().startsWith("RELM"))
+			region = loadU3RegionJSON();
 		
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = Maps.newHashMap();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = Maps.newHashMap();

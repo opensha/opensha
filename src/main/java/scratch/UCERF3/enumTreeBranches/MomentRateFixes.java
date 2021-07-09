@@ -39,7 +39,7 @@ public enum MomentRateFixes implements LogicTreeBranchNode<MomentRateFixes> {
 
 	@Override
 	public double getRelativeWeight(InversionModels im) {
-		if (im.isCharacteristic())
+		if (im == null || im.isCharacteristic())
 			return charWeight;
 		else
 			return grWeight;

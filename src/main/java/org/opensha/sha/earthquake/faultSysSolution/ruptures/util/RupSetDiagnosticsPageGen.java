@@ -2632,9 +2632,10 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 600);
 		File pngFile = new File(outputDir, prefix+".png");
 		File pdfFile = new File(outputDir, prefix+".pdf");
+		File txtFile = new File(outputDir, prefix+".txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
-		
+		gp.saveAsTXT(txtFile.getAbsolutePath());
 		return pngFile;
 	}
 	
@@ -2808,8 +2809,10 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 600);
 		File pngFile = new File(outputDir, prefix+".png");
 		File pdfFile = new File(outputDir, prefix+".pdf");
+		File txtFile = new File(outputDir, prefix+".txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		gp.saveAsTXT(txtFile.getAbsolutePath());
 		
 		return pngFile;
 	}
@@ -3194,8 +3197,10 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(1200, 150 + 450*numPlots);
 		File pngFile = new File(outputDir, prefix+".png");
 		File pdfFile = new File(outputDir, prefix+".pdf");
+		File txtFile = new File(outputDir, prefix+".txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		gp.saveAsTXT(txtFile.getAbsolutePath());
 		return pngFile;
 	}
 	
@@ -3934,6 +3939,7 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 650);
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf");
 		gp.saveAsPNG(file.getAbsolutePath()+".png");
+		gp.saveAsTXT(file.getAbsolutePath()+".txt");
 	}
 	
 	public static Map<Jump, Double> getJumps(FaultSystemSolution sol, List<ClusterRupture> ruptures,
@@ -4293,10 +4299,12 @@ public class RupSetDiagnosticsPageGen {
 		
 		gp.drawGraphPanel(specs, false, false, xRanges, yRanges);
 		
-		File file = new File(outputDir, prefix+".png");
+		File pngFile = new File(outputDir, prefix+".png");
+		File txtFile = new File(outputDir, prefix+".txt");
 		gp.getChartPanel().setSize(700, 1000);
-		gp.saveAsPNG(file.getAbsolutePath());
-		return file;
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsTXT(txtFile.getAbsolutePath());
+		return pngFile;
 	}
 	
 	private static double azDiffDegreesToAngleRad(double azDiff) {
@@ -4916,9 +4924,11 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 550);
 		File pngFile = new File(resourcesDir, prefix+"_ratio.png");
 		File pdfFile = new File(resourcesDir, prefix+"_ratio.pdf");
+		File txtFile = new File(resourcesDir, prefix+"_ratio.txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
-		
+		gp.saveAsTXT(txtFile.getAbsolutePath());
+
 		File[] ret = new File[2];
 		ret[0] = pngFile;
 		
@@ -4970,9 +4980,11 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 550);
 		pngFile = new File(resourcesDir, prefix+"_prob.png");
 		pdfFile = new File(resourcesDir, prefix+"_prob.pdf");
+		txtFile = new File(resourcesDir, prefix+"_prob.txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
-		
+		gp.saveAsTXT(txtFile.getAbsolutePath());
+
 		ret[1] = pngFile;
 		
 		return ret;
@@ -5100,8 +5112,10 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 550);
 		File pngFile = new File(resourcesDir, prefix+"_ratio.png");
 		File pdfFile = new File(resourcesDir, prefix+"_ratio.pdf");
+		File txtFile = new File(resourcesDir, prefix+"_ratio.txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
+		gp.saveAsTXT(txtFile.getAbsolutePath());
 		
 		File[] ret = new File[2];
 		ret[0] = pngFile;
@@ -5146,9 +5160,11 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 550);
 		pngFile = new File(resourcesDir, prefix+"_prob.png");
 		pdfFile = new File(resourcesDir, prefix+"_prob.pdf");
+		txtFile = new File(resourcesDir, prefix+"_prob.txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
-		
+		gp.saveAsTXT(txtFile.getAbsolutePath());
+
 		ret[1] = pngFile;
 		
 		return ret;
@@ -5228,9 +5244,11 @@ public class RupSetDiagnosticsPageGen {
 		gp.getChartPanel().setSize(800, 550);
 		File pngFile = new File(resourcesDir, prefix+".png");
 		File pdfFile = new File(resourcesDir, prefix+".pdf");
+		File txtFile = new File(resourcesDir, prefix+".txt");
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
-		
+		gp.saveAsTXT(txtFile.getAbsolutePath());
+
 		return pngFile;
 	}
 	

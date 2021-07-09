@@ -24,12 +24,20 @@ sourceSets {
 }
 
 test {
+//    testLogging {
+//        events "passed", "skipped", "failed"
+//    }
     filter {
         includeTestsMatching "*Suite*"
     }
 }
 
 task testOperational (type: Test) {
+    // this forces it to always be rerun
+    systemProperty "random.testing.seed", new Random().nextInt()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
     filter {
         includeTestsMatching "*Operational*"
     }
@@ -49,7 +57,7 @@ dependencies {
     api 'org.apache.poi:poi:3.16'
     
     /* apache commons */
-    api 'org.apache.commons:commons-lang3:3.6'
+    api 'org.apache.commons:commons-lang3:3.11'
     api 'org.apache.commons:commons-text:1.8'
     api 'commons-codec:commons-codec:1.10'
     api 'commons-cli:commons-cli:1.4'

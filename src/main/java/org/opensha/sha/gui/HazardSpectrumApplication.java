@@ -669,27 +669,28 @@ extends HazardCurveApplication {
 			// if deterministic calculations then add all IMR params metadata.
 			imrMetadata = imrGuiBean.getSelectedIMR().getAllParamMetadata();
 		}
-
-		return "<br>" + "IMR Param List:" + "<br>" +
-		"---------------" + "<br>" +
-		imrMetadata + "<br><br>" +
-		"Site Param List: " + "<br>" +
-		"----------------" + "<br>" +
-		siteGuiBean.getParameterListEditor().getVisibleParametersCloned().
-		getParameterListMetadataString() + "<br><br>" +
-		"IML/Prob Param List: " + "<br>" +
-		"---------------" + "<br>" +
-		imlProbGuiBean.getVisibleParametersCloned().
-		getParameterListMetadataString() + "<br><br>" +
-		"Forecast Param List: " + "<br>" +
-		"--------------------" + "<br>" +
-		erfGuiBean.getERFParameterList().getParameterListMetadataString() +
-		"<br><br>" +
-		"TimeSpan Param List: " + "<br>" +
-		"--------------------" + "<br>" +
-		erfGuiBean.getSelectedERFTimespanGuiBean().
-		getParameterListMetadataString() + "<br><br>" +
-		getCalcParamMetadataString();
+		
+		StringBuilder str = new StringBuilder();
+		
+		str.append("<br>IMR Param List:<br>")
+		.append("---------------" + "<br>")
+		.append(imrMetadata)
+		.append("<br><br>")
+		.append("Site Param List: <br>")
+		.append("----------------<br>")
+		.append(siteGuiBean.getParameterListEditor().getVisibleParametersCloned().getParameterListMetadataString())
+		.append("<br><br>")
+		.append("IML/Prob Param List: <br>")
+		.append("---------------<br>")
+		.append(imlProbGuiBean.getVisibleParametersCloned().getParameterListMetadataString())
+		.append("<br><br>")
+		.append(getERFParametersInfoAsHTML())
+		.append("TimeSpan Param List: <br>")
+		.append("--------------------<br>")
+		.append(erfGuiBean.getSelectedERFTimespanGuiBean().getParameterListMetadataString())
+		.append("<br><br>")
+		.append(getCalcParamMetadataString());
+		return str.toString();
 	}
 
 	//Main method
