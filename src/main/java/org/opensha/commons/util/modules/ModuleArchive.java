@@ -13,6 +13,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -379,7 +380,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		System.out.println("---------- END WRITING ARCHIVE ----------");
 	}
 	
-	private static <E extends OpenSHA_Module> void writeModules(ModuleContainer<E> container, EntryTrackingZOUT zout,
+	private static <E extends OpenSHA_Module> boolean writeModules(ModuleContainer<E> container, EntryTrackingZOUT zout,
 			String prefix, HashSet<String> prevPrefixes) throws IOException {
 		List<ModuleRecord> records = new ArrayList<>();
 		
@@ -414,6 +415,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 							+ "loading from a zip file will fail: "+archivable.getLoadingClass().getName());
 				}
 				
+				List<String> moduleAssets = new ArrayList<>();
 				String modulePrefix;
 				if (module instanceof ModuleContainer && module != container) {
 					ModuleContainer<?> archive = (ModuleContainer<?>)module;
@@ -429,7 +431,8 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 //					System.out.println("ds pre: "+downstreamPrefix);
 //					if (downstreamPrefix.length() > 20)
 //						throw new IllegalStateException("here I be");
-					writeModules(archive, zout, downstreamPrefix, prevPrefixes);
+					if (writeModules(archive, zout, downstreamPrefix, prevPrefixes))
+						moduleAssets.add(MODULE_FILE_NAME);
 					
 					modulePrefix = downstreamPrefix;
 				} else {
@@ -438,8 +441,10 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 				
 				zout.initNewModule(modulePrefix);
 				archivable.writeToArchive(zout, modulePrefix);
+				moduleAssets.addAll(zout.endCurrentModuleEntries());
+				Collections.sort(moduleAssets);
 				records.add(new ModuleRecord(archivable.getName(), archivable.getLoadingClass().getName(),
-						modulePrefix, zout.endCurrentModuleEntries()));
+						modulePrefix, moduleAssets));
 			} else {
 				System.out.println("\tSkipping transient module: "+module.getName());
 			}
@@ -459,7 +464,9 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			writer.write("\n");
 			writer.flush();
 			zout.closeEntry();
+			return true;
 		}
+		return false;
 	}
 	
 	private static class ModuleRecord {

@@ -9,45 +9,31 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.SubModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 
-public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupSet>, ArchivableModule {
-	
-	FaultSystemRupSet rupSet;
-	private AveSlipModule aveSlip;
+public abstract class SlipAlongRuptureModel implements ArchivableModule {
 
-	protected SlipAlongRuptureModel(FaultSystemRupSet rupSet) {
-		super();
-		this.rupSet = rupSet;
-	}
-
-	public static SlipAlongRuptureModel forModel(FaultSystemRupSet rupSet, SlipAlongRuptureModels slipAlong) {
-		return slipAlong.getModel(rupSet);
-	}
-	
-	protected AveSlipModule getSlipModule() {
-		if (aveSlip == null) {
-			synchronized (this) {
-				if (aveSlip == null) {
-					Preconditions.checkNotNull(rupSet, "Rupture set not initialized");
-					AveSlipModule aveSlip = rupSet.requireModule(AveSlipModule.class);
-					this.aveSlip = aveSlip;
-				}
-			}
-		}
-		return aveSlip;
+	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModels slipAlong) {
+		return slipAlong.getModel();
 	}
 	
 	/**
 	 * This gives the slip (SI untis: m) on each section for the rth rupture
 	 * @return slip (SI untis: m) on each section for the rth rupture
 	 */
-	public double[] calcSlipOnSectionsForRup(int rthRup) {
+	public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, AveSlipModule aveSlips, int rthRup) {
+		return calcSlipOnSectionsForRup(rupSet, rthRup, aveSlips.getAveSlip(rthRup));
+	}
+	
+	/**
+	 * This gives the slip (SI untis: m) on each section for the rth rupture
+	 * @return slip (SI untis: m) on each section for the rth rupture
+	 */
+	public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup, double aveSlip) {
 		List<Integer> sectionIndices = rupSet.getSectionsIndicesForRup(rthRup);
 		int numSects = sectionIndices.size();
 
@@ -62,35 +48,23 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 			sectMoRate[index] = FaultMomentCalc.getMoment(sectArea[index], rupSet.getSlipRateForSection(sectID));
 			index += 1;
 		}
-
-		double aveSlip = getSlipModule().getAveSlip(rthRup); // in meters
 		
-		return calcSlipOnSectionsForRup(rthRup, sectArea, sectMoRate, aveSlip);
+		return calcSlipOnSectionsForRup(rupSet, rthRup, sectArea, sectMoRate, aveSlip);
 	}
 	
 	/**
 	 * This gives the slip (SI untis: m) on each section for the rth rupture where the participating section areas,
 	 * moment rates, and rupture average slip are all known.
 	 * 
+	 * @param rupSet
 	 * @param rthRup
 	 * @param sectArea
 	 * @param sectMoRate
 	 * @param aveSlip
 	 * @return slip (SI untis: m) on each section for the rth rupture
 	 */
-	public abstract double[] calcSlipOnSectionsForRup(int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip);
-
-	@Override
-	public void setParent(FaultSystemRupSet parent) throws IllegalStateException {
-		if (this.rupSet != null)
-			Preconditions.checkState(rupSet.getNumRuptures() == parent.getNumRuptures());
-		this.rupSet = parent;
-	}
-
-	@Override
-	public FaultSystemRupSet getParent() {
-		return rupSet;
-	}
+	public abstract double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet,
+			int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip);
 	
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
@@ -104,18 +78,7 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 
 	public static class Uniform extends SlipAlongRuptureModel {
 		
-		private Uniform() {
-			super(null);
-		}
-		
-		public Uniform(FaultSystemRupSet rupSet) {
-			super(rupSet);
-		}
-
-		@Override
-		public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
-			return new Uniform(newParent);
-		}
+		public Uniform() {}
 
 		@Override
 		public String getName() {
@@ -123,7 +86,8 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 		}
 
 		@Override
-		public double[] calcSlipOnSectionsForRup(int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip) {
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
+				double[] sectArea, double[] sectMoRate, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			for(int s=0; s<slipsForRup.length; s++)
@@ -138,18 +102,7 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 	
 	public static class Tapered extends SlipAlongRuptureModel {
 		
-		private Tapered() {
-			super(null);
-		}
-		
-		public Tapered(FaultSystemRupSet rupSet) {
-			super(rupSet);
-		}
-
-		@Override
-		public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
-			return new Tapered(newParent);
-		}
+		public Tapered() {}
 
 		@Override
 		public String getName() {
@@ -157,7 +110,8 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 		}
 
 		@Override
-		public double[] calcSlipOnSectionsForRup(int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip) {
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
+				double[] sectArea, double[] sectMoRate, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			// note that the ave slip is partitioned by area, not length; this is so the final model is moment balanced.
@@ -210,18 +164,7 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 	
 	public static class WG02 extends SlipAlongRuptureModel {
 		
-		private WG02() {
-			super(null);
-		}
-		
-		public WG02(FaultSystemRupSet rupSet) {
-			super(rupSet);
-		}
-
-		@Override
-		public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
-			return new WG02(newParent);
-		}
+		public WG02() {}
 
 		@Override
 		public String getName() {
@@ -229,7 +172,8 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 		}
 
 		@Override
-		public double[] calcSlipOnSectionsForRup(int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip) {
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
+				double[] sectArea, double[] sectMoRate, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			List<Integer> sectsInRup = rupSet.getSectionsIndicesForRup(rthRup);
@@ -249,18 +193,7 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 	
 	public static class AVG_UCERF3 extends SlipAlongRuptureModel {
 		
-		private AVG_UCERF3() {
-			super(null);
-		}
-		
-		public AVG_UCERF3(FaultSystemRupSet rupSet) {
-			super(rupSet);
-		}
-
-		@Override
-		public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
-			return new AVG_UCERF3(newParent);
-		}
+		public AVG_UCERF3() {}
 
 		@Override
 		public String getName() {
@@ -268,7 +201,8 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 		}
 
 		@Override
-		public double[] calcSlipOnSectionsForRup(int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip) {
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
+				double[] sectArea, double[] sectMoRate, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			// get mean weights
@@ -292,8 +226,8 @@ public abstract class SlipAlongRuptureModel implements SubModule<FaultSystemRupS
 
 			for (int i=0; i<meanSALs.size(); i++) {
 				double weight = meanWeights.get(i);
-				double[] subSlips = meanSALs.get(i).getModel(rupSet).calcSlipOnSectionsForRup(rthRup, sectArea,
-						sectMoRate, aveSlip);
+				double[] subSlips = meanSALs.get(i).getModel().calcSlipOnSectionsForRup(
+						rupSet, rthRup, sectArea, sectMoRate, aveSlip);
 
 				for (int j=0; j<slipsForRup.length; j++)
 					slipsForRup[j] += weight*subSlips[j];

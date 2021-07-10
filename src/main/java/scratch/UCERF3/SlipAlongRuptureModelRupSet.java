@@ -57,7 +57,7 @@ public abstract class SlipAlongRuptureModelRupSet extends SlipEnabledRupSet {
 	protected SlipAlongRuptureModelRupSet(SlipAlongRuptureModels slipAlongModel) {
 		// do nothing, it's up to subclass to call init
 		this.slipAlongModel = slipAlongModel;
-		addModule(SlipAlongRuptureModel.forModel(this, slipAlongModel));
+		addModule(SlipAlongRuptureModel.forModel(slipAlongModel));
 	}
 	
 	/**

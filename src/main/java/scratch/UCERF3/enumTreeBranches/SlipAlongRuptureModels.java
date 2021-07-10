@@ -1,6 +1,5 @@
 package scratch.UCERF3.enumTreeBranches;
 
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
@@ -9,54 +8,21 @@ import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 public enum SlipAlongRuptureModels implements LogicTreeBranchNode<SlipAlongRuptureModels> {
 	// DO NOT RENAME THESE - they are used in rupture set files
 	
-	CHAR(		"Characteristic",	"Char",	0d) { // "Characteristic (Dsr=Ds)"
-
-		@Override
-		public SlipAlongRuptureModel getModel(FaultSystemRupSet rupSet) {
-			throw new RuntimeException("SlipModelType.CHAR_SLIP_MODEL not yet supported");
-		}
-		
-	},
-	UNIFORM(	"Uniform",			"Uni",	0.5d) { // "Uniform/Boxcar (Dsr=Dr)"
-
-		@Override
-		public SlipAlongRuptureModel.Uniform getModel(FaultSystemRupSet rupSet) {
-			return new SlipAlongRuptureModel.Uniform(rupSet);
-		}
-		
-	},
-	WG02(		"WGCEP-2002",		"WG02",	0d) { // "WGCEP-2002 model (Dsr prop to Vs)"
-
-		@Override
-		public SlipAlongRuptureModel.WG02 getModel(FaultSystemRupSet rupSet) {
-			return new SlipAlongRuptureModel.WG02(rupSet);
-		}
-		
-	},
-	TAPERED(	"Tapered Ends",		"Tap",	0.5d) { // "Characteristic (Dsr=Ds)"
-
-		@Override
-		public SlipAlongRuptureModel.Tapered getModel(FaultSystemRupSet rupSet) {
-			return new SlipAlongRuptureModel.Tapered(rupSet);
-		}
-		
-	},
-	MEAN_UCERF3("Mean UCERF3 Dsr",	"MeanU3Dsr", 0d) { // "Mean UCERF3"
-
-		@Override
-		public SlipAlongRuptureModel.AVG_UCERF3 getModel(FaultSystemRupSet rupSet) {
-			return new SlipAlongRuptureModel.AVG_UCERF3(rupSet);
-		}
-		
-	};
+	CHAR(		"Characteristic",	"Char",	0d, null), // "Characteristic (Dsr=Ds)"
+	UNIFORM(	"Uniform",			"Uni",	0.5d, new SlipAlongRuptureModel.Uniform()), // "Uniform/Boxcar (Dsr=Dr)"
+	WG02(		"WGCEP-2002",		"WG02",	0d, new SlipAlongRuptureModel.WG02()), // "WGCEP-2002 model (Dsr prop to Vs)"
+	TAPERED(	"Tapered Ends",		"Tap",	0.5d, new SlipAlongRuptureModel.Tapered()), // "Characteristic (Dsr=Ds)"
+	MEAN_UCERF3("Mean UCERF3 Dsr",	"MeanU3Dsr", 0d, new SlipAlongRuptureModel.AVG_UCERF3()); // "Mean UCERF3"
 	
-	private String name, shortName;
-	private double weight;
+	private final String name, shortName;
+	private final double weight;
+	private final SlipAlongRuptureModel model;
 	
-	private SlipAlongRuptureModels(String name, String shortName, double weight) {
+	private SlipAlongRuptureModels(String name, String shortName, double weight, SlipAlongRuptureModel model) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
+		this.model = model;
 	}
 	
 	public String getName() {
@@ -92,13 +58,15 @@ public enum SlipAlongRuptureModels implements LogicTreeBranchNode<SlipAlongRuptu
 		return "Dsr";
 	}
 	
-	public abstract SlipAlongRuptureModel getModel(FaultSystemRupSet rupSet);
-	
-	private static EvenlyDiscretizedFunc taperedSlipPDF, taperedSlipCDF;
+	public SlipAlongRuptureModel getModel() {
+		if (model == null)
+			throw new IllegalStateException("Model not yet implemented: "+getName());
+		return model;
+	}
 
 	public static double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
 			SlipAlongRuptureModels slipModelType,
 			double[] sectArea, double[] sectMoRate, double aveSlip) {
-		return slipModelType.getModel(rupSet).calcSlipOnSectionsForRup(rthRup, sectArea, sectMoRate, aveSlip);
+		return slipModelType.getModel().calcSlipOnSectionsForRup(rupSet, rthRup, sectArea, sectMoRate, aveSlip);
 	}
 }

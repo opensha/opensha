@@ -30,6 +30,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Ru
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -129,15 +130,17 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// add slip rate constraint
 			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_normalized(),
 					config.getSlipRateConstraintWt_unnormalized(), config.getSlipRateWeightingType(),
-					rupSet, rupSet.requireModule(SlipAlongRuptureModel.class), sectSlipRateReduced));
+					rupSet, rupSet.requireModule(AveSlipModule.class),
+					rupSet.requireModule(SlipAlongRuptureModel.class), sectSlipRateReduced));
 		
 		if (config.getPaleoRateConstraintWt() > 0d)
 			constraints.add(new PaleoRateInversionConstraint(rupSet, config.getPaleoRateConstraintWt(),
 					paleoRateConstraints, paleoProbabilityModel));
 		
 		if (config.getPaleoSlipConstraintWt() > 0d)
-			constraints.add(new PaleoSlipInversionConstraint(rupSet, rupSet.requireModule(SlipAlongRuptureModel.class),
-					config.getPaleoSlipConstraintWt(), aveSlipConstraints, sectSlipRateReduced));
+			constraints.add(new PaleoSlipInversionConstraint(rupSet, rupSet.requireModule(AveSlipModule.class),
+					rupSet.requireModule(SlipAlongRuptureModel.class), config.getPaleoSlipConstraintWt(),
+					aveSlipConstraints, sectSlipRateReduced));
 		
 		if (config.getRupRateConstraintWt() > 0d) {
 			// This is the RupRateConstraintWt for ruptures not in UCERF2

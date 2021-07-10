@@ -1410,7 +1410,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					return SlipAlongRuptureModel.forModel(rupSet, slipAlong);
+					return SlipAlongRuptureModel.forModel(slipAlong);
 				}
 			});
 			return this;
