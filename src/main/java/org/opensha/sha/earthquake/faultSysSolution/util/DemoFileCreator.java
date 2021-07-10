@@ -16,7 +16,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -119,7 +119,7 @@ public class DemoFileCreator {
 		List<InversionConstraint> constraints = new ArrayList<>();
 		double[] targetSlipRates = rupSet.getSlipRateForAllSections();
 		constraints.add(new SlipRateInversionConstraint(1d, 1d, SlipRateConstraintWeightingType.BOTH, rupSet,
-				rupSet.requireModule(SlipAlongRuptureModule.class), targetSlipRates));
+				rupSet.requireModule(SlipAlongRuptureModel.class), targetSlipRates));
 		InversionInputGenerator invGen = new InversionInputGenerator(rupSet, constraints);
 		
 		invGen.generateInputs(true);

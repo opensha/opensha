@@ -41,7 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -1410,7 +1410,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					return SlipAlongRuptureModule.forModel(rupSet, slipAlong);
+					return SlipAlongRuptureModel.forModel(rupSet, slipAlong);
 				}
 			});
 			return this;

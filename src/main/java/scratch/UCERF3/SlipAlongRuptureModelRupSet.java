@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -57,7 +57,7 @@ public abstract class SlipAlongRuptureModelRupSet extends SlipEnabledRupSet {
 	protected SlipAlongRuptureModelRupSet(SlipAlongRuptureModels slipAlongModel) {
 		// do nothing, it's up to subclass to call init
 		this.slipAlongModel = slipAlongModel;
-		addModule(SlipAlongRuptureModule.forModel(this, slipAlongModel));
+		addModule(SlipAlongRuptureModel.forModel(this, slipAlongModel));
 	}
 	
 	/**

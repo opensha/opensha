@@ -81,12 +81,6 @@ public class StandardFaultSysModulesTest {
 	}
 
 	@Test
-	public void testSlipAlong() throws IOException {
-		SlipAlongRuptureModule module = SlipAlongRuptureModule.forModel(demoRupSet, SlipAlongRuptureModels.UNIFORM);
-		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, SlipAlongRuptureModule.class);
-	}
-
-	@Test
 	public void testClusterRuptures() throws IOException {
 		ClusterRuptures origRups = demoRupSet.getModule(ClusterRuptures.class);
 		ClusterRuptures serMod = ClusterRuptures.instance(demoRupSet, origRups.get(), true);

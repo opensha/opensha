@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
 import com.google.common.base.Preconditions;
 
@@ -38,7 +38,7 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 	private double weightUnnormalized;
 	private SlipRateConstraintWeightingType weightingType;
 	private FaultSystemRupSet rupSet;
-	private SlipAlongRuptureModule slipAlongModule;
+	private SlipAlongRuptureModel slipAlongModule;
 	private double[] targetSlipRates;
 
 	@Deprecated
@@ -46,12 +46,12 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 			SlipRateConstraintWeightingType weightingType, SlipEnabledRupSet rupSet,
 			double[] targetSlipRates) {
 		this(weightNormalized, weightUnnormalized, weightingType, rupSet,
-				rupSet.getModule(SlipAlongRuptureModule.class), targetSlipRates);
+				rupSet.getModule(SlipAlongRuptureModel.class), targetSlipRates);
 	}
 
 	public SlipRateInversionConstraint(double weightNormalized, double weightUnnormalized,
 			SlipRateConstraintWeightingType weightingType, FaultSystemRupSet rupSet,
-			SlipAlongRuptureModule slipAlongModule, double[] targetSlipRates) {
+			SlipAlongRuptureModel slipAlongModule, double[] targetSlipRates) {
 		this.weightNormalized = weightNormalized;
 		this.weightUnnormalized = weightUnnormalized;
 		this.weightingType = weightingType;
@@ -92,7 +92,7 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 		int numSections = rupSet.getNumSections();
 		// A matrix component of slip-rate constraint 
 		for (int rup=0; rup<numRuptures; rup++) {
-			double[] slips = slipAlongModule.getSlipOnSectionsForRup(rup);
+			double[] slips = slipAlongModule.calcSlipOnSectionsForRup(rup);
 			List<Integer> sects = rupSet.getSectionsIndicesForRup(rup);
 			for (int i=0; i < slips.length; i++) {
 				int row = sects.get(i);

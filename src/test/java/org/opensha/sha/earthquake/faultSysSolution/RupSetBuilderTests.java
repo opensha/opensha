@@ -6,7 +6,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
@@ -74,12 +74,12 @@ public class RupSetBuilderTests {
 	
 	@Test
 	public void testReproduceU3SlipAlongs() {
-		SlipAlongRuptureModule slipModule = reproduced.getModule(SlipAlongRuptureModule.class);
+		SlipAlongRuptureModel slipModule = reproduced.getModule(SlipAlongRuptureModel.class);
 		assertNotNull("Reproduction doesn't have SlipAlongRuptureModule module", slipModule);
 		for (int r=0; r<reproduced.getNumRuptures(); r++) {
 			if (reproduced.getNumRuptures() > 50000 && Math.random() > 0.1)
 				continue;
-			testExactlyEqual(u3Default.getSlipOnSectionsForRup(r), slipModule.getSlipOnSectionsForRup(r),
+			testExactlyEqual(u3Default.getSlipOnSectionsForRup(r), slipModule.calcSlipOnSectionsForRup(r),
 					"Rupture "+r+" Dsr");
 		}
 	}
