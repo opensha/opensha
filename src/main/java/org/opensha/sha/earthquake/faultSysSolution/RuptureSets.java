@@ -380,10 +380,12 @@ public class RuptureSets {
 			ClusterConnectionStrategy connectionStrategy;
 			if (plausibleConnections) {
 				// use this to pick connections which agree with your plausibility filters
-				
+
+				System.out.println("Building plausible connections w/ "+getNumThreads()+" threads...");
 				// some filters need a connection strategy, use one that only includes immediate neighbors at this step
 				DistCutoffClosestSectClusterConnectionStrategy neighborsConnStrat =
 						new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d);
+				neighborsConnStrat.checkBuildThreaded(getNumThreads());
 				List<PlausibilityFilter> connFilters = new ArrayList<>();
 				if (cffRatioThresh > 0f) {
 					connFilters.add(new CumulativeProbabilityFilter(cffRatioThresh, new CoulombSectRatioProb(
@@ -405,7 +407,6 @@ public class RuptureSets {
 				outputName += "_plausibleMulti"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
 //							PlausibleClusterConnectionStrategy.JUMP_SELECTOR_DEFAULT_SINGLE, connFilters);
 //				outputName += "_plausible"+new DecimalFormat("0.#").format(maxJumpDist)+"km";
-				System.out.println("Building plausible connections w/ "+getNumThreads()+" threads...");
 				connectionStrategy.checkBuildThreaded(getNumThreads());
 				System.out.println("DONE building plausible connections");
 			} else {
