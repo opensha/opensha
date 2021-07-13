@@ -227,7 +227,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			setProperty(RAKE, rake);
 			setProperty(LOW_DEPTH, lowerDepth);
 			setProperty(UPPER_DEPTH, upperDepth);
-			setProperty(DIP_DIR, dipDirection);
+			if (dipDirection != (float)(trace.getAveStrike()+90d))
+				setProperty(DIP_DIR, dipDirection);
 			setDateOfLastEvent(sect.getDateOfLastEvent());
 			setSlipInLastEvent(sect.getSlipInLastEvent());
 			setAseismicSlipFactor(sect.getAseismicSlipFactor());
@@ -370,6 +371,11 @@ public final class GeoJSONFaultSection implements FaultSection {
 		return dipDirection;
 	}
 
+	public void setDipDirection(float dipDirection) {
+		this.dipDirection = dipDirection;
+		properties.set(DIP_DIR, dipDirection);
+	}
+
 	@Override
 	public FaultTrace getFaultTrace() {
 		return trace;
@@ -432,6 +438,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			subSection.trace = equalLengthSubsTrace.get(i);
 			subSection.setParentSectionId(this.id);
 			subSection.setParentSectionName(this.name);
+			// make sure dip direction is set from parent
+			subSection.setDipDirection(dipDirection);
 			subSectionList.add(subSection);
 		}
 		return subSectionList;
