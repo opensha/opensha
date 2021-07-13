@@ -3,6 +3,8 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,6 +21,11 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.geo.json.Geometry.LineString;
+import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -27,6 +34,7 @@ import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.ComparablePairing;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -58,6 +66,10 @@ public class RupSetMapMaker {
 	private boolean legendVisible = true;
 	
 	private boolean writePDFs = true;
+	private boolean writeGeoJSON = true;
+	
+	private List<Feature> sectFeatures = null;
+	private List<Feature> jumpFeatures = null;
 	
 	/*
 	 * Things to plot
@@ -165,6 +177,10 @@ public class RupSetMapMaker {
 		this.writePDFs = writePDFs;
 	}
 	
+	public void setWriteGeoJSON(boolean writeGeoJSON) {
+		this.writeGeoJSON = writeGeoJSON;
+	}
+	
 	public void plotSectScalars(List<Double> scalars, CPT cpt, String label) {
 		plotSectScalars(Doubles.toArray(scalars), cpt, label);
 	}
@@ -236,9 +252,44 @@ public class RupSetMapMaker {
 		return surfMiddles.get(sect.getSectionId());
 	}
 	
+	private Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+		RuptureSurface surf = getSectSurface(sect);
+		LocationList perim = new LocationList();
+		perim.addAll(surf.getPerimeter());
+		if (!perim.first().equals(perim.last()))
+			perim.add(perim.first());
+		Polygon poly = new Polygon(perim);
+		FeatureProperties props = new FeatureProperties();
+		props.set("name", sect.getSectionName());
+		props.set("id", sect.getSectionId());
+		if (pChar.getLineType() != null) {
+			props.set(FeatureProperties.STROKE_WIDTH_PROP, pChar.getLineWidth());
+			props.set(FeatureProperties.STROKE_COLOR_PROP, pChar.getColor());
+		}
+		props.set(FeatureProperties.FILL_OPACITY_PROP, 0.05d);
+		return new Feature(sect.getSectionName(), poly, props);
+	}
+	
+	private Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+		LineString line = new LineString(sect.getFaultTrace());
+		FeatureProperties props = new FeatureProperties();
+		props.set("name", sect.getSectionName());
+		props.set("id", sect.getSectionId());
+		if (pChar.getLineType() != null) {
+			props.set(FeatureProperties.STROKE_WIDTH_PROP, pChar.getLineWidth());
+			props.set(FeatureProperties.STROKE_COLOR_PROP, pChar.getColor());
+		}
+		return new Feature(sect.getSectionName(), line, props);
+	}
+	
 	public PlotSpec buildPlot(String title) {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		if (writeGeoJSON) {
+			sectFeatures = new ArrayList<>();
+			jumpFeatures = new ArrayList<>();
+		}
 		
 		// add political boundaries
 		if (politicalBoundaries != null && politicalBoundaryChar != null) {
@@ -265,28 +316,26 @@ public class RupSetMapMaker {
 				trace.setName("Fault Sections");
 			
 			if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
-				if (sect.getAveDip() != 90) {
-					XY_DataSet outline = new DefaultXY_DataSet();
-					LocationList perimeter = surf.getPerimeter();
-					for (Location loc : perimeter)
-						outline.set(loc.getLongitude(), loc.getLatitude());
-					Location first = perimeter.first();
-					outline.set(first.getLongitude(), first.getLatitude());
-					
-					funcs.add(0, outline);
-					chars.add(0, sectOutlineChar);
-					if (doTraces && sectTraceChar == null && s == 0)
-						outline.setName("Fault Sections");
-				} else if (sectTraceChar == null && doTraces) {
-					// draw the trace this color
-					funcs.add(trace);
-					chars.add(sectOutlineChar);
-				}
+				XY_DataSet outline = new DefaultXY_DataSet();
+				LocationList perimeter = surf.getPerimeter();
+				for (Location loc : perimeter)
+					outline.set(loc.getLongitude(), loc.getLatitude());
+				Location first = perimeter.first();
+				outline.set(first.getLongitude(), first.getLatitude());
+				
+				funcs.add(0, outline);
+				chars.add(0, sectOutlineChar);
+				if (doTraces && sectTraceChar == null && s == 0)
+					outline.setName("Fault Sections");
+				if (writeGeoJSON)
+					sectFeatures.add(0, surfFeature(sect, sectOutlineChar));
 			}
 			
 			if (doTraces && sectTraceChar != null) {
 				funcs.add(trace);
 				chars.add(sectTraceChar);
+				if (writeGeoJSON)
+					sectFeatures.add(traceFeature(sect, sectTraceChar));
 			}
 		}
 		
@@ -294,21 +343,28 @@ public class RupSetMapMaker {
 		
 		// plot sect scalars
 		if (scalars != null) {
-			List<ComparablePairing<Double, XY_DataSet>> sortables = new ArrayList<>();
-			for (int s=0; s<scalars.length; s++) {
-				RuptureSurface surf = getSectSurface(subSects.get(s));
+			List<ComparablePairing<Double, FaultSection>> sortables = new ArrayList<>();
+			for (int s=0; s<scalars.length; s++)
+				sortables.add(new ComparablePairing<>(scalars[s], subSects.get(s)));
+			Collections.sort(sortables);
+			for (ComparablePairing<Double, FaultSection> val : sortables) {
+				float scalar = val.getComparable().floatValue();
+				Color color = scalarCPT.getColor(scalar);
+				FaultSection sect = val.getData();
+				RuptureSurface surf = getSectSurface(sect);
 				XY_DataSet trace = new DefaultXY_DataSet();
 				for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
 					trace.set(loc.getLongitude(), loc.getLatitude());
-				sortables.add(new ComparablePairing<>(scalars[s], trace));
-			}
-			Collections.sort(sortables);
-			for (ComparablePairing<Double, XY_DataSet> val : sortables) {
-				float scalar = val.getComparable().floatValue();
-				Color color = scalarCPT.getColor(scalar);
 				
-				funcs.add(val.getData());
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, scalarThickness, color));
+				funcs.add(trace);
+				PlotCurveCharacterstics scalarChar = new PlotCurveCharacterstics(PlotLineType.SOLID, scalarThickness, color);
+				chars.add(scalarChar);
+				if (writeGeoJSON) {
+					Feature feature = traceFeature(sect, scalarChar);
+					if (Float.isFinite(scalar))
+						feature.properties.set(scalarLabel, scalar);
+					sectFeatures.add(feature);
+				}
 			}
 			
 			cptLegend.add(buildCPTLegend(scalarCPT, scalarLabel));
@@ -337,6 +393,18 @@ public class RupSetMapMaker {
 					xy.set(loc2.getLongitude(), loc2.getLatitude());
 					funcs.add(xy);
 					chars.add(jumpChar);
+					
+					if (writeGeoJSON) {
+						LineString line = new LineString(loc1, loc2);
+						FeatureProperties props = new FeatureProperties();
+						props.set(FeatureProperties.STROKE_WIDTH_PROP, jumpLineThickness);
+						props.set(FeatureProperties.STROKE_COLOR_PROP, color);
+						props.set("label", label);
+						props.set("fromSection", jump.fromSection.getName());
+						props.set("toSection", jump.toSection.getName());
+						props.set("distance", jump.distance);
+						jumpFeatures.add(new Feature(line, props));
+					}
 				}
 			}
 		}
@@ -353,6 +421,19 @@ public class RupSetMapMaker {
 				xy.set(loc1.getLongitude(), loc1.getLatitude());
 				xy.set(loc2.getLongitude(), loc2.getLatitude());
 				sortables.add(new ComparablePairing<>(scalar, xy));
+				
+				if (writeGeoJSON) {
+					LineString line = new LineString(loc1, loc2);
+					FeatureProperties props = new FeatureProperties();
+					props.set(FeatureProperties.STROKE_WIDTH_PROP, jumpLineThickness);
+					props.set(FeatureProperties.STROKE_COLOR_PROP, scalarJumpsCPT.getColor((float)scalar));
+					if (Double.isFinite(scalar))
+						props.set(scalarJumpsLabel, (float)scalar);
+					props.set("fromSection", jump.fromSection.getName());
+					props.set("toSection", jump.toSection.getName());
+					props.set("distance", jump.distance);
+					jumpFeatures.add(new Feature(line, props));
+				}
 			}
 			Collections.sort(sortables);
 			for (ComparablePairing<Double, XY_DataSet> val : sortables) {
@@ -444,6 +525,47 @@ public class RupSetMapMaker {
 		PlotUtils.setYTick(gp, tick);
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, writePDFs, false);
+		
+		if (writeGeoJSON && sectFeatures != null && jumpFeatures != null) {
+			List<Feature> plotFeatures = new ArrayList<>(sectFeatures);
+			if (!jumpFeatures.isEmpty()) {
+				// write out combined and separate
+				FeatureCollection jumpsOnly = new FeatureCollection(jumpFeatures);
+				FeatureCollection.write(jumpsOnly, new File(outputDir, prefix+"_jumps_only.geojson"));
+				plotFeatures.addAll(jumpFeatures);
+			}
+			
+			FeatureCollection features = new FeatureCollection(plotFeatures);
+			FeatureCollection.write(features, new File(outputDir, prefix+".geojson"));
+		}
+	}
+	
+	public static String getGeoJSONViewerLink(String url) {
+		String ret = "http://geojson.io/#data=data:text/x-url,";
+		try {
+			ret += URLEncoder.encode(url, "UTF-8")
+			        .replaceAll("\\+", "%20")
+			        .replaceAll("\\%21", "!")
+			        .replaceAll("\\%27", "'")
+			        .replaceAll("\\%28", "(")
+			        .replaceAll("\\%29", ")")
+			        .replaceAll("\\%7E", "~");
+		} catch (UnsupportedEncodingException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		return ret;
+	}
+	
+	public static String getGeoJSONViewerRelativeLink(String linkText, String relLink) {
+		String script = "<script>var a = document.createElement('a'); a.appendChild(document.createTextNode('"+linkText+"'));"
+				+ "a.href = 'http://geojson.io/#data=data:text/x-url,'+encodeURIComponent("
+				+ "new URL('"+relLink+"', document.baseURI).href); "
+				+ "document.scripts[ document.scripts.length - 1 ].parentNode.appendChild( a );</script>";
+		return script;
+	}
+	
+	public static void main(String[] args) {
+		System.out.println(getGeoJSONViewerRelativeLink("My Link", "map.geojson"));
 	}
 
 }

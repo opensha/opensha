@@ -50,6 +50,14 @@ public class Geometry {
 		
 		public final LocationList line;
 		
+		public LineString(Location... locs) {
+			super(GeoJSON_Type.LineString);
+			
+			this.line = new LocationList();
+			for (Location loc : locs)
+				line.add(loc);
+		}
+		
 		public LineString(LocationList line) {
 			super(GeoJSON_Type.LineString);
 			
