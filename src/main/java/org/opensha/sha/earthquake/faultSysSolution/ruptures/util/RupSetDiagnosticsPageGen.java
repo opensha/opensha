@@ -492,7 +492,7 @@ public class RupSetDiagnosticsPageGen {
 			inCRups = ClusterRuptures.instance(inputRupSet, inputSearch);
 			inputRupSet.addModule(inCRups);
 		}
-		inputRups = inCRups.get();
+		inputRups = inCRups.getAll();
 		inputUniques = new HashSet<>();
 		for (ClusterRupture rup : inputRups)
 			inputUniques.add(rup.unique);
@@ -523,7 +523,7 @@ public class RupSetDiagnosticsPageGen {
 				compCRups = ClusterRuptures.instance(compRupSet, compSearch);
 				compRupSet.addModule(compCRups);
 			}
-			compRups = compCRups.get();
+			compRups = compCRups.getAll();
 			compUniques = new HashSet<>();
 			for (ClusterRupture rup : compRups)
 				compUniques.add(rup.unique);
@@ -3755,6 +3755,12 @@ public class RupSetDiagnosticsPageGen {
 	 * Rupture connections
 	 */
 	
+	private static String getTruncatedTitle(String title) {
+		if (title != null && title.length() > 30)
+			return title.substring(0, 29).trim()+"…";
+		return title;
+	}
+	
 	public static void plotConnectivityLines(FaultSystemRupSet rupSet, File outputDir, String prefix, String title,
 			Set<Jump> connections, Color connectedColor, Region reg, int width) throws IOException {
 		List<Set<Jump>> connectionsList = new ArrayList<>();
@@ -3766,12 +3772,6 @@ public class RupSetDiagnosticsPageGen {
 		connNames.add("Connections");
 		
 		plotConnectivityLines(rupSet, outputDir, prefix, title, connectionsList, connectedColors, connNames, reg, width);
-	}
-	
-	private static String getTruncatedTitle(String title) {
-		if (title != null && title.length() > 30)
-			return title.substring(0, 29).trim()+"…";
-		return title;
 	}
 	
 	public static void plotConnectivityLines(FaultSystemRupSet rupSet, File outputDir, String prefix, String title,
@@ -4036,7 +4036,7 @@ public class RupSetDiagnosticsPageGen {
 		System.out.println("Plotting "+rupsToPlot+" ruptures");
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
-		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).get();
+		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
 		for (int rupIndex : rupsToPlot) {
 			String rupPrefix = prefix+"_"+rupIndex;
 			ClusterRupture rupture = rups.get(rupIndex);
@@ -4527,7 +4527,7 @@ public class RupSetDiagnosticsPageGen {
 		return file;
 	}
 
-	private static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex,
+	public static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex,
 			File outputDir, String fileNamePrefix, RupSetPlausibilityResult plausibiltyResult,
 			SectionDistanceAzimuthCalculator distAzCalc) throws IOException {
 		DecimalFormat format = new DecimalFormat("###,###.#");
@@ -4645,21 +4645,6 @@ public class RupSetDiagnosticsPageGen {
 	
 	private static double calcIdealMinLength(List<? extends FaultSection> subSects,
 			SectionDistanceAzimuthCalculator distAzCalc) {
-//		FaultSection farS1 = null;
-//		FaultSection farS2 = null;
-//		double maxDist = 0d;
-//		for (int i=0; i<subSects.size(); i++) {
-//			FaultSection s1 = subSects.get(i);
-//			for (int j=i; j<subSects.size(); j++) {
-//				FaultSection s2 = subSects.get(j);
-//				double dist = distAzCalc.getDistance(s1, s2);
-//				if (dist >= maxDist) {
-//					maxDist = dist;
-//					farS1 = s1;
-//					farS2 = s2;
-//				}
-//			}
-//		}
 		FaultSection farS1 = subSects.get(0);
 		if (subSects.size() == 1)
 			return LocationUtils.horzDistance(farS1.getFaultTrace().first(), farS1.getFaultTrace().last());
@@ -5285,21 +5270,21 @@ public class RupSetDiagnosticsPageGen {
 		return pngFile;
 	}
 	
-	private static class DiagnosticSummary {
-		private String primaryName;
-		private RupSetMetadata primaryMeta;
+	public static class DiagnosticSummary {
+		public String primaryName;
+		public RupSetMetadata primaryMeta;
 		
-		private String compName;
-		private RupSetMetadata compMeta;
+		public String compName;
+		public RupSetMetadata compMeta;
 	}
 	
-	private static class RupSetMetadata {
+	public static class RupSetMetadata {
 		// populated during constructor
-		private int maxNumSplays;
-		private double maxJumpDist;
-		private List<String> filterNames;
-		private int rupCount;
-		private double totRate;
+		public final int maxNumSplays;
+		public final double maxJumpDist;
+		public final List<String> filterNames;
+		public final int rupCount;
+		public final double totRate;
 		
 		// populated later
 		private int uniqueRupCount;
@@ -5313,8 +5298,8 @@ public class RupSetDiagnosticsPageGen {
 		
 		public RupSetMetadata(FaultSystemRupSet rupSet, FaultSystemSolution sol) {
 			this.rupCount = rupSet.getNumRuptures();
-			this.maxJumpDist = Double.NaN;
-			this.maxNumSplays = -1;
+			double maxJumpDist = Double.NaN;
+			int maxNumSplays = -1;
 			PlausibilityConfiguration config = rupSet.getModule(PlausibilityConfiguration.class);
 			if (config != null) {
 				if (config.getConnectionStrategy() != null)
@@ -5324,8 +5309,14 @@ public class RupSetDiagnosticsPageGen {
 					filterNames = new ArrayList<>();
 					for (PlausibilityFilter filter : config.getFilters())
 						filterNames.add(filter.getName());
+				} else {
+					filterNames = null;
 				}
+			} else {
+				filterNames = null;
 			}
+			this.maxNumSplays = maxNumSplays;
+			this.maxJumpDist = maxJumpDist;
 			if (sol == null)
 				totRate = Double.NaN;
 			else
@@ -5340,7 +5331,7 @@ public class RupSetDiagnosticsPageGen {
 		}
 	}
 	
-	private static class ScalarRange {
+	public static class ScalarRange {
 		private final HistScalar scalar;
 		private final double min, max;
 		

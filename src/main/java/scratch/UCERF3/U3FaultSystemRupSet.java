@@ -281,7 +281,7 @@ public class U3FaultSystemRupSet extends org.opensha.sha.earthquake.faultSysSolu
 	@Deprecated
 	public List<ClusterRupture> getClusterRuptures() {
 		if (hasModule(ClusterRuptures.class))
-			return getModule(ClusterRuptures.class).get();
+			return getModule(ClusterRuptures.class).getAll();
 		return null;
 	}
 

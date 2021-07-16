@@ -228,7 +228,8 @@ public abstract class ClusterConnectionStrategy implements Named {
 	}
 	
 	/**
-	 * Builds a list of all possible jumps between all full clusters
+	 * Builds a list of all possible jumps between all full clusters (this will typically include each unique jump
+	 * both forwards and backwards)
 	 * 
 	 * @param clusters
 	 * @return

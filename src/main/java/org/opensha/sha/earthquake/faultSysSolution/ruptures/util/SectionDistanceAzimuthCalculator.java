@@ -267,6 +267,13 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 		loadCache(csv);
 	}
 	
+	public String getDefaultCacheFileName() {
+		int numLocs = 0;
+		for (FaultSection sect : subSects)
+			numLocs += sect.getFaultTrace().size();
+		return "dist_az_cache_"+subSects.size()+"_sects_"+numLocs+"_trace_locs.csv";
+	}
+	
 	void loadCache(CSVFile<String> csv) {
 		int numAz = 0;
 		int numDist = 0;

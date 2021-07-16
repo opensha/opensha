@@ -639,10 +639,7 @@ public class RuptureSets {
 				distAzCalc = new SectionDistanceAzimuthCalculator(sects);
 				File cacheDir = getCacheDir();
 				if (cacheDir != null && cacheDir.exists()) {
-					int numLocs = 0;
-					for (FaultSection sect : sects)
-						numLocs += sect.getFaultTrace().size();
-					String name = "dist_az_cache_"+sects.size()+"_sects_"+numLocs+"_trace_locs.csv";
+					String name = distAzCalc.getDefaultCacheFileName();
 					distAzCacheFile = new File(cacheDir, name);
 					if (distAzCacheFile.exists()) {
 						try {

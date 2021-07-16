@@ -1,6 +1,7 @@
 package org.opensha.commons.util.modules;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,6 +68,25 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 */
 	public boolean hasModule(Class<? extends E> clazz) {
 		return getModule(clazz) != null;
+	}
+	
+	/**
+	 * Helper method to determine if a module exists that maps to the each of the given classes. If there are a
+	 * not-yet-loaded available module that match these types, they will be loaded and will return true if loading
+	 * is successful.
+	 * 
+	 * @param clases
+	 * @return true if a module exists for each of the given classes, false otherwise
+	 */
+	public boolean hasAllModules(Collection<Class<? extends E>> classes) {
+		boolean hasAll = true;
+		for (Class<? extends E> clazz : classes) {
+			if (!hasModule(clazz)) {
+				hasAll = false;
+				break;
+			}
+		}
+		return hasAll;
 	}
 	
 	/**

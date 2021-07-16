@@ -122,7 +122,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 				"Didn't find a FaultTrace in the supplied Feature. LineString and MultiLineString are supported");
 		
 		if (!Double.isFinite(dipDirection))
-			dipDirection = (float)(trace.getAveStrike()+90d);
+			setDipDirection((float)(trace.getAveStrike()+90d));
 	}
 	
 	private void setGeometry(Geometry geometry) {

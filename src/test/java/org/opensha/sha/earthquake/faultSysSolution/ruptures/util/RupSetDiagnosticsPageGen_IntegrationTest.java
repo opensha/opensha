@@ -130,7 +130,7 @@ public class RupSetDiagnosticsPageGen_IntegrationTest {
 		assertEquals(report.getInputName(), inputName);
 		assertEquals(report.getOutputDir(), tempFolder);
 		assertTrue(report.getInputSol() instanceof InversionFaultSystemSolution);
-		assertEquals(3101, report.getInputRupSet().getModule(ClusterRuptures.class).get().size());
+		assertEquals(3101, report.getInputRupSet().getModule(ClusterRuptures.class).getAll().size());
 		assertEquals(3101, report.getInputRups().size());
 		assertEquals(3101,report.getInputUniques().size());
 		assertTrue(report.getDistAzCalc() instanceof SectionDistanceAzimuthCalculator);

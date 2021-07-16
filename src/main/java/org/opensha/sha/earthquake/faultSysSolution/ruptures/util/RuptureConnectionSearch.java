@@ -36,6 +36,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -57,7 +58,7 @@ import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class RuptureConnectionSearch {
+public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 	
 	private FaultSystemRupSet rupSet;
 	private SectionDistanceAzimuthCalculator distCalc;
@@ -1004,6 +1005,30 @@ public class RuptureConnectionSearch {
 			
 			System.out.println("Found "+allConnections.size()+" total connections");
 		}
+	}
+
+	@Override
+	public String getName() {
+		return "Rupture Connection Search";
+	}
+
+	@Override
+	public void setParent(FaultSystemRupSet parent) throws IllegalStateException {
+		if (this.rupSet != null)
+			Preconditions.checkState(rupSet.isEquivalentTo(parent));
+		this.rupSet = parent;
+	}
+
+	@Override
+	public FaultSystemRupSet getParent() {
+		return rupSet;
+	}
+
+	@Override
+	public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
+		if (this.rupSet != null)
+			Preconditions.checkState(rupSet.isEquivalentTo(newParent));
+		return new RuptureConnectionSearch(newParent, distCalc, maxJumpDist, cumulativeJumps);
 	}
 
 }

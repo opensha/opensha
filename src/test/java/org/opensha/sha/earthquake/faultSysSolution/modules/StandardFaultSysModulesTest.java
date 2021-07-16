@@ -83,7 +83,7 @@ public class StandardFaultSysModulesTest {
 	@Test
 	public void testClusterRuptures() throws IOException {
 		ClusterRuptures origRups = demoRupSet.getModule(ClusterRuptures.class);
-		ClusterRuptures serMod = ClusterRuptures.instance(demoRupSet, origRups.get(), true);
+		ClusterRuptures serMod = ClusterRuptures.instance(demoRupSet, origRups.getAll(), true);
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, serMod, ClusterRuptures.class);
 	}
 

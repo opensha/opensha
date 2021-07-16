@@ -1409,7 +1409,7 @@ public class SegmentationCalculator {
 		RuptureConnectionSearch rsConnSearch = new RuptureConnectionSearch(rupSet, distAzCalc,
 				1000d, RuptureConnectionSearch.CUMULATIVE_JUMPS_DEFAULT);
 		rupSet.addModule(ClusterRuptures.instance(rupSet, rsConnSearch));
-		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).get();
+		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
 		
 		SegmentationCalculator calc = new SegmentationCalculator(sol, rups, connStrat, distAzCalc, new double[] {6.5d, 7.5d});
 		calc = calc.combineMultiJumps(true);

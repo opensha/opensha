@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -30,7 +31,7 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
+public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet>, Iterable<ClusterRupture> {
 	
 	protected FaultSystemRupSet rupSet;
 
@@ -38,11 +39,24 @@ public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
 		this.rupSet = rupSet;
 	}
 
-	public abstract List<ClusterRupture> get();
+	public abstract List<ClusterRupture> getAll();
+	
+	public ClusterRupture get(int rupIndex) {
+		return getAll().get(rupIndex);
+	}
+
+	@Override
+	public Iterator<ClusterRupture> iterator() {
+		return getAll().iterator();
+	}
 
 	@Override
 	public FaultSystemRupSet getParent() {
 		return rupSet;
+	}
+	
+	public int size() {
+		return getAll().size();
 	}
 	
 	/**
@@ -150,6 +164,10 @@ public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
 		}
 		return new Precomputed(rupSet, clusterRuptures);
 	}
+	
+	public static ClusterRuptures singleStranged(FaultSystemRupSet rupSet) {
+		return new SingleStranded(rupSet, null);
+	}
 
 	private static class SingleStranded extends ClusterRuptures implements ArchivableModule {
 		
@@ -183,7 +201,7 @@ public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
 		}
 
 		@Override
-		public List<ClusterRupture> get() {
+		public List<ClusterRupture> getAll() {
 			Preconditions.checkNotNull(rupSet, "Not initialized with a rupture set");
 			if (clusterRuptures == null) {
 				synchronized (this) {
@@ -192,6 +210,8 @@ public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
 						SectionDistanceAzimuthCalculator distAzCalc = null;
 						if (rupSet.hasModule(PlausibilityConfiguration.class))
 							distAzCalc = rupSet.getModule(PlausibilityConfiguration.class).getDistAzCalc();
+						else if (rupSet.hasModule(SectionDistanceAzimuthCalculator.class))
+							distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
 						if (distAzCalc == null)
 							distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 						List<ClusterRupture> rups = new ArrayList<>(rupSet.getNumRuptures());
@@ -269,7 +289,7 @@ public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet> {
 		}
 
 		@Override
-		public List<ClusterRupture> get() {
+		public List<ClusterRupture> getAll() {
 			return clusterRuptures;
 		}
 
