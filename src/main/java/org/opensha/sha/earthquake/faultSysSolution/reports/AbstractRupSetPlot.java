@@ -7,15 +7,19 @@ import java.text.DecimalFormat;
 import java.util.Collection;
 import java.util.List;
 
+import org.opensha.commons.data.Named;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
-public abstract class AbstractRupSetPlot {
+public abstract class AbstractRupSetPlot implements Named {
+	
+	// default is level 3: top level for report name, 2nd level for plot name
+	private String subHeading = "###";
 	
 	/**
 	 * Called to generate plots for the given rupture set in the given output directory. Returns Markdown that will be
-	 * included in the report.
+	 * included in the report, not including the plot title (that will be added externally).
 	 * 
 	 * @param rupSet rupture set to plot
 	 * @param sol solution that goes with this rupture set, if available
@@ -24,7 +28,7 @@ public abstract class AbstractRupSetPlot {
 	 * @param relPathToResources relative path to that output directory from the Markdown page,
 	 * to to embed images/link to files
 	 * @param topLink add this anywhere in the Markdown where you want a link back to the top table of contents
-	 * @return markdown lines
+	 * @return markdown lines, not including the plot title
 	 * @throws IOException
 	 */
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name,
@@ -34,8 +38,19 @@ public abstract class AbstractRupSetPlot {
 	}
 	
 	/**
+	 * @return the heading (e.g., '###') to use for markdown headings within a plot
+	 */
+	protected String getSubHeading() {
+		return subHeading;
+	}
+	
+	protected void setSubHeading(String subHeading) {
+		this.subHeading = subHeading;
+	}
+	
+	/**
 	 * Called to generate plots for the given rupture set in the given output directory. Returns Markdown that will be
-	 * included in the report.
+	 * included in the report, not including the plot title (that will be added externally).
 	 * 
 	 * @param rupSet rupture set to plot
 	 * @param sol solution that goes with this rupture set, if available
@@ -44,15 +59,15 @@ public abstract class AbstractRupSetPlot {
 	 * @param relPathToResources relative path to that output directory from the Markdown page,
 	 * to to embed images/link to files
 	 * @param topLink add this anywhere in the Markdown where you want a link back to the top table of contents
-	 * @return markdown lines
+	 * @return markdown lines, not including the plot title
 	 * @throws IOException
 	 */
 	public abstract List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta,
 			File resourcesDir, String relPathToResources, String topLink) throws IOException;
 	
 	/**
-	 * Can be overridden to provide summary markdown. This will be used when generating an index of many reports, such
-	 * as for many different comparisons, and should be brief.
+	 * Can be overridden to provide summary markdown, not including the plot title (that will be added externally).
+	 * This will be used when generating an index of many reports, such as for many different comparisons, and should be brief.
 	 * 
 	 * @param meta
 	 * @param resourcesDir

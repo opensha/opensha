@@ -33,6 +33,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 
 	@Override
+	public String getName() {
+		return "Jump Counts Over Distance";
+	}
+
+	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		float[] maxJumpDists = { 0.1f, 1f, 3f };
@@ -51,8 +56,6 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 		boolean hasSols = sol != null || compSol != null;
 		
 		List<String> lines = new ArrayList<>();
-		lines.add("## Jump Counts Over Distance");
-		lines.add(topLink); lines.add("");
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		if (hasSols)
 			table.addLine("As Discretized", "Rate Weighted");

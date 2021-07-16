@@ -75,6 +75,11 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 	}
 
 	@Override
+	public String getName() {
+		return "Plausibility Comparisons";
+	}
+
+	@Override
 	public Collection<Class<? extends OpenSHA_Module>> getRequiredModules() {
 		return externalFilters == null ? List.of(PlausibilityConfiguration.class, ClusterRuptures.class)
 				: Collections.singleton(ClusterRuptures.class);
@@ -84,9 +89,6 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
-		
-		lines.add("## Plausibility Comparisons");
-		lines.add(topLink); lines.add("");
 		
 		PlausibilityConfiguration primaryConfig = meta.primary.rupSet.getModule(PlausibilityConfiguration.class);
 		
@@ -98,7 +100,7 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 		
 		if (externalFilters == null) {
 			if (compConfig != null && compConfig.getFilters() != null && !compConfig.getFilters().isEmpty()) {
-				lines.add("### Comparisons with "+meta.comparison.name+" filters");
+				lines.add(getSubHeading()+" Comparisons with "+meta.comparison.name+" filters");
 				lines.add(topLink); lines.add("");
 				
 				List<PlausibilityFilter> filters = new ArrayList<>();
@@ -116,7 +118,7 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 			}
 			
 			if (primaryConfig != null && canDoComparison) {
-				lines.add("### "+meta.comparison.name+" comparisons with new filters");
+				lines.add(getSubHeading()+" "+meta.comparison.name+" comparisons with new filters");
 				lines.add(topLink); lines.add("");
 				
 				List<PlausibilityFilter> filters = new ArrayList<>();
@@ -133,7 +135,7 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 				lines.add("");
 			}
 		} else {
-			lines.add("### Comparisons with Alternative Filters");
+			lines.add(getSubHeading()+" Comparisons with Alternative Filters");
 			lines.add(topLink); lines.add("");
 			lines.addAll(doPlot(externalFilters, meta.primary, resourcesDir, relPathToResources, "alt_main_filter_",
 						"Comparison with Alternative Filters Filters", topLink));
@@ -160,7 +162,7 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 				relPath, prefix+"_mag_comp").wrap(2, 0).build());
 		lines.add("");
 		lines.addAll(getRupSetPlausibilityDetailLines(result, false, meta.rupSet, rups, 15,
-				outputDir, relPath, "#### "+meta.name, topLink, search, meta.scalarValues));
+				outputDir, relPath, getSubHeading()+"# "+meta.name, topLink, search, meta.scalarValues));
 		return lines;
 	}
 	

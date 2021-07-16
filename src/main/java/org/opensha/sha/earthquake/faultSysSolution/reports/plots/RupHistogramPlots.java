@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -50,6 +51,7 @@ import com.google.common.base.Preconditions;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 
@@ -66,12 +68,14 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 	}
 
 	@Override
+	public String getName() {
+		return "Rupture Size Histograms";
+	}
+
+	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
-		
-		lines.add("## Rupture Size Histograms");
-		lines.add(topLink); lines.add("");
 		
 		List<ClusterRupture> inputRups = rupSet.requireModule(ClusterRuptures.class).getAll();
 		
@@ -95,7 +99,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		}
 		
 		for (HistScalar scalar : scalars) {
-			lines.add("### "+scalar.getName());
+			lines.add(getSubHeading()+" "+scalar.getName());
 			lines.add(topLink); lines.add("");
 			lines.add(scalar.description);
 			lines.add("");
@@ -128,7 +132,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			if (fractiles == null)
 				continue;
 
-			lines.add("#### "+scalar.getName()+" Extremes & Examples");
+			lines.add(getSubHeading()+"# "+scalar.getName()+" Extremes & Examples");
 			lines.add(topLink); lines.add("");
 			lines.add("Example ruptures at various percentiles of "+scalar.getName());
 			lines.add("");
@@ -257,6 +261,103 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				lines.add("");
 			}
 		}
+		return lines;
+	}
+
+	@Override
+	public List<String> getSummary(ReportMetadata meta, File resourcesDir, String relPathToResources, String topLink) {
+		if (meta.primary.scalarRanges.isEmpty())
+			return null;
+		List<String> lines = new ArrayList<>();
+		
+		lines.add(getSubHeading()+" Scalar Values Table");
+		lines.add(topLink); lines.add("");
+		
+		boolean comp = meta.comparison != null && !meta.comparison.scalarRanges.isEmpty();
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		if (comp)
+			table.addLine("*Name*", "*Primary Range*", "*Comparison ("+meta.comparison.name+") Range*");
+		else
+			table.addLine("*Name*", "*Range*");
+		Map<HistScalar, ScalarRange> primaryScalars = new HashMap<>();
+		for (ScalarRange range : meta.primary.scalarRanges)
+			primaryScalars.put(range.scalar, range);
+		Map<HistScalar, ScalarRange> compScalars = new HashMap<>();
+		if (comp)
+			for (ScalarRange range : meta.comparison.scalarRanges)
+				compScalars.put(range.scalar, range);
+		
+		for (HistScalar scalar : HistScalar.values()) {
+			ScalarRange primaryScalar = primaryScalars.get(scalar);
+			ScalarRange compScalar = compScalars.get(scalar);
+			if (primaryScalar == null && compScalar == null)
+				continue;
+			table.initNewLine();
+			table.addColumn("**"+scalar.getName()+"**");
+			if (primaryScalar == null)
+				table.addColumn("");
+			else
+				table.addColumn("["+(float)primaryScalar.min+", "+(float)primaryScalar.max+"]");
+			if (comp) {
+				if (compScalar == null)
+					table.addColumn("");
+				else
+					table.addColumn("["+(float)compScalar.min+", "+(float)compScalar.max+"]");
+			}
+			table.finalizeLine();
+		}
+		lines.addAll(table.build());
+		
+		lines.add("");
+		lines.add(getSubHeading()+" Length Figures");
+		lines.add(topLink); lines.add("");
+		
+		table = MarkdownUtils.tableBuilder();
+		if (comp) {
+			table.addLine(meta.primary.name, meta.comparison.name);
+			table.addLine("![Primary]("+relPathToResources+"/hist_LENGTH.png)", "![Comparison]("+relPathToResources+"/hist_LENGTH_comp.png)");
+			if (new File(resourcesDir, "hist_LENGTH_rates.png").exists()
+					|| new File(resourcesDir, "hist_LENGTH_comp_rates.png").exists()) {
+				table.initNewLine();
+				if (new File(resourcesDir, "hist_LENGTH_rates.png").exists())
+					table.addColumn("![Primary]("+relPathToResources+"/hist_LENGTH_rates.png)");
+				else
+					table.addColumn("*N/A*");
+				if (new File(resourcesDir, "hist_LENGTH_comp_rates.png").exists())
+					table.addColumn("![Comparison]("+relPathToResources+"/hist_LENGTH_comp_rates.png)");
+				else
+					table.addColumn("*N/A*");
+				table.finalizeLine();
+			}
+			if (new File(resourcesDir, "hist_LENGTH_rates_log.png").exists()
+					|| new File(resourcesDir, "hist_LENGTH_comp_rates_log.png").exists()) {
+				table.initNewLine();
+				if (new File(resourcesDir, "hist_LENGTH_rates_log.png").exists())
+					table.addColumn("![Primary]("+relPathToResources+"/hist_LENGTH_rates_log.png)");
+				else
+					table.addColumn("*N/A*");
+				if (new File(resourcesDir, "hist_LENGTH_comp_rates_log.png").exists())
+					table.addColumn("![Comparison]("+relPathToResources+"/hist_LENGTH_comp_rates_log.png)");
+				else
+					table.addColumn("*N/A*");
+				table.finalizeLine();
+			}
+			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH.png)", "![Comparison]("+relPathToResources+"/sect_max_LENGTH_comp.png)");
+			table.initNewLine();
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH.geojson)");
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH_comp.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH_comp.geojson)");
+			table.finalizeLine();
+			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH_diff.png)", "![Comparison]("+relPathToResources+"/sect_max_LENGTH_ratio.png)");
+		} else {
+			table.addLine("![Primary]("+relPathToResources+"/hist_LENGTH.png)");
+			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH.png)");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH.geojson)");
+		}
+		lines.addAll(table.build());
 		return lines;
 	}
 

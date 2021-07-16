@@ -1,8 +1,12 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,6 +25,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
@@ -30,6 +35,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlot;
@@ -62,6 +68,7 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 
@@ -467,12 +474,94 @@ public class ReportPageGen {
 		return ret+")";
 	}
 	
+	private static TableBuilder getHeaderTable(RupSetMetadata primary, RupSetOverlap primaryOverlap,
+			RupSetMetadata comparison, RupSetOverlap comparisonOverlap) {
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		
+		if (comparison != null)
+			table.addLine("", "Primary", "Comparison: "+comparison.name);
+		
+		table.initNewLine();
+		table.addColumn("**Num Ruptures**");
+		table.addColumn(countDF.format(primary.numRuptures));
+		if (comparison != null)
+			table.addColumn(countDF.format(comparison.numRuptures));
+		table.finalizeLine();
+		
+		table.initNewLine();
+		table.addColumn("**Num Single-Stranded Ruptures**");
+		table.addColumn(countPercentStr(primary.numSingleStrandRuptures, primary.numRuptures));
+		if (comparison != null)
+			table.addColumn(countPercentStr(comparison.numSingleStrandRuptures, comparison.numRuptures));
+		table.finalizeLine();
+		
+		if (comparison != null) {
+			table.initNewLine();
+			table.addColumn("**Num Unique Ruptures**");
+			table.addColumn(countPercentStr(primaryOverlap.numUniqueRuptures, primary.numRuptures));
+			table.addColumn(countPercentStr(comparisonOverlap.numUniqueRuptures, comparison.numRuptures));
+			table.finalizeLine();
+		}
+		
+		if (primary.sol != null || (comparison != null && comparison.sol != null)) {
+			table.initNewLine();
+			table.addColumn("**Total Rupture Rate**");
+			if (primary.sol == null)
+				table.addColumn("_N/A_");
+			else
+				table.addColumn((float)primary.totalRate);
+			if (comparison != null) {
+				if (comparison.sol == null)
+					table.addColumn("_N/A_");
+				else
+					table.addColumn((float)comparison.totalRate);
+			}
+			table.finalizeLine();
+			
+			if (comparison != null) {
+				table.initNewLine();
+				table.addColumn("**Unique Rupture Rate**");
+				if (primary.sol == null)
+					table.addColumn("_N/A_");
+				else
+					table.addColumn(countPercentStr(primaryOverlap.uniqueRuptureRate, primary.totalRate));
+				if (comparison.sol == null)
+					table.addColumn("_N/A_");
+				else
+					table.addColumn(countPercentStr(comparisonOverlap.uniqueRuptureRate, comparison.totalRate));
+				table.finalizeLine();
+			}
+		}
+		
+		if (primary.rupSet != null) {
+			table.initNewLine();
+			table.addColumn("**Magnitude Range**");
+			table.addColumn(magRange(primary.rupSet));
+			if (comparison != null)
+				table.addColumn(magRange(comparison.rupSet));
+			table.finalizeLine();
+			
+			table.initNewLine();
+			table.addColumn("**Length Range**");
+			table.addColumn(lengthRange(primary.rupSet));
+			if (comparison != null)
+				table.addColumn(lengthRange(comparison.rupSet));
+			table.finalizeLine();
+			
+			table.initNewLine();
+			table.addColumn("**Rupture Section Count Range**");
+			table.addColumn(sectRange(primary.rupSet));
+			if (comparison != null)
+				table.addColumn(sectRange(comparison.rupSet));
+			table.finalizeLine();
+		}
+		return table;
+	}
+	
 	public void generatePage() throws IOException {
 		attachDefaultModules(meta.primary);
 		if (meta.comparison != null)
 			attachDefaultModules(meta.comparison);
-		
-		List<String> lines = new ArrayList<>();
 		
 		File resourcesDir = new File(outputDir, "resources");
 		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir(),
@@ -480,89 +569,21 @@ public class ReportPageGen {
 		String relPathToResources = resourcesDir.getName();
 		
 		boolean solution = meta.primary.sol != null;
+		List<String> headerLines = new ArrayList<>();
 		if (solution)
-			lines.add("# Solution Report: "+meta.primary.name);
+			headerLines.add("# Solution Report: "+meta.primary.name);
 		else
-			lines.add("# Rupture Set Report: "+meta.primary.name);
-		lines.add("");
+			headerLines.add("# Rupture Set Report: "+meta.primary.name);
+		headerLines.add("");
+		headerLines.addAll(getHeaderTable(meta.primary, meta.primaryOverlap, meta.comparison, meta.comparisonOverlap).build());
+		headerLines.add("");
 		
-		TableBuilder table = MarkdownUtils.tableBuilder();
-		
-		if (meta.comparison != null)
-			table.addLine("", "Primary", "Comparison: "+meta.comparison.name);
-		
-		table.initNewLine();
-		table.addColumn("**Num Ruptures**");
-		table.addColumn(countDF.format(meta.primary.numRuptures));
-		if (meta.comparison != null)
-			table.addColumn(countDF.format(meta.comparison.numRuptures));
-		table.finalizeLine();
-		
-		table.initNewLine();
-		table.addColumn("**Num Single-Stranded Ruptures**");
-		table.addColumn(countPercentStr(meta.primary.numSingleStrandRuptures, meta.primary.numRuptures));
-		if (meta.comparison != null)
-			table.addColumn(countPercentStr(meta.comparison.numSingleStrandRuptures, meta.comparison.numRuptures));
-		table.finalizeLine();
-		
-		if (meta.comparison != null) {
-			table.initNewLine();
-			table.addColumn("**Num Unique Ruptures**");
-			table.addColumn(countPercentStr(meta.primaryOverlap.numUniqueRuptures, meta.primary.numRuptures));
-			table.addColumn(countPercentStr(meta.comparisonOverlap.numUniqueRuptures, meta.comparison.numRuptures));
-			table.finalizeLine();
-		}
-		
-		if (solution) {
-			table.initNewLine();
-			table.addColumn("**Total Rupture Rate**");
-			table.addColumn((float)meta.primary.totalRate);
-			if (meta.comparison != null)
-				table.addColumn((float)meta.comparison.totalRate);
-			table.finalizeLine();
-			
-			if (meta.comparison != null) {
-				table.initNewLine();
-				table.addColumn("**Unique Rupture Rate**");
-				if (meta.primary.sol == null)
-					table.addColumn("_N/A_");
-				else
-					table.addColumn(countPercentStr(meta.primaryOverlap.uniqueRuptureRate, meta.primary.totalRate));
-				if (meta.comparison.sol == null)
-					table.addColumn("_N/A_");
-				else
-					table.addColumn(countPercentStr(meta.comparisonOverlap.uniqueRuptureRate, meta.comparison.totalRate));
-				table.finalizeLine();
-			}
-		}
-		
-		table.initNewLine();
-		table.addColumn("**Magnitude Range**");
-		table.addColumn(magRange(meta.primary.rupSet));
-		if (meta.comparison != null)
-			table.addColumn(magRange(meta.comparison.rupSet));
-		table.finalizeLine();
-		
-		table.initNewLine();
-		table.addColumn("**Length Range**");
-		table.addColumn(lengthRange(meta.primary.rupSet));
-		if (meta.comparison != null)
-			table.addColumn(lengthRange(meta.comparison.rupSet));
-		table.finalizeLine();
-		
-		table.initNewLine();
-		table.addColumn("**Rupture Section Count Range**");
-		table.addColumn(sectRange(meta.primary.rupSet));
-		if (meta.comparison != null)
-			table.addColumn(sectRange(meta.comparison.rupSet));
-		table.finalizeLine();
-		lines.addAll(table.build());
-		lines.add("");
-		
-		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
 		
 		boolean firstTime = !new File(outputDir, META_FILE_NAME).exists();
+		
+		List<PlotMetadata> plotMetas = new ArrayList<>();
+		PlotsMetadata plotMeta = new PlotsMetadata(headerLines, plotMetas);
 		
 		for (AbstractRupSetPlot plot : plots) {
 			String plotName = ClassUtils.getClassNameWithoutPackage(plot.getClass());
@@ -589,15 +610,17 @@ public class ReportPageGen {
 					continue;
 			}
 			
+			plot.setSubHeading("###");
+			
 			try {
 				List<String> plotLines = plot.plot(meta.primary.rupSet, meta.primary.sol, meta,
 						resourcesDir, relPathToResources, topLink);
-				lines.addAll(plotLines);
-				lines.add("");
+				if (plotLines != null && !plotLines.isEmpty())
+					plotMetas.add(new PlotMetadata(plot.getName(), plot.getClass().getName(), plotLines));
 				
 				if (firstTime) {
 					System.out.println("Writing intermediate markdown following "+plotName);
-					writeMarkdown(outputDir, meta, lines, tocIndex);
+					writeMarkdown(outputDir, meta, plotMeta, topLink);
 				}
 			} catch (Exception e) {
 				System.err.println("Error processing plot (skipping): "+plotName);
@@ -608,28 +631,226 @@ public class ReportPageGen {
 		
 		System.out.println("DONE building report, writing markdown and HTML");
 		
-		writeMarkdown(outputDir, meta, lines, tocIndex);
-		
 		if (indexDir != null) {
-			// TODO write index
+			String compTableHeader = "## Comparisons Table";
+			String compTopLink = "*[(back to comparisons table)](#"+MarkdownUtils.getAnchorName(compTableHeader)+")*";
+			if (indexDir == outputDir) {
+				// this is top level (no comparison). add comparisons table
+				List<String> compLines = new ArrayList<>();
+				TableBuilder table = buildComparisonsTable(compLines, compTopLink);
+				if (table != null) {
+					plotMeta.comparisonsTable = table;
+					plotMeta.comparisonLines = compLines;
+				}
+				writeMarkdown(outputDir, meta, plotMeta, topLink);
+			} else {
+				// this is a comparison, write it first
+				writeMarkdown(outputDir, meta, plotMeta, topLink);
+				
+				System.out.println("Writing top-level index with comparisons table");
+				
+				List<String> compLines = new ArrayList<>();
+				TableBuilder table = buildComparisonsTable(compLines, compTopLink);
+				if (table != null) {
+					// now update top level index
+					File topLevelMeta = new File(indexDir, PLOT_META_FILE_NAME);
+					PlotsMetadata topLevel;
+					if (topLevelMeta.exists()) {
+						// there is a top level report already, add table to it
+						topLevel = loadPlotMetadata(topLevelMeta);
+					} else {
+						// build a new index with only primary rupture set information
+						headerLines = new ArrayList<>();
+						if (solution)
+							headerLines.add("# Solution Report: "+meta.primary.name);
+						else
+							headerLines.add("# Rupture Set Report: "+meta.primary.name);
+						headerLines.add("");
+						headerLines.addAll(getHeaderTable(meta.primary, null, null, null).build());
+						headerLines.add("");
+						topLevel = new PlotsMetadata(headerLines, new ArrayList<>());
+					}
+					topLevel.comparisonsTable = table;
+					topLevel.comparisonLines = compLines;
+					writeMarkdown(indexDir, null, topLevel, topLink);
+				}
+			}
+		} else {
+			writeMarkdown(outputDir, meta, plotMeta, topLink);
 		}
 	}
 	
-	protected static final String META_FILE_NAME = "metadata.json";
+	private TableBuilder buildComparisonsTable(List<String> lines, String topLink) throws IOException {
+		Preconditions.checkNotNull(indexDir, "Must have an index to build comparisons");
+		Map<File, ReportMetadata> comparisonsMap = new HashMap<>();
+		Map<File, String> comparisonNamesMap = new HashMap<>();
+		Map<File, PlotsMetadata> plotMetasMap = new HashMap<>();
+		
+		for (File subDir : indexDir.listFiles()) {
+			if (!subDir.isDirectory())
+				continue;
+			File reportMetaFile = new File(subDir, META_FILE_NAME);
+			if (!reportMetaFile.exists())
+				continue;
+			File plotMetaFile = new File(subDir, PLOT_META_FILE_NAME);
+			if (!plotMetaFile.exists())
+				continue;
+			File resourcesDir = new File(subDir, "resources");
+			if (!resourcesDir.exists())
+				continue;
+			
+			ReportMetadata meta = loadReportMetadata(reportMetaFile);
+			if (meta.comparison == null) {
+				System.out.println("WARNING: found valid plots in sub-directory, but not a comparison (skipping): "
+						+subDir.getAbsolutePath());
+				continue;
+			}
+			System.out.println("Found comparison to "+meta.comparison.name+" in "+subDir.getAbsolutePath());
+			PlotsMetadata plotMeta = loadPlotMetadata(plotMetaFile);
+			
+			comparisonNamesMap.put(subDir, meta.comparison.name);
+			comparisonsMap.put(subDir, meta);
+			plotMetasMap.put(subDir, plotMeta);
+		}
+		
+		if (comparisonsMap.isEmpty())
+			return null;
+		
+		// sort them by name
+		List<File> subDirs = ComparablePairing.getSortedData(comparisonNamesMap);
+		
+		TableBuilder compTable = MarkdownUtils.tableBuilder();
+		compTable.addLine("*Name*", "*Num Ruptures*", "*% Change*", "% Overlap (of primary)", "*Num Connections*", "*% Change*");
+		
+		lines.add("## Comparison Details");
+		lines.add(topLink); lines.add("");
+		
+		for (File subDir : subDirs) {
+			
+			ReportMetadata meta = comparisonsMap.get(subDir);
+			
+			String compLink = "**["+meta.comparison.name+"](#"+MarkdownUtils.getAnchorName(meta.comparison.name)
+				+")** [(full page)]("+subDir.getName()+"/README.md)";
+			String rupPercent = percentDF.format((double)(meta.comparison.numRuptures - meta.primary.numRuptures)
+					/(double)meta.primary.numRuptures);
+			if (!rupPercent.startsWith("-"))
+				rupPercent = "+"+rupPercent;
+			String overlapPercent = percentDF.format((double)meta.comparisonOverlap.numCommonRuptures/(double)meta.primary.numRuptures);
+			String connPercent = percentDF.format((double)(meta.comparison.actualConnections - meta.primary.actualConnections)
+					/(double)meta.primary.actualConnections);
+			if (!connPercent.startsWith("-"))
+				connPercent = "+"+connPercent;
+			compTable.addLine(compLink, countDF.format(meta.comparison.numRuptures), rupPercent, overlapPercent,
+					countDF.format(meta.comparison.actualConnections), connPercent);
+			
+			PlotsMetadata plotsMeta = plotMetasMap.get(subDir);
+			
+			File resourcesDir = new File(subDir, "resources");
+			
+			String relPath = subDir.getName()+"/"+resourcesDir.getName();
+			
+			lines.add("### "+meta.comparison.name);
+			lines.add(topLink); lines.add("");
+			
+			lines.addAll(getHeaderTable(meta.primary, meta.primaryOverlap, meta.comparison, meta.comparisonOverlap).build());
+			lines.add("");
+			for (PlotMetadata plotMeta : plotsMeta.plots) {
+				AbstractRupSetPlot plot;
+				try {
+					@SuppressWarnings("unchecked") // is caught
+					Class<? extends AbstractRupSetPlot> clazz = (Class<? extends AbstractRupSetPlot>) Class.forName(plotMeta.plotClassName);
+					plot = clazz.getDeclaredConstructor().newInstance();
+				} catch (ClassNotFoundException e) {
+					System.out.println("Skipping summary for unkown comparison plot ("+plotMeta.plotName+"): "+e.getMessage());
+					continue;
+				} catch (Exception e) {
+					e.printStackTrace();
+					System.err.flush();
+					System.out.println("Skipping summary plot (see above error): "+plotMeta.plotName);
+					continue;
+				}
+				System.out.println("Getting summary for "+plotMeta.plotName);
+				plot.setSubHeading("####");
+				List<String> summary = plot.getSummary(meta, resourcesDir, relPath, topLink);
+				if (summary != null && !summary.isEmpty()) {
+					lines.addAll(summary);
+					lines.add("");
+				}
+			}
+		}
+		return compTable;
+	}
+	
+	static class PlotsMetadata {
+		public final List<String> headerLines;
+		public final List<PlotMetadata> plots;
+		
+		public transient TableBuilder comparisonsTable = null;
+		public transient List<String> comparisonLines = null;
+		
+		public PlotsMetadata(List<String> headerLines, List<PlotMetadata> plots) {
+			super();
+			this.headerLines = headerLines;
+			this.plots = plots;
+		}
+	}
+	
+	static class PlotMetadata {
+		
+		public final String plotName;
+		public final String plotClassName;
+		
+		public final List<String> markdown;
+		
+		public PlotMetadata(String plotName, String plotClassName, List<String> markdown) {
+			super();
+			this.plotName = plotName;
+			this.plotClassName = plotClassName;
+			this.markdown = markdown;
+		}
 
-	private static void writeMarkdown(File outputDir, ReportMetadata meta, List<String> lines, int tocIndex)
+	}
+
+	protected static final String META_FILE_NAME = "metadata.json";
+	protected static final String PLOT_META_FILE_NAME = "plots.json";
+
+	private static void writeMarkdown(File outputDir, ReportMetadata meta, PlotsMetadata plotMeta, String topLink)
 			throws IOException {
-		lines = new ArrayList<>(lines);
+		List<String> lines = new ArrayList<>(plotMeta.headerLines);
+		
+		if (plotMeta.comparisonsTable != null) {
+			lines.add("");
+			lines.addAll(plotMeta.comparisonsTable.build());
+			lines.add("");
+		}
+		
+		int tocIndex = lines.size();
+		for (PlotMetadata plot : plotMeta.plots) {
+			if (plot.markdown != null && !plot.markdown.isEmpty()) {
+				lines.add("## "+plot.plotName);
+				lines.add(topLink); lines.add("");
+				lines.addAll(plot.markdown);
+			}
+		}
+		
+		if (plotMeta.comparisonLines != null && !plotMeta.comparisonLines.isEmpty()) {
+			lines.add("");
+			lines.addAll(plotMeta.comparisonLines);
+		}
+		
 		// add TOC
-		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2));
+		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 3));
 		lines.add(tocIndex, "## Table Of Contents");
 		
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 		
 		System.out.println("Writing JSON metadata");
-		
-		writeMetadataJSON(meta, new File(outputDir, META_FILE_NAME));
+
+		if (meta != null) {
+			writeMetadataJSON(meta, new File(outputDir, META_FILE_NAME));
+			writeMetadataJSON(plotMeta, new File(outputDir, PLOT_META_FILE_NAME));
+		}
 	}
 	
 	private static Gson buildMetaGson() {
@@ -639,7 +860,7 @@ public class ReportPageGen {
 		return builder.create();
 	}
 	
-	private static void writeMetadataJSON(ReportMetadata meta, File jsonFile) throws IOException {
+	private static void writeMetadataJSON(Object meta, File jsonFile) throws IOException {
 		Gson gson = buildMetaGson();
 		FileWriter fw = new FileWriter(jsonFile);
 		gson.toJson(meta, fw);
@@ -647,6 +868,17 @@ public class ReportPageGen {
 		fw.close();
 	}
 	
+	private static ReportMetadata loadReportMetadata(File jsonFile) throws IOException {
+		Gson gson = buildMetaGson();
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		return gson.fromJson(reader, ReportMetadata.class);
+	}
+	
+	private static PlotsMetadata loadPlotMetadata(File jsonFile) throws IOException {
+		Gson gson = buildMetaGson();
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		return gson.fromJson(reader, PlotsMetadata.class);
+	}
 	
 	private static String magRange(FaultSystemRupSet rupSet) {
 		MinMaxAveTracker magTrack = new MinMaxAveTracker();

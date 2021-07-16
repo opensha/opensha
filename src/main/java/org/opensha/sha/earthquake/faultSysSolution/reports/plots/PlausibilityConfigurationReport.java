@@ -29,12 +29,15 @@ import org.opensha.sha.faultSurface.FaultSection;
 public class PlausibilityConfigurationReport extends AbstractRupSetPlot {
 
 	@Override
+	public String getName() {
+		return "Plausibility Configuration";
+	}
+	
+
+	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
-		
-		lines.add("## Plausibility Configuration");
-		lines.add(topLink); lines.add("");
 		
 		List<String> header = new ArrayList<>();
 		header.add(" ");
@@ -48,19 +51,19 @@ public class PlausibilityConfigurationReport extends AbstractRupSetPlot {
 		PlausibilityConfiguration compConfig = meta.comparison == null ?
 				null : compRupSet.getModule(PlausibilityConfiguration.class);
 		
-		lines.add("### Connection Strategy");
+		lines.add(getSubHeading()+" Connection Strategy");
 		lines.add(topLink); lines.add("");
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		
 		table.addLine(header);
 		table.initNewLine();
 		table.addColumn("**Name**");
-		table.addColumn(config.getName());
+		table.addColumn(config.getConnectionStrategy().getName());
 		if (meta.comparison != null) {
 			if (compConfig == null)
 				table.addColumn("*(N/A)*");
 			else
-				table.addColumn(compConfig.getName());
+				table.addColumn(compConfig.getConnectionStrategy().getName());
 		}
 		table.finalizeLine();
 		
@@ -98,7 +101,7 @@ public class PlausibilityConfigurationReport extends AbstractRupSetPlot {
 		
 		lines.addAll(table.build());
 		lines.add("");
-		lines.add("### Splays");
+		lines.add(getSubHeading()+" Splays");
 		lines.add(topLink); lines.add("");
 		
 		table = MarkdownUtils.tableBuilder();
@@ -116,7 +119,7 @@ public class PlausibilityConfigurationReport extends AbstractRupSetPlot {
 		
 		lines.addAll(table.build());
 		lines.add("");
-		lines.add("### Plausibility Filters");
+		lines.add(getSubHeading()+" Plausibility Filters");
 		lines.add(topLink); lines.add("");
 		
 		table = MarkdownUtils.tableBuilder();

@@ -20,7 +20,7 @@ public abstract class AbstractSolutionPlot extends AbstractRupSetPlot {
 	
 	/**
 	 * Called to generate plots for the given solution in the given output directory. Returns Markdown that will be
-	 * included in the report.
+	 * included in the report, not including the plot title (that will be added externally).
 	 * 
 	 * @param sol solution to plot
 	 * @param name name of this solution
@@ -28,7 +28,7 @@ public abstract class AbstractSolutionPlot extends AbstractRupSetPlot {
 	 * @param relPathToResources relative path to that output directory from the Markdown page,
 	 * to to embed images/link to files
 	 * @param topLink add this anywhere in the Markdown where you want a link back to the top table of contents
-	 * @return markdown lines
+	 * @return markdown lines, not including the plot title
 	 * @throws IOException
 	 */
 	public List<String> plot(FaultSystemSolution sol, String name,
@@ -38,7 +38,7 @@ public abstract class AbstractSolutionPlot extends AbstractRupSetPlot {
 	
 	/**
 	 * Called to generate plots for the given solution in the given output directory. Returns Markdown that will be
-	 * included in the report.
+	 * included in the report, not including the plot title (that will be added externally).
 	 * 
 	 * @param rupSet rupture set to plot
 	 * @param sol solution that goes with this rupture set, if available
@@ -47,7 +47,7 @@ public abstract class AbstractSolutionPlot extends AbstractRupSetPlot {
 	 * @param relPathToResources relative path to that output directory from the Markdown page,
 	 * to to embed images/link to files
 	 * @param topLink add this anywhere in the Markdown where you want a link back to the top table of contents
-	 * @return markdown lines
+	 * @return markdown lines, not including the plot title
 	 * @throws IOException
 	 */
 	public abstract List<String> plot(FaultSystemSolution sol, ReportMetadata meta,

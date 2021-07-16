@@ -54,11 +54,14 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 	}
 
 	@Override
+	public String getName() {
+		return "Subsection Maximum Values";
+	}
+
+	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
-		lines.add("## Subsection Maximum Values");
-		lines.add(topLink); lines.add("");
 		lines.add("These plots show the maximum value of various quantities across all ruptures for which "
 				+ "each individual subsection participates. This is useful, for example, to find sections "
 				+ "with low maximum magnitudes (due to low or no connectivity).");
@@ -71,7 +74,7 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 		for (HistScalar scalar : scalars) {
 			HistScalarValues inputScalars = imputVals.get(scalar);
 			HistScalarValues compScalars = compVals == null ? null : compVals.get(scalar);
-			lines.add("### Subsection Maximum "+scalar.getName());
+			lines.add(getSubHeading()+" Subsection Maximum "+scalar.getName());
 			lines.add(topLink); lines.add("");
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			if (compScalars != null)

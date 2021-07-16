@@ -110,8 +110,8 @@ public class RupSetMetadata {
 	}
 	
 	public static class ScalarRange {
-		private final HistScalar scalar;
-		private final double min, max;
+		public final HistScalar scalar;
+		public final double min, max;
 		
 		public ScalarRange(HistScalarValues values) {
 			double min = Double.POSITIVE_INFINITY;

@@ -50,6 +50,11 @@ import com.google.common.base.Preconditions;
 public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 
 	@Override
+	public String getName() {
+		return "Fault Section Connections";
+	}
+
+	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		System.out.println("Plotting section connections");
@@ -112,9 +117,6 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		
 		List<String> lines = new ArrayList<>();
 		
-		lines.add("## Fault Section Connections");
-		lines.add(topLink); lines.add("");
-		
 		if (meta.comparison != null) {
 			List<Set<Jump>> connectionsList = new ArrayList<>();
 			List<Color> connectedColors = new ArrayList<>();
@@ -150,7 +152,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			lines.addAll(table.build());
 			lines.add("");
 			
-			lines.add("### Jump Overlaps");
+			lines.add(getSubHeading()+" Jump Overlaps");
 			lines.add(topLink); lines.add("");
 			
 			table = MarkdownUtils.tableBuilder();
@@ -219,7 +221,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			RuptureConnectionSearch primarySearch = rupSet.getModule(RuptureConnectionSearch.class);
 			RuptureConnectionSearch compSearch = meta.comparison.rupSet.getModule(RuptureConnectionSearch.class);
 			System.out.println("Plotting connection examples");
-			lines.add("### Unique Connection Example Ruptures");
+			lines.add(getSubHeading()+" Unique Connection Example Ruptures");
 			lines.add(topLink); lines.add("");
 			
 			lines.add("**New Ruptures with Unique Connections**");
@@ -248,9 +250,36 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 
 	@Override
 	public Collection<Class<? extends OpenSHA_Module>> getRequiredModules() {
-		return null;
+		return List.of(ClusterRuptures.class);
 	}
 	
+	@Override
+	public List<String> getSummary(ReportMetadata meta, File resourcesDir, String relPathToResources, String topLink) {
+		List<String> lines = new ArrayList<>();
+		lines.add("### Connectivity Map");
+		lines.add("");
+		lines.add(topLink);
+		lines.add("");
+		
+		String prefix;
+		if (new File(resourcesDir, "sect_connectivity_combined.png").exists()) {
+			prefix = "sect_connectivity_combined";
+		} else {
+			prefix = "sect_connectivity";
+		}
+		lines.add("![map]("+relPathToResources+"/"+prefix+".png)");
+		lines.add("");
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("[View high resolution]("+relPathToResources+"/"+prefix+"_hires.png)");
+		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson"));
+		table.addColumn("[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
+		table.addColumn("[Download Jumps-Only GeoJSON]("+relPathToResources+"/"+prefix+"_jumps_only.geojson)");
+		table.finalizeLine();
+		lines.addAll(table.build());
+		return lines;
+	}
+
 	private static void addTablePlots(TableBuilder table, File mainPlot, File compPlot, String relPath,
 			boolean hasComp) {
 		table.initNewLine();
@@ -566,7 +595,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		System.out.println("Plotting "+rupsToPlot+" ruptures");
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
-		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
+		List<ClusterRupture> rups = rupSet.requireModule(ClusterRuptures.class).getAll();
 		for (int rupIndex : rupsToPlot) {
 			String rupPrefix = prefix+"_"+rupIndex;
 			ClusterRupture rupture = rups.get(rupIndex);

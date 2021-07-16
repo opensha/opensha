@@ -25,12 +25,14 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCal
 public class SegmentationPlot extends AbstractSolutionPlot {
 
 	@Override
+	public String getName() {
+		return "Fault Segmentation";
+	}
+
+	@Override
 	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
 			String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
-		
-		lines.add("## Fault Segmentation");
-		lines.add(topLink); lines.add("");
 		
 		double minMag = sol.getRupSet().getMinMag();
 		double[] minMags;
@@ -119,9 +121,9 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		for (int m=0; m<minMags.length; m++) {
 			if (minMags.length > 1) {
 				if (minMags[m] > 0)
-					lines.add("### M&ge;"+(float)minMags[m]+" Fault Segmentation");
+					lines.add(getSubHeading()+" M&ge;"+(float)minMags[m]+" Fault Segmentation");
 				else
-					lines.add("### Supra-Seismogenic Fault Segmentation");
+					lines.add(getSubHeading()+" Supra-Seismogenic Fault Segmentation");
 				lines.add(topLink); lines.add("");
 			}
 			
@@ -241,7 +243,7 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		}
 		
 		if (minMags.length > 1) {
-			lines.add("### Magnitude Connection Rate Comparisons");
+			lines.add(getSubHeading()+" Magnitude Connection Rate Comparisons");
 			lines.add(topLink); lines.add("");
 			lines.add("This comapres "+meta.primary.name+ " passthrough rates across magniutdes (and also for each rate "
 					+ "combiniation type). Linear on the left, log10 on the right.");

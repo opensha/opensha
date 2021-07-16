@@ -52,6 +52,11 @@ import com.google.common.collect.Table;
 public class JumpAzimuthsPlot extends AbstractRupSetPlot {
 
 	@Override
+	public String getName() {
+		return "Jump Azimuths";
+	}
+
+	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
@@ -60,8 +65,6 @@ public class JumpAzimuthsPlot extends AbstractRupSetPlot {
 		rakeTypes.add(null);
 		for (RakeType type : RakeType.values())
 			rakeTypes.add(type);
-		lines.add("## Jump Azimuths");
-		lines.add(topLink); lines.add("");
 		
 		Table<RakeType, RakeType, List<Double>> inputRakeAzTable = calcJumpAzimuths(rupSet);
 		Table<RakeType, RakeType, List<Double>> compRakeAzTable = null;
@@ -73,11 +76,11 @@ public class JumpAzimuthsPlot extends AbstractRupSetPlot {
 			if (sourceType == null) {
 				prefix = "jump_az_any";
 				title = "Jumps from Any";
-				lines.add("### Jump Azimuths From Any");
+				lines.add(getSubHeading()+" Jump Azimuths From Any");
 			} else {
 				prefix = "jump_az_"+sourceType.prefix;
 				title = "Jumps from "+sourceType.name;
-				lines.add("### Jump Azimuths From "+sourceType.name);
+				lines.add(getSubHeading()+" Jump Azimuths From "+sourceType.name);
 			}
 			
 			System.out.println("Plotting "+title);

@@ -46,16 +46,18 @@ import com.google.common.collect.Lists;
 public class BiasiWesnouskyPlots extends AbstractRupSetPlot {
 
 	@Override
+	public String getName() {
+		return "Biasi & Wesnousky (2016,2017) Comparisons";
+	}
+
+	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
 		
-		lines.add("## Biasi & Wesnousky (2016,2017) Comparisons");
-		lines.add(topLink); lines.add("");
-		
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		
-		lines.add("### Jump Distance Comparisons");
+		lines.add(getSubHeading()+" Jump Distance Comparisons");
 		lines.add(topLink); lines.add("");
 		String line = "These plots express the chances of taking an available jump of a given distance "
 				+ "between two faults of the same type (SS, Normal, Reverse). Passing ratios give the "
@@ -98,7 +100,7 @@ public class BiasiWesnouskyPlots extends AbstractRupSetPlot {
 		}
 		lines.addAll(table.build());
 		
-		lines.add("### Jump Azimuth Change Comparisons");
+		lines.add(getSubHeading()+" Jump Azimuth Change Comparisons");
 		lines.add(topLink); lines.add("");
 		line = "These plots express the chances of taking an available jump of a given azimuth change "
 				+ "between two faults of the same type (SS, Normal, Reverse). Passing ratios give the "
@@ -129,7 +131,7 @@ public class BiasiWesnouskyPlots extends AbstractRupSetPlot {
 		}
 		lines.addAll(table.build());
 		
-		lines.add("### Mechanism Change Comparisons");
+		lines.add(getSubHeading()+" Mechanism Change Comparisons");
 		lines.add(topLink); lines.add("");
 		line = "These plots express the probability of a rupture changing mechanism (e.g., strike-slip to "
 				+ "reverse, or right-lateral to left-lateral) at least once, as a function of magnitude.";
