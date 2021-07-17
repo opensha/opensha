@@ -11,6 +11,10 @@ import com.google.common.base.Preconditions;
 
 public abstract class AbstractSolutionPlot extends AbstractRupSetPlot {
 	
+	public void writePlot(FaultSystemSolution sol, String name, File outputDir) throws IOException {
+		super.writePlot(sol.getRupSet(), sol, name, outputDir);
+	}
+	
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {

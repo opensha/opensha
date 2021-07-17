@@ -16,7 +16,7 @@ class PrecomputedClusterConnectionStrategy extends ClusterConnectionStrategy {
 	private String name;
 	private double maxJumpDist;
 
-	PrecomputedClusterConnectionStrategy(String name, List<? extends FaultSection> subSections,
+	public PrecomputedClusterConnectionStrategy(String name, List<? extends FaultSection> subSections,
 			List<FaultSubsectionCluster> clusters, double maxJumpDist, SectionDistanceAzimuthCalculator distCalc) {
 		super(subSections, clusters, distCalc);
 		this.name = name;

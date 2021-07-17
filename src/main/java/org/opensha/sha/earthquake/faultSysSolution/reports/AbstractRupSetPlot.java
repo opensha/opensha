@@ -4,18 +4,37 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import org.opensha.commons.data.Named;
+import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
+
+import com.google.common.base.Preconditions;
 
 public abstract class AbstractRupSetPlot implements Named {
 	
 	// default is level 3: top level for report name, 2nd level for plot name
 	private String subHeading = "###";
+	
+	public void writePlot(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name, File outputDir) throws IOException {
+		File resourcesDir = new File(outputDir, "resources");
+		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
+		
+		List<String> lines = new ArrayList<>();
+		lines.add("# "+getName());
+		String topLink = MarkdownUtils.getAnchorName(getName());
+		lines.add("");
+		
+		lines.addAll(plot(rupSet, sol, name, resourcesDir, resourcesDir.getName(), topLink));
+		
+		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+	}
 	
 	/**
 	 * Called to generate plots for the given rupture set in the given output directory. Returns Markdown that will be
@@ -33,8 +52,9 @@ public abstract class AbstractRupSetPlot implements Named {
 	 */
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name,
 			File resourcesDir, String relPathToResources, String topLink) throws IOException {
-		return plot(rupSet, sol, new ReportMetadata(new RupSetMetadata(name, rupSet, sol)),
-				resourcesDir, relPathToResources, topLink);
+		RupSetMetadata meta = new RupSetMetadata(name, rupSet, sol);
+		ReportPageGen.attachDefaultModules(meta, RuptureSets.getCacheDir(), ReportPageGen.DEFAULT_MAX_DIST);
+		return plot(rupSet, sol, new ReportMetadata(meta), resourcesDir, relPathToResources, topLink);
 	}
 	
 	/**

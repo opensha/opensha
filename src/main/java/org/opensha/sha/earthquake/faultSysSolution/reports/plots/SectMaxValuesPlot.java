@@ -40,7 +40,7 @@ import com.google.common.base.Preconditions;
 
 public class SectMaxValuesPlot extends AbstractRupSetPlot {
 	
-	private static final List<HistScalar> defaultMaxScalars = List.of(HistScalar.MAG, HistScalar.LENGTH,
+	private static final List<HistScalar> defaultMaxScalars = List.of(HistScalar.LENGTH, HistScalar.MAG,
 			HistScalar.CUM_JUMP_DIST, HistScalar.CUM_RAKE_CHANGE, HistScalar.CUM_AZ_CHANGE);
 	
 	private List<HistScalar> scalars;
@@ -89,22 +89,22 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 				continue;
 			}
 			table.initNewLine();
-			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+".png)");
+			table.addColumn("![map]("+relPathToResources+"/"+prefix+".png)");
 			if (compScalars != null) {
 				plotScalarMaxMapView(meta.comparison.rupSet, resourcesDir, prefix+"_comp", getTruncatedTitle(meta.comparison.name),
 						compScalars, inputScalars, meta.region, COMP_COLOR, false, false);
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp.png)");
+				table.addColumn("![map]("+relPathToResources+"/"+prefix+"_comp.png)");
 			}
 			table.finalizeLine().initNewLine();
-			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/"+prefix+".geojson")
-					+" "+"[Download GeoJSON]("+resourcesDir.getName()+"/"+prefix+".geojson)");
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
 			if (compScalars != null)
-				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/"+prefix+"_comp.geojson")
-						+" "+"[Download GeoJSON]("+resourcesDir.getName()+"/"+prefix+"_comp.geojson)");
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_comp.geojson")
+						+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_comp.geojson)");
 			table.finalizeLine().initNewLine();
-			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_hist.png)");
+			table.addColumn("![map]("+relPathToResources+"/"+prefix+"_hist.png)");
 			if (compScalars != null) {
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp_hist.png)");
+				table.addColumn("![map]("+relPathToResources+"/"+prefix+"_comp_hist.png)");
 			}
 			table.finalizeLine();
 			if (compScalars != null) {
@@ -112,13 +112,13 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 				table.initNewLine();
 				plotScalarMaxMapView(rupSet, resourcesDir, prefix+"_diff", "Difference",
 						inputScalars, compScalars, meta.region, MAIN_COLOR, true, false);
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff.png)");
+				table.addColumn("![map]("+relPathToResources+"/"+prefix+"_diff.png)");
 				plotScalarMaxMapView(rupSet, resourcesDir, prefix+"_ratio", "Ratio",
 						inputScalars, compScalars, meta.region, MAIN_COLOR, false, true);
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio.png)");
+				table.addColumn("![map]("+relPathToResources+"/"+prefix+"_ratio.png)");
 				table.finalizeLine().initNewLine();
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_diff_hist.png)");
-				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_ratio_hist.png)");
+				table.addColumn("![map]("+relPathToResources+"/"+prefix+"_diff_hist.png)");
+				table.addColumn("![map]("+relPathToResources+"/"+prefix+"_ratio_hist.png)");
 				table.finalizeLine();
 			}
 			lines.addAll(table.build());
@@ -152,6 +152,33 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 	@Override
 	public Collection<Class<? extends OpenSHA_Module>> getRequiredModules() {
 		return List.of(SectionDistanceAzimuthCalculator.class, ClusterRuptures.class);
+	}
+
+	@Override
+	public List<String> getSummary(ReportMetadata meta, File resourcesDir, String relPathToResources, String topLink) {
+		if (!new File(resourcesDir, "sect_max_LENGTH.png").exists())
+			return null;
+		List<String> lines = new ArrayList<>();
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		if (meta.comparison != null) {
+			table.addLine(meta.primary.name, meta.comparison.name);
+			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH.png)", "![Comparison]("+relPathToResources+"/sect_max_LENGTH_comp.png)");
+			table.initNewLine();
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH.geojson)");
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH_comp.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH_comp.geojson)");
+			table.finalizeLine();
+			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH_diff.png)", "![Comparison]("+relPathToResources+"/sect_max_LENGTH_ratio.png)");
+		} else {
+			table.addLine("![Primary]("+relPathToResources+"/hist_LENGTH.png)");
+			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH.png)");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH.geojson)");
+		}
+		lines.addAll(table.build());
+		return lines;
 	}
 	
 	public static boolean plotScalarMaxMapView(FaultSystemRupSet rupSet, File outputDir, String prefix,

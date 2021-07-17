@@ -433,8 +433,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			subSection.properties.remove("FaultID");
 			subSection.properties.remove("FaultName");
 			
-			subSection.id = myID;
-			subSection.name = myName;
+			subSection.setSectionName(myName);
+			subSection.setSectionId(myID);
 			subSection.trace = equalLengthSubsTrace.get(i);
 			subSection.setParentSectionId(this.id);
 			subSection.setParentSectionName(this.name);

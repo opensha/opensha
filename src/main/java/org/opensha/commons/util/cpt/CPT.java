@@ -802,7 +802,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	 */
 	public CPT rescale(double min, double max) {
 		Preconditions.checkState(getMaxValue() > getMinValue(), "in order to rescale, current max must be > min");
-		Preconditions.checkArgument(max > min, "new max must be > min");
+		Preconditions.checkArgument(max > min, "new max must be > min: %s !> %s", max, min);
 		CPT cpt = (CPT)clone();
 		cpt.clear();
 		

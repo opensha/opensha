@@ -44,7 +44,7 @@ public class ReportMetadata {
 			region = findRegion(comparison);
 		if (region == null)
 			// just use bounding box
-			RupSetMapMaker.buildBufferedRegion(primary.rupSet.getFaultSectionDataList());
+			region = RupSetMapMaker.buildBufferedRegion(primary.rupSet.getFaultSectionDataList());
 		this.region = region;
 	}
 	

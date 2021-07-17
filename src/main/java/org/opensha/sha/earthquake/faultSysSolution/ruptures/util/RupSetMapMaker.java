@@ -8,6 +8,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import org.jfree.chart.axis.NumberTickUnit;
@@ -55,7 +56,7 @@ import com.google.common.primitives.Doubles;
 public class RupSetMapMaker {
 	
 	private final List<? extends FaultSection> subSects;
-	private final Region region;
+	private Region region;
 	
 	private PlotCurveCharacterstics politicalBoundaryChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GRAY);
 	private PlotCurveCharacterstics sectOutlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.LIGHT_GRAY);
@@ -81,6 +82,7 @@ public class RupSetMapMaker {
 	private double[] scalars;
 	private CPT scalarCPT;
 	private String scalarLabel;
+	private boolean skipNaNs = false;
 	
 	// jumps (solid color)
 	private List<Collection<Jump>> jumpLists;
@@ -92,6 +94,9 @@ public class RupSetMapMaker {
 	private List<Double> scalarJumpValues;
 	private CPT scalarJumpsCPT;
 	private String scalarJumpsLabel;
+	
+	private Collection<FaultSection> highlightSections;
+	private PlotCurveCharacterstics highlightTraceChar;
 	
 	/*
 	 * Caches
@@ -144,6 +149,10 @@ public class RupSetMapMaker {
 		double maxLon = Math.ceil(lonTrack.getMax());
 		return new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
 	}
+	
+	public void setRegion(Region region) {
+		this.region = region;
+	}
 
 	public void setPoliticalBoundaryChar(PlotCurveCharacterstics politicalBoundaryChar) {
 		this.politicalBoundaryChar = politicalBoundaryChar;
@@ -171,6 +180,15 @@ public class RupSetMapMaker {
 	
 	public void setLegendVisible(boolean legendVisible) {
 		this.legendVisible = legendVisible;
+	}
+	
+	public void setSkipNaNs(boolean skipNaNs) {
+		this.skipNaNs = skipNaNs;
+	}
+	
+	public void highLightSections(Collection<FaultSection> highlightSections, PlotCurveCharacterstics highlightTraceChar) {
+		this.highlightSections = highlightSections;
+		this.highlightTraceChar = highlightTraceChar;
 	}
 	
 	public void setWritePDFs(boolean writePDFs) {
@@ -299,13 +317,29 @@ public class RupSetMapMaker {
 			}
 		}
 		
+		Region plotRegion = new Region(new Location(region.getMinLat(), region.getMinLon()), 
+				new Location(region.getMaxLat(), region.getMaxLon()));
+		HashSet<FaultSection> plotSects = new HashSet<>();
+		for (FaultSection subSect : subSects) {
+			RuptureSurface surf = getSectSurface(subSect);
+			boolean include = false;
+			for (Location loc : surf.getEvenlyDiscritizedPerimeter()) {
+				if (plotRegion.contains(loc)) {
+					include = true;
+					break;
+				}
+			}
+			if (include)
+				plotSects.add(subSect);
+		}
+		
 		boolean hasLegend = false;
 		
-		// we'll plot fault traces if we don't have scalar values
-		boolean doTraces = scalars == null;
 		// plot section outlines on bottom
 		for (int s=0; s<subSects.size(); s++) {
 			FaultSection sect = subSects.get(s);
+			if (!plotSects.contains(sect))
+				continue;
 			RuptureSurface surf = getSectSurface(sect);
 			
 			XY_DataSet trace = new DefaultXY_DataSet();
@@ -314,6 +348,11 @@ public class RupSetMapMaker {
 			
 			if (s == 0)
 				trace.setName("Fault Sections");
+			
+			// we'll plot fault traces if we don't have scalar values
+			boolean doTraces = scalars == null;
+			if (!doTraces && skipNaNs && Double.isNaN(scalars[s]))
+				doTraces = true;
 			
 			if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
 				XY_DataSet outline = new DefaultXY_DataSet();
@@ -351,6 +390,8 @@ public class RupSetMapMaker {
 				float scalar = val.getComparable().floatValue();
 				Color color = scalarCPT.getColor(scalar);
 				FaultSection sect = val.getData();
+				if (!plotSects.contains(sect) || (skipNaNs && Double.isNaN(val.getComparable())))
+					continue;
 				RuptureSurface surf = getSectSurface(sect);
 				XY_DataSet trace = new DefaultXY_DataSet();
 				for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
@@ -368,6 +409,18 @@ public class RupSetMapMaker {
 			}
 			
 			cptLegend.add(buildCPTLegend(scalarCPT, scalarLabel));
+		}
+		
+		if (highlightSections != null && highlightTraceChar != null) {
+			for (FaultSection hightlight : highlightSections) {
+				XY_DataSet trace = new DefaultXY_DataSet();
+				for (Location loc : getSectSurface(hightlight).getEvenlyDiscritizedUpperEdge())
+					trace.set(loc.getLongitude(), loc.getLatitude());
+				funcs.add(trace);
+				chars.add(highlightTraceChar);
+				if (writeGeoJSON)
+					sectFeatures.add(traceFeature(hightlight, highlightTraceChar));
+			}
 		}
 		
 		// plot jumps
@@ -414,6 +467,8 @@ public class RupSetMapMaker {
 			List<ComparablePairing<Double, XY_DataSet>> sortables = new ArrayList<>();
 			for (int j=0; j<scalarJumps.size(); j++) {
 				double scalar = scalarJumpValues.get(j);
+				if (skipNaNs && Double.isNaN(scalar))
+					continue;
 				Jump jump = scalarJumps.get(j);
 				Location loc1 = getSectMiddle(jump.fromSection);
 				Location loc2 = getSectMiddle(jump.toSection);

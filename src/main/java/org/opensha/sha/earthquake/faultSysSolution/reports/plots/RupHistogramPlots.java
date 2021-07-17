@@ -343,19 +343,12 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 					table.addColumn("*N/A*");
 				table.finalizeLine();
 			}
-			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH.png)", "![Comparison]("+relPathToResources+"/sect_max_LENGTH_comp.png)");
-			table.initNewLine();
-			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH.geojson")
-					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH.geojson)");
-			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH_comp.geojson")
-					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH_comp.geojson)");
-			table.finalizeLine();
-			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH_diff.png)", "![Comparison]("+relPathToResources+"/sect_max_LENGTH_ratio.png)");
 		} else {
 			table.addLine("![Primary]("+relPathToResources+"/hist_LENGTH.png)");
-			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH.png)");
-			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/sect_max_LENGTH.geojson")
-					+" "+"[Download GeoJSON]("+relPathToResources+"/sect_max_LENGTH.geojson)");
+			if (new File(resourcesDir, "hist_LENGTH_rates.png").exists())
+				table.addLine("![Primary]("+relPathToResources+"/hist_LENGTH_rates.png)");
+			if (new File(resourcesDir, "hist_LENGTH_rates_log.png").exists())
+				table.addLine("![Primary]("+relPathToResources+"/hist_LENGTH_rates_log.png)");
 		}
 		lines.addAll(table.build());
 		return lines;

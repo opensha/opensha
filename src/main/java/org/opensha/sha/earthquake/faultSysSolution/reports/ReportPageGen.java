@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverD
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectConnectionDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SegmentationPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -85,25 +86,48 @@ public class ReportPageGen {
 	
 	private List<PlausibilityFilter> altFilters = null;
 	
-	public static List<AbstractRupSetPlot> getDefaultRupSetPlots() {
-		return List.of(
-				new PlausibilityConfigurationReport(),
-				new RupHistogramPlots(),
-				new PlausibilityFilterPlot(),
-				new FaultSectionConnectionsPlot(),
-				new JumpCountsOverDistancePlot(),
-				new SectMaxValuesPlot(),
-				new JumpAzimuthsPlot(),
-				new BiasiWesnouskyPlots());
+	public static PlotLevel PLOT_LEVEL_DEFAULT = PlotLevel.DEFAULT;
+	
+	public enum PlotLevel {
+		LIGHT,
+		DEFAULT,
+		FULL
 	}
 	
-	public static List<AbstractRupSetPlot> getDefaultSolutionPlots() {
-		return List.of(
-				new PlausibilityConfigurationReport(),
-				new RupHistogramPlots(),
-				new FaultSectionConnectionsPlot(),
-				new JumpCountsOverDistancePlot(),
-				new SegmentationPlot());
+	public static List<AbstractRupSetPlot> getDefaultRupSetPlots(PlotLevel level) {
+		List<AbstractRupSetPlot> plots = new ArrayList<>();
+		
+		plots.add(new PlausibilityConfigurationReport());
+		plots.add(new RupHistogramPlots());
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new PlausibilityFilterPlot());
+			plots.add(new FaultSectionConnectionsPlot());
+			plots.add(new JumpCountsOverDistancePlot());
+		}
+		plots.add(new SectMaxValuesPlot());
+		if (level == PlotLevel.FULL) {
+			plots.add(new JumpAzimuthsPlot());
+			plots.add(new BiasiWesnouskyPlots());
+			plots.add(new SectBySectConnectionDetailPlots());
+		}
+		
+		return plots;
+	}
+	
+	public static List<AbstractRupSetPlot> getDefaultSolutionPlots(PlotLevel level) {
+		List<AbstractRupSetPlot> plots = new ArrayList<>();
+		
+		plots.add(new PlausibilityConfigurationReport());
+		plots.add(new RupHistogramPlots());
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new FaultSectionConnectionsPlot());
+			plots.add(new JumpCountsOverDistancePlot());
+		}
+		if (level == PlotLevel.FULL) {
+			plots.add(new SegmentationPlot());
+		}
+		
+		return plots;
 	}
 
 	public ReportPageGen(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name, File outputDir,
@@ -197,11 +221,15 @@ public class ReportPageGen {
 		
 		ReportMetadata meta = new ReportMetadata(primaryMeta, comparisonMeta);
 		
+		PlotLevel level = PLOT_LEVEL_DEFAULT;
+		if (cmd.hasOption("plot-level"))
+			level = PlotLevel.valueOf(cmd.getOptionValue("plot-level"));
+		
 		List<AbstractRupSetPlot> plots;
 		if (sol != null)
-			plots = getDefaultSolutionPlots();
+			plots = getDefaultSolutionPlots(level);
 		else
-			plots = getDefaultRupSetPlots();
+			plots = getDefaultRupSetPlots(level);
 		
 		if (cmd.hasOption("skip-plausibility")) {
 			for (int i=plots.size(); --i>=0;)
@@ -291,8 +319,15 @@ public class ReportPageGen {
 	public ReportMetadata getMeta() {
 		return meta;
 	}
-
+	
 	private void attachDefaultModules(RupSetMetadata meta) throws IOException {
+		attachDefaultModules(meta, cacheDir, defaultMaxDist);
+		
+		if (cacheDir != null && cacheDir.exists())
+			loadCoulombCache(cacheDir);
+	}
+
+	public static void attachDefaultModules(RupSetMetadata meta, File cacheDir, double defaultMaxDist) throws IOException {
 		FaultSystemRupSet rupSet = meta.rupSet;
 		SectionDistanceAzimuthCalculator distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
 		PlausibilityConfiguration config = rupSet.getModule(PlausibilityConfiguration.class);
@@ -349,8 +384,6 @@ public class ReportPageGen {
 			File distCache = new File(cacheDir, distAzCalc.getDefaultCacheFileName());
 			if (distCache.exists())
 				distAzCalc.loadCacheFile(distCache);
-			
-			loadCoulombCache(cacheDir);
 		}
 	}
 	
@@ -632,8 +665,7 @@ public class ReportPageGen {
 		System.out.println("DONE building report, writing markdown and HTML");
 		
 		if (indexDir != null) {
-			String compTableHeader = "## Comparisons Table";
-			String compTopLink = "*[(back to comparisons table)](#"+MarkdownUtils.getAnchorName(compTableHeader)+")*";
+			String compTopLink = "*[(back to comparisons table)](#"+MarkdownUtils.getAnchorName("Comparisons Table")+")*";
 			if (indexDir == outputDir) {
 				// this is top level (no comparison). add comparisons table
 				List<String> compLines = new ArrayList<>();
@@ -820,6 +852,8 @@ public class ReportPageGen {
 		
 		if (plotMeta.comparisonsTable != null) {
 			lines.add("");
+			lines.add("## Comparisons Table");
+			lines.add("");
 			lines.addAll(plotMeta.comparisonsTable.build());
 			lines.add("");
 		}
@@ -958,6 +992,11 @@ public class ReportPageGen {
 		maxDistOption.setRequired(false);
 		ops.addOption(maxDistOption);
 		
+		Option plotLevelOption = new Option("pl", "plot-level", true,
+				"This determins which set of plots should be included. One of: "+PlotLevel.values());
+		plotLevelOption.setRequired(false);
+		ops.addOption(plotLevelOption);
+		
 		return ops;
 	}
 	
@@ -970,10 +1009,7 @@ public class ReportPageGen {
 			
 			File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
 			
-//			writeIndex(new File("/data/kevin/markdown/rupture-sets/"
-////					+ "fm3_1_adapt5_10km_min2_cff3_4_IntsPos_cffProb0.01NegRelBest_cffJumpPatchNetFract0.5_cffSectFav15PathPos"));
-//					+ "fm3_1_adapt5_10km_sMax1_slipP0.01incr_cff3_4_IntsPos_comb3Paths_cffP0.01_cffSPathFav15_cffCPathRPatchHalfPos"));
-//			System.exit(0);
+			PlotLevel level = PlotLevel.FULL;
 			
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
@@ -998,36 +1034,15 @@ public class ReportPageGen {
 //			String compName = null;
 //			File compareFile = null;
 			
-			// UCERF3 variants
-//			boolean skipPlausibility = false;
-////			String compName = "UCERF3 10km, No Coulomb";
-////			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3_10km_noCoulomb.zip");
-////			File altPlausibilityCompareFile = null;
-//			String compName = "UCERF3 Adaptive 5-10km (SMax=1), No Coulomb";
-//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3_adapt5_10km_sMax1_noCoulomb.zip");
-//			File altPlausibilityCompareFile = null;
-////			String compName = "UCERF3 Coulomb Reproduce";
-////			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3_5km_cffReproduce.zip");
-////			File altPlausibilityCompareFile = null;
-////			String compName = "UCERF3 10km, CFF Falback";
-////			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3_10km_cffFallback.zip");
-////			File altPlausibilityCompareFile = null;
-			
-			
 			// common ones
 			boolean skipPlausibility = false;
 			String compName = "UCERF3";
 			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
+			File altPlausibilityCompareFile = null;
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
 //			String compName = null;
 //			File compareFile = null;
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
 //			File altPlausibilityCompareFile = null;
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
-//			String compName = "1km Coulomb Patches";
-//			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
-//			File altPlausibilityCompareFile = null;
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
 //			String compName = "Current Preferred";
 //			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 //			File altPlausibilityCompareFile = null;
@@ -1048,6 +1063,9 @@ public class ReportPageGen {
 			}
 			if (skipPlausibility)
 				argz.add("--skip-plausibility");
+			if (level != null) {
+				argz.add("--plot-level"); argz.add(level.name());
+			}
 			args = argz.toArray(new String[0]);
 		}
 		

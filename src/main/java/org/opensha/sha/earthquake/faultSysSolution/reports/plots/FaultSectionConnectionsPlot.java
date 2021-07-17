@@ -205,7 +205,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		mainPlot = new File(resourcesDir, "sect_connectivity_hist.png");
 		compPlot = new File(resourcesDir, "sect_connectivity_hist_comp.png");
 		addTablePlots(table, mainPlot, compPlot, relPathToResources, meta.comparison != null);
-		if (sol != null || meta.comparison.sol != null) {
+		if (sol != null || (meta.comparison != null && meta.comparison.sol != null)) {
 			mainPlot = new File(resourcesDir, "sect_connectivity_hist_rates.png");
 			compPlot = new File(resourcesDir, "sect_connectivity_hist_rates_comp.png");
 			addTablePlots(table, mainPlot, compPlot, relPathToResources, meta.comparison != null);
@@ -256,7 +256,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	@Override
 	public List<String> getSummary(ReportMetadata meta, File resourcesDir, String relPathToResources, String topLink) {
 		List<String> lines = new ArrayList<>();
-		lines.add("### Connectivity Map");
+		lines.add(getSubHeading()+" Connectivity Map");
 		lines.add("");
 		lines.add(topLink);
 		lines.add("");
@@ -304,12 +304,12 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			table.initNewLine();
 			if ((mainGeoJSON != null && mainGeoJSON.exists()))
 				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+mainGeoJSON.getName())
-						+" "+"[Download GeoJSON]("+relPath+"/"+mainGeoJSON+".geojson)");
+						+" "+"[Download GeoJSON]("+relPath+"/"+mainGeoJSON.getName()+")");
 			else
 				table.addColumn("*N/A*");
 			if ((compGeoJSON != null && compGeoJSON.exists()))
 				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+compGeoJSON.getName())
-						+" "+"[Download GeoJSON]("+relPath+"/"+compGeoJSON+".geojson)");
+						+" "+"[Download GeoJSON]("+relPath+"/"+compGeoJSON.getName()+")");
 			else
 				table.addColumn("*N/A*");
 			table.finalizeLine();
