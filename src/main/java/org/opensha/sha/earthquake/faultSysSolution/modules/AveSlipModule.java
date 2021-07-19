@@ -112,7 +112,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
 
 		@Override
 		public String getFileName() {
-			return "ave_slips.csv";
+			return "average_slips.csv";
 		}
 
 		@Override

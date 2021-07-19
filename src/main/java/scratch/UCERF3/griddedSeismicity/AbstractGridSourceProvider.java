@@ -4,6 +4,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -320,6 +322,8 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 		private double[] fracNormal;
 		private double[] fracReverse;
 		
+		private boolean round = true;
+		
 		@SuppressWarnings("unused")
 		private Precomputed() {
 			// for serialization
@@ -359,6 +363,10 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			this.nodeSubSeisMFDs = subSeisBuilder.build();
 			this.nodeUnassociatedMFDs = unassociatedBuilder.build();
 		}
+		
+		public void setRound(boolean round) {
+			this.round = round;
+		}
 
 		@Override
 		public final IncrementalMagFreqDist getNodeUnassociatedMFD(int idx) {
@@ -390,6 +398,10 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			return fracNormal[idx];
 		}
 		
+		private static final int locRoundScale = 3;
+		private static final int magRoundScale = 3;
+		private static final int mfdRoundSigFigs = 6;
+		
 		private CSVFile<String> buildCSV(Map<Integer, IncrementalMagFreqDist> mfds) {
 			IncrementalMagFreqDist xVals = null;
 			
@@ -409,7 +421,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			header.add("Latitude");
 			header.add("Longitude");
 			for (int i=0; i<xVals.size(); i++)
-				header.add(xVals.getX(i)+"");
+				header.add(DataUtils.roundFixed(xVals.getX(i), magRoundScale)+"");
 			csv.addLine(header);
 			
 			final String empty = "";
@@ -419,8 +431,8 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 				Location loc = region.getLocation(i);
 				List<String> line = new ArrayList<>(header.size());
 				line.add(i+"");
-				line.add(loc.getLatitude()+"");
-				line.add(loc.getLongitude()+"");
+				line.add(DataUtils.roundFixed(loc.getLatitude(), locRoundScale)+"");
+				line.add(DataUtils.roundFixed(loc.getLongitude(), locRoundScale)+"");
 				if (mfd == null) {
 					while (line.size() < header.size())
 						line.add(empty);
@@ -430,7 +442,10 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 					for (int j=0; j<xVals.size(); j++) {
 						Preconditions.checkState((float)mfd.getX(j) == (float)xVals.getX(j),
 								"MFD x value mismatch for node %s value %s", i, j);
-						line.add(mfd.getY(j)+"");
+						if (round)
+							line.add(DataUtils.roundSigFigs(mfd.getY(j), mfdRoundSigFigs)+"");
+						else
+							line.add(mfd.getY(j)+"");
 					}
 				}
 				csv.addLine(line);

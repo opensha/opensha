@@ -108,7 +108,7 @@ public class DemoFileCreator {
 		
 		FaultSystemRupSet rupSet = FaultSystemRupSet.builderForClusterRups(subSects, rups)
 				.forScalingRelationship(ScalingRelationships.SHAW_2009_MOD)
-				.slipAlongRupture(SlipAlongRuptureModels.UNIFORM).build();
+				.slipAlongRupture(SlipAlongRuptureModels.UNIFORM).build(true);
 		rupSet.getArchive().write(new File(outputDir, "demo_rup_set.zip"));
 		// write old style as well
 		U3FaultSystemRupSet oldRupSet = new U3FaultSystemRupSet(subSects, rupSet.getSlipRateForAllSections(),

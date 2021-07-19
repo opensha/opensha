@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.math.RoundingMode;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,6 +26,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
@@ -294,7 +296,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		zout.closeEntry();
 	}
 	
-	public static final String RUP_SECTS_FILE_NAME = "section_indices.csv";
+	public static final String RUP_SECTS_FILE_NAME = "indices.csv";
 	
 	private CSVFile<String> buildRupSectsCSV() {
 		CSVFile<String> csv = new CSVFile<>(false);
@@ -1471,6 +1473,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		public FaultSystemRupSet build() {
+			return build(false);
+		}
+		
+		public FaultSystemRupSet build(boolean round) {
 			Preconditions.checkNotNull(mags, "Must set magnitudes");
 			int numRups = sectionForRups.size();
 			double[] rakes = this.rakes;
@@ -1515,12 +1521,24 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					}
 				}
 			}
-			
+			if (round) {
+				mags = roundFixed(mags, 3);
+				rakes = roundFixed(rakes, 1);
+				rupAreas = DataUtils.roundSigFigs(rupAreas, 6);
+				rupLengths = DataUtils.roundSigFigs(rupLengths, 6);
+			}
 			FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, sectionForRups, mags,
 					rakes, rupAreas, rupLengths);
 			for (ModuleBuilder module : modules)
 				rupSet.addModule(module.build(rupSet));
 			return rupSet;
+		}
+		
+		private static double[] roundFixed(double[] values, int scale) {
+			double[] ret = new double[values.length];
+			for (int i=0; i<ret.length; i++)
+				ret[i] = DataUtils.roundFixed(values[i], scale);
+			return ret;
 		}
 		
 	}
