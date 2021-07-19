@@ -1073,7 +1073,7 @@ public class DataUtils {
 			else
 				ret[i] = values[i];
 		}
-		return values;
+		return ret;
 	}
 
 }

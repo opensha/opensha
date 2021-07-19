@@ -472,9 +472,15 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 				line.add(i+"");
 				line.add(loc.getLatitude()+"");
 				line.add(loc.getLongitude()+"");
-				line.add(getFracStrikeSlip(i)+"");
-				line.add(getFracReverse(i)+"");
-				line.add(getFracNormal(i)+"");
+				if (round) {
+					line.add(DataUtils.roundFixed(getFracStrikeSlip(i), 6)+"");
+					line.add(DataUtils.roundFixed(getFracReverse(i), 6)+"");
+					line.add(DataUtils.roundFixed(getFracNormal(i), 6)+"");
+				} else {
+					line.add(getFracStrikeSlip(i)+"");
+					line.add(getFracReverse(i)+"");
+					line.add(getFracNormal(i)+"");
+				}
 				csv.addLine(line);
 			}
 			return csv;
