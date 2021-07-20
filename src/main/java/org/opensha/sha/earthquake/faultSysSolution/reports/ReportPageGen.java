@@ -38,14 +38,17 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgressPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverDistancePlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ParticipationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SegmentationPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SlipRatePlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -109,6 +112,7 @@ public class ReportPageGen {
 		if (level == PlotLevel.FULL) {
 			plots.add(new JumpAzimuthsPlot());
 			plots.add(new BiasiWesnouskyPlots());
+			plots.add(new SlipRatePlots());
 			plots.add(new SectBySectDetailPlots());
 		}
 		
@@ -119,10 +123,13 @@ public class ReportPageGen {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
 		plots.add(new SolMFDPlot());
+		plots.add(new ParticipationRatePlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new InversionProgressPlot());
 			plots.add(new FaultSectionConnectionsPlot());
+			plots.add(new SlipRatePlots());
 			plots.add(new JumpCountsOverDistancePlot());
 		}
 		if (level == PlotLevel.FULL) {
@@ -139,9 +146,7 @@ public class ReportPageGen {
 	}
 
 	public ReportPageGen(ReportMetadata meta, File outputDir, List<? extends AbstractRupSetPlot> plots) {
-		this.meta = meta;
-		this.outputDir = outputDir;
-		this.plots = plots;
+		init(meta, outputDir, plots);
 	}
 	
 	public ReportPageGen(CommandLine cmd) throws IOException {
@@ -598,6 +603,9 @@ public class ReportPageGen {
 		attachDefaultModules(meta.primary);
 		if (meta.comparison != null)
 			attachDefaultModules(meta.comparison);
+		
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir(),
+				"Could not create output directory: %s", outputDir.getAbsolutePath());
 		
 		File resourcesDir = new File(outputDir, "resources");
 		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir(),

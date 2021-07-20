@@ -65,6 +65,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
+import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 
 import com.google.common.base.Joiner;
@@ -490,7 +491,7 @@ ParameterChangeListener {
 					// single run case, show all component of energy
 					funcs.addAll(loadIndividualEnergies(false));
 					title += " (Single Run Components!)";
-					chars = ThreadedSimulatedAnnealing.getEnergyBreakdownChars();
+					chars = SimulatedAnnealing.getEnergyBreakdownChars();
 				} else {
 					funcs.addAll(curEnergyVsIters);
 				}
@@ -503,7 +504,7 @@ ParameterChangeListener {
 					// single run case, show all component of energy
 					funcs.addAll(loadIndividualEnergies(true));
 					title += " (Single Run Components!)";
-					chars = ThreadedSimulatedAnnealing.getEnergyBreakdownChars();
+					chars = SimulatedAnnealing.getEnergyBreakdownChars();
 				} else {
 					funcs.addAll(curEnergyVsTimes);
 				}

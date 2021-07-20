@@ -153,7 +153,7 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		minMag = Math.min(5d, Math.floor(minMag));
 		maxMag = Math.max(9d, Math.ceil(maxMag));
 		double delta = 0.1;
-		int num = (int)((maxMag - minMag)/delta);
+		int num = (int)((maxMag - minMag)/delta + 0.5)+1;
 		return new IncrementalMagFreqDist(minMag, maxMag, num);
 	}
 	

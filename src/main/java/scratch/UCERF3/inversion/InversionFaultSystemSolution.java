@@ -816,19 +816,19 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * 
 	 * @return
 	 */
-	public IncrementalMagFreqDist getFinalTrulyOffFaultMFD() {
-		U3InversionTargetMFDs inversionTargetMFDs = rupSet.getInversionTargetMFDs();
-		
-		if(branch.getValue(MomentRateFixes.class) == MomentRateFixes.NONE ||
-				branch.getValue(MomentRateFixes.class) == MomentRateFixes.APPLY_IMPLIED_CC ) {
+	public static IncrementalMagFreqDist getFinalTrulyOffFaultMFD(InversionTargetMFDs inversionTargetMFDs,
+			MomentRateFixes momRateFixes, double mMaxOffFault, IncrementalMagFreqDist totalSubSeismoMFD,
+			IncrementalMagFreqDist totalSupraSeismoRegionalMFD) {
+		if(momRateFixes == MomentRateFixes.NONE || momRateFixes == MomentRateFixes.APPLY_IMPLIED_CC ) {
 					
-			SummedMagFreqDist finalTrulyOffMFD = new SummedMagFreqDist(inversionTargetMFDs.MIN_MAG, inversionTargetMFDs.NUM_MAG, inversionTargetMFDs.DELTA_MAG);
+			SummedMagFreqDist finalTrulyOffMFD = new SummedMagFreqDist(U3InversionTargetMFDs.MIN_MAG,
+					U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
 			finalTrulyOffMFD.addIncrementalMagFreqDist(inversionTargetMFDs.getTotalRegionalMFD());
-			finalTrulyOffMFD.subtractIncrementalMagFreqDist(calcNucleationMFD_forRegion(RELM_RegionUtils.getGriddedRegionInstance(), inversionTargetMFDs.MIN_MAG, inversionTargetMFDs.MAX_MAG, inversionTargetMFDs.DELTA_MAG, true));
-			finalTrulyOffMFD.subtractIncrementalMagFreqDist(getFinalTotalSubSeismoOnFaultMFD());
+			finalTrulyOffMFD.subtractIncrementalMagFreqDist(totalSupraSeismoRegionalMFD);
+			finalTrulyOffMFD.subtractIncrementalMagFreqDist(totalSupraSeismoRegionalMFD);
 			
 			// zero out values above mMaxOffFault
-			double mMaxOffFault = getLogicTreeBranch().getValue(MaxMagOffFault.class).getMaxMagOffFault();
+//			double mMaxOffFault = getLogicTreeBranch().getValue(MaxMagOffFault.class).getMaxMagOffFault();
 			mMaxOffFault -= U3InversionTargetMFDs.DELTA_MAG/2;
 			
 			// SummedMagFreqDist doesn't allow set, so put it in a new one
@@ -847,6 +847,16 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			finalTrulyOffMFD.setInfo("identical to inversionTargetMFDs.getTrulyOffFaultMFD() in this case");
 			return finalTrulyOffMFD;
 		}
+	}
+	
+	public IncrementalMagFreqDist getFinalTrulyOffFaultMFD() {
+		IncrementalMagFreqDist totalSupraSeismoRegionalMFD = calcNucleationMFD_forRegion(RELM_RegionUtils.getGriddedRegionInstance(),
+				U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.MAX_MAG, U3InversionTargetMFDs.DELTA_MAG, true);
+		IncrementalMagFreqDist totalSubSeismoMFD = getFinalTotalSubSeismoOnFaultMFD();
+		return getFinalTrulyOffFaultMFD(getRupSet().getInversionTargetMFDs(),
+				getLogicTreeBranch().getValue(MomentRateFixes.class),
+				getLogicTreeBranch().getValue(MaxMagOffFault.class).getMaxMagOffFault(),
+				totalSubSeismoMFD, totalSupraSeismoRegionalMFD);
 	}
 
 	

@@ -177,7 +177,7 @@ public class RunInversion {
 			CompletionCriteria subCompetionCriteria = TimeCompletionCriteria.getInSeconds(1); // 1 second;
 			
 			ThreadedSimulatedAnnealing tsa = new ThreadedSimulatedAnnealing(A, d, initial, relativeSmoothnessWt,
-					A_ineq, d_ineq, minimumRuptureRates, numThreads, subCompetionCriteria);
+					A_ineq, d_ineq, numThreads, subCompetionCriteria);
 			
 			tsa.setConstraintRanges(gen.getConstraintRowRanges());
 			

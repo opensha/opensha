@@ -46,7 +46,7 @@ import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class DemoFileCreator {
+class DemoFileCreator {
 
 	public static void main(String[] args) throws IOException {
 		// this writes out a very simple fault system rupture set and solution for use in explaining the file formats

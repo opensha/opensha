@@ -74,6 +74,7 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
+import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
 import scratch.UCERF3.utils.MatrixIO;
@@ -518,7 +519,7 @@ public class CommandLineInversionRunner {
 			System.out.println("Creating TSA");
 			// set up multi thread SA
 			ThreadedSimulatedAnnealing tsa = ThreadedSimulatedAnnealing.parseOptions(cmd, A, d,
-					initialState, A_ineq, d_ineq, minimumRuptureRates, constraintRanges);
+					initialState, A_ineq, d_ineq, constraintRanges);
 			// store a copy of the initial state for later
 			initialState = Arrays.copyOf(initialState, initialState.length);
 			// setup completion criteria
@@ -545,7 +546,8 @@ public class CommandLineInversionRunner {
 			info += "\n"+tsa.getMetadata(args, criteria);
 			// add metadata on how many ruptures had their rates actually peturbed
 			ProgressTrackingCompletionCriteria pComp = (ProgressTrackingCompletionCriteria)criteria;
-			long numPerturbs = pComp.getPerturbs().get(pComp.getPerturbs().size()-1);
+			AnnealingProgress progress = pComp.getProgress();
+			long numPerturbs = progress.getNumPerturbations(progress.size()-1);
 			int numRups = initialState.length;
 			info += "\nAvg Perturbs Per Rup: "+numPerturbs+"/"+numRups+" = "
 			+((double)numPerturbs/(double)numRups);
@@ -567,7 +569,7 @@ public class CommandLineInversionRunner {
 			info += "\n******************************************";
 			System.out.println("Writing solution bin files");
 			// write out results
-			tsa.writeBestSolution(new File(subDir, prefix+".bin"));
+			tsa.writeBestSolution(new File(subDir, prefix+".bin"), minimumRuptureRates);
 
 			// for lightweight we just write out the .bin file, no solution files
 			if (!lightweight) {
@@ -702,7 +704,7 @@ public class CommandLineInversionRunner {
 					System.out.println("Writing Plots");
 					
 					// write simulated annealing related plots
-					tsa.writePlots(criteria, new File(subDir, prefix));
+					tsa.writePlots(criteria, subDir, prefix, minimumRuptureRates);
 
 					// 1 km jump plot
 					try {

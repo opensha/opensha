@@ -85,6 +85,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private Random r = new Random();
 
+	private double[] initialState;
+
 	/**
 	 * @param A A matrix, likely an instance of SparseDoubleMatrix2D
 	 * @param d d array
@@ -118,6 +120,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	private void setup(DoubleMatrix2D A, double[] d, double[] initialState) {
+		this.initialState = initialState;
 		Preconditions.checkNotNull(A, "A matrix cannot be null");
 		Preconditions.checkNotNull(d, "d matrix cannot be null");
 		Preconditions.checkNotNull(initialState, "initial state cannot be null");
@@ -759,6 +762,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		}
 		if (cmd.hasOption("energyscale"))
 			energyScaleFactor = Double.parseDouble(cmd.getOptionValue("energyscale"));
+	}
+
+	@Override
+	public double[] getInitialSolution() {
+		return initialState;
 	}
 
 }

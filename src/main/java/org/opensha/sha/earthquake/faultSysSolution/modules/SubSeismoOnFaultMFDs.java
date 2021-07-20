@@ -6,6 +6,7 @@ import java.util.List;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -32,6 +33,19 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 	
 	public ImmutableList<IncrementalMagFreqDist> getAll() {
 		return subSeismoOnFaultMFDs;
+	}
+	
+	public SummedMagFreqDist getTotal() {
+		SummedMagFreqDist sum = null;
+		for (int i=0; i<size(); i++) {
+			IncrementalMagFreqDist mfd = get(i);
+			if (mfd == null)
+				continue;
+			if (sum == null)
+				sum = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+			sum.addIncrementalMagFreqDist(mfd);
+		}
+		return sum;
 	}
 	
 	public static final String DATA_FILE_NAME = "sub_seismo_on_fault_mfds.csv";

@@ -10,7 +10,9 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -18,9 +20,13 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.U3FaultSystemSolution;
+import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
+import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -38,7 +44,6 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	private final CaliforniaRegions.RELM_TESTING_GRIDDED region = RELM_RegionUtils.getGriddedRegionInstance();
 
 	private static double[] fracStrikeSlip,fracNormal,fracReverse;
-	private U3LogicTreeBranch branch;
 	private FaultGridAssociations polyMgr;
 	
 	// spatial pdfs of seismicity, orginal and revised (reduced and
@@ -75,22 +80,47 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 *        grided/background sources should be generated
 	 */
 	public UCERF3_GridSourceGenerator(InversionFaultSystemSolution ifss) {
-		branch = ifss.getLogicTreeBranch();
-		srcSpatialPDF = branch.getValue(SpatialSeisPDF.class).getPDF();
+		this(ifss, ifss.getLogicTreeBranch().getValue(SpatialSeisPDF.class),
+				ifss.getLogicTreeBranch().getValue(MomentRateFixes.class), ifss.getRupSet().getInversionTargetMFDs(),
+				ifss.requireModule(SubSeismoOnFaultMFDs.class),
+				ifss.getLogicTreeBranch().getValue(MaxMagOffFault.class).getMaxMagOffFault(),
+				ifss.getRupSet().requireModule(FaultGridAssociations.class));
+	}
+
+	/**
+	 * Options:
+	 * 
+	 * 1) set a-values in fault-section polygons from moment-rate reduction or
+	 * from smoothed seismicity
+	 * 
+	 * 2) focal mechanism options, and finite vs point
+	 * sources (cross hair, random strike, etc)?
+	 * 
+	 * @param ifss {@code InversionFaultSystemSolution} for which
+	 *        grided/background sources should be generated
+	 */
+	public UCERF3_GridSourceGenerator(FaultSystemSolution fss, SpatialSeisPDF srcSpatialPDF, MomentRateFixes rateFixes,
+			InversionTargetMFDs targetMFDs, SubSeismoOnFaultMFDs subSeisMFDs, double mMaxOffFault,
+			FaultGridAssociations polyMgr) {
+		this.srcSpatialPDF = srcSpatialPDF.getPDF();
 //		totalMgt5_Rate = branch.getValue(TotalMag5Rate.class).getRateMag5();
-		realOffFaultMFD = ifss.getFinalTrulyOffFaultMFD();
+		IncrementalMagFreqDist totalNuclMFD = fss.calcNucleationMFD_forRegion(RELM_RegionUtils.getGriddedRegionInstance(),
+				U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.MAX_MAG, U3InversionTargetMFDs.DELTA_MAG, true);
+		realOffFaultMFD = InversionFaultSystemSolution.getFinalTrulyOffFaultMFD(targetMFDs, rateFixes, mMaxOffFault,
+				subSeisMFDs.getTotal(), totalNuclMFD);
 
 		mfdMin = realOffFaultMFD.getMinX();
 		mfdMax = realOffFaultMFD.getMaxX();
 		mfdNum = realOffFaultMFD.size();
 
 //		polyMgr = FaultPolyMgr.create(fss.getFaultSectionDataList(), 12d);
-		polyMgr = ifss.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+		this.polyMgr = polyMgr;
+//		polyMgr = ifss.getRupSet().getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 
 		System.out.println("   initSectionMFDs() ...");
-		initSectionMFDs(ifss);
+		initSectionMFDs(fss, subSeisMFDs);
 		System.out.println("   initNodeMFDs() ...");
-		initNodeMFDs(ifss);
+		initNodeMFDs(fss);
 		System.out.println("   updateSpatialPDF() ...");
 		updateSpatialPDF();
 	}
@@ -100,13 +130,12 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 * Initialize the sub-seismogenic MFDs for each fault section
 	 * (sectSubSeisMFDs)
 	 */
-	private void initSectionMFDs(InversionFaultSystemSolution ifss) {
+	private void initSectionMFDs(FaultSystemSolution fss, SubSeismoOnFaultMFDs subSeisMFDs) {
 
-		List<? extends IncrementalMagFreqDist> subSeisMFD_list = 
-				ifss.getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_list =  subSeisMFDs.getAll();
 
 		sectSubSeisMFDs = Maps.newHashMap();
-		List<? extends FaultSection> faults = ifss.getRupSet().getFaultSectionDataList();
+		List<? extends FaultSection> faults = fss.getRupSet().getFaultSectionDataList();
 		for (int i = 0; i < faults.size(); i++) {
 			sectSubSeisMFDs.put(
 				faults.get(i).getSectionId(),
@@ -119,9 +148,9 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	 * (nodeSubSeisMFDs) by partitioning the sectSubSeisMFDs according to
 	 * the overlapping fraction of each fault section and grid node.
 	 */
-	private void initNodeMFDs(InversionFaultSystemSolution ifss) {
+	private void initNodeMFDs(FaultSystemSolution fss) {
 		nodeSubSeisMFDs = Maps.newHashMap();
-		for (FaultSection sect : ifss.getRupSet().getFaultSectionDataList()) {
+		for (FaultSection sect : fss.getRupSet().getFaultSectionDataList()) {
 			int id = sect.getSectionId();
 			IncrementalMagFreqDist sectSubSeisMFD = sectSubSeisMFDs.get(id);
 			Map<Integer, Double> nodeFractions = polyMgr.getNodeFractions(id);

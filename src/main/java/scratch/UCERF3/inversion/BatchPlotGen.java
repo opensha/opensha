@@ -42,6 +42,7 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
+import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.MatrixIO;
@@ -576,7 +577,7 @@ public class BatchPlotGen {
 			for (int r=0; r<rates.length; r++)
 				ratesNoMin[r] = rates[r] - minRates[r];
 			
-			ThreadedSimulatedAnnealing.writeRateVsRankPlot(new File(dir, prefix), ratesNoMin, rates, new double[minRates.length]);
+			SimulatedAnnealing.writeRateVsRankPlot(dir, prefix+"_rate_dist", ratesNoMin, rates, new double[minRates.length]);
 		}
 	}
 	
