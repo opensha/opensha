@@ -903,6 +903,15 @@ public class DataUtils {
 		public double getMax() {
 			return max;
 		}
+		
+		/**
+		 * Returns the length of the range
+		 * 
+		 * @return getMax()-getMin()
+		 */
+		public double getLength() {
+			return max-min;
+		}
 
 		/**
 		 * Computes the average of all values that have been added to this tracker.

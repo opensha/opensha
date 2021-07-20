@@ -43,7 +43,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverD
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
-import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectConnectionDetailPlots;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SegmentationPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
@@ -109,7 +109,7 @@ public class ReportPageGen {
 		if (level == PlotLevel.FULL) {
 			plots.add(new JumpAzimuthsPlot());
 			plots.add(new BiasiWesnouskyPlots());
-			plots.add(new SectBySectConnectionDetailPlots());
+			plots.add(new SectBySectDetailPlots());
 		}
 		
 		return plots;
@@ -127,6 +127,7 @@ public class ReportPageGen {
 		}
 		if (level == PlotLevel.FULL) {
 			plots.add(new SegmentationPlot());
+			plots.add(new SectBySectDetailPlots());
 		}
 		
 		return plots;

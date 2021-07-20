@@ -90,9 +90,8 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 
 		MinMaxAveTracker magTrack = rupSetMagTrack(rupSet, meta);
 		System.out.println("Rup set mags: "+magTrack);
-		double minMag = Math.min(5d, Math.floor(magTrack.getMin()));
-		double maxMag = Math.max(9d, magTrack.getMax());
-		Range xRange = new Range(minMag, maxMag);
+		IncrementalMagFreqDist defaultMFD = initDefaultMFD(magTrack.getMin(), magTrack.getMax());
+		Range xRange = xRange(defaultMFD);
 		Range yRange = new Range(1e-6, 1e1);
 		
 		List<String> lines = new ArrayList<>();
@@ -121,9 +120,8 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			
 			if (meta.comparison != null && meta.comparison.sol != null)
 				addSolMFDs(meta.comparison.sol, "Comparison", COMP_COLOR, plot.region,
-						incrFuncs, cmlFuncs, chars, xRange);
-			addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
-					incrFuncs, cmlFuncs, chars, xRange);
+						incrFuncs, cmlFuncs, chars, defaultMFD);
+			addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region, incrFuncs, cmlFuncs, chars, defaultMFD);
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			table.addLine("Incremental MFDs", "Cumulative MFDs");
 			
@@ -149,6 +147,18 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			lines.addAll(table.build());
 		}
 		return lines;
+	}
+	
+	static IncrementalMagFreqDist initDefaultMFD(double minMag, double maxMag) {
+		minMag = Math.min(5d, Math.floor(minMag));
+		maxMag = Math.max(9d, Math.ceil(maxMag));
+		double delta = 0.1;
+		int num = (int)((maxMag - minMag)/delta);
+		return new IncrementalMagFreqDist(minMag, maxMag, num);
+	}
+	
+	static Range xRange(IncrementalMagFreqDist mfd) {
+		return new Range(mfd.getMinX()-0.5*mfd.getDelta(), mfd.getMaxX()+0.5*mfd.getDelta());
 	}
 	
 	private static MinMaxAveTracker rupSetMagTrack(FaultSystemRupSet rupSet, ReportMetadata meta) {
@@ -186,10 +196,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 	
 	private static void addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
 			List<IncrementalMagFreqDist> incrFuncs, List<EvenlyDiscretizedFunc> cmlFuncs,
-			List<PlotCurveCharacterstics> chars, Range xRange) {
-		double delta = 0.1;
+			List<PlotCurveCharacterstics> chars, IncrementalMagFreqDist defaultMFD) {
 		IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forRegion(
-				region, xRange.getLowerBound()+0.5*delta, xRange.getUpperBound()-0.5*delta, delta, false);
+				region, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size(), false);
 		if (sol.hasModule(GridSourceProvider.class)) {
 			GridSourceProvider prov = sol.getGridSourceProvider();
 			SummedMagFreqDist gridMFD = null;
