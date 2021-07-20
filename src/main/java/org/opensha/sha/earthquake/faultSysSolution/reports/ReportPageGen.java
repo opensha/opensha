@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlo
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectConnectionDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SegmentationPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -117,6 +118,7 @@ public class ReportPageGen {
 	public static List<AbstractRupSetPlot> getDefaultSolutionPlots(PlotLevel level) {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
+		plots.add(new SolMFDPlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
@@ -1015,33 +1017,30 @@ public class ReportPageGen {
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 //			String inputName = "RSQSim 5212, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
-//			String inputName = "RSQSim 4983, SectArea=0.5, Uniques";
+//			String inputName = "RSQSim 498a3, SectArea=0.5, Uniques";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
 //			String inputName = "RSQSim 5133, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
 			
-			String inputName = "UCERF4 Proposed (U3 Faults)";
-			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
-//			boolean skipPlausibility = false;
-//			File altPlausibilityCompareFile = null;
-//			String compName = null;
-//			File compareFile = null;
+//			String inputName = "UCERF4 Proposed (U3 Faults)";
+//			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+			
+//			String inputName = "FM3.1 MeanUCERF3";
+//			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+			String inputName = "FM3.1 U3 Ref Branch";
+			File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
 			
 //			String inputName = "UCERF4 Proposed (NSHM23 1.2 Faults)";
 //			File inputFile = new File(rupSetsDir, "nshm23_v1p2_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
-//			boolean skipPlausibility = false;
-//			File altPlausibilityCompareFile = null;
-//			String compName = null;
-//			File compareFile = null;
 			
-			// common ones
+			// common comparisons
 			boolean skipPlausibility = false;
-			String compName = "UCERF3";
-			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+//			String compName = "UCERF3";
+//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			File altPlausibilityCompareFile = null;
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
-//			String compName = null;
-//			File compareFile = null;
+			String compName = null;
+			File compareFile = null;
 //			File altPlausibilityCompareFile = null;
 //			String compName = "Current Preferred";
 //			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");

@@ -324,9 +324,6 @@ public class PlotSpec implements Serializable {
 		if (yLog)
 			relY = relLogPos(relY, yRange);
 		
-		System.out.println("relX="+relX);
-		System.out.println("relY="+relY);
-		
 		XYTitleAnnotation ann = new XYTitleAnnotation(relX, relY, lt, insetLegendLocation);
 		ann.setMaxWidth(insetLegendMaxWidth);
 		return ann;

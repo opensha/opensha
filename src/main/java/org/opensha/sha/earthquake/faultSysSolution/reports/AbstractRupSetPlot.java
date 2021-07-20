@@ -142,5 +142,16 @@ public abstract class AbstractRupSetPlot implements Named {
 			return title.substring(0, 29).trim()+"…";
 		return title;
 	}
+	
+	protected static String getFileSafe(String name) {
+		String safe = name.replaceAll("\\W+", "_");
+		while (safe.contains("__"))
+			safe.replaceAll("__", "_");
+		if (safe.startsWith("_"))
+			safe = safe.substring(1);
+		if (safe.endsWith("_"))
+			safe = safe.substring(0, safe.length()-1);
+		return safe;
+	}
 
 }

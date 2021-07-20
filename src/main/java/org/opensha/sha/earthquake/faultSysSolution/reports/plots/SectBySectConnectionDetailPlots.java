@@ -162,14 +162,7 @@ public class SectBySectConnectionDetailPlots extends AbstractRupSetPlot {
 			List<FaultSection>> sectsByParent, RupSetMapMaker mapMaker) throws IOException {
 		System.out.println("Building page for: "+parentName);
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
-		String dirName = parentName.replaceAll("\\W+", "_");
-		while (dirName.contains("__"))
-			dirName.replaceAll("__", "_");
-		if (dirName.startsWith("_"))
-			dirName = dirName.substring(1);
-		if (dirName.endsWith("_"))
-			dirName = dirName.substring(0, dirName.length()-1);
-//		MarkdownUtils.wri
+		String dirName = getFileSafe(parentName);
 		
 		File outputDir = new File(parentsDir, dirName);
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());

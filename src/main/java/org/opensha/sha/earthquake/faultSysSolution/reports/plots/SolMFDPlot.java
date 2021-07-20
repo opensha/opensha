@@ -1,0 +1,229 @@
+package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
+
+import java.awt.Color;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import org.jfree.data.Range;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
+import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.MarkdownUtils;
+import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
+
+import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.utils.MFD_InversionConstraint;
+
+public class SolMFDPlot extends AbstractSolutionPlot {
+
+	@Override
+	public String getName() {
+		return "Solution MFDs";
+	}
+	
+	private static final Color SUPRA_SEIS_TARGET_COLOR = Color.CYAN.darker();
+
+	@Override
+	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
+			String topLink) throws IOException {
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		List<MFD_Plot> plots = new ArrayList<>();
+		if (rupSet.hasModule(InversionTargetMFDs.class)) {
+			InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
+			
+			MFD_Plot totalPlot = new MFD_Plot("Total Target MFDs", null);
+			totalPlot.addComp(targetMFDs.getTotalRegionalMFD(), Color.GREEN.darker(), "Total Target");
+			totalPlot.addComp(targetMFDs.getTotalGriddedSeisMFD(), Color.GRAY, "Target Gridded Seismicity");
+			totalPlot.addComp(targetMFDs.getTotalOnFaultSubSeisMFD(), Color.MAGENTA.darker(), "Target Sub-Seis");
+			totalPlot.addComp(targetMFDs.getTotalOnFaultSupraSeisMFD(), SUPRA_SEIS_TARGET_COLOR, "Target Supra-Seis");
+			plots.add(totalPlot);
+			
+			List<MFD_InversionConstraint> constraints = targetMFDs.getMFD_Constraints();
+			for (MFD_InversionConstraint constraint : constraints) {
+				Region region = constraint.getRegion();
+				String name;
+				if (region == null || region.getName() == null || region.getName().isBlank()) {
+					if (constraints.size() == 1)
+						name = "MFD Constraint";
+					else
+						name = "MFD Constraint "+plots.size();
+				} else {
+					name = region.getName();
+				}
+				if (constraint.getMagFreqDist().equals(targetMFDs.getTotalOnFaultSupraSeisMFD())) {
+					// skip it, but set region if applicable
+					totalPlot.region = region;
+				} else {
+					MFD_Plot plot = new MFD_Plot(name, region);
+					plot.addComp(constraint.getMagFreqDist(), SUPRA_SEIS_TARGET_COLOR, "Target");
+					plots.add(plot);
+				}
+			}
+		} else {
+			// generic plot
+			Region region = null;
+			// see if we have a region
+			if (sol.hasModule(GridSourceProvider.class))
+				region = sol.getModule(GridSourceProvider.class).getGriddedRegion();
+			else if (rupSet.hasModule(FaultGridAssociations.class))
+				region = rupSet.getModule(FaultGridAssociations.class).getRegion();
+			plots.add(new MFD_Plot("Total MFD", region));
+		}
+
+		MinMaxAveTracker magTrack = rupSetMagTrack(rupSet, meta);
+		System.out.println("Rup set mags: "+magTrack);
+		double minMag = Math.min(5d, Math.floor(magTrack.getMin()));
+		double maxMag = Math.max(9d, magTrack.getMax());
+		Range xRange = new Range(minMag, maxMag);
+		Range yRange = new Range(1e-6, 1e1);
+		
+		List<String> lines = new ArrayList<>();
+		for (MFD_Plot plot : plots) {
+			if (plots.size() > 1) {
+				if (!lines.isEmpty())
+					lines.add("");
+				lines.add(getSubHeading()+" "+plot.name);
+				lines.add(topLink); lines.add("");
+			}
+			List<IncrementalMagFreqDist> incrFuncs = new ArrayList<>();
+			List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			String prefix = "mfd_plot_"+getFileSafe(plot.name);
+			
+			for (int c=0; c<plot.comps.size(); c++) {
+				IncrementalMagFreqDist comp = plot.comps.get(c);
+				if (comp == null)
+					continue;
+				comp.setName(plot.compNames.get(c));
+				incrFuncs.add(comp);
+				cmlFuncs.add(comp.getCumRateDistWithOffset());
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, plot.compColors.get(c)));
+			}
+			
+			if (meta.comparison != null && meta.comparison.sol != null)
+				addSolMFDs(meta.comparison.sol, "Comparison", COMP_COLOR, plot.region,
+						incrFuncs, cmlFuncs, chars, xRange);
+			addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
+					incrFuncs, cmlFuncs, chars, xRange);
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.addLine("Incremental MFDs", "Cumulative MFDs");
+			
+			PlotSpec incrSpec = new PlotSpec(incrFuncs, chars, plot.name, "Magnitude", "Incremental Rate (per yr)");
+			PlotSpec cmlSpec = new PlotSpec(cmlFuncs, chars, plot.name, "Magnitude", "Cumulative Rate (per yr)");
+			incrSpec.setLegendInset(true);
+			cmlSpec.setLegendInset(true);
+			
+			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			gp.setTickLabelFontSize(20);
+			
+			table.initNewLine();
+			gp.drawGraphPanel(incrSpec, false, true, xRange, yRange);
+			PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 850, true, true, true);
+			table.addColumn("![Incremental Plot]("+relPathToResources+"/"+prefix+".png)");
+			
+			prefix += "_cumulative";
+			gp.drawGraphPanel(cmlSpec, false, true, xRange, yRange);
+			PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 850, true, true, true);
+			table.addColumn("![Cumulative Plot]("+relPathToResources+"/"+prefix+".png)");
+			table.finalizeLine();
+			
+			lines.addAll(table.build());
+		}
+		return lines;
+	}
+	
+	private static MinMaxAveTracker rupSetMagTrack(FaultSystemRupSet rupSet, ReportMetadata meta) {
+		MinMaxAveTracker track = new MinMaxAveTracker();
+		track.addValue(rupSet.getMinMag());
+		track.addValue(rupSet.getMaxMag());
+		if (meta.comparison != null && meta.comparison.sol != null) {
+			track.addValue(meta.comparison.rupSet.getMinMag());
+			track.addValue(meta.comparison.rupSet.getMaxMag());
+		}
+		return track;
+	}
+	
+	private static class MFD_Plot {
+		private String name;
+		private Region region;
+		private List<IncrementalMagFreqDist> comps;
+		private List<Color> compColors;
+		private List<String> compNames;
+		
+		public MFD_Plot(String name, Region region) {
+			this.name = name;
+			this.region = region;
+			this.comps = new ArrayList<>();
+			this.compColors = new ArrayList<>();
+			this.compNames = new ArrayList<>();
+		}
+		
+		public void addComp(IncrementalMagFreqDist comp, Color color, String name) {
+			comps.add(comp);
+			compColors.add(color);
+			compNames.add(name);
+		}
+	}
+	
+	private static void addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
+			List<IncrementalMagFreqDist> incrFuncs, List<EvenlyDiscretizedFunc> cmlFuncs,
+			List<PlotCurveCharacterstics> chars, Range xRange) {
+		double delta = 0.1;
+		IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forRegion(
+				region, xRange.getLowerBound()+0.5*delta, xRange.getUpperBound()-0.5*delta, delta, false);
+		if (sol.hasModule(GridSourceProvider.class)) {
+			GridSourceProvider prov = sol.getGridSourceProvider();
+			SummedMagFreqDist gridMFD = null;
+			GriddedRegion gridReg = prov.getGriddedRegion();
+			for (int i=0; i<gridReg.getNodeCount(); i++) {
+				IncrementalMagFreqDist nodeMFD = prov.getNodeMFD(i);
+				if (nodeMFD == null)
+					continue;
+				if (region != null && !region.contains(gridReg.getLocation(i)))
+					continue;
+				if (gridMFD == null)
+					gridMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());
+				gridMFD.addIncrementalMagFreqDist(nodeMFD);
+			}
+			if (gridMFD != null) {
+				SummedMagFreqDist totalMFD = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+				totalMFD.addIncrementalMagFreqDist(mfd);
+				totalMFD.addIncrementalMagFreqDist(gridMFD);
+				totalMFD.setName(name+" Total");
+				incrFuncs.add(totalMFD);
+				cmlFuncs.add(totalMFD.getCumRateDistWithOffset());
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 5f, color));
+				name = name+" Supra-Seis";
+			}
+		}
+		mfd.setName(name);
+		incrFuncs.add(mfd);
+		cmlFuncs.add(mfd.getCumRateDistWithOffset());
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color));
+	}
+
+	@Override
+	public Collection<Class<? extends OpenSHA_Module>> getRequiredModules() {
+		return null;
+	}
+
+}
