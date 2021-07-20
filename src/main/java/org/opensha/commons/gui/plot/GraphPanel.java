@@ -679,7 +679,7 @@ public class GraphPanel extends JSplitPane {
 				
 				if (plotSpec.isLegendInset()) {
 					// just for this plot, inset
-					subPlot.addAnnotation(plotSpec.buildInsetLegend(subLegend, plotPrefs));
+					subPlot.addAnnotation(plotSpec.buildInsetLegend(subLegend, plotPrefs, xLog, yLog, xAxis.getRange(), yAxis.getRange()));
 				} else {
 					if (legendItems == null) {
 						legendItems = new LegendItemCollection();
