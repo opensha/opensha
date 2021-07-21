@@ -64,6 +64,7 @@ import com.google.common.base.Preconditions;
 public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
 	private double maxNeighborDistance;
+	private boolean doGeoJSON = false;
 
 	public SectBySectDetailPlots() {
 		this(Double.NaN);
@@ -71,7 +72,6 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
 	public SectBySectDetailPlots(double maxNeighborDistance) {
 		this.maxNeighborDistance = maxNeighborDistance;
-		
 	}
 
 	@Override
@@ -111,6 +111,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		Preconditions.checkState(parentsDir.exists() || parentsDir.mkdir());
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		mapMaker.setWriteGeoJSON(doGeoJSON);
 		Map<String, String> linksMap = new HashMap<>();
 		for (int parentID : sectsByParent.keySet()) {
 			String parentName = sectsByParent.get(parentID).get(0).getParentSectionName();
@@ -277,7 +278,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
-		List<String> jsonLinks = new ArrayList<>();
+		List<String> jsonLinks = doGeoJSON ? new ArrayList<>() : null;
 		for (boolean rate : new boolean[] {false, true}) {
 			Map<Integer, ? extends Number> valsMap = rate ? rupData.sectCoruptureRates : rupData.sectCoruptureCounts;
 			if (valsMap == null)
@@ -324,17 +325,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			mapMaker.clearSectScalars();
 			mapMaker.plotSectScalars(scalars, cpt, label);
 			mapMaker.highLightSections(mySects, highlightChar);
-			mapMaker.setWriteGeoJSON(true);
 			mapMaker.setWritePDFs(false);
 			mapMaker.setSkipNaNs(true);
 			mapMaker.plot(outputDir, prefix, parentName+" Connectivity");
 			table.addColumn("![Map]("+prefix+".png)");
 			
-			jsonLinks.add(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", prefix+".geojson")
-					+" [Download GeoJSON]("+prefix+".geojson)");
+			if (doGeoJSON)
+				jsonLinks.add(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", prefix+".geojson")
+						+" [Download GeoJSON]("+prefix+".geojson)");
 		}
 		table.finalizeLine();
-		table.addLine(jsonLinks);
+		if (doGeoJSON)
+			table.addLine(jsonLinks);
 		
 		lines.addAll(table.build());
 		lines.add("");

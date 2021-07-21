@@ -12,6 +12,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -135,6 +136,7 @@ public interface SimulatedAnnealing {
 		// rates with waterlevel
 		rates = getSorted(rates);
 		EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
+		func.setName("Inversion Rates");
 		int cnt = 0;
 		for (int i=ratesNoMin.length; --i >= 0;)
 			func.set(cnt++, ratesNoMin[i]);
@@ -145,6 +147,7 @@ public interface SimulatedAnnealing {
 				new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLUE));
 		
 		EvenlyDiscretizedFunc initialFunc = new EvenlyDiscretizedFunc(0d, initialState.length, 1d);
+		initialFunc.setName("Initial Solution");
 		double[] initialSorted = getSorted(initialState);
 		cnt = 0;
 		for (int i=initialSorted.length; --i >= 0;)
@@ -154,17 +157,18 @@ public interface SimulatedAnnealing {
 		
 		if (rates != null) {
 			EvenlyDiscretizedFunc adjFunc = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
+			adjFunc.setName("Final Solution");
 			cnt = 0;
 			for (int i=rates.length; --i >= 0;)
 				adjFunc.set(cnt++, rates[i]);
 			funcs.add(0, adjFunc);
 			chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
 		}
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		CommandLineInversionRunner.setFontSizes(gp);
-		gp.setBackgroundColor(Color.WHITE);
+		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		gp.setYLog(true);
-		gp.drawGraphPanel("Rank", "Rate", funcs, chars, "Rupture Rate Distribution");
+		PlotSpec spec = new PlotSpec(funcs, chars, "Rupture Rate Distribution", "Rank", "Rate (per year)");
+		spec.setLegendInset(true);
+		gp.drawGraphPanel(spec);
 		File file = new File(outputDir, prefix);
 		gp.saveAsPNG(file.getAbsolutePath()+".png", plot_width, plot_height);
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf", plot_width, plot_height);
@@ -182,11 +186,13 @@ public interface SimulatedAnnealing {
 		
 		List<String> types = track.getEnergyTypes();
 		int num = types.size();
-		ArbitrarilyDiscretizedFunc[] energyVsTime = new ArbitrarilyDiscretizedFunc[num];
-		ArbitrarilyDiscretizedFunc[] energyVsIters = new ArbitrarilyDiscretizedFunc[num];
+		
+		List<ArbitrarilyDiscretizedFunc> timeFuncs = new ArrayList<>();
+		List<ArbitrarilyDiscretizedFunc> iterFuncs = new ArrayList<>();
+		boolean[] hasNonZeros = new boolean[num];
 		for (int i=0; i<num; i++) {
-			energyVsTime[i] = new ArbitrarilyDiscretizedFunc(types.get(i));
-			energyVsIters[i] = new ArbitrarilyDiscretizedFunc(types.get(i));
+			timeFuncs.add(new ArbitrarilyDiscretizedFunc(types.get(i)));
+			iterFuncs.add(new ArbitrarilyDiscretizedFunc(types.get(i)));
 		}
 		
 		for (int i=0; i<track.size(); i++) {
@@ -197,13 +203,36 @@ public interface SimulatedAnnealing {
 			long iter = track.getIterations(i);
 			
 			for (int j=0; j<energy.length; j++) {
-				energyVsTime[j].set(mins, energy[j]);
-				energyVsIters[j].set((double)iter, energy[j]);
+				timeFuncs.get(j).set(mins, energy[j]);
+				iterFuncs.get(j).set((double)iter, energy[j]);
+				if (energy[j] > 0)
+					hasNonZeros[j] = true;
 			}
 			perturbsVsIters.set((double)iter, (double)perturb);
 		}
 		
 		ArrayList<PlotCurveCharacterstics> energyChars = getEnergyBreakdownChars();
+		// remove any unused
+		for (int i=energyChars.size(); --i>=0;) {
+			if (!hasNonZeros[i]) {
+				energyChars.remove(i);
+				timeFuncs.remove(i);
+				iterFuncs.remove(i);
+			}
+		}
+		ArrayList<PlotCurveCharacterstics> extraChars = getEnergyExtraChars();
+		
+		
+		
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		for (int i=0; i<num; i++) {
+			if (i < energyChars.size()) {
+				chars.add(energyChars.get(i));
+			} else {
+				int extraIndex = i - energyChars.size();
+				chars.add(extraChars.get(extraIndex % extraChars.size()));
+			}
+		}
 		
 		PlotCurveCharacterstics perturbChar =
 			new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.CYAN);
@@ -216,15 +245,15 @@ public interface SimulatedAnnealing {
 		
 		// this chops off any huge energy values in the first 5% of the run so that the plots
 		// are readable at the energy levels that are actually interesting
-		double energyAter5percent = energyVsIters[1].getY((int)((energyVsIters[1].size()-1d)*0.05 + 0.5));
+		double energyAter5percent = iterFuncs.get(1).getY((int)((iterFuncs.get(1).size()-1d)*0.05 + 0.5));
 		double energyPlotMax = energyAter5percent*1.2;
 		double energyPlotMin = 0;
 		double timeMin = 0, itersMin = 0;
-		double timeMax = energyVsTime[0].getMaxX()*1.1, iterMax = energyVsIters[0].getMaxX();
+		double timeMax = timeFuncs.get(0).getMaxX(), iterMax = iterFuncs.get(0).getMaxX();
 		
 		// energy vs time plot
 		gp.setUserBounds(timeMin, timeMax, energyPlotMin, energyPlotMax);
-		PlotSpec eVtSpec = new PlotSpec(Lists.newArrayList(energyVsTime), energyChars,
+		PlotSpec eVtSpec = new PlotSpec(timeFuncs, chars,
 				"Energy Vs Time", timeLabel, energyLabel);
 		eVtSpec.setLegendInset(true);
 		gp.drawGraphPanel(eVtSpec);
@@ -235,7 +264,7 @@ public interface SimulatedAnnealing {
 		
 		// energy vs iters plot
 		gp.setUserBounds(itersMin, iterMax, energyPlotMin, energyPlotMax);
-		PlotSpec eViSpec = new PlotSpec(Lists.newArrayList(energyVsIters), energyChars,
+		PlotSpec eViSpec = new PlotSpec(iterFuncs, chars,
 				"Energy Vs Time", iterationsLabel, energyLabel);
 		eViSpec.setLegendInset(true);
 		gp.drawGraphPanel(eViSpec);
@@ -278,10 +307,17 @@ public interface SimulatedAnnealing {
 	
 	public static ArrayList<PlotCurveCharacterstics> getEnergyBreakdownChars() {
 		ArrayList<PlotCurveCharacterstics> energyChars = new ArrayList<PlotCurveCharacterstics>();
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GREEN));
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
+		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
+		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.GREEN));
+		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
+		return energyChars;
+	}
+	
+	public static ArrayList<PlotCurveCharacterstics> getEnergyExtraChars() {
+		ArrayList<PlotCurveCharacterstics> energyChars = new ArrayList<PlotCurveCharacterstics>();
+		for (Color color : GraphPanel.defaultColor)
+			energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, color.darker()));
 		return energyChars;
 	}
 

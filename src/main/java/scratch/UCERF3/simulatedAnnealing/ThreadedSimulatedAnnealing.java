@@ -12,6 +12,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -33,6 +38,7 @@ import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 
 import com.google.common.base.Preconditions;
@@ -142,7 +148,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		return subComp;
 	}
 	
-	private class SAThread extends Thread {
+	private class SACall implements Callable<SACall> {
 		private SimulatedAnnealing sa;
 		private CompletionCriteria subComp;
 		private long startIter;
@@ -153,7 +159,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		private boolean fatal = false;
 		private Throwable t;
 		
-		public SAThread(SimulatedAnnealing sa, long startIter, long startPerturbs, CompletionCriteria subComp) {
+		public SACall(SimulatedAnnealing sa, long startIter, long startPerturbs, CompletionCriteria subComp) {
 			this.sa = sa;
 			this.subComp = subComp;
 			this.startIter = startIter;
@@ -161,7 +167,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		}
 		
 		@Override
-		public void run() {
+		public SACall call() {
 			try {
 				long[] ret = sa.iterate(startIter, startPerturbs, getForStartIter(startIter, subComp));
 				endIter = ret[0];
@@ -172,6 +178,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				fatal = true;
 				this.t = t;
 			}
+			return this;
 		}
 	}
 
@@ -312,6 +319,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			criteria = ((ProgressTrackingCompletionCriteria)criteria).getCriteria();
 		}
 		
+		ExecutorService exec = Executors.newFixedThreadPool(numThreads);
+		
 		int rounds = 0;
 		long iter = startIter;
 		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs)) {
@@ -340,7 +349,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				checkPointWatch.start();
 			}
 			
-			ArrayList<SAThread> threads = new ArrayList<ThreadedSimulatedAnnealing.SAThread>();
+			List<Future<SACall>> futures = new ArrayList<>();
 			
 			// create the threads
 			// TODO switch to using a thread pool
@@ -350,28 +359,19 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					start = 0l;
 				else
 					start = iter;
-				threads.add(new SAThread(sas.get(i), start, perturbs, subCompletionCriteria));
-			}
-			
-			// start the threads
-			for (Thread t : threads) {
-				t.start();
-			}
-			
-			// join the threads
-			for (Thread t : threads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
+				futures.add(exec.submit(new SACall(sas.get(i), start, perturbs, subCompletionCriteria)));
 			}
 			
 			// find best solution and max iteration count
 			for (int i=0; i<numThreads; i++) {
-				SAThread thread = threads.get(i);
+				SACall thread;
+				try {
+					thread = futures.get(i).get();
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
 				if (thread.fatal)
-					throw new RuntimeException(thread.t);
+					throw ExceptionUtils.asRuntimeException(thread.t);
 				SimulatedAnnealing sa = sas.get(i);
 				double[] E = sa.getBestEnergy();
 				if (E[0] < Ebest[0]) {

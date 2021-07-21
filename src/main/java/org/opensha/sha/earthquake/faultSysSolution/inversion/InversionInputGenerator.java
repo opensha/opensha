@@ -409,6 +409,20 @@ public class InversionInputGenerator {
 	public double[] getWaterLevelRates() {
 		return waterLevelRates;
 	}
+	
+	public boolean hasInitialSolution() {
+		if (initialSolution == null)
+			return false;
+		// see if non-zero
+		boolean nonZero = false;
+		for (double val : initialSolution) {
+			if (val > 0) {
+				nonZero = true;
+				break;
+			}
+		}
+		return nonZero;
+	}
 
 	public List<ConstraintRange> getConstraintRowRanges() {
 		return constraintRowRanges;
