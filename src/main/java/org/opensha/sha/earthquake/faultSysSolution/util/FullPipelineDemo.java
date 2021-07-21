@@ -2,7 +2,12 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import javax.swing.text.DateFormatter;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -31,10 +36,13 @@ import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.simulatedAnnealing.SerialSimulatedAnnealing;
+import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
+import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
@@ -42,8 +50,8 @@ import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 class FullPipelineDemo {
 
 	public static void main(String[] args) throws IOException {
-		File outputDir = new File("/tmp/full_pipeline_demo");
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		File markdownDirDir = new File("/home/kevin/markdown/inversions");
+		Preconditions.checkState(markdownDirDir.exists() || markdownDirDir.mkdir());
 		int threads = 32;
 		
 		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
@@ -51,15 +59,29 @@ class FullPipelineDemo {
 		FaultModels fm = branch.getValue(FaultModels.class);
 		ScalingRelationships scale = branch.getValue(ScalingRelationships.class);
 		
+		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
+		
 		String newName = "Coulomb Rupture Set";
+		dirName += "-coulomb-u3_ref-perturb_new_exp-min_rate_fract_1e-3-avg_anneal";
 		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm, scale);
 //		String newName = "U3 Reproduction";
+//		dirName += "-u3_ref-quick-test";
 //		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(fm , scale);
-		FaultSystemSolution compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip"));
+//		FaultSystemSolution compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip"));
+		FaultSystemSolution compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
+				+ "FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
+		
+		File outputDir = new File(markdownDirDir, dirName);
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		
 		FaultSystemRupSet rupSet = rsConfig.build(threads);
 
 		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5);
-//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(1);
+//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30);
+		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInMinutes(1);
+//		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInSeconds(5);
+//		CompletionCriteria avgSubCompletion = null;
+		int threadsPerAvg = 4;
 		
 		boolean doRupSetReport = true;
 		
@@ -94,6 +116,7 @@ class FullPipelineDemo {
 		InversionTargetMFDs targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
 				branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);
+		config.setMinimumRuptureRateFraction(1e-3);
 		
 		// get the paleo rate constraints
 		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
@@ -115,12 +138,33 @@ class FullPipelineDemo {
 		inputGen.columnCompress();
 		
 		ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
-		TimeCompletionCriteria subCompletion = TimeCompletionCriteria.getInSeconds(5);
+		TimeCompletionCriteria subCompletion = TimeCompletionCriteria.getInSeconds(1);
 		
-		ThreadedSimulatedAnnealing tsa = new ThreadedSimulatedAnnealing(inputGen.getA(), inputGen.getD(),
-				inputGen.getInitialSolution(), 0d, inputGen.getA_ineq(), inputGen.getD_ineq(), threads, subCompletion);
+		ThreadedSimulatedAnnealing tsa;
+		if (avgSubCompletion != null) {
+			Preconditions.checkState(threadsPerAvg < threads);
+			List<SimulatedAnnealing> tsas = new ArrayList<>();
+			int threadsLeft = threads;
+			while (threadsLeft > 0) {
+				int myThreads = Integer.min(threadsLeft, threadsPerAvg);
+				if (myThreads > 1)
+					tsas.add(new ThreadedSimulatedAnnealing(inputGen.getA(), inputGen.getD(),
+							inputGen.getInitialSolution(), 0d, inputGen.getA_ineq(), inputGen.getD_ineq(), myThreads, subCompletion));
+				else
+					tsas.add(new SerialSimulatedAnnealing(inputGen.getA(), inputGen.getD(),
+							inputGen.getInitialSolution(), 0d, inputGen.getA_ineq(), inputGen.getD_ineq()));
+				threadsLeft -= myThreads;
+			}
+			tsa = new ThreadedSimulatedAnnealing(tsas, avgSubCompletion);
+			tsa.setAverage(true);
+		} else {
+			tsa = new ThreadedSimulatedAnnealing(inputGen.getA(), inputGen.getD(),
+					inputGen.getInitialSolution(), 0d, inputGen.getA_ineq(), inputGen.getD_ineq(), threads, subCompletion);
+		}
+		
 		progress.setConstraintRanges(inputGen.getConstraintRowRanges());
 		tsa.setConstraintRanges(inputGen.getConstraintRowRanges());
+		tsa.setPerturbationFunc(GenerationFunctionType.EXPONENTIAL_NO_TEMP_DEPENDENCE);
 		tsa.iterate(progress);
 		
 		double[] rawSol = tsa.getBestSolution();

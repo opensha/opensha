@@ -78,6 +78,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	private double[] xbest;  // best model seen so far
 	private double[] perturb; // perturbation to current model
 	private double[] misfit_best, misfit_ineq_best; // misfit between data and synthetics
+	private int numNonZero;
 	
 	private double[] Ebest; // [total, from A, from entropy, from A_ineq]
 
@@ -133,11 +134,19 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		Preconditions.checkArgument(d.length == nRow, "d matrix must be same lenth as nRow of A");
 		Preconditions.checkArgument(initialState.length == nCol, "initial state must be same lenth as nCol of A");
 		
+		if (!(A instanceof SparseCCDoubleMatrix2D))
+			System.err.println("WARNING: A matrix is not column-compressed, annealing will be SLOW!");
+		
 		this.A = A;
 		this.d = d;
 		
 
 		xbest = Arrays.copyOf(initialState, nCol);  // best model seen so far
+		for (int i=0; i<xbest.length; i++) {
+			Preconditions.checkState(xbest[i] >= 0, "initial solution has negative or NaN value: %s", xbest[i]);
+			if (xbest[i] > 0)
+				numNonZero++;
+		}
 		perturb = new double[nCol]; // perturbation to current model
 		
 		misfit_best = new double[nRow];
@@ -218,6 +227,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	@Override
+	public int getNumNonZero() {
+		return numNonZero;
+	}
+
+	@Override
 	public double[] getBestEnergy() {
 		return Ebest;
 	}
@@ -233,7 +247,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	@Override
-	public void setResults(double[] Ebest, double[] xbest, double[] misfit_best, double[] misfit_ineq_best) {
+	public void setResults(double[] Ebest, double[] xbest, double[] misfit_best, double[] misfit_ineq_best, int numNonZero) {
 		this.Ebest = Arrays.copyOf(Ebest, Ebest.length);
 		this.xbest = Arrays.copyOf(xbest, xbest.length);
 		if (misfit_best == null)
@@ -244,11 +258,16 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			this.misfit_ineq_best = null;
 		else
 			this.misfit_ineq_best = Arrays.copyOf(misfit_ineq_best, misfit_ineq_best.length);
+		this.numNonZero = numNonZero;
 	}
 	
 	@Override
 	public void setResults(double[] Ebest, double[] xbest) {
-		setResults(Ebest, xbest, null, null);
+		int numNonZero = 0;
+		for (double x : xbest)
+			if (x > 0)
+				numNonZero++;
+		setResults(Ebest, xbest, null, null, numNonZero);
 	}
 	
 	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
@@ -386,6 +405,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		long perturbs = startPerturbs;
 		int index;
 		double[] x = Arrays.copyOf(xbest, xbest.length);
+		int curNumNonZero = numNonZero;
 		double[] E = Ebest;
 		double T;
 		// this is where we store previous misfits
@@ -412,7 +432,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		}
 
 		// we do iter-1 because iter here is 1-based, not 0-based
-		while (!criteria.isSatisfied(watch, iter-1, Ebest, perturbs)) {
+		while (!criteria.isSatisfied(watch, iter-1, Ebest, perturbs, numNonZero)) {
 
 			// Find current simulated annealing "temperature" based on chosen cooling schedule
 //			double coolIter = (double)iter / coolingFuncSlowdown;
@@ -455,13 +475,15 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 
 			// How much to perturb index (some perturbation functions are a function of T)	
 			perturb[index] = getPerturbation(perturbationFunc, T, index);
+			
+			boolean wasZero = x[index] == 0;
 
 			// Apply then nonnegativity constraint -- make sure perturbation doesn't make the rate negative
 			switch (nonnegativityConstraintAlgorithm) {
 			case TRY_ZERO_RATES_OFTEN: // sets rate to zero if they are perturbed to negative values 
 				// This way will result in many zeros in the solution, 
 				// which may be desirable since global minimum is likely near a boundary
-				if (x[index] == 0) { // if that rate was already zero do not keep it at zero
+				if (wasZero) { // if that rate was already zero do not keep it at zero
 					while (x[index] + perturb[index] < 0) 
 						perturb[index] = getPerturbation(perturbationFunc,T, index);
 				} else { // if that rate was not already zero, and it goes negative, set it equal to zero
@@ -478,7 +500,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				break;
 			case PREVENT_ZERO_RATES:    // Only perturb rates to positive values; any perturbations of zero rates MUST be accepted.
 				// Final model will only have zero rates if rate was never selected to be perturbed AND starting model contains zero rates.
-				if (x[index]!=0) {
+				if (!wasZero) {
 					perturb[index] = (r.nextDouble() -0.5) * 2 * x[index]; 	
 					}
 				else {
@@ -488,6 +510,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			default:
 				throw new IllegalStateException("You missed a Nonnegativity Constraint Algorithm type.");
 			}
+			
 			x[index] += perturb[index];
 			
 			// calculate new misfit vectors
@@ -541,6 +564,15 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				}
 			}
 			
+			int newNonZero = curNumNonZero;
+			if (wasZero) {
+				if (x[index] != 0)
+					newNonZero++;
+			} else {
+				if (x[index] == 0)
+					newNonZero--;
+			}
+			
 			// Use transition probability to determine (via random number draw) if solution is kept
 			if (P > r.nextDouble()) {
 				/* 
@@ -557,6 +589,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				misfit = misfit_cur_purtub;
 				misfit_ineq = misfit_ineq_cur_purtub;
 				perturbs++;
+				curNumNonZero = newNonZero;
 				
 				// Is this a new best?
 				if (Enew[0] < Ebest[0] || keepCurrentAsBest) {
@@ -569,6 +602,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 						misfit_ineq_best = misfit_ineq;
 					}
 					Ebest = Enew;
+					numNonZero = curNumNonZero;
 				} else {
 					if (xbest == x) {
 						// in this case we're keeping an x that is not in fact best. we need
@@ -655,9 +689,12 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		double perturbation;
 		double r2;
 
+		/*
+		 * TODO: make the scalars user configurable
+		 */
 		switch (perturbationFunc) {
 		case UNIFORM_NO_TEMP_DEPENDENCE:
-			perturbation = (r.nextDouble()-0.5)* 0.001;
+			perturbation = (r.nextDouble()-0.5)* 0.0001; // U3 value was 0.001, which is a bit high. this works better
 			break;
 		case VARIABLE_NO_TEMP_DEPENDENCE:
 			double basis = variablePerturbBasis[index];
@@ -679,6 +716,12 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			r2 = r.nextDouble();  
 			perturbation = Math.pow(10, r2) * T * 0.001;
 			break;
+		case EXPONENTIAL_NO_TEMP_DEPENDENCE:
+			r2 = max_exp - r.nextDouble()*exp_orders_of_mag;
+			perturbation = Math.pow(10, r2);
+			if (r.nextBoolean())
+				perturbation = -perturbation;
+			break;
 		default:
 			throw new IllegalStateException("Oh dear.  You missed a Generation Function type.");
 		}
@@ -686,6 +729,9 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		return perturbation;
 
 	}
+	
+	private static final double exp_orders_of_mag = 5;
+	private static final double max_exp = -2;
 	
 	private static String enumOptionsStr(Enum<?>[] values) {
 		String str = null;
@@ -767,6 +813,26 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	@Override
 	public double[] getInitialSolution() {
 		return initialState;
+	}
+
+	@Override
+	public DoubleMatrix2D getA_ineq() {
+		return A_ineq;
+	}
+
+	@Override
+	public DoubleMatrix2D getA() {
+		return A;
+	}
+
+	@Override
+	public double[] getD() {
+		return d;
+	}
+
+	@Override
+	public double[] getD_ineq() {
+		return d_ineq;
 	}
 
 }

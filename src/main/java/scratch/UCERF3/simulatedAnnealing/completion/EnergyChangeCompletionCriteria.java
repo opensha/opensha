@@ -29,7 +29,7 @@ public class EnergyChangeCompletionCriteria implements CompletionCriteria {
 
 	@Override
 	public boolean isSatisfied(StopWatch watch, long iter, double[] energy,
-			long numPerturbsKept) {
+			long numPerturbsKept, int numNonZero) {
 		double mins = watch.getTime()/1000d/60d;
 		double e = energy[0];
 		energyVsTime.set(mins, e);

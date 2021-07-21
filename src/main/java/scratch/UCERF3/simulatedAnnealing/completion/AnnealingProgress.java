@@ -20,6 +20,7 @@ public class AnnealingProgress implements CSV_BackedModule {
 	private List<Long> iterations;
 	private List<Long> perturbs;
 	private List<double[]> energies;
+	private List<Integer> numNonZeros;
 	
 	@SuppressWarnings("unused") // for serialization
 	private AnnealingProgress() {}
@@ -41,6 +42,7 @@ public class AnnealingProgress implements CSV_BackedModule {
 		iterations = new ArrayList<>();
 		perturbs = new ArrayList<>();
 		energies = new ArrayList<>();
+		numNonZeros = new ArrayList<>();
 	}
 
 	@Override
@@ -60,6 +62,7 @@ public class AnnealingProgress implements CSV_BackedModule {
 		header.add("Iteration");
 		header.add("Time (ms)");
 		header.add("# Perturbations");
+		header.add("# Non-Zero");
 		for (String energyType : energyTypes)
 			header.add(energyType);
 		csv.addLine(header);
@@ -68,6 +71,7 @@ public class AnnealingProgress implements CSV_BackedModule {
 			line.add(iterations.get(i)+"");
 			line.add(times.get(i)+"");
 			line.add(perturbs.get(i)+"");
+			line.add(numNonZeros.get(i)+"");
 			for (double energy : energies.get(i))
 				line.add((float)energy+"");
 			csv.addLine(line);
@@ -81,6 +85,7 @@ public class AnnealingProgress implements CSV_BackedModule {
 		times = new ArrayList<>();
 		iterations = new ArrayList<>();
 		perturbs = new ArrayList<>();
+		numNonZeros = new ArrayList<>();
 		energies = new ArrayList<>();
 		
 		List<String> header = csv.getLine(0);
@@ -93,6 +98,7 @@ public class AnnealingProgress implements CSV_BackedModule {
 			iterations.add(csv.getLong(row, col++));
 			times.add(csv.getLong(row, col++));
 			perturbs.add(csv.getLong(row, col++));
+			numNonZeros.add(csv.getInt(row, col++));
 			double[] energies = new double[energyTypes.size()];
 			for (int i=0; i<energyTypes.size(); i++)
 				energies[i] = csv.getDouble(row, col++);
@@ -100,13 +106,15 @@ public class AnnealingProgress implements CSV_BackedModule {
 		}
 	}
 	
-	public void addProgress(long numIterations, long time, long perturbations, double[] energies) {
+	public void addProgress(long numIterations, long time, long perturbations, double[] energies, int numNonZero) {
 		Preconditions.checkState(energies.length == energyTypes.size(),
 				"Expected %s energies, have %s", energyTypes.size(), energies.length);
 		this.times.add(time);
 		this.iterations.add(numIterations);
 		this.perturbs.add(perturbations);
+		this.numNonZeros.add(numNonZero);
 		this.energies.add(energies);
+
 	}
 	
 	public int size() {
@@ -123,6 +131,10 @@ public class AnnealingProgress implements CSV_BackedModule {
 	
 	public long getNumPerturbations(int index) {
 		return perturbs.get(index);
+	}
+	
+	public int getNumNonZero(int index) {
+		return numNonZeros.get(index);
 	}
 	
 	public double[] getEnergies(int index) {

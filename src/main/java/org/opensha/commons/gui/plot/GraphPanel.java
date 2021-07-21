@@ -398,6 +398,10 @@ public class GraphPanel extends JSplitPane {
 				combinedYAxis = true;
 			else if (yRanges != null && yRanges.size() > 1)
 				combinedYAxis = false;
+			else if (xRanges != null && xRanges.size() == 1)
+				combinedYAxis = false;
+			else if (yRanges != null && yRanges.size() == 1)
+				combinedYAxis = true;
 		}
 		
 		plottedFuncs.clear();

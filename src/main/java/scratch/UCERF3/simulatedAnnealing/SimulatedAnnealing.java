@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -22,6 +23,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGener
 
 import com.google.common.collect.Lists;
 
+import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
@@ -56,6 +58,11 @@ public interface SimulatedAnnealing {
 	public double[] getBestSolution();
 
 	public double[] getInitialSolution();
+	
+	/**
+	 * @return the number of non-zero rates in the the best solution
+	 */
+	public int getNumNonZero();
 
 	/**
 	 * 
@@ -66,10 +73,20 @@ public interface SimulatedAnnealing {
 	public double[] getBestMisfit();
 	
 	public double[] getBestInequalityMisfit();
+	
+	public DoubleMatrix2D getA_ineq();
+	
+	public DoubleMatrix2D getA();
+	
+	public double[] getD();
+	
+	public double[] getD_ineq();
 
 	public void setResults(double[] Ebest, double[] xbest);
 	
-	public void setResults(double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq);
+	public void setResults(double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero);
+	
+	public void setConstraintRanges(List<ConstraintRange> constraintRanges);
 
 	/**
 	 * Iterate for the given number of iterations
@@ -112,9 +129,10 @@ public interface SimulatedAnnealing {
 	 */
 	public default void writePlots(CompletionCriteria criteria, File outputDir, String prefix, double[] minimumRuptureRates) throws IOException {
 		// this plots rupture rate vs rank
+		int numRuptures = minimumRuptureRates == null ? -1 : minimumRuptureRates.length;
 		writeRateVsRankPlot(outputDir, prefix+"_rate_dist", minimumRuptureRates);
 		if (criteria instanceof ProgressTrackingCompletionCriteria)
-			SimulatedAnnealing.writeProgressPlots(((ProgressTrackingCompletionCriteria)criteria).getProgress(), outputDir, prefix);
+			SimulatedAnnealing.writeProgressPlots(((ProgressTrackingCompletionCriteria)criteria).getProgress(), outputDir, prefix, numRuptures);
 	}
 	
 	static final int plot_width = 1000;
@@ -181,8 +199,10 @@ public interface SimulatedAnnealing {
 	 * @param prefix
 	 * @throws IOException
 	 */
-	public static void writeProgressPlots(AnnealingProgress track, File outputDir, String prefix) throws IOException {
+	public static void writeProgressPlots(AnnealingProgress track, File outputDir, String prefix, int numRuptures) throws IOException {
 		ArbitrarilyDiscretizedFunc perturbsVsIters = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc nonZerosVsIters = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc percentNonZerosVsIters = new ArbitrarilyDiscretizedFunc();
 		
 		List<String> types = track.getEnergyTypes();
 		int num = types.size();
@@ -201,6 +221,7 @@ public interface SimulatedAnnealing {
 			double mins = time / 1000d / 60d;
 			long perturb = track.getNumPerturbations(i);
 			long iter = track.getIterations(i);
+			int nonZeros = track.getNumNonZero(i);
 			
 			for (int j=0; j<energy.length; j++) {
 				timeFuncs.get(j).set(mins, energy[j]);
@@ -209,6 +230,9 @@ public interface SimulatedAnnealing {
 					hasNonZeros[j] = true;
 			}
 			perturbsVsIters.set((double)iter, (double)perturb);
+			nonZerosVsIters.set((double)iter, (double)nonZeros);
+			if (numRuptures > 0)
+				percentNonZerosVsIters.set((double)iter, 100d*(double)nonZeros/(double)numRuptures);
 		}
 		
 		ArrayList<PlotCurveCharacterstics> energyChars = getEnergyBreakdownChars();
@@ -233,9 +257,13 @@ public interface SimulatedAnnealing {
 				chars.add(extraChars.get(extraIndex % extraChars.size()));
 			}
 		}
-		
+
 		PlotCurveCharacterstics perturbChar =
-			new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.CYAN);
+			new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.CYAN.darker());
+		PlotCurveCharacterstics nzChar =
+				new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.ORANGE.darker());
+		PlotCurveCharacterstics pnzChar =
+			new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.RED.darker());
 		
 		String timeLabel = "Time (minutes)";
 		String iterationsLabel = "Iterations";
@@ -245,8 +273,25 @@ public interface SimulatedAnnealing {
 		
 		// this chops off any huge energy values in the first 5% of the run so that the plots
 		// are readable at the energy levels that are actually interesting
+//		double energyAter5percent = iterFuncs.get(1).getY((int)((iterFuncs.get(1).size()-1d)*0.05 + 0.5));
+//		double energyPlotMax = energyAter5percent*1.2;
+		
 		double energyAter5percent = iterFuncs.get(1).getY((int)((iterFuncs.get(1).size()-1d)*0.05 + 0.5));
-		double energyPlotMax = energyAter5percent*1.2;
+		double bestEnergy = track.getEnergies(track.size()-1)[0];
+		double energyPlotMax;
+		if (bestEnergy < 1d)
+			energyPlotMax = energyAter5percent*1.2;
+		else if (bestEnergy < 20d)
+			energyPlotMax = 50;
+		else if (bestEnergy < 40d)
+			energyPlotMax = 100;
+		else if (bestEnergy < 250d)
+			energyPlotMax = 500;
+		else if (bestEnergy < 500d)
+			energyPlotMax = 1000;
+		else
+			energyPlotMax = Math.max(1000, energyAter5percent*1.2);
+		
 		double energyPlotMin = 0;
 		double timeMin = 0, itersMin = 0;
 		double timeMax = timeFuncs.get(0).getMaxX(), iterMax = iterFuncs.get(0).getMaxX();
@@ -265,7 +310,7 @@ public interface SimulatedAnnealing {
 		// energy vs iters plot
 		gp.setUserBounds(itersMin, iterMax, energyPlotMin, energyPlotMax);
 		PlotSpec eViSpec = new PlotSpec(iterFuncs, chars,
-				"Energy Vs Time", iterationsLabel, energyLabel);
+				"Energy Vs Iterations", iterationsLabel, energyLabel);
 		eViSpec.setLegendInset(true);
 		gp.drawGraphPanel(eViSpec);
 		gp.saveAsPNG(new File(outputDir, prefix+"_energy_vs_iters.png").getAbsolutePath(),
@@ -276,13 +321,29 @@ public interface SimulatedAnnealing {
 		// perturbations vs iters plots
 		ArrayList<ArbitrarilyDiscretizedFunc> perturbWrap = new ArrayList<ArbitrarilyDiscretizedFunc>();
 		perturbWrap.add(perturbsVsIters);
+		ArrayList<ArbitrarilyDiscretizedFunc> nzWrap = new ArrayList<ArbitrarilyDiscretizedFunc>();
+		nzWrap.add(nonZerosVsIters);
 		gp.setAutoRange();
+		String combTitle = "Perturbations & Non-Zero Rates Vs Iters";
 		PlotSpec pSpec = new PlotSpec(Lists.newArrayList(perturbWrap), Lists.newArrayList(perturbChar),
-				"Perturbations Vs Iters", iterationsLabel, "Perturbations");
-		pSpec.setLegendInset(true);
-		gp.drawGraphPanel(pSpec);
+				combTitle, iterationsLabel, "# Perturbations");
+		PlotSpec nzSpec = new PlotSpec(Lists.newArrayList(nzWrap), Lists.newArrayList(nzChar),
+				combTitle, iterationsLabel, "# Non-Zero Rates");
+		List<PlotSpec> combSpecs;
+		if (numRuptures > 0) {
+			ArrayList<ArbitrarilyDiscretizedFunc> pnzWrap = new ArrayList<ArbitrarilyDiscretizedFunc>();
+			pnzWrap.add(percentNonZerosVsIters);
+			PlotSpec pnzSpec = new PlotSpec(Lists.newArrayList(pnzWrap), Lists.newArrayList(pnzChar),
+					combTitle, iterationsLabel, "% Non-Zero Rates");
+			combSpecs = List.of(pnzSpec, nzSpec, pSpec);
+		} else {
+			combSpecs = List.of(nzSpec, pSpec);
+		}
+		pSpec.setLegendInset(false);
+		List<Range> combXRanges = List.of(new Range(0d, iterMax));
+		gp.drawGraphPanel(combSpecs, false, false, combXRanges, null);
 		gp.saveAsPNG(new File(outputDir, prefix+"_perturb_vs_iters.png").getAbsolutePath(),
-				plot_width, plot_height);
+				plot_width, numRuptures > 0 ? (int)(plot_height*1.4) : plot_height);
 		
 //		ArrayList<PlotCurveCharacterstics> normChars = new ArrayList<PlotCurveCharacterstics>();
 //		normChars.addAll(energyChars);

@@ -69,11 +69,11 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	}
 
 	@Override
-	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept) {
+	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept, int numNonZero) {
 		if (progress == null)
 			progress = AnnealingProgress.forConstraintRanges(constraintRanges);
 		if (energy[0] < Double.MAX_VALUE && (iterMod <= 0 || iter % iterMod == 0l))
-			progress.addProgress(iter, watch.getTime(), numPerturbsKept, energy);
+			progress.addProgress(iter, watch.getTime(), numPerturbsKept, energy, numNonZero);
 		if (autoPlotMillis > 0 && watch.getTime() > nextPlotMillis) {
 			try {
 				updatePlot();
@@ -83,7 +83,7 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 			}
 			nextPlotMillis = watch.getTime() + autoPlotMillis;
 		}
-		if (criteria.isSatisfied(watch, iter, energy, numPerturbsKept)) {
+		if (criteria.isSatisfied(watch, iter, energy, numPerturbsKept, numNonZero)) {
 			if (automaticFile != null) {
 				System.out.println("Criteria satisfied with time="+(watch.getTime()/60000f)
 						+" min, iter="+iter+", energy="+energy[0]+", pertubs kept="+numPerturbsKept);

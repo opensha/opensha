@@ -905,7 +905,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				XY_DataSet emptyFunc = emptySectFuncs.get(s);
 				
 				if (slipRates != null) {
-					double targetSlip = slipRates.getSlipRate(s)*1e3;
+					double targetSlip = slipRates.getSlipRate(parentSects.get(s).getSectionId())*1e3;
 					XY_DataSet targetFunc = copyAtY(emptyFunc, targetSlip);
 					if (s == 0)
 						targetFunc.setName("Target");
@@ -926,7 +926,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			if (slipRates != null)
 				slipRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, 0.025, 0.025, 0.95, false);
 			specs.add(slipRateSpec);
-			yRanges.add(yRange(funcs, new Range(1e-2, 1e2), new Range(1e-3, 1e3)));
+			yRanges.add(yRange(funcs, new Range(1e0, 1e1), new Range(1e-3, 1e3)));
 			yLogs.add(true);
 		}
 		

@@ -160,8 +160,8 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 	private double[] log10(double[] vals) {
 		double[] ret = new double[vals.length];
 		for (int i=0; i<ret.length; i++)
-			vals[i] = Math.log10(vals[i]);
-		return vals;
+			ret[i] = Math.log10(vals[i]);
+		return ret;
 	}
 
 	@Override

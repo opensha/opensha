@@ -17,7 +17,7 @@ public class VariableSubTimeCompletionCriteria implements VariableSubCompletionC
 
 	@Override
 	public boolean isSatisfied(StopWatch watch, long iter, double[] energy,
-			long numPerturbsKept) {
+			long numPerturbsKept, int numNonZero) {
 		return watch.getTime() >= cur;
 	}
 

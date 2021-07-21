@@ -63,7 +63,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		
 		// now plots
 		String prefix = "sa_progress";
-		SimulatedAnnealing.writeProgressPlots(progress, resourcesDir, prefix);
+		SimulatedAnnealing.writeProgressPlots(progress, resourcesDir, prefix, sol.getRupSet().getNumRuptures());
 		
 		lines.add("");
 		lines.add(getSubHeading()+" Energy Progress");
