@@ -62,7 +62,9 @@ class FullPipelineDemo {
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 		
 		String newName = "Coulomb Rupture Set";
-		dirName += "-coulomb-u3_ref-perturb_new_exp-min_rate_fract_1e-3-avg_anneal";
+//		dirName += "-coulomb-u3_ref-perturb_new_exp-1e-2-to-1e-9-avg_anneal";
+		dirName += "-coulomb-u3_ref-perturb_uniform_1e-4-avg_anneal-wl1e-4-5hr";
+//		dirName += "-coulomb-u3_ref-perturb_exp_scale-1e-2-to-1e-9-avg_anneal-wl1e-4-5hr";
 		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm, scale);
 //		String newName = "U3 Reproduction";
 //		dirName += "-u3_ref-quick-test";
@@ -75,6 +77,12 @@ class FullPipelineDemo {
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
 		FaultSystemRupSet rupSet = rsConfig.build(threads);
+		
+		double wlFract = 1e-4;
+//		double wlFract = 0d;
+		
+//		GenerationFunctionType perturb = GenerationFunctionType.EXPONENTIAL_SCALE;
+		GenerationFunctionType perturb = GenerationFunctionType.UNIFORM_NO_TEMP_DEPENDENCE;
 
 		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5);
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30);
@@ -83,7 +91,7 @@ class FullPipelineDemo {
 //		CompletionCriteria avgSubCompletion = null;
 		int threadsPerAvg = 4;
 		
-		boolean doRupSetReport = true;
+		boolean doRupSetReport = false;
 		
 		// configure as UCERF3
 		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(branch).build();
@@ -116,7 +124,7 @@ class FullPipelineDemo {
 		InversionTargetMFDs targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
 				branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);
-		config.setMinimumRuptureRateFraction(1e-3);
+		config.setMinimumRuptureRateFraction(wlFract);
 		
 		// get the paleo rate constraints
 		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
@@ -164,7 +172,7 @@ class FullPipelineDemo {
 		
 		progress.setConstraintRanges(inputGen.getConstraintRowRanges());
 		tsa.setConstraintRanges(inputGen.getConstraintRowRanges());
-		tsa.setPerturbationFunc(GenerationFunctionType.EXPONENTIAL_NO_TEMP_DEPENDENCE);
+		tsa.setPerturbationFunc(perturb);
 		tsa.iterate(progress);
 		
 		double[] rawSol = tsa.getBestSolution();

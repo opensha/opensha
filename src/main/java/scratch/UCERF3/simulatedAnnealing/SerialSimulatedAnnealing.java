@@ -56,13 +56,16 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	// this provides and alternative way of random sampling ruptures to perturb (i.e., for a non-uniform districtuion)
 	private IntegerPDF_FunctionSampler rupSampler = null;
 	
+	/*
+	 * This effectively makes changes in energies smaller (increasing the prob a jump will be taken to higher E).
+	 * Increase to take more jumps early in annealing
+	 */
+	private double energyScaleFactor = 1;
+
 	/**
 	 * If true, the current model will always be kept as the best model instead of the best model seen. This allows
 	 * the SA algorithm to avoid local minimums in threaded mode where only the "best" solution is passed between threads.
 	 */
-	
-	private double energyScaleFactor = 1; // This effectively makes changes in energies smaller (increasing the prob a jump will be taken to higher E).  Increase to take more jumps early in annealing
-	
 	private boolean keepCurrentAsBest = false;
 	
 	private double[] variablePerturbBasis;
@@ -574,7 +577,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			}
 			
 			// Use transition probability to determine (via random number draw) if solution is kept
-			if (P > r.nextDouble()) {
+			if (P == 1 || P > r.nextDouble()) {
 				/* 
 				 * I know this is confusing...let me explain what I'm doing here. The most costly operation
 				 * in this inner loop are the array copies. I now use multiple buffers to store perturbations
@@ -716,11 +719,16 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			r2 = r.nextDouble();  
 			perturbation = Math.pow(10, r2) * T * 0.001;
 			break;
-		case EXPONENTIAL_NO_TEMP_DEPENDENCE:
+		case EXPONENTIAL_RANGE:
 			r2 = max_exp - r.nextDouble()*exp_orders_of_mag;
 			perturbation = Math.pow(10, r2);
 			if (r.nextBoolean())
 				perturbation = -perturbation;
+			break;
+		case EXPONENTIAL_SCALE:
+			r2 = max_exp - r.nextDouble()*exp_orders_of_mag;
+			double scale = Math.pow(10, r2);
+			perturbation = (r.nextDouble()-0.5)*scale;
 			break;
 		default:
 			throw new IllegalStateException("Oh dear.  You missed a Generation Function type.");
@@ -730,7 +738,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 
 	}
 	
-	private static final double exp_orders_of_mag = 5;
+	private static final double exp_orders_of_mag = 7;
 	private static final double max_exp = -2;
 	
 	private static String enumOptionsStr(Enum<?>[] values) {

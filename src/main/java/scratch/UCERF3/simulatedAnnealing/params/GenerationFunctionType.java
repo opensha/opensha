@@ -10,5 +10,6 @@ public enum GenerationFunctionType { // how rates are perturbed each SA algorith
 	TANGENT,
 	POWER_LAW,
 	EXPONENTIAL,
-	EXPONENTIAL_NO_TEMP_DEPENDENCE;
+	EXPONENTIAL_RANGE,
+	EXPONENTIAL_SCALE;
 }

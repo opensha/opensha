@@ -85,7 +85,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private boolean average = false;
 	
-	private boolean debug = D;
+	private boolean verbose = D;
 	
 	public ThreadedSimulatedAnnealing(
 			DoubleMatrix2D A, double[] d, double[] initialState,
@@ -119,8 +119,9 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		this.subCompletionCriteria = subCompetionCriteria;
 		this.sas = sas;
 		for (SimulatedAnnealing sa : sas)
+			// make any downstream TSA's non-verbose
 			if (sa instanceof ThreadedSimulatedAnnealing)
-				((ThreadedSimulatedAnnealing)sa).debug = false;
+				((ThreadedSimulatedAnnealing)sa).verbose = false;
 		
 		SimulatedAnnealing sa0 = sas.get(0);
 		this.initialState = sa0.getInitialSolution();
@@ -310,7 +311,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 
 	@Override
 	public long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria) {
-		if (debug) System.out.println("Threaded Simulated Annealing starting with "+numThreads
+		if (verbose) System.out.println("Threaded Simulated Annealing starting with "+numThreads
 				+" threads, "+criteria+", SUB: "+subCompletionCriteria);
 		
 		if (criteria instanceof ProgressTrackingCompletionCriteria
@@ -351,6 +352,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		int rounds = 0;
 		long iter = startIter;
+		double[] prevBestE = null;
 		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs, numNonZero)) {
 			if (subCompletionCriteria instanceof VariableSubTimeCompletionCriteria)
 				((VariableSubTimeCompletionCriteria)subCompletionCriteria).setGlobalState(watch, iter, Ebest, perturbs);
@@ -476,7 +478,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			// this is now done in the loop above
 //			iter += numSubIterations;
 			
-			if (debug) {
+			if (verbose) {
 				double secs = watch.getTime() / 1000d;
 				double mins = secs/60d;
 				double hours = mins/60d;
@@ -490,8 +492,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				System.out.println("Threaded total round "+rounds+" DONE after "
 						+timeStr+", "+cDF.format(iter)+" total iterations.\t"+cDF.format(numNonZero)+"/"+cDF.format(xbest.length)
 						+" = "+pDF.format((double)numNonZero/(double)xbest.length)+" non-zero rates");
-				System.out.println("\tBest energy after "+cDF.format(perturbs)+" total perturbations: "
-						+Doubles.join(", ", Ebest));
+				System.out.println("Best energy after "+cDF.format(perturbs)+" total perturbations:");
+				printEnergies(Ebest, prevBestE, constraintRanges);
+				prevBestE = Ebest;
+//						+Doubles.join(", ", Ebest));
 			}
 			
 			// set next state in all SAs
@@ -501,18 +505,72 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		watch.stop();
 		
-		if(debug) {
+		if(verbose) {
 			System.out.println("Threaded annealing schedule completed.");
 			double runSecs = watch.getTime() / 1000d;
 			System.out.println("Done with Inversion after " + (float)runSecs + " seconds.");
 			System.out.println("Rounds: "+rounds);
 			System.out.println("Total Iterations: "+iter);
 			System.out.println("Total Perturbations: "+perturbs);
-			System.out.println("Best energy: "+Doubles.join(", ", Ebest));
+			System.out.println("Best energy:");
+			printEnergies(Ebest, null, constraintRanges);
 		}
 		
 		long[] ret = { iter, perturbs };
 		return ret;
+	}
+	
+	private static void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges) {
+		String[] strs = new String[Ebest.length];
+		for (int i=0; i<Ebest.length; i++) {
+			switch (i) {
+			case 0:
+				strs[i] = "Total:\t";
+				break;
+			case 1:
+				strs[i] = "Equality:\t";
+				break;
+			case 2:
+				strs[i] = "Entropy:\t";
+				break;
+			case 3:
+				strs[i] = "Inequality:\t";
+				break;
+
+			default:
+				int ind = i-4;
+				if (constraintRanges == null || ind >= constraintRanges.size() || constraintRanges.get(ind) == null)
+					strs[i] = "Constraint "+ind+":\t";
+				else
+					strs[i] = constraintRanges.get(ind).shortName+":\t";
+				break;
+			}
+			strs[i] += (float)Ebest[i]+"";
+			if (prev != null) {
+				double diff = Ebest[i]-prev[i];
+				strs[i] += " (";
+				if (diff > 0)
+					strs[i] += "+";
+				strs[i] += pDF.format(diff/prev[i])+")";
+			}
+		}
+		int cols;
+		if (strs.length > 9)
+			cols = 4;
+		else if (strs.length > 4)
+			cols = 3;
+		else
+			cols = 2;
+		int lines = strs.length/cols;
+		if (strs.length % cols != 0)
+			lines++;
+		int ind = 0;
+		for (int l=0; l<lines; l++) {
+			StringBuilder str = new StringBuilder();
+			for (int c=0; c<cols && ind<strs.length; c++)
+				str.append("\t").append(strs[ind++]);
+			System.out.println(str.toString());
+		}
 	}
 	
 	private static void addScaled(double[] dest, double[] source, double scale) {
