@@ -44,6 +44,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverD
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ParticipationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RateVsRateScatter;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
@@ -123,11 +124,12 @@ public class ReportPageGen {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
 		plots.add(new SolMFDPlot());
+		plots.add(new InversionProgressPlot());
+		plots.add(new RateVsRateScatter());
 		plots.add(new ParticipationRatePlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
-			plots.add(new InversionProgressPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new SlipRatePlots());
 			plots.add(new JumpCountsOverDistancePlot());

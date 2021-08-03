@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.opensha.commons.util.Interpolate;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -16,6 +17,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 
 import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
+import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
 
 public class InversionProgressPlot extends AbstractSolutionPlot {
@@ -40,13 +42,10 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		long iters = progress.getIterations(progress.size()-1);
 		double totalEnergy = progress.getEnergies(progress.size()-1)[0];
 
-		lines.add("* Iterations: "+countDF.format(iters));
-		if (hours > 1.1)
-			lines.add("* Time: "+optionalDigitDF.format(hours)+" hours");
-		else if (mins > 0.999)
-			lines.add("* Time: "+optionalDigitDF.format(mins)+" minutes");
-		else
-			lines.add("* Time: "+optionalDigitDF.format(secs)+" seconds");
+		int ips = (int)((double)iters/secs + 0.5);
+		
+		lines.add("* Iterations: "+countDF.format(iters)+" ("+countDF.format(ips)+" /sec)");
+		lines.add("* Time: "+ThreadedSimulatedAnnealing.timeStr(millis));
 		lines.add("* Perturbations: "+countDF.format(perturbs));
 		lines.add("* Total energy: "+(float)totalEnergy);
 		
@@ -54,11 +53,80 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		lines.add(topLink); lines.add("");
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
-		table.addLine("Energy Type", "Final Energy");
+		long deltaEachMillis;
+		if (hours > 20)
+			deltaEachMillis = 1000l*60l*60l*5l; // 5 hours
+		else if (hours > 9)
+			deltaEachMillis = 1000l*60l*60l*2l; // 2 hours
+		else if (hours > 3)
+			deltaEachMillis = 1000l*60l*60l*1l; // 1 hour
+		else if (hours > 1)
+			deltaEachMillis = 1000l*60l*30l; // 30 mins
+		else if (mins > 30)
+			deltaEachMillis = 1000l*60l*15l; // 15 mins
+		else if (mins > 10)
+			deltaEachMillis = 1000l*60l*5l; // 5 mins
+		else
+			deltaEachMillis = 1000l*60l*5l; // 1 min
+		table.initNewLine().addColumn("Energy Type").addColumn("Final Energy ("
+			+ThreadedSimulatedAnnealing.timeStr(progress.getTime(progress.size()-1))+")").addColumn("% of Total");
+		List<Long> progressTimes = new ArrayList<>();
+		List<Integer> progressIndexAfters = new ArrayList<>();
+		int curIndex = 0;
+		long maxTimeToInclude = (long)(millis*0.95d);
+		for (long t=deltaEachMillis; t<maxTimeToInclude; t+=deltaEachMillis) {
+			if (t < progress.getTime(0))
+				continue;
+			progressTimes.add(t);
+			String str = "";
+			if (t == deltaEachMillis)
+				str = "After ";
+			str += ThreadedSimulatedAnnealing.timeStr(t);
+//			System.out.println(str+" at "+t);
+			table.addColumn("_"+str+"_");
+			while (curIndex < progress.size()) {
+				long time = progress.getTime(curIndex);
+				if (time >= t)
+					break;
+				curIndex++;
+			}
+			progressIndexAfters.add(curIndex);
+		}
+		table.finalizeLine();
+		
 		double[] finalEnergies = progress.getEnergies(progress.size()-1);
 		List<String> types = progress.getEnergyTypes();
-		for (int t=0; t<types.size(); t++)
-			table.addLine("**"+types.get(t)+"**", (float)finalEnergies[t]);
+		for (int t=0; t<types.size(); t++) {
+			table.initNewLine();
+			table.addColumn("**"+types.get(t)+"**");
+			if (t == 0)
+				table.addColumn("**"+(float)finalEnergies[t]+"**").addColumn("");
+			else
+				table.addColumn((float)finalEnergies[t]).addColumn(percentDF.format(finalEnergies[t]/finalEnergies[0]));
+			for (int i=0; i<progressTimes.size(); i++) {
+				long time = progressTimes.get(i);
+				int i1 = progressIndexAfters.get(i);
+				double val;
+				if (i1 == 0) {
+					val = progress.getEnergies(i1)[t];
+				} else if (i1 >= progress.size()) {
+					val = progress.getEnergies(progress.size()-1)[t];
+				} else {
+					// interpolate
+					int i0 = i1-1;
+					double x1 = progress.getTime(i0);
+					double x2 = progress.getTime(i1);
+					double y1 = progress.getEnergies(i0)[t];
+					double y2 = progress.getEnergies(i1)[t];
+					val = Interpolate.findY(x1, y1, x2, y2, time);
+				}
+				String str = (float)val+"";
+				if (i1 == 0 || i1 >= progress.size())
+					str += "*";
+				table.addColumn("_"+str+"_");
+			}
+			table.finalizeLine();
+		}
 		lines.addAll(table.build());
 		
 		// now plots
