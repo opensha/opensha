@@ -20,7 +20,7 @@ import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.MissingOptionException;
 import org.apache.commons.cli.Option;
@@ -314,20 +314,9 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		if (verbose) System.out.println("Threaded Simulated Annealing starting with "+numThreads
 				+" threads, "+criteria+", SUB: "+subCompletionCriteria);
 		
-		if (criteria instanceof ProgressTrackingCompletionCriteria
-				&& constraintRanges != null && !constraintRanges.isEmpty()) {
+		boolean rangeTrack = constraintRanges != null && !constraintRanges.isEmpty();
+		if (rangeTrack && criteria instanceof ProgressTrackingCompletionCriteria)
 			((ProgressTrackingCompletionCriteria)criteria).setConstraintRanges(constraintRanges);
-			if (Ebest.length < constraintRanges.size()+4) {
-				double[] Ebest_new = new double[constraintRanges.size()+4];
-				for (int i=0; i<Ebest.length; i++)
-					Ebest_new[i] = Ebest[i];
-				for (int i=Ebest.length; i<Ebest_new.length; i++)
-					Ebest_new[i] = Double.POSITIVE_INFINITY;
-				Ebest = Ebest_new;
-				for (SimulatedAnnealing sa : sas)
-					sa.setResults(Ebest, xbest, misfit, misfit_ineq, numNonZero);
-			}
-		}
 		
 		StopWatch watch = new StopWatch();
 		watch.start();
@@ -478,20 +467,18 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			// this is now done in the loop above
 //			iter += numSubIterations;
 			
+			if (rangeTrack) {
+				// recalculate with constraint ranges
+				Ebest = sas.get(0).calculateEnergy(xbest, misfit, misfit_ineq, constraintRanges);
+			}
+			
 			if (verbose) {
 				double secs = watch.getTime() / 1000d;
-				double mins = secs/60d;
-				double hours = mins/60d;
-				String timeStr;
-				if (mins > 90)
-					timeStr = tDF.format(hours)+" hours";
-				else if (secs > 90)
-					timeStr = tDF.format(mins)+" mins";
-				else
-					timeStr = tDF.format(secs)+" secs";
-				System.out.println("Threaded total round "+rounds+" DONE after "
-						+timeStr+", "+cDF.format(iter)+" total iterations.\t"+cDF.format(numNonZero)+"/"+cDF.format(xbest.length)
-						+" = "+pDF.format((double)numNonZero/(double)xbest.length)+" non-zero rates");
+				int ips = (int)((double)iter/secs + 0.5);
+				System.out.println("Threaded total round "+rounds+" DONE after "+timeStr(watch.getTime())
+						+", "+cDF.format(iter)+" total iterations ("+cDF.format(ips)+" /sec).\t"
+						+cDF.format(numNonZero)+"/"+cDF.format(xbest.length)
+						+" = "+pDF.format((double)numNonZero/(double)xbest.length)+" non-zero rates.");
 				System.out.println("Best energy after "+cDF.format(perturbs)+" total perturbations:");
 				printEnergies(Ebest, prevBestE, constraintRanges);
 				prevBestE = Ebest;
@@ -507,8 +494,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		if(verbose) {
 			System.out.println("Threaded annealing schedule completed.");
-			double runSecs = watch.getTime() / 1000d;
-			System.out.println("Done with Inversion after " + (float)runSecs + " seconds.");
+			System.out.println("Done with Inversion after "+timeStr(watch.getTime())+".");
 			System.out.println("Rounds: "+rounds);
 			System.out.println("Total Iterations: "+iter);
 			System.out.println("Total Perturbations: "+perturbs);
@@ -518,6 +504,26 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		long[] ret = { iter, perturbs };
 		return ret;
+	}
+	
+	public static String timeStr(long millis) {
+		double secs = millis/1000d;
+		if (secs < 60d)
+			return tDF.format(secs)+" secs";
+		double mins = secs/60d;
+		if (mins < 60d)
+			return twoPartTimeStr((int)mins, "min", secs - ((int)mins)*60d, "secs");
+		double hours = mins/60d;
+		return twoPartTimeStr((int)hours, "hour", mins - ((int)hours)*60d, "mins");
+	}
+	
+	static String twoPartTimeStr(int first, String firstUnits, double remainder, String remainderUnits) {
+		String ret = first+" "+firstUnits;
+		if (!firstUnits.endsWith("s") && first > 1)
+			ret += "s";
+		if (remainder < 0.01)
+			return ret;
+		return ret+" "+tDF.format(remainder)+" "+remainderUnits;
 	}
 	
 	private static void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges) {
@@ -578,7 +584,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			dest[i] += source[i]*scale;
 	}
 	
-	private static DecimalFormat tDF = new DecimalFormat("0.000");
+	private static DecimalFormat tDF = new DecimalFormat("0.#");
 	private static DecimalFormat cDF = new DecimalFormat("#");
 	static {
 		cDF.setGroupingUsed(true);
@@ -599,6 +605,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		}
 	}
 	
+	public void setVerbose(boolean verbose) {
+		this.verbose = verbose;
+	}
+	
 	public int getNumThreads() {
 		return numThreads;
 	}
@@ -612,9 +622,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
+		// don't set it in downstream ones, we'll calculate range-specific values if needed at the end of each sub-iteration
 		this.constraintRanges = constraintRanges;
-		for (SimulatedAnnealing sa : sas)
-			sa.setConstraintRanges(constraintRanges);
 	}
 	
 	public static Options createOptionsNoInputs() {
@@ -878,6 +887,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					constraintRanges.add(new ConstraintRange(name, shortName, startRow, endRow, inequality));
 				}
 			}
+			
+			zip.close();
 		} else {
 			File aFile = new File(cmd.getOptionValue("a"));
 			if (D) System.out.println("Loading A matrix from: "+aFile.getAbsolutePath());
@@ -1061,7 +1072,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public static void main(String[] args) {
 		Options options = createOptions();
 		
-		CommandLineParser parser = new GnuParser();
+		CommandLineParser parser = new DefaultParser();
 		
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -1123,6 +1134,22 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	@Override
 	public double[] getD_ineq() {
 		return sas.get(0).getD_ineq();
+	}
+
+	@Override
+	public double[] calculateEnergy(double[] solution) {
+		return sas.get(0).calculateEnergy(solution);
+	}
+
+	@Override
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq) {
+		return sas.get(0).calculateEnergy(solution, misfit, misfit_ineq);
+	}
+
+	@Override
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq,
+			List<ConstraintRange> constraintRanges) {
+		return sas.get(0).calculateEnergy(solution, misfit, misfit_ineq, constraintRanges);
 	}
 
 }

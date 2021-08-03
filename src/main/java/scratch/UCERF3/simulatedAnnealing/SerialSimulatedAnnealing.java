@@ -305,7 +305,31 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		}
 	}
 	
-	protected double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq) {
+	public double[] calculateEnergy(double[] solution) {
+		double[] misfit = new double[d.length];
+		calculateMisfit(A, d, null, solution, -1, Double.NaN, misfit);
+		double[] misfit_ineq = null;
+		if (hasInequalityConstraint) {
+			misfit_ineq = new double[d_ineq.length];
+			calculateMisfit(A_ineq, d_ineq, null, solution, -1, Double.NaN, misfit_ineq);
+		}
+		return calculateEnergy(solution, misfit, misfit_ineq);
+	}
+	
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq, List<ConstraintRange> constraintRanges) {
+		return calculateEnergy(solution, misfit, misfit_ineq, nRow, nCol,
+				hasInequalityConstraint ? d_ineq.length : null, constraintRanges, relativeSmoothnessWt);
+		
+	}
+	
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq) {
+		return calculateEnergy(solution, misfit, misfit_ineq, nRow, nCol,
+				hasInequalityConstraint ? d_ineq.length : null, constraintRanges, relativeSmoothnessWt);
+	}
+	
+	static double[] calculateEnergy(final double[] solution, final double[] misfit, final double[] misfit_ineq,
+			final int nRow, final int nCol, final int ineqRows, final List<ConstraintRange> constraintRanges,
+			final double relativeSmoothnessWt) {
 		
 		// Do forward problem for new perturbed model (calculate synthetics)
 		
@@ -315,7 +339,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			// NOTE: it is important that we loop over nRow and not the actual misfit array
 			// as it may be larger than nRow (for efficiency and fewer array copies)
 			
-			double val = Math.pow(misfit[i], 2);  // L2 norm of misfit vector
+			double val = misfit[i]*misfit[i];  // L2 norm of misfit vector
 			
 			if (constraintRanges != null) {
 				for (int j=0; j<constraintRanges.size(); j++)
@@ -352,14 +376,14 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		
 		// Add MFD inequality constraint misfit (nonlinear) to energy 
 		double Einequality = 0;
-		if (hasInequalityConstraint) {
-			for (int i = 0; i < d_ineq.length; i++) {
+		if (ineqRows > 0) {
+			for (int i = 0; i < ineqRows; i++) {
 				// NOTE: it is important that we loop over d_ineq.length and not the actual misfit array
 				// as it may be larger than nRow (for efficiency and fewer array copies)
 				
 				if (misfit_ineq[i] > 0.0) {
 					// This makes it an INEQUALITY constraint (Target MFD is an UPPER bound)
-					double val = Math.pow(misfit_ineq[i], 2);  // L2 norm of misfit vector
+					double val = misfit_ineq[i]*misfit_ineq[i];  // L2 norm of misfit vector
 					
 					if (constraintRanges != null) {
 						for (int j=0; j<constraintRanges.size(); j++)
@@ -738,7 +762,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 
 	}
 	
-	private static final double exp_orders_of_mag = 7;
+	private static final double exp_orders_of_mag = 8;
 	private static final double max_exp = -2;
 	
 	private static String enumOptionsStr(Enum<?>[] values) {

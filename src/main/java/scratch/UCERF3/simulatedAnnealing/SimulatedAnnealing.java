@@ -70,6 +70,12 @@ public interface SimulatedAnnealing {
 	 */
 	public double[] getBestEnergy();
 	
+	public double[] calculateEnergy(double[] solution);
+	
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq);
+	
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq, List<ConstraintRange> constraintRanges);
+	
 	public double[] getBestMisfit();
 	
 	public double[] getBestInequalityMisfit();

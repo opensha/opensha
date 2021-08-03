@@ -89,11 +89,11 @@ public class AnnealingProgress implements CSV_BackedModule {
 		energies = new ArrayList<>();
 		
 		List<String> header = csv.getLine(0);
-		for (int i=3; i<header.size(); i++)
+		for (int i=4; i<header.size(); i++)
 			energyTypeBuilder.add(header.get(i));
 		this.energyTypes = energyTypeBuilder.build();
 		
-		for (int row=0; row<csv.getNumRows(); row++) {
+		for (int row=1; row<csv.getNumRows(); row++) {
 			int col = 0;
 			iterations.add(csv.getLong(row, col++));
 			times.add(csv.getLong(row, col++));
