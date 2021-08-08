@@ -135,7 +135,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		if (loadAvailable && module == null && !availableMappings.isEmpty()) {
 			// see if we have it, and then load it lazily
 			Callable<E> call = availableMappings.get(clazz);
-			if (call != null && loadAvilableModule(call))
+			if (call != null && loadAvailableModule(call))
 				return getModule(clazz);
 		}
 		return (M)module;
@@ -380,7 +380,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		// wrap in new list, as the load method modifies this list
 		List<Callable<? extends E>> available = new ArrayList<>(availableModules);
 		for (Callable<? extends E> call : available)
-			loadAvilableModule(call);
+			loadAvailableModule(call);
 	}
 	
 	/**
@@ -390,7 +390,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @return true if loading succeeded, otherwise false
 	 * @throws IllegalStateException if call is not already registered as an available module
 	 */
-	public boolean loadAvilableModule(Callable<? extends E> call) {
+	public boolean loadAvailableModule(Callable<? extends E> call) {
 		Preconditions.checkState(availableModules.remove(call));
 		E module = null;
 		try {
