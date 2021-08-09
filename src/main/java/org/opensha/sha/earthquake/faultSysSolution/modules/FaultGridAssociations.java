@@ -109,8 +109,8 @@ public interface FaultGridAssociations extends OpenSHA_Module {
 	Collection<Integer> sectIndices();
 
 	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
-	public static final String ARCHIVE_NODE_EXTENTS_FILE_NAME = "grid_node_associtaion_fracts.csv";
-	public static final String ARCHIVE_SECT_NODE_ASSOCIATIONS_FILE_NAME = "grid_node_sect_associtaions.csv";
+	public static final String ARCHIVE_NODE_EXTENTS_FILE_NAME = "grid_node_association_fracts.csv";
+	public static final String ARCHIVE_SECT_NODE_ASSOCIATIONS_FILE_NAME = "grid_node_sect_associations.csv";
 	
 	public static class Precomputed implements FaultGridAssociations, ArchivableModule {
 		
