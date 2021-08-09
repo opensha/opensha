@@ -762,8 +762,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 
 	}
 	
-	private static final double exp_orders_of_mag = 8;
-	private static final double max_exp = -2;
+	public static double exp_orders_of_mag = 8;
+	public static double max_exp = -2;
 	
 	private static String enumOptionsStr(Enum<?>[] values) {
 		String str = null;
