@@ -185,6 +185,12 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	/** Returns the number of points in this series */
 	public int size(){ return num; }
 
+	/**
+	 * Returns whether index can be safely used
+	 */
+    protected boolean isIndexWithinRange(int index){
+		return (index >= 0 && index < num);
+	}
 
 	/**
 	 * Returns the minimum x-value in this series. Since the value is
@@ -266,7 +272,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * The index is based along the x-axis.
 	 */
 	public double getX(int index){
-		if( index < 0 || index > ( num -1 ) ) throw new IndexOutOfBoundsException("no point at index "+index);
+		if(!isIndexWithinRange(index)) throw new IndexOutOfBoundsException("no point at index "+index);
 		else return ( minX + delta * index );
 	}
 
@@ -276,7 +282,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * The index is based along the x-axis.
 	 */
 	public double getY(int index){
-		if( index < 0 || index > ( num -1 ) ) throw new IndexOutOfBoundsException("no point at index "+index);
+		if(!isIndexWithinRange(index)) throw new IndexOutOfBoundsException("no point at index "+index);
 		return points[index];
 	}
 
@@ -358,7 +364,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * within the range of 0 to num -1
 	 */
 	public void set(int index, double y) {
-		if( index < 0 || index >= num ) {
+		if(!isIndexWithinRange(index)) {
 			throw new IndexOutOfBoundsException(C + ": set(): The specified index ("+index+") doesn't match this function domain.");
 		}
 		points[index] = y;
@@ -372,7 +378,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * within the range of 0 to num -1
 	 */
 	public void add(int index, double y) {
-		if( index < 0 || index > ( num -1 ) ) {
+		if(!isIndexWithinRange(index)) {
 			throw new IndexOutOfBoundsException(C + ": set(): The specified index="+index+" doesn't match this function domain.");
 		}
 		points[index] = y+points[index];

@@ -231,7 +231,7 @@ public class SummedMagFreqDist extends IncrementalMagFreqDist {
    public void addResampledMagRate(double mag, double rate, boolean preserveRates) {
 
      	 int index = (int)Math.round((mag-minX)/delta);
-    	 if(index<0 || index>=num) return;
+    	 if(!isIndexWithinRange(index)) return;
     	 if(preserveRates)
     		 super.set(index,this.getY(index)+ rate);
     	 else {
