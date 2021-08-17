@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -159,11 +160,17 @@ public interface SimulatedAnnealing {
 		ratesNoMin = getSorted(ratesNoMin);
 		// rates with waterlevel
 		rates = getSorted(rates);
+		boolean hasWL = false;
+		for (int r=0; r<rates.length; r++) {
+			if (ratesNoMin[r] != rates[r]) {
+				hasWL = true;
+				break;
+			}
+		}
 		EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
 		func.setName("Inversion Rates");
-		int cnt = 0;
-		for (int i=ratesNoMin.length; --i >= 0;)
-			func.set(cnt++, ratesNoMin[i]);
+		for (int i=0; i<ratesNoMin.length; i++)
+			func.set(i, ratesNoMin[i]);
 		ArrayList<DiscretizedFunc> funcs = new ArrayList<DiscretizedFunc>();
 		funcs.add(func);
 		ArrayList<PlotCurveCharacterstics> chars = Lists.newArrayList(
@@ -173,18 +180,16 @@ public interface SimulatedAnnealing {
 		EvenlyDiscretizedFunc initialFunc = new EvenlyDiscretizedFunc(0d, initialState.length, 1d);
 		initialFunc.setName("Initial Solution");
 		double[] initialSorted = getSorted(initialState);
-		cnt = 0;
-		for (int i=initialSorted.length; --i >= 0;)
-			initialFunc.set(cnt++, initialSorted[i]);
+		for (int i=0; i<initialSorted.length; i++)
+			initialFunc.set(i, initialSorted[i]);
 		funcs.add(0, initialFunc);
 		chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GREEN));
 		
-		if (rates != null) {
+		if (hasWL) {
 			EvenlyDiscretizedFunc adjFunc = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
 			adjFunc.setName("Final Solution");
-			cnt = 0;
-			for (int i=rates.length; --i >= 0;)
-				adjFunc.set(cnt++, rates[i]);
+			for (int i=0; i<rates.length; i++)
+				adjFunc.set(i, rates[i]);
 			funcs.add(0, adjFunc);
 			chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
 		}
@@ -196,6 +201,50 @@ public interface SimulatedAnnealing {
 		File file = new File(outputDir, prefix);
 		gp.saveAsPNG(file.getAbsolutePath()+".png", plot_width, plot_height);
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf", plot_width, plot_height);
+		
+		// now cumulatives
+		funcs = new ArrayList<>();
+		chars = new ArrayList<>();
+		
+		if (hasWL) {
+			funcs.add(getCumulative(rates, true, "Final Solution, Rate >= Rank"));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+			funcs.add(getCumulative(rates, false, "Final Solution, Rate <= Rank"));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Color.BLACK));
+		}
+		funcs.add(getCumulative(ratesNoMin, true, "Inversion Rates, Rate >= Rank"));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLUE));
+		funcs.add(getCumulative(ratesNoMin, false, "Inversion Rates, Rate <= Rank"));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, Color.BLUE));
+		
+		spec = new PlotSpec(funcs, chars, "Cumulative Rate Distribution", "Rank", "Cumulative Rate (per year)");
+		spec.setLegendInset(true);
+		gp.drawGraphPanel(spec);
+		gp.setAutoRange();
+		file = new File(outputDir, prefix+"_cumulative");
+		gp.saveAsPNG(file.getAbsolutePath()+".png", plot_width, plot_height);
+		gp.saveAsPDF(file.getAbsolutePath()+".pdf", plot_width, plot_height);
+	}
+	
+	private static EvenlyDiscretizedFunc getCumulative(double[] rates, boolean rateAbove, String name) {
+		EvenlyDiscretizedFunc cmlFunc = new EvenlyDiscretizedFunc(0d, rates.length, 1d);
+		cmlFunc.setName(name);;
+		
+		if (rateAbove) {
+			double sum = 0d;
+			for (int r=rates.length; --r>=0;) {
+				sum += rates[r];
+				cmlFunc.set(r, sum);
+			}
+		} else {
+			double sum = 0d;
+			for (int r=0; r<rates.length; r++) {
+				sum += rates[r];
+				cmlFunc.set(r, sum);
+			}
+		}
+		
+		return cmlFunc;
 	}
 	
 	/**
@@ -437,6 +486,7 @@ public interface SimulatedAnnealing {
 	private static double[] getSorted(double[] rates) {
 		double[] newrates = Arrays.copyOf(rates, rates.length);
 		Arrays.sort(newrates);
+		ArrayUtils.reverse(newrates);
 		return newrates;
 	}
 

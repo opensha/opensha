@@ -1,14 +1,33 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
+import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.data.Range;
+import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
+import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.Interpolate;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
@@ -176,7 +195,80 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		lines.add("* Avg. # perturbations per perturbed rupture: "+(float)(perturbs/(double)numAboveWaterlevel));
 		
 		SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, prefix+"_rate_dist", ratesNoMin, rates, initial);
-		lines.add("![Perturbations]("+relPathToResources+"/"+prefix+"_rate_dist.png)");
+		lines.add("![Rate Distribution]("+relPathToResources+"/"+prefix+"_rate_dist.png)");
+		lines.add("");
+		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/"+prefix+"_rate_dist_cumulative.png)");
+		
+		DefaultXY_DataSet magRateScatter = new DefaultXY_DataSet();
+		double[] mags = sol.getRupSet().getMagForAllRups();
+		for (int r=0; r<mags.length; r++)
+			magRateScatter.set(mags[r], rates[r]);
+		
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		funcs.add(magRateScatter);
+		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
+		
+		Range xRange = new Range(0.5*Math.floor(magRateScatter.getMinX()*2), 0.5*Math.ceil(magRateScatter.getMaxX()*2));
+		Range yRange = new Range(Math.max(1e-16, magRateScatter.getMinY()), Math.max(1e-2, magRateScatter.getMaxY()));
+		Range logYRange = new Range(Math.log10(yRange.getLowerBound()), Math.log10(yRange.getUpperBound()));
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, "Rate vs Magnitude", "Magnitude", "Rupture Rate (/yr)");
+		
+		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		
+		gp.drawGraphPanel(spec, false, true, xRange, yRange);
+		
+		PlotUtils.writePlots(resourcesDir, prefix+"_rate_vs_mag", gp, 1000, 850, true, false, false);
+//		lines.add("");
+//		lines.add("![Rate vs Mag]("+relPathToResources+"/"+prefix+"_rate_vs_mag.png)");
+		
+		funcs = new ArrayList<>();
+		chars = new ArrayList<>();
+		EvenlyDiscretizedFunc refXFunc = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 50);
+		EvenlyDiscretizedFunc refYFunc = new EvenlyDiscretizedFunc(logYRange.getLowerBound(), logYRange.getUpperBound(), 50);
+		EvenlyDiscrXYZ_DataSet xyz = new EvenlyDiscrXYZ_DataSet(refXFunc.size(), refYFunc.size(),
+				refXFunc.getMinX(), refYFunc.getMinX(), refXFunc.getDelta(), refYFunc.getDelta());
+		for (Point2D pt : magRateScatter) {
+			double x = pt.getX();
+			double logY = Math.log10(pt.getY());
+			int xInd = refXFunc.getClosestXIndex(x);
+			int yInd = refYFunc.getClosestXIndex(logY);
+			xyz.set(xInd, yInd, xyz.get(xInd, yInd)+1);
+		}
+		
+		xyz.log10();
+		double maxZ = xyz.getMaxZ();
+		CPT cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, Math.ceil(maxZ));
+		cpt.setNanColor(new Color(255, 255, 255, 0));
+		cpt.setBelowMinColor(cpt.getNaNColor());
+		
+		// set all zero to NaN so that it will plot clear
+		for (int i=0; i<xyz.size(); i++) {
+			if (xyz.get(i) == 0)
+				xyz.set(i, Double.NaN);
+		}
+		
+		XYZPlotSpec xyzSpec = new XYZPlotSpec(xyz, cpt, spec.getTitle(), spec.getXAxisLabel(),
+				"Log10 "+spec.getYAxisLabel(), "Log10 Count");
+		xyzSpec.setCPTPosition(RectangleEdge.BOTTOM);
+		xyzSpec.setXYElems(funcs);
+		xyzSpec.setXYChars(chars);
+		XYZGraphPanel xyzGP = new XYZGraphPanel(gp.getPlotPrefs());
+		xyzGP.drawPlot(xyzSpec, false, false, xRange, logYRange);
+		
+		xyzGP.getChartPanel().setSize(1000, 850);
+		xyzGP.saveAsPNG(new File(resourcesDir, prefix+"_rate_vs_mag_hist2D.png").getAbsolutePath());
+		
+		table = MarkdownUtils.tableBuilder();
+		table.initNewLine();
+		table.addColumn("![rate comparison]("+relPathToResources+"/"+prefix+"_rate_vs_mag.png)");
+		table.addColumn("![rate hist]("+relPathToResources+"/"+prefix+"_rate_vs_mag_hist2D.png)");
+		table.finalizeLine();
+		lines.add("");
+		lines.addAll(table.build());
+		
 		
 		return lines;
 	}

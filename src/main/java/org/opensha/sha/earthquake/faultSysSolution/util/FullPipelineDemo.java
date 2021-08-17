@@ -32,6 +32,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
@@ -57,7 +58,7 @@ class FullPipelineDemo {
 //		System.out.println("Yawn...");
 //		long minute = 1000l*60l;
 //		long hour = minute*60l;
-//		Thread.sleep(8l*hour + 0l*minute);
+//		Thread.sleep(5l*hour + 30l*minute);
 //		System.out.println("Im awake! "+new Date());
 		
 		File markdownDirDir = new File("/home/kevin/markdown/inversions");
@@ -65,11 +66,13 @@ class FullPipelineDemo {
 		int threads = 32;
 		
 		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
+		branch.setValue(SlipAlongRuptureModels.UNIFORM);
 		
 		FaultModels fm = branch.getValue(FaultModels.class);
 		ScalingRelationships scale = branch.getValue(ScalingRelationships.class);
 		
-		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
+//		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
+		String dirName = "2021_08_09";
 		
 		String newName = "Coulomb Rups, U3 Ref Branch";
 //		dirName += "-coulomb-u3_ref-perturb_uniform_1e-4-avg_anneal-wl1e-4";
@@ -77,7 +80,7 @@ class FullPipelineDemo {
 		String minScaleStr = new DecimalFormat("0E0").format(
 				Math.pow(10, SerialSimulatedAnnealing.max_exp-SerialSimulatedAnnealing.exp_orders_of_mag)).toLowerCase();
 		String scaleStr = "perturb_exp_scale_1e-2_to_"+minScaleStr;
-		dirName += "-coulomb-u3_ref-"+scaleStr+"-avg_anneal_20m-noWL-tryZeroRates-24hr";
+		dirName += "-coulomb-u3_ref-uniform_slip-"+scaleStr+"-avg_anneal_20m-noWL-tryZeroRates-5hr";
 		System.out.println(dirName);
 		CoulombRupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm, scale);
 //		rsConfig.setAdaptiveSectFract(0.3f);
@@ -100,17 +103,17 @@ class FullPipelineDemo {
 //		NonnegativityConstraintType nonNeg = NonnegativityConstraintType.LIMIT_ZERO_RATES; // default
 		NonnegativityConstraintType nonNeg = NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN;
 
-		CompletionCriteria completion = TimeCompletionCriteria.getInHours(24);
+		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5);
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30);
 		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInMinutes(20);
 //		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInSeconds(5);
 //		CompletionCriteria avgSubCompletion = null;
 		int threadsPerAvg = 4;
 		
-		int numRuns = 1;
+		int numRuns = 2;
 		
 		boolean rebuildRupSet = false;
-		boolean rerunInversion = true;
+		boolean rerunInversion = false;
 		boolean doRupSetReport = false;
 		
 		FaultSystemRupSet rupSet = null;

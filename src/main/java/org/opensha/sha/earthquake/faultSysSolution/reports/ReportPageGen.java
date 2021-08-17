@@ -877,6 +877,7 @@ public class ReportPageGen {
 				lines.add("## "+plot.plotName);
 				lines.add(topLink); lines.add("");
 				lines.addAll(plot.markdown);
+				lines.add("");
 			}
 		}
 		
