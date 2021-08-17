@@ -289,14 +289,15 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		Element regionEl = root.element(GriddedRegion.XML_METADATA_NAME);
 		
 		GriddedRegion region = GriddedRegion.fromXMLMetadata(regionEl);
-		if (region.getNodeCount() == 7637 && region.getName().startsWith("RELM"))
-			region = loadU3RegionJSON();
 		
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = Maps.newHashMap();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = Maps.newHashMap();
 		
 		Element nodeListEl = root.element(NODE_MFD_LIST_EL_NAME);
 		int numNodes = Integer.parseInt(nodeListEl.attributeValue("num"));
+		
+		if (region.getNodeCount() == 7637 && (numNodes == 7636 || region.getName().startsWith("RELM")))
+			region = loadU3RegionJSON();
 		
 		Iterator<Element> nodeElIt = nodeListEl.elementIterator(NODE_MFD_ITEM_EL_NAME);
 		
