@@ -17,6 +17,7 @@ sourceSets {
             exclude '**/doc'
             exclude '**/data/ngaWest'
             exclude '**/data/site'
+            exclude '**/scratchData'
             exclude '**/data/erf/new_zealand_2010'
             exclude '**/data/erf/step/AllCal96ModelDaily.txt'
         }

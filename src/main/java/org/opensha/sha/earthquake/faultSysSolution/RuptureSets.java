@@ -606,7 +606,7 @@ public class RuptureSets {
 	 * The local scratch data directory that is ignored by repository commits.
 	 */
 	public static File DEFAULT_SCRATCH_DATA_DIR =
-		new File("src"+s+"main"+s+"resources"+s+"scratch"+s+"rupture_sets");
+		new File("src"+s+"main"+s+"resources"+s+"scratchData"+s+"rupture_sets");
 	
 	public static File getCacheDir() {
 		if (!DEFAULT_SCRATCH_DATA_DIR.exists() && !DEFAULT_SCRATCH_DATA_DIR.mkdir())

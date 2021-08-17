@@ -35,6 +35,7 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.LazilyInitializedList;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -930,13 +931,13 @@ public class U3FaultSystemIO {
 		}
 	}
 	
-	public static void fsDataToXML(Element parent, String elName, U3FaultSystemRupSet rupSet) {
+	public static void fsDataToXML(Element parent, String elName, FaultSystemRupSet rupSet) {
 		FaultModels fm = null;
 		DeformationModels dm = null;
-		if (rupSet instanceof InversionFaultSystemRupSet) {
-			InversionFaultSystemRupSet invRupSet = (InversionFaultSystemRupSet)rupSet;
-			fm = invRupSet.getFaultModel();
-			dm = invRupSet.getDeformationModel();
+		if (rupSet.hasModule(U3LogicTreeBranch.class)) {
+			U3LogicTreeBranch branch = rupSet.requireModule(U3LogicTreeBranch.class);
+			fm = branch.getValue(FaultModels.class);
+			dm = branch.getValue(DeformationModels.class);
 		}
 		fsDataToXML(parent, elName, fm, dm, rupSet.getFaultSectionDataList());
 	}
