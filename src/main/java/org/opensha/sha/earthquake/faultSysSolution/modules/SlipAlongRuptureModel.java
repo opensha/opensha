@@ -9,7 +9,9 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.base.Preconditions;
 
@@ -22,16 +24,16 @@ public abstract class SlipAlongRuptureModel implements ArchivableModule {
 	}
 	
 	/**
-	 * This gives the slip (SI untis: m) on each section for the rth rupture
-	 * @return slip (SI untis: m) on each section for the rth rupture
+	 * This gives the slip (SI units: m) on each section for the rth rupture
+	 * @return slip (SI units: m) on each section for the rth rupture
 	 */
 	public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, AveSlipModule aveSlips, int rthRup) {
 		return calcSlipOnSectionsForRup(rupSet, rthRup, aveSlips.getAveSlip(rthRup));
 	}
 	
 	/**
-	 * This gives the slip (SI untis: m) on each section for the rth rupture
-	 * @return slip (SI untis: m) on each section for the rth rupture
+	 * This gives the slip (SI units: m) on each section for the rth rupture
+	 * @return slip (SI units: m) on each section for the rth rupture
 	 */
 	public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup, double aveSlip) {
 		List<Integer> sectionIndices = rupSet.getSectionsIndicesForRup(rthRup);
@@ -50,6 +52,55 @@ public abstract class SlipAlongRuptureModel implements ArchivableModule {
 		}
 		
 		return calcSlipOnSectionsForRup(rupSet, rthRup, sectArea, sectMoRate, aveSlip);
+	}
+	
+	/**
+	 * This computes the solution slip rate of the given section (SI units: m/yr)
+	 * 
+	 * @return
+	 */
+	public double calcSlipRateForSect(FaultSystemSolution sol, AveSlipModule aveSlips, int sectIndex) {
+		return calcSlipRateForSects(sol, aveSlips)[sectIndex];
+	}
+	
+	/**
+	 * This computes the solution slip rate of all sections (SI units: m/yr)
+	 * 
+	 * @return
+	 */
+	public double[] calcSlipRateForSects(FaultSystemSolution sol, AveSlipModule aveSlips) {
+		SolSlipRatesCache cached;
+		
+		synchronized (sol) {
+			cached = sol.getModule(SolSlipRatesCache.class);
+			if (cached == null) {
+				FaultSystemRupSet rupSet = sol.getRupSet();
+				double[] slipRates = new double[rupSet.getNumSections()];
+				for (int r=0; r<rupSet.getNumRuptures(); r++) {
+					List<Integer> indices = rupSet.getSectionsIndicesForRup(r);
+					double[] rupSlips = calcSlipOnSectionsForRup(rupSet, aveSlips, r);
+					double rate = sol.getRateForRup(r);
+					for (int s=0; s<rupSlips.length; s++)
+						slipRates[indices.get(s)] += rate*rupSlips[s];
+				}
+				cached = new SolSlipRatesCache(slipRates);
+				sol.addModule(cached);
+			}
+		}
+		return cached.slipRates;
+	}
+	
+	public static class SolSlipRatesCache implements OpenSHA_Module {
+		private final double[] slipRates;
+		
+		public SolSlipRatesCache(double[] slipRates) {
+			this.slipRates = slipRates;
+		}
+
+		@Override
+		public String getName() {
+			return "Cached Solution Slip Rates";
+		}
 	}
 	
 	/**

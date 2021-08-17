@@ -38,7 +38,9 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -695,9 +697,11 @@ public class SegmentationCalculator {
 			this.sect = sect;
 			this.parentSectRates = parentSectRates;
 			this.sectRates = sectRates;
-			this.rupSetSlipRate = sol.getRupSet().getSlipRateForSection(sect.getSectionId());
-			if (sol instanceof SlipEnabledSolution)
-				this.solSlipRate = ((SlipEnabledSolution)sol).calcSlipRateForSect(sect.getSectionId());
+			FaultSystemRupSet rupSet = sol.getRupSet();
+			this.rupSetSlipRate = rupSet.getSlipRateForSection(sect.getSectionId());
+			if (rupSet.hasModule(SlipAlongRuptureModel.class) && rupSet.hasModule(AveSlipModule.class))
+				this.solSlipRate = rupSet.getModule(SlipAlongRuptureModel.class).calcSlipRateForSects(
+						sol, rupSet.requireModule(AveSlipModule.class))[sect.getSectionId()];
 			else
 				this.solSlipRate = Double.NaN;
 		}
