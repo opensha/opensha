@@ -34,6 +34,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 import scratch.UCERF3.SlipAlongRuptureModelRupSet;
+import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -452,7 +453,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return target slip rates
 	 */
 	public static SectSlipRates computeTargetSlipRates(FaultSystemRupSet rupSet,
-			InversionModels inversionModel, MomentRateFixes momentRateFixes, U3InversionTargetMFDs inversionMFDs) {
+			InversionModels inversionModel, MomentRateFixes momentRateFixes, InversionTargetMFDs inversionMFDs) {
 		return computeTargetSlipRates(rupSet, inversionModel.isCharacteristic(), momentRateFixes.isApplyCC(), inversionMFDs);
 	}
 	
@@ -475,22 +476,26 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return target slip rates
 	 */
 	public static SectSlipRates computeTargetSlipRates(FaultSystemRupSet rupSet,
-			boolean characteristic, boolean applyImpliedCouplingCoeff, U3InversionTargetMFDs inversionMFDs) {
+			boolean characteristic, boolean applyImpliedCouplingCoeff, InversionTargetMFDs inversionMFDs) {
 		int numSections = rupSet.getNumSections();
 		// compute target slip rate and stdDev (reduced for subseismo ruptures)
 		double[] targetSlipRate = new double[numSections];
 		double[] targetSlipRateStdDev = new double[numSections];
 		Preconditions.checkState(targetSlipRate.length == targetSlipRateStdDev.length);
 		SubSeismoOnFaultMFDs subSeismoOnFaultMFDs = inversionMFDs.getOnFaultSubSeisMFDs();
-		double impliedOnFaultCouplingCoeff = inversionMFDs.getImpliedOnFaultCouplingCoeff();
 
 		// first get the implied coupling coeff reduction factor
 		double impliedCC_reduction = 1.0;
-		if(applyImpliedCouplingCoeff && impliedOnFaultCouplingCoeff<1)
-			impliedCC_reduction = impliedOnFaultCouplingCoeff;
-	
+		if (applyImpliedCouplingCoeff) {
+			Preconditions.checkState(inversionMFDs instanceof U3InversionTargetMFDs,
+					"Can only use applyImpliedCouplingCoeff option on U3InversionTargetMFDs instance. "
+					+ "This option was only used in early UCERF3 tests, and was not carried forward");
+			double impliedOnFaultCouplingCoeff = ((U3InversionTargetMFDs)inversionMFDs).getImpliedOnFaultCouplingCoeff();
+			if(impliedOnFaultCouplingCoeff < 1)
+				impliedCC_reduction = impliedOnFaultCouplingCoeff;
+		}
 		
-		double totalOrigOnFaultMoRate = inversionMFDs.getOrigOnFltDefModMoRate();
+		double totalOrigOnFaultMoRate = DeformationModelsCalc.calculateTotalMomentRate(rupSet.getFaultSectionDataList(), true);
 		double totalFinalOnFaultMoRate = totalOrigOnFaultMoRate*impliedCC_reduction;
 		double aveCharSubSeismoMoRateFraction = inversionMFDs.getTotalOnFaultSubSeisMFD().getTotalMomentRate()/totalFinalOnFaultMoRate;	// denomintor reduces by any implied CC
 
@@ -503,7 +508,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				origSectMoRate = 0;
 			
 			double impliedCC_reducedSectMoRate = origSectMoRate*impliedCC_reduction;
-
+			
 			double fractionalSlipRateReduction=1.0;	// default if next is false
 			if(origSectMoRate > 0) { // avoid division by zero
 				if (characteristic) {

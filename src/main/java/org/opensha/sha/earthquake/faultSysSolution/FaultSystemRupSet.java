@@ -71,6 +71,7 @@ import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -1369,7 +1370,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					U3InversionTargetMFDs invMFDs = rupSet.requireModule(U3InversionTargetMFDs.class);
+					InversionTargetMFDs invMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 					return InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
 							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), invMFDs);
 				}
