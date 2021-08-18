@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -236,14 +237,10 @@ public class SlipRatePlots extends AbstractRupSetPlot {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
 		SlipAlongRuptureModel slipAlongs = rupSet.requireModule(SlipAlongRuptureModel.class);
-		double[] slips = new double[rupSet.getNumSections()];
-		for (int r=0; r<rupSet.getNumRuptures(); r++) {
-			double[] slipAlong = slipAlongs.calcSlipOnSectionsForRup(rupSet, aveSlips, r);
-			List<Integer> sectIndexes = rupSet.getSectionsIndicesForRup(r);
-			double rate = sol.getRateForRup(r);
-			for (int i=0; i<sectIndexes.size(); i++)
-				slips[sectIndexes.get(i)] += rate*slipAlong[i]*1e3;
-		}
+		double[] slips = slipAlongs.calcSlipRateForSects(sol, aveSlips);
+		slips = Arrays.copyOf(slips, slips.length);
+		for (int s=0; s<slips.length; s++)
+			slips[s] *= 1e3; // to mm/yr
 		return slips;
 	}
 	
