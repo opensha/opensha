@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -41,126 +42,53 @@ public abstract class AbstractBranchAveragedModule implements ArchivableModule {
 	private ZipFile zip;
 	private String prefix;
 	private LogicTree<?> logicTree;
-	private List<BranchSpecificFile> branchFiles;
 
-	protected AbstractBranchAveragedModule(ZipFile zip, String prefix, LogicTree<?> logicTree,
-			List<BranchSpecificFile> branchFiles) {
+	protected AbstractBranchAveragedModule(ZipFile zip, String prefix, LogicTree<?> logicTree) {
 		this.zip = zip;
 		this.prefix = prefix;
 		this.logicTree = logicTree;
-		this.branchFiles = branchFiles;
 	}
 	
-	public static final class BranchSpecificFile {
-		private String fileName;
-		private List<LogicTreeLevel<?>> fileLevels;
-		
-		public BranchSpecificFile(String fileName, List<LogicTreeLevel<?>> fileLevels) {
-			this.fileName = fileName;
-			this.fileLevels = fileLevels;
-		}
-		
-		public String getNameForBranch(LogicTreeBranch<?> branch, String prefix) {
-			if (prefix == null)
-				prefix = "";
-			StringBuilder ret = new StringBuilder(prefix);
-			Preconditions.checkNotNull(fileLevels, "No mappings available for %", fileName);
-			for (LogicTreeLevel<?> level : fileLevels) {
-				LogicTreeNode value = branch.getValue(level.getType());
-				Preconditions.checkNotNull(value,
-						"Branch does not have value for %s, needed to retrieve %s", level.getName(), fileName);
-				ret.append(value.getFilePrefix()).append("/");
-			}
-			return ret.toString();
-		}
+	/**
+	 * Logic tree specific files will live in their own unique sub-directory, with this name
+
+	 * @return
+	 */
+	protected abstract String getSubDirectoryName();
+	
+	protected abstract List<? extends LogicTreeLevel<?>> getLevelsAffectingFile(String fileName);
+	
+	private Map<String, List<? extends LogicTreeLevel<?>>> levelsCache = new HashMap<>();
+	
+	protected String getBranchFileName(LogicTreeBranch<?> branch, String fileName) {
+		return getBranchFileName(branch, prefix, fileName);
 	}
 	
-	private static final class BranchFileAdapter extends TypeAdapter<BranchSpecificFile> {
-		
-		private Map<String, LogicTreeLevel<?>> levelsMap;
-		private BranchFileAdapter(LogicTree<?> logicTree) {
-			levelsMap = new HashMap<>();
-			for (LogicTreeLevel<?> level : logicTree.getLevels()) {
-				String shortName = level.getShortName();
-				Preconditions.checkState(shortName.length() > 0);
-				Preconditions.checkState(!levelsMap.containsKey(shortName),
-						"Level short name is not unique: %s", shortName);
-				levelsMap.put(shortName, level);
+	protected String getBranchFileName(LogicTreeBranch<?> branch, String prefix, String fileName) {
+		List<? extends LogicTreeLevel<?>> mappingLevels;
+		synchronized (levelsCache) {
+			mappingLevels = levelsCache.get(fileName);
+			if (mappingLevels == null) {
+				mappingLevels = getLevelsAffectingFile(fileName);
+				levelsCache.put(fileName, mappingLevels);
 			}
 		}
-
-		@Override
-		public void write(JsonWriter out, BranchSpecificFile value) throws IOException {
-			out.beginObject();
-			
-			out.name("fileName").value(value.fileName);
-			out.name("levels").beginArray();
-			for (LogicTreeLevel<?> level : value.fileLevels)
-				out.value(level.getShortName());
-			out.endArray();
-			
-			out.endObject();
+		StringBuilder ret = new StringBuilder(prefix);
+		Preconditions.checkNotNull(mappingLevels, "No mappings available for %", fileName);
+		for (LogicTreeLevel<?> level : mappingLevels) {
+			LogicTreeNode value = branch.getValue(level.getType());
+			Preconditions.checkNotNull(value,
+					"Branch does not have value for %s, needed to retrieve %s", level.getName(), fileName);
+			ret.append(value.getFilePrefix()).append("/");
 		}
-
-		@Override
-		public BranchSpecificFile read(JsonReader in) throws IOException {
-			in.beginObject();
-			
-			String fileName = null;
-			List<LogicTreeLevel<?>> levels = null;
-			
-			while (in.hasNext()) {
-				switch (in.nextName()) {
-				case "fileName":
-					fileName = in.nextString();
-					break;
-				case "levels":
-					levels = new ArrayList<>();
-					in.beginArray();
-					while (in.hasNext()) {
-						String shortName = in.nextString();
-						Preconditions.checkState(levelsMap.containsKey(shortName),
-								"No level found with short name=%s", shortName);
-						levels.add(levelsMap.get(shortName));
-					}
-					in.endArray();
-					break;
-
-				default:
-					break;
-				}
-			}
-			
-			Preconditions.checkNotNull(fileName, "'fileName' not specified in JSON");
-			Preconditions.checkNotNull(levels, "'levels' not specified in JSON");
-			
-			in.endObject();
-			return new BranchSpecificFile(fileName, levels);
-		}
-		
+		ret.append(fileName);
+		return ret.toString();
 	}
-	
-//	public String getBranchFileName(LogicTreeBranch<?> branch, String fileName) {
-//		return getBranchFileName(branch, prefix, fileName);
-//	}
-//	
-//	protected String getBranchFileName(LogicTreeBranch<?> branch, String prefix, String fileName) {
-//		List<LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(fileName);
-//		StringBuilder ret = new StringBuilder(prefix);
-//		Preconditions.checkNotNull(mappingLevels, "No mappings available for %", fileName);
-//		for (LogicTreeLevel<?> level : mappingLevels) {
-//			LogicTreeNode value = branch.getValue(level.getType());
-//			Preconditions.checkNotNull(value,
-//					"Branch does not have value for %s, needed to retrieve %s", level.getName(), fileName);
-//			ret.append(value.getFilePrefix()).append("/");
-//		}
-//		return ret.toString();
-//	}
 	
 	protected String buildPrefix(String upstreamPrefix) {
 		if (upstreamPrefix == null)
 			upstreamPrefix = "";
-		return upstreamPrefix+"logic_tree/";
+		return upstreamPrefix+getSubDirectoryName()+"/";
 	}
 	
 	public LogicTree<?> getLogicTree() {
@@ -168,39 +96,34 @@ public abstract class AbstractBranchAveragedModule implements ArchivableModule {
 	}
 	
 	/**
-	 * This will be called when writing to a file if this module was initialized without a source zip file. It can
-	 * be used when building a branch averaged module for the first time.
+	 * This will be called to write all files for the given branch to the zip file. Files should be written starting
+	 * with the given prefix, which will end with <code>getSubDirectoryName()+"/"</code>. Implementations must check
+	 * that a given file has not yet been written, and add the name of all written files to the writtenFiles set.
 	 * 
 	 * @param zout
 	 * @param prefix
+	 * @param branch
+	 * @param writtenFiles set containing names of all files already written
+	 * @throws IOException 
 	 */
-	protected abstract void writeBranchFilesToArchive(ZipOutputStream zout, String prefix);
+	protected abstract void writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
+			HashSet<String> writtenFiles) throws IOException;
+	
+	protected String getFilePrefix() {
+		Preconditions.checkNotNull(prefix, "Not yet initialized");
+		return prefix;
+	}
+	
+	protected ZipFile getZipFile() {
+		Preconditions.checkNotNull(zip, "Not yet initialized");
+		return zip;
+	}
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 		String outPrefix = buildPrefix(entryPrefix);
-		
-		if (zip == null) {
-			writeBranchFilesToArchive(zout, outPrefix);
-		} else {
-			// copy over all files
-			Enumeration<? extends ZipEntry> entries = zip.entries();
-			String origLogicTreeName = prefix+"logic_tree.json";
-			while (entries.hasMoreElements()) {
-				ZipEntry entry = entries.nextElement();
-				String name = entry.getName();
-				if (name.startsWith(prefix) && !name.equals(origLogicTreeName)) {
-					zout.putNextEntry(new ZipEntry(outPrefix+name));
-					
-					BufferedInputStream bin = new BufferedInputStream(zip.getInputStream(entry));
-					bin.transferTo(zout);
-					zout.flush();
-					
-					zout.closeEntry();
-				}
-			}
-		}
-		
+
+		System.out.println("Writing full logic tree");
 		// write the logic tree
 		FileBackedModule.initEntry(zout, outPrefix, "logic_tree.json");
 		Gson gson = new GsonBuilder().setPrettyPrinting()
@@ -208,7 +131,15 @@ public abstract class AbstractBranchAveragedModule implements ArchivableModule {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout));
 		gson.toJson(logicTree, LogicTree.class, writer);
 		writer.flush();
+		zout.flush();
 		zout.closeEntry();
+		
+		// write files for all branches
+		HashSet<String> writtenFiles = new HashSet<>();
+		for (LogicTreeBranch<?> branch : logicTree) {
+			System.out.println("Writing branch: "+branch);
+			writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles);
+		}
 	}
 
 	@Override
@@ -221,6 +152,15 @@ public abstract class AbstractBranchAveragedModule implements ArchivableModule {
 		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		InputStreamReader reader = new InputStreamReader(logicTreeIS);
 		logicTree = gson.fromJson(reader, LogicTree.class);
+	}
+	
+	protected LogicTreeLevel<?> getLevelForType(Class<? extends LogicTreeNode> type) {
+		LogicTree<?> logicTree = getLogicTree();
+		Preconditions.checkNotNull(logicTree, "Not yet initialized");
+		for (LogicTreeLevel<?> level : logicTree.getLevels())
+			if (level.matchesType(type))
+				return level;
+		throw new IllegalStateException("No level found for type: "+type);
 	}
 
 }

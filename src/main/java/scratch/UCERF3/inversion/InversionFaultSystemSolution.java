@@ -190,6 +190,14 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 				return new SubSeismoOnFaultMFDs(getFinalSubSeismoOnFaultMFD_List());
 			}
 		}, SubSeismoOnFaultMFDs.class);
+		
+		addAvailableModule(new Callable<GridSourceProvider>() {
+
+			@Override
+			public GridSourceProvider call() throws Exception {
+				return new UCERF3_GridSourceGenerator(InversionFaultSystemSolution.this);
+			}
+		}, GridSourceProvider.class);
 	}
 	
 	@Override

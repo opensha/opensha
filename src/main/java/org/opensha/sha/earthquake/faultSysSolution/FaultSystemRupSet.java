@@ -8,6 +8,7 @@ import java.io.OutputStreamWriter;
 import java.math.RoundingMode;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -240,8 +241,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	@Override
 	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 		// CSV Files
-		CSV_BackedModule.writeToArchive(buildRupSectsCSV(), zout, entryPrefix, RUP_SECTS_FILE_NAME);
-		CSV_BackedModule.writeToArchive(buildRupPropsCSV(), zout, entryPrefix, RUP_PROPS_FILE_NAME);
+		CSV_BackedModule.writeToArchive(buildRupSectsCSV(this), zout, entryPrefix, RUP_SECTS_FILE_NAME);
+		CSV_BackedModule.writeToArchive(new RuptureProperties(this).buildCSV(), zout, entryPrefix, RUP_PROPS_FILE_NAME);
 		
 		// fault sections
 		FileBackedModule.initEntry(zout, entryPrefix, SECTS_FILE_NAME);
@@ -299,12 +300,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	
 	public static final String RUP_SECTS_FILE_NAME = "indices.csv";
 	
-	private CSVFile<String> buildRupSectsCSV() {
+	public static CSVFile<String> buildRupSectsCSV(FaultSystemRupSet rupSet) {
 		CSVFile<String> csv = new CSVFile<>(false);
 		
 		int maxNumSects = 0;
-		for (int r=0; r<getNumRuptures(); r++)
-			maxNumSects = Integer.max(maxNumSects, getSectionsIndicesForRup(r).size());
+		for (int r=0; r<rupSet.getNumRuptures(); r++)
+			maxNumSects = Integer.max(maxNumSects, rupSet.getSectionsIndicesForRup(r).size());
 		
 		List<String> header = new ArrayList<>(List.of("Rupture Index", "Num Sections"));
 		
@@ -313,9 +314,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		csv.addLine(header);
 		
-		for (int r=0; r<getNumRuptures(); r++) {
-			List<Integer> sectIDs = getSectionsIndicesForRup(r);
-			List<String> line = new ArrayList<>(5+sectIDs.size());
+		for (int r=0; r<rupSet.getNumRuptures(); r++) {
+			List<Integer> sectIDs = rupSet.getSectionsIndicesForRup(r);
+			List<String> line = new ArrayList<>(2+sectIDs.size());
 			
 			line.add(r+"");
 			line.add(sectIDs.size()+"");
@@ -329,86 +330,94 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	
 	public static final String RUP_PROPS_FILE_NAME = "properties.csv";
 	
-	private CSVFile<String> buildRupPropsCSV() {
-		CSVFile<String> csv = new CSVFile<>(true);
+	public static class RuptureProperties {
+		public final double[] mags;
+		public final double[] rakes;
+		public final double[] areas;
+		public final double[] lengths;
 		
-		int maxNumSects = 0;
-		for (int r=0; r<getNumRuptures(); r++)
-			maxNumSects = Integer.max(maxNumSects, getSectionsIndicesForRup(r).size());
-		
-		List<String> header = new ArrayList<>(List.of("Rupture Index", "Magnitude", "Average Rake (degrees)",
-				"Area (m^2)", "Length (m)"));
-		
-		csv.addLine(header);
-		
-		double[] lengths = getLengthForAllRups();
-		for (int r=0; r<getNumRuptures(); r++) {
-			List<Integer> sectIDs = getSectionsIndicesForRup(r);
-			List<String> line = new ArrayList<>(5+sectIDs.size());
+		public RuptureProperties(CSVFile<String> rupPropsCSV) {
+			int numRuptures = rupPropsCSV.getNumRows()-1;
+			double[] mags = new double[numRuptures];
+			double[] rakes = new double[numRuptures];
+			double[] areas = new double[numRuptures];
+			double[] lengths = null;
+			for (int r=0; r<numRuptures; r++) {
+				int row = r+1;
+				int col = 0;
+				// load rupture properties
+				Preconditions.checkState(r == rupPropsCSV.getInt(row, col++),
+						"Ruptures out of order or not 0-based in CSV file, expected id=%s at row %s", r, row);
+				mags[r] = rupPropsCSV.getDouble(row, col++);
+				rakes[r] = rupPropsCSV.getDouble(row, col++);
+				areas[r] = rupPropsCSV.getDouble(row, col++);
+				String lenStr = rupPropsCSV.get(row, col++);
+				if ((r == 0 && !lenStr.isBlank())) {
+					lengths = new double[numRuptures];
+					lengths[r] = Double.parseDouble(lenStr);
+				} else {
+					if (lengths != null)
+						lengths[r] = Double.parseDouble(lenStr);
+					else
+						Preconditions.checkState(lenStr.isBlank(),
+								"Rupture lenghts must be populated for all ruptures, or omitted for all. We have a length for "
+								+ "rupture %s but the first rupture did not have a length.", r);
+				}
+			}
 			
-			line.add(r+"");
-			line.add(getMagForRup(r)+"");
-			line.add(getAveRakeForRup(r)+"");
-			line.add(getAreaForRup(r)+"");
-			if (lengths == null)
-				line.add("");
-			else
-				line.add(lengths[r]+"");
-			csv.addLine(line);
+			this.mags = mags;
+			this.rakes = rakes;
+			this.areas = areas;
+			this.lengths = lengths;
 		}
 		
-		return csv;
+		public RuptureProperties(FaultSystemRupSet rupSet) {
+			int numRuptures = rupSet.getNumRuptures();
+			this.mags = new double[numRuptures];
+			this.rakes = new double[numRuptures];
+			this.areas = new double[numRuptures];
+			this.lengths = rupSet.getLengthForAllRups();
+			for (int r=0; r<numRuptures; r++) {
+				mags[r] = rupSet.getMagForRup(r);
+				rakes[r] = rupSet.getAveRakeForRup(r);
+				areas[r] = rupSet.getAreaForRup(r);
+			}
+		}
+		
+		public CSVFile<String> buildCSV() {
+			CSVFile<String> csv = new CSVFile<>(true);
+			
+			List<String> header = new ArrayList<>(List.of("Rupture Index", "Magnitude", "Average Rake (degrees)",
+					"Area (m^2)", "Length (m)"));
+			
+			csv.addLine(header);
+			
+			for (int r=0; r<mags.length; r++) {
+				List<String> line = new ArrayList<>(5);
+				
+				line.add(r+"");
+				line.add(mags[r]+"");
+				line.add(rakes[r]+"");
+				line.add(areas[r]+"");
+				if (lengths == null)
+					line.add("");
+				else
+					line.add(lengths[r]+"");
+				csv.addLine(line);
+			}
+			
+			return csv;
+		}
 	}
-
-	@Override
-	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-		System.out.println("\tLoading ruptures CSV...");
-		CSVFile<String> rupSectsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RUP_SECTS_FILE_NAME);
-		CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RUP_PROPS_FILE_NAME);
-		
-		// fault sections
-		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
-				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, SECTS_FILE_NAME)));
-		for (int s=0; s<sections.size(); s++)
-			Preconditions.checkState(sections.get(s).getSectionId() == s,
-			"Fault sections must be provided in order starting with ID=0");
-		
+	
+	public static List<List<Integer>> loadRupSectsCSV(CSVFile<String> rupSectsCSV, int numSections) {
 		int numRuptures = rupSectsCSV.getNumRows()-1;
-		Preconditions.checkState(numRuptures > 0, "No ruptures found in CSV file");
-		Preconditions.checkState(rupSectsCSV.getNumRows() == rupPropsCSV.getNumRows(),
-				"Rupture sections and properites CSVs have different lengths");
-		
-		// load rupture data
-		double[] mags = new double[numRuptures];
-		double[] rakes = new double[numRuptures];
-		double[] areas = new double[numRuptures];
-		double[] lengths = null;
 		List<List<Integer>> rupSectsList = new ArrayList<>(numRuptures);
-		boolean shortSafe = sections.size() < Short.MAX_VALUE;
-		System.out.println("\tParsing ruptures CSV");
+		boolean shortSafe = numSections < Short.MAX_VALUE;
 		for (int r=0; r<numRuptures; r++) {
 			int row = r+1;
 			int col = 0;
-			// load rupture properties
-			Preconditions.checkState(r == rupPropsCSV.getInt(row, col++),
-					"Ruptures out of order or not 0-based in CSV file, expected id=%s at row %s", r, row);
-			mags[r] = rupPropsCSV.getDouble(row, col++);
-			rakes[r] = rupPropsCSV.getDouble(row, col++);
-			areas[r] = rupPropsCSV.getDouble(row, col++);
-			String lenStr = rupPropsCSV.get(row, col++);
-			if ((r == 0 && !lenStr.isBlank())) {
-				lengths = new double[numRuptures];
-				lengths[r] = Double.parseDouble(lenStr);
-			} else {
-				if (lengths != null)
-					lengths[r] = Double.parseDouble(lenStr);
-				else
-					Preconditions.checkState(lenStr.isBlank(),
-							"Rupture lenghts must be populated for all ruptures, or omitted for all. We have a length for "
-							+ "rupture %s but the first rupture did not have a length.", r);
-			}
 			// load rupture sections
-			col = 0;
 			Preconditions.checkState(r == rupSectsCSV.getInt(row, col++),
 					"Ruptures out of order or not 0-based in CSV file, expected id=%s at row %s", r, row);
 			int numRupSects = rupSectsCSV.getInt(row, col++);
@@ -432,10 +441,39 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				Preconditions.checkState(str.isBlank(),
 						"Rupture has %s sections, but data exists in %s column %s: %s", RUP_SECTS_FILE_NAME, col, str);
 			}
+			for (int sectID : rupSects)
+				Preconditions.checkState(sectID >= 0 && sectID < numSections,
+						"Bad sectionID=%s for rupture %s", sectID, r);
 			rupSectsList.add(rupSects);
 		}
+		return rupSectsList;
+	}
+
+	@Override
+	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		System.out.println("\tLoading ruptures CSV...");
+		CSVFile<String> rupSectsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RUP_SECTS_FILE_NAME);
+		CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RUP_PROPS_FILE_NAME);
 		
-		init(sections, rupSectsList, mags, rakes, areas, lengths);
+		// fault sections
+		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
+				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, SECTS_FILE_NAME)));
+		for (int s=0; s<sections.size(); s++)
+			Preconditions.checkState(sections.get(s).getSectionId() == s,
+			"Fault sections must be provided in order starting with ID=0");
+		
+		int numRuptures = rupSectsCSV.getNumRows()-1;
+		Preconditions.checkState(numRuptures > 0, "No ruptures found in CSV file");
+		Preconditions.checkState(rupSectsCSV.getNumRows() == rupPropsCSV.getNumRows(),
+				"Rupture sections and properites CSVs have different lengths");
+		
+		// load rupture data
+		System.out.println("\tParsing rupture properties CSV");
+		RuptureProperties props = new RuptureProperties(rupPropsCSV);
+		System.out.println("\tParsing rupture sections CSV");
+		List<List<Integer>> rupSectsList = loadRupSectsCSV(rupSectsCSV, sections.size());
+		
+		init(sections, rupSectsList, props.mags, props.rakes, props.areas, props.lengths);
 		
 		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
 			// we're missing an index, see if any default modules are present that we can manually load

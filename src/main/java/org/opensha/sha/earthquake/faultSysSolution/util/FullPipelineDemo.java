@@ -72,24 +72,26 @@ class FullPipelineDemo {
 		ScalingRelationships scale = branch.getValue(ScalingRelationships.class);
 		
 //		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
-		String dirName = "2021_08_09";
+		String dirName = "2021_08_18";
 		
-		String newName = "Coulomb Rups, U3 Ref Branch";
+//		String newName = "Coulomb Rups, U3 Ref Branch";
+		String newName = "U3 Rups, U3 Ref Branch";
 //		dirName += "-coulomb-u3_ref-perturb_uniform_1e-4-avg_anneal-wl1e-4";
 		SerialSimulatedAnnealing.exp_orders_of_mag = 10;
 		String minScaleStr = new DecimalFormat("0E0").format(
 				Math.pow(10, SerialSimulatedAnnealing.max_exp-SerialSimulatedAnnealing.exp_orders_of_mag)).toLowerCase();
 		String scaleStr = "perturb_exp_scale_1e-2_to_"+minScaleStr;
-		dirName += "-coulomb-u3_ref-uniform_slip-"+scaleStr+"-avg_anneal_20m-noWL-tryZeroRates-5hr";
+//		dirName += "-coulomb-u3_ref-uniform_slip-"+scaleStr+"-avg_anneal_20m-noWL-tryZeroRates-5hr";
+		dirName += "-u3_rups-u3_ref-uniform_slip-"+scaleStr+"-avg_anneal_20m-noWL-tryZeroRates-5hr";
 		System.out.println(dirName);
-		CoulombRupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm, scale);
+//		CoulombRupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm, scale);
 //		rsConfig.setAdaptiveSectFract(0.3f);
 //		String newName = "U3 Reproduction";
 //		dirName += "-u3_ref-quick-test";
-//		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(fm , scale);
+		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(fm , scale);
 //		FaultSystemSolution compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip"));
 		FaultSystemSolution compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
-				+ "FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
+				+ "FM3_1_ZENGBB_Shaw09Mod_DsrUni_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
 		String compName =  "UCERF3";
 		
 //		double wlFract = 1e-3;

@@ -105,7 +105,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		System.out.println("---------- END LOADING ARCHIVE ----------");
 	}
 	
-	private static final String MODULE_FILE_NAME = "modules.json";
+	public static final String MODULE_FILE_NAME = "modules.json";
 	
 	/**
 	 * Loads available modules from the given zip file into the given container. It will first read the modules JSON
@@ -120,7 +120,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unchecked")
-	private static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ZipFile zip, String prefix,
+	public static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ZipFile zip, String prefix,
 			Class<? extends E> preloadClass, HashSet<String> prevPrefixes) throws IOException {
 //		System.out.println("Loading modules for "+container.getClass().getName()+" with prefix="+prefix);
 		if (prefix ==null)
@@ -380,8 +380,24 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		System.out.println("---------- END WRITING ARCHIVE ----------");
 	}
 	
-	private static <E extends OpenSHA_Module> boolean writeModules(ModuleContainer<E> container, EntryTrackingZOUT zout,
+	/**
+	 * Writes modules to the given zip output stream
+	 * 
+	 * @param <E>
+	 * @param container
+	 * @param zout
+	 * @param prefix
+	 * @param prevPrefixes
+	 * @return
+	 * @throws IOException
+	 */
+	public static <E extends OpenSHA_Module> boolean writeModules(ModuleContainer<E> container, ZipOutputStream zout,
 			String prefix, HashSet<String> prevPrefixes) throws IOException {
+		EntryTrackingZOUT ezout;
+		if (zout instanceof EntryTrackingZOUT)
+			ezout = (EntryTrackingZOUT)zout;
+		else
+			ezout = new EntryTrackingZOUT(zout);
 		List<ModuleRecord> records = new ArrayList<>();
 		
 		if (prefix == null)
@@ -431,7 +447,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 //					System.out.println("ds pre: "+downstreamPrefix);
 //					if (downstreamPrefix.length() > 20)
 //						throw new IllegalStateException("here I be");
-					if (writeModules(archive, zout, downstreamPrefix, prevPrefixes))
+					if (writeModules(archive, ezout, downstreamPrefix, prevPrefixes))
 						moduleAssets.add(MODULE_FILE_NAME);
 					
 					modulePrefix = downstreamPrefix;
@@ -439,9 +455,9 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 					modulePrefix = prefix;
 				}
 				
-				zout.initNewModule(modulePrefix);
-				archivable.writeToArchive(zout, modulePrefix);
-				moduleAssets.addAll(zout.endCurrentModuleEntries());
+				ezout.initNewModule(modulePrefix);
+				archivable.writeToArchive(ezout, modulePrefix);
+				moduleAssets.addAll(ezout.endCurrentModuleEntries());
 				Collections.sort(moduleAssets);
 				records.add(new ModuleRecord(archivable.getName(), archivable.getLoadingClass().getName(),
 						modulePrefix, moduleAssets));
@@ -455,15 +471,15 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			
 			String entryName = prefix+MODULE_FILE_NAME;
 			System.out.println("Wrote "+records.size()+" modules, writing index to "+entryName);
-			zout.putNextEntry(new ZipEntry(entryName));
-			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout));
+			ezout.putNextEntry(new ZipEntry(entryName));
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(ezout));
 //			System.out.println("------ MODULES JSON ------");
 //			System.out.println(gson.toJson(records));
 //			System.out.println("--------------------------");
 			gson.toJson(records, writer);
 			writer.write("\n");
 			writer.flush();
-			zout.closeEntry();
+			ezout.closeEntry();
 			return true;
 		}
 		return false;

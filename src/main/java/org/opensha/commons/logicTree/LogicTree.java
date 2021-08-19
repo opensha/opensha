@@ -2,6 +2,7 @@ package org.opensha.commons.logicTree;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
@@ -37,7 +38,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		// for serialization
 	}
 	
-	protected LogicTree(List<LogicTreeLevel<? extends E>> levels, List<LogicTreeBranch<E>> branches) {
+	protected LogicTree(List<LogicTreeLevel<? extends E>> levels, Collection<? extends LogicTreeBranch<E>> branches) {
 		Preconditions.checkState(levels != null);
 		Preconditions.checkState(branches != null);
 		this.levels = ImmutableList.copyOf(levels);
@@ -170,6 +171,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				buildBranchesRecursive(levels, branches, copy, curIndex+1, onlyNonZeroWeight);
 			}
 		}
+	}
+	
+	public static <E extends LogicTreeNode> LogicTree<E> fromExisting(List<LogicTreeLevel<? extends E>> levels,
+			Collection<? extends LogicTreeBranch<E>> branches) {
+		return new LogicTree<>(levels, branches);
 	}
 	
 	public static void main(String[] args) {

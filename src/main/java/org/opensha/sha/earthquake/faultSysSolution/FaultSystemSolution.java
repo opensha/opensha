@@ -175,16 +175,29 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	public static final String RATES_FILE_NAME = "rates.csv";
+	
+	public static CSVFile<String> buildRatesCSV(FaultSystemSolution sol) {
+		CSVFile<String> ratesCSV = new CSVFile<>(true);
+		ratesCSV.addLine("Rupture Index", "Annual Rate");
+		double[] rates = sol.getRateForAllRups();
+		for (int r=0; r<rates.length; r++)
+			ratesCSV.addLine(r+"", rates[r]+"");
+		return ratesCSV;
+	}
 
 	@Override
 	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		CSVFile<String> ratesCSV = new CSVFile<>(true);
-		ratesCSV.addLine("Rupture Index", "Annual Rate");
-		for (int r=0; r<rates.length; r++)
-			ratesCSV.addLine(r+"", rates[r]+"");
-		
 		// CSV Files
-		CSV_BackedModule.writeToArchive(ratesCSV, zout, entryPrefix, RATES_FILE_NAME);
+		CSV_BackedModule.writeToArchive(buildRatesCSV(this), zout, entryPrefix, RATES_FILE_NAME);
+	}
+	
+	public static double[] loadRatesCSV(CSVFile<String> ratesCSV) {
+		double[] rates = new double[ratesCSV.getNumRows()-1];
+		for (int r=0; r<rates.length; r++) {
+			Preconditions.checkState(ratesCSV.getInt(r+1, 0) == r, "Rates CSV out of order or not 0-based");
+			rates[r] = ratesCSV.getDouble(r+1, 1);
+		}
+		return rates;
 	}
 
 	@Override
@@ -196,12 +209,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		System.out.println("\tLoading rates CSV...");
 		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RATES_FILE_NAME);
-		rates = new double[rupSet.getNumRuptures()];
-		Preconditions.checkState(ratesCSV.getNumRows() == rupSet.getNumRuptures()+1, "Unexpected number of rows in rates CSV");
-		for (int r=0; r<rates.length; r++) {
-			Preconditions.checkState(ratesCSV.getInt(r+1, 0) == r, "Rates CSV out of order or not 0-based");
-			rates[r] = ratesCSV.getDouble(r+1, 1);
-		}
+		rates = loadRatesCSV(ratesCSV);
+		Preconditions.checkState(rates.length == rupSet.getNumRuptures(), "Unexpected number of rows in rates CSV");
 		
 		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
 			// we're missing an index, see if any common modules are present that we can manually load

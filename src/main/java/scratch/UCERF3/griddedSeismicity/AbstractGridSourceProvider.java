@@ -341,6 +341,12 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			this.fracReverse = fracReverse;
 		}
 
+		public Precomputed(GriddedRegion region, CSVFile<String> subSeisCSV,
+				CSVFile<String> unassociatedCSV, CSVFile<String> mechCSV) {
+			super();
+			init(region, subSeisCSV, unassociatedCSV, mechCSV);
+		}
+
 		public Precomputed(GridSourceProvider prov) {
 			this.region = prov.getGriddedRegion();
 			int nodeCount = region.getNodeCount();
@@ -402,6 +408,18 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 		private static final int magRoundScale = 3;
 		private static final int mfdRoundSigFigs = 6;
 		
+		public CSVFile<String> buildSubSeisCSV() {
+			if (nodeSubSeisMFDs == null)
+				return null;
+			return buildCSV(nodeSubSeisMFDs);
+		}
+		
+		public CSVFile<String> buildUnassociatedCSV() {
+			if (nodeUnassociatedMFDs == null)
+				return null;
+			return buildCSV(nodeUnassociatedMFDs);
+		}
+		
 		private CSVFile<String> buildCSV(Map<Integer, IncrementalMagFreqDist> mfds) {
 			IncrementalMagFreqDist xVals = null;
 			
@@ -453,7 +471,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			return csv;
 		}
 		
-		private CSVFile<String> buildWeightsCSV() {
+		public CSVFile<String> buildWeightsCSV() {
 			CSVFile<String> csv = new CSVFile<>(true);
 			List<String> header = new ArrayList<>();
 			header.add("Node Index");
@@ -511,12 +529,22 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
 			InputStreamReader regionReader = new InputStreamReader(regionIS);
 			Feature regFeature = Feature.read(regionReader);
-			region = GriddedRegion.fromFeature(regFeature);
+			GriddedRegion region = GriddedRegion.fromFeature(regFeature);
 			
-			Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = loadCSV(
-					region, zip, entryPrefix, ARCHIVE_SUB_SEIS_FILE_NAME);
-			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = loadCSV(
-					region, zip, entryPrefix, ARCHIVE_UNASSOCIATED_FILE_NAME);
+			CSVFile<String> subSeisCSV = loadCSV(zip, entryPrefix, ARCHIVE_SUB_SEIS_FILE_NAME);
+			CSVFile<String> nodeUnassociatedCSV = loadCSV(zip, entryPrefix, ARCHIVE_UNASSOCIATED_FILE_NAME);
+			
+			// load mechanisms
+			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_MECH_WEIGHT_FILE_NAME);
+			
+			init(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
+		}
+		
+		private void init(GriddedRegion region, CSVFile<String> subSeisCSV,
+				CSVFile<String> unassociatedCSV, CSVFile<String> mechCSV) {
+			this.region = region;
+			Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = csvToMFDs(region, subSeisCSV);
+			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = csvToMFDs(region, unassociatedCSV);
 			if (nodeSubSeisMFDs == null)
 				this.nodeSubSeisMFDs = ImmutableMap.of();
 			else
@@ -526,8 +554,6 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			else
 				this.nodeUnassociatedMFDs = ImmutableMap.copyOf(nodeUnassociatedMFDs);
 			
-			// load mechanisms
-			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_MECH_WEIGHT_FILE_NAME);
 			Preconditions.checkState(mechCSV.getNumRows() == region.getNodeCount()+1,
 					"Mechanism node count mismatch, expected %s, have %s", region.getNodeCount(), mechCSV.getNumRows()-1);
 			fracStrikeSlip = new double[region.getNodeCount()];
@@ -550,15 +576,19 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			}
 		}
 		
-		private static Map<Integer, IncrementalMagFreqDist> loadCSV(GriddedRegion region,
-				ZipFile zip, String entryPrefix, String fileName) throws IOException {
+		public static CSVFile<String> loadCSV(ZipFile zip, String entryPrefix, String fileName) throws IOException {
 			String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 			Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
 			ZipEntry entry = zip.getEntry(entryName);
 			if (entry == null)
 				return null;
 			
-			CSVFile<String> csv = CSVFile.readStream(new BufferedInputStream(zip.getInputStream(entry)), true);
+			return CSVFile.readStream(new BufferedInputStream(zip.getInputStream(entry)), true);
+		}
+		
+		private static Map<Integer, IncrementalMagFreqDist> csvToMFDs(GriddedRegion region, CSVFile<String> csv) {
+			if (csv == null)
+				return null;
 			Map<Integer, IncrementalMagFreqDist> mfds = new HashMap<>();
 			double minX = csv.getDouble(0, 3);
 			double maxX = csv.getDouble(0, csv.getNumCols()-1);

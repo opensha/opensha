@@ -25,6 +25,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		return getName();
 	}
 	
+	public boolean matchesType(Class<?> clazz) {
+		Class<? extends E> type = getType();
+		if (type.equals(clazz) || type.isAssignableFrom(clazz))
+			return true;
+		return false;
+	}
+	
 	static class FileBackedLevel extends LogicTreeLevel<FileBackedNode> {
 		
 		private String name;
