@@ -13,24 +13,36 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata.ScalarRange;
@@ -69,7 +81,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 
 	@Override
 	public String getName() {
-		return "Rupture Size Histograms";
+		return "Rupture Scalar Histograms";
 	}
 
 	@Override
@@ -128,138 +140,231 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			lines.addAll(table.build());
 			lines.add("");
 			
-			double[] fractiles = scalar.getExampleRupPlotFractiles();
-			if (fractiles == null)
-				continue;
+			if (sol == null) {
+				// rup set only, do rupture examples
+				double[] fractiles = scalar.getExampleRupPlotFractiles();
+				if (fractiles == null)
+					continue;
 
-			lines.add(getSubHeading()+"# "+scalar.getName()+" Extremes & Examples");
-			lines.add(topLink); lines.add("");
-			lines.add("Example ruptures at various percentiles of "+scalar.getName());
-			lines.add("");
-			
-			List<List<ClusterRupture>> ruptureLists = new ArrayList<>();
-			List<HashSet<UniqueRupture>> uniqueLists = new ArrayList<>();
-			List<String> headings = new ArrayList<>();
-			List<List<Double>> scalarValsList = new ArrayList<>();
-			List<String> prefixes = new ArrayList<>();
-			List<FaultSystemRupSet> rupSets = new ArrayList<>();
-			
-			ruptureLists.add(inputRups);
-			uniqueLists.add(null);
-			if (compRupSet == null)
-				headings.add(null);
-			else
-				headings.add("From the primary rupture set ("+meta.primary.name+"):");
-			scalarValsList.add(inputScalars.getValues());
-			
-			prefixes.add("hist_rup");
-			rupSets.add(rupSet);
-			if (compRupSet != null) {
-				if (meta.primaryOverlap.numUniqueRuptures > 0) {
-					// add unique to primary
-					HashSet<UniqueRupture> includeUniques = new HashSet<>();
-					for (ClusterRupture rup : inputRups)
-						if (!compUniques.contains(rup.unique))
-							includeUniques.add(rup.unique);
-					Preconditions.checkState(!includeUniques.isEmpty());
-					ruptureLists.add(inputRups);
-					uniqueLists.add(includeUniques);
-
-					headings.add("Ruptures that are unique to the primary rupture set ("+meta.primary.name+"):");
-					scalarValsList.add(inputScalars.getValues());
-
-					prefixes.add("hist_rup");
-					rupSets.add(rupSet);
-				}
-				if (meta.comparisonOverlap.numUniqueRuptures > 0) {
-					// add unique to comparison
-					HashSet<UniqueRupture> includeUniques = new HashSet<>();
-					for (ClusterRupture rup : compRups)
-						if (!inputUniques.contains(rup.unique))
-							includeUniques.add(rup.unique);
-					Preconditions.checkState(!includeUniques.isEmpty());
-					ruptureLists.add(compRups);
-					uniqueLists.add(includeUniques);
-
-					headings.add("Ruptures that are unique to the comparison rupture set ("+meta.comparison.name+"):");
-					scalarValsList.add(compScalars.getValues());
-
-					prefixes.add("hist_comp_rup");
-					rupSets.add(compRupSet);
-				}
-			}
-			
-			for (int i=0; i<headings.size(); i++) {
-				List<ClusterRupture> rups = ruptureLists.get(i);
-				String heading = headings.get(i);
-				List<Double> vals = scalarValsList.get(i);
-				HashSet<UniqueRupture> includeUniques = uniqueLists.get(i);
-				FaultSystemRupSet myRupSet = rupSets.get(i);
-				String prefix = prefixes.get(i);
+				lines.add(getSubHeading()+"# "+scalar.getName()+" Extremes & Examples");
+				lines.add(topLink); lines.add("");
+				lines.add("Example ruptures at various percentiles of "+scalar.getName());
+				lines.add("");
 				
-				if (heading != null) {
-					lines.add(heading);
-					lines.add("");
-				}
+				List<List<ClusterRupture>> ruptureLists = new ArrayList<>();
+				List<HashSet<UniqueRupture>> uniqueLists = new ArrayList<>();
+				List<String> headings = new ArrayList<>();
+				List<List<Double>> scalarValsList = new ArrayList<>();
+				List<String> prefixes = new ArrayList<>();
+				List<FaultSystemRupSet> rupSets = new ArrayList<>();
 				
-				List<Integer> filteredIndexes = new ArrayList<>();
-				List<Double> filteredVals = new ArrayList<>();
-				for (int r=0; r<rups.size(); r++) {
-					if (includeUniques == null || includeUniques.contains(rups.get(r).unique)) {
-						filteredIndexes.add(r);
-						filteredVals.add(vals.get(r));
+				ruptureLists.add(inputRups);
+				uniqueLists.add(null);
+				if (compRupSet == null)
+					headings.add(null);
+				else
+					headings.add("From the primary rupture set ("+meta.primary.name+"):");
+				scalarValsList.add(inputScalars.getValues());
+				
+				prefixes.add("hist_rup");
+				rupSets.add(rupSet);
+				if (compRupSet != null) {
+					if (meta.primaryOverlap.numUniqueRuptures > 0) {
+						// add unique to primary
+						HashSet<UniqueRupture> includeUniques = new HashSet<>();
+						for (ClusterRupture rup : inputRups)
+							if (!compUniques.contains(rup.unique))
+								includeUniques.add(rup.unique);
+						Preconditions.checkState(!includeUniques.isEmpty());
+						ruptureLists.add(inputRups);
+						uniqueLists.add(includeUniques);
+
+						headings.add("Ruptures that are unique to the primary rupture set ("+meta.primary.name+"):");
+						scalarValsList.add(inputScalars.getValues());
+
+						prefixes.add("hist_rup");
+						rupSets.add(rupSet);
+					}
+					if (meta.comparisonOverlap.numUniqueRuptures > 0) {
+						// add unique to comparison
+						HashSet<UniqueRupture> includeUniques = new HashSet<>();
+						for (ClusterRupture rup : compRups)
+							if (!inputUniques.contains(rup.unique))
+								includeUniques.add(rup.unique);
+						Preconditions.checkState(!includeUniques.isEmpty());
+						ruptureLists.add(compRups);
+						uniqueLists.add(includeUniques);
+
+						headings.add("Ruptures that are unique to the comparison rupture set ("+meta.comparison.name+"):");
+						scalarValsList.add(compScalars.getValues());
+
+						prefixes.add("hist_comp_rup");
+						rupSets.add(compRupSet);
 					}
 				}
-				List<Integer> sortedIndexes = ComparablePairing.getSortedData(filteredVals, filteredIndexes);
 				
-				int[] fractileIndexes = new int[fractiles.length];
-				for (int j=0; j<fractiles.length; j++) {
-					double f = fractiles[j];
-					if (f == 1d)
-						fractileIndexes[j] = filteredIndexes.size()-1;
-					else
-						fractileIndexes[j] = (int)(f*filteredIndexes.size());
+				for (int i=0; i<headings.size(); i++) {
+					List<ClusterRupture> rups = ruptureLists.get(i);
+					String heading = headings.get(i);
+					List<Double> vals = scalarValsList.get(i);
+					HashSet<UniqueRupture> includeUniques = uniqueLists.get(i);
+					FaultSystemRupSet myRupSet = rupSets.get(i);
+					String prefix = prefixes.get(i);
+					
+					if (heading != null) {
+						lines.add(heading);
+						lines.add("");
+					}
+					
+					List<Integer> filteredIndexes = new ArrayList<>();
+					List<Double> filteredVals = new ArrayList<>();
+					for (int r=0; r<rups.size(); r++) {
+						if (includeUniques == null || includeUniques.contains(rups.get(r).unique)) {
+							filteredIndexes.add(r);
+							filteredVals.add(vals.get(r));
+						}
+					}
+					List<Integer> sortedIndexes = ComparablePairing.getSortedData(filteredVals, filteredIndexes);
+					
+					int[] fractileIndexes = new int[fractiles.length];
+					for (int j=0; j<fractiles.length; j++) {
+						double f = fractiles[j];
+						if (f == 1d)
+							fractileIndexes[j] = filteredIndexes.size()-1;
+						else
+							fractileIndexes[j] = (int)(f*filteredIndexes.size());
+					}
+					
+					table = MarkdownUtils.tableBuilder();
+					table.initNewLine();
+					for (int j=0; j<fractiles.length; j++) {
+						int index = sortedIndexes.get(fractileIndexes[j]);
+						double val = vals.get(index);
+						double f = fractiles[j];
+						String str;
+						if (f == 0d)
+							str = "Minimum";
+						else if (f == 1d)
+							str = "Maximum";
+						else
+							str = "p"+new DecimalFormat("0.#").format(f*100d);
+						str += ": ";
+						if (val < 0.1)
+							str += (float)val;
+						else
+							str += new DecimalFormat("0.##").format(val);
+						table.addColumn("**"+str+"**");
+					}
+					table.finalizeLine();
+					table.initNewLine();
+					for (int rawIndex : fractileIndexes) {
+						int index = sortedIndexes.get(rawIndex);
+						String rupPrefix = prefix+"_"+index;
+						ClusterRupture rup = rups.get(index);
+						if (includeUniques != null)
+							Preconditions.checkState(includeUniques.contains(rup.unique),
+									"IncludeUniques doesn't contain rupture at rawIndex=%s, index=%s: %s", rawIndex, index, rup);
+						RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rup,
+								"Rupture "+index, false, true);
+						table.addColumn("[<img src=\"" + relPathToResources + "/" + rupPrefix + ".png\" />]"+
+								"("+relPathToResources+"/../"+generateRuptureInfoPage(myRupSet, rups.get(index),
+										index, rupHtmlDir, rupPrefix, null, distAzCalc)+ ")");
+					}
+					
+					lines.addAll(table.wrap(4, 0).build());
+					lines.add("");
 				}
+			} else {
+				// we have a solution and probably don't care about example ruptures, do rate scatters instead
+				double[] rates = sol.getRateForAllRups();
+				
+				DefaultXY_DataSet valRateScatter = new DefaultXY_DataSet();
+				MinMaxAveTracker track = new MinMaxAveTracker();
+				for (int r=0; r<rates.length; r++) {
+					double val = inputScalars.getValue(r);
+					track.addValue(val);
+					if (scalar.isLogX())
+						val = Math.log10(val);
+					valRateScatter.set(val, rates[r]);
+				}
+				
+				EvenlyDiscretizedFunc refXFunc = scalar.getHistogram(track);
+				
+				List<XY_DataSet> funcs = new ArrayList<>();
+				List<PlotCurveCharacterstics> chars = new ArrayList<>();
+				
+				funcs.add(valRateScatter);
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
+				
+//				Range xRange = new Range(0.5*Math.floor(valRateScatter.getMinX()*2), 0.5*Math.ceil(valRateScatter.getMaxX()*2));
+				Range xRange = new Range(refXFunc.getMinX()-0.5*refXFunc.getDelta(), refXFunc.getMaxX()+0.5*refXFunc.getDelta());
+				Range yRange = new Range(Math.max(1e-16, valRateScatter.getMinY()), Math.max(1e-2, valRateScatter.getMaxY()));
+				Range logYRange = new Range(Math.log10(yRange.getLowerBound()), Math.log10(yRange.getUpperBound()));
+				
+				String xAxisLabel = scalar.getxAxisLabel();
+				if (scalar.isLogX())
+					xAxisLabel = "Log10 "+xAxisLabel;
+				
+				PlotSpec spec = new PlotSpec(funcs, chars, scalar.getName()+" vs Rupture Rate", xAxisLabel, "Rupture Rate (/yr)");
+				
+				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				
+				gp.drawGraphPanel(spec, false, true, xRange, yRange);
+				
+				String prefix = "hist_"+scalar.name()+"_vs_rate";
+				
+				PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 850, true, false, false);
+//				lines.add("");
+//				lines.add("![Rate vs Mag]("+relPathToResources+"/"+prefix+"_rate_vs_mag.png)");
+				
+				funcs = new ArrayList<>();
+				chars = new ArrayList<>();
+//				EvenlyDiscretizedFunc refXFunc = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 50);
+				EvenlyDiscretizedFunc refYFunc = new EvenlyDiscretizedFunc(logYRange.getLowerBound(), logYRange.getUpperBound(), 50);
+				EvenlyDiscrXYZ_DataSet xyz = new EvenlyDiscrXYZ_DataSet(refXFunc.size(), refYFunc.size(),
+						refXFunc.getMinX(), refYFunc.getMinX(), refXFunc.getDelta(), refYFunc.getDelta());
+				for (Point2D pt : valRateScatter) {
+					double x = pt.getX();
+					double logY = Math.log10(pt.getY());
+					int xInd = refXFunc.getClosestXIndex(x);
+					int yInd = refYFunc.getClosestXIndex(logY);
+					xyz.set(xInd, yInd, xyz.get(xInd, yInd)+1);
+				}
+				
+				xyz.log10();
+				double maxZ = xyz.getMaxZ();
+				CPT cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, Math.ceil(maxZ));
+				cpt.setNanColor(new Color(255, 255, 255, 0));
+				cpt.setBelowMinColor(cpt.getNaNColor());
+				
+				// set all zero to NaN so that it will plot clear
+				for (int i=0; i<xyz.size(); i++) {
+					if (xyz.get(i) == 0)
+						xyz.set(i, Double.NaN);
+				}
+				
+				XYZPlotSpec xyzSpec = new XYZPlotSpec(xyz, cpt, spec.getTitle(), spec.getXAxisLabel(),
+						"Log10 "+spec.getYAxisLabel(), "Log10 Count");
+				xyzSpec.setCPTPosition(RectangleEdge.BOTTOM);
+				xyzSpec.setXYElems(funcs);
+				xyzSpec.setXYChars(chars);
+				XYZGraphPanel xyzGP = new XYZGraphPanel(gp.getPlotPrefs());
+				xyzGP.drawPlot(xyzSpec, false, false, xRange, logYRange);
+				
+				xyzGP.getChartPanel().setSize(1000, 850);
+				xyzGP.saveAsPNG(new File(resourcesDir, prefix+"_hist2D.png").getAbsolutePath());
 				
 				table = MarkdownUtils.tableBuilder();
 				table.initNewLine();
-				for (int j=0; j<fractiles.length; j++) {
-					int index = sortedIndexes.get(fractileIndexes[j]);
-					double val = vals.get(index);
-					double f = fractiles[j];
-					String str;
-					if (f == 0d)
-						str = "Minimum";
-					else if (f == 1d)
-						str = "Maximum";
-					else
-						str = "p"+new DecimalFormat("0.#").format(f*100d);
-					str += ": ";
-					if (val < 0.1)
-						str += (float)val;
-					else
-						str += new DecimalFormat("0.##").format(val);
-					table.addColumn("**"+str+"**");
-				}
+				table.addColumn("![rate comparison]("+relPathToResources+"/"+prefix+".png)");
+				table.addColumn("![rate hist]("+relPathToResources+"/"+prefix+"_hist2D.png)");
 				table.finalizeLine();
-				table.initNewLine();
-				for (int rawIndex : fractileIndexes) {
-					int index = sortedIndexes.get(rawIndex);
-					String rupPrefix = prefix+"_"+index;
-					ClusterRupture rup = rups.get(index);
-					if (includeUniques != null)
-						Preconditions.checkState(includeUniques.contains(rup.unique),
-								"IncludeUniques doesn't contain rupture at rawIndex=%s, index=%s: %s", rawIndex, index, rup);
-					RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rup,
-							"Rupture "+index, false, true);
-					table.addColumn("[<img src=\"" + relPathToResources + "/" + rupPrefix + ".png\" />]"+
-							"("+relPathToResources+"/../"+generateRuptureInfoPage(myRupSet, rups.get(index),
-									index, rupHtmlDir, rupPrefix, null, distAzCalc)+ ")");
-				}
-				
-				lines.addAll(table.wrap(4, 0).build());
+				lines.add(getSubHeading()+"# "+scalar.getName()+" vs Rupture Rate");
+				lines.add(topLink); lines.add("");
 				lines.add("");
+				lines.addAll(table.build());
 			}
+			
 		}
 		return lines;
 	}
@@ -430,7 +535,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				(List<Integer>)includeIndexes : new ArrayList<>(includeIndexes);
 		MinMaxAveTracker track = new MinMaxAveTracker();
 		for (int r : indexesList)
-			track.addValue(scalarVals.getValues().get(r)); 
+			track.addValue(scalarVals.getValue(r)); 
 		if (compScalarVals != null) {
 			// used only for bounds
 			for (double scalar : compScalarVals.getValues())
@@ -446,7 +551,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		if (compScalarVals != null && (!rateWeighted || compScalarVals.getSol() != null)) {
 			compHist = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
 			for (int i=0; i<compScalarVals.getValues().size(); i++) {
-				double scalar = compScalarVals.getValues().get(i);
+				double scalar = compScalarVals.getValue(i);
 				double y = rateWeighted ? compScalarVals.getSol().getRateForRup(i) : 1d;
 				int index;
 				if (logX)
@@ -459,7 +564,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		
 		for (int i=0; i<indexesList.size(); i++) {
 			int rupIndex = indexesList.get(i);
-			double scalar = scalarVals.getValues().get(i);
+			double scalar = scalarVals.getValue(i);
 			double y = rateWeighted ? scalarVals.getSol().getRateForRup(rupIndex) : 1;
 			int index;
 			if (logX)
@@ -597,7 +702,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				(List<Integer>)includeIndexes : new ArrayList<>(includeIndexes);
 		MinMaxAveTracker track = new MinMaxAveTracker();
 		for (int r : indexesList)
-			track.addValue(scalarVals.getValues().get(r)); 
+			track.addValue(scalarVals.getValue(r)); 
 		if (compScalarVals != null) {
 			// used only for bounds
 			for (double scalar : compScalarVals.getValues())
@@ -625,7 +730,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		
 		for (int i=0; i<indexesList.size(); i++) {
 			int rupIndex = indexesList.get(i);
-			double scalar = scalarVals.getValues().get(i);
+			double scalar = scalarVals.getValue(i);
 			int index;
 			if (logX)
 				index = scalar <= 0 ? 0 : hist.getClosestXIndex(Math.log10(scalar));
@@ -763,7 +868,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			values = new ArrayList<>();
 			System.out.println("Calculating "+scalar.getName()+" for "+rups.size()+" ruptures");
 			for (int r=0; r<rups.size(); r++)
-				getValues().add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
+				values.add(scalar.getValue(r, rupSet, rups.get(r), distAzCalc));
 		}
 
 		/**
@@ -778,6 +883,13 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		 */
 		public List<Double> getValues() {
 			return values;
+		}
+
+		/**
+		 * @return the values
+		 */
+		public double getValue(int rupIndex) {
+			return values.get(rupIndex);
 		}
 
 		/**
@@ -1143,6 +1255,37 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			@Override
 			public double[] getExampleRupPlotFractiles() {
 				return new double[] { 1d, 0.5, 0.1, 0.05, 0.025, 0.01, 0.001, 0 };
+			}
+		},
+		MAX_SLIP_DIFF("Max Slip Rate Difference", "Section Max - Min Slip Rate in Rupture (mm/yr)",
+				"The difference between the slip rate with the highest and lowest slip rate in the rupture.") {
+			@Override
+			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
+				double max = Math.max(5d, scalarTrack.getMax());
+				if (max > 50)
+					return HistogramFunction.getEncompassingHistogram(0d, max, 5d);
+				else if (max > 20)
+					return HistogramFunction.getEncompassingHistogram(0d, max, 2d);
+				return HistogramFunction.getEncompassingHistogram(0d, max, 1d);
+			}
+
+			@Override
+			public double getValue(int index, FaultSystemRupSet rupSet, ClusterRupture rup,
+					SectionDistanceAzimuthCalculator distAzCalc) {
+				SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
+				double max = 0d;
+				double min = Double.POSITIVE_INFINITY;
+				for (int s : rupSet.getSectionsIndicesForRup(index)) {
+					double slipRate = slipRates.getSlipRate(s)*1e3; // m/yr -> mm/yr
+					max = Math.max(max, slipRate);
+					min = Math.min(min, slipRate);
+				}
+				return max-min;
+			}
+
+			@Override
+			public double[] getExampleRupPlotFractiles() {
+				return example_fractiles_default;
 			}
 		};
 		

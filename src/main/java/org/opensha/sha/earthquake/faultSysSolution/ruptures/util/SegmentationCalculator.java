@@ -29,6 +29,7 @@ import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -1232,9 +1233,10 @@ public class SegmentationCalculator {
 			int height = 300 + 400*specs.size();
 			gp.drawGraphPanel(specs, false, logY, xRanges, yRanges);
 			
-			CombinedDomainXYPlot plot = (CombinedDomainXYPlot)gp.getPlot();
-			for (int i=0; i<specs.size(); i++)
-				((XYPlot)plot.getSubplots().get(i)).setWeight(i < specs.size()-1 ? 5: 3);
+			int[] weights = new int[specs.size()];
+			for (int i=0; i<weights.length; i++)
+				weights[i] = i < specs.size()-1 ? 5 : 3;
+			PlotUtils.setSubPlotWeights(gp, weights);
 
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");

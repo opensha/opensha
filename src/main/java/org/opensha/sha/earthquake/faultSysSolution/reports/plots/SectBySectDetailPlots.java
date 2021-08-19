@@ -129,11 +129,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return table.build();
 	}
 
-	public TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames) {
+	private TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames) {
 		return buildSectLinksTable(linksMap, sortedNames, null);
 	}
 
-	public TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames,
+	private TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames,
 			Map<String, Boolean> highlights) {
 		int cols;
 		if (sortedNames.size() > 30)
@@ -209,7 +209,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return dirName;
 	}
 
-	public List<String> getConnectivityLines(ReportMetadata meta, int parentSectIndex, String parentName,
+	private List<String> getConnectivityLines(ReportMetadata meta, int parentSectIndex, String parentName,
 			SectionDistanceAzimuthCalculator distAzCalc, Map<Integer, List<FaultSection>> sectsByParent,
 			RupSetMapMaker mapMaker, FaultSystemRupSet rupSet, File outputDir, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
@@ -613,7 +613,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 	}
 
-	public List<String> getMFDLines(ReportMetadata meta, int parentSectIndex, String parentName,
+	private List<String> getMFDLines(ReportMetadata meta, int parentSectIndex, String parentName,
 			List<FaultSection> parentSects, File outputDir, String topLink) throws IOException {
 		
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
@@ -629,8 +629,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(minMag, maxMag);
 		
 		Range xRange = SolMFDPlot.xRange(defaultMFD);
-		List<IncrementalMagFreqDist> incrFuncs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		List<XY_DataSet> incrFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> incrChars = new ArrayList<>();
 		
 		IncrementalMagFreqDist particMFD = sol.calcParticipationMFD_forParentSect(
 				parentSectIndex, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
@@ -638,10 +638,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				parentSectIndex, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
 
 		incrFuncs.add(particMFD);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, MAIN_COLOR));
+		incrChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, MAIN_COLOR));
 		
 		incrFuncs.add(nuclMFD);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, MAIN_COLOR));
+		incrChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, MAIN_COLOR.darker()));
+
+		List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> cmlChars = new ArrayList<>();
 		
 		if (meta.comparison != null && meta.comparison.sol != null) {
 			IncrementalMagFreqDist compParticMFD = meta.comparison.sol.calcParticipationMFD_forParentSect(
@@ -650,36 +653,68 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					parentSectIndex, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
 			
 			particMFD.setName("Primary Participation");
-			nuclMFD.setName("Nucleation");
-			compParticMFD.setName("Participation");
-			compNuclMFD.setName("Nucleation");
+			nuclMFD.setName("Primary Nucleation");
+			compParticMFD.setName("Comparison Participation");
+			compNuclMFD.setName("Comparison Nucleation");
 			
-			incrFuncs.add(compParticMFD);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, COMP_COLOR));
+			this.addFakeHistFromFunc(compParticMFD, incrFuncs, incrChars,
+					new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, COMP_COLOR));
 			
-			incrFuncs.add(compNuclMFD);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, COMP_COLOR));
+			this.addFakeHistFromFunc(compNuclMFD, incrFuncs, incrChars,
+					new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, COMP_COLOR));
+			
+			cmlFuncs.add(compParticMFD.getCumRateDistWithOffset());
+			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, COMP_COLOR));
+			cmlFuncs.add(compNuclMFD.getCumRateDistWithOffset());
+			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, COMP_COLOR));
 		} else {
 			particMFD.setName("Participation");
 			nuclMFD.setName("Nucleation");
 		}
 		
+		cmlFuncs.add(particMFD.getCumRateDistWithOffset());
+		cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, MAIN_COLOR));
+		cmlFuncs.add(nuclMFD.getCumRateDistWithOffset());
+		cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, MAIN_COLOR));
 		
-		List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
-		for (IncrementalMagFreqDist incrFunc : incrFuncs)
-			cmlFuncs.add(incrFunc.getCumRateDistWithOffset());
 		Range yRange = yRange(cmlFuncs, MFD_DEFAULT_Y_RANGE, MFD_MAX_Y_RANGE);
 		if (yRange == null)
 			return new ArrayList<>();
 		
-		PlotSpec incrSpec = new PlotSpec(incrFuncs, chars, parentName, "Magnitude", "Incremental Rate (per yr)");
-		PlotSpec cmlSpec = new PlotSpec(cmlFuncs, chars, parentName, "Magnitude", "Cumulative Rate (per yr)");
+		List<DiscretizedFunc> availableFuncs = new ArrayList<>();
+		List<PlotCurveCharacterstics> availableChars = new ArrayList<>();
+		IncrementalMagFreqDist availableRups = defaultMFD.deepClone();
+		IncrementalMagFreqDist usedRups = defaultMFD.deepClone();
+		for (int rupIndex : rupSet.getRupturesForParentSection(parentSectIndex)) {
+			double rate = sol.getRateForRup(rupIndex);
+			double mag = rupSet.getMagForRup(rupIndex);
+			int magIndex = availableRups.getClosestXIndex(mag);
+			availableRups.add(magIndex, 1d);
+			if (rate > 0d)
+				usedRups.add(magIndex, 1d);
+		}
+		availableRups.setName("Available Ruptures");
+		availableFuncs.add(availableRups);
+		availableChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.GREEN.brighter()));
+		usedRups.setName("Utilized Ruptures");
+		availableFuncs.add(usedRups);
+		availableChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.GREEN.darker()));
+		PlotSpec availableSpec = new PlotSpec(availableFuncs, availableChars, null, "Magnitude", "Rupture Count");
+		availableSpec.setLegendInset(RectangleAnchor.TOP_LEFT, 0.025, 0.975, 0.3, true);
+		List<Range> xRanges = List.of(xRange);
+		double countMax = Math.pow(10, Math.ceil(Math.max(1, Math.log10(availableRups.getMaxY()))));
+		List<Range> yRanges = List.of(yRange, new Range(0.8, countMax));
+		List<Boolean> xLogs = List.of(false);
+		List<Boolean> yLogs = List.of(true, true);
+		int[] weights = { 7, 3 };
+		
+		PlotSpec incrSpec = new PlotSpec(incrFuncs, incrChars, parentName, "Magnitude", "Incremental Rate (per yr)");
+		PlotSpec cmlSpec = new PlotSpec(cmlFuncs, cmlChars, parentName, "Magnitude", "Cumulative Rate (per yr)");
 		incrSpec.setLegendInset(true);
 		cmlSpec.setLegendInset(true);
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		gp.setTickLabelFontSize(20);
-		gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
 		
 		String prefix = "sect_mfd";
 		
@@ -688,13 +723,15 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		table.addLine("Incremental", "Cumulative");
 		
 		table.initNewLine();
-		gp.drawGraphPanel(incrSpec, false, true, xRange, yRange);
-		PlotUtils.writePlots(outputDir, prefix, gp, 1000, 850, true, true, true);
+		gp.drawGraphPanel(List.of(incrSpec, availableSpec), xLogs, yLogs, xRanges, yRanges);
+		PlotUtils.setSubPlotWeights(gp, weights);
+		PlotUtils.writePlots(outputDir, prefix, gp, 1000, 1100, true, true, true);
 		table.addColumn("![Incremental Plot]("+prefix+".png)");
 		
 		prefix += "_cumulative";
-		gp.drawGraphPanel(cmlSpec, false, true, xRange, yRange);
-		PlotUtils.writePlots(outputDir, prefix, gp, 1000, 850, true, true, true);
+		gp.drawGraphPanel(List.of(cmlSpec, availableSpec), xLogs, yLogs, xRanges, yRanges);
+		PlotUtils.setSubPlotWeights(gp, weights);
+		PlotUtils.writePlots(outputDir, prefix, gp, 1000, 1100, true, true, true);
 		table.addColumn("![Cumulative Plot]("+prefix+".png)");
 		table.finalizeLine();
 		
@@ -708,7 +745,29 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return lines;
 	}
 	
-	private static Range MFD_DEFAULT_Y_RANGE = new Range(1e-8, 1e-2);
+	private void addFakeHistFromFunc(EvenlyDiscretizedFunc mfd, List<XY_DataSet> funcs,
+			List<PlotCurveCharacterstics> chars, PlotCurveCharacterstics pChar) {
+		boolean first = true;
+		double plusMinus = mfd.getDelta()*0.4;
+		for (int i=0; i<mfd.size(); i++) {
+			double x = mfd.getX(i);
+			double y = mfd.getY(i);
+			if (y > 0) {
+				DefaultXY_DataSet xy = new DefaultXY_DataSet();
+				if (first)
+					xy.setName(mfd.getName());
+				first = false;
+				double lowX = x - plusMinus;
+				double highX = x + plusMinus;
+				xy.set(lowX, y);
+				xy.set(highX, y);
+				funcs.add(xy);
+				chars.add(pChar);
+			}
+		}
+	}
+	
+	private static Range MFD_DEFAULT_Y_RANGE = new Range(1e-10, 1e-2);
 	private static Range MFD_MAX_Y_RANGE = new Range(1e-10, 1e1);
 	
 	private static Range yRange(List<? extends XY_DataSet> funcs, Range defaultRange, Range maxRange) {
@@ -736,7 +795,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return new Range(minNonZero, max);
 	}
 
-	public List<String> getAlongStrikeLines(ReportMetadata meta, int parentSectIndex, String parentName,
+	private List<String> getAlongStrikeLines(ReportMetadata meta, int parentSectIndex, String parentName,
 			List<FaultSection> parentSects, File outputDir, String topLink) throws IOException {
 		
 		MinMaxAveTracker latRange = new MinMaxAveTracker();
@@ -974,8 +1033,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
 	public static void main(String[] args) throws IOException {
 //		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip");
-		File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
-				+ "FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
+//		File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
+//				+ "FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
+		File inputFile = new File("/data/kevin/markdown/inversions/"
+				+ "2021_08_08-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-12-avg_anneal_20m-noWL-tryZeroRates-24hr/solution.zip");
 //		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_plausibleMulti15km_adaptive6km_direct_"
 //				+ "cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01"
 //				+ "_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
