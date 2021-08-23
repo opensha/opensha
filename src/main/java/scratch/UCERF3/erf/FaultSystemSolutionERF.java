@@ -688,7 +688,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		if (D) System.out.println("Loading solution from: "+file.getAbsolutePath());
 		long runTime = System.currentTimeMillis();
 		try {
-			setSolution(U3FaultSystemIO.loadSol(file), false);
+			setSolution(FaultSystemSolution.load(file), false);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
