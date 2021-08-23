@@ -602,7 +602,6 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		init(rupSet.getFaultSectionDataList(), rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(),
 				rupSet.getAveRakeForAllRups(), rupSet.getAreaForAllRups(), rupSet.getLengthForAllRups());
 		copyCacheFrom(rupSet);
-		loadAllAvailableModules();
 		for (OpenSHA_Module module : rupSet.getModules())
 			addModule(module);
 	}
@@ -1298,6 +1297,21 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public static interface ModuleBuilder {
 		public OpenSHA_Module build(FaultSystemRupSet rupSet);
+		
+		public Class<? extends OpenSHA_Module> getType();
+	}
+	
+	private static <E extends OpenSHA_Module> Callable<E> builderCallable(
+			FaultSystemRupSet rupSet, ModuleBuilder builder, Class<E> clazz) {
+		return new Callable<E>() {
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public E call() throws Exception {
+				// TODO Auto-generated method stub
+				return (E)builder.build(rupSet);
+			}
+		};
 	}
 	
 	public static class Builder {
@@ -1359,6 +1373,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
 					return ClusterRuptures.instance(rupSet, rups);
 				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return ClusterRuptures.class;
+				}
 			});
 			return this;
 		}
@@ -1378,6 +1397,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					return ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
 							rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
 				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return ModSectMinMags.class;
+				}
 			});
 			FaultModels fm = branch.getValue(FaultModels.class);
 			addModule(new ModuleBuilder() {
@@ -1393,6 +1417,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					}
 					return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
 				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return PolygonFaultGridAssociations.class;
+				}
 			});
 			// add inversion target MFDs
 			addModule(new ModuleBuilder() {
@@ -1401,6 +1430,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
 					return new U3InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
 							rupSet.requireModule(PolygonFaultGridAssociations.class));
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return U3InversionTargetMFDs.class;
 				}
 			});
 			// add target slip rates (modified for sub-seismogenic ruptures)
@@ -1411,6 +1445,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					InversionTargetMFDs invMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 					return InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
 							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), invMFDs);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return SectSlipRates.class;
 				}
 			});
 			return this;
@@ -1442,6 +1481,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
 					return AveSlipModule.forModel(rupSet, scale);
 				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return AveSlipModule.class;
+				}
 			});
 			return this;
 		}
@@ -1452,6 +1496,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
 					return SlipAlongRuptureModel.forModel(slipAlong);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return SlipAlongRuptureModel.class;
 				}
 			});
 			return this;
@@ -1465,6 +1514,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
 					return ModSectMinMags.instance(rupSet, minMags);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return ModSectMinMags.class;
 				}
 			});
 			return this;
@@ -1506,6 +1560,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
 					return module;
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return module.getClass();
 				}
 			});
 			return this;
@@ -1568,8 +1627,20 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 			FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, sectionForRups, mags,
 					rakes, rupAreas, rupLengths);
-			for (ModuleBuilder module : modules)
-				rupSet.addModule(module.build(rupSet));
+			for (ModuleBuilder module : modules) {
+				rupSet.removeModuleInstances(module.getType());
+				rupSet.addAvailableModule(new Callable<OpenSHA_Module>() {
+
+					@Override
+					public OpenSHA_Module call() throws Exception {
+						OpenSHA_Module instance = module.build(rupSet);
+						Preconditions.checkState(module.getType().isAssignableFrom(instance.getClass()),
+								"Instance is of type %s, but was declared as type %s", instance.getClass(), module.getType());
+						return instance;
+					}
+					
+				}, module.getType());
+			}
 			return rupSet;
 		}
 		
