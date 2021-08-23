@@ -14,6 +14,11 @@ import com.google.common.collect.Lists;
 public class VariableLogicTreeBranch extends U3LogicTreeBranch {
 	
 	private List<String> variations;
+	
+	@SuppressWarnings("unused") // used for deserialization
+	private VariableLogicTreeBranch() {
+		super();
+	}
 
 	public VariableLogicTreeBranch(U3LogicTreeBranch branch, List<String> variations) {
 		super(branch);

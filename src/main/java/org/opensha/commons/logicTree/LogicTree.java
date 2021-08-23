@@ -1,6 +1,7 @@
 package org.opensha.commons.logicTree;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -61,6 +62,10 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 */
 	public int size() {
 		return branches.size();
+	}
+	
+	public LogicTreeBranch<E> getBranch(int index) {
+		return branches.get(index);
 	}
 
 	@Override
@@ -217,6 +222,19 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		public void write(JsonWriter out, LogicTree<E> value) throws IOException {
 			out.beginObject();
 			
+			Class<?> type = null;
+			for (LogicTreeBranch<E> branch : value) {
+				if (type == null) {
+					type = branch.getClass();
+				} else if (!type.equals(branch.getClass())) {
+					type = null;
+					break;
+				}
+			}
+			
+			if (type != null)
+				out.name("type").value(type.getName());
+			
 			out.name("levels").beginArray();
 			for (LogicTreeLevel<? extends E> level : value.levels)
 				levelAdapter.write(out, level);
@@ -239,15 +257,24 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			out.endObject();
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public LogicTree<E> read(JsonReader in) throws IOException {
 			in.beginObject();
 			
+			Class<? extends LogicTreeBranch<E>> type = null;
 			List<LogicTreeLevel<? extends E>> levels = null;
 			List<LogicTreeBranch<E>> branches = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
+				case "type":
+					try {
+						type = (Class<? extends LogicTreeBranch<E>>) Class.forName(in.nextString());
+					} catch (Exception e) {
+						System.err.println("WARNING: can't load branches for logic tree as given type: "+e.getMessage());
+					}
+					break;
 				case "levels":
 					levels = new ArrayList<>();
 					in.beginArray();
@@ -260,7 +287,22 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					branches = new ArrayList<>();
 					in.beginArray();
 					while (in.hasNext()) {
-						LogicTreeBranch<E> branch = new LogicTreeBranch<>(levels);
+						LogicTreeBranch<E> branch;
+						if (type == null) {
+							branch = new LogicTreeBranch<>(levels);
+						} else {
+							Constructor<? extends LogicTreeBranch<E>> constructor;
+							try {
+								constructor = type.getDeclaredConstructor();
+								constructor.setAccessible(true);
+								branch = constructor.newInstance();
+							} catch (Exception e) {
+								System.err.println("WARNING: cannot instantiate empty branch as '"+type.getName()
+										+"', will load as default type. Exception: "+e.getMessage());
+								branch = new LogicTreeBranch<>(levels);
+							}
+						}
+						branch.init(levels, null);
 						in.beginArray();
 						int index = 0;
 						while (in.hasNext()) {
@@ -279,6 +321,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 							index++;
 						}
 						in.endArray();
+						branches.add(branch);
 					}
 					in.endArray();
 					break;

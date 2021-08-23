@@ -64,7 +64,13 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		init(levels, values);
 	}
 	
-	private void init(List<LogicTreeLevel<? extends E>> levels, List<E> values) {
+	/**
+	 * Initialize this logic tree branch. Package-private so that LogicTree can initialze de-serialized branches
+	 * 
+	 * @param levels
+	 * @param values
+	 */
+	void init(List<LogicTreeLevel<? extends E>> levels, List<E> values) {
 		Preconditions.checkNotNull(levels);
 		Preconditions.checkState(!levels.isEmpty(), "Must supply at least 1 branch level");
 		for (int i=0; i<levels.size(); i++)

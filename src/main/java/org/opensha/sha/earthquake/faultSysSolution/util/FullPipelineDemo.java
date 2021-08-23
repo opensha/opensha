@@ -71,8 +71,8 @@ class FullPipelineDemo {
 		FaultModels fm = branch.getValue(FaultModels.class);
 		ScalingRelationships scale = branch.getValue(ScalingRelationships.class);
 		
-//		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
-		String dirName = "2021_08_18";
+		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
+//		String dirName = "2021_08_18";
 		
 //		String newName = "Coulomb Rups, U3 Ref Branch";
 		String newName = "U3 Rups, U3 Ref Branch";

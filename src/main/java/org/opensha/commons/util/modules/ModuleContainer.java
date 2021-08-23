@@ -320,7 +320,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param moduleClass
 	 */
 	@SuppressWarnings("unchecked")
-	public <M extends E> void addAvailableModule(Callable<M> call, Class<M> moduleClass) {
+	public <M extends E> void addAvailableModule(Callable<? extends OpenSHA_Module> call, Class<M> moduleClass) {
 		List<Class<?>> assignableClasses = getAssignableClasses(moduleClass);
 		
 		// fully remove any duplicate associations
@@ -420,7 +420,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void mapAvailableModule(Callable<? extends E> call, Class<?> clazz) {
+	private void mapAvailableModule(Callable<? extends OpenSHA_Module> call, Class<?> clazz) {
 		Preconditions.checkState(clazz.getAnnotation(ModuleHelper.class) == null,
 				"Cannot map a class that implements @ModuleHelper: %s", clazz.getName());
 		if (availableMappings.containsKey(clazz))

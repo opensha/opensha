@@ -210,15 +210,9 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 			List<List<Integer>> clusterRups,
 			List<List<Integer>> clusterSects) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
-		if (rupSet.hasModule(PlausibilityConfiguration.class))
-			addModule(rupSet.getModule(PlausibilityConfiguration.class));
-
-		init(branch);
+		setLogicTreeBranch(branch); // needed by init(rupSet)
 		init(rupSet);
-
-		//this must come after the init(rupSet) call.
-		if (rupSet.hasModule(ClusterRuptures.class))
-			addModule(rupSet.getModule(ClusterRuptures.class));
+		init(branch);
 		
 		int numSects = rupSet.getNumSections();
 		int numRups = rupSet.getNumRuptures();
@@ -279,7 +273,10 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				return FaultPolyMgr.create(getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
 			}
 		}, PolygonFaultGridAssociations.class);
-		offerAvailableModule(new Callable<ModSectMinMags>() {
+		// make sure that we don't end up with a default implementation of this
+		if (hasAvailableModule(ModSectMinMags.class))
+			removeModuleInstances(ModSectMinMags.class);
+		addAvailableModule(new Callable<ModSectMinMags>() {
 
 			@Override
 			public ModSectMinMags call() throws Exception {
@@ -293,7 +290,10 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				return new U3InversionTargetMFDs(InversionFaultSystemRupSet.this);
 			}
 		}, U3InversionTargetMFDs.class);
-		offerAvailableModule(new Callable<SectSlipRates>() {
+		// make sure that we don't end up with a default implementation of this
+		if (hasAvailableModule(SectSlipRates.class))
+			removeModuleInstances(SectSlipRates.class);
+		addAvailableModule(new Callable<SectSlipRates>() {
 
 			@Override
 			public SectSlipRates call() throws Exception {

@@ -4,8 +4,10 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -15,6 +17,7 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -28,12 +31,26 @@ import com.google.common.base.Preconditions;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
+import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
+import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
+import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
+/**
+ * Module that stores/loads fault system solutions for individual branches of a logic tree.
+ * 
+ * @author kevin
+ *
+ */
 public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
+	
+	private boolean serializeGridded = true;
 	
 	public static class UCERF3 extends SolutionLogicTree {
 
@@ -50,21 +67,54 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		
 		@Override
 		public synchronized FaultSystemSolution forBranch(LogicTreeBranch<?> branch) throws IOException {
-			if (oldFetcher != null) {
-				Preconditions.checkState(branch instanceof U3LogicTreeBranch, "Expected a U3LogicTreeBranch");
-				return oldFetcher.getSolution((U3LogicTreeBranch)branch);
-			}
+			if (oldFetcher != null)
+				return oldFetcher.getSolution(asU3Branch(branch));
 			return super.forBranch(branch);
 		}
 
 		@Override
+		protected FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			return FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(asU3Branch(branch)).build();
+		}
+
+		@Override
+		protected FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			sol.addAvailableModule(new Callable<GridSourceProvider>() {
+
+				@Override
+				public GridSourceProvider call() throws Exception {
+					FaultSystemRupSet rupSet = sol.getRupSet();
+					return new UCERF3_GridSourceGenerator(sol, branch.getValue(SpatialSeisPDF.class),
+							branch.getValue(MomentRateFixes.class),
+							rupSet.requireModule(InversionTargetMFDs.class),
+							sol.requireModule(SubSeismoOnFaultMFDs.class),
+							branch.getValue(MaxMagOffFault.class).getMaxMagOffFault(),
+							rupSet.requireModule(FaultGridAssociations.class));
+				}
+			}, GridSourceProvider.class);
+			return sol;
+		}
+		
+		private U3LogicTreeBranch asU3Branch(LogicTreeBranch<?> branch) {
+			if (branch instanceof U3LogicTreeBranch)
+				return (U3LogicTreeBranch)branch;
+			Preconditions.checkState(branch.size() >= U3LogicTreeBranch.getLogicTreeLevels().size());
+			List<LogicTreeBranchNode<?>> vals = new ArrayList<>();
+			for (LogicTreeNode val : branch) {
+				Preconditions.checkState(val instanceof LogicTreeBranchNode);
+				vals.add((LogicTreeBranchNode<?>) val);
+			}
+			return U3LogicTreeBranch.fromValues(vals);
+		}
+
+		@Override
 		protected List<? extends LogicTreeLevel<?>> getLevelsForFaultSections() {
-			return List.of(getLevelForType(FaultModels.class));
+			return List.of(getLevelForType(FaultModels.class), getLevelForType(DeformationModels.class));
 		}
 
 		@Override
 		protected List<? extends LogicTreeLevel<?>> getLevelsForRuptureSectionIndices() {
-			return List.of(getLevelForType(FaultModels.class), getLevelForType(DeformationModels.class));
+			return List.of(getLevelForType(FaultModels.class));
 		}
 
 		@Override
@@ -107,6 +157,10 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 	@Override
 	protected String getSubDirectoryName() {
 		return "solution_logic_tree";
+	}
+	
+	public void setSerializeGridded(boolean serializeGridded) {
+		this.serializeGridded = serializeGridded;
 	}
 	
 	@Override
@@ -187,7 +241,7 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 			writtenFiles.add(ratesFile);
 		}
 		
-		if (sol.hasModule(GridSourceProvider.class)) {
+		if (serializeGridded && sol.hasModule(GridSourceProvider.class)) {
 			GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
 			AbstractGridSourceProvider.Precomputed precomputed;
 			if (prov instanceof AbstractGridSourceProvider.Precomputed)
@@ -231,6 +285,14 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		}
 	}
 	
+	protected FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		return rupSet;
+	}
+	
+	protected FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+		return sol;
+	}
+	
 	// cache files
 	private List<? extends FaultSection> prevSubSects;
 	private String prevSectsFile;
@@ -240,6 +302,12 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 	
 	private RuptureProperties prevProps;
 	private String prevPropsFile;
+	
+	private GriddedRegion prevGridReg;
+	private String prevGridRegFile;
+	
+	private CSVFile<String> prevGridMechs;
+	private String prevGridMechFile;
 	
 	public synchronized FaultSystemSolution forBranch(LogicTreeBranch<?> branch) throws IOException {
 		System.out.println("Loading rupture set for logic tree branch: "+branch);
@@ -282,38 +350,64 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 			prevPropsFile = propsFile;
 		}
 		
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, rupIndices,
-				props.mags, props.rakes, props.areas, props.lengths);
+		FaultSystemRupSet rupSet = processRupSet(new FaultSystemRupSet(subSects, rupIndices,
+				props.mags, props.rakes, props.areas, props.lengths), branch);
 		
 		String ratesFile = getBranchFileName(branch, FaultSystemSolution.RATES_FILE_NAME);
 		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ratesFile);
 		double[] rates = FaultSystemSolution.loadRatesCSV(ratesCSV);
 		Preconditions.checkState(rates.length == rupIndices.size());
 		
-		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		rupSet.addModule(branch);
+		
+		FaultSystemSolution sol = processSolution(new FaultSystemSolution(rupSet, rates), branch);
+		
+		sol.addModule(branch);
 		
 		String gridRegFile = getBranchFileName(branch, AbstractGridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
 		String mechFile = getBranchFileName(branch, AbstractGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
 		if (gridRegFile != null && zip.getEntry(gridRegFile) != null && mechFile != null && zip.getEntry(mechFile) != null) {
-			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, gridRegFile);
-			InputStreamReader regionReader = new InputStreamReader(regionIS);
-			Feature regFeature = Feature.read(regionReader);
-			GriddedRegion region = GriddedRegion.fromFeature(regFeature);
-			
-			// load mechanisms
-			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, mechFile);
-			
-			CSVFile<String> subSeisCSV = null;
-			CSVFile<String> nodeUnassociatedCSV = null;
-			
-			String subSeisFile = getBranchFileName(branch, AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
-			String nodeUnassociatedFile = getBranchFileName(branch, AbstractGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
-			if (subSeisFile != null && zip.getEntry(subSeisFile) != null)
-				subSeisCSV = AbstractGridSourceProvider.Precomputed.loadCSV(zip, entryPrefix, subSeisFile);
-			if (nodeUnassociatedFile != null && zip.getEntry(nodeUnassociatedFile) != null)
-				nodeUnassociatedCSV = AbstractGridSourceProvider.Precomputed.loadCSV(zip, entryPrefix, nodeUnassociatedFile);
-			
-			sol.addModule(new AbstractGridSourceProvider.Precomputed(region, subSeisCSV, nodeUnassociatedCSV, mechCSV));
+			sol.addAvailableModule(new Callable<GridSourceProvider>() {
+
+				@Override
+				public GridSourceProvider call() throws Exception {
+					GriddedRegion region;
+					CSVFile<String> mechCSV;
+					synchronized (SolutionLogicTree.this) {
+						if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
+							region = prevGridReg;
+						} else {
+							BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, gridRegFile);
+							InputStreamReader regionReader = new InputStreamReader(regionIS);
+							Feature regFeature = Feature.read(regionReader);
+							region = GriddedRegion.fromFeature(regFeature);
+							prevGridReg = region;
+							prevGridRegFile = gridRegFile;
+						}
+						
+						// load mechanisms
+						if (prevGridMechs != null && mechFile.equals(prevGridMechFile)) {
+							mechCSV = prevGridMechs;
+						} else {
+							mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, mechFile);
+							prevGridMechs = mechCSV;
+							prevGridMechFile = mechFile;
+						}
+					}
+					
+					CSVFile<String> subSeisCSV = null;
+					CSVFile<String> nodeUnassociatedCSV = null;
+					
+					String subSeisFile = getBranchFileName(branch, AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
+					String nodeUnassociatedFile = getBranchFileName(branch, AbstractGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
+					if (subSeisFile != null && zip.getEntry(subSeisFile) != null)
+						subSeisCSV = AbstractGridSourceProvider.Precomputed.loadCSV(zip, entryPrefix, subSeisFile);
+					if (nodeUnassociatedFile != null && zip.getEntry(nodeUnassociatedFile) != null)
+						nodeUnassociatedCSV = AbstractGridSourceProvider.Precomputed.loadCSV(zip, entryPrefix, nodeUnassociatedFile);
+					
+					return new AbstractGridSourceProvider.Precomputed(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
+				}
+			}, GridSourceProvider.class);
 		}
 		
 		return sol;

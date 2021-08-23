@@ -9,7 +9,6 @@ import java.util.Map;
 import org.dom4j.Element;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.ClassUtils;
 
@@ -125,13 +124,8 @@ implements XMLSaveable {
 		super(getLogicTreeLevels(), branch);
 	}
 	
-	private U3LogicTreeBranch() {
+	protected U3LogicTreeBranch() {
 		super();
-	}
-	
-	@SuppressWarnings("rawtypes")
-	private Class<? extends LogicTreeBranchNode> getClass(int index) {
-		return getEnumEnclosingClass(getValue(index).getClass());
 	}
 	
 	public int getNumAwayFrom(U3LogicTreeBranch branch) {
@@ -223,6 +217,7 @@ implements XMLSaveable {
 				continue;
 			
 			// find the class
+			@SuppressWarnings("rawtypes")
 			Class<? extends LogicTreeBranchNode> valClass = getEnumEnclosingClass(val.getClass());
 			int ind = -1;
 			for (int i=0; i<classes.size(); i++) {
@@ -310,6 +305,7 @@ implements XMLSaveable {
 	 * @param str
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	public static <E extends Enum<E>> E parseValue(Class<? extends LogicTreeBranchNode<E>> clazz, String str) {
 		LogicTreeBranchNode<E>[] options = clazz.getEnumConstants();
 		for (LogicTreeBranchNode<E> option : options)
@@ -379,6 +375,10 @@ implements XMLSaveable {
 		return new U3LogicTreeBranch(newBranches);
 	}
 	
+	public U3LogicTreeBranch copy() {
+		return new U3LogicTreeBranch(this);
+	}
+	
 	/**
 	 * This returns the normalized branch weight using a priori weights specified in the logic tree branch
 	 * node enums.
@@ -419,6 +419,7 @@ implements XMLSaveable {
 			LogicTreeBranchNode<? extends Enum<?>> node, InversionModels im) {
 		if (node == null)
 			return 0d;
+		@SuppressWarnings("rawtypes")
 		Class<? extends LogicTreeBranchNode> clazz = getEnumEnclosingClass(node.getClass());
 		return node.getRelativeWeight(im) / getClassWeightTotal(clazz, im);
 	}

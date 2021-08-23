@@ -24,6 +24,7 @@ import org.opensha.commons.util.modules.ModuleHelper;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
@@ -136,8 +137,9 @@ public abstract class AbstractBranchAveragedModule implements ArchivableModule {
 		
 		// write files for all branches
 		HashSet<String> writtenFiles = new HashSet<>();
-		for (LogicTreeBranch<?> branch : logicTree) {
-			System.out.println("Writing branch: "+branch);
+		for (int i=0; i<logicTree.size(); i++) {
+			LogicTreeBranch<?> branch = logicTree.getBranch(i);
+			System.out.println("Writing branch "+i+"/"+logicTree.size()+": "+branch);
 			writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles);
 		}
 	}
