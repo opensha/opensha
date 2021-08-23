@@ -505,6 +505,16 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		long[] ret = { iter, perturbs };
 		return ret;
 	}
+
+	/**
+	 * Shuts down the thread pool.
+	 */
+	public void shutdown(){
+		if (exec != null){
+			exec.shutdown();
+			exec = null;
+		}
+	}
 	
 	public static String timeStr(long millis) {
 		double secs = millis/1000d;
