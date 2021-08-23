@@ -832,7 +832,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			SummedMagFreqDist finalTrulyOffMFD = new SummedMagFreqDist(U3InversionTargetMFDs.MIN_MAG,
 					U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
 			finalTrulyOffMFD.addIncrementalMagFreqDist(inversionTargetMFDs.getTotalRegionalMFD());
-			finalTrulyOffMFD.subtractIncrementalMagFreqDist(totalSupraSeismoRegionalMFD);
+			finalTrulyOffMFD.subtractIncrementalMagFreqDist(totalSubSeismoMFD);
 			finalTrulyOffMFD.subtractIncrementalMagFreqDist(totalSupraSeismoRegionalMFD);
 			
 			// zero out values above mMaxOffFault
