@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -212,6 +213,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		LogicTree<E> tree = adapter.read(in);
 		this.levels = tree.levels;
 		this.branches = tree.branches;
+	}
+	
+	public LogicTree<E> sorted(Comparator<? super LogicTreeBranch<E>> comparator) {
+		List<LogicTreeBranch<E>> sorted = new ArrayList<>(branches);
+		sorted.sort(comparator);
+		return new LogicTree<>(levels, sorted);
 	}
 	
 	public static class Adapter<E extends LogicTreeNode> extends TypeAdapter<LogicTree<E>> {

@@ -74,11 +74,23 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 
 		@Override
 		protected FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(asU3Branch(branch)).build();
+//			System.out.println("Start process");
+			rupSet = FaultSystemRupSet.buildFromExisting(rupSet).u3BranchModules(asU3Branch(branch)).build();
+//			System.out.println("End process");
+			return rupSet;
 		}
 
 		@Override
 		protected FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			sol.addAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
+
+				@Override
+				public SubSeismoOnFaultMFDs call() throws Exception {
+					FaultSystemRupSet rupSet = sol.getRupSet();
+					return new SubSeismoOnFaultMFDs(
+							rupSet.requireModule(InversionTargetMFDs.class).getOnFaultSubSeisMFDs().getAll());
+				}
+			}, SubSeismoOnFaultMFDs.class);
 			sol.addAvailableModule(new Callable<GridSourceProvider>() {
 
 				@Override
@@ -317,8 +329,10 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		String sectsFile = getBranchFileName(branch, FaultSystemRupSet.SECTS_FILE_NAME);
 		List<? extends FaultSection> subSects;
 		if (prevSubSects != null && sectsFile.equals(prevSectsFile)) {
+			System.out.println("\tRe-using previous section data");
 			subSects = prevSubSects;
 		} else {
+			System.out.println("\tLoading section data from "+sectsFile);
 			subSects = GeoJSONFaultReader.readFaultSections(
 					new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, sectsFile)));
 			for (int s=0; s<subSects.size(); s++)
@@ -331,8 +345,10 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		String indicesFile = getBranchFileName(branch, FaultSystemRupSet.RUP_SECTS_FILE_NAME);
 		List<List<Integer>> rupIndices;
 		if (prevRupIndices != null && indicesFile.equals(prevIndicesFile)) {
+			System.out.println("\tRe-using previous rupture indices");
 			rupIndices = prevRupIndices;
 		} else {
+			System.out.println("\tLoading rupture indices from "+indicesFile);
 			CSVFile<String> rupSectsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, indicesFile);
 			rupIndices = FaultSystemRupSet.loadRupSectsCSV(rupSectsCSV, subSects.size());
 			prevRupIndices = rupIndices;
@@ -342,8 +358,10 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		String propsFile = getBranchFileName(branch, FaultSystemRupSet.RUP_PROPS_FILE_NAME);
 		RuptureProperties props;
 		if (prevProps != null && propsFile.equals(prevPropsFile)) {
+			System.out.println("\tRe-using previous rupture properties");
 			props = prevProps;
 		} else {
+			System.out.println("\tLoading rupture properties from "+propsFile);
 			CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, propsFile);
 			props = new RuptureProperties(rupPropsCSV);
 			prevProps = props;
@@ -354,6 +372,7 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 				props.mags, props.rakes, props.areas, props.lengths), branch);
 		
 		String ratesFile = getBranchFileName(branch, FaultSystemSolution.RATES_FILE_NAME);
+		System.out.println("\tLoading rate data from "+ratesFile);
 		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ratesFile);
 		double[] rates = FaultSystemSolution.loadRatesCSV(ratesCSV);
 		Preconditions.checkState(rates.length == rupIndices.size());

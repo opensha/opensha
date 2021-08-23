@@ -1383,10 +1383,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		public Builder forU3Branch(U3LogicTreeBranch branch) {
-			// set logic tree branch
-			addModule(branch);
 			// build magnitudes from the scaling relationship and add ave slip module
 			forScalingRelationship(branch.getValue(ScalingRelationships.class));
+			return u3BranchModules(branch);
+		}
+		
+		public Builder u3BranchModules(U3LogicTreeBranch branch) {
+			// set logic tree branch
+			addModule(branch);
 			// add slip along rupture model information
 			slipAlongRupture(branch.getValue(SlipAlongRuptureModels.class));
 			// add modified section minimum magnitudes

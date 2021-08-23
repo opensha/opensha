@@ -66,7 +66,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static final String NAME = "Mean UCERF3";
 	
-	static final String DOWNLOAD_URL = "http://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf/";
+	static final String DOWNLOAD_URL = "http://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf_modular/";
 	static final String RAKE_BASIS_FILE_NAME = "rake_basis.zip";
 	static final String TRUE_MEAN_FILE_NAME = "mean_ucerf3_sol.zip";
 	
