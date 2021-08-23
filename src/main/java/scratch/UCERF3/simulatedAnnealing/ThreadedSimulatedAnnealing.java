@@ -15,6 +15,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -337,7 +338,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		}
 		
 		if (exec == null)
-			exec = Executors.newFixedThreadPool(numThreads);
+			exec = Executors.newFixedThreadPool(numThreads, new DaemonThreadFactory(average));
 		
 		int rounds = 0;
 		long iter = startIter;
@@ -504,6 +505,36 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		long[] ret = { iter, perturbs };
 		return ret;
+	}
+	
+	private static class DaemonThreadFactory implements ThreadFactory {
+		
+		private static int poolCount = 0;
+		private int myPool;
+		private int threadCount = 0;
+		private boolean average;
+
+	    public DaemonThreadFactory(boolean average) {
+	    	synchronized (DaemonThreadFactory.class) {
+	    		poolCount++;
+	    	}
+	    	this.myPool = poolCount;
+			this.average = average;
+		}
+
+		@Override
+	    public synchronized Thread newThread(final Runnable r) {
+	        Thread t = new Thread(r);
+	        String name = "TSA-pool-"+myPool;
+	        threadCount++;
+	        if (average)
+	        	name += "-avg-"+threadCount;
+	        else
+	        	name += "-worker-"+threadCount;
+	        t.setName(name);
+	        t.setDaemon(true);
+	        return t;
+	    }
 	}
 
 	/**
