@@ -133,13 +133,23 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			HeadlessGraphPanel gp = PlotUtils.initHeadless();
 			gp.setTickLabelFontSize(20);
 			
+			double tick;
+			if (xRange.getLength() > 3.5)
+				tick = 0.5;
+			else if (xRange.getLength() > 1.5)
+				tick = 0.25;
+			else
+				tick = 0.1d;
+			
 			table.initNewLine();
 			gp.drawGraphPanel(incrSpec, false, true, xRange, yRange);
+			PlotUtils.setXTick(gp, tick);
 			PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 850, true, true, true);
 			table.addColumn("![Incremental Plot]("+relPathToResources+"/"+prefix+".png)");
 			
 			prefix += "_cumulative";
 			gp.drawGraphPanel(cmlSpec, false, true, xRange, yRange);
+			PlotUtils.setXTick(gp, tick);
 			PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 850, true, true, true);
 			table.addColumn("![Cumulative Plot]("+relPathToResources+"/"+prefix+".png)");
 			table.finalizeLine();
@@ -153,6 +163,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		minMag = Math.min(5d, Math.floor(minMag));
 		maxMag = Math.max(9d, Math.ceil(maxMag));
 		double delta = 0.1;
+		// offset
+		minMag += 0.5*delta;
+		maxMag -= 0.5*delta;
 		int num = (int)((maxMag - minMag)/delta + 0.5)+1;
 		return new IncrementalMagFreqDist(minMag, maxMag, num);
 	}
