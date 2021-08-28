@@ -289,7 +289,7 @@ public class RupSetMapMaker {
 	}
 	
 	private Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
-		LineString line = new LineString(sect.getFaultTrace());
+		LineString line = new LineString(getSectSurface(sect).getUpperEdge());
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
 		props.set("id", sect.getSectionId());
