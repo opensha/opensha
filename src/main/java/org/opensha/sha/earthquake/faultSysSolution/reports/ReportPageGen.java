@@ -1039,11 +1039,11 @@ public class ReportPageGen {
 			
 //			String inputName = "FM3.1 MeanUCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-			String inputName = "FM3.1 U3 Ref Branch";
-			File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
+//			String inputName = "FM3.1 U3 Ref Branch";
+//			File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
 			
-//			String inputName = "UCERF4 Proposed (NSHM23 1.2 Faults)";
-//			File inputFile = new File(rupSetsDir, "nshm23_v1p2_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+			String inputName = "UCERF4 Proposed (NSHM23 1.2 Faults)";
+			File inputFile = new File(rupSetsDir, "nshm23_v1p2_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 			
 			// common comparisons
 			boolean skipPlausibility = false;

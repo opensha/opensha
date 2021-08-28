@@ -68,7 +68,7 @@ public class PlausibilityConfiguration implements SubModule<ModuleContainer<Open
 	public static PlausibilityConfiguration getUCERF3(
 			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
 			FaultModels fm) throws IOException {
-		return getUCERF3(subSects, distAzCalc, CoulombRates.loadUCERF3CoulombRates(fm));
+		return getUCERF3(subSects, distAzCalc, fm == null ? null : CoulombRates.loadUCERF3CoulombRates(fm));
 	}
 	
 	public static PlausibilityConfiguration getUCERF3(

@@ -4,9 +4,13 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
@@ -14,6 +18,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayConnectionsOnlyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
@@ -35,6 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.RuptureGr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysToolUtils;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
@@ -71,6 +78,12 @@ public class RuptureSets {
 		private FaultModels fm;
 		private ScalingRelationships scale;
 
+		public U3RupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			this.subSects = subSects;
+			this.scale = scale;
+			
+		}
+
 		public U3RupSetConfig(FaultModels fm, ScalingRelationships scale) {
 			this.fm = fm;
 			this.subSects = getU3SubSects(fm);
@@ -98,7 +111,94 @@ public class RuptureSets {
 
 		@Override
 		public String getRupSetFileName() {
-			return fm.encodeChoiceString().toLowerCase()+"_reproduce_ucerf3.zip";
+			String str;
+			if (fm == null)
+				str = subSects.size()+"sects";
+			else
+				str = fm.encodeChoiceString().toLowerCase();
+			return str+"_reproduce_ucerf3.zip";
+		}
+
+		@Override
+		public ScalingRelationships getScalingRelationship() {
+			return scale;
+		}
+		
+	}
+	
+	public static class SimpleAzimuthalRupSetConfig extends RupSetConfig {
+		
+		private List<? extends FaultSection> subSects;
+		private ScalingRelationships scale;
+		
+		private float jumpAzimuthChange = 60f;
+		private float totalAzimuthChange = 60f;
+		private boolean leftLateralFlipAzimuth = true;
+		private float cumulativeAzimuthChange = 560f;
+		private float cumulativeRakeChange = 180f;
+		private int minSectsPerParent = 2;
+		// maximum individual jump distance
+		private double maxJumpDist = 5d;
+		// if nonzero, apply thinning to growing strategy
+		private float adaptiveSectFract = 0f;
+
+		public SimpleAzimuthalRupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			this.subSects = subSects;
+			this.scale = scale;
+		}
+
+		@Override
+		public List<? extends FaultSection> getSubSects() {
+			return subSects;
+		}
+
+		@Override
+		public PlausibilityConfiguration getPlausibilityConfig() {
+			ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+					getSubSects(), getDistAzCalc(), maxJumpDist);
+			Builder builder = PlausibilityConfiguration.builder(connStrat, subSects);
+			AzimuthCalc azCalc;
+			if (leftLateralFlipAzimuth)
+				azCalc = new JumpAzimuthChangeFilter.LeftLateralFlipAzimuthCalc(getDistAzCalc(), Range.closed(-45d, 45d));
+			else
+				azCalc = new JumpAzimuthChangeFilter.SimpleAzimuthCalc(getDistAzCalc());
+			if (jumpAzimuthChange > 0f)
+				builder.jumpAzChange(azCalc, jumpAzimuthChange);
+			if (totalAzimuthChange > 0f)
+				builder.totAzChange(azCalc, totalAzimuthChange, true, false);
+			if (cumulativeAzimuthChange > 0f)
+				builder.cumulativeAzChange(cumulativeAzimuthChange);
+			if (cumulativeRakeChange > 0f)
+				builder.cumulativeRakeChange(cumulativeRakeChange);
+			if (minSectsPerParent > 0)
+				builder.minSectsPerParent(minSectsPerParent, true, true);
+			return builder.build();
+		}
+
+		@Override
+		public RuptureGrowingStrategy getGrowingStrategy() {
+			RuptureGrowingStrategy strat = new ExhaustiveUnilateralRuptureGrowingStrategy();
+			if (adaptiveSectFract > 0f)
+				strat = new SectCountAdaptiveRuptureGrowingStrategy(strat, adaptiveSectFract, true, minSectsPerParent);
+			return strat;
+		}
+
+		@Override
+		public String getRupSetFileName() {
+			List<String> elements = new ArrayList<>();
+			if (jumpAzimuthChange > 0f)
+				elements.add("jumpAz"+(int)jumpAzimuthChange);
+			if (totalAzimuthChange > 0f)
+				elements.add("totalAz"+(int)totalAzimuthChange);
+			if (leftLateralFlipAzimuth && (jumpAzimuthChange > 0f || totalAzimuthChange > 0f))
+				elements.add("llFlip");
+			if (cumulativeAzimuthChange > 0f)
+				elements.add("cmlAz"+(int)cumulativeAzimuthChange);
+			if (cumulativeRakeChange > 0f)
+				elements.add("cmlRake"+(int)cumulativeRakeChange);
+			if (minSectsPerParent > 0)
+				elements.add(minSectsPerParent+"sectsPerParent");
+			return Joiner.on("_").join(elements)+".zip";
 		}
 
 		@Override
@@ -358,7 +458,7 @@ public class RuptureSets {
 			AggregatedStiffnessCalculator fractIntsAgg = new AggregatedStiffnessCalculator(StiffnessType.CFF, stiffnessCalc, true,
 					AggregationMethod.FLATTEN, AggregationMethod.NUM_POSITIVE, AggregationMethod.SUM, AggregationMethod.NORM_BY_COUNT);
 			
-			String outputName = fmPrefix;
+			String outputName = fmPrefix == null || fmPrefix.isBlank() ? subSects.size()+"sects" : fmPrefix;
 			
 			if (stiffGridSpacing != 2d)
 				outputName += "_stiff"+new DecimalFormat("0.#").format(stiffGridSpacing)+"km";
@@ -629,10 +729,10 @@ public class RuptureSets {
 		
 		public abstract ScalingRelationships getScalingRelationship();
 		
-		private File distAzCacheFile;
-		private int numAzCached = 0;
-		private int numDistCached = 0;
-		private SectionDistanceAzimuthCalculator distAzCalc;
+		private transient File distAzCacheFile;
+		private transient int numAzCached = 0;
+		private transient int numDistCached = 0;
+		private transient SectionDistanceAzimuthCalculator distAzCalc;
 		public synchronized SectionDistanceAzimuthCalculator getDistAzCalc() {
 			if (distAzCalc == null) {
 				List<? extends FaultSection> sects = getSubSects();
@@ -655,7 +755,7 @@ public class RuptureSets {
 			return distAzCalc;
 		}
 		
-		private int numThreads = 1;
+		private transient int numThreads = 1;
 		
 		protected int getNumThreads() {
 			return numThreads;
@@ -707,6 +807,67 @@ public class RuptureSets {
 			return ClusterRuptureBuilder.buildClusterRupSet(getScalingRelationship(),
 					getSubSects(), getPlausibilityConfig(), rups); 
 		}
+	}
+	
+	private enum Presets {
+		UCERF3 {
+			@Override
+			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+				return new U3RupSetConfig(subSects, scale);
+			}
+		},
+		COULOMB {
+			@Override
+			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+				return new CoulombRupSetConfig(subSects, null, scale);
+			}
+		},
+		SIMPLE_AZIMUTHAL {
+			@Override
+			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+				return new SimpleAzimuthalRupSetConfig(subSects, scale);
+			}
+		};
+		
+		public abstract RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale);
+	}
+	
+	private static Options createOptions() {
+		Options ops = new Options();
+
+		ops.addOption(FaultSysToolUtils.threadsOption());
+
+		Option subSectsOption = new Option("s", "sub-sections", true,
+				"Path to GeoJSON file containing subsections from which to build a rupture set. Must supply this or a "
+				+ "UCERF3 fault model (via --fault-model)");
+		subSectsOption.setRequired(false);
+		ops.addOption(subSectsOption);
+
+		Option faultModelOption = new Option("f", "fault-model", true,
+				"UCERF3 Fault Model, used to fetch UCERF3 subsections as an alternative to --sub-sections. "
+				+ "Options: "+FaultSysToolUtils.enumOptions(FaultModels.class));
+		faultModelOption.setRequired(false);
+		ops.addOption(faultModelOption);
+
+		Option scaleOption = new Option("sc", "scale", true,
+				"Scaling relationship to use (for rupture magnitudes & average slips). "
+				+ "Options: "+FaultSysToolUtils.enumOptions(ScalingRelationships.class));
+		scaleOption.setRequired(true);
+		ops.addOption(scaleOption);
+
+		Option presetOption = new Option("p", "preset", true,
+				"Rupture set plausibility configuration preset. "
+				+ "Options: "+FaultSysToolUtils.enumOptions(ScalingRelationships.class));
+		presetOption.setRequired(true);
+		ops.addOption(scaleOption);
+		
+//		Option 
+		
+		return ops;
+	}
+	
+	public static void main(String[] args) {
+		
 	}
 
 }
