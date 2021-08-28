@@ -51,7 +51,7 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			
 			MFD_Plot totalPlot = new MFD_Plot("Total Target MFDs", null);
 			totalPlot.addComp(targetMFDs.getTotalRegionalMFD(), Color.GREEN.darker(), "Total Target");
-			totalPlot.addComp(targetMFDs.getTotalGriddedSeisMFD(), Color.GRAY, "Target Gridded Seismicity");
+			totalPlot.addComp(targetMFDs.getTotalGriddedSeisMFD(), Color.GRAY, "Target Gridded");
 			totalPlot.addComp(targetMFDs.getTotalOnFaultSubSeisMFD(), Color.MAGENTA.darker(), "Target Sub-Seis");
 			totalPlot.addComp(targetMFDs.getTotalOnFaultSupraSeisMFD(), SUPRA_SEIS_TARGET_COLOR, "Target Supra-Seis");
 			plots.add(totalPlot);
@@ -207,6 +207,13 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		}
 	}
 	
+	private static Color avg(Color c1, Color c2) {
+		int r = c1.getRed() + c2.getRed();
+		int g = c1.getGreen() + c2.getGreen();
+		int b = c1.getBlue() + c2.getBlue();
+		return new Color((int)Math.round(r*0.5d), (int)Math.round(g*0.5d), (int)Math.round(b*0.5d));
+	}
+	
 	private static void addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
 			List<IncrementalMagFreqDist> incrFuncs, List<EvenlyDiscretizedFunc> cmlFuncs,
 			List<PlotCurveCharacterstics> chars, IncrementalMagFreqDist defaultMFD) {
@@ -227,13 +234,20 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 				gridMFD.addIncrementalMagFreqDist(nodeMFD);
 			}
 			if (gridMFD != null) {
+				if (!name.toLowerCase().contains("comparison")) {
+					gridMFD.setName(name+" Gridded");
+					incrFuncs.add(gridMFD);
+					cmlFuncs.add(gridMFD.getCumRateDistWithOffset());
+					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, avg(color, Color.WHITE)));
+//					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.brighter()));
+				}
 				SummedMagFreqDist totalMFD = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
 				totalMFD.addIncrementalMagFreqDist(mfd);
 				totalMFD.addIncrementalMagFreqDist(gridMFD);
 				totalMFD.setName(name+" Total");
 				incrFuncs.add(totalMFD);
 				cmlFuncs.add(totalMFD.getCumRateDistWithOffset());
-				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 5f, color));
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.darker()));
 				name = name+" Supra-Seis";
 			}
 		}

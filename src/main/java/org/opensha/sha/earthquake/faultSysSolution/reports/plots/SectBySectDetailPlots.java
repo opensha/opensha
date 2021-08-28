@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,6 +45,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalar;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalarValues;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -53,6 +56,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.AnyWithinDistConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsRuptureGrowingStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -110,13 +114,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		File parentsDir = new File(resourcesDir.getParentFile(), "parent_sect_pages");
 		Preconditions.checkState(parentsDir.exists() || parentsDir.mkdir());
 		
+		List<HistScalarValues> scalarVals = new ArrayList<>();
+		List<ClusterRupture> cRups = rupSet.requireModule(ClusterRuptures.class).getAll();
+		for (HistScalar scalar : plotScalars)
+			scalarVals.add(new HistScalarValues(scalar, rupSet, sol, cRups, distAzCalc));
+		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(doGeoJSON);
 		Map<String, String> linksMap = new HashMap<>();
 		for (int parentID : sectsByParent.keySet()) {
 			String parentName = sectsByParent.get(parentID).get(0).getParentSectionName();
 			String subDirName = buildSectionPage(meta, parentID, parentName, parentsDir, distAzCalc,
-					sectsByParent, mapMaker);
+					sectsByParent, mapMaker, scalarVals);
 			
 			linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
 		}
@@ -172,16 +181,75 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
 	private String buildSectionPage(ReportMetadata meta, int parentSectIndex, String parentName, File parentsDir,
 			SectionDistanceAzimuthCalculator distAzCalc, Map<Integer, List<FaultSection>> sectsByParent,
-			RupSetMapMaker mapMaker) throws IOException {
+			RupSetMapMaker mapMaker, List<HistScalarValues> scalarVals) throws IOException {
 		System.out.println("Building page for: "+parentName);
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		String dirName = getFileSafe(parentName);
 		
-		File outputDir = new File(parentsDir, dirName);
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		File parentDir = new File(parentsDir, dirName);
+		Preconditions.checkState(parentDir.exists() || parentDir.mkdir());
+		
+		File resourcesDir = new File(parentDir, "resources");
+		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
 		
 		List<String> lines = new ArrayList<>();
 		lines.add("# "+parentName+" Details");
+		
+		lines.add("");
+		double minMag = Double.POSITIVE_INFINITY;
+		double maxMag = Double.NEGATIVE_INFINITY;
+		double minLen = Double.POSITIVE_INFINITY;
+		double maxLen = Double.NEGATIVE_INFINITY;
+		HashSet<Integer> directConnections = new HashSet<>();
+		HashSet<Integer> allConnections = new HashSet<>();
+		double totRate = 0d;
+		double multiRate = 0d;
+		int rupCount = 0;
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		for (int r : rupSet.getRupturesForParentSection(parentSectIndex)) {
+			rupCount++;
+			double mag = rupSet.getMagForRup(r);
+			minMag = Math.min(minMag, mag);
+			maxMag = Math.max(maxMag, mag);
+			double len = rupSet.getLengthForRup(r)*1e-3;
+			minLen = Math.min(minLen, len);
+			maxLen = Math.max(maxLen, len);
+			ClusterRupture rup = cRups.get(r);
+			if (meta.primary.sol != null) {
+				double rate = meta.primary.sol.getRateForRup(r);
+				totRate += rate;
+				if (rup.getTotalNumClusters() > 1)
+					multiRate += rate;
+			}
+			if (rup.getTotalNumClusters() > 1) {
+				RuptureTreeNavigator nav = rup.getTreeNavigator();
+				for (FaultSubsectionCluster cluster : rup.getClustersIterable()) {
+					if (cluster.parentSectionID == parentSectIndex) {
+						// find direct connections
+						FaultSubsectionCluster predecessor = nav.getPredecessor(cluster);
+						if (predecessor != null)
+							directConnections.add(predecessor.parentSectionID);
+						for (FaultSubsectionCluster descendant : nav.getDescendants(cluster))
+							directConnections.add(descendant.parentSectionID);
+					} else {
+						allConnections.add(cluster.parentSectionID);
+					}
+				}
+			}
+		}
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.addLine("_Property_", "_Value_");
+		table.addLine("**Rupture Count**", countDF.format(rupCount));
+		table.addLine("**Magnitude Range**", "["+twoDigits.format(minMag)+", "+twoDigits.format(maxMag)+"]");
+		table.addLine("**Length Range**", "["+countDF.format(minLen)+", "+countDF.format(maxLen)+"] km");
+		if (meta.primary.sol != null) {
+			table.addLine("**Total Rate**", (float)totRate+" /yr");
+			table.addLine("**Multi-Fault Rate**", (float)multiRate+" /yr ("+percentDF.format(multiRate/totRate)+")");
+		}
+		table.addLine("**Directly-Connected Faults**", countDF.format(directConnections.size()));
+		table.addLine("**All Co-Rupturing Faults**", countDF.format(allConnections.size()));
+		lines.addAll(table.build());
+		lines.add("");
 		
 		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
@@ -190,23 +258,111 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		if (meta.primary.sol != null) {
 			lines.add("");
-			lines.addAll(getMFDLines(meta, parentSectIndex, parentName, parentSects, outputDir, topLink));
+			lines.addAll(getMFDLines(meta, parentSectIndex, parentName, parentSects, resourcesDir, topLink));
 			
 			lines.add("");
-			lines.addAll(getAlongStrikeLines(meta, parentSectIndex, parentName, parentSects, outputDir, topLink));
+			lines.addAll(getAlongStrikeLines(meta, parentSectIndex, parentName, parentSects, resourcesDir, topLink));
 		}
+		
+		lines.add("");
+		lines.addAll(getScalarLines(meta, parentSectIndex, parentName, parentSects,
+				rupSet, resourcesDir, topLink, scalarVals));
 
 		lines.add("");
 		lines.addAll(getConnectivityLines(meta, parentSectIndex, parentName, distAzCalc, sectsByParent,
-				mapMaker, rupSet, outputDir, topLink));
+				mapMaker, rupSet, resourcesDir, topLink));
 		
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 3));
 		lines.add(tocIndex, "## Table Of Contents");
 		
-		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+		MarkdownUtils.writeReadmeAndHTML(lines, parentDir);
 		
 		return dirName;
+	}
+	
+	private static HistScalar[] plotScalars = { HistScalar.MAG, HistScalar.LENGTH, HistScalar.CUM_JUMP_DIST };
+	
+	private List<String> getScalarLines(ReportMetadata meta, int parentSectIndex, String parentName,
+			List<? extends FaultSection> parentSects, FaultSystemRupSet rupSet, File outputDir, String topLink,
+			List<HistScalarValues> scalars) throws IOException {
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("## Scalar Histograms & Example Ruptures");
+		lines.add(topLink); lines.add("");
+		
+		HashSet<Integer> sectRups = new HashSet<>(rupSet.getRupturesForParentSection(parentSectIndex));
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		
+		for (HistScalarValues scalarVals : scalars) {
+			HistScalar scalar = scalarVals.getScalar();
+			lines.add("### "+scalar.getName());
+			lines.add(topLink); lines.add("");
+			
+			String prefix = "hist_"+scalar.name();
+			
+			RupHistogramPlots.plotRuptureHistogram(outputDir, prefix, scalarVals, sectRups,
+					null, null, MAIN_COLOR, false, false);
+			lines.add("!["+scalar.getName()+" plot]("+outputDir.getName()+"/"+prefix+".png)");
+			lines.add("");
+			double[] fractiles = scalar.getExampleRupPlotFractiles();
+			if (fractiles != null && fractiles.length > 0) {
+				List<Integer> filteredIndexes = new ArrayList<>();
+				List<Double> filteredVals = new ArrayList<>();
+				for (int r=0; r<rupSet.getNumRuptures(); r++) {
+					if (sectRups.contains(r)) {
+						filteredIndexes.add(r);
+						filteredVals.add(scalarVals.getValue(r));
+					}
+				}
+				List<Integer> sortedIndexes = ComparablePairing.getSortedData(filteredVals, filteredIndexes);
+				
+				int[] fractileIndexes = new int[fractiles.length];
+				for (int j=0; j<fractiles.length; j++) {
+					double f = fractiles[j];
+					if (f == 1d)
+						fractileIndexes[j] = filteredIndexes.size()-1;
+					else
+						fractileIndexes[j] = (int)(f*filteredIndexes.size());
+				}
+				
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				table.initNewLine();
+				for (int j=0; j<fractiles.length; j++) {
+					int index = sortedIndexes.get(fractileIndexes[j]);
+					double val = scalarVals.getValue(index);
+					double f = fractiles[j];
+					String str;
+					if (f == 0d)
+						str = "Minimum";
+					else if (f == 1d)
+						str = "Maximum";
+					else
+						str = "p"+new DecimalFormat("0.#").format(f*100d);
+					str += ": ";
+					if (val < 0.1)
+						str += (float)val;
+					else
+						str += new DecimalFormat("0.##").format(val);
+					table.addColumn("**"+str+"**");
+				}
+				table.finalizeLine();
+				table.initNewLine();
+				for (int rawIndex : fractileIndexes) {
+					int index = sortedIndexes.get(rawIndex);
+					String rupPrefix = "rupture_"+index;
+					ClusterRupture rup = cRups.get(index);
+					PlotSpec spec = RupCartoonGenerator.buildRupturePlot(rup, "Rupture "+index, false, true,
+							new HashSet<>(parentSects), Color.GREEN.darker().darker(), parentName);
+					RupCartoonGenerator.plotRupture(outputDir, rupPrefix, spec, true);
+					table.addColumn("![Rupture "+index+"]("+outputDir.getName()+"/"+rupPrefix+".png)");
+				}
+				
+				lines.addAll(table.wrap(4, 0).build());
+				lines.add("");
+			}
+		}
+		return lines;
 	}
 
 	private List<String> getConnectivityLines(ReportMetadata meta, int parentSectIndex, String parentName,
@@ -328,7 +484,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			mapMaker.setWritePDFs(false);
 			mapMaker.setSkipNaNs(true);
 			mapMaker.plot(outputDir, prefix, parentName+" Connectivity");
-			table.addColumn("![Map]("+prefix+".png)");
+			table.addColumn("![Map]("+outputDir.getName()+"/"+prefix+".png)");
 			
 			if (doGeoJSON)
 				jsonLinks.add(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", prefix+".geojson")
@@ -418,8 +574,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			connLines.addAll(table.build());
 			
+			// only do the search to figure out why something wasn't connected if:
+			// * we have filters & a connection strategy
+			// * they're not connected
+			// * we only have a rupture set (if we have a solution, we're probably not too worried about this anymore)
 			if (!connected && config != null && config.getFilters() != null && !config.getFilters().isEmpty()
-					&& config.getConnectionStrategy() != null) {
+					&& config.getConnectionStrategy() != null && meta.primary.sol == null) {
 				List<FaultSection> pairSects = new ArrayList<>();
 				List<FaultSubsectionCluster> pairClusters = new ArrayList<>();
 				pairSects.addAll(mySects);
@@ -726,13 +886,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		gp.drawGraphPanel(List.of(incrSpec, availableSpec), xLogs, yLogs, xRanges, yRanges);
 		PlotUtils.setSubPlotWeights(gp, weights);
 		PlotUtils.writePlots(outputDir, prefix, gp, 1000, 1100, true, true, true);
-		table.addColumn("![Incremental Plot]("+prefix+".png)");
+		table.addColumn("![Incremental Plot]("+outputDir.getName()+"/"+prefix+".png)");
 		
 		prefix += "_cumulative";
 		gp.drawGraphPanel(List.of(cmlSpec, availableSpec), xLogs, yLogs, xRanges, yRanges);
 		PlotUtils.setSubPlotWeights(gp, weights);
 		PlotUtils.writePlots(outputDir, prefix, gp, 1000, 1100, true, true, true);
-		table.addColumn("![Cumulative Plot]("+prefix+".png)");
+		table.addColumn("![Cumulative Plot]("+outputDir.getName()+"/"+prefix+".png)");
 		table.finalizeLine();
 		
 		List<String> lines = new ArrayList<>();
@@ -1005,7 +1165,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		String prefix = "sect_along_strike";
 		int height = 300 + 500*specs.size();
 		PlotUtils.writePlots(outputDir, prefix, gp, 1000, height, true, true, false);
-		lines.add("![Along-strike plot]("+prefix+".png)");
+		lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
 		
 		return lines;
 	}

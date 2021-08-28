@@ -922,9 +922,12 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
 				HistogramFunction hist;
-				if (scalarTrack.getMax() <= 100d)
+				if (scalarTrack.getMax() <= 250d)
 					hist = HistogramFunction.getEncompassingHistogram(
-							0d, 100d, 10d);
+							0d, Math.max(100d, scalarTrack.getMax()), 10d);
+				else if (scalarTrack.getMax() <= 500d)
+					hist = HistogramFunction.getEncompassingHistogram(
+							0d, scalarTrack.getMax(), 20d);
 				else
 					hist = HistogramFunction.getEncompassingHistogram(
 							0d, scalarTrack.getMax(), 50d);
@@ -1062,7 +1065,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 					delta = 2d;
 				else
 					delta = 1d;
-				return HistogramFunction.getEncompassingHistogram(0d, scalarTrack.getMax(), delta);
+				return HistogramFunction.getEncompassingHistogram(0d, Math.max(1d, scalarTrack.getMax()), delta);
 			}
 
 			@Override
