@@ -15,6 +15,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
@@ -66,6 +67,39 @@ public class GeoJSONFaultSectionTest {
 			FaultSection deser = fromJSON(json);
 			testEquals(sect, deser);
 		}
+	}
+	
+	@Test
+	public void testInferTraceDepth() {
+		// first don't specify the depth, make sure it's inferred
+		Geometry geom = new Geometry.LineString(new Location(0d, 0d), new Location(1d, 1d));
+		geom.setSerializeZeroDepths(false);
+		FeatureProperties props = new FeatureProperties();
+		double upDepth = 3d;
+		props.set("DipDeg", 60d);
+		props.set("UpDepth", upDepth);
+		props.set("LowDepth", 12d);
+		props.set("Rake", 90d);
+		Feature feature = new Feature(1, geom, props);
+		
+		GeoJSONFaultSection sect = GeoJSONFaultSection.fromFeature(feature);
+		for (Location loc : sect.getFaultTrace())
+			assertEquals("Depth was not specified, should have been set to upper depth", upDepth, loc.getDepth(), TOL);
+		
+		// now specify the depth as zero, make sure it's not blown away
+		geom.setSerializeZeroDepths(true);
+		feature = new Feature(1, geom, props);
+		sect = GeoJSONFaultSection.fromFeature(feature);
+		for (Location loc : sect.getFaultTrace())
+			assertEquals("Depth was specified, should not have been set to upper depth", 0d, loc.getDepth(), TOL);
+		
+		// not specify the depth as non zero, make sure it's retained
+		double customDepth = 1d;
+		geom = new Geometry.LineString(new Location(0d, 0d, 1d), new Location(1d, 1d, 1d));
+		feature = new Feature(1, geom, props);
+		sect = GeoJSONFaultSection.fromFeature(feature);
+		for (Location loc : sect.getFaultTrace())
+			assertEquals("Depth was specified, should not have been set to upper depth", customDepth, loc.getDepth(), TOL);
 	}
 
 	private static void testEquals(FaultSection orig, FaultSection test) {

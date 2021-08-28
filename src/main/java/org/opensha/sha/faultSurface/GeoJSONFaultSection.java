@@ -198,6 +198,20 @@ public final class GeoJSONFaultSection implements FaultSection {
 		} else {
 			System.err.println("Skipping unexpected FaultSection geometry type: "+geometry.type);
 		}
+		
+		if (upperDepth != 0d && dip != 90d && !geometry.isSerializeZeroDepths()) {
+			// depths were not specified in the GeoJSON, and this is a buried dipping surface.
+			// for this case, we assume that the depth is actually the top of the surface and not the up-dip projection.
+			// if you want to override this, you can do three things:
+			// 	* provide three-valued locations in the GeoJSON
+			//  * provide at least one non-zero depth
+			//  * manually call geometry.setSerializeZeroDepths(true))
+			LocationList modTrace = new LocationList();
+			for (Location loc : trace)
+				modTrace.add(new Location(loc.getLatitude(), loc.getLongitude(), upperDepth));
+			trace = new FaultTrace(trace.getName());
+			trace.addAll(modTrace);
+		}
 	}
 	
 	private static void checkPropNonNull(String propName, Object value) {
