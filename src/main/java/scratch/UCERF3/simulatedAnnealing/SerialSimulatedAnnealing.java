@@ -220,8 +220,6 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				|| variablePerturbBasis.length == xbest.length,
 				"variablePerturbBasis must be either null of the same length as xbest");
 		this.variablePerturbBasis = variablePerturbBasis;
-		if (variablePerturbBasis != null)
-			this.perturbationFunc = GenerationFunctionType.VARIABLE_NO_TEMP_DEPENDENCE;
 	}
 
 	@Override
@@ -715,6 +713,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 
 		double perturbation;
 		double r2;
+		double scale;
+		double basis;
 
 		/*
 		 * TODO: make the scalars user configurable
@@ -724,7 +724,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			perturbation = (r.nextDouble()-0.5)* 0.0001; // U3 value was 0.001, which is a bit high. this works better
 			break;
 		case VARIABLE_NO_TEMP_DEPENDENCE:
-			double basis = variablePerturbBasis[index];
+			basis = variablePerturbBasis[index];
 			if (basis == 0)
 				basis = 0.00000001;
 			perturbation = (r.nextDouble()-0.5) * basis * 1000d;
@@ -751,7 +751,13 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			break;
 		case EXPONENTIAL_SCALE:
 			r2 = max_exp - r.nextDouble()*exp_orders_of_mag;
-			double scale = Math.pow(10, r2);
+			scale = Math.pow(10, r2);
+			perturbation = (r.nextDouble()-0.5)*scale;
+			break;
+		case VARIABLE_EXPONENTIAL_SCALE:
+			basis = Math.log10(Math.max(1e-10, variablePerturbBasis[index]));
+			r2 = basis + 2d - 4d*r.nextDouble(); // +/- 2 orders of magnitude
+			scale = Math.pow(10, r2);
 			perturbation = (r.nextDouble()-0.5)*scale;
 			break;
 		default:

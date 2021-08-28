@@ -11,11 +11,13 @@ import java.util.List;
 
 import javax.swing.text.DateFormatter;
 
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
@@ -24,6 +26,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen.PlotLevel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 
 import com.google.common.base.Preconditions;
 
@@ -55,11 +58,11 @@ import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 class FullPipelineDemo {
 
 	public static void main(String[] args) throws Exception {
-//		System.out.println("Yawn...");
-//		long minute = 1000l*60l;
-//		long hour = minute*60l;
-//		Thread.sleep(5l*hour + 30l*minute);
-//		System.out.println("Im awake! "+new Date());
+		System.out.println("Yawn...");
+		long minute = 1000l*60l;
+		long hour = minute*60l;
+		Thread.sleep(11l*hour + 0l*minute);
+		System.out.println("Im awake! "+new Date());
 		
 		File markdownDirDir = new File("/home/kevin/markdown/inversions");
 		Preconditions.checkState(markdownDirDir.exists() || markdownDirDir.mkdir());
@@ -74,25 +77,38 @@ class FullPipelineDemo {
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 //		String dirName = "2021_08_18";
 		
-//		String newName = "Coulomb Rups, U3 Ref Branch";
-		String newName = "U3 Rups, U3 Ref Branch";
-//		dirName += "-coulomb-u3_ref-perturb_uniform_1e-4-avg_anneal-wl1e-4";
-		SerialSimulatedAnnealing.exp_orders_of_mag = 10;
-		String minScaleStr = new DecimalFormat("0E0").format(
-				Math.pow(10, SerialSimulatedAnnealing.max_exp-SerialSimulatedAnnealing.exp_orders_of_mag)).toLowerCase();
-		String scaleStr = "perturb_exp_scale_1e-2_to_"+minScaleStr;
-//		dirName += "-coulomb-u3_ref-uniform_slip-"+scaleStr+"-avg_anneal_20m-noWL-tryZeroRates-5hr";
-		dirName += "-u3_rups-u3_ref-uniform_slip-"+scaleStr+"-avg_anneal_20m-noWL-tryZeroRates-5hr";
-		System.out.println(dirName);
-//		CoulombRupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm, scale);
-//		rsConfig.setAdaptiveSectFract(0.3f);
-//		String newName = "U3 Reproduction";
-//		dirName += "-u3_ref-quick-test";
-		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(fm , scale);
-//		FaultSystemSolution compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip"));
-		FaultSystemSolution compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
-				+ "FM3_1_ZENGBB_Shaw09Mod_DsrUni_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
+		String newName = "Coulomb Rups, U3 Ref Branch";
+		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm , scale);
+		dirName += "-coulomb";
+		
+//		String newName = "U3 Rups, U3 Ref Branch";
+//		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(fm , scale);
+//		dirName += "-u3_rups";
+		
+		dirName += "-u3_ref";
+		FaultSystemSolution compSol;
 		String compName =  "UCERF3";
+		if (branch.getValue(SlipAlongRuptureModels.class) == SlipAlongRuptureModels.UNIFORM) {
+			dirName += "-uniform_slip";
+			compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
+					+ "FM3_1_ZENGBB_Shaw09Mod_DsrUni_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
+		} else {
+			compSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
+					+ "FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
+		}
+		
+//		GenerationFunctionType perturb = GenerationFunctionType.EXPONENTIAL_SCALE;
+//		SerialSimulatedAnnealing.exp_orders_of_mag = 10;
+//		String minScaleStr = new DecimalFormat("0E0").format(
+//				Math.pow(10, SerialSimulatedAnnealing.max_exp-SerialSimulatedAnnealing.exp_orders_of_mag)).toLowerCase();
+//		dirName += "-perturb_exp_scale_1e-2_to_"+minScaleStr;
+		
+//		GenerationFunctionType perturb = GenerationFunctionType.UNIFORM_NO_TEMP_DEPENDENCE;
+//		dirName += "-perturb_uniform";
+		
+		GenerationFunctionType perturb = GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE;
+		dirName += "-perturb_var_exp";
+		
 		
 //		double wlFract = 1e-3;
 		double wlFract = 0d;
@@ -100,17 +116,32 @@ class FullPipelineDemo {
 //		double wlFract = 1e-2;
 //		boolean wlAsStarting = true;
 		
-		GenerationFunctionType perturb = GenerationFunctionType.EXPONENTIAL_SCALE;
-//		GenerationFunctionType perturb = GenerationFunctionType.UNIFORM_NO_TEMP_DEPENDENCE;
-//		NonnegativityConstraintType nonNeg = NonnegativityConstraintType.LIMIT_ZERO_RATES; // default
-		NonnegativityConstraintType nonNeg = NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN;
-
-		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5);
-//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30);
-		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInMinutes(20);
-//		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInSeconds(5);
+		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInMinutes(20); dirName += "-avg_anneal_20m";
+//		CompletionCriteria avgSubCompletion = TimeCompletionCriteria.getInMinutes(5); dirName += "-avg_anneal_5m";
 //		CompletionCriteria avgSubCompletion = null;
 		int threadsPerAvg = 4;
+		
+		if (wlFract <= 0d)
+			dirName += "-noWL";
+		else if (wlAsStarting)
+			dirName += "-wlStart";
+		else
+			dirName += "-wl"+new DecimalFormat("0E0").format(wlFract).toLowerCase();
+		
+//		GenerationFunctionType perturb = GenerationFunctionType.UNIFORM_NO_TEMP_DEPENDENCE;
+//		NonnegativityConstraintType nonNeg = NonnegativityConstraintType.LIMIT_ZERO_RATES; // default
+		NonnegativityConstraintType nonNeg = NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN; dirName += "-tryZeroRates";
+		
+		boolean sampleByWL = true;
+		
+		if (sampleByWL)
+			dirName += "-sampleByWL";
+
+		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5); dirName += "-5hr";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInHours(1); dirName += "-1hr";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m";
+		
+		System.out.println("Base dir name: "+dirName);
 		
 		int numRuns = 2;
 		
@@ -134,8 +165,13 @@ class FullPipelineDemo {
 					rupSet = FaultSystemRupSet.load(rupSetFile);
 				} else {
 					rupSet = rsConfig.build(threads);
+					Preconditions.checkState(rupSet.hasModule(PlausibilityConfiguration.class));
+					Preconditions.checkState(rupSet.hasModule(ClusterRuptures.class));
 					// configure as UCERF3
+					System.out.println("Mapping as UCERF3");
 					rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(branch).build();
+					Preconditions.checkState(rupSet.hasModule(PlausibilityConfiguration.class));
+					Preconditions.checkState(rupSet.hasModule(ClusterRuptures.class));
 				}
 			}
 			// write it out
@@ -226,6 +262,14 @@ class FullPipelineDemo {
 					tsa = new ThreadedSimulatedAnnealing(inputGen.getA(), inputGen.getD(),
 							inputGen.getInitialSolution(), 0d, inputGen.getA_ineq(), inputGen.getD_ineq(), threads, subCompletion);
 				}
+				
+				if (sampleByWL) {
+					IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(config.getMinimumRuptureRateBasis());
+					tsa.setRuptureSampler(sampler);
+				}
+				
+				if (perturb == GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE)
+					tsa.setVariablePerturbationBasis(config.getMinimumRuptureRateBasis());
 				
 				progress.setConstraintRanges(inputGen.getConstraintRowRanges());
 				tsa.setConstraintRanges(inputGen.getConstraintRowRanges());
