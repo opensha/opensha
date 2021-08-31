@@ -17,7 +17,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 
-public abstract class SlipAlongRuptureModel implements ArchivableModule {
+public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 
 	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModels slipAlong) {
 		return slipAlong.getModel();
@@ -117,17 +117,21 @@ public abstract class SlipAlongRuptureModel implements ArchivableModule {
 	public abstract double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet,
 			int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip);
 	
-	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		// do nothing (no serialization required, just must be listed)
+	private static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule {
+		
+		@Override
+		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+			// do nothing (no serialization required, just must be listed)
+		}
+
+		@Override
+		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+			// do nothing (no deserialization required, just must be listed)
+		}
+		
 	}
 
-	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-		// do nothing (no deserialization required, just must be listed)
-	}
-
-	public static class Uniform extends SlipAlongRuptureModel {
+	public static class Uniform extends NamedSlipAlongRuptureModel {
 		
 		public Uniform() {}
 
@@ -149,9 +153,35 @@ public abstract class SlipAlongRuptureModel implements ArchivableModule {
 		
 	}
 	
+	/**
+	 * Transient (won't be serialized) default implementation of the uniform slip-along-rupture model
+	 * @author kevin
+	 *
+	 */
+	public static class Default extends SlipAlongRuptureModel {
+		
+		public Default() {}
+
+		@Override
+		public String getName() {
+			return "Default (Uniform) Slip Along Rupture";
+		}
+
+		@Override
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
+				double[] sectArea, double[] sectMoRate, double aveSlip) {
+			double[] slipsForRup = new double[sectArea.length];
+			
+			for(int s=0; s<slipsForRup.length; s++)
+				slipsForRup[s] = aveSlip;
+			
+			return slipsForRup;
+		}
+	}
+	
 	private static EvenlyDiscretizedFunc taperedSlipPDF, taperedSlipCDF;
 	
-	public static class Tapered extends SlipAlongRuptureModel {
+	public static class Tapered extends NamedSlipAlongRuptureModel {
 		
 		public Tapered() {}
 
@@ -213,7 +243,7 @@ public abstract class SlipAlongRuptureModel implements ArchivableModule {
 		
 	}
 	
-	public static class WG02 extends SlipAlongRuptureModel {
+	public static class WG02 extends NamedSlipAlongRuptureModel {
 		
 		public WG02() {}
 
@@ -242,7 +272,7 @@ public abstract class SlipAlongRuptureModel implements ArchivableModule {
 		
 	}
 	
-	public static class AVG_UCERF3 extends SlipAlongRuptureModel {
+	public static class AVG_UCERF3 extends NamedSlipAlongRuptureModel {
 		
 		public AVG_UCERF3() {}
 

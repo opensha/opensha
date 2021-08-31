@@ -27,6 +27,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
@@ -663,6 +664,19 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 				
 			}, SectSlipRates.class);
+		}
+		if (!hasAvailableModule(SlipAlongRuptureModel.class)) {
+			addAvailableModule(new Callable<SlipAlongRuptureModel>() {
+
+				@Override
+				public SlipAlongRuptureModel call() throws Exception {
+					// see if we have a logic tree branch
+					LogicTreeBranch<?> branch = getModule(LogicTreeBranch.class);
+					if (branch != null && branch.hasValue(SlipAlongRuptureModels.class))
+						return branch.getValue(SlipAlongRuptureModels.class).getModel();
+					return new SlipAlongRuptureModel.Default();
+				}
+			}, SlipAlongRuptureModel.class);
 		}
 	}
 

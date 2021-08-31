@@ -443,7 +443,6 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 				header.add(DataUtils.roundFixed(xVals.getX(i), magRoundScale)+"");
 			csv.addLine(header);
 			
-			final String empty = "";
 			int nodeCount = region.getNodeCount();
 			for (int i=0; i<nodeCount; i++) {
 				IncrementalMagFreqDist mfd = mfds.get(i);
