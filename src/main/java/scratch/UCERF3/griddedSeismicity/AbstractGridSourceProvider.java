@@ -447,25 +447,22 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			int nodeCount = region.getNodeCount();
 			for (int i=0; i<nodeCount; i++) {
 				IncrementalMagFreqDist mfd = mfds.get(i);
+				if (mfd == null)
+					continue;
 				Location loc = region.getLocation(i);
 				List<String> line = new ArrayList<>(header.size());
 				line.add(i+"");
 				line.add(DataUtils.roundFixed(loc.getLatitude(), locRoundScale)+"");
 				line.add(DataUtils.roundFixed(loc.getLongitude(), locRoundScale)+"");
-				if (mfd == null) {
-					while (line.size() < header.size())
-						line.add(empty);
-				} else {
-					Preconditions.checkState(mfd.size() == xVals.size(),
-							"MFD sizes inconsistent. Expected %s values, have %s", xVals.size(), mfd.size());
-					for (int j=0; j<xVals.size(); j++) {
-						Preconditions.checkState((float)mfd.getX(j) == (float)xVals.getX(j),
-								"MFD x value mismatch for node %s value %s", i, j);
-						if (round)
-							line.add(DataUtils.roundSigFigs(mfd.getY(j), mfdRoundSigFigs)+"");
-						else
-							line.add(mfd.getY(j)+"");
-					}
+				Preconditions.checkState(mfd.size() == xVals.size(),
+						"MFD sizes inconsistent. Expected %s values, have %s", xVals.size(), mfd.size());
+				for (int j=0; j<xVals.size(); j++) {
+					Preconditions.checkState((float)mfd.getX(j) == (float)xVals.getX(j),
+							"MFD x value mismatch for node %s value %s", i, j);
+					if (round)
+						line.add(DataUtils.roundSigFigs(mfd.getY(j), mfdRoundSigFigs)+"");
+					else
+						line.add(mfd.getY(j)+"");
 				}
 				csv.addLine(line);
 			}
@@ -622,7 +619,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 						index, lat, loc.getLatitude());
 				Preconditions.checkState((float)lon == (float)loc.getLongitude(), "Longitude mismatch at index %s: %s != %s",
 						index, lon, loc.getLongitude());
-				if (csv.get(row, 3).isBlank())
+				if (csv.getLine(row).size() < 4 || csv.get(row, 3).isBlank())
 					continue;
 				IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(minX, maxX, numX);
 				for (int i=0; i<numX; i++)

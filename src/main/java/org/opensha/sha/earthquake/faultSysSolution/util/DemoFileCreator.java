@@ -129,6 +129,7 @@ class DemoFileCreator {
 		CompletionCriteria subCompletion = new IterationCompletionCriteria(1000000l);
 		CompletionCriteria completion = new IterationCompletionCriteria(20000000l); // about 45s
 //		CompletionCriteria completion = TimeCompletionCriteria.getInSeconds(10);
+		invGen.columnCompress();
 		ThreadedSimulatedAnnealing tsa = new ThreadedSimulatedAnnealing(
 				invGen.getA(), invGen.getD(), invGen.getInitialSolution(), threads, subCompletion);
 		tsa.setRandom(new Random(123456789l));
