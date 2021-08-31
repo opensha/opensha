@@ -281,14 +281,19 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public Feature toFeature() {
 		Geometry geometry;
 		Preconditions.checkNotNull(trace, "Trace is null");
+		Geometry traceGeom = new LineString(trace);
+		if (upperDepth != 0d && dip != 90d) {
+			// we need to serialize any zeroes
+			traceGeom.setSerializeZeroDepths(true);
+		}
 		if (zonePolygon != null) {
 			// both
 			List<Geometry> geometries = new ArrayList<>();
-			geometries.add(new LineString(trace));
+			geometries.add(traceGeom);
 			geometries.add(new Polygon(zonePolygon));
 			geometry = new GeometryCollection(geometries);
 		} else {
-			geometry = new LineString(trace);
+			geometry = traceGeom;
 		}
 		return new Feature(id, geometry, properties);
 	}
