@@ -151,8 +151,8 @@ public class Geometry {
 		public final LocationList[] holes;
 		
 		public Polygon(Region region) {
-			super(GeoJSON_Type.Polygon, true);
-			polygon = getPolygonBorder(region.getBorder(), hasNonZeroDepth(region.getBorder()));
+			super(GeoJSON_Type.Polygon, hasNonZeroDepth(region.getBorder()));
+			polygon = getPolygonBorder(region.getBorder(), false);
 			
 			List<LocationList> interiors = region.getInteriors();
 			if (interiors != null) {
@@ -656,6 +656,7 @@ public class Geometry {
 	
 	/**
 	 * @param border
+	 * @param hold
 	 * @return a valid GeoJSON polygon border, closed and following their right-hand rule
 	 */
 	public static LocationList getPolygonBorder(LocationList border, boolean hole) {
