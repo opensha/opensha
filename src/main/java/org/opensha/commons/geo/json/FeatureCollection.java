@@ -102,7 +102,8 @@ public class FeatureCollection {
 				switch (name) {
 				case "type":
 					type = GeoJSON_Type.valueOf(in.nextString());
-					Preconditions.checkState(type == GeoJSON_Type.FeatureCollection, "Expected Feature type, have %s", type);
+					Preconditions.checkState(type == GeoJSON_Type.FeatureCollection,
+							"Expected FeatureCollection type, have %s", type);
 					break;
 				case "features":
 					if (in.peek() == JsonToken.NULL) {
@@ -126,7 +127,8 @@ public class FeatureCollection {
 			
 			in.endObject();
 			
-			Preconditions.checkState(type == GeoJSON_Type.FeatureCollection, "Expected Feature type, have %s", type);
+			Preconditions.checkState(type == GeoJSON_Type.FeatureCollection,
+					"Expected FeatureCollection type, have %s", type);
 			
 			return new FeatureCollection(features);
 		}
