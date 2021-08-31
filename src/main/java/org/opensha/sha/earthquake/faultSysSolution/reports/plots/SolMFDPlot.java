@@ -223,11 +223,12 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			GridSourceProvider prov = sol.getGridSourceProvider();
 			SummedMagFreqDist gridMFD = null;
 			GriddedRegion gridReg = prov.getGriddedRegion();
+			boolean regionTest = region != null && region != gridReg && !region.getBorder().equals(gridReg.getBorder());
 			for (int i=0; i<gridReg.getNodeCount(); i++) {
 				IncrementalMagFreqDist nodeMFD = prov.getNodeMFD(i);
 				if (nodeMFD == null)
 					continue;
-				if (region != null && !region.contains(gridReg.getLocation(i)))
+				if (regionTest && !region.contains(gridReg.getLocation(i)))
 					continue;
 				if (gridMFD == null)
 					gridMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());

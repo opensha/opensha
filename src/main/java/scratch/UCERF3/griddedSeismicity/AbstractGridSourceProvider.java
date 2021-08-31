@@ -17,6 +17,7 @@ import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_Mag
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.util.DataUtils;
@@ -526,16 +527,33 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 
 		@Override
 		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
-			InputStreamReader regionReader = new InputStreamReader(regionIS);
-			Feature regFeature = Feature.read(regionReader);
-			GriddedRegion region = GriddedRegion.fromFeature(regFeature);
-			
+			// load MFDs
 			CSVFile<String> subSeisCSV = loadCSV(zip, entryPrefix, ARCHIVE_SUB_SEIS_FILE_NAME);
 			CSVFile<String> nodeUnassociatedCSV = loadCSV(zip, entryPrefix, ARCHIVE_UNASSOCIATED_FILE_NAME);
 			
 			// load mechanisms
 			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_MECH_WEIGHT_FILE_NAME);
+			
+			GriddedRegion region;
+			if (FileBackedModule.hasEntry(zip, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME)) {
+				// load gridded region
+				BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
+				InputStreamReader regionReader = new InputStreamReader(regionIS);
+				Feature regFeature = Feature.read(regionReader);
+				region = GriddedRegion.fromFeature(regFeature);
+			} else {
+				// infer region from grid nodes
+				System.out.println("Gridded region GeoJSON not supplied, inferring region from grid nodes in focal mechanism CSV file");
+				LocationList gridNodes = new LocationList();
+				for (int row=1; row<mechCSV.getNumRows(); row++) {
+					int index = mechCSV.getInt(row, 0);
+					Preconditions.checkState(index == row-1, "Mechanism row indexes must be in order and 0-based");
+					double lat = mechCSV.getDouble(row, 1);
+					double lon = mechCSV.getDouble(row, 2);
+					gridNodes.add(new Location(lat, lon));
+				}
+				region = GriddedRegion.inferRegion(gridNodes);
+			}
 			
 			init(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
 		}

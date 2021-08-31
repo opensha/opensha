@@ -73,6 +73,11 @@ public interface FileBackedModule extends ArchivableModule {
 		zin.close();
 	}
 	
+	public static boolean hasEntry(ZipFile zip, String entryPrefix, String fileName) {
+		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
+		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
+		return zip.getEntry(entryName) != null;
+	}
 	
 	public static BufferedInputStream getInputStream(ZipFile zip, String entryPrefix, String fileName) throws IOException {
 		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
