@@ -674,6 +674,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					LogicTreeBranch<?> branch = getModule(LogicTreeBranch.class);
 					if (branch != null && branch.hasValue(SlipAlongRuptureModels.class))
 						return branch.getValue(SlipAlongRuptureModels.class).getModel();
+					// add default (uniform) slip along rupture model
 					return new SlipAlongRuptureModel.Default();
 				}
 			}, SlipAlongRuptureModel.class);

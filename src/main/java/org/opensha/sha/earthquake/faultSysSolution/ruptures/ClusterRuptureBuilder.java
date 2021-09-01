@@ -959,11 +959,12 @@ public class ClusterRuptureBuilder {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
 		boolean writeRupSet = true;
 		int threads = Integer.max(1, Integer.min(31, Runtime.getRuntime().availableProcessors()-2));
+//		int threads = 62;
 		
-		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
-//		String state = null;
-//		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(RuptureSets.getNSHM23SubSects(state),
-//				"nshm23_v1p2_"+(state == null ? "all" : state.toLowerCase()), ScalingRelationships.MEAN_UCERF3);
+//		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
+		String state = null;
+		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(RuptureSets.getNSHM23SubSects(state),
+				"nshm23_v1p2_"+(state == null ? "all" : state.toLowerCase()), ScalingRelationships.MEAN_UCERF3);
 //		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
 		FaultSystemRupSet rupSet = rsConfig.build(threads);
 		

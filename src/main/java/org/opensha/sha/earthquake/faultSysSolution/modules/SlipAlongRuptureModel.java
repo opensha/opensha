@@ -143,14 +143,18 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
 				double[] sectArea, double[] sectMoRate, double aveSlip) {
-			double[] slipsForRup = new double[sectArea.length];
-			
-			for(int s=0; s<slipsForRup.length; s++)
-				slipsForRup[s] = aveSlip;
-			
-			return slipsForRup;
+			return calcUniformSlipAlong(sectArea.length, aveSlip);
 		}
 		
+	}
+	
+	private static double[] calcUniformSlipAlong(int numSects, double aveSlip) {
+		double[] slipsForRup = new double[numSects];
+		
+		for(int s=0; s<slipsForRup.length; s++)
+			slipsForRup[s] = aveSlip;
+		
+		return slipsForRup;
 	}
 	
 	/**
@@ -170,12 +174,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
 				double[] sectArea, double[] sectMoRate, double aveSlip) {
-			double[] slipsForRup = new double[sectArea.length];
-			
-			for(int s=0; s<slipsForRup.length; s++)
-				slipsForRup[s] = aveSlip;
-			
-			return slipsForRup;
+			return calcUniformSlipAlong(sectArea.length, aveSlip);
 		}
 	}
 	
