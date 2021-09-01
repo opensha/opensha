@@ -27,6 +27,7 @@ import static org.opensha.commons.geo.LocationUtils.TOLERANCE;
 
 import java.awt.Color;
 import java.awt.geom.Area;
+import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.io.File;
 import java.io.FileInputStream;
@@ -761,6 +762,57 @@ public class RegionTest {
 			locList.add(loc);
 		}
 		return locList;
+	}
+	
+	@Test
+	public void testEmptyExtraPathNonSingularEdgeCase() {
+		// for some reason, this set of locations will result in an Area with an extra near-empty path,
+		// which caused Region to throw an exception due to a non-singular Area. The Region.createArea(LocationList)
+		// method was modified on 9/1/2021 to detect and avoid this case, and this test ensures that
+		// the workaround continues to work.
+		
+		LocationList locs = new LocationList();
+
+        locs.add(new Location(-45.12780443456831, 168.9986639691212));
+        locs.add(new Location(-45.1084, 168.9721));
+        locs.add(new Location(-45.088989411751996, 168.9455540887213));
+        locs.add(new Location(-45.08892144116412, 168.94548614969298));
+        locs.add(new Location(-45.05234972943281, 168.89551766538727));
+        locs.add(new Location(-45.02474975407512, 168.867954596688));
+        locs.add(new Location(-45.0001497760189, 168.86158746874946));
+        locs.add(new Location(-44.99628281700839, 168.85910004125023));
+        locs.add(new Location(-45.032887995374374, 168.90906533699447));
+        locs.add(new Location(-45.03232462197751, 168.9087027245912));
+        locs.add(new Location(-45.05233303754178, 168.93560740907344));
+        locs.add(new Location(-45.07115428834232, 168.9617693983809));
+        locs.add(new Location(-45.07173747813003, 168.96214530605303));
+        locs.add(new Location(-45.07560444017346, 168.9646396927274));
+        locs.add(new Location(-45.10020443753326, 168.97105112505065));
+        locs.add(new Location(-45.12780443456831, 168.9986639691212));
+        
+//        Path2D path = locs.toPath();
+//        PathIterator pit = path.getPathIterator(null);
+//        System.out.println("*** ORIGINAL PATH ***");
+//        while (!pit.isDone()) {
+//        	double[] pt = new double[2];
+//        	int command = pit.currentSegment(pt);
+//        	System.out.println(command+": "+pt[0]+", "+pt[1]);
+//        	pit.next();
+//        }
+//        
+//        Area area = new Area(path);
+//        System.out.println(area);
+//        pit = area.getPathIterator(null);
+//        System.out.println("*** AREA PATH ***");
+//        while (!pit.isDone()) {
+//        	double[] pt = new double[2];
+//        	int command = pit.currentSegment(pt);
+//        	System.out.println(command+": "+pt[0]+", "+pt[1]);
+//        	pit.next();
+//        }
+
+        // this would throw an exception prior to 9/1/2021 for this set of locations
+        new Region(locs, BorderType.MERCATOR_LINEAR);
 	}
 
 	public static void main(String[] args) {
