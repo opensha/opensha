@@ -4,7 +4,13 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.opensha.commons.util.ClassUtils;
 
 public class FaultSysToolUtils {
 	
@@ -28,6 +34,31 @@ public class FaultSysToolUtils {
 		if (cmd.hasOption("threads"))
 			return Integer.parseInt(cmd.getOptionValue("threads"));
 		return defaultNumThreads();
+	}
+	
+	/**
+	 * Parse command line, or exit and print help if a ParseException is encountered
+	 * 
+	 * @param options
+	 * @param args
+	 * @param mainClass
+	 * @return
+	 */
+	public static CommandLine parseOptions(Options options, String[] args, Class<?> mainClass) {
+		CommandLineParser parser = new DefaultParser();
+		
+		CommandLine cmd;
+		try {
+			cmd = parser.parse(options, args);
+		} catch (ParseException e) {
+			HelpFormatter formatter = new HelpFormatter();
+			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(mainClass),
+					options, true );
+			System.exit(2);
+			return null;
+		}
+		
+		return cmd;
 	}
 
 }
