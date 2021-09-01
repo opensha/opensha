@@ -16,7 +16,7 @@ public class FaultSysToolUtils {
 	
 	public static int defaultNumThreads() {
 		int available = Runtime.getRuntime().availableProcessors();
-		if (available > 8)
+		if (available >= 10)
 			available -= 2;
 		return Integer.max(1, Integer.min(32, available));
 	}
@@ -28,7 +28,7 @@ public class FaultSysToolUtils {
 	public static Option threadsOption() {
 		Option threadsOption = new Option("t", "threads", true,
 				"Number of calculation threads. Default is the lesser of 32 and the number of processors on "
-				+ "the system minus 2: "+defaultNumThreads());
+				+ "the system: "+defaultNumThreads());
 		threadsOption.setRequired(false);
 		return threadsOption;
 	}

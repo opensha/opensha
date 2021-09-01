@@ -863,7 +863,7 @@ public class RuptureSets {
 				"Rupture set plausibility configuration preset. "
 				+ "Options: "+FaultSysToolUtils.enumOptions(Presets.class));
 		presetOption.setRequired(true);
-		ops.addOption(scaleOption);
+		ops.addOption(presetOption);
 
 		Option outputOption = new Option("of", "output-file", true,
 				"Path to write output Fault System Rupture Set file.");
