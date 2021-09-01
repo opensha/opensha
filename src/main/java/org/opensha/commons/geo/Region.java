@@ -914,6 +914,54 @@ public class Region implements Serializable, XMLSaveable, Named {
 	 */
 	private static Area createArea(LocationList border) {
 		Area area = new Area(border.toPath());
+		
+		if (!area.isSingular()) {
+			// sometimes an area can contain a empty (or near-empty) extra path.
+			// if that's the case, try to prune that path, and see if it's singular after pruning
+			PathIterator pit = area.getPathIterator(null);
+			Path2D curPath = null;
+			boolean allSame = true;
+			double[] prevPt = null;
+			
+			List<Path2D> nonEmptyClosedPaths = new ArrayList<>();
+			
+//			System.out.println("Trying to rescue a path...");
+			while (!pit.isDone()) {
+				double[] curPt = new double[2];
+				int op = pit.currentSegment(curPt);
+//				System.out.println(op+": "+curPt[0]+", "+curPt[1]);
+				if (curPath == null) {
+					Preconditions.checkState(op == PathIterator.SEG_MOVETO);
+					curPath = new Path2D.Double(pit.getWindingRule());
+					curPath.moveTo(curPt[0], curPt[1]);
+					
+					prevPt = curPt;
+					allSame = true;
+				} else {
+					// this is a continuation operation
+					if (op == PathIterator.SEG_LINETO) {
+						// new line
+						curPath.lineTo(curPt[0], curPt[1]);
+						allSame = allSame && (float)curPt[0] == (float)prevPt[0] && (float)curPt[1] == (float)prevPt[1];
+					} else if (op == PathIterator.SEG_CLOSE) {
+						curPath.closePath();
+						if (!allSame && !new Area(curPath).isEmpty())
+							// only keep this path if it's not empty
+							nonEmptyClosedPaths.add(curPath);
+						curPath = null;
+					} else if (op == PathIterator.SEG_MOVETO) {
+						throw new IllegalStateException("Found SEG_MOVETO but current path was open?");
+					} else {
+						throw new IllegalStateException("Unexpected operation in Area PathIterator: "+op);
+					}
+				}
+				pit.next();
+			}
+			if (nonEmptyClosedPaths.size() == 1) {
+				// if we're here, then we successfully rescued it
+				area = new Area(nonEmptyClosedPaths.get(0));
+			}
+		}
 		// final checks on area generated, this is redundant for some
 		// constructors that perform other checks on inputs
 		checkArgument(!area.isEmpty(), "Internally computed Area is empty");
