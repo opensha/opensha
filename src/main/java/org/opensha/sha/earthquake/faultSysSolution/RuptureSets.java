@@ -9,9 +9,12 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.dom4j.Document;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -59,6 +62,7 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.utils.DeformationModelFetcher;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RuptureSets {
 	
@@ -857,17 +861,72 @@ public class RuptureSets {
 
 		Option presetOption = new Option("p", "preset", true,
 				"Rupture set plausibility configuration preset. "
-				+ "Options: "+FaultSysToolUtils.enumOptions(ScalingRelationships.class));
+				+ "Options: "+FaultSysToolUtils.enumOptions(Presets.class));
 		presetOption.setRequired(true);
 		ops.addOption(scaleOption);
-		
-//		Option 
+
+		Option outputOption = new Option("of", "output-file", true,
+				"Path to write output Fault System Rupture Set file.");
+		outputOption.setRequired(true);
+		ops.addOption(outputOption);
 		
 		return ops;
 	}
 	
 	public static void main(String[] args) {
+		CommandLine cmd = FaultSysToolUtils.parseOptions(createOptions(), args, RuptureSets.class);
 		
+		try {
+//			File inputFile = 
+			List<? extends FaultSection> sects;
+			if (cmd.hasOption("sub-sections")) {
+				Preconditions.checkArgument(!cmd.hasOption("fault-model"), "Shouldn't supply both --sub-sections and --fault-model");
+				File inputFile = new File(cmd.getOptionValue("sub-sections"));
+				Preconditions.checkState(inputFile.exists(), "Input file doesn't exist: %s", inputFile.getAbsolutePath());
+				
+				String fName = inputFile.getName().trim().toLowerCase();
+				if (fName.endsWith(".xml")) {
+					// old XML file
+					Document doc = XMLUtils.loadDocument(inputFile);
+					sects = U3FaultSystemIO.fsDataFromXML(doc.getRootElement());
+				} else {
+					if (!fName.endsWith(".json") && !fName.endsWith(".geojson"))
+						System.err.println("Warning: expected a GeoJSON file, but input file has an unexpected "
+								+ "extension: "+inputFile.getName()
+								+ "\nWill attemp to parse as GeoJSON anyway. See file format details at "
+								+ "https://opensha.org/Geospatial-File-Formats");
+					sects = GeoJSONFaultReader.readFaultSections(inputFile);
+				}
+			} else {
+				Preconditions.checkArgument(cmd.hasOption("fault-model"), "Must supply either --sub-sections or --fault-model");
+				String fmStr = cmd.getOptionValue("fault-model");
+				FaultModels fm = FaultModels.valueOf(fmStr);
+				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
+				sects = getU3SubSects(fm);
+			}
+			System.out.println("Loaded "+sects.size()+" sub-sections");
+			for (int i=0; i<sects.size(); i++) {
+				int id = sects.get(i).getSectionId();
+				Preconditions.checkState(id == i, "Subsections must be listed in order of increasing ID, and IDs must "
+						+ "be 0-based and contiguous. Bad ID=%s at index=%s.", id, i);
+			}
+			
+			ScalingRelationships scale = ScalingRelationships.valueOf(cmd.getOptionValue("scale"));
+			System.out.println("Scaling relationship: "+scale);
+			
+			Presets preset = Presets.valueOf(cmd.getOptionValue("preset"));
+			System.out.println("Rupture plausibility preset: "+preset);
+			
+			RupSetConfig config = preset.build(sects, scale);
+			
+			FaultSystemRupSet rupSet = config.build(FaultSysToolUtils.getNumThreads(cmd));
+			
+			File outputFile = new File(cmd.getOptionValue("output-file"));
+			rupSet.write(outputFile);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 
 }
