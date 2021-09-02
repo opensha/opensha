@@ -111,19 +111,20 @@ public class TotalAzimuthChangeFilter implements ScalarValuePlausibiltyFilter<Fl
 					System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
 							+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
 				maxDiff = Math.max(Math.abs(diff), maxDiff);
-			}
-			int startIndex = testFullEnd ? 0 : endCluster.subSects.size()-2;
-			for (int i=startIndex; i<endCluster.subSects.size()-1; i++) {
-				FaultSection after1 = endCluster.subSects.get(i);
-				FaultSection after2 = endCluster.subSects.get(i+1);
-				double afterAz = azCalc.calcAzimuth(after1, after2);
-				
-				double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
-//				System.out.println(beforeAz+" => "+afterAz+" = "+diff);
-				if (verbose)
-					System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
-							+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
-				maxDiff = Math.max(Math.abs(diff), maxDiff);
+			} else {
+				int startIndex = testFullEnd ? 0 : endCluster.subSects.size()-2;
+				for (int i=startIndex; i<endCluster.subSects.size()-1; i++) {
+					FaultSection after1 = endCluster.subSects.get(i);
+					FaultSection after2 = endCluster.subSects.get(i+1);
+					double afterAz = azCalc.calcAzimuth(after1, after2);
+					
+					double diff = JumpAzimuthChangeFilter.getAzimuthDifference(beforeAz, afterAz);
+//					System.out.println(beforeAz+" => "+afterAz+" = "+diff);
+					if (verbose)
+						System.out.println(getShortName()+": ["+before1.getSectionId()+","+before2.getSectionId()+"]="
+								+beforeAz+" => ["+after1.getSectionId()+","+after2.getSectionId()+"]="+afterAz+" = "+diff);
+					maxDiff = Math.max(Math.abs(diff), maxDiff);
+				}
 			}
 		}
 		
