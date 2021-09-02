@@ -190,6 +190,8 @@ public class RuptureSets {
 			ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
 					getSubSects(), getDistAzCalc(), maxJumpDist);
 			Builder builder = PlausibilityConfiguration.builder(connStrat, subSects);
+			if (minSectsPerParent > 0)
+				builder.minSectsPerParent(minSectsPerParent, true, true);
 			AzimuthCalc azCalc;
 			if (leftLateralFlipAzimuth)
 				azCalc = new JumpAzimuthChangeFilter.LeftLateralFlipAzimuthCalc(getDistAzCalc(), Range.closed(-45d, 45d));
@@ -203,8 +205,6 @@ public class RuptureSets {
 				builder.cumulativeAzChange(cumulativeAzimuthChange);
 			if (cumulativeRakeChange > 0f)
 				builder.cumulativeRakeChange(cumulativeRakeChange);
-			if (minSectsPerParent > 0)
-				builder.minSectsPerParent(minSectsPerParent, true, true);
 			return builder.build();
 		}
 
@@ -949,8 +949,8 @@ public class RuptureSets {
 		ops.addOption(configOption);
 
 		Option wcOption = new Option("wc", "write-config", false,
-				"Flag to write the default configuration JSON file for the given preset, which can then be edited and passed "
-				+ "back in with the --config option when building a rupture set.");
+				"Flag to write the default configuration JSON file for the given preset instead of a rupture set, which can "
+				+ "then be edited and passed back in with the --config option when building a rupture set.");
 		wcOption.setRequired(false);
 		ops.addOption(wcOption);
 
