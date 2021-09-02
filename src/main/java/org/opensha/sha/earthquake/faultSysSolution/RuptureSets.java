@@ -1,13 +1,17 @@
 package org.opensha.sha.earthquake.faultSysSolution;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -44,7 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.RuptureGr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
-import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysToolUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
@@ -57,6 +61,9 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Range;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.Expose;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -83,9 +90,19 @@ public class RuptureSets {
 		private ScalingRelationships scale;
 
 		public U3RupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
-			this.subSects = subSects;
-			this.scale = scale;
-			
+			init(subSects, scale);
+		}
+		
+		private void detectFM(List<? extends FaultSection> subSects) {
+			if (subSects.size() == 2606) {
+				this.fm = FaultModels.FM3_1;
+			} else if (subSects.size() == 2664) {
+				this.fm = FaultModels.FM3_2;
+			} else {
+				System.err.println("WARNING: UCERF3 rupture set configuration was supplied with a non-UCERF3 fault model, "
+						+ "disabling Coulomb (as it was precomputed for UCERF3 FM3.1 and FM3.2 only)");
+				this.fm = null;
+			}
 		}
 
 		public U3RupSetConfig(FaultModels fm, ScalingRelationships scale) {
@@ -127,6 +144,13 @@ public class RuptureSets {
 		public ScalingRelationships getScalingRelationship() {
 			return scale;
 		}
+
+		@Override
+		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			this.subSects = subSects;
+			this.scale = scale;
+			detectFM(subSects);
+		}
 		
 	}
 	
@@ -135,18 +159,23 @@ public class RuptureSets {
 		private List<? extends FaultSection> subSects;
 		private ScalingRelationships scale;
 		
-		private float jumpAzimuthChange = 60f;
-		private float totalAzimuthChange = 60f;
-		private boolean leftLateralFlipAzimuth = true;
-		private float cumulativeAzimuthChange = 560f;
-		private float cumulativeRakeChange = 180f;
-		private int minSectsPerParent = 2;
+		@Expose	private float jumpAzimuthChange = 60f;
+		@Expose	private float totalAzimuthChange = 60f;
+		@Expose	private boolean leftLateralFlipAzimuth = true;
+		@Expose	private float cumulativeAzimuthChange = 560f;
+		@Expose	private float cumulativeRakeChange = 180f;
+		@Expose	private int minSectsPerParent = 2;
 		// maximum individual jump distance
-		private double maxJumpDist = 5d;
+		@Expose	private double maxJumpDist = 5d;
 		// if nonzero, apply thinning to growing strategy
-		private float adaptiveSectFract = 0f;
+		@Expose	private float adaptiveSectFract = 0f;
 
 		public SimpleAzimuthalRupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			init(subSects, scale);
+		}
+
+		@Override
+		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
 			this.subSects = subSects;
 			this.scale = scale;
 		}
@@ -223,55 +252,60 @@ public class RuptureSets {
 		 */
 		// PLAUSIBILITY FILTERS
 		// minimum subsections per parent
-		private int minSectsPerParent = 2;
+		@Expose	private int minSectsPerParent = 2;
 		// filters out indirect paths
-		private boolean noIndirectPaths = true;
+		@Expose	private boolean noIndirectPaths = true;
 		// relative slip rate probability
-		private float slipRateProb = 0.05f;
+		@Expose	private float slipRateProb = 0.05f;
 		// if false, slip rate probabilities only consider alternative jumps up to the distance (+2km) of the taken jump
-		private boolean slipIncludeLonger = false;
+		@Expose	private boolean slipIncludeLonger = false;
 		// fraction of interactions positive
-		private float cffFractInts = 0.75f;
+		@Expose	private float cffFractInts = 0.75f;
 		// number of denominator values for the CFF favorability ratio
-		private int cffRatioN = 2;
+		@Expose	private int cffRatioN = 2;
 		// CFF favorability ratio threshold
-		private float cffRatioThresh = 0.5f;
+		@Expose	private float cffRatioThresh = 0.5f;
 		// relative CFF probability
-		private float cffRelativeProb = 0.01f;
+		@Expose	private float cffRelativeProb = 0.01f;
 		// if true, CFF calculations are computed with the most favorable path (up to max jump distance), which may not
 		// use the exact jumping point from the connection strategy
-		private boolean favorableJumps = true;
+		@Expose	private boolean favorableJumps = true;
 		// cumulative jump probability threshold
-		private float jumpProbThresh = 0.001f;
+		@Expose	private float jumpProbThresh = 0.001f;
 		// cumulative rake change threshold
-		private float cmlRakeThresh = 360f;
+		@Expose	private float cmlRakeThresh = 360f;
 		// CONNECTION STRATEGY
 		// maximum individual jump distance
-		private double maxJumpDist = 15d;
+		@Expose	private double maxJumpDist = 15d;
 		// if true, connections happen at places that actually work and paths are optimized. if false, closest points
-		private boolean plausibleConnections = true;
+		@Expose	private boolean plausibleConnections = true;
 		// if >0 and <maxDist, connections will only be added above this distance when no other connections exist from
 		// a given subsection. e.g., if set to 5, you can jump more than 5 km but only if no <= 5km jumps exist
-		private double adaptiveMinDist = 6d;
+		@Expose	private double adaptiveMinDist = 6d;
 		// GROWING STRATEGY
 		// if nonzero, apply thinning to growing strategy
-		private float adaptiveSectFract = 0.1f;
+		@Expose	private float adaptiveSectFract = 0.1f;
 		// if true, allow bilateral rupture growing (using default settings)
-		private boolean bilateral = false;
+		@Expose	private boolean bilateral = false;
 		// if true, allow splays (using default settings)
-		private boolean splays = false;
+		@Expose	private boolean splays = false;
 		// grid spacing for coulomb calculations
-		private double stiffGridSpacing = 2d;
+		@Expose	private double stiffGridSpacing = 2d;
 		// coefficient of friction for coulomb calculations
-		private double coeffOfFriction = 0.5;
+		@Expose	private double coeffOfFriction = 0.5;
 
 		public CoulombRupSetConfig(FaultModels fm, ScalingRelationships scale) {
 			this(getU3SubSects(fm), fm.encodeChoiceString().toLowerCase(), scale);
 		}
 
 		public CoulombRupSetConfig(List<? extends FaultSection> subSects, String fmPrefix, ScalingRelationships scale) {
-			this.subSects = subSects;
 			this.fmPrefix = fmPrefix;
+			init(subSects, scale);
+		}
+
+		@Override
+		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			this.subSects = subSects;
 			this.scale = scale;
 		}
 
@@ -704,23 +738,6 @@ public class RuptureSets {
 		
 	}
 	
-	private static final String s = File.separator;
-	
-	/**
-	 * The local scratch data directory that is ignored by repository commits.
-	 */
-	public static File DEFAULT_SCRATCH_DATA_DIR =
-		new File("src"+s+"main"+s+"resources"+s+"scratchData"+s+"rupture_sets");
-	
-	public static File getCacheDir() {
-		if (!DEFAULT_SCRATCH_DATA_DIR.exists() && !DEFAULT_SCRATCH_DATA_DIR.mkdir())
-			return null;
-		File cacheDir = new File(DEFAULT_SCRATCH_DATA_DIR, "caches");
-		if (!cacheDir.exists() && !cacheDir.mkdir())
-			return null;
-		return cacheDir;
-	}
-	
 	public static abstract class RupSetConfig {
 		
 		public abstract List<? extends FaultSection> getSubSects();
@@ -732,6 +749,10 @@ public class RuptureSets {
 		public abstract String getRupSetFileName();
 		
 		public abstract ScalingRelationships getScalingRelationship();
+		
+		protected abstract void init(List<? extends FaultSection> subSects, ScalingRelationships scale);
+		
+		private transient File cacheDir;
 		
 		private transient File distAzCacheFile;
 		private transient int numAzCached = 0;
@@ -757,6 +778,16 @@ public class RuptureSets {
 				}
 			}
 			return distAzCalc;
+		}
+		
+		protected File getCacheDir() {
+			if (cacheDir == null)
+				cacheDir = FaultSysTools.getCacheDir();
+			return cacheDir;
+		}
+		
+		protected void setCacheDir(File cacheDir) {
+			this.cacheDir = cacheDir;
 		}
 		
 		private transient int numThreads = 1;
@@ -813,33 +844,80 @@ public class RuptureSets {
 		}
 	}
 	
+	static RupSetConfig deserializeConfig(Class<? extends RupSetConfig> clazz, List<? extends FaultSection> subSects,
+			ScalingRelationships scale, File jsonFile) throws IOException {
+		return deserializeConfig(clazz, subSects, scale, new BufferedReader(new FileReader(jsonFile)));
+	}
+	
+	static RupSetConfig deserializeConfig(Class<? extends RupSetConfig> clazz, List<? extends FaultSection> subSects,
+			ScalingRelationships scale, Reader jsonReader) {
+		Gson gson = buildGson();
+		
+		RupSetConfig config = gson.fromJson(jsonReader, clazz);
+		config.init(subSects, scale);
+		return config;
+	}
+	
+	static void serializeConfig(RupSetConfig config, File jsonFile) throws IOException {
+		serializeConfig(config, new BufferedWriter(new FileWriter(jsonFile)));
+	}
+	
+	static void serializeConfig(RupSetConfig config, Writer jsonWriter) throws IOException {
+		Gson gson = buildGson();
+		
+		gson.toJson(config, jsonWriter);
+		
+		jsonWriter.close();
+	}
+	
+	private static Gson buildGson() {
+		return new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation().create();
+	}
+	
 	private enum Presets {
-		UCERF3 {
+		UCERF3(U3RupSetConfig.class) {
 			@Override
 			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
 				return new U3RupSetConfig(subSects, scale);
 			}
 		},
-		COULOMB {
+		COULOMB(CoulombRupSetConfig.class) {
 			@Override
 			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
 				return new CoulombRupSetConfig(subSects, null, scale);
 			}
 		},
-		SIMPLE_AZIMUTHAL {
+		SIMPLE_AZIMUTHAL(SimpleAzimuthalRupSetConfig.class) {
 			@Override
 			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
 				return new SimpleAzimuthalRupSetConfig(subSects, scale);
 			}
 		};
 		
+		private Class<? extends RupSetConfig> configClass;
+
+		private Presets(Class<? extends RupSetConfig> configClass) {
+			this.configClass = configClass;
+			
+		}
+		
 		public abstract RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale);
+		
+		public RupSetConfig deserialize(List<? extends FaultSection> subSects, ScalingRelationships scale,
+				Reader jsonReader) {
+			return deserializeConfig(configClass, subSects, scale, jsonReader);
+		}
+		
+		public RupSetConfig deserialize(List<? extends FaultSection> subSects, ScalingRelationships scale,
+				File jsonFile) throws IOException {
+			return deserializeConfig(configClass, subSects, scale, jsonFile);
+		}
 	}
 	
 	private static Options createOptions() {
 		Options ops = new Options();
 
-		ops.addOption(FaultSysToolUtils.threadsOption());
+		ops.addOption(FaultSysTools.threadsOption());
 
 		Option subSectsOption = new Option("s", "sub-sections", true,
 				"Path to GeoJSON file containing subsections from which to build a rupture set. Must supply this or a "
@@ -849,35 +927,68 @@ public class RuptureSets {
 
 		Option faultModelOption = new Option("f", "fault-model", true,
 				"UCERF3 Fault Model, used to fetch UCERF3 subsections as an alternative to --sub-sections. "
-				+ "Options: "+FaultSysToolUtils.enumOptions(FaultModels.class));
+				+ "Options: "+FaultSysTools.enumOptions(FaultModels.class));
 		faultModelOption.setRequired(false);
 		ops.addOption(faultModelOption);
 
 		Option scaleOption = new Option("sc", "scale", true,
 				"Scaling relationship to use (for rupture magnitudes & average slips). "
-				+ "Options: "+FaultSysToolUtils.enumOptions(ScalingRelationships.class));
-		scaleOption.setRequired(true);
+				+ "Options: "+FaultSysTools.enumOptions(ScalingRelationships.class));
+		scaleOption.setRequired(false);
 		ops.addOption(scaleOption);
 
 		Option presetOption = new Option("p", "preset", true,
 				"Rupture set plausibility configuration preset. "
-				+ "Options: "+FaultSysToolUtils.enumOptions(Presets.class));
+				+ "Options: "+FaultSysTools.enumOptions(Presets.class));
 		presetOption.setRequired(true);
 		ops.addOption(presetOption);
 
+		Option configOption = new Option("c", "config", true,
+				"Rupture set plausibility configuration JSON file to override default parameters for the selected preset.");
+		configOption.setRequired(false);
+		ops.addOption(configOption);
+
+		Option wcOption = new Option("wc", "write-config", false,
+				"Flag to write the default configuration JSON file for the given preset, which can then be edited and passed "
+				+ "back in with the --config option when building a rupture set.");
+		wcOption.setRequired(false);
+		ops.addOption(wcOption);
+
 		Option outputOption = new Option("of", "output-file", true,
-				"Path to write output Fault System Rupture Set file.");
+				"Path to write output Fault System Rupture Set file. If the supplied path is a directory, then a file "
+				+ "name will be determined programatically and placed in that directory.");
 		outputOption.setRequired(true);
 		ops.addOption(outputOption);
+		
+		ops.addOption(FaultSysTools.cacheDirOption());
 		
 		return ops;
 	}
 	
+	private static void writePresetDefaults(Presets preset, File file) throws IOException {
+		if (file.exists() && file.isDirectory())
+			file = new File(file, preset.name()+".json");
+		System.out.println("Writing default configuration for "+preset+" to: "+file.getAbsolutePath());
+		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
+		List<? extends FaultSection> subSects = List.of();
+		RupSetConfig config = preset.build(subSects, scale);
+		serializeConfig(config, file);
+	}
+	
 	public static void main(String[] args) {
-		CommandLine cmd = FaultSysToolUtils.parseOptions(createOptions(), args, RuptureSets.class);
+		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, RuptureSets.class);
 		
 		try {
-//			File inputFile = 
+			Presets preset = Presets.valueOf(cmd.getOptionValue("preset"));
+			System.out.println("Rupture plausibility preset: "+preset);
+			
+			File outputFile = new File(cmd.getOptionValue("output-file"));
+			
+			if (cmd.hasOption("write-config")) {
+				writePresetDefaults(preset, outputFile);
+				System.exit(0);
+			}
+//			writePresetDefaults(new File("/tmp/presets")); System.exit(0);
 			List<? extends FaultSection> sects;
 			if (cmd.hasOption("sub-sections")) {
 				Preconditions.checkArgument(!cmd.hasOption("fault-model"), "Shouldn't supply both --sub-sections and --fault-model");
@@ -911,17 +1022,24 @@ public class RuptureSets {
 						+ "be 0-based and contiguous. Bad ID=%s at index=%s.", id, i);
 			}
 			
+			Preconditions.checkArgument(cmd.hasOption("scale"), "Must supply scaling relationship (via --scale option)");
 			ScalingRelationships scale = ScalingRelationships.valueOf(cmd.getOptionValue("scale"));
 			System.out.println("Scaling relationship: "+scale);
 			
-			Presets preset = Presets.valueOf(cmd.getOptionValue("preset"));
-			System.out.println("Rupture plausibility preset: "+preset);
+			RupSetConfig config;
+			if (cmd.hasOption("config")) {
+				// load a custom configuration
+				File jsonFile = new File(cmd.getOptionValue("config"));
+				Preconditions.checkArgument(jsonFile.exists(), "JSON configuration file doesn't exist: %s", jsonFile.getAbsolutePath());
+				config = preset.deserialize(sects, scale, jsonFile);
+			} else {
+				// use default values
+				config = preset.build(sects, scale);
+			}
+			FaultSystemRupSet rupSet = config.build(FaultSysTools.getNumThreads(cmd));
 			
-			RupSetConfig config = preset.build(sects, scale);
-			
-			FaultSystemRupSet rupSet = config.build(FaultSysToolUtils.getNumThreads(cmd));
-			
-			File outputFile = new File(cmd.getOptionValue("output-file"));
+			if (outputFile.exists() && outputFile.isDirectory())
+				outputFile = new File(outputFile, config.getRupSetFileName());
 			rupSet.write(outputFile);
 		} catch (Exception e) {
 			e.printStackTrace();

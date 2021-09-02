@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.util;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -12,7 +13,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.opensha.commons.util.ClassUtils;
 
-public class FaultSysToolUtils {
+import com.google.common.base.Preconditions;
+
+public class FaultSysTools {
 	
 	public static int defaultNumThreads() {
 		int available = Runtime.getRuntime().availableProcessors();
@@ -31,6 +34,14 @@ public class FaultSysToolUtils {
 				+ "the system: "+defaultNumThreads());
 		threadsOption.setRequired(false);
 		return threadsOption;
+	}
+	
+	public static Option cacheDirOption() {
+		Option cacheOption = new Option("cd", "cache-dir", true,
+				"Optional directory to store/load cache files (distances, coulomb, etc) to speed up rupture set building "
+				+ "and processing.");
+		cacheOption.setRequired(false);
+		return cacheOption;
 	}
 	
 	public static int getNumThreads(CommandLine cmd) {
@@ -54,6 +65,7 @@ public class FaultSysToolUtils {
 		try {
 			cmd = parser.parse(options, args);
 		} catch (ParseException e) {
+			System.err.println(e.getMessage());
 			HelpFormatter formatter = new HelpFormatter();
 			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(mainClass),
 					options, true );
@@ -62,6 +74,33 @@ public class FaultSysToolUtils {
 		}
 		
 		return cmd;
+	}
+	
+	private static final String s = File.separator;
+	
+	/**
+	 * The local scratch data directory that is ignored by repository commits.
+	 */
+	public static File DEFAULT_SCRATCH_DATA_DIR =
+		new File("src"+s+"main"+s+"resources"+s+"scratchData"+s+"rupture_sets");
+
+	public static File getCacheDir() {
+		return getCacheDir(null);
+	}
+
+	public static File getCacheDir(CommandLine cmd) {
+		if (cmd != null && cmd.hasOption("cache-dir")) {
+			File cacheDir = new File(cmd.getOptionValue("cache-dir"));
+			Preconditions.checkArgument(cacheDir.exists() || cacheDir.mkdir(),
+					"Specified cache directory doesn't exist and could not be created: %s", cacheDir.getAbsolutePath());
+			return cacheDir;
+		}
+		if (!DEFAULT_SCRATCH_DATA_DIR.exists() && !DEFAULT_SCRATCH_DATA_DIR.mkdir())
+			return null;
+		File cacheDir = new File(DEFAULT_SCRATCH_DATA_DIR, "caches");
+		if (!cacheDir.exists() && !cacheDir.mkdir())
+			return null;
+		return cacheDir;
 	}
 
 }

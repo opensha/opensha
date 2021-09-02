@@ -13,7 +13,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 
 import com.google.common.base.Preconditions;
 
@@ -53,7 +53,7 @@ public abstract class AbstractRupSetPlot implements Named {
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name,
 			File resourcesDir, String relPathToResources, String topLink) throws IOException {
 		RupSetMetadata meta = new RupSetMetadata(name, rupSet, sol);
-		ReportPageGen.attachDefaultModules(meta, RuptureSets.getCacheDir(), ReportPageGen.DEFAULT_MAX_DIST);
+		ReportPageGen.attachDefaultModules(meta, FaultSysTools.getCacheDir(), ReportPageGen.DEFAULT_MAX_DIST);
 		return plot(rupSet, sol, new ReportMetadata(meta), resourcesDir, relPathToResources, topLink);
 	}
 	

@@ -33,7 +33,6 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
@@ -67,6 +66,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterCo
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
@@ -272,8 +272,7 @@ public class ReportPageGen {
 		if (cmd.hasOption("default-max-dist"))
 			this.defaultMaxDist = Double.parseDouble(cmd.getOptionValue("default-max-dist"));
 		
-		if (cmd.hasOption("cache-dir"))
-			this.cacheDir = new File(cmd.getOptionValue("cache-dir"));
+		cacheDir = FaultSysTools.getCacheDir(cmd);
 		
 		init(meta, outputDir, plots);
 	}
@@ -283,7 +282,7 @@ public class ReportPageGen {
 		this.outputDir = outputDir;
 		this.plots = plots;
 		if (cacheDir == null)
-			cacheDir = RuptureSets.getCacheDir();
+			cacheDir = FaultSysTools.getCacheDir();
 	}
 	
 	public List<? extends AbstractRupSetPlot> getPlots() {
@@ -951,6 +950,8 @@ public class ReportPageGen {
 	
 	public static Options createOptions() {
 		Options ops = new Options();
+		
+		ops.addOption(FaultSysTools.cacheDirOption());
 
 		Option outDirOption = new Option("od", "output-dir", true,
 				"Output directory to write the report. Must supply either this or --reports-dir");
@@ -1007,7 +1008,8 @@ public class ReportPageGen {
 		ops.addOption(maxDistOption);
 		
 		Option plotLevelOption = new Option("pl", "plot-level", true,
-				"This determins which set of plots should be included. One of: "+PlotLevel.values());
+				"This determins which set of plots should be included. One of: "
+						+FaultSysTools.enumOptions(PlotLevel.class)+". Default: "+PLOT_LEVEL_DEFAULT.name());
 		plotLevelOption.setRequired(false);
 		ops.addOption(plotLevelOption);
 		

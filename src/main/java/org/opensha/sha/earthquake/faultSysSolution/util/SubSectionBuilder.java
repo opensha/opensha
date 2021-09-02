@@ -36,7 +36,7 @@ class SubSectionBuilder {
 
 		Option faultModelOption = new Option("f", "fault-model", true,
 				"UCERF3 Fault Model, used to fetch UCERF3 fault sections as an alternative to --input-file. "
-				+ "Options: "+FaultSysToolUtils.enumOptions(FaultModels.class));
+				+ "Options: "+FaultSysTools.enumOptions(FaultModels.class));
 		faultModelOption.setRequired(false);
 		ops.addOption(faultModelOption);
 
@@ -67,7 +67,7 @@ class SubSectionBuilder {
 	public static void main(String[] args) {
 		Options options = createOptions();
 		
-		CommandLine cmd = FaultSysToolUtils.parseOptions(options, args, SubSectionBuilder.class);
+		CommandLine cmd = FaultSysTools.parseOptions(options, args, SubSectionBuilder.class);
 		
 		try {
 			List<? extends FaultSection> sects;
