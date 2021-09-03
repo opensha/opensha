@@ -814,6 +814,7 @@ public class RegionTest {
 		// this would throw an exception prior to 9/1/2021 for this set of locations
 		new Region(locs, BorderType.MERCATOR_LINEAR);
 
+		// this is an even nastier one, that needs recursive empty area pruning to pass
 		locs = new LocationList();
 		locs.add(new Location(-45.63930260231113,166.2805119108382));
 		locs.add(new Location(-45.608272869464344,166.23092712697655));
@@ -855,7 +856,7 @@ public class RegionTest {
 //			pit.next();
 //		}
 
-		// this would throw an exception prior to 9/1/2021 for this set of locations
+		// this would throw an exception prior to 9/3/2021 for this set of locations
 		new Region(locs, BorderType.MERCATOR_LINEAR);
 	}
 
