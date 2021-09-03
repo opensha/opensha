@@ -1084,21 +1084,7 @@ public class ReportPageGen {
 		
 		System.setProperty("java.awt.headless", "true");
 		
-		Options options = createOptions();
-		
-		CommandLineParser parser = new DefaultParser();
-		
-		CommandLine cmd;
-		try {
-			cmd = parser.parse(options, args);
-		} catch (ParseException e) {
-			e.printStackTrace();
-			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(ReportPageGen.class),
-					options, true );
-			System.exit(2);
-			return;
-		}
+		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, ReportPageGen.class);
 		
 		try {
 			new ReportPageGen(cmd).generatePage();
