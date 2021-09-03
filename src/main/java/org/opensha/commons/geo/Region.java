@@ -806,6 +806,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 		return ratio > 1e-3 && holeExtent > 1e-0;
 	}
 	
+	private static final int max_split_recusrsion = 20;
+	
 	/**
 	 * Recursively splits an area into solids and holes
 	 * @param multiArea area which need not be singular
@@ -813,7 +815,13 @@ public class Region implements Serializable, XMLSaveable, Named {
 	 * @param holes list of holes to be populated
 	 */
 	private static void splitArea(Area multiArea, List<Area> solids, List<Area> holes) {
-		if (SUBTRACT_DEBUG) System.out.println("Splitting an area");
+		splitArea(multiArea, solids, holes, 0);
+	}
+	private static void splitArea(Area multiArea, List<Area> solids, List<Area> holes, int curRecursion) {
+		if (curRecursion == max_split_recusrsion)
+			throw new IllegalStateException("Failed to recursively split area into non-singular "
+					+ "solids and holes after "+curRecursion+" iterations");
+		if (SUBTRACT_DEBUG) System.out.println("Splitting an area, curRecursion="+curRecursion);
 		if (SUBTRACT_DEBUG) System.out.println("Splitting!");
 		PathIterator iter = multiArea.getPathIterator(null);
 		if (SUBTRACT_DEBUG) System.out.println("Winding rule: "+iter.getWindingRule());
@@ -849,7 +857,7 @@ public class Region implements Serializable, XMLSaveable, Named {
 						// not quite sure why the Area constructor sometimes addes new little patches, but it does
 						// this fixes it
 						if (SUBTRACT_DEBUG) System.out.println("Re-splitting a split area...");
-						splitArea(area, solids, holes);
+						splitArea(area, solids, holes, curRecursion+1);
 					} else {
 						if (hole)
 							holes.add(area);
@@ -916,50 +924,19 @@ public class Region implements Serializable, XMLSaveable, Named {
 		Area area = new Area(border.toPath());
 		
 		if (!area.isSingular()) {
-			// sometimes an area can contain a empty (or near-empty) extra path.
-			// if that's the case, try to prune that path, and see if it's singular after pruning
-			PathIterator pit = area.getPathIterator(null);
-			Path2D curPath = null;
-			boolean allSame = true;
-			double[] prevPt = null;
-			
-			List<Path2D> nonEmptyClosedPaths = new ArrayList<>();
-			
-//			System.out.println("Trying to rescue a path...");
-			while (!pit.isDone()) {
-				double[] curPt = new double[2];
-				int op = pit.currentSegment(curPt);
-//				System.out.println(op+": "+curPt[0]+", "+curPt[1]);
-				if (curPath == null) {
-					Preconditions.checkState(op == PathIterator.SEG_MOVETO);
-					curPath = new Path2D.Double(pit.getWindingRule());
-					curPath.moveTo(curPt[0], curPt[1]);
-					
-					prevPt = curPt;
-					allSame = true;
-				} else {
-					// this is a continuation operation
-					if (op == PathIterator.SEG_LINETO) {
-						// new line
-						curPath.lineTo(curPt[0], curPt[1]);
-						allSame = allSame && (float)curPt[0] == (float)prevPt[0] && (float)curPt[1] == (float)prevPt[1];
-					} else if (op == PathIterator.SEG_CLOSE) {
-						curPath.closePath();
-						if (!allSame && !new Area(curPath).isEmpty())
-							// only keep this path if it's not empty
-							nonEmptyClosedPaths.add(curPath);
-						curPath = null;
-					} else if (op == PathIterator.SEG_MOVETO) {
-						throw new IllegalStateException("Found SEG_MOVETO but current path was open?");
-					} else {
-						throw new IllegalStateException("Unexpected operation in Area PathIterator: "+op);
-					}
+			List<Area> solids = new ArrayList<>();
+			List<Area> holes = new ArrayList<>();
+			splitArea(area, solids, holes);
+//			System.out.println("Trying to rescue nonsingular area. Found "+solids.size()+" solids and "+holes.size()+" holes");
+			boolean hasRealHole = false;
+			for (Area hole : holes)
+				hasRealHole = hasRealHole || !hole.isEmpty();
+			if (!hasRealHole) {
+				// we might be able to rescue this
+				if (solids.size() == 1) {
+//					System.out.println("rescued!");
+					area = solids.get(0);
 				}
-				pit.next();
-			}
-			if (nonEmptyClosedPaths.size() == 1) {
-				// if we're here, then we successfully rescued it
-				area = new Area(nonEmptyClosedPaths.get(0));
 			}
 		}
 		// final checks on area generated, this is redundant for some
