@@ -10,7 +10,8 @@ import org.junit.runners.Suite;
         TestAH2017InterfaceBilinearMagAreaRel.class,
         TestSAB2010InterfaceMagAreaRel.class,
         TestSST2016InterfaceMagAreaRel.class,
-        TestMSF2013InterfaceMagAreaRel.class
+        TestMSF2013InterfaceMagAreaRel.class,
+        TestSimplified2021MagAreaRel.class
 })
 
 public class MagScalingRelSuite {
