@@ -334,7 +334,7 @@ public interface SimulatedAnnealing {
 		double energyAter5percent = iterFuncs.get(1).getY((int)((iterFuncs.get(1).size()-1d)*0.05 + 0.5));
 		double bestEnergy = track.getEnergies(track.size()-1)[0];
 		double energyPlotMax;
-		if (bestEnergy < 1d)
+		if (bestEnergy < 5d)
 			energyPlotMax = energyAter5percent*1.2;
 		else if (bestEnergy < 20d)
 			energyPlotMax = 50;
