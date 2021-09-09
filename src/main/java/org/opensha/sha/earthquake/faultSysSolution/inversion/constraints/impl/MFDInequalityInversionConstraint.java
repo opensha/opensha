@@ -45,14 +45,7 @@ public class MFDInequalityInversionConstraint extends InversionConstraint {
 
 	@Override
 	public int getNumRows() {
-		int numMFDRows = 0;
-		for (MFD_InversionConstraint constr : mfdInequalityConstraints) {
-			IncrementalMagFreqDist targetMagFreqDist = constr.getMagFreqDist();
-			// Add number of rows used for magnitude distribution constraint - only include mag bins between minimum and maximum magnitudes in rupture set				
-			numMFDRows += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())
-					- targetMagFreqDist.getClosestXIndex(rupSet.getMinMag()) + 1;
-		}
-		return numMFDRows;
+		return MFDEqualityInversionConstraint.getNumRows(mfdInequalityConstraints, rupSet);
 	}
 
 	@Override
