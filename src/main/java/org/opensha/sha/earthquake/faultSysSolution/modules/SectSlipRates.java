@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
+import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
@@ -28,7 +29,7 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 	 * rupSet.getFaultSectionData(index).get*AveSlipRate() if there are any reductions for creep or subseismogenic ruptures.
 	 * 
 	 * @param sectIndex section index
-	 * @return slip rate (SI units: m)
+	 * @return slip rate (SI units: m/yr)
 	 */
 	public abstract double getSlipRate(int sectIndex);
 	
@@ -36,7 +37,7 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 	 * This returns the section slip rate of all sections. It can differ from what is returned by
 	 * rupSet.getFaultSectionData(index).get*AveSlipRate() if there are any reductions for creep or subseismogenic ruptures.
 	 * 
-	 * @return slip rates array (SI units: m)
+	 * @return slip rates array (SI units: m/yr)
 	 */
 	public double[] getSlipRates() {
 		FaultSystemRupSet rupSet = getParent();
@@ -69,6 +70,21 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 		for (int i=0; i<ret.length; i++)
 			ret[i] = getSlipRateStdDev(i);
 		return ret;
+	}
+	
+	/**
+	 * Computes the total moment rate (N-m/yr) for the fault system using the slip rates and creep-reduced fault section
+	 * areas
+	 * 
+	 * @return moment rate in N-m/yr
+	 */
+	public double calcTotalMomentRate() {
+		FaultSystemRupSet rupSet = getParent();
+		Preconditions.checkNotNull(rupSet, "parent rupture set not set");
+		double totMomentRate = 0d;
+		for (int s=0; s<rupSet.getNumSections(); s++)
+			totMomentRate += FaultMomentCalc.getMoment(rupSet.getAreaForSection(s), getSlipRate(s));
+		return totMomentRate;
 	}
 
 	@Override
