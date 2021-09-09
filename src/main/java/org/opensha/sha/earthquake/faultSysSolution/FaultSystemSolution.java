@@ -13,6 +13,7 @@ import java.util.zip.ZipOutputStream;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
@@ -771,6 +772,20 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		if (mfds != null)
 			return mfds.getRuptureMFD(rupIndex);
 		return null;
+	}
+	
+	/**
+	 * This returns the total moment of the solution (this does not include any off fault moment).<br>
+	 * <br>
+	 * This is calculated as the sum of the rates or each rupture times its moment (which is calculated form the magnitude)
+	 * @return
+	 */
+	public double getTotalFaultSolutionMomentRate() {
+		// calculate the moment
+		double totalSolutionMoment = 0;
+		for (int rup=0; rup<rupSet.getNumRuptures(); rup++) 
+			totalSolutionMoment += getRateForRup(rup)*MagUtils.magToMoment(rupSet.getMagForRup(rup));
+		return totalSolutionMoment;
 	}
 	
 	public static void main(String[] args) throws Exception {

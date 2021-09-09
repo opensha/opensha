@@ -288,20 +288,6 @@ public class U3FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSo
 	}
 	
 	/**
-	 * This returns the total moment of the solution (this does not include any off fault moment).<br>
-	 * <br>
-	 * This is calculated as the sum of the rates or each rupture times its moment (which is calculated form the magnitude)
-	 * @return
-	 */
-	public double getTotalFaultSolutionMomentRate() {
-		// calculate the moment
-		double totalSolutionMoment = 0;
-		for (int rup=0; rup<rupSet.getNumRuptures(); rup++) 
-			totalSolutionMoment += getRateForRup(rup)*MagUtils.magToMoment(rupSet.getMagForRup(rup));
-		return totalSolutionMoment;
-	}
-	
-	/**
 	 * Return MFDs for the given rupture if present, otherwise null. DiscretizedFunc
 	 * is returned as they often won't be evenly spaced and sum of y values will
 	 * equal total rate for the rupture.
