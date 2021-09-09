@@ -34,6 +34,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
@@ -547,7 +548,7 @@ public class ReportPageGen {
 		
 		if (primary.sol != null || (comparison != null && comparison.sol != null)) {
 			table.initNewLine();
-			table.addColumn("**Total Rupture Rate**");
+			table.addColumn("**Total Supra-Seis Rupture Rate**");
 			if (primary.sol == null)
 				table.addColumn("_N/A_");
 			else
@@ -560,7 +561,7 @@ public class ReportPageGen {
 			}
 			table.finalizeLine();
 			
-			if (comparison != null) {
+			if (comparison != null && (primaryOverlap.numUniqueRuptures > 0 || comparisonOverlap.numUniqueRuptures > 0)) {
 				table.initNewLine();
 				table.addColumn("**Unique Rupture Rate**");
 				if (primary.sol == null)
@@ -573,9 +574,44 @@ public class ReportPageGen {
 					table.addColumn(countPercentStr(comparisonOverlap.uniqueRuptureRate, comparison.totalRate));
 				table.finalizeLine();
 			}
+			
+			table.initNewLine();
+			table.addColumn("**Total Supra-Seis Recurrence Interval**");
+			if (primary.sol == null)
+				table.addColumn("_N/A_");
+			else
+				table.addColumn(AbstractRupSetPlot.twoDigits.format(1d/primary.totalRate)+" yrs");
+			if (comparison != null) {
+				if (comparison.sol == null)
+					table.addColumn("_N/A_");
+				else
+					table.addColumn(AbstractRupSetPlot.twoDigits.format(1d/comparison.totalRate)+" yrs");
+			}
+			table.finalizeLine();
+			
+			table.initNewLine();
+			table.addColumn("**Total Moment Rate**");
+			if (primary.sol == null)
+				table.addColumn("_N/A_");
+			else
+				table.addColumn((float)primary.sol.getTotalFaultSolutionMomentRate()+" N-m/yr");
+			if (comparison != null) {
+				if (comparison.sol == null)
+					table.addColumn("_N/A_");
+				else
+					table.addColumn((float)comparison.sol.getTotalFaultSolutionMomentRate()+" N-m/yr");
+			}
+			table.finalizeLine();
 		}
 		
 		if (primary.rupSet != null) {
+			table.initNewLine();
+			table.addColumn("**Deformation Model Total Moment Rate**");
+			table.addColumn((float)primary.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()+" N-m/yr");
+			if (comparison != null)
+				table.addColumn((float)comparison.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()+" N-m/yr");
+			table.finalizeLine();
+			
 			table.initNewLine();
 			table.addColumn("**Magnitude Range**");
 			table.addColumn(magRange(primary.rupSet));

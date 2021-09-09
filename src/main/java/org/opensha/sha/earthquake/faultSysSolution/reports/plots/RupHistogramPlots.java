@@ -949,11 +949,11 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
 				double minMag;
-				if (scalarTrack.getMin() < 5d)
-					// only go below 6 if we have really weirdly low magnitudes (below 5)
+//				if (scalarTrack.getMin() < 5d)
+//					// only go below 6 if we have really weirdly low magnitudes (below 5)
 					minMag = 0.5*Math.floor(scalarTrack.getMin()*2);
-				else
-					minMag = 6d;
+//				else
+//					minMag = 6d;
 				double maxMag;
 				if (scalarTrack.getMax() > 9d)
 					maxMag = 0.5*Math.ceil(scalarTrack.getMax()*2);

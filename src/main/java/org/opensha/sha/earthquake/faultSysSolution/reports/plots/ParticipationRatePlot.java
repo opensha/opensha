@@ -70,12 +70,9 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 		mapMaker.setWriteGeoJSON(true);
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
-		table.initNewLine();
-		table.addColumn("Rate Above");
-		table.addColumn("Rate Range");
 		CPT ratioCPT = null;
+		
 		if (meta.comparison != null && meta.comparison.sol != null) {
-			table.addColumn("Comparison");
 			CPT belowCPT = new CPT(0.5d, 1d,
 					new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
 					Color.WHITE);
@@ -89,14 +86,30 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 			ratioCPT.setBelowMinColor(ratioCPT.getMinColor());
 			ratioCPT.setAboveMaxColor(ratioCPT.getMaxColor());
 		}
-		table.finalizeLine();
 		for (int m=0; m<minMags.size(); m++) {
 			double myMinMag = minMags.get(m);
-			table.initNewLine();
+			
 			double[] rates = sol.calcParticRateForAllSects(myMinMag, Double.POSITIVE_INFINITY);
 			
 			String myLabel = magLabels.get(m);
+			String markdownLabel = myLabel.replaceAll("≥", "&ge;");
 			String magPrefix = magPrefixes.get(m);
+			
+			table.initNewLine();
+			table.addColumn(MarkdownUtils.boldCentered(markdownLabel));
+			if (m < minMags.size()-1) {
+				String rangeLabel;
+				if (myMinMag == 0d)
+					rangeLabel = markdownLabel+" -> M"+optionalDigitDF.format(minMags.get(m+1));
+				else
+					rangeLabel = "M"+optionalDigitDF.format(myMinMag)+" -> "+optionalDigitDF.format(minMags.get(m+1));
+				table.addColumn(MarkdownUtils.boldCentered(rangeLabel));
+			} else {
+				table.addColumn("");
+			}
+			if (ratioCPT != null)
+				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+" Comparison Ratio"));
+			table.finalizeLine();
 			
 			List<String> prefixes = new ArrayList<>();
 			
@@ -104,7 +117,8 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 			mapMaker.plotSectScalars(log10(rates), cpt, "Log10 "+myLabel+" Participation Rate (events/yr)");
 			mapMaker.plot(resourcesDir, mainPrefix, " ");
 			prefixes.add(mainPrefix);
-			
+
+			table.initNewLine();
 			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+".png)");
 			
 			if (m < minMags.size()-1) {
@@ -125,9 +139,10 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 				prefixes.add(rangePrefix);
 			} else {
 				table.addColumn("");
+				prefixes.add(null);
 			}
 			
-			if (meta.comparison != null && meta.comparison.sol != null) {
+			if (ratioCPT != null) {
 				double[] compRates = meta.comparison.sol.calcParticRateForAllSects(myMinMag, Double.POSITIVE_INFINITY);
 				double[] ratios = new double[compRates.length];
 				for (int i=0; i<ratios.length; i++)

@@ -121,6 +121,7 @@ import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 
+@Deprecated
 public class RupSetDiagnosticsPageGen {
 
 	@SuppressWarnings("unused")
