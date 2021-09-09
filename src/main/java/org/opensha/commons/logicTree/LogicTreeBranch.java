@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
@@ -25,6 +26,7 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 
+@JsonAdapter(LogicTreeBranch.Adapter.class)
 public class LogicTreeBranch<E extends LogicTreeNode> implements Iterable<E>, Cloneable, Serializable,
 Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	
@@ -420,9 +422,99 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		GsonBuilder builder = new GsonBuilder();
 		builder.setPrettyPrinting();
 		builder.registerTypeHierarchyAdapter(LogicTreeNode.class, new NodeTypeAdapter(this));
-		builder.registerTypeHierarchyAdapter(LogicTreeLevel.class, new LogicTreeLevel.Adapter());
+		builder.registerTypeHierarchyAdapter(LogicTreeLevel.class, new LogicTreeLevel.Adapter<LogicTreeNode>());
 		
 		return builder.create();
+	}
+	
+	public static class Adapter extends TypeAdapter<LogicTreeBranch<?>> {
+
+		@Override
+		public void write(JsonWriter out, LogicTreeBranch<?> branch) throws IOException {
+			NodeTypeAdapter nodeAdapter = new NodeTypeAdapter(branch);
+			LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<>();
+			
+			out.beginArray();
+			
+			for (int i=0; i<branch.size(); i++) {
+				out.beginObject();
+				
+				// branch level
+				out.name("level");
+				levelAdapter.write(out, branch.levels.get(i));
+				
+				// node value
+				LogicTreeNode node = branch.values.get(i);
+				
+				if (node != null) {
+					out.name("value");
+					
+//					gson.toJson(node, LogicTreeNode.class, out);
+					nodeAdapter.write(out, node);
+				}
+				
+				out.endObject();
+			}
+			
+			out.endArray();
+		}
+
+		@Override
+		public LogicTreeBranch<?> read(JsonReader in) throws IOException {
+			NodeTypeAdapter nodeAdapter = new NodeTypeAdapter(null);
+			LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<>();
+			
+			List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+			List<LogicTreeNode> values = new ArrayList<>();
+			
+			in.beginArray();
+			
+			while (in.hasNext()) {
+				in.beginObject();
+				
+				LogicTreeLevel<? extends LogicTreeNode> level = null;
+				LogicTreeNode value = null;
+				
+				while (in.hasNext()) {
+					switch (in.nextName()) {
+					case "level":
+						level = levelAdapter.read(in);
+//						level = gson.fromJson(in, LogicTreeLevel.class);
+						break;
+					case "value":
+						value = nodeAdapter.read(in);
+//						value = gson.fromJson(in, LogicTreeNode.class);
+						break;
+
+					default:
+						break;
+					}
+				}
+				Preconditions.checkNotNull(level, "Branch level not supplied at index %s", levels.size());
+				if (value != null) {
+					if (value instanceof FileBackedNode) {
+						if (level instanceof FileBackedLevel) {
+							((FileBackedLevel)level).addChoice((FileBackedNode)value);
+						} else {
+							// convert to a hardcoded version
+							level = new FileBackedLevel(
+									level.getName(), level.getShortName(), (FileBackedNode)value);
+						}
+					}
+				}
+				levels.add(level);
+				values.add(value);
+//				System.out.println("Loaded level: "+level);
+//				System.out.println("Loaded value: "+value);
+				
+				in.endObject();
+			}
+			
+			in.endArray();
+			
+			return new LogicTreeBranch<>(levels, values);
+		}
+		
 	}
 	
 	private static class NodeTypeAdapter extends TypeAdapter<LogicTreeNode> {
@@ -555,87 +647,38 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 
 	@Override
 	public void writeToJSON(JsonWriter out, Gson gson) throws IOException {
-		out.beginArray();
-		
-		for (int i=0; i<size(); i++) {
-			out.beginObject();
-			
-			// branch level
-			LogicTreeLevel<? extends E> level = levels.get(i);
-			
-			out.name("level");
-			
-			gson.toJson(level, LogicTreeLevel.class, out);
-			
-			// node value
-			LogicTreeNode node = values.get(i);
-			
-			if (node != null) {
-				out.name("value");
-				
-				gson.toJson(node, LogicTreeNode.class, out);
-			}
-			
-			out.endObject();
-		}
-		
-		out.endArray();
+		new Adapter().write(out, this);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public void initFromJSON(JsonReader in, Gson gson) throws IOException {
+		LogicTreeBranch<?> unchecked = new Adapter().read(in);
+		
 		List<LogicTreeLevel<E>> levels = new ArrayList<>();
 		List<E> values = new ArrayList<>();
 		
-		in.beginArray();
-		
-		while (in.hasNext()) {
-			in.beginObject();
-			
-			LogicTreeLevel<E> level = null;
-			LogicTreeNode value = null;
-			
-			while (in.hasNext()) {
-				switch (in.nextName()) {
-				case "level":
-					level = gson.fromJson(in, LogicTreeLevel.class);
-					break;
-				case "value":
-					value = gson.fromJson(in, LogicTreeNode.class);
-					break;
-
-				default:
-					break;
-				}
+		for (int i=0; i<unchecked.size(); i++) {
+			LogicTreeLevel<E> level;
+			try {
+				level = (LogicTreeLevel<E>) unchecked.getLevel(i);
+			} catch (ClassCastException e) {
+				throw new IllegalStateException("Could not cast level '"+unchecked.getLevel(i).getName()+" to type", e);
 			}
-			Preconditions.checkNotNull(level, "Branch level not supplied at index %s", levels.size());
-			E typedValue = null;
-			if (value != null) {
-				if (value instanceof FileBackedNode) {
-					if (level instanceof FileBackedLevel) {
-						((FileBackedLevel)level).addChoice((FileBackedNode)value);
-					} else {
-						// convert to a hardcoded version
-						level = (LogicTreeLevel<E>) new FileBackedLevel(
-								level.getName(), level.getShortName(), (FileBackedNode)value);
-					}
-				}
-				try {
-					typedValue = (E)value;
-				} catch (ClassCastException e) {
-					throw new IllegalStateException("Could not cast value '"+value.getName()+" to type", e);
-				}
+			E value;
+			try {
+				if (unchecked.getValue(i) == null)
+					value = null;
+				else
+					value = (E) unchecked.getValue(i);
+			} catch (ClassCastException e) {
+				throw new IllegalStateException("Could not cast value '"+unchecked.getValue(i).getName()+" to type", e);
 			}
+			
 			levels.add(level);
-			values.add(typedValue);
-//			System.out.println("Loaded level: "+level);
-//			System.out.println("Loaded value: "+value);
-			
-			in.endObject();
+			values.add(value);
 		}
 		
-		in.endArray();
 		init(ImmutableList.copyOf(levels), values);
 	}
 	
