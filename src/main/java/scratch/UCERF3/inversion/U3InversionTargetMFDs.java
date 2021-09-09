@@ -8,6 +8,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.RegionUtils;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
@@ -150,7 +151,7 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 	public final static double DELTA_MAG = 0.1;
 	
 	public final static double FAULT_BUFFER = 12d;	// buffer for fault polygons
-	private U3LogicTreeBranch logicTreeBranch;
+	private LogicTreeBranch<?> logicTreeBranch;
 	private ModSectMinMags finalMinMags;
 	private PolygonFaultGridAssociations polygons;
 
@@ -167,7 +168,7 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 	 * @param invRupSet
 	 */
 	public U3InversionTargetMFDs(InversionFaultSystemRupSet invRupSet) {
-		this(invRupSet, invRupSet.requireModule(U3LogicTreeBranch.class), invRupSet.requireModule(ModSectMinMags.class),
+		this(invRupSet, invRupSet.requireModule(LogicTreeBranch.class), invRupSet.requireModule(ModSectMinMags.class),
 				invRupSet.requireModule(PolygonFaultGridAssociations.class));
 	}
 	
@@ -177,13 +178,13 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 	 * @param logicTreeBranch
 	 * @param finalMinMags
 	 */
-	public U3InversionTargetMFDs(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags,
+	public U3InversionTargetMFDs(FaultSystemRupSet rupSet, LogicTreeBranch<?> logicTreeBranch, ModSectMinMags finalMinMags,
 			PolygonFaultGridAssociations polygons) {
 		super(rupSet);
 		init(rupSet, logicTreeBranch, finalMinMags, polygons);
 	}
 	
-	private void init(FaultSystemRupSet rupSet, U3LogicTreeBranch logicTreeBranch, ModSectMinMags finalMinMags,
+	private void init(FaultSystemRupSet rupSet, LogicTreeBranch<?> logicTreeBranch, ModSectMinMags finalMinMags,
 			PolygonFaultGridAssociations polygons) {
 		this.polygons = polygons;
 		this.logicTreeBranch = logicTreeBranch;
