@@ -12,7 +12,7 @@ public class TestSimplified2021MagAreaRel {
     public void testGetMedianMag() {
     	
     	Double [] Areas = {1.,50., 100., 200., 500., 1000., 10000., 100000., 1000000.};
-    	Simplified2021MagAreaRel ssc = new Simplified2021MagAreaRel();
+    	Stirling_2021_SimplifiedNZ_MagAreaRel ssc = new Stirling_2021_SimplifiedNZ_MagAreaRel();
     	
     	/**
     	 * rake and regime is not set
@@ -90,7 +90,7 @@ public class TestSimplified2021MagAreaRel {
     public void testGetMedianArea() {
 
     	Double [] Mags = {4.0, 5., 5.5, 6., 6.5, 7., 7.5, 8., 8.5, 9.0, 9.5};
-    	Simplified2021MagAreaRel ssc = new Simplified2021MagAreaRel();
+    	Stirling_2021_SimplifiedNZ_MagAreaRel ssc = new Stirling_2021_SimplifiedNZ_MagAreaRel();
     	
     	/**
     	 * rake and regime is not set
