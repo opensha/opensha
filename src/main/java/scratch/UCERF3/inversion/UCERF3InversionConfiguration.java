@@ -310,15 +310,15 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				mfdSmoothnessConstraintWtForPaleoParents = 1000;
 				eventRateSmoothnessWt = 0;
 				rupRateConstraintWt = 0;
-				aPrioriRupConstraint = getUCERF2Solution(rupSet, fm);
-				initialRupModel = Arrays.copyOf(aPrioriRupConstraint, aPrioriRupConstraint.length); 
+				aPrioriRupConstraint = fm == null ? null : getUCERF2Solution(rupSet, fm);
+//				initialRupModel = Arrays.copyOf(aPrioriRupConstraint, aPrioriRupConstraint.length); // not needed
 				minimumRuptureRateFraction = 0.01;
-				minimumRuptureRateBasis = adjustStartingModel(getSmoothStartingSolution(rupSet,targetOnFaultMFD), mfdConstraints, rupSet, true);
+				minimumRuptureRateBasis = adjustStartingModel(getSmoothStartingSolution(rupSet, targetOnFaultMFD), mfdConstraints, rupSet, true);
 //				initialRupModel = adjustIsolatedSections(rupSet, initialRupModel);
 //				if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 //				initialRupModel = adjustParkfield(rupSet, initialRupModel);
 //				initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
-				initialRupModel = new double[initialRupModel.length];
+				initialRupModel = new double[rupSet.getNumRuptures()];
 			} else if (model == InversionModels.GR_CONSTRAINED) {
 				participationSmoothnessConstraintWt = 1000;
 				nucleationMFDConstraintWt = 0;
@@ -327,7 +327,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				eventRateSmoothnessWt = 0;
 				rupRateConstraintWt = 0;
 				aPrioriRupConstraint = null;
-				initialRupModel = getSmoothStartingSolution(rupSet,targetOnFaultMFD);
+				initialRupModel = getSmoothStartingSolution(rupSet, targetOnFaultMFD);
 				minimumRuptureRateFraction = 0.01;
 				minimumRuptureRateBasis = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 				if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true); 
