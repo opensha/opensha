@@ -388,6 +388,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				double[] newX = null;
 				double[] newMisfit = null;
 				double[] newMisfitIneq = null;
+				
+				long prevPerturbs = perturbs;
 				for (int i=0; i<numThreads; i++) {
 					SACall thread;
 					try {
@@ -404,7 +406,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					double[] misfit_ineq = sa.getBestInequalityMisfit();
 					
 					if (newE == null) {
-						newE = new double[E.length];
+						newE = new double[4];
 						newX = new double[xbest.length];
 						if (misfit != null)
 							newMisfit = new double[misfit.length];
@@ -418,12 +420,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					if (newMisfitIneq != null)
 						addScaled(newMisfitIneq, misfit_ineq, rateMult);
 					
-					perturbs += (thread.endPerturbs-perturbs);
+					perturbs += (thread.endPerturbs-prevPerturbs);
 					
 					// now set the current iteration count to the max iteration achieved
-					long endIter = thread.endIter;
-					if (endIter > iter)
-						iter = endIter;
+					iter = Long.max(thread.endIter, iter);
 				}
 				numNonZero = 0;
 				for (double x : newX)
@@ -458,9 +458,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					}
 					
 					// now set the current iteration count to the max iteration achieved
-					long endIter = thread.endIter;
-					if (endIter > iter)
-						iter = endIter;
+					iter = Long.max(thread.endIter, iter);
 				}
 			}
 			
