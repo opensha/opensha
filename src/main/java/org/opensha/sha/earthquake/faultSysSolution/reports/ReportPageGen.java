@@ -234,7 +234,7 @@ public class ReportPageGen {
 		
 		PlotLevel level = PLOT_LEVEL_DEFAULT;
 		if (cmd.hasOption("plot-level"))
-			level = PlotLevel.valueOf(cmd.getOptionValue("plot-level"));
+			level = PlotLevel.valueOf(cmd.getOptionValue("plot-level").trim().toUpperCase());
 		
 		List<AbstractRupSetPlot> plots;
 		if (sol != null)

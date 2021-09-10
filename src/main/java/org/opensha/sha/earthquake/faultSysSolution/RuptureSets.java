@@ -979,7 +979,7 @@ public class RuptureSets {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, RuptureSets.class);
 		
 		try {
-			Presets preset = Presets.valueOf(cmd.getOptionValue("preset"));
+			Presets preset = Presets.valueOf(cmd.getOptionValue("preset").trim().toUpperCase());
 			System.out.println("Rupture plausibility preset: "+preset);
 			
 			File outputFile = new File(cmd.getOptionValue("output-file"));
