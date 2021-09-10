@@ -65,6 +65,7 @@ public class RupSetMapMaker {
 	private float scalarThickness = 3f;
 	private float jumpLineThickness = 3f;
 	private boolean legendVisible = true;
+	private boolean fillSurfaces = false;
 	
 	private boolean writePDFs = true;
 	private boolean writeGeoJSON = true;
@@ -197,6 +198,10 @@ public class RupSetMapMaker {
 	
 	public void setWriteGeoJSON(boolean writeGeoJSON) {
 		this.writeGeoJSON = writeGeoJSON;
+	}
+
+	public void setFillSurfaces(boolean fillSurfaces){
+		this.fillSurfaces = fillSurfaces;
 	}
 	
 	public void plotSectScalars(List<Double> scalars, CPT cpt, String label) {
@@ -393,6 +398,19 @@ public class RupSetMapMaker {
 				if (!plotSects.contains(sect) || (skipNaNs && Double.isNaN(val.getComparable())))
 					continue;
 				RuptureSurface surf = getSectSurface(sect);
+
+				if (fillSurfaces && sect.getAveDip() != 90d) {
+					XY_DataSet outline = new DefaultXY_DataSet();
+					LocationList perimeter = surf.getPerimeter();
+					for (Location loc : perimeter)
+						outline.set(loc.getLongitude(), loc.getLatitude());
+
+					PlotCurveCharacterstics fillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 0.5f, color);
+
+					funcs.add(0, outline);
+					chars.add(0, fillChar);
+				}
+
 				XY_DataSet trace = new DefaultXY_DataSet();
 				for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
 					trace.set(loc.getLongitude(), loc.getLatitude());
