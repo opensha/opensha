@@ -357,19 +357,20 @@ public class Inversions {
 		mfdMinMag.setRequired(false);
 		ops.addOption(mfdMinMag);
 		
-		Option momRateConstraint = new Option("mr", "moment-rate-constraint", false, "Enables the total moment-rate constraint. By default, "
-				+ "the slip-rate implied moment rate will be used, but you can supply your own target moment rate with --target-moment-rate.");
-		momRateConstraint.setRequired(false);
-		ops.addOption(momRateConstraint);
-		
-		Option mrWeight = new Option("mrw", "moment-rate-weight", true, "Sets weight for the moment-rate constraint.");
-		mrWeight.setRequired(false);
-		ops.addOption(mrWeight);
-		
-		Option momRate = new Option("tmr", "target-moment-rate", true, "Specifies a custom target moment-rate in N-m/yr"
-				+ " (must also supply --moment-rate-constraint option)");
-		momRate.setRequired(false);
-		ops.addOption(momRate);
+		// doesn't work well, and slip rate constraint handles moment anyway
+//		Option momRateConstraint = new Option("mr", "moment-rate-constraint", false, "Enables the total moment-rate constraint. By default, "
+//				+ "the slip-rate implied moment rate will be used, but you can supply your own target moment rate with --target-moment-rate.");
+//		momRateConstraint.setRequired(false);
+//		ops.addOption(momRateConstraint);
+//		
+//		Option mrWeight = new Option("mrw", "moment-rate-weight", true, "Sets weight for the moment-rate constraint.");
+//		mrWeight.setRequired(false);
+//		ops.addOption(mrWeight);
+//		
+//		Option momRate = new Option("tmr", "target-moment-rate", true, "Specifies a custom target moment-rate in N-m/yr"
+//				+ " (must also supply --moment-rate-constraint option)");
+//		momRate.setRequired(false);
+//		ops.addOption(momRate);
 		
 		Option eventRateConstraint = new Option("er", "event-rate-constraint", true, "Enables the total event-rate constraint"
 				+ " with the supplied total event rate");
@@ -486,21 +487,22 @@ public class Inversions {
 				constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, mfdConstraints, null));
 			}
 			
-			if (cmd.hasOption("moment-rate-constraint")) {
-				double targetMomentRate;
-				if (cmd.hasOption("target-moment-rate"))
-					targetMomentRate = Double.parseDouble(cmd.getOptionValue("target-moment-rate"));
-				else
-					targetMomentRate = rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate();
-				System.out.println("Target moment rate: "+targetMomentRate+" N-m/yr");
-				
-				double weight;
-				if (cmd.hasOption("moment-rate-weight"))
-					weight = Double.parseDouble(cmd.getOptionValue("moment-rate-weight"));
-				else
-					weight = 1e-5;
-				constraints.add(new TotalMomentInversionConstraint(rupSet, weight, targetMomentRate));
-			}
+			// doesn't work well, and slip rate constraint handles moment anyway
+//			if (cmd.hasOption("moment-rate-constraint")) {
+//				double targetMomentRate;
+//				if (cmd.hasOption("target-moment-rate"))
+//					targetMomentRate = Double.parseDouble(cmd.getOptionValue("target-moment-rate"));
+//				else
+//					targetMomentRate = rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate();
+//				System.out.println("Target moment rate: "+targetMomentRate+" N-m/yr");
+//				
+//				double weight;
+//				if (cmd.hasOption("moment-rate-weight"))
+//					weight = Double.parseDouble(cmd.getOptionValue("moment-rate-weight"));
+//				else
+//					weight = 1e-5;
+//				constraints.add(new TotalMomentInversionConstraint(rupSet, weight, targetMomentRate));
+//			}
 			
 			if (cmd.hasOption("event-rate-constraint")) {
 				double targetEventRate = Double.parseDouble(cmd.getOptionValue("event-rate-constraint"));

@@ -7,7 +7,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
 /**
- * Constraint solution moment to equal deformation-model moment. We did not use this in UCERF3.
+ * Constraint solution moment to equal deformation-model moment. We did not use this in UCERF3 and it is not recommended.
+ * 
+ * This constraint is not very useful - slip rate constraints will do the job better. If you enable this with anything
+ * other than an absolutely miniscule weight, the inversion will likely get stuck in an local minimum, unable to
+ * fit other constraints as briefly straying away from the target moment will incur massive penalty.
  * 
  * @author Morgan Page & Kevin Milner
  *
