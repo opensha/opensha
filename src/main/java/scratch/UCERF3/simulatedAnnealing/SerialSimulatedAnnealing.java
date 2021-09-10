@@ -315,14 +315,13 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq, List<ConstraintRange> constraintRanges) {
-		return calculateEnergy(solution, misfit, misfit_ineq, nRow, nCol,
-				hasInequalityConstraint ? d_ineq.length : null, constraintRanges, relativeSmoothnessWt);
-		
+		int ineqRows = hasInequalityConstraint ? d_ineq.length : 0;
+		return calculateEnergy(solution, misfit, misfit_ineq, nRow, nCol, ineqRows, constraintRanges, relativeSmoothnessWt);
 	}
 	
 	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq) {
-		return calculateEnergy(solution, misfit, misfit_ineq, nRow, nCol,
-				hasInequalityConstraint ? d_ineq.length : 0, constraintRanges, relativeSmoothnessWt);
+		int ineqRows = hasInequalityConstraint ? d_ineq.length : 0;
+		return calculateEnergy(solution, misfit, misfit_ineq, nRow, nCol, ineqRows, constraintRanges, relativeSmoothnessWt);
 	}
 	
 	static double[] calculateEnergy(final double[] solution, final double[] misfit, final double[] misfit_ineq,
