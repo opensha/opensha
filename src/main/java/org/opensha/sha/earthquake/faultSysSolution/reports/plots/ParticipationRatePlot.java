@@ -100,10 +100,10 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 			if (m < minMags.size()-1) {
 				String rangeLabel;
 				if (myMinMag == 0d)
-					rangeLabel = markdownLabel+" -> M"+optionalDigitDF.format(minMags.get(m+1));
+					rangeLabel = "M&le;"+optionalDigitDF.format(minMags.get(m+1));
 				else
-					rangeLabel = "M"+optionalDigitDF.format(myMinMag)+" -> "+optionalDigitDF.format(minMags.get(m+1));
-				table.addColumn(MarkdownUtils.boldCentered(rangeLabel));
+					rangeLabel = "M&isin;["+optionalDigitDF.format(myMinMag)+", "+optionalDigitDF.format(minMags.get(m+1))+"]";
+				table.addColumn(MarkdownUtils.boldCentered("Range: "+rangeLabel));
 			} else {
 				table.addColumn("");
 			}
