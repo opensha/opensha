@@ -67,8 +67,14 @@ public class FaultSysTools {
 		} catch (ParseException e) {
 			System.err.println(e.getMessage());
 			HelpFormatter formatter = new HelpFormatter();
-			formatter.printHelp(ClassUtils.getClassNameWithoutPackage(mainClass),
-					options, true );
+			int columns = 120;
+			String colStr = System.getenv("COLUMNS");
+			if (colStr != null && !colStr.isBlank()) {
+				try {
+					columns = Integer.max(80, Integer.parseInt(colStr));
+				} catch (Exception e2) {}
+			}
+			formatter.printHelp(columns, ClassUtils.getClassNameWithoutPackage(mainClass), null, options, null, true);
 			System.exit(2);
 			return null;
 		}
