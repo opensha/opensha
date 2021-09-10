@@ -8,7 +8,7 @@ import java.util.List;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.opensha.commons.calc.FaultMomentCalc;
+import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
@@ -194,17 +194,17 @@ public class Inversions {
 	private static final GenerationFunctionType PERTURB_DEFAULT = GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE;
 	private static final NonnegativityConstraintType NON_NEG_DEFAULT = NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN;
 	
-	private static CompletionCriteria getCompletion(CommandLine cmd, String hoursOp, String minsOp, String secsOp,
-			String iterOp) {
-		if (hoursOp != null && cmd.hasOption(hoursOp))
-			return TimeCompletionCriteria.getInHours(Long.parseLong(cmd.getOptionValue(hoursOp)));
-		if (minsOp != null && cmd.hasOption(minsOp))
-			return TimeCompletionCriteria.getInMinutes(Long.parseLong(cmd.getOptionValue(minsOp)));
-		if (secsOp != null && cmd.hasOption(secsOp))
-			return TimeCompletionCriteria.getInSeconds(Long.parseLong(cmd.getOptionValue(secsOp)));
-		if (iterOp != null && cmd.hasOption(iterOp))
-			return new IterationCompletionCriteria(Long.parseLong(cmd.getOptionValue(iterOp)));
-		return null;
+	private static CompletionCriteria getCompletion(String value) {
+		value = value.trim().toLowerCase();
+		if (value.endsWith("h"))
+			return TimeCompletionCriteria.getInHours(Long.parseLong(value.substring(0, value.length()-1)));
+		if (value.endsWith("m"))
+			return TimeCompletionCriteria.getInMinutes(Long.parseLong(value.substring(0, value.length()-1)));
+		if (value.endsWith("s"))
+			return TimeCompletionCriteria.getInSeconds(Long.parseLong(value.substring(0, value.length()-1)));
+		if (value.endsWith("i"))
+			value = value.substring(0, value.length()-1);
+		return new IterationCompletionCriteria(Long.parseLong(value));
 	}
 	
 	private static SimulatedAnnealing configSA(CommandLine cmd, FaultSystemRupSet rupSet, InversionInputGenerator inputs) {
@@ -218,14 +218,17 @@ public class Inversions {
 				avgThreads = Integer.parseInt(cmd.getOptionValue("average-threads"));
 			CompletionCriteria avgCompletion = null;
 			if (avgThreads > 0) {
-				avgCompletion = getCompletion(cmd, null, "average-minutes", "average-seconds", null);
+				Preconditions.checkArgument(cmd.hasOption("average-completion"),
+						"Averaging enabled but --average-completion <value> not specified");
+				avgCompletion = getCompletion(cmd.getOptionValue("average-completion"));
 				if (avgCompletion == null)
 					throw new IllegalArgumentException("Must supply averaging sub-completion time");
 			}
-			CompletionCriteria subCompletion = getCompletion(cmd, null, null, "sub-seconds", "sub-iterations");
-			if (subCompletion == null && avgThreads != threads)
+			CompletionCriteria subCompletion;
+			if (cmd.hasOption("sub-completion"))
+				subCompletion = getCompletion(cmd.getOptionValue("sub-completion"));
+			else
 				subCompletion = TimeCompletionCriteria.getInSeconds(1);
-//				throw new IllegalArgumentException("Must supply sub inversion time or iteration count");
 			
 			if (avgCompletion != null) {
 				int threadsPerAvg = (int)Math.ceil((double)threads/(double)avgThreads);
@@ -263,17 +266,19 @@ public class Inversions {
 			perturb = GenerationFunctionType.valueOf(cmd.getOptionValue("perturb"));
 		if (perturb == GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE || perturb == GenerationFunctionType.VARIABLE_NO_TEMP_DEPENDENCE) {
 			// compute variable basis
-			System.out.println("Computing variable perturbation basis");
+			System.out.println("Computing variable perturbation basis:");
 			IncrementalMagFreqDist targetMFD;
 			if (rupSet.hasModule(InversionTargetMFDs.class)) {
 				targetMFD = rupSet.getModule(InversionTargetMFDs.class).getTotalOnFaultSupraSeisMFD();
 			} else {
 				// infer target MFD from slip rates
-				System.out.println("Inferring target GR from slip rates");
+				System.out.println("\tInferring target GR from slip rates");
 				GutenbergRichterMagFreqDist gr = inferTargetGRFromSlipRates(rupSet, 1d);
 				targetMFD = gr;
 			}
-			sa.setVariablePerturbationBasis(UCERF3InversionConfiguration.getSmoothStartingSolution(rupSet, targetMFD));
+			double[] basis = UCERF3InversionConfiguration.getSmoothStartingSolution(rupSet, targetMFD);
+			System.out.println("Perturbation-basis range: ["+(float)StatUtils.min(basis)+", "+(float)StatUtils.max(basis)+"]");
+			sa.setVariablePerturbationBasis(basis);
 		}
 		sa.setPerturbationFunc(perturb);
 		
@@ -332,7 +337,8 @@ public class Inversions {
 		mfdWeight.setRequired(false);
 		ops.addOption(mfdWeight);
 		
-		Option mfdFromSlip = new Option("itgr", "infer-target-gr", false, "Flag to infer target MFD as a G-R with slip rates.");
+		Option mfdFromSlip = new Option("itgr", "infer-target-gr", false,
+				"Flag to infer target MFD as a G-R from total deformation model moment rate.");
 		mfdFromSlip.setRequired(false);
 		ops.addOption(mfdFromSlip);
 		
@@ -340,12 +346,14 @@ public class Inversions {
 		grB.setRequired(false);
 		ops.addOption(grB);
 		
-		Option mfdTotRate = new Option("mtr", "mfd-total-rate", true, "Total (cumulative) rate for the MFD constraint");
+		Option mfdTotRate = new Option("mtr", "mfd-total-rate", true, "Total (cumulative) rate for the MFD constraint. "
+				+ "By default, this will apply to the minimum magnitude from the rupture set, but another magnitude can "
+				+ "be supplied with --mfd-min-mag");
 		mfdTotRate.setRequired(false);
 		ops.addOption(mfdTotRate);
 		
 		Option mfdMinMag = new Option("mmm", "mfd-min-mag", true, "Minimum magnitude for the MFD constraint "
-				+ "(default is minimum magnitude of the rupture set).");
+				+ "(default is minimum magnitude of the rupture set), used with --mfd-total-rate.");
 		mfdMinMag.setRequired(false);
 		ops.addOption(mfdMinMag);
 		
@@ -363,7 +371,7 @@ public class Inversions {
 		momRate.setRequired(false);
 		ops.addOption(momRate);
 		
-		Option eventRateConstraint = new Option("er", "event-rate-constraint", true, "Enables the total moment-rate constraint"
+		Option eventRateConstraint = new Option("er", "event-rate-constraint", true, "Enables the total event-rate constraint"
 				+ " with the supplied total event rate");
 		eventRateConstraint.setRequired(false);
 		ops.addOption(eventRateConstraint);
@@ -374,42 +382,28 @@ public class Inversions {
 		
 		// Simulated Annealing parameters
 		
-		Option hourOption = new Option("h", "hours", true, "Total inversion time in hours");
-		hourOption.setRequired(false);
-		ops.addOption(hourOption);
+		String complText = "If either no suffix or 'i' is appended, then it is assumed to be an iteration count. "
+				+ "Specify times in hours, minutes, or seconds by appending 'h', 'm', or 's' respecively. Fractions are not allowed.";
 		
-		Option minOption = new Option("m", "minutes", true, "Total inversion time in minutes");
-		minOption.setRequired(false);
-		ops.addOption(minOption);
+		Option completionOption = new Option("c", "completion", true, "Total inversion completion criteria. "+complText);
+		completionOption.setRequired(true);
+		ops.addOption(completionOption);
 		
-		Option secOption = new Option("s", "seconds", true, "Total inversion time in seconds");
-		secOption.setRequired(false);
-		ops.addOption(secOption);
-		
-		Option iterOption = new Option("i", "iterations", true, "Total inversion iteration count");
-		iterOption.setRequired(false);
-		ops.addOption(iterOption);
-		
-		Option avgOption = new Option("at", "average-threads", true, "Number of averaging threads, must be < threads. "
-				+ "Default is no averaging.");
+		Option avgOption = new Option("at", "average-threads", true, "Enables a top layer of threads that average results "
+				+ "of worker threads at fixed intervals. Supply the number of averaging threads, which must be < threads. "
+				+ "Default is no averaging, if enabled you must also supply --average-completion <value>.");
 		avgOption.setRequired(false);
 		ops.addOption(avgOption);
 		
-		Option avgMinsOption = new Option("am", "average-minutes", true, "Time between across-thread averaging in minutes.");
-		avgMinsOption.setRequired(false);
-		ops.addOption(avgMinsOption);
+		Option avgCompletionOption = new Option("ac", "average-completion", true,
+				"Interval between across-thread averaging. "+complText);
+		avgCompletionOption.setRequired(false);
+		ops.addOption(avgCompletionOption);
 		
-		Option avgSecsOption = new Option("am", "average-seconds", true, "Time between across-thread averaging in minutes.");
-		avgSecsOption.setRequired(false);
-		ops.addOption(avgSecsOption);
-		
-		Option subSecOption = new Option("ss", "sub-seconds", true, "Time between across-thread syhnchronization in seconds");
-		subSecOption.setRequired(false);
-		ops.addOption(subSecOption);
-		
-		Option subIterOption = new Option("si", "sub-iterations", true, "Iterations between across-thread syhnchronization");
-		subIterOption.setRequired(false);
-		ops.addOption(subIterOption);
+		Option subCompletionOption = new Option("sc", "sub-completion", true,
+				"Interval between across-thread synchronization. "+complText+" Default: 1s");
+		subCompletionOption.setRequired(false);
+		ops.addOption(subCompletionOption);
 		
 		Option perturbOption = new Option("pt", "perturb", true, "Perturbation function. One of "
 				+FaultSysTools.enumOptions(GenerationFunctionType.class)+". Default: "+PERTURB_DEFAULT.name());
@@ -464,18 +458,21 @@ public class Inversions {
 				if (cmd.hasOption("infer-target-gr")) {
 					targetMFD = inferTargetGRFromSlipRates(rupSet, bValue);
 				} else {
-					double minMag = 0.1*Math.floor(rupSet.getMinMag()*10d);
-					if (cmd.hasOption("mfd-min-mag"))
-						minMag = Double.parseDouble(cmd.getOptionValue("mfd-min-mag"));
+					double minX = 0.1*Math.floor(rupSet.getMinMag()*10d);
+					double minTargetMag = minX;
+					if (cmd.hasOption("mfd-min-mag")) {
+						minTargetMag = Double.parseDouble(cmd.getOptionValue("mfd-min-mag"));
+						minX = Math.min(minX, minTargetMag);
+					}
 					
 					Preconditions.checkArgument(cmd.hasOption("mfd-total-rate"),
 							"MFD constraint enabled, but no --mfd-total-rate <rate> or --infer-target-gr");
 					double totRate = Double.parseDouble(cmd.getOptionValue("mfd-total-rate"));
 					
-					HistogramFunction tempHist = HistogramFunction.getEncompassingHistogram(minMag, rupSet.getMaxMag(), 0.1d);
+					HistogramFunction tempHist = HistogramFunction.getEncompassingHistogram(minX, rupSet.getMaxMag(), 0.1d);
 					GutenbergRichterMagFreqDist targetGR = new GutenbergRichterMagFreqDist(
 							tempHist.getMinX(), tempHist.getMaxX(), tempHist.size());
-					targetGR.scaleToCumRate(minMag, totRate);
+					targetGR.scaleToCumRate(minTargetMag, totRate);
 					
 					targetMFD = targetGR;
 				}
@@ -497,9 +494,11 @@ public class Inversions {
 					targetMomentRate = rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate();
 				System.out.println("Target moment rate: "+targetMomentRate+" N-m/yr");
 				
-				double weight = 1d;
+				double weight;
 				if (cmd.hasOption("moment-rate-weight"))
 					weight = Double.parseDouble(cmd.getOptionValue("moment-rate-weight"));
+				else
+					weight = 1e-5;
 				constraints.add(new TotalMomentInversionConstraint(rupSet, weight, targetMomentRate));
 			}
 			
@@ -518,7 +517,7 @@ public class Inversions {
 			InversionInputGenerator inputs = new InversionInputGenerator(rupSet, constraints);
 			inputs.generateInputs(true);
 			
-			CompletionCriteria completion = getCompletion(cmd, "hours", "minutes", "seconds", "iterations");
+			CompletionCriteria completion = getCompletion(cmd.getOptionValue("completion"));
 			if (completion == null)
 				throw new IllegalArgumentException("Must supply total inversion time or iteration count");
 			
