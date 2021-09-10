@@ -241,7 +241,7 @@ public class ComcatAccessor {
 	// Default minimum depth for Comcat searches, in kilometers.
 	// This is chosen to respect the limits for both Comcat (-100.0 km) and OpenSHA (-5.0).
 
-	public static final double DEFAULT_MIN_DEPTH = 0.0;
+	public static final double DEFAULT_MIN_DEPTH = -5.0;
 
 	// The following four parameters control how to break up a large query (exceeding the size limit)
 	// into a series of smaller queries.  Ideally, this would be done simply by incrementing the
@@ -1072,13 +1072,15 @@ public class ComcatAccessor {
 		}
 
 		double dep = event.getDepth().doubleValue();
-		if (dep < 0.0) {
-			// some regional networks can report negative depths, but the definition of what they're relative to can vary between
-			// networks (see http://earthquake.usgs.gov/data/comcat/data-eventterms.php#depth) so we decided to just discard any
-			// negative depths rather than try to correct with a DEM (which may be inconsistant with the networks). More discussion
-			// in e-mail thread 2/8-9/17 entitled "ComCat depths in OAF app"
-			dep = 0.0;
-		}
+		//if (dep < 0.0) {
+		//	// some regional networks can report negative depths, but the definition of what they're relative to can vary between
+		//	// networks (see http://earthquake.usgs.gov/data/comcat/data-eventterms.php#depth) so we decided to just discard any
+		//	// negative depths rather than try to correct with a DEM (which may be inconsistant with the networks). More discussion
+		//	// in e-mail thread 2/8-9/17 entitled "ComCat depths in OAF app"
+		//	dep = 0.0;
+		//}
+		// (07/14/2021) We now permit negative depth. The change is motivated by the Antelope Valley
+		// earthquake (nc73584926), which had several aftershocks reporting negative depth.
 		Location hypo = new Location(lat, lon, dep);
 
 		double mag=0.0;
