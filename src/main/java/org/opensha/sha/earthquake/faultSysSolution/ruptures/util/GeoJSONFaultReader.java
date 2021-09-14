@@ -148,8 +148,22 @@ public class GeoJSONFaultReader {
 			
 			Preconditions.checkState(idMapped.containsKey(id), "No fault found with id=%s", id);
 			Preconditions.checkState(!processed.contains(id), "Duplicate id encountered: %s", id);
+			
 			processed.add(id);
 			GeoJSONFaultSection sect = idMapped.get(id);
+			
+			if (prefRate < 0d || !Double.isFinite(prefRate)) {
+				System.err.println("No rate available (setting to zero) for "+id+". "+sect.getSectionName());
+				sect.setAveSlipRate(0d);
+				continue;
+			}
+			if ((float)prefRate >= 999f) {
+				System.err.println("Slip rate magic number of "+(int)prefRate+" encountered, which makes Kevin very angry. "
+						+ "Will treat as zero for now, but please fix ASAP. "+id+". "+sect.getSectionName());
+				sect.setAveSlipRate(0d);
+				continue;
+			}
+			
 			sect.setAveSlipRate(prefRate);
 			sect.setProperty("HighRate", highRate);
 			sect.setProperty("LowRate", lowRate);
