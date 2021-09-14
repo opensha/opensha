@@ -87,6 +87,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	private boolean average = false;
 	
 	private boolean verbose = D;
+
+	private double relativeSmoothnessWt;
 	
 	public ThreadedSimulatedAnnealing(
 			DoubleMatrix2D A, double[] d, double[] initialState,
@@ -97,6 +99,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public ThreadedSimulatedAnnealing(
 			DoubleMatrix2D A, double[] d, double[] initialState, double relativeSmoothnessWt, 
 			DoubleMatrix2D A_ineq,  double[] d_ineq, int numThreads, CompletionCriteria subCompetionCriteria) {
+		this.relativeSmoothnessWt = relativeSmoothnessWt;
 		Preconditions.checkState(numThreads > 0, "Must have at least 1 thread");
 		
 		// list of serial SA instances for each thread
@@ -565,55 +568,75 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		return ret+" "+tDF.format(remainder)+" "+remainderUnits;
 	}
 	
-	private static void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges) {
-		String[] strs = new String[Ebest.length];
+	private void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges) {
+		int numIneq = A_ineq == null ? 0 : A_ineq.rows();
+		printEnergies(Ebest, prev, constraintRanges, relativeSmoothnessWt, numIneq);
+	}
+	
+	private static void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges,
+			double entropyWeight, int numIneqRows) {
+		List<String> strs = new ArrayList<>();
 		for (int i=0; i<Ebest.length; i++) {
+			String str;
 			switch (i) {
 			case 0:
-				strs[i] = "Total:\t";
+				str = "Total:\t";
 				break;
 			case 1:
-				strs[i] = "Equality:\t";
+				if (entropyWeight > 0 || numIneqRows > 0)
+					str = "Equality:\t";
+				else
+					// only equality, don't bother duplicating information
+					continue;
 				break;
 			case 2:
-				strs[i] = "Entropy:\t";
+				if (entropyWeight > 0)
+					str = "Entropy:\t";
+				else
+					// entropy is disabled, don't print
+					continue;
 				break;
 			case 3:
-				strs[i] = "Inequality:\t";
+				if (numIneqRows > 0)
+					str = "Inequality:\t";
+				else
+					// inequality is disabled, don't print
+					continue;
 				break;
 
 			default:
 				int ind = i-4;
 				if (constraintRanges == null || ind >= constraintRanges.size() || constraintRanges.get(ind) == null)
-					strs[i] = "Constraint "+ind+":\t";
+					str = "Constraint "+ind+":\t";
 				else
-					strs[i] = constraintRanges.get(ind).shortName+":\t";
+					str = constraintRanges.get(ind).shortName+":\t";
 				break;
 			}
-			strs[i] += (float)Ebest[i]+"";
+			str += (float)Ebest[i]+"";
 			if (prev != null) {
 				double diff = Ebest[i]-prev[i];
-				strs[i] += " (";
+				str += " (";
 				if (diff > 0)
-					strs[i] += "+";
-				strs[i] += pDF.format(diff/prev[i])+")";
+					str += "+";
+				str += pDF.format(diff/prev[i])+")";
 			}
+			strs.add(str);
 		}
 		int cols;
-		if (strs.length > 9)
+		if (strs.size() > 9)
 			cols = 4;
-		else if (strs.length > 4)
+		else if (strs.size() > 4)
 			cols = 3;
 		else
-			cols = 2;
-		int lines = strs.length/cols;
-		if (strs.length % cols != 0)
+			cols = strs.size();
+		int lines = strs.size()/cols;
+		if (strs.size() % cols != 0)
 			lines++;
 		int ind = 0;
 		for (int l=0; l<lines; l++) {
 			StringBuilder str = new StringBuilder();
-			for (int c=0; c<cols && ind<strs.length; c++)
-				str.append("\t").append(strs[ind++]);
+			for (int c=0; c<cols && ind<strs.size(); c++)
+				str.append("\t").append(strs.get(ind++));
 			System.out.println(str.toString());
 		}
 	}
