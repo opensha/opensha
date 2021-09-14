@@ -9,6 +9,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.DoubleBinaryOperator;
+import java.util.function.DoubleUnaryOperator;
 
 import org.dom4j.Element;
 import org.opensha.commons.data.Named;
@@ -120,6 +122,27 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 	/** Replaces a DataPoint y-value at the specifed index. */
 	public void set(int index, double Y) throws IndexOutOfBoundsException;
 
+	/**
+	 * Maps a user-defined function F to each point, setting y = F(x).
+	 *
+	 * @param mappedFn(x) a function that takes an x value and returns a new y value.
+	 */
+	public default void setYofX(DoubleUnaryOperator mappedFn){
+		for(int i=0; i<this.size();i++) {
+			this.set(i, mappedFn.applyAsDouble(getX(i)));
+		}
+	}
+
+	/**
+	 * Maps a user-defined function F to each point, setting y = F(x, y).
+	 *
+	 * @param mappedFn(x, y) a function that takes an ax and a y value and returns a new y value.
+	 */
+	public default void setYofX(DoubleBinaryOperator mappedFn){
+		for(int i=0; i<this.size();i++) {
+			this.set(i, mappedFn.applyAsDouble(getX(i), getY(i)));
+		}
+	}
 
 
 	/* **********/
