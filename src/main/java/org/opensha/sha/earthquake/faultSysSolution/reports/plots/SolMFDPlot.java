@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -46,6 +47,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			String topLink) throws IOException {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		List<MFD_Plot> plots = new ArrayList<>();
+		
+		double minY = 1e-6;
+		double maxY = 1e1;
 		if (rupSet.hasModule(InversionTargetMFDs.class)) {
 			InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
 			
@@ -76,6 +80,11 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 					plot.addComp(constraint.getMagFreqDist(), SUPRA_SEIS_TARGET_COLOR, "Target");
 					plots.add(plot);
 				}
+				// make sure to include the whole constraint in the plot
+				for (Point2D pt : constraint.getMagFreqDist())
+					minY = Math.min(minY, Math.pow(10, Math.floor(Math.log10(pt.getY())+0.1)));
+				for (Point2D pt : constraint.getMagFreqDist().getCumRateDistWithOffset())
+					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(pt.getY())-0.1)));
 			}
 		} else {
 			// generic plot
@@ -92,7 +101,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		System.out.println("Rup set mags: "+magTrack);
 		IncrementalMagFreqDist defaultMFD = initDefaultMFD(magTrack.getMin(), magTrack.getMax());
 		Range xRange = xRange(defaultMFD);
-		Range yRange = new Range(1e-6, 1e1);
+
+		List<PlotSpec> incrSpecs = new ArrayList<>();
+		List<PlotSpec> cmlSpecs = new ArrayList<>();
 		
 		List<String> lines = new ArrayList<>();
 		for (MFD_Plot plot : plots) {
@@ -105,8 +116,6 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			List<IncrementalMagFreqDist> incrFuncs = new ArrayList<>();
 			List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
 			List<PlotCurveCharacterstics> chars = new ArrayList<>();
-			
-			String prefix = "mfd_plot_"+getFileSafe(plot.name);
 			
 			for (int c=0; c<plot.comps.size(); c++) {
 				IncrementalMagFreqDist comp = plot.comps.get(c);
@@ -121,14 +130,27 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			if (meta.comparison != null && meta.comparison.sol != null)
 				addSolMFDs(meta.comparison.sol, "Comparison", COMP_COLOR, plot.region,
 						incrFuncs, cmlFuncs, chars, defaultMFD);
-			addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region, incrFuncs, cmlFuncs, chars, defaultMFD);
-			TableBuilder table = MarkdownUtils.tableBuilder();
-			table.addLine("Incremental MFDs", "Cumulative MFDs");
+			double myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region, incrFuncs, cmlFuncs, chars, defaultMFD);
+			maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 			
 			PlotSpec incrSpec = new PlotSpec(incrFuncs, chars, plot.name, "Magnitude", "Incremental Rate (per yr)");
 			PlotSpec cmlSpec = new PlotSpec(cmlFuncs, chars, plot.name, "Magnitude", "Cumulative Rate (per yr)");
 			incrSpec.setLegendInset(true);
 			cmlSpec.setLegendInset(true);
+			
+			incrSpecs.add(incrSpec);
+			cmlSpecs.add(cmlSpec);
+		}
+		
+		System.out.println("MFD Y-Range: "+minY+" "+maxY);
+		Range yRange = new Range(minY, maxY);
+		
+		for (int i=0; i<plots.size(); i++) {
+			MFD_Plot plot = plots.get(i);
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.addLine("Incremental MFDs", "Cumulative MFDs");
+			
+			String prefix = "mfd_plot_"+getFileSafe(plot.name);
 			
 			HeadlessGraphPanel gp = PlotUtils.initHeadless();
 			gp.setTickLabelFontSize(20);
@@ -142,13 +164,13 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 				tick = 0.1d;
 			
 			table.initNewLine();
-			gp.drawGraphPanel(incrSpec, false, true, xRange, yRange);
+			gp.drawGraphPanel(incrSpecs.get(i), false, true, xRange, yRange);
 			PlotUtils.setXTick(gp, tick);
 			PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 850, true, true, true);
 			table.addColumn("![Incremental Plot]("+relPathToResources+"/"+prefix+".png)");
 			
 			prefix += "_cumulative";
-			gp.drawGraphPanel(cmlSpec, false, true, xRange, yRange);
+			gp.drawGraphPanel(cmlSpecs.get(i), false, true, xRange, yRange);
 			PlotUtils.setXTick(gp, tick);
 			PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 850, true, true, true);
 			table.addColumn("![Cumulative Plot]("+relPathToResources+"/"+prefix+".png)");
@@ -214,7 +236,7 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		return new Color((int)Math.round(r*0.5d), (int)Math.round(g*0.5d), (int)Math.round(b*0.5d));
 	}
 	
-	private static void addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
+	private static double addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
 			List<IncrementalMagFreqDist> incrFuncs, List<EvenlyDiscretizedFunc> cmlFuncs,
 			List<PlotCurveCharacterstics> chars, IncrementalMagFreqDist defaultMFD) {
 		IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forRegion(
@@ -254,8 +276,10 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		}
 		mfd.setName(name);
 		incrFuncs.add(mfd);
-		cmlFuncs.add(mfd.getCumRateDistWithOffset());
+		EvenlyDiscretizedFunc cmlFunc = mfd.getCumRateDistWithOffset();
+		cmlFuncs.add(cmlFunc);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color));
+		return cmlFunc.getMaxY();
 	}
 
 	@Override
