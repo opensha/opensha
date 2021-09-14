@@ -60,7 +60,7 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			totalPlot.addComp(targetMFDs.getTotalOnFaultSupraSeisMFD(), SUPRA_SEIS_TARGET_COLOR, "Target Supra-Seis");
 			plots.add(totalPlot);
 			
-			List<MFD_InversionConstraint> constraints = targetMFDs.getMFD_Constraints();
+			List<? extends MFD_InversionConstraint> constraints = targetMFDs.getMFD_Constraints();
 			for (MFD_InversionConstraint constraint : constraints) {
 				Region region = constraint.getRegion();
 				String name;

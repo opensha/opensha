@@ -260,7 +260,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double parkfieldConstraintWt = 1000;
 		
 		// get MFD constraints
-		List<MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_Constraints();
+		List<MFD_InversionConstraint> mfdConstraints = (List<MFD_InversionConstraint>) targetMFDs.getMFD_Constraints();
 		
 		double MFDTransitionMag = 7.85; // magnitude to switch from MFD equality to MFD inequality
 		
@@ -330,7 +330,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				initialRupModel = getSmoothStartingSolution(rupSet, targetOnFaultMFD);
 				minimumRuptureRateFraction = 0.01;
 				minimumRuptureRateBasis = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
-				if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true); 
+                if (mfdInequalityConstraintWt > 0.0 || mfdEqualityConstraintWt > 0.0)
+                    initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 				initialRupModel = adjustParkfield(rupSet, initialRupModel);
 				initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
 			} else
@@ -437,7 +438,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			initialRupModel = getSmoothStartingSolution(rupSet,targetOnFaultMFD);
 			minimumRuptureRateFraction = 0.01;
 			minimumRuptureRateBasis = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
-			if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true); 
+            if (mfdInequalityConstraintWt > 0.0 || mfdEqualityConstraintWt > 0.0)
+                initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 			initialRupModel = adjustParkfield(rupSet, initialRupModel);
 			initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
 		}

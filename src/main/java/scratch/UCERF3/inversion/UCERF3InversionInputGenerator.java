@@ -1628,8 +1628,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
 		
 		System.out.println("Validating target MFD constraints");
-		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
-		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
+		List<? extends MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<? extends MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
 		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
 		for (int i=0; i<origConstrs.size(); i++) {
 			MFD_InversionConstraint origConstr = origConstrs.get(i);
@@ -1679,8 +1679,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
 		
 		System.out.println("Validating target MFD constraints");
-		List<MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
-		List<MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
+		List<? extends MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<? extends MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
 		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
 		for (int i=0; i<origConstrs.size(); i++) {
 			MFD_InversionConstraint origConstr = origConstrs.get(i);
