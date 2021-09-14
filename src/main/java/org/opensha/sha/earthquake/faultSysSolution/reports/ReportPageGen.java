@@ -693,6 +693,7 @@ public class ReportPageGen {
 			
 			plot.setSubHeading("###");
 			
+			System.out.println("Generating plot: "+plotName);
 			try {
 				List<String> plotLines = plot.plot(meta.primary.rupSet, meta.primary.sol, meta,
 						resourcesDir, relPathToResources, topLink);

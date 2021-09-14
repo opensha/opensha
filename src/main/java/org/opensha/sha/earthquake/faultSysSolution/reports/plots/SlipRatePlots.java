@@ -19,6 +19,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -46,170 +47,231 @@ public class SlipRatePlots extends AbstractRupSetPlot {
 		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(true);
 		
-		CPT slipCPT = new CPT();
+		List<String> lines = new ArrayList<>();
 		
-		slipCPT.setBelowMinColor(Color.GRAY);
-		slipCPT.setNanColor(Color.GRAY);
+		String rawPrefix = "slip_rates";
 		
-//		slipCPT.add(new CPTVal(0f, Color.GRAY, 0f, Color.GRAY));
-		slipCPT.add(new CPTVal(Float.MIN_VALUE, Color.BLUE, 10f, Color.MAGENTA));
-		slipCPT.add(new CPTVal(10f, Color.MAGENTA, 20f, Color.RED));
-		slipCPT.add(new CPTVal(20f, Color.RED, 30f, Color.ORANGE));
-		slipCPT.add(new CPTVal(30f, Color.ORANGE, 40f, Color.YELLOW));
-		
-		slipCPT.setAboveMaxColor(Color.YELLOW);
-		
-		TableBuilder table = MarkdownUtils.tableBuilder();
-		
-		String prefix = "slip_rates";
-		
-		table.initNewLine();
 		double[] nonReduced = nonReduced(rupSet);
 		double maxSlip = StatUtils.max(nonReduced);
-		if (maxSlip < 10d)
-			slipCPT = slipCPT.rescale(0d, 10d);
-		else if (maxSlip < 20d)
-			slipCPT = slipCPT.rescale(0d, 20d);
-		else if (maxSlip > 60d)
-			slipCPT = slipCPT.rescale(0d, 60d);
 		double[] origReduced = origReduced(rupSet);
-		mapMaker.plotSectScalars(nonReduced, slipCPT, "Original (non-reduced) Slip Rate (mm/yr)");
-		mapMaker.plot(resourcesDir, prefix+"_orig", " ");
-		table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_orig.png)");
-		mapMaker.plotSectScalars(origReduced, slipCPT, "Reduced Slip Rate (mm/yr)");
-		mapMaker.plot(resourcesDir, prefix+"_reduced", " ");
-		table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_reduced.png)");
-		table.finalizeLine();
-		table.initNewLine();
-		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_orig.geojson")
-				+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_orig.geojson)");
-		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_reduced.geojson")
-				+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_reduced.geojson)");
-		table.finalizeLine();
+		double[] solRates = null;
 		
-		if (rupSet.hasModule(SectSlipRates.class) || sol != null) {
-			table.initNewLine();
-			SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
-			double[] targets = null;
-			if (slipRates != null) {
-				targets = target(rupSet, slipRates);
-				mapMaker.plotSectScalars(targets, slipCPT, "Target Slip Rate (mm/yr)");
-				mapMaker.plot(resourcesDir, prefix+"_target", " ");
-				table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_target.png)");
+		for (boolean log : new boolean[] {false,true}) {
+			CPT slipCPT;
+			String prefix;
+			String labelPrefix = "";
+			if (log) {
+				if (!lines.isEmpty())
+					lines.add("");
+				lines.add(getSubHeading()+" Log10 Slip Rate Plots");
+				
+				slipCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-3, 2);
+				
+				slipCPT.setBelowMinColor(slipCPT.getMinColor());
+				slipCPT.setAboveMaxColor(slipCPT.getMaxColor());
+				slipCPT.setNanColor(Color.GRAY);
+				
+				prefix = rawPrefix+"_log";
+				labelPrefix = "Log10 ";
 			} else {
-				table.addColumn("_(no target slip rates found)_");
+				lines.add(getSubHeading()+" Linear Slip Rate Plots");
+				slipCPT = new CPT();
+				
+				slipCPT.setBelowMinColor(Color.GRAY);
+				slipCPT.setNanColor(Color.GRAY);
+				
+//				slipCPT.add(new CPTVal(0f, Color.GRAY, 0f, Color.GRAY));
+				slipCPT.add(new CPTVal(Float.MIN_VALUE, Color.BLUE, 10f, Color.MAGENTA));
+				slipCPT.add(new CPTVal(10f, Color.MAGENTA, 20f, Color.RED));
+				slipCPT.add(new CPTVal(20f, Color.RED, 30f, Color.ORANGE));
+				slipCPT.add(new CPTVal(30f, Color.ORANGE, 40f, Color.YELLOW));
+				
+				slipCPT.setAboveMaxColor(Color.YELLOW);
+				if (maxSlip < 10d)
+					slipCPT = slipCPT.rescale(0d, 10d);
+				else if (maxSlip < 20d)
+					slipCPT = slipCPT.rescale(0d, 20d);
+				else if (maxSlip > 60d)
+					slipCPT = slipCPT.rescale(0d, 60d);
+				prefix = rawPrefix;
 			}
+			lines.add(topLink); lines.add("");
 			
-			double[] solRates = null;
-			if (sol != null) {
-				solRates = solution(sol);
-				mapMaker.plotSectScalars(solRates, slipCPT, "Solution Slip Rate (mm/yr)");
-				mapMaker.plot(resourcesDir, prefix+"_sol", " ");
-				table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol.png)");
-			} else {
-				table.addColumn("");
-			}
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.initNewLine();
+			
+			mapMaker.plotSectScalars(log ? log10(nonReduced) : nonReduced, slipCPT,
+					labelPrefix+"Original (non-reduced) Slip Rate (mm/yr)");
+			mapMaker.plot(resourcesDir, prefix+"_orig", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_orig.png)");
+			mapMaker.plotSectScalars(log ? log10(origReduced) : origReduced, slipCPT,
+					labelPrefix+"Creep Reduced Slip Rate (mm/yr)");
+			mapMaker.plot(resourcesDir, prefix+"_reduced", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_reduced.png)");
 			table.finalizeLine();
 			table.initNewLine();
-			if (targets == null)
-				table.addColumn("");
-			else
-				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_target.geojson")
-						+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_target.geojson)");
-			if (sol == null)
-				table.addColumn("");
-			else
-				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol.geojson")
-						+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_sol.geojson)");
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_orig.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_orig.geojson)");
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_reduced.geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_reduced.geojson)");
 			table.finalizeLine();
 			
-			if (targets != null && solRates != null) {
-				CPT diffCPT = new CPT(-10, 10,
-						new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
-						Color.WHITE,
-						new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
-				diffCPT.setNanColor(Color.GRAY);
-				diffCPT.setBelowMinColor(diffCPT.getMinColor());
-				diffCPT.setAboveMaxColor(diffCPT.getMaxColor());
-				
-				CPT belowCPT = new CPT(0.5d, 1d,
-						new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
-						Color.WHITE);
-				CPT aboveCPT = new CPT(1d, 2d,
-						Color.WHITE,
-						new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
-				CPT ratioCPT = new CPT();
-				ratioCPT.addAll(belowCPT);
-				ratioCPT.addAll(aboveCPT);
-				ratioCPT.setNanColor(Color.GRAY);
-				ratioCPT.setBelowMinColor(ratioCPT.getMinColor());
-				ratioCPT.setAboveMaxColor(ratioCPT.getMaxColor());
-				
+			if (rupSet.hasModule(SectSlipRates.class) || sol != null) {
 				table.initNewLine();
+				SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
+				double[] targets = null;
+				if (slipRates != null) {
+					targets = target(rupSet, slipRates);
+					mapMaker.plotSectScalars(log ? log10(targets) : targets, slipCPT, labelPrefix+"Target Slip Rate (mm/yr)");
+					mapMaker.plot(resourcesDir, prefix+"_target", " ");
+					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_target.png)");
+				} else {
+					table.addColumn("_(no target slip rates found)_");
+				}
 				
-				double[] diffs = diff(solRates, targets);
-				double[] ratios = ratio(solRates, targets);
-				
-				mapMaker.plotSectScalars(diffs, diffCPT, "Solution - Target Slip Rate (mm/yr)");
-				mapMaker.plot(resourcesDir, prefix+"_sol_diff", " ");
-				table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol_diff.png)");
-				mapMaker.plotSectScalars(ratios, ratioCPT, "Solution / Target Slip Rate");
-				mapMaker.plot(resourcesDir, prefix+"_sol_ratio", " ");
-				table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol_ratio.png)");
+				if (sol != null) {
+					solRates = solution(sol);
+					mapMaker.plotSectScalars(log ? log10(solRates) : solRates, slipCPT, labelPrefix+"Solution Slip Rate (mm/yr)");
+					mapMaker.plot(resourcesDir, prefix+"_sol", " ");
+					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol.png)");
+				} else {
+					table.addColumn("");
+				}
 				table.finalizeLine();
 				table.initNewLine();
-				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol_diff.geojson")
-						+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_sol_diff.geojson)");
-				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol_ratio.geojson")
-						+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_sol_ratio.geojson)");
+				if (targets == null)
+					table.addColumn("");
+				else
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_target.geojson")
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_target.geojson)");
+				if (sol == null)
+					table.addColumn("");
+				else
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol.geojson")
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_sol.geojson)");
 				table.finalizeLine();
 				
-				// now scatters/histograms
-				table.initNewLine();
-				
-				HistogramFunction diffHist = HistogramFunction.getEncompassingHistogram(-10d, 10d, 1d);
-				for (double diff : diffs)
-					diffHist.add(diffHist.getClosestXIndex(diff), 1d);
-				
-				List<XY_DataSet> funcs = new ArrayList<>();
-				List<PlotCurveCharacterstics> chars = new ArrayList<>();
-				
-				funcs.add(diffHist);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.BLACK));
-				
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
-				
-				gp.drawGraphPanel(new PlotSpec(funcs, chars, "Slip Rate Differences", "Solution - Target Slip Rate (mm/yr)", "Count"));
-				
-				PlotUtils.writePlots(resourcesDir, prefix+"_sol_diff_hist", gp, 800, 650, true, true, false);
-				table.addColumn("![Diff hist]("+relPathToResources+"/"+prefix+"_sol_diff_hist.png)");
-				
-				DefaultXY_DataSet scatter = new DefaultXY_DataSet(targets, solRates);
-				Range scatterRange = new Range(0d, Math.max(scatter.getMaxX(), scatter.getMaxY()));
-				
-				funcs = new ArrayList<>();
-				chars = new ArrayList<>();
-				
-				DefaultXY_DataSet oneToOne = new DefaultXY_DataSet();
-				oneToOne.set(scatterRange.getLowerBound(), scatterRange.getLowerBound());
-				oneToOne.set(scatterRange.getUpperBound(), scatterRange.getUpperBound());
-				funcs.add(oneToOne);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
-				
-				funcs.add(scatter);
-				chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLACK));
+				if (targets != null && solRates != null) {
+					CPT diffCPT;
+					CPT ratioCPT;
+					
+					if (log) {
+						diffCPT = null;
+						ratioCPT = new CPT(-2d, 2d,
+								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+								Color.WHITE,
+								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+					} else {
+						diffCPT = new CPT(-10, 10,
+								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+								Color.WHITE,
+								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+						diffCPT.setNanColor(Color.GRAY);
+						diffCPT.setBelowMinColor(diffCPT.getMinColor());
+						diffCPT.setAboveMaxColor(diffCPT.getMaxColor());
+						
+						CPT belowCPT = new CPT(0.5d, 1d,
+								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+								Color.WHITE);
+						CPT aboveCPT = new CPT(1d, 2d,
+								Color.WHITE,
+								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+						ratioCPT = new CPT();
+						ratioCPT.addAll(belowCPT);
+						ratioCPT.addAll(aboveCPT);
+						ratioCPT.setNanColor(Color.GRAY);
+						ratioCPT.setBelowMinColor(ratioCPT.getMinColor());
+						ratioCPT.setAboveMaxColor(ratioCPT.getMaxColor());
+					}
+					
+					table.initNewLine();
+					
+					double[] diffs = diff(solRates, targets);
+					double[] ratios = ratio(solRates, targets);
+					String diffLabel, ratioLabel;
+					if (log) {
+						diffLabel = null;
+						ratioLabel = "Log10(Solution / Target Slip Rate)";
+					} else {
+						diffLabel = "Solution - Target Slip Rate (mm/yr)";
+						ratioLabel = "Solution / Target Slip Rate";
+					}
+					
+					if (!log) {
+						mapMaker.plotSectScalars(diffs, diffCPT, diffLabel);
+						mapMaker.plot(resourcesDir, prefix+"_sol_diff", " ");
+						table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol_diff.png)");
+					}
+					mapMaker.plotSectScalars(log ? log10(ratios) : ratios, ratioCPT, ratioLabel);
+					mapMaker.plot(resourcesDir, prefix+"_sol_ratio", " ");
+					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_sol_ratio.png)");
+					
+					HeadlessGraphPanel gp = PlotUtils.initHeadless();
+					if (!log) {
+						table.finalizeLine().initNewLine();
+						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol_diff.geojson")
+								+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_sol_diff.geojson)");
+						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol_ratio.geojson")
+								+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_sol_ratio.geojson)");
+						table.finalizeLine().initNewLine();
+						// now scatters/histograms
+						
+						HistogramFunction diffHist = HistogramFunction.getEncompassingHistogram(-10d, 10d, 1d);
+						for (double diff : diffs)
+							diffHist.add(diffHist.getClosestXIndex(diff), 1d);
+						
+						List<XY_DataSet> funcs = new ArrayList<>();
+						List<PlotCurveCharacterstics> chars = new ArrayList<>();
+						
+						funcs.add(diffHist);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.BLACK));
+						
+						gp.drawGraphPanel(new PlotSpec(funcs, chars, "Slip Rate Differences", "Solution - Target Slip Rate (mm/yr)", "Count"));
+						
+						PlotUtils.writePlots(resourcesDir, prefix+"_sol_diff_hist", gp, 800, 650, true, true, false);
+						table.addColumn("![Diff hist]("+relPathToResources+"/"+prefix+"_sol_diff_hist.png)");
+					}
+					
+					DefaultXY_DataSet scatter = new DefaultXY_DataSet(targets, solRates);
+					Range scatterRange;
+					if (log)
+						scatterRange = new Range(1e-3, 1e2);
+					else
+						scatterRange = new Range(0d, Math.max(scatter.getMaxX(), scatter.getMaxY()));
+					
+					List<XY_DataSet> funcs = new ArrayList<>();
+					List<PlotCurveCharacterstics> chars = new ArrayList<>();
+					
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLACK));
+					
+					DefaultXY_DataSet oneToOne = new DefaultXY_DataSet();
+					oneToOne.set(scatterRange.getLowerBound(), scatterRange.getLowerBound());
+					oneToOne.set(scatterRange.getUpperBound(), scatterRange.getUpperBound());
+					funcs.add(oneToOne);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
 
-				gp.drawGraphPanel(new PlotSpec(funcs, chars,
-						"Slip Rates Scatter", "Target Slip Rate (mm/yr)", "Solution Slip Rate (mm/yr)"),
-						false, false, scatterRange, scatterRange);
-				
-				PlotUtils.writePlots(resourcesDir, prefix+"_sol_scatter", gp, 800, 650, true, true, false);
-				table.addColumn("![Diff hist]("+relPathToResources+"/"+prefix+"_sol_scatter.png)");
-				table.finalizeLine();
+					gp.drawGraphPanel(new PlotSpec(funcs, chars,
+							"Slip Rates Scatter", "Target Slip Rate (mm/yr)", "Solution Slip Rate (mm/yr)"),
+							log, log, scatterRange, scatterRange);
+					
+					PlotUtils.writePlots(resourcesDir, prefix+"_sol_scatter", gp, 800, 650, true, true, false);
+					table.addColumn("![Diff hist]("+relPathToResources+"/"+prefix+"_sol_scatter.png)");
+					table.finalizeLine();
+					
+					if (log) {
+						table.initNewLine();
+						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_sol_ratio.geojson")
+								+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_sol_ratio.geojson)");
+						table.addColumn("");
+						table.finalizeLine();
+					}
+				}
 			}
+			lines.addAll(table.build());
 		}
 		
-		return table.build();
+		return lines;
 	}
 	
 	private static double[] nonReduced(FaultSystemRupSet rupSet) {
@@ -256,6 +318,20 @@ public class SlipRatePlots extends AbstractRupSetPlot {
 		for (int i=0; i<ratio.length; i++)
 			ratio[i] = v1[i] / v2[i];
 		return ratio;
+	}
+	
+	private static double[] log10(double[] vals) {
+		double[] ret = new double[vals.length];
+		for (int i=0; i<ret.length; i++)
+			ret[i] = Math.log10(vals[i]);
+		return ret;
+	}
+	
+	private static double[] abs(double[] vals) {
+		double[] ret = new double[vals.length];
+		for (int i=0; i<ret.length; i++)
+			ret[i] = Math.abs(vals[i]);
+		return ret;
 	}
 
 	@Override

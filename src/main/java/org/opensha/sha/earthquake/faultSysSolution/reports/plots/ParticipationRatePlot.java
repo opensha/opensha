@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -65,6 +66,7 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 		}
 		
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-5, 0);
+		cpt.setNanColor(Color.GRAY);
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		mapMaker.setWriteGeoJSON(true);
@@ -114,7 +116,8 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 			List<String> prefixes = new ArrayList<>();
 			
 			String mainPrefix = "sol_partic_"+magPrefix;
-			mapMaker.plotSectScalars(log10(rates), cpt, "Log10 "+myLabel+" Participation Rate (events/yr)");
+			double[] plotRates = log10(maskSectsOutsideMagRange(rates, sol.getRupSet(), myMinMag, Double.POSITIVE_INFINITY));
+			mapMaker.plotSectScalars(plotRates, cpt, "Log10 "+myLabel+" Participation Rate (events/yr)");
 			mapMaker.plot(resourcesDir, mainPrefix, " ");
 			prefixes.add(mainPrefix);
 
@@ -132,7 +135,8 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 					label += "M"+optionalDigitDF.format(myMinMag)+" -> "+optionalDigitDF.format(upperMag);
 				label += " Participation Rate (events/yr)";
 				
-				mapMaker.plotSectScalars(log10(range), cpt, label);
+				double[] plotRange = log10(maskSectsOutsideMagRange(range, sol.getRupSet(), myMinMag, upperMag));
+				mapMaker.plotSectScalars(plotRange, cpt, label);
 				mapMaker.plot(resourcesDir, rangePrefix, " ");
 				
 				table.addColumn("![Map]("+relPathToResources+"/"+rangePrefix+".png)");
@@ -177,6 +181,19 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 		for (int i=0; i<ret.length; i++)
 			ret[i] = Math.log10(vals[i]);
 		return ret;
+	}
+	
+	private double[] maskSectsOutsideMagRange(double[] values, FaultSystemRupSet rupSet, double minMag, double maxMag) {
+		values = Arrays.copyOf(values, values.length);
+		for (int s=0; s<values.length; s++) {
+			if (values[s] == 0d) {
+				double sectMin = rupSet.getMinMagForSection(s);
+				double sectMax = rupSet.getMaxMagForSection(s);
+				if (sectMin > maxMag || sectMax < minMag)
+					values[s] = Double.NaN;
+			}
+		}
+		return values;
 	}
 
 	@Override
