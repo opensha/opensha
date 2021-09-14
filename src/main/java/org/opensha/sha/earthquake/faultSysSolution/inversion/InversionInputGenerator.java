@@ -73,7 +73,7 @@ public class InversionInputGenerator {
 
 		if (initialSolution == null) {
 			if (verbose)
-				System.out.println("Building empty intial solution (all zeroes)");
+				System.out.println("Building empty initial solution (all zeroes)");
 			initialSolution = new double[numRuptures];
 		} else {
 			Preconditions.checkState(initialSolution.length == numRuptures,

@@ -80,7 +80,7 @@ public class RuptureSets {
 	}
 	
 	public static List<? extends FaultSection> getNSHM23SubSects(String state) throws IOException {
-		return GeoJSONFaultReader.buildNSHM23SubSects(GeoJSONFaultReader.NSHM23_CUR_VERSION, state);
+		return GeoJSONFaultReader.buildNSHM23SubSects(state);
 	}
 	
 	public static class U3RupSetConfig extends RupSetConfig {
@@ -934,7 +934,7 @@ public class RuptureSets {
 		Option scaleOption = new Option("sc", "scale", true,
 				"Scaling relationship to use (for rupture magnitudes & average slips). "
 				+ "Options: "+FaultSysTools.enumOptions(ScalingRelationships.class));
-		scaleOption.setRequired(false);
+		scaleOption.setRequired(true);
 		ops.addOption(scaleOption);
 
 		Option presetOption = new Option("p", "preset", true,
@@ -1011,7 +1011,7 @@ public class RuptureSets {
 			} else {
 				Preconditions.checkArgument(cmd.hasOption("fault-model"), "Must supply either --sub-sections or --fault-model");
 				String fmStr = cmd.getOptionValue("fault-model");
-				FaultModels fm = FaultModels.valueOf(fmStr);
+				FaultModels fm = FaultModels.valueOf(fmStr.trim().toUpperCase());
 				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
 				sects = getU3SubSects(fm);
 			}
