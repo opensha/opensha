@@ -22,13 +22,13 @@ public class ModuleContainerTest {
 		System.out.println("Testing simple adding and retrieval");
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
-		assertEquals("Container should start empty", 0, container.getModules().size());
+		assertEquals("Container should start empty", 0, container.getModules(false).size());
 		
 		Module_A_A_A aaaInst1 = new Module_A_A_A();
 		assertFalse("Should not initially contain interface when empty", containsInstance(container, Module_A.class));
 		container.addModule(aaaInst1);
 		
-		assertEquals("Container should now have 1 module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 module", 1, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, aaaInst1));
 		assertTrue("Cannot retrieve a module by its class", containsInstance(container, Module_A_A_A.class));
 		assertTrue("Cannot retrieve a module by its abstract superclass", containsInstance(container, Module_A_A.class));
@@ -37,7 +37,7 @@ public class ModuleContainerTest {
 		Module_B_A baInst1 = new Module_B_A();
 		assertFalse("Should not initially contain interface when empty", containsInstance(container, Module_B.class));
 		container.addModule(baInst1);
-		assertEquals("Container should now have 2 modules", 2, container.getModules().size());
+		assertEquals("Container should now have 2 modules", 2, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, baInst1));
 		assertTrue("Cannot retrieve a module by its class", containsInstance(container, Module_B_A.class));
 		assertTrue("Cannot retrieve a module by its superclass", containsInstance(container, Module_B.class));
@@ -50,18 +50,18 @@ public class ModuleContainerTest {
 		System.out.println("Testing replacing a module with another instance of the same class");
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
-		assertEquals("Container should start empty", 0, container.getModules().size());
+		assertEquals("Container should start empty", 0, container.getModules(false).size());
 		
 		Module_A_A_A aaaInst1 = new Module_A_A_A();
 		assertFalse("Should not initially contain interface when empty", containsInstance(container, Module_A.class));
 		container.addModule(aaaInst1);
 		
-		assertEquals("Container should now have 1 module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 module", 1, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, aaaInst1));
 		
 		Module_A_A_A aaaInst2 = new Module_A_A_A();
 		container.addModule(aaaInst2);
-		assertEquals("Container should still have 1 module after replace", 1, container.getModules().size());
+		assertEquals("Container should still have 1 module after replace", 1, container.getModules(false).size());
 		assertTrue("Replaced module but new version is not in the list", contains(container, aaaInst2));
 		assertFalse("Replaced module but old version is still in the list", contains(container, aaaInst1));
 		assertTrue("Cannot retrieve replaced module by its class", containsInstance(container, Module_A_A_A.class));
@@ -74,13 +74,13 @@ public class ModuleContainerTest {
 		System.out.println("Testing replacing a module with a sub class instance of the original class");
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
-		assertEquals("Container should start empty", 0, container.getModules().size());
+		assertEquals("Container should start empty", 0, container.getModules(false).size());
 		
 		Module_B bInst = new Module_B();
 		assertFalse("Should not initially contain interface when empty", containsInstance(container, Module_B.class));
 		container.addModule(bInst);
 		
-		assertEquals("Container should now have 1 module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 module", 1, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, bInst));
 		
 		Module_B_A baInst = new Module_B_A();
@@ -89,7 +89,7 @@ public class ModuleContainerTest {
 		container.addModule(baInst);
 		assertTrue("Added module but it's not in the list", contains(container, baInst));
 		assertFalse("Replaced module but it is still in the list", contains(container, bInst));
-		assertEquals("Container should still have 1 module", 1, container.getModules().size());
+		assertEquals("Container should still have 1 module", 1, container.getModules(false).size());
 		System.out.println("*** END testReplaceWithSubclass() ***");
 	}
 	
@@ -99,12 +99,12 @@ public class ModuleContainerTest {
 		System.out.println("Testing replacing a module with a super class instance of the original class");
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
-		assertEquals("Container should start empty", 0, container.getModules().size());
+		assertEquals("Container should start empty", 0, container.getModules(false).size());
 
 		Module_B_A baInst = new Module_B_A();
 		container.addModule(baInst);
 		
-		assertEquals("Container should now have 1 module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 module", 1, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, baInst));
 
 		Module_B bInst = new Module_B();
@@ -113,7 +113,7 @@ public class ModuleContainerTest {
 		assertTrue("Added module but it's not in the list", contains(container, bInst));
 		assertFalse("Replaced module but it is still in the list", contains(container, baInst));
 		assertFalse("Replaced module but other implementation is still in the list", containsInstance(container, Module_B_A.class));
-		assertEquals("Container should still have 1 module", 1, container.getModules().size());
+		assertEquals("Container should still have 1 module", 1, container.getModules(false).size());
 		System.out.println("*** END testReplaceWithSuperclass() ***");
 	}
 	
@@ -123,12 +123,12 @@ public class ModuleContainerTest {
 		System.out.println("Testing replacing a module with an alternative implementation");
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
-		assertEquals("Container should start empty", 0, container.getModules().size());
+		assertEquals("Container should start empty", 0, container.getModules(false).size());
 
 		Module_A_A_A aaaInst = new Module_A_A_A();
 		container.addModule(aaaInst);
 		
-		assertEquals("Container should now have 1 module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 module", 1, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, aaaInst));
 
 		Module_A_B abInst = new Module_A_B();
@@ -138,7 +138,7 @@ public class ModuleContainerTest {
 		assertFalse("Replaced module but it is still in the list", contains(container, aaaInst));
 		assertFalse("Replaced module but other implementation is still in the list", containsInstance(container, Module_A_A_A.class));
 		assertFalse("Replaced module but other implementation is still in the list", containsInstance(container, Module_A_A.class));
-		assertEquals("Container should still have 1 module", 1, container.getModules().size());
+		assertEquals("Container should still have 1 module", 1, container.getModules(false).size());
 		System.out.println("*** END testReplaceWithAltImpl() ***");
 	}
 	
@@ -189,7 +189,7 @@ public class ModuleContainerTest {
 	 * @return
 	 */
 	private static boolean contains(ModuleContainer<? extends OpenSHA_Module> container, OpenSHA_Module module) {
-		for (OpenSHA_Module module2 : container.getModules())
+		for (OpenSHA_Module module2 : container.getModules(false))
 			if (module == module2)
 				return true;
 		return false;
@@ -205,7 +205,7 @@ public class ModuleContainerTest {
 	private static <E extends OpenSHA_Module> boolean containsInstance(ModuleContainer<E> container,
 			Class<? extends E> clazz) {
 		boolean ret = false;
-		for (OpenSHA_Module module : container.getModules())
+		for (OpenSHA_Module module : container.getModules(false))
 			if (clazz.isAssignableFrom(module.getClass()))
 				ret = true;
 		assertEquals("container.hasModule(Class) does not match manual check", ret, container.hasModule(clazz));
@@ -296,19 +296,19 @@ public class ModuleContainerTest {
 		for (Class<? extends Module_A> retrievalClass : retrievals) {
 			ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 			
-			assertEquals("Container should start empty", 0, container.getModules().size());
+			assertEquals("Container should start empty", 0, container.getModules(false).size());
 			
 			Module_A_A_A aaaInst1 = new Module_A_A_A();
 			container.addAvailableModule(new Loader<>(aaaInst1), Module_A_A_A.class);
 			
-			assertEquals("Container should still be empty after adding avaialable", 0, container.getModules().size());
+			assertEquals("Container should still be empty after adding avaialable", 0, container.getModules(false).size());
 			assertEquals("Container should now have 1 available module", 1, container.getAvailableModules().size());
 			
 			Module_A retrieved = container.getModule(retrievalClass);
 			assertNotNull("Didn't sucessfully load available module", retrieved);
 			assertTrue(aaaInst1 == retrieved);
 			
-			assertEquals("Container should now have 1 loaded module", 1, container.getModules().size());
+			assertEquals("Container should now have 1 loaded module", 1, container.getModules(false).size());
 			assertEquals("Container should now have no available modules", 0, container.getAvailableModules().size());
 		}
 		
@@ -322,22 +322,22 @@ public class ModuleContainerTest {
 		
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
-		assertEquals("Container should start empty", 0, container.getModules().size());
+		assertEquals("Container should start empty", 0, container.getModules(false).size());
 		
 		Module_A_A_A aaaInst1 = new Module_A_A_A();
 		container.addAvailableModule(new Loader<>(aaaInst1), Module_A_A_A.class);
 		
-		assertEquals("Container should still be empty after adding avaialable", 0, container.getModules().size());
+		assertEquals("Container should still be empty after adding avaialable", 0, container.getModules(false).size());
 		assertEquals("Container should now have 1 available module", 1, container.getAvailableModules().size());
 		
 		assertTrue("hasAvailableModule() should return true", container.hasAvailableModule(aaaInst1.getClass()));
 		
-		assertEquals("hasAvailableModule() should not load the available module", 0, container.getModules().size());
+		assertEquals("hasAvailableModule() should not load the available module", 0, container.getModules(false).size());
 		assertEquals("hasAvailableModule() should not load the available module", 1, container.getAvailableModules().size());
 		
 		assertTrue("hasModule() should return true", container.hasModule(aaaInst1.getClass()));
 		
-		assertEquals("hasModule() should load the available module", 1, container.getModules().size());
+		assertEquals("hasModule() should load the available module", 1, container.getModules(false).size());
 		assertEquals("hasModule() should load the available module", 0, container.getAvailableModules().size());
 		
 		assertTrue("hasAvailableModule() should return true even after loaded", container.hasAvailableModule(aaaInst1.getClass()));
@@ -351,17 +351,17 @@ public class ModuleContainerTest {
 		System.out.println("Testing that manually loading a module clears out any available that match");
 		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
 		
-		assertEquals("Container should start empty", 0, container.getModules().size());
+		assertEquals("Container should start empty", 0, container.getModules(false).size());
 		
 		Module_A_A_A aaaInst1 = new Module_A_A_A();
 		container.addAvailableModule(new Loader<>(aaaInst1), Module_A_A_A.class);
 		
-		assertEquals("Container should still be empty after adding avaialable", 0, container.getModules().size());
+		assertEquals("Container should still be empty after adding avaialable", 0, container.getModules(false).size());
 		assertEquals("Container should now have 1 available module", 1, container.getAvailableModules().size());
 		
 		container.addModule(aaaInst1);
 		
-		assertEquals("Container should now have 1 loaded module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 loaded module", 1, container.getModules(false).size());
 		assertEquals("Container should now have no available modules", 0, container.getAvailableModules().size());
 		
 		// now do it again but load in an alternate implementation
@@ -369,13 +369,13 @@ public class ModuleContainerTest {
 		
 		container.addAvailableModule(new Loader<>(aaaInst1), Module_A_A_A.class);
 		
-		assertEquals("Container should still be empty after adding avaialable", 0, container.getModules().size());
+		assertEquals("Container should still be empty after adding avaialable", 0, container.getModules(false).size());
 		assertEquals("Container should now have 1 available module", 1, container.getAvailableModules().size());
 		
 		Module_A_B abInst = new Module_A_B();
 		container.addModule(abInst);
 		
-		assertEquals("Container should now have 1 loaded module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 loaded module", 1, container.getModules(false).size());
 		assertEquals("Container should now have no available modules", 0, container.getAvailableModules().size());
 		assertTrue("Should have loaded in the alternate", contains(container, abInst));
 		
@@ -414,7 +414,7 @@ public class ModuleContainerTest {
 		Module_E eInst1 = new Module_E();
 		container.addModule(eInst1);
 		
-		assertEquals("Container should now have 1 loaded module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 loaded module", 1, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, eInst1));
 		assertTrue("Cannot retrieve a module by its class", containsInstance(container, Module_E.class));
 		
@@ -424,7 +424,7 @@ public class ModuleContainerTest {
 		// add again and make sure that it didn't call copy
 		container.addModule(eInst1);
 		
-		assertEquals("Container should now have 1 loaded module", 1, container.getModules().size());
+		assertEquals("Container should now have 1 loaded module", 1, container.getModules(false).size());
 		assertTrue("Added module but it's not in the list", contains(container, eInst1));
 		assertTrue("Cannot retrieve a module by its class", containsInstance(container, Module_E.class));
 		
@@ -432,7 +432,7 @@ public class ModuleContainerTest {
 		ModuleContainer<OpenSHA_Module> container2 = new ModuleContainer<>();
 		container2.addModule(eInst1);
 		
-		assertEquals("Container should now have 1 loaded module", 1, container2.getModules().size());
+		assertEquals("Container should now have 1 loaded module", 1, container2.getModules(false).size());
 		assertTrue("Cannot retrieve a module by its class", containsInstance(container2, Module_E.class));
 		Module_E eInst2 = container2.getModule(Module_E.class);
 		assertTrue("Sub-module wasn't copied when added to a new container", eInst1 != eInst2);

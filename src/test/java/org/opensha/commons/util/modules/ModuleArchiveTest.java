@@ -312,12 +312,12 @@ public class ModuleArchiveTest {
 		};
 		archive.addAvailableModule(textCall, TextModule.class);
 		assertEquals("should start with 1 available", 1, archive.getAvailableModules().size());
-		assertEquals("should start with 0 loaded", 0, archive.getModules().size());
+		assertEquals("should start with 0 loaded", 0, archive.getModules(false).size());
 		
 		File outputFile = new File(parentDir, "available_test.zip");
 		archive.write(outputFile);
 		assertEquals("should now have 0 available", 0, archive.getAvailableModules().size());
-		assertEquals("should now have 1 loaded", 1, archive.getModules().size());
+		assertEquals("should now have 1 loaded", 1, archive.getModules(false).size());
 		
 		archive = new ModuleArchive<>(outputFile);
 		TextModule module = archive.getModule(TextModule.class);
@@ -337,12 +337,12 @@ public class ModuleArchiveTest {
 		};
 		archive.addAvailableModule(nestingCall, NestedModule.class);
 		assertEquals("should start with 1 available", 1, archive.getAvailableModules().size());
-		assertEquals("should start with 0 loaded", 0, archive.getModules().size());
+		assertEquals("should start with 0 loaded", 0, archive.getModules(false).size());
 		
 		outputFile = new File(parentDir, "available_nested_test.zip");
 		archive.write(outputFile);
 		assertEquals("should now have 0 available", 0, archive.getAvailableModules().size());
-		assertEquals("should now have 1 loaded", 1, archive.getModules().size());
+		assertEquals("should now have 1 loaded", 1, archive.getModules(false).size());
 		
 		archive = new ModuleArchive<>(outputFile);
 		NestedModule nested = archive.getModule(NestedModule.class);

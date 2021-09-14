@@ -603,7 +603,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		init(rupSet.getFaultSectionDataList(), rupSet.getSectionIndicesForAllRups(), rupSet.getMagForAllRups(),
 				rupSet.getAveRakeForAllRups(), rupSet.getAreaForAllRups(), rupSet.getLengthForAllRups());
 		copyCacheFrom(rupSet);
-		for (OpenSHA_Module module : rupSet.getModules())
+		for (OpenSHA_Module module : rupSet.getModules(true))
 			addModule(module);
 	}
 	
@@ -1261,7 +1261,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				rupSet.rupAreas, rupSet.rupLengths);
 		
 		if (copyModules)
-			for (OpenSHA_Module module : rupSet.getModules())
+			for (OpenSHA_Module module : rupSet.getModules(true))
 				builder.addModule(module);
 		
 		return builder;

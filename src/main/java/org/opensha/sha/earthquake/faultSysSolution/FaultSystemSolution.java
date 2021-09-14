@@ -265,7 +265,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		FaultSystemSolution copy = new FaultSystemSolution(newArchive.getModule(FaultSystemRupSet.class),
 				Arrays.copyOf(rates, rates.length));
 		loadAllAvailableModules();
-		for (OpenSHA_Module module : getModules())
+		for (OpenSHA_Module module : getModules(true))
 			copy.addModule(module);
 		newArchive.addModule(copy);
 		return copy;

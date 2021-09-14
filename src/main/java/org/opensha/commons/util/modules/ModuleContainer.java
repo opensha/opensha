@@ -469,10 +469,10 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	/**
-	 * @return unmodifiable view of the current modules (not including any available modules not-yet loaded)
+	 * @return unmodifiable view of the current modules, will load any not-yet loaded modules first
 	 */
 	public List<E> getModules() {
-		return getModules(false);
+		return getModules(true);
 	}
 	
 	/**
@@ -480,6 +480,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @return unmodifiable view of the current modules
 	 */
 	public List<E> getModules(boolean loadAvailable) {
+		System.out.println("GET CALLED, loadAvailabe="+loadAvailable+", loaded="+modules.size()+", available="+availableModules.size());
 		if (loadAvailable)
 			loadAllAvailableModules();
 		return Collections.unmodifiableList(modules);
