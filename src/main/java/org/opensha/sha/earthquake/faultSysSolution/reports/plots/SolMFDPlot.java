@@ -82,7 +82,8 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 				}
 				// make sure to include the whole constraint in the plot
 				for (Point2D pt : constraint.getMagFreqDist())
-					minY = Math.min(minY, Math.pow(10, Math.floor(Math.log10(pt.getY())+0.1)));
+					if (pt.getY() > 1e-10)
+						minY = Math.min(minY, Math.pow(10, Math.floor(Math.log10(pt.getY())+0.1)));
 				for (Point2D pt : constraint.getMagFreqDist().getCumRateDistWithOffset())
 					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(pt.getY())-0.1)));
 			}
