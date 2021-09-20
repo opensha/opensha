@@ -17,9 +17,17 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.SolidFillPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 
-public class ParticipationRatePlot extends AbstractSolutionPlot {
+public class ParticipationRatePlot extends AbstractSolutionPlot implements SolidFillPlot {
+
+	boolean fillSurfaces = false;
+
+	@Override
+	public void setFillSurfaces(boolean fillSurfaces){
+		this.fillSurfaces = fillSurfaces;
+	}
 
 	@Override
 	public String getName() {
@@ -70,6 +78,7 @@ public class ParticipationRatePlot extends AbstractSolutionPlot {
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		mapMaker.setWriteGeoJSON(true);
+		mapMaker.setFillSurfaces(fillSurfaces);
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		CPT ratioCPT = null;

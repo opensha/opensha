@@ -32,9 +32,17 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.SolidFillPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 
-public class SlipRatePlots extends AbstractRupSetPlot {
+public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
+
+	boolean fillSurfaces = false;
+
+	@Override
+	public void setFillSurfaces(boolean fillSurfaces){
+		this.fillSurfaces = fillSurfaces;
+	}
 
 	@Override
 	public String getName() {
@@ -46,6 +54,7 @@ public class SlipRatePlots extends AbstractRupSetPlot {
 			String relPathToResources, String topLink) throws IOException {
 		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(true);
+		mapMaker.setFillSurfaces(fillSurfaces);
 		
 		List<String> lines = new ArrayList<>();
 		
