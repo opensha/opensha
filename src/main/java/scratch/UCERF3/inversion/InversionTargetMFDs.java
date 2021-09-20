@@ -75,7 +75,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 	 * 
 	 * @return MFD constraints
 	 */
-	public abstract List<MFD_InversionConstraint> getMFD_Constraints();
+	public abstract List<? extends MFD_InversionConstraint> getMFD_Constraints();
 	
 	/**
 	 * This returns target sub-seismogenic MFDs for each fault section, and it's contents are implementation-dependent
@@ -145,7 +145,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 		private IncrementalMagFreqDist onFaultSupraSeisMFD;
 		private IncrementalMagFreqDist onFaultSubSeisMFD;
 		private IncrementalMagFreqDist trulyOffFaultMFD;
-		private ImmutableList<MFD_InversionConstraint> mfdConstraints;
+		private ImmutableList<? extends MFD_InversionConstraint> mfdConstraints;
 		private SubSeismoOnFaultMFDs subSeismoOnFaultMFDs;
 		
 		private Precomputed() {
@@ -160,7 +160,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 
 		public Precomputed(FaultSystemRupSet rupSet, IncrementalMagFreqDist totalRegionalMFD,
 				IncrementalMagFreqDist onFaultSupraSeisMFD, IncrementalMagFreqDist onFaultSubSeisMFD,
-				IncrementalMagFreqDist trulyOffFaultMFD, List<MFD_InversionConstraint> mfdConstraints,
+				IncrementalMagFreqDist trulyOffFaultMFD, List<? extends MFD_InversionConstraint> mfdConstraints,
 				SubSeismoOnFaultMFDs subSeismoOnFaultMFDs) {
 			super(rupSet);
 			this.totalRegionalMFD = totalRegionalMFD;
@@ -303,7 +303,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 		}
 
 		@Override
-		public final List<MFD_InversionConstraint> getMFD_Constraints() {
+		public final List<? extends MFD_InversionConstraint> getMFD_Constraints() {
 			return mfdConstraints;
 		}
 		

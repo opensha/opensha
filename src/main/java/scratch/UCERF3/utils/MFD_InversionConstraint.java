@@ -116,6 +116,7 @@ public class MFD_InversionConstraint implements XMLSaveable {
 
 		private TypeAdapter<IncrementalMagFreqDist> mfdAdapter = new IncrementalMagFreqDist.Adapter();
 		private TypeAdapter<Region> regionAdapter = new Region.Adapter();
+		private TypeAdapter<EvenlyDiscretizedFunc> weightsAdapter = new EvenlyDiscretizedFunc.Adapter();
 
 		@Override
 		public void write(JsonWriter out, MFD_InversionConstraint value) throws IOException {
@@ -132,6 +133,11 @@ public class MFD_InversionConstraint implements XMLSaveable {
 				Region region = new Region(value.region);
 				regionAdapter.write(out, region);
 			}
+
+			if(value instanceof MFD_WeightedInversionConstraint){
+				out.name("weights");
+				weightsAdapter.write(out, ((MFD_WeightedInversionConstraint) value).weights);
+			}
 			
 			out.endObject();
 		}
@@ -142,24 +148,32 @@ public class MFD_InversionConstraint implements XMLSaveable {
 			
 			IncrementalMagFreqDist mfd = null;
 			Region region = null;
+			EvenlyDiscretizedFunc weights = null;
 			while (in.hasNext()) {
 				switch (in.nextName()) {
-				case "mfd":
-					mfd = mfdAdapter.read(in);
-					break;
-				case "region":
-					region = regionAdapter.read(in);
-					break;
-
-				default:
-					in.skipValue();
-					break;
+					case "mfd":
+						mfd = mfdAdapter.read(in);
+						break;
+					case "region":
+						region = regionAdapter.read(in);
+						break;
+					case "weights":
+						weights = weightsAdapter.read(in);
+						break;
+					default:
+						in.skipValue();
+						break;
 				}
 			}
 			Preconditions.checkNotNull(mfd, "MFD not specified");
 			
 			in.endObject();
-			return new MFD_InversionConstraint(mfd, region);
+
+			if (weights == null) {
+				return new MFD_InversionConstraint(mfd, region);
+			} else {
+				return new MFD_WeightedInversionConstraint(mfd, region, weights);
+			}
 		}
 		
 	}

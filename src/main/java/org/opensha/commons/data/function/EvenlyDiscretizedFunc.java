@@ -208,7 +208,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	/**
 	 * Returns the minimum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 * Note: An alternative would be to check for the min value every time a
@@ -224,7 +224,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	/**
 	 * Returns the maximum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 * Note: An alternative would be to check for the min value every time a
@@ -240,7 +240,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	
 	/**
 	 * Returns the x index for the maximum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 */
