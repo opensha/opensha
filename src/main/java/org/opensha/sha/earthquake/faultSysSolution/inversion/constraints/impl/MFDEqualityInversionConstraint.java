@@ -28,11 +28,11 @@ public class MFDEqualityInversionConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;
 	private double weight;
-	private List<MFD_InversionConstraint> mfdEqualityConstraints;
+	private List<? extends MFD_InversionConstraint> mfdEqualityConstraints;
 	private HashSet<Integer> excludeRupIndexes;
 
 	public MFDEqualityInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<MFD_InversionConstraint> mfdEqualityConstraints, HashSet<Integer> excludeRupIndexes) {
+			List<? extends MFD_InversionConstraint> mfdEqualityConstraints, HashSet<Integer> excludeRupIndexes) {
 		this.rupSet = rupSet;
 		this.weight = weight;
 		this.mfdEqualityConstraints = mfdEqualityConstraints;

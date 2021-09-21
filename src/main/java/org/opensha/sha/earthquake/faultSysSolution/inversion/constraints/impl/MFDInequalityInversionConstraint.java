@@ -24,10 +24,10 @@ public class MFDInequalityInversionConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;
 	private double weight;
-	private List<MFD_InversionConstraint> mfdInequalityConstraints;
+	private List<? extends MFD_InversionConstraint> mfdInequalityConstraints;
 
 	public MFDInequalityInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<MFD_InversionConstraint> mfdInequalityConstraints) {
+			List<? extends MFD_InversionConstraint> mfdInequalityConstraints) {
 		this.rupSet = rupSet;
 		this.weight = weight;
 		this.mfdInequalityConstraints = mfdInequalityConstraints;

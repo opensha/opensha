@@ -329,7 +329,8 @@ public class Inversions {
 		ops.addOption(normSlipWeight);
 		
 		Option mfdConstraint = new Option("mfd", "mfd-constraint", false, "Enables the MFD constraint. "
-				+ "Must supply either --infer-target-gr or --mfd-total-rate");
+				+ "Must supply either --infer-target-gr or --mfd-total-rate, or Rupture Set must have "
+				+ "InversionTargetMFDs module already attached.");
 		mfdConstraint.setRequired(false);
 		ops.addOption(mfdConstraint);
 		
@@ -455,10 +456,15 @@ public class Inversions {
 				if (cmd.hasOption("b-value"))
 					bValue = Double.parseDouble(cmd.getOptionValue("b-value"));
 				
-				IncrementalMagFreqDist targetMFD;
+				InversionTargetMFDs targetMFDs;
+				
 				if (cmd.hasOption("infer-target-gr")) {
-					targetMFD = inferTargetGRFromSlipRates(rupSet, bValue);
-				} else {
+					IncrementalMagFreqDist targetMFD = inferTargetGRFromSlipRates(rupSet, bValue);
+					
+					List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetMFD, null));
+					
+					targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetMFD, null, null, mfdConstraints, null);
+				} else if (cmd.hasOption("mfd-total-rate")) {
 					double minX = 0.1*Math.floor(rupSet.getMinMag()*10d);
 					double minTargetMag = minX;
 					if (cmd.hasOption("mfd-min-mag")) {
@@ -475,15 +481,25 @@ public class Inversions {
 							tempHist.getMinX(), tempHist.getMaxX(), tempHist.size());
 					targetGR.scaleToCumRate(minTargetMag, totRate);
 					
-					targetMFD = targetGR;
+					List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetGR, null));
+					
+					targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetGR, null, null, mfdConstraints, null);
+				} else {
+					Preconditions.checkState(rupSet.hasModule(InversionTargetMFDs.class),
+							"MFD Constraint enabled, but no target MFD specified. Rupture Set must either already have "
+							+ "target MFDs attached, or MFD should be specified via --infer-target-gr or --mfd-total-rate <rate>.");
+					targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 				}
 				
-				List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetMFD, null));
+				if (!rupSet.hasModule(InversionTargetMFDs.class))
+					rupSet.addModule(targetMFDs);
 				
-				rupSet.addModule(new InversionTargetMFDs.Precomputed(
-						rupSet, null, targetMFD, null, null, mfdConstraints, null));
+				List<? extends MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_Constraints();
 				
-				System.out.println("MFD Constraint:\n"+targetMFD);
+				for (MFD_InversionConstraint constr : mfdConstraints)
+					System.out.println("MFD Constraint for region "
+							+(constr.getRegion() == null ? "null" : constr.getRegion().getName())
+							+":\n"+constr.getMagFreqDist());
 				constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, mfdConstraints, null));
 			}
 			
