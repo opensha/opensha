@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.dom4j.DocumentException;
 import org.jfree.chart.plot.DatasetRenderingOrder;
@@ -22,6 +23,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
@@ -31,8 +33,8 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.SlipEnabledSolution;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -44,9 +46,9 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.OLD_UCERF3_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.SectionMFD_constraint;
@@ -71,7 +73,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	private InversionFaultSystemRupSet rupSet;
 	
 	private InversionModels invModel;
-	private LogicTreeBranch branch;
+	private U3LogicTreeBranch branch;
 	
 	/**
 	 * Inversion constraint weights and such. Note that this won't include the initial rup model or
@@ -148,7 +150,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 				branch = rupSet.getLogicTreeBranch();
 			} else {
 				// see if we can fill anything in from the rupSet
-				LogicTreeBranch rBranch = rupSet.getLogicTreeBranch();
+				U3LogicTreeBranch rBranch = rupSet.getLogicTreeBranch();
 				for (int i=0; i<branch.size(); i++) {
 					if (branch.getValue(i) == null && rBranch.getValue(i) != null)
 						branch.setValue(rBranch.getValue(i));
@@ -180,6 +182,22 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		// these can all be null
 		this.inversionConfiguration = config;
 		this.energies = energies;
+		
+		addAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
+
+			@Override
+			public SubSeismoOnFaultMFDs call() throws Exception {
+				return new SubSeismoOnFaultMFDs(getFinalSubSeismoOnFaultMFD_List());
+			}
+		}, SubSeismoOnFaultMFDs.class);
+		
+		addAvailableModule(new Callable<GridSourceProvider>() {
+
+			@Override
+			public GridSourceProvider call() throws Exception {
+				return new UCERF3_GridSourceGenerator(InversionFaultSystemSolution.this);
+			}
+		}, GridSourceProvider.class);
 	}
 	
 	@Override
@@ -242,8 +260,8 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * @param props
 	 * @return
 	 */
-	private LogicTreeBranch loadBranch(Map<String, String> props) {
-		List<Class<? extends LogicTreeBranchNode<?>>> classes = LogicTreeBranch.getLogicTreeNodeClasses();
+	private U3LogicTreeBranch loadBranch(Map<String, String> props) {
+		List<Class<? extends LogicTreeBranchNode<?>>> classes = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		
 		List<LogicTreeBranchNode<?>> values = Lists.newArrayList();
 		
@@ -274,7 +292,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			values.add(value);
 		}
 		
-		return LogicTreeBranch.fromValues(values);
+		return U3LogicTreeBranch.fromValues(values);
 	}
 	
 //	private double offFaultAseisFactor = Double.NaN;
@@ -502,7 +520,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		return invModel;
 	}
 
-	public LogicTreeBranch getLogicTreeBranch() {
+	public U3LogicTreeBranch getLogicTreeBranch() {
 		return branch;
 	}
 
@@ -524,10 +542,10 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		UCERF2_MFD_ConstraintFetcher ucerf2Fetch = new UCERF2_MFD_ConstraintFetcher();
 		
 		// make sure it's instantiated
-		InversionTargetMFDs inversionTargetMFDs = rupSet.getInversionTargetMFDs();
+		U3InversionTargetMFDs inversionTargetMFDs = rupSet.getInversionTargetMFDs();
 		
 		// Statewide
-		GraphWindow gw = getMFDPlotWindow(inversionTargetMFDs.getTotalTargetGR(), inversionTargetMFDs.getOnFaultSupraSeisMFD(),
+		GraphWindow gw = getMFDPlotWindow(inversionTargetMFDs.getTotalRegionalMFD(), inversionTargetMFDs.getTotalOnFaultSupraSeisMFD(),
 				RELM_RegionUtils.getGriddedRegionInstance(), ucerf2Fetch);
 		gw.setVisible(true);
 		
@@ -682,8 +700,8 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * account for any inversion imposed slip-rate changes.
 	 * @return
 	 */
-	public List<GutenbergRichterMagFreqDist> getFinalSubSeismoOnFaultMFD_List() {
-		List<GutenbergRichterMagFreqDist> subSeisMFD_list;
+	public List<? extends IncrementalMagFreqDist> getFinalSubSeismoOnFaultMFD_List() {
+		List<? extends IncrementalMagFreqDist> subSeisMFD_list;
 		// make sure we deal with special case for GR moFix branch
 		boolean noFix = branch.getValue(MomentRateFixes.class) == MomentRateFixes.NONE;
 		boolean gr = branch.getValue(InversionModels.class).isGR();
@@ -691,17 +709,9 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		if (noFix && gr) {
 			subSeisMFD_list = getImpliedSubSeisGR_MFD_List();	// calculate from final slip rates
 		} else {
-			subSeisMFD_list = rupSet.getInversionTargetMFDs().getSubSeismoOnFaultMFD_List();
+			subSeisMFD_list = rupSet.getInversionTargetMFDs().getOnFaultSubSeisMFDs().getAll();
 		}
 		return subSeisMFD_list;
-	}
-	
-	
-	@Override
-	public synchronized List<? extends IncrementalMagFreqDist> getSubSeismoOnFaultMFD_List() {
-		if (subSeismoOnFaultMFDs == null)
-			subSeismoOnFaultMFDs = getFinalSubSeismoOnFaultMFD_List();
-		return super.getSubSeismoOnFaultMFD_List();
 	}
 
 	/**
@@ -730,7 +740,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 */
 	public  IncrementalMagFreqDist getFinalTotalNucleationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
 		IncrementalMagFreqDist supraMFD = this.calcNucleationMFD_forSect(sectIndex, minMag, maxMag, numMag);
-		GutenbergRichterMagFreqDist subSeisMFD = getFinalSubSeismoOnFaultMFD_List().get(sectIndex);
+		IncrementalMagFreqDist subSeisMFD = getFinalSubSeismoOnFaultMFD_List().get(sectIndex);
 //		System.out.println("Subseismo:\n"+subSeisMFD+"\nsupra-seismo\n"+supraMFD);
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
 		for(int i=0;i<numMag;i++) {
@@ -747,8 +757,8 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * @return
 	 */
 	public SummedMagFreqDist getFinalTotalSubSeismoOnFaultMFD() {
-		SummedMagFreqDist totalSubSeismoOnFaultMFD = new SummedMagFreqDist(InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG, InversionTargetMFDs.DELTA_MAG);
-		for(GutenbergRichterMagFreqDist mfd: getFinalSubSeismoOnFaultMFD_List()) {
+		SummedMagFreqDist totalSubSeismoOnFaultMFD = new SummedMagFreqDist(U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
+		for(IncrementalMagFreqDist mfd: getFinalSubSeismoOnFaultMFD_List()) {
 			totalSubSeismoOnFaultMFD.addIncrementalMagFreqDist(mfd);
 		}
 		totalSubSeismoOnFaultMFD.setName("InversionFaultSystemSolution.getFinalTotalSubSeismoOnFaultMFD()");
@@ -757,9 +767,9 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	
 	public SummedMagFreqDist getFinalSubSeismoOnFaultMFDForParent(int parentSectionID) {
 		
-		SummedMagFreqDist mfd = new SummedMagFreqDist(InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG, InversionTargetMFDs.DELTA_MAG);
+		SummedMagFreqDist mfd = new SummedMagFreqDist(U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
 		
-		List<GutenbergRichterMagFreqDist> subSeismoMFDs = getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeismoMFDs = getFinalSubSeismoOnFaultMFD_List();
 		
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
 			if (rupSet.getFaultSectionData(sectIndex).getParentSectionId() != parentSectionID)
@@ -778,9 +788,9 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 */
 	private ArrayList<GutenbergRichterMagFreqDist> getImpliedSubSeisGR_MFD_List() {
 		
-		double minMag = InversionTargetMFDs.MIN_MAG;
-		double deltaMag = InversionTargetMFDs.DELTA_MAG;
-		int numMag = InversionTargetMFDs.NUM_MAG;
+		double minMag = U3InversionTargetMFDs.MIN_MAG;
+		double deltaMag = U3InversionTargetMFDs.DELTA_MAG;
+		int numMag = U3InversionTargetMFDs.NUM_MAG;
 		ArrayList<GutenbergRichterMagFreqDist> grNuclMFD_List = new ArrayList<GutenbergRichterMagFreqDist>();
 		GutenbergRichterMagFreqDist tempGR = new GutenbergRichterMagFreqDist(minMag, numMag, deltaMag);
 		for(int s=0; s<rupSet.getNumSections(); s++) {
@@ -814,20 +824,20 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * 
 	 * @return
 	 */
-	public IncrementalMagFreqDist getFinalTrulyOffFaultMFD() {
-		InversionTargetMFDs inversionTargetMFDs = rupSet.getInversionTargetMFDs();
-		
-		if(branch.getValue(MomentRateFixes.class) == MomentRateFixes.NONE ||
-				branch.getValue(MomentRateFixes.class) == MomentRateFixes.APPLY_IMPLIED_CC ) {
+	public static IncrementalMagFreqDist getFinalTrulyOffFaultMFD(InversionTargetMFDs inversionTargetMFDs,
+			MomentRateFixes momRateFixes, double mMaxOffFault, IncrementalMagFreqDist totalSubSeismoMFD,
+			IncrementalMagFreqDist totalSupraSeismoRegionalMFD) {
+		if(momRateFixes == MomentRateFixes.NONE || momRateFixes == MomentRateFixes.APPLY_IMPLIED_CC ) {
 					
-			SummedMagFreqDist finalTrulyOffMFD = new SummedMagFreqDist(inversionTargetMFDs.MIN_MAG, inversionTargetMFDs.NUM_MAG, inversionTargetMFDs.DELTA_MAG);
-			finalTrulyOffMFD.addIncrementalMagFreqDist(inversionTargetMFDs.getTotalTargetGR());
-			finalTrulyOffMFD.subtractIncrementalMagFreqDist(calcNucleationMFD_forRegion(RELM_RegionUtils.getGriddedRegionInstance(), inversionTargetMFDs.MIN_MAG, inversionTargetMFDs.MAX_MAG, inversionTargetMFDs.DELTA_MAG, true));
-			finalTrulyOffMFD.subtractIncrementalMagFreqDist(getFinalTotalSubSeismoOnFaultMFD());
+			SummedMagFreqDist finalTrulyOffMFD = new SummedMagFreqDist(U3InversionTargetMFDs.MIN_MAG,
+					U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
+			finalTrulyOffMFD.addIncrementalMagFreqDist(inversionTargetMFDs.getTotalRegionalMFD());
+			finalTrulyOffMFD.subtractIncrementalMagFreqDist(totalSubSeismoMFD);
+			finalTrulyOffMFD.subtractIncrementalMagFreqDist(totalSupraSeismoRegionalMFD);
 			
 			// zero out values above mMaxOffFault
-			double mMaxOffFault = getLogicTreeBranch().getValue(MaxMagOffFault.class).getMaxMagOffFault();
-			mMaxOffFault -= InversionTargetMFDs.DELTA_MAG/2;
+//			double mMaxOffFault = getLogicTreeBranch().getValue(MaxMagOffFault.class).getMaxMagOffFault();
+			mMaxOffFault -= U3InversionTargetMFDs.DELTA_MAG/2;
 			
 			// SummedMagFreqDist doesn't allow set, so put it in a new one
 			IncrementalMagFreqDist truncatedMFD = new IncrementalMagFreqDist(
@@ -846,6 +856,16 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			return finalTrulyOffMFD;
 		}
 	}
+	
+	public IncrementalMagFreqDist getFinalTrulyOffFaultMFD() {
+		IncrementalMagFreqDist totalSupraSeismoRegionalMFD = calcNucleationMFD_forRegion(RELM_RegionUtils.getGriddedRegionInstance(),
+				U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.MAX_MAG, U3InversionTargetMFDs.DELTA_MAG, true);
+		IncrementalMagFreqDist totalSubSeismoMFD = getFinalTotalSubSeismoOnFaultMFD();
+		return getFinalTrulyOffFaultMFD(getRupSet().getInversionTargetMFDs(),
+				getLogicTreeBranch().getValue(MomentRateFixes.class),
+				getLogicTreeBranch().getValue(MaxMagOffFault.class).getMaxMagOffFault(),
+				totalSubSeismoMFD, totalSupraSeismoRegionalMFD);
+	}
 
 	
 	
@@ -854,7 +874,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * @return
 	 */
 	public IncrementalMagFreqDist getFinalTotalGriddedSeisMFD() {
-		SummedMagFreqDist totGridSeisMFD = new SummedMagFreqDist(InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG, InversionTargetMFDs.DELTA_MAG);
+		SummedMagFreqDist totGridSeisMFD = new SummedMagFreqDist(U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG, U3InversionTargetMFDs.DELTA_MAG);
 		totGridSeisMFD.addIncrementalMagFreqDist(getFinalTrulyOffFaultMFD());
 		totGridSeisMFD.addIncrementalMagFreqDist(getFinalTotalSubSeismoOnFaultMFD());
 		totGridSeisMFD.setName("InversionFaultSystemSolution.getFinalTotalGriddedSeisMFD()");
@@ -958,7 +978,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 //						"/tmp/ucerf2_fm2_compare.zip"));
 //		simple.plotMFDs(Lists.newArrayList(OLD_UCERF3_MFD_ConstraintFetcher.getTargetMFDConstraint(TimeAndRegion.ALL_CA_1850)));
 		
-		InversionFaultSystemSolution inv = FaultSystemIO.loadInvSol(new File(
+		InversionFaultSystemSolution inv = U3FaultSystemIO.loadInvSol(new File(
 				"/tmp/FM2_1_UC2ALL_ShConStrDrp_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_" +
 				"SpatSeisU2_VarPaleo0.1_VarSectNuclMFDWt0.01_VarParkfield10000_sol.zip"));
 		

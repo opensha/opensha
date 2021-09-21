@@ -29,6 +29,7 @@ import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -36,9 +37,15 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
@@ -59,11 +66,8 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.SlipEnabledSolution;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SegmentationCalculator {
 	
@@ -694,9 +698,11 @@ public class SegmentationCalculator {
 			this.sect = sect;
 			this.parentSectRates = parentSectRates;
 			this.sectRates = sectRates;
-			this.rupSetSlipRate = sol.getRupSet().getSlipRateForSection(sect.getSectionId());
-			if (sol instanceof SlipEnabledSolution)
-				this.solSlipRate = ((SlipEnabledSolution)sol).calcSlipRateForSect(sect.getSectionId());
+			FaultSystemRupSet rupSet = sol.getRupSet();
+			this.rupSetSlipRate = rupSet.getSlipRateForSection(sect.getSectionId());
+			if (rupSet.hasModule(SlipAlongRuptureModel.class) && rupSet.hasModule(AveSlipModule.class))
+				this.solSlipRate = rupSet.getModule(SlipAlongRuptureModel.class).calcSlipRateForSects(
+						sol, rupSet.requireModule(AveSlipModule.class))[sect.getSectionId()];
 			else
 				this.solSlipRate = Double.NaN;
 		}
@@ -1227,9 +1233,10 @@ public class SegmentationCalculator {
 			int height = 300 + 400*specs.size();
 			gp.drawGraphPanel(specs, false, logY, xRanges, yRanges);
 			
-			CombinedDomainXYPlot plot = (CombinedDomainXYPlot)gp.getPlot();
-			for (int i=0; i<specs.size(); i++)
-				((XYPlot)plot.getSubplots().get(i)).setWeight(i < specs.size()-1 ? 5: 3);
+			int[] weights = new int[specs.size()];
+			for (int i=0; i<weights.length; i++)
+				weights[i] = i < specs.size()-1 ? 5 : 3;
+			PlotUtils.setSubPlotWeights(gp, weights);
 
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
@@ -1396,7 +1403,7 @@ public class SegmentationCalculator {
 	
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(new File(
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(
 				rupSetDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
 		double jumpDist = 15d;
 		File distCacheFile = new File(rupSetDir, "fm3_1_dist_az_cache.csv");
@@ -1407,8 +1414,8 @@ public class SegmentationCalculator {
 		ClusterConnectionStrategy connStrat = new InputJumpsOrDistClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist, new ArrayList<>());
 		RuptureConnectionSearch rsConnSearch = new RuptureConnectionSearch(rupSet, distAzCalc,
 				1000d, RuptureConnectionSearch.CUMULATIVE_JUMPS_DEFAULT);
-		rupSet.buildClusterRups(rsConnSearch);
-		List<ClusterRupture> rups = rupSet.getClusterRuptures();
+		rupSet.addModule(ClusterRuptures.instance(rupSet, rsConnSearch));
+		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
 		
 		SegmentationCalculator calc = new SegmentationCalculator(sol, rups, connStrat, distAzCalc, new double[] {6.5d, 7.5d});
 		calc = calc.combineMultiJumps(true);

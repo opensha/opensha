@@ -62,9 +62,10 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
+import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 
 import com.google.common.base.Joiner;
@@ -141,7 +142,7 @@ ParameterChangeListener {
 	
 	private Map<VariableLogicTreeBranch, CSVFile<String>> resultFilesMap;
 	private ArrayList<String> curNames;
-	private ArrayList<LogicTreeBranch> curBranches;
+	private ArrayList<U3LogicTreeBranch> curBranches;
 	private ArrayList<ArbitrarilyDiscretizedFunc> curEnergyVsTimes;
 	private ArrayList<ArbitrarilyDiscretizedFunc> curEnergyVsIters;
 	private ArrayList<double[]> curFinalEnergies;
@@ -339,13 +340,13 @@ ParameterChangeListener {
 				variations.add(variation);
 			}
 		}
-		return new VariableLogicTreeBranch(LogicTreeBranch.fromValues(
+		return new VariableLogicTreeBranch(U3LogicTreeBranch.fromValues(
 				false, nodes.toArray(new LogicTreeBranchNode[0])), variations);
 	}
 	
 	private void buildFunctions(VariableLogicTreeBranch branch) {
 		curNames = new ArrayList<String>();
-		curBranches = new ArrayList<LogicTreeBranch>();
+		curBranches = new ArrayList<U3LogicTreeBranch>();
 		curEnergyVsTimes = new ArrayList<ArbitrarilyDiscretizedFunc>();
 		curEnergyVsIters = new ArrayList<ArbitrarilyDiscretizedFunc>();
 		curPerturbsPerItersVsTimes = new ArrayList<ArbitrarilyDiscretizedFunc>();
@@ -365,7 +366,7 @@ ParameterChangeListener {
 				LogicTreeBranchNode<?> node = branch.getValue(i);
 				if (node == null) {
 					if (candidate.getValue(i) == null)
-						System.out.println("WFT? Class: "+LogicTreeBranch.getLogicTreeNodeClasses().get(i));
+						System.out.println("WFT? Class: "+U3LogicTreeBranch.getLogicTreeNodeClasses().get(i));
 					diffNames.add(candidate.getValue(i).getShortName());
 				}
 			}
@@ -490,7 +491,7 @@ ParameterChangeListener {
 					// single run case, show all component of energy
 					funcs.addAll(loadIndividualEnergies(false));
 					title += " (Single Run Components!)";
-					chars = ThreadedSimulatedAnnealing.getEnergyBreakdownChars();
+					chars = SimulatedAnnealing.getEnergyBreakdownChars();
 				} else {
 					funcs.addAll(curEnergyVsIters);
 				}
@@ -503,7 +504,7 @@ ParameterChangeListener {
 					// single run case, show all component of energy
 					funcs.addAll(loadIndividualEnergies(true));
 					title += " (Single Run Components!)";
-					chars = ThreadedSimulatedAnnealing.getEnergyBreakdownChars();
+					chars = SimulatedAnnealing.getEnergyBreakdownChars();
 				} else {
 					funcs.addAll(curEnergyVsTimes);
 				}

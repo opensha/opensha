@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.zip.ZipException;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -23,13 +22,14 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
@@ -101,7 +101,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	 * @param fetch
 	 * @param initial
 	 */
-	public UCERF3_CompoundSol_ERF(FaultSystemSolutionFetcher fetch, LogicTreeBranch initial) {
+	public UCERF3_CompoundSol_ERF(FaultSystemSolutionFetcher fetch, U3LogicTreeBranch initial) {
 		
 		this.fetch = fetch;
 		
@@ -113,8 +113,8 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		if (fetch != null && !fetch.getBranches().isEmpty()) {
 			// build enum paramters, allow every option in the fetcher
 			// note that not-present combinations may still be possible
-			Collection<LogicTreeBranch> branches = fetch.getBranches();
-			List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = LogicTreeBranch.getLogicTreeNodeClasses();
+			Collection<U3LogicTreeBranch> branches = fetch.getBranches();
+			List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
 			for (int i=0; i < logicTreeNodeClasses.size(); i++) {
 				Class<? extends LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
 				EnumParameter<?> param = buildParam(clazz, branches, initial);
@@ -131,7 +131,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		if (enumParamsMap == null)
 			return;
 
-		List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = LogicTreeBranch.getLogicTreeNodeClasses();
+		List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		for (int i=0; i < logicTreeNodeClasses.size(); i++) {
 			Class<? extends LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
 			EnumParameter<?> param = enumParamsMap.get(clazz);
@@ -143,7 +143,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 			adjustableParams.removeParameter(fileParam);
 	}
 	
-	public void setLogicTreeBranch(LogicTreeBranch branch) {
+	public void setLogicTreeBranch(U3LogicTreeBranch branch) {
 		Preconditions.checkArgument(branch.isFullySpecified(), "Branch must be fully specified");
 		Preconditions.checkArgument(fetch.getBranches().contains(branch), "Branch not present in compound solution");
 		
@@ -153,8 +153,8 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private static EnumParameter buildParam(
-			Class<? extends LogicTreeBranchNode<?>> clazz, Collection<LogicTreeBranch> branches,
-			LogicTreeBranch initial) {
+			Class<? extends LogicTreeBranchNode<?>> clazz, Collection<U3LogicTreeBranch> branches,
+			U3LogicTreeBranch initial) {
 		HashSet<Enum> set = new HashSet<Enum>();
 		
 		Enum defaultValue;
@@ -165,7 +165,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		
 		String name = null;
 		
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			Preconditions.checkState(branch.isFullySpecified());
 			LogicTreeBranchNode<?> val = branch.getValueUnchecked(clazz);
 			Preconditions.checkNotNull(val);
@@ -199,7 +199,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		for (EnumParameter<?> param : enumParamsMap.values()) {
 			vals.add((LogicTreeBranchNode<?>) param.getValue());
 		}
-		LogicTreeBranch branch = LogicTreeBranch.fromValues(vals);
+		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(vals);
 		Preconditions.checkState(branch.isFullySpecified(), "Somehow branch from enums isn't fully specified");
 		
 		FaultSystemSolution sol = fetch.getSolution(branch);
@@ -225,7 +225,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 //		FM3_1_ZENGBB_Shaw09Mod_DsrUni_CharConst_M5Rate7.9_MMaxOff7.9_NoFix_SpatSeisU2
-		LogicTreeBranch branch = LogicTreeBranch.fromValues(FaultModels.FM3_1, DeformationModels.ZENGBB,
+		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(FaultModels.FM3_1, DeformationModels.ZENGBB,
 				ScalingRelationships.SHAW_2009_MOD, SlipAlongRuptureModels.UNIFORM, InversionModels.CHAR_CONSTRAINED,
 				TotalMag5Rate.RATE_7p9, MaxMagOffFault.MAG_7p9, MomentRateFixes.NONE, SpatialSeisPDF.UCERF2);
 		erf.setLogicTreeBranch(branch);

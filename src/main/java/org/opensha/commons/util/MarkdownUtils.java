@@ -547,6 +547,24 @@ public class MarkdownUtils {
 		out.close();
 	}
 	
+	/**
+	 * Utility method for bold & centered text, such as to match table headings in subsequent rows
+	 * @param text
+	 * @return bold & centered Markdown text
+	 */
+	public static String boldCentered(String text) {
+		return "<p align=\"center\">**"+text+"**</p>";
+	}
+	
+	/**
+	 * Utility method for cetnered text
+	 * @param text
+	 * @return centered Markdown text
+	 */
+	public static String centered(String text) {
+		return "<p align=\"center\">"+text+"</p>";
+	}
+	
 	public static void main(String[] args) throws IOException {
 		List<String> lines = new ArrayList<>();
 		

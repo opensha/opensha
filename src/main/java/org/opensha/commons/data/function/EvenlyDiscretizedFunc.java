@@ -28,6 +28,7 @@ import org.apache.commons.io.IOUtils;
 import org.opensha.commons.exceptions.InvalidRangeException;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.annotations.JsonAdapter;
 
 
 /**
@@ -56,7 +57,7 @@ import com.google.common.base.Preconditions;
  * @author Steven W. Rock
  * @version 1.0
  */
-
+@JsonAdapter(EvenlyDiscretizedFunc.Adapter.class)
 public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	private static final long serialVersionUID = 0xC4E0D3D;
@@ -207,7 +208,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	/**
 	 * Returns the minimum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 * Note: An alternative would be to check for the min value every time a
@@ -223,7 +224,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	/**
 	 * Returns the maximum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 * Note: An alternative would be to check for the min value every time a
@@ -239,7 +240,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	
 	/**
 	 * Returns the x index for the maximum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 */
@@ -608,5 +609,17 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 //			Preconditions.checkState(ynew == yold);
 //		}
 //	}
+	
+	public static class Adapter extends DiscretizedFunc.AbstractAdapter<EvenlyDiscretizedFunc> {
+
+		@Override
+		protected EvenlyDiscretizedFunc instance(Double minX, Double maxX, Integer size) {
+			Preconditions.checkNotNull(minX, "minX must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			Preconditions.checkNotNull(maxX, "maxX must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			return new EvenlyDiscretizedFunc(minX, maxX, size);
+		}
+		
+	}
 
 }

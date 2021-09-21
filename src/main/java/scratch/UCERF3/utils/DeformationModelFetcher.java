@@ -27,6 +27,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.DeformationModelPrefDataFinal;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.PrefFaultSectionDataFinal;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -37,7 +38,6 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.SectionClusterList;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
@@ -90,7 +90,7 @@ public class DeformationModelFetcher {
 	
 	private DeformationModels chosenDefModName;
 	private FaultModels faultModel;
-	private FaultPolyMgr polyMgr;
+	private FaultGridAssociations polyMgr;
 
 
 	String fileNamePrefix;
@@ -124,6 +124,11 @@ public class DeformationModelFetcher {
 	public DeformationModelFetcher(FaultModels faultModel, DeformationModels deformationModel,
 			File precomputedDataDir, double defaultAseismicityValue) {
 		double maxSubSectionLength = 0.5; // in units of DDW
+		if (precomputedDataDir != null && !precomputedDataDir.exists()) {
+			File parent = precomputedDataDir.getParentFile();
+			if (parent != null && parent.getName().equals("scratch"))
+				precomputedDataDir.mkdir();
+		}
 		this.precomputedDataDir = new File(precomputedDataDir, SUB_DIR_NAME);
 //		if (!this.precomputedDataDir.exists())
 //			this.precomputedDataDir.mkdir();
@@ -223,7 +228,7 @@ public class DeformationModelFetcher {
 		return faultModel;
 	}
 	
-	public FaultPolyMgr getPolyMgr() {
+	public FaultGridAssociations getPolyMgr() {
 		return polyMgr;
 	}
 
@@ -1318,11 +1323,15 @@ public class DeformationModelFetcher {
 				distances = calculateDistances(maxDistance, faultSubSectPrefDataList);
 				// Now save to a binary file
 				try {
-					Preconditions.checkState(precomputedDataDir.exists() || precomputedDataDir.mkdir());
+					Preconditions.checkState(precomputedDataDir.exists() || precomputedDataDir.mkdir(),
+							"Couldn't create data dir: %s", precomputedDataDir.getAbsolutePath());
 					writeMapFile(distances, file);
-				}
-				catch (IOException e) {
+				} catch (IOException e) {
 					System.out.println ("IO exception = " + e );
+					// an IO exception is actually OK here, it just means we'll have to recreate it next time.
+//					ExceptionUtils.throwAsRuntimeException(e);
+				} catch (IllegalStateException e) {
+					System.out.println ("exception = " + e );
 					// an IO exception is actually OK here, it just means we'll have to recreate it next time.
 //					ExceptionUtils.throwAsRuntimeException(e);
 				}

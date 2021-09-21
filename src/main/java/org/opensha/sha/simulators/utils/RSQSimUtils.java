@@ -56,7 +56,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.BatchPlotGen;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
@@ -655,7 +655,7 @@ public class RSQSimUtils {
 		File geoDBFile = new File(nshmDir, "EQGeoDB/NSHM2023_EQGeoDB_v1p1.geojson");
 		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(sectsFile, geoDBFile, null);
 		SlipEnabledSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, 0.5);
-		FaultSystemIO.writeSol(sol, new File(dir, "rsqsim_5133_m6_skip"+skipYears+"_sectArea0.5.zip"));
+		U3FaultSystemIO.writeSol(sol, new File(dir, "rsqsim_5133_m6_skip"+skipYears+"_sectArea0.5.zip"));
 		
 //		File stlFile = new File("/home/kevin/markdown/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
 //		writeSTLFile(elements, stlFile);

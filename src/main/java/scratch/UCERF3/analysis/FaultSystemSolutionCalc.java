@@ -25,6 +25,8 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -38,14 +40,12 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.peter.ucerf3.calc.UC3_CalcUtils;
@@ -149,7 +149,7 @@ public class FaultSystemSolutionCalc {
 	 */
 	public static void writePaleoObsSlipCOV_ForScalingRels(
 			FaultSystemSolutionFetcher fetcher, File outputDir) {
-		LogicTreeBranch ref = LogicTreeBranch.DEFAULT;
+		U3LogicTreeBranch ref = U3LogicTreeBranch.DEFAULT;
 		
 		for (ScalingRelationships scale : ScalingRelationships.values()) {
 //		ScalingRelationships scale = ScalingRelationships.SHAW_2009_MOD;
@@ -245,12 +245,12 @@ public class FaultSystemSolutionCalc {
 		SummedMagFreqDist[] mfdInCellArray = new SummedMagFreqDist[numGridCells];
 		
 		// get Subseismo nucleation MFD for each subsection
-		List<GutenbergRichterMagFreqDist> subSeisMFD_List = invSol.getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_List = invSol.getFinalSubSeismoOnFaultMFD_List();
 		
 		// loop over each
 		for(int s=0; s<subSeisMFD_List.size(); s++ ) {
 			LocationList locList = invSol.getRupSet().getFaultSectionData(s).getFaultSurface(1.0, false, true).getEvenlyDiscritizedListOfLocsOnSurface();
-			GutenbergRichterMagFreqDist sectMFD = subSeisMFD_List.get(s);
+			IncrementalMagFreqDist sectMFD = subSeisMFD_List.get(s);
 			sectMFD.scale(1.0/(double)locList.size());
 			for(Location loc: locList) {
 				int regIndex = griddedRegion.indexForLocation(loc);
@@ -339,7 +339,7 @@ public class FaultSystemSolutionCalc {
 		System.out.println("Starting check");
 		
 		if(invSol instanceof InversionFaultSystemSolution) {
-			List<GutenbergRichterMagFreqDist>  grList = invSol.getFinalSubSeismoOnFaultMFD_List();
+			List<? extends IncrementalMagFreqDist>  grList = invSol.getFinalSubSeismoOnFaultMFD_List();
 			for(int s=0;s<grList.size();s++) {
 				double rate = grList.get(s).getTotalIncrRate();
 				System.out.println(s+"\t"+(float)rate+"\t"+invSol.getRupSet().getFaultSectionData(s).getName());
@@ -361,7 +361,7 @@ public class FaultSystemSolutionCalc {
 		File file = new File(f);
 		FaultSystemSolution fss=null;
 		try {
-			fss = FaultSystemIO.loadSol(file);
+			fss = U3FaultSystemIO.loadSol(file);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		} catch (DocumentException e1) {
@@ -386,7 +386,7 @@ public class FaultSystemSolutionCalc {
 		File file = new File(f);
 		FaultSystemSolution fss=null;
 		try {
-			fss = FaultSystemIO.loadSol(file);
+			fss = U3FaultSystemIO.loadSol(file);
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		} catch (DocumentException e1) {

@@ -23,6 +23,9 @@ import static com.google.common.base.Preconditions.*;
 import static java.lang.Double.*;
 
 import java.lang.reflect.Array;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -900,6 +903,15 @@ public class DataUtils {
 		public double getMax() {
 			return max;
 		}
+		
+		/**
+		 * Returns the length of the range
+		 * 
+		 * @return getMax()-getMin()
+		 */
+		public double getLength() {
+			return max-min;
+		}
 
 		/**
 		 * Computes the average of all values that have been added to this tracker.
@@ -978,6 +990,99 @@ public class DataUtils {
 			vals.add(val);
 		}
 		return vals;
+	}
+	
+	/**
+	 * Round a double to a specified number of decimal places according to
+	 * {@link RoundingMode#HALF_UP}. Internally this method uses the scaling and
+	 * rounding capabilities of {@link BigDecimal}. Note that a negative
+	 * {@code scale} will round {@code value} to the specified number of places
+	 * above the decimal. Non-finite values will be returned as is.
+	 *
+	 * @param value to round
+	 * @param scale the number of decimal places in the result
+	 */
+	public static double roundFixed(double value, int scale) {
+		return roundFixed(value, scale, RoundingMode.HALF_UP);
+	}
+	
+	/**
+	 * Round a double to a specified number of decimal places according to the
+	 * supplied {@link RoundingMode}. Internally this method uses the scaling and
+	 * rounding capabilities of {@link BigDecimal}. Note that a negative
+	 * {@code scale} will round {@code value} to the specified number of places
+	 * above the decimal. Non-finite values will be returned as is.
+	 *
+	 * @param value to round
+	 * @param scale the number of decimal places in the result
+	 * @param mode rounding mode to use
+	 */
+	public static double roundFixed(double value, int scale, RoundingMode mode) {
+		if (!Double.isFinite(value))
+			return value;
+		return BigDecimal.valueOf(value).setScale(scale, mode).doubleValue();
+	}
+	
+	/**
+	 * Round a double to a specified number of significant figures according to
+	 * {@link RoundingMode#HALF_UP}. Internally this method uses the scaling and
+	 * rounding capabilities of {@link BigDecimal}. Non-finite values will be returned as is.
+	 *
+	 * @param value to round
+	 * @param sigFigs the number of significant figures in the result
+	 */
+	public static double roundSigFigs(double value, int sigFigs) {
+		return roundSigFigs(value, sigFigs, RoundingMode.HALF_UP);
+	}
+	
+	/**
+	 * Round a double to a specified number of decimal places according to the
+	 * supplied {@link RoundingMode}. Internally this method uses the scaling and
+	 * rounding capabilities of {@link BigDecimal}. Note that a negative
+	 * {@code scale} will round {@code value} to the specified number of places
+	 * above the decimal. Non-finite values will be returned as is.
+	 *
+	 * @param value to round
+	 * @param sigFigs the number of significant figures in the result
+	 * @param mode rounding mode to use
+	 */
+	public static double roundSigFigs(double value, int sigFigs, RoundingMode mode) {
+		if (!Double.isFinite(value))
+			return value;
+		return BigDecimal.valueOf(value).round(new MathContext(sigFigs, mode)).doubleValue();
+	}
+	
+	/**
+	 * Round a double to a specified number of significant figures according to
+	 * {@link RoundingMode#HALF_UP}. Internally this method uses the scaling and
+	 * rounding capabilities of {@link BigDecimal}. Non-finite values will be returned as is.
+	 *
+	 * @param value to round
+	 * @param sigFigs the number of significant figures in the result
+	 */
+	public static double[] roundSigFigs(double[] values, int sigFigs) {
+		return roundSigFigs(values, sigFigs, RoundingMode.HALF_UP);
+	}
+	
+	/**
+	 * Round a double to a specified number of decimal places according to the
+	 * supplied {@link RoundingMode}. Internally this method uses the scaling and
+	 * rounding capabilities of {@link BigDecimal}. Non-finite values will be returned as is.
+	 *
+	 * @param value to round
+	 * @param sigFigs the number of significant figures in the result
+	 * @param mode rounding mode to use
+	 */
+	public static double[] roundSigFigs(double[] values, int sigFigs, RoundingMode mode) {
+		MathContext context = new MathContext(sigFigs, mode);
+		double[] ret = new double[values.length];
+		for (int i=0; i<ret.length; i++) {
+			if (Double.isFinite(values[i]))
+				ret[i] = BigDecimal.valueOf(values[i]).round(context).doubleValue();
+			else
+				ret[i] = values[i];
+		}
+		return ret;
 	}
 
 }

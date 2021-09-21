@@ -2,10 +2,16 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+
+import com.google.common.base.Preconditions;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.SlipEnabledRupSet;
+import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 
 /**
@@ -32,16 +38,30 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 	private double weightNormalized;
 	private double weightUnnormalized;
 	private SlipRateConstraintWeightingType weightingType;
-	private SlipEnabledRupSet rupSet;
+	private FaultSystemRupSet rupSet;
+	private AveSlipModule aveSlipModule;
+	private SlipAlongRuptureModel slipAlongModule;
 	private double[] targetSlipRates;
 
+	@Deprecated
 	public SlipRateInversionConstraint(double weightNormalized, double weightUnnormalized,
 			SlipRateConstraintWeightingType weightingType, SlipEnabledRupSet rupSet,
 			double[] targetSlipRates) {
+		this(weightNormalized, weightUnnormalized, weightingType, rupSet, rupSet.requireModule(AveSlipModule.class),
+				rupSet.requireModule(SlipAlongRuptureModel.class), targetSlipRates);
+	}
+
+	public SlipRateInversionConstraint(double weightNormalized, double weightUnnormalized,
+			SlipRateConstraintWeightingType weightingType, FaultSystemRupSet rupSet,
+			AveSlipModule aveSlipModule, SlipAlongRuptureModel slipAlongModule, double[] targetSlipRates) {
 		this.weightNormalized = weightNormalized;
 		this.weightUnnormalized = weightUnnormalized;
 		this.weightingType = weightingType;
 		this.rupSet = rupSet;
+		Preconditions.checkNotNull(aveSlipModule, "Average slip module must be supplied for slip rate constraints");
+		this.aveSlipModule = aveSlipModule;
+		Preconditions.checkNotNull(slipAlongModule, "Slip along rupture module must be supplied for slip rate constraints");
+		this.slipAlongModule = slipAlongModule;
 		this.targetSlipRates = targetSlipRates;
 	}
 
@@ -76,7 +96,7 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 		int numSections = rupSet.getNumSections();
 		// A matrix component of slip-rate constraint 
 		for (int rup=0; rup<numRuptures; rup++) {
-			double[] slips = rupSet.getSlipOnSectionsForRup(rup);
+			double[] slips = slipAlongModule.calcSlipOnSectionsForRup(rupSet, aveSlipModule, rup);
 			List<Integer> sects = rupSet.getSectionsIndicesForRup(rup);
 			for (int i=0; i < slips.length; i++) {
 				int row = sects.get(i);

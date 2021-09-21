@@ -277,8 +277,8 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 
 		@Override
 		public double getRelativeWeight(InversionModels im) {
-			// weight needs to be updated
-			return 1.0d;
+			// NZ model, must have zero weight here to not mess with UCERF3
+			return 0d;
 
 		}
 	},
@@ -304,8 +304,8 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 
 		@Override
 		public double getRelativeWeight(InversionModels im) {
-			// weight needs to be updated
-			return 1.0d;
+			// NZ model, must have zero weight here to not mess with UCERF3
+			return 0d;
 		}
 	};
 	
@@ -365,6 +365,11 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 	@Override
 	public String getBranchLevelName() {
 		return "Scaling Relationship";
+	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "Scale";
 	}
 	
 	public static void makeSlipLengthPlot(double downDipWidth, int maxLength, boolean saveFiles) {

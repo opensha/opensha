@@ -25,6 +25,9 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPT_AperiodicityParam;
@@ -52,8 +55,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
@@ -62,12 +63,12 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.inversion.SectionClusterList;
-import scratch.UCERF3.inversion.SectionConnectionStrategy;
+import scratch.UCERF3.inversion.OldSectionConnectionStrategy;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class FSS_ERF_ParamTest {
 	
@@ -114,7 +115,7 @@ public class FSS_ERF_ParamTest {
 		
 		// now save ivfss_1 to a file
 		ivfss_1_file = File.createTempFile("openSHA", "test_sol.zip");
-		FaultSystemIO.writeSol(ivfss_1, ivfss_1_file);
+		U3FaultSystemIO.writeSol(ivfss_1, ivfss_1_file);
 		
 		// now initialze parameter options
 		paramsOptionsMap = Maps.newHashMap();
@@ -135,7 +136,7 @@ public class FSS_ERF_ParamTest {
 	}
 	
 	public static InversionFaultSystemRupSet buildSmallTestRupSet() {
-		LogicTreeBranch branch = LogicTreeBranch.UCERF2;
+		U3LogicTreeBranch branch = U3LogicTreeBranch.UCERF2;
 		// this list will store our subsections
 		List<FaultSection> subSections = Lists.newArrayList();
 		
@@ -182,7 +183,7 @@ public class FSS_ERF_ParamTest {
 		Map<IDPairing, Double> subSectionAzimuths = DeformationModelFetcher.getSubSectionAzimuthMap(
 				subSectionDistances.keySet(), subSections);
 		
-		SectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
+		OldSectionConnectionStrategy connectionStrategy = new UCERF3SectionConnectionStrategy(
 				laughTest.getMaxJumpDist(), null);
 		
 		SectionClusterList clusters = new SectionClusterList(connectionStrategy,
@@ -247,7 +248,7 @@ public class FSS_ERF_ParamTest {
 			}
 			rupMFDs[r] = new LightFixedXFunc(mags, relativeWts);
 		}
-		sol.setRupMagDists(rupMFDs);
+		sol.addModule(new RupMFDsModule(sol, rupMFDs));
 	}
 
 	@Test
@@ -309,7 +310,7 @@ public class FSS_ERF_ParamTest {
 	public void testBaseERFParamSetting() {
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF();
 		erf.setSolution(ivfss_1);
-		int numTests = 100;
+		int numTests = 10;
 		int maxSetsPerTest = 10;
 		testParamSetting(erf, numTests, maxSetsPerTest);
 	}
@@ -473,16 +474,16 @@ public class FSS_ERF_ParamTest {
 			// first check directly
 			assertEquals(setMessage,
 					var, (Double)erf.getParameter(paramName).getValue(), 1e-14);
-			DiscretizedFunc[] rupMFDs = erf.getSolution().getRupMagDists();
+			RupMFDsModule mfdsModule = erf.getSolution().getModule(RupMFDsModule.class);
 			for (int i=0; i<10 && numFaultSources > 0; i++) {
 				int srcID = rand.nextInt(numFaultSources);
 				FaultRuptureSource source = (FaultRuptureSource)erf.getSource(srcID);
 				int invRup = getInvIndex(source);
 				if (var == 0) {
-					if (rupMFDs == null)
+					if (mfdsModule == null)
 						assertEquals(applyMessage, source.getNumRuptures(), 1);
 					else
-						assertEquals(applyMessage, source.getNumRuptures(), rupMFDs[invRup].size());
+						assertEquals(applyMessage, source.getNumRuptures(), mfdsModule.getRuptureMFD(invRup).size());
 				} else {
 					// make sure greater than 1 and evenly spaced
 					if (source.computeTotalProb() < 1e-15 && source.getNumRuptures() == 1)

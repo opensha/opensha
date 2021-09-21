@@ -24,20 +24,20 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.FSSRupsInRegionCache;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class HaywiredSRL_PaperCalc {
 	
@@ -255,7 +255,7 @@ public class HaywiredSRL_PaperCalc {
 			System.out.println("Loading TI nucleation file");
 			tiNucleation = loadGriddedRegCSV(reg, tiNucleationFile);
 		} else {
-			refSol = FaultSystemIO.loadSol(fssFile);
+			refSol = U3FaultSystemIO.loadSol(fssFile);
 			tiNucleation = calcTINucleation(reg, refSol, durationOneWeek, 2.5);
 			writeGriddedRegCSV(tiNucleation, tiNucleationFile);
 		}
@@ -307,7 +307,7 @@ public class HaywiredSRL_PaperCalc {
 		
 		if (plotFaultPartics) {
 			if (refSol == null)
-				refSol = FaultSystemIO.loadSol(fssFile);
+				refSol = U3FaultSystemIO.loadSol(fssFile);
 			
 			double[] faultMinMags = { 0, 6.7, 7.8 };
 			List<? extends List<ETAS_EqkRupture>> catalogs = ETAS_CatalogIO.loadCatalogsBinary(faultM5File);

@@ -44,10 +44,10 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.UCERF3p2BranchWeightProvider;
 import scratch.UCERF3.logicTree.UniformBranchWeightProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
@@ -57,7 +57,7 @@ import com.google.common.primitives.Doubles;
 public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 	
 	private FaultSystemSolutionFetcher fetcher;
-	private List<LogicTreeBranch> branches;
+	private List<U3LogicTreeBranch> branches;
 	private List<CompoundFSSPlots> plots;
 	
 	private int threads;
@@ -76,10 +76,10 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("name-grep")) {
 			List<String> greps = Lists.newArrayList(Splitter.on(",").split(cmd.getOptionValue("name-grep")));
-			List<LogicTreeBranch> filtered = Lists.newArrayList();
+			List<U3LogicTreeBranch> filtered = Lists.newArrayList();
 			
 			branchLoop:
-			for (LogicTreeBranch branch : branches) {
+			for (U3LogicTreeBranch branch : branches) {
 				String fname = branch.buildFileName();
 				for (String grep : greps) {
 					if (!fname.contains(grep))
@@ -94,10 +94,10 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("name-exclude")) {
 			List<String> greps = Lists.newArrayList(Splitter.on(",").split(cmd.getOptionValue("name-exclude")));
-			List<LogicTreeBranch> filtered = Lists.newArrayList();
+			List<U3LogicTreeBranch> filtered = Lists.newArrayList();
 			
 			branchLoop:
-			for (LogicTreeBranch branch : branches) {
+			for (U3LogicTreeBranch branch : branches) {
 				String fname = branch.buildFileName();
 				for (String grep : greps) {
 					if (fname.contains(grep))
@@ -148,7 +148,7 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 		List<Task> tasks = Lists.newArrayList();
 		
 		for (int index : batch) {
-			LogicTreeBranch branch = branches.get(index);
+			U3LogicTreeBranch branch = branches.get(index);
 			List<CompoundFSSPlots> myPlots = Lists.newArrayList(plots);
 			Collections.shuffle(myPlots);
 			tasks.add(new PlotSolComputeTask(myPlots, fetcher, branch, true, index));
@@ -469,19 +469,19 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 				int num = Integer.parseInt(cmd.getOptionValue("rand"));
 				if (cmd.hasOption("mean")) {
 					final InversionFaultSystemSolution meanSol =
-							FaultSystemIO.loadInvSol(new File(cmd.getOptionValue("mean")));
+							U3FaultSystemIO.loadInvSol(new File(cmd.getOptionValue("mean")));
 					fetcher = FaultSystemSolutionFetcher.getRandomSample(fetcher, num,
 							meanSol.getLogicTreeBranch().getValue(FaultModels.class));
-					final Collection<LogicTreeBranch> branches = fetcher.getBranches();
+					final Collection<U3LogicTreeBranch> branches = fetcher.getBranches();
 					fetcher = new FaultSystemSolutionFetcher() {
 						
 						@Override
-						public Collection<LogicTreeBranch> getBranches() {
+						public Collection<U3LogicTreeBranch> getBranches() {
 							return branches;
 						}
 						
 						@Override
-						protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+						protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 							return meanSol;
 						}
 					};

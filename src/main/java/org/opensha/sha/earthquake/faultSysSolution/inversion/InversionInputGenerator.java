@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import com.google.common.base.Preconditions;
@@ -20,7 +21,6 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseRCDoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.utils.MatrixIO;
 
@@ -73,7 +73,7 @@ public class InversionInputGenerator {
 
 		if (initialSolution == null) {
 			if (verbose)
-				System.out.println("Building empty intial solution (all zeroes)");
+				System.out.println("Building empty initial solution (all zeroes)");
 			initialSolution = new double[numRuptures];
 		} else {
 			Preconditions.checkState(initialSolution.length == numRuptures,
@@ -408,6 +408,20 @@ public class InversionInputGenerator {
 
 	public double[] getWaterLevelRates() {
 		return waterLevelRates;
+	}
+	
+	public boolean hasInitialSolution() {
+		if (initialSolution == null)
+			return false;
+		// see if non-zero
+		boolean nonZero = false;
+		for (double val : initialSolution) {
+			if (val > 0) {
+				nonZero = true;
+				break;
+			}
+		}
+		return nonZero;
 	}
 
 	public List<ConstraintRange> getConstraintRowRanges() {

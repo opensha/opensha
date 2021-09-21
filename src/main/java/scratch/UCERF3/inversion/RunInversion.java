@@ -26,7 +26,7 @@ import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
@@ -85,7 +85,7 @@ public class RunInversion {
 		
 		// get the inversion configuration
 		UCERF3InversionConfiguration config;
-		config = UCERF3InversionConfiguration.forModel(inversionModel, rupSet);
+		config = UCERF3InversionConfiguration.forModel(inversionModel, rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
 		config.updateRupSetInfoString(rupSet);
 		
 		File precomputedDataDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
@@ -177,7 +177,7 @@ public class RunInversion {
 			CompletionCriteria subCompetionCriteria = TimeCompletionCriteria.getInSeconds(1); // 1 second;
 			
 			ThreadedSimulatedAnnealing tsa = new ThreadedSimulatedAnnealing(A, d, initial, relativeSmoothnessWt,
-					A_ineq, d_ineq, minimumRuptureRates, numThreads, subCompetionCriteria);
+					A_ineq, d_ineq, numThreads, subCompetionCriteria);
 			
 			tsa.setConstraintRanges(gen.getConstraintRowRanges());
 			
@@ -204,7 +204,7 @@ public class RunInversion {
 		// lets save this solution...we just worked so hard for it, after all! (optional)
 		if (writeSolutionZipFile) {
 			try {
-				FaultSystemIO.writeSol(solution, new File(precomputedDataDir, fileName+"_solution.zip"));
+				U3FaultSystemIO.writeSol(solution, new File(precomputedDataDir, fileName+"_solution.zip"));
 			} catch (IOException e) {
 				// a failure here is OK. who needs a solution anyway?
 				e.printStackTrace();

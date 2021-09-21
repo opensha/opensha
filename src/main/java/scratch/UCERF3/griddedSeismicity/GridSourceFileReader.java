@@ -22,17 +22,18 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+@Deprecated // old formats and UCERF3 specific
 public class GridSourceFileReader extends AbstractGridSourceProvider implements XMLSaveable {
 	
 	private static final String NODE_MFD_LIST_EL_NAME = "MFDNodeList";
@@ -218,9 +219,9 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			double[] subY = arrays.get(cnt++); // +2 for X and unassociated
 			
 			if (unY.length > 0)
-				nodeUnassociatedMFDs.put(i, FaultSystemIO.asIncr(new LightFixedXFunc(xVals, unY)));
+				nodeUnassociatedMFDs.put(i, U3FaultSystemIO.asIncr(new LightFixedXFunc(xVals, unY)));
 			if (subY.length > 0)
-				nodeSubSeisMFDs.put(i, FaultSystemIO.asIncr(new LightFixedXFunc(xVals, subY)));
+				nodeSubSeisMFDs.put(i, U3FaultSystemIO.asIncr(new LightFixedXFunc(xVals, subY)));
 		}
 		Preconditions.checkState(cnt == arrays.size());
 		
@@ -288,14 +289,15 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		Element regionEl = root.element(GriddedRegion.XML_METADATA_NAME);
 		
 		GriddedRegion region = GriddedRegion.fromXMLMetadata(regionEl);
-		if (region.getNodeCount() == 7637 && region.getName().startsWith("RELM"))
-			region = loadU3RegionJSON();
 		
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = Maps.newHashMap();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = Maps.newHashMap();
 		
 		Element nodeListEl = root.element(NODE_MFD_LIST_EL_NAME);
 		int numNodes = Integer.parseInt(nodeListEl.attributeValue("num"));
+		
+		if (region.getNodeCount() == 7637 && (numNodes == 7636 || region.getName().startsWith("RELM")))
+			region = loadU3RegionJSON();
 		
 		Iterator<Element> nodeElIt = nodeListEl.elementIterator(NODE_MFD_ITEM_EL_NAME);
 		
@@ -320,7 +322,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		EvenlyDiscretizedFunc func =
 				(EvenlyDiscretizedFunc)AbstractDiscretizedFunc.fromXMLMetadata(funcEl);
 		
-		return FaultSystemIO.asIncr(func);
+		return U3FaultSystemIO.asIncr(func);
 	}
 	
 	public static void main(String[] args) throws IOException, DocumentException {
@@ -328,7 +330,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 //		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip");
 		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_TRUE_HAZARD_MEAN_SOL.zip");
 		File outputFile = new File(dataDir, solFile.getName().replaceAll(".zip", "")+"_grid_sources.xml");
-		FaultSystemSolution fss = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(solFile);
 		writeGriddedSeisFile(outputFile, fss.getGridSourceProvider());
 ////		File fssFile = new File("/tmp/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_" +
 ////				"NoFix_SpatSeisU3_VarPaleo0.6_VarSmoothPaleoSect1000_VarSectNuclMFDWt0.01_sol.zip");
@@ -399,21 +401,6 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		fracReverse = gRead.getValues();
 		gRead = new GridReader("NormalWts.txt");
 		fracNormal = gRead.getValues();
-	}
-	
-	public void scaleAllNodeMFDs(double[] valuesArray) {
-		if(valuesArray.length != getGriddedRegion().getNodeCount())
-			throw new RuntimeException("Error: valuesArray must have same length as getGriddedRegion().getNodeCount()");
-		for(int i=0;i<valuesArray.length;i++) {
-			if(valuesArray[i] != 1.0) {
-				IncrementalMagFreqDist mfd = getNodeUnassociatedMFD(i);
-				if(mfd != null)
-					mfd.scale(valuesArray[i]);;
-				mfd = getNodeSubSeisMFD(i);				
-				if(mfd != null)
-					mfd.scale(valuesArray[i]);;
-			}
-		}
 	}
 
 }

@@ -29,6 +29,9 @@ import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
@@ -48,12 +51,10 @@ import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 
 import com.google.common.base.Preconditions;
@@ -687,7 +688,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		if (D) System.out.println("Loading solution from: "+file.getAbsolutePath());
 		long runTime = System.currentTimeMillis();
 		try {
-			setSolution(FaultSystemIO.loadSol(file), false);
+			setSolution(FaultSystemSolution.load(file), false);
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
@@ -893,7 +894,8 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		
 		if(myAleatoryMagAreaStdDev == 0) {
 			// TODO allow rup MFD with aleatory?
-			DiscretizedFunc rupMFD = faultSysSolution.getRupMagDist(fltSystRupIndex);	// this exists for multi-branch mean solutions
+			RupMFDsModule mfdsModul = faultSysSolution.getModule(RupMFDsModule.class);
+			DiscretizedFunc rupMFD = mfdsModul == null ? null : mfdsModul.getRuptureMFD(fltSystRupIndex);	// this exists for multi-branch mean solutions
 			if (rupMFD == null || rupMFD.size() < 2) {	// single mag source
 				// set source type
 				double prob;

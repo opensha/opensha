@@ -8,9 +8,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -30,10 +32,12 @@ import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
+import scratch.UCERF3.utils.MFD_WeightedInversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
+
 
 public class InversionConstraintImplTests {
 	
@@ -47,7 +51,7 @@ public class InversionConstraintImplTests {
 	private static IncrementalMagFreqDist testMFD;
 	
 	private static HashSet<Integer> allParents;
-
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		rupSet = FSS_ERF_ParamTest.buildSmallTestRupSet();
@@ -57,7 +61,8 @@ public class InversionConstraintImplTests {
 		System.out.println("Test rupSet has "+numRuptures+" rups and "+numSections+" sects");
 		System.out.println("Mag range: "+rupSet.getMinMag()+" "+rupSet.getMaxMag());
 		
-		config = UCERF3InversionConfiguration.forModel(InversionModels.CHAR_CONSTRAINED, rupSet);
+		config = UCERF3InversionConfiguration.forModel(InversionModels.CHAR_CONSTRAINED, rupSet,
+				rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
 		
 		testMFD = new GutenbergRichterMagFreqDist(1d, 10d, 5.05, 8.95, 50);
 		
@@ -66,6 +71,36 @@ public class InversionConstraintImplTests {
 			allParents.add(sect.getParentSectionId());
 	}
 
+	@Test
+	public void test_MFDUncertaintyWeightedInversionConstraint() {
+				
+		Location a = new Location(34,-120);
+		Location b = new Location(45,-100);
+		Region region = new Region(a,b);
+		
+		int numBins = 10;
+		GutenbergRichterMagFreqDist mfd = new GutenbergRichterMagFreqDist(4.5d, 7.5d, numBins);
+		mfd.setAllButTotMoRate(4.5, 7.5, 10, 1.0);
+
+		EvenlyDiscretizedFunc weight = new EvenlyDiscretizedFunc(4.5d, 7.5d, numBins);
+
+		//CBC: using a lambda function, and new map method setXofY on EvenlyDiscretizedFunc
+		double weightPower = 0.5;
+		double firstWeightPower = Math.pow(mfd.getClosestYtoX(4.5d), weightPower);
+		weight.setYofX(mag -> {
+			double rate = mfd.getClosestYtoX(mag);
+			return Math.pow(rate, weightPower)/firstWeightPower;
+		});
+        
+		List<MFD_WeightedInversionConstraint> mfdConstraints = new ArrayList<>();
+		mfdConstraints.add(new MFD_WeightedInversionConstraint(mfd, region, weight));
+		
+		MFDUncertaintyWeightedInversionConstraint constr = new MFDUncertaintyWeightedInversionConstraint(rupSet, 1000, mfdConstraints);
+	
+		testConstraint(constr);
+	}
+	
+	
 	@Test 
 	public void testCreate_SlipRateUncertaintyAdjustedConstraint() {
 		

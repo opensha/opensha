@@ -13,20 +13,20 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class UniqueRupSetWriter {
+class UniqueRupSetWriter {
 
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
 		File solFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 		File outFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
 		
-		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		U3FaultSystemSolution sol = U3FaultSystemIO.loadSol(solFile);
 		
-		FaultSystemRupSet rupSet = sol.getRupSet();
+		U3FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		List<UniqueRupture> uniques = new ArrayList<>();
 		Map<UniqueRupture, Integer> uniqueIndexes = new HashMap<>();
@@ -87,11 +87,11 @@ public class UniqueRupSetWriter {
 		}
 		
 		
-		FaultSystemRupSet modRupSet = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
+		U3FaultSystemRupSet modRupSet = new U3FaultSystemRupSet(rupSet.getFaultSectionDataList(),
 				rupSet.getSlipRateForAllSections(), null, rupSet.getAreaForAllSections(),
 				sectsList, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
-		FaultSystemSolution modSol = new FaultSystemSolution(modRupSet, rates);
-		FaultSystemIO.writeSol(modSol, outFile);
+		U3FaultSystemSolution modSol = new U3FaultSystemSolution(modRupSet, rates);
+		U3FaultSystemIO.writeSol(modSol, outFile);
 	}
 	
 	private static double weightedAvg(List<Double> values, List<Double> weights) {

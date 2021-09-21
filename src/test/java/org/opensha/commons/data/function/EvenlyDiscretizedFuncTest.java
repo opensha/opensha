@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Test;
 
@@ -115,6 +116,20 @@ public class EvenlyDiscretizedFuncTest extends AbstractDiscretizedFuncTest {
 		double expect = 0;
 		assertTrue(expect == f.getClosestXIndex(5.0));
 	}
-	
+
+	@Test
+	public void setYofXTest() {
+		EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(0.0, 9.0, 10);
+		for (int i = 0; i < func.size(); i++) {
+			func.set(i, i);
+		}
+		assertEquals(List.of(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0), func.yValues());
+
+		func.setYofX(x -> 2 * x);
+		assertEquals(List.of(0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 18.0), func.yValues());
+
+		func.setYofX((x, y) -> y - x);
+		assertEquals(List.of(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0), func.yValues());
+	}
 
 }

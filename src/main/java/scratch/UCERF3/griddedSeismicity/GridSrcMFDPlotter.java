@@ -14,7 +14,7 @@ import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Lists;
@@ -41,7 +41,7 @@ public class GridSrcMFDPlotter {
 		// init fss
 		try {
 			File f = new File(fName);
-			fss = FaultSystemIO.loadInvSol(f);
+			fss = U3FaultSystemIO.loadInvSol(f);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

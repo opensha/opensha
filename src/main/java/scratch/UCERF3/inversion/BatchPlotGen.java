@@ -24,6 +24,7 @@ import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -32,21 +33,21 @@ import com.google.common.collect.Maps;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.FileBasedFSSIterator;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
+import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
@@ -91,20 +92,21 @@ public class BatchPlotGen {
 		FaultBasedMapGen.plotSegmentation(sol, region, dir, prefix, false, 7.5, 10);
 	}
 	
-	private static HashMap<FaultModels, InversionFaultSystemSolution> ucerf2SolutionCache = Maps.newHashMap();
+	private static HashMap<FaultModels, FaultSystemSolution> ucerf2SolutionCache = Maps.newHashMap();
 	
-	private static InversionFaultSystemSolution getUCERF2Comparision(FaultModels fm, File dir) throws IOException, DocumentException {
+	private static FaultSystemSolution getUCERF2Comparision(FaultModels fm, File dir) throws IOException, DocumentException {
 		if (ucerf2SolutionCache.containsKey(fm))
 			return ucerf2SolutionCache.get(fm);
 		File cachedFile = new File(dir, fm.getShortName()+"_UCERF2_COMPARISON_SOL.zip");
-		InversionFaultSystemSolution sol;
+		FaultSystemSolution sol;
 		if (cachedFile.exists()) {
 			System.out.println("Loading UCERF2 comparison from: "+cachedFile.getName());
-			sol = FaultSystemIO.loadInvSol(cachedFile);
+//			sol = FaultSystemIO.loadInvSol(cachedFile);
+			sol = FaultSystemSolution.load(cachedFile);
 		} else {
 			sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(fm);
 			try {
-				FaultSystemIO.writeSol(sol, cachedFile);
+				sol.getArchive().write(cachedFile);
 			} catch (Exception e) {
 				// don't fail on a cache attempt
 				e.printStackTrace();
@@ -345,7 +347,7 @@ public class BatchPlotGen {
 					continue;
 				}
 				// this is an average of many runs
-				InversionFaultSystemRupSet rupSet = FaultSystemIO.loadInvRupSet(file);
+				InversionFaultSystemRupSet rupSet = U3FaultSystemIO.loadInvRupSet(file);
 				AverageFaultSystemSolution avgSol = AverageFaultSystemSolution.fromDirectory(rupSet, myDir, prefix);
 				if (!doAvgPlotsExist(meanSolDir, meanPrefix))
 					try {
@@ -353,7 +355,7 @@ public class BatchPlotGen {
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-				FaultSystemIO.writeSol(avgSol, avgSolFile);
+				U3FaultSystemIO.writeSol(avgSol, avgSolFile);
 				// write bin file as well
 				MatrixIO.doubleArrayToFile(avgSol.getRateForAllRups(), new File(meanSolDir, meanPrefix+".bin"));
 				handleSolutionFile(avgSolFile, meanPrefix, avgSol, null);
@@ -402,7 +404,7 @@ public class BatchPlotGen {
 		
 		if (misfitsMap != null) {
 			if (sol == null)
-				sol = FaultSystemIO.loadInvSol(file);
+				sol = U3FaultSystemIO.loadInvSol(file);
 			VariableLogicTreeBranch branch = null;
 			try {
 //				System.out.println("Prefix: "+prefix);
@@ -452,7 +454,7 @@ public class BatchPlotGen {
 		System.out.println("Processing: "+prefix);
 		
 		if (sol == null)
-			sol = FaultSystemIO.loadInvSol(file);
+			sol = U3FaultSystemIO.loadInvSol(file);
 		
 		if (!hasMapPlots) {
 			makeMapPlots(sol, dir, prefix);
@@ -575,7 +577,7 @@ public class BatchPlotGen {
 			for (int r=0; r<rates.length; r++)
 				ratesNoMin[r] = rates[r] - minRates[r];
 			
-			ThreadedSimulatedAnnealing.writeRateVsRankPlot(new File(dir, prefix), ratesNoMin, rates, new double[minRates.length]);
+			SimulatedAnnealing.writeRateVsRankPlot(dir, prefix+"_rate_dist", ratesNoMin, rates, new double[minRates.length]);
 		}
 	}
 	

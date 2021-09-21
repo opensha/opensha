@@ -20,8 +20,8 @@ import org.opensha.sha.earthquake.AbstractERF;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Simulator;
@@ -31,7 +31,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_StatewideCatalogCompletenessParam;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -49,7 +49,7 @@ public class CSEP_ContainerTestExecutable {
 	private long ot;
 	private List<ETAS_EqkRupture> histQkList;
 	
-	private ArrayDeque<FaultSystemSolution> solCache = new ArrayDeque<>();
+	private ArrayDeque<U3FaultSystemSolution> solCache = new ArrayDeque<>();
 	
 	// input params
 	boolean includeSpontEvents = true;
@@ -92,7 +92,7 @@ public class CSEP_ContainerTestExecutable {
 		}
 		
 		System.out.println("Loading fault system solution");
-		FaultSystemSolution sol = checkOutFSS();
+		U3FaultSystemSolution sol = checkOutFSS();
 		histQkList = ETAS_Launcher.loadHistoricalCatalog(catFile, null, sol, Long.MAX_VALUE, null,
 				U3ETAS_StatewideCatalogCompletenessParam.DEFAULT_VALUE);
 		ot = histQkList.get(histQkList.size()-1).getOriginTime()+1;
@@ -144,11 +144,11 @@ public class CSEP_ContainerTestExecutable {
 		exec.shutdown();
 	}
 	
-	public synchronized FaultSystemSolution checkOutFSS() {
-		FaultSystemSolution sol;
+	public synchronized U3FaultSystemSolution checkOutFSS() {
+		U3FaultSystemSolution sol;
 		if (solCache.isEmpty()) {
 			try {
-				sol = FaultSystemIO.loadSol(solFile);
+				sol = U3FaultSystemIO.loadSol(solFile);
 			} catch (IOException | DocumentException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -162,7 +162,7 @@ public class CSEP_ContainerTestExecutable {
 		return sol;
 	}
 	
-	public synchronized void checkInFSS(FaultSystemSolution sol) {
+	public synchronized void checkInFSS(U3FaultSystemSolution sol) {
 		solCache.push(sol);
 	}
 	
@@ -180,7 +180,7 @@ public class CSEP_ContainerTestExecutable {
 				/*
 				 * Do the simulation
 				 */
-				FaultSystemSolution sol = checkOutFSS();
+				U3FaultSystemSolution sol = checkOutFSS();
 				LastEventData.populateSubSects(sol.getRupSet().getFaultSectionDataList(), lastEventData);
 				AbstractERF erf = ETAS_Launcher.buildERF_millis(sol, false, duration, ot);
 

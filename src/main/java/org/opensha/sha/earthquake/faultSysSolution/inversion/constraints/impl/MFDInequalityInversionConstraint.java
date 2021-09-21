@@ -2,13 +2,13 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 
 /**
@@ -24,10 +24,10 @@ public class MFDInequalityInversionConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;
 	private double weight;
-	private List<MFD_InversionConstraint> mfdInequalityConstraints;
+	private List<? extends MFD_InversionConstraint> mfdInequalityConstraints;
 
 	public MFDInequalityInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<MFD_InversionConstraint> mfdInequalityConstraints) {
+			List<? extends MFD_InversionConstraint> mfdInequalityConstraints) {
 		this.rupSet = rupSet;
 		this.weight = weight;
 		this.mfdInequalityConstraints = mfdInequalityConstraints;
@@ -45,14 +45,7 @@ public class MFDInequalityInversionConstraint extends InversionConstraint {
 
 	@Override
 	public int getNumRows() {
-		int numMFDRows = 0;
-		for (MFD_InversionConstraint constr : mfdInequalityConstraints) {
-			IncrementalMagFreqDist targetMagFreqDist = constr.getMagFreqDist();
-			// Add number of rows used for magnitude distribution constraint - only include mag bins between minimum and maximum magnitudes in rupture set				
-			numMFDRows += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())
-					- targetMagFreqDist.getClosestXIndex(rupSet.getMinMag()) + 1;
-		}
-		return numMFDRows;
+		return MFDEqualityInversionConstraint.getNumRows(mfdInequalityConstraints, rupSet);
 	}
 
 	@Override

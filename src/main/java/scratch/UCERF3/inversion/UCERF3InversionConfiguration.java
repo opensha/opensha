@@ -8,13 +8,15 @@ import org.apache.commons.cli.CommandLine;
 import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.inversion.CommandLineInversionRunner.InversionOptions;
@@ -168,11 +170,12 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param rupSet
 	 * @return
 	 */
-	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet) {
+	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet,
+			FaultModels fm, InversionTargetMFDs targetMFDs) {
 		double mfdEqualityConstraintWt = DEFAULT_MFD_EQUALITY_WT;
 		double mfdInequalityConstraintWt = DEFAULT_MFD_INEQUALITY_WT;
 		
-		return forModel(model, rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt);
+		return forModel(model, rupSet, fm, targetMFDs, mfdEqualityConstraintWt, mfdInequalityConstraintWt);
 	}
 	
 	/**
@@ -186,9 +189,9 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * to slip-rate constraint (recommended:  1000)
 	 * @return
 	 */
-	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
-			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt) {
-		return forModel(model, rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt, null);
+	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm,
+			InversionTargetMFDs targetMFDs,	double mfdEqualityConstraintWt, double mfdInequalityConstraintWt) {
+		return forModel(model, rupSet, fm, targetMFDs, mfdEqualityConstraintWt, mfdInequalityConstraintWt, null);
 	}
 	
 
@@ -205,8 +208,9 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param modifiers command line modifier arguments (can be null)
 	 * @return
 	 */
-	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
-			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt, CommandLine modifiers) {
+	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm,
+			InversionTargetMFDs targetMFDs, double mfdEqualityConstraintWt, double mfdInequalityConstraintWt,
+			CommandLine modifiers) {
 		
 		
 		/* *******************************************
@@ -256,7 +260,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double parkfieldConstraintWt = 1000;
 		
 		// get MFD constraints
-		List<MFD_InversionConstraint> mfdConstraints = rupSet.getInversionTargetMFDs().getMFD_ConstraintsForNoAndSoCal();
+		List<MFD_InversionConstraint> mfdConstraints = (List<MFD_InversionConstraint>) targetMFDs.getMFD_Constraints();
 		
 		double MFDTransitionMag = 7.85; // magnitude to switch from MFD equality to MFD inequality
 		
@@ -293,7 +297,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double[] initialRupModel;
 		double[] minimumRuptureRateBasis;
 		
-		SummedMagFreqDist targetOnFaultMFD =  rupSet.getInversionTargetMFDs().getOnFaultSupraSeisMFD();
+		IncrementalMagFreqDist targetOnFaultMFD =  targetMFDs.getTotalOnFaultSupraSeisMFD();
 //		System.out.println("SUPRA SEIS MFD = ");
 //		System.out.println(rupSet.getInversionMFDs().getTargetOnFaultSupraSeisMFD());
 		
@@ -306,15 +310,15 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				mfdSmoothnessConstraintWtForPaleoParents = 1000;
 				eventRateSmoothnessWt = 0;
 				rupRateConstraintWt = 0;
-				aPrioriRupConstraint = getUCERF2Solution(rupSet);
-				initialRupModel = Arrays.copyOf(aPrioriRupConstraint, aPrioriRupConstraint.length); 
+				aPrioriRupConstraint = fm == null ? null : getUCERF2Solution(rupSet, fm);
+//				initialRupModel = Arrays.copyOf(aPrioriRupConstraint, aPrioriRupConstraint.length); // not needed
 				minimumRuptureRateFraction = 0.01;
-				minimumRuptureRateBasis = adjustStartingModel(getSmoothStartingSolution(rupSet,targetOnFaultMFD), mfdConstraints, rupSet, true);
+				minimumRuptureRateBasis = adjustStartingModel(getSmoothStartingSolution(rupSet, targetOnFaultMFD), mfdConstraints, rupSet, true);
 //				initialRupModel = adjustIsolatedSections(rupSet, initialRupModel);
 //				if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 //				initialRupModel = adjustParkfield(rupSet, initialRupModel);
 //				initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
-				initialRupModel = new double[initialRupModel.length];
+				initialRupModel = new double[rupSet.getNumRuptures()];
 			} else if (model == InversionModels.GR_CONSTRAINED) {
 				participationSmoothnessConstraintWt = 1000;
 				nucleationMFDConstraintWt = 0;
@@ -323,10 +327,11 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				eventRateSmoothnessWt = 0;
 				rupRateConstraintWt = 0;
 				aPrioriRupConstraint = null;
-				initialRupModel = getSmoothStartingSolution(rupSet,targetOnFaultMFD);
+				initialRupModel = getSmoothStartingSolution(rupSet, targetOnFaultMFD);
 				minimumRuptureRateFraction = 0.01;
 				minimumRuptureRateBasis = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
-				if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true); 
+                if (mfdInequalityConstraintWt > 0.0 || mfdEqualityConstraintWt > 0.0)
+                    initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 				initialRupModel = adjustParkfield(rupSet, initialRupModel);
 				initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
 			} else
@@ -433,7 +438,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			initialRupModel = getSmoothStartingSolution(rupSet,targetOnFaultMFD);
 			minimumRuptureRateFraction = 0.01;
 			minimumRuptureRateBasis = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
-			if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true); 
+            if (mfdInequalityConstraintWt > 0.0 || mfdEqualityConstraintWt > 0.0)
+                initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 			initialRupModel = adjustParkfield(rupSet, initialRupModel);
 			initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
 		}
@@ -485,9 +491,11 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	}
 	
 	// Set rates of rups with minimum magnitude below fault section minimum magnitude to 0 initial solution
-	private static double[] removeRupsBelowMinMag(InversionFaultSystemRupSet rupSet, double[] initialRupModel) {
+	private static double[] removeRupsBelowMinMag(FaultSystemRupSet rupSet, double[] initialRupModel) {
 		for (int rup=0; rup<rupSet.getNumRuptures(); rup++) 
-			if (rupSet.isRuptureBelowSectMinMag(rup)) initialRupModel[rup] = 0;		
+//			if (rupSet.isRuptureBelowSectMinMag(rup))
+			if (FaultSystemRupSetCalc.isRuptureBelowSectMinMag(rupSet, rup, rupSet.requireModule(ModSectMinMags.class)))
+				initialRupModel[rup] = 0;		
 		return initialRupModel;
 	}
 
@@ -810,8 +818,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param faultSystemRupSet
 	 * @return
 	 */
-	public static double[] getUCERF2Solution(InversionFaultSystemRupSet faultSystemRupSet) {
-		ArrayList<double[]> ucerf2_magsAndRates = getUCERF2MagsAndrates(faultSystemRupSet);
+	public static double[] getUCERF2Solution(FaultSystemRupSet faultSystemRupSet, FaultModels fm) {
+		ArrayList<double[]> ucerf2_magsAndRates = getUCERF2MagsAndrates(faultSystemRupSet, fm);
 		int numRuptures=faultSystemRupSet.getNumRuptures();
 		double[] initial_state = new double[numRuptures];
 		for (int r=0; r<numRuptures; r++) {

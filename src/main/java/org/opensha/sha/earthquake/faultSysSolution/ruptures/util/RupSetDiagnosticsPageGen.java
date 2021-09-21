@@ -6,7 +6,6 @@ import java.awt.Stroke;
 import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -26,7 +25,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.regex.Matcher;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -35,7 +34,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYBoxAnnotation;
@@ -45,9 +43,9 @@ import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.title.PaintScaleLegend;
-import org.jfree.data.Range;
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.chart.ui.TextAnchor;
+import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -55,7 +53,6 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
@@ -65,7 +62,6 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
-import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.AlphanumComparator;
 import org.opensha.commons.util.ClassUtils;
@@ -76,11 +72,15 @@ import org.opensha.commons.util.FileNameComparator;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarCoulombPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
@@ -88,50 +88,40 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Cu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.GapWithinSectFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayCountFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.NucleationClusterEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.ScalarCoulombPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb.BiasiWesnousky2016CombJumpDistProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.BiasiWesnouskyJumpProb.BiasiWesnousky2016SSJumpProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CoulombSectRatioProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeCoulombProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpDistFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayCountFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
-import org.opensha.sha.simulators.utils.RupturePlotGenerator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.inversion.SectionConnectionStrategy;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
 
+@Deprecated
 public class RupSetDiagnosticsPageGen {
 
 	@SuppressWarnings("unused")
@@ -148,8 +138,8 @@ public class RupSetDiagnosticsPageGen {
 			
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
-			String inputName = "RSQSim 5212, SectArea=0.5";
-			File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
+//			String inputName = "RSQSim 5212, SectArea=0.5";
+//			File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
 //			String inputName = "RSQSim 4983, SectArea=0.5, Uniques";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
 //			String inputName = "RSQSim 5133, SectArea=0.5";
@@ -161,12 +151,14 @@ public class RupSetDiagnosticsPageGen {
 //			String inputName = "UCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 			
-//			String inputName = "Plausible 6-15km (MultiEnds), Rake≤360, Jump P>0.005, Slip P>0.1 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 10% Fract Increase";
+//			String inputName = "Plausible 6-15km (MultiEnds), Rake≤360, Jump P>0.001, Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.01], 10% Fract Increase";
 //			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 //			boolean skipPlausibility = true;
 //			File altPlausibilityCompareFile = null;
-//			String compName = "Jump P>0.001 & Slip P>0.05";
-//			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
+////			String compName = "Jump P>0.001 & Slip P>0.05";
+////			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti10km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
+//			String compName = null;
+//			File compareFile = null;
 			
 //			String inputName = "Indep built 15km";
 //			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
@@ -182,15 +174,15 @@ public class RupSetDiagnosticsPageGen {
 //			String compName = "CFF Grid Spacing: 1.5km";
 //			File compareFile = new File(rupSetsDir, "fm3_1_stiff1.5km_10km_direct_cmlRake360_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
 			
-//			String state = "All";
-//			String inputName = "NSHM "+state+" V1.2, Current Best Filters";
-//			File inputFile = new File(rupSetsDir, "nshm23_v1p2_"+state.toLowerCase()+"_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip");
-//			boolean skipPlausibility = true;
-//			File altPlausibilityCompareFile = null;
-//			String compName = null;
-//			File compareFile = null;
-////			String compName = "Jump 15km";
-////			File compareFile = new File(rupSetsDir, "nshm23_v1p1_"+state.toLowerCase()+"_plausibleMulti15km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+			String state = "All";
+			String inputName = "NSHM "+state+" V1.2, Current Best Filters";
+			File inputFile = new File(rupSetsDir, "nshm23_v1p2_"+state.toLowerCase()+"_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+			boolean skipPlausibility = true;
+			File altPlausibilityCompareFile = null;
+			String compName = null;
+			File compareFile = null;
+//			String compName = "Jump 15km";
+//			File compareFile = new File(rupSetsDir, "nshm23_v1p1_"+state.toLowerCase()+"_plausibleMulti15km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
 			
 //			String inputName = "NZ Plausible 10km (MultiEnds), Slip P>0.05 (@Incr), CFF 3/4 Ints >0, CFF Comb Paths: [Sect R>0.5, P>0.02], 5% Fract Increase";
 //			File inputFile = new File(rupSetsDir, "nz_demo5_crustal_plausibleMulti10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
@@ -218,22 +210,22 @@ public class RupSetDiagnosticsPageGen {
 			
 			
 			// common ones
-			boolean skipPlausibility = false;
-			String compName = "UCERF3";
-			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
-			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
-//			String compName = null;
-//			File compareFile = null;
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
-//			File altPlausibilityCompareFile = null;
-//			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
-//			String compName = "1km Coulomb Patches";
-//			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
-//			File altPlausibilityCompareFile = null;
-////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
-//			String compName = "Current Preferred";
-//			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
-//			File altPlausibilityCompareFile = null;
+//			boolean skipPlausibility = false;
+//			String compName = "UCERF3";
+//			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+//			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
+////			String compName = null;
+////			File compareFile = null;
+//////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+////			File altPlausibilityCompareFile = null;
+////			File altPlausibilityCompareFile = new File(rupSetsDir, "alt_filters.json");
+////			String compName = "1km Coulomb Patches";
+////			File compareFile = new File(rupSetsDir, "fm3_1_stiff1km_plausible10km_direct_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.02_cffFavRatioN2P0.5_sectFractPerm0.05.zip");
+////			File altPlausibilityCompareFile = null;
+//////			File altPlausibilityCompareFile = new File(rupSetsDir, "cur_pref_filters.json");
+////			String compName = "Current Preferred";
+////			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+////			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
@@ -395,21 +387,23 @@ public class RupSetDiagnosticsPageGen {
 		FaultSystemSolution compSol = null;
 		
 		System.out.println("Loading input");
-		if (FaultSystemIO.isSolution(inputFile)) {
+		ZipFile inputZip = new ZipFile(inputFile);
+		if (FaultSystemSolution.isSolution(inputZip)) {
 			System.out.println("Input is a solution");
-			inputSol = FaultSystemIO.loadSol(inputFile);
+			inputSol = FaultSystemSolution.load(inputZip);
 			inputRupSet = inputSol.getRupSet();
 		} else {
-			inputRupSet = FaultSystemIO.loadRupSet(inputFile);
+			inputRupSet = FaultSystemRupSet.load(inputZip);
 		}
 		if (compareFile != null) {
 			System.out.println("Loading comparison");
-			if (FaultSystemIO.isSolution(compareFile)) {
+			ZipFile compZip = new ZipFile(compareFile);
+			if (FaultSystemSolution.isSolution(compZip)) {
 				System.out.println("comp is a solution");
-				compSol = FaultSystemIO.loadSol(compareFile);
+				compSol = FaultSystemSolution.load(compZip);
 				compRupSet = compSol.getRupSet();
 			} else {
-				compRupSet = FaultSystemIO.loadRupSet(compareFile);
+				compRupSet = FaultSystemRupSet.load(compZip);
 			}
 		}
 		
@@ -466,7 +460,7 @@ public class RupSetDiagnosticsPageGen {
 		this.compSol = compSol;
 		this.compName = compName;
 		this.outputDir = outputDir;
-		inputConfig = inputRupSet.getPlausibilityConfiguration();
+		inputConfig = inputRupSet.getModule(PlausibilityConfiguration.class);
 		this.summary = new DiagnosticSummary();
 		summary.primaryName = inputName;
 		List<? extends FaultSection> subSects = inputRupSet.getFaultSectionDataList();
@@ -486,7 +480,7 @@ public class RupSetDiagnosticsPageGen {
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				inputRupSet.setPlausibilityConfiguration(inputConfig);
+				inputRupSet.addModule(inputConfig);
 			}
 		}
 		summary.primaryMeta = new RupSetMetadata(inputRupSet, inputSol);
@@ -494,11 +488,12 @@ public class RupSetDiagnosticsPageGen {
 		inputSearch = new RuptureConnectionSearch(
 				inputRupSet, distAzCalc, getSearchMaxJumpDist(inputConfig), false);
 		System.out.println("Building input cluster ruptures");
-		inputRups = inputRupSet.getClusterRuptures();
-		if (inputRups == null) {
-			inputRupSet.buildClusterRups(inputSearch);
-			inputRups = inputRupSet.getClusterRuptures();
+		ClusterRuptures inCRups = inputRupSet.getModule(ClusterRuptures.class);
+		if (inCRups == null) {
+			inCRups = ClusterRuptures.instance(inputRupSet, inputSearch);
+			inputRupSet.addModule(inCRups);
 		}
+		inputRups = inCRups.getAll();
 		inputUniques = new HashSet<>();
 		for (ClusterRupture rup : inputRups)
 			inputUniques.add(rup.unique);
@@ -509,7 +504,7 @@ public class RupSetDiagnosticsPageGen {
 		if (compRupSet != null) {
 			Preconditions.checkState(compRupSet.getNumSections() == subSects.size(),
 					"comp has different sub sect count");
-			compConfig = compRupSet.getPlausibilityConfiguration();
+			compConfig = compRupSet.getModule(PlausibilityConfiguration.class);
 			if (compConfig == null) {
 				// see if it's UCERF3
 				FaultModels fm = getUCERF3FM(compRupSet);
@@ -519,16 +514,17 @@ public class RupSetDiagnosticsPageGen {
 					} catch (IOException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
-					compRupSet.setPlausibilityConfiguration(compConfig);
+					compRupSet.addModule(compConfig);
 				}
 			}
 			compSearch = new RuptureConnectionSearch(
 					compRupSet, distAzCalc, getSearchMaxJumpDist(compConfig), false);
-			compRups = compRupSet.getClusterRuptures();
-			if (compRups == null) {
-				compRupSet.buildClusterRups(compSearch);
-				compRups = compRupSet.getClusterRuptures();
+			ClusterRuptures compCRups = compRupSet.getModule(ClusterRuptures.class);
+			if (compCRups == null) {
+				compCRups = ClusterRuptures.instance(compRupSet, compSearch);
+				compRupSet.addModule(compCRups);
 			}
+			compRups = compCRups.getAll();
 			compUniques = new HashSet<>();
 			for (ClusterRupture rup : compRups)
 				compUniques.add(rup.unique);
@@ -1067,7 +1063,15 @@ public class RupSetDiagnosticsPageGen {
 						connectionsList, connectedColors, connNames, region, 3000);
 				lines.add("![Combined]("+resourcesDir.getName()+"/"+combConnPrefix+".png)");
 				lines.add("");
-				lines.add("[View high resolution]("+resourcesDir.getName()+"/"+combConnPrefix+"_hires.png)");
+				
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				table.initNewLine();
+				table.addColumn("[View high resolution]("+resourcesDir.getName()+"/"+combConnPrefix+"_hires.png)");
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/"+combConnPrefix+".geojson"));
+				table.addColumn("[Download GeoJSON]("+resourcesDir.getName()+"/"+combConnPrefix+".geojson)");
+				table.addColumn("[Download Jumps-Only GeoJSON]("+resourcesDir.getName()+"/"+combConnPrefix+"_jumps_only.geojson)");
+				table.finalizeLine();
+				lines.addAll(table.build());
 				lines.add("");
 				
 				lines.add("### Jump Overlaps");
@@ -1077,7 +1081,7 @@ public class RupSetDiagnosticsPageGen {
 				summary.primaryMeta.uniqueConnCount = inputUniqueJumps.size();
 				summary.compMeta.uniqueConnCount = compUniqueJumps.size();
 				
-				TableBuilder table = MarkdownUtils.tableBuilder();
+				table = MarkdownUtils.tableBuilder();
 				table.addLine("", inputName, compName);
 				table.addLine("**Total Count**", inputJumps.size(), compJumps.size());
 				table.initNewLine();
@@ -1438,6 +1442,12 @@ public class RupSetDiagnosticsPageGen {
 				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp.png)");
 			}
 			table.finalizeLine().initNewLine();
+			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/"+prefix+".geojson")
+					+" "+"[Download GeoJSON]("+resourcesDir.getName()+"/"+prefix+".geojson)");
+			if (compScalars != null)
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/"+prefix+"_comp.geojson")
+						+" "+"[Download GeoJSON]("+resourcesDir.getName()+"/"+prefix+"_comp.geojson)");
+			table.finalizeLine().initNewLine();
 			table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_hist.png)");
 			if (compScalarVals != null) {
 				table.addColumn("![map]("+resourcesDir.getName()+"/"+prefix+"_comp_hist.png)");
@@ -1760,19 +1770,40 @@ public class RupSetDiagnosticsPageGen {
 	private static void addTablePlots(TableBuilder table, File mainPlot, File compPlot,
 			boolean hasComp) {
 		table.initNewLine();
-		if (mainPlot.exists())	
+		File mainGeoJSON = null;
+		if (mainPlot.exists()) {
 			table.addColumn("![plot]("+mainPlot.getParentFile().getName()
 					+"/"+mainPlot.getName()+")");
-		else
+			mainGeoJSON = new File(mainPlot.getAbsolutePath().replaceAll(".png", ".geojson"));
+		} else {
 			table.addColumn("*N/A*");
+		}
+		File compGeoJSON = null;
 		if (hasComp) {
-			if (compPlot.exists())
+			if (compPlot.exists()) {
 				table.addColumn("![plot]("+compPlot.getParentFile().getName()
 						+"/"+compPlot.getName()+")");
-			else
+				compGeoJSON = new File(compPlot.getAbsolutePath().replaceAll(".png", ".geojson"));
+			} else {
 				table.addColumn("*N/A*");
+			}
 		}
 		table.finalizeLine();
+		if ((mainGeoJSON != null && mainGeoJSON.exists()) || (compGeoJSON != null && compGeoJSON.exists())) {
+			File resourcesDir = mainGeoJSON.getParentFile();
+			table.initNewLine();
+			if ((mainGeoJSON != null && mainGeoJSON.exists()))
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/"+mainGeoJSON.getName())
+						+" "+"[Download GeoJSON]("+resourcesDir.getName()+"/"+mainGeoJSON+".geojson)");
+			else
+				table.addColumn("*N/A*");
+			if ((compGeoJSON != null && compGeoJSON.exists()))
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/"+compGeoJSON.getName())
+						+" "+"[Download GeoJSON]("+resourcesDir.getName()+"/"+compGeoJSON+".geojson)");
+			else
+				table.addColumn("*N/A*");
+			table.finalizeLine();
+		}
 	}
 	
 	static ClusterConnectionStrategy buildDefaultConnStrat(PlausibilityConfiguration config,
@@ -3725,6 +3756,12 @@ public class RupSetDiagnosticsPageGen {
 	 * Rupture connections
 	 */
 	
+	private static String getTruncatedTitle(String title) {
+		if (title != null && title.length() > 30)
+			return title.substring(0, 29).trim()+"…";
+		return title;
+	}
+	
 	public static void plotConnectivityLines(FaultSystemRupSet rupSet, File outputDir, String prefix, String title,
 			Set<Jump> connections, Color connectedColor, Region reg, int width) throws IOException {
 		List<Set<Jump>> connectionsList = new ArrayList<>();
@@ -3738,16 +3775,11 @@ public class RupSetDiagnosticsPageGen {
 		plotConnectivityLines(rupSet, outputDir, prefix, title, connectionsList, connectedColors, connNames, reg, width);
 	}
 	
-	private static String getTruncatedTitle(String title) {
-		if (title != null && title.length() > 30)
-			return title.substring(0, 29).trim()+"…";
-		return title;
-	}
-	
 	public static void plotConnectivityLines(FaultSystemRupSet rupSet, File outputDir, String prefix, String title,
 			List<Set<Jump>> connectionsList, List<Color> connectedColors, List<String> connNames,
 			Region reg, int width) throws IOException {
 		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
+		plotter.setWriteGeoJSON(!prefix.endsWith("_hires"));
 		
 		for (int i=0; i<connectionsList.size(); i++) {
 			Set<Jump> connections = connectionsList.get(i);
@@ -4005,9 +4037,10 @@ public class RupSetDiagnosticsPageGen {
 		System.out.println("Plotting "+rupsToPlot+" ruptures");
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
+		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
 		for (int rupIndex : rupsToPlot) {
 			String rupPrefix = prefix+"_"+rupIndex;
-			ClusterRupture rupture = rupSet.getClusterRuptures().get(rupIndex);
+			ClusterRupture rupture = rups.get(rupIndex);
 			search.plotConnections(resourcesDir, rupPrefix, rupIndex, rupture, pairings, "Unique Connections");
 			table.addColumn("[<img src=\"" + resourcesDir.getName() + "/" + rupPrefix + ".png\" />]"+
 					"("+ generateRuptureInfoPage(rupSet, rupture, rupIndex, rupHtmlDir, rupPrefix, null, search.getDistAzCalc())+ ")");
@@ -4495,7 +4528,7 @@ public class RupSetDiagnosticsPageGen {
 		return file;
 	}
 
-	private static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex,
+	public static String generateRuptureInfoPage(FaultSystemRupSet rupSet, ClusterRupture rupture, int rupIndex,
 			File outputDir, String fileNamePrefix, RupSetPlausibilityResult plausibiltyResult,
 			SectionDistanceAzimuthCalculator distAzCalc) throws IOException {
 		DecimalFormat format = new DecimalFormat("###,###.#");
@@ -4613,21 +4646,6 @@ public class RupSetDiagnosticsPageGen {
 	
 	private static double calcIdealMinLength(List<? extends FaultSection> subSects,
 			SectionDistanceAzimuthCalculator distAzCalc) {
-//		FaultSection farS1 = null;
-//		FaultSection farS2 = null;
-//		double maxDist = 0d;
-//		for (int i=0; i<subSects.size(); i++) {
-//			FaultSection s1 = subSects.get(i);
-//			for (int j=i; j<subSects.size(); j++) {
-//				FaultSection s2 = subSects.get(j);
-//				double dist = distAzCalc.getDistance(s1, s2);
-//				if (dist >= maxDist) {
-//					maxDist = dist;
-//					farS1 = s1;
-//					farS2 = s2;
-//				}
-//			}
-//		}
 		FaultSection farS1 = subSects.get(0);
 		if (subSects.size() == 1)
 			return LocationUtils.horzDistance(farS1.getFaultTrace().first(), farS1.getFaultTrace().last());
@@ -4746,6 +4764,7 @@ public class RupSetDiagnosticsPageGen {
 		cpt.setAboveMaxColor(cpt.getMaxColor());
 		
 		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
+		plotter.setWriteGeoJSON(!prefix.contains("_ratio") && !prefix.contains("_diff"));
 		
 		String cptTitle = "Section Max Participating "+histScalar.getxAxisLabel();
 		if (difference)
@@ -5252,21 +5271,21 @@ public class RupSetDiagnosticsPageGen {
 		return pngFile;
 	}
 	
-	private static class DiagnosticSummary {
-		private String primaryName;
-		private RupSetMetadata primaryMeta;
+	public static class DiagnosticSummary {
+		public String primaryName;
+		public RupSetMetadata primaryMeta;
 		
-		private String compName;
-		private RupSetMetadata compMeta;
+		public String compName;
+		public RupSetMetadata compMeta;
 	}
 	
-	private static class RupSetMetadata {
+	public static class RupSetMetadata {
 		// populated during constructor
-		private int maxNumSplays;
-		private double maxJumpDist;
-		private List<String> filterNames;
-		private int rupCount;
-		private double totRate;
+		public final int maxNumSplays;
+		public final double maxJumpDist;
+		public final List<String> filterNames;
+		public final int rupCount;
+		public final double totRate;
 		
 		// populated later
 		private int uniqueRupCount;
@@ -5280,9 +5299,9 @@ public class RupSetDiagnosticsPageGen {
 		
 		public RupSetMetadata(FaultSystemRupSet rupSet, FaultSystemSolution sol) {
 			this.rupCount = rupSet.getNumRuptures();
-			this.maxJumpDist = Double.NaN;
-			this.maxNumSplays = -1;
-			PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
+			double maxJumpDist = Double.NaN;
+			int maxNumSplays = -1;
+			PlausibilityConfiguration config = rupSet.getModule(PlausibilityConfiguration.class);
 			if (config != null) {
 				if (config.getConnectionStrategy() != null)
 					maxJumpDist = config.getConnectionStrategy().getMaxJumpDist();
@@ -5291,8 +5310,14 @@ public class RupSetDiagnosticsPageGen {
 					filterNames = new ArrayList<>();
 					for (PlausibilityFilter filter : config.getFilters())
 						filterNames.add(filter.getName());
+				} else {
+					filterNames = null;
 				}
+			} else {
+				filterNames = null;
 			}
+			this.maxNumSplays = maxNumSplays;
+			this.maxJumpDist = maxJumpDist;
 			if (sol == null)
 				totRate = Double.NaN;
 			else
@@ -5307,7 +5332,7 @@ public class RupSetDiagnosticsPageGen {
 		}
 	}
 	
-	private static class ScalarRange {
+	public static class ScalarRange {
 		private final HistScalar scalar;
 		private final double min, max;
 		
@@ -5558,10 +5583,18 @@ public class RupSetDiagnosticsPageGen {
 						table.finalizeLine();
 					}
 					table.addLine("![Primary]("+rDirPath+"/sect_max_LENGTH.png)", "![Comparison]("+rDirPath+"/sect_max_LENGTH_comp.png)");
+					table.initNewLine();
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", rDirPath+"/sect_max_LENGTH.geojson")
+							+" "+"[Download GeoJSON]("+rDirPath+"/sect_max_LENGTH.geojson)");
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", rDirPath+"/sect_max_LENGTH_comp.geojson")
+							+" "+"[Download GeoJSON]("+rDirPath+"/sect_max_LENGTH_comp.geojson)");
+					table.finalizeLine();
 					table.addLine("![Primary]("+rDirPath+"/sect_max_LENGTH_diff.png)", "![Comparison]("+rDirPath+"/sect_max_LENGTH_ratio.png)");
 				} else {
 					table.addLine("![Primary]("+rDirPath+"/hist_LENGTH.png)");
 					table.addLine("![Primary]("+rDirPath+"/sect_max_LENGTH.png)");
+					table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", rDirPath+"/sect_max_LENGTH.geojson")
+							+" "+"[Download GeoJSON]("+rDirPath+"/sect_max_LENGTH.geojson)");
 				}
 				lines.addAll(table.build());
 				lines.add("");
@@ -5570,15 +5603,22 @@ public class RupSetDiagnosticsPageGen {
 				lines.add(topLink);
 				lines.add("");
 				
+				String prefix;
 				if (new File(resourcesDir, "sect_connectivity_combined.png").exists()) {
-					lines.add("![map]("+rDirPath+"/sect_connectivity_combined.png)");
-					lines.add("");
-					lines.add("[Click here to view a high resolution (zoomable) map]("+rDirPath+"/sect_connectivity_combined_hires.png)");
+					prefix = "sect_connectivity_combined";
 				} else {
-					lines.add("![map]("+rDirPath+"/sect_connectivity.png)");
-					lines.add("");
-					lines.add("[Click here to view a high resolution (zoomable) map]("+rDirPath+"/sect_connectivity_hires.png)");
+					prefix = "sect_connectivity";
 				}
+				lines.add("![map]("+rDirPath+"/"+prefix+".png)");
+				lines.add("");
+				table = MarkdownUtils.tableBuilder();
+				table.initNewLine();
+				table.addColumn("[View high resolution]("+rDirPath+"/"+prefix+"_hires.png)");
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", rDirPath+"/"+prefix+".geojson"));
+				table.addColumn("[Download GeoJSON]("+rDirPath+"/"+prefix+".geojson)");
+				table.addColumn("[Download Jumps-Only GeoJSON]("+rDirPath+"/"+prefix+"_jumps_only.geojson)");
+				table.finalizeLine();
+				lines.addAll(table.build());
 				lines.add("");
 			}
 		}

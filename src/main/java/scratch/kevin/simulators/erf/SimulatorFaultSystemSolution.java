@@ -19,6 +19,8 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.simulators.SimulatorEvent;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.SimulatorElement;
@@ -35,10 +37,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 	
@@ -207,17 +207,6 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 		}
 		System.out.println("DONE.");
 		
-		// for each section
-		double[] sectSlipRates = new double[fsd.size()];
-		double[] sectSlipRateStdDevs = null;
-		double[] sectAreas = new double[fsd.size()];
-		
-		for (int s=0; s<fsd.size(); s++) {
-			FaultSection sect = fsd.get(s);
-			sectSlipRates[s] = sect.getReducedAveSlipRate();
-			sectAreas[s] = sect.getReducedDownDipWidth()*sect.getTraceLength()*1e6; // in meters
-		}
-		
 		String info = "Fault Simulators Solution\n"
 				+ "# Elements: "+elements.size()+"\n"
 				+ "# Sub Sections: "+fsd.size()+"\n"
@@ -225,8 +214,9 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 				+ "Duration: "+durationYears+"\n"
 				+ "Indv. Rup Rate: "+(1d/durationYears);
 		
-		return new FaultSystemRupSet(fsd, sectSlipRates, sectSlipRateStdDevs, sectAreas,
-				sectionForRups,mags, rupRakes, rupAreas, rupLengths, info);
+		FaultSystemRupSet rupSet = new FaultSystemRupSet(fsd, sectionForRups,mags, rupRakes, rupAreas, rupLengths);
+		rupSet.setInfoString(info);
+		return rupSet;
 	}
 	
 	private static double[] buildRates(int num, double durationYears) {

@@ -3,40 +3,37 @@
  */
 package scratch.UCERF3.inversion;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Callable;
 
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D;
-import org.opensha.commons.calc.FaultMomentCalc;
-import org.opensha.commons.calc.magScalingRelations.MagAreaRelDepthDep;
-import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
-import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.Shaw_2009_ModifiedMagAreaRel;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
+import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
-import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.SlipAlongRuptureModelRupSet;
-import scratch.UCERF3.SlipEnabledRupSet;
 import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -48,11 +45,10 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
 import scratch.UCERF3.utils.FaultSectionDataWriter;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 
@@ -100,7 +96,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	
 	private List<? extends FaultSection> faultSectionData;
 
-	private LogicTreeBranch logicTreeBranch;
+	private U3LogicTreeBranch logicTreeBranch;
 
 	private OldPlausibilityConfiguration filter;
 
@@ -112,16 +108,11 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	private List<List<Integer>> clusterRups;
 	private List<List<Integer>> clusterSects;
 
-	// this holds the various MFDs implied by the inversion fault system rupture set 
-	// (e.g., we need to know the sub-seismo on-fault moment rates to reduce slip rates accordingly)
-	private InversionTargetMFDs inversionMFDs;
-
 	private List<List<Integer>> sectionConnectionsListList;
 
 	private Map<IDPairing, Double> subSectionDistances;
 
 	public final static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6.0;
-	protected double[] minMagForSectArray; //TODO: this is only used in one method, which we need to override in NSHM. 
 	private boolean[] isRupBelowMinMagsForSects;
 
  	/**
@@ -131,10 +122,9 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
  	 * @param branch
  	 */
  	@SuppressWarnings("unused")
-	public InversionFaultSystemRupSet(FaultSystemRupSet rupSet, LogicTreeBranch branch) {
+	public InversionFaultSystemRupSet(FaultSystemRupSet rupSet, U3LogicTreeBranch branch) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
-		setLogicTreeBranch(branch);
-		setParamsFromBranch(branch);		
+		init(branch);		
 		init(rupSet);
 		
 		/*
@@ -148,19 +138,22 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		 * As I did this first and got it working, I decided to leave this here for now - CBC.
 		 * 
 		 */
-		if (rupSet.getClusterRuptures() == null) {
-			 SectionDistanceAzimuthCalculator distCalc = rupSet.getPlausibilityConfiguration().getDistAzCalc(); 
-			 double maxDist = rupSet.getPlausibilityConfiguration().getConnectionStrategy().getMaxJumpDist();
-			 boolean cumulativeJumps = true;
-			 RuptureConnectionSearch search = new RuptureConnectionSearch(
-					 rupSet,
-					 distCalc, maxDist, cumulativeJumps); 
-			 buildClusterRups(search);
+		//		if (rupSet.getClusterRuptures() == null) {
+		if (!rupSet.hasModule(ClusterRuptures.class)) {
+			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+			if (plausibility != null) {
+				SectionDistanceAzimuthCalculator distCalc = plausibility.getDistAzCalc(); 
+				double maxDist = plausibility.getConnectionStrategy().getMaxJumpDist();
+				boolean cumulativeJumps = true;
+				RuptureConnectionSearch search = new RuptureConnectionSearch(rupSet,
+						distCalc, maxDist, cumulativeJumps); 
+				rupSet.addModule(ClusterRuptures.instance(this, search));
+			}
 		} else {
 			// When we have a rupset loaded from disk with cluster_ruptures.json, this should be enough...
-			setClusterRuptures(rupSet.getClusterRuptures()); 			
+			addModule(rupSet.getModule(ClusterRuptures.class)); 			
 		}
-	}		
+ 	}
 	
 	/**
 	 * This creates a new InversionFaultSystemRupSet for the given cluster list, which may or may have been
@@ -170,7 +163,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @param sectionClusterList
 	 * @param faultSectionData
 	 */
-	public InversionFaultSystemRupSet(LogicTreeBranch branch, SectionClusterList sectionClusterList,
+	public InversionFaultSystemRupSet(U3LogicTreeBranch branch, SectionClusterList sectionClusterList,
 			List<? extends FaultSection> faultSectionData) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
 
@@ -183,8 +176,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		
 		this.faultSectionData = faultSectionData;
 
-		this.logicTreeBranch = branch;
-		setParamsFromBranch(branch);
+		init(branch);
 		this.filter = sectionClusterList.getPlausibilityConfiguration();
 		this.subSectionDistances = sectionClusterList.getSubSectionDistances();
 		this.sectionConnectionsListList = sectionClusterList.getSectionConnectionsListList();
@@ -211,21 +203,16 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 */
 	public InversionFaultSystemRupSet(
 			FaultSystemRupSet rupSet,
-			LogicTreeBranch branch,
+			U3LogicTreeBranch branch,
 			OldPlausibilityConfiguration filter,
 			double[] rupAveSlips,
 			List<List<Integer>> sectionConnectionsListList,
 			List<List<Integer>> clusterRups,
 			List<List<Integer>> clusterSects) {
 		super(branch.getValue(SlipAlongRuptureModels.class));
-		setPlausibilityConfiguration(rupSet.getPlausibilityConfiguration());
-
-		setParamsFromBranch(branch);
-		this.logicTreeBranch = branch;
+		setLogicTreeBranch(branch); // needed by init(rupSet)
 		init(rupSet);
-
-		//this must come after the init(rupSet) call.
-		setClusterRuptures(rupSet.getClusterRuptures());
+		init(branch);
 		
 		int numSects = rupSet.getNumSections();
 		int numRups = rupSet.getNumRuptures();
@@ -253,25 +240,67 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		this.clusterSects = clusterSects;
 	}
 
-	private void setParamsFromBranch(LogicTreeBranch branch) {
-		if (branch.hasNonNullValue(FaultModels.class))
+	private void init(U3LogicTreeBranch branch) {
+		if (branch.hasValue(FaultModels.class))
 			this.faultModel = branch.getValue(FaultModels.class);
-		if (branch.hasNonNullValue(DeformationModels.class))
+		if (branch.hasValue(DeformationModels.class))
 			this.defModName = branch.getValue(DeformationModels.class);
-		if (branch.hasNonNullValue(ScalingRelationships.class))
+		if (branch.hasValue(ScalingRelationships.class)) {
 			this.scalingRelationship = branch.getValue(ScalingRelationships.class);
-		if (branch.hasNonNullValue(SlipAlongRuptureModels.class))
+			addModule(AveSlipModule.forModel(this, scalingRelationship));
+		}
+		if (branch.hasValue(SlipAlongRuptureModels.class))
 			this.slipModelType = branch.getValue(SlipAlongRuptureModels.class);
-		if (branch.hasNonNullValue(InversionModels.class))
+		if (branch.hasValue(InversionModels.class))
 			this.inversionModel = branch.getValue(InversionModels.class);
-		if (branch.hasNonNullValue(TotalMag5Rate.class))
+		if (branch.hasValue(TotalMag5Rate.class))
 			this.totalRegionRateMgt5 = branch.getValue(TotalMag5Rate.class).getRateMag5();
-		if (branch.hasNonNullValue(MaxMagOffFault.class))
+		if (branch.hasValue(MaxMagOffFault.class))
 			this.mMaxOffFault = branch.getValue(MaxMagOffFault.class).getMaxMagOffFault();
-		if (branch.hasNonNullValue(MomentRateFixes.class))
+		if (branch.hasValue(MomentRateFixes.class))
 			this.applyImpliedCouplingCoeff = branch.getValue(MomentRateFixes.class).isApplyCC();
-		if (branch.hasNonNullValue(SpatialSeisPDF.class))
+		if (branch.hasValue(SpatialSeisPDF.class))
 			this.spatialSeisPDF = branch.getValue(SpatialSeisPDF.class);
+		setLogicTreeBranch(branch);
+
+		offerAvailableModule(new Callable<PolygonFaultGridAssociations>() {
+
+			@Override
+			public PolygonFaultGridAssociations call() throws Exception {
+				if (faultModel == FaultModels.FM3_1 || faultModel == FaultModels.FM3_2)
+					return FaultPolyMgr.loadSerializedUCERF3(faultModel);
+				System.err.println("WARNING: rupture set doesn't have polygons attached, building with default buffer");
+				return FaultPolyMgr.create(getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
+			}
+		}, PolygonFaultGridAssociations.class);
+		// make sure that we don't end up with a default implementation of this
+		if (hasAvailableModule(ModSectMinMags.class))
+			removeModuleInstances(ModSectMinMags.class);
+		addAvailableModule(new Callable<ModSectMinMags>() {
+
+			@Override
+			public ModSectMinMags call() throws Exception {
+				return ModSectMinMags.instance(InversionFaultSystemRupSet.this, calcFinalMinMagForSections());
+			}
+		}, ModSectMinMags.class);
+		offerAvailableModule(new Callable<U3InversionTargetMFDs>() {
+
+			@Override
+			public U3InversionTargetMFDs call() throws Exception {
+				return new U3InversionTargetMFDs(InversionFaultSystemRupSet.this);
+			}
+		}, U3InversionTargetMFDs.class);
+		// make sure that we don't end up with a default implementation of this
+		if (hasAvailableModule(SectSlipRates.class))
+			removeModuleInstances(SectSlipRates.class);
+		addAvailableModule(new Callable<SectSlipRates>() {
+
+			@Override
+			public SectSlipRates call() throws Exception {
+				return computeTargetSlipRates(InversionFaultSystemRupSet.this,
+						inversionModel.isCharacteristic(), applyImpliedCouplingCoeff, getInversionTargetMFDs());
+			}
+		}, SectSlipRates.class);
 	}
 
 	// TODO [re]move (put in FaultSectionPrefData class?)
@@ -323,10 +352,14 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		double[] sectAreasOrig = new double[numSections];
 		for (int sectIndex=0; sectIndex<numSections; sectIndex++) {
 			FaultSection sectData = faultSectionData.get(sectIndex);
+			// modified these 6/11/21 to use the standard method,
+			// which can differ slightly due to floating point order of operations
 			// aseismicity reduces area; km --> m on length & DDW
-			sectAreasReduced[sectIndex] = sectData.getTraceLength()*1e3*sectData.getReducedDownDipWidth()*1e3;
+//			sectAreasReduced[sectIndex] = sectData.getTraceLength()*1e3*sectData.getReducedDownDipWidth()*1e3;
+			sectAreasReduced[sectIndex] = sectData.getArea(true);
 			// km --> m on length & DDW
-			sectAreasOrig[sectIndex] = sectData.getTraceLength()*1e3*sectData.getOrigDownDipWidth()*1e3;
+//			sectAreasOrig[sectIndex] = sectData.getTraceLength()*1e3*sectData.getOrigDownDipWidth()*1e3;
+			sectAreasOrig[sectIndex] = sectData.getArea(false);
 		}
 
 		int numRuptures = 0;
@@ -388,58 +421,107 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				// rupMeanMoment[rupIndex] = MomentMagCalc.getMoment(rupMeanMag[rupIndex])* gaussMFD_slipCorr; // increased if magSigma >0
 				//				rupMeanSlip[rupIndex] = rupMeanMoment[rupIndex]/(rupArea[rupIndex]*FaultMomentCalc.SHEAR_MODULUS);
 				rupMeanSlip[rupIndex] = scalingRelationship.getAveSlip(totArea, totLength, origDDW);
+//				if (rupIndex == 0)
+//					System.out.println("Orig:\tarea="+totArea+"\torigArea="+totOrigArea
+//							+"\tlength="+totLength+"\torigDDW="+origDDW+"\tslip="+rupMeanSlip[rupIndex]);
 			}
 		}
 		
-		// set with what he have now before inversionMFDs instantiation (we'll set again with slips later)
+		// set with what we have now before inversionMFDs instantiation (we'll set again with slips later)
 		init(faultSectionData, null, null, sectAreasReduced, sectionsForRups, rupMeanMag, rupRake, rupArea, rupLength, infoString);
 		
-		inversionMFDs = new InversionTargetMFDs(this);
-
-		ArrayList<GutenbergRichterMagFreqDist> subSeismoOnFaultMFD_List = inversionMFDs.getSubSeismoOnFaultMFD_List();
-		double impliedOnFaultCouplingCoeff = inversionMFDs.getImpliedOnFaultCouplingCoeff();
-
+		if (D) System.out.println("DONE creating "+getNumRuptures()+" ruptures!");
+	}
+	
+	/**
+	 * Computes UCERF3 target slip rates for the given fault section data, inversion target MFDs, inversion model,
+	 * and moment rate fixes branch.
+	 * <p>
+	 * A 2D array is returned where the first value is the array of target slip rates, and the second is the array of
+	 * target slip rate standard deviations. Extract as:
+	 * <p>
+	 * <code>
+	 * double[][] slipTargets = computeTargetSlipRates(...);
+	 * double[] targetSlipRate = slipTargets[0];
+	 * double[] targetSlipRateStdDev = slipTargets[1];
+	 * </code>
+	 * 
+	 * @param rupSet
+	 * @param inversionModel
+	 * @param momentRateFixes
+	 * @param inversionMFDs
+	 * @return target slip rates
+	 */
+	public static SectSlipRates computeTargetSlipRates(FaultSystemRupSet rupSet,
+			InversionModels inversionModel, MomentRateFixes momentRateFixes, InversionTargetMFDs inversionMFDs) {
+		return computeTargetSlipRates(rupSet, inversionModel.isCharacteristic(), momentRateFixes.isApplyCC(), inversionMFDs);
+	}
+	
+	/**
+	 * Computes UCERF3 target slip rates for the given fault section data, inversion target MFDs and inversion settings.
+	 * <p>
+	 * A 2D array is returned where the first value is the array of target slip rates, and the second is the array of
+	 * target slip rate standard deviations. Extract as:
+	 * <p>
+	 * <code>
+	 * double[][] slipTargets = computeTargetSlipRates(...);
+	 * double[] targetSlipRate = slipTargets[0];
+	 * double[] targetSlipRateStdDev = slipTargets[1];
+	 * </code>
+	 * 
+	 * @param rupSet
+	 * @param characteristic characteristic branch if true, G-R branch if false
+	 * @param applyImpliedCouplingCoeff if true, apply the implied coupling-coefficient
+	 * @param inversionMFDs
+	 * @return target slip rates
+	 */
+	public static SectSlipRates computeTargetSlipRates(FaultSystemRupSet rupSet,
+			boolean characteristic, boolean applyImpliedCouplingCoeff, InversionTargetMFDs inversionMFDs) {
+		int numSections = rupSet.getNumSections();
 		// compute target slip rate and stdDev (reduced for subseismo ruptures)
 		double[] targetSlipRate = new double[numSections];
 		double[] targetSlipRateStdDev = new double[numSections];
+		Preconditions.checkState(targetSlipRate.length == targetSlipRateStdDev.length);
+		SubSeismoOnFaultMFDs subSeismoOnFaultMFDs = inversionMFDs.getOnFaultSubSeisMFDs();
 
 		// first get the implied coupling coeff reduction factor
 		double impliedCC_reduction = 1.0;
-		if(applyImpliedCouplingCoeff && impliedOnFaultCouplingCoeff<1)
-			impliedCC_reduction = impliedOnFaultCouplingCoeff;
-	
+		if (applyImpliedCouplingCoeff) {
+			Preconditions.checkState(inversionMFDs instanceof U3InversionTargetMFDs,
+					"Can only use applyImpliedCouplingCoeff option on U3InversionTargetMFDs instance. "
+					+ "This option was only used in early UCERF3 tests, and was not carried forward");
+			double impliedOnFaultCouplingCoeff = ((U3InversionTargetMFDs)inversionMFDs).getImpliedOnFaultCouplingCoeff();
+			if(impliedOnFaultCouplingCoeff < 1)
+				impliedCC_reduction = impliedOnFaultCouplingCoeff;
+		}
 		
-		double totalOrigOnFaultMoRate = inversionMFDs.getOrigOnFltDefModMoRate();
+		double totalOrigOnFaultMoRate = DeformationModelsCalc.calculateTotalMomentRate(rupSet.getFaultSectionDataList(), true);
 		double totalFinalOnFaultMoRate = totalOrigOnFaultMoRate*impliedCC_reduction;
-		double aveCharSubSeismoMoRateFraction = inversionMFDs.getTotalSubSeismoOnFaultMFD().getTotalMomentRate()/totalFinalOnFaultMoRate;	// denomintor reduces by any implied CC
+		double aveCharSubSeismoMoRateFraction = inversionMFDs.getTotalOnFaultSubSeisMFD().getTotalMomentRate()/totalFinalOnFaultMoRate;	// denomintor reduces by any implied CC
 
 		// now compute reduced slip rates and their std
 		for(int s=0; s<numSections; s++) {
-			
+			FaultSection sect = rupSet.getFaultSectionData(s);
 			// get original (creep reduced) section moment rate
-			double origSectMoRate = faultSectionData.get(s).calcMomentRate(true);	// this is creep reduced
+			double origSectMoRate = sect.calcMomentRate(true);	// this is creep reduced
 			if (Double.isNaN(origSectMoRate))
 				origSectMoRate = 0;
 			
 			double impliedCC_reducedSectMoRate = origSectMoRate*impliedCC_reduction;
-
+			
 			double fractionalSlipRateReduction=1.0;	// default if next is false
 			if(origSectMoRate > 0) { // avoid division by zero
-				if(inversionModel.isCharacteristic()) {
+				if (characteristic) {
 					fractionalSlipRateReduction = impliedCC_reducedSectMoRate*(1.0-aveCharSubSeismoMoRateFraction)/origSectMoRate;	// reduced by subseismo and any implied CC
-				}
-				else {
-					double subSeismoMoRate = subSeismoOnFaultMFD_List.get(s).getTotalMomentRate(); 	// implied CC already applied if applicable
+				} else {
+					double subSeismoMoRate = subSeismoOnFaultMFDs.get(s).getTotalMomentRate(); 	// implied CC already applied if applicable
 					fractionalSlipRateReduction = (impliedCC_reducedSectMoRate-subSeismoMoRate)/origSectMoRate;	// reduced by subseismo and any implied CC
 				}				
 			}
-			targetSlipRate[s] = faultSectionData.get(s).getReducedAveSlipRate()*1e-3*fractionalSlipRateReduction; // mm/yr --> m/yr; includes moRateReduction
-			targetSlipRateStdDev[s] = faultSectionData.get(s).getReducedSlipRateStdDev()*1e-3*fractionalSlipRateReduction; // mm/yr --> m/yr; includes moRateReduction
+			targetSlipRate[s] = sect.getReducedAveSlipRate()*1e-3*fractionalSlipRateReduction; // mm/yr --> m/yr; includes moRateReduction
+			targetSlipRateStdDev[s] = sect.getReducedSlipRateStdDev()*1e-3*fractionalSlipRateReduction; // mm/yr --> m/yr; includes moRateReduction
 		}
-		
-		if (D) System.out.println("DONE creating "+getNumRuptures()+" ruptures!");
-
-		init(faultSectionData, targetSlipRate, targetSlipRateStdDev, sectAreasReduced, sectionsForRups, rupMeanMag, rupRake, rupArea, rupLength, infoString);
+		return SectSlipRates.precomputed(rupSet, targetSlipRate, targetSlipRateStdDev);
 	}
 
 	/**
@@ -496,12 +578,12 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		if (rupSet instanceof InversionFaultSystemRupSet) {
 			FaultModels myFM = getFaultModel();
 			DeformationModels myDM = getDeformationModel();
-			LogicTreeBranch branch = getLogicTreeBranch();
+			U3LogicTreeBranch branch = getLogicTreeBranch();
 			ScalingRelationships myScale = branch.getValue(ScalingRelationships.class);
 			SlipAlongRuptureModels mySlipAlong = branch.getValue(SlipAlongRuptureModels.class);
 			
 			InversionFaultSystemRupSet invRupSet = (InversionFaultSystemRupSet)rupSet;
-			LogicTreeBranch oBranch = invRupSet.getLogicTreeBranch();
+			U3LogicTreeBranch oBranch = invRupSet.getLogicTreeBranch();
 			FaultModels oFM = invRupSet.getFaultModel();
 			DeformationModels oDM = invRupSet.getDeformationModel();
 			ScalingRelationships oScale = oBranch.getValue(ScalingRelationships.class);
@@ -626,9 +708,10 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		return filter;
 	}
 
-	public LogicTreeBranch getLogicTreeBranch() { return logicTreeBranch; }
+	public U3LogicTreeBranch getLogicTreeBranch() { return logicTreeBranch; }
 	
-	public void setLogicTreeBranch(LogicTreeBranch logicTreeBranch) {
+	public void setLogicTreeBranch(U3LogicTreeBranch logicTreeBranch) {
+		addModule(logicTreeBranch);
 		this.logicTreeBranch = logicTreeBranch;
 	}
 
@@ -646,10 +729,8 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		return slipModelType;
 	}
 
-	public InversionTargetMFDs getInversionTargetMFDs() {
-		if (inversionMFDs == null)
-			inversionMFDs = new InversionTargetMFDs(this);
-		return inversionMFDs;
+	public U3InversionTargetMFDs getInversionTargetMFDs() {
+		return getModule(U3InversionTargetMFDs.class);
 	}
 
 	/**
@@ -682,6 +763,16 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				"\t"+(float)getTotalReducedMomentRate()+"\t"+(float)getInversionTargetMFDs().getOffFaultMmaxIfOrigMoRateSatisfied();
 		return str;
 	}
+	
+	/**
+	 * This computes the final minimum mag for eachfault section.
+	 * See doc for FaultSystemRupSetCalc.computeMinSeismoMagForSections() for details.
+	 * @param sectIndex
+	 * @return
+	 */
+	protected double[] calcFinalMinMagForSections() {
+		return FaultSystemRupSetCalc.computeMinSeismoMagForSections(this,MIN_MAG_FOR_SEISMOGENIC_RUPS);
+	}
 
 	/**
 	 * This returns the final minimum mag for a given fault section.
@@ -690,10 +781,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return
 	 */
 	public synchronized double getFinalMinMagForSection(int sectIndex) {
-		if(minMagForSectArray == null) {
-			minMagForSectArray = FaultSystemRupSetCalc.computeMinSeismoMagForSections(this,MIN_MAG_FOR_SEISMOGENIC_RUPS);
-		}
-		return minMagForSectArray[sectIndex];
+		return getModule(ModSectMinMags.class).getMinMagForSection(sectIndex);
 	}
 
 
@@ -709,10 +797,8 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 
 		// see if it needs to be computed
 		if(isRupBelowMinMagsForSects == null) {
-			if(minMagForSectArray == null) {
-				minMagForSectArray = FaultSystemRupSetCalc.computeMinSeismoMagForSections(this,MIN_MAG_FOR_SEISMOGENIC_RUPS);
-			}
-			isRupBelowMinMagsForSects = FaultSystemRupSetCalc.computeWhichRupsFallBelowSectionMinMags(this, minMagForSectArray);
+			ModSectMinMags minMagsModule = getModule(ModSectMinMags.class);
+			isRupBelowMinMagsForSects = FaultSystemRupSetCalc.computeWhichRupsFallBelowSectionMinMags(this, minMagsModule);
 		}
 
 		return isRupBelowMinMagsForSects[rupIndex];
@@ -734,7 +820,11 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return
 	 */
 	public double getUpperMagForSubseismoRuptures(int sectIndex) {
-		return SectionMFD_constraint.getLowerEdgeOfFirstBin(getFinalMinMagForSection(sectIndex)) - InversionTargetMFDs.DELTA_MAG/2;
+		return getUpperMagForSubseismoRuptures(getFinalMinMagForSection(sectIndex));
+	}
+	
+	public static double getUpperMagForSubseismoRuptures(double finalMinMag) {
+		return SectionMFD_constraint.getLowerEdgeOfFirstBin(finalMinMag) - U3InversionTargetMFDs.DELTA_MAG/2;
 	}
 
 

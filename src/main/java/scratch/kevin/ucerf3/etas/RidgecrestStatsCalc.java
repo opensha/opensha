@@ -58,6 +58,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -65,7 +66,6 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -83,8 +83,8 @@ import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration.Callback;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RidgecrestStatsCalc {
 
@@ -94,7 +94,7 @@ public class RidgecrestStatsCalc {
 //		System.exit(0);
 		boolean redoPaperFigs = false;
 		
-		FaultSystemSolution fss = FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 		
 		File outputDir = new File(gitDir, "ridgecrest_tables_figures");
@@ -488,7 +488,7 @@ public class RidgecrestStatsCalc {
 		List<Region> polys = null;
 		if (polygonColor != null) {
 			faultPolyChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 1.5f, polygonColor);
-			FaultPolyMgr polyMgr = FaultPolyMgr.create(sects, InversionTargetMFDs.FAULT_BUFFER);
+			FaultPolyMgr polyMgr = FaultPolyMgr.create(sects, U3InversionTargetMFDs.FAULT_BUFFER);
 			polys = new ArrayList<>();
 			for (int s=0; s<sects.size(); s++)
 				polys.add(polyMgr.getPoly(s));

@@ -39,8 +39,8 @@ import com.google.common.collect.Table;
 import com.google.common.primitives.Ints;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
@@ -50,9 +50,9 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
@@ -92,7 +92,7 @@ public class TrueMeanBuilder {
 		private List<UniqueSection> sects;
 		private int cnt = 0;
 		
-		private List<LogicTreeBranch> branchesWithRup;
+		private List<U3LogicTreeBranch> branchesWithRup;
 		
 		public UniqueRupture(int id, double rake, double area) {
 			super();
@@ -152,7 +152,7 @@ public class TrueMeanBuilder {
 		
 		// not part of unique checks
 		private FaultSection sect;
-		private Map<LogicTreeBranch, FaultSection> branchSects;
+		private Map<U3LogicTreeBranch, FaultSection> branchSects;
 
 		public UniqueSection(FaultSection sect, int globalID) {
 			super();
@@ -165,7 +165,7 @@ public class TrueMeanBuilder {
 			branchSects = new HashMap<>();
 		}
 		
-		public void addBranch(LogicTreeBranch branch, FaultSection sect) {
+		public void addBranch(U3LogicTreeBranch branch, FaultSection sect) {
 			branchSects.put(branch, sect);
 		}
 
@@ -233,11 +233,11 @@ public class TrueMeanBuilder {
 		for (FaultModels fm : fms)
 			fmSet.add(fm);
 		
-		List<LogicTreeBranch> branches = Lists.newArrayList(cfss.getBranches());
+		List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss.getBranches());
 		
 		// remove any branches for excluded fault models
 		for (int i=branches.size(); --i>=0;) {
-			LogicTreeBranch branch = branches.get(i);
+			U3LogicTreeBranch branch = branches.get(i);
 			FaultModels fm = branch.getValue(FaultModels.class);
 			if (!fmSet.contains(fm))
 				branches.remove(i);
@@ -265,8 +265,8 @@ public class TrueMeanBuilder {
 		Map<FaultModels, List<List<Integer>>> subSectIndexesMap = Maps.newHashMap();
 		int globalSectCount = 0;
 		for (FaultModels fm : fms) {
-			FaultSystemRupSet rupSet = null;
-			for (LogicTreeBranch branch : branches) {
+			U3FaultSystemRupSet rupSet = null;
+			for (U3LogicTreeBranch branch : branches) {
 				if (branch.getValue(FaultModels.class) == fm) {
 					rupSet = cfss.getSolution(branch).getRupSet();
 					break;
@@ -320,7 +320,7 @@ public class TrueMeanBuilder {
 		
 		// find the total branch weight for the tree
 		double totWeight = 0d;
-		for (LogicTreeBranch branch : branches)
+		for (U3LogicTreeBranch branch : branches)
 			totWeight += weightProvider.getWeight(branch);
 		
 		// counts for progress tracking
@@ -341,9 +341,9 @@ public class TrueMeanBuilder {
 		origAvgMFD.setTolerance(mfdDelta);
 		
 		// keyed to just FM, DM, Scale
-		Map<LogicTreeBranch, boolean[]> minMagArrays = Maps.newHashMap();
+		Map<U3LogicTreeBranch, boolean[]> minMagArrays = Maps.newHashMap();
 		
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			FaultModels fm = branch.getValue(FaultModels.class);
 			// mapping from FM IDs to global IDs
 			Map<Integer, Integer> globalRupIDsMap = fmGlobalRupIDsMaps.get(fm);
@@ -364,7 +364,7 @@ public class TrueMeanBuilder {
 			List<? extends FaultSection> fsd = null;
 			InversionFaultSystemRupSet rupSet = null;
 			
-			LogicTreeBranch fmDmScaleBranch = (LogicTreeBranch) branch.clone();
+			U3LogicTreeBranch fmDmScaleBranch = (U3LogicTreeBranch) branch.clone();
 			for (int i=0; i<branch.size(); i++) {
 				LogicTreeBranchNode<?> val = branch.getValue(i);
 				if (!(val instanceof FaultModels || val instanceof DeformationModels || val instanceof ScalingRelationships))
@@ -507,7 +507,7 @@ public class TrueMeanBuilder {
 				// compute average rake
 				List<Double> myRakes = new ArrayList<>();
 				List<Double> myWeights = new ArrayList<>();
-				for (LogicTreeBranch  branch : sect.branchSects.keySet()) {
+				for (U3LogicTreeBranch  branch : sect.branchSects.keySet()) {
 					myRakes.add(sect.branchSects.get(branch).getAveRake());
 					myWeights.add(weightProvider.getWeight(branch));
 				}
@@ -532,7 +532,7 @@ public class TrueMeanBuilder {
 		newMFD.setTolerance(mfdDelta);
 		
 		// this keeps track of the IDs in our true mean solution that map back to each branch rupture
-		Map<LogicTreeBranch, int[]> branchIDsMap = Maps.newHashMap();
+		Map<U3LogicTreeBranch, int[]> branchIDsMap = Maps.newHashMap();
 		
 		int rupIndex = 0;
 		for (Map<UniqueRupture, UniqueRupture> uniqueRups : uniqueRupturesList) {
@@ -556,7 +556,7 @@ public class TrueMeanBuilder {
 				mags[rupIndex] = runningMag/totRate;
 				mfds[rupIndex] = mfd;
 				
-				for (LogicTreeBranch branch : rup.branchesWithRup) {
+				for (U3LogicTreeBranch branch : rup.branchesWithRup) {
 					int[] ids = branchIDsMap.get(branch);
 					if (ids == null) {
 						ids = new int[fmRupCountMap.get(branch.getValue(FaultModels.class))];
@@ -591,9 +591,9 @@ public class TrueMeanBuilder {
 		String info = "UCERF3 Mean Solution";
 		
 		// assemble rupSet/solution
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(faultSectionData, null, null, null, sectionForRups,
+		U3FaultSystemRupSet rupSet = new U3FaultSystemRupSet(faultSectionData, null, null, null, sectionForRups,
 				mags, rakes, rupAreas, null, info);
-		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		U3FaultSystemSolution sol = new U3FaultSystemSolution(rupSet, rates);
 		
 		// load in branch averages and build average grid source provider
 		Map<FaultModels, File> branchAvgFiles = Maps.newHashMap();
@@ -606,7 +606,7 @@ public class TrueMeanBuilder {
 		
 		String outputFilePrefix = compoundFile.getName().replaceAll(".zip", "")+nameAdd+"_TRUE_HAZARD_MEAN_SOL";
 		File outputFile = new File(outputDir, outputFilePrefix+".zip");
-		FaultSystemIO.writeSol(sol, outputFile);
+		U3FaultSystemIO.writeSol(sol, outputFile);
 		
 		// write branch specific data
 		// unzip true mean to temp dir
@@ -624,7 +624,7 @@ public class TrueMeanBuilder {
 		Collections.sort(branches);
 		File branchesFile = new File(tempDir, "branch_list.txt");
 		FileWriter fw = new FileWriter(branchesFile);
-		for (LogicTreeBranch branch : branches)
+		for (U3LogicTreeBranch branch : branches)
 			fw.write(branch.buildFileName()+"\n");
 		fw.close();
 		fileNames.add(branchesFile.getName());
@@ -632,7 +632,7 @@ public class TrueMeanBuilder {
 		List<List<Integer>> branchRupsMapping = Lists.newArrayList();
 		double[] negCounts = new double[branches.size()];
 		for (int i = 0; i < branches.size(); i++) {
-			LogicTreeBranch branch = branches.get(i);
+			U3LogicTreeBranch branch = branches.get(i);
 			int[] ids = branchIDsMap.get(branch);
 			// will only be -1 if below sect min mag
 			for (int id : ids)
@@ -646,7 +646,7 @@ public class TrueMeanBuilder {
 					int id = ids[j];
 					if (id < 0) {
 						if (!auditRupSet.isRuptureBelowSectMinMag(j)) {
-							LogicTreeBranch fmDmScaleBranch = (LogicTreeBranch) branch.clone();
+							U3LogicTreeBranch fmDmScaleBranch = (U3LogicTreeBranch) branch.clone();
 							for (int k=0; k<branch.size(); k++) {
 								LogicTreeBranchNode<?> val = branch.getValue(k);
 								if (!(val instanceof FaultModels || val instanceof DeformationModels || val instanceof ScalingRelationships))
@@ -691,8 +691,8 @@ public class TrueMeanBuilder {
 		FileUtils.deleteRecursive(tempDir);
 	}
 	
-	public static Map<LogicTreeBranch, List<Integer>> loadRuptureMappings(File fssFile) throws IOException {
-		List<LogicTreeBranch> branches = Lists.newArrayList();
+	public static Map<U3LogicTreeBranch, List<Integer>> loadRuptureMappings(File fssFile) throws IOException {
+		List<U3LogicTreeBranch> branches = Lists.newArrayList();
 		ZipFile zip = new ZipFile(fssFile);
 		ZipEntry branchesEntry = zip.getEntry("branch_list.txt");
 		Preconditions.checkNotNull(branchesEntry, "Given file doesn't have branch list!");
@@ -701,7 +701,7 @@ public class TrueMeanBuilder {
 				new BufferedInputStream(zip.getInputStream(branchesEntry)));
 		try {
 			while (scanner.hasNextLine()){
-				branches.add(LogicTreeBranch.fromFileName(scanner.nextLine()));
+				branches.add(U3LogicTreeBranch.fromFileName(scanner.nextLine()));
 			}
 		}
 		finally{
@@ -714,7 +714,7 @@ public class TrueMeanBuilder {
 		List<List<Integer>> idsList = MatrixIO.intListListFromInputStream(zip.getInputStream(mappingEntry));
 		zip.close();
 		Preconditions.checkState(branches.size() == idsList.size(), "mappings lengths inconsistent!");
-		Map<LogicTreeBranch, List<Integer>> mapping = Maps.newHashMap();
+		Map<U3LogicTreeBranch, List<Integer>> mapping = Maps.newHashMap();
 		for (int i=0; i<branches.size(); i++)
 			mapping.put(branches.get(i), idsList.get(i));
 		return mapping;
@@ -732,7 +732,7 @@ public class TrueMeanBuilder {
 		List<GridSourceProvider> providers = Lists.newArrayList();
 		for (FaultModels fm : fms)
 //			providers.add(FaultSystemIO.loadInvSol(branchAvgFiles.get(fm)).getGridSourceProvider());
-			providers.add(FaultSystemIO.loadSol(branchAvgFiles.get(fm)).getGridSourceProvider());
+			providers.add(U3FaultSystemIO.loadSol(branchAvgFiles.get(fm)).getGridSourceProvider());
 		
 		// FAULT MODELS ASSUMED TO HAVE EQUAL WEIGHT (currently true)
 		double weight = 1d/(double)providers.size();

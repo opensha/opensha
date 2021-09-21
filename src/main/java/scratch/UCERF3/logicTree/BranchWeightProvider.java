@@ -16,6 +16,6 @@ public interface BranchWeightProvider extends Serializable {
 	 * @param branch
 	 * @return
 	 */
-	public double getWeight(LogicTreeBranch branch);
+	public double getWeight(U3LogicTreeBranch branch);
 
 }

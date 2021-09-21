@@ -6,21 +6,21 @@ import java.util.List;
 import com.google.common.collect.Lists;
 
 public class DiscreteListTreeTrimmer implements TreeTrimmer,
-		Iterable<LogicTreeBranch> {
+		Iterable<U3LogicTreeBranch> {
 	
-	List<LogicTreeBranch> branches;
+	List<U3LogicTreeBranch> branches;
 	
-	public DiscreteListTreeTrimmer(List<LogicTreeBranch> branches) {
+	public DiscreteListTreeTrimmer(List<U3LogicTreeBranch> branches) {
 		this.branches = branches;
 	}
 
 	@Override
-	public Iterator<LogicTreeBranch> iterator() {
+	public Iterator<U3LogicTreeBranch> iterator() {
 		return branches.iterator();
 	}
 
 	@Override
-	public boolean isTreeValid(LogicTreeBranch branch) {
+	public boolean isTreeValid(U3LogicTreeBranch branch) {
 		return branches.contains(branch);
 	}
 

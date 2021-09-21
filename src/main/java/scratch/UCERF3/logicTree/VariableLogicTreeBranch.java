@@ -11,11 +11,16 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 
-public class VariableLogicTreeBranch extends LogicTreeBranch {
+public class VariableLogicTreeBranch extends U3LogicTreeBranch {
 	
 	private List<String> variations;
+	
+	@SuppressWarnings("unused") // used for deserialization
+	private VariableLogicTreeBranch() {
+		super();
+	}
 
-	public VariableLogicTreeBranch(LogicTreeBranch branch, List<String> variations) {
+	public VariableLogicTreeBranch(U3LogicTreeBranch branch, List<String> variations) {
 		super(branch);
 		this.variations = variations;
 	}
@@ -55,9 +60,9 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 			return true;
 		if (!super.equals(obj))
 			return false;
-		if (!(obj instanceof LogicTreeBranch))
+		if (!(obj instanceof U3LogicTreeBranch))
 			return false;
-		LogicTreeBranch other = (LogicTreeBranch) obj;
+		U3LogicTreeBranch other = (U3LogicTreeBranch) obj;
 		List<String> oVariations;
 		if (other instanceof VariableLogicTreeBranch)
 			oVariations = ((VariableLogicTreeBranch)other).variations;
@@ -72,7 +77,7 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 	}
 	
 	@Override
-	public int compareTo(LogicTreeBranch o) {
+	public int compareTo(org.opensha.commons.logicTree.LogicTreeBranch o) {
 		int lBranchComp = super.compareTo(o);
 		if (lBranchComp != 0)
 			return lBranchComp;
@@ -93,7 +98,7 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 		}
 		return 0;
 	}
-	
+
 	private static List<String> parseVariations(String name) {
 		ArrayList<String> vars = null;
 		while (name.contains("_Var")) {
@@ -117,13 +122,13 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 		return vars;
 	}
 	
-	public static LogicTreeBranch fromStringValues(List<String> strings) {
+	public static U3LogicTreeBranch fromStringValues(List<String> strings) {
 		return fromFileName(Joiner.on("_").join(strings));
 	}
 	
 	public static VariableLogicTreeBranch fromFileName(String name) {
 		List<String> variations = parseVariations(name);
-		LogicTreeBranch branch = LogicTreeBranch.fromFileName(name);
+		U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(name);
 		return new VariableLogicTreeBranch(branch, variations);
 	}
 	
@@ -145,7 +150,7 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 			System.out.println(var);
 		
 		// test sorting
-		List<LogicTreeBranch> branches = Lists.newArrayList();
+		List<U3LogicTreeBranch> branches = Lists.newArrayList();
 		
 		branches.add(VariableLogicTreeBranch.fromFileName("FM3_1_ZENG_HB08_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_VarPOISSON_VarABCD"));
 		branches.add(VariableLogicTreeBranch.fromFileName("FM3_1_ZENG_HB08_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_VarMID_VarABCD"));
@@ -158,12 +163,12 @@ public class VariableLogicTreeBranch extends LogicTreeBranch {
 		
 		Collections.shuffle(branches);
 		Collections.sort(branches);
-		for (LogicTreeBranch b : branches)
+		for (U3LogicTreeBranch b : branches)
 			System.out.println(b.buildFileName());
 	}
 	
 	public static VariableLogicTreeBranch fromXMLMetadata(Element branchEl) {
-		LogicTreeBranch branch = LogicTreeBranch.fromXMLMetadata(branchEl);
+		U3LogicTreeBranch branch = U3LogicTreeBranch.fromXMLMetadata(branchEl);
 		Preconditions.checkState(branch instanceof VariableLogicTreeBranch, "Has no variations!");
 		return (VariableLogicTreeBranch)branch;
 	}

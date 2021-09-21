@@ -28,4 +28,4 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assemble
     - name: Run standard tests with Gradle
-      run: ./gradlew test
+      run: ./gradlew testVerbose

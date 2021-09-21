@@ -21,9 +21,14 @@ package org.opensha.sha.magdist;
 
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.exceptions.InvalidRangeException;
+
+import com.google.common.base.Preconditions;
+import com.google.gson.annotations.JsonAdapter;
 
 
 
@@ -34,7 +39,7 @@ import org.opensha.commons.exceptions.InvalidRangeException;
  * @author : Nitin Gupta Date:July 26,2002
  * @version 1.0
  */
-
+@JsonAdapter(IncrementalMagFreqDist.Adapter.class)
 public class IncrementalMagFreqDist extends EvenlyDiscretizedFunc
     implements IncrementalMagFreqDistAPI,java.io.Serializable {
 
@@ -528,6 +533,17 @@ public class IncrementalMagFreqDist extends EvenlyDiscretizedFunc
    public double compute_bValue() {
 	   return compute_bValue(Double.NaN, Double.NaN);
    }
+   
+   public static class Adapter extends DiscretizedFunc.AbstractAdapter<IncrementalMagFreqDist> {
 
+		@Override
+		protected IncrementalMagFreqDist instance(Double minX, Double maxX, Integer size) {
+			Preconditions.checkNotNull(minX, "minX must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			Preconditions.checkNotNull(maxX, "maxX must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			return new IncrementalMagFreqDist(minX, maxX, size);
+		}
+		
+	}
 
 }

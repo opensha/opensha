@@ -10,7 +10,8 @@ import java.net.URL;
 import org.dom4j.DocumentException;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import scratch.UCERF3.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 
 public class LoadInversionSolutionIntegrationTest {
 
@@ -36,8 +37,9 @@ public class LoadInversionSolutionIntegrationTest {
 	 */
 	@Test
 	public void testLoadInversionSolutionHasClusterRuptures() throws IOException, DocumentException, URISyntaxException {
-		FaultSystemSolution loadedSolution = FaultSystemIO.loadSol(new File(alpineVernonRupturesUrl.toURI()));
-		assertEquals(3101, loadedSolution.getRupSet().getClusterRuptures().size());
+		FaultSystemSolution loadedSolution =
+				U3FaultSystemIO.loadSol(new File(alpineVernonRupturesUrl.toURI()));
+		assertEquals(3101, loadedSolution.getRupSet().getModule(ClusterRuptures.class).getAll().size());
 	}
 
 }

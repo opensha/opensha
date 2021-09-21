@@ -1,6 +1,15 @@
 package org.opensha.commons.geo.json;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,20 +40,46 @@ import com.google.gson.stream.JsonWriter;
 public class Geometry {
 	
 	public final GeoJSON_Type type;
+	private boolean serializeZeroDepth;
 	
-	private Geometry(GeoJSON_Type type) {
+	private Geometry(GeoJSON_Type type, boolean serializeZeroDepth) {
 		Preconditions.checkState(GeoJSON_Type.GEOM_TYPES.contains(type), "Type is not a valid geometry type: %s", type);
 		this.type = type;
+		this.serializeZeroDepth = serializeZeroDepth;
+	}
+	
+	public boolean isSerializeZeroDepths() {
+		return serializeZeroDepth;
+	}
+	
+	public void setSerializeZeroDepths(boolean serializeZeroDepth) {
+		this.serializeZeroDepth = serializeZeroDepth;
 	}
 	
 	public static class LineString extends Geometry {
 		
 		public final LocationList line;
 		
+		public LineString(Location... locs) {
+			super(GeoJSON_Type.LineString, hasNonZeroDepth(locs));
+			
+			this.line = new LocationList();
+			for (Location loc : locs)
+				line.add(loc);
+		}
+		
 		public LineString(LocationList line) {
-			super(GeoJSON_Type.LineString);
+			super(GeoJSON_Type.LineString, hasNonZeroDepth(line));
 			
 			this.line = line;
+		}
+		
+		private LineString(List<Coordinates> coords) {
+			super(GeoJSON_Type.LineString, coordsHaveDepths(coords));
+			
+			line = new LocationList();
+			for (Coordinates coord : coords)
+				line.add(coord.toLoc());
 		}
 	}
 	
@@ -53,10 +88,19 @@ public class Geometry {
 		public final ImmutableList<LocationList> lines;
 		
 		public MultiLineString(List<LocationList> lines) {
-			super(GeoJSON_Type.MultiLineString);
+			super(GeoJSON_Type.MultiLineString, hasNonZeroDepths(lines));
 			
 			this.lines = ImmutableList.copyOf(lines);
 		}
+		
+		private MultiLineString(Coordinates coords) {
+			super(GeoJSON_Type.MultiLineString, coordsHaveDepths(coords.coords));
+			
+			ImmutableList.Builder<LocationList> lines = new ImmutableList.Builder<>();
+			for (Coordinates subCoords : coords.coords)
+				lines.add(new LineString(subCoords.coords).line);
+			this.lines = lines.build();
+		} 
 	}
 	
 	public static class Point extends Geometry {
@@ -64,9 +108,21 @@ public class Geometry {
 		public final Location point;
 		
 		public Point(Location point) {
-			super(GeoJSON_Type.Point);
+			super(GeoJSON_Type.Point, hasNonZeroDepth(point));
 			
 			this.point = point;
+		}
+		
+		private Point() {
+			super(GeoJSON_Type.Point, false);
+			
+			this.point = null;
+		}
+		
+		public Point(Coordinates coords) {
+			super(GeoJSON_Type.Point, coords.location.length > 2);
+			
+			this.point = coords.toLoc();
 		}
 	}
 	
@@ -75,9 +131,17 @@ public class Geometry {
 		public final LocationList points;
 		
 		public MultiPoint(LocationList points) {
-			super(GeoJSON_Type.MultiPoint);
+			super(GeoJSON_Type.MultiPoint, hasNonZeroDepth(points));
 			
 			this.points = points;
+		}
+		
+		private MultiPoint(List<Coordinates> coords) {
+			super(GeoJSON_Type.MultiPoint, coordsHaveDepths(coords));
+			
+			points = new LocationList();
+			for (Coordinates coord : coords)
+				points.add(coord.toLoc());
 		}
 	}
 	
@@ -87,14 +151,17 @@ public class Geometry {
 		public final LocationList[] holes;
 		
 		public Polygon(Region region) {
-			super(GeoJSON_Type.Polygon);
+			super(GeoJSON_Type.Polygon, hasNonZeroDepth(region.getBorder()));
 			polygon = getPolygonBorder(region.getBorder(), false);
 			
 			List<LocationList> interiors = region.getInteriors();
 			if (interiors != null) {
 				holes = new LocationList[interiors.size()];
-				for (int i=0; i<holes.length; i++)
+				for (int i=0; i<holes.length; i++) {
 					holes[i] = getPolygonBorder(interiors.get(i), true);
+					if (hasNonZeroDepth(holes[i]))
+						setSerializeZeroDepths(true);
+				}
 			} else {
 				holes = null;
 			}
@@ -105,10 +172,32 @@ public class Geometry {
 		}
 		
 		public Polygon(LocationList polygon, LocationList[] holes) {
-			super(GeoJSON_Type.Polygon);
+			super(GeoJSON_Type.Polygon, hasNonZeroDepth(polygon));
 			
 			this.polygon = polygon;
-			this.holes = null;
+			this.holes = holes;
+			if (holes != null && !isSerializeZeroDepths()) {
+				for (LocationList hole : holes)
+					if (hasNonZeroDepth(hole))
+						setSerializeZeroDepths(true);
+			}
+		}
+		
+		private Polygon(List<Coordinates> coords) {
+			super(GeoJSON_Type.Polygon, coordsHaveDepths(coords));
+			
+			LocationList border = null;
+			List<LocationList> holes = new ArrayList<>();
+			for (Coordinates subCoords : coords) {
+				LocationList points = deserializePoints(subCoords.coords);
+				if (border == null)
+					border = points;
+				else
+					holes.add(points);
+			}
+			
+			this.polygon = border;
+			this.holes = holes.isEmpty() ? null : holes.toArray(new LocationList[0]);
 		}
 		
 		/**
@@ -133,7 +222,7 @@ public class Geometry {
 		public final ImmutableList<Polygon> polygons;
 		
 		public MultiPolygon(List<Polygon> polygons) { 
-			super(GeoJSON_Type.MultiPolygon);
+			super(GeoJSON_Type.MultiPolygon, geomsHaveDepths(polygons));
 			
 			this.polygons = ImmutableList.copyOf(polygons);
 		}
@@ -155,10 +244,54 @@ public class Geometry {
 		public final ImmutableList<Geometry> geometries;
 		
 		public GeometryCollection(List<Geometry> geometries) {
-			super(GeoJSON_Type.GeometryCollection);
+			super(GeoJSON_Type.GeometryCollection, geomsHaveDepths(geometries));
 			
 			this.geometries = ImmutableList.copyOf(geometries);
 		}
+	}
+	
+	private static boolean coordsHaveDepths(List<Coordinates> coords) {
+		for (Coordinates coord : coords) {
+			if (coord.location == null) {
+				if (coordsHaveDepths(coord.coords))
+					return true;
+			} else if (coord.location.length > 2) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private static boolean geomsHaveDepths(List<? extends Geometry> geometries) {
+		for (Geometry geom : geometries)
+			if (geom.serializeZeroDepth)
+				return true;
+		return false;
+	}
+	
+	private static boolean hasNonZeroDepth(List<Location> locs) {
+		for (Location loc : locs)
+			if (hasNonZeroDepth(loc))
+				return true;
+		return false;
+	}
+	
+	private static boolean hasNonZeroDepths(List<? extends List<Location>> lines) {
+		for (List<Location> locs : lines)
+			if (hasNonZeroDepth(locs))
+				return true;
+		return false;
+	}
+	
+	private static boolean hasNonZeroDepth(Location... locs) {
+		for (Location loc : locs)
+			if (hasNonZeroDepth(loc))
+				return true;
+		return false;
+	}
+	
+	private static boolean hasNonZeroDepth(Location loc) {
+		return loc.getDepth() != 0d;
 	}
 	
 	public static class GeometryAdapter extends TypeAdapter<Geometry> {
@@ -193,22 +326,24 @@ public class Geometry {
 			} else {
 				out.name("coordinates");
 				
+				boolean serializeZeros = value.isSerializeZeroDepths();
+				
 				switch (value.type) {
 				case Point:
-					serializeLoc(out, ((Point)value).point, depthType);
+					serializeLoc(out, ((Point)value).point, depthType, serializeZeros);
 					break;
 					
 				case MultiPoint:
 					out.beginArray();
 					for (Location point : ((MultiPoint)value).points)
-						serializeLoc(out, point, depthType);
+						serializeLoc(out, point, depthType, serializeZeros);
 					out.endArray();
 					break;
 					
 				case LineString:
 					out.beginArray();
 					for (Location point : ((LineString)value).line)
-						serializeLoc(out, point, depthType);
+						serializeLoc(out, point, depthType, serializeZeros);
 					out.endArray();
 					break;
 					
@@ -217,20 +352,20 @@ public class Geometry {
 					for (LocationList line : ((MultiLineString)value).lines) {
 						out.beginArray();
 						for (Location point : line)
-							serializeLoc(out, point, depthType);
+							serializeLoc(out, point, depthType, serializeZeros);
 						out.endArray();
 					}
 					out.endArray();
 					break;
 					
 				case Polygon:
-					serializePolygon(out, (Polygon)value, depthType);
+					serializePolygon(out, (Polygon)value, depthType, serializeZeros);
 					break;
 					
 				case MultiPolygon:
 					out.beginArray();
 					for (Polygon polygon : ((MultiPolygon)value).polygons)
-						serializePolygon(out, polygon, depthType);
+						serializePolygon(out, polygon, depthType, serializeZeros);
 					out.endArray();
 					break;
 					
@@ -283,8 +418,8 @@ public class Geometry {
 					Preconditions.checkState(geometry == null, "Geometry already defined and coordinate array encountered");
 					Preconditions.checkState(coords == null, "Coordinates already defined and coordinate array encountered");
 					
-					coords = new Coordinates();
-					parseCoordsRecursive(in, coords, depthType);
+					coords = new Coordinates(depthType);
+					parseCoordsRecursive(in, coords);
 					break;
 
 				default:
@@ -305,19 +440,19 @@ public class Geometry {
 				switch (type) {
 				case Point:
 					if (coords == null) {
-						geometry = new Point(null);
+						geometry = new Point();
 					} else {
 						Preconditions.checkState(coords.coords == null);
-						geometry = new Point(coords.location);
+						geometry = new Point(coords);
 					}
 					break;
 					
 				case MultiPoint:
-					geometry = new MultiPoint(deserializePoints(coords));
+					geometry = new MultiPoint(coords.coords);
 					break;
 					
 				case LineString:
-					geometry = new LineString(deserializePoints(coords));
+					geometry = new LineString(coords.coords);
 					break;
 					
 				case MultiLineString:
@@ -325,15 +460,12 @@ public class Geometry {
 					if (coords.coords == null) {
 						geometry = new MultiLineString(new ArrayList<>());
 					} else {
-						ImmutableList.Builder<LocationList> lines = new ImmutableList.Builder<>();
-						for (Coordinates subCoords : coords.coords)
-							lines.add(deserializePoints(subCoords));
-						geometry = new MultiLineString(lines.build());
+						geometry = new MultiLineString(coords);
 					}
 					break;
 					
 				case Polygon:
-					geometry = deserializePolygon(coords);
+					geometry = new Polygon(coords.coords);
 					break;
 					
 				case MultiPolygon:
@@ -343,7 +475,7 @@ public class Geometry {
 					} else {
 						ImmutableList.Builder<Polygon> polys = new ImmutableList.Builder<>();
 						for (Coordinates subCoords : coords.coords)
-							polys.add(deserializePolygon(subCoords));
+							polys.add(new Polygon(subCoords.coords));
 						geometry = new MultiPolygon(polys.build());
 					}
 					break;
@@ -362,12 +494,23 @@ public class Geometry {
 	}
 	
 	private static class Coordinates {
-		private Location location;
+		private double[] location;
 		private List<Coordinates> coords;
+		private DepthSerializationType depthType;
+		
+		public Coordinates(DepthSerializationType depthType) {
+			this.depthType = depthType;
+		}
+		
+		public Location toLoc() {
+			Preconditions.checkNotNull(location);
+			if (location.length > 2)
+				return new Location(location[1], location[0], depthType.fromGeoJSON(location[2]));
+			return new Location(location[1], location[0]);
+		}
 	}
 	
-	private static void parseCoordsRecursive(JsonReader in, Coordinates coords,
-			DepthSerializationType depthType) throws IOException {
+	private static void parseCoordsRecursive(JsonReader in, Coordinates coords) throws IOException {
 		if (in.peek() == JsonToken.NULL)
 			return;
 		in.beginArray();
@@ -377,12 +520,12 @@ public class Geometry {
 			// go another level deeper
 			coords.coords = new ArrayList<>();
 			while (in.hasNext()) {
-				Coordinates subCoords = new Coordinates();
+				Coordinates subCoords = new Coordinates(coords.depthType);
 				coords.coords.add(subCoords);
-				parseCoordsRecursive(in, subCoords, depthType);
+				parseCoordsRecursive(in, subCoords);
 			}
 		} else {
-			coords.location = deserializeLocWithinArray(in, depthType);
+			coords.location = deserializeLocWithinArray(in);
 		}
 		
 		in.endArray();
@@ -412,15 +555,53 @@ public class Geometry {
 		DEPTH_M,
 		/**
 		 * Depth below the surface of the earth in kilometers. This goes against the GeoJSON spec,
-		 * but is used by some USGS web services
+		 * but is used by some USGS web services and makes the most sense for use in OpenSHA.
 		 */
-		DEPTH_KM
+		DEPTH_KM;
+		
+		/**
+		 * Converts the given OpenSHA depth (in km) to a JSON depth/elevation, according to the type
+		 * 
+		 * @param depth
+		 * @return
+		 */
+		public double toGeoJSON(double depth) {
+			switch (this) {
+			case ELEVATION_M:
+				return -depth*1000d; // elevation, in m
+			case DEPTH_M:
+				return depth*1000d; // depth, in m
+			case DEPTH_KM:
+				return depth; // depth, in km
+			default:
+				throw new IllegalStateException();
+			}
+		}
+		
+		/**
+		 * Converts a JSON depth/elevation to an OpenSHA depth (in km), according to the type
+		 * @param depth
+		 * @return
+		 */
+		public double fromGeoJSON(double depth) {
+			switch (this) {
+			case ELEVATION_M:
+				return depth*-1e-3; // elev in m -> depth in km
+			case DEPTH_M:
+				return depth *1e-3; // depth in m -> depth in km
+			case DEPTH_KM:
+				return depth; // depth in km
+			default:
+				throw new IllegalStateException();
+			}
+		}
 	}
 	
-	public static final DepthSerializationType DEPTH_SERIALIZATION_DEFAULT = DepthSerializationType.ELEVATION_M;
+	public static final DepthSerializationType DEPTH_SERIALIZATION_DEFAULT = DepthSerializationType.DEPTH_KM;
 	
 	
-	public static void serializeLoc(JsonWriter out, Location loc, DepthSerializationType depthType) throws IOException {
+	public static void serializeLoc(JsonWriter out, Location loc, DepthSerializationType depthType,
+			boolean serializeZeros) throws IOException {
 		if (loc == null) {
 			out.nullValue();
 			return;
@@ -428,80 +609,44 @@ public class Geometry {
 		out.beginArray();
 		out.value(loc.getLongitude());
 		out.value(loc.getLatitude());
-		if (loc.getDepth() != 0d) {
-			switch (depthType) {
-			case ELEVATION_M:
-				out.value(-loc.getDepth()*1000d); // elevation, in m
-				break;
-			case DEPTH_M:
-				out.value(loc.getDepth()*1000d); // depth, in m
-				break;
-			case DEPTH_KM:
-				out.value(loc.getDepth()); // depth, in km
-				break;
-			default:
-				throw new IllegalStateException();
-			}
-		}
+		if (serializeZeros || loc.getDepth() != 0d)
+			out.value(depthType.toGeoJSON(loc.getDepth()));
 		out.endArray();
 	}
 	
-	public static Location deserializeLoc(JsonReader in, DepthSerializationType depthType) throws IOException {
-		if (in.peek() == JsonToken.NULL)
-			return null;
-		in.beginArray();
-		Location loc = deserializeLocWithinArray(in, depthType);
-		in.endArray();
-		return loc;
-	}
-	
-	private static Location deserializeLocWithinArray(JsonReader in, DepthSerializationType depthType) throws IOException {
+	private static double[] deserializeLocWithinArray(JsonReader in) throws IOException {
 		double lon = in.nextDouble();
 		double lat = in.nextDouble();
-		double depth = 0d;
-		if (in.peek() != JsonToken.END_ARRAY) {
-			switch (depthType) {
-			case ELEVATION_M:
-				depth = -in.nextDouble()*1e-3; // elev in m -> depth in km
-				break;
-			case DEPTH_M:
-				depth = in.nextDouble()*1e-3; // depth in m -> depth in km
-				break;
-			case DEPTH_KM:
-				depth = in.nextDouble(); // depth in km
-				break;
-			default:
-				throw new IllegalStateException();
-			}
-		}
-		return new Location(lat, lon, depth);
+		if (in.peek() != JsonToken.END_ARRAY)
+			return new double[] { lon, lat, in.nextDouble() };
+		return new double[] { lon, lat };
 	}
 	
-	private static LocationList deserializePoints(Coordinates coords) throws IOException {
-		Preconditions.checkState(coords.location == null);
+	private static LocationList deserializePoints(List<Coordinates> coords) {
 		LocationList points = new LocationList();
-		if (coords.coords == null)
+		if (coords == null)
 			return points;
-		for (Coordinates subCoords : coords.coords) {
+		for (Coordinates subCoords : coords) {
 			Preconditions.checkState(subCoords.coords == null);
-			points.add(subCoords.location);
+			points.add(subCoords.toLoc());
 		}
 		return points;
 	}
 	
-	private static void serializePolygon(JsonWriter out, Polygon polygon, DepthSerializationType depthType) throws IOException {
+	private static void serializePolygon(JsonWriter out, Polygon polygon, DepthSerializationType depthType,
+			boolean serializeZeros) throws IOException {
 		out.beginArray();
 		
 		out.beginArray();
 		for (Location loc : getPolygonBorder(polygon.polygon, false))
-			serializeLoc(out, loc, depthType);
+			serializeLoc(out, loc, depthType, serializeZeros);
 		out.endArray();
 		
 		if (polygon.holes != null) {
 			for (LocationList interior : polygon.holes) {
 				out.beginArray();
 				for (Location loc : getPolygonBorder(interior, true))
-					serializeLoc(out, loc, depthType);
+					serializeLoc(out, loc, depthType, serializeZeros);
 				out.endArray();
 			}
 		}
@@ -509,26 +654,9 @@ public class Geometry {
 		out.endArray();
 	}
 	
-	private static Polygon deserializePolygon(Coordinates coords) throws IOException {
-		Preconditions.checkState(coords.location == null);
-		if (coords.coords == null)
-			return null;
-		
-		LocationList border = null;
-		List<LocationList> holes = new ArrayList<>();
-		for (Coordinates subCoords : coords.coords) {
-			LocationList points = deserializePoints(subCoords);
-			if (border == null)
-				border = points;
-			else
-				holes.add(points);
-		}
-		
-		return new Polygon(border, holes.isEmpty() ? null : holes.toArray(new LocationList[0]));
-	}
-	
 	/**
 	 * @param border
+	 * @param hold
 	 * @return a valid GeoJSON polygon border, closed and following their right-hand rule
 	 */
 	public static LocationList getPolygonBorder(LocationList border, boolean hole) {
@@ -551,6 +679,88 @@ public class Geometry {
 			border.reverse();
 		
 		return border;
+	}
+	
+	/**
+	 * @return GeoJSON representation of this Geometry
+	 * @throws IOException
+	 */
+	public String toJSON() throws IOException {
+		StringWriter writer = new StringWriter();
+		write(this, writer);
+		return writer.toString();
+	}
+	
+	/**
+	 * Parses a Geometry from GeoJSON
+	 * 
+	 * @param json
+	 * @return
+	 * @throws IOException
+	 */
+	public static Geometry fromJSON(String json) throws IOException {
+		StringReader reader = new StringReader(json);
+		return read(reader);
+	}
+	
+	/**
+	 * Reads a FeatureCollection from the given GeoJSON file
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Geometry read(File jsonFile) throws IOException {
+		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		return read(reader);
+	}
+	
+	/**
+	 * Reads a Geometry from the given reader
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Geometry read(Reader reader) throws IOException {
+		if (!(reader instanceof BufferedReader))
+			reader = new BufferedReader(reader);
+		Geometry ret;
+		synchronized (FeatureCollection.gson_default) {
+			ret = FeatureCollection.gson_default.fromJson(reader, Geometry.class);
+			reader.close();
+		}
+		return ret;
+	}
+	
+	/**
+	 * Writes a Geometry to the given GeoJSON file
+	 * 
+	 * @param features
+	 * @param jsonFile
+	 * @throws IOException
+	 */
+	public static void write(Geometry geometry, File jsonFile) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		write(geometry, writer);
+		writer.close();
+	}
+	
+	/**
+	 * Writes a Geometry to the given writer
+	 * 
+	 * @param features
+	 * @param writer
+	 * @throws IOException
+	 */
+	public static void write(Geometry geometry, Writer writer) throws IOException {
+		if (!(writer instanceof BufferedWriter))
+			writer = new BufferedWriter(writer);
+
+		synchronized (FeatureCollection.gson_default) {
+			FeatureCollection.gson_default.toJson(geometry, Geometry.class, writer);
+			writer.flush();
+		}
 	}
 
 }

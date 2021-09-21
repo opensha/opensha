@@ -1,0 +1,802 @@
+package org.opensha.sha.earthquake.faultSysSolution;
+
+import java.awt.geom.Point2D;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
+
+import org.dom4j.DocumentException;
+import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.eq.MagUtils;
+import org.opensha.commons.geo.Region;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchive;
+import org.opensha.commons.util.modules.ModuleContainer;
+import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.SubModule;
+import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
+import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
+
+import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
+import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
+import scratch.UCERF3.utils.U3FaultSystemIO;
+import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
+
+/**
+ * This class represents an Earthquake Rate Model solution for a fault system, possibly coming from an Inversion
+ * or from a physics-based earthquake simulator.
+ * <p>
+ * It adds rate information to a FaultSystemRupSet.
+ * 
+ * @author Field, Milner, Page, and Powers
+ *
+ */
+public class FaultSystemSolution extends ModuleContainer<OpenSHA_Module> implements ArchivableModule,
+SubModule<ModuleArchive<OpenSHA_Module>> {
+	
+	protected FaultSystemRupSet rupSet;
+	protected double[] rates;
+	
+	// archive that this came from
+	ModuleArchive<OpenSHA_Module> archive;
+	
+	protected FaultSystemSolution() {
+		
+	}
+	
+	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates) {
+		super();
+		init(rupSet, rates);
+	}
+	
+	protected void init(FaultSystemRupSet rupSet, double[] rates) {
+		this.rupSet = rupSet;
+		this.rates = rates;
+		Preconditions.checkNotNull(rupSet, "Rupture set cannot be null");
+		Preconditions.checkNotNull(rates, "Rates cannot be null");
+		Preconditions.checkArgument(rates.length == rupSet.getNumRuptures(), "# rates and ruptures is inconsistent!");
+	}
+	
+	/**
+	 * Returns an archive that contains this solution. If this was loaded from an archive, this returns that
+	 * original archive (which may also contain other things), otherwise a new archive is returned that only contains
+	 * this solution and its rupture set.
+	 * 
+	 * @return archive containing this rupture set
+	 */
+	public ModuleArchive<OpenSHA_Module> getArchive() {
+		if (archive == null)
+			archive = new ModuleArchive<>();
+		FaultSystemRupSet oRupSet = archive.getModule(FaultSystemRupSet.class);
+		if (oRupSet == null)
+			archive.addModule(rupSet);
+		else
+			Preconditions.checkState(rupSet.isEquivalentTo(archive.getModule(FaultSystemRupSet.class)));
+		FaultSystemSolution sol = archive.getModule(FaultSystemSolution.class);
+		if (sol == null)
+			archive.addModule(this);
+		else
+			Preconditions.checkState(sol == this);
+		return archive;
+	}
+	
+	/**
+	 * Writes this solution to a zip file. This is an alias to <code>getArchive().write(File)</code>.
+	 * See {@link #getArchive()}.
+	 * @param file
+	 * @throws IOException
+	 */
+	public void write(File file) throws IOException {
+		getArchive().write(file);
+	}
+	
+	public static boolean isSolution(ZipFile zip) {
+		return zip.getEntry("solution/"+RATES_FILE_NAME) != null || zip.getEntry("rates.bin") != null;
+	}
+	
+	/**
+	 * Loads a FaultSystemSolution from a zip file
+	 * 
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution load(File file) throws IOException {
+		return load(new ZipFile(file));
+	}
+
+	/**
+	 * Loads a FaultSystemSolution from a zip file
+	 * 
+	 * @param zip
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution load(ZipFile zip) throws IOException {
+		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(zip, FaultSystemSolution.class);
+		
+		FaultSystemSolution sol = archive.getModule(FaultSystemSolution.class);
+		if (sol == null) {
+			// see if it's an old rupture set
+			if (zip.getEntry("rup_sections.bin") != null && zip.getEntry("rates.bin") != null) {
+				System.err.println("WARNING: this is a legacy fault sytem solution, that file format is deprecated. "
+						+ "Will attempt to load it using the legacy file loader. "
+						+ "See https://opensha.org/File-Formats for more information.");
+				try {
+					return U3FaultSystemIO.loadSolAsApplicable(zip, null);
+				} catch (DocumentException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+			if (zip.getEntry("modules.json") == null
+					&& zip.getEntry("ruptures/"+FaultSystemRupSet.RUP_SECTS_FILE_NAME) != null
+					&& zip.getEntry("solution/rates.csv") != null) {
+				// missing modules.json, try to load it as an unlisted module
+				System.err.println("WARNING: solution archive is missing modules.json, trying to load it anyway");
+				archive.loadUnlistedModule(FaultSystemRupSet.class, "ruptures/");
+				Preconditions.checkState(archive.hasModule(FaultSystemRupSet.class),
+						"Failed to load unlisted rupture set module");
+				archive.loadUnlistedModule(FaultSystemSolution.class, "solution/");
+				Preconditions.checkState(archive.hasModule(FaultSystemSolution.class),
+						"Failed to load unlisted solution module");
+				sol = archive.getModule(FaultSystemSolution.class);
+			}
+		}
+		Preconditions.checkState(sol != null, "Failed to load solution module from archive (see above error messages)");
+		Preconditions.checkNotNull(sol.rupSet, "rupture set not loaded?");
+		Preconditions.checkNotNull(sol.archive, "archive should have been set automatically");
+		
+		return sol;
+	}
+
+	@Override
+	public String getName() {
+		return "Solution";
+	}
+
+	@Override
+	protected String getNestingPrefix() {
+		return "solution/";
+	}
+	
+	public static final String RATES_FILE_NAME = "rates.csv";
+	
+	public static CSVFile<String> buildRatesCSV(FaultSystemSolution sol) {
+		CSVFile<String> ratesCSV = new CSVFile<>(true);
+		ratesCSV.addLine("Rupture Index", "Annual Rate");
+		double[] rates = sol.getRateForAllRups();
+		for (int r=0; r<rates.length; r++)
+			ratesCSV.addLine(r+"", rates[r]+"");
+		return ratesCSV;
+	}
+
+	@Override
+	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		// CSV Files
+		CSV_BackedModule.writeToArchive(buildRatesCSV(this), zout, entryPrefix, RATES_FILE_NAME);
+	}
+	
+	public static double[] loadRatesCSV(CSVFile<String> ratesCSV) {
+		double[] rates = new double[ratesCSV.getNumRows()-1];
+		for (int r=0; r<rates.length; r++) {
+			Preconditions.checkState(ratesCSV.getInt(r+1, 0) == r, "Rates CSV out of order or not 0-based");
+			rates[r] = ratesCSV.getDouble(r+1, 1);
+		}
+		return rates;
+	}
+
+	@Override
+	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		Preconditions.checkNotNull(archive, "archive must be set before initialization");
+		if (rupSet == null)
+			rupSet = archive.getModule(FaultSystemRupSet.class);
+		Preconditions.checkNotNull(rupSet, "Rupture set not found in archive");
+		
+		System.out.println("\tLoading rates CSV...");
+		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RATES_FILE_NAME);
+		rates = loadRatesCSV(ratesCSV);
+		Preconditions.checkState(rates.length == rupSet.getNumRuptures(), "Unexpected number of rows in rates CSV");
+		
+		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
+			// we're missing an index, see if any common modules are present that we can manually load
+			
+			if (zip.getEntry(entryPrefix+AbstractGridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME) != null) {
+				try {
+					System.out.println("Trying to load unlisted GridSourceProvider module");
+					archive.loadUnlistedModule(AbstractGridSourceProvider.Precomputed.class, entryPrefix, this);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			if (zip.getEntry(entryPrefix+SubSeismoOnFaultMFDs.DATA_FILE_NAME) != null) {
+				try {
+					System.out.println("Trying to load unlisted SubSeismoOnFaultMFDs module");
+					archive.loadUnlistedModule(SubSeismoOnFaultMFDs.class, entryPrefix, this);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	@Override
+	public final Class<? extends ArchivableModule> getLoadingClass() {
+		// never let a subclass supply it's own loader, must always load as a regular FaultSystemSolution
+		return FaultSystemSolution.class;
+	}
+
+	@Override
+	public void setParent(ModuleArchive<OpenSHA_Module> parent) throws IllegalStateException {
+		FaultSystemSolution oSol = parent.getModule(FaultSystemSolution.class, false);
+		Preconditions.checkState(oSol == null || oSol == this);
+		this.archive = parent;
+	}
+
+	@Override
+	public ModuleArchive<OpenSHA_Module> getParent() {
+		return archive;
+	}
+
+	@Override
+	public FaultSystemSolution copy(ModuleArchive<OpenSHA_Module> newArchive)
+			throws IllegalStateException {
+		FaultSystemRupSet oRupSet = newArchive.getModule(FaultSystemRupSet.class);
+		if (oRupSet == null)
+			newArchive.addModule(rupSet);
+		else
+			Preconditions.checkState(rupSet.isEquivalentTo(oRupSet));
+		FaultSystemSolution copy = new FaultSystemSolution(newArchive.getModule(FaultSystemRupSet.class),
+				Arrays.copyOf(rates, rates.length));
+		loadAllAvailableModules();
+		for (OpenSHA_Module module : getModules(true))
+			copy.addModule(module);
+		newArchive.addModule(copy);
+		return copy;
+	}
+	
+	/**
+	 * Returns the fault system rupture set for this solution
+	 * @return
+	 */
+	public FaultSystemRupSet getRupSet() {
+		return rupSet;
+	}
+	
+	/**
+	 * These gives the long-term rate (events/yr) of the rth rupture
+	 * @param rupIndex
+	 * @return
+	 */
+	public double getRateForRup(int rupIndex) {
+		return rates[rupIndex];
+	}
+	
+	/**
+	 * This gives the long-term rate (events/yr) of all ruptures
+	 * @param rupIndex
+	 * @return
+	 */
+	public double[] getRateForAllRups() {
+		return rates;
+	}
+	
+	/**
+	 * This returns the total long-term rate (events/yr) of all fault-based ruptures
+	 * (fault based in case off-fault ruptures are added to subclass)
+	 * @return
+	 */
+	public double getTotalRateForAllFaultSystemRups() {
+		double totRate=0;
+		for(double rate:getRateForAllRups())
+			totRate += rate;
+		return totRate;
+	}
+
+	/**
+	 * This is a general info String
+	 * @return
+	 */
+	public String getInfoString() {
+		InfoModule info = getModule(InfoModule.class);
+		if (info != null)
+			return info.getText();
+		return null;
+	}
+
+	public void setInfoString(String info) {
+		if (info == null)
+			removeModuleInstances(InfoModule.class);
+		else
+			addModule(new InfoModule(info));
+	}
+	
+	/**
+	 * Returns GridSourceProvider
+	 * @return
+	 */
+	public GridSourceProvider getGridSourceProvider() {
+		return getModule(GridSourceProvider.class);
+	}
+	
+	public void setGridSourceProvider(GridSourceProvider gridSourceProvider) {
+		addModule(gridSourceProvider);
+	}
+	
+	/*
+	 * TODO move these to a helper class?
+	 */
+	
+
+
+	/**
+	 * This enables/disables visible progress bars for long calculations
+	 * 
+	 * @param showProgress
+	 */
+	public void setShowProgress(boolean showProgress) {
+		rupSet.setShowProgress(showProgress);
+	}
+	
+	public void clearCache() {
+		rupSet.clearCache();
+		clearSolutionCacheOnly();
+	}
+	
+	public void clearSolutionCacheOnly() {
+		particRatesCache.clear();
+		nucleationRatesCache.clear();
+		totParticRatesCache = null;
+		paleoVisibleRatesCache = null;
+	}
+
+	/**
+	 * This returns the rate that pairs of section rupture together.  
+	 * Most entries are zero because the sections are far from each other, 
+	 * so a sparse matrix might be in order if this bloats memory.
+	 * @return
+	 * TODO move?
+	 */
+	public double[][] getSectionPairRupRates() {
+		double[][] rates = new double[rupSet.getNumSections()][rupSet.getNumSections()];
+		for(int r=0; r<rupSet.getNumRuptures(); r++) {
+			List<Integer> indices = rupSet.getSectionsIndicesForRup(r);
+			double rate = getRateForRup(r);
+			if (rate == 0)
+				continue;
+			for(int s=1;s<indices.size();s++) {
+				rates[indices.get(s-1)][indices.get(s)] += rate;
+				rates[indices.get(s)][indices.get(s-1)] += rate;    // fill in the symmetric point
+			}
+		}
+		return rates;
+	}
+
+	private HashMap<String, double[]> particRatesCache = new HashMap<String, double[]>();
+	
+	/**
+	 * This computes the participation rate (events/yr) of the sth section for magnitudes 
+	 * greater and equal to magLow and less than magHigh.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public double calcParticRateForSect(int sectIndex, double magLow, double magHigh) {
+		return calcParticRateForAllSects(magLow, magHigh)[sectIndex];
+	}
+		
+	private double doCalcParticRateForSect(int sectIndex, double magLow, double magHigh) {
+		double partRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex)) {
+			double mag = rupSet.getMagForRup(r);
+			DiscretizedFunc mfd = getRupMagDist(r);
+			if (mfd == null || mfd.size() == 1) {
+				if(mag>=magLow && mag<magHigh)
+					partRate += getRateForRup(r);
+			} else {
+				// use rup MFDs
+				for (Point2D pt : mfd) {
+					if(pt.getX()>=magLow && pt.getX()<magHigh)
+						partRate += pt.getY();
+				}
+			}
+		}
+		return partRate;
+	}
+	
+	/**
+	 * This computes the participation rate (events/yr) of all sections for magnitudes 
+	 * greater and equal to magLow and less than magHigh.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public synchronized double[] calcParticRateForAllSects(double magLow, double magHigh) {
+		String key = (float)magLow+"_"+(float)magHigh;
+		if (!particRatesCache.containsKey(key)) {
+			double[] particRates = new double[rupSet.getNumSections()];
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Participation Rates", "Calculating Participation Rates");
+			}
+			for (int i=0; i<particRates.length; i++) {
+				if (p != null) p.updateProgress(i, particRates.length);
+				particRates[i] = doCalcParticRateForSect(i, magLow, magHigh);
+			}
+			if (p != null) p.dispose();
+			particRatesCache.put(key, particRates);
+		}
+		return particRatesCache.get(key);
+	}
+
+	private HashMap<String, double[]> nucleationRatesCache = new HashMap<String, double[]>();
+	
+	/**
+	 * This computes the nucleation rate (events/yr) of the sth section for magnitudes 
+	 * greater and equal to magLow and less than magHigh. This assumes a uniform distribution
+	 * of possible hypocenters over the rupture surface.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public double calcNucleationRateForSect(int sectIndex, double magLow, double magHigh) {
+		return calcNucleationRateForAllSects(magLow, magHigh)[sectIndex];
+	}
+		
+	private double doCalcNucleationRateForSect(int sectIndex, double magLow, double magHigh) {
+		double nucleationRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex)) {
+			double mag = rupSet.getMagForRup(r);
+			DiscretizedFunc mfd = getRupMagDist(r);
+			if (mfd == null || mfd.size() == 1) {
+				if(mag>=magLow && mag<magHigh) {
+					double rate = getRateForRup(r);
+					double sectArea = rupSet.getAreaForSection(sectIndex);
+					double rupArea = rupSet.getAreaForRup(r);
+					nucleationRate += rate * (sectArea / rupArea);
+				}
+			} else {
+				// use rup MFDs
+				double sectArea = rupSet.getAreaForSection(sectIndex);
+				double rupArea = rupSet.getAreaForRup(r);
+				for (Point2D pt : mfd) {
+					if(pt.getX()>=magLow && pt.getX()<magHigh)
+						nucleationRate += pt.getY() * (sectArea / rupArea);
+				}
+			}
+			
+		}
+		return nucleationRate;
+	}
+	
+	
+	/**
+	 * This computes the nucleation rate (events/yr) of all sections for magnitudes 
+	 * greater and equal to magLow and less than magHigh.   This assumes a uniform distribution
+	 * of possible hypocenters over the rupture surface.
+	 * @param sectIndex
+	 * @param magLow
+	 * @param magHigh
+	 * @return
+	 */
+	public synchronized double[] calcNucleationRateForAllSects(double magLow, double magHigh) {
+		String key = (float)magLow+"_"+(float)magHigh;
+		if (!nucleationRatesCache.containsKey(key)) {
+			double[] nucleationRates = new double[rupSet.getNumSections()];
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Nucleation Rates", "Calculating Participation Rates");
+			}
+			for (int i=0; i<nucleationRates.length; i++) {
+				if (p != null) p.updateProgress(i, nucleationRates.length);
+				nucleationRates[i] = doCalcNucleationRateForSect(i, magLow, magHigh);
+			}
+			if (p != null) p.dispose();
+			nucleationRatesCache.put(key, nucleationRates);
+		}
+		return nucleationRatesCache.get(key);
+	}
+	
+	private double[] totParticRatesCache;
+	
+	/**
+	 * This computes the total participation rate (events/yr) of the sth section.
+	 * 
+	 * @param sectIndex
+	 * @return
+	 */
+	public double calcTotParticRateForSect(int sectIndex) {
+		return calcTotParticRateForAllSects()[sectIndex];
+	}
+	
+	private double doCalcTotParticRateForSect(int sectIndex) {
+		double partRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex))
+			partRate += getRateForRup(r);
+		return partRate;
+	}
+	
+	
+	/**
+	 * This computes the total participation rate (events/yr) for all sections.
+	 * 
+	 * @return
+	 */
+	public synchronized double[] calcTotParticRateForAllSects() {
+		if (totParticRatesCache == null) {
+			totParticRatesCache = new double[rupSet.getNumSections()];
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Total Participation Rates", "Calculating Total Participation Rates");
+			}
+			for (int i=0; i<totParticRatesCache.length; i++) {
+				if (p != null) p.updateProgress(i, totParticRatesCache.length);
+				totParticRatesCache[i] = doCalcTotParticRateForSect(i);
+			}
+			if (p != null) p.dispose();
+		}
+		return totParticRatesCache;
+	}
+	
+	private Map<PaleoProbabilityModel, double[]> paleoVisibleRatesCache;
+	
+	/**
+	 * This gives the total paleoseismically observable rate (events/yr) of the sth section.
+	 * the probability of observing an event is given by the getProbPaleoVisible(mag)
+	 * method.
+	 * 
+	 * @param sectIndex
+	 * @return
+	 */
+	public double calcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
+		return calcTotPaleoVisibleRateForAllSects(paleoProbModel)[sectIndex];
+	}
+	
+	public double doCalcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
+		double partRate=0;
+		for (int r : rupSet.getRupturesForSection(sectIndex))
+			partRate += getRateForRup(r)*paleoProbModel.getProbPaleoVisible(rupSet, r, sectIndex);
+		return partRate;
+	}
+
+	
+	/**
+	 * This gives the total paleoseismically observable rate of all sections.
+	 * the probability of observing an event is given by the getProbPaleoVisible(mag)
+	 * method
+	 * 
+	 * @return
+	 */
+	public synchronized double[] calcTotPaleoVisibleRateForAllSects(PaleoProbabilityModel paleoProbModel) {
+		if (paleoVisibleRatesCache == null) {
+			paleoVisibleRatesCache = Maps.newHashMap();
+		}
+		
+		double[] paleoRates = paleoVisibleRatesCache.get(paleoProbModel);
+		
+		if (paleoRates == null) {
+			paleoRates = new double[rupSet.getNumSections()];
+			paleoVisibleRatesCache.put(paleoProbModel, paleoRates);
+			CalcProgressBar p = null;
+			if (rupSet.isShowProgress()) {
+				p = new CalcProgressBar("Calculating Paleo Visible Rates", "Calculating Paleo Visible Rates");
+			}
+			for (int i=0; i<paleoRates.length; i++) {
+				if (p != null) p.updateProgress(i, paleoRates.length);
+				paleoRates[i] = doCalcTotPaleoVisibleRateForSect(i, paleoProbModel);
+			}
+			if (p != null) p.dispose();
+		}
+		return paleoRates;
+	}
+	
+	/**
+	 * This assumes a uniform probability of hypocenter location over the rupture surface
+	 * @param parentSectionID
+	 * @param minMag
+	 * @param maxMag
+	 * @param numMag
+	 * @return
+	 */
+	public SummedMagFreqDist calcNucleationMFD_forParentSect(int parentSectionID, double minMag, double maxMag, int numMag) {
+		SummedMagFreqDist mfd = new SummedMagFreqDist(minMag, maxMag, numMag);
+		
+		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
+			if (rupSet.getFaultSectionData(sectIndex).getParentSectionId() != parentSectionID)
+				continue;
+			IncrementalMagFreqDist subMFD = calcNucleationMFD_forSect(sectIndex, minMag, maxMag, numMag);
+			mfd.addIncrementalMagFreqDist(subMFD);
+		}
+		
+		return mfd;
+	}
+
+	/**
+	 * This give a Nucleation Mag Freq Dist (MFD) for the specified section.  Nucleation probability 
+	 * is defined as the area of the section divided by the area of the rupture.  
+	 * This preserves rates rather than moRates (can't have both)
+	 * @param sectIndex
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public  IncrementalMagFreqDist calcNucleationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
+		if (rups != null) {
+			for (int r : rups) {
+				double nucleationScalar = rupSet.getAreaForSection(sectIndex)/rupSet.getAreaForRup(r);
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r)*nucleationScalar, true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY()*nucleationScalar, true);
+			}
+		}
+		return mfd;
+	}
+	
+	
+	/**
+	 * This give a Participation Mag Freq Dist for the specified section.
+	 * This preserves rates rather than moRates (can't have both).
+	 * @param sectIndex
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcParticipationMFD_forParentSect(int parentSectionID, double minMag, double maxMag, int numMag) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		List<Integer> rups = rupSet.getRupturesForParentSection(parentSectionID);
+		if (rups != null) {
+			for (int r : rups) {
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY(), true);
+			}
+		}
+		return mfd;
+	}
+	
+	
+	/**
+	 * This give a Participation Mag Freq Dist for the specified section.
+	 * This preserves rates rather than moRates (can't have both).
+	 * @param sectIndex
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcParticipationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
+		if (rups != null) {
+			for (int r : rups) {
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY(), true);
+			}
+		}
+		return mfd;
+	}
+	
+	/**
+	 * This gives the total nucleation Mag Freq Dist of this solution.  
+	 * This preserves rates rather than moRates (can't have both).
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param delta - width of each mfd bin
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcTotalNucleationMFD(double minMag, double maxMag, double delta) {
+		return calcNucleationMFD_forRegion(null, minMag, maxMag, delta, true);
+	}
+
+	/**
+	 * This gives the total nucleation Mag Freq Dist inside the supplied region.  
+	 * If <code>traceOnly == true</code>, only the rupture trace is examined in computing the fraction of the rupture 
+	 * inside the region.  This preserves rates rather than moRates (can't have both).
+	 * @param region - a Region object
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param delta - width of each mfd bin
+	 * @param traceOnly - if true only fault traces will be used for fraction inside region calculations, otherwise the
+	 * entire rupture surfaces will be used (slower)
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, double delta, boolean traceOnly) {
+		int numMag = (int)((maxMag - minMag) / delta+0.5) + 1;
+		return calcNucleationMFD_forRegion(region, minMag, maxMag, numMag, traceOnly);
+	}
+
+	/**
+	 * This gives the total nucleation Mag Freq Dist inside the supplied region.  
+	 * If <code>traceOnly == true</code>, only the rupture trace is examined in computing the fraction of the rupture
+	 * inside the region.  This preserves rates rather than moRates (can't have both).
+	 * @param region - a Region object
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @param traceOnly - if true only fault traces will be used for fraction inside region calculations, otherwise the
+	 * entire rupture surfaces will be used (slower)
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, int numMag, boolean traceOnly) {
+		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		double[] fractRupsInside = null;
+		if (region != null)
+			fractRupsInside = rupSet.getFractRupsInsideRegion(region, traceOnly);
+		for(int r=0;r<rupSet.getNumRuptures();r++) {
+			double fractInside = 1;
+			if (region != null)
+				fractInside = fractRupsInside[r];
+			double rateInside=getRateForRup(r)*fractInside;
+//			if (fractInside < 1)
+//				System.out.println("inside: "+fractInside+"\trate: "+rateInside+"\tID: "+r);
+			mfd.addResampledMagRate(rupSet.getMagForRup(r), rateInside, true);
+		}
+		return mfd;
+	}
+	
+	private DiscretizedFunc getRupMagDist(int rupIndex) {
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
+		if (mfds != null)
+			return mfds.getRuptureMFD(rupIndex);
+		return null;
+	}
+	
+	/**
+	 * This returns the total moment of the solution (this does not include any off fault moment).<br>
+	 * <br>
+	 * This is calculated as the sum of the rates or each rupture times its moment (which is calculated form the magnitude)
+	 * @return
+	 */
+	public double getTotalFaultSolutionMomentRate() {
+		// calculate the moment
+		double totalSolutionMoment = 0;
+		for (int rup=0; rup<rupSet.getNumRuptures(); rup++) 
+			totalSolutionMoment += getRateForRup(rup)*MagUtils.magToMoment(rupSet.getMagForRup(rup));
+		return totalSolutionMoment;
+	}
+	
+	public static void main(String[] args) throws Exception {
+		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+		
+		File inputFile = new File(baseDir, "fm3_1_ucerf3.zip");
+		File destFile = new File("/tmp/new_format_u3.zip");
+		FaultSystemSolution orig = U3FaultSystemIO.loadSol(inputFile);
+		orig.getArchive().write(destFile);
+		FaultSystemSolution loaded = load(destFile);
+		Preconditions.checkState(orig.rupSet.isEquivalentTo(loaded.rupSet));
+	}
+
+}

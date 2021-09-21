@@ -1,6 +1,5 @@
 package scratch.UCERF3.erf.ETAS;
 
-import java.awt.Color;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
 import java.io.BufferedWriter;
@@ -9,113 +8,57 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.TimeZone;
-import java.util.zip.ZipException;
 
 import javax.swing.JOptionPane;
 
 import org.dom4j.DocumentException;
-import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.TimeSpan;
-import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
-import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
-import org.opensha.commons.data.region.CaliforniaRegions.RELM_TESTING_GRIDDED;
-import org.opensha.commons.data.xyz.GeoDataSet;
-import org.opensha.commons.data.xyz.GriddedGeoDataSet;
-import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.exceptions.GMT_MapException;
-import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
-import org.opensha.commons.geo.Region;
-import org.opensha.commons.gui.plot.GraphWindow;
-import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
-import org.opensha.commons.gui.plot.PlotLineType;
-import org.opensha.commons.gui.plot.PlotSymbol;
-import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
-import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
-import org.opensha.commons.param.impl.BooleanParameter;
-import org.opensha.commons.param.impl.CPTParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
-import org.opensha.commons.param.impl.FileParameter;
 import org.opensha.commons.param.impl.LocationParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.cpt.CPT;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
-import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.calc.ERF_Calculator;
-import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
-import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
-import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
-import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
-import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
-import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
-import org.opensha.sha.earthquake.param.BackgroundRupParam;
-import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
-import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
-import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
-import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.earthquake.param.MagDependentAperiodicityOptions;
-import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
-import org.opensha.sha.faultSurface.CompoundSurface;
-import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.StirlingGriddedSurface;
-import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
-import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
-import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
-import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
-import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
-import scratch.UCERF3.analysis.FaultSystemSolutionCalc;
-import scratch.UCERF3.analysis.GMT_CA_Maps;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools.EpicenterMapThread;
-import scratch.UCERF3.erf.ETAS.association.FiniteFaultMappingData;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
@@ -123,18 +66,13 @@ import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.griddedSeismicity.GridSourceFileReader;
+import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GriddedSeisUtils;
-import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
-import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
-import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class ETAS_Simulator {
 	
@@ -243,6 +181,7 @@ public class ETAS_Simulator {
 		if(erf instanceof FaultSystemSolutionERF) {
 			fssERF = (FaultSystemSolutionERF)erf;
 			numFaultSysSources = fssERF.getNumFaultSystemSources();
+			getPolyManager(fssERF.getSolution()); // enusre we have a polygon manager
 		}
 		
 		// TODO:
@@ -1137,7 +1076,7 @@ public class ETAS_Simulator {
 		String fileName="src/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip";
 		FaultSystemSolution fss;
 		try {
-			fss = FaultSystemIO.loadSol(new File(fileName));
+			fss = U3FaultSystemIO.loadSol(new File(fileName));
 		} catch (Exception e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -1206,11 +1145,20 @@ public class ETAS_Simulator {
 		return erf;
 	}
 	
-
+	private static PolygonFaultGridAssociations getPolyManager(FaultSystemSolution sol) {
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		PolygonFaultGridAssociations faultPolyMgr = rupSet.getModule(PolygonFaultGridAssociations.class);
+		if (faultPolyMgr == null) {
+			// this works for U3, but not generalized
+			faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
+			rupSet.addModule(faultPolyMgr);
+		}
+		return faultPolyMgr;
+	}
 	
 	public static void correctGriddedSeismicityRatesInERF(FaultSystemSolution sol, boolean plotRateRatio,
 			double[] gridSeisCorrValsArray) {
-		GridSourceFileReader gridSources = (GridSourceFileReader)sol.getGridSourceProvider();
+		GridSourceProvider gridSources = sol.getGridSourceProvider();
 		gridSources.scaleAllNodeMFDs(gridSeisCorrValsArray);
 		
 		double totalRate=0;
@@ -1225,9 +1173,11 @@ public class ETAS_Simulator {
 			nodeRatePDF[i] = nodeRateArray[i]/totalRate;
 		}
 
-		GriddedSeisUtils griddedSeisUtils = new GriddedSeisUtils(sol.getRupSet().getFaultSectionDataList(), nodeRatePDF, InversionTargetMFDs.FAULT_BUFFER);
 		
-		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = sol.getSubSeismoOnFaultMFD_List();
+		GriddedSeisUtils griddedSeisUtils = new GriddedSeisUtils(
+				sol.getRupSet().getFaultSectionDataList(), nodeRatePDF, getPolyManager(sol));
+		
+		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = sol.requireModule(SubSeismoOnFaultMFDs.class).getAll();
 		
 		double[] oldRateArray = new double[longTermSubSeisMFD_OnSectList.size()];
 		double[] newRateArray = new double[longTermSubSeisMFD_OnSectList.size()];

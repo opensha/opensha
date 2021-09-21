@@ -16,9 +16,9 @@ import org.opensha.commons.util.FileNameComparator;
 
 import scratch.UCERF3.inversion.BatchPlotGen;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 
 import com.google.common.base.Preconditions;
@@ -29,9 +29,9 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 	
 	public static final String TAG_BUILD_MEAN = "BUILD_MEAN";
 	
-	private Map<LogicTreeBranch, File[]> filesMap;
+	private Map<U3LogicTreeBranch, File[]> filesMap;
 	
-	public FileBasedFSSIterator(Map<LogicTreeBranch, File[]> filesMap) {
+	public FileBasedFSSIterator(Map<U3LogicTreeBranch, File[]> filesMap) {
 		this.filesMap = filesMap;
 	}
 	
@@ -47,9 +47,9 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 		return new FileBasedFSSIterator(solFilesForDirectory(dir, maxDepth, nameGreps));
 	}
 	
-	private static Map<LogicTreeBranch, File[]> solFilesForDirectory(
+	private static Map<U3LogicTreeBranch, File[]> solFilesForDirectory(
 			File dir, int maxDepth, List<String> nameGreps) {
-		Map<LogicTreeBranch, File[]> files = Maps.newHashMap();
+		Map<U3LogicTreeBranch, File[]> files = Maps.newHashMap();
 		
 		boolean assembleMean = nameGreps != null && nameGreps.contains(TAG_BUILD_MEAN);
 		
@@ -64,8 +64,8 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 		fileLoop:
 		for (File file : dir.listFiles()) {
 			if (file.isDirectory() && maxDepth > 0) {
-				Map<LogicTreeBranch, File[]> subFiles = solFilesForDirectory(file, maxDepth-1, nameGreps);
-				for (LogicTreeBranch branch : subFiles.keySet()) {
+				Map<U3LogicTreeBranch, File[]> subFiles = solFilesForDirectory(file, maxDepth-1, nameGreps);
+				for (U3LogicTreeBranch branch : subFiles.keySet()) {
 					if (assembleMean) {
 						File[] newFiles = subFiles.get(branch);
 						if (files.containsKey(branch)) {
@@ -102,7 +102,7 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 				// mean solutions allowed, individual runs not allowed
 				continue;
 			}
-			LogicTreeBranch branch = VariableLogicTreeBranch.fromFileName(name);
+			U3LogicTreeBranch branch = VariableLogicTreeBranch.fromFileName(name);
 			if (assembleMean) {
 				File[] array = files.get(branch);
 				if (array == null) {
@@ -125,11 +125,11 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 	}
 	
 	private static void checkNoDuplicates(
-			LogicTreeBranch branch, File file, Map<LogicTreeBranch, File[]> files) {
+			U3LogicTreeBranch branch, File file, Map<U3LogicTreeBranch, File[]> files) {
 		if (files.containsKey(branch)) {
-			LogicTreeBranch origBranch = null;
+			U3LogicTreeBranch origBranch = null;
 			File origFile = files.get(branch)[0];
-			for (LogicTreeBranch candidateBranch : files.keySet()) {
+			for (U3LogicTreeBranch candidateBranch : files.keySet()) {
 				if (origFile == files.get(candidateBranch)[0]) {
 					origBranch = candidateBranch;
 					break;
@@ -145,16 +145,16 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 	}
 
 	@Override
-	public Collection<LogicTreeBranch> getBranches() {
+	public Collection<U3LogicTreeBranch> getBranches() {
 		return filesMap.keySet();
 	}
 
 	@Override
-	protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+	protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 		try {
 			File[] files = filesMap.get(branch);
 			Arrays.sort(files, new FileNameComparator());
-			InversionFaultSystemSolution sol = FaultSystemIO.loadInvSol(files[0]);
+			InversionFaultSystemSolution sol = U3FaultSystemIO.loadInvSol(files[0]);
 			if (files.length > 1) {
 				List<double[]> ratesList = Lists.newArrayList(sol.getRateForAllRups());
 				for (int i=1; i<files.length; i++) {

@@ -81,7 +81,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.ProbOfExceed;
 import scratch.peter.nshmp.CurveContainer;
@@ -396,7 +396,7 @@ public class CurveUtilsUC33 {
 			if (!branch.isDirectory()) continue;
 			String branchName = branch.getName();
 			indexMap.put(branchName, index);
-			LogicTreeBranch ltb = LogicTreeBranch.fromFileName(branchName);
+			U3LogicTreeBranch ltb = U3LogicTreeBranch.fromFileName(branchName);
 			double wt = ignoreWts ? 1.0 : wtProvider.getWeight(ltb);
 			wtMap.put(index, wt);
 			index++;
@@ -812,7 +812,7 @@ public class CurveUtilsUC33 {
 		
 		// set trues
 		for (String branchID : branchList) {
-			LogicTreeBranch branch = LogicTreeBranch.fromFileName(branchID);
+			U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(branchID);
 			for (Class<? extends LogicTreeBranchNode<?>> clazz : UC33classList) {
 				LogicTreeBranchNode<?> node = branch.getValueUnchecked(clazz);
 				nodeTable.put(branchID, node, true);
@@ -1180,7 +1180,7 @@ public class CurveUtilsUC33 {
 			Map<Class, Set<LogicTreeBranchNode>> nodeMap = Maps.newHashMap();
 
 			// init class to node variant map
-			for (Class clazz : LogicTreeBranch.getLogicTreeNodeClasses()) {
+			for (Class clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 				Set<LogicTreeBranchNode> nodeSet = Sets.newHashSet();
 				classList.add(clazz);
 				nodeMap.put(clazz, nodeSet);
@@ -1188,9 +1188,9 @@ public class CurveUtilsUC33 {
 
 			// fill nodeMap wtih valid logic tree variants
 			for (String name : branchNames) {
-				LogicTreeBranch ltb = LogicTreeBranch.fromFileName(name);
+				U3LogicTreeBranch ltb = U3LogicTreeBranch.fromFileName(name);
 				for (LogicTreeBranchNode node : ltb) {
-					Class clazz = LogicTreeBranch.getEnumEnclosingClass(node.getClass());
+					Class clazz = U3LogicTreeBranch.getEnumEnclosingClass(node.getClass());
 					Set<LogicTreeBranchNode> nodeSet = nodeMap.get(clazz);
 					nodeSet.add(node);
 				}
@@ -1200,14 +1200,14 @@ public class CurveUtilsUC33 {
 			int medIdx = medianIndex(values);
 			double medVal = values.get(medIdx);
 			String medBrName = branchNames.get(medIdx);
-			LogicTreeBranch medLTB = LogicTreeBranch.fromFileName(medBrName);
+			U3LogicTreeBranch medLTB = U3LogicTreeBranch.fromFileName(medBrName);
 			
 			// loop all valid nodes gathering values for branch variants
 			TornadoData td = new TornadoData(medVal);
 			for (Class clazz : classList) {
 				Set<LogicTreeBranchNode> nodeSet = nodeMap.get(clazz);
 				for (LogicTreeBranchNode node : nodeSet) {
-					LogicTreeBranch ltb = (LogicTreeBranch) medLTB.clone();
+					U3LogicTreeBranch ltb = (U3LogicTreeBranch) medLTB.clone();
 					ltb.setValue(node);
 					String brName = ltb.buildFileName();
 					int brIdx = branchIdxMap.get(brName);
@@ -1293,13 +1293,13 @@ public class CurveUtilsUC33 {
 			String path1440 = "/Users/pmpowers/projects/OpenSHA/tmp/invSols/tree/2012_10_29-tree-fm31_x7-fm32_x1_COMPOUND_SOL.zip";
 			CompoundFaultSystemSolution cfss = UC3_CalcUtils
 				.getCompoundSolution(path1440);
-			List<LogicTreeBranch> branches = Lists.newArrayList(cfss
+			List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss
 				.getBranches());
 			File out = new File("tmp/branchlist1440.txt");
 			Files.write("", out, US_ASCII);
 			int idx = 0;
 
-			for (LogicTreeBranch branch : branches) {
+			for (U3LogicTreeBranch branch : branches) {
 				Files.append((idx++) + " " + branch.buildFileName() + LF, out,
 					US_ASCII);
 			}

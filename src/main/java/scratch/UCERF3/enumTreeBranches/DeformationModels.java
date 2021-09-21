@@ -18,7 +18,7 @@ import com.google.common.collect.Lists;
 
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> {
@@ -149,6 +149,11 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 		return "Deformation Model";
 	}
 	
+	@Override
+	public String getShortBranchLevelName() {
+		return "DM";
+	}
+	
 	private static File getCacheDir() {
 		File scratchDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
 		if (scratchDir.exists()) {
@@ -189,7 +194,7 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 				fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1).getSubSectionList();
 		// write to XML
 		Document doc = XMLUtils.createDocumentWithRoot();
-		FaultSystemIO.fsDataToXML(doc.getRootElement(), FaultModels.XML_ELEMENT_NAME, fm, null, sects);
+		U3FaultSystemIO.fsDataToXML(doc.getRootElement(), FaultModels.XML_ELEMENT_NAME, fm, null, sects);
 		try {
 			XMLUtils.writeDocumentToFile(xmlFile, doc);
 		} catch (IOException e) {

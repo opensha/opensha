@@ -14,6 +14,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
@@ -23,8 +24,8 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_LongTermMFDs;
@@ -39,15 +40,15 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceFileReader;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 
 public class CacheFileGen {
 	
-	private static FaultSystemSolution buildFakeTestFSS() throws IOException, DocumentException {
-		FaultSystemSolution origFSS = FaultSystemIO.loadSol(
+	private static U3FaultSystemSolution buildFakeTestFSS() throws IOException, DocumentException {
+		U3FaultSystemSolution origFSS = U3FaultSystemIO.loadSol(
 				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
 						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 		// restirct to only ruptures on Mojave S & Mojave N
@@ -55,7 +56,7 @@ public class CacheFileGen {
 		parentIDs.add(286);
 		parentIDs.add(301);
 		List<Integer> validRupIDs = new ArrayList<>();
-		FaultSystemRupSet origRupSet = origFSS.getRupSet();
+		U3FaultSystemRupSet origRupSet = origFSS.getRupSet();
 		for (int r=0; r<origRupSet.getNumRuptures(); r++) {
 			boolean match = true;
 			for (FaultSection sect : origRupSet.getFaultSectionDataForRupture(r)) {
@@ -111,7 +112,7 @@ public class CacheFileGen {
 			sectionForRups.add(rupSections);
 			rates[r] = origFSS.getRateForRup(rupIndex);
 		}
-		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, sectSlipRates, sectSlipRateStdDevs, sectAreas, sectionForRups,
+		U3FaultSystemRupSet rupSet = new U3FaultSystemRupSet(subSects, sectSlipRates, sectSlipRateStdDevs, sectAreas, sectionForRups,
 				mags, rakes, rupAreas, rupLengths, "Fake reduced rup set");
 		// now override some rates to make them really likely
 		// but can't go over sum of 1, or things will fail?
@@ -145,7 +146,7 @@ public class CacheFileGen {
 		GriddedRegion region = origGridProv.getGriddedRegion();
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = new HashMap<>();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = new HashMap<>();
-		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);
+		FaultGridAssociations faultPolyMgr = FaultPolyMgr.create(subSects, U3InversionTargetMFDs.FAULT_BUFFER);
 		for (int index=0; index<region.getNodeCount(); index++) {
 			Location loc = region.getLocation(index);
 			IncrementalMagFreqDist subSeisMFD = origGridProv.getNodeSubSeisMFD(index);
@@ -178,7 +179,7 @@ public class CacheFileGen {
 			Preconditions.checkState(nodeUnassociatedMFDs.get(index) != null || nodeSubSeisMFDs.get(index) != null);
 		}
 		
-		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		U3FaultSystemSolution sol = new U3FaultSystemSolution(rupSet, rates);
 		sol.setGridSourceProvider(new GridSourceFileReader(region, nodeSubSeisMFDs, nodeUnassociatedMFDs));
 		sol.setSubSeismoOnFaultMFD_List(subSeismoOnFaultMFDs);
 		return sol;
@@ -193,8 +194,8 @@ public class CacheFileGen {
 ////				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
 ////						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 //				new File("/home/kevin/OpenSHA/UCERF3/cybershake_etas/ucerf2_mapped_sol.zip"));
-		FaultSystemSolution fss = buildFakeTestFSS();
-		FaultSystemIO.writeSol(fss, new File("/home/kevin/git/ucerf3-etas-launcher/inputs/small_test_solution.zip"));
+		U3FaultSystemSolution fss = buildFakeTestFSS();
+		U3FaultSystemIO.writeSol(fss, new File("/home/kevin/git/ucerf3-etas-launcher/inputs/small_test_solution.zip"));
 		LastEventData.populateSubSects(fss.getRupSet().getFaultSectionDataList(), LastEventData.load());
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF(fss, false, 1d, 2014);
 //		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(fss);

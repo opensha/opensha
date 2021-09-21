@@ -54,5 +54,10 @@ public enum MomentRateFixes implements LogicTreeBranchNode<MomentRateFixes> {
 	public String getBranchLevelName() {
 		return "Moment Rate Fixes";
 	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "MomRateFix";
+	}
 
 }

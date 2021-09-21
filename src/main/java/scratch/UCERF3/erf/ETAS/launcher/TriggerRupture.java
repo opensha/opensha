@@ -9,6 +9,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -18,7 +19,6 @@ import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 

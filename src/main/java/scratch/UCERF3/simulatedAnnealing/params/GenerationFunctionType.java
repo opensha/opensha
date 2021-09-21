@@ -9,5 +9,8 @@ public enum GenerationFunctionType { // how rates are perturbed each SA algorith
 	GAUSSIAN,  
 	TANGENT,
 	POWER_LAW,
-	EXPONENTIAL;
+	EXPONENTIAL,
+	EXPONENTIAL_RANGE,
+	EXPONENTIAL_SCALE,
+	VARIABLE_EXPONENTIAL_SCALE;
 }

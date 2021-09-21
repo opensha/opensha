@@ -42,11 +42,11 @@ import scratch.UCERF3.griddedSeismicity.GridSourceFileReader;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.BatchPlotGen;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.utils.MatrixIO;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Preconditions;
@@ -71,7 +71,7 @@ import com.google.common.collect.Maps;
 public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	
 	private ZipFile zip;
-	private List<LogicTreeBranch> branches;
+	private List<U3LogicTreeBranch> branches;
 	
 	public CompoundFaultSystemSolution(ZipFile zip) {
 		this.zip = zip;
@@ -97,15 +97,15 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	}
 
 	@Override
-	public Collection<LogicTreeBranch> getBranches() {
+	public Collection<U3LogicTreeBranch> getBranches() {
 		return branches;
 	}
 
 	@Override
-	protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+	protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 		try {
 			Map<String, String> nameRemappings = getRemappings(branch);
-			FaultSystemSolution sol = FaultSystemIO.loadSolAsApplicable(zip, nameRemappings);
+			U3FaultSystemSolution sol = U3FaultSystemIO.loadSolAsApplicable(zip, nameRemappings);
 			Preconditions.checkState(sol instanceof InversionFaultSystemSolution,
 					"Non IVFSS in Compound Sol?");
 			
@@ -115,11 +115,11 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		}
 	}
 	
-	public double[] getRates(LogicTreeBranch branch) {
+	public double[] getRates(U3LogicTreeBranch branch) {
 		return loadDoubleArray(branch, "rates.bin");
 	}
 	
-	public double[] loadDoubleArray(LogicTreeBranch branch, String fileName) {
+	public double[] loadDoubleArray(U3LogicTreeBranch branch, String fileName) {
 		try {
 			Map<String, String> nameRemappings = getRemappings(branch);
 			String remapped = nameRemappings.get(fileName);
@@ -133,7 +133,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		}
 	}
 	
-	public String getInfo(LogicTreeBranch branch) {
+	public String getInfo(U3LogicTreeBranch branch) {
 		try {
 			Map<String, String> nameRemappings = getRemappings(branch);
 			ZipEntry infoEntry = zip.getEntry(nameRemappings.get("info.txt"));
@@ -155,25 +155,25 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		}
 	}
 	
-	public double[] getMags(LogicTreeBranch branch) {
+	public double[] getMags(U3LogicTreeBranch branch) {
 		return loadDoubleArray(branch, "mags.bin");
 	}
 	
-	public double[] getLengths(LogicTreeBranch branch) {
+	public double[] getLengths(U3LogicTreeBranch branch) {
 		return loadDoubleArray(branch, "rup_lengths.bin");
 	}
 	
-	public List<FaultSection> getSubSects(LogicTreeBranch branch) throws DocumentException, IOException {
+	public List<FaultSection> getSubSects(U3LogicTreeBranch branch) throws DocumentException, IOException {
 		Map<String, String> nameRemappings = getRemappings(branch);
 		ZipEntry fsdEntry = zip.getEntry(nameRemappings.get("fault_sections.xml"));
 		Document doc = XMLUtils.loadDocument(
 				new BufferedInputStream(zip.getInputStream(fsdEntry)));
 		Element fsEl = doc.getRootElement().element(FaultSectionPrefData.XML_METADATA_NAME+"List");
 		Preconditions.checkNotNull(fsEl, "Fault sections element not found");
-		return FaultSystemIO.fsDataFromXML(fsEl);
+		return U3FaultSystemIO.fsDataFromXML(fsEl);
 	}
 	
-	public GridSourceProvider loadGridSourceProviderFile(LogicTreeBranch branch) throws DocumentException, IOException {
+	public GridSourceProvider loadGridSourceProviderFile(U3LogicTreeBranch branch) throws DocumentException, IOException {
 		Map<String, String> nameRemappings = getRemappings(branch);
 		ZipEntry gridSourcesEntry = zip.getEntry(nameRemappings.get("grid_sources.xml"));
 		ZipEntry gridSourcesBinEntry = zip.getEntry(nameRemappings.get("grid_sources.bin"));
@@ -275,12 +275,12 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		
 		HashSet<String> zipFileNames = new HashSet<String>();
 		
-		for (LogicTreeBranch branch : fetcher.getBranches()) {
-			FaultSystemSolution sol = fetcher.getSolution(branch);
+		for (U3LogicTreeBranch branch : fetcher.getBranches()) {
+			U3FaultSystemSolution sol = fetcher.getSolution(branch);
 			
 			Map<String, String> remappings = getRemappings(branch);
 			
-			FaultSystemIO.writeSolFilesForZip(sol, tempDir, zipFileNames, remappings);
+			U3FaultSystemIO.writeSolFilesForZip(sol, tempDir, zipFileNames, remappings);
 		}
 		
 		FileUtils.createZipFile(file.getAbsolutePath(), tempDir.getAbsolutePath(), zipFileNames);
@@ -291,7 +291,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		System.out.println("Done saving!");
 	}
 	
-	private static Map<String, String> getRemappings(LogicTreeBranch branch) {
+	private static Map<String, String> getRemappings(U3LogicTreeBranch branch) {
 		Map<String, String> remappings = Maps.newHashMap();
 		
 		for (String name : dependencyMap.keySet())
@@ -307,7 +307,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	 * @param branch
 	 * @return
 	 */
-	public static String getRemappedName(String name, LogicTreeBranch branch) {
+	public static String getRemappedName(String name, U3LogicTreeBranch branch) {
 		String nodeStr = "";
 		List<Class<? extends LogicTreeBranchNode<?>>> dependencies = dependencyMap.get(name);
 		if (dependencies == null)
@@ -350,7 +350,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		CompoundFaultSystemSolution compoundSol = fromZipFile(compoundFile);
 //		System.exit(0);
 		
-		for (LogicTreeBranch branch : compoundSol.getBranches()) {
+		for (U3LogicTreeBranch branch : compoundSol.getBranches()) {
 			System.out.println("Loading "+branch);
 			System.out.println(ClassUtils.getClassNameWithoutPackage(
 					compoundSol.getSolution(branch).getClass()));

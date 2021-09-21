@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,6 +19,9 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
@@ -28,10 +32,9 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class SectionDistanceAzimuthCalculator {
+public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 
 	private List<? extends FaultSection> subSects;
 	
@@ -221,7 +224,7 @@ public class SectionDistanceAzimuthCalculator {
 		return count;
 	}
 	
-	public void writeCacheFile(File cacheFile) throws IOException {
+	CSVFile<String> buildCache() {
 		CSVFile<String> csv = new CSVFile<>(true);
 		csv.addLine("ID1", "ID2", "Distance", "Azimuth");
 		int numDist = 0;
@@ -250,12 +253,28 @@ public class SectionDistanceAzimuthCalculator {
 				}
 			}
 		}
+		System.out.println("Built cache file for "+numDist+" distances and "+numAz+" azimuths");
+		return csv;
+	}
+	
+	public void writeCacheFile(File cacheFile) throws IOException {
+		CSVFile<String> csv = buildCache();
 		csv.writeToFile(cacheFile);
-		System.out.println("Wrote cache file for "+numDist+" distances and "+numAz+" azimuths");
 	}
 	
 	public void loadCacheFile(File cacheFile) throws IOException {
 		CSVFile<String> csv = CSVFile.readFile(cacheFile, true);
+		loadCache(csv);
+	}
+	
+	public String getDefaultCacheFileName() {
+		int numLocs = 0;
+		for (FaultSection sect : subSects)
+			numLocs += sect.getFaultTrace().size();
+		return "dist_az_cache_"+subSects.size()+"_sects_"+numLocs+"_trace_locs.csv";
+	}
+	
+	void loadCache(CSVFile<String> csv) {
 		int numAz = 0;
 		int numDist = 0;
 		for (int row=1; row<csv.getNumRows(); row++) {
@@ -278,12 +297,71 @@ public class SectionDistanceAzimuthCalculator {
 		System.out.println("Loaded cache file for "+numDist+" distances and "+numAz+" azimuths");
 	}
 	
+	synchronized void copyCacheFrom(SectionDistanceAzimuthCalculator o) {
+		Preconditions.checkState(o.subSects.size() == subSects.size());
+		copyCache(o.distCache, distCache);
+		copyCache(o.azCache, azCache);
+		sectSurfs.putAll(o.sectSurfs);
+	}
+	
+	private void copyCache(double[][] from, double[][] to) {
+		for (int i=0; i<from.length; i++)
+			if (from[i] != null)
+				to[i] = Arrays.copyOf(from[i], from[i].length);
+	}
+	
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		File rupSetFile = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_ucerf3.zip");
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(rupSetFile);
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(rupSetFile);
 		SectionDistanceAzimuthCalculator calc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 		System.out.println("516=>521: "+calc.getDistance(516, 521));
 		System.out.println("516=>522: "+calc.getDistance(516, 522));
+	}
+
+	@Override
+	public String getName() {
+		return "Section Distance-Azimuth Calculator";
+	}
+	
+	/**
+	 * @param subSects
+	 * @return archivable cache that will be written to/loaded from an archive
+	 */
+	public static SectionDistanceAzimuthCalculator archivableInstance(List<? extends FaultSection> subSects) {
+		return new ArchivableSectionDistAzCalc(subSects);
+	}
+	
+	/**
+	 * @param calc
+	 * @return archivable copy of this cache that will be written to/loaded from an archive
+	 */
+	public static SectionDistanceAzimuthCalculator archivableInstance(SectionDistanceAzimuthCalculator calc) {
+		ArchivableSectionDistAzCalc archivable = new ArchivableSectionDistAzCalc(calc.subSects);
+		archivable.copyCacheFrom(calc);
+		return archivable;
+	}
+	
+	private static class ArchivableSectionDistAzCalc extends SectionDistanceAzimuthCalculator implements CSV_BackedModule {
+
+		public ArchivableSectionDistAzCalc(List<? extends FaultSection> subSects) {
+			super(subSects);
+		}
+
+		@Override
+		public String getFileName() {
+			return "dist_az_cache.csv";
+		}
+
+		@Override
+		public CSVFile<?> getCSV() {
+			return buildCache();
+		}
+
+		@Override
+		public void initFromCSV(CSVFile<String> csv) {
+			loadCache(csv);
+		}
+		
 	}
 
 }

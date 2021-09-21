@@ -23,12 +23,13 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
@@ -37,7 +38,7 @@ import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
 public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 	
@@ -145,6 +146,9 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 		if (numRupsSkipped > 0)
 			System.out.println("GriddedNucleation: skipped "+numRupsSkipped+" ruptures outside of region");
 		
+		if (ratio_spread_across_poly)
+			ratio_spread_across_poly = fss.getRupSet().hasModule(FaultGridAssociations.class);
+		
 		double scalar;
 		GriddedGeoDataSet[] fssXYZs = null;
 		if (annualize) {
@@ -156,9 +160,9 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 				System.out.println("Calculating FSS mfds");
 				GriddedRegion gridReg = gridProv.getGriddedRegion();
 				FaultSystemRupSet rupSet = fss.getRupSet();
-				FaultPolyMgr polyMGR = null;
+				FaultGridAssociations polyMGR = null;
 				if (ratio_spread_across_poly)
-					polyMGR = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), InversionTargetMFDs.FAULT_BUFFER);
+					polyMGR = rupSet.getModule(FaultGridAssociations.class);
 				Map<Integer, HashSet<Integer>> rupToGridNodes = new HashMap<>();
 				for (int r=0; r<rupSet.getNumRuptures(); r++) {
 					HashSet<Integer> nodes = new HashSet<>();

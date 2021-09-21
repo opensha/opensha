@@ -23,6 +23,7 @@ import static com.google.common.base.Preconditions.*;
 import java.awt.Shape;
 import java.awt.geom.Area;
 import java.awt.geom.Rectangle2D;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +33,7 @@ import java.util.List;
 
 import org.apache.commons.math3.util.Precision;
 import org.dom4j.Element;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry;
@@ -43,6 +45,7 @@ import org.opensha.commons.geo.json.Geometry.Polygon;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Range;
 import com.google.common.primitives.Doubles;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
@@ -1215,11 +1218,11 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		Location anchor = null;
 		
 		if (properties != null) {
-			latNodeCenters = properties.get(JSON_LAT_NODES, null);
-			lonNodeCenters = properties.get(JSON_LON_NODES, null);
+			latNodeCenters = properties.getDoubleArray(JSON_LAT_NODES, null);
+			lonNodeCenters = properties.getDoubleArray(JSON_LON_NODES, null);
 			latSpacing = properties.getDouble(JSON_LAT_SPACING, Double.NaN);
 			lonSpacing = properties.getDouble(JSON_LON_SPACING, Double.NaN);
-			anchor = properties.get(JSON_ANCHOR, null);
+			anchor = properties.getLocation(JSON_ANCHOR, null);
 		}
 
 		if (latNodeCenters == null) {
@@ -1288,7 +1291,7 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		private Feature.FeatureAdapter featureAdapter;
 		
 		public Adapter() {
-			featureAdapter = new Feature.FeatureAdapter(new CustomPropertyAdapter(), new Geometry.GeometryAdapter());
+			featureAdapter = new Feature.FeatureAdapter();
 		}
 
 		@Override
@@ -1313,30 +1316,121 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	private static final String JSON_LON_SPACING = "LonSpacing";
 	private static final String JSON_ANCHOR = "Anchor";
 	
-	private static class CustomPropertyAdapter extends FeatureProperties.PropertiesAdapter {
+	/**
+	 * Infers a gridded region from a node list. The node list *must* be evenly spaced (to 4-byte floating point
+	 * precision) in latitude and longitude, and can be irregularly shaped, but must not contain any holes.
+	 * 
+	 * If any of these criteria are not met, an {@link IllegalStateException} will be thrown.
+	 * 
+	 * @param nodeList
+	 * @return inferred gridded region for the given node list
+	 * @throws IllegalStateException if the node list is not evenly spaced in both latitude and longitude
+	 */
+	public static GriddedRegion inferRegion(LocationList nodeList) throws IllegalStateException {
+		double[] latNodes = inferNodeCenters(nodeList, true);
+		double[] lonNodes = inferNodeCenters(nodeList, false);
+		double latSpacing = inferSpacing(latNodes);
+		double lonSpacing = inferSpacing(lonNodes);
 		
-		// default serialization works, but need custom deserialization
+		double latBuffer = latSpacing*0.25;
+		double lonBuffer = lonSpacing*0.25;
+		
+		Region region;
+		if (latNodes.length * lonNodes.length == nodeList.size()) {
+			// simple, rectangular
+			region = new Region(new Location(latNodes[0]-latBuffer, lonNodes[0]-lonBuffer),
+					new Location(latNodes[latNodes.length-1]+latBuffer, lonNodes[lonNodes.length-1]+lonBuffer));
+		} else {
+			// build region that surrounds the nodes
+			LocationList border = new LocationList();
 
-		@Override
-		protected Object deserialize(JsonReader in, String name) throws IOException {
-			if (name.equals(JSON_LAT_NODES) || name.equals(JSON_LON_NODES))
-				return deserializeArray(in);
-			if (name.equals(JSON_ANCHOR))
-				return Geometry.deserializeLoc(in, Geometry.DEPTH_SERIALIZATION_DEFAULT);
-			return super.deserialize(in, name);
+			// move up the left edge of the region
+			for (int i=0; i<latNodes.length; i++) {
+				double lat = latNodes[i];
+				Range<Double> lonRange = lonRangeAtLat(nodeList, (float)lat);
+				double lon = lonRange.lowerEndpoint() - lonBuffer;
+				if (i == 0)
+					border.add(new Location(lat-latBuffer, lon));
+				else if (i == latNodes.length-1)
+					border.add(new Location(lat+latBuffer, lon));
+				else
+					border.add(new Location(lat, lon));
+			}
+			
+//			// move along the upper edge
+//			for (int i=0; i<lonNodes.length; i++) {
+//				double lon = lonNodes[i];
+//				// move up the left edge of the region
+//				Range<Double> latRange = latRangeAtLon(nodeList, (float)lon);
+//				double latBuffer = latRange.upperEndpoint() + halfLatSpacing;
+//				border.add(new Location(latBuffer, lon));
+//			}
+			
+			// move down right side
+			for (int i=latNodes.length; --i>=0;) {
+				double lat = latNodes[i];
+				Range<Double> lonRange = lonRangeAtLat(nodeList, (float)lat);
+				double lon = lonRange.upperEndpoint()+lonBuffer;
+				if (i == latNodes.length-1)
+					border.add(new Location(lat+latBuffer, lon));
+				else if (i == 0)
+					border.add(new Location(lat-latBuffer, lon));
+				else
+					border.add(new Location(lat, lon));
+			}
+			
+//			// move back along the bottom edge
+//			for (int i=lonNodes.length; --i>=0;) {
+//				double lon = lonNodes[i];
+//				// move up the left edge of the region
+//				Range<Double> latRange = latRangeAtLon(nodeList, (float)lon);
+//				double latBuffer = latRange.lowerEndpoint() - halfLatSpacing;
+//				border.add(new Location(latBuffer, lon));
+//			}
+			
+			region = new Region(border, BorderType.MERCATOR_LINEAR);
 		}
 		
-		private double[] deserializeArray(JsonReader in) throws IOException {
-			if (in.peek() == JsonToken.NULL)
-				return null;
-			in.beginArray();
-			List<Double> values = new ArrayList<>();
-			while (in.hasNext())
-				values.add(in.nextDouble());
-			in.endArray();
-			return Doubles.toArray(values);
+		return new GriddedRegion(region, latNodes, lonNodes, latSpacing, lonSpacing, nodeList.get(0), nodeList);
+	}
+	
+	private static Range<Double> lonRangeAtLat(LocationList nodeList, float lat) {
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+		for (Location loc : nodeList) {
+			if ((float)loc.getLatitude() == lat) {
+				double lon = loc.getLongitude();
+				max = Double.max(max, lon);
+				min = Double.min(min, lon);
+			}
 		}
+		Preconditions.checkState(Double.isFinite(min) && Double.isFinite(max), "No nodes found at lat=%s", lat);
+		return Range.closed(min, max);
+	}
+	
+	public static void main(String[] args) throws IOException {
+		List<GriddedRegion> inputRegions = new ArrayList<>();
 		
+		GriddedRegion simple = new GriddedRegion(new Region(new Location(34, -118), new Location(36, -120)), 0.25, null);
+		simple.setName("rectangular");
+		inputRegions.add(simple);
+		
+		GriddedRegion circular = new GriddedRegion(new Region(new Location(35, -119), 100d), 0.25, null);
+		circular.setName("circular");
+		inputRegions.add(circular);
+		
+		GriddedRegion relm = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.25d);
+		relm.setName("relm");
+		inputRegions.add(relm);
+		
+		File outputDir = new File("/tmp/grid_reg_test");
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		for (GriddedRegion input : inputRegions) {
+			System.out.println("Processing "+input.getName());
+			Feature.write(input.toFeature(), new File(outputDir, input.getName()+"_input.geojson"));
+			GriddedRegion inferred = inferRegion(input.getNodeList());
+			Feature.write(inferred.toFeature(), new File(outputDir, input.getName()+"_inferred.geojson"));
+		}
 	}
 
 }

@@ -35,6 +35,7 @@ import org.opensha.commons.data.Point2DToleranceSortedList;
 import org.opensha.commons.exceptions.InvalidRangeException;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.annotations.JsonAdapter;
 
 /**
  * <b>Title:</b> ArbitrarilyDiscretizedFunc<p>
@@ -54,7 +55,7 @@ import com.google.common.base.Preconditions;
  * @author Steven W. Rock, Gupta Brothers
  * @version 1.0
  */
-
+@JsonAdapter(DiscretizedFunc.Adapter.class)
 public class ArbitrarilyDiscretizedFunc extends AbstractDiscretizedFunc
 implements Serializable {
 

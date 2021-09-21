@@ -12,32 +12,32 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 public class ManualPreInversionAnalysisRun {
 
 	public static void main(String[] args) throws IOException {
-		List<LogicTreeBranch> branches = new ArrayList<>();
+		List<U3LogicTreeBranch> branches = new ArrayList<>();
 		
-		branches.add(LogicTreeBranch.DEFAULT);
-		branches.add(LogicTreeBranch.fromValues(SpatialSeisPDF.UNSMOOTHED_GRIDDED));
+		branches.add(U3LogicTreeBranch.DEFAULT);
+		branches.add(U3LogicTreeBranch.fromValues(SpatialSeisPDF.UNSMOOTHED_GRIDDED));
 		
-		branches.add(LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08));
-		branches.add(LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08, SpatialSeisPDF.UNSMOOTHED_GRIDDED));
+		branches.add(U3LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08));
+		branches.add(U3LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08, SpatialSeisPDF.UNSMOOTHED_GRIDDED));
 		
-		branches.add(LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08, TotalMag5Rate.RATE_9p6));
-		branches.add(LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08, TotalMag5Rate.RATE_9p6, SpatialSeisPDF.UNSMOOTHED_GRIDDED));
+		branches.add(U3LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08, TotalMag5Rate.RATE_9p6));
+		branches.add(U3LogicTreeBranch.fromValues(ScalingRelationships.HANKS_BAKUN_08, TotalMag5Rate.RATE_9p6, SpatialSeisPDF.UNSMOOTHED_GRIDDED));
 		
 		int origBranches = branches.size();
 		for (int i=0; i<origBranches; i++) {
-			LogicTreeBranch branch = (LogicTreeBranch) branches.get(i).clone();
+			U3LogicTreeBranch branch = (U3LogicTreeBranch) branches.get(i).clone();
 			branch.setValue(InversionModels.GR_CONSTRAINED);
 			branches.add(branch);
 		}
 		
 		StringBuilder str = new StringBuilder();
 		
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			System.out.println("Processing "+branch.buildFileName());
 			InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
 			

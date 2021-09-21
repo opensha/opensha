@@ -18,7 +18,7 @@ public class UCERF3_DataUtils {
 	 * The local scratch data directory that is ignored by repository commits.
 	 */
 	public static File DEFAULT_SCRATCH_DATA_DIR =
-		new File("src"+s+"main"+s+"resources"+s+"scratch"+s+"ucerf3");
+		new File("src"+s+"main"+s+"resources"+s+"scratchData"+s+"ucerf3");
 	
 	/**
 	 * The URL prefix for loading file from the persistent data directory. This MUST have forward slashes

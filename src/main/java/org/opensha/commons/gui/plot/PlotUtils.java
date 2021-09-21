@@ -4,11 +4,15 @@ import java.awt.Color;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
+import org.jfree.chart.plot.CombinedDomainXYPlot;
+import org.jfree.chart.plot.CombinedRangeXYPlot;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -141,6 +145,22 @@ public class PlotUtils {
 		TickUnit tu = new NumberTickUnit(tick);
 		tus.add(tu);
 		gp.getYAxis().setStandardTickUnits(tus);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static void setSubPlotWeights(GraphPanel gp, int... weights) {
+		XYPlot plot = gp.getPlot();
+		List<XYPlot> subPlots;
+		if (plot instanceof CombinedDomainXYPlot) {
+			subPlots = ((CombinedDomainXYPlot)plot).getSubplots();
+		} else if (plot instanceof CombinedRangeXYPlot) {
+			subPlots = ((CombinedRangeXYPlot)plot).getSubplots();
+		} else {
+			throw new IllegalStateException("Can only set sub plot weights on CombinedDomainXYPlot or CombinedRangeXYPlot");
+		}
+		Preconditions.checkState(subPlots.size() == weights.length, "Have %s subplots but %s weights", subPlots.size(), weights.length);
+		for (int i=0; i<subPlots.size(); i++)
+			subPlots.get(i).setWeight(weights[i]);
 	}
 
 }

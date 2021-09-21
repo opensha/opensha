@@ -1,22 +1,27 @@
 package scratch.UCERF3.simulatedAnnealing;
 
-import java.awt.Color;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.MissingOptionException;
 import org.apache.commons.cli.Option;
@@ -24,24 +29,18 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
-import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
-import org.opensha.commons.gui.plot.HeadlessGraphPanel;
-import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
-import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Doubles;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
-import scratch.UCERF3.inversion.CommandLineInversionRunner;
+import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
 import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.CompoundCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.completion.EnergyChangeCompletionCriteria;
@@ -61,23 +60,22 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
 	public static final String XML_METADATA_NAME= "ThreadedSimulatedAnnealing";
 	
-	private static final int plot_width = 1000;
-	private static final int plot_height = 800;
-	
 	private CompletionCriteria subCompletionCriteria;
 	private boolean startSubIterationsAtZero;
 	private TimeCompletionCriteria checkPointCriteria;
 	private File checkPointFileBase;
 	
 	private int numThreads;
-	private ArrayList<SerialSimulatedAnnealing> sas;
+	private List<? extends SimulatedAnnealing> sas;
+	
+	private ExecutorService exec;
 	
 	private double[] Ebest =  { Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY,
 			Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY };
 	private double[] xbest = null;
+	private int numNonZero;
 	private double[] misfit = null;
 	private double[] misfit_ineq = null;
-	private double[] minimumRuptureRates = null;
 	
 	private double[] initialState;
 	
@@ -86,35 +84,57 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	private DoubleMatrix2D A;
 	private DoubleMatrix2D A_ineq;
 	
+	private boolean average = false;
+	
+	private boolean verbose = D;
+
+	private double relativeSmoothnessWt;
+	
 	public ThreadedSimulatedAnnealing(
 			DoubleMatrix2D A, double[] d, double[] initialState,
 			int numThreads, CompletionCriteria subCompetionCriteria) {
-		this(A, d, initialState, 0d, null, null, null, numThreads, subCompetionCriteria);
+		this(A, d, initialState, 0d, null, null, numThreads, subCompetionCriteria);
 	}
 	
 	public ThreadedSimulatedAnnealing(
 			DoubleMatrix2D A, double[] d, double[] initialState, double relativeSmoothnessWt, 
-			DoubleMatrix2D A_ineq,  double[] d_ineq, double[] minimumRuptureRates,
-			int numThreads, CompletionCriteria subCompetionCriteria) {
-		// SA inputs are checked in each serial SA constructor, no need to duplicate checks
-		
-		Preconditions.checkArgument(numThreads > 0, "numThreads must be > 0");
-		Preconditions.checkNotNull(subCompetionCriteria, "subCompetionCriteria cannot be null");
-		
-		this.numThreads = numThreads;
-		this.subCompletionCriteria = subCompetionCriteria;
-		this.minimumRuptureRates = minimumRuptureRates;
-		this.initialState = initialState;
+			DoubleMatrix2D A_ineq,  double[] d_ineq, int numThreads, CompletionCriteria subCompetionCriteria) {
+		this.relativeSmoothnessWt = relativeSmoothnessWt;
+		Preconditions.checkState(numThreads > 0, "Must have at least 1 thread");
 		
 		// list of serial SA instances for each thread
-		sas = new ArrayList<SerialSimulatedAnnealing>();
+		List<SerialSimulatedAnnealing> sas = new ArrayList<SerialSimulatedAnnealing>();
 		for (int i=0; i<numThreads; i++)
 			sas.add(new SerialSimulatedAnnealing(A, d, initialState, relativeSmoothnessWt, A_ineq, d_ineq));
+		init(sas, subCompetionCriteria);
+	}
+	
+	public ThreadedSimulatedAnnealing(
+			List<? extends SimulatedAnnealing> sas, CompletionCriteria subCompetionCriteria) {
+		init(sas, subCompetionCriteria);
+	}
 		
-		xbest = sas.get(0).getBestSolution();
+	private void init(List<? extends SimulatedAnnealing> sas, CompletionCriteria subCompetionCriteria) {
+		// SA inputs are checked in each serial SA constructor, no need to duplicate checks
+		Preconditions.checkState(!sas.isEmpty(), "Must have at least 1 thread");
+		Preconditions.checkNotNull(subCompetionCriteria, "subCompetionCriteria cannot be null");
 		
-		this.A = A;
-		this.A_ineq = A_ineq;
+		this.numThreads = sas.size();
+		this.subCompletionCriteria = subCompetionCriteria;
+		this.sas = sas;
+		for (SimulatedAnnealing sa : sas)
+			// make any downstream TSA's non-verbose
+			if (sa instanceof ThreadedSimulatedAnnealing)
+				((ThreadedSimulatedAnnealing)sa).verbose = false;
+		
+		SimulatedAnnealing sa0 = sas.get(0);
+		this.initialState = sa0.getInitialSolution();
+		
+		xbest = sa0.getBestSolution();
+		numNonZero = sa0.getNumNonZero();
+		
+		this.A = sa0.getA();
+		this.A_ineq = sa0.getA_ineq();
 	}
 	
 	public void setSubCompletionCriteria(CompletionCriteria subCompletionCriteria) {
@@ -138,6 +158,15 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		this.checkPointFileBase = checkPointFilePrefix;
 	}
 	
+	/**
+	 * If true, then after each threaded round the average of each thread's best solution is taken (rather than the best)
+	 * 
+	 * @param average
+	 */
+	public void setAverage(boolean average) {
+		this.average = average;
+	}
+	
 	protected static CompletionCriteria getForStartIter(long startIter, CompletionCriteria subComp) {
 		if (subComp instanceof IterationCompletionCriteria) {
 			long iters = ((IterationCompletionCriteria)subComp).getMinIterations();
@@ -146,7 +175,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		return subComp;
 	}
 	
-	private class SAThread extends Thread {
+	private class SACall implements Callable<SACall> {
 		private SimulatedAnnealing sa;
 		private CompletionCriteria subComp;
 		private long startIter;
@@ -157,7 +186,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		private boolean fatal = false;
 		private Throwable t;
 		
-		public SAThread(SimulatedAnnealing sa, long startIter, long startPerturbs, CompletionCriteria subComp) {
+		public SACall(SimulatedAnnealing sa, long startIter, long startPerturbs, CompletionCriteria subComp) {
 			this.sa = sa;
 			this.subComp = subComp;
 			this.startIter = startIter;
@@ -165,7 +194,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		}
 		
 		@Override
-		public void run() {
+		public SACall call() {
 			try {
 				long[] ret = sa.iterate(startIter, startPerturbs, getForStartIter(startIter, subComp));
 				endIter = ret[0];
@@ -176,6 +205,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				fatal = true;
 				this.t = t;
 			}
+			return this;
 		}
 	}
 
@@ -183,7 +213,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public void setCalculationParams(CoolingScheduleType coolingFunc,
 			NonnegativityConstraintType nonnegativeityConstraintAlgorithm,
 			GenerationFunctionType perturbationFunc) {
-		for (SerialSimulatedAnnealing sa : sas)
+		for (SimulatedAnnealing sa : sas)
 			sa.setCalculationParams(coolingFunc, nonnegativeityConstraintAlgorithm, perturbationFunc);
 	}
 
@@ -194,7 +224,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 
 	@Override
 	public void setCoolingFunc(CoolingScheduleType coolingFunc) {
-		for (SerialSimulatedAnnealing sa : sas)
+		for (SimulatedAnnealing sa : sas)
 			sa.setCoolingFunc(coolingFunc);
 	}
 
@@ -206,7 +236,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	@Override
 	public void setNonnegativeityConstraintAlgorithm(
 			NonnegativityConstraintType nonnegativeityConstraintAlgorithm) {
-		for (SerialSimulatedAnnealing sa : sas)
+		for (SimulatedAnnealing sa : sas)
 			sa.setNonnegativeityConstraintAlgorithm(nonnegativeityConstraintAlgorithm);
 	}
 
@@ -217,19 +247,19 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 
 	@Override
 	public void setPerturbationFunc(GenerationFunctionType perturbationFunc) {
-		for (SerialSimulatedAnnealing sa : sas)
+		for (SimulatedAnnealing sa : sas)
 			sa.setPerturbationFunc(perturbationFunc);
 	}
 
 	@Override
 	public void setRuptureSampler(IntegerPDF_FunctionSampler rupSampler) {
-		for (SerialSimulatedAnnealing sa : sas)
+		for (SimulatedAnnealing sa : sas)
 			sa.setRuptureSampler(rupSampler);
 	}
 	
 	@Override
 	public void setVariablePerturbationBasis(double[] variablePerturbBasis) {
-		for (SerialSimulatedAnnealing sa : sas)
+		for (SimulatedAnnealing sa : sas)
 			sa.setVariablePerturbationBasis(variablePerturbBasis);
 	}
 
@@ -255,17 +285,22 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
 	@Override
 	public void setResults(double[] Ebest, double[] xbest) {
-		setResults(Ebest, xbest, null, null);
+		int numNonZero = 0;
+		for (double x : xbest)
+			if (x > 0)
+				numNonZero++;
+		setResults(Ebest, xbest, null, null, numNonZero);
 	}
 
 	@Override
-	public void setResults(double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq) {
+	public void setResults(double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero) {
 		this.Ebest = Ebest;
 		this.xbest = xbest;
 		this.misfit = misfit;
 		this.misfit_ineq = misfit_ineq;
-		for (SerialSimulatedAnnealing sa : sas)
-			sa.setResults(Ebest, xbest, misfit, misfit_ineq);
+		this.numNonZero = numNonZero;
+		for (SimulatedAnnealing sa : sas)
+			sa.setResults(Ebest, xbest, misfit, misfit_ineq, numNonZero);
 	}
 
 	@Override
@@ -280,23 +315,12 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 
 	@Override
 	public long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria) {
-		if (D) System.out.println("Threaded Simulated Annealing starting with "+numThreads
+		if (verbose) System.out.println("Threaded Simulated Annealing starting with "+numThreads
 				+" threads, "+criteria+", SUB: "+subCompletionCriteria);
 		
-		if (criteria instanceof ProgressTrackingCompletionCriteria
-				&& constraintRanges != null && !constraintRanges.isEmpty()) {
+		boolean rangeTrack = constraintRanges != null && !constraintRanges.isEmpty();
+		if (rangeTrack && criteria instanceof ProgressTrackingCompletionCriteria)
 			((ProgressTrackingCompletionCriteria)criteria).setConstraintRanges(constraintRanges);
-			if (Ebest.length < constraintRanges.size()+4) {
-				double[] Ebest_new = new double[constraintRanges.size()+4];
-				for (int i=0; i<Ebest.length; i++)
-					Ebest_new[i] = Ebest[i];
-				for (int i=Ebest.length; i<Ebest_new.length; i++)
-					Ebest_new[i] = Double.POSITIVE_INFINITY;
-				Ebest = Ebest_new;
-				for (SerialSimulatedAnnealing sa : sas)
-					sa.setResults(Ebest, xbest, misfit, misfit_ineq);
-			}
-		}
 		
 		StopWatch watch = new StopWatch();
 		watch.start();
@@ -316,15 +340,19 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			criteria = ((ProgressTrackingCompletionCriteria)criteria).getCriteria();
 		}
 		
+		if (exec == null)
+			exec = Executors.newFixedThreadPool(numThreads, new DaemonThreadFactory(average));
+		
 		int rounds = 0;
 		long iter = startIter;
-		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs)) {
+		double[] prevBestE = null;
+		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs, numNonZero)) {
 			if (subCompletionCriteria instanceof VariableSubTimeCompletionCriteria)
 				((VariableSubTimeCompletionCriteria)subCompletionCriteria).setGlobalState(watch, iter, Ebest, perturbs);
 			
 			// write checkpoint information if applicable
 			if (checkPointCriteria != null &&
-					checkPointCriteria.isSatisfied(checkPointWatch, iter, Ebest, perturbs)) {
+					checkPointCriteria.isSatisfied(checkPointWatch, iter, Ebest, perturbs, 0)) {
 				numCheckPoints++;
 				System.out.println("Writing checkpoint after "+iter+" iterations. Ebest: "
 						+Doubles.join(", ", Ebest));
@@ -334,8 +362,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 						+TimeCompletionCriteria.getTimeStr(millis);
 				File checkPointFile = new File(checkPointFileBase.getParentFile(), name+".bin");
 				try {
-					writeBestSolution(checkPointFile);
-					writeRateVsRankPlot(new File(checkPointFile.getParentFile(), name));
+					writeBestSolution(checkPointFile, null);
+					writeRateVsRankPlot(checkPointFile.getParentFile(), name+"_rate_dist", null);
 				} catch (IOException e) {
 					// don't fail on a checkpoint, just continue
 					e.printStackTrace();
@@ -344,87 +372,303 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				checkPointWatch.start();
 			}
 			
-			ArrayList<SAThread> threads = new ArrayList<ThreadedSimulatedAnnealing.SAThread>();
+			List<Future<SACall>> futures = new ArrayList<>();
 			
 			// create the threads
-			// TODO switch to using a thread pool
 			for (int i=0; i<numThreads; i++) {
 				long start;
 				if (startSubIterationsAtZero)
 					start = 0l;
 				else
 					start = iter;
-				threads.add(new SAThread(sas.get(i), start, perturbs, subCompletionCriteria));
+				futures.add(exec.submit(new SACall(sas.get(i), start, perturbs, subCompletionCriteria)));
 			}
 			
-			// start the threads
-			for (Thread t : threads) {
-				t.start();
-			}
-			
-			// join the threads
-			for (Thread t : threads) {
-				try {
-					t.join();
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-			}
-			
-			// find best solution and max iteration count
-			for (int i=0; i<numThreads; i++) {
-				SAThread thread = threads.get(i);
-				if (thread.fatal)
-					throw new RuntimeException(thread.t);
-				SimulatedAnnealing sa = sas.get(i);
-				double[] E = sa.getBestEnergy();
-				if (E[0] < Ebest[0]) {
-					Ebest = E;
-					xbest = sa.getBestSolution();
-					misfit = sa.getBestMisfit();
-					misfit_ineq = sa.getBestInequalityMisfit();
-					// set the number of perturbations to the perturbation count
-					// of the solution we're actually keeping
-					perturbs = thread.endPerturbs;
-				}
+			if (average) {
+				// average best solution from each
+				double rateMult = 1d/(double)numThreads;
+				double[] newE = null;
+				double[] newX = null;
+				double[] newMisfit = null;
+				double[] newMisfitIneq = null;
 				
-				// now set the current iteration count to the max iteration achieved
-				long endIter = thread.endIter;
-				if (endIter > iter)
-					iter = endIter;
+				long prevPerturbs = perturbs;
+				for (int i=0; i<numThreads; i++) {
+					SACall thread;
+					try {
+						thread = futures.get(i).get();
+					} catch (Exception e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+					if (thread.fatal)
+						throw ExceptionUtils.asRuntimeException(thread.t);
+					SimulatedAnnealing sa = sas.get(i);
+					double[] E = sa.getBestEnergy();
+					double[] xbest = sa.getBestSolution();
+					double[] misfit = sa.getBestMisfit();
+					double[] misfit_ineq = sa.getBestInequalityMisfit();
+					
+					if (newE == null) {
+						newE = new double[4];
+						newX = new double[xbest.length];
+						if (misfit != null)
+							newMisfit = new double[misfit.length];
+						if (misfit_ineq != null)
+							newMisfitIneq = new double[misfit_ineq.length];
+					}
+					addScaled(newE, E, rateMult);
+					addScaled(newX, xbest, rateMult);
+					if (newMisfit != null)
+						addScaled(newMisfit, misfit, rateMult);
+					if (newMisfitIneq != null)
+						addScaled(newMisfitIneq, misfit_ineq, rateMult);
+					
+					perturbs += (thread.endPerturbs-prevPerturbs);
+					
+					// now set the current iteration count to the max iteration achieved
+					iter = Long.max(thread.endIter, iter);
+				}
+				numNonZero = 0;
+				for (double x : newX)
+					if (x > 0)
+						numNonZero++;
+				Ebest = newE;
+				xbest = newX;
+				misfit = newMisfit;
+				misfit_ineq = newMisfitIneq;
+			} else {
+				// find best solution and max iteration count
+				for (int i=0; i<numThreads; i++) {
+					SACall thread;
+					try {
+						thread = futures.get(i).get();
+					} catch (Exception e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+					if (thread.fatal)
+						throw ExceptionUtils.asRuntimeException(thread.t);
+					SimulatedAnnealing sa = sas.get(i);
+					double[] E = sa.getBestEnergy();
+					if (E[0] < Ebest[0]) {
+						Ebest = E;
+						xbest = sa.getBestSolution();
+						misfit = sa.getBestMisfit();
+						misfit_ineq = sa.getBestInequalityMisfit();
+						numNonZero = sa.getNumNonZero();
+						// set the number of perturbations to the perturbation count
+						// of the solution we're actually keeping
+						perturbs = thread.endPerturbs;
+					}
+					
+					// now set the current iteration count to the max iteration achieved
+					iter = Long.max(thread.endIter, iter);
+				}
 			}
 			
 			rounds++;
 			// this is now done in the loop above
 //			iter += numSubIterations;
 			
-			if (D) {
+			if (rangeTrack) {
+				// recalculate with constraint ranges
+				Ebest = sas.get(0).calculateEnergy(xbest, misfit, misfit_ineq, constraintRanges);
+			}
+			
+			if (verbose) {
 				double secs = watch.getTime() / 1000d;
-				System.out.println("Threaded total round "+rounds+" DONE after "
-						+(float)secs+" seconds, "+iter+" total iterations.");
-				System.out.println("Best energy after "+perturbs+" total perturbations: "
-						+Doubles.join(", ", Ebest));
+				int ips = (int)((double)iter/secs + 0.5);
+				System.out.println("Threaded total round "+rounds+" DONE after "+timeStr(watch.getTime())
+						+", "+cDF.format(iter)+" total iterations ("+cDF.format(ips)+" /sec).\t"
+						+cDF.format(numNonZero)+"/"+cDF.format(xbest.length)
+						+" = "+pDF.format((double)numNonZero/(double)xbest.length)+" non-zero rates.");
+				System.out.println("Best energy after "+cDF.format(perturbs)+" total perturbations:");
+				printEnergies(Ebest, prevBestE, constraintRanges);
+				prevBestE = Ebest;
+//						+Doubles.join(", ", Ebest));
 			}
 			
 			// set next state in all SAs
 			for (SimulatedAnnealing sa : sas)
-				sa.setResults(Ebest, xbest, misfit, misfit_ineq);
+				sa.setResults(Ebest, xbest, misfit, misfit_ineq, numNonZero);
 		}
 		
 		watch.stop();
 		
-		if(D) {
+		if(verbose) {
 			System.out.println("Threaded annealing schedule completed.");
-			double runSecs = watch.getTime() / 1000d;
-			System.out.println("Done with Inversion after " + (float)runSecs + " seconds.");
+			System.out.println("Done with Inversion after "+timeStr(watch.getTime())+".");
 			System.out.println("Rounds: "+rounds);
 			System.out.println("Total Iterations: "+iter);
 			System.out.println("Total Perturbations: "+perturbs);
-			System.out.println("Best energy: "+Doubles.join(", ", Ebest));
+			System.out.println("Best energy:");
+			printEnergies(Ebest, null, constraintRanges);
 		}
 		
 		long[] ret = { iter, perturbs };
 		return ret;
+	}
+	
+	private static class DaemonThreadFactory implements ThreadFactory {
+		
+		private static int poolCount = 0;
+		private int myPool;
+		private int threadCount = 0;
+		private boolean average;
+
+	    public DaemonThreadFactory(boolean average) {
+	    	synchronized (DaemonThreadFactory.class) {
+	    		poolCount++;
+	    	}
+	    	this.myPool = poolCount;
+			this.average = average;
+		}
+
+		@Override
+	    public synchronized Thread newThread(final Runnable r) {
+	        Thread t = new Thread(r);
+	        String name = "TSA-pool-"+myPool;
+	        threadCount++;
+	        if (average)
+	        	name += "-avg-"+threadCount;
+	        else
+	        	name += "-worker-"+threadCount;
+	        t.setName(name);
+	        t.setDaemon(true);
+	        return t;
+	    }
+	}
+
+	/**
+	 * Shuts down the thread pool.
+	 */
+	public void shutdown(){
+		if (exec != null){
+			exec.shutdown();
+			exec = null;
+		}
+	}
+	
+	public static String timeStr(long millis) {
+		double secs = millis/1000d;
+		if (secs < 60d)
+			return tDF.format(secs)+" secs";
+		double mins = secs/60d;
+		if (mins < 60d)
+			return twoPartTimeStr((int)mins, "min", secs - ((int)mins)*60d, "secs");
+		double hours = mins/60d;
+		return twoPartTimeStr((int)hours, "hour", mins - ((int)hours)*60d, "mins");
+	}
+	
+	static String twoPartTimeStr(int first, String firstUnits, double remainder, String remainderUnits) {
+		String ret = first+" "+firstUnits;
+		if (!firstUnits.endsWith("s") && first > 1)
+			ret += "s";
+		if (remainder < 0.01)
+			return ret;
+		return ret+" "+tDF.format(remainder)+" "+remainderUnits;
+	}
+	
+	private void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges) {
+		int numIneq = A_ineq == null ? 0 : A_ineq.rows();
+		printEnergies(Ebest, prev, constraintRanges, relativeSmoothnessWt, numIneq);
+	}
+	
+	private static void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges,
+			double entropyWeight, int numIneqRows) {
+		List<String> strs = new ArrayList<>();
+		for (int i=0; i<Ebest.length; i++) {
+			String str;
+			switch (i) {
+			case 0:
+				str = "Total:\t";
+				break;
+			case 1:
+				if (entropyWeight > 0 || numIneqRows > 0)
+					str = "Equality:\t";
+				else
+					// only equality, don't bother duplicating information
+					continue;
+				break;
+			case 2:
+				if (entropyWeight > 0)
+					str = "Entropy:\t";
+				else
+					// entropy is disabled, don't print
+					continue;
+				break;
+			case 3:
+				if (numIneqRows > 0)
+					str = "Inequality:\t";
+				else
+					// inequality is disabled, don't print
+					continue;
+				break;
+
+			default:
+				int ind = i-4;
+				if (constraintRanges == null || ind >= constraintRanges.size() || constraintRanges.get(ind) == null)
+					str = "Constraint "+ind+":\t";
+				else
+					str = constraintRanges.get(ind).shortName+":\t";
+				break;
+			}
+			str += (float)Ebest[i]+"";
+			if (prev != null) {
+				double diff = Ebest[i]-prev[i];
+				str += " (";
+				if (diff > 0)
+					str += "+";
+				str += pDF.format(diff/prev[i])+")";
+			}
+			strs.add(str);
+		}
+		int cols;
+		if (strs.size() > 9)
+			cols = 4;
+		else if (strs.size() > 4)
+			cols = 3;
+		else
+			cols = strs.size();
+		int lines = strs.size()/cols;
+		if (strs.size() % cols != 0)
+			lines++;
+		int ind = 0;
+		for (int l=0; l<lines; l++) {
+			StringBuilder str = new StringBuilder();
+			for (int c=0; c<cols && ind<strs.size(); c++)
+				str.append("\t").append(strs.get(ind++));
+			System.out.println(str.toString());
+		}
+	}
+	
+	private static void addScaled(double[] dest, double[] source, double scale) {
+		for (int i=0; i<dest.length; i++)
+			dest[i] += source[i]*scale;
+	}
+	
+	private static DecimalFormat tDF = new DecimalFormat("0.#");
+	private static DecimalFormat cDF = new DecimalFormat("#");
+	static {
+		cDF.setGroupingUsed(true);
+		cDF.setGroupingSize(3);
+	}
+	private static DecimalFormat pDF = new DecimalFormat("0.00%");
+	
+	/**
+	 * Sets the random number generator used - helpful for reproducing results for testing purposes
+	 * @param r
+	 */
+	public void setRandom(Random r) {
+		if (sas.size() == 1) {
+			sas.get(0).setRandom(r);
+		} else {
+			for (SimulatedAnnealing sa : sas)
+				sa.setRandom(new Random(r.nextLong()));
+		}
+	}
+	
+	public void setVerbose(boolean verbose) {
+		this.verbose = verbose;
 	}
 	
 	public int getNumThreads() {
@@ -440,9 +684,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
+		// don't set it in downstream ones, we'll calculate range-specific values if needed at the end of each sub-iteration
 		this.constraintRanges = constraintRanges;
-		for (SerialSimulatedAnnealing sa : sas)
-			sa.setConstraintRanges(constraintRanges);
 	}
 	
 	public static Options createOptionsNoInputs() {
@@ -536,10 +779,6 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		Option d_MFDMatrix = new Option("dineq", "d-ineq-matrix-file", true, "D inequality matrix file");
 		d_MFDMatrix.setRequired(false);
 		ops.addOption(d_MFDMatrix);
-		
-		Option minimumRates = new Option("minrates", "minimum-rates-file", true, "minimum rates files to apply solution after annealing");
-		minimumRates.setRequired(false);
-		ops.addOption(minimumRates);
 		
 		Option zipInputs = new Option("zip", "zip-file", true, "Zip file containing all inputs. " +
 				"File names must be a.bin, d.bin, and optionally: initial.bin, a_ineq.bin, d_ineq.bin, minimumRuptureRates.bin, metadata.txt");
@@ -671,7 +910,6 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		double[] initialState = null; // can be null, for now
 		DoubleMatrix2D A_ineq = null; // can be null
 		double[] d_ineq = null; // can be null
-		double[] minimumRuptureRates = null; // can be null
 		
 		List<ConstraintRange> constraintRanges = null;
 		
@@ -698,10 +936,6 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 						new BufferedInputStream(zip.getInputStream(initial_entry)), A.columns()*8);
 			}
 			
-			ZipEntry minimumRuptureRates_entry = zip.getEntry("minimumRuptureRates.bin");
-			if (minimumRuptureRates_entry != null)
-				minimumRuptureRates = MatrixIO.doubleArrayFromInputStream(zip.getInputStream(minimumRuptureRates_entry), A.columns()*8);
-			
 			ZipEntry rangeEntry = zip.getEntry("constraintRanges.csv");
 			if (rangeEntry != null) {
 				constraintRanges = new ArrayList<>();
@@ -715,6 +949,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					constraintRanges.add(new ConstraintRange(name, shortName, startRow, endRow, inequality));
 				}
 			}
+			
+			zip.close();
 		} else {
 			File aFile = new File(cmd.getOptionValue("a"));
 			if (D) System.out.println("Loading A matrix from: "+aFile.getAbsolutePath());
@@ -741,16 +977,9 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				if (D) System.out.println("Loading initialState from: "+initialFile.getAbsolutePath());
 				initialState = MatrixIO.doubleArrayFromFile(initialFile);
 			}
-			
-			if (cmd.hasOption("minrates")); {
-				File minimumRuptureRatesFile = new File(cmd.getOptionValue("minrates"));
-				if (D) System.out.println("Loading minimumRuptureRates from: "+minimumRuptureRatesFile.getAbsolutePath());
-				minimumRuptureRates = MatrixIO.doubleArrayFromFile(minimumRuptureRatesFile);
-			}
 		}
 		
-		return parseOptions(cmd, A, d, initialState, A_ineq, d_ineq, minimumRuptureRates,
-				constraintRanges);
+		return parseOptions(cmd, A, d, initialState, A_ineq, d_ineq, constraintRanges);
 	}
 	
 	public static ThreadedSimulatedAnnealing parseOptions(CommandLine cmd,
@@ -759,7 +988,6 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			double[] initialState,
 			DoubleMatrix2D A_ineq,
 			double[] d_ineq,
-			double[] minimumRuptureRates,
 			List<ConstraintRange> constraintRanges) throws IOException {
 		
 		// load other weights
@@ -779,10 +1007,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		ThreadedSimulatedAnnealing tsa =
 			new ThreadedSimulatedAnnealing(A, d, initialState,
-					relativeSmoothnessWt, A_ineq, d_ineq, minimumRuptureRates, numThreads, subCompletionCriteria);
+					relativeSmoothnessWt, A_ineq, d_ineq, numThreads, subCompletionCriteria);
 		
-		for (SerialSimulatedAnnealing sa : tsa.sas)
-			sa.setCalculationParamsFromOptions(cmd);
+		for (SimulatedAnnealing sa : tsa.sas)
+			((SerialSimulatedAnnealing)sa).setCalculationParamsFromOptions(cmd);
 		
 		if (cmd.hasOption("zero"))
 			tsa.setStartSubIterationsAtZero(true);
@@ -822,7 +1050,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		System.exit(2);
 	}
 	
-	public void writeBestSolution(File outputFile) throws IOException {
+	public void writeBestSolution(File outputFile, double[] minimumRuptureRates) throws IOException {
 		double[] solution = getBestSolution();
 		if (minimumRuptureRates != null) {
 			String outputFilePath = outputFile.getAbsolutePath();
@@ -838,251 +1066,6 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		System.out.println("Writing solution to: "+outputFile.getAbsolutePath());
 		MatrixIO.doubleArrayToFile(solution, outputFile);
-	}
-	
-	private static double[] getSorted(double[] rates) {
-		double[] newrates = Arrays.copyOf(rates, rates.length);
-		Arrays.sort(newrates);
-		return newrates;
-	}
-	
-	private void writeRateVsRankPlot(File prefix) throws IOException {
-		double[] solutionRates = getBestSolution();
-		double[] adjustedRates = null;
-		if (minimumRuptureRates != null) {
-			adjustedRates = InversionInputGenerator.adjustSolutionForWaterLevel(
-					getBestSolution(), minimumRuptureRates);
-		}
-		writeRateVsRankPlot(prefix, solutionRates, adjustedRates, initialState);
-	}
-	
-	/**
-	 * Rupture rate vs rank plots.
-	 * 
-	 * @param prefix
-	 * @param ratesNoMin
-	 * @param rates
-	 * @param initialState
-	 * @throws IOException
-	 */
-	public static void writeRateVsRankPlot(File prefix, double[] ratesNoMin, double[] rates, double[] initialState)
-			throws IOException {
-		// rates without waterlevel
-		ratesNoMin = getSorted(ratesNoMin);
-		// rates with waterlevel
-		rates = getSorted(rates);
-		EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
-		int cnt = 0;
-		for (int i=ratesNoMin.length; --i >= 0;)
-			func.set(cnt++, ratesNoMin[i]);
-		ArrayList<DiscretizedFunc> funcs = new ArrayList<DiscretizedFunc>();
-		funcs.add(func);
-		ArrayList<PlotCurveCharacterstics> chars = Lists.newArrayList(
-//				new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, PlotSymbol.CIRCLE, 5f, Color.BLACK));
-				new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLUE));
-		
-		EvenlyDiscretizedFunc initialFunc = new EvenlyDiscretizedFunc(0d, initialState.length, 1d);
-		double[] initialSorted = getSorted(initialState);
-		cnt = 0;
-		for (int i=initialSorted.length; --i >= 0;)
-			initialFunc.set(cnt++, initialSorted[i]);
-		funcs.add(0, initialFunc);
-		chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GREEN));
-		
-		if (rates != null) {
-			EvenlyDiscretizedFunc adjFunc = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
-			cnt = 0;
-			for (int i=rates.length; --i >= 0;)
-				adjFunc.set(cnt++, rates[i]);
-			funcs.add(0, adjFunc);
-			chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
-		}
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		CommandLineInversionRunner.setFontSizes(gp);
-		gp.setBackgroundColor(Color.WHITE);
-		gp.setYLog(true);
-		gp.drawGraphPanel("Rank", "Rate", funcs, chars, "Rupture Rate Distribution");
-		File file = new File(prefix.getParentFile(), prefix.getName()+"_rate_dist");
-		gp.saveAsPNG(file.getAbsolutePath()+".png", plot_width, plot_height);
-		gp.saveAsPDF(file.getAbsolutePath()+".pdf", plot_width, plot_height);
-	}
-	
-	/**
-	 * This writes plots of SA energies as a function of time
-	 * @param track
-	 * @param prefix
-	 * @throws IOException
-	 */
-	private void writeProgressPlots(ProgressTrackingCompletionCriteria track, File prefix) throws IOException {
-		ArbitrarilyDiscretizedFunc perturbsVsIters = new ArbitrarilyDiscretizedFunc();
-		
-		ArrayList<double[]> energies = track.getEnergies();
-		ArrayList<Long> times = track.getTimes();
-		ArrayList<Long> perturbs = track.getPerturbs();
-		ArrayList<Long> iters = track.getIterations();
-		
-		int num = energies.get(0).length;
-		ArbitrarilyDiscretizedFunc[] energyVsTime = new ArbitrarilyDiscretizedFunc[num];
-		ArbitrarilyDiscretizedFunc[] energyVsIters = new ArbitrarilyDiscretizedFunc[num];
-		for (int i=0; i<num; i++) {
-			energyVsTime[i] = new ArbitrarilyDiscretizedFunc();
-			energyVsIters[i] = new ArbitrarilyDiscretizedFunc();
-		}
-		
-		for (int i=0; i<energies.size(); i++) {
-			double[] energy = energies.get(i);
-			long time = times.get(i);
-			double mins = time / 1000d / 60d;
-			long perturb = perturbs.get(i);
-			long iter = iters.get(i);
-			
-			for (int j=0; j<energy.length; j++) {
-				energyVsTime[j].set(mins, energy[j]);
-				energyVsIters[j].set((double)iter, energy[j]);
-			}
-			perturbsVsIters.set((double)iter, (double)perturb);
-		}
-		
-		ArrayList<PlotCurveCharacterstics> energyChars = getEnergyBreakdownChars();
-		
-		PlotCurveCharacterstics perturbChar =
-			new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.CYAN);
-		
-		String timeLabel = "Time (minutes)";
-		String iterationsLabel = "Iterations";
-		String energyLabel = "Energy";
-		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setBackgroundColor(Color.WHITE);
-		
-		// this chops off any huge energy values in the first 5% of the run so that the plots
-		// are readable at the energy levels that are actually interesting
-		double energyAter5percent = energyVsIters[1].getY((int)((energyVsIters[1].size()-1d)*0.05 + 0.5));
-		double energyPlotMax = energyAter5percent*1.2;
-		double energyPlotMin = 0;
-		double timeMin = 0, itersMin = 0;
-		double timeMax = energyVsTime[0].getMaxX()*1.1, iterMax = energyVsIters[0].getMaxX();
-		
-		// energy vs time plot
-		gp.setUserBounds(timeMin, timeMax, energyPlotMin, energyPlotMax);
-		gp.drawGraphPanel(timeLabel, energyLabel, Lists.newArrayList(energyVsTime), energyChars,
-				"Energy Vs Time");
-		gp.saveAsPNG(new File(prefix.getParentFile(),
-				prefix.getName()+"_energy_vs_time.png").getAbsolutePath(),
-				plot_width, plot_height);
-		gp.saveAsPDF(new File(prefix.getParentFile(),
-				prefix.getName()+"_energy_vs_time.pdf").getAbsolutePath(),
-				plot_width, plot_height);
-		
-		// energy vs iters plot
-		gp.setUserBounds(itersMin, iterMax, energyPlotMin, energyPlotMax);
-		gp.drawGraphPanel(iterationsLabel, energyLabel, Lists.newArrayList(energyVsIters), energyChars,
-				"Energy Vs Time");
-		gp.saveAsPNG(new File(prefix.getParentFile(),
-				prefix.getName()+"_energy_vs_iters.png").getAbsolutePath(),
-				plot_width, plot_height);
-		gp.saveAsPDF(new File(prefix.getParentFile(),
-				prefix.getName()+"_energy_vs_iters.pdf").getAbsolutePath(),
-				plot_width, plot_height);
-		
-		// perturbations vs iters plots
-		ArrayList<ArbitrarilyDiscretizedFunc> perturbWrap = new ArrayList<ArbitrarilyDiscretizedFunc>();
-		perturbWrap.add(perturbsVsIters);
-		gp.setAutoRange();
-		gp.drawGraphPanel(iterationsLabel, "Perturbations", perturbWrap,
-				Lists.newArrayList(perturbChar), "Perturbations Vs Iters");
-		gp.saveAsPNG(new File(prefix.getParentFile(),
-				prefix.getName()+"_perturb_vs_iters.png").getAbsolutePath(),
-				plot_width, plot_height);
-		
-		ArrayList<PlotCurveCharacterstics> normChars = new ArrayList<PlotCurveCharacterstics>();
-		normChars.addAll(energyChars);
-		normChars.add(perturbChar);
-		
-		// normalized plot
-		getNormalized(prefix, energyVsIters, perturbsVsIters, energies,
-				perturbs, iters, iterationsLabel, gp, normChars,
-				0, "_normalized.png", energyAter5percent);
-		
-		// zoomed normalized plots
-		int middle = (iters.size()-1)/2;
-		getNormalized(prefix, energyVsIters, perturbsVsIters, energies,
-				perturbs, iters, iterationsLabel, gp, normChars,
-				middle, "_normalized_zoomed_50.png", energyAter5percent);
-
-		int end = (int)((iters.size()-1) * 0.75d+0.5);
-		getNormalized(prefix, energyVsIters, perturbsVsIters, energies,
-				perturbs, iters, iterationsLabel, gp, normChars,
-				end, "_normalized_zoomed_75.png", energyAter5percent);
-	}
-	
-	public static ArrayList<PlotCurveCharacterstics> getEnergyBreakdownChars() {
-		ArrayList<PlotCurveCharacterstics> energyChars = new ArrayList<PlotCurveCharacterstics>();
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.RED));
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GREEN));
-		energyChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLUE));
-		return energyChars;
-	}
-
-	private void getNormalized(File prefix,
-			ArbitrarilyDiscretizedFunc[] energyVsIters,
-			ArbitrarilyDiscretizedFunc perturbsVsIters,
-			ArrayList<double[]> energies, ArrayList<Long> perturbs,
-			ArrayList<Long> iters, String iterationsLabel,
-			HeadlessGraphPanel gp,
-			ArrayList<PlotCurveCharacterstics> normChars, int startPoint, String suffix,
-			double maxEnergy)
-			throws IOException {
-		ArbitrarilyDiscretizedFunc normPerturbs;
-		ArrayList<ArbitrarilyDiscretizedFunc> normalizedFuncs = new ArrayList<ArbitrarilyDiscretizedFunc>();
-		for (int i=0; i<energyVsIters.length; i++) {
-			ArbitrarilyDiscretizedFunc norm = new ArbitrarilyDiscretizedFunc();
-			ArbitrarilyDiscretizedFunc energyFunc = energyVsIters[i];
-			for (int j=startPoint; j<energyFunc.size(); j++) {
-				double normalized = energyFunc.getY(j) / maxEnergy;
-				norm.set(energyFunc.getX(j), normalized);
-			}
-			normalizedFuncs.add(norm);
-		}
-		double minPerturbs = (double)perturbs.get(startPoint);
-		double maxPerturbs = (double)perturbs.get(perturbs.size()-1);
-		maxPerturbs -= minPerturbs;
-		normPerturbs = new ArbitrarilyDiscretizedFunc();
-		for (int i=startPoint; i<perturbsVsIters.size(); i++) {
-			double normalized = (perturbsVsIters.getY(i) - minPerturbs) / maxPerturbs;
-			normPerturbs.set(perturbsVsIters.getX(i), normalized);
-		}
-		normalizedFuncs.add(normPerturbs);
-		String title = "Normalized";
-		if (startPoint > 0) {
-			long startIter = iters.get(startPoint);
-			long endIter = iters.get(iters.size()-1);
-			title += " (Iterations "+startIter+" => "+endIter+")";
-		}
-		double minX = normalizedFuncs.get(0).getMinX();
-		double maxX = normalizedFuncs.get(0).getMaxX()*1.05;
-		double minY = 0;
-		double maxY = 1.15;
-		gp.setUserBounds(minX, maxX, minY, maxY);
-		gp.drawGraphPanel(iterationsLabel, "Normalized", normalizedFuncs, normChars, title);
-		gp.saveAsPNG(new File(prefix.getParentFile(),
-				prefix.getName()+suffix).getAbsolutePath(),
-				plot_width, plot_height);
-	}
-	
-	/**
-	 * Write various SA related plots
-	 * 
-	 * @param criteria
-	 * @param prefix
-	 * @throws IOException
-	 */
-	public void writePlots(CompletionCriteria criteria, File prefix) throws IOException {
-		// this plots rupture rate vs rank
-		writeRateVsRankPlot(prefix);
-		if (criteria instanceof ProgressTrackingCompletionCriteria)
-			writeProgressPlots((ProgressTrackingCompletionCriteria)criteria, prefix);
 	}
 	
 	public Map<ConstraintRange, Double> getEnergies() {
@@ -1125,12 +1108,13 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		}
 		if (criteria instanceof ProgressTrackingCompletionCriteria) {
 			ProgressTrackingCompletionCriteria track = (ProgressTrackingCompletionCriteria)criteria;
-			int numSteps = track.getTimes().size();
-			long millis = track.getTimes().get(numSteps-1);
+			AnnealingProgress progress = track.getProgress();
+			int numSteps = progress.size();
+			long millis = progress.getTime(numSteps-1);
 			double totMins = millis / 1000d / 60d;
 			builder.append("Total time: "+totMins+" mins\n");
-			long iters = track.getIterations().get(numSteps-1);
-			long perturbs = track.getPerturbs().get(numSteps-1);
+			long iters = progress.getIterations(numSteps-1);
+			long perturbs = progress.getNumPerturbations(numSteps-1);
 			builder.append("Total iterations: "+iters+"\n");
 			float pertPercent = (float)(((double)perturbs / (double)iters) * 100d);
 			builder.append("Total perturbations: "+perturbs+" ("+pertPercent+" %)\n");
@@ -1150,7 +1134,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public static void main(String[] args) {
 		Options options = createOptions();
 		
-		CommandLineParser parser = new GnuParser();
+		CommandLineParser parser = new DefaultParser();
 		
 		try {
 			CommandLine cmd = parser.parse(options, args);
@@ -1163,11 +1147,11 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			
 			tsa.iterate(criteria);
 			
-			tsa.writeBestSolution(outputFile);
+			tsa.writeBestSolution(outputFile, null);
 			File prefix = getFileWithoutBinSuffix(outputFile.getAbsolutePath());
 			tsa.writeMetadata(new File(prefix.getParentFile(), prefix.getName()+"_metadata.txt"),
 					args, criteria);
-			tsa.writePlots(criteria, prefix);
+			tsa.writePlots(criteria, prefix.getParentFile(), prefix.getName(), null);
 			
 			System.out.println("DONE...exiting.");
 			System.exit(0);
@@ -1182,6 +1166,52 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			e.printStackTrace();
 			System.exit(1);
 		}
+	}
+
+	@Override
+	public double[] getInitialSolution() {
+		return initialState;
+	}
+
+	@Override
+	public int getNumNonZero() {
+		return numNonZero;
+	}
+
+	@Override
+	public DoubleMatrix2D getA_ineq() {
+		return A_ineq;
+	}
+
+	@Override
+	public DoubleMatrix2D getA() {
+		return A;
+	}
+
+	@Override
+	public double[] getD() {
+		return sas.get(0).getD();
+	}
+
+	@Override
+	public double[] getD_ineq() {
+		return sas.get(0).getD_ineq();
+	}
+
+	@Override
+	public double[] calculateEnergy(double[] solution) {
+		return sas.get(0).calculateEnergy(solution);
+	}
+
+	@Override
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq) {
+		return sas.get(0).calculateEnergy(solution, misfit, misfit_ineq);
+	}
+
+	@Override
+	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq,
+			List<ConstraintRange> constraintRanges) {
+		return sas.get(0).calculateEnergy(solution, misfit, misfit_ineq, constraintRanges);
 	}
 
 }

@@ -71,6 +71,10 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
@@ -86,8 +90,6 @@ import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.erf.FSSRupsInRegionCache;
@@ -98,8 +100,8 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.kevin.ucerf3.etas.MPJ_ETAS_Simulator;
@@ -1154,7 +1156,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		double maxDuration = 0;
 		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER);
+				U3InversionTargetMFDs.FAULT_BUFFER);
 
 		for (List<ETAS_EqkRupture> catalog : catalogs) {
 			double fractionalRate;
@@ -2544,7 +2546,7 @@ public class ETAS_MultiSimAnalysisTools {
 
 		// this is used to fliter Mendocino sections
 		List<? extends IncrementalMagFreqDist> longTermSubSeisMFD_OnSectList = erf.getSolution()
-				.getSubSeismoOnFaultMFD_List();
+				.requireModule(SubSeismoOnFaultMFDs.class).getAll();
 
 		HistogramFunction aveValsFunc = new HistogramFunction(-4.9, 19, 0.2);
 		HistogramFunction numValsFunc = new HistogramFunction(-4.9, 19, 0.2);
@@ -3450,7 +3452,7 @@ public class ETAS_MultiSimAnalysisTools {
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 		HashSet<Integer> ruptures = new HashSet<Integer>(rupSet.getRupturesForSection(sectIndex));
 		FaultPolyMgr faultPolyMgr = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
+				U3InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		Region subSectPoly = faultPolyMgr.getPoly(sectIndex);
 
@@ -4824,8 +4826,8 @@ public class ETAS_MultiSimAnalysisTools {
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
-		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
+		FaultGridAssociations polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
+				U3InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		double[] zCount = new double[griddedRegion.getNodeCount()];
 
@@ -4978,8 +4980,8 @@ public class ETAS_MultiSimAnalysisTools {
 		FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 
 		GriddedRegion griddedRegion = new CaliforniaRegions.RELM_TESTING_GRIDDED(0.1);
-		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
+		FaultGridAssociations polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
+				U3InversionTargetMFDs.FAULT_BUFFER); // this works for U3, but not
 													// generalized
 		double[] zCount = new double[griddedRegion.getNodeCount()];
 
@@ -5282,7 +5284,7 @@ public class ETAS_MultiSimAnalysisTools {
 		File fssFile = new File("dev/scratch/UCERF3/data/scratch/InversionSolutions/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip");
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(fssFile);
 
 		// only for spontaneous
 		boolean skipEmpty = true;

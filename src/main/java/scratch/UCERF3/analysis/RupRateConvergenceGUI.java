@@ -39,7 +39,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.FindEquivUCERF2_Ruptures.FindEquivUCERF2_FM2pt1_Ruptures;
 import scratch.UCERF3.utils.FindEquivUCERF2_Ruptures.FindEquivUCERF2_FM3_Ruptures;
@@ -636,7 +636,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		if (param == browseParam) {
 			AverageFaultSystemSolution sol = null;
 			try {
-				sol = FaultSystemIO.loadAvgInvSol(browseParam.getValue());
+				sol = U3FaultSystemIO.loadAvgInvSol(browseParam.getValue());
 			} catch (Exception e) {
 				e.printStackTrace();
 				JOptionPane.showMessageDialog(this, "Error loading average solution:\n"+e.getMessage(),

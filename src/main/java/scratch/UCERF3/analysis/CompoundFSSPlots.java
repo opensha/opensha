@@ -85,6 +85,10 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
@@ -116,8 +120,6 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -126,7 +128,6 @@ import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.FSSRupsInRegionCache;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.griddedSeismicity.GridSourceFileReader;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.BatchPlotGen;
@@ -134,18 +135,18 @@ import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.DeformationModelFileParser;
 import scratch.UCERF3.utils.DeformationModelFileParser.DeformationSection;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.GardnerKnopoffAftershockFilter;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
@@ -369,7 +370,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			double wt = weightProvider.getWeight(branch);
 
@@ -494,23 +495,23 @@ public abstract class CompoundFSSPlots implements Serializable {
 					if (!solOffMFDsForRegion.isEmpty()) {
 						// now add target GRs
 						if (cumulative) {
-							funcs.add(InversionTargetMFDs
+							funcs.add(U3InversionTargetMFDs
 									.getTotalTargetGR_upToM9(TotalMag5Rate.RATE_9p6
 											.getRateMag5()).getCumRateDistWithOffset());
-							funcs.add(InversionTargetMFDs
+							funcs.add(U3InversionTargetMFDs
 									.getTotalTargetGR_upToM9(TotalMag5Rate.RATE_7p9
 											.getRateMag5()).getCumRateDistWithOffset());
-							funcs.add(InversionTargetMFDs
+							funcs.add(U3InversionTargetMFDs
 									.getTotalTargetGR_upToM9(TotalMag5Rate.RATE_6p5
 											.getRateMag5()).getCumRateDistWithOffset());
 						} else {
-							funcs.add(InversionTargetMFDs
+							funcs.add(U3InversionTargetMFDs
 									.getTotalTargetGR_upToM9(TotalMag5Rate.RATE_9p6
 											.getRateMag5()));
-							funcs.add(InversionTargetMFDs
+							funcs.add(U3InversionTargetMFDs
 									.getTotalTargetGR_upToM9(TotalMag5Rate.RATE_7p9
 											.getRateMag5()));
-							funcs.add(InversionTargetMFDs
+							funcs.add(U3InversionTargetMFDs
 									.getTotalTargetGR_upToM9(TotalMag5Rate.RATE_6p5
 											.getRateMag5()));
 						}
@@ -867,13 +868,13 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			throw new IllegalStateException("Should not be called, ERF plot!");
 		}
 
 		@Override
-		protected void processERF(LogicTreeBranch branch,
+		protected void processERF(U3LogicTreeBranch branch,
 				FaultSystemSolutionERF erf, int solIndex) {
 			debug(solIndex, "checking UCERF2");
 			// do UCERF2 if applicable so that we don't have to do them all single threaded at the end
@@ -1124,7 +1125,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		Map<Double, List<PlotSpec>> specs = plot.specs;
 		Map<Double, List<PlotSpec>> faultSpecs = plot.faultSpecs;
-		Map<Double, List<Map<LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>>>> regionM6p7Vals =
+		Map<Double, List<Map<U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>>>> regionM6p7Vals =
 				plot.regionM6p7Vals;
 		List<Region> regions = plot.regions;
 		
@@ -1198,10 +1199,10 @@ public abstract class CompoundFSSPlots implements Serializable {
 				Map<String, PlotSpec> histSpecs = sensHist.getStackedHistPlots(true, delta);
 				List<File> histPDFs = Lists.newArrayList();
 				List<String> names = Lists.newArrayList();
-				for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses()) {
+				for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 					if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 						continue;
-					names.add(ClassUtils.getClassNameWithoutPackage(LogicTreeBranch.getEnumEnclosingClass(clazz)));
+					names.add(ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(clazz)));
 				}
 				names.add("MagDepAperiodicity");
 				System.out.println("Histograms for "+regNameFileSafe+", duration="+(int)duration);
@@ -1490,7 +1491,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private List<Region> regions;
 		private Map<Double, List<Double>> weights;
 		private Map<Double, Map<FaultModels, List<Double>>> fmWeights;
-		private Map<Double, List<LogicTreeBranch>> branches;
+		private Map<Double, List<U3LogicTreeBranch>> branches;
 		private double[] ucerf2DepWeights;
 		private double[] ucerf2IndepWeights;
 
@@ -1519,7 +1520,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		// duration: regions
 //		private Map<Double, List<BranchSensitivityHistogram>> regionM6p7Hists = Maps.newHashMap();
-		private Map<Double, List<Map<LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>>>>
+		private Map<Double, List<Map<U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>>>>
 				regionM6p7Vals = Maps.newHashMap();
 		
 		// now "main faults"
@@ -1665,9 +1666,9 @@ public abstract class CompoundFSSPlots implements Serializable {
 //				for (int r=0; r<regions.size(); r++)
 //					hists.add(new BranchSensitivityHistogram("Probability"));
 //				regionM6p7Hists.put(duration, hists);
-				List<Map<LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>>> maps = Lists.newArrayList();
+				List<Map<U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>>> maps = Lists.newArrayList();
 				for (int r=0; r<regions.size(); r++) {
-					Map<LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>> map = Maps.newHashMap();
+					Map<U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>> map = Maps.newHashMap();
 					maps.add(map);
 				}
 				regionM6p7Vals.put(duration, maps);
@@ -1679,7 +1680,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			for (double duration : durations) {
 				weights.put(duration, new ArrayList<Double>());
 				fmWeights.put(duration, new HashMap<FaultModels, List<Double>>());
-				branches.put(duration, new ArrayList<LogicTreeBranch>());
+				branches.put(duration, new ArrayList<U3LogicTreeBranch>());
 			}
 			ucerf2DepWeights = new double[numUCEF2_DepERFs];
 			ucerf2IndepWeights = new double[numUCEF2_IndepERFs];
@@ -1980,7 +1981,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			throw new IllegalStateException("Should not be called, ERF plot!");
 		}
@@ -2035,7 +2036,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 //		}
 
 		@Override
-		protected void processERF(LogicTreeBranch branch,
+		protected void processERF(U3LogicTreeBranch branch,
 				FaultSystemSolutionERF erf, int solIndex) {
 			debug(solIndex, "checking UCERF2");
 			// do UCERF2 if applicable so that we don't have to do them all single threaded at the end
@@ -2448,10 +2449,10 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 		
 		static BranchSensitivityHistogram buildHist(
-				Map<LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>> map,
+				Map<U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>> map,
 				BranchWeightProvider weightProv) {
 			BranchSensitivityHistogram hist = new BranchSensitivityHistogram("Prob M>=6.7");
-			for (LogicTreeBranch branch : map.keySet()) {
+			for (U3LogicTreeBranch branch : map.keySet()) {
 				double branchWeight = weightProv.getWeight(branch);
 				Map<MagDependentAperiodicityOptions, Double> covMap = map.get(branch);
 				for (MagDependentAperiodicityOptions cov : covMap.keySet()) {
@@ -2521,7 +2522,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 			for (double duration : durations) {
 				List<Double> origWeights = this.weights.get(duration);
-				List<LogicTreeBranch> origBranches = this.branches.get(duration);
+				List<U3LogicTreeBranch> origBranches = this.branches.get(duration);
 				
 				// this adds in each individual COV weight including poisson
 				List<Double> weights = Lists.newArrayList();
@@ -3092,10 +3093,10 @@ public abstract class CompoundFSSPlots implements Serializable {
 					
 					List<File> histPDFs = Lists.newArrayList();
 					List<String> names = Lists.newArrayList();
-					for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses()) {
+					for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 						if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 							continue;
-						names.add(ClassUtils.getClassNameWithoutPackage(LogicTreeBranch.getEnumEnclosingClass(clazz)));
+						names.add(ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(clazz)));
 					}
 					names.add("MagDepAperiodicity");
 					names.add("GMPE");
@@ -3318,7 +3319,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 //			Map<MagDependentAperiodicityOptions, List<DiscretizedFunc>>>> resultsTables;
 		private File curveDir;
 		private transient Map<Site, BinaryCurveArchiver> archivers;
-		private LogicTreeBranch[] branches;
+		private U3LogicTreeBranch[] branches;
 		private double[] branchWeights;
 		
 		protected static final String DEFAULT_CACHE_DIR_NAME = "site_hazard_curve_cache";
@@ -3398,14 +3399,14 @@ public abstract class CompoundFSSPlots implements Serializable {
 					archiver.initialize();
 				}
 			}
-			branches = new LogicTreeBranch[numBranches];
+			branches = new U3LogicTreeBranch[numBranches];
 			branchWeights = new double[numBranches];
 			
 			debug(-1, "ERFBasedSiteHazardHistPlot END constructor");
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			throw new IllegalStateException("Should never be called, ERF plot");
 		}
@@ -3442,7 +3443,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processERF(LogicTreeBranch branch,
+		protected void processERF(U3LogicTreeBranch branch,
 				FaultSystemSolutionERF erf, int solIndex) {
 			erf.getTimeSpan().setDuration(duration);
 			erf.updateForecast();
@@ -3575,13 +3576,13 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 		
 		private static void writeMetadataFileForAllBranches(
-				List<LogicTreeBranch> branches, BranchWeightProvider prov, File curveDir) {
+				List<U3LogicTreeBranch> branches, BranchWeightProvider prov, File curveDir) {
 			BranchWeightProvider weightProv = new APrioriBranchWeightProvider();
 			
-			LogicTreeBranch[] branchArray = new LogicTreeBranch[branches.size()];
+			U3LogicTreeBranch[] branchArray = new U3LogicTreeBranch[branches.size()];
 			double[] branchWeights = new double[branches.size()];
 			for (int i=0; i<branches.size(); i++) {
-				LogicTreeBranch branch = branches.get(i);
+				U3LogicTreeBranch branch = branches.get(i);
 				branchArray[i] = branch;
 				branchWeights[i] = weightProv.getWeight(branch);
 			}
@@ -3590,7 +3591,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 		
 		private static void writeMetadataFile(File curveDir, List<Site> sites, List<Period> periods, Map<AttenRelRef, Double> imrs,
-				LogicTreeBranch[] branches, double[] branchWeights) {
+				U3LogicTreeBranch[] branches, double[] branchWeights) {
 			Document doc = XMLUtils.createDocumentWithRoot();
 			Element root = doc.getRootElement();
 			
@@ -3656,10 +3657,10 @@ public abstract class CompoundFSSPlots implements Serializable {
 			
 			Element branchesEl = root.element("Branches");
 			int numBranches = Integer.parseInt(branchesEl.attributeValue("num"));
-			LogicTreeBranch[] branches = new LogicTreeBranch[numBranches];
+			U3LogicTreeBranch[] branches = new U3LogicTreeBranch[numBranches];
 			double[] branchWeights = new double[numBranches];
 			for (Element branchEl : (List<Element>)branchesEl.elements()) {
-				LogicTreeBranch branch = LogicTreeBranch.fromFileName(branchEl.attributeValue("name"));
+				U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(branchEl.attributeValue("name"));
 				double weight = Double.parseDouble(branchEl.attributeValue("weight"));
 				int index = Integer.parseInt(branchEl.attributeValue("index"));
 				branches[index] = branch;
@@ -3670,7 +3671,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		protected static SiteHazardResults doFinalizePlot(
 				File curveDir, List<Site> sites, List<Period> periods, Map<AttenRelRef, Double> imrs,
-				LogicTreeBranch[] branches, double[] branchWeights) {
+				U3LogicTreeBranch[] branches, double[] branchWeights) {
 			SiteHazardResults results = new SiteHazardResults();
 			results.plotsMap = Maps.newHashMap();
 			results.csvsMap = Maps.newHashMap();
@@ -3713,7 +3714,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 								}
 //								List<DiscretizedFunc> curves = resultsTables.get(site).get(imr, period).get(cov);
 								for (int i=0; i<branches.length; i++) {
-									LogicTreeBranch branch = branches[i];
+									U3LogicTreeBranch branch = branches[i];
 									double weight = branchWeights[i]*imrWeight*covWeight;
 									
 									DiscretizedFunc curve = curves.get(i);
@@ -3825,7 +3826,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 	
 	public static void writeERFProbModelsFile(File dir,
-			Table<Double, LogicTreeBranch, Map<MagDependentAperiodicityOptions, double[]>> probsTable) throws IOException {
+			Table<Double, U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, double[]>> probsTable) throws IOException {
 		File tempDir = Files.createTempDir();
 		
 		if (!dir.exists())
@@ -3835,7 +3836,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			for (MagDependentAperiodicityOptions cov : ERFProbModelCalc.covs) {
 				List<String> binFileNames = Lists.newArrayList();
 				
-				for (LogicTreeBranch branch : probsTable.columnKeySet()) {
+				for (U3LogicTreeBranch branch : probsTable.columnKeySet()) {
 					double[] probs = probsTable.get(duration, branch).get(cov);
 					
 					File binFile = new File(tempDir, branch.buildFileName()+".bin");
@@ -3870,20 +3871,20 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private static final double[] durations = { 30d };
 		
 		// duration, branch: prob[rupIndex]
-		private Table<Double, LogicTreeBranch, Map<MagDependentAperiodicityOptions, double[]>> probsTable;
+		private Table<Double, U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, double[]>> probsTable;
 		
 		public ERFProbModelCalc() {
 			probsTable = HashBasedTable.create();
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			throw new IllegalStateException("Should never be called, ERF plot");
 		}
 
 		@Override
-		protected void processERF(LogicTreeBranch branch,
+		protected void processERF(U3LogicTreeBranch branch,
 				FaultSystemSolutionERF erf, int solIndex) {
 			debug(solIndex, "processing ERF for "+branch.buildFileName());
 			double origDuration = erf.getTimeSpan().getDuration();
@@ -4035,7 +4036,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			InversionFaultSystemRupSet rupSet = sol.getRupSet();
 			FaultModels fm = rupSet.getFaultModel();
@@ -4287,7 +4288,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			FaultModels fm = sol.getRupSet().getFaultModel();
 
@@ -4711,7 +4712,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			InversionFaultSystemRupSet rupSet = sol.getRupSet();
 			FaultModels fm = rupSet.getFaultModel();
@@ -4894,14 +4895,14 @@ public abstract class CompoundFSSPlots implements Serializable {
 				IncrementalMagFreqDist mfd2 = (IncrementalMagFreqDist) list2
 						.get(i);
 				SummedMagFreqDist sum = new SummedMagFreqDist(
-						InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG,
-						InversionTargetMFDs.DELTA_MAG);
+						U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG,
+						U3InversionTargetMFDs.DELTA_MAG);
 				sum.addIncrementalMagFreqDist(resizeToDimensions(mfd1,
-						InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG,
-						InversionTargetMFDs.DELTA_MAG));
+						U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG,
+						U3InversionTargetMFDs.DELTA_MAG));
 				sum.addIncrementalMagFreqDist(resizeToDimensions(mfd2,
-						InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.NUM_MAG,
-						InversionTargetMFDs.DELTA_MAG));
+						U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.NUM_MAG,
+						U3InversionTargetMFDs.DELTA_MAG));
 
 				sumList.add(sum);
 			}
@@ -5036,7 +5037,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			FaultModels fm = sol.getRupSet().getFaultModel();
 
@@ -5192,7 +5193,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch, InversionFaultSystemSolution sol, int solIndex) {
+		protected void processSolution(U3LogicTreeBranch branch, InversionFaultSystemSolution sol, int solIndex) {
 			FaultModels fm = branch.getValue(FaultModels.class);
 			
 			synchronized (results) {
@@ -5412,7 +5413,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			FaultModels fm = sol.getRupSet().getFaultModel();
 
@@ -5557,7 +5558,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			VariableLogicTreeBranch vbr = new VariableLogicTreeBranch(branch,
 					null);
@@ -5644,7 +5645,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private ConcurrentMap<FaultModels, List<Double>> weightsMap = Maps
 				.newConcurrentMap();
-		private ConcurrentMap<FaultModels, List<LogicTreeBranch>> branchesMap = Maps
+		private ConcurrentMap<FaultModels, List<U3LogicTreeBranch>> branchesMap = Maps
 				.newConcurrentMap();
 
 		private transient Map<FaultModels, CSVFile<String>> aveSlipCSVOutputMap = Maps
@@ -5664,7 +5665,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			InversionFaultSystemRupSet rupSet = sol.getRupSet();
 			FaultModels fm = rupSet.getFaultModel();
@@ -5709,7 +5710,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						carrizoPaleoObsRatesMap.putIfAbsent(fm, carrizoList);
 						List<Double> weightsList = Lists.newArrayList();
 						weightsMap.putIfAbsent(fm, weightsList);
-						List<LogicTreeBranch> branchesList = Lists.newArrayList();
+						List<U3LogicTreeBranch> branchesList = Lists.newArrayList();
 						branchesMap.putIfAbsent(fm, branchesList);
 
 						// must be last
@@ -5794,7 +5795,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				for (FaultModels fm : o.weightsMap.keySet()) {
 					if (!weightsMap.containsKey(fm)) {
 						weightsMap.put(fm, new ArrayList<Double>());
-						branchesMap.put(fm, new ArrayList<LogicTreeBranch>());
+						branchesMap.put(fm, new ArrayList<U3LogicTreeBranch>());
 						aveSlipConstraintsMap.put(fm,
 								o.aveSlipConstraintsMap.get(fm));
 						paleoConstraintsMap.put(fm,
@@ -5823,7 +5824,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		protected void doFinalizePlot() {
 			// this builds the CSV files and also calculates UCERF2 comparisons.
 			
-			InversionFaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher
+			FaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher
 					.getUCERF2Solution(FaultModels.FM2_1);
 			List<AveSlipConstraint> ucerf2AveSlipConstraints;
 			List<PaleoRateConstraint> ucerf2PaleoConstraints;
@@ -5985,7 +5986,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			// Carriso table
 			carrizoCSV = new CSVFile<String>(true);
 			List<String> header = Lists.newArrayList();
-			for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses())
+			for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses())
 				header.add(ClassUtils.getClassNameWithoutPackage(clazz));
 			header.add("A Priori Branch Weight");
 			header.add("Carrizo Paleo Observable Rate");
@@ -5997,14 +5998,14 @@ public abstract class CompoundFSSPlots implements Serializable {
 					totWt += weight;
 			
 			for (FaultModels fm : carrizoPaleoObsRatesMap.keySet()) {
-				List<LogicTreeBranch> branches = branchesMap.get(fm);
+				List<U3LogicTreeBranch> branches = branchesMap.get(fm);
 				List<Double> weights = weightsMap.get(fm);
 				List<Double> rates = carrizoPaleoObsRatesMap.get(fm);
 				
 				for (int i=0; i<branches.size(); i++) {
 					List<String> line = Lists.newArrayList();
-					LogicTreeBranch branch = branches.get(i);
-					for (int j=0; j<LogicTreeBranch.getLogicTreeNodeClasses().size(); j++)
+					U3LogicTreeBranch branch = branches.get(i);
+					for (int j=0; j<U3LogicTreeBranch.getLogicTreeNodeClasses().size(); j++)
 						line.add(branch.getValue(j).getShortName());
 					double weight = weights.get(i);
 					line.add((weight / totWt)+"");
@@ -6035,7 +6036,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		for (FaultModels fm : plot.weightsMap.keySet()) {
 			String myPrefix = prefix;
-			LogicTreeBranch runningBranch = plot.runningBranches.get(fm);
+			U3LogicTreeBranch runningBranch = plot.runningBranches.get(fm);
 			for (int i=0; i<runningBranch.size(); i++) {
 				LogicTreeBranchNode<?> val = runningBranch.getValue(i);
 				if (val != null && val.getRelativeWeight(runningBranch.getValue(InversionModels.class)) < 1d) {
@@ -6071,7 +6072,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				dm = DeformationModels.MEAN_UCERF3;
 			
 			InversionFaultSystemRupSet reference = InversionFaultSystemRupSetFactory.forBranch(laughTest,
-					InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE, LogicTreeBranch.getMEAN_UCERF3(fm, dm));
+					InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE, U3LogicTreeBranch.getMEAN_UCERF3(fm, dm));
 			
 			String info = reference.getInfoString();
 			
@@ -6080,8 +6081,8 @@ public abstract class CompoundFSSPlots implements Serializable {
 			info += "****** Logic Tree Branch ******";
 			for (int i=0; i<runningBranch.size(); i++) {
 				LogicTreeBranchNode<?> node = runningBranch.getValue(i);
-				info += "\n"+ClassUtils.getClassNameWithoutPackage(LogicTreeBranch.getEnumEnclosingClass(
-						LogicTreeBranch.getLogicTreeNodeClasses().get(i)))+": ";
+				info += "\n"+ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(
+						U3LogicTreeBranch.getLogicTreeNodeClasses().get(i)))+": ";
 				if (node == null)
 					info += "(multiple)";
 				else
@@ -6106,17 +6107,19 @@ public abstract class CompoundFSSPlots implements Serializable {
 //			rupSet.setMagForallRups(mags);
 			
 			FaultSystemRupSet rupSet = new FaultSystemRupSet(reference.getFaultSectionDataList(),
-					reference.getSlipRateForAllSections(), reference.getSlipRateStdDevForAllSections(),
-					reference.getAreaForAllSections(), reference.getSectionIndicesForAllRups(), mags,
-					reference.getAveRakeForAllRups(), reference.getAreaForAllRups(), reference.getLengthForAllRups(), info);
+					reference.getSectionIndicesForAllRups(), mags, reference.getAveRakeForAllRups(),
+					reference.getAreaForAllRups(), reference.getLengthForAllRups());
+			rupSet.setInfoString(info);
 			
 			GridSourceProvider gridSources = new GridSourceFileReader(region,
 					plot.nodeSubSeisMFDsMap.get(fm), plot.nodeUnassociatedMFDsMap.get(fm));
 //			InversionFaultSystemSolution sol = new InversionFaultSystemSolution(rupSet, rates);
-			FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates, plot.subSeisMFDsMap.get(fm));
+			FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+			sol.addModule(new SubSeismoOnFaultMFDs(plot.subSeisMFDsMap.get(fm)));
 			sol.setGridSourceProvider(gridSources);
 			
-			FaultSystemIO.writeSol(sol, outputFile);
+//			FaultSystemIO.writeSol(sol, outputFile);
+			sol.getArchive().write(outputFile);
 			
 			DeformationModelFetcher.IMPERIAL_DDW_HACK = false;
 		}
@@ -6139,7 +6142,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private Map<FaultModels, double[]> ratesMap = Maps.newConcurrentMap();
 		private Map<FaultModels, double[]> magsMap = Maps.newConcurrentMap();
 		private Map<FaultModels, List<Double>> weightsMap = Maps.newConcurrentMap();
-		private Map<FaultModels, LogicTreeBranch> runningBranches = Maps.newConcurrentMap();
+		private Map<FaultModels, U3LogicTreeBranch> runningBranches = Maps.newConcurrentMap();
 		
 		private Map<FaultModels, List<IncrementalMagFreqDist>> subSeisMFDsMap = Maps.newConcurrentMap();
 		
@@ -6165,7 +6168,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			if (this.solIndex >= 0) {
 				// we can build means from individual runs if specified
@@ -6219,7 +6222,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 					for (int i=0; i<subSeisMFDs.size(); i++)
 						runningSubSeisMFDs.add(new IncrementalMagFreqDist(tempMFD.getMinX(), tempMFD.size(), tempMFD.getDelta()));
 					subSeisMFDsMap.put(fm, runningSubSeisMFDs);
-					runningBranches.put(fm, (LogicTreeBranch)branch.clone());
+					runningBranches.put(fm, (U3LogicTreeBranch)branch.clone());
 				}
 				updateRunningBranch(runningBranches.get(fm), branch);
 				weightsList.add(weight);
@@ -6244,7 +6247,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			}
 		}
 		
-		private static void updateRunningBranch(LogicTreeBranch runningBranch, LogicTreeBranch currentBranch) {
+		private static void updateRunningBranch(U3LogicTreeBranch runningBranch, U3LogicTreeBranch currentBranch) {
 			for (int i=0; i<currentBranch.size(); i++)
 				if (runningBranch.getValue(i) != currentBranch.getValue(i))
 					runningBranch.clearValue(i);
@@ -6410,7 +6413,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			InversionFaultSystemRupSet rupSet = sol.getRupSet();
 			int myCnt = cnt++;
@@ -6706,7 +6709,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			InversionFaultSystemRupSet rupSet = sol.getRupSet();
 			int myCnt = cnt++;
@@ -6883,7 +6886,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			int myCnt = cnt++;
 			debug(solIndex, "Processing solution " + myCnt);
@@ -7205,7 +7208,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			double weight = weightProvider.getWeight(branch);
 			if (weight == 0)
@@ -7485,17 +7488,17 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			processERF(branch, new FaultSystemSolutionERF(sol), 0);
 		}
 
 		@Override
-		protected void processERF(LogicTreeBranch branch,
+		protected void processERF(U3LogicTreeBranch branch,
 				FaultSystemSolutionERF erf, int solIndex) {
 			
 			InversionFaultSystemRupSet rupSet = ((InversionFaultSystemSolution)erf.getSolution()).getRupSet();
-			FaultPolyMgr polyManager = rupSet.getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
+			FaultGridAssociations polyManager = rupSet.getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 
 			debug(solIndex, "cache check");
 			FaultModels fm = branch.getValue(FaultModels.class);
@@ -7605,7 +7608,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 //		}
 		
 		private List<GeoDataSet> calcProbsSupraSubSeis(
-				FaultPolyMgr polys, FaultSystemSolutionERF erf, List<GriddedGeoDataSet> subSeisProbs) {
+				FaultGridAssociations polys, FaultSystemSolutionERF erf, List<GriddedGeoDataSet> subSeisProbs) {
 			List<GeoDataSet> datas = Lists.newArrayList();
 			FaultSystemRupSet rupSet = erf.getSolution().getRupSet();
 			
@@ -8126,13 +8129,13 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 
 		@Override
-		protected void processSolution(LogicTreeBranch branch,
+		protected void processSolution(U3LogicTreeBranch branch,
 				InversionFaultSystemSolution sol, int solIndex) {
 			processERF(branch, new FaultSystemSolutionERF(sol), 0);
 		}
 
 		@Override
-		protected void processERF(LogicTreeBranch branch,
+		protected void processERF(U3LogicTreeBranch branch,
 				FaultSystemSolutionERF erf, int solIndex) {
 
 			debug(solIndex, "cache check");
@@ -8947,7 +8950,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * @param sol
 	 * @param solIndex
 	 */
-	protected abstract void processSolution(LogicTreeBranch branch,
+	protected abstract void processSolution(U3LogicTreeBranch branch,
 			InversionFaultSystemSolution sol, int solIndex);
 
 	/**
@@ -9009,7 +9012,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * @param erf
 	 * @param solIndex
 	 */
-	protected void processERF(LogicTreeBranch branch,
+	protected void processERF(U3LogicTreeBranch branch,
 			FaultSystemSolutionERF erf, int solIndex) {
 		// do nothing unless overridden
 		if (usesERFs())
@@ -9151,7 +9154,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private Collection<CompoundFSSPlots> plots;
 		private FaultSystemSolutionFetcher fetcher;
-		private LogicTreeBranch branch;
+		private U3LogicTreeBranch branch;
 		private boolean mpj;
 		private FaultSystemSolutionERF erf;
 		private int index;
@@ -9159,13 +9162,13 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private long overheadMillis;
 
 		public PlotSolComputeTask(Collection<CompoundFSSPlots> plots,
-				FaultSystemSolutionFetcher fetcher, LogicTreeBranch branch,
+				FaultSystemSolutionFetcher fetcher, U3LogicTreeBranch branch,
 				int index) {
 			this(plots, fetcher, branch, false, index);
 		}
 
 		public PlotSolComputeTask(Collection<CompoundFSSPlots> plots,
-				FaultSystemSolutionFetcher fetcher, LogicTreeBranch branch,
+				FaultSystemSolutionFetcher fetcher, U3LogicTreeBranch branch,
 				boolean mpj, int index) {
 			this.plots = plots;
 			this.fetcher = fetcher;
@@ -9266,7 +9269,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		List<Task> tasks = Lists.newArrayList();
 		int index = 0;
-		for (LogicTreeBranch branch : fetcher.getBranches()) {
+		for (U3LogicTreeBranch branch : fetcher.getBranches()) {
 			tasks.add(new PlotSolComputeTask(plots, fetcher, branch,
 					index++));
 		}
@@ -9510,7 +9513,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	private static boolean hasBothFMs(FaultSystemSolutionFetcher fetch) {
 		boolean has31 = false;
 		boolean has32 = false;
-		for (LogicTreeBranch branch : fetch.getBranches()) {
+		for (U3LogicTreeBranch branch : fetch.getBranches()) {
 			FaultModels fm = branch.getValue(FaultModels.class);
 			if (fm == FaultModels.FM3_1)
 				has31 = true;
@@ -9577,7 +9580,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		// File("/tmp/2012_10_10-fm3-logic-tree-sample_COMPOUND_SOL.zip");
 		FaultSystemSolutionFetcher fetch = CompoundFaultSystemSolution.fromZipFile(file);
 		double wts = 0;
-		for (LogicTreeBranch branch : fetch.getBranches())
+		for (U3LogicTreeBranch branch : fetch.getBranches())
 			wts += weightProvider.getWeight(branch);
 		System.out.println("Total weight: " + wts);
 		// System.exit(0);
@@ -9601,20 +9604,20 @@ public abstract class CompoundFSSPlots implements Serializable {
 		// if true, only use instances of the mean fault system solution
 		boolean meanDebug = false;
 		if (meanDebug) {
-			final Collection<LogicTreeBranch> branches = fetch.getBranches();
-			final InversionFaultSystemSolution meanSol = FaultSystemIO.loadInvSol(
+			final Collection<U3LogicTreeBranch> branches = fetch.getBranches();
+			final InversionFaultSystemSolution meanSol = U3FaultSystemIO.loadInvSol(
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 							"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 			
 			fetch = new FaultSystemSolutionFetcher() {
 				
 				@Override
-				public Collection<LogicTreeBranch> getBranches() {
+				public Collection<U3LogicTreeBranch> getBranches() {
 					return branches;
 				}
 				
 				@Override
-				protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+				protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 					return meanSol;
 				}
 			};

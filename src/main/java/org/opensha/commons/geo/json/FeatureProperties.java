@@ -1,8 +1,11 @@
 package org.opensha.commons.geo.json;
 
+import java.awt.Color;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -116,6 +119,10 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		Object val = get(name);
 		if (val == null)
 			return defaultValue;
+		return asNumber(val, name, defaultValue);
+	}
+	
+	private static Number asNumber(Object val, String name, Number defaultValue) {
 		if (val instanceof String) {
 			// try to parse string
 			try {
@@ -133,6 +140,128 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			return (Number)val;
 		} catch (ClassCastException e) {
 			System.err.println("Feature property with name '"+name+"' is of an unexpected type: "+e.getMessage());
+			return defaultValue;
+		}
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a double array. See {@link #getNumberArray(String, Number[])}.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public double[] getDoubleArray(String name, double[] defaultValue) {
+		Number[] numbers = getNumberArray(name, null);
+		if (numbers == null)
+			return null;
+		double[] ret = new double[numbers.length];
+		for (int i=0; i<numbers.length; i++)
+			ret[i] = numbers[i].doubleValue();
+		return ret;
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as an int array. See {@link #getNumberArray(String, Number[])}.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public int[] getIntArray(String name, int[] defaultValue) {
+		Number[] numbers = getNumberArray(name, null);
+		if (numbers == null)
+			return null;
+		int[] ret = new int[numbers.length];
+		for (int i=0; i<numbers.length; i++)
+			ret[i] = numbers[i].intValue();
+		return ret;
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a long array. See {@link #getNumberArray(String, Number[])}.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public long[] getLongArray(String name, int[] defaultValue) {
+		Number[] numbers = getNumberArray(name, null);
+		if (numbers == null)
+			return null;
+		long[] ret = new long[numbers.length];
+		for (int i=0; i<numbers.length; i++)
+			ret[i] = numbers[i].longValue();
+		return ret;
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a Number array. If parameter value is a list/array of Numbers,
+	 * that will be returned. If any sub-value is a String, then that String will first be parsed to a Number.
+	 * Otherwise, the supplied default value will be returned.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public Number[] getNumberArray(String name, Number[] defaultValue) {
+		Object val = get(name);
+		if (val == null)
+			return defaultValue;
+		List<Number> numbers = new ArrayList<>();
+		if (val instanceof List<?>) {
+			for (Object subVal : (List<?>)val) {
+				Number number = asNumber(subVal, name, null);
+				if (number == null)
+					return defaultValue;
+				numbers.add(number);
+			}
+		} else if (val.getClass().isArray()) {
+			for (Object subVal : (Object[])val) {
+				Number number = asNumber(subVal, name, null);
+				if (number == null)
+					return defaultValue;
+				numbers.add(number);
+			}
+		}
+		return numbers.toArray(new Number[0]);
+	}
+	
+	public Location getLocation(String name, Location defaultValue) {
+		Object val = get(name);
+		if (val == null)
+			return defaultValue;
+		if (val instanceof Location)
+			return (Location)val;
+		// try loading it as a location
+		double[] array = getDoubleArray(name, null);
+		if (array == null || array.length < 2 || array.length > 3)
+			return null;
+		double lon = array[0];
+		double lat = array[1];
+		double depth = array.length == 3 ? Geometry.DEPTH_SERIALIZATION_DEFAULT.fromGeoJSON(array[2]) : 0d;
+		return new Location(lat, lon, depth);
+	}
+	
+	public static final String STROKE_COLOR_PROP = "stroke";
+	public static final String STROKE_WIDTH_PROP = "stroke-width";
+	public static final String STROKE_OPACITY_PROP = "stroke-opacity";
+	public static final String FILL_COLOR_PROP = "fill";
+	public static final String FILL_OPACITY_PROP = "fill-opacity";
+	
+	public Color getColor(String name, Color defaultValue) {
+		Object val = get(name);
+		if (val == null)
+			return defaultValue;
+		if (val instanceof Color)
+			return (Color)val;
+		// try loading it as a Color
+		String str = val.toString();
+		try {
+			return Color.decode(str);
+		} catch (NumberFormatException e) {
+			System.err.println("Feature property with name '"+name+"' and value '"
+					+str+"' could not be parsed as a color, returning default: "+e.getMessage());
 			return defaultValue;
 		}
 	}
@@ -274,7 +403,9 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		} else if (value instanceof Boolean) {
 			out.value((Boolean)value);
 		} else if (value instanceof Location) {
-			Geometry.serializeLoc(out, (Location)value, Geometry.DEPTH_SERIALIZATION_DEFAULT);
+			Geometry.serializeLoc(out, (Location)value, Geometry.DEPTH_SERIALIZATION_DEFAULT, false);
+		} else if (value instanceof Color) {
+			out.value("#"+Integer.toHexString(((Color)value).getRGB()).substring(2));
 		} else if (value.getClass().isArray()) {
 			Object[] array;
 			if (value.getClass().getComponentType().isPrimitive()) {
@@ -332,6 +463,13 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			return parseNumber(in.nextString());
 		} else if (token == JsonToken.STRING) {
 			return in.nextString();
+		} else if (token == JsonToken.BEGIN_ARRAY) {
+			ArrayList<Object> values = new ArrayList<>();
+			in.beginArray();
+			while (in.hasNext())
+				values.add(propDeserializeDefault(in));
+			in.endArray();
+			return values;
 		}
 		in.skipValue();
 		return null;

@@ -8,7 +8,7 @@ import java.util.Random;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 
 import com.google.common.collect.Lists;
@@ -24,13 +24,13 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	
 	private boolean cacheCopying = true;
 	// this is for copying caches from previous rup sets of the same fault model
-	private Map<FaultModels, FaultSystemRupSet> rupSetCacheMap = Maps.newHashMap();
+	private Map<FaultModels, U3FaultSystemRupSet> rupSetCacheMap = Maps.newHashMap();
 	
-	public abstract Collection<LogicTreeBranch> getBranches();
+	public abstract Collection<U3LogicTreeBranch> getBranches();
 	
-	protected abstract InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch);
+	protected abstract InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch);
 	
-	public InversionFaultSystemSolution getSolution(LogicTreeBranch branch) {
+	public InversionFaultSystemSolution getSolution(U3LogicTreeBranch branch) {
 		InversionFaultSystemSolution sol = fetchSolution(branch);
 		if (cacheCopying) {
 			synchronized (this) {
@@ -45,11 +45,11 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 		return sol;
 	}
 	
-	public double[] getRates(LogicTreeBranch branch) {
+	public double[] getRates(U3LogicTreeBranch branch) {
 		return getSolution(branch).getRateForAllRups();
 	}
 	
-	public double[] getMags(LogicTreeBranch branch) {
+	public double[] getMags(U3LogicTreeBranch branch) {
 		return getSolution(branch).getRupSet().getMagForAllRups();
 	}
 
@@ -65,7 +65,7 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	public Iterator<InversionFaultSystemSolution> iterator() {
 		return new Iterator<InversionFaultSystemSolution>() {
 			
-			private Iterator<LogicTreeBranch> branchIt = getBranches().iterator();
+			private Iterator<U3LogicTreeBranch> branchIt = getBranches().iterator();
 
 			@Override
 			public boolean hasNext() {
@@ -101,18 +101,18 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	
 	public static FaultSystemSolutionFetcher getRandomSample(
 			final FaultSystemSolutionFetcher fetch, int num, LogicTreeBranchNode<?>... branchNodes) {
-		List<LogicTreeBranch> origBranches = Lists.newArrayList();
+		List<U3LogicTreeBranch> origBranches = Lists.newArrayList();
 		origBranches.addAll(fetch.getBranches());
-		final List<LogicTreeBranch> branches = Lists.newArrayList();
+		final List<U3LogicTreeBranch> branches = Lists.newArrayList();
 		Random r = new Random();
-		LogicTreeBranch testBranch = null;
+		U3LogicTreeBranch testBranch = null;
 		if (branchNodes != null && branchNodes.length > 0)
-			testBranch = LogicTreeBranch.fromValues(false, branchNodes);
+			testBranch = U3LogicTreeBranch.fromValues(false, branchNodes);
 		for (int i=0; i<num; i++) {
 			if (testBranch == null) {
 				branches.add(origBranches.get(r.nextInt(origBranches.size())));
 			} else {
-				LogicTreeBranch branch = null;
+				U3LogicTreeBranch branch = null;
 				while (branch == null || !testBranch.matchesNonNulls(branch))
 					branch = origBranches.get(r.nextInt(origBranches.size()));
 				branches.add(branch);
@@ -121,12 +121,12 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 		return new FaultSystemSolutionFetcher() {
 			
 			@Override
-			public Collection<LogicTreeBranch> getBranches() {
+			public Collection<U3LogicTreeBranch> getBranches() {
 				return branches;
 			}
 			
 			@Override
-			protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+			protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 				return fetch.fetchSolution(branch);
 			}
 		};
@@ -134,9 +134,9 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	
 	public static FaultSystemSolutionFetcher getSubset(
 			final FaultSystemSolutionFetcher fetch, final LogicTreeBranchNode<?>... nodes) {
-		final List<LogicTreeBranch> branches = Lists.newArrayList();
-		LogicTreeBranch testBranch = LogicTreeBranch.fromValues(false, nodes);
-		for (LogicTreeBranch branch : fetch.getBranches()) {
+		final List<U3LogicTreeBranch> branches = Lists.newArrayList();
+		U3LogicTreeBranch testBranch = U3LogicTreeBranch.fromValues(false, nodes);
+		for (U3LogicTreeBranch branch : fetch.getBranches()) {
 			if (testBranch.matchesNonNulls(branch))
 				branches.add(branch);
 		}
@@ -144,16 +144,16 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	}
 	
 	public static FaultSystemSolutionFetcher getSubsetSample(
-			final FaultSystemSolutionFetcher fetch, final List<LogicTreeBranch> branches) {
+			final FaultSystemSolutionFetcher fetch, final List<U3LogicTreeBranch> branches) {
 		return new FaultSystemSolutionFetcher() {
 			
 			@Override
-			public Collection<LogicTreeBranch> getBranches() {
+			public Collection<U3LogicTreeBranch> getBranches() {
 				return branches;
 			}
 			
 			@Override
-			protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+			protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 				return fetch.fetchSolution(branch);
 			}
 		};

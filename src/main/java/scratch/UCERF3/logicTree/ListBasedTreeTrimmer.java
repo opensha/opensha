@@ -10,7 +10,7 @@ import com.google.common.collect.Lists;
 
 public class ListBasedTreeTrimmer implements TreeTrimmer {
 	
-	private static List<Class<? extends LogicTreeBranchNode<?>>> classes = LogicTreeBranch.getLogicTreeNodeClasses();
+	private static List<Class<? extends LogicTreeBranchNode<?>>> classes = U3LogicTreeBranch.getLogicTreeNodeClasses();
 	private List<List<LogicTreeBranchNode<?>>> limitations;
 	private boolean nonZeroWeight;
 	
@@ -38,7 +38,7 @@ public class ListBasedTreeTrimmer implements TreeTrimmer {
 			}
 			if (limits == null) {
 				limits = Lists.newArrayList();
-				limits.add(LogicTreeBranch.DEFAULT.getValue(i));
+				limits.add(U3LogicTreeBranch.DEFAULT.getValue(i));
 			}
 			limitations.add(limits);
 		}
@@ -54,7 +54,7 @@ public class ListBasedTreeTrimmer implements TreeTrimmer {
 		init(limitationsList, nonZeroWeight);
 	}
 	
-	public ListBasedTreeTrimmer(LogicTreeBranch defaultBranch, boolean nonZeroWeight) {
+	public ListBasedTreeTrimmer(U3LogicTreeBranch defaultBranch, boolean nonZeroWeight) {
 		List<List<LogicTreeBranchNode<?>>> limitationsList = Lists.newArrayList();
 		
 		for (int i=0; i<defaultBranch.size(); i++) {
@@ -89,11 +89,11 @@ public class ListBasedTreeTrimmer implements TreeTrimmer {
 	
 	@SuppressWarnings("unchecked")
 	private static Class<LogicTreeBranchNode<?>> getClassForList(List<LogicTreeBranchNode<?>> limits) {
-		return (Class<LogicTreeBranchNode<?>>) LogicTreeBranch.getEnumEnclosingClass(limits.get(0).getClass());
+		return (Class<LogicTreeBranchNode<?>>) U3LogicTreeBranch.getEnumEnclosingClass(limits.get(0).getClass());
 	}
 
 	@Override
-	public boolean isTreeValid(LogicTreeBranch branch) {
+	public boolean isTreeValid(U3LogicTreeBranch branch) {
 		InversionModels im = branch.getValue(InversionModels.class);
 		for (int i=0; i<branch.size(); i++) {
 			LogicTreeBranchNode<?> val = branch.getValue(i);

@@ -38,6 +38,8 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
@@ -45,8 +47,6 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapBasedPlot;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapPlotData;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -63,10 +63,10 @@ import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
 
@@ -283,7 +283,7 @@ public class TablesAndPlotsGen {
 		CSVFile<String> csv = new CSVFile<String>(true);
 		
 		List<String> header = Lists.newArrayList();
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses())
+		for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses())
 			header.add(ClassUtils.getClassNameWithoutPackage(clazz));
 		header.add("A Priori Branch Weight");
 		header.add(FAULT_SUPRA_TARGET);
@@ -295,7 +295,7 @@ public class TablesAndPlotsGen {
 		
 		csv.addLine(header);
 		
-		List<LogicTreeBranch> branches = Lists.newArrayList(cfss.getBranches());
+		List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss.getBranches());
 		Collections.sort(branches);
 		
 		Splitter sp = Splitter.on("\n");
@@ -303,7 +303,7 @@ public class TablesAndPlotsGen {
 		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
 		Map<DeformationModels, List<Double>> dmWeightsMap = Maps.newHashMap();
 		double totWt = 0;
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			double weight = weightProv.getWeight(branch);
 			totWt += weight;
 			DeformationModels dm = branch.getValue(DeformationModels.class);
@@ -342,10 +342,10 @@ public class TablesAndPlotsGen {
 		for (DeformationModels dm : dmWeightTotsMap.keySet())
 			dmTotHistMap.put(dm, new HistogramFunction(hist_min, hist_num, hist_delta));
 		
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			DeformationModels dm = branch.getValue(DeformationModels.class);
 			List<String> line = Lists.newArrayList();
-			for (int i=0; i<LogicTreeBranch.getLogicTreeNodeClasses().size(); i++)
+			for (int i=0; i<U3LogicTreeBranch.getLogicTreeNodeClasses().size(); i++)
 				line.add(branch.getValue(i).getShortName());
 			List<String> info = Lists.newArrayList(sp.split(cfss.getInfo(branch)));
 			double origWt = weightProv.getWeight(branch);
@@ -614,7 +614,7 @@ public class TablesAndPlotsGen {
 	public static void buildRupLengthComparisonPlot(CompoundFaultSystemSolution cfss, File dir, String prefix) throws IOException {
 		List<HistogramFunction> hists = Lists.newArrayList();
 		
-		for (LogicTreeBranch branch : cfss.getBranches()) {
+		for (U3LogicTreeBranch branch : cfss.getBranches()) {
 			double[] lengths = cfss.getLengths(branch);
 			double[] rates = cfss.getRates(branch);
 			
@@ -636,7 +636,7 @@ public class TablesAndPlotsGen {
 		}
 		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
 		List<Double> weights = Lists.newArrayList();
-		for (LogicTreeBranch branch : cfss.getBranches())
+		for (U3LogicTreeBranch branch : cfss.getBranches())
 			weights.add(weightProv.getWeight(branch));
 		
 		List<DiscretizedFunc> solFuncs = CompoundFSSPlots.getFractiles(xyList, weights, "Surface Rupture Length", new double[0]);
@@ -1063,7 +1063,7 @@ public class TablesAndPlotsGen {
 		System.out.println("Instantiating ERF...");
 		FaultSystemSolutionERF erf=null;
 		try {
-			erf = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file));
+			erf = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -2204,7 +2205,7 @@ public class ETAS_Utils {
 		
 		double maxDays = 365.25*10.0;
 		
-		List<? extends IncrementalMagFreqDist> subSeisMFD_list = fssERF.getSolution().getSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_list = fssERF.getSolution().requireModule(SubSeismoOnFaultMFDs.class).getAll();
 		double duration = fssERF.getTimeSpan().getDuration();
 		
 		double[] sectionArea = new double[subSeisMFD_list.size()];

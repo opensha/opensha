@@ -3,6 +3,8 @@ package org.opensha.commons.data;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +18,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import org.opensha.commons.util.FileUtils;
 
@@ -232,8 +236,18 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return getLineStr(getLine(0));
 	}
 	
+	/**
+	 * Writes this CSV file to the given file. If the file extension ends in '.gz' then it will be GZipped automatically.
+	 * 
+	 * @param file
+	 * @throws IOException
+	 */
 	public void writeToFile(File file) throws IOException {
-		FileWriter fw = new FileWriter(file);
+		Writer fw;
+		if (file.getName().toLowerCase().endsWith(".gz"))
+			fw = new OutputStreamWriter(new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(file))));
+		else
+			fw = new FileWriter(file);
 		writeWriter(fw);
 		fw.close();
 	}
@@ -317,11 +331,39 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return vals;
 	}
 	
+	/**
+	 * Reads a CSV file from the given file.
+	 * 
+	 * If the file extension ends with '.gz' then it is assumed to be GZipped and will be read accordingly
+	 * 
+	 * @param file
+	 * @param strictRowSizes if true, all rows will be checked to ensure that they are the same length
+	 * @return loaded CSV file
+	 * @throws IOException
+	 */
 	public static CSVFile<String> readFile(File file, boolean strictRowSizes) throws IOException {
 		return readFile(file, strictRowSizes, -1);
 	}
 	
+	/**
+	 * Reads a CSV file from the given file.
+	 * 
+	 * If the file extension ends with '.gz' then it is assumed to be GZipped and will be read accordingly
+	 * 
+	 * @param file
+	 * @param strictRowSizes if true, all rows will be checked to ensure that they are the same length
+	 * @param cols expected number of columns, or -1 if unknown
+	 * @return loaded CSV file
+	 * @throws IOException
+	 */
 	public static CSVFile<String> readFile(File file, boolean strictRowSizes, int cols) throws IOException {
+		if (file.getName().toLowerCase().endsWith(".gz")) {
+			// assume it's gzipped
+			GZIPInputStream gzis = new GZIPInputStream(new FileInputStream(file));
+			CSVFile<String> csv = readStream(gzis, strictRowSizes, cols);
+			gzis.close();
+			return csv;
+		}
 		return readURL(file.toURI().toURL(), strictRowSizes, cols);
 	}
 	

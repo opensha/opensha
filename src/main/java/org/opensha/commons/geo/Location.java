@@ -50,6 +50,8 @@ public class Location implements
 	public final static String XML_METADATA_LONGITUDE = "Longitude";
 	public final static String XML_METADATA_LATITUDE = "Latitude";
 	public final static String XML_METADATA_DEPTH = "Depth";
+	
+	private final static boolean FORCE_BACKWARDS_COMPATIBLE = false;
 
 	/**
 	 * Latitude of this <code>Location</code> in decimal degrees
@@ -93,10 +95,17 @@ public class Location implements
 		GeoTools.validateLat(lat);
 		GeoTools.validateLon(lon);
 		GeoTools.validateDepth(depth);
-		this.lat = lat;
-		this.lon = lon;
-		this.latRad = Math.toRadians(lat);
-		this.lonRad = Math.toRadians(lon);
+		if (FORCE_BACKWARDS_COMPATIBLE) {
+			latRad = lat * GeoTools.TO_RAD;
+			lonRad = lon * GeoTools.TO_RAD;
+			this.lat = latRad * GeoTools.TO_DEG;
+			this.lon = lonRad * GeoTools.TO_DEG;
+		} else {
+			this.lat = lat;
+			this.lon = lon;
+			this.latRad = Math.toRadians(lat);
+			this.lonRad = Math.toRadians(lon);
+		}
 		this.depth = depth;
 	}
 	

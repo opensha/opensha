@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import com.google.common.collect.Maps;
 
-public abstract class SlipEnabledRupSet extends FaultSystemRupSet {
+public abstract class SlipEnabledRupSet extends U3FaultSystemRupSet {
 
 	/**
 	 * This gives average slip (SI units: m) for the given rupture

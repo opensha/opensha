@@ -19,7 +19,7 @@ import org.dom4j.DocumentException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.HistScalar;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.HistScalarValues;
 
@@ -130,7 +130,7 @@ public class RupSetDiagnosticsPageGen_IntegrationTest {
 		assertEquals(report.getInputName(), inputName);
 		assertEquals(report.getOutputDir(), tempFolder);
 		assertTrue(report.getInputSol() instanceof InversionFaultSystemSolution);
-		assertEquals(3101, report.getInputRupSet().getClusterRuptures().size());
+		assertEquals(3101, report.getInputRupSet().getModule(ClusterRuptures.class).getAll().size());
 		assertEquals(3101, report.getInputRups().size());
 		assertEquals(3101,report.getInputUniques().size());
 		assertTrue(report.getDistAzCalc() instanceof SectionDistanceAzimuthCalculator);

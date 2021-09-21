@@ -3,13 +3,13 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 import java.util.HashSet;
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 
 /**
@@ -28,11 +28,11 @@ public class MFDEqualityInversionConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;
 	private double weight;
-	private List<MFD_InversionConstraint> mfdEqualityConstraints;
+	private List<? extends MFD_InversionConstraint> mfdEqualityConstraints;
 	private HashSet<Integer> excludeRupIndexes;
 
 	public MFDEqualityInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<MFD_InversionConstraint> mfdEqualityConstraints, HashSet<Integer> excludeRupIndexes) {
+			List<? extends MFD_InversionConstraint> mfdEqualityConstraints, HashSet<Integer> excludeRupIndexes) {
 		this.rupSet = rupSet;
 		this.weight = weight;
 		this.mfdEqualityConstraints = mfdEqualityConstraints;
@@ -48,11 +48,18 @@ public class MFDEqualityInversionConstraint extends InversionConstraint {
 	public String getName() {
 		return NAME;
 	}
-
-	@Override
-	public int getNumRows() {
+	
+	/**
+	 * Calculates the number of rows needed for MFD constraints, ignoring any bins that are above or below the
+	 * magnitude range of the rupture set.
+	 * 
+	 * @param constraints
+	 * @param rupSet
+	 * @return number of rows needed
+	 */
+	static int getNumRows(List<? extends MFD_InversionConstraint> constraints, FaultSystemRupSet rupSet) {
 		int totalNumMagFreqConstraints = 0;
-		for (MFD_InversionConstraint constr : mfdEqualityConstraints) {
+		for (MFD_InversionConstraint constr : constraints) {
 			IncrementalMagFreqDist targetMagFreqDist = constr.getMagFreqDist();
 			// Find number of rows used for MFD equality constraint
 			// only include mag bins between minimum and maximum magnitudes in rupture set
@@ -60,6 +67,11 @@ public class MFDEqualityInversionConstraint extends InversionConstraint {
 					- targetMagFreqDist.getClosestXIndex(rupSet.getMinMag()) + 1;
 		}
 		return totalNumMagFreqConstraints;
+	}
+
+	@Override
+	public int getNumRows() {
+		return getNumRows(mfdEqualityConstraints, rupSet);
 	}
 
 	@Override

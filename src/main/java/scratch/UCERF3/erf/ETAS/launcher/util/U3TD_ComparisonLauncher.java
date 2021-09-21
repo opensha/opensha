@@ -21,6 +21,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.ProbEqkRupture;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
@@ -36,13 +38,11 @@ import org.opensha.sha.faultSurface.PointSurface;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class U3TD_ComparisonLauncher {
 	
@@ -132,7 +132,7 @@ public class U3TD_ComparisonLauncher {
 		System.out.println("Loading FSS file");
 		FaultSystemSolution fss = null;
 		try {
-			fss = FaultSystemIO.loadSol(fssFile);
+			fss = U3FaultSystemIO.loadSol(fssFile);
 		} catch (IOException | DocumentException e1) {
 			e1.printStackTrace();
 			System.exit(1);

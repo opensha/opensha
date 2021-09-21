@@ -17,6 +17,7 @@ sourceSets {
             exclude '**/doc'
             exclude '**/data/ngaWest'
             exclude '**/data/site'
+            exclude '**/scratchData'
             exclude '**/data/erf/new_zealand_2010'
             exclude '**/data/erf/step/AllCal96ModelDaily.txt'
         }
@@ -24,9 +25,31 @@ sourceSets {
 }
 
 test {
-//    testLogging {
-//        events "passed", "skipped", "failed"
-//    }
+    minHeapSize = "128m"
+    maxHeapSize = "2048m"
+    filter {
+        includeTestsMatching "*Suite*"
+    }
+}
+
+task testVerbose (type: Test) {
+    testLogging {
+        events "failed"
+    }
+    beforeSuite { descr ->
+        println("Executing SUITE: $descr.className > $descr.displayName")
+    }
+    afterTest { descr, result ->
+        def time = (result.endTime - result.startTime)/1000.0
+        if (time > 1)
+            println("\t$descr.className > $descr.displayName: $result.resultType in $time s")
+    }
+    afterSuite { descr, result ->
+        def time = (result.endTime - result.startTime)/1000.0
+        println("SUITE $descr.className: $result.resultType in $time s")
+    }
+    minHeapSize = "128m"
+    maxHeapSize = "2048m"
     filter {
         includeTestsMatching "*Suite*"
     }

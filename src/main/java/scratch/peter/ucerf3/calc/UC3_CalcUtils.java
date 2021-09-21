@@ -13,6 +13,7 @@ import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -27,13 +28,12 @@ import com.google.common.io.Resources;
 
 import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.peter.nshmp.NSHMP_UCERF3_ERF;
 
 /**
@@ -144,9 +144,9 @@ public class UC3_CalcUtils {
 		
 		checkArgument(idx != -1, "Index cannot be -1 for compound sol.");
 		CompoundFaultSystemSolution cfss = getCompoundSolution(solPath);
-		List<LogicTreeBranch> branches = Lists.newArrayList(cfss
+		List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss
 			.getBranches());
-		LogicTreeBranch branch = branches.get(idx);
+		U3LogicTreeBranch branch = branches.get(idx);
 		InversionFaultSystemSolution ifss = cfss.getSolution(branch);
 		String erfName = branch.buildFileName();
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(ifss);
@@ -159,7 +159,7 @@ public class UC3_CalcUtils {
 	 * Loads a 'compound' solution. Such a solution generally has 'COMPOUND_SOL'
 	 * included in its name and represents multiple logic tree branches wrapped
 	 * up together. {@code branchID} is a {@code String} that is the file name
-	 * used to identify a branch (see {@link LogicTreeBranch#buildFileName()}.
+	 * used to identify a branch (see {@link U3LogicTreeBranch#buildFileName()}.
 	 * 
 	 * @param solPath
 	 * @param branchID
@@ -179,9 +179,9 @@ public class UC3_CalcUtils {
 		
 		CompoundFaultSystemSolution cfss = getCompoundSolution(solPath);
 		InversionFaultSystemSolution fss = null;
-		LogicTreeBranch branch = null;
+		U3LogicTreeBranch branch = null;
 		try {
-			branch = LogicTreeBranch.fromFileName(branchID);
+			branch = U3LogicTreeBranch.fromFileName(branchID);
 			fss = cfss.getSolution(branch);
 		} catch (Exception e) {
 			// try to handle as eqn set var logic tree brnach name instead
@@ -232,7 +232,7 @@ public class UC3_CalcUtils {
 	public static FaultSystemSolution getSolution(String path) {
 		try {
 			File file = new File(path);
-			return FaultSystemIO.loadSol(file);
+			return U3FaultSystemIO.loadSol(file);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -247,7 +247,7 @@ public class UC3_CalcUtils {
 	public static InversionFaultSystemSolution getInvSolution(String path) {
 		try {
 			File file = new File(path);
-			return FaultSystemIO.loadInvSol(file);
+			return U3FaultSystemIO.loadInvSol(file);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -262,7 +262,7 @@ public class UC3_CalcUtils {
 	public static AverageFaultSystemSolution getAvgSolution(String path) {
 		try {
 			File file = new File(path);
-			return FaultSystemIO.loadAvgInvSol(file);
+			return U3FaultSystemIO.loadAvgInvSol(file);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;

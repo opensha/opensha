@@ -26,18 +26,18 @@ import org.opensha.commons.param.impl.FileParameter;
 import org.opensha.commons.param.impl.LongParameter;
 import org.opensha.commons.param.impl.ParameterListParameter;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -262,7 +262,7 @@ public class ETAS_SimulationGUI extends JFrame implements ParameterChangeListene
 					FileUtils.downloadURL(cache_url+fss_file_name, fssFile);
 				}
 			}
-			sol = FaultSystemIO.loadSol(fssFile);
+			sol = U3FaultSystemIO.loadSol(fssFile);
 		}
 		
 		if (lastEventData == null)

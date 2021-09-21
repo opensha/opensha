@@ -18,6 +18,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeParam;
@@ -28,11 +30,9 @@ import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 
 import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Preconditions;
@@ -47,7 +47,7 @@ import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 	
 	private CompoundFaultSystemSolution cfss;
-	private List<LogicTreeBranch> branches;
+	private List<U3LogicTreeBranch> branches;
 	private FaultSystemSolutionERF[] erfs;
 	
 	private double duration;
@@ -166,7 +166,7 @@ public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 					}
 					if (index == null)
 						break;
-					LogicTreeBranch branch = branches.get(index);
+					U3LogicTreeBranch branch = branches.get(index);
 					String name = branch.buildFileName();
 					
 					File subOutputFile = new File(outputDir, name+"_subs.csv");

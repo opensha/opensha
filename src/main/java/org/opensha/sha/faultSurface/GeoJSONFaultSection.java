@@ -122,7 +122,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 				"Didn't find a FaultTrace in the supplied Feature. LineString and MultiLineString are supported");
 		
 		if (!Double.isFinite(dipDirection))
-			dipDirection = (float)(trace.getAveStrike()+90d);
+			setDipDirection((float)(trace.getAveStrike()+90d));
 	}
 	
 	private void setGeometry(Geometry geometry) {
@@ -198,6 +198,20 @@ public final class GeoJSONFaultSection implements FaultSection {
 		} else {
 			System.err.println("Skipping unexpected FaultSection geometry type: "+geometry.type);
 		}
+		
+		if (upperDepth != 0d && dip != 90d && !geometry.isSerializeZeroDepths()) {
+			// depths were not specified in the GeoJSON, and this is a buried dipping surface.
+			// for this case, we assume that the depth is actually the top of the surface and not the up-dip projection.
+			// if you want to override this, you can do three things:
+			// 	* provide three-valued locations in the GeoJSON
+			//  * provide at least one non-zero depth
+			//  * manually call geometry.setSerializeZeroDepths(true))
+			LocationList modTrace = new LocationList();
+			for (Location loc : trace)
+				modTrace.add(new Location(loc.getLatitude(), loc.getLongitude(), upperDepth));
+			trace = new FaultTrace(trace.getName());
+			trace.addAll(modTrace);
+		}
 	}
 	
 	private static void checkPropNonNull(String propName, Object value) {
@@ -267,14 +281,19 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public Feature toFeature() {
 		Geometry geometry;
 		Preconditions.checkNotNull(trace, "Trace is null");
+		Geometry traceGeom = new LineString(trace);
+		if (upperDepth != 0d && dip != 90d) {
+			// we need to serialize any zeroes
+			traceGeom.setSerializeZeroDepths(true);
+		}
 		if (zonePolygon != null) {
 			// both
 			List<Geometry> geometries = new ArrayList<>();
-			geometries.add(new LineString(trace));
+			geometries.add(traceGeom);
 			geometries.add(new Polygon(zonePolygon));
 			geometry = new GeometryCollection(geometries);
 		} else {
-			geometry = new LineString(trace);
+			geometry = traceGeom;
 		}
 		return new Feature(id, geometry, properties);
 	}
@@ -371,6 +390,11 @@ public final class GeoJSONFaultSection implements FaultSection {
 		return dipDirection;
 	}
 
+	public void setDipDirection(float dipDirection) {
+		this.dipDirection = dipDirection;
+		properties.set(DIP_DIR, dipDirection);
+	}
+
 	@Override
 	public FaultTrace getFaultTrace() {
 		return trace;
@@ -428,11 +452,13 @@ public final class GeoJSONFaultSection implements FaultSection {
 			subSection.properties.remove("FaultID");
 			subSection.properties.remove("FaultName");
 			
-			subSection.id = myID;
-			subSection.name = myName;
+			subSection.setSectionName(myName);
+			subSection.setSectionId(myID);
 			subSection.trace = equalLengthSubsTrace.get(i);
 			subSection.setParentSectionId(this.id);
 			subSection.setParentSectionName(this.name);
+			// make sure dip direction is set from parent
+			subSection.setDipDirection(dipDirection);
 			subSectionList.add(subSection);
 		}
 		return subSectionList;

@@ -21,7 +21,7 @@ import org.opensha.nshmp2.util.Period;
 import org.opensha.sha.util.NEHRP_TestCity;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Charsets;

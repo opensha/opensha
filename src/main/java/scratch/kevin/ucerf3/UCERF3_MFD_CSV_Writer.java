@@ -19,11 +19,11 @@ import scratch.UCERF3.CompoundFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
-public class UCERF3_MFD_CSV_Writer {
+class UCERF3_MFD_CSV_Writer {
 
 	public static void main(String[] args) throws ZipException, IOException {
 		CompoundFaultSystemSolution cfss = CompoundFaultSystemSolution.fromZipFile(
@@ -50,7 +50,7 @@ public class UCERF3_MFD_CSV_Writer {
 		
 		double totWeight = 0d;
 		
-		for (LogicTreeBranch branch : cfss.getBranches()) {
+		for (U3LogicTreeBranch branch : cfss.getBranches()) {
 			if (fm != null && branch.getValue(FaultModels.class) != fm)
 				continue;
 			if (dm != null && branch.getValue(DeformationModels.class) != dm)
@@ -61,8 +61,8 @@ public class UCERF3_MFD_CSV_Writer {
 			weights.add(weight);
 			IncrementalMagFreqDist offMFD = sol.getFinalTrulyOffFaultMFD();
 			IncrementalMagFreqDist subMFD = sol.getFinalTotalSubSeismoOnFaultMFD();
-			IncrementalMagFreqDist supraMFD = sol.calcNucleationMFD_forRegion(region, InversionTargetMFDs.MIN_MAG, InversionTargetMFDs.MAX_MAG,
-					InversionTargetMFDs.NUM_MAG, true);
+			IncrementalMagFreqDist supraMFD = sol.calcNucleationMFD_forRegion(region, U3InversionTargetMFDs.MIN_MAG, U3InversionTargetMFDs.MAX_MAG,
+					U3InversionTargetMFDs.NUM_MAG, true);
 			Preconditions.checkState(offMFD.size() == subMFD.size(), "%s != %s", offMFD.size(), subMFD.size());
 			Preconditions.checkState(offMFD.size() == supraMFD.size(), "%s != %s", offMFD.size(), supraMFD.size());
 			Preconditions.checkState(offMFD.getMinX() == subMFD.getMinX());

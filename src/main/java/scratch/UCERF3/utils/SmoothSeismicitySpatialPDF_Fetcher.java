@@ -1,21 +1,12 @@
 package scratch.UCERF3.utils;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.StringTokenizer;
 
-import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.data.region.CaliforniaRegions;
-import org.opensha.commons.data.xyz.GeoDataSet;
-import org.opensha.commons.data.xyz.GeoDataSetMath;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.util.ExceptionUtils;
 
-import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.analysis.GMT_CA_Maps;
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.griddedSeismicity.GridReader;
 
 /**

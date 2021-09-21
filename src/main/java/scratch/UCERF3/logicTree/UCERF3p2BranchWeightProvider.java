@@ -8,7 +8,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 public class UCERF3p2BranchWeightProvider implements BranchWeightProvider {
 
 	@Override
-	public double getWeight(LogicTreeBranch branch) {
+	public double getWeight(U3LogicTreeBranch branch) {
 		double wt = 1;
 		InversionModels im = branch.getValue(InversionModels.class);
 		// special cases
@@ -67,7 +67,7 @@ public class UCERF3p2BranchWeightProvider implements BranchWeightProvider {
 					break;
 				}
 			} else {
-				subWt = LogicTreeBranch.getNormalizedWt(node, im);
+				subWt = U3LogicTreeBranch.getNormalizedWt(node, im);
 			}
 			wt *= subWt;
 		}

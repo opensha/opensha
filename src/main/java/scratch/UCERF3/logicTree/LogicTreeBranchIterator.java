@@ -7,16 +7,16 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 
-public class LogicTreeBranchIterator implements Iterable<LogicTreeBranch>, Iterator<LogicTreeBranch> {
+public class LogicTreeBranchIterator implements Iterable<U3LogicTreeBranch>, Iterator<U3LogicTreeBranch> {
 	
 	private List<Class<? extends LogicTreeBranchNode<?>>> classes;
 	private int[] maxNums;
 	private int[] curNums;
 	
-	private LogicTreeBranch next = null;
+	private U3LogicTreeBranch next = null;
 	
 	private TreeTrimmer trimmer;
-	private Iterator<LogicTreeBranch> customIt;
+	private Iterator<U3LogicTreeBranch> customIt;
 	
 	private boolean exhausted = false;
 	
@@ -27,8 +27,8 @@ public class LogicTreeBranchIterator implements Iterable<LogicTreeBranch>, Itera
 	public LogicTreeBranchIterator(TreeTrimmer trimmer) {
 		this.trimmer = trimmer;
 		if (trimmer instanceof Iterable<?>)
-			customIt = ((Iterable<LogicTreeBranch>)trimmer).iterator();
-		classes = LogicTreeBranch.getLogicTreeNodeClasses();
+			customIt = ((Iterable<U3LogicTreeBranch>)trimmer).iterator();
+		classes = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		maxNums = new int[classes.size()];
 		curNums = new int[classes.size()];
 		
@@ -45,7 +45,7 @@ public class LogicTreeBranchIterator implements Iterable<LogicTreeBranch>, Itera
 		if (customIt != null) {
 			// use the built in iterator
 			while (customIt.hasNext() && next == null) {
-				LogicTreeBranch candidate = customIt.next();
+				U3LogicTreeBranch candidate = customIt.next();
 				if (trimmer.isTreeValid(candidate))
 					next = candidate;
 			}
@@ -55,7 +55,7 @@ public class LogicTreeBranchIterator implements Iterable<LogicTreeBranch>, Itera
 			mainLoop:
 				while (next == null) {
 					//					printNextState();
-					LogicTreeBranch candidate = buildBranch();
+					U3LogicTreeBranch candidate = buildBranch();
 					if (trimmer == null || trimmer.isTreeValid(candidate))
 						next = candidate;
 
@@ -94,16 +94,16 @@ public class LogicTreeBranchIterator implements Iterable<LogicTreeBranch>, Itera
 		System.out.println(str);
 	}
 	
-	private LogicTreeBranch buildBranch() {
+	private U3LogicTreeBranch buildBranch() {
 		List<LogicTreeBranchNode<?>> vals = Lists.newArrayList();
 		for (int i=0; i<curNums.length; i++) {
 			vals.add(classes.get(i).getEnumConstants()[curNums[i]]);
 		}
-		return LogicTreeBranch.fromValues(vals);
+		return U3LogicTreeBranch.fromValues(vals);
 	}
 	
 	@Override
-	public Iterator<LogicTreeBranch> iterator() {
+	public Iterator<U3LogicTreeBranch> iterator() {
 		return this;
 	}
 
@@ -113,9 +113,9 @@ public class LogicTreeBranchIterator implements Iterable<LogicTreeBranch>, Itera
 	}
 
 	@Override
-	public LogicTreeBranch next() {
+	public U3LogicTreeBranch next() {
 		Preconditions.checkState(hasNext(), "next() called with no more branches!");
-		LogicTreeBranch ret = next;
+		U3LogicTreeBranch ret = next;
 		loadNext();
 		return ret;
 	}
@@ -133,7 +133,7 @@ public class LogicTreeBranchIterator implements Iterable<LogicTreeBranch>, Itera
 		
 		double wtTotal = 0;
 		int cnt = 0;
-		for (LogicTreeBranch br : it) {
+		for (U3LogicTreeBranch br : it) {
 			Preconditions.checkNotNull(br);
 			cnt++;
 			wtTotal += br.getAprioriBranchWt();

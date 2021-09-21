@@ -21,7 +21,7 @@ import scratch.UCERF3.inversion.coulomb.CoulombRates;
  * @author kevin
  *
  */
-public class UCERF3SectionConnectionStrategy implements SectionConnectionStrategy {
+public class UCERF3SectionConnectionStrategy implements OldSectionConnectionStrategy {
 	
 	private double maxJumpDist;
 	private CoulombRates coulombRates;

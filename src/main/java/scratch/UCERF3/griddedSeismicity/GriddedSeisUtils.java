@@ -2,7 +2,7 @@ package scratch.UCERF3.griddedSeismicity;
 
 import java.util.List;
 import java.util.Map;
-import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.faultSurface.FaultSection;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 
@@ -14,7 +14,7 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
  */
 public class GriddedSeisUtils {
 
-	private FaultPolyMgr polyMgr;
+	private PolygonFaultGridAssociations polyMgr;
 	private double[] pdf;
 	
 	/**
@@ -22,12 +22,11 @@ public class GriddedSeisUtils {
 	 *
 	 * @param fltSectList
 	 * @param pdf pass in result of PDF allows us to use alternate SpatiolSeisPDf provider
-	 * @param buf distance in km to buffer fault polygons
-	 * @param region the user defined region
+	 * @param polyMgr fault polygon manager
 	 */
 	public GriddedSeisUtils(List<? extends FaultSection> fltSectList, 
-			double[] pdf, double buf, GriddedRegion region) {
-		polyMgr = FaultPolyMgr.create(fltSectList, buf, region);
+			double[] pdf, PolygonFaultGridAssociations polyMgr) {
+		this.polyMgr = polyMgr;
 		this.pdf = pdf.clone();
 	}
 	
@@ -35,32 +34,19 @@ public class GriddedSeisUtils {
 	 * Create an instance of this utility class.
 	 * @param fltSectList
 	 * @param pdf pass in result of PDF allows us to use alternate SpatiolSeisPDf provider
-	 * @param buf distance in km to buffer fault polygons
+	 * @param polyMgr fault polygon manager
 	 */
 	public GriddedSeisUtils(List<? extends FaultSection> fltSectList, 
-			SpatialSeisPDF pdf, double buf) {
-		polyMgr = FaultPolyMgr.create(fltSectList, buf);
+			SpatialSeisPDF pdf, PolygonFaultGridAssociations polyMgr) {
+		this.polyMgr = polyMgr;
 		this.pdf = pdf.getPDF();
-	}	
-	
-	/**
-	 * Create an instance of this utility class.
-	 * @param fsrs
-	 * @param pdf - double array here
-	 */
-	public GriddedSeisUtils(List<? extends FaultSection> fltSectList, 
-			double[] pdf, double buf) {
-		polyMgr = FaultPolyMgr.create(fltSectList, buf);
-		this.pdf = pdf;
 	}
-	
-
 	
 	/**
 	 * Returns a reference to the internal polygon manager.
 	 * @return
 	 */
-	public FaultPolyMgr getPolyMgr() {
+	public PolygonFaultGridAssociations getPolyMgr() {
 		return polyMgr;
 	}
 		
@@ -72,9 +58,9 @@ public class GriddedSeisUtils {
 	public double pdfInPolys() {
 		double fraction = 0;
 		Map<Integer, Double> nodeMap = polyMgr.getNodeExtents();
-		for (int idx : nodeMap.keySet()) {
-			fraction += nodeMap.get(idx) * pdf[idx];
-		}
+		for (int idx=0; idx<pdf.length; idx++)
+			if (nodeMap.containsKey(idx))
+				fraction += nodeMap.get(idx) * pdf[idx];
 		return fraction;
 	}
 
@@ -90,9 +76,9 @@ public class GriddedSeisUtils {
 	public double pdfValForSection(int idx) {
 		Map<Integer, Double> nodeMap = polyMgr.getScaledNodeFractions(idx);
 		double sum = 0.0;
-		for (int iNode : nodeMap.keySet()) {
-			sum += pdf[iNode] * nodeMap.get(iNode);
-		}
+		for (int iNode=0; iNode<pdf.length; iNode++)
+			if (nodeMap.containsKey(iNode))
+				sum += pdf[iNode] * nodeMap.get(iNode);
 		return sum;
 	}
 	

@@ -7,6 +7,8 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
@@ -100,7 +102,8 @@ public class FeatureCollection {
 				switch (name) {
 				case "type":
 					type = GeoJSON_Type.valueOf(in.nextString());
-					Preconditions.checkState(type == GeoJSON_Type.FeatureCollection, "Expected Feature type, have %s", type);
+					Preconditions.checkState(type == GeoJSON_Type.FeatureCollection,
+							"Expected FeatureCollection type, have %s", type);
 					break;
 				case "features":
 					if (in.peek() == JsonToken.NULL) {
@@ -124,11 +127,36 @@ public class FeatureCollection {
 			
 			in.endObject();
 			
-			Preconditions.checkState(type == GeoJSON_Type.FeatureCollection, "Expected Feature type, have %s", type);
+			Preconditions.checkState(type == GeoJSON_Type.FeatureCollection,
+					"Expected FeatureCollection type, have %s", type);
 			
 			return new FeatureCollection(features);
 		}
 		
+	}
+	
+	static final Gson gson_default = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
+	
+	/**
+	 * @return GeoJSON representation of this FeatureCollection
+	 * @throws IOException
+	 */
+	public String toJSON() throws IOException {
+		StringWriter writer = new StringWriter();
+		write(this, writer);
+		return writer.toString();
+	}
+	
+	/**
+	 * Parses a FeatureCollection from GeoJSON
+	 * 
+	 * @param json
+	 * @return
+	 * @throws IOException
+	 */
+	public static FeatureCollection fromJSON(String json) throws IOException {
+		StringReader reader = new StringReader(json);
+		return read(reader);
 	}
 	
 	/**
@@ -153,9 +181,12 @@ public class FeatureCollection {
 	public static FeatureCollection read(Reader reader) throws IOException {
 		if (!(reader instanceof BufferedReader))
 			reader = new BufferedReader(reader);
-		Gson gson = new GsonBuilder().create();
-		FeatureCollection ret = gson.fromJson(reader, FeatureCollection.class);
-		reader.close();
+		
+		FeatureCollection ret;
+		synchronized (gson_default) {
+			ret = gson_default.fromJson(reader, FeatureCollection.class);
+			reader.close();
+		}
 		return ret;
 	}
 	
@@ -168,6 +199,7 @@ public class FeatureCollection {
 	 */
 	public static void write(FeatureCollection features, File jsonFile) throws IOException {
 		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		write(features, writer);
 		writer.close();
 	}
 	
@@ -182,10 +214,10 @@ public class FeatureCollection {
 		if (!(writer instanceof BufferedWriter))
 			writer = new BufferedWriter(writer);
 		
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		gson.toJson(features, FeatureCollection.class, writer);
-		
-		writer.flush();
+		synchronized (gson_default) {
+			gson_default.toJson(features, FeatureCollection.class, writer);
+			writer.flush();
+		}
 	}
 	
 	public static Gson buildGson() {

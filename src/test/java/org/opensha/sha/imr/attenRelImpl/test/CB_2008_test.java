@@ -24,6 +24,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.StringTokenizer;
 
 import static org.junit.Assert.*;
@@ -143,9 +145,16 @@ public class CB_2008_test extends NGATest implements ParameterChangeWarningListe
 		try {
 			testDataLines = FileUtils.loadFile(file.getAbsolutePath());
 			int numLines = testDataLines.size();
-			for(int j=1;j<numLines;++j){
+			List<String> testLines = testDataLines.subList(1, numLines);
+			if (numLines > max_num_tests) {
+				System.out.println("Downsampling "+cb_2008.getName()+" tests to "+max_num_tests);
+				Collections.shuffle(testLines);
+				testLines = testLines.subList(0, max_num_tests);
+			}
+			int count = -1;
+			for (String fileLine : testLines) {
+				count++;
 				//System.out.println("Doing "+j+" of "+numLines);
-				String fileLine = (String)testDataLines.get(j);
 				StringTokenizer st = new StringTokenizer(fileLine);
 				double mag = Double.parseDouble(st.nextToken().trim());
 				cb_2008.getParameter(MagParam.NAME).setValue(new Double(mag));
@@ -198,7 +207,7 @@ public class CB_2008_test extends NGATest implements ParameterChangeWarningListe
 
 						failLine = fileLine;
 						failMetadata = "Line: " + fileLine;
-						failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+						failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 						//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 						failMetadata += "\n" + getOpenSHAParams(cb_2008);
 
@@ -224,7 +233,7 @@ public class CB_2008_test extends NGATest implements ParameterChangeWarningListe
 
 					failLine = fileLine;
 					failMetadata = "Line: " + fileLine;
-					failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+					failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 					//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 					failMetadata += "\n" + getOpenSHAParams(cb_2008);
 
@@ -247,7 +256,7 @@ public class CB_2008_test extends NGATest implements ParameterChangeWarningListe
 
 					failLine = fileLine;
 					failMetadata = "Line: " + fileLine;
-					failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+					failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 					//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 					failMetadata += "\n" + getOpenSHAParams(cb_2008);
 
@@ -270,7 +279,7 @@ public class CB_2008_test extends NGATest implements ParameterChangeWarningListe
 
 					failLine = fileLine;
 					failMetadata = "Line: " + fileLine;
-					failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+					failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 					//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 					failMetadata += "\n" + getOpenSHAParams(cb_2008);
 

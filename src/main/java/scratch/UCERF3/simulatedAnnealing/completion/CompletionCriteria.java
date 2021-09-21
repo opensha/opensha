@@ -11,8 +11,9 @@ public interface CompletionCriteria {
 	 * @param iter number of iterations completed
 	 * @param energy energy of the best solution
 	 * @param numPerturbsKept the total number of perturbations kept
+	 * @param numNonZero the number of non-zero rates
 	 * @return true if completions criteria is satisfied
 	 */
-	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept);
+	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept, int numNonZero);
 
 }

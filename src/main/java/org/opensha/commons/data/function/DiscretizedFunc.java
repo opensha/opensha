@@ -20,6 +20,12 @@
 package org.opensha.commons.data.function;
 
 import java.awt.geom.Point2D;
+import java.io.IOException;
+import java.util.function.Consumer;
+
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * <b>Title:</b> DiscretizedFuncAPI<p>
@@ -58,7 +64,7 @@ import java.awt.geom.Point2D;
  * @see DataPoint2D
  * @version 1.0
  */
-
+@JsonAdapter(DiscretizedFunc.Adapter.class)
 public interface DiscretizedFunc extends XY_DataSet {
 	
 	/** Sets the tolerance of this function. */
@@ -168,5 +174,40 @@ public interface DiscretizedFunc extends XY_DataSet {
 	
 	@Override
 	public DiscretizedFunc deepClone();
+	
+	public static class Adapter extends XY_DataSet.AbstractAdapter<DiscretizedFunc> {
+
+		@Override
+		protected DiscretizedFunc instance(Double minX, Double maxX, Integer size) {
+			return new ArbitrarilyDiscretizedFunc();
+		}
+	}
+	
+	public static abstract class AbstractAdapter<E extends DiscretizedFunc> extends XY_DataSet.AbstractAdapter<E> {
+
+		@Override
+		protected void serializeExtras(JsonWriter out, E xy) throws IOException {
+			double tol = xy.getTolerance();
+			if (tol > 0)
+				out.name("tolerance").value(tol);
+			super.serializeExtras(out, xy);
+		}
+
+		@Override
+		protected Consumer<E> deserializeExtra(JsonReader in, String name) throws IOException {
+			if (name.equals("tolerance")) {
+				double tol = in.nextDouble();
+				return new Consumer<E>() {
+
+					@Override
+					public void accept(E t) {
+						t.setTolerance(tol);
+					}
+				};
+			}
+			return super.deserializeExtra(in, name);
+		}
+		
+	}
 
 }

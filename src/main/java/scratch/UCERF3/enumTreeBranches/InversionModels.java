@@ -4,11 +4,10 @@ import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 
 public enum InversionModels implements LogicTreeBranchNode<InversionModels> {
 	
-	// TODO set weights
 	CHAR_CONSTRAINED(	"Characteristic (Constrained)",			"CharConst",	1d),
-	GR_CONSTRAINED(		"Gutenberg-Richter (Constrained)",		"GRConst",		1d),
-	CHAR_UNCONSTRAINED(		"Unconstrained (Unconstrained)",	"CharUnconst",	1d),
-	GR_UNCONSTRAINED(	"Unconstrained (Unconstrained)",		"GRUnconst",	1d);
+	GR_CONSTRAINED(		"Gutenberg-Richter (Constrained)",		"GRConst",		0d),
+	CHAR_UNCONSTRAINED(		"Unconstrained (Unconstrained)",	"CharUnconst",	0d),
+	GR_UNCONSTRAINED(	"Unconstrained (Unconstrained)",		"GRUnconst",	0d);
 	
 	private String name, shortName;
 	private double weight;
@@ -76,5 +75,10 @@ public enum InversionModels implements LogicTreeBranchNode<InversionModels> {
 	@Override
 	public String getBranchLevelName() {
 		return "Inversion Model";
+	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "IM";
 	}
 }

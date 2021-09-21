@@ -42,7 +42,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.CommandLineInversionRunner.InversionOptions;
 import scratch.UCERF3.logicTree.DiscreteListTreeTrimmer;
 import scratch.UCERF3.logicTree.ListBasedTreeTrimmer;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.LogicTreeBranchIterator;
 import scratch.UCERF3.logicTree.LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.LogicalAndTrimmer;
@@ -90,7 +90,7 @@ public class LogicTreePBSWriter {
 //				"/home/scec-02/kmilner/ucerf3/inversions/fm_store") {
 				null, null, false) {
 			@Override
-			public BatchScriptWriter forBranch(LogicTreeBranch branch) {
+			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
 				InversionModels im = branch.getValue(InversionModels.class);
 				Preconditions.checkState(im != InversionModels.GR_CONSTRAINED,
 						"are you kidding me? we can't run GR on epicenter!");
@@ -98,12 +98,12 @@ public class LogicTreePBSWriter {
 			}
 
 			@Override
-			public int getMaxHeapSizeMB(LogicTreeBranch branch) {
+			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
 				return 7000;
 			}
 
 			@Override
-			public int getPPN(LogicTreeBranch branch) {
+			public int getPPN(U3LogicTreeBranch branch) {
 				return 8;
 			}
 		},
@@ -112,7 +112,7 @@ public class LogicTreePBSWriter {
 //				null, USC_HPCC_ScriptWriter.FMPJ_HOME, true) {
 				null, USC_HPCC_ScriptWriter.MPJ_HOME, false) {
 			@Override
-			public BatchScriptWriter forBranch(LogicTreeBranch branch) {
+			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
 //				if (branch != null && branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
 //					return new USC_HPCC_ScriptWriter("dodecacore");
 //				return new USC_HPCC_ScriptWriter("quadcore"); // TODO
@@ -120,7 +120,7 @@ public class LogicTreePBSWriter {
 			}
 
 			@Override
-			public int getMaxHeapSizeMB(LogicTreeBranch branch) {
+			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
 //				if (branch != null &&
 //						branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
 //					return 40000;
@@ -129,7 +129,7 @@ public class LogicTreePBSWriter {
 			}
 
 			@Override
-			public int getPPN(LogicTreeBranch branch) {
+			public int getPPN(U3LogicTreeBranch branch) {
 //				if (branch != null &&
 //						branch.getValue(InversionModels.class) == InversionModels.GR_CONSTRAINED)
 //					return 24;
@@ -140,34 +140,34 @@ public class LogicTreePBSWriter {
 		RANGER("/work/00950/kevinm/ucerf3/inversion", RangerScriptWriter.JAVA_BIN,
 				null, RangerScriptWriter.FMPJ_HOME, true) {
 			@Override
-			public BatchScriptWriter forBranch(LogicTreeBranch branch) {
+			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
 				return new RangerScriptWriter();
 			}
 
 			@Override
-			public int getMaxHeapSizeMB(LogicTreeBranch branch) {
+			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
 				return 20000;
 			}
 
 			@Override
-			public int getPPN(LogicTreeBranch branch) {
+			public int getPPN(U3LogicTreeBranch branch) {
 				return 16;
 			}
 		},
 		STAMPEDE("/work/00950/kevinm/ucerf3/inversion", StampedeScriptWriter.JAVA_BIN,
 				null, StampedeScriptWriter.FMPJ_HOME, true) {
 			@Override
-			public BatchScriptWriter forBranch(LogicTreeBranch branch) {
+			public BatchScriptWriter forBranch(U3LogicTreeBranch branch) {
 				return new StampedeScriptWriter();
 			}
 
 			@Override
-			public int getMaxHeapSizeMB(LogicTreeBranch branch) {
+			public int getMaxHeapSizeMB(U3LogicTreeBranch branch) {
 				return 25000;
 			}
 
 			@Override
-			public int getPPN(LogicTreeBranch branch) {
+			public int getPPN(U3LogicTreeBranch branch) {
 				return 16;
 			}
 		};
@@ -186,12 +186,12 @@ public class LogicTreePBSWriter {
 			this.fastMPJ = fastMPJ;
 		}
 
-		public abstract BatchScriptWriter forBranch(LogicTreeBranch branch);
-		public abstract int getMaxHeapSizeMB(LogicTreeBranch branch);
-		public int getInitialHeapSizeMB(LogicTreeBranch branch) {
+		public abstract BatchScriptWriter forBranch(U3LogicTreeBranch branch);
+		public abstract int getMaxHeapSizeMB(U3LogicTreeBranch branch);
+		public int getInitialHeapSizeMB(U3LogicTreeBranch branch) {
 			return getMaxHeapSizeMB(branch);
 		}
-		public abstract int getPPN(LogicTreeBranch branch);
+		public abstract int getPPN(U3LogicTreeBranch branch);
 
 		public File getRUN_DIR() {
 			return RUN_DIR;
@@ -309,18 +309,18 @@ public class LogicTreePBSWriter {
 	private static final String TAG_OPTION_ON = "Option On";
 	private static final String TAG_OPTION_OFF = null;
 
-	private static class VariableLogicTreeBranch extends LogicTreeBranch {
+	private static class VariableLogicTreeBranch extends U3LogicTreeBranch {
 		CustomArg[] args;
 		public VariableLogicTreeBranch(CustomArg[] args, boolean setNullToDefault, LogicTreeBranchNode<?>... branchChoices) {
-			this(args, LogicTreeBranch.fromValues(setNullToDefault, branchChoices));
+			this(args, U3LogicTreeBranch.fromValues(setNullToDefault, branchChoices));
 		}
 
-		public VariableLogicTreeBranch(CustomArg[] args, LogicTreeBranch branch) {
+		public VariableLogicTreeBranch(CustomArg[] args, U3LogicTreeBranch branch) {
 			super(branch);
 			this.args = args;
 		}
 		@Override
-		public int getNumAwayFrom(LogicTreeBranch branch) {
+		public int getNumAwayFrom(U3LogicTreeBranch branch) {
 			int num = super.getNumAwayFrom(branch);
 
 			if (!(branch instanceof VariableLogicTreeBranch))
@@ -360,8 +360,8 @@ public class LogicTreePBSWriter {
 		}
 	}
 	
-	private static LogicTreeBranch getUCERF2_noIM() {
-		LogicTreeBranch UCERF2_noIM = (LogicTreeBranch) LogicTreeBranch.UCERF2.clone();
+	private static U3LogicTreeBranch getUCERF2_noIM() {
+		U3LogicTreeBranch UCERF2_noIM = (U3LogicTreeBranch) U3LogicTreeBranch.UCERF2.clone();
 		UCERF2_noIM.clearValue(InversionModels.class);
 //		UCERF2_noIM.clearValue(MomentRateFixes.class);
 		return UCERF2_noIM;
@@ -390,7 +390,7 @@ public class LogicTreePBSWriter {
 	}
 	
 	private static TreeTrimmer getUCERF3RefBranches() {
-		List<LogicTreeBranch> branches = Lists.newArrayList();
+		List<U3LogicTreeBranch> branches = Lists.newArrayList();
 		
 		List<LogicTreeBranchNode<?>> dms = getNonZeroChoices(DeformationModels.class, null);
 		List<LogicTreeBranchNode<?>> ims = getNonZeroChoices(InversionModels.class, null);
@@ -404,7 +404,7 @@ public class LogicTreePBSWriter {
 					momFix = MomentRateFixes.NONE;
 //				else
 //					momFix = MomentRateFixes.APPLY_IMPLIED_CC;
-				branches.add(LogicTreeBranch.fromValues(false, FaultModels.FM3_1, dm, im,
+				branches.add(U3LogicTreeBranch.fromValues(false, FaultModels.FM3_1, dm, im,
 						ScalingRelationships.SHAW_2009_MOD, SlipAlongRuptureModels.TAPERED, TotalMag5Rate.RATE_7p9,
 						MaxMagOffFault.MAG_7p6, momFix, SpatialSeisPDF.UCERF3));
 			}
@@ -418,7 +418,7 @@ public class LogicTreePBSWriter {
 				momFix = MomentRateFixes.NONE;
 //			else
 //				momFix = MomentRateFixes.APPLY_IMPLIED_CC;
-			branches.add(LogicTreeBranch.fromValues(false, FaultModels.FM2_1, DeformationModels.UCERF2_ALL, im,
+			branches.add(U3LogicTreeBranch.fromValues(false, FaultModels.FM2_1, DeformationModels.UCERF2_ALL, im,
 					ScalingRelationships.SHAW_2009_MOD, SlipAlongRuptureModels.TAPERED, TotalMag5Rate.RATE_7p9,
 					MaxMagOffFault.MAG_7p6, momFix, SpatialSeisPDF.UCERF3));
 		}
@@ -433,7 +433,7 @@ public class LogicTreePBSWriter {
 		return new TreeTrimmer() {
 			
 			@Override
-			public boolean isTreeValid(LogicTreeBranch branch) {
+			public boolean isTreeValid(U3LogicTreeBranch branch) {
 				return nonZero.isTreeValid(branch) || ucerf2Trim.isTreeValid(branch);
 			}
 		};
@@ -443,7 +443,7 @@ public class LogicTreePBSWriter {
 		return new TreeTrimmer() {
 			
 			@Override
-			public boolean isTreeValid(LogicTreeBranch branch) {
+			public boolean isTreeValid(U3LogicTreeBranch branch) {
 				return !branch.getValue(FaultModels.class).equals(FaultModels.FM2_1);
 			}
 		};
@@ -453,7 +453,7 @@ public class LogicTreePBSWriter {
 		return new TreeTrimmer() {
 			
 			@Override
-			public boolean isTreeValid(LogicTreeBranch branch) {
+			public boolean isTreeValid(U3LogicTreeBranch branch) {
 				return branch.getValue(DeformationModels.class).equals(DeformationModels.NEOKINEMA);
 			}
 		};
@@ -464,7 +464,7 @@ public class LogicTreePBSWriter {
 	}
 	
 	private static TreeTrimmer getDiscreteCustomTrimmer() {
-		List<LogicTreeBranch> branches = Lists.newArrayList();
+		List<U3LogicTreeBranch> branches = Lists.newArrayList();
 //		branches.add(LogicTreeBranch.fromValues(true, FaultModels.FM3_1, DeformationModels.ZENG, ScalingRelationships.ELLB_SQRT_LENGTH));
 //		branches.add(LogicTreeBranch.fromValues(true, FaultModels.FM3_1, DeformationModels.ZENG, ScalingRelationships.ELLSWORTH_B));
 //		branches.add(LogicTreeBranch.fromValues(true, FaultModels.FM3_1, DeformationModels.ZENG, ScalingRelationships.HANKS_BAKUN_08));
@@ -511,10 +511,10 @@ public class LogicTreePBSWriter {
 			for (SlipAlongRuptureModels dsr : dsrs) {
 				for (DeformationModels dm : dms) {
 					if (dm == DeformationModels.UCERF2_ALL)
-						branches.add(LogicTreeBranch.fromValues(true, FaultModels.FM2_1, dm, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_7p9,
+						branches.add(U3LogicTreeBranch.fromValues(true, FaultModels.FM2_1, dm, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_7p9,
 								MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF2, scale, dsr));
 					else
-						branches.add(LogicTreeBranch.fromValues(true, FaultModels.FM3_1, dm, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_7p9,
+						branches.add(U3LogicTreeBranch.fromValues(true, FaultModels.FM3_1, dm, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_7p9,
 								MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3, scale, dsr));
 				}
 			}
@@ -738,7 +738,7 @@ public class LogicTreePBSWriter {
 //		String threads = "5"; // *2 = 16 (out of 16 possible)
 		
 //		LogicTreeBranch prescribedBranch = null;
-		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
+		U3LogicTreeBranch prescribedBranch = (U3LogicTreeBranch) U3LogicTreeBranch.DEFAULT.clone();
 //		LogicTreeBranch prescribedBranch = (LogicTreeBranch) LogicTreeBranch.DEFAULT.clone();
 //		prescribedBranch.setValue(InversionModels.GR_CONSTRAINED);
 //		prescribedBranch.setValue(SpatialSeisPDF.UNSMOOTHED_GRIDDED);
@@ -1137,12 +1137,12 @@ public class LogicTreePBSWriter {
 		boolean extraDM2Away = true;
 		
 		if (defaultBranchesTrimmer != null) {
-			List<LogicTreeBranch> defBranches = Lists.newArrayList();
-			for (LogicTreeBranch branch : new LogicTreeBranchIterator(defaultBranchesTrimmer))
+			List<U3LogicTreeBranch> defBranches = Lists.newArrayList();
+			for (U3LogicTreeBranch branch : new LogicTreeBranchIterator(defaultBranchesTrimmer))
 				defBranches.add(branch);
 			defaultBranches = new VariableLogicTreeBranch[defBranches.size()];
 			for (int i=0; i<defBranches.size(); i++) {
-				LogicTreeBranch branch = defBranches.get(i);
+				U3LogicTreeBranch branch = defBranches.get(i);
 				defaultBranches[i] = new VariableLogicTreeBranch(null, branch);
 			}
 		}
@@ -1235,10 +1235,10 @@ public class LogicTreePBSWriter {
 		int cnt = 0;
 		int ignoreCnt = 0;
 
-		Iterable<LogicTreeBranch> it;
+		Iterable<U3LogicTreeBranch> it;
 		if (prescribedBranch != null) {
 			it = Lists.newArrayList();
-			((List<LogicTreeBranch>)it).add(prescribedBranch);
+			((List<U3LogicTreeBranch>)it).add(prescribedBranch);
 			System.out.println("Using prescribed/hardcoded branch! "+prescribedBranch);
 		} else {
 			it = new LogicTreeBranchIterator(trimmer);
@@ -1253,7 +1253,7 @@ public class LogicTreePBSWriter {
 		int maxJobMins = 0;
 
 		mainLoop:
-		for (LogicTreeBranch br : it) {
+		for (U3LogicTreeBranch br : it) {
 			for (CustomArg[] variationBranch : variationBranches) {
 				for (InversionArg[] invArgs : saOptions) {
 					for (CompletionCriteria subCompletion : subCompletions) {
@@ -1266,7 +1266,7 @@ public class LogicTreePBSWriter {
 
 						if (defaultBranches != null && defaultBranches.length > 0) {
 							int closest = Integer.MAX_VALUE;
-							for (LogicTreeBranch defaultBranch : defaultBranches) {
+							for (U3LogicTreeBranch defaultBranch : defaultBranches) {
 								int away = defaultBranch.getNumAwayFrom(branch);
 								if (away < closest)
 									closest = away;

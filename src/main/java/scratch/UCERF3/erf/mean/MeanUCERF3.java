@@ -22,15 +22,16 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
@@ -65,7 +66,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static final String NAME = "Mean UCERF3";
 	
-	static final String DOWNLOAD_URL = "http://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf/";
+	static final String DOWNLOAD_URL = "http://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf_modular/";
 	static final String RAKE_BASIS_FILE_NAME = "rake_basis.zip";
 	static final String TRUE_MEAN_FILE_NAME = "mean_ucerf3_sol.zip";
 	
@@ -453,8 +454,10 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		this.meanTotalSol = meanTotalSol;
 		if (meanTotalSol == null)
 			this.meanTotalMFDs = null;
+		else if (meanTotalSol.hasModule(RupMFDsModule.class))
+			this.meanTotalMFDs = meanTotalSol.getModule(RupMFDsModule.class).getRuptureMFDs();
 		else
-			this.meanTotalMFDs = meanTotalSol.getRupMagDists();
+			this.meanTotalMFDs = null;
 	}
 	
 	/**
@@ -499,7 +502,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				// already cached or we just downloaded it
 				if (D) System.out.println("already cached: "+solFile.getName());
 				try {
-					FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+					FaultSystemSolution sol = U3FaultSystemIO.loadSol(solFile);
 					checkCombineMags(sol);
 					setSolution(sol);
 					return;
@@ -516,7 +519,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			File meanSolFile = checkDownload(prefix+TRUE_MEAN_FILE_NAME, false);
 			
 			try {
-				setTrueMeanSol(FaultSystemIO.loadSol(meanSolFile));
+				setTrueMeanSol(U3FaultSystemIO.loadSol(meanSolFile));
 			} catch (Exception e) {
 				ExceptionUtils.throwAsRuntimeException(e);
 			}
@@ -540,7 +543,8 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			// cache it
 			try {
 				if (D) System.out.println("caching reduced sol to: "+solFile.getName());
-				FaultSystemIO.writeSol(reducedSol, solFile);
+//				FaultSystemIO.writeSol(reducedSol, solFile);
+				reducedSol.getArchive().write(solFile);
 			} catch (Exception e) {
 				// don't fail on caching
 				e.printStackTrace();
@@ -549,7 +553,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			// must be just mags, create a new sol
 			if (D) System.out.println("no reduce, just copying");
 			reducedSol = new FaultSystemSolution(meanTotalSol.getRupSet(), meanTotalSol.getRateForAllRups());
-			reducedSol.setRupMagDists(meanTotalMFDs);
+			reducedSol.addModule(new RupMFDsModule(reducedSol, meanTotalMFDs));
 			reducedSol.setGridSourceProvider(meanTotalSol.getGridSourceProvider());
 		}
 		
@@ -577,9 +581,10 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		if (magTol > 0) {
 			if (D) System.out.println("combining mags");
 			if (magTol >= 10)
-				sol.setRupMagDists(null);
-			else
-				sol.setRupMagDists(RuptureCombiner.combineMFDs(magTol, sol.getRupMagDists()));
+				sol.removeModuleInstances(RupMFDsModule.class);
+			else if (sol.hasModule(RupMFDsModule.class))
+				sol.addModule(new RupMFDsModule(sol,
+						RuptureCombiner.combineMFDs(magTol, sol.getModule(RupMFDsModule.class).getRuptureMFDs())));
 		}
 	}
 	
@@ -680,7 +685,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		File solFile = new File(getStoreDir(), "mean_ucerf3_sol.zip");
 		FaultSystemSolution sol;
 		try {
-			sol = FaultSystemIO.loadSol(solFile);
+			sol = U3FaultSystemIO.loadSol(solFile);
 		} catch (Exception e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}

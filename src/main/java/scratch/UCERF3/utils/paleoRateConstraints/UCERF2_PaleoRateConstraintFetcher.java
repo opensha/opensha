@@ -24,14 +24,14 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.U3FaultSystemSolution;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class UCERF2_PaleoRateConstraintFetcher {
@@ -93,7 +93,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 	}
 
 	public static void showSegRateComparison(ArrayList<PaleoRateConstraint> paleoRateConstraint,
-			ArrayList<FaultSystemSolution> solutions) {
+			ArrayList<U3FaultSystemSolution> solutions) {
 		
 		PaleoProbabilityModel paleoProbModel = new UCERF2_PaleoProbabilityModel();
 
@@ -101,7 +101,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 		Preconditions.checkState(solutions.size() > 0, "Must have at least one solution");
 
 		int numSolSects = -1;
-		for (FaultSystemSolution sol : solutions) {
+		for (U3FaultSystemSolution sol : solutions) {
 			if (numSolSects < 0)
 				numSolSects = sol.getRupSet().getNumSections();
 			Preconditions.checkArgument(sol.getRupSet().getNumSections() == numSolSects,
@@ -177,7 +177,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 				paleoRateX = x + relConstSect;
 
 				for (int i=0; i<solutions.size(); i++) {
-					FaultSystemSolution sol = solutions.get(i);
+					U3FaultSystemSolution sol = solutions.get(i);
 					FaultSystemRupSet rupSet = sol.getRupSet();
 					Color color = GraphPanel.defaultColor[i % GraphPanel.defaultColor.length];
 
@@ -215,9 +215,9 @@ public class UCERF2_PaleoRateConstraintFetcher {
 	public static void main(String args[]) throws IOException, DocumentException {
 		File precomp = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
 		File rupSetsDir = new File(precomp, "FaultSystemRupSets");
-		ArrayList<FaultSystemSolution> sols = new ArrayList<FaultSystemSolution>();
-		sols.add(FaultSystemIO.loadSol(new File(rupSetsDir, "UCERF2.xml")));
-		sols.add(FaultSystemIO.loadSol(new File(rupSetsDir, "Model1.xml")));
+		ArrayList<U3FaultSystemSolution> sols = new ArrayList<U3FaultSystemSolution>();
+		sols.add(U3FaultSystemIO.loadSol(new File(rupSetsDir, "UCERF2.xml")));
+		sols.add(U3FaultSystemIO.loadSol(new File(rupSetsDir, "Model1.xml")));
 
 		showSegRateComparison(getConstraints(sols.get(0).getRupSet().getFaultSectionDataList()), sols);
 	}

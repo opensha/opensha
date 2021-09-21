@@ -12,16 +12,14 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
+import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 
 import com.google.common.collect.Lists;
 
 public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	
-	private ArrayList<Long> times;
-	private ArrayList<Long> iterations;
-	private ArrayList<Long> perturbs;
-	private ArrayList<double[]> energies;
+	private AnnealingProgress progress;
 	
 	private CompletionCriteria criteria;
 	
@@ -51,11 +49,6 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	
 	public ProgressTrackingCompletionCriteria(
 			CompletionCriteria criteria, File automaticFile, double autoPlotMins) {
-		times = new ArrayList<Long>();
-		iterations = new ArrayList<Long>();
-		energies = new ArrayList<double[]>();
-		perturbs = new ArrayList<Long>();
-		
 		this.criteria = criteria;
 		this.automaticFile = automaticFile;
 		if (autoPlotMins > 0) {
@@ -67,37 +60,20 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 		}
 	}
 	
+	public AnnealingProgress getProgress() {
+		return progress;
+	}
+	
 	public synchronized void writeFile(File file) throws IOException {
-		CSVFile<String> csv = new CSVFile<String>(true);
-		
-		ArrayList<String> header = Lists.newArrayList("Iterations", "Time (millis)", "Energy (total)",
-				"Energy (equality)", "Energy (entropy)", "Energy (inequality)");
-		if (constraintRanges != null)
-			for (ConstraintRange range : constraintRanges)
-				header.add(range.shortName);
-		header.add("Total Perterbations Kept");
-		csv.addLine(header);
-		
-		for (int i=0; i<times.size(); i++) {
-			double[] energy = energies.get(i);
-			ArrayList<String> line = Lists.newArrayList(iterations.get(i)+"", times.get(i)+"");
-			for (double e : energy)
-				line.add(e+"");
-			line.add(perturbs.get(i)+"");
-			csv.addLine(line);
-		}
-		
-		csv.writeToFile(file);
+		progress.getCSV().writeToFile(file);
 	}
 
 	@Override
-	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept) {
-		if (energy[0] < Double.MAX_VALUE && (iterMod <= 0 || iter % iterMod == 0l)) {
-			times.add(watch.getTime());
-			iterations.add(iter);
-			energies.add(energy);
-			perturbs.add(numPerturbsKept);
-		}
+	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept, int numNonZero) {
+		if (progress == null)
+			progress = AnnealingProgress.forConstraintRanges(constraintRanges);
+		if (energy[0] < Double.MAX_VALUE && (iterMod <= 0 || iter % iterMod == 0l))
+			progress.addProgress(iter, watch.getTime(), numPerturbsKept, energy, numNonZero);
 		if (autoPlotMillis > 0 && watch.getTime() > nextPlotMillis) {
 			try {
 				updatePlot();
@@ -107,7 +83,7 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 			}
 			nextPlotMillis = watch.getTime() + autoPlotMillis;
 		}
-		if (criteria.isSatisfied(watch, iter, energy, numPerturbsKept)) {
+		if (criteria.isSatisfied(watch, iter, energy, numPerturbsKept, numNonZero)) {
 			if (automaticFile != null) {
 				System.out.println("Criteria satisfied with time="+(watch.getTime()/60000f)
 						+" min, iter="+iter+", energy="+energy[0]+", pertubs kept="+numPerturbsKept);
@@ -119,7 +95,7 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 					System.err.println("Error writing results file!");
 					e.printStackTrace();
 				}
-				System.out.println("Done writing progress file ("+times.size()+" entries)");
+				System.out.println("Done writing progress file ("+progress.size()+" entries)");
 			}
 			return true;
 		}
@@ -131,7 +107,7 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	}
 	
 	private void updatePlot() {
-		if (energies.isEmpty())
+		if (progress == null || progress.size() == 0)
 			return;
 		if (gw == null) {
 			funcs = new ArrayList<ArbitrarilyDiscretizedFunc>();
@@ -143,11 +119,11 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 				for (ConstraintRange name : constraintRanges)
 					funcs.add(new ArbitrarilyDiscretizedFunc(name.shortName+" Energy"));
 			} else {
-				for (int i=4; i<energies.get(0).length; i++) {
+				for (int i=4; i<progress.getEnergies(0).length; i++) {
 					funcs.add(new ArbitrarilyDiscretizedFunc("Unknown Energy "+(i+1)));
 				}
 			}
-			ArrayList<PlotCurveCharacterstics> chars = ThreadedSimulatedAnnealing.getEnergyBreakdownChars();
+			ArrayList<PlotCurveCharacterstics> chars = SimulatedAnnealing.getEnergyBreakdownChars();
 			updatePlotFuncs();
 			String title = "Energy vs Iterations";
 			if (plotTitle != null)
@@ -159,7 +135,7 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 		}
 		ArbitrarilyDiscretizedFunc equalityFunc = funcs.get(1);
 		double maxEqualityEnergy = equalityFunc.getY(0);
-		if (energies.get(energies.size()-1)[0] < maxEqualityEnergy) {
+		if (progress.getEnergies(progress.size()-1)[0] < maxEqualityEnergy) {
 			// if we're already under the max equality level, adjust the scale so that
 			// everything interesting is visible
 			gw.setAxisRange(0, equalityFunc.getX(equalityFunc.size()-1)*1.1, 0, maxEqualityEnergy*1.2);
@@ -170,9 +146,9 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	
 	private void updatePlotFuncs() {
 		int start = funcs.get(0).size();
-		for (int i=start; i<energies.size(); i++) {
-			long iter = iterations.get(i);
-			double[] energy = energies.get(i);
+		for (int i=start; i<progress.size(); i++) {
+			long iter = progress.getIterations(i);
+			double[] energy = progress.getEnergies(i);
 			for (int j=0; j<energy.length; j++)
 				funcs.get(j).set((double)iter, energy[j]);
 		}
@@ -183,22 +159,6 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	@Override
 	public String toString() {
 		return criteria.toString();
-	}
-
-	public ArrayList<Long> getTimes() {
-		return times;
-	}
-
-	public ArrayList<Long> getIterations() {
-		return iterations;
-	}
-
-	public ArrayList<Long> getPerturbs() {
-		return perturbs;
-	}
-
-	public ArrayList<double[]> getEnergies() {
-		return energies;
 	}
 	
 	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
