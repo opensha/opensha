@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.text.DecimalFormat;
 import java.util.ArrayDeque;
@@ -314,6 +315,12 @@ public class SRF_PointData {
 	public static void writeSRF(File srfFile, List<SRF_PointData> points, double version) throws IOException {
 		FileWriter fw = new FileWriter(srfFile);
 		
+		writeSRF(fw, points, version);
+		
+		fw.close();
+	}
+	
+	public static void writeSRF(Writer fw, List<SRF_PointData> points, double version) throws IOException {
 		Preconditions.checkState(version >= 1d && version <= 2d, "Can only write SRF version 1.0 and 2.0");
 		fw.write((float)version+"\n");
 		
@@ -362,7 +369,7 @@ public class SRF_PointData {
 			fw.write(str.toString());
 		}
 		
-		fw.close();
+		fw.flush();
 	}
 	
 	public static void main(String[] args) throws IOException {
