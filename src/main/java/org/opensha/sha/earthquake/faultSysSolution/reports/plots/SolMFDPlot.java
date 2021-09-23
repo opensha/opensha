@@ -106,14 +106,7 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		List<PlotSpec> incrSpecs = new ArrayList<>();
 		List<PlotSpec> cmlSpecs = new ArrayList<>();
 		
-		List<String> lines = new ArrayList<>();
 		for (MFD_Plot plot : plots) {
-			if (plots.size() > 1) {
-				if (!lines.isEmpty())
-					lines.add("");
-				lines.add(getSubHeading()+" "+plot.name);
-				lines.add(topLink); lines.add("");
-			}
 			List<IncrementalMagFreqDist> incrFuncs = new ArrayList<>();
 			List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
 			List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -145,9 +138,16 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		
 		System.out.println("MFD Y-Range: "+minY+" "+maxY);
 		Range yRange = new Range(minY, maxY);
-		
+
+		List<String> lines = new ArrayList<>();
 		for (int i=0; i<plots.size(); i++) {
 			MFD_Plot plot = plots.get(i);
+			if (plots.size() > 1) {
+				if (!lines.isEmpty())
+					lines.add("");
+				lines.add(getSubHeading()+" "+plot.name);
+				lines.add(topLink); lines.add("");
+			}
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			table.addLine("Incremental MFDs", "Cumulative MFDs");
 			
