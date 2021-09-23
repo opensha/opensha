@@ -14,6 +14,9 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.SegmentationModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -289,6 +292,18 @@ public class InversionConstraintImplTests {
 	public void testTotalMoment() throws IOException {
 		TotalMomentInversionConstraint constr = new TotalMomentInversionConstraint(
 				rupSet, 1d, rupSet.getTotalReducedMomentRate());
+		
+		testConstraint(constr);
+	}
+
+	@Test
+	public void testSlipSegmentation() throws IOException {
+		SegmentationModel segModel = new SlipRateSegmentationConstraint.Shaw07JumpDistSegModel(1d, 3d);
+		SlipRateSegmentationConstraint constr = new SlipRateSegmentationConstraint(rupSet, segModel, RateCombiner.MIN, 1d, false, false);
+		
+		testConstraint(constr);
+		
+		constr = new SlipRateSegmentationConstraint(rupSet, segModel, RateCombiner.MIN, 1d, true, false);
 		
 		testConstraint(constr);
 	}

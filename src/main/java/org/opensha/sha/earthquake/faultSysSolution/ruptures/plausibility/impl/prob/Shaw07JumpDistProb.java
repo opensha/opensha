@@ -13,6 +13,8 @@ public class Shaw07JumpDistProb extends JumpProbabilityCalc {
 	
 	private double a;
 	private double r0;
+	
+	public static final double R0_DEFAULT = 3d;
 
 	public Shaw07JumpDistProb(double a, double r0) {
 		this.a = a;
@@ -37,6 +39,10 @@ public class Shaw07JumpDistProb extends JumpProbabilityCalc {
 	}
 	
 	public double calcJumpProbability(double distance) {
+		return calcJumpProbability(distance, a, r0);
+	}
+	
+	public static double calcJumpProbability(double distance, double a, double r0) {
 		return a*Math.exp(-distance/r0);
 	}
 	

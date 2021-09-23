@@ -17,6 +17,9 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -26,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssoc
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -214,13 +218,13 @@ public class Inversions {
 		SimulatedAnnealing sa;
 		if (threads > 1) {
 			int avgThreads = 0;
-			if (cmd.hasOption("average-threads"))
-				avgThreads = Integer.parseInt(cmd.getOptionValue("average-threads"));
+			if (cmd.hasOption("avg-threads"))
+				avgThreads = Integer.parseInt(cmd.getOptionValue("avg-threads"));
 			CompletionCriteria avgCompletion = null;
 			if (avgThreads > 0) {
-				Preconditions.checkArgument(cmd.hasOption("average-completion"),
-						"Averaging enabled but --average-completion <value> not specified");
-				avgCompletion = getCompletion(cmd.getOptionValue("average-completion"));
+				Preconditions.checkArgument(cmd.hasOption("avg-completion"),
+						"Averaging enabled but --avg-completion <value> not specified");
+				avgCompletion = getCompletion(cmd.getOptionValue("avg-completion"));
 				if (avgCompletion == null)
 					throw new IllegalArgumentException("Must supply averaging sub-completion time");
 			}
@@ -314,7 +318,11 @@ public class Inversions {
 		outputOption.setRequired(true);
 		ops.addOption(outputOption);
 		
-		// Inversion configuration
+		/*
+		 *  Inversion configuration
+		 */
+		
+		// slip rate constraint
 		
 		Option slipConstraint = new Option("sl", "slip-constraint", false, "Enables the slip-rate constraint.");
 		slipConstraint.setRequired(false);
@@ -327,6 +335,8 @@ public class Inversions {
 		Option normSlipWeight = new Option("nsw", "norm-slip-weight", true, "Sets weight for the normalized slip-rate constraint.");
 		normSlipWeight.setRequired(false);
 		ops.addOption(normSlipWeight);
+		
+		// MFD constraint
 		
 		Option mfdConstraint = new Option("mfd", "mfd-constraint", false, "Enables the MFD constraint. "
 				+ "Must supply either --infer-target-gr or --mfd-total-rate, or Rupture Set must have "
@@ -358,6 +368,8 @@ public class Inversions {
 		mfdMinMag.setRequired(false);
 		ops.addOption(mfdMinMag);
 		
+		// moment rate constraint
+		
 		// doesn't work well, and slip rate constraint handles moment anyway
 //		Option momRateConstraint = new Option("mr", "moment-rate-constraint", false, "Enables the total moment-rate constraint. By default, "
 //				+ "the slip-rate implied moment rate will be used, but you can supply your own target moment rate with --target-moment-rate.");
@@ -373,6 +385,8 @@ public class Inversions {
 //		momRate.setRequired(false);
 //		ops.addOption(momRate);
 		
+		// event rate constraint
+		
 		Option eventRateConstraint = new Option("er", "event-rate-constraint", true, "Enables the total event-rate constraint"
 				+ " with the supplied total event rate");
 		eventRateConstraint.setRequired(false);
@@ -382,7 +396,37 @@ public class Inversions {
 		erWeight.setRequired(false);
 		ops.addOption(erWeight);
 		
-		// Simulated Annealing parameters
+		// segmentation constraint
+		
+		Option slipSegConstraint = new Option("seg", "slip-seg-constraint", false,
+				"Enables the slip-rate segmentation constraint.");
+		slipSegConstraint.setRequired(false);
+		ops.addOption(slipSegConstraint);
+		
+		Option normSlipSegConstraint = new Option("nseg", "norm-slip-seg-constraint", false,
+				"Enables the normalized slip-rate segmentation constraint.");
+		normSlipSegConstraint.setRequired(false);
+		ops.addOption(normSlipSegConstraint);
+		
+		Option slipSegIneq = new Option("segi", "slip-seg-ineq", false,
+				"Flag to make segmentation constraints an inequality constraint (only applies if segmentation rate is exceeded).");
+		slipSegIneq.setRequired(false);
+		ops.addOption(slipSegIneq);
+		
+		Option segR0 = new Option("r0", "shaw-r0", true,
+				"Sets R0 in the Shaw (2007) jump-distance probability model in km"
+				+ " (used for segmentation constraint). Default: "+(float)Shaw07JumpDistProb.R0_DEFAULT);
+		segR0.setRequired(false);
+		ops.addOption(segR0);
+		
+		Option slipSegWeight = new Option("segw", "slip-seg-weight", true,
+				"Sets weight for the slip-rate segmentation constraint.");
+		slipSegWeight.setRequired(false);
+		ops.addOption(slipSegWeight);
+		
+		/*
+		 *  Simulated Annealing parameters
+		 */
 		
 		String complText = "If either no suffix or 'i' is appended, then it is assumed to be an iteration count. "
 				+ "Specify times in hours, minutes, or seconds by appending 'h', 'm', or 's' respecively. Fractions are not allowed.";
@@ -391,13 +435,13 @@ public class Inversions {
 		completionOption.setRequired(true);
 		ops.addOption(completionOption);
 		
-		Option avgOption = new Option("at", "average-threads", true, "Enables a top layer of threads that average results "
+		Option avgOption = new Option("at", "avg-threads", true, "Enables a top layer of threads that average results "
 				+ "of worker threads at fixed intervals. Supply the number of averaging threads, which must be < threads. "
-				+ "Default is no averaging, if enabled you must also supply --average-completion <value>.");
+				+ "Default is no averaging, if enabled you must also supply --avg-completion <value>.");
 		avgOption.setRequired(false);
 		ops.addOption(avgOption);
 		
-		Option avgCompletionOption = new Option("ac", "average-completion", true,
+		Option avgCompletionOption = new Option("ac", "avg-completion", true,
 				"Interval between across-thread averaging. "+complText);
 		avgCompletionOption.setRequired(false);
 		ops.addOption(avgCompletionOption);
@@ -528,6 +572,34 @@ public class Inversions {
 				if (cmd.hasOption("event-rate-weight"))
 					weight = Double.parseDouble(cmd.getOptionValue("event-rate-weight"));
 				constraints.add(new TotalRateInversionConstraint(rupSet, weight, targetEventRate));
+			}
+			
+			if (cmd.hasOption("slip-seg-constraint") || cmd.hasOption("norm-slip-seg-constraint")) {
+				System.out.println("Adding slip rate segmentation constraints");
+				double weight = 1d;
+				if (cmd.hasOption("slip-seg-weight"))
+					weight = Double.parseDouble(cmd.getOptionValue("slip-seg-weight"));
+				
+				double r0 = Shaw07JumpDistProb.R0_DEFAULT;
+				if (cmd.hasOption("shaw-r0"))
+					r0 = Double.parseDouble(cmd.getOptionValue("shaw-r0"));
+				
+				double a = 1d;
+				Shaw07JumpDistSegModel segModel = new Shaw07JumpDistSegModel(1d, r0);
+				
+				RateCombiner combiner = RateCombiner.MIN; // TODO: make selectable
+				
+				boolean inequality = cmd.hasOption("slip-seg-ineq");
+				
+				boolean doNormalized = cmd.hasOption("norm-slip-seg-constraint");
+				boolean doRegular = cmd.hasOption("slip-seg-constraint");
+				
+				if (doNormalized)
+					constraints.add(new SlipRateSegmentationConstraint(
+							rupSet, segModel, combiner, weight, true, inequality));
+				if (doRegular)
+					constraints.add(new SlipRateSegmentationConstraint(
+							rupSet, segModel, combiner, weight, false, inequality));
 			}
 			
 			Preconditions.checkState(!constraints.isEmpty(), "No constraints specified.");

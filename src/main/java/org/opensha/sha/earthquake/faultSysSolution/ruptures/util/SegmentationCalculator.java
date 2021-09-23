@@ -23,6 +23,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
@@ -946,7 +947,7 @@ public class SegmentationCalculator {
 					values.add(fract);
 				}
 			}
-			String label = getMagLabel(minMags[m])+" Passthrough Rate (Rel. "+combiner.label+")";
+			String label = getMagLabel(minMags[m])+" Passthrough Rate (Rel. "+combiner+")";
 			plotter.plotJumpScalars(jumps, values, cpt, label);
 			
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
@@ -1035,6 +1036,10 @@ public class SegmentationCalculator {
 		CPT rateCPT = getConnectionRateCPT();
 		Color outlineColor = new Color(0, 0, 0, 100);
 		float scatterWidth = 4;
+		
+//		JumpProbabilityCalc detrendProb = this.detrendProb;
+//		if (scalar == Scalars.JUMP_DIST)
+//			detrendProb = null;
 		
 		Map<Jump, Double> scalarJumpVals = calcJumpScalarValues(scalar);
 		
@@ -1187,7 +1192,7 @@ public class SegmentationCalculator {
 				}
 				
 				PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
-						"Passthrough Rate (Rel. "+combiner.label+")");
+						"Passthrough Rate (Rel. "+combiner+")");
 				spec.setLegendVisible(specs.isEmpty());
 				specs.add(spec);
 			}
@@ -1305,7 +1310,7 @@ public class SegmentationCalculator {
 			
 			specs.add(new PlotSpec(funcs, chars, getMagLabel(minMags[index1])+" vs "+getMagLabel(minMags[index2]),
 					getMagLabel(minMags[index1])+" Passthrough Rate",
-					getMagLabel(minMags[index2])+" Passthrough Rate (Rel. "+combiner.label+")"));
+					getMagLabel(minMags[index2])+" Passthrough Rate (Rel. "+combiner+")"));
 		}
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
@@ -1381,8 +1386,8 @@ public class SegmentationCalculator {
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 2f, new Color(0, 0, 0, 127)));
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, getMagLabel(minMags[magIndex])+" Relative Rate Combiners: "
-				+combiner1.label+" vs "+combiner2.label, "Passthrough Rate (Rel. "+combiner1.label+")",
-				"Passthrough Rate (Rel. "+combiner2.label+")");
+				+combiner1+" vs "+combiner2, "Passthrough Rate (Rel. "+combiner1+")",
+				"Passthrough Rate (Rel. "+combiner2+")");
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setTickLabelFontSize(18);

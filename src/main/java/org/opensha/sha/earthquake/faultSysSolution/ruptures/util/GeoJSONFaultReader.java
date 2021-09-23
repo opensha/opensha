@@ -475,7 +475,12 @@ public class GeoJSONFaultReader {
 //		
 //		attachGeoDefModel(sects, dmFile);
 		
-		buildNSHM23SubSects();
+//		buildNSHM23SubSects();
+		
+		ArrayList<FaultSection> sects = FaultModels.FM3_1.fetchFaultSections();
+		for (FaultSection sect : sects)
+			sect.setZonePolygon(null);
+		writeFaultSections(new File("/tmp/fm3_1.geojson"), sects);
 		
 //		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/NSHM2023_FaultSectionsEQGeoDB_v1p2_29March2021");
 //		File sectFile = new File(baseDir, "NSHM2023_FaultSections_v1p2.geojson");

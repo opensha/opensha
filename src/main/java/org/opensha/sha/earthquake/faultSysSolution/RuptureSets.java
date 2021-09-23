@@ -591,7 +591,7 @@ public class RuptureSets {
 			 */
 			// JUMP PROB: only increasing
 			if (jumpProbThresh > 0f) {
-				configBuilder.cumulativeProbability(jumpProbThresh, new Shaw07JumpDistProb(1d, 3d));
+				configBuilder.cumulativeProbability(jumpProbThresh, new Shaw07JumpDistProb(1d, Shaw07JumpDistProb.R0_DEFAULT));
 				outputName += "_jumpP"+jumpProbThresh;
 			}
 			// JUMP RATE PROB
