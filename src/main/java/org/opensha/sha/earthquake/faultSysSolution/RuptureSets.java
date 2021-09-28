@@ -26,6 +26,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NoJumpsFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayConnectionsOnlyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
@@ -43,6 +44,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutof
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy.SecondaryVariations;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveUnilateralRuptureGrowingStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.NoConnectivityStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.RuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
@@ -68,6 +70,7 @@ import com.google.gson.annotations.Expose;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
@@ -88,6 +91,8 @@ public class RuptureSets {
 		private List<? extends FaultSection> subSects;
 		private FaultModels fm;
 		private ScalingRelationships scale;
+		@Expose
+		private double maxJumpDist = 5d;
 
 		public U3RupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
 			init(subSects, scale);
@@ -119,7 +124,10 @@ public class RuptureSets {
 		@Override
 		public PlausibilityConfiguration getPlausibilityConfig() {
 			try {
-				return PlausibilityConfiguration.getUCERF3(subSects, getDistAzCalc(), fm);
+				CoulombRates coulombRates = null;
+				if (fm != null)
+					coulombRates = CoulombRates.loadUCERF3CoulombRates(fm);
+				return PlausibilityConfiguration.getUCERF3(subSects, getDistAzCalc(), coulombRates, maxJumpDist);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -150,6 +158,11 @@ public class RuptureSets {
 			this.subSects = subSects;
 			this.scale = scale;
 			detectFM(subSects);
+		}
+
+		@Override
+		public void setMaxJumpDist(double maxJumpDist) {
+			this.maxJumpDist = maxJumpDist;
 		}
 		
 	}
@@ -237,6 +250,11 @@ public class RuptureSets {
 		@Override
 		public ScalingRelationships getScalingRelationship() {
 			return scale;
+		}
+
+		@Override
+		public void setMaxJumpDist(double maxJumpDist) {
+			this.maxJumpDist = maxJumpDist;
 		}
 		
 	}
@@ -738,6 +756,57 @@ public class RuptureSets {
 		
 	}
 	
+	public static class FullySegmentedRupSetConfig extends RupSetConfig {
+		
+		private List<? extends FaultSection> subSects;
+		private ScalingRelationships scale;
+
+		public FullySegmentedRupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			init(subSects, scale);
+		}
+
+		@Override
+		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			this.subSects = subSects;
+			this.scale = scale;
+		}
+
+		@Override
+		public List<? extends FaultSection> getSubSects() {
+			return subSects;
+		}
+
+		@Override
+		public PlausibilityConfiguration getPlausibilityConfig() {
+			ClusterConnectionStrategy connStrat = new NoConnectivityStrategy(getSubSects(), getDistAzCalc());
+			Builder builder = PlausibilityConfiguration.builder(connStrat, subSects);
+			builder.add(new NoJumpsFilter());
+			return builder.build();
+		}
+
+		@Override
+		public RuptureGrowingStrategy getGrowingStrategy() {
+			RuptureGrowingStrategy strat = new ExhaustiveUnilateralRuptureGrowingStrategy();
+			return strat;
+		}
+
+		@Override
+		public String getRupSetFileName() {
+			return "segmented.zip";
+		}
+
+		@Override
+		public ScalingRelationships getScalingRelationship() {
+			return scale;
+		}
+
+		@Override
+		public void setMaxJumpDist(double maxJumpDist) {
+			// do nothing
+		}
+		
+	}
+	
 	public static abstract class RupSetConfig {
 		
 		public abstract List<? extends FaultSection> getSubSects();
@@ -795,6 +864,8 @@ public class RuptureSets {
 		protected int getNumThreads() {
 			return numThreads;
 		}
+		
+		public abstract void setMaxJumpDist(double maxJumpDist);
 		
 		public FaultSystemRupSet build(int numThreads) {
 			this.numThreads = numThreads;
@@ -892,6 +963,12 @@ public class RuptureSets {
 			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
 				return new SimpleAzimuthalRupSetConfig(subSects, scale);
 			}
+		},
+		SEGMENTED(FullySegmentedRupSetConfig.class) {
+			@Override
+			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+				return new FullySegmentedRupSetConfig(subSects, scale);
+			}
 		};
 		
 		private Class<? extends RupSetConfig> configClass;
@@ -953,6 +1030,11 @@ public class RuptureSets {
 				+ "then be edited and passed back in with the --config option when building a rupture set.");
 		wcOption.setRequired(false);
 		ops.addOption(wcOption);
+
+		Option jdOption = new Option("jd", "jump-distance", true,
+				"Set the maximum jump distance (default varies by preset).");
+		jdOption.setRequired(false);
+		ops.addOption(jdOption);
 
 		Option outputOption = new Option("of", "output-file", true,
 				"Path to write output Fault System Rupture Set file. If the supplied path is a directory, then a file "
@@ -1036,6 +1118,8 @@ public class RuptureSets {
 				// use default values
 				config = preset.build(sects, scale);
 			}
+			if (cmd.hasOption("jump-distance"))
+				config.setMaxJumpDist(Double.parseDouble(cmd.getOptionValue("jump-distance")));
 			FaultSystemRupSet rupSet = config.build(FaultSysTools.getNumThreads(cmd));
 			
 			if (outputFile.exists() && outputFile.isDirectory())
