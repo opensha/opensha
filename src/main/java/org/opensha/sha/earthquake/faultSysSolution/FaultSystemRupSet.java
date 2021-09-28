@@ -640,6 +640,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		Preconditions.checkArgument(rupLengths == null ||
 				rupLengths.length == numRups, "array sizes inconsistent!");
+		if (rupLengths == null)
+			rupLengths = rupLengthsDefault(faultSectionData, sectionForRups);
 		this.rupLengths = rupLengths;
 		
 		Preconditions.checkArgument(sectionForRups.size() == numRups, "array sizes inconsistent!");
@@ -1329,6 +1331,20 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		};
 	}
 	
+	private static double[] rupLengthsDefault(List<? extends FaultSection> faultSectionData,
+				List<List<Integer>> sectionForRups) {
+		int numRups = sectionForRups.size();
+		double[] rupLengths = new double[numRups];
+		for (int r=0; r<numRups; r++) {
+			for (int s : sectionForRups.get(r)) {
+				FaultSection sect = faultSectionData.get(s);
+				double length = sect.getTraceLength()*1e3;	// km --> m
+				rupLengths[r] += length;
+			}
+		}
+		return rupLengths;
+	}
+	
 	public static class Builder {
 		
 		// core data objects
@@ -1628,16 +1644,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 			
 			double[] rupLengths = this.rupLengths;
-			if (rupLengths == null) {
-				rupLengths = new double[numRups];
-				for (int r=0; r<numRups; r++) {
-					for (int s : sectionForRups.get(r)) {
-						FaultSection sect = faultSectionData.get(s);
-						double length = sect.getTraceLength()*1e3;	// km --> m
-						rupLengths[r] += length;
-					}
-				}
-			}
+			if (rupLengths == null)
+				rupLengths = rupLengthsDefault(faultSectionData, sectionForRups);
+			
 			if (round) {
 				mags = roundFixed(mags, 3);
 				rakes = roundFixed(rakes, 1);
