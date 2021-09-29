@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -28,6 +30,9 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * <br>
  * This constraint can be applied either as an equality constraint (will try to force connections to exactly match the
  * segmentation rate) or as an inequality constraint (will try to force connections not to exceed the segmentation rate).
+ * <br>
+ * It can also be applied as a net constraint, where the segmentation model will be fit on average, allowing for individual
+ * junctions to vary as the inversion sees fit.
  * 
  * @author Kevin Milner and Ned Field
  *
@@ -40,6 +45,8 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 	private double weight;
 	private boolean normalized;
 	private boolean inequality;
+	private boolean netConstraint;
+	private EvenlyDiscretizedFunc distanceBins;
 	
 	/*
 	 *  map from jumps to rupture IDs that use that jump. Within the jump, fromID will always be < toID
@@ -108,16 +115,22 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 	 * @param segModel segmentation model to use, e.g., Shaw '07
 	 * @param combiner method for combining rates across each side of each jump
 	 * @param weight constraint weight
+	 * @param normalized if true, constraint will be normalized to match low-slip rate faults equally well
 	 * @param inequality false for equality (exactly match seg. rate), true for inequality (don't exceed seg. rate)
+	 * @param netConstraint if true, will be applied as a binned net constraint to match everything on average in each bin
 	 */
 	public SlipRateSegmentationConstraint(FaultSystemRupSet rupSet, SegmentationModel segModel,
-			RateCombiner combiner, double weight, boolean normalized, boolean inequality) {
+			RateCombiner combiner, double weight, boolean normalized, boolean inequality, boolean netConstraint) {
 		this.rupSet = rupSet;
 		this.segModel = segModel;
 		this.combiner = combiner;
 		this.weight = weight;
 		this.normalized = normalized;
 		this.inequality = inequality;
+		this.netConstraint = netConstraint;
+		
+		if (netConstraint)
+			Preconditions.checkState(normalized, "Net constraints must be normalized");
 		
 		Preconditions.checkState(rupSet.hasModule(AveSlipModule.class),
 				"Rupture set does not have average slip data");
@@ -133,11 +146,13 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 		
 		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 		int jumpingRups = 0;
+		double maxJumpDist = 0d;
 		for (int r=0; r<cRups.size(); r++) {
 			ClusterRupture rup = cRups.get(r);
 //			System.out.println("Rupture "+r+": "+rup);
 			boolean hasJumps = false;
 			for (Jump jump : rup.getJumpsIterable()) {
+				maxJumpDist = Double.max(maxJumpDist, jump.distance);
 				if (jump.fromSection.getSectionId() > jump.toSection.getSectionId())
 					jump = jump.reverse();
 				List<Integer> jumpRups = jumpRupturesMap.get(jump);
@@ -152,10 +167,14 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 				jumpingRups++;
 		}
 		System.out.println("Found "+jumpRupturesMap.size()+" unique jumps, involving "+jumpingRups+" ruptures");
+		if (netConstraint)
+			distanceBins = HistogramFunction.getEncompassingHistogram(0.01, Math.max(maxJumpDist, 1d), 0.5);
 	}
 
 	@Override
 	public String getShortName() {
+		if (netConstraint)
+			return "NetSlipSeg";
 		if (normalized)
 			return "NormSlipSeg";
 		return "SlipSeg";
@@ -163,6 +182,8 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 
 	@Override
 	public String getName() {
+		if (netConstraint)
+			return "Net (Distance-Binned) Slip Rate Segmentation";
 		if (normalized)
 			return "Normalized Slip Rate Segmentation";
 		return "Slip Rate Segmentation";
@@ -170,6 +191,9 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 
 	@Override
 	public int getNumRows() {
+		if (netConstraint)
+			// one row for each distance bin
+			return distanceBins.size();
 		// one row for each unique section-to-section connection
 		return jumpRupturesMap.size();
 	}
@@ -208,6 +232,13 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 			double segRate = combRate * segFract;
 			Preconditions.checkState(Double.isFinite(segRate), "Non-finite segmentation rate: %s", segRate);
 			
+			int bin = -1;
+			if (netConstraint) {
+				bin = distanceBins.getClosestXIndex(jump.distance);
+				row = startRow + bin;
+				Preconditions.checkState(normalized, "Net constraint must be normalized");
+			}
+			
 			for (int rup : jumpRupturesMap.get(jump)) {
 				double[] slips = slipAlongModel.calcSlipOnSectionsForRup(rupSet, aveSlips, rup);
 				List<Integer> sects = rupSet.getSectionsIndicesForRup(rup);
@@ -226,17 +257,26 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 				double avgSlip = combiner.combine(slip1, slip2);
 				Preconditions.checkState(Double.isFinite(avgSlip),
 						"Non-finite average slip across jump: %s (from %s and %s)", avgSlip, slip1, slip2);
-				if (normalized)
-					setA(A, row, rup, weight*avgSlip/combRate);
-				else
-					setA(A, row, rup, weight*avgSlip);
+				if (netConstraint) {
+					double prev = getA(A, row, rup);
+					setA(A, row, rup, prev + weight*avgSlip/combRate);
+				} else {
+					if (normalized)
+						setA(A, row, rup, weight*avgSlip/combRate);
+					else
+						setA(A, row, rup, weight*avgSlip);
+				}
 				count++;
 			}
 			
-			if (normalized)
-				d[row] = weight*segFract;
-			else
-				d[row] = weight*segRate;
+			if (netConstraint) {
+				d[row] += weight*segFract;
+			} else {
+				if (normalized)
+					d[row] = weight*segFract;
+				else
+					d[row] = weight*segRate;
+			}
 			
 			row++;
 		}
