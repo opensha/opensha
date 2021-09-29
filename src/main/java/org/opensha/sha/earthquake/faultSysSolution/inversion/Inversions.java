@@ -10,13 +10,11 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RelativeBValueConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RelativeBValueConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
@@ -24,8 +22,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
@@ -34,21 +30,11 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.InversionModels;
-import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.CommandLineInversionRunner;
-import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
-import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.simulatedAnnealing.SerialSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
@@ -60,121 +46,8 @@ import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
 import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
 import scratch.UCERF3.simulatedAnnealing.params.NonnegativityConstraintType;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 
 public class Inversions {
-	
-//	public static class UCERF3 extends InversionConfiguration {
-//		
-//		private LogicTreeBranch<?> branch;
-//
-//		public UCERF3() {
-//			this(null);
-//		}
-//
-//		public UCERF3(LogicTreeBranch<?> branch) {
-//			if (branch != null)
-//				Preconditions.checkState(branch.isFullySpecified());
-//			this.branch = branch;
-//		}
-//
-//		@Override
-//		public InversionInputGenerator build(FaultSystemRupSet rupSet) {
-//			if (branch == null)
-//				branch = rupSet.requireModule(LogicTreeBranch.class);
-//			if (!rupSet.hasModule(AveSlipModule.class))
-//				rupSet.addModule(AveSlipModule.forModel(rupSet, branch.getValue(ScalingRelationships.class)));
-//			rupSet.addModule(branch.getValue(SlipAlongRuptureModels.class).getModel());
-//			if (!rupSet.hasModule(ModSectMinMags.class))
-//				rupSet.addModule(ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
-//							rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS)));
-//			FaultModels fm = branch.getValue(FaultModels.class);
-//			if (!rupSet.hasModule(PolygonFaultGridAssociations.class)) {
-//				PolygonFaultGridAssociations polys;
-//				if ((fm == FaultModels.FM3_1 && rupSet.getNumSections() == 2606)
-//						|| (fm == FaultModels.FM3_2 && rupSet.getNumSections() == 2664)) {
-//					try {
-//						polys = FaultPolyMgr.loadSerializedUCERF3(fm);
-//					} catch (IOException e) {
-//						throw ExceptionUtils.asRuntimeException(e);
-//					}
-//				} else {
-//					polys = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
-//				}
-//				rupSet.addModule(polys);
-//			}
-//			InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
-//			if (targetMFDs == null) {
-//				targetMFDs = new U3InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
-//						rupSet.requireModule(PolygonFaultGridAssociations.class));
-//				rupSet.addModule(targetMFDs);
-//			}
-//			rupSet.addModule(InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
-//							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), targetMFDs));
-//			UCERF3InversionConfiguration u3Config = UCERF3InversionConfiguration.forModel(
-//					InversionModels.CHAR_CONSTRAINED, rupSet, fm, targetMFDs);
-//			
-//			// get the paleo rate constraints
-//			try {
-//				List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
-//						fm, rupSet);
-//
-//				// get the improbability constraints
-//				double[] improbabilityConstraint = null; // none
-//
-//				// paleo probability model
-//				PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
-//
-//				List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-//
-//				return new UCERF3InversionInputGenerator(rupSet, u3Config, paleoRateConstraints, aveSlipConstraints,
-//						improbabilityConstraint, paleoProbabilityModel);
-//			} catch (IOException e) {
-//				throw ExceptionUtils.asRuntimeException(e);
-//			}
-//		}
-//		
-//	}
-//	
-//	public static class SlipRates extends InversionConfiguration {
-//		
-//		private double regularSlipWeight = 100;
-//		private double normalizedSlipWeight = 1;
-//
-//		@Override
-//		public InversionInputGenerator build(FaultSystemRupSet rupSet) {
-//			SlipRateInversionConstraint constraint = slipConstraint(rupSet, regularSlipWeight, normalizedSlipWeight);
-//			Preconditions.checkNotNull(constraint, "Must enable regular slip constraint and/or normalized");
-//			return new InversionInputGenerator(rupSet, List.of(constraint));
-//		}
-//		
-//	}
-//	
-//	public static abstract class InversionConfiguration {
-//		
-//		public abstract InversionInputGenerator build(FaultSystemRupSet rupSet);
-//	}
-//	
-//	private enum Presets {
-//		UCERF3 {
-//			@Override
-//			public InversionConfiguration build() {
-//				return new UCERF3(null);
-//			}
-//		},
-//		SLIP_RATES {
-//
-//			@Override
-//			public InversionConfiguration build() {
-//				return new SlipRates();
-//			}
-//			
-//		};
-//		
-//		public abstract InversionConfiguration build();
-//	}
 	
 	private static SlipRateInversionConstraint slipConstraint(FaultSystemRupSet rupSet, double regularSlipWeight, double normalizedSlipWeight) {
 		AveSlipModule aveSlipModule = rupSet.requireModule(AveSlipModule.class);
@@ -475,198 +348,214 @@ public class Inversions {
 	}
 
 	public static void main(String[] args) {
-		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, Inversions.class);
-		
 		try {
-			File rupSetFile = new File(cmd.getOptionValue("rupture-set"));
-			FaultSystemRupSet rupSet = FaultSystemRupSet.load(rupSetFile);
-			
-			File outputFile = new File(cmd.getOptionValue("output-file"));
-			
-			List<InversionConstraint> constraints = new ArrayList<>();
-			
-			if (cmd.hasOption("slip-constraint")) {
-				double weight = 1d;
-				double normWeight = 0d;
-				
-				if (cmd.hasOption("norm-slip-weight"))
-					normWeight = Double.parseDouble(cmd.getOptionValue("norm-slip-weight"));
-				if (cmd.hasOption("slip-weight"))
-					weight = Double.parseDouble(cmd.getOptionValue("slip-weight"));
-				
-				SlipRateInversionConstraint constr = slipConstraint(rupSet, weight, normWeight);
-				Preconditions.checkArgument(constr != null, "Must supply a positive slip rate weight");
-				
-				constraints.add(constr);
-			}
-			
-			if (cmd.hasOption("mfd-constraint")) {
-				double weight = 1d;
-
-				if (cmd.hasOption("mfd-weight"))
-					weight = Double.parseDouble(cmd.getOptionValue("mfd-weight"));
-				
-				double bValue = 1d;
-				if (cmd.hasOption("b-value"))
-					bValue = Double.parseDouble(cmd.getOptionValue("b-value"));
-				
-				InversionTargetMFDs targetMFDs;
-				
-				if (cmd.hasOption("infer-target-gr")) {
-					IncrementalMagFreqDist targetMFD = inferTargetGRFromSlipRates(rupSet, bValue);
-					
-					List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetMFD, null));
-					
-					targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetMFD, null, null, mfdConstraints, null);
-				} else if (cmd.hasOption("mfd-total-rate")) {
-					double minX = 0.1*Math.floor(rupSet.getMinMag()*10d);
-					double minTargetMag = minX;
-					if (cmd.hasOption("mfd-min-mag")) {
-						minTargetMag = Double.parseDouble(cmd.getOptionValue("mfd-min-mag"));
-						minX = Math.min(minX, minTargetMag);
-					}
-					
-					Preconditions.checkArgument(cmd.hasOption("mfd-total-rate"),
-							"MFD constraint enabled, but no --mfd-total-rate <rate> or --infer-target-gr");
-					double totRate = Double.parseDouble(cmd.getOptionValue("mfd-total-rate"));
-					
-					HistogramFunction tempHist = HistogramFunction.getEncompassingHistogram(minX, rupSet.getMaxMag(), 0.1d);
-					GutenbergRichterMagFreqDist targetGR = new GutenbergRichterMagFreqDist(
-							tempHist.getMinX(), tempHist.getMaxX(), tempHist.size());
-					targetGR.scaleToCumRate(minTargetMag, totRate);
-					
-					List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetGR, null));
-					
-					targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetGR, null, null, mfdConstraints, null);
-				} else {
-					Preconditions.checkState(rupSet.hasModule(InversionTargetMFDs.class),
-							"MFD Constraint enabled, but no target MFD specified. Rupture Set must either already have "
-							+ "target MFDs attached, or MFD should be specified via --infer-target-gr or --mfd-total-rate <rate>.");
-					targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
-				}
-				
-				if (!rupSet.hasModule(InversionTargetMFDs.class))
-					rupSet.addModule(targetMFDs);
-				
-				List<? extends MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_Constraints();
-				
-				for (MFD_InversionConstraint constr : mfdConstraints)
-					System.out.println("MFD Constraint for region "
-							+(constr.getRegion() == null ? "null" : constr.getRegion().getName())
-							+":\n"+constr.getMagFreqDist());
-				constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, mfdConstraints, null));
-			}
-			
-			if (cmd.hasOption("rel-gr-constraint")) {
-				double weight = 1d;
-
-				if (cmd.hasOption("mfd-weight"))
-					weight = Double.parseDouble(cmd.getOptionValue("mfd-weight"));
-				
-				double bValue = 1d;
-				if (cmd.hasOption("b-value"))
-					bValue = Double.parseDouble(cmd.getOptionValue("b-value"));
-				
-				constraints.add(new RelativeBValueConstraint(rupSet, bValue, weight));
-			}
-			
-			// doesn't work well, and slip rate constraint handles moment anyway
-//			if (cmd.hasOption("moment-rate-constraint")) {
-//				double targetMomentRate;
-//				if (cmd.hasOption("target-moment-rate"))
-//					targetMomentRate = Double.parseDouble(cmd.getOptionValue("target-moment-rate"));
-//				else
-//					targetMomentRate = rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate();
-//				System.out.println("Target moment rate: "+targetMomentRate+" N-m/yr");
-//				
-//				double weight;
-//				if (cmd.hasOption("moment-rate-weight"))
-//					weight = Double.parseDouble(cmd.getOptionValue("moment-rate-weight"));
-//				else
-//					weight = 1e-5;
-//				constraints.add(new TotalMomentInversionConstraint(rupSet, weight, targetMomentRate));
-//			}
-			
-			if (cmd.hasOption("event-rate-constraint")) {
-				double targetEventRate = Double.parseDouble(cmd.getOptionValue("event-rate-constraint"));
-				System.out.println("Target event rate: "+targetEventRate+" /yr");
-				
-				double weight = 1d;
-				if (cmd.hasOption("event-rate-weight"))
-					weight = Double.parseDouble(cmd.getOptionValue("event-rate-weight"));
-				constraints.add(new TotalRateInversionConstraint(rupSet, weight, targetEventRate));
-			}
-			
-			if (cmd.hasOption("slip-seg-constraint") || cmd.hasOption("norm-slip-seg-constraint")
-					|| cmd.hasOption("net-slip-seg-constraint")) {
-				System.out.println("Adding slip rate segmentation constraints");
-				double weight = 1d;
-				if (cmd.hasOption("slip-seg-weight"))
-					weight = Double.parseDouble(cmd.getOptionValue("slip-seg-weight"));
-				
-				double r0 = Shaw07JumpDistProb.R0_DEFAULT;
-				if (cmd.hasOption("shaw-r0"))
-					r0 = Double.parseDouble(cmd.getOptionValue("shaw-r0"));
-				
-				double a = 1d;
-				Shaw07JumpDistSegModel segModel = new Shaw07JumpDistSegModel(1d, r0);
-				
-				RateCombiner combiner = RateCombiner.MIN; // TODO: make selectable
-				
-				boolean inequality = cmd.hasOption("slip-seg-ineq");
-				
-				boolean doNormalized = cmd.hasOption("norm-slip-seg-constraint");
-				boolean doRegular = cmd.hasOption("slip-seg-constraint");
-				boolean doNet = cmd.hasOption("net-slip-seg-constraint");
-				
-				if (doNet)
-					constraints.add(new SlipRateSegmentationConstraint(
-							rupSet, segModel, combiner, weight, true, inequality, true));
-				if (doNormalized)
-					constraints.add(new SlipRateSegmentationConstraint(
-							rupSet, segModel, combiner, weight, true, inequality, false));
-				if (doRegular)
-					constraints.add(new SlipRateSegmentationConstraint(
-							rupSet, segModel, combiner, weight, false, inequality, false));
-			}
-			
-			Preconditions.checkState(!constraints.isEmpty(), "No constraints specified.");
-			
-			InversionInputGenerator inputs = new InversionInputGenerator(rupSet, constraints);
-			inputs.generateInputs(true);
-			
-			CompletionCriteria completion = getCompletion(cmd.getOptionValue("completion"));
-			if (completion == null)
-				throw new IllegalArgumentException("Must supply total inversion time or iteration count");
-			
-			ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
-			
-			SimulatedAnnealing sa = configSA(cmd, rupSet, inputs);
-			
-			System.out.println("Annealing!");
-			sa.iterate(progress);
-			
-			System.out.println("DONE. Building solution...");
-			double[] rawSol = sa.getBestSolution();
-			double[] rates = inputs.adjustSolutionForWaterLevel(rawSol);
-			
-			FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
-			// add inversion progress
-			sol.addModule(progress.getProgress());
-			// add water level rates
-			if (inputs.getWaterLevelRates() != null)
-				sol.addModule(new WaterLevelRates(inputs.getWaterLevelRates()));
-			if (inputs.hasInitialSolution())
-				sol.addModule(new InitialSolution(inputs.getInitialSolution()));
-			
-			// write solution
-			sol.write(outputFile);
+			run(args);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
+	}
+	
+	public static FaultSystemSolution run(String[] args) throws IOException {
+		return run(args, null);
+	}
+	
+	public static FaultSystemSolution run(String[] args, List<InversionConstraint> constraints) throws IOException {
+		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, Inversions.class);
 		
+		File rupSetFile = new File(cmd.getOptionValue("rupture-set"));
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(rupSetFile);
 		
+		if (constraints == null)
+			constraints = new ArrayList<>();
+		else if (!constraints.isEmpty())
+			constraints = new ArrayList<>(constraints);
+		
+		File outputFile = new File(cmd.getOptionValue("output-file"));
+		
+		if (cmd.hasOption("slip-constraint")) {
+			double weight = 1d;
+			double normWeight = 0d;
+			
+			if (cmd.hasOption("norm-slip-weight"))
+				normWeight = Double.parseDouble(cmd.getOptionValue("norm-slip-weight"));
+			if (cmd.hasOption("slip-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("slip-weight"));
+			
+			SlipRateInversionConstraint constr = slipConstraint(rupSet, weight, normWeight);
+			Preconditions.checkArgument(constr != null, "Must supply a positive slip rate weight");
+			
+			constraints.add(constr);
+		}
+		
+		if (cmd.hasOption("mfd-constraint")) {
+			double weight = 1d;
+
+			if (cmd.hasOption("mfd-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("mfd-weight"));
+			
+			double bValue = 1d;
+			if (cmd.hasOption("b-value"))
+				bValue = Double.parseDouble(cmd.getOptionValue("b-value"));
+			
+			InversionTargetMFDs targetMFDs;
+			
+			if (cmd.hasOption("infer-target-gr")) {
+				IncrementalMagFreqDist targetMFD = inferTargetGRFromSlipRates(rupSet, bValue);
+				
+				List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetMFD, null));
+				
+				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetMFD, null, null, mfdConstraints, null);
+			} else if (cmd.hasOption("mfd-total-rate")) {
+				double minX = 0.1*Math.floor(rupSet.getMinMag()*10d);
+				double minTargetMag = minX;
+				if (cmd.hasOption("mfd-min-mag")) {
+					minTargetMag = Double.parseDouble(cmd.getOptionValue("mfd-min-mag"));
+					minX = Math.min(minX, minTargetMag);
+				}
+				
+				Preconditions.checkArgument(cmd.hasOption("mfd-total-rate"),
+						"MFD constraint enabled, but no --mfd-total-rate <rate> or --infer-target-gr");
+				double totRate = Double.parseDouble(cmd.getOptionValue("mfd-total-rate"));
+				
+				HistogramFunction tempHist = HistogramFunction.getEncompassingHistogram(minX, rupSet.getMaxMag(), 0.1d);
+				GutenbergRichterMagFreqDist targetGR = new GutenbergRichterMagFreqDist(
+						tempHist.getMinX(), tempHist.getMaxX(), tempHist.size());
+				targetGR.scaleToCumRate(minTargetMag, totRate);
+				
+				List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetGR, null));
+				
+				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetGR, null, null, mfdConstraints, null);
+			} else {
+				Preconditions.checkState(rupSet.hasModule(InversionTargetMFDs.class),
+						"MFD Constraint enabled, but no target MFD specified. Rupture Set must either already have "
+						+ "target MFDs attached, or MFD should be specified via --infer-target-gr or --mfd-total-rate <rate>.");
+				targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+			}
+			
+			if (!rupSet.hasModule(InversionTargetMFDs.class))
+				rupSet.addModule(targetMFDs);
+			
+			List<? extends MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_Constraints();
+			
+			for (MFD_InversionConstraint constr : mfdConstraints)
+				System.out.println("MFD Constraint for region "
+						+(constr.getRegion() == null ? "null" : constr.getRegion().getName())
+						+":\n"+constr.getMagFreqDist());
+			constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, mfdConstraints, null));
+		}
+		
+		if (cmd.hasOption("rel-gr-constraint")) {
+			double weight = 1d;
+
+			if (cmd.hasOption("mfd-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("mfd-weight"));
+			
+			double bValue = 1d;
+			if (cmd.hasOption("b-value"))
+				bValue = Double.parseDouble(cmd.getOptionValue("b-value"));
+			
+			constraints.add(new RelativeBValueConstraint(rupSet, bValue, weight));
+		}
+		
+		// doesn't work well, and slip rate constraint handles moment anyway
+//		if (cmd.hasOption("moment-rate-constraint")) {
+//			double targetMomentRate;
+//			if (cmd.hasOption("target-moment-rate"))
+//				targetMomentRate = Double.parseDouble(cmd.getOptionValue("target-moment-rate"));
+//			else
+//				targetMomentRate = rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate();
+//			System.out.println("Target moment rate: "+targetMomentRate+" N-m/yr");
+//			
+//			double weight;
+//			if (cmd.hasOption("moment-rate-weight"))
+//				weight = Double.parseDouble(cmd.getOptionValue("moment-rate-weight"));
+//			else
+//				weight = 1e-5;
+//			constraints.add(new TotalMomentInversionConstraint(rupSet, weight, targetMomentRate));
+//		}
+		
+		if (cmd.hasOption("event-rate-constraint")) {
+			double targetEventRate = Double.parseDouble(cmd.getOptionValue("event-rate-constraint"));
+			System.out.println("Target event rate: "+targetEventRate+" /yr");
+			
+			double weight = 1d;
+			if (cmd.hasOption("event-rate-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("event-rate-weight"));
+			constraints.add(new TotalRateInversionConstraint(rupSet, weight, targetEventRate));
+		}
+		
+		if (cmd.hasOption("slip-seg-constraint") || cmd.hasOption("norm-slip-seg-constraint")
+				|| cmd.hasOption("net-slip-seg-constraint")) {
+			System.out.println("Adding slip rate segmentation constraints");
+			double weight = 1d;
+			if (cmd.hasOption("slip-seg-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("slip-seg-weight"));
+			
+			double r0 = Shaw07JumpDistProb.R0_DEFAULT;
+			if (cmd.hasOption("shaw-r0"))
+				r0 = Double.parseDouble(cmd.getOptionValue("shaw-r0"));
+			
+			double a = 1d;
+			Shaw07JumpDistSegModel segModel = new Shaw07JumpDistSegModel(a, r0);
+			
+			RateCombiner combiner = RateCombiner.MIN; // TODO: make selectable?
+			
+			boolean inequality = cmd.hasOption("slip-seg-ineq");
+			
+			boolean doNormalized = cmd.hasOption("norm-slip-seg-constraint");
+			boolean doRegular = cmd.hasOption("slip-seg-constraint");
+			boolean doNet = cmd.hasOption("net-slip-seg-constraint");
+			
+			if (doNet)
+				constraints.add(new SlipRateSegmentationConstraint(
+						rupSet, segModel, combiner, weight, true, inequality, true));
+			if (doNormalized)
+				constraints.add(new SlipRateSegmentationConstraint(
+						rupSet, segModel, combiner, weight, true, inequality, false));
+			if (doRegular)
+				constraints.add(new SlipRateSegmentationConstraint(
+						rupSet, segModel, combiner, weight, false, inequality, false));
+		}
+		
+		Preconditions.checkState(!constraints.isEmpty(), "No constraints specified.");
+		
+		CompletionCriteria completion = getCompletion(cmd.getOptionValue("completion"));
+		if (completion == null)
+			throw new IllegalArgumentException("Must supply total inversion time or iteration count");
+		
+		InversionInputGenerator inputs = new InversionInputGenerator(rupSet, constraints);
+		inputs.generateInputs(true);
+		
+		ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
+		
+		SimulatedAnnealing sa = configSA(cmd, rupSet, inputs);
+		
+		System.out.println("Annealing!");
+		sa.iterate(progress);
+		
+		System.out.println("DONE. Building solution...");
+		double[] rawSol = sa.getBestSolution();
+		double[] rates = inputs.adjustSolutionForWaterLevel(rawSol);
+		
+		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		// add inversion progress
+		sol.addModule(progress.getProgress());
+		// add water level rates
+		if (inputs.getWaterLevelRates() != null)
+			sol.addModule(new WaterLevelRates(inputs.getWaterLevelRates()));
+		if (inputs.hasInitialSolution())
+			sol.addModule(new InitialSolution(inputs.getInitialSolution()));
+		
+		String info = "Fault System Solution generated with OpenSHA Fault System Tools ("
+				+ "https://github.com/opensha/opensha-fault-sys-tools), using the following command:"
+				+ "\n\nfst_inversion_runner.sh "+Joiner.on(" ").join(args);
+		sol.setInfoString(info);
+		
+		// write solution
+		sol.write(outputFile);
+		
+		return sol;
 	}
 
 }
