@@ -52,7 +52,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChangeListener {
@@ -115,7 +115,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	
 	private class ReadOptimizedBranchComparator implements Comparator<LogicTreeBranch<? extends LogicTreeNode>> {
 		
-		List<Class<? extends LogicTreeBranchNode<?>>> sortOrderClasses;
+		List<Class<? extends U3LogicTreeBranchNode<?>>> sortOrderClasses;
 		
 		public ReadOptimizedBranchComparator() {
 			sortOrderClasses = new ArrayList<>();
@@ -127,7 +127,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		public int compare(LogicTreeBranch<? extends LogicTreeNode> b1, LogicTreeBranch<? extends LogicTreeNode> b2) {
 			Preconditions.checkState(b1.size() == sortOrderClasses.size());
 			Preconditions.checkState(b2.size() == sortOrderClasses.size());
-			for (Class<? extends LogicTreeBranchNode<?>> clazz : sortOrderClasses) {
+			for (Class<? extends U3LogicTreeBranchNode<?>> clazz : sortOrderClasses) {
 				LogicTreeNode val = b1.getValueUnchecked(clazz);
 				LogicTreeNode oval = b2.getValueUnchecked(clazz);
 				int cmp = val.getShortName().compareTo(oval.getShortName());

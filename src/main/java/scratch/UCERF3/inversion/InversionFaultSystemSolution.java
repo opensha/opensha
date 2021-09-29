@@ -47,7 +47,7 @@ import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.OLD_UCERF3_MFD_ConstraintFetcher;
@@ -261,14 +261,14 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * @return
 	 */
 	private U3LogicTreeBranch loadBranch(Map<String, String> props) {
-		List<Class<? extends LogicTreeBranchNode<?>>> classes = U3LogicTreeBranch.getLogicTreeNodeClasses();
+		List<Class<? extends U3LogicTreeBranchNode<?>>> classes = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		
-		List<LogicTreeBranchNode<?>> values = Lists.newArrayList();
+		List<U3LogicTreeBranchNode<?>> values = Lists.newArrayList();
 		
 		for (String key : props.keySet()) {
 			// find the associated class
-			Class<? extends LogicTreeBranchNode<?>> clazz = null;
-			for (Class<? extends LogicTreeBranchNode<?>> testClass : classes) {
+			Class<? extends U3LogicTreeBranchNode<?>> clazz = null;
+			for (Class<? extends U3LogicTreeBranchNode<?>> testClass : classes) {
 				String className = ClassUtils.getClassNameWithoutPackage(testClass);
 				if (className.startsWith(key)) {
 					clazz = testClass;
@@ -280,8 +280,8 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			String valueName = props.get(key);
 			if (valueName.equals("RATE_10p6"))
 				valueName = "RATE_10p0";
-			LogicTreeBranchNode<?> value = null;
-			for (LogicTreeBranchNode<?> testValue : clazz.getEnumConstants()) {
+			U3LogicTreeBranchNode<?> value = null;
+			for (U3LogicTreeBranchNode<?> testValue : clazz.getEnumConstants()) {
 				if (testValue.name().equals(valueName)) {
 					value = testValue;
 					break;

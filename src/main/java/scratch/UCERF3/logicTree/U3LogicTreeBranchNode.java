@@ -7,7 +7,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 
-public interface LogicTreeBranchNode<E extends Enum<E>> extends LogicTreeNode, Serializable {
+public interface U3LogicTreeBranchNode<E extends Enum<E>> extends LogicTreeNode, Serializable {
 	
 	/**
 	 * This returns the relative weight of the logic tree branch. Now dependent on Inversion Model as weights may change.

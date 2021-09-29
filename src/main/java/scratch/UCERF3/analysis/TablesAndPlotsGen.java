@@ -64,7 +64,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -283,7 +283,7 @@ public class TablesAndPlotsGen {
 		CSVFile<String> csv = new CSVFile<String>(true);
 		
 		List<String> header = Lists.newArrayList();
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses())
+		for (Class<? extends U3LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses())
 			header.add(ClassUtils.getClassNameWithoutPackage(clazz));
 		header.add("A Priori Branch Weight");
 		header.add(FAULT_SUPRA_TARGET);

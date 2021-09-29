@@ -23,7 +23,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -58,7 +58,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @return
 	 * @throws IOException 
 	 */
-	public static InversionFaultSystemRupSet cachedForBranch(LogicTreeBranchNode<?>... branchNodes) throws IOException {
+	public static InversionFaultSystemRupSet cachedForBranch(U3LogicTreeBranchNode<?>... branchNodes) throws IOException {
 		return cachedForBranch(false, branchNodes);
 	}
 	
@@ -74,7 +74,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @return
 	 * @throws IOException 
 	 */
-	public static InversionFaultSystemRupSet cachedForBranch(boolean forceRebuild, LogicTreeBranchNode<?>... branchNodes) throws IOException {
+	public static InversionFaultSystemRupSet cachedForBranch(boolean forceRebuild, U3LogicTreeBranchNode<?>... branchNodes) throws IOException {
 		return cachedForBranch(rup_set_store_dir, forceRebuild, branchNodes);
 	}
 	
@@ -91,7 +91,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * @throws IOException 
 	 */
 	public static InversionFaultSystemRupSet cachedForBranch(
-			File directory, boolean forceRebuild, LogicTreeBranchNode<?>... branchNodes)
+			File directory, boolean forceRebuild, U3LogicTreeBranchNode<?>... branchNodes)
 			throws IOException {
 		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(branchNodes);
 		FaultModels faultModel = branch.getValue(FaultModels.class);
@@ -128,7 +128,7 @@ public class InversionFaultSystemRupSetFactory {
 	 * specified by <code>LogicTreeBranch.DEFAULT</code>
 	 * @return
 	 */
-	public static InversionFaultSystemRupSet forBranch(LogicTreeBranchNode<?>... branchesChoices) {
+	public static InversionFaultSystemRupSet forBranch(U3LogicTreeBranchNode<?>... branchesChoices) {
 		return forBranch(UCERF3PlausibilityConfig.getDefault(), DEFAULT_ASEIS_VALUE, branchesChoices);
 	}
 	
@@ -156,7 +156,7 @@ public class InversionFaultSystemRupSetFactory {
 	public static InversionFaultSystemRupSet forBranch(
 			UCERF3PlausibilityConfig laughTest,
 			double defaultAseismicityValue,
-			LogicTreeBranchNode<?>... branchesChoices) {
+			U3LogicTreeBranchNode<?>... branchesChoices) {
 		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(branchesChoices);
 		return forBranch(laughTest, defaultAseismicityValue, branch);
 	}
@@ -243,7 +243,7 @@ public class InversionFaultSystemRupSetFactory {
 			info += "\n\n";
 		
 		info += "\n****** Logic Tree Branch ******";
-		for (LogicTreeBranchNode<?> node : branch)
+		for (U3LogicTreeBranchNode<?> node : branch)
 			info += "\n"+ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(node.getClass()))
 							+": "+node.name();
 		info += "\n*******************************";

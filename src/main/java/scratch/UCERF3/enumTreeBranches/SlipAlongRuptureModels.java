@@ -3,9 +3,9 @@ package scratch.UCERF3.enumTreeBranches;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
-public enum SlipAlongRuptureModels implements LogicTreeBranchNode<SlipAlongRuptureModels> {
+public enum SlipAlongRuptureModels implements U3LogicTreeBranchNode<SlipAlongRuptureModels> {
 	// DO NOT RENAME THESE - they are used in rupture set files
 	
 	CHAR(		"Characteristic",	"Char",	0d, null), // "Characteristic (Dsr=Ds)"

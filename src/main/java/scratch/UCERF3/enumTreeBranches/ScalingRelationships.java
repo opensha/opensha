@@ -23,13 +23,13 @@ import org.opensha.commons.gui.plot.GraphWindow;
 
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
 /**
  * @author field
  *
  */
-public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelationships>, RupSetScalingRelationship {
+public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelationships>, RupSetScalingRelationship {
 		
 	
 	AVE_UCERF2("Average UCERF2", "AveU2") {

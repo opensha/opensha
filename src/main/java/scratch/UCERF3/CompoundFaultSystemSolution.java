@@ -43,7 +43,7 @@ import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.BatchPlotGen;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -221,7 +221,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	 * 
 	 * null entry in map means ALL!
 	 */
-	private static Map<String, List<Class<? extends LogicTreeBranchNode<?>>>> dependencyMap;
+	private static Map<String, List<Class<? extends U3LogicTreeBranchNode<?>>>> dependencyMap;
 	static {
 		dependencyMap = Maps.newHashMap();
 		
@@ -257,10 +257,10 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		dependencyMap.put("cluster_ruptures.json", null);
 	}
 	
-	private static List<Class<? extends LogicTreeBranchNode<?>>> buildList(
-			Class<? extends LogicTreeBranchNode<?>>... vals) {
-		List<Class<? extends LogicTreeBranchNode<?>>> list = Lists.newArrayList();
-		for (Class<? extends LogicTreeBranchNode<?>> val : vals)
+	private static List<Class<? extends U3LogicTreeBranchNode<?>>> buildList(
+			Class<? extends U3LogicTreeBranchNode<?>>... vals) {
+		List<Class<? extends U3LogicTreeBranchNode<?>>> list = Lists.newArrayList();
+		for (Class<? extends U3LogicTreeBranchNode<?>> val : vals)
 			list.add(val);
 		return list;
 	}
@@ -309,11 +309,11 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 	 */
 	public static String getRemappedName(String name, U3LogicTreeBranch branch) {
 		String nodeStr = "";
-		List<Class<? extends LogicTreeBranchNode<?>>> dependencies = dependencyMap.get(name);
+		List<Class<? extends U3LogicTreeBranchNode<?>>> dependencies = dependencyMap.get(name);
 		if (dependencies == null)
 			nodeStr = branch.buildFileName()+"_";
 		else
-			for (Class<? extends LogicTreeBranchNode<?>> clazz : dependencies)
+			for (Class<? extends U3LogicTreeBranchNode<?>> clazz : dependencies)
 				nodeStr += branch.getValueUnchecked(clazz).encodeChoiceString()+"_";
 		return nodeStr+name;
 	}

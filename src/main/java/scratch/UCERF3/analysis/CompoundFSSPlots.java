@@ -141,7 +141,7 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.DeformationModelFileParser;
@@ -1199,7 +1199,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				Map<String, PlotSpec> histSpecs = sensHist.getStackedHistPlots(true, delta);
 				List<File> histPDFs = Lists.newArrayList();
 				List<String> names = Lists.newArrayList();
-				for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
+				for (Class<? extends U3LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 					if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 						continue;
 					names.add(ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(clazz)));
@@ -3093,7 +3093,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 					
 					List<File> histPDFs = Lists.newArrayList();
 					List<String> names = Lists.newArrayList();
-					for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
+					for (Class<? extends U3LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 						if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 							continue;
 						names.add(ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(clazz)));
@@ -5986,7 +5986,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			// Carriso table
 			carrizoCSV = new CSVFile<String>(true);
 			List<String> header = Lists.newArrayList();
-			for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses())
+			for (Class<? extends U3LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses())
 				header.add(ClassUtils.getClassNameWithoutPackage(clazz));
 			header.add("A Priori Branch Weight");
 			header.add("Carrizo Paleo Observable Rate");
@@ -6038,7 +6038,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			String myPrefix = prefix;
 			U3LogicTreeBranch runningBranch = plot.runningBranches.get(fm);
 			for (int i=0; i<runningBranch.size(); i++) {
-				LogicTreeBranchNode<?> val = runningBranch.getValue(i);
+				U3LogicTreeBranchNode<?> val = runningBranch.getValue(i);
 				if (val != null && val.getRelativeWeight(runningBranch.getValue(InversionModels.class)) < 1d) {
 					if (!myPrefix.isEmpty())
 						myPrefix += "_";
@@ -6080,7 +6080,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			
 			info += "****** Logic Tree Branch ******";
 			for (int i=0; i<runningBranch.size(); i++) {
-				LogicTreeBranchNode<?> node = runningBranch.getValue(i);
+				U3LogicTreeBranchNode<?> node = runningBranch.getValue(i);
 				info += "\n"+ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(
 						U3LogicTreeBranch.getLogicTreeNodeClasses().get(i)))+": ";
 				if (node == null)

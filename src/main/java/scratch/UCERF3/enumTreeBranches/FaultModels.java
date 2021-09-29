@@ -27,11 +27,11 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
-public enum FaultModels implements LogicTreeBranchNode<FaultModels> {
+public enum FaultModels implements U3LogicTreeBranchNode<FaultModels> {
 
 	FM2_1(	"Fault Model 2.1",	41,		0d),
 	FM3_1(	"Fault Model 3.1",	101,	0.5d),

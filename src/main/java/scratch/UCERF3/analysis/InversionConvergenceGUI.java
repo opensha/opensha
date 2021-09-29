@@ -63,7 +63,7 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
@@ -319,11 +319,11 @@ ParameterChangeListener {
 	}
 	
 	private VariableLogicTreeBranch getCurrentBranch() {
-		List<LogicTreeBranchNode<?>> nodes = Lists.newArrayList();
+		List<U3LogicTreeBranchNode<?>> nodes = Lists.newArrayList();
 		for (Parameter<?> param : enumParams) {
 			if (param.getValue() != null) {
 				EnumParameter<?> enumParam = (EnumParameter<?>) param;
-				LogicTreeBranchNode<?> node = (LogicTreeBranchNode<?>) enumParam.getValue();
+				U3LogicTreeBranchNode<?> node = (U3LogicTreeBranchNode<?>) enumParam.getValue();
 				nodes.add(node);
 			}
 		}
@@ -341,7 +341,7 @@ ParameterChangeListener {
 			}
 		}
 		return new VariableLogicTreeBranch(U3LogicTreeBranch.fromValues(
-				false, nodes.toArray(new LogicTreeBranchNode[0])), variations);
+				false, nodes.toArray(new U3LogicTreeBranchNode[0])), variations);
 	}
 	
 	private void buildFunctions(VariableLogicTreeBranch branch) {
@@ -363,7 +363,7 @@ ParameterChangeListener {
 			ArrayList<String> diffNames = new ArrayList<String>();
 
 			for (int i=0; i<branch.size(); i++) {
-				LogicTreeBranchNode<?> node = branch.getValue(i);
+				U3LogicTreeBranchNode<?> node = branch.getValue(i);
 				if (node == null) {
 					if (candidate.getValue(i) == null)
 						System.out.println("WFT? Class: "+U3LogicTreeBranch.getLogicTreeNodeClasses().get(i));

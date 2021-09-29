@@ -12,7 +12,7 @@ public class UCERF3p2BranchWeightProvider implements BranchWeightProvider {
 		double wt = 1;
 		InversionModels im = branch.getValue(InversionModels.class);
 		// special cases
-		for (LogicTreeBranchNode<?> node : branch) {
+		for (U3LogicTreeBranchNode<?> node : branch) {
 			double subWt;
 			if (node instanceof DeformationModels) {
 				// special case for DMs

@@ -19,7 +19,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 /**
@@ -185,7 +185,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	public static void main(String[] args) {
-		LogicTree<LogicTreeBranchNode<?>> fullU3 = buildExhaustive(U3LogicTreeBranch.getLogicTreeLevels(), true);
+		LogicTree<U3LogicTreeBranchNode<?>> fullU3 = buildExhaustive(U3LogicTreeBranch.getLogicTreeLevels(), true);
 		System.out.println("Built "+fullU3.branches.size()+" U3 branches. Weight: "+(float)fullU3.getTotalWeight());
 		System.out.println("FM3.1 branches: "+fullU3.matchingAll(FaultModels.FM3_1).branches.size());
 		System.out.println("FM3.1or2 branches: "+fullU3.matchingAny(FaultModels.FM3_1, FaultModels.FM3_2).branches.size());

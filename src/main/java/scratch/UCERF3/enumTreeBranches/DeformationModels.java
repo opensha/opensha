@@ -16,12 +16,12 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
-public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> {
+public enum DeformationModels implements U3LogicTreeBranchNode<DeformationModels> {
 	
 	//						Name					ShortName	Weight	FaultModel			File
 	// UCERF2

@@ -13,7 +13,7 @@ import com.google.common.primitives.Doubles;
 
 import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.griddedSeismicity.GridReader;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.SmoothSeismicitySpatialPDF_Fetcher;
@@ -25,7 +25,7 @@ import scratch.UCERF3.utils.SmoothSeismicitySpatialPDF_Fetcher;
  * @version $Id:$
  */
 @SuppressWarnings("javadoc")
-public enum SpatialSeisPDF implements LogicTreeBranchNode<SpatialSeisPDF> {
+public enum SpatialSeisPDF implements U3LogicTreeBranchNode<SpatialSeisPDF> {
 	
 	UCERF2("UCERF2",												"U2",		0.5d,	0.25d) {
 		@Override public double[] getPDF() {

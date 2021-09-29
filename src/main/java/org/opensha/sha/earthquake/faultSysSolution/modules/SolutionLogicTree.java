@@ -39,7 +39,7 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 /**
@@ -111,10 +111,10 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 			if (branch instanceof U3LogicTreeBranch)
 				return (U3LogicTreeBranch)branch;
 			Preconditions.checkState(branch.size() >= U3LogicTreeBranch.getLogicTreeLevels().size());
-			List<LogicTreeBranchNode<?>> vals = new ArrayList<>();
+			List<U3LogicTreeBranchNode<?>> vals = new ArrayList<>();
 			for (LogicTreeNode val : branch) {
-				Preconditions.checkState(val instanceof LogicTreeBranchNode);
-				vals.add((LogicTreeBranchNode<?>) val);
+				Preconditions.checkState(val instanceof U3LogicTreeBranchNode);
+				vals.add((U3LogicTreeBranchNode<?>) val);
 			}
 			return U3LogicTreeBranch.fromValues(vals);
 		}

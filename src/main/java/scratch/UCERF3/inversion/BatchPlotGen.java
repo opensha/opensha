@@ -40,7 +40,7 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
@@ -147,7 +147,7 @@ public class BatchPlotGen {
 
 		VariableLogicTreeBranch branch1 = misfitsMap.keySet().iterator().next();
 
-		for (LogicTreeBranchNode<?> node : branch1)
+		for (U3LogicTreeBranchNode<?> node : branch1)
 			header.add(ClassUtils.getClassNameWithoutPackage(node.getClass()));
 
 		if (branch1.getVariations() != null)
@@ -169,7 +169,7 @@ public class BatchPlotGen {
 
 			List<String> line = Lists.newArrayList();
 
-			for (LogicTreeBranchNode<?> node : branch)
+			for (U3LogicTreeBranchNode<?> node : branch)
 				line.add(node.getShortName());
 
 			if (branch.getVariations() != null)

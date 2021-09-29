@@ -1,8 +1,8 @@
 package scratch.UCERF3.enumTreeBranches;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
-public enum MaxMagOffFault implements LogicTreeBranchNode<MaxMagOffFault> {
+public enum MaxMagOffFault implements U3LogicTreeBranchNode<MaxMagOffFault> {
 	
 	MAG_7p3(7.3, 0.1d, 0.1d),
 	MAG_7p6(7.6, 0.8d, 0.8d),

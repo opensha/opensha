@@ -35,7 +35,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
  * @author kevin
  *
  */
-public class U3LogicTreeBranch extends LogicTreeBranch<LogicTreeBranchNode<?>>
+public class U3LogicTreeBranch extends LogicTreeBranch<U3LogicTreeBranchNode<?>>
 implements XMLSaveable {
 //public class LogicTreeBranch implements Iterable<LogicTreeBranchNode<? extends Enum<?>>>,
 //	Cloneable, Serializable, Comparable<LogicTreeBranch>, XMLSaveable {
@@ -73,14 +73,14 @@ implements XMLSaveable {
 				MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF2);
 	}
 	
-	private static List<Class<? extends LogicTreeBranchNode<?>>> logicTreeClasses;
-	private static List<LogicTreeLevel<? extends LogicTreeBranchNode<?>>> levels;
+	private static List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeClasses;
+	private static List<LogicTreeLevel<? extends U3LogicTreeBranchNode<?>>> levels;
 	
 	/**
 	 * List of Logic Tree node classes
 	 * @return
 	 */
-	public static synchronized List<Class<? extends LogicTreeBranchNode<?>>> getLogicTreeNodeClasses() {
+	public static synchronized List<Class<? extends U3LogicTreeBranchNode<?>>> getLogicTreeNodeClasses() {
 		if (logicTreeClasses == null) {
 			logicTreeClasses = Lists.newArrayList();
 			
@@ -100,12 +100,12 @@ implements XMLSaveable {
 		return logicTreeClasses;
 	}
 		
-	public static synchronized List<LogicTreeLevel<? extends LogicTreeBranchNode<?>>> getLogicTreeLevels() {
+	public static synchronized List<LogicTreeLevel<? extends U3LogicTreeBranchNode<?>>> getLogicTreeLevels() {
 		if (levels == null) {
 			levels = new ArrayList<>();
-			for (Class<? extends LogicTreeBranchNode<?>> clazz : getLogicTreeNodeClasses()) {
-				LogicTreeBranchNode<?> value0 = clazz.getEnumConstants()[0];
-				LogicTreeLevel<LogicTreeBranchNode<?>> level = LogicTreeLevel.forEnumUnchecked(
+			for (Class<? extends U3LogicTreeBranchNode<?>> clazz : getLogicTreeNodeClasses()) {
+				U3LogicTreeBranchNode<?> value0 = clazz.getEnumConstants()[0];
+				LogicTreeLevel<U3LogicTreeBranchNode<?>> level = LogicTreeLevel.forEnumUnchecked(
 						value0, value0.getBranchLevelName(), value0.getShortBranchLevelName());
 				levels.add(level);
 			}
@@ -114,13 +114,13 @@ implements XMLSaveable {
 		return levels;
 	}
 	
-	private static Table<Class<? extends LogicTreeBranchNode<?>>, InversionModels, Double> classWeightTotals;
+	private static Table<Class<? extends U3LogicTreeBranchNode<?>>, InversionModels, Double> classWeightTotals;
 	
 	protected U3LogicTreeBranch(U3LogicTreeBranch branch) {
 		super(branch);
 	}
 	
-	protected U3LogicTreeBranch(List<LogicTreeBranchNode<?>> branch) {
+	protected U3LogicTreeBranch(List<U3LogicTreeBranchNode<?>> branch) {
 		super(getLogicTreeLevels(), branch);
 	}
 	
@@ -140,7 +140,7 @@ implements XMLSaveable {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E extends LogicTreeBranchNode<?>> Class<E> getEnumEnclosingClass(Class<E> clazz) {
+	public static <E extends U3LogicTreeBranchNode<?>> Class<E> getEnumEnclosingClass(Class<E> clazz) {
 		if (!clazz.isEnum())
 			clazz = (Class<E>) clazz.getEnclosingClass();
 		return clazz;
@@ -154,7 +154,7 @@ implements XMLSaveable {
 	public String buildFileName() {
 		String str = null;
 		for (int i=0; i<size(); i++) {
-			LogicTreeBranchNode<?> value = getValue(i);
+			U3LogicTreeBranchNode<?> value = getValue(i);
 			if (value == null)
 				throw new IllegalStateException("Must be fully specified to build file name! (missing="
 					+ClassUtils.getClassNameWithoutPackage(getLogicTreeNodeClasses().get(i))+")");
@@ -174,8 +174,8 @@ implements XMLSaveable {
 	 * @param vals
 	 * @return
 	 */
-	public static U3LogicTreeBranch fromValues(List<LogicTreeBranchNode<?>> vals) {
-		LogicTreeBranchNode<?>[] valsArray = new LogicTreeBranchNode[vals.size()];
+	public static U3LogicTreeBranch fromValues(List<U3LogicTreeBranchNode<?>> vals) {
+		U3LogicTreeBranchNode<?>[] valsArray = new U3LogicTreeBranchNode[vals.size()];
 		
 		for (int i=0; i<vals.size(); i++)
 			valsArray[i] = vals.get(i);
@@ -190,7 +190,7 @@ implements XMLSaveable {
 	 * @param vals
 	 * @return
 	 */
-	public static U3LogicTreeBranch fromValues(LogicTreeBranchNode<?>... vals) {
+	public static U3LogicTreeBranch fromValues(U3LogicTreeBranchNode<?>... vals) {
 		return fromValues(true, vals);
 	}
 	
@@ -203,25 +203,25 @@ implements XMLSaveable {
 	 * @param vals
 	 * @return
 	 */
-	public static U3LogicTreeBranch fromValues(boolean setNullToDefault, LogicTreeBranchNode<?>... vals) {
-		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
+	public static U3LogicTreeBranch fromValues(boolean setNullToDefault, U3LogicTreeBranchNode<?>... vals) {
+		List<Class<? extends U3LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
 		
 		// initialize branch with null
-		List<LogicTreeBranchNode<?>> values = Lists.newArrayList();
+		List<U3LogicTreeBranchNode<?>> values = Lists.newArrayList();
 		for (int i=0; i<classes.size(); i++)
 			values.add(null);
 		
 		// now add each value
-		for (LogicTreeBranchNode<?> val : vals) {
+		for (U3LogicTreeBranchNode<?> val : vals) {
 			if (val == null)
 				continue;
 			
 			// find the class
 			@SuppressWarnings("rawtypes")
-			Class<? extends LogicTreeBranchNode> valClass = getEnumEnclosingClass(val.getClass());
+			Class<? extends U3LogicTreeBranchNode> valClass = getEnumEnclosingClass(val.getClass());
 			int ind = -1;
 			for (int i=0; i<classes.size(); i++) {
-				Class<? extends LogicTreeBranchNode<?>> clazz = classes.get(i);
+				Class<? extends U3LogicTreeBranchNode<?>> clazz = classes.get(i);
 				if (clazz.equals(valClass)) {
 					ind = i;
 					break;
@@ -272,14 +272,14 @@ implements XMLSaveable {
 	 * @return
 	 */
 	public static U3LogicTreeBranch fromFileName(String fileName) {
-		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
-		List<LogicTreeBranchNode<?>> branch = Lists.newArrayList();
+		List<Class<? extends U3LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
+		List<U3LogicTreeBranchNode<?>> branch = Lists.newArrayList();
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : classes) {
+		for (Class<? extends U3LogicTreeBranchNode<?>> clazz : classes) {
 //			LogicTreeBranchNode<?> value = parseValue(clazz, fileName);
-			LogicTreeBranchNode<?> value = null;
-			LogicTreeBranchNode<?>[] options = clazz.getEnumConstants();
-			for (LogicTreeBranchNode<?> option : options) {
+			U3LogicTreeBranchNode<?> value = null;
+			U3LogicTreeBranchNode<?>[] options = clazz.getEnumConstants();
+			for (U3LogicTreeBranchNode<?> option : options) {
 				if (doesStringContainOption(option, fileName)) {
 					value = option;
 					break;
@@ -290,7 +290,7 @@ implements XMLSaveable {
 		return new U3LogicTreeBranch(branch);
 	}
 	
-	private static boolean doesStringContainOption(LogicTreeBranchNode<?> option, String str) {
+	private static boolean doesStringContainOption(U3LogicTreeBranchNode<?> option, String str) {
 		String encoded = option.encodeChoiceString();
 		if (str.startsWith(encoded+"_") || str.contains("_"+encoded+"_")
 				|| str.contains("_"+encoded+".") || str.endsWith("_"+encoded))
@@ -306,9 +306,9 @@ implements XMLSaveable {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E extends Enum<E>> E parseValue(Class<? extends LogicTreeBranchNode<E>> clazz, String str) {
-		LogicTreeBranchNode<E>[] options = clazz.getEnumConstants();
-		for (LogicTreeBranchNode<E> option : options)
+	public static <E extends Enum<E>> E parseValue(Class<? extends U3LogicTreeBranchNode<E>> clazz, String str) {
+		U3LogicTreeBranchNode<E>[] options = clazz.getEnumConstants();
+		for (U3LogicTreeBranchNode<E> option : options)
 			if (doesStringContainOption(option, str))
 				return (E)option;
 		return null;
@@ -329,7 +329,7 @@ implements XMLSaveable {
 	public String getTabSepValString() {
 		String str = "";
 		boolean first = true;
-		for (LogicTreeBranchNode<?> val : this) {
+		for (U3LogicTreeBranchNode<?> val : this) {
 			if (!first)
 				str += "\t";
 			else
@@ -367,7 +367,7 @@ implements XMLSaveable {
 
 	@Override
 	public Object clone() {
-		List<LogicTreeBranchNode<?>> newBranches = Lists.newArrayList();
+		List<U3LogicTreeBranchNode<?>> newBranches = Lists.newArrayList();
 		
 		for (int i=0; i<size(); i++)
 			newBranches.add(getValue(i));
@@ -388,13 +388,13 @@ implements XMLSaveable {
 	public double getAprioriBranchWt() {
 		double wt = 1;
 		InversionModels im = getValue(InversionModels.class);
-		for (LogicTreeBranchNode<?> node : this)
+		for (U3LogicTreeBranchNode<?> node : this)
 			wt *= getNormalizedWt(node, im);
 		return wt;
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	private static synchronized double getClassWeightTotal(Class<? extends LogicTreeBranchNode> clazz, InversionModels im) {
+	private static synchronized double getClassWeightTotal(Class<? extends U3LogicTreeBranchNode> clazz, InversionModels im) {
 		if (classWeightTotals == null)
 			classWeightTotals = HashBasedTable.create();
 		
@@ -402,9 +402,9 @@ implements XMLSaveable {
 		
 		if (tot == null) {
 			tot = 0d;
-			for (LogicTreeBranchNode<?> val : clazz.getEnumConstants())
+			for (U3LogicTreeBranchNode<?> val : clazz.getEnumConstants())
 				tot += val.getRelativeWeight(im);
-			classWeightTotals.put((Class<? extends LogicTreeBranchNode<?>>) clazz, im, tot);
+			classWeightTotals.put((Class<? extends U3LogicTreeBranchNode<?>>) clazz, im, tot);
 		}
 		
 		return tot;
@@ -416,11 +416,11 @@ implements XMLSaveable {
 	 * @return normalized weight for the given node
 	 */
 	public static double getNormalizedWt(
-			LogicTreeBranchNode<? extends Enum<?>> node, InversionModels im) {
+			U3LogicTreeBranchNode<? extends Enum<?>> node, InversionModels im) {
 		if (node == null)
 			return 0d;
 		@SuppressWarnings("rawtypes")
-		Class<? extends LogicTreeBranchNode> clazz = getEnumEnclosingClass(node.getClass());
+		Class<? extends U3LogicTreeBranchNode> clazz = getEnumEnclosingClass(node.getClass());
 		return node.getRelativeWeight(im) / getClassWeightTotal(clazz, im);
 	}
 
@@ -430,8 +430,8 @@ implements XMLSaveable {
 		
 		Element nodesEl = el.addElement("Nodes");
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : getLogicTreeNodeClasses()) {
-			LogicTreeBranchNode<?> val = getValueUnchecked(clazz);
+		for (Class<? extends U3LogicTreeBranchNode<?>> clazz : getLogicTreeNodeClasses()) {
+			U3LogicTreeBranchNode<?> val = getValueUnchecked(clazz);
 			if (val == null)
 				continue;
 			
@@ -482,10 +482,10 @@ implements XMLSaveable {
 		}
 		
 		// now populate branch
-		List<Class<? extends LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
-		List<LogicTreeBranchNode<?>> branchList = Lists.newArrayList();
+		List<Class<? extends U3LogicTreeBranchNode<?>>> classes = getLogicTreeNodeClasses();
+		List<U3LogicTreeBranchNode<?>> branchList = Lists.newArrayList();
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : classes) {
+		for (Class<? extends U3LogicTreeBranchNode<?>> clazz : classes) {
 			String className = ClassUtils.getClassNameWithoutPackage(clazz);
 			
 			String enumName = nodeValMap.get(className);
@@ -497,9 +497,9 @@ implements XMLSaveable {
 				continue;
 			}
 			
-			LogicTreeBranchNode<?> value = null;
-			LogicTreeBranchNode<?>[] options = clazz.getEnumConstants();
-			for (LogicTreeBranchNode<?> option : options) {
+			U3LogicTreeBranchNode<?> value = null;
+			U3LogicTreeBranchNode<?>[] options = clazz.getEnumConstants();
+			for (U3LogicTreeBranchNode<?> option : options) {
 				if (option.name().equals(enumName) || option.getShortName().equals(shortName)) {
 					value = option;
 					break;

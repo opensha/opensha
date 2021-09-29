@@ -9,7 +9,7 @@ import java.util.Random;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -100,7 +100,7 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	}
 	
 	public static FaultSystemSolutionFetcher getRandomSample(
-			final FaultSystemSolutionFetcher fetch, int num, LogicTreeBranchNode<?>... branchNodes) {
+			final FaultSystemSolutionFetcher fetch, int num, U3LogicTreeBranchNode<?>... branchNodes) {
 		List<U3LogicTreeBranch> origBranches = Lists.newArrayList();
 		origBranches.addAll(fetch.getBranches());
 		final List<U3LogicTreeBranch> branches = Lists.newArrayList();
@@ -133,7 +133,7 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 	}
 	
 	public static FaultSystemSolutionFetcher getSubset(
-			final FaultSystemSolutionFetcher fetch, final LogicTreeBranchNode<?>... nodes) {
+			final FaultSystemSolutionFetcher fetch, final U3LogicTreeBranchNode<?>... nodes) {
 		final List<U3LogicTreeBranch> branches = Lists.newArrayList();
 		U3LogicTreeBranch testBranch = U3LogicTreeBranch.fromValues(false, nodes);
 		for (U3LogicTreeBranch branch : fetch.getBranches()) {

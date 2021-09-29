@@ -1,8 +1,8 @@
 package scratch.UCERF3.enumTreeBranches;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
-public enum InversionModels implements LogicTreeBranchNode<InversionModels> {
+public enum InversionModels implements U3LogicTreeBranchNode<InversionModels> {
 	
 	CHAR_CONSTRAINED(	"Characteristic (Constrained)",			"CharConst",	1d),
 	GR_CONSTRAINED(		"Gutenberg-Richter (Constrained)",		"GRConst",		0d),

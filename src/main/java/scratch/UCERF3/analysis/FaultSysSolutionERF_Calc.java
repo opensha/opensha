@@ -153,7 +153,7 @@ import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
@@ -3393,14 +3393,14 @@ public class FaultSysSolutionERF_Calc {
 		
 		BranchSensitivityHistogram branchSensHist = new BranchSensitivityHistogram("Ratio");
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
+		for (Class<? extends U3LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 			if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 				continue;
 			String className = ClassUtils.getClassNameWithoutPackage(clazz);
-			LogicTreeBranchNode<?>[] choices = clazz.getEnumConstants();
+			U3LogicTreeBranchNode<?>[] choices = clazz.getEnumConstants();
 			// for std dev
 			List<Double> allVals = Lists.newArrayList();
-			for (LogicTreeBranchNode<?> choice : choices) {
+			for (U3LogicTreeBranchNode<?> choice : choices) {
 				if (choice.getRelativeWeight(InversionModels.CHAR_CONSTRAINED) <= 0)
 					continue;
 				double[] choiceVals = new double[meanTimeDepVals.length];
@@ -3630,7 +3630,7 @@ public class FaultSysSolutionERF_Calc {
 		
 		List<String> classNames = Lists.newArrayList();
 		
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
+		for (Class<? extends U3LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
 			if (clazz.equals(InversionModels.class) || clazz.equals(MomentRateFixes.class))
 				continue;
 			String name = ClassUtils.getClassNameWithoutPackage(clazz);

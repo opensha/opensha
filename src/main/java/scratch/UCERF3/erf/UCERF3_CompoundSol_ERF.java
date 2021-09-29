@@ -23,7 +23,7 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.EnumParameter;
@@ -63,7 +63,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
 	public static final String NAME = "UCERF3 Single Branch ERF";
 	
-	private Map<Class<? extends LogicTreeBranchNode<?>>, EnumParameter<?>> enumParamsMap;
+	private Map<Class<? extends U3LogicTreeBranchNode<?>>, EnumParameter<?>> enumParamsMap;
 	
 	private FaultSystemSolutionFetcher fetch;
 	
@@ -114,9 +114,9 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 			// build enum paramters, allow every option in the fetcher
 			// note that not-present combinations may still be possible
 			Collection<U3LogicTreeBranch> branches = fetch.getBranches();
-			List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
+			List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
 			for (int i=0; i < logicTreeNodeClasses.size(); i++) {
-				Class<? extends LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
+				Class<? extends U3LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
 				EnumParameter<?> param = buildParam(clazz, branches, initial);
 				param.addParameterChangeListener(this);
 				enumParamsMap.put(clazz, param);
@@ -131,9 +131,9 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		if (enumParamsMap == null)
 			return;
 
-		List<Class<? extends LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
+		List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		for (int i=0; i < logicTreeNodeClasses.size(); i++) {
-			Class<? extends LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
+			Class<? extends U3LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
 			EnumParameter<?> param = enumParamsMap.get(clazz);
 			if (param != null)
 				adjustableParams.addParameter(i, param);
@@ -147,13 +147,13 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		Preconditions.checkArgument(branch.isFullySpecified(), "Branch must be fully specified");
 		Preconditions.checkArgument(fetch.getBranches().contains(branch), "Branch not present in compound solution");
 		
-		for (LogicTreeBranchNode<? extends Enum<?>> node : branch)
+		for (U3LogicTreeBranchNode<? extends Enum<?>> node : branch)
 			setParameter(node.getBranchLevelName(), node);
 	}
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private static EnumParameter buildParam(
-			Class<? extends LogicTreeBranchNode<?>> clazz, Collection<U3LogicTreeBranch> branches,
+			Class<? extends U3LogicTreeBranchNode<?>> clazz, Collection<U3LogicTreeBranch> branches,
 			U3LogicTreeBranch initial) {
 		HashSet<Enum> set = new HashSet<Enum>();
 		
@@ -167,7 +167,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		
 		for (U3LogicTreeBranch branch : branches) {
 			Preconditions.checkState(branch.isFullySpecified());
-			LogicTreeBranchNode<?> val = branch.getValueUnchecked(clazz);
+			U3LogicTreeBranchNode<?> val = branch.getValueUnchecked(clazz);
 			Preconditions.checkNotNull(val);
 			set.add((Enum)val);
 			if (defaultValue == null)
@@ -195,9 +195,9 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		if (fetch == null)
 			return;
 		
-		List<LogicTreeBranchNode<?>> vals = Lists.newArrayList();
+		List<U3LogicTreeBranchNode<?>> vals = Lists.newArrayList();
 		for (EnumParameter<?> param : enumParamsMap.values()) {
-			vals.add((LogicTreeBranchNode<?>) param.getValue());
+			vals.add((U3LogicTreeBranchNode<?>) param.getValue());
 		}
 		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(vals);
 		Preconditions.checkState(branch.isFullySpecified(), "Somehow branch from enums isn't fully specified");

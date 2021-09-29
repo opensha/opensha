@@ -9,7 +9,7 @@ import com.google.common.collect.Lists;
 
 public class LogicTreeBranchIterator implements Iterable<U3LogicTreeBranch>, Iterator<U3LogicTreeBranch> {
 	
-	private List<Class<? extends LogicTreeBranchNode<?>>> classes;
+	private List<Class<? extends U3LogicTreeBranchNode<?>>> classes;
 	private int[] maxNums;
 	private int[] curNums;
 	
@@ -95,7 +95,7 @@ public class LogicTreeBranchIterator implements Iterable<U3LogicTreeBranch>, Ite
 	}
 	
 	private U3LogicTreeBranch buildBranch() {
-		List<LogicTreeBranchNode<?>> vals = Lists.newArrayList();
+		List<U3LogicTreeBranchNode<?>> vals = Lists.newArrayList();
 		for (int i=0; i<curNums.length; i++) {
 			vals.add(classes.get(i).getEnumConstants()[curNums[i]]);
 		}

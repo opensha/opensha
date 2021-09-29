@@ -51,7 +51,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -366,7 +366,7 @@ public class TrueMeanBuilder {
 			
 			U3LogicTreeBranch fmDmScaleBranch = (U3LogicTreeBranch) branch.clone();
 			for (int i=0; i<branch.size(); i++) {
-				LogicTreeBranchNode<?> val = branch.getValue(i);
+				U3LogicTreeBranchNode<?> val = branch.getValue(i);
 				if (!(val instanceof FaultModels || val instanceof DeformationModels || val instanceof ScalingRelationships))
 					fmDmScaleBranch.clearValue(i);
 			}
@@ -648,7 +648,7 @@ public class TrueMeanBuilder {
 						if (!auditRupSet.isRuptureBelowSectMinMag(j)) {
 							U3LogicTreeBranch fmDmScaleBranch = (U3LogicTreeBranch) branch.clone();
 							for (int k=0; k<branch.size(); k++) {
-								LogicTreeBranchNode<?> val = branch.getValue(k);
+								U3LogicTreeBranchNode<?> val = branch.getValue(k);
 								if (!(val instanceof FaultModels || val instanceof DeformationModels || val instanceof ScalingRelationships))
 									fmDmScaleBranch.clearValue(k);
 							}

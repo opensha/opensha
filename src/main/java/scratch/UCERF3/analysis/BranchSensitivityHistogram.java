@@ -30,7 +30,7 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -89,7 +89,7 @@ public class BranchSensitivityHistogram implements Serializable {
 		
 		// populate each branch level
 		for (int i=0; i<branch.size(); i++) {
-			LogicTreeBranchNode<?> choice = branch.getValue(i);
+			U3LogicTreeBranchNode<?> choice = branch.getValue(i);
 			String categoryName = ClassUtils.getClassNameWithoutPackage(U3LogicTreeBranch.getEnumEnclosingClass(choice.getClass()));
 			addValue(categoryName, choice.getShortName(), val, weight);
 		}
