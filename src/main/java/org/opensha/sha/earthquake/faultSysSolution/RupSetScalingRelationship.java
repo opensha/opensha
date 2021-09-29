@@ -15,7 +15,7 @@ public interface RupSetScalingRelationship extends Named {
 	
 	/**
 	 * This returns the slip (m) for the given rupture area (m-sq) or rupture length (m)
-	 * @param area (m)
+	 * @param area (m-sq)
 	 * @param length (m)
 	  * @param origWidth (m) - the original down-dip width (before reducing by aseismicity factor)
 	 * @return
@@ -24,7 +24,7 @@ public interface RupSetScalingRelationship extends Named {
 	 
 	 /**
 	  * This returns the magnitude for the given rupture area (m-sq) and width (m)
-	  * @param area (m)
+	  * @param area (m-sq)
 	  * @param origWidth (m) - the original down-dip width (before reducing by aseismicity factor)
 	  * @return
 	  */
