@@ -74,8 +74,14 @@ public class PlausibilityConfiguration implements SubModule<ModuleContainer<Open
 	public static PlausibilityConfiguration getUCERF3(
 			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
 			CoulombRates coulombRates) {
+		return getUCERF3(subSects, distAzCalc, coulombRates, 5d);
+	}
+	
+	public static PlausibilityConfiguration getUCERF3(
+			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
+			CoulombRates coulombRates, double maxJumpDist) {
 		ClusterConnectionStrategy connectionStrategy = new UCERF3ClusterConnectionStrategy(
-				subSects, distAzCalc, 5d, coulombRates);
+				subSects, distAzCalc, maxJumpDist, coulombRates);
 		return builder(connectionStrategy, distAzCalc).maxSplays(0).u3All(coulombRates).build();
 	}
 	
