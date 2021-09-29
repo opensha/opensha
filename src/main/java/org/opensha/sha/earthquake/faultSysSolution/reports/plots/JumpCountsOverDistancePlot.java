@@ -42,6 +42,16 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 			String relPathToResources, String topLink) throws IOException {
 		float[] maxJumpDists = { 0.1f, 1f, 3f };
 		
+		double rsMinMag = rupSet.getMinMag();
+		double rsMaxMag = rupSet.getMaxMag();
+		
+		List<Double> minMags = new ArrayList<>();
+		minMags.add(0d);
+		if (rsMinMag < 7d && rsMaxMag > 7d)
+			minMags.add(7d);
+		if (rsMinMag < 8d && rsMinMag > 7d && rsMaxMag > 8d)
+			minMags.add(8d);
+		
 		FaultSystemRupSet compRupSet = null;
 		FaultSystemSolution compSol = null;
 		String compName = null;
@@ -56,28 +66,40 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 		boolean hasSols = sol != null || compSol != null;
 		
 		List<String> lines = new ArrayList<>();
-		TableBuilder table = MarkdownUtils.tableBuilder();
-		if (hasSols)
-			table.addLine("As Discretized", "Rate Weighted");
-		List<ClusterRupture> inputRups = rupSet.getModule(ClusterRuptures.class).getAll();
-		List<ClusterRupture> compRups = compRupSet == null ? null : compRupSet.getModule(ClusterRuptures.class).getAll();
-		for (float jumpDist : maxJumpDists) {
-			lines.add("");
-			System.out.println("Plotting num jumps");
-			table.initNewLine();
-			File plotFile = plotFixedJumpDist(rupSet, null, inputRups, getTruncatedTitle(meta.primary.name),
-					compRupSet, null, compRups, getTruncatedTitle(compName), distAzCalc, 0d, jumpDist, resourcesDir);
-			table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
-			if (hasSols) {
-				plotFile = plotFixedJumpDist(
-						sol == null ? null : rupSet, sol, inputRups, getTruncatedTitle(meta.primary.name),
-						compSol == null ? null : compRupSet, compSol, compRups, getTruncatedTitle(compName),
-						distAzCalc, 0d, jumpDist, resourcesDir);
-				table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
+		
+		for (double minMag : minMags) {
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			if (hasSols)
+				table.addLine("As Discretized", "Rate Weighted");
+			
+			if (minMags.size() > 1) {
+				if (minMag > 0d)
+					lines.add(getSubHeading()+" M&ge;"+optionalDigitDF.format(minMag)+" Jump Counts");
+				else
+					lines.add(getSubHeading()+" Supra-seismogenic Jump Counts");
+				lines.add(topLink); lines.add("");
 			}
+			
+			List<ClusterRupture> inputRups = rupSet.getModule(ClusterRuptures.class).getAll();
+			List<ClusterRupture> compRups = compRupSet == null ? null : compRupSet.getModule(ClusterRuptures.class).getAll();
+			for (float jumpDist : maxJumpDists) {
+				System.out.println("Plotting num jumps");
+				table.initNewLine();
+				File plotFile = plotFixedJumpDist(rupSet, null, inputRups, getTruncatedTitle(meta.primary.name),
+						compRupSet, null, compRups, getTruncatedTitle(compName), distAzCalc, minMag, jumpDist, resourcesDir);
+				table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
+				if (hasSols) {
+					plotFile = plotFixedJumpDist(
+							sol == null ? null : rupSet, sol, inputRups, getTruncatedTitle(meta.primary.name),
+							compSol == null ? null : compRupSet, compSol, compRups, getTruncatedTitle(compName),
+							distAzCalc, minMag, jumpDist, resourcesDir);
+					table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
+				}
+				table.finalizeLine();
+			}
+			lines.addAll(table.build());
+			lines.add("");
 		}
-		lines.addAll(table.build());
-		lines.add("");
 		return lines;
 	}
 
@@ -115,20 +137,22 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 		String title;
 		String xAxisLabel = "Num Jumps ≥"+(float)jumpDist+" km";
 		String yAxisLabel;
+		String prefixAdd;
 		if (minMag > 0d) {
 			title = "M≥"+(float)minMag+" "+(float)jumpDist+" km Jump Comparison";
+			prefixAdd = "_m"+optionalDigitDF.format(minMag);
 		} else {
 			title = (float)jumpDist+" km Jump Comparison";
+			prefixAdd = "";
 		}
 		Range yRange = null;
-		String prefixAdd;
 		if (inputSol != null || compSol != null) {
 			yAxisLabel = "Fraction (Rate-Weighted)";
 			yRange = new Range(0d, 1d);
-			prefixAdd = "_rates";
+			prefixAdd += "_rates";
 		} else {
 			yAxisLabel = "Count";
-			prefixAdd = "_counts";
+			prefixAdd += "_counts";
 		}
 		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
 //				"Num Jumps ≥"+(float)jumpDist+"km", "Fraction (Rate-Weighted)");
