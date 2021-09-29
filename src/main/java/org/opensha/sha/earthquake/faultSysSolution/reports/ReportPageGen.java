@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InfoStringPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgressPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverDistancePlot;
@@ -103,6 +104,7 @@ public class ReportPageGen {
 	public static List<AbstractRupSetPlot> getDefaultRupSetPlots(PlotLevel level) {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
+		plots.add(new InfoStringPlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
@@ -124,6 +126,7 @@ public class ReportPageGen {
 	public static List<AbstractRupSetPlot> getDefaultSolutionPlots(PlotLevel level) {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
+		plots.add(new InfoStringPlot());
 		plots.add(new SolMFDPlot());
 		plots.add(new InversionProgressPlot());
 		plots.add(new RateVsRateScatter());
