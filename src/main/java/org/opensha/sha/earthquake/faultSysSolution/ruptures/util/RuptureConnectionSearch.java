@@ -527,8 +527,8 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 		if (rupClusters.size() > 1) {
 			// see if we should reverse the starting cluster
 			Preconditions.checkState(jumpsFromMap.containsKey(startCluster),
-					"No jumps from starting cluster %s, but have %s clusters in total",
-					startCluster, rupClusters.size());
+					"No jumps from starting cluster %s, but have %s clusters in total (%s jumpsFrom)",
+					startCluster, rupClusters.size(), jumpsFromMap.size());
 			int minJumpSectIndex = Integer.MAX_VALUE;
 			int maxJumpSectIndex = 0;
 			for (Jump jump : jumpsFromMap.get(startCluster)) {

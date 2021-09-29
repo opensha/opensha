@@ -465,22 +465,39 @@ public class GeoJSONFaultReader {
 	}
 
 	public static void main(String[] args) throws IOException {
-//		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/");
-//		
-//		File fmFile = new File(baseDir, "NSHM23_FaultSections_v1p1/NSHM23_FaultSections_v1p1.geojson");
-//		File dmFile = new File(baseDir, "NSHM23_GeolDefMod_v1/NSHM23_GeolDefMod_v1.csv");
-//		
-//		List<GeoJSONFaultSection> sects = readFaultSections(fmFile);
-//		System.out.println("Loaded "+sects.size()+" sections");
-//		
-//		attachGeoDefModel(sects, dmFile);
+		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/");
+		
+		File fmFile = new File(baseDir, "NSHM23_FaultSections_v1p1/NSHM23_FaultSections_v1p1.geojson");
+		File dmFile = new File(baseDir, "NSHM23_GeolDefMod_v1/NSHM23_GeolDefMod_v1.csv");
+		
+		List<GeoJSONFaultSection> sects = readFaultSections(fmFile);
+		System.out.println("Loaded "+sects.size()+" sections");
+		
+		attachGeoDefModel(sects, dmFile);
+		
+		List<GeoJSONFaultSection> sjcSects = new ArrayList<>();
+		for (GeoJSONFaultSection sect : sects) {
+			if (sect.getName().contains("Jacinto")) {
+				System.out.println(sect.getName());
+				sect.getProperties().remove("DipDir");
+				sect.getProperties().remove("PrimState");
+				sect.getProperties().remove("SecState");
+				sect.getProperties().remove("Proxy");
+				sect.getProperties().remove("HighRate");
+				sect.getProperties().remove("LowRate");
+				sect.getProperties().remove("Treatment");
+				sect.getProperties().remove("RateType");
+				sjcSects.add(sect);
+			}
+		}
+		writeFaultSections(new File("/home/kevin/git/opensha-fault-sys-tools/data/san_jacinto.geojson"), sjcSects);
 		
 //		buildNSHM23SubSects();
 		
-		ArrayList<FaultSection> sects = FaultModels.FM3_1.fetchFaultSections();
-		for (FaultSection sect : sects)
-			sect.setZonePolygon(null);
-		writeFaultSections(new File("/tmp/fm3_1.geojson"), sects);
+//		ArrayList<FaultSection> sects = FaultModels.FM3_1.fetchFaultSections();
+//		for (FaultSection sect : sects)
+//			sect.setZonePolygon(null);
+//		writeFaultSections(new File("/tmp/fm3_1.geojson"), sects);
 		
 //		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/NSHM2023_FaultSectionsEQGeoDB_v1p2_29March2021");
 //		File sectFile = new File(baseDir, "NSHM2023_FaultSections_v1p2.geojson");

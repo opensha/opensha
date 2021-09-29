@@ -89,6 +89,14 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		for (RateCombiner combiner : combiners)
 			inputPassthroughRates.put(combiner, inputSegCalc.plotConnectionFracts(resourcesDir,
 					"conn_passthrough_"+combiner.name(), "Connection Passthrough Rates, Relative to "+combiner, combiner));
+		
+		Map<RateCombiner, File[]> shawComps = new HashMap<>();
+		Map<RateCombiner, File[]> shawLogComps = new HashMap<>();
+		for (RateCombiner combiner : combiners) {
+			shawComps.put(combiner, inputSegCalc.plotShaw07Comparison(resourcesDir, "conn_passthrough_shaw07", false, combiner));
+			shawLogComps.put(combiner, inputSegCalc.plotShaw07Comparison(resourcesDir, "conn_passthrough_shaw07_log", true, combiner));
+		}
+		
 		Map<Scalars, File[]> inputScalarPassthroughs = new HashMap<>();
 		Map<Scalars, File[]> inputScalarLogPassthroughs = new HashMap<>();
 		for (Scalars scalar : scalars) {
@@ -160,6 +168,22 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 				table.addColumn("![Rates]("+relPathToResources+"/"+inputPassthroughRates.get(combiner)[m].getName()+")");
 				if (compSegCalc != null)
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughRates.get(combiner)[m].getName()+")");
+				table.finalizeLine();
+			}
+			lines.addAll(table.build());
+			lines.add("");
+			
+			lines.add("**Connection Passthrough Rates vs Shaw 2007**");
+			lines.add(""); lines.add(topLink); lines.add("");
+			lines.add("This plots passthrough rates versus various the distance relationship established in Shaw (2007).");
+			lines.add("");
+			
+			table = MarkdownUtils.tableBuilder();
+			table.addLine("Linear", "Log10");
+			for (RateCombiner combiner : combiners) {
+				table.initNewLine();
+				table.addColumn("![Rates]("+relPathToResources+"/"+shawComps.get(combiner)[m].getName()+")");
+				table.addColumn("![Rates]("+relPathToResources+"/"+shawLogComps.get(combiner)[m].getName()+")");
 				table.finalizeLine();
 			}
 			lines.addAll(table.build());

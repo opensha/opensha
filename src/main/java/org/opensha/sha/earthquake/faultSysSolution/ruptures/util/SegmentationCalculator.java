@@ -24,6 +24,7 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
@@ -1403,6 +1404,178 @@ public class SegmentationCalculator {
 		File ret = new File(outputDir, prefix+".png");
 		gp.getChartPanel().setSize(width, height);
 		gp.saveAsPNG(ret.getAbsolutePath());
+		return ret;
+	}
+	
+	public File[] plotShaw07Comparison(File outputDir, String prefix, boolean logY, RateCombiner combiner) throws IOException {
+		File[] ret = new File[minMags.length];
+		
+		Range xRange = null;
+		Range yRange = logY ? new Range(1e-3, 1) : new Range(0d, 1d);
+		
+		CPT rateCPT = getConnectionRateCPT();
+		Color outlineColor = new Color(0, 0, 0, 100);
+		float scatterWidth = 4;
+		
+//		JumpProbabilityCalc detrendProb = this.detrendProb;
+//		if (scalar == Scalars.JUMP_DIST)
+//			detrendProb = null;
+		
+		Scalars scalar = Scalars.JUMP_DIST;
+		
+		double[] r0s = { 2d, 3d, 4d, 6d };
+		Color[] r0cs = new Color[r0s.length];
+		CPT r0cpt = new CPT(0d, r0s.length-1, Color.RED, Color.BLUE);
+		for (int c=0; c<r0cs.length; c++)
+			r0cs[c] = r0cpt.getColor((float)c);
+		List<DiscretizedFunc> shawCurves = new ArrayList<>();
+		HistogramFunction histXVals = null;
+		
+		Map<Jump, Double> scalarJumpVals = calcJumpScalarValues(scalar);
+		
+		for (int m=0; m<minMags.length; m++) {
+			MinMaxAveTracker scalarTrack = new MinMaxAveTracker();
+			
+			List<XY_DataSet> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			DefaultXY_DataSet fakeXY = new DefaultXY_DataSet();
+			fakeXY.set(0d, -1d);
+			fakeXY.setName("Connection");
+			funcs.add(fakeXY);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getMaxColor()));
+			
+			DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
+			zerosScatter.setName("Zero-Rate");
+			funcs.add(zerosScatter);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.GRAY));
+
+			List<Double> fracts = new ArrayList<>();
+			List<Double> detrendFracts = detrendProb == null ? null : new ArrayList<>();
+			List<Double> scalarVals = new ArrayList<>();
+			
+			for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
+				Jump jump = cell.getColumnKey();
+				JumpRates rates = cell.getValue();
+				double jumpRate = rates.magJumpRates[m];
+				double scalarVal = scalarJumpVals.get(jump);
+				double fract;
+				if (jumpRate == 0d) {
+					fract = 0d;
+					zerosScatter.set(scalarVal, yRange.getLowerBound());
+				} else {
+					double fromVal = rates.fromRates.sectRates[m];
+					double toVal = rates.toRates.sectRates[m];
+//					Preconditions.checkState(Double.isFinite(fromVal));
+//					Preconditions.checkState(Double.isFinite(toVal));
+					double rate = combiner.combine(fromVal, toVal);
+					fract = jumpRate/rate;
+					Color c = rateCPT.getColor((float)Math.log10(rate));
+					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+					
+					XY_DataSet scatter = new DefaultXY_DataSet();
+					scatter.set(scalarVal, fract);
+
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, c));
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
+					if (detrendProb != null) {
+						double refProb = detrendProb.calcJumpProbability(null, jump, false);
+						detrendFracts.add(Math.min(1d, fract/refProb));
+					}
+				}
+				
+				scalarTrack.addValue(scalarVal);
+				scalarVals.add(scalarVal);
+				fracts.add(fract);
+			}
+			
+			if (m == 0) {
+				xRange = scalar.getPlotRange(scalarTrack.getMin(), scalarTrack.getMax());
+				shawCurves = new ArrayList<>();
+				for (int i=0; i<r0s.length; i++) {
+					Shaw07JumpDistProb prob = new Shaw07JumpDistProb(1d, r0s[i]);
+					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 1000);
+					for (int j=0; j<func.size(); j++)
+						func.set(j, prob.calcJumpProbability(func.getX(j)));
+					if (i == 0)
+						func.setName("Shaw07 R₀="+optionalDigitDF.format(r0s[i]));
+					else
+						func.setName("R₀="+optionalDigitDF.format(r0s[i]));
+					shawCurves.add(func);
+				}
+				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
+			}
+			// now bin values
+			List<List<Double>> valLists = new ArrayList<>();
+			for (int i=0; i<histXVals.size(); i++)
+				valLists.add(new ArrayList<>());
+			for (int i=0; i<fracts.size(); i++) {
+				double scalarVal = scalarVals.get(i);
+				double fract = fracts.get(i);
+				if (xRange.contains(scalarVal) && Double.isFinite(fract)) {
+					int ind = histXVals.getClosestXIndex(scalarVal);
+					valLists.get(ind).add(fract);
+				}
+			}
+			XY_DataSet binnedMeans = new DefaultXY_DataSet();
+			binnedMeans.setName("Mean");
+			XY_DataSet binnedMedians = new DefaultXY_DataSet();
+			binnedMedians.setName("Median");
+//			XY_DataSet probTaken = new DefaultXY_DataSet();
+//			probTaken.setName("P(>0)");
+			for (int i=0; i<valLists.size(); i++) {
+				List<Double> binnedVals = valLists.get(i);
+				if (binnedVals.isEmpty())
+					continue;
+				double[] values = Doubles.toArray(binnedVals);
+				binnedMeans.set(histXVals.getX(i), StatUtils.mean(values));
+				binnedMedians.set(histXVals.getX(i), DataUtils.median(values));
+//				probTaken.set(marginalTakenHist.getX(i), marginalTakenHist.getY(i)/marginalAllHist.getY(i));
+			}
+			// add fake values so that the legend works
+			if (binnedMeans.size() == 0) {
+				binnedMeans.set(0d, -1d);
+				binnedMedians.set(0d, -1d);
+			}
+			if (zerosScatter.size() == 0)
+				zerosScatter.set(0d, -1d);
+			
+			funcs.addAll(shawCurves);
+			for (int i=0; i<r0cs.length; i++)
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, r0cs[i]));
+			
+			funcs.add(binnedMeans);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
+			funcs.add(binnedMedians);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 10f, new Color(0, 0, 150, 150)));
+//			funcs.add(probTaken);
+//			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_TRIANGLE, 6f, new Color(150, 0, 0, 150)));
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
+					"Passthrough Rate (Rel. "+combiner+")");
+			spec.setLegendVisible(true);
+			
+			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
+			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setTickLabelFontSize(18);
+			gp.setAxisLabelFontSize(24);
+			gp.setPlotLabelFontSize(24);
+			gp.setLegendFontSize(18);
+			gp.setBackgroundColor(Color.WHITE);
+			
+			int width = 1000;
+			int height = 800;
+			gp.drawGraphPanel(spec, false, logY, xRange, yRange);
+
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			gp.getChartPanel().setSize(width, height);
+			gp.saveAsPNG(ret[m].getAbsolutePath());
+		}
+		
 		return ret;
 	}
 	
