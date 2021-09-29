@@ -299,11 +299,23 @@ public class InversionConstraintImplTests {
 	@Test
 	public void testSlipSegmentation() throws IOException {
 		SegmentationModel segModel = new SlipRateSegmentationConstraint.Shaw07JumpDistSegModel(1d, 3d);
-		SlipRateSegmentationConstraint constr = new SlipRateSegmentationConstraint(rupSet, segModel, RateCombiner.MIN, 1d, false, false);
+		SlipRateSegmentationConstraint constr = new SlipRateSegmentationConstraint(
+				rupSet, segModel, RateCombiner.MIN, 1d, false, false, false);
 		
 		testConstraint(constr);
 		
-		constr = new SlipRateSegmentationConstraint(rupSet, segModel, RateCombiner.MIN, 1d, true, false);
+		constr = new SlipRateSegmentationConstraint(rupSet, segModel, RateCombiner.MIN, 1d, true, false, false);
+		
+		testConstraint(constr);
+		
+		constr = new SlipRateSegmentationConstraint(rupSet, segModel, RateCombiner.MIN, 1d, true, false, true);
+		
+		testConstraint(constr);
+	}
+
+	@Test
+	public void testRelBValue() throws IOException {
+		RelativeBValueConstraint constr = new RelativeBValueConstraint(rupSet, 1d);
 		
 		testConstraint(constr);
 	}
