@@ -5,10 +5,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.math.RoundingMode;
 import java.util.AbstractList;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1272,7 +1270,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	/**
 	 * Initializes a {@link Builder} for the given fault sections and ruptures. The user must, at a minimum, supply
 	 * magnitudes for each rupture before building the rupture set. This can be done via
-	 * {@link Builder#rupMags(double[])} or via {@link Builder#forScalingRelationship(ScalingRelationships)}.
+	 * {@link Builder#rupMags(double[])} or via {@link Builder#forScalingRelationship(RupSetScalingRelationship)}.
 	 * 
 	 * @param faultSectionData
 	 * @param sectionForRups section indices for each rupture
@@ -1285,7 +1283,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	/**
 	 * Initializes a {@link Builder} for the given fault sections and cluster ruptures. The user must, at a minimum,
 	 * supply magnitudes for each rupture before building the rupture set. This can be done via
-	 * {@link Builder#rupMags(double[])} or via {@link Builder#forScalingRelationship(ScalingRelationships)}.
+	 * {@link Builder#rupMags(double[])} or via {@link Builder#forScalingRelationship(RupSetScalingRelationship)}.
 	 * 
 	 * @param faultSectionData
 	 * @param sectionForRups section indices for each rupture
@@ -1495,7 +1493,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		 * @param scale
 		 * @return
 		 */
-		public Builder forScalingRelationship(ScalingRelationships scale) {
+		public Builder forScalingRelationship(RupSetScalingRelationship scale) {
 			this.mags = new double[sectionForRups.size()];
 			for (int r=0; r<mags.length; r++) {
 				double totArea = 0d;
@@ -1526,11 +1524,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		public Builder slipAlongRupture(SlipAlongRuptureModels slipAlong) {
+			return slipAlongRupture(SlipAlongRuptureModel.forModel(slipAlong));
+		}
+		
+		public Builder slipAlongRupture(SlipAlongRuptureModel slipAlong) {
 			addModule(new ModuleBuilder() {
 				
 				@Override
 				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					return SlipAlongRuptureModel.forModel(slipAlong);
+					return slipAlong;
 				}
 
 				@Override

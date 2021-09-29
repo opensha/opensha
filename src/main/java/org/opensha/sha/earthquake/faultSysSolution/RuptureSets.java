@@ -90,11 +90,11 @@ public class RuptureSets {
 		
 		private List<? extends FaultSection> subSects;
 		private FaultModels fm;
-		private ScalingRelationships scale;
+		private RupSetScalingRelationship scale;
 		@Expose
 		private double maxJumpDist = 5d;
 
-		public U3RupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+		public U3RupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
 		}
 		
@@ -110,7 +110,7 @@ public class RuptureSets {
 			}
 		}
 
-		public U3RupSetConfig(FaultModels fm, ScalingRelationships scale) {
+		public U3RupSetConfig(FaultModels fm, RupSetScalingRelationship scale) {
 			this.fm = fm;
 			this.subSects = getU3SubSects(fm);
 			this.scale = scale;
@@ -149,12 +149,12 @@ public class RuptureSets {
 		}
 
 		@Override
-		public ScalingRelationships getScalingRelationship() {
+		public RupSetScalingRelationship getScalingRelationship() {
 			return scale;
 		}
 
 		@Override
-		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+		protected void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			this.subSects = subSects;
 			this.scale = scale;
 			detectFM(subSects);
@@ -170,7 +170,7 @@ public class RuptureSets {
 	public static class SimpleAzimuthalRupSetConfig extends RupSetConfig {
 		
 		private List<? extends FaultSection> subSects;
-		private ScalingRelationships scale;
+		private RupSetScalingRelationship scale;
 		
 		@Expose	private float jumpAzimuthChange = 60f;
 		@Expose	private float totalAzimuthChange = 60f;
@@ -183,12 +183,12 @@ public class RuptureSets {
 		// if nonzero, apply thinning to growing strategy
 		@Expose	private float adaptiveSectFract = 0f;
 
-		public SimpleAzimuthalRupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+		public SimpleAzimuthalRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
 		}
 
 		@Override
-		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+		protected void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			this.subSects = subSects;
 			this.scale = scale;
 		}
@@ -248,7 +248,7 @@ public class RuptureSets {
 		}
 
 		@Override
-		public ScalingRelationships getScalingRelationship() {
+		public RupSetScalingRelationship getScalingRelationship() {
 			return scale;
 		}
 
@@ -263,7 +263,7 @@ public class RuptureSets {
 		
 		private List<? extends FaultSection> subSects;
 		private String fmPrefix;
-		private ScalingRelationships scale;
+		private RupSetScalingRelationship scale;
 		
 		/*
 		 * Thresholds & params
@@ -312,17 +312,17 @@ public class RuptureSets {
 		// coefficient of friction for coulomb calculations
 		@Expose	private double coeffOfFriction = 0.5;
 
-		public CoulombRupSetConfig(FaultModels fm, ScalingRelationships scale) {
+		public CoulombRupSetConfig(FaultModels fm, RupSetScalingRelationship scale) {
 			this(getU3SubSects(fm), fm.encodeChoiceString().toLowerCase(), scale);
 		}
 
-		public CoulombRupSetConfig(List<? extends FaultSection> subSects, String fmPrefix, ScalingRelationships scale) {
+		public CoulombRupSetConfig(List<? extends FaultSection> subSects, String fmPrefix, RupSetScalingRelationship scale) {
 			this.fmPrefix = fmPrefix;
 			init(subSects, scale);
 		}
 
 		@Override
-		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+		protected void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			this.subSects = subSects;
 			this.scale = scale;
 		}
@@ -354,7 +354,7 @@ public class RuptureSets {
 		}
 
 		@Override
-		public ScalingRelationships getScalingRelationship() {
+		public RupSetScalingRelationship getScalingRelationship() {
 			return scale;
 		}
 		
@@ -759,14 +759,14 @@ public class RuptureSets {
 	public static class FullySegmentedRupSetConfig extends RupSetConfig {
 		
 		private List<? extends FaultSection> subSects;
-		private ScalingRelationships scale;
+		private RupSetScalingRelationship scale;
 
-		public FullySegmentedRupSetConfig(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+		public FullySegmentedRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
 		}
 
 		@Override
-		protected void init(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+		protected void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			this.subSects = subSects;
 			this.scale = scale;
 		}
@@ -796,7 +796,7 @@ public class RuptureSets {
 		}
 
 		@Override
-		public ScalingRelationships getScalingRelationship() {
+		public RupSetScalingRelationship getScalingRelationship() {
 			return scale;
 		}
 
@@ -817,9 +817,9 @@ public class RuptureSets {
 		
 		public abstract String getRupSetFileName();
 		
-		public abstract ScalingRelationships getScalingRelationship();
+		public abstract RupSetScalingRelationship getScalingRelationship();
 		
-		protected abstract void init(List<? extends FaultSection> subSects, ScalingRelationships scale);
+		protected abstract void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale);
 		
 		private transient File cacheDir;
 		
@@ -916,12 +916,12 @@ public class RuptureSets {
 	}
 	
 	static RupSetConfig deserializeConfig(Class<? extends RupSetConfig> clazz, List<? extends FaultSection> subSects,
-			ScalingRelationships scale, File jsonFile) throws IOException {
+			RupSetScalingRelationship scale, File jsonFile) throws IOException {
 		return deserializeConfig(clazz, subSects, scale, new BufferedReader(new FileReader(jsonFile)));
 	}
 	
 	static RupSetConfig deserializeConfig(Class<? extends RupSetConfig> clazz, List<? extends FaultSection> subSects,
-			ScalingRelationships scale, Reader jsonReader) {
+			RupSetScalingRelationship scale, Reader jsonReader) {
 		Gson gson = buildGson();
 		
 		RupSetConfig config = gson.fromJson(jsonReader, clazz);
@@ -948,25 +948,25 @@ public class RuptureSets {
 	private enum Presets {
 		UCERF3(U3RupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 				return new U3RupSetConfig(subSects, scale);
 			}
 		},
 		COULOMB(CoulombRupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 				return new CoulombRupSetConfig(subSects, null, scale);
 			}
 		},
 		SIMPLE_AZIMUTHAL(SimpleAzimuthalRupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 				return new SimpleAzimuthalRupSetConfig(subSects, scale);
 			}
 		},
 		SEGMENTED(FullySegmentedRupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale) {
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 				return new FullySegmentedRupSetConfig(subSects, scale);
 			}
 		};
@@ -978,14 +978,14 @@ public class RuptureSets {
 			
 		}
 		
-		public abstract RupSetConfig build(List<? extends FaultSection> subSects, ScalingRelationships scale);
+		public abstract RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale);
 		
-		public RupSetConfig deserialize(List<? extends FaultSection> subSects, ScalingRelationships scale,
+		public RupSetConfig deserialize(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
 				Reader jsonReader) {
 			return deserializeConfig(configClass, subSects, scale, jsonReader);
 		}
 		
-		public RupSetConfig deserialize(List<? extends FaultSection> subSects, ScalingRelationships scale,
+		public RupSetConfig deserialize(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
 				File jsonFile) throws IOException {
 			return deserializeConfig(configClass, subSects, scale, jsonFile);
 		}
@@ -1051,7 +1051,7 @@ public class RuptureSets {
 		if (file.exists() && file.isDirectory())
 			file = new File(file, preset.name()+".json");
 		System.out.println("Writing default configuration for "+preset+" to: "+file.getAbsolutePath());
-		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
+		RupSetScalingRelationship scale = ScalingRelationships.MEAN_UCERF3;
 		List<? extends FaultSection> subSects = List.of();
 		RupSetConfig config = preset.build(subSects, scale);
 		serializeConfig(config, file);

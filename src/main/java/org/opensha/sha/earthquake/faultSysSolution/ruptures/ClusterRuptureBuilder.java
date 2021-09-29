@@ -26,6 +26,7 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -974,7 +975,7 @@ public class ClusterRuptureBuilder {
 		}
 	}
 
-	public static FaultSystemRupSet buildClusterRupSet(ScalingRelationships scale, List<? extends FaultSection> subSects,
+	public static FaultSystemRupSet buildClusterRupSet(RupSetScalingRelationship scale, List<? extends FaultSection> subSects,
 			PlausibilityConfiguration config, List<ClusterRupture> rups) {
 		FaultSystemRupSet.Builder builder = FaultSystemRupSet.builderForClusterRups(subSects, rups);
 		builder.forScalingRelationship(scale);

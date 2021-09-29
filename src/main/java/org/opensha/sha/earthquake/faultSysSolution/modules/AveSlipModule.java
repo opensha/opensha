@@ -9,6 +9,7 @@ import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -24,7 +25,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
 		this.rupSet = rupSet;
 	}
 
-	public static AveSlipModule forModel(FaultSystemRupSet rupSet, ScalingRelationships scale) {
+	public static AveSlipModule forModel(FaultSystemRupSet rupSet, RupSetScalingRelationship scale) {
 		return new ModelBased(rupSet, scale);
 	}
 
@@ -41,9 +42,9 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
 
 	public static class ModelBased extends AveSlipModule implements ArchivableModule {
 
-		private ScalingRelationships scale;
+		private RupSetScalingRelationship scale;
 
-		protected ModelBased(FaultSystemRupSet rupSet, ScalingRelationships scale) {
+		protected ModelBased(FaultSystemRupSet rupSet, RupSetScalingRelationship scale) {
 			super(rupSet);
 			this.scale = scale;
 		}

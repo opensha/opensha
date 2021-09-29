@@ -18,6 +18,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import com.google.common.collect.Lists;
@@ -28,7 +29,7 @@ import scratch.UCERF3.logicTree.LogicTreeBranchNode;
  * @author field
  *
  */
-public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelationships> {
+public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelationships>, RupSetScalingRelationship {
 		
 	
 	AVE_UCERF2("Average UCERF2", "AveU2") {
@@ -319,29 +320,14 @@ public enum ScalingRelationships implements LogicTreeBranchNode<ScalingRelations
 		this.name = name;
 		this.shortName = shortName;
 	}
-	
-	
-	
-	/**
-	 * This returns the slip (m) for the given rupture area (m-sq) or rupture length (m)
-	 * @param area (m)
-	 * @param length (m)
-	  * @param origWidth (m) - the original down-dip width (before reducing by aseismicity factor)
-	 * @return
-	 */
-	 public abstract double getAveSlip(double area, double length, double origWidth);
 	 
 	 /**
-	  * This returns the magnitude for the given rupture area (m-sq) and width (m)
-	  * @param area (m)
-	  * @param origWidth (m) - the original down-dip width (before reducing by aseismicity factor)
+	  * This returns the area for the given rupture magnitude and width (m)
+	  * @param mag
+	  * @param origWidth
 	  * @return
 	  */
-	 public abstract double getMag(double area, double origWidth);
-	 
 	 public abstract double getArea(double mag, double origWidth);
-
-
 	
 	@Override
 	public String encodeChoiceString() {

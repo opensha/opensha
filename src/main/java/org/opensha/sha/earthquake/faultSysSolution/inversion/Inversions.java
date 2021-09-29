@@ -66,91 +66,115 @@ import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
 
 public class Inversions {
 	
-	public static class UCERF3 extends InversionConfiguration {
-		
-		private LogicTreeBranch<?> branch;
-
-		public UCERF3() {
-			this(null);
-		}
-
-		public UCERF3(LogicTreeBranch<?> branch) {
-			if (branch != null)
-				Preconditions.checkState(branch.isFullySpecified());
-			this.branch = branch;
-		}
-
-		@Override
-		public InversionInputGenerator build(FaultSystemRupSet rupSet) {
-			if (branch == null)
-				branch = rupSet.requireModule(LogicTreeBranch.class);
-			if (!rupSet.hasModule(AveSlipModule.class))
-				rupSet.addModule(AveSlipModule.forModel(rupSet, branch.getValue(ScalingRelationships.class)));
-			rupSet.addModule(branch.getValue(SlipAlongRuptureModels.class).getModel());
-			if (!rupSet.hasModule(ModSectMinMags.class))
-				rupSet.addModule(ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
-							rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS)));
-			FaultModels fm = branch.getValue(FaultModels.class);
-			if (!rupSet.hasModule(PolygonFaultGridAssociations.class)) {
-				PolygonFaultGridAssociations polys;
-				if ((fm == FaultModels.FM3_1 && rupSet.getNumSections() == 2606)
-						|| (fm == FaultModels.FM3_2 && rupSet.getNumSections() == 2664)) {
-					try {
-						polys = FaultPolyMgr.loadSerializedUCERF3(fm);
-					} catch (IOException e) {
-						throw ExceptionUtils.asRuntimeException(e);
-					}
-				} else {
-					polys = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
-				}
-				rupSet.addModule(polys);
-			}
-			InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
-			if (targetMFDs == null) {
-				targetMFDs = new U3InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
-						rupSet.requireModule(PolygonFaultGridAssociations.class));
-				rupSet.addModule(targetMFDs);
-			}
-			rupSet.addModule(InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
-							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), targetMFDs));
-			UCERF3InversionConfiguration u3Config = UCERF3InversionConfiguration.forModel(
-					InversionModels.CHAR_CONSTRAINED, rupSet, fm, targetMFDs);
-			
-			// get the paleo rate constraints
-			try {
-				List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
-						fm, rupSet);
-
-				// get the improbability constraints
-				double[] improbabilityConstraint = null; // none
-
-				// paleo probability model
-				PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
-
-				List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-
-				return new UCERF3InversionInputGenerator(rupSet, u3Config, paleoRateConstraints, aveSlipConstraints,
-						improbabilityConstraint, paleoProbabilityModel);
-			} catch (IOException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-		}
-		
-	}
-	
-	public static class SlipRates extends InversionConfiguration {
-		
-		private double regularSlipWeight = 100;
-		private double normalizedSlipWeight = 1;
-
-		@Override
-		public InversionInputGenerator build(FaultSystemRupSet rupSet) {
-			SlipRateInversionConstraint constraint = slipConstraint(rupSet, regularSlipWeight, normalizedSlipWeight);
-			Preconditions.checkNotNull(constraint, "Must enable regular slip constraint and/or normalized");
-			return new InversionInputGenerator(rupSet, List.of(constraint));
-		}
-		
-	}
+//	public static class UCERF3 extends InversionConfiguration {
+//		
+//		private LogicTreeBranch<?> branch;
+//
+//		public UCERF3() {
+//			this(null);
+//		}
+//
+//		public UCERF3(LogicTreeBranch<?> branch) {
+//			if (branch != null)
+//				Preconditions.checkState(branch.isFullySpecified());
+//			this.branch = branch;
+//		}
+//
+//		@Override
+//		public InversionInputGenerator build(FaultSystemRupSet rupSet) {
+//			if (branch == null)
+//				branch = rupSet.requireModule(LogicTreeBranch.class);
+//			if (!rupSet.hasModule(AveSlipModule.class))
+//				rupSet.addModule(AveSlipModule.forModel(rupSet, branch.getValue(ScalingRelationships.class)));
+//			rupSet.addModule(branch.getValue(SlipAlongRuptureModels.class).getModel());
+//			if (!rupSet.hasModule(ModSectMinMags.class))
+//				rupSet.addModule(ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
+//							rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS)));
+//			FaultModels fm = branch.getValue(FaultModels.class);
+//			if (!rupSet.hasModule(PolygonFaultGridAssociations.class)) {
+//				PolygonFaultGridAssociations polys;
+//				if ((fm == FaultModels.FM3_1 && rupSet.getNumSections() == 2606)
+//						|| (fm == FaultModels.FM3_2 && rupSet.getNumSections() == 2664)) {
+//					try {
+//						polys = FaultPolyMgr.loadSerializedUCERF3(fm);
+//					} catch (IOException e) {
+//						throw ExceptionUtils.asRuntimeException(e);
+//					}
+//				} else {
+//					polys = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
+//				}
+//				rupSet.addModule(polys);
+//			}
+//			InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
+//			if (targetMFDs == null) {
+//				targetMFDs = new U3InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
+//						rupSet.requireModule(PolygonFaultGridAssociations.class));
+//				rupSet.addModule(targetMFDs);
+//			}
+//			rupSet.addModule(InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
+//							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), targetMFDs));
+//			UCERF3InversionConfiguration u3Config = UCERF3InversionConfiguration.forModel(
+//					InversionModels.CHAR_CONSTRAINED, rupSet, fm, targetMFDs);
+//			
+//			// get the paleo rate constraints
+//			try {
+//				List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+//						fm, rupSet);
+//
+//				// get the improbability constraints
+//				double[] improbabilityConstraint = null; // none
+//
+//				// paleo probability model
+//				PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+//
+//				List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+//
+//				return new UCERF3InversionInputGenerator(rupSet, u3Config, paleoRateConstraints, aveSlipConstraints,
+//						improbabilityConstraint, paleoProbabilityModel);
+//			} catch (IOException e) {
+//				throw ExceptionUtils.asRuntimeException(e);
+//			}
+//		}
+//		
+//	}
+//	
+//	public static class SlipRates extends InversionConfiguration {
+//		
+//		private double regularSlipWeight = 100;
+//		private double normalizedSlipWeight = 1;
+//
+//		@Override
+//		public InversionInputGenerator build(FaultSystemRupSet rupSet) {
+//			SlipRateInversionConstraint constraint = slipConstraint(rupSet, regularSlipWeight, normalizedSlipWeight);
+//			Preconditions.checkNotNull(constraint, "Must enable regular slip constraint and/or normalized");
+//			return new InversionInputGenerator(rupSet, List.of(constraint));
+//		}
+//		
+//	}
+//	
+//	public static abstract class InversionConfiguration {
+//		
+//		public abstract InversionInputGenerator build(FaultSystemRupSet rupSet);
+//	}
+//	
+//	private enum Presets {
+//		UCERF3 {
+//			@Override
+//			public InversionConfiguration build() {
+//				return new UCERF3(null);
+//			}
+//		},
+//		SLIP_RATES {
+//
+//			@Override
+//			public InversionConfiguration build() {
+//				return new SlipRates();
+//			}
+//			
+//		};
+//		
+//		public abstract InversionConfiguration build();
+//	}
 	
 	private static SlipRateInversionConstraint slipConstraint(FaultSystemRupSet rupSet, double regularSlipWeight, double normalizedSlipWeight) {
 		AveSlipModule aveSlipModule = rupSet.requireModule(AveSlipModule.class);
@@ -168,30 +192,6 @@ public class Inversions {
 			return null;
 		return new SlipRateInversionConstraint(normalizedSlipWeight, regularSlipWeight, weightingType, rupSet,
 				aveSlipModule, slipAlong, targetSlipRates);
-	}
-	
-	public static abstract class InversionConfiguration {
-		
-		public abstract InversionInputGenerator build(FaultSystemRupSet rupSet);
-	}
-	
-	private enum Presets {
-		UCERF3 {
-			@Override
-			public InversionConfiguration build() {
-				return new UCERF3(null);
-			}
-		},
-		SLIP_RATES {
-
-			@Override
-			public InversionConfiguration build() {
-				return new SlipRates();
-			}
-			
-		};
-		
-		public abstract InversionConfiguration build();
 	}
 	
 	private static final GenerationFunctionType PERTURB_DEFAULT = GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE;
