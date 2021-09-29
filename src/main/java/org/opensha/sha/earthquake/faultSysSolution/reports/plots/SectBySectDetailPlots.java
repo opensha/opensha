@@ -196,6 +196,16 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		lines.add("# "+parentName+" Details");
 		
 		lines.add("");
+		
+		List<Integer> allRups = rupSet.getRupturesForParentSection(parentSectIndex);
+		if (allRups == null || allRups.isEmpty()) {
+			lines.add("No Ruptures on "+parentName);
+			
+			MarkdownUtils.writeReadmeAndHTML(lines, parentDir);
+			
+			return dirName;
+		}
+		
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = Double.NEGATIVE_INFINITY;
 		double minLen = Double.POSITIVE_INFINITY;
@@ -206,7 +216,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		double multiRate = 0d;
 		int rupCount = 0;
 		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-		for (int r : rupSet.getRupturesForParentSection(parentSectIndex)) {
+		for (int r : allRups) {
 			rupCount++;
 			double mag = rupSet.getMagForRup(r);
 			minMag = Math.min(minMag, mag);
@@ -775,16 +785,23 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 	private List<String> getMFDLines(ReportMetadata meta, int parentSectIndex, String parentName,
 			List<FaultSection> parentSects, File outputDir, String topLink) throws IOException {
-		
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		FaultSystemSolution sol = meta.primary.sol;
 		
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = Double.NEGATIVE_INFINITY;
+		int totNumRups = 0;
 		for (FaultSection sect : parentSects) {
-			minMag = Math.min(minMag, rupSet.getMinMagForSection(sect.getSectionId()));
-			maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(sect.getSectionId()));
+			int rupsForSect = rupSet.getRupturesForSection(sect.getSectionId()).size();
+			if (rupsForSect > 0) {
+				minMag = Math.min(minMag, rupSet.getMinMagForSection(sect.getSectionId()));
+				maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(sect.getSectionId()));
+				totNumRups += rupsForSect;
+			}
 		}
+		
+		if (totNumRups == 0)
+			return new ArrayList<>();
 		
 		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(minMag, maxMag);
 		

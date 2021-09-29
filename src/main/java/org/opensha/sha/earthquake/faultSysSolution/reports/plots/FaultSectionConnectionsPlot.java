@@ -364,6 +364,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 //		else
 //			delta = 0.5d;
 		
+		maxDist = Math.max(2d, maxDist);
+		
 		HistogramFunction hist = HistogramFunction.getEncompassingHistogram(0d, maxDist, delta);
 		hist.setName("All Connections");
 		HistogramFunction uniqueHist = null;
@@ -432,7 +434,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 //			yRange = new Range(minY, maxY);
 			yRange = new Range(1e-6, 1e1);
 		} else {
-			yRange = new Range(0d, 1.05*hist.getMaxY());
+			yRange = new Range(0d, Math.max(1d, 1.05*hist.getMaxY()));
 		}
 		
 		DecimalFormat distDF = new DecimalFormat("0.0");

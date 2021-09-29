@@ -190,6 +190,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		minMag += 0.5*delta;
 		maxMag -= 0.5*delta;
 		int num = (int)((maxMag - minMag)/delta + 0.5)+1;
+		if (num == 1)
+			maxMag = minMag;
+//		System.out.println(num+" "+minMag+" "+maxMag);
 		return new IncrementalMagFreqDist(minMag, maxMag, num);
 	}
 	
