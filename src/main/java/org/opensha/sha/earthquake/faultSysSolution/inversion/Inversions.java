@@ -15,12 +15,12 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RelativeBValueConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
@@ -50,7 +50,6 @@ import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
-import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.simulatedAnnealing.SerialSimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
 import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
@@ -368,6 +367,12 @@ public class Inversions {
 		mfdMinMag.setRequired(false);
 		ops.addOption(mfdMinMag);
 		
+		Option relGRConstraint = new Option("rgr", "rel-gr-constraint", false, "Enables the relative Gutenberg-Richter "
+				+ "constraint, which constraints the overal MFD to be G-R withought constraining the total event rate. "
+				+ "The b-value will default to 1, override with --b-value <vlalue>. Set constraint weight with --mfd-weight <weight>");
+		relGRConstraint.setRequired(false);
+		ops.addOption(relGRConstraint);
+		
 		// moment rate constraint
 		
 		// doesn't work well, and slip rate constraint handles moment anyway
@@ -407,6 +412,11 @@ public class Inversions {
 				"Enables the normalized slip-rate segmentation constraint.");
 		normSlipSegConstraint.setRequired(false);
 		ops.addOption(normSlipSegConstraint);
+		
+		Option netSlipSegConstraint = new Option("ntseg", "net-slip-seg-constraint", false,
+				"Enables the net (distance-binned) slip-rate segmentation constraint.");
+		netSlipSegConstraint.setRequired(false);
+		ops.addOption(netSlipSegConstraint);
 		
 		Option slipSegIneq = new Option("segi", "slip-seg-ineq", false,
 				"Flag to make segmentation constraints an inequality constraint (only applies if segmentation rate is exceeded).");
@@ -547,6 +557,19 @@ public class Inversions {
 				constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, mfdConstraints, null));
 			}
 			
+			if (cmd.hasOption("rel-gr-constraint")) {
+				double weight = 1d;
+
+				if (cmd.hasOption("mfd-weight"))
+					weight = Double.parseDouble(cmd.getOptionValue("mfd-weight"));
+				
+				double bValue = 1d;
+				if (cmd.hasOption("b-value"))
+					bValue = Double.parseDouble(cmd.getOptionValue("b-value"));
+				
+				constraints.add(new RelativeBValueConstraint(rupSet, bValue, weight));
+			}
+			
 			// doesn't work well, and slip rate constraint handles moment anyway
 //			if (cmd.hasOption("moment-rate-constraint")) {
 //				double targetMomentRate;
@@ -574,7 +597,8 @@ public class Inversions {
 				constraints.add(new TotalRateInversionConstraint(rupSet, weight, targetEventRate));
 			}
 			
-			if (cmd.hasOption("slip-seg-constraint") || cmd.hasOption("norm-slip-seg-constraint")) {
+			if (cmd.hasOption("slip-seg-constraint") || cmd.hasOption("norm-slip-seg-constraint")
+					|| cmd.hasOption("net-slip-seg-constraint")) {
 				System.out.println("Adding slip rate segmentation constraints");
 				double weight = 1d;
 				if (cmd.hasOption("slip-seg-weight"))
@@ -593,13 +617,17 @@ public class Inversions {
 				
 				boolean doNormalized = cmd.hasOption("norm-slip-seg-constraint");
 				boolean doRegular = cmd.hasOption("slip-seg-constraint");
+				boolean doNet = cmd.hasOption("net-slip-seg-constraint");
 				
+				if (doNet)
+					constraints.add(new SlipRateSegmentationConstraint(
+							rupSet, segModel, combiner, weight, true, inequality, true));
 				if (doNormalized)
 					constraints.add(new SlipRateSegmentationConstraint(
-							rupSet, segModel, combiner, weight, true, inequality));
+							rupSet, segModel, combiner, weight, true, inequality, false));
 				if (doRegular)
 					constraints.add(new SlipRateSegmentationConstraint(
-							rupSet, segModel, combiner, weight, false, inequality));
+							rupSet, segModel, combiner, weight, false, inequality, false));
 			}
 			
 			Preconditions.checkState(!constraints.isEmpty(), "No constraints specified.");
