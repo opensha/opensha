@@ -110,8 +110,8 @@ public class RelativeBValueConstraint extends InversionConstraint {
 		
 		int row = startRow;
 		
-		// weigh is such that the entire constraint has the given wieght, not each bin-to-bin constraint
-		double weight = this.weight / getNumRows();
+		// weigh it such that each bin has the given weight, not each bin-to-bin comparison row
+		double weight = this.weight / magFunc.size();
 		
 		for (int m1=0; m1<magFunc.size(); m1++) {
 			double val1 = gr(1, b, magFunc.getX(m1));
