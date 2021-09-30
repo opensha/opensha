@@ -25,9 +25,14 @@ public class RelativeBValueConstraint extends InversionConstraint {
 	
 	private FaultSystemRupSet rupSet;
 	private EvenlyDiscretizedFunc magFunc;
-	private int refMagBin;
 	private double weight;
 	private double b;
+	
+	private double[] mags;
+	private int[] magIndexes;
+	private int[] magCounts;
+	private double globalMin;
+	private double globalMax;
 	
 	private static final DecimalFormat bDF = new DecimalFormat("0.#");
 	
@@ -60,7 +65,20 @@ public class RelativeBValueConstraint extends InversionConstraint {
 		Preconditions.checkState(magFunc.size() > 1, "Must have at least 2 MFD bins to constraint relative b-value");
 		this.b = b;
 		this.weight = weight;
-		this.refMagBin = magFunc.size()/2;
+		
+		mags = rupSet.getMagForAllRups();
+		magIndexes = new int[mags.length];
+		globalMin = magFunc.getMinX() - 0.5*magFunc.getDelta();
+		globalMax = magFunc.getMaxX() + 0.5*magFunc.getDelta();
+		magCounts = new int[magFunc.size()];
+		for (int r=0; r<mags.length; r++) {
+			if ((float)mags[r] < (float)globalMin  || (float)mags[r] > (float)globalMax) {
+				magIndexes[r] = -1;
+			} else {
+				magIndexes[r] = magFunc.getClosestXIndex(mags[r]);
+				magCounts[magIndexes[r]]++;
+			}
+		}
 	}
 
 	@Override
@@ -78,7 +96,8 @@ public class RelativeBValueConstraint extends InversionConstraint {
 		int rows = 0;
 		for (int m1=0; m1<magFunc.size(); m1++)
 			for (int m2=m1+1; m2<magFunc.size(); m2++)
-				rows++;
+				if (magCounts[m1] > 0 && magCounts[m2] > 0)
+					rows++;
 		return rows;
 	}
 
@@ -97,23 +116,16 @@ public class RelativeBValueConstraint extends InversionConstraint {
 		
 		double refVal = gr(1, b, magFunc.getX(0));
 		
-		double[] mags = rupSet.getMagForAllRups();
-		int[] magIndexes = new int[mags.length];
-		double globalMin = magFunc.getMinX() - 0.5*magFunc.getDelta();
-		double globalMax = magFunc.getMaxX() + 0.5*magFunc.getDelta();
-		for (int r=0; r<mags.length; r++) {
-			if ((float)mags[r] < (float)globalMin  || (float)mags[r] > (float)globalMax)
-				magIndexes[r] = -1;
-			else
-				magIndexes[r] = magFunc.getClosestXIndex(mags[r]);
-		}
-		
 		int row = startRow;
 		
 		// weigh it such that each bin has the given weight, not each bin-to-bin comparison row
 		double weight = this.weight / magFunc.size();
 		
 		for (int m1=0; m1<magFunc.size(); m1++) {
+			if (magCounts[m1] == 0) {
+				System.out.println("Skipping M1="+(float)magFunc.getX(m1)+" (no ruptures)");
+				continue;
+			}
 			double val1 = gr(1, b, magFunc.getX(m1));
 			
 			System.out.println("Building b-value constraints for ruptures with M1="+(float)magFunc.getX(m1));
@@ -125,6 +137,10 @@ public class RelativeBValueConstraint extends InversionConstraint {
 			myWeight *= weight;
 			
 			for (int m2=m1+1; m2<magFunc.size(); m2++) {
+				if (magCounts[m2] == 0) {
+					System.out.println("\tSkipping M2="+(float)magFunc.getX(m2)+" (no ruptures)");
+					continue;
+				}
 				double val2 = gr(1, b, magFunc.getX(m2));
 				
 				// ruptures in this row should have a final rate equal to this times the rate of

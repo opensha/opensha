@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
@@ -165,11 +166,18 @@ public class Inversions {
 		
 		return sa;
 	}
+	
+	private static double getMinMagForMFD(FaultSystemRupSet rupSet) {
+		if (rupSet.hasModule(ModSectMinMags.class))
+			return StatUtils.min(rupSet.requireModule(ModSectMinMags.class).getMinMagForSections());
+		return rupSet.getMinMag();
+	}
 
 	public static GutenbergRichterMagFreqDist inferTargetGRFromSlipRates(FaultSystemRupSet rupSet, double bValue) {
 		double totMomentRate = rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate();
 		System.out.println("Inferring target G-R");
-		HistogramFunction tempHist = HistogramFunction.getEncompassingHistogram(rupSet.getMinMag(), rupSet.getMaxMag(), 0.1d);
+		HistogramFunction tempHist = HistogramFunction.getEncompassingHistogram(
+				getMinMagForMFD(rupSet), rupSet.getMaxMag(), 0.1d);
 		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(
 				tempHist.getMinX(), tempHist.size(), tempHist.getDelta(), totMomentRate, bValue);
 		return gr;
@@ -407,7 +415,7 @@ public class Inversions {
 				
 				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetMFD, null, null, mfdConstraints, null);
 			} else if (cmd.hasOption("mfd-total-rate")) {
-				double minX = 0.1*Math.floor(rupSet.getMinMag()*10d);
+				double minX = 0.1*Math.floor(getMinMagForMFD(rupSet)*10d);
 				double minTargetMag = minX;
 				if (cmd.hasOption("mfd-min-mag")) {
 					minTargetMag = Double.parseDouble(cmd.getOptionValue("mfd-min-mag"));
