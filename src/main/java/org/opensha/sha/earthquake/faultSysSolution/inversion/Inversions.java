@@ -14,7 +14,9 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInequalityInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RelativeBValueConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
@@ -34,6 +36,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
@@ -183,6 +186,29 @@ public class Inversions {
 		return gr;
 	}
 	
+	public static MFD_InversionConstraint restrictMFDRange(MFD_InversionConstraint constr, double minMag, double maxMag) {
+		IncrementalMagFreqDist orig = constr.getMagFreqDist();
+		int minIndex = -1;
+		int maxIndex = 0;
+		for (int i=0; i<orig.size(); i++) {
+			double mag = orig.getX(i);
+			if (minIndex < 0 && (float)mag >= (float)minMag)
+				minIndex = i;
+			if ((float)mag < (float)maxMag)
+				maxIndex = i;
+		}
+		Preconditions.checkState(minIndex >= 0 && minIndex >= maxIndex,
+				"Could not restrict MFD to range [%s, %s]", minMag, maxMag);
+		IncrementalMagFreqDist trimmed = new IncrementalMagFreqDist(
+				orig.getX(minIndex), orig.getX(maxIndex), 1+maxIndex-minIndex);
+		for (int i=0; i<trimmed.size(); i++) {
+			int refIndex = i+minIndex;
+			Preconditions.checkState((float)trimmed.getX(i) == (float)orig.getX(refIndex));
+			trimmed.set(i, orig.getY(refIndex));
+		}
+		return new MFD_InversionConstraint(trimmed, constr.getRegion());
+	}
+	
 	private static Options createOptions() {
 		Options ops = new Options();
 
@@ -248,9 +274,24 @@ public class Inversions {
 		mfdMinMag.setRequired(false);
 		ops.addOption(mfdMinMag);
 		
+		// TODO add to docs
+		Option mfdIneq = new Option("min", "mfd-ineq", false, "Flag to configure MFD constraints as inequality rather "
+				+ "than equality constraints. Used in conjunction with --mfd-constraint. Use --mfd-transition-mag "
+				+ "instead if you want to transition from equality to inequality constraints.");
+		mfdIneq.setRequired(false);
+		ops.addOption(mfdIneq);
+		
+		// TODO add to docs
+		Option mfdTransMag = new Option("mtm", "mfd-transition-mag", true, "Magnitude at and above which the mfd "
+				+ "constraint should be applied as a inequality, allowing a natural taper (default is equality only).");
+		mfdTransMag.setRequired(false);
+		ops.addOption(mfdTransMag);
+		
+		// TODO: add to docs
 		Option relGRConstraint = new Option("rgr", "rel-gr-constraint", false, "Enables the relative Gutenberg-Richter "
 				+ "constraint, which constraints the overal MFD to be G-R withought constraining the total event rate. "
-				+ "The b-value will default to 1, override with --b-value <vlalue>. Set constraint weight with --mfd-weight <weight>");
+				+ "The b-value will default to 1, override with --b-value <vlalue>. Set constraint weight with "
+				+ "--mfd-weight <weight>, or configure as an inequality with --mfd-ineq.");
 		relGRConstraint.setRequired(false);
 		ops.addOption(relGRConstraint);
 		
@@ -314,6 +355,20 @@ public class Inversions {
 				"Sets weight for the slip-rate segmentation constraint.");
 		slipSegWeight.setRequired(false);
 		ops.addOption(slipSegWeight);
+		
+		// minimization constraint
+		
+		// TODO add to docs
+		Option minimizeBelowMin = new Option("mbs", "minimize-below-sect-min", false,
+				"Flag to enable the minimzation constraint for rupture sets that have modified section minimum magnitudes."
+				+ " If enabled, rates for all ruptures below those minimum magnitudes will be minimized.");
+		minimizeBelowMin.setRequired(false);
+		ops.addOption(minimizeBelowMin);
+		
+		// TODO add to docs
+		Option mwWeight = new Option("mw", "minimize-weight", true, "Sets weight for the minimization constraint.");
+		mwWeight.setRequired(false);
+		ops.addOption(mwWeight);
 		
 		/*
 		 *  Simulated Annealing parameters
@@ -441,8 +496,7 @@ public class Inversions {
 				targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 			}
 			
-			if (!rupSet.hasModule(InversionTargetMFDs.class))
-				rupSet.addModule(targetMFDs);
+			rupSet.addModule(targetMFDs);
 			
 			List<? extends MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_Constraints();
 			
@@ -450,7 +504,24 @@ public class Inversions {
 				System.out.println("MFD Constraint for region "
 						+(constr.getRegion() == null ? "null" : constr.getRegion().getName())
 						+":\n"+constr.getMagFreqDist());
-			constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, mfdConstraints, null));
+			
+			if (cmd.hasOption("mfd-ineq")) {
+				Preconditions.checkArgument(!cmd.hasOption("mfd-transition-mag"),
+						"Can't specify both --mfd-transition-mag and --mfd-ineq");
+				constraints.add(new MFDInequalityInversionConstraint(rupSet, weight, mfdConstraints));
+			} else if (cmd.hasOption("mfd-transition-mag")) {
+				double transMag = Double.parseDouble(cmd.getOptionValue("mfd-transition-mag"));
+				List<MFD_InversionConstraint> eqConstrs = new ArrayList<>();
+				List<MFD_InversionConstraint> ieqConstrs = new ArrayList<>();
+				for (MFD_InversionConstraint constr : mfdConstraints) {
+					eqConstrs.add(restrictMFDRange(constr, Double.NEGATIVE_INFINITY, transMag));
+					ieqConstrs.add(restrictMFDRange(constr, transMag, Double.POSITIVE_INFINITY));
+				}
+				constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, eqConstrs, null));
+				constraints.add(new MFDInequalityInversionConstraint(rupSet, weight, ieqConstrs));
+			} else {
+				constraints.add(new MFDEqualityInversionConstraint(rupSet, weight, mfdConstraints, null));
+			}
 		}
 		
 		if (cmd.hasOption("rel-gr-constraint")) {
@@ -463,7 +534,9 @@ public class Inversions {
 			if (cmd.hasOption("b-value"))
 				bValue = Double.parseDouble(cmd.getOptionValue("b-value"));
 			
-			constraints.add(new RelativeBValueConstraint(rupSet, bValue, weight));
+			boolean ineq = cmd.hasOption("mfd-ineq");
+			
+			constraints.add(new RelativeBValueConstraint(rupSet, bValue, weight, ineq));
 		}
 		
 		// doesn't work well, and slip rate constraint handles moment anyway
@@ -524,6 +597,24 @@ public class Inversions {
 			if (doRegular)
 				constraints.add(new SlipRateSegmentationConstraint(
 						rupSet, segModel, combiner, weight, false, inequality, false));
+		}
+		
+		if (cmd.hasOption("minimize-below-sect-min")) {
+			Preconditions.checkState(rupSet.hasModule(ModSectMinMags.class),
+					"Rupture set must have the ModSectMinMags module attached to enable the minimzation constraint.");
+			
+			double weight = 1d;
+			if (cmd.hasOption("minimize-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("minimize-weight"));
+			
+			ModSectMinMags modMinMags = rupSet.requireModule(ModSectMinMags.class);
+			List<Integer> belowMinIndexes = new ArrayList<>();
+			for (int r=0; r<rupSet.getNumRuptures(); r++)
+				if (FaultSystemRupSetCalc.isRuptureBelowSectMinMag(rupSet, r, modMinMags))
+					belowMinIndexes.add(r);
+			System.out.println("Minimizing rates of "+belowMinIndexes.size()
+				+" ruptures below the modified section minimum magnitudes");
+			constraints.add(new RupRateMinimizationConstraint(weight, belowMinIndexes));
 		}
 		
 		Preconditions.checkState(!constraints.isEmpty(), "No constraints specified.");
