@@ -27,6 +27,7 @@ public class RelativeBValueConstraint extends InversionConstraint {
 	private EvenlyDiscretizedFunc magFunc;
 	private double weight;
 	private double b;
+	private boolean inequality;
 	
 	private double[] mags;
 	private int[] magIndexes;
@@ -41,7 +42,30 @@ public class RelativeBValueConstraint extends InversionConstraint {
 	}
 	
 	public RelativeBValueConstraint(FaultSystemRupSet rupSet, double b, double weight) {
-		this(rupSet, getMagFunc(rupSet), b, weight);
+		
+	}
+	
+	public RelativeBValueConstraint(FaultSystemRupSet rupSet, double b, double weight, boolean inequality) {
+		this.rupSet = rupSet;
+		this.magFunc = getMagFunc(rupSet);
+		Preconditions.checkState(magFunc.size() > 1, "Must have at least 2 MFD bins to constraint relative b-value");
+		this.b = b;
+		this.weight = weight;
+		this.inequality = inequality;
+		
+		mags = rupSet.getMagForAllRups();
+		magIndexes = new int[mags.length];
+		globalMin = magFunc.getMinX() - 0.5*magFunc.getDelta();
+		globalMax = magFunc.getMaxX() + 0.5*magFunc.getDelta();
+		magCounts = new int[magFunc.size()];
+		for (int r=0; r<mags.length; r++) {
+			if ((float)mags[r] < (float)globalMin  || (float)mags[r] > (float)globalMax) {
+				magIndexes[r] = -1;
+			} else {
+				magIndexes[r] = magFunc.getClosestXIndex(mags[r]);
+				magCounts[magIndexes[r]]++;
+			}
+		}
 	}
 	
 	private static EvenlyDiscretizedFunc getMagFunc(FaultSystemRupSet rupSet) {
@@ -58,36 +82,18 @@ public class RelativeBValueConstraint extends InversionConstraint {
 		int num = (int)((maxMag-minMag)/0.1)+2;
 		return new EvenlyDiscretizedFunc(minMag, maxMag, num);
 	}
-	
-	public RelativeBValueConstraint(FaultSystemRupSet rupSet, EvenlyDiscretizedFunc magFunc, double b, double weight) {
-		this.rupSet = rupSet;
-		this.magFunc = magFunc;
-		Preconditions.checkState(magFunc.size() > 1, "Must have at least 2 MFD bins to constraint relative b-value");
-		this.b = b;
-		this.weight = weight;
-		
-		mags = rupSet.getMagForAllRups();
-		magIndexes = new int[mags.length];
-		globalMin = magFunc.getMinX() - 0.5*magFunc.getDelta();
-		globalMax = magFunc.getMaxX() + 0.5*magFunc.getDelta();
-		magCounts = new int[magFunc.size()];
-		for (int r=0; r<mags.length; r++) {
-			if ((float)mags[r] < (float)globalMin  || (float)mags[r] > (float)globalMax) {
-				magIndexes[r] = -1;
-			} else {
-				magIndexes[r] = magFunc.getClosestXIndex(mags[r]);
-				magCounts[magIndexes[r]]++;
-			}
-		}
-	}
 
 	@Override
 	public String getShortName() {
+		if (inequality)
+			return "G-R,b≥"+bDF.format(b);
 		return "G-R,b="+bDF.format(b);
 	}
 
 	@Override
 	public String getName() {
+		if (inequality)
+			return "G-R b-value constrant (b≥"+bDF.format(b)+")";
 		return "G-R b-value constrant (b="+bDF.format(b)+")";
 	}
 
@@ -103,7 +109,7 @@ public class RelativeBValueConstraint extends InversionConstraint {
 
 	@Override
 	public boolean isInequality() {
-		return false;
+		return inequality;
 	}
 	
 	private static double gr(double a, double b, double M) {
@@ -154,10 +160,11 @@ public class RelativeBValueConstraint extends InversionConstraint {
 						continue;
 					
 					if (magIndex == m2) {
-						setA(A, row, r, -myWeight*relVal);
+						// larger should be positive so that things work in inequality mode
+						setA(A, row, r, myWeight*relVal);
 						count++;
 					} else if (magIndex == m1) {
-						setA(A, row, r, myWeight);
+						setA(A, row, r, -myWeight);
 						count++;
 					}
 				}
