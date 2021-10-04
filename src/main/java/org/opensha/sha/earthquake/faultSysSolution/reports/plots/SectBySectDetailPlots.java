@@ -267,16 +267,19 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<FaultSection> parentSects = sectsByParent.get(parentSectIndex);
 		
 		if (meta.primary.sol != null) {
+			// MFDs and such only for solutions
+			
 			lines.add("");
 			lines.addAll(getMFDLines(meta, parentSectIndex, parentName, parentSects, resourcesDir, topLink));
 			
 			lines.add("");
 			lines.addAll(getAlongStrikeLines(meta, parentSectIndex, parentName, parentSects, resourcesDir, topLink));
+		} else {
+			// histograms and rupture examples when we don't have a solution
+			lines.add("");
+			lines.addAll(getScalarLines(meta, parentSectIndex, parentName, parentSects,
+					rupSet, resourcesDir, topLink, scalarVals));
 		}
-		
-		lines.add("");
-		lines.addAll(getScalarLines(meta, parentSectIndex, parentName, parentSects,
-				rupSet, resourcesDir, topLink, scalarVals));
 
 		lines.add("");
 		lines.addAll(getConnectivityLines(meta, parentSectIndex, parentName, distAzCalc, sectsByParent,
