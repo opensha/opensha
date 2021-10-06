@@ -16,7 +16,13 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
@@ -39,11 +45,6 @@ import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 class DemoFileCreator {
@@ -118,9 +119,9 @@ class DemoFileCreator {
 		U3FaultSystemIO.writeRupSet(oldRupSet, new File(outputDir, "demo_old_rup_set.zip"));
 		
 		List<InversionConstraint> constraints = new ArrayList<>();
-		double[] targetSlipRates = rupSet.getSlipRateForAllSections();
-		constraints.add(new SlipRateInversionConstraint(1d, 1d, SlipRateConstraintWeightingType.BOTH, rupSet,
-				rupSet.requireModule(AveSlipModule.class), rupSet.requireModule(SlipAlongRuptureModel.class), targetSlipRates));
+		constraints.add(new SlipRateInversionConstraint(1d, SlipRateInversionConstraint.WeightingType.UNNORMALIZED, rupSet,
+				rupSet.requireModule(AveSlipModule.class), rupSet.requireModule(SlipAlongRuptureModel.class),
+				rupSet.requireModule(SectSlipRates.class)));
 		InversionInputGenerator invGen = new InversionInputGenerator(rupSet, constraints);
 		
 		invGen.generateInputs(true);

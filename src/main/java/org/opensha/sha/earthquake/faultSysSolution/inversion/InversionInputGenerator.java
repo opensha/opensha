@@ -12,6 +12,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -21,7 +22,6 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseRCDoubleMatrix2D;
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.utils.MatrixIO;
 
 /**
@@ -33,6 +33,7 @@ import scratch.UCERF3.utils.MatrixIO;
 public class InversionInputGenerator {
 	
 	// inputs
+	protected FaultSystemRupSet rupSet;
 	protected int numRuptures;
 	protected List<InversionConstraint> constraints;
 	protected double[] initialSolution;
@@ -50,8 +51,13 @@ public class InversionInputGenerator {
 		this(rupSet, constraints, null, null);
 	}
 
+	public InversionInputGenerator(FaultSystemRupSet rupSet, InversionConfiguration config) {
+		this(rupSet, config.getConstraints(), config.getInitialSolution(), config.getWaterLevel());
+	}
+
 	public InversionInputGenerator(FaultSystemRupSet rupSet, List<InversionConstraint> constraints,
 			double[] initialSolution, double[] waterLevelRates) {
+		this.rupSet = rupSet;
 		this.numRuptures = rupSet.getNumRuptures();
 		this.constraints = constraints;
 		this.initialSolution = initialSolution;
@@ -430,6 +436,10 @@ public class InversionInputGenerator {
 
 	public List<InversionConstraint> getConstraints() {
 		return constraints;
+	}
+	
+	public FaultSystemRupSet getRuptureSet() {
+		return rupSet;
 	}
 
 }

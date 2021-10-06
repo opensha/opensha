@@ -23,7 +23,9 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  */
 public class RupRateSmoothingInversionConstraint extends InversionConstraint {
 	
-	private double weight;
+	public static final String NAME = "Rup Rate Smoothing";
+	public static final String SHORT_NAME = "RupRateSmooth";
+	
 	private List<IDPairing> smoothingConstraintRupPairings;
 
 	public RupRateSmoothingInversionConstraint(double weight, FaultSystemRupSet rupSet) {
@@ -31,28 +33,13 @@ public class RupRateSmoothingInversionConstraint extends InversionConstraint {
 	}
 	
 	public RupRateSmoothingInversionConstraint(double weight, List<IDPairing> smoothingConstraintRupPairings) {
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
 		this.smoothingConstraintRupPairings = smoothingConstraintRupPairings;
-	}
-
-	@Override
-	public String getShortName() {
-		return "RupRateSmooth";
-	}
-
-	@Override
-	public String getName() {
-		return "Rup Rate Smoothing";
 	}
 
 	@Override
 	public int getNumRows() {
 		return smoothingConstraintRupPairings.size();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override

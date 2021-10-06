@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa;
 
 import java.awt.Color;
 import java.io.File;
@@ -21,17 +21,17 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 
 import com.google.common.collect.Lists;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
-import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.params.CoolingScheduleType;
-import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
-import scratch.UCERF3.simulatedAnnealing.params.NonnegativityConstraintType;
 
 public interface SimulatedAnnealing {
 

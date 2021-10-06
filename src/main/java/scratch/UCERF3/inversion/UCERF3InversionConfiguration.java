@@ -40,7 +40,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	
 	private double slipRateConstraintWt_normalized;
 	private double slipRateConstraintWt_unnormalized;
-	private SlipRateConstraintWeightingType slipRateWeighting;
 	private double paleoRateConstraintWt; 
 	private double paleoSlipConstraintWt;
 	private double magnitudeEqualityConstraintWt;
@@ -81,7 +80,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	UCERF3InversionConfiguration(
 			double slipRateConstraintWt_normalized,
 			double slipRateConstraintWt_unnormalized,
-			SlipRateConstraintWeightingType slipRateWeighting,
 			double paleoRateConstraintWt,
 			double paleoSlipConstraintWt,
 			double magnitudeEqualityConstraintWt,
@@ -114,8 +112,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		metadata += "slipRateConstraintWt_normalized: "+slipRateConstraintWt_normalized;
 		this.slipRateConstraintWt_unnormalized = slipRateConstraintWt_unnormalized;
 		metadata += "\nslipRateConstraintWt_unnormalized: "+slipRateConstraintWt_unnormalized;
-		this.slipRateWeighting = slipRateWeighting;
-		metadata += "\nslipRateWeighting: "+slipRateWeighting.name();
 		this.paleoRateConstraintWt = paleoRateConstraintWt;
 		metadata += "\npaleoRateConstraintWt: "+paleoRateConstraintWt;
 		this.paleoSlipConstraintWt = paleoSlipConstraintWt;
@@ -216,12 +212,9 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		/* *******************************************
 		 * COMMON TO ALL MODELS
 		 * ******************************************* */
-		// Setting slip-rate constraint weights to 0 does not disable them! To disable one or the other (both cannot be), use slipConstraintRateWeightingType Below
 		double slipRateConstraintWt_normalized = 1; // For SlipRateConstraintWeightingType.NORMALIZED (also used for SlipRateConstraintWeightingType.BOTH) -- NOT USED if UNNORMALIZED!
 		double slipRateConstraintWt_unnormalized = 100; // For SlipRateConstraintWeightingType.UNNORMALIZED (also used for SlipRateConstraintWeightingType.BOTH) -- NOT USED if NORMALIZED!
 		// If normalized, slip rate misfit is % difference for each section (recommended since it helps fit slow-moving faults).  If unnormalized, misfit is absolute difference.
-		// BOTH includes both normalized and unnormalized constraints.
-		SlipRateConstraintWeightingType slipRateWeighting = SlipRateConstraintWeightingType.BOTH; // (recommended: BOTH)
 		
 		// weight of paleo-rate constraint relative to slip-rate constraint (recommended: 1.2)
 		double paleoRateConstraintWt = 1.2;
@@ -414,19 +407,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			System.out.println("Setting unnormalized slip rate constraint wt: "+slipRateConstraintWt_normalized);
 		}
 		
-		if (modifiers != null && modifiers.hasOption(InversionOptions.SLIP_WT_TYPE.getArgName())) {
-			String opt = modifiers.getOptionValue(InversionOptions.SLIP_WT_TYPE.getArgName()).toUpperCase();
-			if (opt.startsWith("NORM"))
-				slipRateWeighting = SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE;
-			else if (opt.startsWith("UNNORM"))
-				slipRateWeighting = SlipRateConstraintWeightingType.UNNORMALIZED;
-			else if (opt.startsWith("BOTH"))
-				slipRateWeighting = SlipRateConstraintWeightingType.BOTH;
-			else
-				throw new IllegalArgumentException("Unkown norm type: "+opt);
-			System.out.println("Setting slip rate constraint weighting type: "+slipRateWeighting);
-		}
-		
 		if (modifiers != null && modifiers.hasOption(InversionOptions.RUP_SMOOTH_WT.getArgName())) {
 			rupRateSmoothingConstraintWt = Double.parseDouble(
 					modifiers.getOptionValue(InversionOptions.RUP_SMOOTH_WT.getArgName()));
@@ -464,7 +444,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		return new UCERF3InversionConfiguration(
 				slipRateConstraintWt_normalized,
 				slipRateConstraintWt_unnormalized,
-				slipRateWeighting,
 				paleoRateConstraintWt,
 				paleoSlipConstraintWt,
 				mfdEqualityConstraintWt,
@@ -937,14 +916,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	public void setSlipRateConstraintWt_unnormalized(double slipRateConstraintWt_unnormalized) {
 		this.slipRateConstraintWt_unnormalized = slipRateConstraintWt_unnormalized;
 	}
-	
-	public SlipRateConstraintWeightingType getSlipRateWeightingType() {
-		return slipRateWeighting;
-	}
-
-	public void setSlipRateWeightingType(SlipRateConstraintWeightingType slipRateWeighting) {
-		this.slipRateWeighting = slipRateWeighting;
-	}
 
 	public double getPaleoRateConstraintWt() {
 		return paleoRateConstraintWt;
@@ -1144,13 +1115,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		this.rupRateSmoothingConstraintWt = rupRateSmoothingConstraintWt;
 	}
 	
-	public enum SlipRateConstraintWeightingType {
-		NORMALIZED_BY_SLIP_RATE,  // Normalize each slip-rate constraint by the slip-rate target (So the inversion tries to minimize ratio of model to target)
-		UNNORMALIZED, // Do not normalize slip-rate constraint (inversion will minimize difference of model to target, effectively fitting fast faults better than slow faults on a ratio basis)
-		BOTH,  // Include both normalized and unnormalized constraints.  This doubles the number of slip-rate constraints, and is a compromise between normalized (which fits slow faults better on a difference basis) and the unnormalized constraint (which fits fast faults better on a ratio basis)
-		UNCERTAINTY_ADJUSTED; //Adjust section slip rate targets by their CoV (slip-rate/std-dev). This used by NZSHM22. 
-	}
-
 	public double getMFDTransitionMag() {
 		return MFDTransitionMag;
 	}
@@ -1189,7 +1153,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		
 		el.addAttribute("slipRateConstraintWt_normalized", slipRateConstraintWt_normalized+"");
 		el.addAttribute("slipRateConstraintWt_unnormalized", slipRateConstraintWt_unnormalized+"");
-		el.addAttribute("slipRateWeighting", slipRateWeighting.name()+"");
 		el.addAttribute("paleoRateConstraintWt", paleoRateConstraintWt+"");
 		el.addAttribute("paleoSlipConstraintWt", paleoSlipConstraintWt+"");
 		el.addAttribute("magnitudeEqualityConstraintWt", magnitudeEqualityConstraintWt+"");
@@ -1233,7 +1196,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	public static UCERF3InversionConfiguration fromXMLMetadata(Element confEl) {
 		double slipRateConstraintWt_normalized = Double.parseDouble(confEl.attributeValue("slipRateConstraintWt_normalized"));
 		double slipRateConstraintWt_unnormalized = Double.parseDouble(confEl.attributeValue("slipRateConstraintWt_unnormalized"));
-		SlipRateConstraintWeightingType slipRateWeighting = SlipRateConstraintWeightingType.valueOf(confEl.attributeValue("slipRateWeighting"));
 		double paleoRateConstraintWt = Double.parseDouble(confEl.attributeValue("paleoRateConstraintWt"));
 		double paleoSlipConstraintWt = Double.parseDouble(confEl.attributeValue("paleoSlipConstraintWt"));
 		double magnitudeEqualityConstraintWt = Double.parseDouble(confEl.attributeValue("magnitudeEqualityConstraintWt"));
@@ -1256,7 +1218,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		List<MFD_InversionConstraint> mfdEqualityConstraints = mfdsFromXML(confEl.element("MFD_EqualityConstraints"));
 		List<MFD_InversionConstraint> mfdInequalityConstraints = mfdsFromXML(confEl.element("MFD_InequalityConstraints"));
 		
-		return new UCERF3InversionConfiguration(slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, slipRateWeighting, paleoRateConstraintWt,
+		return new UCERF3InversionConfiguration(slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, paleoRateConstraintWt,
 				paleoSlipConstraintWt, magnitudeEqualityConstraintWt, magnitudeInequalityConstraintWt, rupRateConstraintWt,
 				participationSmoothnessConstraintWt, participationConstraintMagBinSize, nucleationMFDConstraintWt,
 				mfdSmoothnessConstraintWt, mfdSmoothnessConstraintWtForPaleoParents, rupRateSmoothingConstraintWt,

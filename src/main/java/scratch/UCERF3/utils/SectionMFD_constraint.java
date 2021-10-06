@@ -68,15 +68,18 @@ public class SectionMFD_constraint {
 	
 	final static boolean D = false; // for debugging
 	
-	ArrayList<Double> mags = new ArrayList<Double>();		// the bin-center mags (although 2nd one is not perfectly centered)
-	double[] rates;											// the rate of events in each bin
-	ArrayList<Double> magEdges = new ArrayList<Double>();	// the edges of the bins (this has one more element than mags)
+	private ArrayList<Double> mags = new ArrayList<Double>();		// the bin-center mags (although 2nd one is not perfectly centered)
+	private double[] rates;											// the rate of events in each bin
+	private ArrayList<Double> magEdges = new ArrayList<Double>();	// the edges of the bins (this has one more element than mags)
 	
-	double maxMag, minMag, origMinMag;
-	double upperDelta=Double.NaN;
+	private double maxMag, minMag, origMinMag;
+	private double upperDelta;
 	
-	SummedMagFreqDist targetMFD;
-	EvenlyDiscretizedFunc targetCumMFD;
+	/*
+	 * these are only used in plots, not needed for constraints, and are not serialized
+	 */
+	private transient SummedMagFreqDist targetMFD;
+	private transient EvenlyDiscretizedFunc targetCumMFD;
 	
 	// the following assumes first mag has area=2A, where A= subsection area, 
 	// second mag has area=3A, and third mag has area=4A, and the spacing also
@@ -584,7 +587,7 @@ public class SectionMFD_constraint {
 	 * 1/delta to make it comparable to what's returned by getMFD().
 	 * @return
 	 */
-	public IncrementalMagFreqDist getTargetMFD() {
+	private IncrementalMagFreqDist getTargetMFD() {
 		return targetMFD;
 	}
 	
@@ -593,7 +596,7 @@ public class SectionMFD_constraint {
 	 * This returns the target cumulative MFD
 	 * @return
 	 */
-	public EvenlyDiscretizedFunc getTargetCumMFD() {
+	private EvenlyDiscretizedFunc getTargetCumMFD() {
 		return targetCumMFD;
 	}
 	

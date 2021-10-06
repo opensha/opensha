@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa;
 
 import java.util.Arrays;
 import java.util.List;
@@ -10,12 +10,12 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.params.CoolingScheduleType;
-import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
-import scratch.UCERF3.simulatedAnnealing.params.NonnegativityConstraintType;
 import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
@@ -50,7 +50,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		NonnegativityConstraintType.LIMIT_ZERO_RATES;
 	private NonnegativityConstraintType nonnegativityConstraintAlgorithm = NONNEGATIVITY_CONST_DEFAULT;
 	
-	private static GenerationFunctionType PERTURB_FUNC_DEFAULT = GenerationFunctionType.UNIFORM_NO_TEMP_DEPENDENCE;
+	private static GenerationFunctionType PERTURB_FUNC_DEFAULT = GenerationFunctionType.UNIFORM_0p0001;
 	private GenerationFunctionType perturbationFunc = PERTURB_FUNC_DEFAULT;
 	
 	// this provides and alternative way of random sampling ruptures to perturb (i.e., for a non-uniform districtuion)
@@ -498,7 +498,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 
 
 			// How much to perturb index (some perturbation functions are a function of T)	
-			perturb[index] = getPerturbation(perturbationFunc, T, index);
+			perturb[index] = perturbationFunc.getPerturbation(r, T, index, variablePerturbBasis);
 			
 			boolean wasZero = x[index] == 0;
 
@@ -509,7 +509,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				// which may be desirable since global minimum is likely near a boundary
 				if (wasZero) { // if that rate was already zero do not keep it at zero
 					while (x[index] + perturb[index] < 0) 
-						perturb[index] = getPerturbation(perturbationFunc,T, index);
+						perturb[index] =  perturbationFunc.getPerturbation(r, T, index, variablePerturbBasis);
 				} else { // if that rate was not already zero, and it goes negative, set it equal to zero
 					if (x[index] + perturb[index] < 0) 
 						perturb[index] = -x[index];
@@ -519,7 +519,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				// This way will result in not a lot of zero rates (none if numIterations >> length(x)),
 				// which may be desirable if we don't want a lot of zero rates
 				while (x[index] + perturb[index] < 0) {
-					perturb[index] = getPerturbation(perturbationFunc,T, index);	
+					perturb[index] =  perturbationFunc.getPerturbation(r, T, index, variablePerturbBasis);
 				}
 				break;
 			case PREVENT_ZERO_RATES:    // Only perturb rates to positive values; any perturbations of zero rates MUST be accepted.
@@ -707,68 +707,6 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		long[] ret = { iter-1, perturbs };
 		return ret;
 	}
-
-	private double getPerturbation(GenerationFunctionType perturbationFunc, double T, int index) {
-
-		double perturbation;
-		double r2;
-		double scale;
-		double basis;
-
-		/*
-		 * TODO: make the scalars user configurable
-		 */
-		switch (perturbationFunc) {
-		case UNIFORM_NO_TEMP_DEPENDENCE:
-			perturbation = (r.nextDouble()-0.5)* 0.0001; // U3 value was 0.001, which is a bit high. this works better
-			break;
-		case VARIABLE_NO_TEMP_DEPENDENCE:
-			basis = variablePerturbBasis[index];
-			if (basis == 0)
-				basis = 0.00000001;
-			perturbation = (r.nextDouble()-0.5) * basis * 1000d;
-			break;
-		case GAUSSIAN:
-			perturbation =  (1/Math.sqrt(T)) * r.nextGaussian() * 0.0001 * Math.exp(1/(2*T)); 
-			break;
-		case TANGENT:
-			perturbation = T * 0.001 * Math.tan(Math.PI * r.nextDouble() - Math.PI/2);	
-			break;
-		case POWER_LAW:
-			r2 = r.nextDouble();  
-			perturbation = Math.signum(r2-0.5) * T * 0.001 * (Math.pow(1+1/T,Math.abs(2*r2-1))-1);
-			break;
-		case EXPONENTIAL:
-			r2 = r.nextDouble();  
-			perturbation = Math.pow(10, r2) * T * 0.001;
-			break;
-		case EXPONENTIAL_RANGE:
-			r2 = max_exp - r.nextDouble()*exp_orders_of_mag;
-			perturbation = Math.pow(10, r2);
-			if (r.nextBoolean())
-				perturbation = -perturbation;
-			break;
-		case EXPONENTIAL_SCALE:
-			r2 = max_exp - r.nextDouble()*exp_orders_of_mag;
-			scale = Math.pow(10, r2);
-			perturbation = (r.nextDouble()-0.5)*scale;
-			break;
-		case VARIABLE_EXPONENTIAL_SCALE:
-			basis = Math.log10(Math.max(1e-10, variablePerturbBasis[index]));
-			r2 = basis + 2d - 4d*r.nextDouble(); // +/- 2 orders of magnitude
-			scale = Math.pow(10, r2);
-			perturbation = (r.nextDouble()-0.5)*scale;
-			break;
-		default:
-			throw new IllegalStateException("Oh dear.  You missed a Generation Function type.");
-		}
-
-		return perturbation;
-
-	}
-	
-	public static double exp_orders_of_mag = 8;
-	public static double max_exp = -2;
 	
 	private static String enumOptionsStr(Enum<?>[] values) {
 		String str = null;

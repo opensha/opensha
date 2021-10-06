@@ -17,37 +17,21 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 public class ParkfieldInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "Parkfield";
-	public static final String SHORT_NAME = "Parkfield";
+	public static final String SHORT_NAME = NAME;
 	
-	private double weight;
 	private double targetRate;
 	private List<Integer> parkfieldRups;
 
 	public ParkfieldInversionConstraint(double weight, double targetRate,
 			List<Integer> parkfieldRups) {
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
 		this.targetRate = targetRate;
 		this.parkfieldRups = parkfieldRups;
 	}
 
 	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
-	}
-
-	@Override
 	public int getNumRows() {
 		return 1;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override

@@ -25,50 +25,24 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 	public static final String NAME = "Paleoseismic Average Slip";
 	public static final String SHORT_NAME = "PaleoSlip";
 	
-	private FaultSystemRupSet rupSet;
-	private AveSlipModule aveSlipModule;
-	private SlipAlongRuptureModel slipAlongModule;
-	private double weight;
+	private transient FaultSystemRupSet rupSet;
+	private transient AveSlipModule aveSlipModule;
+	private transient SlipAlongRuptureModel slipAlongModule;
+	
 	private List<AveSlipConstraint> constraints;
 	private double[] targetSlipRates;
 
-	@Deprecated
-	public PaleoSlipInversionConstraint(SlipEnabledRupSet rupSet, double weight,
+	public PaleoSlipInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<AveSlipConstraint> constraints, double[] targetSlipRates) {
-		this(rupSet, rupSet.requireModule(AveSlipModule.class), rupSet.requireModule(SlipAlongRuptureModel.class),
-				weight, constraints, targetSlipRates);
-	}
-
-	public PaleoSlipInversionConstraint(FaultSystemRupSet rupSet, AveSlipModule aveSlipModule,
-			SlipAlongRuptureModel slipAlongModule, double weight, List<AveSlipConstraint> constraints, double[] targetSlipRates) {
-		this.rupSet = rupSet;
-		Preconditions.checkNotNull(aveSlipModule, "Average slip module must be supplied for slip rate constraints");
-		this.aveSlipModule = aveSlipModule;
-		Preconditions.checkNotNull(slipAlongModule, "Slip along rupture module must be supplied for slip rate constraints");
-		this.slipAlongModule = slipAlongModule;
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
+		setRuptureSet(rupSet);
 		this.constraints = constraints;
 		this.targetSlipRates = targetSlipRates;
 	}
 
 	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
-	}
-
-	@Override
 	public int getNumRows() {
 		return constraints.size();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -96,6 +70,13 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 			}
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
+		this.aveSlipModule = rupSet.requireModule(AveSlipModule.class);
+		this.slipAlongModule = rupSet.requireModule(SlipAlongRuptureModel.class);
 	}
 
 }

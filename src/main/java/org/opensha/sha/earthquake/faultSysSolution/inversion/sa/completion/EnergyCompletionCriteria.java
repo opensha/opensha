@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing.completion;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
 import org.apache.commons.lang3.time.StopWatch;
 

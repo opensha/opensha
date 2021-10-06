@@ -1,18 +1,55 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints;
 
+import java.io.IOException;
+
 import org.opensha.commons.data.ShortNamed;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+
+import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
 /**
- * Abstract class for an inversion constraint
+ * Abstract class for an inversion constraint.
+ * <br>
+ * Note on serialization: Default Gson serialization will be attempted to load/save constraints to/from JSON. Custom
+ * TypeAdpaters can be registered via the {@link JsonAdapter} annotation. If the constraint relies on a
+ * {@link FaultSystemRupSet} or its modules, those fields must be transient and can be populated after deserialization
+ * by overriding {@link #setRuptureSet(FaultSystemRupSet)}.
  * 
  * @author kevin
- *
  */
+@JsonAdapter(InversionConstraint.Adapter.class)
 public abstract class InversionConstraint implements ShortNamed {
 	
-	private boolean quickGetsSets = true;
+	private transient boolean quickGetsSets = true;
+	private transient String name;
+	private transient String shortName;
+	protected transient double weight;
+	protected transient boolean inequality;
+	
+	/**
+	 * Constructor that sets the names, weight, and inequality flag. These values will be serialized externally and should
+	 * not be stored separately in the subclass.
+	 * 
+	 * @param name
+	 * @param shortName
+	 * @param weight
+	 * @param inequality
+	 */
+	protected InversionConstraint(String name, String shortName, double weight, boolean inequality) {
+		this.name = name;
+		this.shortName = shortName;
+		this.weight = weight;
+		this.inequality = inequality;
+	}
 	
 	/**
 	 * @return the number of rows in the A matrix/d vector for this constraint
@@ -23,8 +60,27 @@ public abstract class InversionConstraint implements ShortNamed {
 	 * @return true if this is an inequality constraint (A_ineq, d_ineq), else a regular
 	 * equality constraint
 	 */
-	public abstract boolean isInequality();
+	public final boolean isInequality() {
+		return inequality;
+	}
 	
+	/**
+	 * @return weight multiplier for this constraint
+	 */
+	public final double getWeight() {
+		return weight;
+	}
+	
+	@Override
+	public final String getName() {
+		return name;
+	}
+
+	@Override
+	public final String getShortName() {
+		return shortName;
+	}
+
 	/**
 	 * Encodes this constraint into the given A matrix and d vector, beginning at the
 	 * given starting row and ending before (startRow+getNumRows())
@@ -89,6 +145,155 @@ public abstract class InversionConstraint implements ShortNamed {
 	 */
 	public void setQuickGetSets(boolean quickGetsSets) {
 		this.quickGetsSets = quickGetsSets;
+	}
+	
+	/**
+	 * Configure (or re-configure) the constraint for the given rupture set. Default implementation does nothing,
+	 * override if the constraint depends on the rupture set
+	 * <br>
+	 * This method will be called to set the rupture set after JSON deserialization.
+	 * 
+	 * @param rupSet
+	 */
+	public void setRuptureSet(FaultSystemRupSet rupSet) {}
+	
+	public static class Adapter extends TypeAdapter<InversionConstraint> {
+		
+		private Gson gson;
+		private FaultSystemRupSet rupSet;
+		
+		public Adapter() {
+			this(null);
+		}
+		
+		public Adapter(FaultSystemRupSet rupSet) {
+			this.rupSet = rupSet;
+			gson = new GsonBuilder().registerTypeHierarchyAdapter(
+					FaultSystemRupSet.class, new RupSetInterceptorAdaptor())
+					.create();
+		}
+
+		@Override
+		public void write(JsonWriter out, InversionConstraint value) throws IOException {
+			// TODO add stub capabilities and recover if serialization fails
+			out.beginObject();
+			out.name("type").value(value.getClass().getName());
+			out.name("name").value(value.getName());
+			out.name("shortName").value(value.getShortName());
+			out.name("inequality").value(value.isInequality());
+			out.name("weight").value(value.getWeight());
+			out.name("data");
+			System.out.println("Writing "+value.getName()+" ("+value.getClass().getName()+")");
+			gson.toJson(value, value.getClass(), out);
+			out.endObject();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public InversionConstraint read(JsonReader in) throws IOException {
+			Class<? extends InversionConstraint> type = null;
+			String name = null;
+			String shortName = null;
+			Boolean inequality = null;
+			Double weight = null;
+			InversionConstraint constraint = null;
+			
+			in.beginObject();
+			
+			while (in.hasNext()) {
+				switch (in.nextName()) {
+				case "type":
+					String className = in.nextString();
+					try {
+						type = (Class<? extends InversionConstraint>) Class.forName(className);
+					} catch (Exception e) {
+						System.err.println("WARNING: Could not locate constraint class, will use stub instead: "+className);
+					}
+					break;
+				case "name":
+					name = in.nextString();
+					break;
+				case "shortName":
+					shortName = in.nextString();
+					break;
+				case "inequality":
+					inequality = in.nextBoolean();
+					break;
+				case "weight":
+					weight = in.nextDouble();
+					break;
+				case "data":
+					if (type == null) {
+						in.skipValue();
+						break;
+					}
+					constraint = gson.fromJson(in, type);
+					if (rupSet != null)
+						constraint.setRuptureSet(rupSet);
+					break;
+
+				default:
+					in.skipValue();
+					break;
+				}
+			}
+			
+			Preconditions.checkNotNull(weight, "Weight not supplied in constraint JSON");
+			Preconditions.checkNotNull(inequality, "Inequality boolean not supplied in constraint JSON");
+			
+			if (constraint == null) {
+				// configure stub
+				constraint = new ConstraintStub(name, shortName, weight, inequality); 
+			} else {
+				// set transient properties, exactly as existed when this was created
+				constraint.weight = weight;
+				constraint.inequality = inequality;
+				constraint.name = name;
+				constraint.shortName = shortName;
+			}
+			
+			in.endObject();
+			return constraint;
+		}
+		
+	}
+	
+	private static class RupSetInterceptorAdaptor extends TypeAdapter<FaultSystemRupSet> {
+
+		@Override
+		public void write(JsonWriter out, FaultSystemRupSet value) throws IOException {
+			throw new IllegalStateException("Attempting to serialize a FaultSystemRupSet, which should never happen. "
+					+ "Constraint should declare the rupture set to be transient and override the setRuptureSet(...) "
+					+ "method to get the rupture set.");
+		}
+
+		@Override
+		public FaultSystemRupSet read(JsonReader in) throws IOException {
+			throw new IllegalStateException("Attempting to deserialize a FaultSystemRupSet, which should never happen. "
+					+ "Constraint should declare the rupture set to be transient and override the setRuptureSet(...) "
+					+ "method to get the rupture set.");
+		}
+		
+	}
+	
+	private static class ConstraintStub extends InversionConstraint {
+
+		protected ConstraintStub(String name, String shortName, double weight, boolean inequality) {
+			super(name, shortName, weight, inequality);
+		}
+
+		@Override
+		public int getNumRows() {
+			throw new UnsupportedOperationException("Cannot call getNumRows() on a constraint stub "
+					+ "(after deserialization failed, see earlier message)");
+		}
+
+		@Override
+		public long encode(DoubleMatrix2D A, double[] d, int startRow) {
+			throw new UnsupportedOperationException("Cannot call encode(...) on a constraint stub "
+					+ "(after deserialization failed, see earlier message)");
+		}
+		
 	}
 
 }

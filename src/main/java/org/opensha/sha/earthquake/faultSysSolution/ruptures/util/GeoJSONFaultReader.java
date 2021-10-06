@@ -169,6 +169,10 @@ public class GeoJSONFaultReader {
 			sect.setProperty("LowRate", lowRate);
 			sect.setProperty("Treatment", treatment);
 			sect.setProperty("RateType", rateType);
+			
+			// infer std dev from bounds
+			// assume bounds are +/- 2 sigma (95% CI), and thus std dev is (high-low)/4
+			sect.setSlipRateStdDev((highRate-lowRate)/4d);
 		}
 		System.out.println("Attached deformation model rates for "+processed.size()+" sections");
 		Preconditions.checkState(sects.size() == processed.size(),

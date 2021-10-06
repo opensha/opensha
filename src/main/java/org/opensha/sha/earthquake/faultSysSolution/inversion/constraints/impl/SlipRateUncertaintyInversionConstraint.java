@@ -4,8 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 //import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.SlipEnabledRupSet;
@@ -24,8 +27,7 @@ public class SlipRateUncertaintyInversionConstraint extends InversionConstraint 
 	public static final String NAME = "Slip Rate with weighting adjusted for uncertainty";
 	public static final String SHORT_NAME = "SlipRateUncertaintyAdjusted";
 
-	private int weight;
-	private SlipEnabledRupSet rupSet;
+	private transient FaultSystemRupSet rupSet;
 	private double[] targetSlipRates;
 
 	// max and min coefficient of variance (unnormalised)
@@ -51,7 +53,7 @@ public class SlipRateUncertaintyInversionConstraint extends InversionConstraint 
 	 */
 	public SlipRateUncertaintyInversionConstraint(int weight, int weightScalingOrderOfMagnitude,
 			SlipEnabledRupSet rupSet, double[] targetSlipRates, double[] targetSlipRateStdDevs) {
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
 		this.targetSlipRates = targetSlipRates;
 		this.targetNormalisedWeights = new double[targetSlipRates.length];
@@ -193,23 +195,8 @@ public class SlipRateUncertaintyInversionConstraint extends InversionConstraint 
 	}
 
 	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
-	}
-
-	@Override
 	public int getNumRows() {
 		return rupSet.getNumSections();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -217,10 +204,14 @@ public class SlipRateUncertaintyInversionConstraint extends InversionConstraint 
 		long numNonZeroElements = 0;
 		int numRuptures = rupSet.getNumRuptures();
 		int numSections = rupSet.getNumSections();
+		
+		SlipAlongRuptureModel slipAlongModel = rupSet.requireModule(SlipAlongRuptureModel.class);
+		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
 
 		// A matrix component of the constraint
 		for (int rup = 0; rup < numRuptures; rup++) {
-			double[] slips = rupSet.getSlipOnSectionsForRup(rup); // slip on rupture sections
+			double[] slips = slipAlongModel.calcSlipOnSectionsForRup(rupSet, aveSlips, rup);
+//			double[] slips = rupSet.getSlipOnSectionsForRup(rup); // slip on rupture sections
 			List<Integer> sects = rupSet.getSectionsIndicesForRup(rup); // subsection indices for the rupture
 			for (int i = 0; i < slips.length; i++) {
 				int row = sects.get(i);
@@ -255,6 +246,11 @@ public class SlipRateUncertaintyInversionConstraint extends InversionConstraint 
 						"d[" + sect + "] is NaN or 0!  sectSlipRateReduced[" + sect + "] = " + targetSlipRates[sect]);
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

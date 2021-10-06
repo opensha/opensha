@@ -1,13 +1,21 @@
 package scratch.UCERF3.utils.paleoRateConstraints;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 
@@ -17,9 +25,10 @@ import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
  * @author Kevin
  *
  */
+@JsonAdapter(PaleoProbabilityModel.Adapter.class)
 public abstract class PaleoProbabilityModel {
 	
-	private Map<Integer, Double> traceLengthCache = Maps.newConcurrentMap();
+	private transient Map<Integer, Double> traceLengthCache = Maps.newConcurrentMap();
 	
 	public abstract double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex, int sectIndex);
 	
@@ -28,8 +37,51 @@ public abstract class PaleoProbabilityModel {
 	public abstract double getProbPaleoVisible(double mag, double distAlongRup);
 	
 	double getDistAlongRup(List<FaultSection> rupSections, int sectIndex) {
+		if (traceLengthCache == null) {
+			synchronized (this) {
+				if (traceLengthCache == null)
+					traceLengthCache = Maps.newConcurrentMap();
+			}
+		}
 		return UCERF3InversionInputGenerator.getDistanceAlongRupture(
 				rupSections, sectIndex, traceLengthCache);
+	}
+	
+	public static class Adapter extends TypeAdapter<PaleoProbabilityModel> {
+		
+		Gson gson = new Gson();
+
+		@Override
+		public void write(JsonWriter out, PaleoProbabilityModel value) throws IOException {
+			out.beginObject();
+			
+			out.name("type").value(value.getClass().getName());
+			out.name("data");
+			gson.toJson(value, value.getClass(), out);
+			
+			out.endObject();
+		}
+
+		@Override
+		public PaleoProbabilityModel read(JsonReader in) throws IOException {
+			Class<? extends PaleoProbabilityModel> type = null;
+			
+			in.beginObject();
+			
+			Preconditions.checkState(in.nextName().equals("type"), "JSON 'type' object must be first");
+			try {
+				type = (Class<? extends PaleoProbabilityModel>) Class.forName(in.nextString());
+			} catch (ClassNotFoundException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			Preconditions.checkState(in.nextName().equals("data"), "JSON 'data' object must be second");
+			PaleoProbabilityModel model = gson.fromJson(in, type);
+			
+			in.endObject();
+			return model;
+		}
+		
 	}
 
 }

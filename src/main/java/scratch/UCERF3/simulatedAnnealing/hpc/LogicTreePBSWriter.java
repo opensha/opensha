@@ -26,6 +26,13 @@ import org.opensha.commons.hpc.pbs.RangerScriptWriter;
 import org.opensha.commons.hpc.pbs.StampedeScriptWriter;
 import org.opensha.commons.hpc.pbs.USC_HPCC_ScriptWriter;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.VariableSubTimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -50,13 +57,6 @@ import scratch.UCERF3.logicTree.LogicalNotTreeTrimmer;
 import scratch.UCERF3.logicTree.LogicalOrTrimmer;
 import scratch.UCERF3.logicTree.SingleValsTreeTrimmer;
 import scratch.UCERF3.logicTree.TreeTrimmer;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.VariableSubTimeCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.params.CoolingScheduleType;
-import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
-import scratch.UCERF3.simulatedAnnealing.params.NonnegativityConstraintType;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 
 import com.google.common.base.Joiner;

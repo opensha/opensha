@@ -50,13 +50,19 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -72,11 +78,6 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -145,7 +146,6 @@ public class CommandLineInversionRunner {
 		REMOVE_OUTLIER_FAULTS("removefaults", "remove-faults", "RemoveFaults", false, "Remove some outlier high slip faults."),
 		SLIP_WT_NORM("slipwt", "slip-wt", "SlipWt", true, "Normalized slip rate constraint wt"),
 		SLIP_WT_UNNORM("slipwtunnorm", "slip-wt-unnorm", "SlipWtUnNorm", true, "Unnormalized slip rate constraint wt"),
-		SLIP_WT_TYPE("sliptype", "slip-type", "SlipType", true, "Slip wt type"),
 		SERIAL("serial", "force-serial", "Serial", false, "Force serial annealing"),
 		SYNTHETIC("syn", "synthetic", "Synthetic", false, "Synthetic data from solution rates named syn.bin."),
 		COULOMB("coulomb", "coulomb-threshold", "Coulomb", true, "Set coulomb filter threshold"),
@@ -484,13 +484,14 @@ public class CommandLineInversionRunner {
 					ConstraintRange range = constraintRanges.get(i);
 					String name = range.name;
 					boolean keep = false;
-					if (name.equals(SlipRateInversionConstraint.NAME))
-						keep = true;
+					for (SlipRateInversionConstraint.WeightingType type : SlipRateInversionConstraint.WeightingType.values())
+						if (name.equals(SlipRateInversionConstraint.getName(type)))
+							keep = true;
 					else if (name.equals(PaleoRateInversionConstraint.NAME))
 						keep = true;
 					else if (name.equals(PaleoSlipInversionConstraint.NAME))
 						keep = true;
-					else if (name.equals(MFDEqualityInversionConstraint.NAME))
+					else if (name.equals(MFDInversionConstraint.EQ_NAME))
 						keep = true;
 					else if (name.equals(MFDSubSectNuclInversionConstraint.NAME))
 						keep = true;

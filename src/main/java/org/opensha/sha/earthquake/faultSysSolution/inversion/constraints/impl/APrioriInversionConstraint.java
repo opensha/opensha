@@ -15,25 +15,17 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  */
 public class APrioriInversionConstraint extends InversionConstraint {
 	
-	private double weight;
+	public static final String NAME = "A Priori Rupture Rate";
+	public static final String SHORT_NAME = "APriori";
+	
 	private double weightForZeroRates;
 	private double[] aPrioriRates;
 
 	public APrioriInversionConstraint(double weight, double weightForZeroRates,
 			double[] aPrioriRates) {
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
 		this.weightForZeroRates = weightForZeroRates;
 		this.aPrioriRates = aPrioriRates;
-	}
-
-	@Override
-	public String getShortName() {
-		return "APriori";
-	}
-
-	@Override
-	public String getName() {
-		return "A Priori Rupture Rate";
 	}
 
 	@Override
@@ -45,11 +37,6 @@ public class APrioriInversionConstraint extends InversionConstraint {
 		if (weightForZeroRates > 0)
 			return numNonZero +1;
 		return numNonZero;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override

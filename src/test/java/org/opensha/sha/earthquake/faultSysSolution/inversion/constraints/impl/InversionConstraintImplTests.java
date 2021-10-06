@@ -14,6 +14,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.SegmentationModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
@@ -22,6 +23,8 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.collect.Range;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import cern.colt.list.tdouble.DoubleArrayList;
 import cern.colt.list.tint.IntArrayList;
@@ -33,7 +36,6 @@ import scratch.UCERF3.erf.FSS_ERF_ParamTest;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
-import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.MFD_WeightedInversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
@@ -55,11 +57,20 @@ public class InversionConstraintImplTests {
 	
 	private static HashSet<Integer> allParents;
 	
+	private static Gson gson;
+	
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 		rupSet = FSS_ERF_ParamTest.buildSmallTestRupSet();
 		numRuptures = rupSet.getNumRuptures();
 		numSections = rupSet.getNumSections();
+		
+		for (int s=0; s<numSections; s++) {
+			FaultSection sect = rupSet.getFaultSectionData(s);
+			double stdDev = sect.getOrigSlipRateStdDev();
+			if (Double.isNaN(stdDev) || stdDev == 0d)
+				sect.setSlipRateStdDev(sect.getOrigAveSlipRate()/3d);
+		}
 		
 		System.out.println("Test rupSet has "+numRuptures+" rups and "+numSections+" sects");
 		System.out.println("Mag range: "+rupSet.getMinMag()+" "+rupSet.getMaxMag());
@@ -72,6 +83,8 @@ public class InversionConstraintImplTests {
 		allParents = new HashSet<>();
 		for (FaultSection sect : rupSet.getFaultSectionDataList())
 			allParents.add(sect.getParentSectionId());
+		gson = new GsonBuilder().registerTypeHierarchyAdapter(InversionConstraint.class,
+				new InversionConstraint.Adapter(rupSet)).create();
 	}
 
 	@Test
@@ -143,24 +156,17 @@ public class InversionConstraintImplTests {
 	}
 
 	@Test
-	public void testMFDEquality() {
+	public void testMFD() {
 		List<MFD_InversionConstraint> eqConstr = config.getMfdEqualityConstraints();
 		for (MFD_InversionConstraint mfd : eqConstr)
 			mfd.setMagFreqDist(testMFD);
-		MFDEqualityInversionConstraint constr = new MFDEqualityInversionConstraint(
-				rupSet, 1d, eqConstr, null);
+		MFDInversionConstraint constr = new MFDInversionConstraint(
+				rupSet, 1d, false, eqConstr, null);
 		
 		testConstraint(constr);
-	}
-
-	@Test
-	public void testMFDInquality() {
-		List<MFD_InversionConstraint> ineqConstr = config.getMfdInequalityConstraints();
-		for (MFD_InversionConstraint mfd : ineqConstr)
-			mfd.setMagFreqDist(testMFD);
-//		System.out.println("have "+ineqConstr.size()+" ineq constraints");
-		MFDInequalityInversionConstraint constr = new MFDInequalityInversionConstraint(
-				rupSet, 1d, ineqConstr);
+		
+		constr = new MFDInversionConstraint(
+				rupSet, 1d, true, eqConstr, null);
 		
 		testConstraint(constr);
 	}
@@ -270,20 +276,19 @@ public class InversionConstraintImplTests {
 
 	@Test
 	public void testSlipRate() throws IOException {
-		double[] targetSlipRates = rupSet.getSlipRateForAllSections();
 		
 		SlipRateInversionConstraint constr = new SlipRateInversionConstraint(
-				1d, 1d, SlipRateConstraintWeightingType.BOTH, rupSet, targetSlipRates);
+				1d, SlipRateInversionConstraint.WeightingType.UNNORMALIZED, rupSet);
 		
 		testConstraint(constr);
 		
 		constr = new SlipRateInversionConstraint(
-				1d, 1d, SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE, rupSet, targetSlipRates);
+				1d, SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE, rupSet);
 		
 		testConstraint(constr);
 		
 		constr = new SlipRateInversionConstraint(
-				1d, 1d, SlipRateConstraintWeightingType.UNNORMALIZED, rupSet, targetSlipRates);
+				1d, SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY, rupSet);
 		
 		testConstraint(constr);
 	}
@@ -319,6 +324,7 @@ public class InversionConstraintImplTests {
 		
 		testConstraint(constr);
 	}
+	
 	
 	private void testConstraint(InversionConstraint constraint) {
 		constraint.setQuickGetSets(false);
@@ -368,6 +374,39 @@ public class InversionConstraintImplTests {
 			double val2 = A2.get(row2, col);
 			assertEquals("Value mismatch between offset and non-offset for "+constraint.getName(),
 					val1, val2, 1e-15);
+		}
+		
+		// now test serialization
+		String json = gson.toJson(constraint);
+//		System.out.println(json);
+		InversionConstraint deserialized = gson.fromJson(json, constraint.getClass());
+		String json2 = gson.toJson(deserialized);
+		assertTrue("re-seraialization JSON isn't idential", json.equals(json2));
+		
+		assertEquals("post-serialization numRows mismatch", numRows, deserialized.getNumRows());
+		DoubleMatrix2D A3 = new SparseDoubleMatrix2D(numRows, numRuptures);
+		double[] d3 = new double[numRows];
+		long count3 = deserialized.encode(A3, d3, 0); 
+		
+		IntArrayList rows3 = new IntArrayList();
+		IntArrayList cols3 = new IntArrayList();
+		DoubleArrayList vals3 = new DoubleArrayList();
+		
+		A3.getNonZeros(rows3, cols3, vals3);
+
+		assertEquals("Count is wrong for deserialized zero-offset "+constraint.getName(), count3, vals3.size());
+		assertEquals("Count is wrong for deserialized zero-offset "+constraint.getName(), count3, count1);
+		
+		for (int i=0; i<rows3.size(); i++) {
+			int row = rows3.get(i);
+			int col = cols3.get(i);
+			double val = vals3.get(i);
+			
+			double origVal = A1.get(row, col);
+			assertEquals("Deserialized A value mismatch for row="+row+", col="+col, origVal, val, 1e-16);
+		}
+		for (int i=0; i<d3.length; i++) {
+			assertEquals("Deserialized d value mismatch for row="+i, d1[i], d3[i], 1e-16);
 		}
 	}
 

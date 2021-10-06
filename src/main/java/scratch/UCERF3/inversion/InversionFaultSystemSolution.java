@@ -23,6 +23,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -45,7 +46,6 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
-import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -314,7 +314,6 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		double MFDTransitionMag = Double.NaN;
 		double slipRateConstraintWt_normalized = Double.NaN;
 		double slipRateConstraintWt_unnormalized = Double.NaN;
-		SlipRateConstraintWeightingType slipRateWeighting = null;
 		double paleoRateConstraintWt = Double.NaN;
 		double paleoSlipConstraintWt = Double.NaN;
 		double magnitudeEqualityConstraintWt = Double.NaN;
@@ -335,33 +334,12 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 		
 		if (props.containsKey("MFDTransitionMag"))
 			MFDTransitionMag = Double.parseDouble(props.get("MFDTransitionMag"));
-		if (props.containsKey("slipRateWeighting")) {
-			// new style
-			slipRateWeighting = SlipRateConstraintWeightingType.valueOf(props.get("slipRateWeighting"));
-			if (props.containsKey("slipRateConstraintWt_normalized"))
-				slipRateConstraintWt_normalized =
-						Double.parseDouble(props.get("slipRateConstraintWt_normalized"));
-			if (props.containsKey("slipRateConstraintWt_unnormalized"))
-				slipRateConstraintWt_unnormalized =
-						Double.parseDouble(props.get("slipRateConstraintWt_unnormalized"));
-		} else {
-			// old
-			boolean weightSlipRates = true;
-			if (props.containsKey("weightSlipRates"))
-				weightSlipRates = Boolean.parseBoolean(props.get("weightSlipRates"));
-			double wt = 0;
-			if (props.containsKey("slipRateConstraintWt"))
-				wt = Double.parseDouble(props.get("slipRateConstraintWt"));
-			else
-				wt = 1d;
-			if (weightSlipRates) {
-				slipRateConstraintWt_normalized = wt;
-				slipRateConstraintWt_unnormalized = 0;
-			} else {
-				slipRateConstraintWt_normalized = 0;
-				slipRateConstraintWt_unnormalized = wt;
-			}
-		}
+		if (props.containsKey("slipRateConstraintWt_normalized"))
+			slipRateConstraintWt_normalized =
+					Double.parseDouble(props.get("slipRateConstraintWt_normalized"));
+		if (props.containsKey("slipRateConstraintWt_unnormalized"))
+			slipRateConstraintWt_unnormalized =
+					Double.parseDouble(props.get("slipRateConstraintWt_unnormalized"));
 		if (props.containsKey("paleoRateConstraintWt"))
 			paleoRateConstraintWt = Double.parseDouble(props.get("paleoRateConstraintWt"));
 		else if (props.containsKey("paleoRateWt"))
@@ -402,7 +380,7 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 			minimumRuptureRateFraction = Double.parseDouble(props.get("minimumRuptureRateFraction"));
 		
 		inversionConfiguration = new UCERF3InversionConfiguration(
-				slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, slipRateWeighting, paleoRateConstraintWt, paleoSlipConstraintWt,
+				slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, paleoRateConstraintWt, paleoSlipConstraintWt,
 				magnitudeEqualityConstraintWt, magnitudeInequalityConstraintWt, rupRateConstraintWt,
 				participationSmoothnessConstraintWt, participationConstraintMagBinSize, nucleationMFDConstraintWt,
 				mfdSmoothnessConstraintWt, mfdSmoothnessConstraintWtForPaleoParents, rupRateSmoothingConstraintWt,
@@ -454,26 +432,16 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 				// legacy text parsing will have this
 				energyStr = energyStr.substring(0, energyStr.indexOf("energy")).trim();
 			if (energyStr.equals("Slip Rate")) {
-				switch (inversionConfiguration.getSlipRateWeightingType()) {
-				case NORMALIZED_BY_SLIP_RATE:
-					wt = inversionConfiguration.getSlipRateConstraintWt_normalized();
-					break;
-				case UNNORMALIZED:
-					wt = inversionConfiguration.getSlipRateConstraintWt_unnormalized();
-					break;
-				case BOTH:
+				double wtNorm = inversionConfiguration.getSlipRateConstraintWt_normalized();
+				double wtUnorm = inversionConfiguration.getSlipRateConstraintWt_unnormalized();
+				if (wtNorm > 0d && wtUnorm > 0d) {
 					System.out.println("WARNING: misfits inaccurate for slip rate since both weights used");
-					if (inversionConfiguration.getSlipRateConstraintWt_normalized() >
-						inversionConfiguration.getSlipRateConstraintWt_unnormalized())
-						wt = inversionConfiguration.getSlipRateConstraintWt_normalized();
-					else
-						wt = inversionConfiguration.getSlipRateConstraintWt_unnormalized();
-					break;
-
-				default:
-					throw new IllegalStateException("Can't get here");
+					wt = Math.max(wtNorm, wtUnorm);
+				} else if (wtNorm > 0d) {
+					wt = wtNorm;
+				} else {
+					wt = wtUnorm;
 				}
-				
 			} else if (energyStr.equals("Paleo Event Rates"))
 				wt = inversionConfiguration.getPaleoRateConstraintWt();
 			else if (energyStr.equals("Paleo Slips"))

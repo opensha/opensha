@@ -17,8 +17,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.APrioriInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInequalityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDLaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDParticipationSmoothnessInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
@@ -29,6 +28,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -48,7 +49,6 @@ import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
@@ -125,21 +125,21 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		double[] sectSlipRateReduced = rupSet.getSlipRateForAllSections();
 		
-		if (config.getSlipRateConstraintWt_normalized() > 0d
-				|| config.getSlipRateConstraintWt_unnormalized() > 0d)
+		if (config.getSlipRateConstraintWt_normalized() > 0d)
 			// add slip rate constraint
 			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_normalized(),
-					config.getSlipRateConstraintWt_unnormalized(), config.getSlipRateWeightingType(),
-					rupSet, rupSet.requireModule(AveSlipModule.class),
-					rupSet.requireModule(SlipAlongRuptureModel.class), sectSlipRateReduced));
+					SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE, rupSet));
+		if (config.getSlipRateConstraintWt_unnormalized() > 0d)
+			// add slip rate constraint
+			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_unnormalized(),
+					SlipRateInversionConstraint.WeightingType.UNNORMALIZED, rupSet));
 		
 		if (config.getPaleoRateConstraintWt() > 0d)
 			constraints.add(new PaleoRateInversionConstraint(rupSet, config.getPaleoRateConstraintWt(),
 					paleoRateConstraints, paleoProbabilityModel));
 		
 		if (config.getPaleoSlipConstraintWt() > 0d)
-			constraints.add(new PaleoSlipInversionConstraint(rupSet, rupSet.requireModule(AveSlipModule.class),
-					rupSet.requireModule(SlipAlongRuptureModel.class), config.getPaleoSlipConstraintWt(),
+			constraints.add(new PaleoSlipInversionConstraint(rupSet, config.getPaleoSlipConstraintWt(),
 					aveSlipConstraints, sectSlipRateReduced));
 		
 		if (config.getRupRateConstraintWt() > 0d) {
@@ -191,14 +191,14 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 						excludeRupIndexes.add(potentialRups.get(i));
 					}
 			}
-			constraints.add(new MFDEqualityInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(),
+			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(), false,
 					config.getMfdEqualityConstraints(), excludeRupIndexes));
 		}
 		
 		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0)	
-			constraints.add(new MFDInequalityInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(),
-					config.getMfdInequalityConstraints()));
+			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(), true,
+					config.getMfdInequalityConstraints(), null));
 		
 		// MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0)
@@ -356,9 +356,11 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// NORMALIZED (minimize ratio of model to target), UNNORMALIZED (minimize difference), 
 		// or BOTH (NORMALIZED & UNNORMALIZED both included - twice as many constraints) can be specified in SlipRateConstraintWeightingType
 		// NaN slip rates are treated as 0 slip rates: We minimize the model slip rates on these sections
-		int numSlipRateConstraints = numSections;
-		if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
-			numSlipRateConstraints+=numSections;
+		int numSlipRateConstraints = 0;
+		if (config.getSlipRateConstraintWt_normalized() > 0)
+			numSlipRateConstraints += numSections;
+		if (config.getSlipRateConstraintWt_unnormalized() > 0)
+			numSlipRateConstraints += numSections;
 		
 		// Find number of rows in A matrix (equals the total number of constraints)
 		if(D) System.out.println("\nNumber of slip-rate constraints:    " + numSlipRateConstraints);
@@ -611,15 +613,15 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				int row = sects.get(i);
 				int col = rup;
 				double val;
-				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
+				if (slipRateConstraintWt_unnormalized > 0d) {
 					if (QUICK_GETS_SETS)
 						A.setQuick(row, col, slipRateConstraintWt_unnormalized * slips[i]);
 					else
 						A.set(row, col, slipRateConstraintWt_unnormalized * slips[i]);
 					if(D) numNonZeroElements++;		
 				}
-				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {  
-					if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
+				if (slipRateConstraintWt_normalized > 0) {  
+					if (slipRateConstraintWt_unnormalized > 0)
 						row += numSections;
 					// Note that constraints for sections w/ slip rate < 0.1 mm/yr is not normalized by slip rate -- otherwise misfit will be huge (GEOBOUND model has 10e-13 slip rates that will dominate misfit otherwise)
 					if (sectSlipRateReduced[sects.get(i)] < 1E-4 || Double.isNaN(sectSlipRateReduced[sects.get(i)]))  
@@ -638,10 +640,10 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// d vector component of slip-rate constraint
 		for (int sect=0; sect<numSections; sect++) {
 			int row = sect;
-			if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
+			if (slipRateConstraintWt_unnormalized > 0d) 
 				d[row] = slipRateConstraintWt_unnormalized * sectSlipRateReduced[sect];			
-			if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
-				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
+			if (slipRateConstraintWt_normalized > 0d) {
+				if (slipRateConstraintWt_unnormalized > 0d)
 					row += numSections;
 				if (sectSlipRateReduced[sect]<1E-4)  // For very small slip rates, do not normalize by slip rate (normalize by 0.0001 instead) so they don't dominate misfit
 					d[row] = slipRateConstraintWt_normalized * sectSlipRateReduced[sect]/0.0001;

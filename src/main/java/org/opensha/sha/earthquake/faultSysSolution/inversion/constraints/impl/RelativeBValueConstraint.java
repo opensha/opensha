@@ -15,25 +15,21 @@ import com.google.common.base.Preconditions;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
 /**
- * This constraint enforces a G-R MFD with the specified b-value, but without specifying an a-value. It does so by attempting
- * to force ruptures in each magnitude bin to be G-R relative to the ruptures in the previous bin
+ * This constraint enforces a G-R MFD with the specified b-value, but without specifying an a-value. It does so by
+ * attempting to force ruptures in each magnitude bin to be G-R relative to the ruptures in the other bins
  * 
  * @author kevin
  *
  */
 public class RelativeBValueConstraint extends InversionConstraint {
 	
-	private FaultSystemRupSet rupSet;
-	private EvenlyDiscretizedFunc magFunc;
-	private double weight;
-	private double b;
-	private boolean inequality;
+	private transient FaultSystemRupSet rupSet;
+	private transient double[] mags;
+	private transient int[] magIndexes;
+	private transient int[] magCounts;
+	private transient EvenlyDiscretizedFunc magFunc;
 	
-	private double[] mags;
-	private int[] magIndexes;
-	private int[] magCounts;
-	private double globalMin;
-	private double globalMax;
+	private double b;
 	
 	private static final DecimalFormat bDF = new DecimalFormat("0.#");
 	
@@ -42,30 +38,13 @@ public class RelativeBValueConstraint extends InversionConstraint {
 	}
 	
 	public RelativeBValueConstraint(FaultSystemRupSet rupSet, double b, double weight) {
-		
+		this(rupSet, b, weight, false);
 	}
 	
 	public RelativeBValueConstraint(FaultSystemRupSet rupSet, double b, double weight, boolean inequality) {
-		this.rupSet = rupSet;
-		this.magFunc = getMagFunc(rupSet);
-		Preconditions.checkState(magFunc.size() > 1, "Must have at least 2 MFD bins to constraint relative b-value");
+		super(getName(b, inequality), getShortName(b, inequality), weight, inequality);
 		this.b = b;
-		this.weight = weight;
-		this.inequality = inequality;
-		
-		mags = rupSet.getMagForAllRups();
-		magIndexes = new int[mags.length];
-		globalMin = magFunc.getMinX() - 0.5*magFunc.getDelta();
-		globalMax = magFunc.getMaxX() + 0.5*magFunc.getDelta();
-		magCounts = new int[magFunc.size()];
-		for (int r=0; r<mags.length; r++) {
-			if ((float)mags[r] < (float)globalMin  || (float)mags[r] > (float)globalMax) {
-				magIndexes[r] = -1;
-			} else {
-				magIndexes[r] = magFunc.getClosestXIndex(mags[r]);
-				magCounts[magIndexes[r]]++;
-			}
-		}
+		setRuptureSet(rupSet);
 	}
 	
 	private static EvenlyDiscretizedFunc getMagFunc(FaultSystemRupSet rupSet) {
@@ -83,15 +62,13 @@ public class RelativeBValueConstraint extends InversionConstraint {
 		return new EvenlyDiscretizedFunc(minMag, maxMag, num);
 	}
 
-	@Override
-	public String getShortName() {
+	private static String getShortName(double b, boolean inequality) {
 		if (inequality)
 			return "G-R,b≥"+bDF.format(b);
 		return "G-R,b="+bDF.format(b);
 	}
 
-	@Override
-	public String getName() {
+	private static String getName(double b, boolean inequality) {
 		if (inequality)
 			return "G-R b-value constrant (b≥"+bDF.format(b)+")";
 		return "G-R b-value constrant (b="+bDF.format(b)+")";
@@ -105,11 +82,6 @@ public class RelativeBValueConstraint extends InversionConstraint {
 				if (magCounts[m1] > 0 && magCounts[m2] > 0)
 					rows++;
 		return rows;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return inequality;
 	}
 	
 	private static double gr(double a, double b, double M) {
@@ -174,40 +146,31 @@ public class RelativeBValueConstraint extends InversionConstraint {
 			}
 		}
 		
-//		for (int m=1; m<magFunc.size(); m++) {
-//			int mBefore = m-1;
-//			
-//			System.out.println("B-Value constraint for M="+(float)magFunc.getX(m)
-//				+" relative to M="+(float)magFunc.getX(mBefore));
-//			
-//			// ruptures in this row should have a final rate equal to this times the rate of
-//			// ruptures in the prior bin (regardless of a-value)
-//			double relVal = gr(1, b, magFunc.getX(m))/gr(1, b, magFunc.getX(mBefore));
-//			System.out.println("\tTarget ratio: "+relVal);
-//			
-//			// determine a weight such that misfits from each bin should we weighted equally
-//			// (even though rates will be smaller for larger mags)
-//			double myWeight = gr(1, b, magFunc.getX(1))/gr(1, b, magFunc.getX(m));
-//			System.out.println("\tWeight: "+myWeight);
-//			myWeight *= this.weight;
-//			
-//			int row = startRow+m-1;
-//			
-//			double[] mags = rupSet.getMagForAllRups();
-//			for (int r=0; r<mags.length; r++) {
-//				double magIndex = magFunc.getClosestXIndex(mags[r]);
-//				if (magIndex == mBefore) {
-//					setA(A, row, r, -myWeight*relVal);
-//					count++;
-//				} else if (magIndex == m) {
-//					setA(A, row, r, myWeight);
-//					count++;
-//				}
-//			}
-//			d[row] = 0d;
-//		}
-		
 		return count;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		if (rupSet != this.rupSet) {
+			this.magFunc = getMagFunc(rupSet);
+			Preconditions.checkState(magFunc.size() > 1, "Must have at least 2 MFD bins to constraint relative b-value");
+			
+			mags = rupSet.getMagForAllRups();
+			magIndexes = new int[mags.length];
+			double globalMin = magFunc.getMinX() - 0.5*magFunc.getDelta();
+			double globalMax = magFunc.getMaxX() + 0.5*magFunc.getDelta();
+			magCounts = new int[magFunc.size()];
+			for (int r=0; r<mags.length; r++) {
+				if ((float)mags[r] < (float)globalMin  || (float)mags[r] > (float)globalMax) {
+					magIndexes[r] = -1;
+				} else {
+					magIndexes[r] = magFunc.getClosestXIndex(mags[r]);
+					magCounts[magIndexes[r]]++;
+				}
+			}
+			
+			this.rupSet = rupSet;
+		}
 	}
 	
 	public static void main(String[] args) throws IOException {

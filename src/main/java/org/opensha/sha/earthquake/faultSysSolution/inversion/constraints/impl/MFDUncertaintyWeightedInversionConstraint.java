@@ -25,36 +25,20 @@ public class MFDUncertaintyWeightedInversionConstraint extends InversionConstrai
 	public static final String NAME = "MFD UncertaintyWeighted";
 	public static final String SHORT_NAME = "MFDUncertaintyWeighted";
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
+	private transient FaultSystemRupSet rupSet;
 	private List<MFD_WeightedInversionConstraint> mfdWeightedConstraints;
 	private HashSet<Integer> excludeRupIndexes;
 
 	public MFDUncertaintyWeightedInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<MFD_WeightedInversionConstraint> mfdWeightedConstraints) {
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
-		this.weight = weight;
 		this.mfdWeightedConstraints = mfdWeightedConstraints;
 	}
 
 	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
-	}
-
-	@Override
 	public int getNumRows() {
-		return MFDEqualityInversionConstraint.getNumRows(mfdWeightedConstraints, rupSet);
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
+		return MFDInversionConstraint.getNumRows(mfdWeightedConstraints, rupSet);
 	}
 
 	@Override
@@ -99,6 +83,11 @@ public class MFDUncertaintyWeightedInversionConstraint extends InversionConstrai
 			startRow += (maxMagIndex - minMagIndex) + 1;
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

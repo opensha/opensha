@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing.completion;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,11 +9,10 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.commons.gui.plot.GraphWindow;
-
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
-import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 
 import com.google.common.collect.Lists;
 
@@ -25,13 +24,14 @@ public class ProgressTrackingCompletionCriteria implements CompletionCriteria {
 	
 	private long autoPlotMillis;
 	private long nextPlotMillis;
-	private GraphWindow gw;
-	private ArrayList<ArbitrarilyDiscretizedFunc> funcs;
-	private String plotTitle;
+	
+	private transient GraphWindow gw;
+	private transient ArrayList<ArbitrarilyDiscretizedFunc> funcs;
+	private transient String plotTitle;
 	
 	private File automaticFile;
 	
-	private List<ConstraintRange> constraintRanges;
+	private transient List<ConstraintRange> constraintRanges;
 	
 	private long iterMod = 0;
 	

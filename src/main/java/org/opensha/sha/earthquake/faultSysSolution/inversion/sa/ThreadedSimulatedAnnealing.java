@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -33,6 +33,18 @@ import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompoundCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.EnergyChangeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.EnergyCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.VariableSubTimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -40,18 +52,6 @@ import com.google.common.primitives.Doubles;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
-import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.CompoundCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.EnergyChangeCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.EnergyCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.VariableSubTimeCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.params.CoolingScheduleType;
-import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
-import scratch.UCERF3.simulatedAnnealing.params.NonnegativityConstraintType;
 import scratch.UCERF3.utils.MatrixIO;
 
 public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
@@ -106,15 +106,20 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		List<SerialSimulatedAnnealing> sas = new ArrayList<SerialSimulatedAnnealing>();
 		for (int i=0; i<numThreads; i++)
 			sas.add(new SerialSimulatedAnnealing(A, d, initialState, relativeSmoothnessWt, A_ineq, d_ineq));
-		init(sas, subCompetionCriteria);
+		init(sas, subCompetionCriteria, false);
 	}
 	
 	public ThreadedSimulatedAnnealing(
 			List<? extends SimulatedAnnealing> sas, CompletionCriteria subCompetionCriteria) {
-		init(sas, subCompetionCriteria);
+		init(sas, subCompetionCriteria, false);
+	}
+	
+	public ThreadedSimulatedAnnealing(
+			List<? extends SimulatedAnnealing> sas, CompletionCriteria subCompetionCriteria, boolean average) {
+		init(sas, subCompetionCriteria, average);
 	}
 		
-	private void init(List<? extends SimulatedAnnealing> sas, CompletionCriteria subCompetionCriteria) {
+	private void init(List<? extends SimulatedAnnealing> sas, CompletionCriteria subCompetionCriteria, boolean average) {
 		// SA inputs are checked in each serial SA constructor, no need to duplicate checks
 		Preconditions.checkState(!sas.isEmpty(), "Must have at least 1 thread");
 		Preconditions.checkNotNull(subCompetionCriteria, "subCompetionCriteria cannot be null");
@@ -135,6 +140,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		
 		this.A = sa0.getA();
 		this.A_ineq = sa0.getA_ineq();
+		this.average = average;
 	}
 	
 	public void setSubCompletionCriteria(CompletionCriteria subCompletionCriteria) {
@@ -817,7 +823,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			return "--completion-time "+((TimeCompletionCriteria)criteria).getTimeStr();
 		} else if (criteria instanceof CompoundCompletionCriteria) {
 			String str = null;
-			for (CompletionCriteria subCriteria : ((CompoundCompletionCriteria)criteria).getCriterias()) {
+			for (CompletionCriteria subCriteria : ((CompoundCompletionCriteria)criteria).getCriteria()) {
 				if (str == null)
 					str = "";
 				else

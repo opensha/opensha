@@ -2,17 +2,16 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.util.List;
 
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-
-import com.google.common.base.Preconditions;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.SlipEnabledRupSet;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 
 /**
  * Constraints section slip rates to match the given target rate. It can apply normalized or
@@ -32,128 +31,178 @@ import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintW
  */
 public class SlipRateInversionConstraint extends InversionConstraint {
 	
-	public static final String NAME = "Slip Rate";
-	public static final String SHORT_NAME = "SlipRate";
+	public enum WeightingType {
+		/**
+		 * Normalize each slip-rate constraint by the slip-rate target
+		 * (So the inversion tries to minimize ratio of model to target)
+		 */
+		NORMALIZED_BY_SLIP_RATE,
+		/**
+		 * Do not normalize slip-rate constraint (inversion will minimize difference of model to target, effectively
+		 * fitting fast faults better than slow faults on a ratio basis)
+		 */
+		UNNORMALIZED,
+		/**
+		 * Normalizes section slip rate targets by their standard deviation. This weights all constraints equally
+		 * relative to their uncertainties
+		 */
+		NORMALIZED_BY_UNCERTAINTY;
+	}
+
+	private WeightingType weightingType;
 	
-	private double weightNormalized;
-	private double weightUnnormalized;
-	private SlipRateConstraintWeightingType weightingType;
-	private FaultSystemRupSet rupSet;
-	private AveSlipModule aveSlipModule;
-	private SlipAlongRuptureModel slipAlongModule;
-	private double[] targetSlipRates;
+	private transient FaultSystemRupSet rupSet;
+	private transient AveSlipModule aveSlipModule;
+	private transient SlipAlongRuptureModel slipAlongModule;
+	private transient SectSlipRates targetSlipRates;
+	
+	public static final double DEFAULT_FRACT_STD_DEV = 0.5;
 
-	@Deprecated
-	public SlipRateInversionConstraint(double weightNormalized, double weightUnnormalized,
-			SlipRateConstraintWeightingType weightingType, SlipEnabledRupSet rupSet,
-			double[] targetSlipRates) {
-		this(weightNormalized, weightUnnormalized, weightingType, rupSet, rupSet.requireModule(AveSlipModule.class),
-				rupSet.requireModule(SlipAlongRuptureModel.class), targetSlipRates);
+	public SlipRateInversionConstraint(double weight, WeightingType weightingType,
+			FaultSystemRupSet rupSet) {
+		this(weight, weightingType, rupSet, rupSet.requireModule(AveSlipModule.class),
+				rupSet.requireModule(SlipAlongRuptureModel.class), rupSet.requireModule(SectSlipRates.class));
 	}
 
-	public SlipRateInversionConstraint(double weightNormalized, double weightUnnormalized,
-			SlipRateConstraintWeightingType weightingType, FaultSystemRupSet rupSet,
-			AveSlipModule aveSlipModule, SlipAlongRuptureModel slipAlongModule, double[] targetSlipRates) {
-		this.weightNormalized = weightNormalized;
-		this.weightUnnormalized = weightUnnormalized;
+	public SlipRateInversionConstraint(double weight, WeightingType weightingType,
+			FaultSystemRupSet rupSet, AveSlipModule aveSlipModule, SlipAlongRuptureModel slipAlongModule,
+			SectSlipRates targetSlipRates) {
+		super(getName(weightingType), getShortName(weightingType), weight, false);
 		this.weightingType = weightingType;
-		this.rupSet = rupSet;
-		Preconditions.checkNotNull(aveSlipModule, "Average slip module must be supplied for slip rate constraints");
-		this.aveSlipModule = aveSlipModule;
-		Preconditions.checkNotNull(slipAlongModule, "Slip along rupture module must be supplied for slip rate constraints");
-		this.slipAlongModule = slipAlongModule;
-		this.targetSlipRates = targetSlipRates;
+		setRuptureSet(rupSet);
 	}
 
-	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
+	public static String getShortName(WeightingType weightingType) {
+		switch (weightingType) {
+		case NORMALIZED_BY_SLIP_RATE:
+			return "NormSlipRate";
+		case UNNORMALIZED:
+			return "SlipRate";
+		case NORMALIZED_BY_UNCERTAINTY:
+			return "UncrtWtSlipRate";
 
-	@Override
-	public String getName() {
-		return NAME;
+		default:
+			throw new IllegalStateException("Unexpected weighting type: "+weightingType);
+		}
+	}
+	
+	public static String getName(WeightingType weightingType) {
+		switch (weightingType) {
+		case NORMALIZED_BY_SLIP_RATE:
+			return "Normalized Slip Rate";
+		case UNNORMALIZED:
+			return "Slip Rate (un-normalized)";
+		case NORMALIZED_BY_UNCERTAINTY:
+			return "Uncrtainty-Weighted Slip Rate";
+
+		default:
+			throw new IllegalStateException("Unexpected weighting type: "+weightingType);
+		}
 	}
 
 	@Override
 	public int getNumRows() {
-		if (weightingType == SlipRateConstraintWeightingType.BOTH)
-			// one row for each section and for each weight type
-			return 2*rupSet.getNumSections();
 		// one row for each section
 		return rupSet.getNumSections();
 	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
-	}
-
+	
 	@Override
 	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
 		long numNonZeroElements = 0;
 		int numRuptures = rupSet.getNumRuptures();
 		int numSections = rupSet.getNumSections();
+		
+		double[] weights = new double[numSections];
+		for (int s=0; s<numSections; s++)
+			weights[s] = this.weight;
+		if (weightingType == SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY) {
+			int numDefaults = 0;
+			int numInferred = 0;
+			for (int s=0; s<numSections; s++) {
+				double stdDev = targetSlipRates.getSlipRateStdDev(s);
+				if (stdDev == 0d || Double.isNaN(stdDev)) {
+					FaultSection sect = rupSet.getFaultSectionData(s);
+					FeatureProperties props = sect instanceof GeoJSONFaultSection ?
+							((GeoJSONFaultSection)sect).getProperties() : null;
+					if (props != null && props.containsKey("HighRate") && props.containsKey("LowRate")) {
+						// assume that we have +/- 2 sigma values (i.e., 95% confidence) to estimate a standard deviation
+						double high = props.getDouble("HighRate", Double.NaN);
+						double low = props.getDouble("LowRate", Double.NaN);
+						stdDev = (high-low)/4d; // +/- 2 sigma means that there are 4 sigmas between low and high
+						numInferred++;
+					} else {
+						stdDev = targetSlipRates.getSlipRate(s)*DEFAULT_FRACT_STD_DEV;
+						numDefaults++;
+					}
+				}
+				if (stdDev != 0d)
+					weights[s] /= stdDev;
+			}
+			if (numDefaults > 0 || numInferred > 0) {
+				System.err.println("WARNING: "+(numDefaults+numInferred)+"/"+numSections+" sections were missing slip rate standard "
+						+ "deviations, and uncertainty weighting is selected.");
+				if (numDefaults > 0)
+					System.err.println("\tUsed default fractional standard deviation for "+numDefaults
+							+" values: std = "+(float)DEFAULT_FRACT_STD_DEV+" x slip_rate");
+				if (numInferred > 0)
+					System.err.println("\tInferred standard deviation for "+numDefaults
+							+" values from upper and lower bounds, assuming +/- 2 sigma: std = (upper-lower)/4");	
+			}
+		} 
+		
 		// A matrix component of slip-rate constraint 
 		for (int rup=0; rup<numRuptures; rup++) {
 			double[] slips = slipAlongModule.calcSlipOnSectionsForRup(rupSet, aveSlipModule, rup);
 			List<Integer> sects = rupSet.getSectionsIndicesForRup(rup);
 			for (int i=0; i < slips.length; i++) {
-				int row = sects.get(i);
+				int sectIndex = sects.get(i);
+				int row = startRow+sectIndex;
 				int col = rup;
-				double val;
-				if (weightingType == SlipRateConstraintWeightingType.UNNORMALIZED
-						|| weightingType == SlipRateConstraintWeightingType.BOTH) {
-					setA(A, startRow+row, col, weightUnnormalized*slips[i]);
-					numNonZeroElements++;		
-				}
-				if (weightingType == SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE
-						|| weightingType == SlipRateConstraintWeightingType.BOTH) {  
-					if (weightingType == SlipRateConstraintWeightingType.BOTH)
-						row += numSections;
-					// Note that constraints for sections w/ slip rate < 0.1 mm/yr is not normalized by slip rate
-					// -- otherwise misfit will be huge (GEOBOUND model has 10e-13 slip rates that will dominate
-					// misfit otherwise)
-					if (targetSlipRates[sects.get(i)] < 1E-4 || Double.isNaN(targetSlipRates[sects.get(i)]))  
-						val = slips[i]/0.0001;  
-					else {
-						val = slips[i]/targetSlipRates[sects.get(i)]; 
+				double val = slips[i];
+				if (weightingType == SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE) {
+					double target = targetSlipRates.getSlipRate(sectIndex);
+					if (target != 0d) {
+						// Note that constraints for sections w/ slip rate < 0.1 mm/yr is not normalized by slip rate
+						// -- otherwise misfit will be huge (e.g., UCERF3 GEOBOUND model has 10e-13 slip rates that will
+						// dominate misfit otherwise)
+						if (target < 1e-4 || Double.isNaN(target))
+							target = 1e-4;
+						val = slips[i]/target;
 					}
-					setA(A, startRow+row, col, weightNormalized*val);
-					numNonZeroElements++;
 				}
+				setA(A, row, col, val*weights[sectIndex]);
+				numNonZeroElements++;
 			}
 		}  
 		// d vector component of slip-rate constraint
-		for (int sect=0; sect<numSections; sect++) {
-			if (Double.isNaN(targetSlipRates[sect])) {
-				// Treat NaN slip rates as 0 (minimize)
-				d[startRow+sect] = 0;
-				if (weightingType == SlipRateConstraintWeightingType.BOTH)
-					d[startRow+numSections+sect] = 0;
-			}
-			if (weightingType == SlipRateConstraintWeightingType.UNNORMALIZED
-					|| weightingType == SlipRateConstraintWeightingType.BOTH)
-				d[startRow+sect] = weightUnnormalized * targetSlipRates[sect];
-			if (weightingType == SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE
-					|| weightingType == SlipRateConstraintWeightingType.BOTH) {
-				double val;
-				if (targetSlipRates[sect]<1E-4)
+		for (int sectIndex=0; sectIndex<numSections; sectIndex++) {
+			double target = targetSlipRates.getSlipRate(sectIndex);
+			double val = target;
+			if (weightingType == SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE) {
+				if (target == 0d)
+					// minimize
+					val = 0d;
+				else if (target < 1E-4 || Double.isNaN(target))
 					// For very small slip rates, do not normalize by slip rate
 					//  (normalize by 0.0001 instead) so they don't dominate misfit
-					val = weightNormalized * targetSlipRates[sect]/0.0001;
-				else  // Normalize by slip rate
-					val = weightNormalized;
-				if (weightingType == SlipRateConstraintWeightingType.BOTH)
-					d[startRow+numSections+sect] = val;
+					val = targetSlipRates.getSlipRate(sectIndex)/1e-4;
 				else
-					d[startRow+sect] = val;
+					val = 1d;
 			}
-			if (Double.isNaN(d[sect]) || d[sect]<0)
-				throw new IllegalStateException("d["+sect+"] is NaN or 0!  sectSlipRateReduced["
-						+sect+"] = "+targetSlipRates[sect]);
+			int row = startRow+sectIndex;
+			d[row] = val*weights[sectIndex];
+			if (Double.isNaN(d[sectIndex]) || d[sectIndex]<0)
+				throw new IllegalStateException("d["+sectIndex+"]="+d[sectIndex]+" is NaN or 0!  target="+target);
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
+		this.aveSlipModule = rupSet.requireModule(AveSlipModule.class);
+		this.slipAlongModule = rupSet.requireModule(SlipAlongRuptureModel.class);
+		this.targetSlipRates = rupSet.requireModule(SectSlipRates.class);
 	}
 
 }

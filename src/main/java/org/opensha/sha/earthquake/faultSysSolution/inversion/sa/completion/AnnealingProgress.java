@@ -1,16 +1,15 @@
-package scratch.UCERF3.simulatedAnnealing.completion;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
-
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 
 public class AnnealingProgress implements CSV_BackedModule {
 	

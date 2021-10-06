@@ -21,38 +21,22 @@ public class PaleoRateInversionConstraint extends InversionConstraint {
 	public static final String NAME = "Paleoseismic Event Rate";
 	public static final String SHORT_NAME = "PaleoRate";
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
+	private transient FaultSystemRupSet rupSet;
 	private List<PaleoRateConstraint> paleoRateConstraints;
 	private PaleoProbabilityModel paleoProbModel;
 
 	public PaleoRateInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<PaleoRateConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel) {
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
-		this.weight = weight;
 		this.paleoRateConstraints = paleoRateConstraints;
 		this.paleoProbModel = paleoProbModel;
-	}
-
-	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
 	}
 
 	@Override
 	public int getNumRows() {
 		// one for each constraint
 		return paleoRateConstraints.size();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -72,6 +56,11 @@ public class PaleoRateInversionConstraint extends InversionConstraint {
 			}
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

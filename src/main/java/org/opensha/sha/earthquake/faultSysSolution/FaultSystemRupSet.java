@@ -952,7 +952,13 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return getAreaForRup(rupIndex)/getLengthForRup(rupIndex);
 	}
 	
-	private SectSlipRates getSectSlipRates() {
+	/**
+	 * This returns section slip rates. If no custom slip rates (e.g., after adjustment for sub-seismogenic ruptures)
+	 * have been loaded, then slip rates will be calculated from fault section data.
+	 * 
+	 * @return section slip rates
+	 */
+	public SectSlipRates getSectSlipRates() {
 		if (!hasModule(SectSlipRates.class))
 			addModule(SectSlipRates.fromFaultSectData(this));
 		return requireModule(SectSlipRates.class);

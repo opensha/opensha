@@ -6,6 +6,8 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 
+import com.google.gson.annotations.JsonAdapter;
+
 public class UCERF2_PaleoProbabilityModel extends PaleoProbabilityModel {
 
 	@Override

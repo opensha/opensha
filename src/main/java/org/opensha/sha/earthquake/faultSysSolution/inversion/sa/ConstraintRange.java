@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa;
 
 /**
  * Class to keep track of the rows in the inversion A matrix and data vector which

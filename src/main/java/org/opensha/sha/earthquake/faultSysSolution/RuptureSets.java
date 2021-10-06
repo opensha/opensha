@@ -79,7 +79,22 @@ public class RuptureSets {
 	public static List<? extends FaultSection> getU3SubSects(FaultModels fm) {
 		DeformationModels dm = fm.getFilterBasis();
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
-		return dmFetch.getSubSectionList();
+		List<? extends FaultSection> sects = dmFetch.getSubSectionList();
+		
+		// infer standard deviations from geologic bounds so we can use newer slip rate constraints
+		// assume bounds are +/- 2 sigma
+		System.out.println("Inferring slip-rate standard deviations from geologic bounds...");
+		List<? extends FaultSection> lowerSects = new DeformationModelFetcher(
+				fm, DeformationModels.GEOLOGIC_LOWER, null, 0.1).getSubSectionList();
+		List<? extends FaultSection> upperSects = new DeformationModelFetcher(
+				fm, DeformationModels.GEOLOGIC_UPPER, null, 0.1).getSubSectionList();
+		for (int s=0; s<sects.size(); s++) {
+			double upper = upperSects.get(s).getOrigAveSlipRate();
+			double lower = lowerSects.get(s).getOrigAveSlipRate();
+			sects.get(s).setSlipRateStdDev((upper-lower)/4d);
+		}
+		
+		return sects;
 	}
 	
 	public static List<? extends FaultSection> getNSHM23SubSects(String state) throws IOException {

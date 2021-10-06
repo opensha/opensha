@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing.params;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params;
 
 public enum NonnegativityConstraintType {
 	

@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -8,6 +9,7 @@ import java.util.Map;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -19,6 +21,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
@@ -39,20 +46,19 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  */
 public class SlipRateSegmentationConstraint extends InversionConstraint {
 	
-	private FaultSystemRupSet rupSet;
 	private SegmentationModel segModel;
 	private RateCombiner combiner;
-	private double weight;
 	private boolean normalized;
-	private boolean inequality;
 	private boolean netConstraint;
-	private EvenlyDiscretizedFunc distanceBins;
 	
+	private transient FaultSystemRupSet rupSet;
 	/*
 	 *  map from jumps to rupture IDs that use that jump. Within the jump, fromID will always be < toID
 	 */
-	private Map<Jump, List<Integer>> jumpRupturesMap;
+	private transient Map<Jump, List<Integer>> jumpRupturesMap;
+	private transient EvenlyDiscretizedFunc distanceBins;
 
+	@JsonAdapter(SlipRateSegmentationConstraint.SegmentationModelAdapter.class)
 	public static interface SegmentationModel {
 		public double calcReductionBetween(Jump jump);
 	}
@@ -70,6 +76,43 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 		@Override
 		public double calcReductionBetween(Jump jump) {
 			return Shaw07JumpDistProb.calcJumpProbability(jump.distance, a, r0);
+		}
+		
+	}
+	
+	public static class SegmentationModelAdapter extends TypeAdapter<SegmentationModel> {
+		
+		Gson gson = new Gson();
+
+		@Override
+		public void write(JsonWriter out, SegmentationModel value) throws IOException {
+			out.beginObject();
+			
+			out.name("type").value(value.getClass().getName());
+			out.name("data");
+			gson.toJson(value, value.getClass(), out);
+			
+			out.endObject();
+		}
+
+		@Override
+		public SegmentationModel read(JsonReader in) throws IOException {
+			Class<? extends SegmentationModel> type = null;
+			
+			in.beginObject();
+			
+			Preconditions.checkState(in.nextName().equals("type"), "JSON 'type' object must be first");
+			try {
+				type = (Class<? extends SegmentationModel>) Class.forName(in.nextString());
+			} catch (ClassNotFoundException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			Preconditions.checkState(in.nextName().equals("data"), "JSON 'data' object must be second");
+			SegmentationModel model = gson.fromJson(in, type);
+			
+			in.endObject();
+			return model;
 		}
 		
 	}
@@ -121,58 +164,18 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 	 */
 	public SlipRateSegmentationConstraint(FaultSystemRupSet rupSet, SegmentationModel segModel,
 			RateCombiner combiner, double weight, boolean normalized, boolean inequality, boolean netConstraint) {
-		this.rupSet = rupSet;
+		super(getName(normalized, netConstraint), getShortName(normalized, netConstraint), weight, inequality);
 		this.segModel = segModel;
 		this.combiner = combiner;
-		this.weight = weight;
 		this.normalized = normalized;
-		this.inequality = inequality;
 		this.netConstraint = netConstraint;
 		
 		if (netConstraint)
 			Preconditions.checkState(normalized, "Net constraints must be normalized");
-		
-		Preconditions.checkState(rupSet.hasModule(AveSlipModule.class),
-				"Rupture set does not have average slip data");
-		Preconditions.checkState(rupSet.hasModule(SlipAlongRuptureModel.class),
-				"Rupture set does not have slip along rupture data");
-		Preconditions.checkState(rupSet.hasModule(SectSlipRates.class),
-				"Rupture set does not have slip rate data");
-		if (!rupSet.hasModule(ClusterRuptures.class))
-			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
-		
-		System.out.println("Detecting jumps for segmentation constraint");
-		jumpRupturesMap = new HashMap<>();
-		
-		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-		int jumpingRups = 0;
-		double maxJumpDist = 0d;
-		for (int r=0; r<cRups.size(); r++) {
-			ClusterRupture rup = cRups.get(r);
-//			System.out.println("Rupture "+r+": "+rup);
-			boolean hasJumps = false;
-			for (Jump jump : rup.getJumpsIterable()) {
-				maxJumpDist = Double.max(maxJumpDist, jump.distance);
-				if (jump.fromSection.getSectionId() > jump.toSection.getSectionId())
-					jump = jump.reverse();
-				List<Integer> jumpRups = jumpRupturesMap.get(jump);
-				if (jumpRups == null) {
-					jumpRups = new ArrayList<>();
-					jumpRupturesMap.put(jump, jumpRups);
-				}
-				jumpRups.add(r);
-				hasJumps = true;
-			}
-			if (hasJumps)
-				jumpingRups++;
-		}
-		System.out.println("Found "+jumpRupturesMap.size()+" unique jumps, involving "+jumpingRups+" ruptures");
-		if (netConstraint)
-			distanceBins = HistogramFunction.getEncompassingHistogram(0.01, Math.max(maxJumpDist, 1d), 0.5);
+		setRuptureSet(rupSet);
 	}
 
-	@Override
-	public String getShortName() {
+	private static String getShortName(boolean normalized, boolean netConstraint) {
 		if (netConstraint)
 			return "NetSlipSeg";
 		if (normalized)
@@ -180,8 +183,7 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 		return "SlipSeg";
 	}
 
-	@Override
-	public String getName() {
+	private static String getName(boolean normalized, boolean netConstraint) {
 		if (netConstraint)
 			return "Net (Distance-Binned) Slip Rate Segmentation";
 		if (normalized)
@@ -196,11 +198,6 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 			return distanceBins.size();
 		// one row for each unique section-to-section connection
 		return jumpRupturesMap.size();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return inequality;
 	}
 
 	@Override
@@ -281,6 +278,51 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 			row++;
 		}
 		return count;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		if (rupSet != this.rupSet) {
+			this.rupSet = rupSet;
+			
+			Preconditions.checkState(rupSet.hasModule(AveSlipModule.class),
+					"Rupture set does not have average slip data");
+			Preconditions.checkState(rupSet.hasModule(SlipAlongRuptureModel.class),
+					"Rupture set does not have slip along rupture data");
+			Preconditions.checkState(rupSet.hasModule(SectSlipRates.class),
+					"Rupture set does not have slip rate data");
+			if (!rupSet.hasModule(ClusterRuptures.class))
+				rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+			
+			System.out.println("Detecting jumps for segmentation constraint");
+			jumpRupturesMap = new HashMap<>();
+			
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			int jumpingRups = 0;
+			double maxJumpDist = 0d;
+			for (int r=0; r<cRups.size(); r++) {
+				ClusterRupture rup = cRups.get(r);
+//				System.out.println("Rupture "+r+": "+rup);
+				boolean hasJumps = false;
+				for (Jump jump : rup.getJumpsIterable()) {
+					maxJumpDist = Double.max(maxJumpDist, jump.distance);
+					if (jump.fromSection.getSectionId() > jump.toSection.getSectionId())
+						jump = jump.reverse();
+					List<Integer> jumpRups = jumpRupturesMap.get(jump);
+					if (jumpRups == null) {
+						jumpRups = new ArrayList<>();
+						jumpRupturesMap.put(jump, jumpRups);
+					}
+					jumpRups.add(r);
+					hasJumps = true;
+				}
+				if (hasJumps)
+					jumpingRups++;
+			}
+			System.out.println("Found "+jumpRupturesMap.size()+" unique jumps, involving "+jumpingRups+" ruptures");
+			if (netConstraint)
+				distanceBins = HistogramFunction.getEncompassingHistogram(0.01, Math.max(maxJumpDist, 1d), 0.5);
+		}
 	}
 
 }

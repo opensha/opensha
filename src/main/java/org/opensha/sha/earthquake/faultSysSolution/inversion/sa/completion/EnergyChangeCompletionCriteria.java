@@ -1,4 +1,4 @@
-package scratch.UCERF3.simulatedAnnealing.completion;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
 import java.util.Iterator;
 
@@ -12,7 +12,7 @@ public class EnergyChangeCompletionCriteria implements CompletionCriteria {
 	
 	private double energyDelta, energyPercentDelta, lookBackMins;
 	
-	private double lookBackStart = -1;
+	private transient double lookBackStart = -1;
 	private ArbitrarilyDiscretizedFunc energyVsTime = new ArbitrarilyDiscretizedFunc();
 
 	public EnergyChangeCompletionCriteria(double energyDelta,
@@ -33,7 +33,7 @@ public class EnergyChangeCompletionCriteria implements CompletionCriteria {
 		double mins = watch.getTime()/1000d/60d;
 		double e = energy[0];
 		energyVsTime.set(mins, e);
-		if (lookBackStart < 0)
+		if (lookBackStart <= 0)
 			lookBackStart = energyVsTime.getMinX() + lookBackMins;
 		if (mins > lookBackStart) {
 			double prevE = energyVsTime.getInterpolatedY(mins - lookBackMins);
