@@ -143,6 +143,35 @@ public class MarkdownUtils {
 			return this;
 		}
 		
+		/**
+		 * Invert rows and columns
+		 *  
+		 * @return
+		 */
+		public TableBuilder invert() {
+			if (curLine != null)
+				finalizeLine();
+			List<String[]> origLines = lines;
+			this.lines = new ArrayList<>();
+			this.curLine = null;
+			int maxCols = 0;
+			for (String[] line : origLines)
+				maxCols = Integer.max(maxCols, line.length);
+			for (int row=0; row<maxCols; row++) {
+				initNewLine();
+				for (int col=0; col<origLines.size(); col++) {
+					String[] thatLine = origLines.get(col);
+					if (thatLine.length < row)
+						addColumn("");
+					else
+						addColumn(thatLine[row]);
+				}
+				finalizeLine();
+			}
+			
+			return this;
+		}
+		
 		public List<String> build() {
 			Preconditions.checkState(lines.size() >= 1);
 			
