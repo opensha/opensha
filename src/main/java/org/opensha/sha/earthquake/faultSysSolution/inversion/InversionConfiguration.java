@@ -29,6 +29,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.GsonBuilder;
 
+/**
+ * This class contains the constraints and inversion parameters needed to configure and run an inversion.
+ * 
+ * @author kevin
+ *
+ */
 public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JSON_TypeAdapterBackedModule<InversionConfiguration> {
 	
 	private transient ModuleContainer<?> parent;
@@ -58,14 +64,34 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	private Integer avgThreads;
 	private CompletionCriteria avgCompletion;
 	
+	/**
+	 * Initializes a configuration builder with the given constraints and completion criteria
+	 * 
+	 * @param constraints
+	 * @param completion
+	 * @return
+	 */
 	public static Builder builder(List<InversionConstraint> constraints, CompletionCriteria completion) {
 		return new Builder(constraints, completion);
 	}
 	
+	/**
+	 * Initializes a configuration builder from an existing configuration, which can then be modified
+	 * 
+	 * @param config
+	 * @return
+	 */
 	public static Builder builder(InversionConfiguration config) {
 		return new Builder(config);
 	}
 	
+	/**
+	 * Initializes a configuration builder with the given constraints, and annealing parameters from a command line
+	 * 
+	 * @param constraints
+	 * @param cmd
+	 * @return
+	 */
 	public static Builder builder(List<InversionConstraint> constraints, CommandLine cmd) {
 		return new Builder(constraints, cmd);
 	}

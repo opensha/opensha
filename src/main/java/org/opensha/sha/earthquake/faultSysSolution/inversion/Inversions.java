@@ -35,6 +35,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Nonnegati
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -490,6 +491,8 @@ public class Inversions {
 		else if (!constraints.isEmpty())
 			constraints = new ArrayList<>(constraints);
 		
+		int numExtra = constraints.size();
+		
 		File outputFile = new File(cmd.getOptionValue("output-file"));
 		
 		constraints.addAll(parseConstraints(rupSet, cmd));
@@ -508,6 +511,26 @@ public class Inversions {
 			writer.close();
 		}
 		
+		String info = "Fault System Solution generated with OpenSHA Fault System Tools ("
+				+ "https://github.com/opensha/opensha-fault-sys-tools), using the following command:"
+				+ "\n\nfst_inversion_runner.sh "+Joiner.on(" ").join(args);
+		if (numExtra > 0)
+			info += "\n\nNOTE: "+numExtra+" constraints were passed in directly, bypassing the command line interface "
+					+ "and are not reflected in the command above.";
+		
+		FaultSystemSolution sol = run(rupSet, config, info);
+		
+		// write solution
+		sol.write(outputFile);
+		
+		return sol;
+	}
+	
+	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config) {
+		return run(rupSet, config, null);
+	}
+	
+	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
 		CompletionCriteria completion = config.getCompletionCriteria();
 		if (completion == null)
 			throw new IllegalArgumentException("Must supply total inversion time or iteration count");
@@ -536,14 +559,9 @@ public class Inversions {
 		if (inputs.hasInitialSolution())
 			sol.addModule(new InitialSolution(inputs.getInitialSolution()));
 		sol.addModule(config);
-		
-		String info = "Fault System Solution generated with OpenSHA Fault System Tools ("
-				+ "https://github.com/opensha/opensha-fault-sys-tools), using the following command:"
-				+ "\n\nfst_inversion_runner.sh "+Joiner.on(" ").join(args);
-		sol.setInfoString(info);
-		
-		// write solution
-		sol.write(outputFile);
+		sol.addModule(new InversionMisfits(sa));
+		if (info != null)
+			sol.setInfoString(info);
 		
 		return sol;
 	}
