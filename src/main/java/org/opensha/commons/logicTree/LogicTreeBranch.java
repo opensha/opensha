@@ -426,7 +426,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		
 		return builder.create();
 	}
-	
+
 	public static class Adapter extends TypeAdapter<LogicTreeBranch<?>> {
 
 		@Override
@@ -516,7 +516,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		}
 		
 	}
-	
+
 	private static class NodeTypeAdapter extends TypeAdapter<LogicTreeNode> {
 		
 		private LogicTreeBranch<?> branch;
@@ -542,7 +542,10 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 				Preconditions.checkState(enumClass.isEnum(), "Enum enclosing class not an enum?");
 				out.name("enumClass").value(enumClass.getName());
 				out.name("enumName").value(((Enum<?>)value).name());
-			} else if (!(value instanceof FileBackedNode)) {
+			} else if (JsonAdapterHelper.hasTypeAdapter(value)) {
+				out.name("adapterValue");
+				JsonAdapterHelper.writeAdapterValue(out, value);
+			}else if (!(value instanceof FileBackedNode)) {
 				out.name("class").value(value.getClass().getName());
 			}
 			
@@ -559,6 +562,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			Class<? extends LogicTreeNode> clazz = null;
 			Class<? extends Enum<? extends LogicTreeNode>> enumClass = null;
 			String enumName = null;
+			LogicTreeNode adapterNode = null;
 			
 			in.beginObject();
 			while (in.hasNext()) {
@@ -604,13 +608,19 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 				case "enumName":
 					enumName = in.nextString();
 					break;
-
+				case "adapterValue":
+					adapterNode = (LogicTreeNode) JsonAdapterHelper.readAdapterValue(in);
+					break;
 				default:
 					break;
 				}
 			}
 			
 			in.endObject();
+
+			if(adapterNode != null){
+				return adapterNode;
+			}
 			
 			if (enumClass != null && enumName != null) {
 				// load it as an enum

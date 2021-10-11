@@ -122,7 +122,54 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 	}
-	
+
+	public static abstract class AdapterBackedLevel extends LogicTreeLevel<LogicTreeNode>{
+		String name;
+		String shortName;
+		Class<? extends LogicTreeNode> nodeType;
+
+		public AdapterBackedLevel(String name, String shortName, Class<? extends LogicTreeNode>nodeType){
+		    this.name = name;
+			this.shortName = shortName;
+			this.nodeType = nodeType;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public String getShortName() {
+			return shortName;
+		}
+
+		@Override
+		public Class<? extends LogicTreeNode> getType() {
+			return nodeType;
+		}
+
+		@Override
+		public List<? extends LogicTreeNode> getNodes() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			return node.getClass() == getType();
+		}
+
+		@Override
+		public boolean equals(Object o){
+			if(o instanceof LogicTreeLevel.AdapterBackedLevel){
+				AdapterBackedLevel other = (AdapterBackedLevel) o;
+				return other.getName() == getName() && other.getType() == getType();
+			}else{
+				return false;
+			}
+		}
+	}
+
 	public static <E extends Enum<E> & LogicTreeNode> LogicTreeLevel<E> forEnum(
 			Class<E> type, String name, String shortName) {
 		return new EnumBackedLevel<>(name, shortName, type);
@@ -259,7 +306,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				case "enumClass":
 					enumClassName = in.nextString();
 					break;
-				case "className":
+				case "class":
 					className = in.nextString();
 					break;
 
