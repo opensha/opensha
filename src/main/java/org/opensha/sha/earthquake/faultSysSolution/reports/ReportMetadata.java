@@ -58,6 +58,22 @@ public class ReportMetadata {
 		return null;
 	}
 	
+	public boolean hasComparison() {
+		return comparison != null;
+	}
+	
+	public boolean hasComparisonSol() {
+		return comparison != null && comparison.sol != null;
+	}
+	
+	public boolean hasPrimarySol() {
+		return primary.sol != null;
+	}
+	
+	public boolean hasAnySol() {
+		return hasPrimarySol() || hasComparisonSol();
+	}
+	
 	public static class RupSetOverlap {
 		
 		// ruptures

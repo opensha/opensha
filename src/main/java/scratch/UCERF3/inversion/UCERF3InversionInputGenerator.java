@@ -114,7 +114,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		return defaultProbModel;
 	}
 	
-	private static List<InversionConstraint> buildConstraints(
+	public static List<InversionConstraint> buildConstraints(
 			FaultSystemRupSet rupSet,
 			UCERF3InversionConfiguration config,
 			List<PaleoRateConstraint> paleoRateConstraints,
@@ -366,7 +366,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		if(D) System.out.println("\nNumber of slip-rate constraints:    " + numSlipRateConstraints);
 		int numRows = numSlipRateConstraints;
 		if (numRows > 0) {
-			constraintRowRanges.add(new ConstraintRange("Slip Rate", "Slip Rate", 0, numRows, false));
+			constraintRowRanges.add(new ConstraintRange("Slip Rate", "Slip Rate", 0, numRows, false, Double.NaN));
 		}
 		
 		int numPaleoRows = (int)Math.signum(config.getPaleoRateConstraintWt())*paleoRateConstraints.size();
@@ -374,7 +374,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		if (numPaleoRows > 0) {
 			numRows += numPaleoRows;
 			constraintRowRanges.add(new ConstraintRange("Paleo Event Rates", "Paleo Event Rates",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		
 		if (config.getPaleoSlipConstraintWt() > 0.0) {
@@ -382,7 +382,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of paleo average slip constraints: "+numPaleoSlipRows);
 			numRows += numPaleoSlipRows;
 			constraintRowRanges.add(new ConstraintRange("Paleo Slips", "Paleo Slips",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		
 		if (config.getRupRateConstraintWt() > 0.0) {
@@ -394,7 +394,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateRows);
 			numRows += numRupRateRows;
 			constraintRowRanges.add(new ConstraintRange("Rupture Rate", "Rupture Rate",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		
 		List<IDPairing> smoothingConstraintRupPairings = Lists.newArrayList();
@@ -404,7 +404,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateSmoothingRows);
 			numRows += numRupRateSmoothingRows;
 			constraintRowRanges.add(new ConstraintRange("Rupture Rate Smoothing", "Rupture Rate Smoothing",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		
 		
@@ -417,7 +417,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of minimization constraints: "+numMinimizationRows);
 			numRows += numMinimizationRows;
 			constraintRowRanges.add(new ConstraintRange("Minimization", "Minimization",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		
 		IncrementalMagFreqDist targetMagFreqDist=null;
@@ -433,7 +433,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// add number of rows used for magnitude distribution constraint
 			numRows += totalNumMagFreqConstraints;
 			constraintRowRanges.add(new ConstraintRange("MFD Equality", "MFD Equality",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0) {
 			int totalNumMagParticipationConstraints = 0;
@@ -463,7 +463,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of MFD participation constraints: "
 					+ totalNumMagParticipationConstraints);
 			constraintRowRanges.add(new ConstraintRange("MFD Participation", "MFD Participation",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		ArrayList<SectionMFD_constraint> MFDConstraints = null;
 		if (config.getNucleationMFDConstraintWt() > 0.0) {
@@ -481,7 +481,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			}
 			if(D) System.out.println("Number of Nucleation MFD constraints: "+totalNumNucleationMFDConstraints);
 			constraintRowRanges.add(new ConstraintRange("MFD Nucleation", "MFD Nucleation",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		if (config.getMFDSmoothnessConstraintWt() > 0.0 || config.getMFDSmoothnessConstraintWtForPaleoParents() > 0.0) {
 			int totalNumMFDSmoothnessConstraints = 0;
@@ -532,19 +532,19 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			}
 			if(D) System.out.println("Number of MFD Smoothness constraints: "+totalNumMFDSmoothnessConstraints);
 			constraintRowRanges.add(new ConstraintRange("MFD Smoothness", "MFD Smoothness",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		if (config.getMomentConstraintWt() > 0.0) {
 			numRows++;
 			if(D) System.out.println("Number of Moment constraints: 1");
 			constraintRowRanges.add(new ConstraintRange("Moment", "Moment",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		if (config.getParkfieldConstraintWt() > 0.0) {
 			numRows++;
 			if(D) System.out.println("Number of Parkfield constraints: 1");
 			constraintRowRanges.add(new ConstraintRange("Parkfield", "Parkfield",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		if (config.getEventRateSmoothnessWt() > 0.0) {
 			ArrayList<Integer> parentIDs = new ArrayList<Integer>();
@@ -558,7 +558,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			numRows+=numNewRows;
 			if(D) System.out.println("Number of Event-Rate Smoothness constraints: "+numNewRows);
 			constraintRowRanges.add(new ConstraintRange("Event-Rate Smoothness", "Event-Rate Smoothness",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN));
 		}
 		
 		
@@ -577,7 +577,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				numMFDRows += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())-targetMagFreqDist.getClosestXIndex(rupSet.getMinMag())+1;
 			}
 			constraintRowRanges.add(new ConstraintRange("MFD Inequality", "MFD Inequality",
-					0, numMFDRows, true));
+					0, numMFDRows, true, Double.NaN));
 			A_ineq = buildMatrix(clazz, numMFDRows, numRuptures); // (A_MFD * x <= d_MFD)
 			d_ineq = new double[numMFDRows];							
 			if(D) System.out.println("Number of magnitude-distribution inequality constraints (not in A matrix): "

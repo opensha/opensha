@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -31,6 +32,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetSaveLoadTests;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -199,6 +201,42 @@ public class StandardFaultSysModulesTest {
 		}
 		IndividualSolutionRates module = new IndividualSolutionRates(demoSol, indvRates);
 		testModuleSerialization(demoSol.getArchive(), demoSol, module, IndividualSolutionRates.class);
+	}
+
+	@Test
+	public void testInversionMisfits() throws IOException {
+		int rows = 1000;
+		List<ConstraintRange> ranges = new ArrayList<>();
+		double[] d=null, d_ineq=null, misfit=null, misfit_ineq=null;
+		for (boolean ineq : new boolean[] {false, true}) {
+			int startRow = 0;
+			double[] myD, myMisfit;
+			if (ineq) {
+				d_ineq = new double[rows];
+				myD = d_ineq;
+				misfit_ineq = new double[rows];
+				myMisfit = misfit_ineq;
+			} else {
+				d = new double[rows];
+				myD = d;
+				misfit = new double[rows];
+				myMisfit = misfit;
+			}
+			Random r = new Random();
+			while (startRow < rows) {
+				int endRow = Integer.min(rows, startRow + 10 + r.nextInt(100));
+				
+				int num = ranges.size()+1;
+				ranges.add(new ConstraintRange("Constraint "+num, "Constr"+num, startRow, endRow, ineq, 1d));
+				startRow = endRow;
+			}
+			for (int i=0; i<rows; i++) {
+				myD[i] = r.nextDouble();
+				myMisfit[i] = r.nextGaussian();
+			}
+		}
+		InversionMisfits misfits = new InversionMisfits(ranges, misfit, d, misfit_ineq, d_ineq);
+		testModuleSerialization(demoSol.getArchive(), demoSol, misfits, InversionMisfits.class);
 	}
 	
 	private static double[] randArray(int len) {

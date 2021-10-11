@@ -49,6 +49,9 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
 			String topLink) throws IOException {
 		AnnealingProgress progress = sol.requireModule(AnnealingProgress.class);
+		AnnealingProgress compProgress = null;
+		if (meta.hasComparisonSol())
+			compProgress = meta.comparison.sol.getModule(AnnealingProgress.class);
 		
 		List<String> lines = new ArrayList<>();
 		
@@ -62,15 +65,48 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 
 		int ips = (int)((double)iters/secs + 0.5);
 		
-		lines.add("* Iterations: "+countDF.format(iters)+" ("+countDF.format(ips)+" /sec)");
-		lines.add("* Time: "+ThreadedSimulatedAnnealing.timeStr(millis));
-		lines.add("* Perturbations: "+countDF.format(perturbs));
-		lines.add("* Total energy: "+(float)totalEnergy);
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		
+		// will invert this table, so rows = columns here
+		table.initNewLine();
+		if (compProgress != null)
+			table.addColumn("");
+		table.addColumn("**Iterations**").addColumn("**Time**").addColumn("**Perturbations**").addColumn("**Total Energy**");
+		table.finalizeLine().initNewLine();
+		if (compProgress != null)
+			table.addColumn("Primary");
+		
+		table.addColumn(countDF.format(iters)+" ("+countDF.format(ips)+" /sec)");
+		table.addColumn(ThreadedSimulatedAnnealing.timeStr(millis));
+		table.addColumn(countDF.format(perturbs));
+		table.addColumn((float)totalEnergy);
+		table.finalizeLine();
+		
+		long cperturbs = -1;
+		if (compProgress != null) {
+			long cmillis = compProgress.getTime(compProgress.size()-1);
+			double csecs = cmillis/1000d;
+			cperturbs = compProgress.getNumPerturbations(compProgress.size()-1);
+			long citers = compProgress.getIterations(compProgress.size()-1);
+			double ctotalEnergy = compProgress.getEnergies(compProgress.size()-1)[0];
+
+			int cips = (int)((double)citers/csecs + 0.5);
+			
+			table.initNewLine().addColumn("Comparison");
+			table.addColumn(countDF.format(citers)+" ("+countDF.format(cips)+" /sec)");
+			table.addColumn(ThreadedSimulatedAnnealing.timeStr(cmillis));
+			table.addColumn(countDF.format(cperturbs));
+			table.addColumn((float)ctotalEnergy);
+			table.finalizeLine();
+		}
+		
+		lines.addAll(table.invert().build());
+		lines.add("");
 		
 		lines.add(getSubHeading()+" Final Energies");
 		lines.add(topLink); lines.add("");
 		
-		TableBuilder table = MarkdownUtils.tableBuilder();
+		table = MarkdownUtils.tableBuilder();
 		long deltaEachMillis;
 		if (hours > 20)
 			deltaEachMillis = 1000l*60l*60l*5l; // 5 hours
@@ -149,7 +185,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		
 		// now plots
 		String prefix = "sa_progress";
-		SimulatedAnnealing.writeProgressPlots(progress, resourcesDir, prefix, sol.getRupSet().getNumRuptures());
+		SimulatedAnnealing.writeProgressPlots(progress, resourcesDir, prefix, sol.getRupSet().getNumRuptures(), compProgress);
 		
 		lines.add("");
 		lines.add(getSubHeading()+" Energy Progress");
@@ -185,15 +221,102 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 					numAboveWaterlevel++;
 			}
 		}
-		lines.add("* Non-zero ruptures: "+countDF.format(numNonZero)
-			+" ("+percentDF.format((double)numNonZero/(double)rates.length)+")");
-		if (ratesNoMin != rates)
-			lines.add("* Ruptures above water-level: "+countDF.format(numAboveWaterlevel)
-				+" ("+percentDF.format((double)numAboveWaterlevel/(double)rates.length)+")");
-		lines.add("* Avg. # perturbations per rupture: "+(float)(perturbs/(double)rates.length));
-		lines.add("* Avg. # perturbations per perturbed rupture: "+(float)(perturbs/(double)numAboveWaterlevel));
 		
-		SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, prefix+"_rate_dist", ratesNoMin, rates, initial);
+		table = MarkdownUtils.tableBuilder();
+		
+		// will invert, rows = columns here
+		table.initNewLine();
+		if (compProgress != null)
+			table.addColumn("");
+		table.addColumn("**Non-zero ruptures**");
+		boolean equivRups = compProgress != null && meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet);
+		if (equivRups)
+			table.addColumn("**Unique non-zero ruptures**").addColumn("**Rate of unique non-zero ruptures**");
+		if (ratesNoMin != rates)
+			table.addColumn("**Ruptures above water-level**");
+		table.addColumn("**Avg. # perturbations per rupture**").addColumn("**Avg. # perturbations per perturbed rupture**");
+		table.finalizeLine().initNewLine();
+		if (compProgress != null)
+			table.addColumn("Primary");
+		
+		table.addColumn(countDF.format(numNonZero)
+				+" ("+percentDF.format((double)numNonZero/(double)rates.length)+")");
+		if (equivRups) {
+			double[] crates = meta.comparison.sol.getRateForAllRups();
+			int uniqueNZ = 0;
+			double uniqueRate = 0d;
+			for (int r=0; r<rates.length; r++) {
+				if (rates[r] > 0 && crates[r] == 0) {
+					uniqueNZ++;
+					uniqueRate += rates[r];
+				}
+			}
+			table.addColumn(countDF.format(uniqueNZ)
+					+" ("+percentDF.format((double)uniqueNZ/(double)rates.length)+")");
+			table.addColumn((float)uniqueRate
+					+" ("+percentDF.format((double)uniqueRate/(double)sol.getTotalRateForAllFaultSystemRups())+")");
+		}
+		if (ratesNoMin != rates)
+			table.addColumn(countDF.format(numAboveWaterlevel)
+				+" ("+percentDF.format((double)numAboveWaterlevel/(double)rates.length)+")");
+		table.addColumn((float)(perturbs/(double)rates.length));
+		table.addColumn((float)(perturbs/(double)numAboveWaterlevel));
+		table.finalizeLine();
+		
+		if (compProgress != null) {
+			double[] crates = meta.comparison.sol.getRateForAllRups();
+			double[] cratesNoMin;
+			if (meta.comparison.sol.hasModule(WaterLevelRates.class))
+				cratesNoMin = meta.comparison.sol.getModule(WaterLevelRates.class).subtractFrom(crates);
+			else
+				cratesNoMin = crates;
+			
+			int cnumNonZero = 0;
+			int cnumAboveWaterlevel = 0;
+			for (int r=0; r<crates.length; r++) {
+				if (crates[r] > 0) {
+					cnumNonZero++;
+					if (cratesNoMin[r] > 0)
+						cnumAboveWaterlevel++;
+				}
+			}
+			
+			table.initNewLine().addColumn("Comparison");
+			table.addColumn(countDF.format(cnumNonZero)
+					+" ("+percentDF.format((double)cnumNonZero/(double)crates.length)+")");
+			if (equivRups) {
+				int uniqueNZ = 0;
+				double uniqueRate = 0d;
+				for (int r=0; r<rates.length; r++) {
+					if (crates[r] > 0 && rates[r] == 0) {
+						uniqueNZ++;
+						uniqueRate += crates[r];
+					}
+				}
+				table.addColumn(countDF.format(uniqueNZ)
+						+" ("+percentDF.format((double)uniqueNZ/(double)crates.length)+")");
+				table.addColumn((float)uniqueRate+" ("+percentDF.format((double)uniqueRate
+						/(double)meta.comparison.sol.getTotalRateForAllFaultSystemRups())+")");
+			}
+			if (ratesNoMin != rates) {
+				if (cratesNoMin != crates)
+					table.addColumn(countDF.format(cnumAboveWaterlevel)
+							+" ("+percentDF.format((double)cnumAboveWaterlevel/(double)crates.length)+")");
+				else
+					table.addColumn("");
+			}
+			table.addColumn((float)(cperturbs/(double)crates.length));
+			table.addColumn((float)(cperturbs/(double)cnumAboveWaterlevel));
+		}
+		
+		lines.addAll(table.invert().build());
+		lines.add("");
+		
+		if (compProgress == null)
+			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, prefix+"_rate_dist", ratesNoMin, rates, initial);
+		else
+			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, prefix+"_rate_dist", ratesNoMin, rates, initial,
+					meta.comparison.sol.getRateForAllRups());
 		lines.add("![Rate Distribution]("+relPathToResources+"/"+prefix+"_rate_dist.png)");
 		lines.add("");
 		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/"+prefix+"_rate_dist_cumulative.png)");

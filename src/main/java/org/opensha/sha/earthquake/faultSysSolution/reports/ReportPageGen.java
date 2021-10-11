@@ -39,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSet
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InfoStringPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionMisfitsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgressPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverDistancePlot;
@@ -129,6 +130,7 @@ public class ReportPageGen {
 		plots.add(new InfoStringPlot());
 		plots.add(new SolMFDPlot());
 		plots.add(new InversionProgressPlot());
+		plots.add(new InversionMisfitsPlot());
 		plots.add(new RateVsRateScatter());
 		plots.add(new ParticipationRatePlot());
 		plots.add(new PlausibilityConfigurationReport());
