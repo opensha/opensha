@@ -97,7 +97,7 @@ public class RelativeBValueConstraint extends InversionConstraint {
 		int row = startRow;
 		
 		// weigh it such that each bin has the given weight, not each bin-to-bin comparison row
-		double weight = this.weight / magFunc.size();
+		double weight = this.weight / (magFunc.size()-1);
 		
 		for (int m1=0; m1<magFunc.size(); m1++) {
 			if (magCounts[m1] == 0) {
@@ -111,7 +111,7 @@ public class RelativeBValueConstraint extends InversionConstraint {
 			// determine a weight such that misfits from each bin should we weighted equally
 			// (even though rates will be smaller for larger mags)
 			double myWeight = refVal/val1;
-			System.out.println("\tWeight: "+myWeight);
+			System.out.println("\tWeight: rel="+(float)myWeight+",\ttotal="+(float)(myWeight*weight));
 			myWeight *= weight;
 			
 			for (int m2=m1+1; m2<magFunc.size(); m2++) {
@@ -132,7 +132,9 @@ public class RelativeBValueConstraint extends InversionConstraint {
 						continue;
 					
 					if (magIndex == m2) {
-						// larger should be positive so that things work in inequality mode
+						// larger mag should be positive so that things work in inequality mode
+						// if the value from the larger magnitude is smaller than the target, the misfit will be negative
+						// and ignored in inequality mode
 						setA(A, row, r, myWeight*relVal);
 						count++;
 					} else if (magIndex == m1) {
