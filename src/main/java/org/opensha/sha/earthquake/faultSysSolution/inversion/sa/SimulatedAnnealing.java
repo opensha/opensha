@@ -94,6 +94,8 @@ public interface SimulatedAnnealing {
 	public void setResults(double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero);
 	
 	public void setConstraintRanges(List<ConstraintRange> constraintRanges);
+	
+	public List<ConstraintRange> getConstraintRanges();
 
 	/**
 	 * Iterate for the given number of iterations
@@ -154,8 +156,13 @@ public interface SimulatedAnnealing {
 	 * @param initialState
 	 * @throws IOException
 	 */
-	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates, double[] initialState)
-			throws IOException {
+	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
+			double[] initialState) throws IOException {
+		writeRateVsRankPlot(outputDir, prefix, ratesNoMin, rates, initialState, null);
+	}
+	
+	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
+			double[] initialState, double[] compRates) throws IOException {
 		// rates without waterlevel
 		ratesNoMin = getSorted(ratesNoMin);
 		// rates with waterlevel
@@ -193,6 +200,18 @@ public interface SimulatedAnnealing {
 			funcs.add(0, adjFunc);
 			chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
 		}
+		
+		if (compRates != null) {
+			compRates = getSorted(compRates);
+			
+			EvenlyDiscretizedFunc compFunc = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
+			compFunc.setName("Comparison Solution");
+			for (int i=0; i<compRates.length; i++)
+				compFunc.set(i, compRates[i]);
+			funcs.add(compFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, new Color(0, 0, 0, 127)));
+		}
+		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		gp.setYLog(true);
 		PlotSpec spec = new PlotSpec(funcs, chars, "Rupture Rate Distribution", "Rank", "Rate (per year)");
@@ -216,6 +235,11 @@ public interface SimulatedAnnealing {
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLUE));
 		funcs.add(getCumulative(ratesNoMin, false, "Inversion Rates, Rate <= Rank"));
 		chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, Color.BLUE));
+		
+		if (compRates != null) {
+			funcs.add(getCumulative(compRates, true, "Comparison Solution, Rate >= Rank"));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, new Color(0, 0, 0, 127)));
+		}
 		
 		spec = new PlotSpec(funcs, chars, "Cumulative Rate Distribution", "Rank", "Cumulative Rate (per year)");
 		spec.setLegendInset(true);
@@ -254,10 +278,57 @@ public interface SimulatedAnnealing {
 	 * @param prefix
 	 * @throws IOException
 	 */
-	public static void writeProgressPlots(AnnealingProgress track, File outputDir, String prefix, int numRuptures) throws IOException {
+	public static void writeProgressPlots(AnnealingProgress track, File outputDir, String prefix, int numRuptures)
+			throws IOException {
+		writeProgressPlots(track, outputDir, prefix, numRuptures, null);
+	}
+	
+	/**
+	 * This writes plots of SA energies as a function of time
+	 * @param track
+	 * @param outputDir
+	 * @param prefix
+	 * @throws IOException
+	 */
+	public static void writeProgressPlots(AnnealingProgress track, File outputDir, String prefix, int numRuptures,
+			AnnealingProgress compTrack) throws IOException {
 		ArbitrarilyDiscretizedFunc perturbsVsIters = new ArbitrarilyDiscretizedFunc();
 		ArbitrarilyDiscretizedFunc nonZerosVsIters = new ArbitrarilyDiscretizedFunc();
 		ArbitrarilyDiscretizedFunc percentNonZerosVsIters = new ArbitrarilyDiscretizedFunc();
+		
+		ArbitrarilyDiscretizedFunc compTotalTime = null;
+		ArbitrarilyDiscretizedFunc compTotalIters = null;
+		ArbitrarilyDiscretizedFunc compPerturb = null;
+		ArbitrarilyDiscretizedFunc compPercentNonZeros = null;
+		ArbitrarilyDiscretizedFunc compNonZero = null;
+		
+		if (compTrack != null) {
+			compTotalTime = new ArbitrarilyDiscretizedFunc("Comparison Total");
+			compTotalIters = new ArbitrarilyDiscretizedFunc("Comparison Total");
+			compPerturb = new ArbitrarilyDiscretizedFunc();
+			compPercentNonZeros = new ArbitrarilyDiscretizedFunc();
+			compNonZero = new ArbitrarilyDiscretizedFunc();
+			
+			for (int i=0; i<compTrack.size(); i++) {
+				double[] energy = track.getEnergies(i);
+				long time = track.getTime(i);
+				double mins = time / 1000d / 60d;
+				long perturb = track.getNumPerturbations(i);
+				long iter = track.getIterations(i);
+				int nonZeros = track.getNumNonZero(i);
+				compTotalTime.set(mins, energy[0]);
+				compTotalIters.set((double)iter, energy[0]);
+				compPerturb.set((double)iter, (double)perturb);
+				compNonZero.set((double)iter, (double)nonZeros);
+				if (numRuptures > 0 && compPercentNonZeros != null) {
+					if (nonZeros > numRuptures)
+						// definitely a different rupture set
+						compPercentNonZeros = null;
+					else
+						compPercentNonZeros.set((double)iter, 100d*(double)nonZeros/(double)numRuptures);
+				}
+			}
+		}
 		
 		List<String> types = track.getEnergyTypes();
 		int num = types.size();
@@ -299,6 +370,7 @@ public interface SimulatedAnnealing {
 				iterFuncs.remove(i);
 			}
 		}
+		num = timeFuncs.size();
 		ArrayList<PlotCurveCharacterstics> extraChars = getEnergyExtraChars();
 		
 		
@@ -311,6 +383,13 @@ public interface SimulatedAnnealing {
 				int extraIndex = i - energyChars.size();
 				chars.add(extraChars.get(extraIndex % extraChars.size()));
 			}
+		}
+		
+		PlotCurveCharacterstics compChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, new Color(0, 0, 0, 127));
+		if (compTrack != null) {
+			timeFuncs.add(compTotalTime);
+			iterFuncs.add(compTotalIters);
+			chars.add(compChar);
 		}
 
 		PlotCurveCharacterstics perturbChar =
@@ -374,21 +453,39 @@ public interface SimulatedAnnealing {
 				plot_width, plot_height);
 		
 		// perturbations vs iters plots
-		ArrayList<ArbitrarilyDiscretizedFunc> perturbWrap = new ArrayList<ArbitrarilyDiscretizedFunc>();
-		perturbWrap.add(perturbsVsIters);
-		ArrayList<ArbitrarilyDiscretizedFunc> nzWrap = new ArrayList<ArbitrarilyDiscretizedFunc>();
-		nzWrap.add(nonZerosVsIters);
+		List<ArbitrarilyDiscretizedFunc> perturbFuncs = new ArrayList<ArbitrarilyDiscretizedFunc>();
+		List<PlotCurveCharacterstics> perturbChars = new ArrayList<>();
+		perturbFuncs.add(perturbsVsIters);
+		perturbChars.add(perturbChar);
+		List<ArbitrarilyDiscretizedFunc> nzFuncs = new ArrayList<ArbitrarilyDiscretizedFunc>();
+		List<PlotCurveCharacterstics> nzChars = new ArrayList<>();
+		nzFuncs.add(nonZerosVsIters);
+		nzChars.add(nzChar);
+		
+		if (compTrack != null) {
+			perturbFuncs.add(compPerturb);
+			perturbChars.add(compChar);
+			nzFuncs.add(compNonZero);
+			nzChars.add(compChar);
+		}
 		gp.setAutoRange();
 		String combTitle = "Perturbations & Non-Zero Rates Vs Iters";
-		PlotSpec pSpec = new PlotSpec(Lists.newArrayList(perturbWrap), Lists.newArrayList(perturbChar),
+//		List<>
+		PlotSpec pSpec = new PlotSpec(perturbFuncs, perturbChars,
 				combTitle, iterationsLabel, "# Perturbations");
-		PlotSpec nzSpec = new PlotSpec(Lists.newArrayList(nzWrap), Lists.newArrayList(nzChar),
+		PlotSpec nzSpec = new PlotSpec(nzFuncs, nzChars,
 				combTitle, iterationsLabel, "# Non-Zero Rates");
 		List<PlotSpec> combSpecs;
 		if (numRuptures > 0) {
-			ArrayList<ArbitrarilyDiscretizedFunc> pnzWrap = new ArrayList<ArbitrarilyDiscretizedFunc>();
-			pnzWrap.add(percentNonZerosVsIters);
-			PlotSpec pnzSpec = new PlotSpec(Lists.newArrayList(pnzWrap), Lists.newArrayList(pnzChar),
+			List<ArbitrarilyDiscretizedFunc> pnzFuncs = new ArrayList<ArbitrarilyDiscretizedFunc>();
+			List<PlotCurveCharacterstics> pnzChars = new ArrayList<>();
+			pnzFuncs.add(percentNonZerosVsIters);
+			pnzChars.add(pnzChar);
+			if (compPercentNonZeros != null) {
+				pnzFuncs.add(compPercentNonZeros);
+				pnzChars.add(compChar);
+			}
+			PlotSpec pnzSpec = new PlotSpec(pnzFuncs, pnzChars,
 					combTitle, iterationsLabel, "% Non-Zero Rates");
 			combSpecs = List.of(pnzSpec, nzSpec, pSpec);
 		} else {

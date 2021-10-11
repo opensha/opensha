@@ -275,6 +275,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		this.constraintRanges = constraintRanges;
 	}
 	
+	public List<ConstraintRange> getConstraintRanges() {
+		return constraintRanges;
+	}
+	
 	private static void calculateMisfit(DoubleMatrix2D mat, double[] data, double[] prev_misfit,
 			double[] solution, int perturbCol, double perturbation, double[] misfit) {
 		if (mat instanceof SparseCCDoubleMatrix2D && perturbCol >= 0 && prev_misfit != null) {

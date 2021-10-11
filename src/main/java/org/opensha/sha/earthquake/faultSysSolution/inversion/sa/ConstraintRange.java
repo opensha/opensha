@@ -16,18 +16,26 @@ public class ConstraintRange {
 	 */
 	public final int startRow;
 	/**
-	 * Last for for this constraint (exclusive)
+	 * Last row for this constraint (exclusive)
 	 */
 	public final int endRow;
+	/**
+	 * True for inequality constraint, false for equality constraint
+	 */
 	public final boolean inequality;
+	/**
+	 * Weight assigned to this constraint
+	 */
+	public final double weight;
 	
 	public ConstraintRange(String name, String shortName,
-			int startRow, int endRow, boolean inequality) {
+			int startRow, int endRow, boolean inequality, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.startRow = startRow;
 		this.endRow = endRow;
 		this.inequality = inequality;
+		this.weight = weight;
 	}
 	
 	@Override

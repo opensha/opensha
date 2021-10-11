@@ -694,6 +694,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		this.constraintRanges = constraintRanges;
 	}
 	
+	public List<ConstraintRange> getConstraintRanges() {
+		return constraintRanges;
+	}
+	
 	public static Options createOptionsNoInputs() {
 		Options ops = SerialSimulatedAnnealing.createOptions();
 		
@@ -952,7 +956,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 					boolean inequality = rangeCSV.getBoolean(row, 2);
 					int startRow = rangeCSV.getInt(row, 3);
 					int endRow = rangeCSV.getInt(row, 4);
-					constraintRanges.add(new ConstraintRange(name, shortName, startRow, endRow, inequality));
+					constraintRanges.add(new ConstraintRange(name, shortName, startRow, endRow, inequality, Double.NaN));
 				}
 			}
 			
