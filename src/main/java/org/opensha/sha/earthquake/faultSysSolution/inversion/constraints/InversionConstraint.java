@@ -5,6 +5,7 @@ import java.io.IOException;
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
@@ -55,6 +56,15 @@ public abstract class InversionConstraint implements ShortNamed {
 	 * @return the number of rows in the A matrix/d vector for this constraint
 	 */
 	public abstract int getNumRows();
+	
+	/**
+	 * 
+	 * @param startIndex
+	 * @return range for this constraint
+	 */
+	public ConstraintRange getRange(int startIndex) {
+		return new ConstraintRange(name, shortName, startIndex, startIndex+getNumRows(), inequality, weight);
+	}
 	
 	/**
 	 * @return true if this is an inequality constraint (A_ineq, d_ineq), else a regular

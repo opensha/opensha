@@ -237,9 +237,7 @@ public class InversionInputGenerator {
 	
 	private ConstraintRange calcRowRange(int startIndex, InversionConstraint constraint, boolean verbose) {
 		Stopwatch watch = verbose ? Stopwatch.createStarted() : null;
-		int numRows = constraint.getNumRows();
-		ConstraintRange range = new ConstraintRange(constraint.getName(), constraint.getShortName(),
-				startIndex, startIndex+numRows, constraint.isInequality());
+		ConstraintRange range = constraint.getRange(startIndex);
 		if (verbose) {
 			System.out.println("\t"+range+" (took "+getTimeStr(watch)+")");
 			watch.stop();
