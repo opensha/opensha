@@ -137,6 +137,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 				lines.add("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
 			} else {
 				table = MarkdownUtils.tableBuilder();
+				table.addLine("Primary", "Comparison");
 				table.initNewLine().addColumn("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
 				File compPlot = buildHistPlot(refHist, compNormMisfits,
 						compStats, range, resourcesDir, prefix+"_hist_comp", "Misfit", COMP_COLOR);
@@ -159,7 +160,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					
 					refHist = refHist(new MisfitStats(diffs, false), null);
 					File histDiffPlot = buildHistPlot(refHist, normMisfits,
-							null, range, resourcesDir, prefix+"_diff", "Comparison Difference", COMMON_COLOR);
+							null, range, resourcesDir, prefix+"_diff", "Difference: Primary - Comparison", COMMON_COLOR);
 					table.initNewLine().addColumn("![Diff Plot]("+relPathToResources+"/"+histDiffPlot.getName()+")");
 					List<XY_DataSet> funcs = new ArrayList<>();
 					List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -172,7 +173,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
 					funcs.add(scatter);
 					chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
-					PlotSpec scatterSpec = new PlotSpec(funcs, chars, "Difference Comparison",
+					PlotSpec scatterSpec = new PlotSpec(funcs, chars, "Primary vs Comparison",
 							getTruncatedTitle(meta.primary.name), getTruncatedTitle(meta.comparison.name));
 
 					GraphPanel gp = PlotUtils.initHeadless();
