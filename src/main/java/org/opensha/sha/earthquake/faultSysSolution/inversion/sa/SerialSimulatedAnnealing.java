@@ -12,6 +12,7 @@ import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
@@ -420,6 +421,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	public synchronized long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria) {
 		StopWatch watch = new StopWatch();
 		watch.start();
+		
+		boolean rangeTrack = constraintRanges != null && !constraintRanges.isEmpty();
+		if (rangeTrack && criteria instanceof ProgressTrackingCompletionCriteria)
+			((ProgressTrackingCompletionCriteria)criteria).setConstraintRanges(constraintRanges);
 		
 		if(D) System.out.println("Solving inverse problem with simulated annealing ... \n");
 		if(D) System.out.println("Cooling Function: " + coolingFunc.name());
