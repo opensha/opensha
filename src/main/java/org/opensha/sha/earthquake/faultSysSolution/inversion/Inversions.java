@@ -114,7 +114,7 @@ public class Inversions {
 	}
 	
 	private static Options createOptions() {
-		Options ops = InversionConfiguration.createSAOptions();
+		Options ops = InversionConfiguration.createSAOptions(false);
 
 		Option rupSetOption = new Option("rs", "rupture-set", true,
 				"Path to Rupture Set zip file.");
@@ -265,10 +265,25 @@ public class Inversions {
 		mwWeight.setRequired(false);
 		ops.addOption(mwWeight);
 		
+		// external configuration
+		
+		// TODO add to docs
+		Option configOp = new Option("cfg", "config-json", true,
+				"Path to a JSON file containing a full inversion configuration, as an alternative to using "
+				+ "command line options.");
+		configOp.setRequired(false);
+		ops.addOption(configOp);
+		
+		// TODO add to docs
+		Option constraintsOp = new Option("cnstr", "constraints-json", true,
+				"Path to a JSON file containing inversion constraints that should be included.");
+		constraintsOp.setRequired(false);
+		ops.addOption(constraintsOp);
+		
 		return ops;
 	}
 	
-	public static List<InversionConstraint> parseConstraints(FaultSystemRupSet rupSet, CommandLine cmd) {
+	public static List<InversionConstraint> parseConstraints(FaultSystemRupSet rupSet, CommandLine cmd) throws IOException {
 		List<InversionConstraint> constraints = new ArrayList<>();
 		
 		if (cmd.hasOption("slip-constraint")) {
@@ -464,6 +479,12 @@ public class Inversions {
 			constraints.add(new RupRateMinimizationConstraint(weight, belowMinIndexes));
 		}
 		
+		if (cmd.hasOption("constraints-json")) {
+			File constraintsFile = new File(cmd.getOptionValue("constraints-json"));
+			Preconditions.checkArgument(constraintsFile.exists(), "File doesn't exist: %s", constraintsFile.getAbsolutePath());
+			constraints.addAll(InversionConstraint.loadConstraintsJSON(constraintsFile, rupSet));
+		}
+		
 		return constraints;
 	}
 
@@ -499,7 +520,16 @@ public class Inversions {
 		
 		Preconditions.checkState(!constraints.isEmpty(), "No constraints specified.");
 		
-		InversionConfiguration config = InversionConfiguration.builder(constraints, cmd).build();
+		InversionConfiguration config;
+		
+		if (cmd.hasOption("config-json")) {
+			File configFile = new File(cmd.getOptionValue("config-json"));
+			Preconditions.checkArgument(configFile.exists(), "File doesn't exist: %s", configFile.getAbsolutePath());
+			config = InversionConfiguration.readJSON(configFile);
+			config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
+		} else {
+			config = InversionConfiguration.builder(constraints, cmd).build();
+		}
 		
 		if (cmd.hasOption("write-config-json")) {
 			File configFile = new File(cmd.getOptionValue("write-config-json"));

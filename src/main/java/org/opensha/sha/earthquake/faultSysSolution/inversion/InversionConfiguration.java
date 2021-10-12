@@ -1,5 +1,11 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +33,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 /**
@@ -114,21 +121,26 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			config = new InversionConfiguration();
 			config.constraints = ImmutableList.copyOf(constraints);
 			
-			config.threads = FaultSysTools.getNumThreads(cmd);
+			if (!cmd.hasOption("threads"))
+				config.threads = FaultSysTools.defaultNumThreads();
 			
-			CompletionCriteria completion = parseCompletionArg(cmd.getOptionValue("completion"));
-			if (completion == null)
-				throw new IllegalArgumentException("Must supply total inversion time or iteration count");
-			config.completion = completion;
+			forCommandLine(cmd);
+		}
+		
+		public Builder forCommandLine(CommandLine cmd) {
+			if (cmd.hasOption("threads"))
+				config.threads = FaultSysTools.getNumThreads(cmd);
+			
+			if (cmd.hasOption("completion"))
+				config.completion = parseCompletionArg(cmd.getOptionValue("completion"));
 			
 			if (cmd.hasOption("avg-threads")) {
 				config.avgThreads = Integer.parseInt(cmd.getOptionValue("avg-threads"));
 				if (config.avgThreads > 0) {
-					Preconditions.checkArgument(cmd.hasOption("avg-completion"),
+					Preconditions.checkArgument(cmd.hasOption("avg-completion") || config.avgCompletion != null,
 							"Averaging enabled but --avg-completion <value> not specified");
-					config.avgCompletion = parseCompletionArg(cmd.getOptionValue("avg-completion"));
-					if (config.avgCompletion == null)
-						throw new IllegalArgumentException("Must supply averaging sub-completion time");
+					if (cmd.hasOption("avg-completion"))
+						config.avgCompletion = parseCompletionArg(cmd.getOptionValue("avg-completion"));
 				}
 			}
 			if (cmd.hasOption("sub-completion"))
@@ -139,6 +151,8 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			
 			if (cmd.hasOption("non-negativity"))
 				config.nonneg = NonnegativityConstraintType.valueOf(cmd.getOptionValue("non-negativity"));
+			
+			return this;
 		}
 		
 		public Builder waterLevel(double[] waterLevel) {
@@ -235,7 +249,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		return new IterationCompletionCriteria(Long.parseLong(value));
 	}
 	
-	public static Options createSAOptions() {
+	public static Options createSAOptions(boolean requireCompletion) {
 		Options ops = new Options();
 
 		ops.addOption(FaultSysTools.threadsOption());
@@ -248,7 +262,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 				+ "Specify times in hours, minutes, or seconds by appending 'h', 'm', or 's' respecively. Fractions are not allowed.";
 
 		Option completionOption = new Option("c", "completion", true, "Total inversion completion criteria. "+complText);
-		completionOption.setRequired(true);
+		completionOption.setRequired(requireCompletion);
 		ops.addOption(completionOption);
 
 		Option avgOption = new Option("at", "avg-threads", true, "Enables a top layer of threads that average results "
@@ -424,6 +438,20 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	@Override
 	public void registerTypeAdapters(GsonBuilder builder) {
 		// do nothing (default serialization works fine)
+	}
+	
+	public static void writeJSON(InversionConfiguration config, File jsonFile) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		gson.toJson(config, InversionConfiguration.class, writer);
+		writer.flush();
+		writer.close();
+	}
+	
+	public static InversionConfiguration readJSON(File jsonFile) throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		Gson gson = new GsonBuilder().create();
+		return gson.fromJson(reader, InversionConfiguration.class);
 	}
 
 }

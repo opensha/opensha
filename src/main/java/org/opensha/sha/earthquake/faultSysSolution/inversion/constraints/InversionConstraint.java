@@ -1,6 +1,13 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
 
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.util.ExceptionUtils;
@@ -12,6 +19,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
@@ -304,6 +312,22 @@ public abstract class InversionConstraint implements ShortNamed {
 					+ "(after deserialization failed, see earlier message)");
 		}
 		
+	}
+	
+	public static void writeConstraintsJSON(File jsonFile, List<InversionConstraint> constraints) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		TypeToken<?> token = TypeToken.getParameterized(List.class, InversionConstraint.class);
+		gson.toJson(constraints, token.getType(), writer);
+		writer.flush();
+		writer.close();
+	}
+	
+	public static List<InversionConstraint> loadConstraintsJSON(File jsonFile, FaultSystemRupSet rupSet) throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
+		Gson gson = new GsonBuilder().registerTypeAdapter(InversionConstraint.class, new Adapter(rupSet)).create();
+		TypeToken<?> token = TypeToken.getParameterized(List.class, InversionConstraint.class);
+		return gson.fromJson(reader, token.getType());
 	}
 
 }
