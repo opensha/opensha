@@ -95,6 +95,7 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 			out.endObject();
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public SegmentationModel read(JsonReader in) throws IOException {
 			Class<? extends SegmentationModel> type = null;
@@ -104,7 +105,7 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 			Preconditions.checkState(in.nextName().equals("type"), "JSON 'type' object must be first");
 			try {
 				type = (Class<? extends SegmentationModel>) Class.forName(in.nextString());
-			} catch (ClassNotFoundException e) {
+			} catch (ClassNotFoundException | ClassCastException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 			

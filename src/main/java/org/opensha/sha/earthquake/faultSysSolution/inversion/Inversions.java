@@ -518,8 +518,6 @@ public class Inversions {
 		
 		constraints.addAll(parseConstraints(rupSet, cmd));
 		
-		Preconditions.checkState(!constraints.isEmpty(), "No constraints specified.");
-		
 		InversionConfiguration config;
 		
 		if (cmd.hasOption("config-json")) {
@@ -530,6 +528,7 @@ public class Inversions {
 		} else {
 			config = InversionConfiguration.builder(constraints, cmd).build();
 		}
+		Preconditions.checkState(!config.getConstraints().isEmpty(), "No constraints specified.");
 		
 		if (cmd.hasOption("write-config-json")) {
 			File configFile = new File(cmd.getOptionValue("write-config-json"));
