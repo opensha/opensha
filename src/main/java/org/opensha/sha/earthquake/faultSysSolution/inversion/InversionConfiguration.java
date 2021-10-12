@@ -53,7 +53,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	private static final CompletionCriteria SUB_COMPLETION_DEFAULT = TimeCompletionCriteria.getInSeconds(1l);
 	
 	// inputs
-	private ImmutableList<InversionConstraint> constraints;
+	private List<InversionConstraint> constraints;
 	private double[] waterLevel;
 	private double[] initial;
 	
@@ -360,7 +360,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	}
 
 	public ImmutableList<InversionConstraint> getConstraints() {
-		return constraints;
+		return ImmutableList.copyOf(constraints);
 	}
 
 	public CompletionCriteria getCompletionCriteria() {
