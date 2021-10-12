@@ -523,7 +523,7 @@ public class Inversions {
 		if (cmd.hasOption("config-json")) {
 			File configFile = new File(cmd.getOptionValue("config-json"));
 			Preconditions.checkArgument(configFile.exists(), "File doesn't exist: %s", configFile.getAbsolutePath());
-			config = InversionConfiguration.readJSON(configFile);
+			config = InversionConfiguration.readJSON(configFile, rupSet);
 			config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
 		} else {
 			config = InversionConfiguration.builder(constraints, cmd).build();

@@ -20,6 +20,7 @@ import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint.Adapter;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
@@ -448,9 +449,9 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		writer.close();
 	}
 	
-	public static InversionConfiguration readJSON(File jsonFile) throws IOException {
+	public static InversionConfiguration readJSON(File jsonFile, FaultSystemRupSet rupSet) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
-		Gson gson = new GsonBuilder().create();
+		Gson gson = new GsonBuilder().registerTypeAdapter(InversionConstraint.class, new Adapter(rupSet)).create();
 		return gson.fromJson(reader, InversionConfiguration.class);
 	}
 
