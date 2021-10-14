@@ -45,7 +45,9 @@ public class IndividualSolutionRates implements SubModule<FaultSystemSolution>, 
 	public void setParent(FaultSystemSolution parent) throws IllegalStateException {
 		if (this.sol != null)
 			Preconditions.checkState(this.sol.getRupSet().isEquivalentTo(parent.getRupSet()));
-		validate(parent, ratesList);
+		if (this.ratesList != null)
+			validate(parent, ratesList);
+		this.sol = parent;
 	}
 	
 	private static void validate(FaultSystemSolution sol, List<double[]> ratesList) {
