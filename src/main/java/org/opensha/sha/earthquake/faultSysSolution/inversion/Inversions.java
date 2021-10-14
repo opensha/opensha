@@ -572,6 +572,19 @@ public class Inversions {
 		
 		SimulatedAnnealing sa = config.buildSA(inputs);
 		
+		System.out.println("SA Parameters:");
+		System.out.println("\tImplementation: "+sa.getClass().getName());
+		System.out.println("\tCompletion Criteria: "+completion);
+		System.out.println("\tPerturbation Function: "+sa.getPerturbationFunc());
+		System.out.println("\tNon-Negativity Constraint: "+sa.getNonnegativeityConstraintAlgorithm());
+		System.out.println("\tCooling Schedule: "+sa.getCoolingFunc());
+		if (sa instanceof ThreadedSimulatedAnnealing) {
+			ThreadedSimulatedAnnealing tsa = (ThreadedSimulatedAnnealing)sa;
+			System.out.println("\tTop-Level Threads: "+tsa.getNumThreads());
+			System.out.println("\tSub-Completion Criteria: "+tsa.getSubCompetionCriteria());
+			System.out.println("\tAveraging? "+tsa.isAverage());
+		}
+		
 		System.out.println("Annealing!");
 		sa.iterate(progress);
 		
