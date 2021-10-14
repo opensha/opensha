@@ -111,8 +111,8 @@ public class RateVsRateScatter extends AbstractSolutionPlot {
 		
 		MinMaxAveTracker rateTrack = new MinMaxAveTracker();
 		for (int r=0; r<numRups; r++) {
-			double x = Math.max(1e-16, meta.primary.sol.getRateForRup(r));
-			double y = Math.max(1e-16, meta.comparison.sol.getRateForRup(r));
+			double x = Math.max(1e-16, sol.getRateForRup(r));
+			double y = Math.max(1e-16, compSol.getRateForRup(r));
 			for (int m=0; m<magRanges.size(); m++) {
 				Range range = magRanges.get(m);
 				if (range == null || range.contains(rupSet.getMagForRup(r)))

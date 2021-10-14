@@ -1,33 +1,14 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
-import java.awt.Color;
-import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.jfree.chart.ui.RectangleEdge;
-import org.jfree.data.Range;
-import org.opensha.commons.data.function.DefaultXY_DataSet;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.XY_DataSet;
-import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
-import org.opensha.commons.gui.plot.HeadlessGraphPanel;
-import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
-import org.opensha.commons.gui.plot.PlotLineType;
-import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.gui.plot.PlotSymbol;
-import org.opensha.commons.gui.plot.PlotUtils;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
-import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.Interpolate;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
-import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
