@@ -384,7 +384,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			rupSet = (FaultSystemRupSet)parent;
 		else if (parent instanceof FaultSystemSolution)
 			rupSet = ((FaultSystemSolution)parent).getRupSet();
-		if (rupSet != null)
+		if (rupSet != null && constraints != null)
 			for (InversionConstraint constraint : constraints)
 				constraint.setRuptureSet(rupSet);
 	}
