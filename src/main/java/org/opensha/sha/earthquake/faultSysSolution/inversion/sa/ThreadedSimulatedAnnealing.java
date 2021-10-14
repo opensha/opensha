@@ -173,6 +173,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		this.average = average;
 	}
 	
+	public boolean isAverage() {
+		return average;
+	}
+	
 	protected static CompletionCriteria getForStartIter(long startIter, CompletionCriteria subComp) {
 		if (subComp instanceof IterationCompletionCriteria) {
 			long iters = ((IterationCompletionCriteria)subComp).getMinIterations();
