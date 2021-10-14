@@ -6,7 +6,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
@@ -30,9 +32,14 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
+
+import com.google.common.base.Preconditions;
 
 public class RateVsRateScatter extends AbstractSolutionPlot {
 
@@ -44,11 +51,24 @@ public class RateVsRateScatter extends AbstractSolutionPlot {
 	@Override
 	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
 			String topLink) throws IOException {
-		if (meta.comparison == null || meta.comparison.sol == null || !meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet))
+		FaultSystemSolution compSol = null;
+		if (meta.comparison == null || meta.comparison.sol == null)
 			return null;
-		List<String> lines = new ArrayList<>();
-		
 		int numRups = meta.primary.numRuptures;
+		if (meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet)) {
+			compSol = meta.comparison.sol;
+		} else {
+			// see if they're actually the same, but in a different order
+			if (numRups != meta.comparison.rupSet.getNumRuptures())
+				return null;
+			if (!meta.primary.rupSet.hasModule(ClusterRuptures.class)
+					|| !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
+				return null;
+			compSol = getRemapped(sol.getRupSet(), meta.comparison.sol);
+			if (compSol == null)
+				return null;
+		}
+		
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		double minMag = rupSet.getMinMag();
 		double maxMag = rupSet.getMaxMag();
@@ -203,6 +223,31 @@ public class RateVsRateScatter extends AbstractSolutionPlot {
 	@Override
 	public Collection<Class<? extends OpenSHA_Module>> getRequiredModules() {
 		return null;
+	}
+	
+	private static FaultSystemSolution getRemapped(FaultSystemRupSet refRupSet, FaultSystemSolution oSol) {
+		ClusterRuptures cRups1 = refRupSet.getModule(ClusterRuptures.class);
+		ClusterRuptures cRups2 = oSol.getRupSet().getModule(ClusterRuptures.class);
+		Preconditions.checkState(cRups1.size() == cRups2.size());
+		
+		int numRups = cRups1.size();
+		
+		Map<UniqueRupture, Integer> refIndexes = new HashMap<>();
+		for (int r=0; r<numRups; r++)
+			refIndexes.put(cRups1.get(r).unique, r);
+		Preconditions.checkState(refIndexes.size() == numRups);
+		
+		double[] remappedRates = new double[numRups];
+		for (int r=0; r<numRups; r++) {
+			UniqueRupture unique = cRups2.get(r).unique;
+			if (!refIndexes.containsKey(unique))
+				return null;
+			int index = refIndexes.get(unique);
+			Preconditions.checkState(remappedRates[index] == 0d);
+			remappedRates[index] = oSol.getRateForRup(r);
+		}
+		
+		return new FaultSystemSolution(refRupSet, remappedRates);
 	}
 	
 	private int numInRange(Range range, double[] mags) {
