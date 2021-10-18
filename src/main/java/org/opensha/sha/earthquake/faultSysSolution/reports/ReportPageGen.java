@@ -39,10 +39,12 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSet
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InfoStringPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionConfigurationPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionMisfitsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgressPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverDistancePlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.LogicTreeBranchPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ParticipationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
@@ -106,6 +108,7 @@ public class ReportPageGen {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
 		plots.add(new InfoStringPlot());
+		plots.add(new LogicTreeBranchPlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
@@ -128,9 +131,12 @@ public class ReportPageGen {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
 		plots.add(new InfoStringPlot());
+		plots.add(new LogicTreeBranchPlot());
 		plots.add(new SolMFDPlot());
+		plots.add(new InversionConfigurationPlot());
 		plots.add(new InversionProgressPlot());
-		plots.add(new InversionMisfitsPlot());
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+			plots.add(new InversionMisfitsPlot());
 		plots.add(new RateVsRateScatter());
 		plots.add(new ParticipationRatePlot());
 		plots.add(new PlausibilityConfigurationReport());

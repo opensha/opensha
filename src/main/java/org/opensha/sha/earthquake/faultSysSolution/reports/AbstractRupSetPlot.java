@@ -118,6 +118,8 @@ public abstract class AbstractRupSetPlot implements Named {
 		countDF.setGroupingSize(3);
 	}
 	
+	protected static final String na = "_(N/A)_";
+	
 	protected static final Color MAIN_COLOR = Color.RED;
 	protected static final Color COMP_COLOR = Color.BLUE;
 	protected static final Color COMMON_COLOR = Color.GREEN;
