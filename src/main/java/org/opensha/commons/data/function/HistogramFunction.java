@@ -219,9 +219,15 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 		
 		double maxDelta = maxValue - minX;
 		int numBins = (int)(maxDelta / delta + 0.5)+1;
+		Preconditions.checkState(numBins >= 1, "bad numBins=%s for min=%s, max=%s, delta=%s",
+				numBins, minValue, maxValue, delta);
 		double maxX = minX + (numBins-1)*delta;
-		Preconditions.checkState((float)maxValue <= (float)(maxX + halfDelta));
-		Preconditions.checkState((float)maxValue >= (float)(maxX - halfDelta));
+		Preconditions.checkState((float)maxValue <= (float)(maxX + halfDelta),
+				"upper bin with center=%s doesn't contain max=%s. Orig min=%s, max=%s, delta=%s",
+				maxX, maxValue, minValue, maxValue, delta);
+		Preconditions.checkState((float)maxValue >= (float)(maxX - halfDelta),
+				"upper bin with center=%s doesn't contain max=%s. Orig min=%s, max=%s, delta=%s",
+				maxX, maxValue, minValue, maxValue, delta);
 		
 //		System.out.println("minX: "+minX+", maxX: "+maxX+", num: "+numBins);
 		
