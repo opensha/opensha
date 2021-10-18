@@ -8,7 +8,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -376,6 +378,42 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		return initial;
 	}
 
+	public GenerationFunctionType getPerturbationFunc() {
+		return perturb;
+	}
+
+	public NonnegativityConstraintType getNonnegConstraint() {
+		return nonneg;
+	}
+
+	public CoolingScheduleType getCoolingSchedule() {
+		return cool;
+	}
+
+	public double[] getVariablePertubationBasis() {
+		return variablePertubationBasis;
+	}
+
+	public IntegerPDF_FunctionSampler getSampler() {
+		return sampler;
+	}
+
+	public int getThreads() {
+		return threads;
+	}
+
+	public CompletionCriteria getSubCompletionCriteria() {
+		return subCompletion;
+	}
+
+	public Integer getAvgThreads() {
+		return avgThreads;
+	}
+
+	public CompletionCriteria getAvgCompletionCriteria() {
+		return avgCompletion;
+	}
+
 	@Override
 	public void setParent(ModuleContainer<?> parent) throws IllegalStateException {
 		this.parent = parent;
@@ -434,6 +472,53 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		subCompletion = source.subCompletion;
 		avgThreads = source.avgThreads;
 		avgCompletion = source.avgCompletion;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + Arrays.hashCode(initial);
+		result = prime * result + Arrays.hashCode(variablePertubationBasis);
+		result = prime * result + Arrays.hashCode(waterLevel);
+		result = prime * result + Objects.hash(complStr(avgCompletion), avgThreads, complStr(completion),
+				constrStr(constraints), cool, nonneg, perturb, sampler, complStr(subCompletion), threads);
+		return result;
+	}
+	
+	private static String complStr(CompletionCriteria crit) {
+		if (crit == null)
+			return null;
+		return crit.getClass().getName()+" "+crit.toString();
+	}
+	
+	private static List<String> constrStr(List<InversionConstraint> constraints) {
+		if (constraints == null || constraints.isEmpty())
+			return null;
+		List<String> ret = new ArrayList<>(constraints.size());
+		for (InversionConstraint constr : constraints)
+			ret.add(constr.getClass().getName()+" "+constr.getName()+" "+(float)constr.getWeight());
+		return ret;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		InversionConfiguration other = (InversionConfiguration) obj;
+		return Objects.equals(complStr(avgCompletion), complStr(other.avgCompletion))
+				&& Objects.equals(avgThreads, other.avgThreads)
+				&& Objects.equals(complStr(completion), complStr(other.completion))
+				&& Objects.equals(constrStr(constraints), constrStr(other.constraints))
+				&& cool == other.cool && Arrays.equals(initial, other.initial) && nonneg == other.nonneg
+				&& perturb == other.perturb && Objects.equals(sampler, other.sampler)
+				&& Objects.equals(complStr(subCompletion), complStr(other.subCompletion)) && threads == other.threads
+				&& Arrays.equals(variablePertubationBasis, other.variablePertubationBasis)
+				&& Arrays.equals(waterLevel, other.waterLevel);
 	}
 
 	@Override
