@@ -206,6 +206,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		double span = max - min;
 		Preconditions.checkState(span > 0d);
 		double histDelta = Math.max(1e-6, Math.pow(10, Math.floor(Math.log10(span))-1)/2);
+		if ((float)max < (float)(min+histDelta))
+			max = min+histDelta*1.1;
 		return HistogramFunction.getEncompassingHistogram(min, max, histDelta);
 	}
 	
