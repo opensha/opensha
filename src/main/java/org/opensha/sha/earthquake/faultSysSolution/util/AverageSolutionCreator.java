@@ -103,27 +103,9 @@ public class AverageSolutionCreator {
 					break;
 				}
 				InversionConfiguration oConfig = inputs[i].getModule(InversionConfiguration.class);
-				ImmutableList<InversionConstraint> constrs1 = config.getConstraints();
-				ImmutableList<InversionConstraint> constrs2 = oConfig.getConstraints();
-				if (constrs1.size() != constrs2.size()) {
+				if (!oConfig.equals(config)) {
 					config = null;
 					break;
-				}
-				for (int j=0; j<constrs1.size(); j++) {
-					InversionConstraint c1 = constrs1.get(j);
-					InversionConstraint c2 = constrs2.get(j);
-					if (!c1.getClass().equals(c2.getClass())) {
-						config = null;
-						break;
-					}
-					if (!c1.getName().equals(c2.getName())) {
-						config = null;
-						break;
-					}
-					if ((float)c1.getWeight() != (float)c2.getWeight()) {
-						config = null;
-						break;
-					}
 				}
 			}
 			if (config != null)
