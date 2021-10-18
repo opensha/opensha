@@ -605,12 +605,12 @@ public class ReportPageGen {
 			if (primary.sol == null)
 				table.addColumn("_N/A_");
 			else
-				table.addColumn((float)primary.sol.getTotalFaultSolutionMomentRate()+" N-m/yr");
+				table.addColumn(momentRateStr(primary.sol.getTotalFaultSolutionMomentRate()));
 			if (comparison != null) {
 				if (comparison.sol == null)
 					table.addColumn("_N/A_");
 				else
-					table.addColumn((float)comparison.sol.getTotalFaultSolutionMomentRate()+" N-m/yr");
+					table.addColumn(momentRateStr(comparison.sol.getTotalFaultSolutionMomentRate()));
 			}
 			table.finalizeLine();
 		}
@@ -618,9 +618,9 @@ public class ReportPageGen {
 		if (primary.rupSet != null) {
 			table.initNewLine();
 			table.addColumn("**Deformation Model Total Moment Rate**");
-			table.addColumn((float)primary.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()+" N-m/yr");
+			table.addColumn(momentRateStr(primary.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()));
 			if (comparison != null)
-				table.addColumn((float)comparison.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()+" N-m/yr");
+				table.addColumn(momentRateStr(comparison.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()));
 			table.finalizeLine();
 			
 			table.initNewLine();
@@ -645,6 +645,12 @@ public class ReportPageGen {
 			table.finalizeLine();
 		}
 		return table;
+	}
+	
+	private static String momentRateStr(double moRate) {
+		String str = (float)moRate+"";
+		str = str.toLowerCase(); // lower case 'e' in exponential to make it easier to see
+		return str+" N-m/yr";
 	}
 	
 	public void generatePage() throws IOException {

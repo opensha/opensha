@@ -38,9 +38,9 @@ public class LogicTreeBranchPlot extends AbstractRupSetPlot {
 				null : meta.comparison.rupSet.getModule(LogicTreeBranch.class);
 		
 		if (compBranch == null)
-			table.addLine("Level", "Choice", "Abbreviation");
+			table.addLine("Level", "Choice");
 		else
-			table.addLine("Level", "Choice", "Abbrev.", "Comparison Choice", "Comparison Abbrev.");
+			table.addLine("Level", "Choice", "Comparison Choice");
 		
 		List<String> levelNames = new ArrayList<>();
 		Map<String, LogicTreeNode> choices = new HashMap<>();
@@ -67,15 +67,15 @@ public class LogicTreeBranchPlot extends AbstractRupSetPlot {
 			table.initNewLine().addColumn("**"+name+"**");
 			LogicTreeNode choice = choices.get(name);
 			if (choice == null)
-				table.addColumn(na).addColumn(na);
+				table.addColumn(na);
 			else
-				table.addColumn(choice.getName()).addColumn(choice.getShortName());
+				table.addColumn(choice.getName());
 			if (compBranch != null) {
 				LogicTreeNode compChoice = compChoices.get(name);
 				if (compChoice == null)
-					table.addColumn(na).addColumn(na);
+					table.addColumn(na);
 				else
-					table.addColumn(compChoice.getName()).addColumn(compChoice.getShortName());
+					table.addColumn(compChoice.getName());
 			}
 			table.finalizeLine();
 		}

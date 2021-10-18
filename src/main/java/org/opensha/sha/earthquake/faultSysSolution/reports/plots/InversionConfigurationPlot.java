@@ -109,9 +109,9 @@ public class InversionConfigurationPlot extends AbstractSolutionPlot {
 		}
 		
 		table.initNewLine().addColumn("**Custom Rupture Sampler**");
-		table.addColumn(config.getSampler() == null ? "No" : "Yes");
+		table.addColumn(config.getSampler() == null ? na : "**YES**");
 		if (compConfig != null)
-			table.addColumn(compConfig.getSampler() == null ? "No" : "Yes");
+			table.addColumn(compConfig.getSampler() == null ? na : "**YES**");
 		table.finalizeLine();
 		
 		List<String> lines = new ArrayList<>();
@@ -132,9 +132,9 @@ public class InversionConfigurationPlot extends AbstractSolutionPlot {
 		}
 		
 		if (compConfig == null) {
-			table.addLine("Constraint", "Primary Weight", "Comparison Weight");
-		} else {
 			table.addLine("Constraint", "Weight");
+		} else {
+			table.addLine("Constraint", "Primary Weight", "Comparison Weight");
 			for (InversionConstraint constraint : compConfig.getConstraints()) {
 				String name = constraint.getName();
 				if (!constraintNames.contains(name))
@@ -186,7 +186,7 @@ public class InversionConfigurationPlot extends AbstractSolutionPlot {
 		else if (criteria instanceof TimeCompletionCriteria)
 			return ((TimeCompletionCriteria)criteria).getTimeStr();
 		else if (criteria instanceof IterationCompletionCriteria)
-			return ((IterationCompletionCriteria)criteria).getMinIterations()+" iters";
+			return countDF.format(((IterationCompletionCriteria)criteria).getMinIterations())+" iters";
 		return criteria.toString();
 	}
 	
