@@ -139,23 +139,23 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 			if (compSol.hasModule(WaterLevelRates.class)) {
 				cratesNoMin = compSol.getModule(WaterLevelRates.class).subtractFrom(crates);
 			} else if (sol.hasModule(WaterLevelRates.class) && rates.length == crates.length) {
-				System.out.println("TRYING TO APPLY ORIG WATERLEVEL");
+//				System.out.println("TRYING TO APPLY ORIG WATERLEVEL");
 				// see if we can apply our waterlevel
 				boolean equiv = meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet);
-				System.out.println("Initial equiv: "+equiv);
+//				System.out.println("Initial equiv: "+equiv);
 				if (!equiv) {
 					// try to remap it
-					System.out.println("TRYING TO REMAP!");
+//					System.out.println("TRYING TO REMAP!");
 					FaultSystemSolution remapped = getRemapped(meta.primary.rupSet, compSol);
 					if (remapped != null) {
 						compSol = remapped;
 						equiv = true;
 						crates = compSol.getRateForAllRups();
-						System.out.println("REMAPPED!");
+//						System.out.println("REMAPPED!");
 					}
 				}
 				if (equiv) {
-					System.out.println("EQUIV!");
+//					System.out.println("EQUIV!");
 					// see if all of these rates are at or above the original waterlevel
 					boolean allAbove = true;
 					WaterLevelRates wl = sol.requireModule(WaterLevelRates.class);
