@@ -134,6 +134,8 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 		double[] crates = null;
 		double[] cratesNoMin = null;
 		
+		boolean inferredWL = false;
+		
 		if (compSol != null) {
 			crates = compSol.getRateForAllRups();
 			if (compSol.hasModule(WaterLevelRates.class)) {
@@ -157,16 +159,16 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 				if (equiv) {
 //					System.out.println("EQUIV!");
 					// see if all of these rates are at or above the original waterlevel
-					boolean allAbove = true;
+					inferredWL = true;
 					WaterLevelRates wl = sol.requireModule(WaterLevelRates.class);
 					double[] origWL = wl.get();
 					for (int r=0; r<crates.length; r++) {
 						if ((float)crates[r] < (float)origWL[r]) {
-							allAbove = false;
+							inferredWL = false;
 							break;
 						}
 					}
-					if (allAbove)
+					if (inferredWL)
 						cratesNoMin = wl.subtractFrom(crates);
 					else
 						cratesNoMin = crates;
@@ -225,6 +227,13 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 		
 		lines.addAll(table.invert().build());
 		lines.add("");
+		
+		if (inferredWL) {
+			lines.add("_NOTE:_The comnparison solution didn't have an attached waterlevel, but seems to have been "
+					+ "generated with the same waterlevel, so we assume that was the case. This can cause slight "
+					+ "numerical artifacts affecting the red line below and ruptures above waterlevel count above._");
+			lines.add("");
+		}
 		
 		if (compSol == null)
 			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "rate_dist", ratesNoMin, rates, initial);
