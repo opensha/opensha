@@ -368,7 +368,6 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		List<List<Integer>> sectionsForRups = Lists.newArrayList();
 		double[] rupMeanMag = new double[numRuptures];
 		double[] rupMeanMoment = new double[numRuptures];
-		rupMeanSlip = new double[numRuptures];
 		double[] rupArea = new double[numRuptures];
 		double[] rupLength = new double[numRuptures];
 //		double[] rupOrigDDW = new double[numRuptures];	// down-dip width before aseismicity reduction
@@ -420,7 +419,6 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				// (mean moment != moment of mean mag if aleatory uncertainty included)
 				// rupMeanMoment[rupIndex] = MomentMagCalc.getMoment(rupMeanMag[rupIndex])* gaussMFD_slipCorr; // increased if magSigma >0
 				//				rupMeanSlip[rupIndex] = rupMeanMoment[rupIndex]/(rupArea[rupIndex]*FaultMomentCalc.SHEAR_MODULUS);
-				rupMeanSlip[rupIndex] = scalingRelationship.getAveSlip(totArea, totLength, origDDW);
 //				if (rupIndex == 0)
 //					System.out.println("Orig:\tarea="+totArea+"\torigArea="+totOrigArea
 //							+"\tlength="+totLength+"\torigDDW="+origDDW+"\tslip="+rupMeanSlip[rupIndex]);
@@ -605,22 +603,17 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 		return getAveSlipForAllRups()[rupIndex];
 	}
 
+
 	/* (non-Javadoc)
 	 * @see scratch.UCERF3.inversion.SlipEnabledRupSet#getAveSlipForAllRups()
 	 */
 	@Override
 	public synchronized double[] getAveSlipForAllRups() {
 		if (rupMeanSlip == null) {
-			// need to build it
 			double[] slips = new double[getNumRuptures()];
+			AveSlipModule aveSlips = getModule(AveSlipModule.class);
 			for (int r=0; r<slips.length; r++) {
-				double area = getAreaForRup(r);
-				double length = getLengthForRup(r);
-				double totOrigArea = 0d;
-				for (FaultSection sect : getFaultSectionDataForRupture(r))
-					totOrigArea += sect.getTraceLength()*1e3*sect.getOrigDownDipWidth()*1e3;
-				double origDDW = totOrigArea/length;
-				slips[r] = scalingRelationship.getAveSlip(area, length, origDDW);
+				slips[r] = aveSlips.getAveSlip(r);
 			}
 			rupMeanSlip = slips;
 		}
