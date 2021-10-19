@@ -29,9 +29,9 @@ public class WaterLevelRates implements CSV_BackedModule {
 			// deal with floating point precision issues
 			if (ret[i] < 0) {
 				// can happen if post-water-level rates are averaged
-				Preconditions.checkState(ret[i] > -1e20);
+				Preconditions.checkState(ret[i] > -1e-20);
 				ret[i] = 0d;
-			} else if (ret[i] < 1e20) {
+			} else if (ret[i] < 1e-20) {
 				ret[i] = 0d;
 			}
 		}
