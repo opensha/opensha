@@ -49,7 +49,7 @@ public class USC_CARC_ScriptWriter extends BatchScriptWriter {
 		pbs.add("#SBATCH -t 00:"+mins+":00");
 		pbs.add("#SBATCH -N "+nodes);
 //		pbs.add("#SBATCH -n "+cpus);
-//		pbs.add("#SBATCH --ntasks=36 --cpus-per-task=20")
+		pbs.add("#SBATCH --ntasks="+nodes+" --cpus-per-task="+ppn);
 		if (queue != null && !queue.isEmpty())
 			pbs.add("#SBATCH -p "+queue);
 		pbs.add("#SBATCH --mem 0"); // use all available memory
