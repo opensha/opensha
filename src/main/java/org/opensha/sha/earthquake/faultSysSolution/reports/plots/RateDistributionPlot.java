@@ -131,13 +131,51 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 		}
 		table.finalizeLine();
 		
+		double[] crates = null;
+		double[] cratesNoMin = null;
+		
 		if (compSol != null) {
-			double[] crates = meta.comparison.sol.getRateForAllRups();
-			double[] cratesNoMin;
-			if (meta.comparison.sol.hasModule(WaterLevelRates.class))
-				cratesNoMin = meta.comparison.sol.getModule(WaterLevelRates.class).subtractFrom(crates);
-			else
+			crates = compSol.getRateForAllRups();
+			if (compSol.hasModule(WaterLevelRates.class)) {
+				cratesNoMin = compSol.getModule(WaterLevelRates.class).subtractFrom(crates);
+			} else if (sol.hasModule(WaterLevelRates.class) && rates.length == crates.length) {
+				System.out.println("TRYING TO APPLY ORIG WATERLEVEL");
+				// see if we can apply our waterlevel
+				boolean equiv = meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet);
+				System.out.println("Initial equiv: "+equiv);
+				if (!equiv) {
+					// try to remap it
+					System.out.println("TRYING TO REMAP!");
+					FaultSystemSolution remapped = getRemapped(meta.primary.rupSet, compSol);
+					if (remapped != null) {
+						compSol = remapped;
+						equiv = true;
+						crates = compSol.getRateForAllRups();
+						System.out.println("REMAPPED!");
+					}
+				}
+				if (equiv) {
+					System.out.println("EQUIV!");
+					// see if all of these rates are at or above the original waterlevel
+					boolean allAbove = true;
+					WaterLevelRates wl = sol.requireModule(WaterLevelRates.class);
+					double[] origWL = wl.get();
+					for (int r=0; r<crates.length; r++) {
+						if ((float)crates[r] < (float)origWL[r]) {
+							allAbove = false;
+							break;
+						}
+					}
+					if (allAbove)
+						cratesNoMin = wl.subtractFrom(crates);
+					else
+						cratesNoMin = crates;
+				} else {
+					cratesNoMin = crates;
+				}
+			} else {
 				cratesNoMin = crates;
+			}
 			
 			int cnumNonZero = 0;
 			int cnumAboveWaterlevel = 0;
@@ -192,7 +230,7 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "rate_dist", ratesNoMin, rates, initial);
 		else
 			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "rate_dist", ratesNoMin, rates, initial,
-					meta.comparison.sol.getRateForAllRups());
+					crates, cratesNoMin);
 		lines.add("![Rate Distribution]("+relPathToResources+"/rate_dist.png)");
 		lines.add("");
 		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/rate_dist_cumulative.png)");
@@ -201,16 +239,11 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 			return lines;
 		
 		int numRups = meta.primary.numRuptures;
-		if (meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet)) {
-			compSol = meta.comparison.sol;
-		} else {
+		if (!meta.primary.rupSet.isEquivalentTo(compSol.getRupSet())) {
 			// see if they're actually the same, but in a different order
-			if (numRups != meta.comparison.rupSet.getNumRuptures())
+			if (numRups != compSol.getRupSet().getNumRuptures())
 				return lines;
-			if (!meta.primary.rupSet.hasModule(ClusterRuptures.class)
-					|| !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
-				return lines;
-			compSol = getRemapped(sol.getRupSet(), meta.comparison.sol);
+			compSol = getRemapped(sol.getRupSet(), compSol);
 			if (compSol == null)
 				return lines;
 		}
@@ -379,19 +412,30 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 	
 	private static FaultSystemSolution getRemapped(FaultSystemRupSet refRupSet, FaultSystemSolution oSol) {
 		ClusterRuptures cRups1 = refRupSet.getModule(ClusterRuptures.class);
-		ClusterRuptures cRups2 = oSol.getRupSet().getModule(ClusterRuptures.class);
-		Preconditions.checkState(cRups1.size() == cRups2.size());
+		FaultSystemRupSet oRupSet = oSol.getRupSet();
+		ClusterRuptures cRups2 = oRupSet.getModule(ClusterRuptures.class);
+		Preconditions.checkState(refRupSet.getNumRuptures() == oSol.getRupSet().getNumRuptures());
 		
-		int numRups = cRups1.size();
+		int numRups = refRupSet.getNumRuptures();
 		
 		Map<UniqueRupture, Integer> refIndexes = new HashMap<>();
-		for (int r=0; r<numRups; r++)
-			refIndexes.put(cRups1.get(r).unique, r);
+		for (int r=0; r<numRups; r++) {
+			UniqueRupture unique;
+			if (cRups1 == null)
+				unique = UniqueRupture.forIDs(refRupSet.getSectionsIndicesForRup(r));
+			else
+				unique = cRups1.get(r).unique;
+			refIndexes.put(unique, r);
+		}
 		Preconditions.checkState(refIndexes.size() == numRups);
 		
 		double[] remappedRates = new double[numRups];
 		for (int r=0; r<numRups; r++) {
-			UniqueRupture unique = cRups2.get(r).unique;
+			UniqueRupture unique;
+			if (cRups2 == null)
+				unique = UniqueRupture.forIDs(oRupSet.getSectionsIndicesForRup(r));
+			else
+				unique = cRups2.get(r).unique;
 			if (!refIndexes.containsKey(unique))
 				return null;
 			int index = refIndexes.get(unique);
@@ -412,10 +456,16 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 	
 	public static void main(String[] args) throws IOException {
 		File mainDir = new File("/home/kevin/markdown/inversions");
-		FaultSystemSolution sol1 = FaultSystemSolution.load(new File(mainDir,
-				"2021_08_05-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-10-avg_anneal_20m-wlAsInitial-5hr-run0/solution.zip"));
-		FaultSystemSolution sol2 = FaultSystemSolution.load(new File(mainDir,
-				"2021_08_05-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-10-avg_anneal_20m-wlAsInitial-5hr-run1/solution.zip"));
+		FaultSystemSolution sol1 = FaultSystemSolution.load(
+//				new File(mainDir, "2021_08_05-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-10-avg_anneal_20m-wlAsInitial-5hr-run0/solution.zip"));
+				new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+						+ "2021_10_19-reproduce-ucerf3-ref_branch-tapered-convergence-u3Iters/mean_solution.zip"));
+		FaultSystemSolution sol2 = FaultSystemSolution.load(
+				new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+						+ "2021_10_19-reproduce-ucerf3-ref_branch-tapered-convergence-u3Iters/"
+						+ "FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip"));
+//				new File(mainDir, "2021_08_05-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-10-avg_anneal_20m-wlAsInitial-5hr-run1/solution.zip"));
+	
 		RateDistributionPlot plot = new RateDistributionPlot();
 		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("sol1", sol1), new RupSetMetadata("sol2", sol2));
 		plot.plot(sol1, meta, new File("/tmp"), "resources", "");

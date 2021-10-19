@@ -31,7 +31,7 @@ public class WaterLevelRates implements CSV_BackedModule {
 				// can happen if post-water-level rates are averaged
 				Preconditions.checkState(ret[i] > -1e-20);
 				ret[i] = 0d;
-			} else if (ret[i] < 1e-20) {
+			} else if (ret[i] < 1e-20 || (float)rates[i] == (float)waterlevelRates[i]) {
 				ret[i] = 0d;
 			}
 		}

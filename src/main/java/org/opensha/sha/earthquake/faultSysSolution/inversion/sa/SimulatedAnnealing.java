@@ -158,11 +158,13 @@ public interface SimulatedAnnealing {
 	 */
 	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
 			double[] initialState) throws IOException {
-		writeRateVsRankPlot(outputDir, prefix, ratesNoMin, rates, initialState, null);
+		writeRateVsRankPlot(outputDir, prefix, ratesNoMin, rates, initialState, null, null);
 	}
 	
 	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
-			double[] initialState, double[] compRates) throws IOException {
+			double[] initialState, double[] compRates, double[] compRatesNoMin) throws IOException {
+		if (compRatesNoMin != null && compRates == compRatesNoMin)
+			compRatesNoMin = null;
 		// rates without waterlevel
 		ratesNoMin = getSorted(ratesNoMin);
 		// rates with waterlevel
@@ -181,7 +183,6 @@ public interface SimulatedAnnealing {
 		ArrayList<DiscretizedFunc> funcs = new ArrayList<DiscretizedFunc>();
 		funcs.add(func);
 		ArrayList<PlotCurveCharacterstics> chars = Lists.newArrayList(
-//				new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, PlotSymbol.CIRCLE, 5f, Color.BLACK));
 				new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLUE));
 		
 		EvenlyDiscretizedFunc initialFunc = new EvenlyDiscretizedFunc(0d, initialState.length, 1d);
@@ -209,7 +210,22 @@ public interface SimulatedAnnealing {
 			for (int i=0; i<compRates.length; i++)
 				compFunc.set(i, compRates[i]);
 			funcs.add(compFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, new Color(0, 0, 0, 127)));
+			
+			if (compRatesNoMin != null && compRatesNoMin != compRates) {
+				// for full comparison
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, new Color(0, 0, 0, 127)));
+				
+				compRatesNoMin = getSorted(compRatesNoMin);
+				
+				EvenlyDiscretizedFunc adjFunc = new EvenlyDiscretizedFunc(0d, compRatesNoMin.length, 1d);
+				adjFunc.setName("Comparison Inversion Rates");
+				for (int i=0; i<compRatesNoMin.length; i++)
+					adjFunc.set(i, compRatesNoMin[i]);
+				funcs.add(adjFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.RED));
+			} else {
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, new Color(0, 0, 0, 127)));
+			}
 		}
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
@@ -238,7 +254,15 @@ public interface SimulatedAnnealing {
 		
 		if (compRates != null) {
 			funcs.add(getCumulative(compRates, true, "Comparison Solution, Rate >= Rank"));
-			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, new Color(0, 0, 0, 127)));
+			
+			if (compRatesNoMin != null && compRates != compRatesNoMin) {
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, new Color(0, 0, 0, 127)));
+				
+				funcs.add(getCumulative(compRatesNoMin, true, "Comparison Inversion Rates, Rate >= Rank"));
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.RED));
+			} else {
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 4f, new Color(0, 0, 0, 127)));
+			}
 		}
 		
 		spec = new PlotSpec(funcs, chars, "Cumulative Rate Distribution", "Rank", "Cumulative Rate (per year)");
