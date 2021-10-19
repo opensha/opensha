@@ -229,8 +229,14 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 		onFaultRegionRateMgt5 = totalRegionRateMgt5*fractionSeisOnFault;
 		offFaultRegionRateMgt5 = totalRegionRateMgt5-onFaultRegionRateMgt5;
 		origOnFltDefModMoRate = DeformationModelsCalc.calculateTotalMomentRate(faultSectionData,true);
-		offFltDefModMoRate = DeformationModelsCalc.calcMoRateOffFaultsForDefModel(
-				logicTreeBranch.getValue(FaultModels.class), logicTreeBranch.getValue(DeformationModels.class));
+		FaultModels fm = logicTreeBranch.getValue(FaultModels.class);
+		if (fm == null || dm == null) {
+			System.err.println("ERR: non-UCERF3 deformation model encountered, can't get DM off fault moment rate. Setting to zero.");
+			offFltDefModMoRate = 0d;
+		} else {
+			offFltDefModMoRate = DeformationModelsCalc.calcMoRateOffFaultsForDefModel(
+					logicTreeBranch.getValue(FaultModels.class), logicTreeBranch.getValue(DeformationModels.class));
+		}
 
 		// make the total target GR for region
 		totalTargetGR = new GutenbergRichterMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
