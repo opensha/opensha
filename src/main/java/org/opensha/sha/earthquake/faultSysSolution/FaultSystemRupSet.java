@@ -1208,17 +1208,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public boolean isEquivalentTo(FaultSystemRupSet other) {
 		// check sections
-		if (getNumSections() != other.getNumSections())
+		if (!areSectionsEquivalentTo(other))
 			return false;
-//		System.out.println("sect count equal");
-		for (int s=0; s<getNumSections(); s++) {
-			FaultSection mySect = getFaultSectionData(s);
-			FaultSection oSect = other.getFaultSectionData(s);
-			if (mySect.getParentSectionId() != oSect.getParentSectionId())
-				return false;
-			if (!mySect.getSectionName().equals(oSect.getSectionName()))
-				return false;
-		}
 //		System.out.println("sects equal");
 		
 		// check ruptures
@@ -1236,6 +1227,34 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 		}
 //		System.out.println("rupture sects equal");
+		return true;
+	}
+	
+	/**
+	 * Returns true if the given rupture set uses the same set of fault sections. Equivalence is determined by the
+	 * following criteria:
+	 * 
+	 * * Same number of sections
+	 * * Each section has the same name & parent section ID
+	 * 
+	 * @param other
+	 * @return true if the fault sections in the given rupture set are equivalent to this one (same sections in same order,
+	 *  maybe different properties)
+	 */
+	public boolean areSectionsEquivalentTo(FaultSystemRupSet other) {
+		// check sections
+		if (getNumSections() != other.getNumSections())
+			return false;
+//		System.out.println("sect count equal");
+		for (int s=0; s<getNumSections(); s++) {
+			FaultSection mySect = getFaultSectionData(s);
+			FaultSection oSect = other.getFaultSectionData(s);
+			if (mySect.getParentSectionId() != oSect.getParentSectionId())
+				return false;
+			if (!mySect.getSectionName().equals(oSect.getSectionName()))
+				return false;
+		}
+		
 		return true;
 	}
 	
