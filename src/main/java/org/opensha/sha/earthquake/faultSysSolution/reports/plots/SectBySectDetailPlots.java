@@ -1120,25 +1120,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			funcs = new ArrayList<>();
 			chars = new ArrayList<>();
 			
-			SlipAlongRuptureModel slipAlongs = meta.primary.rupSet.getModule(SlipAlongRuptureModel.class);
-			AveSlipModule aveSlips = meta.primary.rupSet.getModule(AveSlipModule.class);
 			SectSlipRates slipRates = meta.primary.rupSet.getModule(SectSlipRates.class);
 			
-			double[] solSlipRates = new double[parentSects.size()];
-			Map<Integer, Integer> sectIndMappings = new HashMap<>();
-			for (int s=0; s<parentSects.size(); s++)
-				sectIndMappings.put(parentSects.get(s).getSectionId(), s);
-			for (int r : meta.primary.rupSet.getRupturesForParentSection(parentSectIndex)) {
-				double rate = meta.primary.sol.getRateForRup(r);
-				double[] slipOnSects = slipAlongs.calcSlipOnSectionsForRup(meta.primary.rupSet, aveSlips, r);
-				List<Integer> sectsForRup = meta.primary.rupSet.getSectionsIndicesForRup(r);
-				for (int i=0; i<sectsForRup.size(); i++) {
-					int sectIndex = sectsForRup.get(i);
-					Integer index = sectIndMappings.get(sectIndex);
-					if (index != null)
-						solSlipRates[index] += rate*slipOnSects[i];
-				}
-			}
+			double[] solSlipRates = sectSolSlipRates(meta.primary.sol, parentSectIndex, parentSects);
+			double[] compSolSlipRates = comp ? sectSolSlipRates(meta.comparison.sol, parentSectIndex, parentSects) : null;
 			
 			for (int s=0; s<parentSects.size(); s++) {
 				XY_DataSet emptyFunc = emptySectFuncs.get(s);
@@ -1159,7 +1144,17 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				
 				funcs.add(solFunc);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
+				
+				if (comp) {
+					XY_DataSet compSolFunc = copyAtY(emptyFunc, compSolSlipRates[s]*1e3);
+					if (s == 0)
+						compSolFunc.setName("Comparison Solution");
+					
+					funcs.add(compSolFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, COMP_COLOR.darker()));
+				}
 			}
+			
 			PlotSpec slipRateSpec = new PlotSpec(funcs, chars, parentName, xLabel, "Slip Rate (mm/yr)");
 			// legend at bottom
 			if (slipRates != null)
@@ -1188,6 +1183,29 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
 		
 		return lines;
+	}
+
+	private static double[] sectSolSlipRates(FaultSystemSolution sol, int parentSectIndex,
+			List<FaultSection> parentSects) {
+		double[] solSlipRates = new double[parentSects.size()];
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		SlipAlongRuptureModel slipAlongs = rupSet.getModule(SlipAlongRuptureModel.class);
+		AveSlipModule aveSlips = rupSet.getModule(AveSlipModule.class);
+		Map<Integer, Integer> sectIndMappings = new HashMap<>();
+		for (int s=0; s<parentSects.size(); s++)
+			sectIndMappings.put(parentSects.get(s).getSectionId(), s);
+		for (int r : rupSet.getRupturesForParentSection(parentSectIndex)) {
+			double rate = sol.getRateForRup(r);
+			double[] slipOnSects = slipAlongs.calcSlipOnSectionsForRup(rupSet, aveSlips, r);
+			List<Integer> sectsForRup = rupSet.getSectionsIndicesForRup(r);
+			for (int i=0; i<sectsForRup.size(); i++) {
+				int sectIndex = sectsForRup.get(i);
+				Integer index = sectIndMappings.get(sectIndex);
+				if (index != null)
+					solSlipRates[index] += rate*slipOnSects[i];
+			}
+		}
+		return solSlipRates;
 	}
 	
 	private static double rateAbove(double minMag, int sectIndex, FaultSystemSolution sol) {

@@ -99,7 +99,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 				table.addColumn((float)compStats.mean);
 			table.finalizeLine();
 			
-			table.initNewLine().addColumn("Abs. Mean Misfit").addColumn((float)stats.absMean);
+			table.initNewLine().addColumn("Mean Abs. Misfit").addColumn((float)stats.absMean);
 			if (compStats != null)
 				table.addColumn((float)compStats.absMean);
 			table.finalizeLine();
@@ -131,7 +131,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			
 			HistogramFunction refHist = refHist(stats, compStats);
 			File histPlot = buildHistPlot(refHist, normMisfits,
-					stats, range, resourcesDir, prefix+"_hist", "Misfit", MAIN_COLOR);
+					stats, range, resourcesDir, prefix+"_hist", range.name+" Misfits", "Misfit", MAIN_COLOR);
 			
 			if (compNormMisfits == null) {
 				lines.add("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
@@ -140,7 +140,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 				table.addLine("Primary", "Comparison");
 				table.initNewLine().addColumn("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
 				File compPlot = buildHistPlot(refHist, compNormMisfits,
-						compStats, range, resourcesDir, prefix+"_hist_comp", "Misfit", COMP_COLOR);
+						compStats, range, resourcesDir, prefix+"_hist_comp", range.name+" Misfits", "Misfit", COMP_COLOR);
 				table.addColumn("![Misfit Plot]("+relPathToResources+"/"+compPlot.getName()+")");
 				table.finalizeLine();
 				
@@ -160,7 +160,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					
 					refHist = refHist(new MisfitStats(diffs, false), null);
 					File histDiffPlot = buildHistPlot(refHist, normMisfits,
-							null, range, resourcesDir, prefix+"_diff", "Difference: Primary - Comparison", COMMON_COLOR);
+							null, range, resourcesDir, prefix+"_diff", range.name+" Misfit Difference",
+							"Difference: Primary - Comparison", COMMON_COLOR);
 					table.initNewLine().addColumn("![Diff Plot]("+relPathToResources+"/"+histDiffPlot.getName()+")");
 					List<XY_DataSet> funcs = new ArrayList<>();
 					List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -174,7 +175,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					funcs.add(scatter);
 					chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
 					PlotSpec scatterSpec = new PlotSpec(funcs, chars, "Primary vs Comparison",
-							getTruncatedTitle(meta.primary.name), getTruncatedTitle(meta.comparison.name));
+							"Primary Misfit", "Comparison Misfit");
 
 					GraphPanel gp = PlotUtils.initHeadless();
 					
@@ -236,6 +237,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		private double std;
 		
 		public MisfitStats(double[] misfits, boolean inequality) {
+			min = Double.POSITIVE_INFINITY;
+			max = Double.NEGATIVE_INFINITY;
 			numRows = misfits.length;
 			StandardDeviation std = new StandardDeviation();
 			for (double val : misfits) {
@@ -255,7 +258,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 	}
 	
 	private static File buildHistPlot(HistogramFunction refHist, double[] data, MisfitStats stats,
-			ConstraintRange range, File outputDir, String prefix, String xAxisLabel, Color color) throws IOException {
+			ConstraintRange range, File outputDir, String prefix, String title, String xAxisLabel, Color color)
+					throws IOException {
 		HistogramFunction hist = new HistogramFunction(refHist.getMinX(), refHist.getMaxX(), refHist.size());
 		for (double val : data) {
 			if (range.inequality && val < 0)
@@ -288,7 +292,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
 		}
 		
-		PlotSpec spec = new PlotSpec(funcs, chars, range.name+" Misfits", xAxisLabel, "Count");
+		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, "Count");
 		spec.setLegendVisible(true);
 		
 		GraphPanel gp = PlotUtils.initHeadless();
