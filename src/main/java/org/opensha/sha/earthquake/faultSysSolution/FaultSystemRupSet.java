@@ -61,6 +61,7 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
+import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
@@ -1418,6 +1419,18 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		public Builder forU3Branch(U3LogicTreeBranch branch) {
+			FaultModels fm = branch.getValue(FaultModels.class);
+			DeformationModels dm = branch.getValue(DeformationModels.class);
+			if (fm != null && dm != null) {
+				// override slip rates to the correct deformation model
+				List<? extends FaultSection> newSects = RuptureSets.getU3SubSects(fm, dm);
+				Preconditions.checkState(newSects.size() == faultSectionData.size());
+				this.faultSectionData = newSects;
+				this.rupAreas = null;
+			} else if (dm != null && fm == null) {
+				System.err.println("WARNING: can't override deformation model in rupture set because fault model is null");
+			}
+			
 			// build magnitudes from the scaling relationship and add ave slip module
 			forScalingRelationship(branch.getValue(ScalingRelationships.class));
 			return u3BranchModules(branch);
