@@ -77,7 +77,10 @@ import scratch.UCERF3.utils.U3FaultSystemIO;
 public class RuptureSets {
 	
 	public static List<? extends FaultSection> getU3SubSects(FaultModels fm) {
-		DeformationModels dm = fm.getFilterBasis();
+		return getU3SubSects(fm, fm.getFilterBasis());
+	}
+	
+	public static List<? extends FaultSection> getU3SubSects(FaultModels fm, DeformationModels dm) {
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
 		List<? extends FaultSection> sects = dmFetch.getSubSectionList();
 		
