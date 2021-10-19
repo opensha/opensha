@@ -440,7 +440,8 @@ public class IncrementalMagFreqDist extends EvenlyDiscretizedFunc
 	* This computes the b-value (the slope of the line of a linear-log plot, meaning
     * after computing log10 of all y-axis values) between the the given x-axis values.
     * If Double.NaN is passed in, then the first (or last) non-zero rate is used for
-    * min_bValMag (or max_bValMag).
+    * min_bValMag (or max_bValMag).  Results may be biased if there are any zero-rate
+    * bins between min_bValMag and max_bValMag.
     * @param min_bValMag
     * @param max_bValMag
     * @return
@@ -469,6 +470,35 @@ public class IncrementalMagFreqDist extends EvenlyDiscretizedFunc
 
 	   return regression.getSlope();
    }
+   
+   /**
+    * This gives the b-value for a GR distribution that has the same Mmin, Mmax, total rate, and moment rate 
+    * (solving for the associated b-value).  This case handles zero-rate bins.  See the method 
+    * GutenbergRichterMagFreqDist.setAllButBvalue(*) for accuracy information.
+    * @return
+    */
+   public double compute_bValueAlt() {
+	   int firstIndex = getClosestXIndex(getMinMagWithNonZeroRate());
+	   int lastIndex = getClosestXIndex(getMaxMagWithNonZeroRate());
+	   GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(this.getMinX(), this.size(), this.getDelta());
+	   gr.setAllButBvalue(this.getX(firstIndex), this.getX(lastIndex), this.getTotalMomentRate(), this.getTotalIncrRate());
+	   return gr.get_bValue();
+   }
+
+   /**
+    * This returns a GR distribution with the same Mmin, Mmax, total rate, and moment rate 
+    * (solving for the associated b-value).  Note that this is not "fit" in a least squares sense.
+    * This approach was adopted in order to handle zero-rate bins.
+    * @return
+    */
+   public GutenbergRichterMagFreqDist getGR_fit() {
+	   int firstIndex = getClosestXIndex(getMinMagWithNonZeroRate());
+	   int lastIndex = getClosestXIndex(getMaxMagWithNonZeroRate());
+	   GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(this.getMinX(), this.size(), this.getDelta());
+	   gr.setAllButBvalue(this.getX(firstIndex), this.getX(lastIndex), this.getTotalMomentRate(), this.getTotalIncrRate());
+	   return gr;
+   }
+
    
    /**
     * This sets all y-axis values above the given total moment rate to zero.
