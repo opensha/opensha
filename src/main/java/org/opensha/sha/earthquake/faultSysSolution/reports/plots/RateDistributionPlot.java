@@ -32,7 +32,11 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
@@ -41,32 +45,174 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 
 import com.google.common.base.Preconditions;
 
-public class RateVsRateScatter extends AbstractSolutionPlot {
+public class RateDistributionPlot extends AbstractSolutionPlot {
 
 	@Override
 	public String getName() {
-		return "Rupture Rate Comparison";
+		return "Rupture Rate Distribution";
 	}
 
 	@Override
 	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
 			String topLink) throws IOException {
 		FaultSystemSolution compSol = null;
-		if (meta.comparison == null || meta.comparison.sol == null)
-			return null;
+		if (meta.hasComparisonSol())
+			compSol = meta.comparison.sol;
+		
+		List<String> lines = new ArrayList<>();
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		
+		double[] rates = sol.getRateForAllRups();
+		double[] ratesNoMin;
+		if (sol.hasModule(WaterLevelRates.class))
+			ratesNoMin = sol.getModule(WaterLevelRates.class).subtractFrom(rates);
+		else
+			ratesNoMin = rates;
+		double[] initial = sol.hasModule(InitialSolution.class) ?
+				sol.getModule(InitialSolution.class).get() : new double[rates.length];
+		
+		int numNonZero = 0;
+		int numAboveWaterlevel = 0;
+		for (int r=0; r<rates.length; r++) {
+			if (rates[r] > 0) {
+				numNonZero++;
+				if (ratesNoMin[r] > 0)
+					numAboveWaterlevel++;
+			}
+		}
+		
+		// will invert, rows = columns here
+		table.initNewLine();
+		if (compSol != null)
+			table.addColumn("");
+		table.addColumn("**Non-zero ruptures**");
+		boolean equivRups = compSol != null && meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet);
+		if (equivRups)
+			table.addColumn("**Unique non-zero ruptures**").addColumn("**Rate of unique non-zero ruptures**");
+		if (ratesNoMin != rates)
+			table.addColumn("**Ruptures above water-level**");
+		boolean hasPerturbs = sol.hasModule(AnnealingProgress.class) || (compSol != null && compSol.hasModule(AnnealingProgress.class));
+		if (hasPerturbs)
+			table.addColumn("**Avg. # perturbations per rupture**").addColumn("**Avg. # perturbations per perturbed rupture**");
+		table.finalizeLine().initNewLine();
+		if (compSol != null)
+			table.addColumn("Primary");
+		
+		table.addColumn(countDF.format(numNonZero)
+				+" ("+percentDF.format((double)numNonZero/(double)rates.length)+")");
+		if (equivRups) {
+			double[] crates = meta.comparison.sol.getRateForAllRups();
+			int uniqueNZ = 0;
+			double uniqueRate = 0d;
+			for (int r=0; r<rates.length; r++) {
+				if (rates[r] > 0 && crates[r] == 0) {
+					uniqueNZ++;
+					uniqueRate += rates[r];
+				}
+			}
+			table.addColumn(countDF.format(uniqueNZ)
+					+" ("+percentDF.format((double)uniqueNZ/(double)rates.length)+")");
+			table.addColumn((float)uniqueRate
+					+" ("+percentDF.format((double)uniqueRate/(double)sol.getTotalRateForAllFaultSystemRups())+")");
+		}
+		if (ratesNoMin != rates)
+			table.addColumn(countDF.format(numAboveWaterlevel)
+				+" ("+percentDF.format((double)numAboveWaterlevel/(double)rates.length)+")");
+		if (hasPerturbs) {
+			AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
+			if (progress == null) {
+				table.addColumn(na).addColumn(na);
+			} else {
+				long perturbs = progress.getNumPerturbations(progress.size()-1);
+				table.addColumn((float)(perturbs/(double)rates.length));
+				table.addColumn((float)(perturbs/(double)numAboveWaterlevel));
+			}
+		}
+		table.finalizeLine();
+		
+		if (compSol != null) {
+			double[] crates = meta.comparison.sol.getRateForAllRups();
+			double[] cratesNoMin;
+			if (meta.comparison.sol.hasModule(WaterLevelRates.class))
+				cratesNoMin = meta.comparison.sol.getModule(WaterLevelRates.class).subtractFrom(crates);
+			else
+				cratesNoMin = crates;
+			
+			int cnumNonZero = 0;
+			int cnumAboveWaterlevel = 0;
+			for (int r=0; r<crates.length; r++) {
+				if (crates[r] > 0) {
+					cnumNonZero++;
+					if (cratesNoMin[r] > 0)
+						cnumAboveWaterlevel++;
+				}
+			}
+			
+			table.initNewLine().addColumn("Comparison");
+			table.addColumn(countDF.format(cnumNonZero)
+					+" ("+percentDF.format((double)cnumNonZero/(double)crates.length)+")");
+			if (equivRups) {
+				int uniqueNZ = 0;
+				double uniqueRate = 0d;
+				for (int r=0; r<rates.length; r++) {
+					if (crates[r] > 0 && rates[r] == 0) {
+						uniqueNZ++;
+						uniqueRate += crates[r];
+					}
+				}
+				table.addColumn(countDF.format(uniqueNZ)
+						+" ("+percentDF.format((double)uniqueNZ/(double)crates.length)+")");
+				table.addColumn((float)uniqueRate+" ("+percentDF.format((double)uniqueRate
+						/(double)meta.comparison.sol.getTotalRateForAllFaultSystemRups())+")");
+			}
+			if (ratesNoMin != rates) {
+				if (cratesNoMin != crates)
+					table.addColumn(countDF.format(cnumAboveWaterlevel)
+							+" ("+percentDF.format((double)cnumAboveWaterlevel/(double)crates.length)+")");
+				else
+					table.addColumn("");
+			}
+			if (hasPerturbs) {
+				AnnealingProgress progress = compSol.getModule(AnnealingProgress.class);
+				if (progress == null) {
+					table.addColumn(na).addColumn(na);
+				} else {
+					long perturbs = progress.getNumPerturbations(progress.size()-1);
+					table.addColumn((float)(perturbs/(double)crates.length));
+					table.addColumn((float)(perturbs/(double)cnumAboveWaterlevel));
+				}
+			}
+		}
+		
+		lines.addAll(table.invert().build());
+		lines.add("");
+		
+		if (compSol == null)
+			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "rate_dist", ratesNoMin, rates, initial);
+		else
+			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "rate_dist", ratesNoMin, rates, initial,
+					meta.comparison.sol.getRateForAllRups());
+		lines.add("![Rate Distribution]("+relPathToResources+"/rate_dist.png)");
+		lines.add("");
+		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/rate_dist_cumulative.png)");
+		
+		if (compSol == null)
+			return lines;
+		
 		int numRups = meta.primary.numRuptures;
 		if (meta.primary.rupSet.isEquivalentTo(meta.comparison.rupSet)) {
 			compSol = meta.comparison.sol;
 		} else {
 			// see if they're actually the same, but in a different order
 			if (numRups != meta.comparison.rupSet.getNumRuptures())
-				return null;
+				return lines;
 			if (!meta.primary.rupSet.hasModule(ClusterRuptures.class)
 					|| !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
-				return null;
+				return lines;
 			compSol = getRemapped(sol.getRupSet(), meta.comparison.sol);
 			if (compSol == null)
-				return null;
+				return lines;
 		}
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
@@ -124,7 +270,7 @@ public class RateVsRateScatter extends AbstractSolutionPlot {
 		Range range = new Range(Math.max(1e-16, Math.pow(10, Math.floor(Math.log10(rateTrack.getMin())))),
 				Math.pow(10, Math.ceil(Math.log10(rateTrack.getMax()))));
 		
-		TableBuilder table = MarkdownUtils.tableBuilder();
+		table = MarkdownUtils.tableBuilder();
 		for (int m=0; m<magRanges.size(); m++) {
 			Range magRange = magRanges.get(m);
 			
@@ -217,7 +363,13 @@ public class RateVsRateScatter extends AbstractSolutionPlot {
 			table.finalizeLine();
 		}
 		
-		return table.build();
+		lines.add("");
+		lines.add(getSubHeading()+" Rupture Rate Comparison");
+		lines.add(topLink); lines.add("");
+		
+		lines.addAll(table.build());
+		
+		return lines;
 	}
 
 	@Override
@@ -264,7 +416,7 @@ public class RateVsRateScatter extends AbstractSolutionPlot {
 				"2021_08_05-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-10-avg_anneal_20m-wlAsInitial-5hr-run0/solution.zip"));
 		FaultSystemSolution sol2 = FaultSystemSolution.load(new File(mainDir,
 				"2021_08_05-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-10-avg_anneal_20m-wlAsInitial-5hr-run1/solution.zip"));
-		RateVsRateScatter plot = new RateVsRateScatter();
+		RateDistributionPlot plot = new RateDistributionPlot();
 		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("sol1", sol1), new RupSetMetadata("sol2", sol2));
 		plot.plot(sol1, meta, new File("/tmp"), "resources", "");
 	}

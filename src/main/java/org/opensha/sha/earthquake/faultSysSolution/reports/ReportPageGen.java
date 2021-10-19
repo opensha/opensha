@@ -45,10 +45,11 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgre
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverDistancePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.LogicTreeBranchPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ModulesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ParticipationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
-import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RateVsRateScatter;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RateDistributionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
@@ -113,6 +114,7 @@ public class ReportPageGen {
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
 			plots.add(new PlausibilityFilterPlot());
+			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new JumpCountsOverDistancePlot());
 		}
@@ -137,11 +139,12 @@ public class ReportPageGen {
 		plots.add(new InversionProgressPlot());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new InversionMisfitsPlot());
-		plots.add(new RateVsRateScatter());
+		plots.add(new RateDistributionPlot());
 		plots.add(new ParticipationRatePlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new SlipRatePlots());
 			plots.add(new JumpCountsOverDistancePlot());
