@@ -201,7 +201,7 @@ public abstract class InversionConstraint implements ShortNamed {
 			out.name("inequality").value(value.isInequality());
 			out.name("weight").value(value.getWeight());
 			out.name("data");
-			System.out.println("Writing "+value.getName()+" ("+value.getClass().getName()+")");
+//			System.out.println("Writing "+value.getName()+" ("+value.getClass().getName()+")");
 			gson.toJson(value, value.getClass(), out);
 			out.endObject();
 		}
