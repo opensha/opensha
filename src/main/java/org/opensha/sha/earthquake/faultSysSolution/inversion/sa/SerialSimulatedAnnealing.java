@@ -426,6 +426,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		if (rangeTrack && criteria instanceof ProgressTrackingCompletionCriteria)
 			((ProgressTrackingCompletionCriteria)criteria).setConstraintRanges(constraintRanges);
 		
+		if (rangeTrack && startIter == 0l && Ebest.length == 4)
+			// constraint ranges were set after we called setup before, recalc
+			Ebest = calculateEnergy(xbest, misfit_best, misfit_ineq_best);
+		
 		if(D) System.out.println("Solving inverse problem with simulated annealing ... \n");
 		if(D) System.out.println("Cooling Function: " + coolingFunc.name());
 		if(D) System.out.println("Perturbation Function: " + perturbationFunc.name());
