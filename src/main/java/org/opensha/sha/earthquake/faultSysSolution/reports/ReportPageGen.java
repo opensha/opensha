@@ -51,6 +51,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityCon
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RateDistributionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SegmentationPlot;
@@ -141,6 +142,8 @@ public class ReportPageGen {
 			plots.add(new InversionMisfitsPlot());
 		plots.add(new RateDistributionPlot());
 		plots.add(new ParticipationRatePlot());
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+			plots.add(new SectBValuePlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {

@@ -75,9 +75,9 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 		int numNonZero = 0;
 		int numAboveWaterlevel = 0;
 		for (int r=0; r<rates.length; r++) {
-			if (rates[r] > 0) {
+			if ((float)rates[r] > 0f) {
 				numNonZero++;
-				if (ratesNoMin[r] > 0)
+				if ((float)ratesNoMin[r] > 0f)
 					numAboveWaterlevel++;
 			}
 		}
