@@ -229,7 +229,7 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 		lines.add("");
 		
 		if (inferredWL) {
-			lines.add("_NOTE:_The comnparison solution didn't have an attached waterlevel, but seems to have been "
+			lines.add("_NOTE: The comnparison solution didn't have an attached waterlevel, but seems to have been "
 					+ "generated with the same waterlevel, so we assume that was the case. This can cause slight "
 					+ "numerical artifacts affecting the red line below and ruptures above waterlevel count above._");
 			lines.add("");

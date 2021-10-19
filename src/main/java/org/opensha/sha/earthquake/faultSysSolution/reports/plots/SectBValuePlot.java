@@ -54,7 +54,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 
 	@Override
 	public String getName() {
-		return "Section b-Values";
+		return "Section b-values";
 	}
 
 	@Override
@@ -75,7 +75,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		cpt.setNanColor(Color.GRAY);
 		
 		List<String> lines = new ArrayList<>();
-		lines.add(getSubHeading()+" Subsection b-Values");
+		lines.add(getSubHeading()+" Subsection b-values");
 		lines.add(topLink); lines.add("");
 		
 		lines.add("These plots estimate a Gutenberg-Richter b-value for each subsection and parent section participation"
@@ -91,15 +91,15 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		String prefix = "sect_b_values";
 		
 		// map view
-		mapMaker.plotSectScalars(sectBVals, cpt, "Subsection b-Values");
+		mapMaker.plotSectScalars(sectBVals, cpt, "Subsection b-values");
 		mapMaker.plot(resourcesDir, prefix, getTruncatedTitle(meta.primary.name));
 		
 		if (compSol == null) {
-			lines.add("![Section B-Values Plot]("+relPathToResources+"/"+prefix+".png)");
+			lines.add("![Section b-values Plot]("+relPathToResources+"/"+prefix+".png)");
 		} else {
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			
-			mapMaker.plotSectScalars(compSectBVals, cpt, "Subsection b-Values");
+			mapMaker.plotSectScalars(compSectBVals, cpt, "Subsection b-values");
 			mapMaker.plot(resourcesDir, prefix+"_comp", getTruncatedTitle(meta.comparison.name));
 			
 			double[] diffs = new double[sectBVals.length];
@@ -108,12 +108,12 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			
 			CPT diffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-2d, 2d);
 			diffCPT.setNanColor(Color.GRAY);
-			mapMaker.plotSectScalars(diffs, diffCPT, "Subsection b-Values, Primary - Comparison");
+			mapMaker.plotSectScalars(diffs, diffCPT, "Subsection b-values, Primary - Comparison");
 			mapMaker.plot(resourcesDir, prefix+"_diff", "Difference");
 			
-			table.addLine("![Section b-Values Plot]("+relPathToResources+"/"+prefix+".png)",
-					"![Section b-Values Plot]("+relPathToResources+"/"+prefix+"_comp.png)",
-					"![Section b-Values Plot]("+relPathToResources+"/"+prefix+"_diff.png)");
+			table.addLine("![Section b-values Plot]("+relPathToResources+"/"+prefix+".png)",
+					"![Section b-values Plot]("+relPathToResources+"/"+prefix+"_comp.png)",
+					"![Section b-values Plot]("+relPathToResources+"/"+prefix+"_diff.png)");
 			lines.addAll(table.build());
 		}
 		lines.add("");
@@ -124,7 +124,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 				resourcesDir, relPathToResources, prefix));
 		
 		lines.add("");
-		lines.add(getSubHeading()+" Parent Section B-Values");
+		lines.add(getSubHeading()+" Parent Section b-values");
 		lines.add(topLink); lines.add("");
 		
 		Map<Integer, Double> parentBValsMap = estParentSectBValues(sol, rupMoRates);
