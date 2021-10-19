@@ -78,6 +78,10 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		lines.add(getSubHeading()+" Subsection b-Values");
 		lines.add(topLink); lines.add("");
 		
+		lines.add("These plots estimate a Gutenberg-Richter b-value for each subsection and parent section participation"
+				+ " MFD. This is rough approximation, and is intended primarily for model comparisons.");
+		lines.add("");
+		
 		double[] sectBVals = estSectBValues(sol, rupMoRates);
 		double[] compSectBVals = compSol == null ? null : estSectBValues(compSol, compRupMoRates);
 		
