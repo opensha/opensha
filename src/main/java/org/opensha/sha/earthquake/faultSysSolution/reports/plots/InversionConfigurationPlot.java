@@ -193,7 +193,7 @@ public class InversionConfigurationPlot extends AbstractSolutionPlot {
 	private static String solStr(double[] sol) {
 		if (sol == null)
 			return "_(none)_";
-		return "Range: ["+(float)StatUtils.min(sol)+","+StatUtils.max(sol)+"]";
+		return "Range: ["+(float)StatUtils.min(sol)+","+(float)StatUtils.max(sol)+"]";
 	}
 
 	@Override

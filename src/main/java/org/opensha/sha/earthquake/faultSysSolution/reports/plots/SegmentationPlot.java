@@ -23,6 +23,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCal
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
 
 public class SegmentationPlot extends AbstractSolutionPlot {
+	
+	private boolean skipCoulomb = true;
 
 	@Override
 	public String getName() {
@@ -83,6 +85,13 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 //		RateCombiner[] combiners = RateCombiner.values();
 		RateCombiner[] combiners = { RateCombiner.MIN };
 		Scalars[] scalars = Scalars.values();
+		if (skipCoulomb) {
+			List<Scalars> newScalars = new ArrayList<>();
+			for (Scalars scalar : scalars)
+				if (!scalar.name().contains("CFF"))
+					newScalars.add(scalar);
+			scalars = newScalars.toArray(new Scalars[0]);
+		}
 		
 		File[] inputConnRates = inputSegCalc.plotConnectionRates(resourcesDir, "conn_rates", meta.primary.name);
 		Map<RateCombiner, File[]> inputPassthroughRates = new HashMap<>();

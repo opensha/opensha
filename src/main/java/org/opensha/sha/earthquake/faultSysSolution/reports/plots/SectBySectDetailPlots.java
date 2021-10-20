@@ -1138,13 +1138,6 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.CYAN.darker()));
 				}
 				
-				XY_DataSet solFunc = copyAtY(emptyFunc, solSlipRates[s]*1e3);
-				if (s == 0)
-					solFunc.setName("Solution");
-				
-				funcs.add(solFunc);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
-				
 				if (comp) {
 					XY_DataSet compSolFunc = copyAtY(emptyFunc, compSolSlipRates[s]*1e3);
 					if (s == 0)
@@ -1153,6 +1146,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					funcs.add(compSolFunc);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, COMP_COLOR.darker()));
 				}
+				
+				XY_DataSet solFunc = copyAtY(emptyFunc, solSlipRates[s]*1e3);
+				if (s == 0)
+					solFunc.setName("Solution");
+				
+				funcs.add(solFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
 			}
 			
 			PlotSpec slipRateSpec = new PlotSpec(funcs, chars, parentName, xLabel, "Slip Rate (mm/yr)");

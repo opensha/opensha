@@ -79,7 +79,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		lines.add(topLink); lines.add("");
 		
 		lines.add("These plots estimate a Gutenberg-Richter b-value for each subsection and parent section participation"
-				+ " MFD. This is rough approximation, and is intended primarily for model comparisons.");
+				+ " MFD. This is a rough approximation, and is intended primarily for model comparisons.");
 		lines.add("");
 		
 		double[] sectBVals = estSectBValues(sol, rupMoRates);
@@ -294,7 +294,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		HistogramFunction hist = HistogramFunction.getEncompassingHistogram(minB+0.01, maxB-0.01, 0.05);
 		
 		for (double value : values)
-			hist.add(hist.getClosestXIndex(value), 1d);
+			if (Double.isFinite(value))
+				hist.add(hist.getClosestXIndex(value), 1d);
 		
 		List<HistogramFunction> funcs = new ArrayList<>();
 		funcs.add(hist);
