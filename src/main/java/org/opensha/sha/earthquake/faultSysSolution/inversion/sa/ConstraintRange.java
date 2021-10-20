@@ -1,5 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa;
 
+import java.util.Objects;
+
 /**
  * Class to keep track of the rows in the inversion A matrix and data vector which
  * below to a given constraint
@@ -49,6 +51,25 @@ public class ConstraintRange {
 	
 	public boolean contains(int row, boolean inequality) {
 		return this.inequality == inequality && row >= startRow && row < endRow;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(endRow, inequality, name, shortName, startRow, weight);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		ConstraintRange other = (ConstraintRange) obj;
+		return endRow == other.endRow && inequality == other.inequality && Objects.equals(name, other.name)
+				&& Objects.equals(shortName, other.shortName) && startRow == other.startRow
+				&& Double.doubleToLongBits(weight) == Double.doubleToLongBits(other.weight);
 	}
 
 }

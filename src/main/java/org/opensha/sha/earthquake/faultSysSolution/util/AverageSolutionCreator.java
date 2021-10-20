@@ -3,13 +3,16 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.IndividualSolutionRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 
 import com.google.common.base.Preconditions;
@@ -59,7 +62,37 @@ public class AverageSolutionCreator {
 		
 		// TODO average grid source provider
 		
-		// TODO average misfits?
+		if (inputs[0].hasModule(InversionMisfits.class)) {
+			List<InversionMisfits> misfits = new ArrayList<>();
+			
+			for (FaultSystemSolution sol : inputs) {
+				InversionMisfits misfit = sol.getModule(InversionMisfits.class);
+				if (misfit == null || misfits.size() > 0 && !misfit.getConstraintRanges().equals(misfits.get(0).getConstraintRanges())) {
+					misfits = null;
+					break;
+				}
+				misfits.add(misfit);
+			}
+			
+			if (misfits != null)
+				avgSol.addModule(InversionMisfits.average(misfits));
+		}
+		
+		if (inputs[0].hasModule(AnnealingProgress.class)) {
+			List<AnnealingProgress> progresses = new ArrayList<>();
+			
+			for (FaultSystemSolution sol : inputs) {
+				AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
+				if (progress == null || progresses.size() > 0 && !progress.getEnergyTypes().equals(progresses.get(0).getEnergyTypes())) {
+					progresses = null;
+					break;
+				}
+				progresses.add(progress);
+			}
+			
+			if (progresses != null)
+				avgSol.addModule(AnnealingProgress.average(progresses));
+		}
 		
 		if (inputs[0].hasModule(WaterLevelRates.class)) {
 			WaterLevelRates wl = inputs[0].getModule(WaterLevelRates.class);

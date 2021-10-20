@@ -177,5 +177,35 @@ public class InversionMisfits implements ArchivableModule {
 			}
 		}
 	}
+	
+	public static InversionMisfits average(List<InversionMisfits> misfitsList) {
+		InversionMisfits ref = misfitsList.get(0);
+		List<ConstraintRange> ranges = ref.constraintRanges;
+		int numEQ = ref.misfits == null ? 0 : ref.misfits.length;
+		int numINEQ = ref.misfits_ineq == null ? 0 : ref.misfits_ineq.length;
+		double[] misfits = numEQ > 0 ? new double[numEQ] : null;
+		double[] data = numEQ > 0 ? new double[numEQ] : null;
+		double[] misfits_ineq = numINEQ > 0 ? new double[numINEQ] : null;
+		double[] data_ineq = numINEQ > 0 ? new double[numINEQ] : null;
+		
+		double scalarEach = 1d/misfitsList.size();
+		for (InversionMisfits myMisfits : misfitsList) {
+			if (numEQ > 0) {
+				averageIn(scalarEach, misfits, myMisfits.misfits);
+				averageIn(scalarEach, data, myMisfits.data);
+			}
+			if (numINEQ > 0) {
+				averageIn(scalarEach, misfits_ineq, myMisfits.misfits_ineq);
+				averageIn(scalarEach, data_ineq, myMisfits.data_ineq);
+			}
+		}
+		
+		return new InversionMisfits(ranges, misfits, data, misfits_ineq, data_ineq);
+	}
+	
+	private static void averageIn(double scalar, double[] avgVals, double[] myVals) {
+		for (int i=0; i<avgVals.length; i++)
+			avgVals[i] += scalar*myVals[i];
+	}
 
 }

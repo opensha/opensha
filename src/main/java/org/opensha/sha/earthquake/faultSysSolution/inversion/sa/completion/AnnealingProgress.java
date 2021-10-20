@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
@@ -142,6 +145,117 @@ public class AnnealingProgress implements CSV_BackedModule {
 	
 	public ImmutableList<String> getEnergyTypes() {
 		return energyTypes;
+	}
+	
+	/**
+	 * This creates an average annealing progress, mapping each individual inversion run into a relative time/inversion
+	 * count and then mapping onto the average time/inversion count function.
+	 * 
+	 * @param progresses
+	 * @return
+	 */
+	public static AnnealingProgress average(List<AnnealingProgress> progresses) {
+		double avgMinTime = 0d;
+		double avgMinIters = 0d;
+		double avgMaxTime = 0d;
+		double avgMaxIters = 0d;
+		double avgSize = 0d;
+		
+		ImmutableList<String> types = progresses.get(0).energyTypes;
+		
+		double scalarEach = 1d/(double)progresses.size();
+		for (AnnealingProgress progress : progresses) {
+			Preconditions.checkState(types.size() == progress.energyTypes.size());
+			Preconditions.checkState(types.equals(progress.energyTypes));
+
+			avgMinTime += scalarEach*progress.times.get(0);
+			avgMinIters += scalarEach*progress.iterations.get(0);
+			avgMaxTime += scalarEach*progress.times.get(progress.size()-1);
+			avgMaxIters += scalarEach*progress.iterations.get(progress.size()-1);
+			avgSize += scalarEach*progress.size();
+		}
+		
+		int finalSize = (int)Math.round(avgSize);
+		if (finalSize < 2)
+			finalSize = 2;
+		List<Long> times = evenlyDiscr(avgMinTime, avgMaxTime, finalSize);
+		List<Long> iters = evenlyDiscr(avgMinIters, avgMaxIters, finalSize);
+		
+		List<Double> avgPerturbs = new ArrayList<>();
+		List<Double> avgNonZeros = new ArrayList<>();
+		List<double[]> avgEnergies = new ArrayList<>();
+		
+		for (int i=0; i<finalSize; i++) {
+			avgPerturbs.add(0d);
+			avgNonZeros.add(0d);
+			avgEnergies.add(new double[types.size()]);
+		}
+		
+		for (AnnealingProgress progress : progresses) {
+			// normalized functions with X from 0 to 1
+			DiscretizedFunc[] relEnergyTimeFuncs = new DiscretizedFunc[progress.energyTypes.size()];
+			DiscretizedFunc[] relEnergyIterFuncs = new DiscretizedFunc[progress.energyTypes.size()];
+			for (int i=0; i<types.size(); i++) {
+				relEnergyTimeFuncs[i] = new ArbitrarilyDiscretizedFunc();
+				relEnergyIterFuncs[i] = new ArbitrarilyDiscretizedFunc();
+			}
+			DiscretizedFunc relPerturbs = new ArbitrarilyDiscretizedFunc();
+			DiscretizedFunc relNonZeros = new ArbitrarilyDiscretizedFunc();
+			long myMinTime = progress.times.get(0);
+			long myMinIters = progress.iterations.get(0);
+			double myMaxTime = progress.times.get(progress.size()-1);
+			double myMaxIters = progress.iterations.get(progress.size()-1);
+			double myTimeDur = myMaxTime-myMinTime;
+			double myIters = myMaxIters-myMinIters;
+			for (int i=0; i<progress.size(); i++) {
+				double relTime = (progress.times.get(i)-myMinTime)/myTimeDur;
+				Preconditions.checkState((float)relTime >= 0f && (float)relTime <= 1f, "Bad relTime=%s", relTime);
+				double relIters = (progress.iterations.get(i)-myMinIters)/myIters;
+				Preconditions.checkState((float)relIters >= 0f && (float)relIters <= 1f, "Bad relIters=%s", relIters);
+				double[] energies = progress.energies.get(i);
+				for (int j=0; j<energies.length; j++) {
+					relEnergyTimeFuncs[j].set(relTime, energies[j]);
+					relEnergyIterFuncs[j].set(relIters, energies[j]);
+				}
+				relPerturbs.set(relIters, progress.perturbs.get(i));
+				relNonZeros.set(relIters, progress.numNonZeros.get(i));
+			}
+			
+			// now map to our times/iterations to the global time/iteration scale
+			for (int i=0; i<finalSize; i++) {
+				double relX = (double)i/(double)(finalSize-1);
+				double[] energies = avgEnergies.get(i);
+				for (int j=0; j<energies.length; j++) {
+					// average our energy at this location between the time and iteration time series
+					energies[j] += scalarEach*0.5*(relEnergyIterFuncs[j].getInterpolatedY(relX) + relEnergyTimeFuncs[j].getInterpolatedY(relX));
+				}
+				avgPerturbs.set(i, avgPerturbs.get(i) + scalarEach*relPerturbs.getInterpolatedY(relX));
+				avgNonZeros.set(i, avgNonZeros.get(i) + scalarEach*relNonZeros.getInterpolatedY(relX));
+			}
+		}
+		// convert to longs
+		List<Long> perturbs = new ArrayList<>();
+		List<Integer> numNonZeros = new ArrayList<>();
+		for (int i=0; i<finalSize; i++) {
+			perturbs.add((long)Math.round(avgPerturbs.get(i)));
+			numNonZeros.add((int)Math.round(avgNonZeros.get(i)));
+		}
+		AnnealingProgress ret = new AnnealingProgress();
+		ret.energyTypes = types;
+		ret.times = times;
+		ret.iterations = iters;
+		ret.perturbs = perturbs;
+		ret.energies = avgEnergies;
+		ret.numNonZeros = numNonZeros;
+		return ret;
+	}
+	
+	private static List<Long> evenlyDiscr(double min, double max, int size) {
+		EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(min, max, size);
+		List<Long> ret = new ArrayList<>(size);
+		for (int i=0; i<size; i++)
+			ret.add((long)func.getX(i));
+		return ret;
 	}
 
 }
