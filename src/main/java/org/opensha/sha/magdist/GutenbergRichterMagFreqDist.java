@@ -230,8 +230,9 @@ extends IncrementalMagFreqDist {
 	}
 	
 	/**
-	 * Set All but b-value, fitting the latter within 0.005.  The final totCumRate may differ slightly 
-	 * from that specified due to this b-value imprecision.
+	 * Set All but b-value, fitting the latter within 0.005. The search is confined to b-values
+	 * between -3 and 3, values outside this range are set as the bounding value.  The final 
+	 * totCumRate may differ slightly from that specified due to this b-value imprecision.  
 	 * @param magLower      : lowest magnitude that has non zero rate
 	 * @param magUpper      : highest magnitude that has non zero rate
 	 * @param totMoRate     : total moment rate
@@ -243,6 +244,7 @@ extends IncrementalMagFreqDist {
 		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(),
 				magLower, magUpper, totMoRate, 1.0);
 		
+		double bMax = 3.0;
 		double bIncrement = 0.01;
 		double lastB= 1.0;
 		double currRate = gr.getTotalIncrRate();
@@ -251,13 +253,11 @@ extends IncrementalMagFreqDist {
 		
 		if(currRate > totCumRate) { // need lower b-value
 //			System.out.println("looking for lower b-value");
-			for (double b = 1.0-bIncrement; b>-3; b-=bIncrement) {
-//				System.out.println("trying "+b);
+			for (double b = 1.0-bIncrement; b>-bMax; b-=bIncrement) {
 				gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(), magLower, magUpper, totMoRate, b);
 				currRate = gr.getTotalIncrRate();
-//				System.out.println(currRate+"\ttarget: "+totCumRate);
 				double currDiff = Math.abs(totCumRate-currRate);
-
+//				System.out.println(b+"\t"+(currRate-totCumRate)+"\t"+(float)(currRate/totCumRate));
 				if(currRate<=totCumRate) {// we're done
 					if(currDiff <lastDiff)
 						finalB=b;
@@ -268,12 +268,16 @@ extends IncrementalMagFreqDist {
 				lastDiff = currDiff;
 				lastB=b;
 			}
+			if(Double.isNaN(finalB))
+				finalB=-bMax;
 		}
 		else { // need higher b-value
-			for (double b = 1.0+bIncrement; b<3; b+=bIncrement) {
+//			System.out.println("looking for higher b-value");
+			for (double b = 1.0+bIncrement; b<bMax; b+=bIncrement) {
 				gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(), magLower, magUpper, totMoRate, b);
 				currRate = gr.getTotalIncrRate();
 				double currDiff = Math.abs(totCumRate-currRate);
+//				System.out.println(b+"\t"+(currRate-totCumRate)+"\t"+(float)(currRate/totCumRate));
 				if(currRate>=totCumRate) {// we're done
 					if(currDiff <lastDiff)
 						finalB=b;
@@ -284,6 +288,8 @@ extends IncrementalMagFreqDist {
 				lastDiff = currDiff;
 				lastB=b;
 			}
+			if(Double.isNaN(finalB))
+				finalB=bMax;
 		}
 		if(Math.abs(finalB)<bIncrement/2.0)
 			finalB=0;
