@@ -544,6 +544,24 @@ public class XYZGraphPanel extends JPanel {
 	public ValueAxis getYAxis() {
 		return yAxis;
 	}
+	
+	/**
+	 *
+	 * @return the Range for the X-Axis. Note that this will return the first X-Axis in the case
+	 * of multiple subplots
+	 */
+	public Range getX_AxisRange(){
+		return xAxis.getRange();
+	}
+
+	/**
+	 *
+	 * @return the Range for the Y-Axis. Note that this will return the first Y-Axis in the case
+	 * of multiple subplots
+	 */
+	public Range getY_AxisRange(){
+		return yAxis.getRange();
+	}
 
 	/**
 	 * Allows the user to save the chart as PNG.
