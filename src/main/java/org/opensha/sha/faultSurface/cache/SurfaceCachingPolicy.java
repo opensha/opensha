@@ -81,27 +81,36 @@ public final class SurfaceCachingPolicy {
 	 */
 	public static SurfaceDistanceCache build(CacheEnabledSurface surf) {
 		if (force != null) {
-			switch (force) {
-			case SINGLE:
-				return new SingleLocDistanceCache(surf);
-			case MULTI:
-				return new MultiDistanceCache(surf, size, expirationTime, expirationUnit);
-			case HYBRID:
-				return new HybridDistanceCache(surf, size, expirationTime, expirationUnit);
-			case DISABLED:
-				return new DisabledDistanceCache(surf);
-
-			default:
-				throw new IllegalStateException("Unkown forced cache type: "+force);
-			}
+			return build(surf, force);
 		}
 		boolean multi = (size > 1 && !(surf instanceof CompoundSurface));
 		if (multi)
-//			return new MultiDistanceCache(surf, size, expirationTime, expirationUnit);
-			return new HybridDistanceCache(surf, size, expirationTime, expirationUnit);
+			return build(surf, CacheTypes.HYBRID);
 		if (size == 0)
+			return build(surf, CacheTypes.DISABLED);
+		return build(surf, CacheTypes.SINGLE);
+	}
+	
+	/**
+	 * Build a cache for the given {@link CacheEnabledSurface} of the specified type.
+	 * @param surf
+	 * @param type
+	 * @return
+	 */
+	public static SurfaceDistanceCache build(CacheEnabledSurface surf, CacheTypes type) {
+		switch (type) {
+		case SINGLE:
+			return new SingleLocDistanceCache(surf);
+		case MULTI:
+			return new MultiDistanceCache(surf, size, expirationTime, expirationUnit);
+		case HYBRID:
+			return new HybridDistanceCache(surf, size, expirationTime, expirationUnit);
+		case DISABLED:
 			return new DisabledDistanceCache(surf);
-		return new SingleLocDistanceCache(surf);
+
+		default:
+			throw new IllegalStateException("Unkown cache type: "+force);
+		}
 	}
 	
 	/**
