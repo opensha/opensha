@@ -85,7 +85,12 @@ public class GeoDataSetMath extends XYZ_DataSetMath {
 	 * @return
 	 */
 	public static GeoDataSet divide(GeoDataSet dividend, GeoDataSet divisor) {
-		ArbDiscrGeoDataSet quotient = new ArbDiscrGeoDataSet(dividend.isLatitudeX());
+		GeoDataSet quotient;
+		if (dividend instanceof GriddedGeoDataSet && divisor instanceof GriddedGeoDataSet
+				&& ((GriddedGeoDataSet)dividend).getRegion().equals(((GriddedGeoDataSet)divisor).getRegion()))
+			quotient = new GriddedGeoDataSet(((GriddedGeoDataSet)dividend).getRegion(), dividend.isLatitudeX());
+		else
+			quotient = new ArbDiscrGeoDataSet(dividend.isLatitudeX());
 		
 		for (int i=0; i<dividend.size(); i++) {
 			Location loc = dividend.getLocation(i);
