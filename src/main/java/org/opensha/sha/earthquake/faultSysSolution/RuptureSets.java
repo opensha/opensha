@@ -109,8 +109,9 @@ public class RuptureSets {
 		private List<? extends FaultSection> subSects;
 		private FaultModels fm;
 		private RupSetScalingRelationship scale;
-		@Expose
-		private double maxJumpDist = 5d;
+		@Expose private double maxJumpDist = 5d;
+		// if nonzero, apply thinning to growing strategy
+		@Expose	private float adaptiveSectFract = 0f;
 
 		public U3RupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
@@ -153,7 +154,14 @@ public class RuptureSets {
 
 		@Override
 		public RuptureGrowingStrategy getGrowingStrategy() {
-			return new ExhaustiveUnilateralRuptureGrowingStrategy();
+			RuptureGrowingStrategy strat = new ExhaustiveUnilateralRuptureGrowingStrategy();
+			if (adaptiveSectFract > 0f)
+				strat = new SectCountAdaptiveRuptureGrowingStrategy(strat, adaptiveSectFract, true, 2);
+			return strat;
+		}
+
+		public void setAdaptiveSectFract(float adaptiveSectFract) {
+			this.adaptiveSectFract = adaptiveSectFract;
 		}
 
 		@Override
@@ -163,7 +171,10 @@ public class RuptureSets {
 				str = subSects.size()+"sects";
 			else
 				str = fm.encodeChoiceString().toLowerCase();
-			return str+"_reproduce_ucerf3.zip";
+			str += "_reproduce_ucerf3";
+			if (adaptiveSectFract > 0f)
+				str += "_fractGrow"+adaptiveSectFract;
+			return str+".zip";
 		}
 
 		@Override
@@ -262,6 +273,8 @@ public class RuptureSets {
 				elements.add("cmlRake"+(int)cumulativeRakeChange);
 			if (minSectsPerParent > 0)
 				elements.add(minSectsPerParent+"sectsPerParent");
+			if (adaptiveSectFract > 0f)
+				elements.add("fractGrow"+adaptiveSectFract);
 			return Joiner.on("_").join(elements)+".zip";
 		}
 
