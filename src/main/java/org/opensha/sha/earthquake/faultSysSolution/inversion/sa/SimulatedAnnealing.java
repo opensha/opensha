@@ -205,7 +205,7 @@ public interface SimulatedAnnealing {
 		if (compRates != null) {
 			compRates = getSorted(compRates);
 			
-			EvenlyDiscretizedFunc compFunc = new EvenlyDiscretizedFunc(0d, ratesNoMin.length, 1d);
+			EvenlyDiscretizedFunc compFunc = new EvenlyDiscretizedFunc(0d, compRates.length, 1d);
 			compFunc.setName("Comparison Solution");
 			for (int i=0; i<compRates.length; i++)
 				compFunc.set(i, compRates[i]);
