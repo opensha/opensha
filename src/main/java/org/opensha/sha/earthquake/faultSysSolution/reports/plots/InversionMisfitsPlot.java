@@ -165,8 +165,17 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					table.initNewLine().addColumn("![Diff Plot]("+relPathToResources+"/"+histDiffPlot.getName()+")");
 					List<XY_DataSet> funcs = new ArrayList<>();
 					List<PlotCurveCharacterstics> chars = new ArrayList<>();
-					Range scatterRange = new Range(Math.min(scatter.getMinX(), scatter.getMinY()),
-							Math.max(scatter.getMaxX(), scatter.getMaxY()));
+					double min = Math.min(scatter.getMinX(), scatter.getMinY());
+					double max = Math.max(scatter.getMaxX(), scatter.getMaxY());
+					if (min == max) {
+						if (min == 0d)
+							max = 0d;
+						else if (min > 0)
+							max = min*2;
+						else
+							max = min*0.5d;
+					}
+					Range scatterRange = new Range(min, max);
 					DefaultXY_DataSet oneToOne = new DefaultXY_DataSet();
 					oneToOne.set(scatterRange.getLowerBound(), scatterRange.getLowerBound());
 					oneToOne.set(scatterRange.getUpperBound(), scatterRange.getUpperBound());
@@ -178,6 +187,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 							"Primary Misfit", "Comparison Misfit");
 
 					GraphPanel gp = PlotUtils.initHeadless();
+					
+					System.out.println("SCATTER RANGE: "+scatterRange.getLowerBound()+", "+scatterRange.getUpperBound());
 					
 					gp.drawGraphPanel(scatterSpec, false, false, scatterRange, scatterRange);
 					
