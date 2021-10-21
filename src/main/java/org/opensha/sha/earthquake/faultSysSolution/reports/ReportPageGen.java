@@ -99,6 +99,8 @@ public class ReportPageGen {
 	
 	private List<PlausibilityFilter> altFilters = null;
 	
+	private boolean replot = false;
+	
 	public static PlotLevel PLOT_LEVEL_DEFAULT = PlotLevel.DEFAULT;
 	
 	public enum PlotLevel {
@@ -139,9 +141,9 @@ public class ReportPageGen {
 		plots.add(new SolMFDPlot());
 		plots.add(new InversionConfigurationPlot());
 		plots.add(new InversionProgressPlot());
+		plots.add(new RateDistributionPlot());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new InversionMisfitsPlot());
-		plots.add(new RateDistributionPlot());
 		plots.add(new ParticipationRatePlot());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new SectBValuePlot());
@@ -294,6 +296,8 @@ public class ReportPageGen {
 		
 		cacheDir = FaultSysTools.getCacheDir(cmd);
 		
+		replot = cmd.hasOption("replot");
+		
 		init(meta, outputDir, plots);
 	}
 	
@@ -311,6 +315,10 @@ public class ReportPageGen {
 
 	public void setPlots(List<? extends AbstractRupSetPlot> plots) {
 		this.plots = plots;
+	}
+	
+	public void setReplot(boolean replot) {
+		this.replot = replot;
 	}
 
 	public File getOutputDir() {
@@ -686,12 +694,27 @@ public class ReportPageGen {
 		
 		String topLink = "_[(top)](#table-of-contents)_";
 		
-		boolean firstTime = !new File(outputDir, META_FILE_NAME).exists();
+		File plotMetaFile = new File(outputDir, PLOT_META_FILE_NAME);
+		boolean firstTime = !plotMetaFile.exists();
+		
+		PlotsMetadata prevMeta = null;
+		if (!firstTime && !replot)
+			prevMeta = loadPlotMetadata(plotMetaFile);
 		
 		List<PlotMetadata> plotMetas = new ArrayList<>();
 		PlotsMetadata plotMeta = new PlotsMetadata(headerLines, plotMetas);
 		
 		for (AbstractRupSetPlot plot : plots) {
+			if (prevMeta != null) { 
+				// see if we already have it and can skip regeneration
+				PlotMetadata prev = prevMeta.getPlot(plot.getClass());
+				if (prev != null) {
+					System.out.println("Already have plot '"+plot.getName()+"', won't regenerate. "
+							+ "Force regeneration with --replot option.");
+					plotMetas.add(prev);
+					continue;
+				}
+			}
 			String plotName = ClassUtils.getClassNameWithoutPackage(plot.getClass());
 			
 			if (!solution && plot instanceof AbstractSolutionPlot) {
@@ -899,6 +922,17 @@ public class ReportPageGen {
 			this.headerLines = headerLines;
 			this.plots = plots;
 		}
+		
+		public boolean hasPlot(Class<? extends AbstractRupSetPlot> clazz) {
+			return getPlot(clazz) != null;
+		}
+		
+		public PlotMetadata getPlot(Class<? extends AbstractRupSetPlot> clazz) {
+			for (PlotMetadata plot : plots)
+				if (plot.plotClassName.equals(clazz.getName()))
+					return plot;
+			return null;
+		}
 	}
 	
 	static class PlotMetadata {
@@ -1074,6 +1108,11 @@ public class ReportPageGen {
 						+FaultSysTools.enumOptions(PlotLevel.class)+". Default: "+PLOT_LEVEL_DEFAULT.name());
 		plotLevelOption.setRequired(false);
 		ops.addOption(plotLevelOption);
+		
+		Option replotOption = new Option("rp", "replot", false,
+				"If supplied, existing plots will be re-generated when re-running a report");
+		replotOption.setRequired(false);
+		ops.addOption(replotOption);
 		
 		return ops;
 	}
