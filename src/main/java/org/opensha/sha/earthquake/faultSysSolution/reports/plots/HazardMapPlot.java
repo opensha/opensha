@@ -56,6 +56,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.CustomCacheWrappedSurface;
@@ -162,6 +163,31 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		CPT logRatioCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
 		logRatioCPT.setNanColor(Color.GRAY);
 		
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		Color outlineColor = new Color(0, 0, 0, 180);
+		Color faultColor = new Color(0, 0, 0, 100);
+		
+		DefaultXY_DataSet outline = new DefaultXY_DataSet();
+		for (Location loc : gridReg.getBorder())
+			outline.set(loc.getLongitude(), loc.getLatitude());
+		outline.set(outline.get(0));
+		
+		funcs.add(outline);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, outlineColor));
+		
+		PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
+		
+		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
+			DefaultXY_DataSet trace = new DefaultXY_DataSet();
+			for (Location loc : sect.getFaultTrace())
+				trace.set(loc.getLongitude(), loc.getLatitude());
+			
+			funcs.add(trace);
+			chars.add(traceChar);
+		}
+		
 		for (int p=0; p<periods.length; p++) {
 			String perLabel, perUnits;
 			if (periods[p] == -1d) {
@@ -195,7 +221,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 				logXYZ.log10();
 				
 				String zLabel = "Log10 "+perLabel+" ("+perUnits+"), "+rp.label;
-				File map = plotMap(resourcesDir, prefix, logXYZ, logCPT, " ", zLabel);
+				File map = plotMap(resourcesDir, prefix, logXYZ, logCPT, " ", zLabel, funcs, chars);
 				
 				if (compCurves == null) {
 					lines.add("![Hazard Map]("+relPathToResources+"/"+map.getName()+")");
@@ -204,7 +230,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 					GriddedGeoDataSet compLogXYZ = compXYZ.copy();
 					compLogXYZ.log10();
 					
-					File compMap = plotMap(resourcesDir, prefix+"_comp", compLogXYZ, logCPT, " ", zLabel);
+					File compMap = plotMap(resourcesDir, prefix+"_comp", compLogXYZ, logCPT, " ", zLabel, funcs, chars);
 					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					table.addLine(MarkdownUtils.boldCentered("Primary"), MarkdownUtils.boldCentered("Comparison"));
@@ -228,7 +254,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 						}
 					}
 					
-					File ratioMap = plotMap(resourcesDir, prefix+"_ratio", ratioXYZ, logRatioCPT, " ", zLabel+" Ratio");
+					File ratioMap = plotMap(resourcesDir, prefix+"_ratio", ratioXYZ, logRatioCPT, " ", zLabel+" Ratio", funcs, chars);
 					table.initNewLine();
 					table.addColumn("![Ratio Map]("+relPathToResources+"/"+ratioMap.getName()+")");
 					
@@ -509,23 +535,15 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 	}
 	
 	private static File plotMap(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
-			String title, String zLabel) throws IOException {
+			String title, String zLabel, List<XY_DataSet> extraFuncs, List<PlotCurveCharacterstics> extraChars)
+					throws IOException {
 		XYZGraphPanel gp = new XYZGraphPanel(PlotUtils.getDefaultFigurePrefs());
 		
 		XYZPlotSpec spec = new XYZPlotSpec(xyz, cpt, title, "Longitude", "Latitude", zLabel);
 		spec.setCPTPosition(RectangleEdge.BOTTOM);
 		
-		DefaultXY_DataSet outline = new DefaultXY_DataSet();
-		for (Location loc : xyz.getRegion().getBorder())
-			outline.set(loc.getLongitude(), loc.getLatitude());
-		outline.set(outline.get(0));
-		
-		List<XY_DataSet> funcs = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		funcs.add(outline);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, new Color(0, 0, 0, 127)));
-		spec.setXYElems(funcs);
-		spec.setXYChars(chars);
+		spec.setXYElems(extraFuncs);
+		spec.setXYChars(extraChars);
 		
 		GriddedRegion gridReg = xyz.getRegion();
 		Range lonRange = new Range(
@@ -617,6 +635,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("Primary", sol), new RupSetMetadata("Comparison", compSol));
 		
 		ReportPageGen gen = new ReportPageGen(meta, outputDir, List.of(new HazardMapPlot()));
+		gen.setReplot(true);
 		
 		gen.generatePage();
 	}
