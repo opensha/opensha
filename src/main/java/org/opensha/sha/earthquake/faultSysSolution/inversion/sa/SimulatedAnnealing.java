@@ -334,12 +334,12 @@ public interface SimulatedAnnealing {
 			compNonZero = new ArbitrarilyDiscretizedFunc();
 			
 			for (int i=0; i<compTrack.size(); i++) {
-				double[] energy = track.getEnergies(i);
-				long time = track.getTime(i);
+				double[] energy = compTrack.getEnergies(i);
+				long time = compTrack.getTime(i);
 				double mins = time / 1000d / 60d;
-				long perturb = track.getNumPerturbations(i);
-				long iter = track.getIterations(i);
-				int nonZeros = track.getNumNonZero(i);
+				long perturb = compTrack.getNumPerturbations(i);
+				long iter = compTrack.getIterations(i);
+				int nonZeros = compTrack.getNumNonZero(i);
 				compTotalTime.set(mins, energy[0]);
 				compTotalIters.set((double)iter, energy[0]);
 				compPerturb.set((double)iter, (double)perturb);
