@@ -169,7 +169,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					double max = Math.max(scatter.getMaxX(), scatter.getMaxY());
 					if (min == max) {
 						if (min == 0d)
-							max = 0d;
+							max = 1d;
 						else if (min > 0)
 							max = min*2;
 						else
@@ -187,8 +187,6 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 							"Primary Misfit", "Comparison Misfit");
 
 					GraphPanel gp = PlotUtils.initHeadless();
-					
-					System.out.println("SCATTER RANGE: "+scatterRange.getLowerBound()+", "+scatterRange.getUpperBound());
 					
 					gp.drawGraphPanel(scatterSpec, false, false, scatterRange, scatterRange);
 					
