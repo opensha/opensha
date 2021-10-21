@@ -27,7 +27,6 @@ public class AverageSolutionCreator {
 		}
 		
 		File outputFile = new File(args[0]);
-		Preconditions.checkState(!outputFile.exists(), "Output file already exists, delete first: %s", outputFile.getAbsolutePath());
 		
 		FaultSystemSolution[] inputs = new FaultSystemSolution[args.length-1];
 		
@@ -65,10 +64,12 @@ public class AverageSolutionCreator {
 		if (inputs[0].hasModule(InversionMisfits.class)) {
 			List<InversionMisfits> misfits = new ArrayList<>();
 			
+			System.out.println("Trying to average misfits...");
 			for (FaultSystemSolution sol : inputs) {
 				InversionMisfits misfit = sol.getModule(InversionMisfits.class);
 				if (misfit == null || misfits.size() > 0 && !misfit.getConstraintRanges().equals(misfits.get(0).getConstraintRanges())) {
 					misfits = null;
+					System.out.println("Can't average misfits!");
 					break;
 				}
 				misfits.add(misfit);
@@ -80,11 +81,13 @@ public class AverageSolutionCreator {
 		
 		if (inputs[0].hasModule(AnnealingProgress.class)) {
 			List<AnnealingProgress> progresses = new ArrayList<>();
-			
+
+			System.out.println("Trying to average misfits...");
 			for (FaultSystemSolution sol : inputs) {
 				AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
 				if (progress == null || progresses.size() > 0 && !progress.getEnergyTypes().equals(progresses.get(0).getEnergyTypes())) {
 					progresses = null;
+					System.out.println("Can't average progress!");
 					break;
 				}
 				progresses.add(progress);
