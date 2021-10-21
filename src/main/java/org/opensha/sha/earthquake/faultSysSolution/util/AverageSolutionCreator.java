@@ -11,6 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurat
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.IndividualSolutionRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
@@ -149,6 +150,9 @@ public class AverageSolutionCreator {
 		}
 		
 		avgSol.addModule(new IndividualSolutionRates(avgSol, ratesList));
+		
+		String info = "Average of "+inputs.length+" solutions, generated with 'fst_solution_averager.sh'";
+		avgSol.addModule(new InfoModule(info));
 		
 		avgSol.write(outputFile);
 	}
