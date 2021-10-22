@@ -99,6 +99,10 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 			throw new IllegalStateException("Unexpected weighting type: "+weightingType);
 		}
 	}
+	
+	public WeightingType getWeightingType() {
+		return weightingType;
+	}
 
 	@Override
 	public int getNumRows() {

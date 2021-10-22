@@ -51,9 +51,9 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 /**
@@ -78,16 +78,16 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	// inputs
 	private FaultSystemRupSet rupSet;
 	private UCERF3InversionConfiguration config;
-	private List<PaleoRateConstraint> paleoRateConstraints;
-	private List<AveSlipConstraint> aveSlipConstraints;
+	private List<U3PaleoRateConstraint> paleoRateConstraints;
+	private List<U3AveSlipConstraint> aveSlipConstraints;
 	private double[] improbabilityConstraint;
 	private PaleoProbabilityModel paleoProbabilityModel;
 	
 	public UCERF3InversionInputGenerator(
 			FaultSystemRupSet rupSet,
 			UCERF3InversionConfiguration config,
-			List<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints,
+			List<U3PaleoRateConstraint> paleoRateConstraints,
+			List<U3AveSlipConstraint> aveSlipConstraints,
 			double[] improbabilityConstraint, // may become an object in the future
 			PaleoProbabilityModel paleoProbabilityModel) {
 		super(rupSet, buildConstraints(rupSet, config, paleoRateConstraints, aveSlipConstraints, paleoProbabilityModel),
@@ -117,13 +117,11 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	public static List<InversionConstraint> buildConstraints(
 			FaultSystemRupSet rupSet,
 			UCERF3InversionConfiguration config,
-			List<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints,
+			List<U3PaleoRateConstraint> paleoRateConstraints,
+			List<U3AveSlipConstraint> aveSlipConstraints,
 			PaleoProbabilityModel paleoProbabilityModel) {
 		// builds constraint instances
 		List<InversionConstraint> constraints = new ArrayList<>();
-		
-		double[] sectSlipRateReduced = rupSet.getSlipRateForAllSections();
 		
 		if (config.getSlipRateConstraintWt_normalized() > 0d)
 			// add slip rate constraint
@@ -140,7 +138,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		if (config.getPaleoSlipConstraintWt() > 0d)
 			constraints.add(new PaleoSlipInversionConstraint(rupSet, config.getPaleoSlipConstraintWt(),
-					aveSlipConstraints, sectSlipRateReduced));
+					aveSlipConstraints));
 		
 		if (config.getRupRateConstraintWt() > 0d) {
 			// This is the RupRateConstraintWt for ruptures not in UCERF2
@@ -669,7 +667,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			numNonZeroElements = 0;
 			if(D) System.out.println("\nAdding event rates to A matrix ...");
 			for (int i=numSlipRateConstraints; i<numSlipRateConstraints+paleoRateConstraints.size(); i++) {
-				PaleoRateConstraint constraint = paleoRateConstraints.get(i-numSlipRateConstraints);
+				U3PaleoRateConstraint constraint = paleoRateConstraints.get(i-numSlipRateConstraints);
 				d[i]=paleoRateConstraintWt * constraint.getMeanRate() / constraint.getStdDevOfMeanRate();
 				List<Integer> rupsForSect = rupSet.getRupturesForSection(constraint.getSectionIndex());
 				for (int rupIndex=0; rupIndex<rupsForSect.size(); rupIndex++) {
@@ -699,7 +697,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			numNonZeroElements = 0;
 			if(D) System.out.println("\nAdding paleo mean slip constraints to A matrix ...");
 			for (int i=0; i<aveSlipConstraints.size(); i++) {
-				AveSlipConstraint constraint = aveSlipConstraints.get(i);
+				U3AveSlipConstraint constraint = aveSlipConstraints.get(i);
 				int subsectionIndex = constraint.getSubSectionIndex();
 				double meanRate = sectSlipRateReduced[subsectionIndex] / constraint.getWeightedMean();
 				double lowRateBound = sectSlipRateReduced[subsectionIndex] / constraint.getUpperUncertaintyBound();
@@ -711,7 +709,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					int rup = rupsForSect.get(rupIndex);
 					int sectIndexInRup = rupSet.getSectionsIndicesForRup(rup).indexOf(subsectionIndex);
 					double slipOnSect = rupSet.getSlipOnSectionsForRup(rup)[sectIndexInRup]; 
-					double probVisible = AveSlipConstraint.getProbabilityOfObservedSlip(slipOnSect);
+					double probVisible = U3AveSlipConstraint.getProbabilityOfObservedSlip(slipOnSect);
 					double setVal = (paleoSlipConstraintWt * probVisible / constraintError);
 					if (QUICK_GETS_SETS)
 						A.setQuick(rowIndex, rup, setVal);
@@ -1470,7 +1468,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		return config;
 	}
 
-	public List<PaleoRateConstraint> getPaleoRateConstraints() {
+	public List<U3PaleoRateConstraint> getPaleoRateConstraints() {
 		return paleoRateConstraints;
 	}
 
@@ -1550,7 +1548,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 //		config.setSlipRateConstraintWt_unnormalized(0d);
 		
 		// get the paleo rate constraints
-		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+		List<U3PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
 					rupSet.getFaultModel(), rupSet);
 
 		// get the improbability constraints
@@ -1559,7 +1557,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// paleo probability model
 		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 
-		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+		List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 
 		System.out.println("BUILDING ORIGINAL");
 		UCERF3InversionInputGenerator origGen = getTestConfig(rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
@@ -1741,7 +1739,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 //		config.setSlipRateConstraintWt_unnormalized(0d);
 		
 		// get the paleo rate constraints
-		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+		List<U3PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
 					fm, rupSet);
 
 		// get the improbability constraints
@@ -1750,7 +1748,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// paleo probability model
 		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 
-		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+		List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 
 		return new UCERF3InversionInputGenerator(
 				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);

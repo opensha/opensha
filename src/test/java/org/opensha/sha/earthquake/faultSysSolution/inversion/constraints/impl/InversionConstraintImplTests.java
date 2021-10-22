@@ -18,6 +18,9 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.SegmentationModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -39,8 +42,8 @@ import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.MFD_WeightedInversionConstraint;
 import scratch.UCERF3.utils.SectionMFD_constraint;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 
@@ -212,13 +215,11 @@ public class InversionConstraintImplTests {
 	@Test
 	public void testPaleoRate() throws IOException {
 		UCERF3_PaleoProbabilityModel paleoProbModel = UCERF3_PaleoProbabilityModel.load();
-		List<PaleoRateConstraint> paleoRateConstraints = new ArrayList<>();
-		paleoRateConstraints.add(new PaleoRateConstraint(
-				"", null, r.nextInt(numSections), 1d,
-				0.5d, 1.5d));
-		paleoRateConstraints.add(new PaleoRateConstraint(
-				"", null, r.nextInt(numSections), 2d,
-				1d, 3d));
+		List<SectMappedUncertainDataConstraint> paleoRateConstraints = new ArrayList<>();
+		paleoRateConstraints.add(new SectMappedUncertainDataConstraint("", r.nextInt(numSections), "", null,
+				1d, new Uncertainty(UncertaintyType.TWO_SIGMA, 0.5d, 1.5d)));
+		paleoRateConstraints.add(new SectMappedUncertainDataConstraint("", r.nextInt(numSections), "", null,
+				2d, new Uncertainty(UncertaintyType.TWO_SIGMA, 1d, 3d)));
 		PaleoRateInversionConstraint constr = new PaleoRateInversionConstraint(
 				rupSet, 1d, paleoRateConstraints, paleoProbModel);
 		
@@ -227,13 +228,13 @@ public class InversionConstraintImplTests {
 
 	@Test
 	public void testPaleoSlip() {
-		List<AveSlipConstraint> constraints = new ArrayList<>();
-		constraints.add(new AveSlipConstraint(r.nextInt(numSections), "",
+		List<U3AveSlipConstraint> constraints = new ArrayList<>();
+		constraints.add(new U3AveSlipConstraint(r.nextInt(numSections), "",
 				1d, 1.5d, 0.5d, null));
-		constraints.add(new AveSlipConstraint(r.nextInt(numSections), "",
+		constraints.add(new U3AveSlipConstraint(r.nextInt(numSections), "",
 				3d, 4d, 2d, null));
 		PaleoSlipInversionConstraint constr = new PaleoSlipInversionConstraint(
-				rupSet, 1d, constraints, rupSet.getSlipRateForAllSections());
+				rupSet, 1d, constraints);
 		
 		testConstraint(constr);
 	}

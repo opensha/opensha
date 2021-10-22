@@ -19,6 +19,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 
@@ -32,7 +33,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
-public class AveSlipConstraint implements Serializable {
+public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint implements Serializable {
 	
 	public static final String DIR_NAME = "aveSlip";
 	public static final String TABLE_5_FILE_NAME = "Table R5v4_withMappings.xls";
@@ -48,31 +49,26 @@ public class AveSlipConstraint implements Serializable {
 		probObsSlipModel.set(2d, 0.90d);
 	}
 	
-	private int subSectionIndex;
-	private String subSectionName;
-	private double weightedMean;
-	private double upperUncertaintyBound;
-	private double lowerUncertaintyBound;
-	private Location loc;
+//	private int subSectionIndex;
+//	private String subSectionName;
+//	private double weightedMean;
+//	private double upperUncertaintyBound;
+//	private double lowerUncertaintyBound;
+//	private Location loc;
 	
-	public AveSlipConstraint(int subSectionIndex, String subSectionName, double weightedMean,
+	public U3AveSlipConstraint(int subSectionIndex, String subSectionName, double weightedMean,
 			double upperUncertaintyBound, double lowerUncertaintyBound,
 			Location loc) {
-		super();
-		this.subSectionIndex = subSectionIndex;
-		this.subSectionName = subSectionName;
-		this.weightedMean = weightedMean;
-		this.upperUncertaintyBound = upperUncertaintyBound;
-		this.lowerUncertaintyBound = lowerUncertaintyBound;
-		this.loc = loc;
+		super(subSectionName, subSectionIndex, subSectionName, loc, weightedMean,
+				new Uncertainty(UncertaintyType.HALF_SIGMA, lowerUncertaintyBound, upperUncertaintyBound));
 	}
 
 	public int getSubSectionIndex() {
-		return subSectionIndex;
+		return sectionIndex;
 	}
 	
 	public String getSubSectionName() {
-		return subSectionName;
+		return sectionName;
 	}
 
 	/**
@@ -81,7 +77,7 @@ public class AveSlipConstraint implements Serializable {
 	 * @return
 	 */
 	public double getWeightedMean() {
-		return weightedMean;
+		return bestEstimate;
 	}
 
 	/**
@@ -91,7 +87,7 @@ public class AveSlipConstraint implements Serializable {
 	 * @return
 	 */
 	public double getUpperUncertaintyBound() {
-		return upperUncertaintyBound;
+		return uncertainties[0].upperBound;
 	}
 
 	/**
@@ -101,11 +97,11 @@ public class AveSlipConstraint implements Serializable {
 	 * @return
 	 */
 	public double getLowerUncertaintyBound() {
-		return lowerUncertaintyBound;
+		return uncertainties[0].lowerBound;
 	}
 	
 	public Location getSiteLocation() {
-		return loc;
+		return dataLocation;
 	}
 	
 	public static double getProbabilityOfObservedSlip(double meters) {
@@ -116,26 +112,26 @@ public class AveSlipConstraint implements Serializable {
 	
 	@Override
 	public String toString() {
-		return "AveSlipConstraint [subSectionIndex=" + subSectionIndex
-				+ ", weightedMean=" + weightedMean + ", upperUncertaintyBound="
-				+ upperUncertaintyBound + ", lowerUncertaintyBound="
-				+ lowerUncertaintyBound + "]";
+		return "AveSlipConstraint [subSectionIndex=" + sectionIndex
+				+ ", weightedMean=" + bestEstimate + ", upperUncertaintyBound="
+				+ getUpperUncertaintyBound() + ", lowerUncertaintyBound="
+				+ getLowerUncertaintyBound() + "]";
 	}
 
-	public static List<AveSlipConstraint> load(List<? extends FaultSection> subSectData) throws IOException {
-		List<AveSlipConstraint> aveSlipData =
+	public static List<U3AveSlipConstraint> load(List<? extends FaultSection> subSectData) throws IOException {
+		List<U3AveSlipConstraint> aveSlipData =
 			load(UCERF3_DataUtils.locateResourceAsStream(DIR_NAME, TABLE_5_FILE_NAME), subSectData);
 		aveSlipData.addAll(
 				load(UCERF3_DataUtils.locateResourceAsStream(DIR_NAME, TABLE_6_FILE_NAME), subSectData));
 		return aveSlipData;
 	}
 	
-	public static List<AveSlipConstraint> load(
+	public static List<U3AveSlipConstraint> load(
 			InputStream is, List<? extends FaultSection> subSectData) throws IOException {
 		return load(is, subSectData, -1, null);
 	}
 	
-	private static List<AveSlipConstraint> load(
+	private static List<U3AveSlipConstraint> load(
 			InputStream is, List<? extends FaultSection> subSectData,
 			int mappingCol, File mappingFile) throws IOException {
 		Map<Integer, List<FaultSection>> parentSectsMap = Maps.newHashMap();
@@ -153,7 +149,7 @@ public class AveSlipConstraint implements Serializable {
 		HSSFWorkbook wb = new HSSFWorkbook(fs);
 		HSSFSheet sheet = wb.getSheetAt(0);
 		
-		List<AveSlipConstraint> constraints = Lists.newArrayList();
+		List<U3AveSlipConstraint> constraints = Lists.newArrayList();
 		
 		int lastRowIndex = sheet.getLastRowNum();
 		
@@ -214,7 +210,7 @@ public class AveSlipConstraint implements Serializable {
 			double uncertaintyPlus = row.getCell(23).getNumericCellValue();
 			double uncertaintyMinus = row.getCell(24).getNumericCellValue();
 			
-			constraints.add(new AveSlipConstraint(matchSect.getSectionId(), matchSect.getSectionName(), mean,
+			constraints.add(new U3AveSlipConstraint(matchSect.getSectionId(), matchSect.getSectionName(), mean,
 					mean+uncertaintyPlus, mean-uncertaintyMinus, loc));
 			
 			if (mappingCol > 0) {
@@ -244,26 +240,26 @@ public class AveSlipConstraint implements Serializable {
 		return parentIDs;
 	}
 	
-	public static void main(String[] args) throws IOException {
-		int mappingCol = 25;
-		File dir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR.getParentFile(), DIR_NAME);
-		File tableR5File = new File(dir, TABLE_5_FILE_NAME);
-		File tableR6File = new File(dir, TABLE_6_FILE_NAME);
-		for (FaultModels fm : FaultModels.values()) {
-			DeformationModels dm = DeformationModels.forFaultModel(fm).get(0);
-			List<? extends FaultSection> subSects = new DeformationModelFetcher(
-					fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1d).getSubSectionList();
-			load(new FileInputStream(tableR5File), subSects, mappingCol, tableR5File);
-			load(new FileInputStream(tableR6File), subSects, mappingCol, tableR6File);
-			mappingCol++;
-		}
-//		FaultModels fm = FaultModels.FM3_1;
-//		DeformationModels dm = DeformationModels.forFaultModel(fm).get(0);
-//		List<FaultSectionPrefData> subSects = new DeformationModelFetcher(
-//						fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1d).getSubSectionList();
-//		for (AveSlipConstraint constr : load(subSects)) {
-//			System.out.println(constr);
+//	public static void main(String[] args) throws IOException {
+//		int mappingCol = 25;
+//		File dir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR.getParentFile(), DIR_NAME);
+//		File tableR5File = new File(dir, TABLE_5_FILE_NAME);
+//		File tableR6File = new File(dir, TABLE_6_FILE_NAME);
+//		for (FaultModels fm : FaultModels.values()) {
+//			DeformationModels dm = DeformationModels.forFaultModel(fm).get(0);
+//			List<? extends FaultSection> subSects = new DeformationModelFetcher(
+//					fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1d).getSubSectionList();
+//			load(new FileInputStream(tableR5File), subSects, mappingCol, tableR5File);
+//			load(new FileInputStream(tableR6File), subSects, mappingCol, tableR6File);
+//			mappingCol++;
 //		}
-	}
+////		FaultModels fm = FaultModels.FM3_1;
+////		DeformationModels dm = DeformationModels.forFaultModel(fm).get(0);
+////		List<FaultSectionPrefData> subSects = new DeformationModelFetcher(
+////						fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1d).getSubSectionList();
+////		for (AveSlipConstraint constr : load(subSects)) {
+////			System.out.println(constr);
+////		}
+//	}
 
 }

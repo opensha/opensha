@@ -152,11 +152,11 @@ import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 import scratch.UCERF3.utils.UCERF2_Section_MFDs.UCERF2_Section_MFDsCalc;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter.DataForPaleoFaultPlots;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoSiteCorrelationData;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
@@ -4005,9 +4005,9 @@ public abstract class CompoundFSSPlots implements Serializable {
 		// on demand
 		private Map<FaultModels, Map<String, List<Integer>>> namedFaultsMaps = Maps
 				.newHashMap();
-		private Map<FaultModels, List<PaleoRateConstraint>> paleoConstraintMaps = Maps
+		private Map<FaultModels, List<U3PaleoRateConstraint>> paleoConstraintMaps = Maps
 				.newHashMap();
-		private Map<FaultModels, List<AveSlipConstraint>> slipConstraintMaps = Maps
+		private Map<FaultModels, List<U3AveSlipConstraint>> slipConstraintMaps = Maps
 				.newHashMap();
 		private Map<FaultModels, Map<Integer, List<FaultSection>>> allParentsMaps = Maps
 				.newHashMap();
@@ -4043,7 +4043,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 			try {
 				debug(solIndex, "Preparing...");
-				List<PaleoRateConstraint> paleoRateConstraints = paleoConstraintMaps
+				List<U3PaleoRateConstraint> paleoRateConstraints = paleoConstraintMaps
 						.get(fm);
 				if (paleoRateConstraints == null) {
 					// this means that it's the first invokation for this fault model. get constraints
@@ -4058,7 +4058,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 							paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
 									fm, rupSet);
 							slipConstraintMaps.put(fm,
-									AveSlipConstraint.load(rupSet.getFaultSectionDataList()));
+									U3AveSlipConstraint.load(rupSet.getFaultSectionDataList()));
 							allParentsMaps.put(fm, PaleoFitPlotter.getAllParentsMap(
 									rupSet.getFaultSectionDataList()));
 							namedFaultsMaps.put(fm, fm.getNamedFaultsMapAlt());
@@ -4071,9 +4071,9 @@ public abstract class CompoundFSSPlots implements Serializable {
 				// keeps track of slip rates for each ave slip constraint
 				List<Double> slipsForConstraints = Lists.newArrayList();
 				paleoRateConstraints = Lists.newArrayList(paleoRateConstraints);
-				List<AveSlipConstraint> aveSlipConstraints = slipConstraintMaps
+				List<U3AveSlipConstraint> aveSlipConstraints = slipConstraintMaps
 						.get(fm);
-				for (AveSlipConstraint aveSlip : aveSlipConstraints) {
+				for (U3AveSlipConstraint aveSlip : aveSlipConstraints) {
 					double slip = rupSet.getSlipRateForSection(aveSlip.getSubSectionIndex());
 					paleoRateConstraints.add(new PaleoFitPlotter.AveSlipFakePaleoConstraint(
 									aveSlip, aveSlip.getSubSectionIndex(), slip));
@@ -4082,7 +4082,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 				Map<String, List<Integer>> namedFaultsMap = namedFaultsMaps.get(fm);
 
-				Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap = PaleoFitPlotter
+				Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap = PaleoFitPlotter
 						.getNamedFaultConstraintsMap(paleoRateConstraints,
 								rupSet.getFaultSectionDataList(), namedFaultsMap);
 
@@ -4141,11 +4141,11 @@ public abstract class CompoundFSSPlots implements Serializable {
 			// build PlotSpec instances from data. Keep each FM separate
 			for (FaultModels fm : datasMap.keySet()) {
 				// build compound ave slips
-				List<AveSlipConstraint> aveSlips = slipConstraintMaps.get(fm);
+				List<U3AveSlipConstraint> aveSlips = slipConstraintMaps.get(fm);
 
 				List<List<Double>> slipVals = slipRatesMap.get(fm);
 
-				List<PaleoRateConstraint> paleoRateConstraints = paleoConstraintMaps
+				List<U3PaleoRateConstraint> paleoRateConstraints = paleoConstraintMaps
 						.get(fm);
 
 				double[] weights = Doubles.toArray(weightsMap.get(fm));
@@ -4157,7 +4157,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 							slipArray.length == weights.length,
 							slipArray.length + " != " + weights.length);
 
-					AveSlipConstraint constr = aveSlips.get(i);
+					U3AveSlipConstraint constr = aveSlips.get(i);
 
 					paleoRateConstraints
 							.add(new PaleoFitPlotter.AveSlipFakePaleoConstraint(
@@ -4167,7 +4167,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 				Map<String, List<Integer>> namedFaultsMap = namedFaultsMaps
 						.get(fm);
-				Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap = PaleoFitPlotter
+				Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap = PaleoFitPlotter
 						.getNamedFaultConstraintsMap(paleoRateConstraints,
 								fsdsMap.get(fm), namedFaultsMap);
 
@@ -4210,7 +4210,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 					List<List<Double>> slipRatesList = slipRatesMap.get(fm);
 					if (slipRatesList == null) {
-						List<AveSlipConstraint> slipConstraints = slipConstraintMaps
+						List<U3AveSlipConstraint> slipConstraints = slipConstraintMaps
 								.get(fm);
 						slipRatesList = Lists.newArrayList();
 						for (int i = 0; i < slipConstraints.size(); i++)
@@ -5626,9 +5626,9 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private transient BranchWeightProvider weightProvider;
 		private transient PaleoProbabilityModel paleoProbModel;
 
-		private ConcurrentMap<FaultModels, List<PaleoRateConstraint>> paleoConstraintsMap = Maps
+		private ConcurrentMap<FaultModels, List<U3PaleoRateConstraint>> paleoConstraintsMap = Maps
 				.newConcurrentMap();
-		private ConcurrentMap<FaultModels, List<AveSlipConstraint>> aveSlipConstraintsMap = Maps
+		private ConcurrentMap<FaultModels, List<U3AveSlipConstraint>> aveSlipConstraintsMap = Maps
 				.newConcurrentMap();
 		private transient ConcurrentMap<FaultModels, ConcurrentMap<Integer, List<Integer>>> rupsForSectsMap = Maps
 				.newConcurrentMap();
@@ -5671,16 +5671,16 @@ public abstract class CompoundFSSPlots implements Serializable {
 			FaultModels fm = rupSet.getFaultModel();
 
 			debug(solIndex, "cache fetching");
-			List<AveSlipConstraint> aveSlipConstraints = aveSlipConstraintsMap
+			List<U3AveSlipConstraint> aveSlipConstraints = aveSlipConstraintsMap
 					.get(fm);
 			if (aveSlipConstraints == null) {
 				// load in constraints
 				synchronized (this) {
 					aveSlipConstraints = aveSlipConstraintsMap.get(fm);
-					List<PaleoRateConstraint> paleoConstraints = null;
+					List<U3PaleoRateConstraint> paleoConstraints = null;
 					if (aveSlipConstraints == null) {
 						try {
-							aveSlipConstraints = AveSlipConstraint.load(rupSet
+							aveSlipConstraints = U3AveSlipConstraint.load(rupSet
 									.getFaultSectionDataList());
 							paleoConstraints = UCERF3_PaleoRateConstraintFetcher
 									.getConstraints(rupSet.getFaultSectionDataList());
@@ -5690,11 +5690,11 @@ public abstract class CompoundFSSPlots implements Serializable {
 						paleoConstraintsMap.putIfAbsent(fm, paleoConstraints);
 						ConcurrentMap<Integer, List<Integer>> rupsForSectsLists = Maps
 								.newConcurrentMap();
-						for (AveSlipConstraint constr : aveSlipConstraints)
+						for (U3AveSlipConstraint constr : aveSlipConstraints)
 							rupsForSectsLists.putIfAbsent(constr
 									.getSubSectionIndex(), rupSet.getRupturesForSection(
 											constr.getSubSectionIndex()));
-						for (PaleoRateConstraint constr : paleoConstraints)
+						for (U3PaleoRateConstraint constr : paleoConstraints)
 							rupsForSectsLists.putIfAbsent(constr.getSectionIndex(),
 									rupSet.getRupturesForSection(constr.getSectionIndex()));
 						rupsForSectsMap.putIfAbsent(fm, rupsForSectsLists);
@@ -5731,7 +5731,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			debug(solIndex, "calculating ave slip");
 
 			for (int i = 0; i < aveSlipConstraints.size(); i++) {
-				AveSlipConstraint constr = aveSlipConstraints.get(i);
+				U3AveSlipConstraint constr = aveSlipConstraints.get(i);
 				int subsectionIndex = constr.getSubSectionIndex();
 
 				slips[i] = rupSet.getSlipRateForSection(subsectionIndex);
@@ -5742,14 +5742,14 @@ public abstract class CompoundFSSPlots implements Serializable {
 					int sectIndexInRup = rupSet.getSectionsIndicesForRup(rupID)
 							.indexOf(subsectionIndex);
 					double slipOnSect = rupSet.getSlipOnSectionsForRup(rupID)[sectIndexInRup];
-					double probVisible = AveSlipConstraint
+					double probVisible = U3AveSlipConstraint
 							.getProbabilityOfObservedSlip(slipOnSect);
 					obsRate += sol.getRateForRup(rupID) * probVisible;
 				}
 				obsRates[i] = obsRate;
 			}
 
-			List<PaleoRateConstraint> paleoConstraints = paleoConstraintsMap
+			List<U3PaleoRateConstraint> paleoConstraints = paleoConstraintsMap
 					.get(fm);
 
 			// get data for paleo constraints at each site
@@ -5757,7 +5757,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			double[] paleoRates = new double[paleoConstraints.size()];
 			double carrizoRate = 0d;
 			for (int i = 0; i < paleoConstraints.size(); i++) {
-				PaleoRateConstraint constr = paleoConstraints.get(i);
+				U3PaleoRateConstraint constr = paleoConstraints.get(i);
 
 				double obsRate = 0d;
 				for (int rupID : rupsForSectsLists
@@ -5826,10 +5826,10 @@ public abstract class CompoundFSSPlots implements Serializable {
 			
 			FaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher
 					.getUCERF2Solution(FaultModels.FM2_1);
-			List<AveSlipConstraint> ucerf2AveSlipConstraints;
-			List<PaleoRateConstraint> ucerf2PaleoConstraints;
+			List<U3AveSlipConstraint> ucerf2AveSlipConstraints;
+			List<U3PaleoRateConstraint> ucerf2PaleoConstraints;
 			try {
-				ucerf2AveSlipConstraints = AveSlipConstraint.load(
+				ucerf2AveSlipConstraints = U3AveSlipConstraint.load(
 						ucerf2Sol.getRupSet().getFaultSectionDataList());
 				ucerf2PaleoConstraints = UCERF3_PaleoRateConstraintFetcher
 						.getConstraints(ucerf2Sol.getRupSet().getFaultSectionDataList());
@@ -5853,15 +5853,15 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 				csv.addLine(header);
 
-				List<AveSlipConstraint> constraints = aveSlipConstraintsMap
+				List<U3AveSlipConstraint> constraints = aveSlipConstraintsMap
 						.get(fm);
 
 				for (int i = 0; i < constraints.size(); i++) {
-					AveSlipConstraint constr = constraints.get(i);
+					U3AveSlipConstraint constr = constraints.get(i);
 
 					// find matching UCERF2 constraint
-					AveSlipConstraint ucerf2Constraint = null;
-					for (AveSlipConstraint u2Constr : ucerf2AveSlipConstraints) {
+					U3AveSlipConstraint ucerf2Constraint = null;
+					for (U3AveSlipConstraint u2Constr : ucerf2AveSlipConstraints) {
 						if (u2Constr.getSiteLocation().equals(
 								constr.getSiteLocation())) {
 							ucerf2Constraint = u2Constr;
@@ -5932,15 +5932,15 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 				csv.addLine(header);
 
-				List<PaleoRateConstraint> constraints = paleoConstraintsMap
+				List<U3PaleoRateConstraint> constraints = paleoConstraintsMap
 						.get(fm);
 
 				for (int i = 0; i < constraints.size(); i++) {
-					PaleoRateConstraint constr = constraints.get(i);
+					U3PaleoRateConstraint constr = constraints.get(i);
 
 					// find matching UCERF2 constraint
-					PaleoRateConstraint ucerf2Constraint = null;
-					for (PaleoRateConstraint u2Constr : ucerf2PaleoConstraints) {
+					U3PaleoRateConstraint ucerf2Constraint = null;
+					for (U3PaleoRateConstraint u2Constr : ucerf2PaleoConstraints) {
 						if (u2Constr.getPaleoSiteLoction().equals(
 								constr.getPaleoSiteLoction())) {
 							ucerf2Constraint = u2Constr;

@@ -37,7 +37,7 @@ import scratch.UCERF3.utils.OLD_UCERF3_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.OLD_UCERF3_MFD_ConstraintFetcher.TimeAndRegion;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -145,7 +145,7 @@ public class U3FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSo
 	 * Fault System Solution.
 	 * 
 	 */
-	public void plotPaleoObsAndPredPaleoEventRates(List<PaleoRateConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel, InversionFaultSystemRupSet rupSet) {
+	public void plotPaleoObsAndPredPaleoEventRates(List<U3PaleoRateConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel, InversionFaultSystemRupSet rupSet) {
 		int numSections = rupSet.getNumSections();
 		int numRuptures = rupSet.getNumRuptures();
 		ArrayList funcs3 = new ArrayList();		
@@ -172,7 +172,7 @@ public class U3FaultSystemSolution extends org.opensha.sha.earthquake.faultSysSo
 		int num = paleoRateConstraints.size();
 		ArbitrarilyDiscretizedFunc func;
 		ArrayList obs_er_funcs = new ArrayList();
-		PaleoRateConstraint constraint;
+		U3PaleoRateConstraint constraint;
 		double totalError=0;
 		for (int c = 0; c < num; c++) {
 			func = new ArbitrarilyDiscretizedFunc();

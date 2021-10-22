@@ -28,10 +28,10 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF2_PaleoRateConstraintFetcher;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -91,7 +91,7 @@ public class RunInversion {
 		File precomputedDataDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
 		
 		// get the paleo rate constraints
-		List<PaleoRateConstraint> paleoRateConstraints = null;
+		List<U3PaleoRateConstraint> paleoRateConstraints = null;
 		try {
 			paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
 					rupSet.getFaultModel(), rupSet);
@@ -115,9 +115,9 @@ public class RunInversion {
 			System.exit(1);
 		}
 		
-		List<AveSlipConstraint> aveSlipConstraints = null;
+		List<U3AveSlipConstraint> aveSlipConstraints = null;
 		try {
-			aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+			aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);

@@ -37,7 +37,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
 
 import com.google.common.base.Preconditions;
@@ -387,7 +387,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 		String prefix = getRupSet().getLogicTreeBranch().buildFileName();
 		int digits = ((getNumSolutions()-1)+"").length();
 		
-		ArrayList<PaleoRateConstraint> paleoRateConstraints =
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints =
 				UCERF3_PaleoRateConstraintFetcher.getConstraints(getRupSet().getFaultSectionDataList());
 		
 		for (int i=0; i<getNumSolutions(); i++) {
@@ -416,7 +416,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 	}
 	
 	public static void writePaleoBoundsPlot(File dir, String prefix, Iterable<? extends InversionFaultSystemSolution> sols) throws IOException {
-		ArrayList<PaleoRateConstraint> paleoRateConstraints = null;
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints = null;
 		
 		ArrayList<DiscretizedFunc> otherFuncs = Lists.newArrayList();
 		ArrayList<PlotCurveCharacterstics> otherChars = Lists.newArrayList();

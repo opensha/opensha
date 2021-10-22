@@ -49,8 +49,8 @@ import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 public class BatchPlotGen {
@@ -480,12 +480,12 @@ public class BatchPlotGen {
 				e.printStackTrace();
 			}
 		}
-		ArrayList<PaleoRateConstraint> paleoRateConstraints = null;
-		List<AveSlipConstraint> aveSlipConstraints = null;
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints = null;
+		List<U3AveSlipConstraint> aveSlipConstraints = null;
 		if (!hasPaleoPlots || !hasPaleoFaultBasedPlots) {
 			paleoRateConstraints =
 					CommandLineInversionRunner.getPaleoConstraints(sol.getRupSet().getFaultModel(), sol.getRupSet());
-			aveSlipConstraints = AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
+			aveSlipConstraints = U3AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
 		}
 		if (!hasPaleoPlots) {
 			CommandLineInversionRunner.writePaleoPlots(paleoRateConstraints, aveSlipConstraints, sol, dir, prefix);

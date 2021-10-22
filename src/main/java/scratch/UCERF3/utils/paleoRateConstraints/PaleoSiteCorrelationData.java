@@ -42,7 +42,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -263,7 +263,7 @@ public class PaleoSiteCorrelationData implements Serializable {
 				HSSFCell parentOverrideCell = theRow.getCell(3);
 				List<Integer> parentOverrides = null;
 				if (parentOverrideCell != null) {
-					parentOverrides = AveSlipConstraint.loadParentIDs(parentOverrideCell);
+					parentOverrides = U3AveSlipConstraint.loadParentIDs(parentOverrideCell);
 					if (parentOverrides.isEmpty())
 						parentOverrides = null;
 				}

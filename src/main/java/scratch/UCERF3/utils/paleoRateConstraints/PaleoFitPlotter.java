@@ -52,7 +52,7 @@ import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter.AveSlipFakePaleoConstraint;
 
 import com.google.common.base.Joiner;
@@ -74,13 +74,14 @@ public class PaleoFitPlotter {
 //	private static final PlotSymbol DATA_SYMBOL = PlotSymbol.FILLED_CIRCLE;
 //	private static final float CONFIDENCE_BOUND_WIDTH = 2f;
 
-	public static class AveSlipFakePaleoConstraint extends PaleoRateConstraint {
+	public static class AveSlipFakePaleoConstraint extends U3PaleoRateConstraint {
 		private boolean isMultiple;
 		private double origAveSlip, origAveSlipUpper, origAveSlipLower;
 		
-		public AveSlipFakePaleoConstraint(AveSlipConstraint aveSlip, int sectIndex, double slipRate) {
-			super(null, aveSlip.getSiteLocation(), sectIndex, slipRate/aveSlip.getWeightedMean(),
-					slipRate/aveSlip.getLowerUncertaintyBound(), slipRate/aveSlip.getUpperUncertaintyBound());
+		public AveSlipFakePaleoConstraint(U3AveSlipConstraint aveSlip, int sectIndex, double slipRate) {
+			super(aveSlip.name, sectIndex, aveSlip.sectionName, aveSlip.dataLocation, slipRate/aveSlip.getWeightedMean(),
+					new Uncertainty(aveSlip.uncertainties[0].type,
+							slipRate/aveSlip.uncertainties[0].upperBound, slipRate/aveSlip.uncertainties[0].lowerBound));
 			isMultiple = false;
 			origAveSlip = aveSlip.getWeightedMean();
 			origAveSlipLower = aveSlip.getLowerUncertaintyBound();
@@ -88,11 +89,16 @@ public class PaleoFitPlotter {
 		}
 		
 		public AveSlipFakePaleoConstraint(
-				AveSlipConstraint aveSlip, int sectIndex, double[] slipRates, double[] weights) {
-			super(null, aveSlip.getSiteLocation(), sectIndex,
+				U3AveSlipConstraint aveSlip, int sectIndex, double[] slipRates, double[] weights) {
+//			super(null, aveSlip.getSiteLocation(), sectIndex,
+//					FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
+//					StatUtils.min(slipRates)/aveSlip.getWeightedMean(),
+//					StatUtils.max(slipRates)/aveSlip.getWeightedMean());
+			super(aveSlip.name, sectIndex, aveSlip.sectionName, aveSlip.dataLocation,
 					FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
-					StatUtils.min(slipRates)/aveSlip.getWeightedMean(),
-					StatUtils.max(slipRates)/aveSlip.getWeightedMean());
+					new Uncertainty(aveSlip.uncertainties[0].type,
+							StatUtils.min(slipRates)/aveSlip.uncertainties[0].upperBound,
+							StatUtils.max(slipRates)/aveSlip.uncertainties[0].lowerBound));
 			isMultiple = true;
 			origAveSlip = aveSlip.getWeightedMean();
 			origAveSlipLower = aveSlip.getLowerUncertaintyBound();
@@ -101,8 +107,8 @@ public class PaleoFitPlotter {
 	}
 	
 	public static PlotSpec getSegRateComparisonSpec(
-				List<PaleoRateConstraint> paleoRateConstraint,
-				List<AveSlipConstraint> aveSlipConstraints,
+				List<U3PaleoRateConstraint> paleoRateConstraint,
+				List<U3AveSlipConstraint> aveSlipConstraints,
 				FaultSystemSolution sol) {
 			Preconditions.checkState(paleoRateConstraint.size() > 0, "Must have at least one rate constraint");
 			Preconditions.checkNotNull(sol, "Solution cannot me null!");
@@ -159,7 +165,7 @@ public class PaleoFitPlotter {
 					plotChars.add(new PlotCurveCharacterstics(CONFIDENCE_BOUND_SYMBOL, 5f, aveSlipColor));
 				}
 				
-				for (AveSlipConstraint aveSlip : aveSlipConstraints) {
+				for (U3AveSlipConstraint aveSlip : aveSlipConstraints) {
 					paleoRateConstraint.add(new PaleoFitPlotter.AveSlipFakePaleoConstraint(aveSlip, aveSlip.getSubSectionIndex(),
 							rupSet.getSlipRateForSection(aveSlip.getSubSectionIndex())));
 				}
@@ -183,7 +189,7 @@ public class PaleoFitPlotter {
 			Color origColor = Color.BLACK;
 			
 			for (int p=0; p<paleoRateConstraint.size(); p++) {
-				PaleoRateConstraint constr = paleoRateConstraint.get(p);
+				U3PaleoRateConstraint constr = paleoRateConstraint.get(p);
 				int sectID = constr.getSectionIndex();
 				int parentID = -1;
 				String name = null;
@@ -297,8 +303,8 @@ public class PaleoFitPlotter {
 			return new PlotSpec(funcs, plotChars, "Paleosiesmic Constraint Fit", "", "Event Rate Per Year");
 		}
 
-	public static void showSegRateComparison(List<PaleoRateConstraint> paleoRateConstraint,
-			List<AveSlipConstraint> aveSlipConstraints,
+	public static void showSegRateComparison(List<U3PaleoRateConstraint> paleoRateConstraint,
+			List<U3AveSlipConstraint> aveSlipConstraints,
 			InversionFaultSystemSolution sol) {
 		PlotSpec spec = getSegRateComparisonSpec(paleoRateConstraint, aveSlipConstraints, sol);
 		
@@ -307,8 +313,8 @@ public class PaleoFitPlotter {
 		w.setY_AxisLabel(spec.getYAxisLabel());
 	}
 
-	public static HeadlessGraphPanel getHeadlessSegRateComparison(List<PaleoRateConstraint> paleoRateConstraint,
-			List<AveSlipConstraint> aveSlipConstraints,
+	public static HeadlessGraphPanel getHeadlessSegRateComparison(List<U3PaleoRateConstraint> paleoRateConstraint,
+			List<U3AveSlipConstraint> aveSlipConstraints,
 			InversionFaultSystemSolution sol, boolean yLog) {
 		PlotSpec spec = getSegRateComparisonSpec(paleoRateConstraint, aveSlipConstraints, sol);
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
@@ -340,7 +346,7 @@ public class PaleoFitPlotter {
 			int sectIndexInRup = rupSet.getSectionsIndicesForRup(rupID).indexOf(sectIndex);
 			double slipOnSect = rupSet.getSlipOnSectionsForRup(rupID)[sectIndexInRup]; 
 			
-			double rupRate = sol.getRateForRup(rupID) * AveSlipConstraint.getProbabilityOfObservedSlip(slipOnSect);
+			double rupRate = sol.getRateForRup(rupID) * U3AveSlipConstraint.getProbabilityOfObservedSlip(slipOnSect);
 			rate += rupRate;
 		}
 		return rate;
@@ -395,7 +401,7 @@ public class PaleoFitPlotter {
 		public static DataForPaleoFaultPlots build(
 				SlipEnabledSolution sol,
 				Map<String, List<Integer>> namedFaultsMap,
-				Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap,
+				Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap,
 				Map<Integer, List<FaultSection>> allParentsMap,
 				PaleoProbabilityModel paleoProbModel,
 				double weight) {
@@ -413,7 +419,7 @@ public class PaleoFitPlotter {
 		public static DataForPaleoFaultPlots build(
 				SlipEnabledSolution sol,
 				Map<String, List<Integer>> namedFaultsMap,
-				Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap,
+				Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap,
 				Map<Integer, List<FaultSection>> allParentsMap,
 				PaleoProbabilityModel paleoProbModel,
 				double weight,
@@ -503,8 +509,8 @@ public class PaleoFitPlotter {
 	}
 	
 	public static Map<String, PlotSpec[]> getFaultSpecificPaleoPlotSpec(
-			List<PaleoRateConstraint> paleoRateConstraint,
-			List<AveSlipConstraint> aveSlipConstraints,
+			List<U3PaleoRateConstraint> paleoRateConstraint,
+			List<U3AveSlipConstraint> aveSlipConstraints,
 			Map<String, List<Integer>> namedFaultsMap,
 			SlipEnabledSolution sol) {
 		SlipEnabledRupSet rupSet = sol.getRupSet();
@@ -513,7 +519,7 @@ public class PaleoFitPlotter {
 		paleoRateConstraint = Lists.newArrayList(paleoRateConstraint);
 		
 		if (aveSlipConstraints != null) {
-			for (AveSlipConstraint aveSlip : aveSlipConstraints) {
+			for (U3AveSlipConstraint aveSlip : aveSlipConstraints) {
 				paleoRateConstraint.add(new PaleoFitPlotter.AveSlipFakePaleoConstraint(aveSlip, aveSlip.getSubSectionIndex(),
 						rupSet.getSlipRateForSection(aveSlip.getSubSectionIndex())));
 			}
@@ -526,7 +532,7 @@ public class PaleoFitPlotter {
 			ExceptionUtils.throwAsRuntimeException(e);
 		}
 		
-		Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap =
+		Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap =
 			 getNamedFaultConstraintsMap(paleoRateConstraint, rupSet.getFaultSectionDataList(), namedFaultsMap);
 		
 		Map<Integer, List<FaultSection>> allParentsMap =
@@ -549,13 +555,13 @@ public class PaleoFitPlotter {
 		return getFaultSpecificPaleoPlotSpecs(namedFaultsMap, namedFaultConstraintsMap, datas, allParentsMap);
 	}
 	
-	public static Map<String, List<PaleoRateConstraint>> getNamedFaultConstraintsMap(
-			List<PaleoRateConstraint> paleoRateConstraint,
+	public static Map<String, List<U3PaleoRateConstraint>> getNamedFaultConstraintsMap(
+			List<U3PaleoRateConstraint> paleoRateConstraint,
 			List<? extends FaultSection> fsd,
 			Map<String, List<Integer>> namedFaultsMap) {
-		Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap = Maps.newHashMap();
+		Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap = Maps.newHashMap();
 		
-		for (PaleoRateConstraint constr : paleoRateConstraint) {
+		for (U3PaleoRateConstraint constr : paleoRateConstraint) {
 			FaultSection sect = fsd.get(constr.getSectionIndex());
 			Integer parentID = sect.getParentSectionId();
 			String name = null;
@@ -572,7 +578,7 @@ public class PaleoFitPlotter {
 				continue;
 			}
 			
-			List<PaleoRateConstraint> constraintsForFault = namedFaultConstraintsMap.get(name);
+			List<U3PaleoRateConstraint> constraintsForFault = namedFaultConstraintsMap.get(name);
 			if (constraintsForFault == null) {
 				constraintsForFault = Lists.newArrayList();
 				namedFaultConstraintsMap.put(name, constraintsForFault);
@@ -719,7 +725,7 @@ public class PaleoFitPlotter {
 	
 	public static Map<String, PlotSpec[]> getFaultSpecificPaleoPlotSpecs(
 			Map<String, List<Integer>> namedFaultsMap,
-			Map<String, List<PaleoRateConstraint>> namedFaultConstraintsMap,
+			Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap,
 			List<DataForPaleoFaultPlots> datas,
 			Map<Integer, List<FaultSection>> allParentsMap) {
 		
@@ -730,7 +736,7 @@ public class PaleoFitPlotter {
 		Map<String, PlotSpec[]> specs = Maps.newHashMap();
 		
 		for (String name : namedFaultConstraintsMap.keySet()) {
-			List<PaleoRateConstraint> constraints = namedFaultConstraintsMap.get(name);
+			List<U3PaleoRateConstraint> constraints = namedFaultConstraintsMap.get(name);
 			List<Integer> namedFaults = namedFaultsMap.get(name);
 			
 			ArrayList<DiscretizedFunc> rateFuncs = Lists.newArrayList();
@@ -933,7 +939,7 @@ public class PaleoFitPlotter {
 				continue;
 			
 			// now add paleo sites
-			for (PaleoRateConstraint constr : constraints) {
+			for (U3PaleoRateConstraint constr : constraints) {
 				Preconditions.checkNotNull(constr, "Paleo Constraint NULL!");
 				Preconditions.checkNotNull(constr.getPaleoSiteLoction(),
 						"Paleo Constraint Location NULL!");
@@ -1105,11 +1111,11 @@ public class PaleoFitPlotter {
 	
 	public static void writeTables(File dir,
 			InversionFaultSystemSolution sol,
-			List<AveSlipConstraint> aveSlipConstraints,
-			List<PaleoRateConstraint> paleoRateConstraints,
+			List<U3AveSlipConstraint> aveSlipConstraints,
+			List<U3PaleoRateConstraint> paleoRateConstraints,
 			FaultSystemSolution ucerf2Sol,
-			List<AveSlipConstraint> ucerf2AveSlipConstraints,
-			List<PaleoRateConstraint> ucerf2PaleoRateConstraints,
+			List<U3AveSlipConstraint> ucerf2AveSlipConstraints,
+			List<U3PaleoRateConstraint> ucerf2PaleoRateConstraints,
 			PaleoProbabilityModel paleoProbModel) throws IOException {
 		CSVFile<String> aveSlipTable = buildAveSlipTable(sol, aveSlipConstraints,
 				ucerf2Sol, ucerf2AveSlipConstraints);
@@ -1124,8 +1130,8 @@ public class PaleoFitPlotter {
 	}
 	
 	public static CSVFile<String> buildAveSlipTable(
-			InversionFaultSystemSolution sol, List<AveSlipConstraint> constraints,
-			FaultSystemSolution ucerf2Sol, List<AveSlipConstraint> ucerf2AveSlipConstraints) {
+			InversionFaultSystemSolution sol, List<U3AveSlipConstraint> constraints,
+			FaultSystemSolution ucerf2Sol, List<U3AveSlipConstraint> ucerf2AveSlipConstraints) {
 		InversionFaultSystemRupSet rupSet = sol.getRupSet();
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
@@ -1141,11 +1147,11 @@ public class PaleoFitPlotter {
 		csv.addLine(header);
 
 		for (int i = 0; i < constraints.size(); i++) {
-			AveSlipConstraint constr = constraints.get(i);
+			U3AveSlipConstraint constr = constraints.get(i);
 
 			// find matching UCERF2 constraint
-			AveSlipConstraint ucerf2Constraint = null;
-			for (AveSlipConstraint u2Constr : ucerf2AveSlipConstraints) {
+			U3AveSlipConstraint ucerf2Constraint = null;
+			for (U3AveSlipConstraint u2Constr : ucerf2AveSlipConstraints) {
 				if (u2Constr.getSiteLocation().equals(
 						constr.getSiteLocation())) {
 					ucerf2Constraint = u2Constr;
@@ -1163,7 +1169,7 @@ public class PaleoFitPlotter {
 				int sectIndexInRup = rupSet.getSectionsIndicesForRup(rupID)
 						.indexOf(subsectionIndex);
 				double slipOnSect = rupSet.getSlipOnSectionsForRup(rupID)[sectIndexInRup];
-				double probVisible = AveSlipConstraint
+				double probVisible = U3AveSlipConstraint
 						.getProbabilityOfObservedSlip(slipOnSect);
 				obsRate += sol.getRateForRup(rupID) * probVisible;
 			}
@@ -1196,8 +1202,8 @@ public class PaleoFitPlotter {
 	}
 	
 	public static CSVFile<String> buildPaleoRateTable(
-			InversionFaultSystemSolution sol, List<PaleoRateConstraint> constraints,
-			FaultSystemSolution ucerf2Sol, List<PaleoRateConstraint> ucerf2PaleoConstraints,
+			InversionFaultSystemSolution sol, List<U3PaleoRateConstraint> constraints,
+			FaultSystemSolution ucerf2Sol, List<U3PaleoRateConstraint> ucerf2PaleoConstraints,
 			PaleoProbabilityModel paleoProbModel) {
 		InversionFaultSystemRupSet rupSet = sol.getRupSet();
 		CSVFile<String> csv = new CSVFile<String>(true);
@@ -1212,11 +1218,11 @@ public class PaleoFitPlotter {
 		csv.addLine(header);
 
 		for (int i = 0; i < constraints.size(); i++) {
-			PaleoRateConstraint constr = constraints.get(i);
+			U3PaleoRateConstraint constr = constraints.get(i);
 
 			// find matching UCERF2 constraint
-			PaleoRateConstraint ucerf2Constraint = null;
-			for (PaleoRateConstraint u2Constr : ucerf2PaleoConstraints) {
+			U3PaleoRateConstraint ucerf2Constraint = null;
+			for (U3PaleoRateConstraint u2Constr : ucerf2PaleoConstraints) {
 				if (u2Constr.getPaleoSiteLoction().equals(
 						constr.getPaleoSiteLoction())) {
 					ucerf2Constraint = u2Constr;
@@ -1267,9 +1273,9 @@ public class PaleoFitPlotter {
 //				"_VarPaleo0.1_VarAveSlip0.1_VarMFDSmooth1000_VarSectNuclMFDWt0.1_VarNone_sol.zip");
 		InversionFaultSystemSolution sol = U3FaultSystemIO.loadInvSol(solFile);
 //		FaultSystemSolution sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
-		List<PaleoRateConstraint> paleoRateConstraint =
+		List<U3PaleoRateConstraint> paleoRateConstraint =
 			UCERF3_PaleoRateConstraintFetcher.getConstraints(sol.getRupSet().getFaultSectionDataList());
-		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
+		List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
 		
 //		Map<String, PlotSpec> specs =
 //				getFaultSpecificPaleoPlotSpec(paleoRateConstraint, aveSlipConstraints, sol);

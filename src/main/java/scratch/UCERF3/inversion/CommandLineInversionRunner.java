@@ -83,10 +83,10 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.UCERF2_Section_MFDs.UCERF2_Section_MFDsCalc;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoSiteCorrelationData;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF2_PaleoProbabilityModel;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF2_PaleoRateConstraintFetcher;
@@ -384,19 +384,19 @@ public class CommandLineInversionRunner {
 					rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs(), mfdEqualityConstraintWt, mfdInequalityConstraintWt, cmd);
 
 			// load paleo rate constraints
-			ArrayList<PaleoRateConstraint> paleoRateConstraints = getPaleoConstraints(branch.getValue(FaultModels.class), rupSet);
+			ArrayList<U3PaleoRateConstraint> paleoRateConstraints = getPaleoConstraints(branch.getValue(FaultModels.class), rupSet);
 
 			// load paleo probability of observance model
 			PaleoProbabilityModel paleoProbabilityModel =
 				UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 			
-			List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+			List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 			if (cmd.hasOption(InversionOptions.AVE_SLIP_SCALE.argName)) {
 				double scale = Double.parseDouble(cmd.getOptionValue(InversionOptions.AVE_SLIP_SCALE.argName));
 				System.out.println("Scaling ave slip by: "+scale);
-				List<AveSlipConstraint> newConstraints = new ArrayList<AveSlipConstraint>();
-				for (AveSlipConstraint constr : aveSlipConstraints)
-					newConstraints.add(new AveSlipConstraint(constr.getSubSectionIndex(), constr.getSubSectionName(),
+				List<U3AveSlipConstraint> newConstraints = new ArrayList<U3AveSlipConstraint>();
+				for (U3AveSlipConstraint constr : aveSlipConstraints)
+					newConstraints.add(new U3AveSlipConstraint(constr.getSubSectionIndex(), constr.getSubSectionName(),
 							scale*constr.getWeightedMean(), scale*constr.getUpperUncertaintyBound(),
 							scale*constr.getLowerUncertaintyBound(), constr.getSiteLocation()));
 				aveSlipConstraints = newConstraints;
@@ -1020,14 +1020,14 @@ public class CommandLineInversionRunner {
 		return new File(dir, getMFDPrefix(prefix, RELM_RegionUtils.getGriddedRegionInstance())+".png").exists();
 	}
 
-	public static ArrayList<PaleoRateConstraint> getPaleoConstraints(FaultModels fm, FaultSystemRupSet rupSet) throws IOException {
+	public static ArrayList<U3PaleoRateConstraint> getPaleoConstraints(FaultModels fm, FaultSystemRupSet rupSet) throws IOException {
 		if (fm == FaultModels.FM2_1)
 			return UCERF2_PaleoRateConstraintFetcher.getConstraints(rupSet.getFaultSectionDataList());
 		return UCERF3_PaleoRateConstraintFetcher.getConstraints(rupSet.getFaultSectionDataList());
 	}
 
-	public static void writePaleoPlots(ArrayList<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints, InversionFaultSystemSolution sol,
+	public static void writePaleoPlots(ArrayList<U3PaleoRateConstraint> paleoRateConstraints,
+			List<U3AveSlipConstraint> aveSlipConstraints, InversionFaultSystemSolution sol,
 			File dir, String prefix)
 	throws IOException {
 		HeadlessGraphPanel gp = PaleoFitPlotter.getHeadlessSegRateComparison(
@@ -1681,8 +1681,8 @@ public class CommandLineInversionRunner {
 	}
 
 	public static void writePaleoFaultPlots(
-			List<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints,
+			List<U3PaleoRateConstraint> paleoRateConstraints,
+			List<U3AveSlipConstraint> aveSlipConstraints,
 			Map<String, List<Integer>> namedFaultsMap, SlipEnabledSolution sol, File dir)
 					throws IOException {
 		Map<String, PlotSpec[]> specs = PaleoFitPlotter.getFaultSpecificPaleoPlotSpec(
