@@ -36,6 +36,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import com.google.common.base.Joiner;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
@@ -93,6 +94,12 @@ public class StandardFaultSysModulesTest {
 	public void testInfo() throws IOException {
 		InfoModule testInfo = new InfoModule("This is my test string\na new line\nanother line\n");
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, testInfo, InfoModule.class);
+	}
+
+	@Test
+	public void testBuildInfo() throws IOException {
+		BuildInfoModule testInfo = BuildInfoModule.detect();
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, testInfo, BuildInfoModule.class);
 	}
 
 	@Test
@@ -290,6 +297,12 @@ public class StandardFaultSysModulesTest {
 			
 			List<String> origLines = getISLines(withZip.getInputStream(origEntry));
 			List<String> newLines = getISLines(rewrittenZip.getInputStream(rewrittenEntry));
+			
+//			System.out.println("********************");
+//			System.out.println(Joiner.on("\n").join(origLines));
+//			System.out.println("********************");
+//			System.out.println(Joiner.on("\n").join(newLines));
+//			System.out.println("********************");
 			
 			int i1 = 0;
 			int i2 = 0;

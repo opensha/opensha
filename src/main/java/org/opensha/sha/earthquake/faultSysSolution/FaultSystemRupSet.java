@@ -37,6 +37,7 @@ import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -128,6 +129,13 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			double[] rupAreas,
 			@Nullable double[] rupLengths) {
 		init(faultSectionData, sectionForRups, mags, rakes, rupAreas, rupLengths);
+		
+		// track the version of OpenSHA this was generated with
+		if (!hasModule(BuildInfoModule.class)) {
+			try {
+				addModule(BuildInfoModule.detect());
+			} catch (Exception e) {}
+		}
 	}
 	
 	/**

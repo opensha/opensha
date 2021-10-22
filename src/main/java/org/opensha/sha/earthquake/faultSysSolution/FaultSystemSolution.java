@@ -23,6 +23,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
@@ -63,6 +64,13 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates) {
 		super();
 		init(rupSet, rates);
+		
+		// track the version of OpenSHA this was generated with
+		if (!hasModule(BuildInfoModule.class)) {
+			try {
+				addModule(BuildInfoModule.detect());
+			} catch (Exception e) {}
+		}
 	}
 	
 	protected void init(FaultSystemRupSet rupSet, double[] rates) {
