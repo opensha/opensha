@@ -11,7 +11,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 /**
  * Constraint to match paleoseismic event rates inferred from mean slip on
@@ -31,12 +30,14 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 	private transient SectSlipRates targetSlipRates;
 	
 	private List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints;
+	private PaleoSlipProbabilityModel slipObsProbModel;
 
 	public PaleoSlipInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints) {
+			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints, PaleoSlipProbabilityModel slipObsProbModel) {
 		super(NAME, SHORT_NAME, weight, false);
 		setRuptureSet(rupSet);
 		this.aveSlipConstraints = aveSlipConstraints;
+		this.slipObsProbModel = slipObsProbModel;
 	}
 
 	@Override
@@ -55,19 +56,12 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 			
 			double meanRate = targetSlipRate / constraint.bestEstimate;
 			
-			// TODO: this is how I think we should do uncertainties, needs to be verified
-//			Uncertainty origUncertainty = constraint.uncertainties[0];
-//			
-//			Uncertainty scaledUncertainty = new Uncertainty(origUncertainty.type,
-//					targetSlipRate / origUncertainty.upperBound,
-//					targetSlipRate / origUncertainty.lowerBound);
-//			double stdDev = scaledUncertainty.stdDev;
+			Uncertainty slipUncertainty = constraint.uncertainties[0];
 			
-			// this is how we did uncertainties in UCERF3
-			Uncertainty origUncertainty = constraint.uncertainties[0];
-			double lowRateBound = targetSlipRate / origUncertainty.upperBound;
-			double highRateBound = targetSlipRate / origUncertainty.lowerBound;
-			double stdDev = highRateBound - lowRateBound;
+			Uncertainty rateUncertainty = new Uncertainty(slipUncertainty.type,
+					targetSlipRate / slipUncertainty.upperBound,
+					targetSlipRate / slipUncertainty.lowerBound);
+			double stdDev = rateUncertainty.stdDev;
 			
 			int row = startRow+i;
 			
@@ -77,7 +71,7 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 				int rup = rupsForSect.get(rupIndex);
 				int sectIndexInRup = rupSet.getSectionsIndicesForRup(rup).indexOf(constraint.sectionIndex);
 				double slipOnSect = slipAlongModule.calcSlipOnSectionsForRup(rupSet, aveSlipModule, rup)[sectIndexInRup]; 
-				double probVisible = U3AveSlipConstraint.getProbabilityOfObservedSlip(slipOnSect);
+				double probVisible = slipObsProbModel.getProbabilityOfObservedSlip(slipOnSect);
 				setA(A, row, rup, weight * probVisible / stdDev);
 				numNonZeroElements++;
 			}

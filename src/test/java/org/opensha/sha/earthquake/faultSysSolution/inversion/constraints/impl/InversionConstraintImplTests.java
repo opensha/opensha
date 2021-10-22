@@ -234,7 +234,7 @@ public class InversionConstraintImplTests {
 		constraints.add(new U3AveSlipConstraint(r.nextInt(numSections), "",
 				3d, 4d, 2d, null));
 		PaleoSlipInversionConstraint constr = new PaleoSlipInversionConstraint(
-				rupSet, 1d, constraints);
+				rupSet, 1d, constraints, U3AveSlipConstraint.slip_prob_model);
 		
 		testConstraint(constr);
 	}

@@ -1,4 +1,4 @@
-package scratch.UCERF3.utils.paleoRateConstraints;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.io.IOException;
 import java.util.List;
@@ -20,7 +20,7 @@ import com.google.gson.stream.JsonWriter;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 
 /**
- * This loads in Glenn's paleoseismic trench probabilities.
+ * Abstract base class for a the probability of seeing a rupture in a paleoseismic trench 
  * 
  * @author Kevin
  *
@@ -36,7 +36,7 @@ public abstract class PaleoProbabilityModel {
 	
 	public abstract double getProbPaleoVisible(double mag, double distAlongRup);
 	
-	double getDistAlongRup(List<FaultSection> rupSections, int sectIndex) {
+	protected double getDistAlongRup(List<FaultSection> rupSections, int sectIndex) {
 		if (traceLengthCache == null) {
 			synchronized (this) {
 				if (traceLengthCache == null)
@@ -62,6 +62,7 @@ public abstract class PaleoProbabilityModel {
 			out.endObject();
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public PaleoProbabilityModel read(JsonReader in) throws IOException {
 			Class<? extends PaleoProbabilityModel> type = null;

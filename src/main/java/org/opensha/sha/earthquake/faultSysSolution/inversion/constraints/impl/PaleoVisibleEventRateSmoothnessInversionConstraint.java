@@ -9,7 +9,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import org.opensha.sha.faultSurface.FaultSection;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 
 /**
  * This constrains paleoseismically-visible event rates along parent sections to be smooth.

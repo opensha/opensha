@@ -156,8 +156,8 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			if (hasQuantiles) {
 				// UCERF3.3
 				uncertainties = new Uncertainty[] {
-						new Uncertainty(UncertaintyType.CONF_95, lower95Conf, upper95Conf),
-						new Uncertainty(UncertaintyType.CONF_68, lower68Conf, upper68Conf)
+						new Uncertainty(UncertaintyType.CONF_68, lower68Conf, upper68Conf),
+						new Uncertainty(UncertaintyType.CONF_95, lower95Conf, upper95Conf)
 				};
 			} else {
 				// UCERF3.1 and UCERF3.2
@@ -269,8 +269,8 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			if (hasQuantiles) {
 				// UCERF3.3
 				uncertainties = new Uncertainty[] {
+						new Uncertainty(UncertaintyType.CONF_68, lower68Conf, upper68Conf),
 						new Uncertainty(UncertaintyType.CONF_95, lower95Conf, upper95Conf),
-						new Uncertainty(UncertaintyType.CONF_68, lower68Conf, upper68Conf)
 				};
 			} else {
 				uncertainties = estimateFrom68(meanRate, lower68Conf, upper68Conf);

@@ -19,6 +19,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -39,14 +40,26 @@ public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint imple
 	public static final String TABLE_5_FILE_NAME = "Table R5v4_withMappings.xls";
 	public static final String TABLE_6_FILE_NAME = "Table R6v5_withMappings.xls";
 	
-	private static ArbitrarilyDiscretizedFunc probObsSlipModel;
-	static {
-		probObsSlipModel = new ArbitrarilyDiscretizedFunc();
-		// meters, probability
-		// this is different from Ramon's original proposed values, maxes out at 90%. Approved by Ramon
-		probObsSlipModel.set(0d, 0.0d);
-		probObsSlipModel.set(0.25d, 0.1d);
-		probObsSlipModel.set(2d, 0.90d);
+	public static final PaleoSlipProbabilityModel slip_prob_model = new U3AveSlipProbModel();
+	
+	public static class U3AveSlipProbModel implements PaleoSlipProbabilityModel {
+		private ArbitrarilyDiscretizedFunc probObsSlipModel;
+		
+		public U3AveSlipProbModel() {
+			probObsSlipModel = new ArbitrarilyDiscretizedFunc();
+			// meters, probability
+			// this is different from Ramon's original proposed values, maxes out at 90%. Approved by Ramon
+			probObsSlipModel.set(0d, 0.0d);
+			probObsSlipModel.set(0.25d, 0.1d);
+			probObsSlipModel.set(2d, 0.90d);
+		}
+
+		@Override
+		public double getProbabilityOfObservedSlip(double slip) {
+			if (slip > probObsSlipModel.getMaxX())
+				return probObsSlipModel.getY(probObsSlipModel.size()-1);
+			return probObsSlipModel.getInterpolatedY(slip);
+		}
 	}
 	
 //	private int subSectionIndex;
@@ -105,9 +118,7 @@ public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint imple
 	}
 	
 	public static double getProbabilityOfObservedSlip(double meters) {
-		if (meters > probObsSlipModel.getMaxX())
-			return probObsSlipModel.getY(probObsSlipModel.size()-1);
-		return probObsSlipModel.getInterpolatedY(meters);
+		return slip_prob_model.getProbabilityOfObservedSlip(meters);
 	}
 	
 	@Override
