@@ -36,6 +36,11 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 	private List<SectionMFD_constraint> constraints;
 
 	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
+			double weight, List<SectionMFD_constraint> constraints) {
+		this(rupSet, weight, 0d, null, constraints);
+	}
+
+	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
 			double weight, double weightForPaleoParents, HashSet<Integer> paleoParentIDs,
 			List<SectionMFD_constraint> constraints) {
 		super(NAME, SHORT_NAME, Math.max(weight, weightForPaleoParents), false);

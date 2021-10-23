@@ -48,6 +48,10 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 		return ret;
 	}
 	
+	public int size() {
+		return parent.getNumSections();
+	}
+	
 	/**
 	 * This returns the standard deviation of the slip rate for the given section. It can differ from what is returned by
 	 * rupSet.getFaultSectionData(index).getSlipRateStdDev() if there are any reductions for creep or subseismogenic ruptures.

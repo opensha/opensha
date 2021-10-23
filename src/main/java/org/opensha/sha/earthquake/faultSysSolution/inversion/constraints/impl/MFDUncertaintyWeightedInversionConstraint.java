@@ -22,8 +22,8 @@ import scratch.UCERF3.utils.MFD_WeightedInversionConstraint;
  */
 public class MFDUncertaintyWeightedInversionConstraint extends InversionConstraint {
 	
-	public static final String NAME = "MFD UncertaintyWeighted";
-	public static final String SHORT_NAME = "MFDUncertaintyWeighted";
+	public static final String NAME = "Uncertainty-Weighted MFD";
+	public static final String SHORT_NAME = "UncertMFD";
 	
 	private transient FaultSystemRupSet rupSet;
 	private List<MFD_WeightedInversionConstraint> mfdWeightedConstraints;

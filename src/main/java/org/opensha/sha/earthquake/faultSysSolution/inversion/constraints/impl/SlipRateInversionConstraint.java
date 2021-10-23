@@ -5,6 +5,7 @@ import java.util.List;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -110,6 +111,53 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 		return rupSet.getNumSections();
 	}
 	
+	/**
+	 * 
+	 * 
+	 * @param targetSlipRates
+	 * @return
+	 */
+	static double[] getSlipRateStdDevs(SectSlipRates targetSlipRates, double defaultFractStdDev) {
+		int numDefaults = 0;
+		int numInferred = 0;
+		
+		FaultSystemRupSet rupSet = targetSlipRates.getParent();
+		int numSections = rupSet.getNumSections();
+		
+		double[] stdDevs = new double[numSections];
+		for (int s=0; s<numSections; s++) {
+			double stdDev = targetSlipRates.getSlipRateStdDev(s);
+			if (stdDev == 0d || Double.isNaN(stdDev)) {
+				FaultSection sect = rupSet.getFaultSectionData(s);
+				FeatureProperties props = sect instanceof GeoJSONFaultSection ?
+						((GeoJSONFaultSection)sect).getProperties() : null;
+				if (props != null && props.containsKey("HighRate") && props.containsKey("LowRate")) {
+					// assume that we have +/- 2 sigma values (i.e., 95% confidence) to estimate a standard deviation
+					double high = props.getDouble("HighRate", Double.NaN);
+					double low = props.getDouble("LowRate", Double.NaN);
+					// +/- 2 sigma means that there are 4 sigmas between low and high
+					stdDev = UncertaintyType.TWO_SIGMA.calcStdDev(low, high);
+					numInferred++;
+				} else {
+					stdDev = targetSlipRates.getSlipRate(s)*defaultFractStdDev;
+					numDefaults++;
+				}
+			}
+			stdDevs[s] = stdDev;
+		}
+		if (numDefaults > 0 || numInferred > 0) {
+			System.err.println("WARNING: "+(numDefaults+numInferred)+"/"+numSections+" sections were missing slip rate standard "
+					+ "deviations, and uncertainty weighting is selected.");
+			if (numDefaults > 0)
+				System.err.println("\tUsed default fractional standard deviation for "+numDefaults
+						+" values: std = "+(float)defaultFractStdDev+" x slip_rate");
+			if (numInferred > 0)
+				System.err.println("\tInferred standard deviation for "+numDefaults
+						+" values from upper and lower bounds, assuming +/- 2 sigma: std = (upper-lower)/4");	
+		}
+		return stdDevs;
+	}
+	
 	@Override
 	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
 		long numNonZeroElements = 0;
@@ -120,38 +168,10 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 		for (int s=0; s<numSections; s++)
 			weights[s] = this.weight;
 		if (weightingType == SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY) {
-			int numDefaults = 0;
-			int numInferred = 0;
-			for (int s=0; s<numSections; s++) {
-				double stdDev = targetSlipRates.getSlipRateStdDev(s);
-				if (stdDev == 0d || Double.isNaN(stdDev)) {
-					FaultSection sect = rupSet.getFaultSectionData(s);
-					FeatureProperties props = sect instanceof GeoJSONFaultSection ?
-							((GeoJSONFaultSection)sect).getProperties() : null;
-					if (props != null && props.containsKey("HighRate") && props.containsKey("LowRate")) {
-						// assume that we have +/- 2 sigma values (i.e., 95% confidence) to estimate a standard deviation
-						double high = props.getDouble("HighRate", Double.NaN);
-						double low = props.getDouble("LowRate", Double.NaN);
-						stdDev = (high-low)/4d; // +/- 2 sigma means that there are 4 sigmas between low and high
-						numInferred++;
-					} else {
-						stdDev = targetSlipRates.getSlipRate(s)*DEFAULT_FRACT_STD_DEV;
-						numDefaults++;
-					}
-				}
-				if (stdDev != 0d)
-					weights[s] /= stdDev;
-			}
-			if (numDefaults > 0 || numInferred > 0) {
-				System.err.println("WARNING: "+(numDefaults+numInferred)+"/"+numSections+" sections were missing slip rate standard "
-						+ "deviations, and uncertainty weighting is selected.");
-				if (numDefaults > 0)
-					System.err.println("\tUsed default fractional standard deviation for "+numDefaults
-							+" values: std = "+(float)DEFAULT_FRACT_STD_DEV+" x slip_rate");
-				if (numInferred > 0)
-					System.err.println("\tInferred standard deviation for "+numDefaults
-							+" values from upper and lower bounds, assuming +/- 2 sigma: std = (upper-lower)/4");	
-			}
+			double[] stdDevs = getSlipRateStdDevs(targetSlipRates, DEFAULT_FRACT_STD_DEV);
+			for (int s=0; s<numSections; s++)
+				if (stdDevs[s] != 0d)
+					weights[s] /= stdDevs[s];
 		} 
 		
 		// A matrix component of slip-rate constraint 
