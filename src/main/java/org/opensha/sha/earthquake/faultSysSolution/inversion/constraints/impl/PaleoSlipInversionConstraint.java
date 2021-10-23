@@ -31,13 +31,16 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 	
 	private List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints;
 	private PaleoSlipProbabilityModel slipObsProbModel;
+	private boolean applySlipRateUncertainty;
 
 	public PaleoSlipInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints, PaleoSlipProbabilityModel slipObsProbModel) {
+			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints,
+			PaleoSlipProbabilityModel slipObsProbModel, boolean applySlipRateUncertainty) {
 		super(NAME, SHORT_NAME, weight, false);
 		setRuptureSet(rupSet);
 		this.aveSlipConstraints = aveSlipConstraints;
 		this.slipObsProbModel = slipObsProbModel;
+		this.applySlipRateUncertainty = applySlipRateUncertainty;
 	}
 
 	@Override
@@ -47,6 +50,11 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 
 	@Override
 	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
+		double[] slipRateStdDevs = null;
+		if (applySlipRateUncertainty)
+			slipRateStdDevs = SlipRateInversionConstraint.getSlipRateStdDevs(
+					targetSlipRates, SlipRateInversionConstraint.DEFAULT_FRACT_STD_DEV);
+		
 		long numNonZeroElements = 0;
 		for (int i=0; i<aveSlipConstraints.size(); i++) {
 			// this is a constraint on average slip, but we need to convert it to a constraint on rates
@@ -58,9 +66,21 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 			
 			Uncertainty slipUncertainty = constraint.uncertainties[0];
 			
+			double lowerTarget, upperTarget;
+			if (applySlipRateUncertainty) {
+				// estimate slip rate bounds in the same units as the original uncertainty estimate
+				Uncertainty slipRateUncertainty = slipUncertainty.type.estimate(
+						targetSlipRate, slipRateStdDevs[constraint.sectionIndex]);
+				lowerTarget = slipRateUncertainty.lowerBound;
+				upperTarget = slipRateUncertainty.upperBound;
+			} else {
+				lowerTarget = targetSlipRate;
+				upperTarget = targetSlipRate;
+			}
+			
 			Uncertainty rateUncertainty = new Uncertainty(slipUncertainty.type,
-					targetSlipRate / slipUncertainty.upperBound,
-					targetSlipRate / slipUncertainty.lowerBound);
+					lowerTarget / slipUncertainty.upperBound,
+					upperTarget / slipUncertainty.lowerBound);
 			double stdDev = rateUncertainty.stdDev;
 			
 			int row = startRow+i;
