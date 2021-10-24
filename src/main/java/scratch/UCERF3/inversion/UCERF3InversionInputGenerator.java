@@ -190,13 +190,13 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					}
 			}
 			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(), false,
-					config.getMfdEqualityConstraints(), excludeRupIndexes));
+					MFDInversionConstraint.WeightingType.NORMALIZED, config.getMfdEqualityConstraints(), null, excludeRupIndexes));
 		}
 		
 		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0)	
 			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(), true,
-					config.getMfdInequalityConstraints(), null));
+					MFDInversionConstraint.WeightingType.NORMALIZED, config.getMfdInequalityConstraints(), null, null));
 		
 		// MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0)

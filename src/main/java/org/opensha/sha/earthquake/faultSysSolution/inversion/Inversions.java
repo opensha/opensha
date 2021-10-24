@@ -382,7 +382,7 @@ public class Inversions {
 				constraints.add(new MFDInversionConstraint(rupSet, weight, false, eqConstrs));
 				constraints.add(new MFDInversionConstraint(rupSet, weight, true, ieqConstrs));
 			} else {
-				constraints.add(new MFDInversionConstraint(rupSet, weight, false, mfdConstraints, null));
+				constraints.add(new MFDInversionConstraint(rupSet, weight, false, mfdConstraints));
 			}
 		}
 		

@@ -163,15 +163,21 @@ public class InversionConstraintImplTests {
 		List<MFD_InversionConstraint> eqConstr = config.getMfdEqualityConstraints();
 		for (MFD_InversionConstraint mfd : eqConstr)
 			mfd.setMagFreqDist(testMFD);
-		MFDInversionConstraint constr = new MFDInversionConstraint(
-				rupSet, 1d, false, eqConstr, null);
 		
-		testConstraint(constr);
-		
-		constr = new MFDInversionConstraint(
-				rupSet, 1d, true, eqConstr, null);
-		
-		testConstraint(constr);
+		for (MFDInversionConstraint.WeightingType weight : MFDInversionConstraint.WeightingType.values()) {
+			List<EvenlyDiscretizedFunc> stdDevs = null;
+			if (weight == MFDInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY)
+				stdDevs = MFDInversionConstraint.calcStdDevsFromRelativeFunc(eqConstr, M->0.1);
+			MFDInversionConstraint constr = new MFDInversionConstraint(
+					rupSet, 1d, false, weight, eqConstr, stdDevs, null);
+			
+			testConstraint(constr);
+			
+			constr = new MFDInversionConstraint(
+					rupSet, 1d, true, weight, eqConstr, stdDevs, null);
+			
+			testConstraint(constr);
+		}
 	}
 
 	@Test
