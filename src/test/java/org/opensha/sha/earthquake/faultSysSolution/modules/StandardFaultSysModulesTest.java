@@ -9,8 +9,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -22,6 +24,7 @@ import org.junit.Test;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.FileUtils;
@@ -32,7 +35,11 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetSaveLoadTests;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -46,6 +53,8 @@ import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 public class StandardFaultSysModulesTest {
 
@@ -244,6 +253,33 @@ public class StandardFaultSysModulesTest {
 		}
 		InversionMisfits misfits = new InversionMisfits(ranges, misfit, d, misfit_ineq, d_ineq);
 		testModuleSerialization(demoSol.getArchive(), demoSol, misfits, InversionMisfits.class);
+	}
+	
+	@Test
+	public void testNamedFaults() throws IOException {
+		Map<String, List<Integer>> namedFaults = new HashMap<>();
+		HashSet<Integer> parentIDs = new HashSet<>();
+		for(FaultSection sect : demoRupSet.getFaultSectionDataList())
+			parentIDs.add(sect.getParentSectionId());
+		namedFaults.put("Master Fault", new ArrayList<>(parentIDs));
+		NamedFaults module = new NamedFaults(demoRupSet, namedFaults);
+		
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, NamedFaults.class);
+	}
+	
+	@Test
+	public void testPaleoData() throws IOException {
+		List<SectMappedUncertainDataConstraint> paleoData = new ArrayList<>();
+		Location fakeLoc = new Location(34d, -118);
+		paleoData.add(new SectMappedUncertainDataConstraint("name1", 0, "Sect Name", fakeLoc, 1e-2,
+				new Uncertainty(UncertaintyType.TWO_SIGMA, 0.5e-2, 2e-2)));
+		List<SectMappedUncertainDataConstraint> slipData = new ArrayList<>();
+		slipData.add(new SectMappedUncertainDataConstraint("name1", 0, "Sect Name", fakeLoc, 5d,
+				new Uncertainty(UncertaintyType.TWO_SIGMA, 4d, 6d)));
+		PaleoseismicConstraintData module = new PaleoseismicConstraintData(demoRupSet,
+				paleoData, UCERF3_PaleoProbabilityModel.load(), slipData, U3AveSlipConstraint.slip_prob_model);
+		
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, PaleoseismicConstraintData.class);
 	}
 	
 	private static double[] randArray(int len) {

@@ -41,6 +41,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -1529,6 +1531,38 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				@Override
 				public Class<? extends OpenSHA_Module> getType() {
 					return SectSlipRates.class;
+				}
+			});
+			// add named fault mappings
+			if (fm != null) {
+				addModule(new ModuleBuilder() {
+					
+					@Override
+					public Class<? extends OpenSHA_Module> getType() {
+						return NamedFaults.class;
+					}
+					
+					@Override
+					public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+						return new NamedFaults(rupSet, fm.getNamedFaultsMapAlt());
+					}
+				});
+			}
+			// add paleoseismic data
+			addModule(new ModuleBuilder() {
+				
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return PaleoseismicConstraintData.class;
+				}
+				
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					try {
+						return PaleoseismicConstraintData.loadUCERF3(rupSet);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
 				}
 			});
 			return this;
