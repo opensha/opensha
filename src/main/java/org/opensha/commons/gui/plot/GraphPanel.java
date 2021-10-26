@@ -601,9 +601,9 @@ public class GraphPanel extends JSplitPane {
 			plottedFuncs.addAll(myPlottedFuncs);
 			plottedChars.addAll(plotChars);
 			
+			ValueAxis myXAxis, myYAxis;
 			XYPlot subPlot;
 			if (specs.size()>1) {
-				ValueAxis myXAxis, myYAxis;
 				// this is a subPlot
 				if (combinedYAxis) {
 					// need a new X axis
@@ -619,6 +619,8 @@ public class GraphPanel extends JSplitPane {
 				setupPlot(subPlot, tickFontSize);
 			} else {
 				subPlot = plot;
+				myXAxis = xAxis;
+				myYAxis = yAxis;
 			}
 			
 			boolean xLog = xLogs.size() > 1 ? xLogs.get(p) : xLogs.get(0);
@@ -683,7 +685,7 @@ public class GraphPanel extends JSplitPane {
 				
 				if (plotSpec.isLegendInset()) {
 					// just for this plot, inset
-					subPlot.addAnnotation(plotSpec.buildInsetLegend(subLegend, plotPrefs, xLog, yLog, xAxis.getRange(), yAxis.getRange()));
+					subPlot.addAnnotation(plotSpec.buildInsetLegend(subLegend, plotPrefs, xLog, yLog, myXAxis.getRange(), myYAxis.getRange()));
 				} else {
 					if (legendItems == null) {
 						legendItems = new LegendItemCollection();
