@@ -160,20 +160,23 @@ public class PlotUtils {
 		axis.setStandardTickUnits(tus);
 	}
 	
-	@SuppressWarnings("unchecked")
 	public static void setSubPlotWeights(GraphPanel gp, int... weights) {
-		XYPlot plot = gp.getPlot();
-		List<XYPlot> subPlots;
-		if (plot instanceof CombinedDomainXYPlot) {
-			subPlots = ((CombinedDomainXYPlot)plot).getSubplots();
-		} else if (plot instanceof CombinedRangeXYPlot) {
-			subPlots = ((CombinedRangeXYPlot)plot).getSubplots();
-		} else {
-			throw new IllegalStateException("Can only set sub plot weights on CombinedDomainXYPlot or CombinedRangeXYPlot");
-		}
+		List<XYPlot> subPlots = getSubPlots(gp);
 		Preconditions.checkState(subPlots.size() == weights.length, "Have %s subplots but %s weights", subPlots.size(), weights.length);
 		for (int i=0; i<subPlots.size(); i++)
 			subPlots.get(i).setWeight(weights[i]);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static List<XYPlot> getSubPlots(GraphPanel gp) {
+		XYPlot plot = gp.getPlot();
+		if (plot instanceof CombinedDomainXYPlot) {
+			return ((CombinedDomainXYPlot)plot).getSubplots();
+		} else if (plot instanceof CombinedRangeXYPlot) {
+			return ((CombinedRangeXYPlot)plot).getSubplots();
+		} else {
+			throw new IllegalStateException("Can only get sub plots for CombinedDomainXYPlot or CombinedRangeXYPlot");
+		}
 	}
 
 }
