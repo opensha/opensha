@@ -2,7 +2,6 @@ package scratch.UCERF3.utils.paleoRateConstraints;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -21,8 +20,11 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.Uncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
@@ -32,29 +34,11 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.commons.util.StatUtil;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.commons.gui.plot.GraphWindow;
-
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
-import scratch.UCERF3.SlipEnabledRupSet;
-import scratch.UCERF3.SlipEnabledSolution;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.inversion.CommandLineInversionRunner;
-import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
-import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.utils.U3FaultSystemIO;
-import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter.AveSlipFakePaleoConstraint;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -62,6 +46,16 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Doubles;
+
+import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.SlipEnabledRupSet;
+import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.inversion.CommandLineInversionRunner;
+import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
+import scratch.UCERF3.inversion.InversionFaultSystemSolution;
+import scratch.UCERF3.utils.U3FaultSystemIO;
+import scratch.UCERF3.utils.UCERF3_DataUtils;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 public class PaleoFitPlotter {
 	
@@ -81,8 +75,9 @@ public class PaleoFitPlotter {
 		
 		public AveSlipFakePaleoConstraint(U3AveSlipConstraint aveSlip, int sectIndex, double slipRate) {
 			super(aveSlip.name, sectIndex, aveSlip.sectionName, aveSlip.dataLocation, slipRate/aveSlip.getWeightedMean(),
-					new Uncertainty(aveSlip.uncertainties[0].type,
-							slipRate/aveSlip.uncertainties[0].upperBound, slipRate/aveSlip.uncertainties[0].lowerBound));
+					new Uncertainty(UncertaintyBoundType.TWO_SIGMA.estimateStdDev(slipRate/aveSlip.getWeightedMean(),
+							slipRate/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).upperBound,
+							slipRate/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).lowerBound)));
 			isMultiple = false;
 			origAveSlip = aveSlip.getWeightedMean();
 			origAveSlipLower = aveSlip.getLowerUncertaintyBound();
@@ -97,9 +92,10 @@ public class PaleoFitPlotter {
 //					StatUtils.max(slipRates)/aveSlip.getWeightedMean());
 			super(aveSlip.name, sectIndex, aveSlip.sectionName, aveSlip.dataLocation,
 					FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
-					new Uncertainty(aveSlip.uncertainties[0].type,
-							StatUtils.min(slipRates)/aveSlip.uncertainties[0].upperBound,
-							StatUtils.max(slipRates)/aveSlip.uncertainties[0].lowerBound));
+					new Uncertainty(UncertaintyBoundType.TWO_SIGMA.estimateStdDev(
+							FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
+							StatUtils.min(slipRates)/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).upperBound,
+							StatUtils.max(slipRates)/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).lowerBound)));
 			isMultiple = true;
 			origAveSlip = aveSlip.getWeightedMean();
 			origAveSlipLower = aveSlip.getLowerUncertaintyBound();

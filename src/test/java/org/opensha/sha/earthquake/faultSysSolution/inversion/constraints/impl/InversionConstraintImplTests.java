@@ -11,6 +11,8 @@ import java.util.Random;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
@@ -19,8 +21,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.SegmentationModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -223,9 +223,9 @@ public class InversionConstraintImplTests {
 		UCERF3_PaleoProbabilityModel paleoProbModel = UCERF3_PaleoProbabilityModel.load();
 		List<SectMappedUncertainDataConstraint> paleoRateConstraints = new ArrayList<>();
 		paleoRateConstraints.add(new SectMappedUncertainDataConstraint("", r.nextInt(numSections), "", null,
-				1d, new Uncertainty(UncertaintyType.TWO_SIGMA, 0.5d, 1.5d)));
+				1d, BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.TWO_SIGMA, 1d, 0.5d, 1.5d)));
 		paleoRateConstraints.add(new SectMappedUncertainDataConstraint("", r.nextInt(numSections), "", null,
-				2d, new Uncertainty(UncertaintyType.TWO_SIGMA, 1d, 3d)));
+				2d, BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.TWO_SIGMA, 2d, 1d, 3d)));
 		PaleoRateInversionConstraint constr = new PaleoRateInversionConstraint(
 				rupSet, 1d, paleoRateConstraints, paleoProbModel);
 		

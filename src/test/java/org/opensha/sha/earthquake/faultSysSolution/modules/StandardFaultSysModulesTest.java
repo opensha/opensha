@@ -24,6 +24,8 @@ import org.junit.Test;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
@@ -36,8 +38,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetSaveLoadTests;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -272,10 +272,10 @@ public class StandardFaultSysModulesTest {
 		List<SectMappedUncertainDataConstraint> paleoData = new ArrayList<>();
 		Location fakeLoc = new Location(34d, -118);
 		paleoData.add(new SectMappedUncertainDataConstraint("name1", 0, "Sect Name", fakeLoc, 1e-2,
-				new Uncertainty(UncertaintyType.TWO_SIGMA, 0.5e-2, 2e-2)));
+				BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.TWO_SIGMA, 1e-2, 0.5e-2, 2e-2)));
 		List<SectMappedUncertainDataConstraint> slipData = new ArrayList<>();
 		slipData.add(new SectMappedUncertainDataConstraint("name1", 0, "Sect Name", fakeLoc, 5d,
-				new Uncertainty(UncertaintyType.TWO_SIGMA, 4d, 6d)));
+				BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.TWO_SIGMA, 5d, 4d, 6d)));
 		PaleoseismicConstraintData module = new PaleoseismicConstraintData(demoRupSet,
 				paleoData, UCERF3_PaleoProbabilityModel.load(), slipData, U3AveSlipConstraint.slip_prob_model);
 		

@@ -5,6 +5,8 @@ package scratch.UCERF3.utils.paleoRateConstraints;
 
 import java.util.ArrayList;
 
+import org.opensha.commons.data.uncertainty.Uncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 
@@ -138,20 +140,20 @@ public class U3PaleoRateConstraint extends SectMappedUncertainDataConstraint imp
 	
 
 	public double getLower95ConfOfRate() {
-		return estimateUncertainty(UncertaintyType.CONF_95).lowerBound;
+		return estimateUncertaintyBounds(UncertaintyBoundType.CONF_95).lowerBound;
 	}
 
 	public double getUpper95ConfOfRate() {
-		return estimateUncertainty(UncertaintyType.CONF_95).upperBound;
+		return estimateUncertaintyBounds(UncertaintyBoundType.CONF_95).upperBound;
 	}
 	
 
 	public double getLower68ConfOfRate() {
-		return estimateUncertainty(UncertaintyType.CONF_68).lowerBound;
+		return estimateUncertaintyBounds(UncertaintyBoundType.CONF_68).lowerBound;
 	}
 
 	public double getUpper68ConfOfRate() {
-		return estimateUncertainty(UncertaintyType.CONF_68).upperBound;
+		return estimateUncertaintyBounds(UncertaintyBoundType.CONF_68).upperBound;
 	}
 
 

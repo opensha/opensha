@@ -96,7 +96,7 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	}
 
 	/**
-	 * Gets the region associated with this MFD, if specified
+	 * Gets the region associated with this MFD, if available
 	 * 
 	 * @return region assocated with this MFD, or null if no region
 	 */

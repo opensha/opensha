@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.Uncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -14,7 +17,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.GsonBuilder;
@@ -188,7 +190,8 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData> {
 			
 			double meanRate = targetSlipRate / constraint.bestEstimate;
 			
-			Uncertainty slipUncertainty = constraint.uncertainties[0];
+			UncertaintyBoundType refType = UncertaintyBoundType.TWO_SIGMA;
+			BoundedUncertainty slipUncertainty = constraint.estimateUncertaintyBounds(refType);
 			
 			System.out.println("Inferring rate constraint from paleo slip constraint on "+constraint.sectionName);
 			System.out.println("\tslip="+(float)constraint.bestEstimate+"\tslipUuncert="+slipUncertainty);
@@ -197,7 +200,7 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData> {
 			double lowerTarget, upperTarget;
 			if (applySlipRateUncertainty) {
 				// estimate slip rate bounds in the same units as the original uncertainty estimate
-				Uncertainty slipRateUncertainty = slipUncertainty.type.estimate(
+				BoundedUncertainty slipRateUncertainty = refType.estimate(
 						targetSlipRate, slipRateStdDevs[constraint.sectionIndex]);
 				lowerTarget = slipRateUncertainty.lowerBound;
 				upperTarget = slipRateUncertainty.upperBound;
@@ -206,10 +209,9 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData> {
 				lowerTarget = targetSlipRate;
 				upperTarget = targetSlipRate;
 			}
-			
-			Uncertainty rateUncertainty = new Uncertainty(slipUncertainty.type,
+			Uncertainty rateUncertainty = new Uncertainty(refType.estimateStdDev(meanRate,
 					lowerTarget / slipUncertainty.upperBound,
-					upperTarget / slipUncertainty.lowerBound);
+					upperTarget / slipUncertainty.lowerBound));
 			
 			System.out.println("\trate="+(float)meanRate+"\trateUuncert="+rateUncertainty);
 			

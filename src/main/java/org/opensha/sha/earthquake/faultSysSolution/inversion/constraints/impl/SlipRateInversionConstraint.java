@@ -2,10 +2,10 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.util.List;
 
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -133,15 +133,16 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 				FaultSection sect = rupSet.getFaultSectionData(s);
 				FeatureProperties props = sect instanceof GeoJSONFaultSection ?
 						((GeoJSONFaultSection)sect).getProperties() : null;
+				double meanRate = targetSlipRates.getSlipRate(s);
 				if (props != null && props.containsKey("HighRate") && props.containsKey("LowRate")) {
 					// assume that we have +/- 2 sigma values (i.e., 95% confidence) to estimate a standard deviation
 					double high = props.getDouble("HighRate", Double.NaN);
 					double low = props.getDouble("LowRate", Double.NaN);
 					// +/- 2 sigma means that there are 4 sigmas between low and high
-					stdDev = UncertaintyType.TWO_SIGMA.calcStdDev(low, high);
+					stdDev = UncertaintyBoundType.TWO_SIGMA.estimateStdDev(meanRate, low, high);
 					numInferred++;
 				} else {
-					stdDev = targetSlipRates.getSlipRate(s)*defaultFractStdDev;
+					stdDev = meanRate*defaultFractStdDev;
 					numDefaults++;
 				}
 			}

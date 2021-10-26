@@ -17,11 +17,11 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.U3FaultSystemRupSet;
@@ -152,12 +152,12 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			// add to Seg Rate Constraint list
 			String name = faultSectionData.get(closestFaultSectionIndex).getSectionName();
 			
-			Uncertainty[] uncertainties;
+			BoundedUncertainty[] uncertainties;
 			if (hasQuantiles) {
 				// UCERF3.3
-				uncertainties = new Uncertainty[] {
-						new Uncertainty(UncertaintyType.CONF_68, lower68Conf, upper68Conf),
-						new Uncertainty(UncertaintyType.CONF_95, lower95Conf, upper95Conf)
+				uncertainties = new BoundedUncertainty[] {
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_68, meanRate, lower68Conf, upper68Conf),
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_95, meanRate, lower95Conf, upper95Conf)
 				};
 			} else {
 				// UCERF3.1 and UCERF3.2
@@ -192,16 +192,16 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	 * @param upper68Conf
 	 * @return
 	 */
-	private static Uncertainty[] estimateFrom68(double meanRate, double lower68Conf, double upper68Conf) {
+	private static BoundedUncertainty[] estimateFrom68(double meanRate, double lower68Conf, double upper68Conf) {
 		double stdDevOfMeanRate =  ((meanRate-lower68Conf)+(upper68Conf-meanRate))/2;
 		
 		double aveLogStd = (Math.abs(Math.log10(meanRate/lower68Conf)) + Math.abs(Math.log10(meanRate/upper68Conf)))/2;
 		
 		double lower95Conf = Math.pow(10, Math.log10(meanRate) - 2*aveLogStd);
 		double upper95Conf = Math.pow(10, Math.log10(meanRate) + 2*aveLogStd);
-		return new Uncertainty[] {
-				new Uncertainty(UncertaintyType.CONF_68, lower68Conf, upper68Conf, stdDevOfMeanRate),
-				new Uncertainty(UncertaintyType.CONF_95, lower95Conf, upper95Conf, stdDevOfMeanRate)
+		return new BoundedUncertainty[] {
+				new BoundedUncertainty(UncertaintyBoundType.CONF_68, lower68Conf, upper68Conf, stdDevOfMeanRate),
+				new BoundedUncertainty(UncertaintyBoundType.CONF_95, lower95Conf, upper95Conf, stdDevOfMeanRate)
 		};
 	}
 	
@@ -265,12 +265,12 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			}
 				
 			Location loc = new Location(lat,lon);
-			Uncertainty[] uncertainties;
+			BoundedUncertainty[] uncertainties;
 			if (hasQuantiles) {
 				// UCERF3.3
-				uncertainties = new Uncertainty[] {
-						new Uncertainty(UncertaintyType.CONF_68, lower68Conf, upper68Conf),
-						new Uncertainty(UncertaintyType.CONF_95, lower95Conf, upper95Conf),
+				uncertainties = new BoundedUncertainty[] {
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_68, meanRate, lower68Conf, upper68Conf),
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_95, meanRate, lower95Conf, upper95Conf),
 				};
 			} else {
 				uncertainties = estimateFrom68(meanRate, lower68Conf, upper68Conf);

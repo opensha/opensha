@@ -15,6 +15,8 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.FaultUtils;
@@ -73,7 +75,8 @@ public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint imple
 			double upperUncertaintyBound, double lowerUncertaintyBound,
 			Location loc) {
 		super(subSectionName, subSectionIndex, subSectionName, loc, weightedMean,
-				new Uncertainty(UncertaintyType.TWO_SIGMA, lowerUncertaintyBound, upperUncertaintyBound));
+				BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.TWO_SIGMA,
+						weightedMean, lowerUncertaintyBound, upperUncertaintyBound));
 	}
 
 	public int getSubSectionIndex() {
@@ -100,7 +103,7 @@ public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint imple
 	 * @return
 	 */
 	public double getUpperUncertaintyBound() {
-		return uncertainties[0].upperBound;
+		return estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).upperBound;
 	}
 
 	/**
@@ -110,7 +113,7 @@ public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint imple
 	 * @return
 	 */
 	public double getLowerUncertaintyBound() {
-		return uncertainties[0].lowerBound;
+		return estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).lowerBound;
 	}
 	
 	public Location getSiteLocation() {

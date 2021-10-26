@@ -14,6 +14,8 @@ import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -29,8 +31,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -191,7 +191,7 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 				valTrack.addValue(rate);
 				valTrack.addValue(constr.bestEstimate);
 				// make sure at least part of the uncertainties are visible
-				Uncertainty halfSigaBounds = constr.estimateUncertainty(UncertaintyType.HALF_SIGMA);
+				BoundedUncertainty halfSigaBounds = constr.estimateUncertaintyBounds(UncertaintyBoundType.HALF_SIGMA);
 				valTrack.addValue(halfSigaBounds.lowerBound);
 				valTrack.addValue(halfSigaBounds.upperBound);
 			}
@@ -209,8 +209,8 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 				continue;
 			double paleoRate = constr.bestEstimate;
 			
-			Uncertainty conf68 = constr.estimateUncertainty(UncertaintyType.CONF_68);
-			Uncertainty conf95 = constr.estimateUncertainty(UncertaintyType.CONF_95);
+			BoundedUncertainty conf68 = constr.estimateUncertaintyBounds(UncertaintyBoundType.CONF_68);
+			BoundedUncertainty conf95 = constr.estimateUncertaintyBounds(UncertaintyBoundType.CONF_95);
 			double lower68 = conf68.lowerBound;
 			double upper68 = conf68.upperBound;
 			double lower95 = conf95.lowerBound;
