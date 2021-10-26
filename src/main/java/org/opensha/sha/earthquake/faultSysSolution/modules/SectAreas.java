@@ -60,6 +60,8 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 	
 	private static class Default extends SectAreas implements SubModule<FaultSystemRupSet> {
 		
+		private double[] data = null;
+		
 		private Default(FaultSystemRupSet rupSet) {
 			super(rupSet);
 		}
@@ -73,7 +75,17 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 
 		@Override
 		public double getSectArea(int sectIndex) {
-			return parent.getFaultSectionData(sectIndex).getArea(true);
+			if (data == null) {
+				synchronized (this) {
+					if (data == null) {
+						double[] data = new double[parent.getNumSections()];
+						for (int s=0; s<data.length; s++)
+							data[s] = parent.getFaultSectionData(sectIndex).getArea(true);
+						this.data = data;
+					}
+				}
+			}
+			return data[sectIndex];
 		}
 		
 	}
