@@ -465,6 +465,7 @@ public class ComcatEventWebService extends EventWebService {
 						&& query.getIncludeAllMagnitudes() == null
 						&& query.getIncludeAllOrigins() == null
 						&& query.getIncludeArrivals() == null
+						&& (ceq == null || ceq.getIncludeDeleted() == null)
 						&& (ceq == null || ceq.getIncludeSuperseded() == null)
 						&& query.getKmlAnimated() == null
 						&& query.getKmlColorBy() == null
@@ -518,6 +519,7 @@ public class ComcatEventWebService extends EventWebService {
 		params.put("includeallmagnitudes", query.getIncludeAllMagnitudes());
 		params.put("includeallorigins", query.getIncludeAllOrigins());
 		params.put("includearrivals", query.getIncludeArrivals());
+		if (ceq != null) {params.put("includedeleted", ceq.getIncludeDeleted());}
 		if (ceq != null) {params.put("includesuperseded", ceq.getIncludeSuperseded());}
 		params.put("kmlanimated", query.getKmlAnimated());
 		params.put("kmlcolorby", query.getKmlColorBy());

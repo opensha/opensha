@@ -565,10 +565,11 @@ public class ComcatAccessor {
 		// Visit each event
 
 		String productType = null;
+		boolean includeDeleted = false;
 
 		visitEventList (visitor, exclude_id, startTime, endTime,
 			minDepth, maxDepth, region, wrapLon, extendedInfo,
-			minMag, productType, limit_per_call, max_calls);
+			minMag, productType, includeDeleted, limit_per_call, max_calls);
 
 		// Return the list
 		
@@ -619,6 +620,7 @@ public class ComcatAccessor {
 	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
 	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
 	 * @param productType = Required product type, or null if none.
+	 * @param includeDeleted = True to return deleted events, or events where the required product was deleted.
 	 * @param limit_per_call = Maximum number of events to fetch in a single call to Comcat, or 0 for default.
 	 * @param max_calls = Maximum number of calls to ComCat, or 0 for default.
 	 * @return
@@ -630,7 +632,7 @@ public class ComcatAccessor {
 	 */
 	public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
 			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
-			double minMag, String productType, int limit_per_call, int max_calls) {
+			double minMag, String productType, boolean includeDeleted, int limit_per_call, int max_calls) {
 
 		// Initialize HTTP statuses
 
@@ -717,6 +719,12 @@ public class ComcatAccessor {
 
 		if (productType != null) {
 			query.setProductType (productType);
+		}
+
+		// Insert the include deleted flag in the query
+
+		if (includeDeleted) {
+			query.setIncludeDeleted (true);
 		}
 
 		// Set the sort order to descending origin time
@@ -1017,6 +1025,42 @@ public class ComcatAccessor {
 
 	
 	/**
+	 * [DEPRECATED - Use above version]
+	 * Visit a list of events satisfying the given conditions.
+	 * @param visitor = The visitor that is called for each event, cannot be null.
+	 * @param exclude_id = An event id to exclude from the results, or null if none.
+	 * @param startTime = Start of time interval, in milliseconds after the epoch.
+	 * @param endTime = End of time interval, in milliseconds after the epoch.
+	 * @param minDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param maxDepth = Maximum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param region = Region to search.  Events not in this region are filtered out.
+	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
+	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
+	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @param productType = Required product type, or null if none.
+	 * @param limit_per_call = Maximum number of events to fetch in a single call to Comcat, or 0 for default.
+	 * @param max_calls = Maximum number of calls to ComCat, or 0 for default.
+	 * @return
+	 * Returns the result code from the last call to the visitor.
+	 * Note: As a special case, if endTime == startTime, then the end time is the current time.
+	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
+	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
+	 */
+	//public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
+	//		double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
+	//		double minMag, String productType, int limit_per_call, int max_calls) {
+	//
+	//	boolean includeDeleted = false;
+	//
+	//	return visitEventList (visitor, exclude_id, startTime, endTime,
+	//		minDepth, maxDepth, region, wrapLon, extendedInfo,
+	//		minMag, productType, includeDeleted, limit_per_call, max_calls);
+	//}
+
+
+	
+
+	/**
 	 * Visit a list of events satisfying the given conditions.
 	 * @param visitor = The visitor that is called for each event, cannot be null.
 	 * @param exclude_id = An event id to exclude from the results, or null if none.
@@ -1037,13 +1081,48 @@ public class ComcatAccessor {
 	 */
 	public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
 			double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
-			double minMag, String productType) {
+			double minMag, String productType, boolean includeDeleted) {
 
 		return visitEventList (visitor, exclude_id, startTime, endTime,
 			minDepth, maxDepth, region, wrapLon, extendedInfo,
-			minMag, productType, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
+			minMag, productType, includeDeleted, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
 
 	}
+
+
+	
+
+	/**
+	 * [DEPRECATED - Use above version]
+	 * Visit a list of events satisfying the given conditions.
+	 * @param visitor = The visitor that is called for each event, cannot be null.
+	 * @param exclude_id = An event id to exclude from the results, or null if none.
+	 * @param startTime = Start of time interval, in milliseconds after the epoch.
+	 * @param endTime = End of time interval, in milliseconds after the epoch.
+	 * @param minDepth = Minimum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param maxDepth = Maximum depth, in km.  Comcat requires a value from -100 to +1000.
+	 * @param region = Region to search.  Events not in this region are filtered out.
+	 * @param wrapLon = Desired longitude range: false = -180 to 180; true = 0 to 360.
+	 * @param extendedInfo = True to return extended information, see eventToObsRup below.
+	 * @param minMag = Minimum magnitude, or -10.0 for no minimum.
+	 * @param productType = Required product type, or null if none.
+	 * @return
+	 * Returns the result code from the last call to the visitor.
+	 * Note: As a special case, if endTime == startTime, then the end time is the current time.
+	 * Note: This function can retrieve a maximum of about 150,000 earthquakes.  Comcat will
+	 * time out if the query matches too many earthquakes, typically with HTTP status 504.
+	 */
+	//public int visitEventList (ComcatVisitor visitor, String exclude_id, long startTime, long endTime,
+	//		double minDepth, double maxDepth, ComcatRegion region, boolean wrapLon, boolean extendedInfo,
+	//		double minMag, String productType) {
+	//
+	//	boolean includeDeleted = false;
+	//
+	//	return visitEventList (visitor, exclude_id, startTime, endTime,
+	//		minDepth, maxDepth, region, wrapLon, extendedInfo,
+	//		minMag, productType, includeDeleted, COMCAT_MAX_LIMIT, COMCAT_MAX_CALLS);
+	//
+	//}
 
 
 
