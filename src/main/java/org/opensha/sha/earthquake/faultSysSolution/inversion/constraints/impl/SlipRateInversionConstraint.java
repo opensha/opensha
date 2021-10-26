@@ -112,12 +112,14 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 	}
 	
 	/**
-	 * 
+	 * Calculates slip rate standard deviations. If zeros are encountered, the default fractional standard deviation
+	 * will be applied, unless the fault is a GeoJSONFaultSection with a high and low rate attached, in which case
+	 * the high and low rate are assumed to be +/- 2-sigma bounds
 	 * 
 	 * @param targetSlipRates
 	 * @return
 	 */
-	static double[] getSlipRateStdDevs(SectSlipRates targetSlipRates, double defaultFractStdDev) {
+	public static double[] getSlipRateStdDevs(SectSlipRates targetSlipRates, double defaultFractStdDev) {
 		int numDefaults = 0;
 		int numInferred = 0;
 		

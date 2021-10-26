@@ -97,7 +97,12 @@ public class UncertainDataConstraint implements Named {
 		
 		public Uncertainty(UncertaintyType type, double lowerBound, double upperBound, double stdDev) {
 			this.type = type;
+			Preconditions.checkState(Double.isFinite(lowerBound),
+					"Lower uncertainty bound is non-finite: %s", (float)lowerBound);
 			this.lowerBound = lowerBound;
+			Preconditions.checkState(lowerBound <= upperBound,
+					"Upper uncertainty bound non-finite or less than lower bound (%s): %s",
+					(float)lowerBound, (float)upperBound);
 			this.upperBound = upperBound;
 			this.stdDev = stdDev;
 		}
