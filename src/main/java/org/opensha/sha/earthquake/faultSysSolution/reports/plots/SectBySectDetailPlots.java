@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
@@ -15,8 +16,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.zip.ZipFile;
 
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.DatasetRenderingOrder;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.ui.RectangleAnchor;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
@@ -29,6 +33,7 @@ import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ComparablePairing;
@@ -39,8 +44,15 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.Uncertainty;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.UncertaintyType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
@@ -61,9 +73,12 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.Ints;
 
 public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
@@ -133,17 +148,17 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<String> sortedNames = new ArrayList<>(linksMap.keySet());
 		Collections.sort(sortedNames);
 		
-		TableBuilder table = buildSectLinksTable(linksMap, sortedNames);
+		TableBuilder table = buildSectLinksTable(linksMap, sortedNames, "Fault Section");
 
 		return table.build();
 	}
 
-	private TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames) {
-		return buildSectLinksTable(linksMap, sortedNames, null);
+	static TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames, String header) {
+		return buildSectLinksTable(linksMap, sortedNames, null, header);
 	}
 
-	private TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames,
-			Map<String, Boolean> highlights) {
+	static TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames,
+			Map<String, Boolean> highlights, String header) {
 		int cols;
 		if (sortedNames.size() > 30)
 			cols = 3;
@@ -270,10 +285,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			// MFDs and such only for solutions
 			
 			lines.add("");
-			lines.addAll(getMFDLines(meta, parentSectIndex, parentName, parentSects, resourcesDir, topLink));
+			lines.addAll(getMFDLines(meta, parentName, parentSects, resourcesDir, topLink));
 			
 			lines.add("");
-			lines.addAll(getAlongStrikeLines(meta, parentSectIndex, parentName, parentSects, resourcesDir, topLink));
+			lines.addAll(getAlongStrikeLines(meta, parentName, parentSects, resourcesDir, topLink));
 		} else {
 			// histograms and rupture examples when we don't have a solution
 			lines.add("");
@@ -673,7 +688,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		List<String> sortedNames = ComparablePairing.getSortedData(parentDists);
 		
-		lines.addAll(buildSectLinksTable(linksMap, sortedNames, parentConnecteds).build());
+		lines.addAll(buildSectLinksTable(linksMap, sortedNames, parentConnecteds, "Fault Section").build());
 		lines.add("");
 		for (String name : sortedNames)
 			lines.addAll(parentMarkdowns.get(name));
@@ -786,24 +801,24 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 	}
 
-	private List<String> getMFDLines(ReportMetadata meta, int parentSectIndex, String parentName,
-			List<FaultSection> parentSects, File outputDir, String topLink) throws IOException {
+	static List<String> getMFDLines(ReportMetadata meta, String faultName,
+			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		FaultSystemSolution sol = meta.primary.sol;
 		
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = Double.NEGATIVE_INFINITY;
-		int totNumRups = 0;
-		for (FaultSection sect : parentSects) {
-			int rupsForSect = rupSet.getRupturesForSection(sect.getSectionId()).size();
-			if (rupsForSect > 0) {
+		HashSet<Integer> rups = new HashSet<>();
+		for (FaultSection sect : faultSects) {
+			List<Integer> myRups = rupSet.getRupturesForSection(sect.getSectionId());
+			rups.addAll(myRups);
+			if (myRups.size() > 0) {
 				minMag = Math.min(minMag, rupSet.getMinMagForSection(sect.getSectionId()));
 				maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(sect.getSectionId()));
-				totNumRups += rupsForSect;
 			}
 		}
 		
-		if (totNumRups == 0)
+		if (rups.isEmpty())
 			return new ArrayList<>();
 		
 		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(minMag, maxMag);
@@ -812,10 +827,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<XY_DataSet> incrFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> incrChars = new ArrayList<>();
 		
-		IncrementalMagFreqDist particMFD = sol.calcParticipationMFD_forParentSect(
-				parentSectIndex, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
-		IncrementalMagFreqDist nuclMFD = sol.calcNucleationMFD_forParentSect(
-				parentSectIndex, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
+		IncrementalMagFreqDist particMFD = sol.calcParticipationMFD_forRups(
+				rups, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
+		SummedMagFreqDist nuclMFD = new SummedMagFreqDist(defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
+		for (FaultSection sect : faultSects)
+			nuclMFD.addIncrementalMagFreqDist(sol.calcNucleationMFD_forSect(
+					sect.getSectionId(), defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size()));
 
 		incrFuncs.add(particMFD);
 		incrChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, MAIN_COLOR));
@@ -827,20 +844,25 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<PlotCurveCharacterstics> cmlChars = new ArrayList<>();
 		
 		if (meta.comparison != null && meta.comparison.sol != null) {
-			IncrementalMagFreqDist compParticMFD = meta.comparison.sol.calcParticipationMFD_forParentSect(
-					parentSectIndex, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
-			IncrementalMagFreqDist compNuclMFD = meta.comparison.sol.calcNucleationMFD_forParentSect(
-					parentSectIndex, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
+			HashSet<Integer> compRups = new HashSet<>();
+			for (FaultSection sect : faultSects)
+				compRups.addAll(meta.comparison.rupSet.getRupturesForSection(sect.getSectionId()));
+			IncrementalMagFreqDist compParticMFD = meta.comparison.sol.calcParticipationMFD_forRups(
+					compRups, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
+			SummedMagFreqDist compNuclMFD = new SummedMagFreqDist(defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
+			for (FaultSection sect : faultSects)
+				compNuclMFD.addIncrementalMagFreqDist(meta.comparison.sol.calcNucleationMFD_forSect(
+						sect.getSectionId(), defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size()));
 			
 			particMFD.setName("Primary Participation");
 			nuclMFD.setName("Primary Nucleation");
 			compParticMFD.setName("Comparison Participation");
 			compNuclMFD.setName("Comparison Nucleation");
 			
-			this.addFakeHistFromFunc(compParticMFD, incrFuncs, incrChars,
+			addFakeHistFromFunc(compParticMFD, incrFuncs, incrChars,
 					new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, COMP_COLOR));
 			
-			this.addFakeHistFromFunc(compNuclMFD, incrFuncs, incrChars,
+			addFakeHistFromFunc(compNuclMFD, incrFuncs, incrChars,
 					new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, COMP_COLOR));
 			
 			cmlFuncs.add(compParticMFD.getCumRateDistWithOffset());
@@ -865,7 +887,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<PlotCurveCharacterstics> availableChars = new ArrayList<>();
 		IncrementalMagFreqDist availableRups = defaultMFD.deepClone();
 		IncrementalMagFreqDist usedRups = defaultMFD.deepClone();
-		for (int rupIndex : rupSet.getRupturesForParentSection(parentSectIndex)) {
+		for (int rupIndex : rups) {
 			double rate = sol.getRateForRup(rupIndex);
 			double mag = rupSet.getMagForRup(rupIndex);
 			int magIndex = availableRups.getClosestXIndex(mag);
@@ -888,8 +910,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<Boolean> yLogs = List.of(true, true);
 		int[] weights = { 7, 3 };
 		
-		PlotSpec incrSpec = new PlotSpec(incrFuncs, incrChars, parentName, "Magnitude", "Incremental Rate (per yr)");
-		PlotSpec cmlSpec = new PlotSpec(cmlFuncs, cmlChars, parentName, "Magnitude", "Cumulative Rate (per yr)");
+		PlotSpec incrSpec = new PlotSpec(incrFuncs, incrChars, faultName, "Magnitude", "Incremental Rate (per yr)");
+		PlotSpec cmlSpec = new PlotSpec(cmlFuncs, cmlChars, faultName, "Magnitude", "Cumulative Rate (per yr)");
 		incrSpec.setLegendInset(true);
 		cmlSpec.setLegendInset(true);
 		
@@ -925,7 +947,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return lines;
 	}
 	
-	private void addFakeHistFromFunc(EvenlyDiscretizedFunc mfd, List<XY_DataSet> funcs,
+	private static void addFakeHistFromFunc(EvenlyDiscretizedFunc mfd, List<XY_DataSet> funcs,
 			List<PlotCurveCharacterstics> chars, PlotCurveCharacterstics pChar) {
 		boolean first = true;
 		double plusMinus = mfd.getDelta()*0.4;
@@ -975,20 +997,22 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return new Range(minNonZero, max);
 	}
 
-	private List<String> getAlongStrikeLines(ReportMetadata meta, int parentSectIndex, String parentName,
-			List<FaultSection> parentSects, File outputDir, String topLink) throws IOException {
+	static List<String> getAlongStrikeLines(ReportMetadata meta, String faultName,
+			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
+		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		
 		MinMaxAveTracker latRange = new MinMaxAveTracker();
 		MinMaxAveTracker lonRange = new MinMaxAveTracker();
 		
-		for (FaultSection sect : parentSects) {
+		for (FaultSection sect : faultSects) {
 			for (Location loc : sect.getFaultTrace()) {
 				latRange.addValue(loc.lat);
 				lonRange.addValue(loc.lon);
 			}
 		}
 		
-		boolean latX = latRange.getLength() > 0.75*lonRange.getLength(); // prefer latitude
+		// strongly prefer latitude here
+		boolean latX = latRange.getLength() > 0.6*lonRange.getLength() || faultName.contains("San Andreas");
 		String xLabel;
 		Range xRange;
 		if (latX) {
@@ -1002,7 +1026,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<XY_DataSet> emptySectFuncs = new ArrayList<>();
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = 0d;
-		for (FaultSection sect : parentSects) {
+		for (FaultSection sect : faultSects) {
 			XY_DataSet func = new DefaultXY_DataSet();
 			for (Location loc : sect.getFaultTrace()) {
 				if (latX)
@@ -1011,12 +1035,14 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					func.set(loc.getLongitude(), 0d);
 			}
 			emptySectFuncs.add(func);
-			minMag = Math.min(minMag, meta.primary.rupSet.getMinMagForSection(sect.getSectionId()));
-			maxMag = Math.max(maxMag, meta.primary.rupSet.getMaxMagForSection(sect.getSectionId()));
+			minMag = Math.min(minMag, rupSet.getMinMagForSection(sect.getSectionId()));
+			maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(sect.getSectionId()));
 		}
 		
 		List<PlotSpec> specs = new ArrayList<>();
 		List<Range> yRanges = new ArrayList<>();
+		List<List<XY_DataSet>> funcLists = new ArrayList<>();
+		List<List<PlotCurveCharacterstics>> charLists = new ArrayList<>();
 		List<Boolean> yLogs = new ArrayList<>();
 		
 		// build event rate plot
@@ -1027,7 +1053,6 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<Double> minMags = new ArrayList<>();
 		minMags.add(0d);
 		magLines.add(PlotLineType.SOLID);
-		
 		
 		if (maxMag > 9) {
 			if (minMag < 7 && maxMag > 7) {
@@ -1064,10 +1089,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				magLabels.add("Supra-Seismogenic");
 		}
 		
+		Map<Integer, List<FaultSection>> parentsMap = faultSects.stream().collect(Collectors.groupingBy(s->s.getParentSectionId()));
+		
 		boolean comp = meta.comparison != null && meta.comparison.sol != null;
 		boolean first = true;
-		for (int s=0; s<parentSects.size(); s++) {
-			FaultSection sect = parentSects.get(s);
+		for (int s=0; s<faultSects.size(); s++) {
+			FaultSection sect = faultSects.get(s);
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
 			for (int m=0; m<minMags.size(); m++) {
 				double myMinMag = minMags.get(m);
@@ -1109,27 +1136,184 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			first = false;
 		}
-		PlotSpec magRateSpec = new PlotSpec(funcs, chars, parentName, xLabel, "Participation Rate (per year)");
+		PlotSpec magRateSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Participation Rate (per year)");
 		// legend at bottom
-		magRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, 0.025, 0.025, 0.95, false);
+		double legendRelX = latX ? 0.975 : 0.025;
+		magRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
 		specs.add(magRateSpec);
+		funcLists.add(funcs);
+		charLists.add(chars);
 		yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1)));
 		yLogs.add(true);
 		
-		if (meta.primary.rupSet.hasModule(SlipAlongRuptureModel.class) && meta.primary.rupSet.hasModule(AveSlipModule.class)) {
+		List<SectMappedUncertainDataConstraint> paleoConstraints = null;
+		List<SectMappedUncertainDataConstraint> paleoSlipConstraints = null;
+		
+		PaleoseismicConstraintData paleoData = rupSet.getModule(PaleoseismicConstraintData.class);
+		if (paleoData != null) {
+			HashSet<Integer> sectIndexes = new HashSet<>();
+			for (FaultSection sect : faultSects)
+				sectIndexes.add(sect.getSectionId());
+			
+			if (paleoData.hasPaleoRateConstraints()) {
+				paleoConstraints = new ArrayList<>();
+				for (SectMappedUncertainDataConstraint constr : paleoData.getPaleoRateConstraints())
+					if (sectIndexes.contains(constr.sectionIndex))
+						paleoConstraints.add(constr);
+				if (paleoConstraints.isEmpty())
+					paleoConstraints = null;
+			}
+			
+			if (paleoData.hasPaleoSlipConstraints()) {
+				paleoSlipConstraints = new ArrayList<>();
+				for (SectMappedUncertainDataConstraint constr : paleoData.inferRatesFromSlipConstraints(true))
+					if (sectIndexes.contains(constr.sectionIndex))
+						paleoSlipConstraints.add(constr);
+				if (paleoSlipConstraints.isEmpty())
+					paleoSlipConstraints = null;
+			}
+		}
+		
+		if (paleoConstraints != null || paleoSlipConstraints != null) {
 			funcs = new ArrayList<>();
 			chars = new ArrayList<>();
 			
-			SectSlipRates slipRates = meta.primary.rupSet.getModule(SectSlipRates.class);
+			PaleoProbabilityModel paleoProb = paleoConstraints != null ? paleoData.getPaleoProbModel() : null;
+			PaleoSlipProbabilityModel paleoSlipProb = null;
+			if (paleoSlipConstraints != null && rupSet.hasModule(AveSlipModule.class)
+					&& rupSet.hasModule(SlipAlongRuptureModel.class))
+				paleoSlipProb = paleoData.getPaleoSlipProbModel();
 			
-			double[] solSlipRates = sectSolSlipRates(meta.primary.sol, parentSectIndex, parentSects);
-			double[] compSolSlipRates = comp ? sectSolSlipRates(meta.comparison.sol, parentSectIndex, parentSects) : null;
+			List<XY_DataSet> dataFuncs = new ArrayList<>();
+			List<PlotCurveCharacterstics> dataChars = new ArrayList<>();
 			
-			for (int s=0; s<parentSects.size(); s++) {
+			double halfWhisker = 0.005*xRange.getLength();
+			for (boolean slip : new boolean[] { false, true}) {
+				List<? extends SectMappedUncertainDataConstraint> constraints;
+				Color constrColor;
+				if (slip) {
+					constrColor = Color.GREEN.darker();
+					constraints = paleoSlipConstraints;
+				} else {
+					constrColor = Color.BLACK;
+					constraints = paleoConstraints; 
+				}
+				Color whiskerColor = new Color(constrColor.getRed(), constrColor.getGreen(), constrColor.getBlue(), 127);
+				
+				if (constraints != null) {
+					DefaultXY_DataSet dataXY = new DefaultXY_DataSet();
+					for (SectMappedUncertainDataConstraint constraint : constraints) {
+						double x = latX ? constraint.dataLocation.getLatitude() : constraint.dataLocation.getLongitude();
+						dataXY.set(x, constraint.bestEstimate);
+						
+						Uncertainty range95 = constraint.estimateUncertainty(UncertaintyType.CONF_95);
+						
+						dataFuncs.add(line(x-halfWhisker, range95.upperBound, x+halfWhisker, range95.upperBound));
+						dataChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, whiskerColor));
+						
+						dataFuncs.add(line(x, range95.lowerBound, x, range95.upperBound));
+						dataChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, whiskerColor));
+						
+						dataFuncs.add(line(x-halfWhisker, range95.lowerBound, x+halfWhisker, range95.lowerBound));
+						dataChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, whiskerColor));
+					}
+					if (slip)
+						dataXY.setName("Slip Data");
+					else
+						dataXY.setName("Rate Data");
+					dataFuncs.add(dataXY);
+					dataChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 5f, constrColor));
+				}
+			}
+			first = true;
+			double[] slipRates = null, compSlipRates = null;
+			if (paleoSlipProb != null) {
+				slipRates = calcPaleoRates(faultSects, meta.primary.sol, paleoSlipProb);
+				if (comp && meta.comparison.rupSet.hasModule(AveSlipModule.class)
+						&& meta.comparison.rupSet.hasModule(SlipAlongRuptureModel.class))
+					compSlipRates = calcPaleoRates(faultSects, meta.comparison.sol, paleoSlipProb);
+			}
+			for (int s=0; s<faultSects.size(); s++) {
+				int sectIndex = faultSects.get(s).getSectionId();
+				for (boolean slip : new boolean[] { false, true}) {
+					PlotLineType lineType;
+					String funcLabel;
+					if (slip) {
+						if (paleoSlipProb == null)
+							continue;
+						lineType = PlotLineType.DOTTED;
+						funcLabel = "Slip-Rate-Observable";
+					} else {
+						if (paleoProb == null)
+							continue;
+						lineType = PlotLineType.SOLID;
+						funcLabel = "Rate-Observable";
+					}
+					XY_DataSet emptyFunc = emptySectFuncs.get(s);
+					
+					double rate;
+					if (slip)
+						rate = slipRates[s];
+					else
+						rate = paleoRate(sectIndex, meta.primary.sol, paleoProb);
+					
+					XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
+					if (first) {
+						if (comp)
+							rateFunc.setName("Primary "+funcLabel);
+						else
+							rateFunc.setName(funcLabel);
+					}
+					
+					funcs.add(rateFunc);
+					chars.add(new PlotCurveCharacterstics(lineType, 2f, MAIN_COLOR));
+					
+					if (comp) {
+						if (!slip || compSlipRates != null) {
+							if (slip)
+								rate = compSlipRates[s];
+							else
+								rate = paleoRate(sectIndex, meta.comparison.sol, paleoProb);
+
+							rateFunc = copyAtY(emptyFunc, rate);
+							if (first)
+								rateFunc.setName("Comparison");
+
+							funcs.add(rateFunc);
+							chars.add(new PlotCurveCharacterstics(lineType, 2f, COMP_COLOR));
+						}
+					}
+				}
+				first = false;
+			}
+			
+			funcs.addAll(0, dataFuncs);
+			chars.addAll(0, dataChars);
+			
+			PlotSpec paleoSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Paleo-Visible Participation Rate (per year)");
+			// legend at bottom
+			paleoSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
+			specs.add(paleoSpec);
+			funcLists.add(funcs);
+			charLists.add(chars);
+			yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1)));
+			yLogs.add(true);
+		}
+		
+		if (rupSet.hasModule(SlipAlongRuptureModel.class) && rupSet.hasModule(AveSlipModule.class)) {
+			funcs = new ArrayList<>();
+			chars = new ArrayList<>();
+			
+			SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
+			
+			double[] solSlipRates = sectSolSlipRates(meta.primary.sol, faultSects);
+			double[] compSolSlipRates = comp ? sectSolSlipRates(meta.comparison.sol, faultSects) : null;
+			
+			for (int s=0; s<faultSects.size(); s++) {
 				XY_DataSet emptyFunc = emptySectFuncs.get(s);
 				
 				if (slipRates != null) {
-					double targetSlip = slipRates.getSlipRate(parentSects.get(s).getSectionId())*1e3;
+					double targetSlip = slipRates.getSlipRate(faultSects.get(s).getSectionId())*1e3;
 					XY_DataSet targetFunc = copyAtY(emptyFunc, targetSlip);
 					if (s == 0)
 						targetFunc.setName("Target");
@@ -1155,13 +1339,119 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
 			}
 			
-			PlotSpec slipRateSpec = new PlotSpec(funcs, chars, parentName, xLabel, "Slip Rate (mm/yr)");
+			PlotSpec slipRateSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Slip Rate (mm/yr)");
 			// legend at bottom
 			if (slipRates != null)
-				slipRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, 0.025, 0.025, 0.95, false);
+				slipRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
 			specs.add(slipRateSpec);
+			funcLists.add(funcs);
+			charLists.add(chars);
 			yRanges.add(yRange(funcs, new Range(1e0, 1e1), new Range(1e-3, 1e3)));
 			yLogs.add(true);
+		}
+		
+		List<Integer> specWeights = null;
+		int nameInerstIndex = -1;
+		if (parentsMap.size() > 1) {
+			// add section boundary labels
+			HashSet<Float> boundaryLocs = new HashSet<>();
+			Map<Double, String> boundaryMiddles = new HashMap<>();
+			
+			for (List<FaultSection> parentSects : parentsMap.values()) {
+				double minVal = Double.POSITIVE_INFINITY;
+				double maxVal = Double.NEGATIVE_INFINITY;
+				String name = null;
+				for (FaultSection sect : parentSects) {
+					if (name == null)
+						name = sect.getParentSectionName();
+					FaultTrace trace = sect.getFaultTrace();
+					double x1, x2;
+					if (latX) {
+						x1 = trace.first().lat;
+						x2 = trace.last().lat;
+					} else {
+						x1 = trace.first().lon;
+						x2 = trace.last().lon;
+					}
+					minVal = Double.min(minVal, x1);
+					minVal = Double.min(minVal, x2);
+					maxVal = Double.max(maxVal, x1);
+					maxVal = Double.max(maxVal, x2);
+				}
+				boundaryLocs.add((float)minVal);
+				boundaryLocs.add((float)maxVal);
+				if (name != null)
+					boundaryMiddles.put(0.5*(maxVal+minVal), name);
+			}
+			
+			if (!boundaryMiddles.isEmpty()) {
+				// add names in the middle
+				nameInerstIndex = specs.size()/2;
+				
+				int mainWeight = 10;
+				int namesWeight = 6;
+				
+				funcs = new ArrayList<>();
+				chars = new ArrayList<>();
+				PlotSpec nameSpec = new PlotSpec(funcs, chars, " ", xLabel, "Section Names");
+				
+				Range yRange = new Range(0d, 1d);
+				double y = 0.5;
+				double angle = -0.5*Math.PI;
+				TextAnchor rotAnchor = TextAnchor.CENTER;
+				TextAnchor textAnchor = TextAnchor.CENTER;
+				for (Double middle : boundaryMiddles.keySet()) {
+					String label = boundaryMiddles.get(middle);
+					
+					label = NamedFaults.stripFaultNameFromSect(faultName, label);
+					
+					XYTextAnnotation ann = new XYTextAnnotation(label+" ", middle, y);
+					int fontSize;
+					if (label.length() > 30)
+						fontSize = 14;
+					else if (label.length() > 20)
+						fontSize = 18;
+					else if (label.length() > 10)
+						fontSize = 20;
+					else
+						fontSize = 22;
+					Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, fontSize);
+					ann.setFont(annFont);
+					ann.setTextAnchor(textAnchor);
+					ann.setRotationAnchor(rotAnchor);
+					ann.setRotationAngle(angle);
+					nameSpec.addPlotAnnotation(ann);
+				}
+				
+				specWeights = new ArrayList<>();
+				while (specWeights.size() < specs.size()) {
+					if (specWeights.size() == nameInerstIndex) {
+						specs.add(nameInerstIndex, nameSpec);
+						yRanges.add(nameInerstIndex, yRange);
+						funcLists.add(nameInerstIndex, funcs);
+						charLists.add(nameInerstIndex, chars);
+						yLogs.add(nameInerstIndex, false);
+						specWeights.add(namesWeight);
+					} else {
+						specWeights.add(mainWeight);
+					}
+				}
+			}
+			
+			PlotCurveCharacterstics boundaryChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Color.GRAY);
+			for (int s=0; s<specs.size(); s++) {
+				Range yRange = yRanges.get(s);
+				funcs = funcLists.get(s);
+				chars = charLists.get(s);
+				
+				for (Float boundary : boundaryLocs) {
+					DefaultXY_DataSet xy = new DefaultXY_DataSet();
+					xy.set(boundary.doubleValue(), yRange.getLowerBound());
+					xy.set(boundary.doubleValue(), yRange.getUpperBound());
+					funcs.add(xy);
+					chars.add(boundaryChar);
+				}
+			}
 		}
 		
 		List<String> lines = new ArrayList<>();
@@ -1175,36 +1465,43 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<Boolean> xLogs = List.of(false);
 		List<Range> xRanges = List.of(xRange);
 		
+		gp.setxAxisInverted(latX);
 		gp.drawGraphPanel(specs, xLogs, yLogs, xRanges, yRanges);
+		
+		if (specWeights != null)
+			PlotUtils.setSubPlotWeights(gp, Ints.toArray(specWeights));
+		
+		if (nameInerstIndex > 0) {
+			XYPlot subPlot = PlotUtils.getSubPlots(gp).get(nameInerstIndex);
+			subPlot.setDomainGridlinesVisible(false);
+			subPlot.setRangeGridlinesVisible(false);
+			subPlot.getRangeAxis().setTickLabelsVisible(false);
+		}
 
 		String prefix = "sect_along_strike";
 		int height = 300 + 500*specs.size();
-		PlotUtils.writePlots(outputDir, prefix, gp, 1000, height, true, true, false);
+		if (specWeights != null)
+			height -= 200;
+		int width = parentsMap.size() == 1 ? 1000 : 1400;
+		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, false);
 		lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
 		
 		return lines;
 	}
 
-	private static double[] sectSolSlipRates(FaultSystemSolution sol, int parentSectIndex,
-			List<FaultSection> parentSects) {
+	private static XY_DataSet line(double x1, double y1, double x2, double y2) {
+		return new DefaultXY_DataSet(new double[] { x1, x2 }, new double[] { y1, y2 });
+	}
+	
+	private static double[] sectSolSlipRates(FaultSystemSolution sol, List<FaultSection> parentSects) {
 		double[] solSlipRates = new double[parentSects.size()];
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		SlipAlongRuptureModel slipAlongs = rupSet.getModule(SlipAlongRuptureModel.class);
 		AveSlipModule aveSlips = rupSet.getModule(AveSlipModule.class);
-		Map<Integer, Integer> sectIndMappings = new HashMap<>();
-		for (int s=0; s<parentSects.size(); s++)
-			sectIndMappings.put(parentSects.get(s).getSectionId(), s);
-		for (int r : rupSet.getRupturesForParentSection(parentSectIndex)) {
-			double rate = sol.getRateForRup(r);
-			double[] slipOnSects = slipAlongs.calcSlipOnSectionsForRup(rupSet, aveSlips, r);
-			List<Integer> sectsForRup = rupSet.getSectionsIndicesForRup(r);
-			for (int i=0; i<sectsForRup.size(); i++) {
-				int sectIndex = sectsForRup.get(i);
-				Integer index = sectIndMappings.get(sectIndex);
-				if (index != null)
-					solSlipRates[index] += rate*slipOnSects[i];
-			}
-		}
+		
+		for (int s=0; s<solSlipRates.length; s++)
+			solSlipRates[s] = slipAlongs.calcSlipRateForSect(sol, aveSlips, parentSects.get(s).getSectionId());
+		
 		return solSlipRates;
 	}
 	
@@ -1215,6 +1512,51 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			if (rupSet.getMagForRup(rupIndex) >= minMag)
 				rate += sol.getRateForRup(rupIndex);
 		return rate;
+	}
+	
+	private static double paleoRate(int sectIndex, FaultSystemSolution sol, PaleoProbabilityModel probModel) {
+		double rate = 0d;
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		for (int rupIndex : rupSet.getRupturesForSection(sectIndex)) {
+			double rupRate = sol.getRateForRup(rupIndex);
+			if (rupRate > 0)
+				rate += rupRate * probModel.getProbPaleoVisible(rupSet, rupIndex, sectIndex);
+		}
+		return rate;
+	}
+	
+	private static double[] calcPaleoRates(List<FaultSection> sects, FaultSystemSolution sol, PaleoSlipProbabilityModel probModel) {
+		double[] rates = new double[sects.size()];
+		
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		
+		HashSet<Integer> rups = new HashSet<>();
+		Map<Integer, Integer> sectIndexMap = new HashMap<>();
+		for (int s=0; s<sects.size(); s++) {
+			FaultSection sect = sects.get(s);
+			rups.addAll(rupSet.getRupturesForSection(sect.getSectionId()));
+			sectIndexMap.put(sect.getSectionId(), s);
+		}
+		
+		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
+		SlipAlongRuptureModel slipAlongs = rupSet.requireModule(SlipAlongRuptureModel.class);
+		
+		for (int rupIndex : rups) {
+			double rupRate = sol.getRateForRup(rupIndex);
+			if (rupRate > 0) {
+				double[] slipAlongRups = slipAlongs.calcSlipOnSectionsForRup(rupSet, aveSlips, rupIndex);
+				List<Integer> sectIDs = rupSet.getSectionsIndicesForRup(rupIndex);
+				for (int s=0; s<slipAlongRups.length; s++) {
+					Integer index = sectIndexMap.get(sectIDs.get(s));
+					if (index != null) {
+						double slipOnSect = slipAlongRups[s]; 
+						double probVisible = probModel.getProbabilityOfObservedSlip(slipOnSect);
+						rates[index] += rupRate * probVisible;
+					}
+				}
+			}
+		}
+		return rates;
 	}
 	
 	private static XY_DataSet copyAtY(XY_DataSet func, double y) {

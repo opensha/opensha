@@ -47,6 +47,8 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlo
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverDistancePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.LogicTreeBranchPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ModulesPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NamedFaultPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PaleoDataComparisonPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ParticipationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
@@ -153,13 +155,17 @@ public class ReportPageGen {
 			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new SlipRatePlots());
+			plots.add(new PaleoDataComparisonPlot());
 			plots.add(new JumpCountsOverDistancePlot());
 		}
 		if (level == PlotLevel.FULL) {
 			plots.add(new HazardMapPlot());
 			plots.add(new SegmentationPlot());
-			plots.add(new SectBySectDetailPlots());
 		}
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+			plots.add(new NamedFaultPlot());
+		if (level == PlotLevel.FULL)
+			plots.add(new SectBySectDetailPlots());
 		
 		return plots;
 	}
