@@ -224,8 +224,13 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			System.out.println("Setting paleo constraint wt: "+paleoRateConstraintWt);
 		}
 		
-		// weight of mean paleo slip constraint relative to slip-rate constraint 
-		double paleoSlipConstraintWt = paleoRateConstraintWt*0.1;
+		// weight of mean paleo slip constraint relative to slip-rate constraint
+		// NOTE: I added the "/4d" here on 10/25/2021, when the constraint was modified to treat the supplied bounds
+		// as two-sigma bounds after consultation with Ramon Arrowsmith.
+		// In UCERF3 they were effectively treated as half-sigma bounds, and normalized by sigma. We're now cutting the
+		// sigma values down by a factor of 4, so dividing by 4 here counteracts that effect to match the effective
+		// constraint weighting used in UCERF3.
+		double paleoSlipConstraintWt = paleoRateConstraintWt*0.1/4d;
 		
 		// weight of magnitude-distribution EQUALITY constraint relative to slip-rate constraint (recommended: 10)
 //		double mfdEqualityConstraintWt = 10;

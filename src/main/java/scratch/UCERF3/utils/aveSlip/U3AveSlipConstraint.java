@@ -73,7 +73,7 @@ public class U3AveSlipConstraint extends SectMappedUncertainDataConstraint imple
 			double upperUncertaintyBound, double lowerUncertaintyBound,
 			Location loc) {
 		super(subSectionName, subSectionIndex, subSectionName, loc, weightedMean,
-				new Uncertainty(UncertaintyType.HALF_SIGMA, lowerUncertaintyBound, upperUncertaintyBound));
+				new Uncertainty(UncertaintyType.TWO_SIGMA, lowerUncertaintyBound, upperUncertaintyBound));
 	}
 
 	public int getSubSectionIndex() {
