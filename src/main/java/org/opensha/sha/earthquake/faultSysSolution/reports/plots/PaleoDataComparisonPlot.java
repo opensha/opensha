@@ -282,7 +282,7 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		if (scatterOutside.size() > 0) {
 			scatterOutside.setName("Outside 95% Conf");
 			funcs.add(scatterOutside);
-			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 7f, Color.BLACK));
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 7f, Color.RED.darker()));
 		}
 		
 		double minVal = Double.POSITIVE_INFINITY;
