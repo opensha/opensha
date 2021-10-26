@@ -80,7 +80,7 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 					if (data == null) {
 						double[] data = new double[parent.getNumSections()];
 						for (int s=0; s<data.length; s++)
-							data[s] = parent.getFaultSectionData(sectIndex).getArea(true);
+							data[s] = parent.getFaultSectionData(s).getArea(true);
 						this.data = data;
 					}
 				}
