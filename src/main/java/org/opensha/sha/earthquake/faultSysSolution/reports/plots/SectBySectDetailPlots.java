@@ -1092,27 +1092,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		Map<Integer, List<FaultSection>> parentsMap = faultSects.stream().collect(Collectors.groupingBy(s->s.getParentSectionId()));
 		
 		boolean comp = meta.comparison != null && meta.comparison.sol != null;
+		float primaryThickness = 3f;
+		float compThickness = 2f;
 		boolean first = true;
 		for (int s=0; s<faultSects.size(); s++) {
 			FaultSection sect = faultSects.get(s);
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
-			for (int m=0; m<minMags.size(); m++) {
-				double myMinMag = minMags.get(m);
-				
-				double rate = rateAbove(myMinMag, sect.getSectionId(), meta.primary.sol);
-				XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
-				if (first) {
-					if (comp && m == 0)
-						rateFunc.setName("Primary "+magLabels.get(m));
-					else
-						rateFunc.setName(magLabels.get(m));
-				}
-				
-				PlotLineType line = magLines.get(m);
-				
-				funcs.add(rateFunc);
-				chars.add(new PlotCurveCharacterstics(line, 3f, MAIN_COLOR));
-			}
 			
 			if (comp) {
 				for (int m=0; m<minMags.size(); m++) {
@@ -1130,8 +1115,26 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					PlotLineType line = magLines.get(m);
 					
 					funcs.add(rateFunc);
-					chars.add(new PlotCurveCharacterstics(line, 3f, COMP_COLOR));
+					chars.add(new PlotCurveCharacterstics(line, compThickness, COMP_COLOR));
 				}
+			}
+			
+			for (int m=0; m<minMags.size(); m++) {
+				double myMinMag = minMags.get(m);
+				
+				double rate = rateAbove(myMinMag, sect.getSectionId(), meta.primary.sol);
+				XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
+				if (first) {
+					if (comp && m == 0)
+						rateFunc.setName("Primary "+magLabels.get(m));
+					else
+						rateFunc.setName(magLabels.get(m));
+				}
+				
+				PlotLineType line = magLines.get(m);
+				
+				funcs.add(rateFunc);
+				chars.add(new PlotCurveCharacterstics(line, primaryThickness, MAIN_COLOR));
 			}
 			
 			first = false;
@@ -1188,7 +1191,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			List<PlotCurveCharacterstics> dataChars = new ArrayList<>();
 			
 			double halfWhisker = 0.005*xRange.getLength();
-			for (boolean slip : new boolean[] { false, true}) {
+			for (boolean slip : new boolean[] { true, false}) {
 				List<? extends SectMappedUncertainDataConstraint> constraints;
 				Color constrColor;
 				if (slip) {
@@ -1235,53 +1238,58 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 			for (int s=0; s<faultSects.size(); s++) {
 				int sectIndex = faultSects.get(s).getSectionId();
-				for (boolean slip : new boolean[] { false, true}) {
-					PlotLineType lineType;
-					String funcLabel;
-					if (slip) {
-						if (paleoSlipProb == null)
+				for (boolean isComp : new boolean[] {true, false}) {
+					if (isComp && !comp)
+						continue;
+					
+					for (boolean slip : new boolean[] { true, false}) {
+						if (isComp && slip && compSlipRates == null)
 							continue;
-						lineType = PlotLineType.DOTTED;
-						funcLabel = "Slip-Rate-Observable";
-					} else {
-						if (paleoProb == null)
-							continue;
-						lineType = PlotLineType.SOLID;
-						funcLabel = "Rate-Observable";
-					}
-					XY_DataSet emptyFunc = emptySectFuncs.get(s);
-					
-					double rate;
-					if (slip)
-						rate = slipRates[s];
-					else
-						rate = paleoRate(sectIndex, meta.primary.sol, paleoProb);
-					
-					XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
-					if (first) {
-						if (comp)
-							rateFunc.setName("Primary "+funcLabel);
-						else
-							rateFunc.setName(funcLabel);
-					}
-					
-					funcs.add(rateFunc);
-					chars.add(new PlotCurveCharacterstics(lineType, 2f, MAIN_COLOR));
-					
-					if (comp) {
-						if (!slip || compSlipRates != null) {
+						
+						PlotLineType lineType;
+						String funcLabel;
+						if (slip) {
+							if (paleoSlipProb == null)
+								continue;
+							lineType = PlotLineType.DOTTED;
+							funcLabel = "Slip-Rate-Observable";
+						} else {
+							if (paleoProb == null)
+								continue;
+							lineType = PlotLineType.SOLID;
+							funcLabel = "Rate-Observable";
+						}
+						XY_DataSet emptyFunc = emptySectFuncs.get(s);
+						
+						double rate;
+						String label = null;
+						PlotCurveCharacterstics pChar;
+						
+						if (isComp) {
 							if (slip)
 								rate = compSlipRates[s];
 							else
 								rate = paleoRate(sectIndex, meta.comparison.sol, paleoProb);
-
-							rateFunc = copyAtY(emptyFunc, rate);
-							if (first)
-								rateFunc.setName("Comparison");
-
-							funcs.add(rateFunc);
-							chars.add(new PlotCurveCharacterstics(lineType, 2f, COMP_COLOR));
+							label = "Comparison";
+							pChar = new PlotCurveCharacterstics(lineType, compThickness, COMP_COLOR);
+						} else {
+							if (slip)
+								rate = slipRates[s];
+							else
+								rate = paleoRate(sectIndex, meta.primary.sol, paleoProb);
+							if (comp)
+								label = "Primary "+funcLabel;
+							else
+								label = funcLabel;
+							pChar = new PlotCurveCharacterstics(lineType, primaryThickness, MAIN_COLOR);
 						}
+						
+						XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
+						if (s == 0)
+							rateFunc.setName(label);
+						
+						funcs.add(rateFunc);
+						chars.add(pChar);
 					}
 				}
 				first = false;
@@ -1328,7 +1336,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 						compSolFunc.setName("Comparison Solution");
 					
 					funcs.add(compSolFunc);
-					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, COMP_COLOR.darker()));
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, COMP_COLOR.darker()));
 				}
 				
 				XY_DataSet solFunc = copyAtY(emptyFunc, solSlipRates[s]*1e3);
