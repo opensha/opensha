@@ -190,8 +190,16 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData> {
 			
 			double meanRate = targetSlipRate / constraint.bestEstimate;
 			
-			UncertaintyBoundType refType = UncertaintyBoundType.TWO_SIGMA;
-			BoundedUncertainty slipUncertainty = constraint.estimateUncertaintyBounds(refType);
+			BoundedUncertainty slipUncertainty;
+			UncertaintyBoundType refType;
+			if (constraint.uncertainties[0] instanceof BoundedUncertainty) {
+				// estimate slip rate bounds in the same units as the original uncertainty estimate
+				slipUncertainty = (BoundedUncertainty)constraint.uncertainties[0];
+				refType = slipUncertainty.type;
+			} else {
+				refType = UncertaintyBoundType.TWO_SIGMA;
+				slipUncertainty = constraint.estimateUncertaintyBounds(refType);
+			}
 			
 			System.out.println("Inferring rate constraint from paleo slip constraint on "+constraint.sectionName);
 			System.out.println("\tslip="+(float)constraint.bestEstimate+"\tslipUuncert="+slipUncertainty);
@@ -199,7 +207,6 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData> {
 			
 			double lowerTarget, upperTarget;
 			if (applySlipRateUncertainty) {
-				// estimate slip rate bounds in the same units as the original uncertainty estimate
 				BoundedUncertainty slipRateUncertainty = refType.estimate(
 						targetSlipRate, slipRateStdDevs[constraint.sectionIndex]);
 				lowerTarget = slipRateUncertainty.lowerBound;
