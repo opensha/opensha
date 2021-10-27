@@ -201,6 +201,21 @@ public class InversionConstraintImplTests {
 	}
 
 	@Test
+	public void testLaplace() {
+		LaplacianSmoothingInversionConstraint constr = new LaplacianSmoothingInversionConstraint(
+				rupSet, 1d);
+		
+		testConstraint(constr);
+		
+		HashSet<Integer> oneParent = new HashSet<>();
+		oneParent.add(allParents.iterator().next());
+		
+		constr = new LaplacianSmoothingInversionConstraint(rupSet, 1d, oneParent);
+		
+		testConstraint(constr);
+	}
+
+	@Test
 	public void testMFDParticSmooth() {
 		MFDParticipationSmoothnessInversionConstraint constr =
 				new MFDParticipationSmoothnessInversionConstraint(rupSet, 1d, 0.2);

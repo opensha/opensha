@@ -94,7 +94,7 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 			table.addColumn("**Ruptures above water-level**");
 		boolean hasPerturbs = sol.hasModule(AnnealingProgress.class) || (compSol != null && compSol.hasModule(AnnealingProgress.class));
 		if (hasPerturbs)
-			table.addColumn("**Avg. # perturbations per rupture**").addColumn("**Avg. # perturbations per perturbed rupture**");
+			table.addColumn("**Avg. # perturbations per rupture**").addColumn("**Avg. # perturbations per non-zero rupture**");
 		table.finalizeLine().initNewLine();
 		if (compSol != null)
 			table.addColumn("Primary");

@@ -15,6 +15,7 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RelativeBValueConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
@@ -264,6 +265,20 @@ public class Inversions {
 		Option mwWeight = new Option("mw", "minimize-weight", true, "Sets weight for the minimization constraint.");
 		mwWeight.setRequired(false);
 		ops.addOption(mwWeight);
+
+		// smooth constraint
+
+		// TODO add to docs
+		Option smooth = new Option("sm", "smooth", false,
+				"Flag to enable the Laplacian smoothness constraint that smooths supra-seismogenic participation rates "
+				+ "along adjacent subsections on a parent section.");
+		smooth.setRequired(false);
+		ops.addOption(smooth);
+
+		// TODO add to docs
+		Option smoothWeight = new Option("smw", "smooth-weight", true, "Sets weight for the smoothness constraint.");
+		smoothWeight.setRequired(false);
+		ops.addOption(smoothWeight);
 		
 		// external configuration
 		
@@ -477,6 +492,15 @@ public class Inversions {
 			System.out.println("Minimizing rates of "+belowMinIndexes.size()
 				+" ruptures below the modified section minimum magnitudes");
 			constraints.add(new RupRateMinimizationConstraint(weight, belowMinIndexes));
+		}
+		
+		if (cmd.hasOption("smooth")) {
+			double weight = 1d;
+			if (cmd.hasOption("smooth-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("smooth-weight"));
+			
+			System.out.println("Enabling Laplacian smoothness constraint");
+			constraints.add(new LaplacianSmoothingInversionConstraint(rupSet, weight));
 		}
 		
 		if (cmd.hasOption("constraints-json")) {
