@@ -10,6 +10,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
 
@@ -120,7 +121,8 @@ public class InversionMisfits implements ArchivableModule {
 					"Inequality", "Weight");
 			for (ConstraintRange range : constraintRanges)
 				rangesCSV.addLine(range.name, range.shortName, range.startRow+"", range.endRow+"",
-						range.inequality+"", range.weight+"");
+						range.inequality+"", range.weight+"",
+						range.weightingType == null ? "" : range.weightingType.name());
 			CSV_BackedModule.writeToArchive(rangesCSV, zout, entryPrefix, RANGES_CSV);
 		}
 	}
@@ -167,13 +169,21 @@ public class InversionMisfits implements ArchivableModule {
 			CSVFile<String> rangesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RANGES_CSV);
 			constraintRanges = new ArrayList<>();
 			for (int row=1; row<rangesCSV.getNumRows(); row++) {
-				String name = rangesCSV.get(row, 0);
-				String shortName = rangesCSV.get(row, 1);
-				int startRow = rangesCSV.getInt(row, 2);
-				int endRow = rangesCSV.getInt(row, 3);
-				boolean inequality = rangesCSV.getBoolean(row, 4);
-				double weight = rangesCSV.getDouble(row, 5);
-				constraintRanges.add(new ConstraintRange(name, shortName, startRow, endRow, inequality, weight));
+				List<String> line = rangesCSV.getLine(row);
+				int col = 0;
+				String name = line.get(col++);
+				String shortName = line.get(col++);
+				int startRow = Integer.parseInt(line.get(col++));
+				int endRow = Integer.parseInt(line.get(col++));
+				boolean inequality = Boolean.parseBoolean(line.get(col++));
+				double weight = Double.parseDouble(line.get(col++));
+				ConstraintWeightingType weightingType = null;
+				if (col < line.size()) {
+					String typeStr = line.get(col++);
+					if (!typeStr.isBlank())
+						weightingType = ConstraintWeightingType.valueOf(typeStr);
+				}
+				constraintRanges.add(new ConstraintRange(name, shortName, startRow, endRow, inequality, weight, weightingType));
 			}
 		}
 	}

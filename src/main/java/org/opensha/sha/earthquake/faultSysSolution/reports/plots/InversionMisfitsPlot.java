@@ -119,6 +119,11 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 				table.addColumn((float)compStats.l2Norm);
 			table.finalizeLine();
 			
+			table.initNewLine().addColumn("Weighting Type").addColumn(range.weightingType+"");
+			if (compStats != null)
+				table.addColumn(compRange.weightingType+"");
+			table.finalizeLine();
+			
 			if (range.inequality) {
 				lines.add("_NOTE: This is in inequality constraint, so all misfit values below zero are treated as zeros._");
 				lines.add("");
@@ -131,7 +136,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			
 			HistogramFunction refHist = refHist(stats, compStats);
 			File histPlot = buildHistPlot(refHist, normMisfits,
-					stats, range, resourcesDir, prefix+"_hist", range.name+" Misfits", "Misfit", MAIN_COLOR);
+					stats, range, resourcesDir, prefix+"_hist", range.name+" Misfits",
+					range.weightingType == null ? "Misfit" : range.weightingType.getMisfitLabel(), MAIN_COLOR);
 			
 			if (compNormMisfits == null) {
 				lines.add("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
@@ -140,7 +146,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 				table.addLine("Primary", "Comparison");
 				table.initNewLine().addColumn("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
 				File compPlot = buildHistPlot(refHist, compNormMisfits,
-						compStats, range, resourcesDir, prefix+"_hist_comp", range.name+" Misfits", "Misfit", COMP_COLOR);
+						compStats, compRange, resourcesDir, prefix+"_hist_comp", compRange.name+" Misfits",
+						compRange.weightingType == null ? "Misfit" : compRange.weightingType.getMisfitLabel(), COMP_COLOR);
 				table.addColumn("![Misfit Plot]("+relPathToResources+"/"+compPlot.getName()+")");
 				table.finalizeLine();
 				
@@ -150,7 +157,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					for (int i=0; i<diffs.length; i++) {
 						double n = normMisfits[i];
 						double c = compNormMisfits[i];
-						if (range.inequality) {
+						if (compRange.inequality) {
 							n = Math.max(n, 0d);
 							c = Math.max(c, 0d);
 						}
@@ -161,7 +168,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					refHist = refHist(new MisfitStats(diffs, false), null);
 					File histDiffPlot = buildHistPlot(refHist, normMisfits,
 							null, range, resourcesDir, prefix+"_diff", range.name+" Misfit Difference",
-							"Difference: Primary - Comparison", COMMON_COLOR);
+							"Misfit Difference: Primary - Comparison", COMMON_COLOR);
 					table.initNewLine().addColumn("![Diff Plot]("+relPathToResources+"/"+histDiffPlot.getName()+")");
 					List<XY_DataSet> funcs = new ArrayList<>();
 					List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -229,9 +236,9 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			
 			ranges = new ArrayList<>();
 			if (eqMisfits != null)
-				ranges.add(new ConstraintRange("Equality Constraints", "Equality", 0, eqMisfits.length, false, 1d));
+				ranges.add(new ConstraintRange("Equality Constraints", "Equality", 0, eqMisfits.length, false, 1d, null));
 			if (ineqMisfits != null)
-				ranges.add(new ConstraintRange("Inequality Constraints", "Inequality", 0, ineqMisfits.length, true, 1d));
+				ranges.add(new ConstraintRange("Inequality Constraints", "Inequality", 0, ineqMisfits.length, true, 1d, null));
 		}
 		return ranges;
 	}

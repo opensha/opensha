@@ -14,7 +14,7 @@ public enum ConstraintWeightingType {
 	 * as constraints for high values. Values in the A matrix will be divided by the target rate, and the d vector
 	 * will contain 1's (before accounting for global constraint weights).
 	 */
-	NORMALIZED("Normalized", "Norm") {
+	NORMALIZED("Normalized", "Norm", "Misfit (Fractional)") {
 		@Override
 		public double getA_Scalar(double targetRate, double targetStdDev) {
 			return 1d/targetRate;
@@ -30,7 +30,7 @@ public enum ConstraintWeightingType {
 	 * large values. The d vector will contain the target value (before accounting for global constraint weights),
 	 * and misfits are in units of rate difference.
 	 */
-	UNNORMALIZED("Unnormlized", "Unnorm") {
+	UNNORMALIZED("Unnormlized", "Unnorm", "Misfit") {
 		@Override
 		public double getA_Scalar(double targetRate, double targetStdDev) {
 			return 1d;
@@ -48,7 +48,7 @@ public enum ConstraintWeightingType {
 	 * units of standard deviations, so a misfit of +1 means that the solution value is 1 standard deviation above
 	 * the target value.
 	 */
-	NORMALIZED_BY_UNCERTAINTY("Uncertainty-Weighted", "UncertWt") {
+	NORMALIZED_BY_UNCERTAINTY("Uncertainty-Weighted", "UncertWt", "Misfit (Standard Deviations)") {
 		@Override
 		public double getA_Scalar(double targetRate, double targetStdDev) {
 			Preconditions.checkState(targetStdDev > 0d);
@@ -64,10 +64,12 @@ public enum ConstraintWeightingType {
 	
 	private String namePrefix;
 	private String shortNamePrefix;
+	private String misfitLabel;
 
-	private ConstraintWeightingType(String namePrefix, String shortNamePrefix) {
+	private ConstraintWeightingType(String namePrefix, String shortNamePrefix, String misfitLabel) {
 		this.namePrefix = namePrefix;
 		this.shortNamePrefix = shortNamePrefix;
+		this.misfitLabel = misfitLabel;
 	}
 	
 	public String applyNamePrefix(String name) {
@@ -84,6 +86,10 @@ public enum ConstraintWeightingType {
 	
 	public String getShortNamePrefix() {
 		return shortNamePrefix;
+	}
+	
+	public String getMisfitLabel() {
+		return misfitLabel;
 	}
 	
 	/**

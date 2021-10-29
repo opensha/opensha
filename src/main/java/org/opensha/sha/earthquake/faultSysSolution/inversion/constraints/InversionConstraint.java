@@ -87,7 +87,7 @@ public abstract class InversionConstraint implements ShortNamed {
 	 * @return range for this constraint
 	 */
 	public ConstraintRange getRange(int startIndex) {
-		return new ConstraintRange(name, shortName, startIndex, startIndex+getNumRows(), inequality, weight);
+		return new ConstraintRange(name, shortName, startIndex, startIndex+getNumRows(), inequality, weight, weightingType);
 	}
 	
 	/**

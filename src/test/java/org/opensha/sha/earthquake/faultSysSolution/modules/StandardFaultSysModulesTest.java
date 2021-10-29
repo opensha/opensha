@@ -37,6 +37,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetSaveLoadTests;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -243,7 +244,7 @@ public class StandardFaultSysModulesTest {
 				int endRow = Integer.min(rows, startRow + 10 + r.nextInt(100));
 				
 				int num = ranges.size()+1;
-				ranges.add(new ConstraintRange("Constraint "+num, "Constr"+num, startRow, endRow, ineq, 1d));
+				ranges.add(new ConstraintRange("Constraint "+num, "Constr"+num, startRow, endRow, ineq, 1d, ConstraintWeightingType.NORMALIZED));
 				startRow = endRow;
 			}
 			for (int i=0; i<rows; i++) {
