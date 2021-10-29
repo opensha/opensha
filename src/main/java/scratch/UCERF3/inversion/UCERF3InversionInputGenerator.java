@@ -15,6 +15,7 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.APrioriInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
@@ -29,7 +30,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -126,11 +126,11 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		if (config.getSlipRateConstraintWt_normalized() > 0d)
 			// add slip rate constraint
 			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_normalized(),
-					SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE, rupSet));
+					ConstraintWeightingType.NORMALIZED, rupSet));
 		if (config.getSlipRateConstraintWt_unnormalized() > 0d)
 			// add slip rate constraint
 			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_unnormalized(),
-					SlipRateInversionConstraint.WeightingType.UNNORMALIZED, rupSet));
+					ConstraintWeightingType.UNNORMALIZED, rupSet));
 		
 		if (config.getPaleoRateConstraintWt() > 0d)
 			constraints.add(new PaleoRateInversionConstraint(rupSet, config.getPaleoRateConstraintWt(),
@@ -190,13 +190,13 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					}
 			}
 			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(), false,
-					MFDInversionConstraint.WeightingType.NORMALIZED, config.getMfdEqualityConstraints(), null, excludeRupIndexes));
+					ConstraintWeightingType.NORMALIZED, config.getMfdEqualityConstraints(), null, excludeRupIndexes));
 		}
 		
 		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0)	
 			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(), true,
-					MFDInversionConstraint.WeightingType.NORMALIZED, config.getMfdInequalityConstraints(), null, null));
+					ConstraintWeightingType.NORMALIZED, config.getMfdInequalityConstraints(), null, null));
 		
 		// MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0)

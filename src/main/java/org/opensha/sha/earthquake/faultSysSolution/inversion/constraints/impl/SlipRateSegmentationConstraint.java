@@ -11,6 +11,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -48,7 +49,6 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 	
 	private SegmentationModel segModel;
 	private RateCombiner combiner;
-	private boolean normalized;
 	private boolean netConstraint;
 	
 	private transient FaultSystemRupSet rupSet;
@@ -165,10 +165,10 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 	 */
 	public SlipRateSegmentationConstraint(FaultSystemRupSet rupSet, SegmentationModel segModel,
 			RateCombiner combiner, double weight, boolean normalized, boolean inequality, boolean netConstraint) {
-		super(getName(normalized, netConstraint), getShortName(normalized, netConstraint), weight, inequality);
+		super(getName(normalized, netConstraint), getShortName(normalized, netConstraint), weight, inequality,
+				normalized ? ConstraintWeightingType.NORMALIZED : ConstraintWeightingType.UNNORMALIZED);
 		this.segModel = segModel;
 		this.combiner = combiner;
-		this.normalized = normalized;
 		this.netConstraint = netConstraint;
 		
 		if (netConstraint)
@@ -212,6 +212,13 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 		SlipAlongRuptureModel slipAlongModel = rupSet.requireModule(SlipAlongRuptureModel.class);
 		SectSlipRates slipRates = rupSet.requireModule(SectSlipRates.class);
 		
+		Preconditions.checkState(weightingType == ConstraintWeightingType.NORMALIZED
+				|| weightingType == ConstraintWeightingType.UNNORMALIZED,
+				"Only normalized and un-normalized weighting types are supported");
+		boolean normalized = weightingType == ConstraintWeightingType.NORMALIZED;
+		if (netConstraint)
+			Preconditions.checkState(normalized, "Net constraint must be normalized");
+		
 		long count = 0;
 		
 		for (Jump jump : jumps) {
@@ -234,7 +241,6 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 			if (netConstraint) {
 				bin = distanceBins.getClosestXIndex(jump.distance);
 				row = startRow + bin;
-				Preconditions.checkState(normalized, "Net constraint must be normalized");
 			}
 			
 			for (int rup : jumpRupturesMap.get(jump)) {

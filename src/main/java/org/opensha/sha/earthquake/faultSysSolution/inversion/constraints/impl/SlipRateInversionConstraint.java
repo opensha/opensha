@@ -5,6 +5,7 @@ import java.util.List;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -32,26 +33,6 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  */
 public class SlipRateInversionConstraint extends InversionConstraint {
 	
-	public enum WeightingType {
-		/**
-		 * Normalize each slip-rate constraint by the slip-rate target
-		 * (So the inversion tries to minimize ratio of model to target)
-		 */
-		NORMALIZED_BY_SLIP_RATE,
-		/**
-		 * Do not normalize slip-rate constraint (inversion will minimize difference of model to target, effectively
-		 * fitting fast faults better than slow faults on a ratio basis)
-		 */
-		UNNORMALIZED,
-		/**
-		 * Normalizes section slip rate targets by their standard deviation. This weights all constraints equally
-		 * relative to their uncertainties
-		 */
-		NORMALIZED_BY_UNCERTAINTY;
-	}
-
-	private WeightingType weightingType;
-	
 	private transient FaultSystemRupSet rupSet;
 	private transient AveSlipModule aveSlipModule;
 	private transient SlipAlongRuptureModel slipAlongModule;
@@ -59,50 +40,19 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 	
 	public static final double DEFAULT_FRACT_STD_DEV = 0.5;
 
-	public SlipRateInversionConstraint(double weight, WeightingType weightingType,
+	public SlipRateInversionConstraint(double weight, ConstraintWeightingType weightingType,
 			FaultSystemRupSet rupSet) {
 		this(weight, weightingType, rupSet, rupSet.requireModule(AveSlipModule.class),
 				rupSet.requireModule(SlipAlongRuptureModel.class), rupSet.requireModule(SectSlipRates.class));
 	}
 
-	public SlipRateInversionConstraint(double weight, WeightingType weightingType,
+	public SlipRateInversionConstraint(double weight, ConstraintWeightingType weightingType,
 			FaultSystemRupSet rupSet, AveSlipModule aveSlipModule, SlipAlongRuptureModel slipAlongModule,
 			SectSlipRates targetSlipRates) {
-		super(getName(weightingType), getShortName(weightingType), weight, false);
+		super(weightingType.applyNamePrefix("Slip Rate"), weightingType.applyShortNamePrefix("SlipRate"),
+				weight, false, weightingType);
 		this.weightingType = weightingType;
 		setRuptureSet(rupSet);
-	}
-
-	public static String getShortName(WeightingType weightingType) {
-		switch (weightingType) {
-		case NORMALIZED_BY_SLIP_RATE:
-			return "NormSlipRate";
-		case UNNORMALIZED:
-			return "SlipRate";
-		case NORMALIZED_BY_UNCERTAINTY:
-			return "UncrtWtSlipRate";
-
-		default:
-			throw new IllegalStateException("Unexpected weighting type: "+weightingType);
-		}
-	}
-	
-	public static String getName(WeightingType weightingType) {
-		switch (weightingType) {
-		case NORMALIZED_BY_SLIP_RATE:
-			return "Normalized Slip Rate";
-		case UNNORMALIZED:
-			return "Slip Rate (un-normalized)";
-		case NORMALIZED_BY_UNCERTAINTY:
-			return "Uncrtainty-Weighted Slip Rate";
-
-		default:
-			throw new IllegalStateException("Unexpected weighting type: "+weightingType);
-		}
-	}
-	
-	public WeightingType getWeightingType() {
-		return weightingType;
 	}
 
 	@Override
@@ -170,7 +120,7 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 		double[] weights = new double[numSections];
 		for (int s=0; s<numSections; s++)
 			weights[s] = this.weight;
-		if (weightingType == SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY) {
+		if (weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
 			double[] stdDevs = getSlipRateStdDevs(targetSlipRates, DEFAULT_FRACT_STD_DEV);
 			for (int s=0; s<numSections; s++)
 				if (stdDevs[s] != 0d)
@@ -186,7 +136,7 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 				int row = startRow+sectIndex;
 				int col = rup;
 				double val = slips[i];
-				if (weightingType == SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE) {
+				if (weightingType == ConstraintWeightingType.NORMALIZED) {
 					double target = targetSlipRates.getSlipRate(sectIndex);
 					if (target != 0d) {
 						// Note that constraints for sections w/ slip rate < 0.1 mm/yr is not normalized by slip rate
@@ -205,7 +155,7 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 		for (int sectIndex=0; sectIndex<numSections; sectIndex++) {
 			double target = targetSlipRates.getSlipRate(sectIndex);
 			double val = target;
-			if (weightingType == SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE) {
+			if (weightingType == ConstraintWeightingType.NORMALIZED) {
 				if (target == 0d)
 					// minimize
 					val = 0d;

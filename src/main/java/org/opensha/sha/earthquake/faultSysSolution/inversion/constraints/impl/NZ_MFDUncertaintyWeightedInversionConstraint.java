@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -15,12 +16,15 @@ import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.MFD_WeightedInversionConstraint;
 
 /**
- * Constrain the solution to match the given MFD Weighted constraints. 
+ * Constrain the solution to match the given MFD Weighted constraints.
+ * 
+ * Kevin: Renamed to NZ_... to avoid confusion, as it's only sort of uncertainty weighted and should probably be removed
+ * in favor of choosing standard deviations and then using the regular version.
  * 
  * @author chrisbc
  *
  */
-public class MFDUncertaintyWeightedInversionConstraint extends InversionConstraint {
+public class NZ_MFDUncertaintyWeightedInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "Uncertainty-Weighted MFD";
 	public static final String SHORT_NAME = "UncertMFD";
@@ -29,9 +33,9 @@ public class MFDUncertaintyWeightedInversionConstraint extends InversionConstrai
 	private List<MFD_WeightedInversionConstraint> mfdWeightedConstraints;
 	private HashSet<Integer> excludeRupIndexes;
 
-	public MFDUncertaintyWeightedInversionConstraint(FaultSystemRupSet rupSet, double weight,
+	public NZ_MFDUncertaintyWeightedInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<MFD_WeightedInversionConstraint> mfdWeightedConstraints) {
-		super(NAME, SHORT_NAME, weight, false);
+		super(NAME, SHORT_NAME, weight, false, null); // somewhere inbetween normalized by slip rates and normalized by uncertainty
 		this.rupSet = rupSet;
 		this.mfdWeightedConstraints = mfdWeightedConstraints;
 	}

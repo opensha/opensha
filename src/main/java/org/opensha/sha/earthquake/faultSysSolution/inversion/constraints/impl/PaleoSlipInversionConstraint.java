@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -36,7 +37,15 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 	public PaleoSlipInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints,
 			PaleoSlipProbabilityModel slipObsProbModel, boolean applySlipRateUncertainty) {
-		super(NAME, SHORT_NAME, weight, false);
+		this(rupSet, weight, aveSlipConstraints, slipObsProbModel, applySlipRateUncertainty,
+				ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY);
+	}
+
+	public PaleoSlipInversionConstraint(FaultSystemRupSet rupSet, double weight,
+			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints,
+			PaleoSlipProbabilityModel slipObsProbModel, boolean applySlipRateUncertainty,
+			ConstraintWeightingType weightingType) {
+		super(NAME, SHORT_NAME, weight, false, weightingType);
 		setRuptureSet(rupSet);
 		this.aveSlipConstraints = aveSlipConstraints;
 		this.slipObsProbModel = slipObsProbModel;
@@ -64,14 +73,15 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 			
 			int row = startRow+i;
 			
-			d[row] = weight * meanRate / stdDev;
+			d[row] = weight * weightingType.getD(meanRate, stdDev);
+			double scalar = weightingType.getA_Scalar(meanRate, stdDev);
 			List<Integer> rupsForSect = rupSet.getRupturesForSection(rateConstraint.sectionIndex);
 			for (int rupIndex=0; rupIndex<rupsForSect.size(); rupIndex++) {
 				int rup = rupsForSect.get(rupIndex);
 				int sectIndexInRup = rupSet.getSectionsIndicesForRup(rup).indexOf(rateConstraint.sectionIndex);
 				double slipOnSect = slipAlongModule.calcSlipOnSectionsForRup(rupSet, aveSlipModule, rup)[sectIndexInRup]; 
 				double probVisible = slipObsProbModel.getProbabilityOfObservedSlip(slipOnSect);
-				setA(A, row, rup, weight * probVisible / stdDev);
+				setA(A, row, rup, weight * probVisible * scalar);
 				numNonZeroElements++;
 			}
 		}

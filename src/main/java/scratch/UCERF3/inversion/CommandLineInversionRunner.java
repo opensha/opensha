@@ -50,6 +50,7 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
@@ -58,7 +59,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
@@ -461,53 +461,54 @@ public class CommandLineInversionRunner {
 			List<ConstraintRange> constraintRanges = gen.getConstraintRowRanges();
 			
 			if (cmd.hasOption(InversionOptions.SYNTHETIC.argName)) {
-				// special synthetic inversion test
-				double[] synrates = MatrixIO.doubleArrayFromFile(new File(dir, "syn.bin"));
-				Preconditions.checkState(synrates.length == initialState.length,
-						"synthetic starting solution has different num rups!");
-				// subtract min rates
-				synrates = gen.adjustSolutionForWaterLevel(synrates);
-				
-				DoubleMatrix1D synMatrix = new DenseDoubleMatrix1D(synrates);
-				
-				DenseDoubleMatrix1D syn = new DenseDoubleMatrix1D(A.rows());
-				A.zMult(synMatrix, syn);
-				
-				double[] d_syn = syn.elements();
-				
-				Preconditions.checkState(d.length == d_syn.length,
-						"D and D_syn lengths tdon't match!");
-				
-				List<ConstraintRange> rangesToCopy = Lists.newArrayList();
-				
-				for (int i=0; i<constraintRanges.size(); i++) {
-					ConstraintRange range = constraintRanges.get(i);
-					String name = range.name;
-					boolean keep = false;
-					for (SlipRateInversionConstraint.WeightingType type : SlipRateInversionConstraint.WeightingType.values())
-						if (name.equals(SlipRateInversionConstraint.getName(type)))
-							keep = true;
-					else if (name.equals(PaleoRateInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(PaleoSlipInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(MFDInversionConstraint.EQ_NAME))
-						keep = true;
-					else if (name.equals(MFDSubSectNuclInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(ParkfieldInversionConstraint.NAME))
-						keep = true;
-					
-					if (keep)
-						rangesToCopy.add(range);
-				}
-				
-				// copy over "data" from synthetics
-				for (ConstraintRange range : rangesToCopy) {
-					System.out.println("Copying range "+range+" from syn to D");
-					for (int i=range.startRow; i<range.endRow; i++)
-						d[i] = d_syn[i];
-				}
+				throw new UnsupportedOperationException("No longer supported");
+//				// special synthetic inversion test
+//				double[] synrates = MatrixIO.doubleArrayFromFile(new File(dir, "syn.bin"));
+//				Preconditions.checkState(synrates.length == initialState.length,
+//						"synthetic starting solution has different num rups!");
+//				// subtract min rates
+//				synrates = gen.adjustSolutionForWaterLevel(synrates);
+//				
+//				DoubleMatrix1D synMatrix = new DenseDoubleMatrix1D(synrates);
+//				
+//				DenseDoubleMatrix1D syn = new DenseDoubleMatrix1D(A.rows());
+//				A.zMult(synMatrix, syn);
+//				
+//				double[] d_syn = syn.elements();
+//				
+//				Preconditions.checkState(d.length == d_syn.length,
+//						"D and D_syn lengths tdon't match!");
+//				
+//				List<ConstraintRange> rangesToCopy = Lists.newArrayList();
+//				
+//				for (int i=0; i<constraintRanges.size(); i++) {
+//					ConstraintRange range = constraintRanges.get(i);
+//					String name = range.name;
+//					boolean keep = false;
+//					for (ConstraintWeightingType type : ConstraintWeightingType.values())
+//						if (name.equals(SlipRateInversionConstraint.getName(type)))
+//							keep = true;
+//					else if (name.equals(PaleoRateInversionConstraint.NAME))
+//						keep = true;
+//					else if (name.equals(PaleoSlipInversionConstraint.NAME))
+//						keep = true;
+//					else if (name.equals(MFDInversionConstraint.EQ_NAME))
+//						keep = true;
+//					else if (name.equals(MFDSubSectNuclInversionConstraint.NAME))
+//						keep = true;
+//					else if (name.equals(ParkfieldInversionConstraint.NAME))
+//						keep = true;
+//					
+//					if (keep)
+//						rangesToCopy.add(range);
+//				}
+//				
+//				// copy over "data" from synthetics
+//				for (ConstraintRange range : rangesToCopy) {
+//					System.out.println("Copying range "+range+" from syn to D");
+//					for (int i=range.startRow; i<range.endRow; i++)
+//						d[i] = d_syn[i];
+//				}
 			}
 
 			for (int i=0; i<constraintRanges.size(); i++)

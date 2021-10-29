@@ -9,12 +9,12 @@ import java.util.function.DoubleUnaryOperator;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import cern.jet.random.tdouble.DoubleUniform;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 
 /**
@@ -31,13 +31,7 @@ import scratch.UCERF3.utils.MFD_InversionConstraint;
  */
 public class MFDInversionConstraint extends InversionConstraint {
 	
-	public static final String EQ_NAME = "MFD Equality";
-	public static final String INEQ_NAME = "MFD Inequality";
-	public static final String EQ_SHORT_NAME = "MFDEquality";
-	public static final String INEQ_SHORT_NAME = "MFDInequality";
-	
 	private transient FaultSystemRupSet rupSet;
-	private WeightingType weightingType;
 	private List<? extends MFD_InversionConstraint> mfds;
 	private List<? extends EvenlyDiscretizedFunc> mfdStdDevs;
 	private HashSet<Integer> excludeRupIndexes;
@@ -90,42 +84,26 @@ public class MFDInversionConstraint extends InversionConstraint {
 		return stdDevs;
 	}
 	
-	public enum WeightingType {
-		/**
-		 * Normalize each MFD bin by the target rate
-		 */
-		NORMALIZED,
-		/**
-		 * Do not normalize MFD constraint (inversion will minimize difference of model to target, effectively
-		 * fitting higher rate bins better than lower rate bins on a ratio basis)
-		 */
-		UNNORMALIZED,
-		/**
-		 * Normalizes targets by their standard deviation. This weights all constraints equally
-		 * relative to their uncertainties. Supplied MFDs must be of the type
-		 */
-		NORMALIZED_BY_UNCERTAINTY;
-	}
-
 	public MFDInversionConstraint(FaultSystemRupSet rupSet, double weight, boolean inequality,
 			List<? extends MFD_InversionConstraint> mfds) {
-		this(rupSet, weight, inequality, WeightingType.NORMALIZED, mfds, null, null);
+		this(rupSet, weight, inequality, ConstraintWeightingType.NORMALIZED, mfds, null, null);
 	}
 
 	public MFDInversionConstraint(FaultSystemRupSet rupSet, double weight, boolean inequality,
-			WeightingType weightingType, List<? extends MFD_InversionConstraint> mfds,
+			ConstraintWeightingType weightingType, List<? extends MFD_InversionConstraint> mfds,
 			List<? extends EvenlyDiscretizedFunc> mfdStdDevs) {
 		this(rupSet, weight, inequality, weightingType, mfds, mfdStdDevs, null);
 	}
 
 	public MFDInversionConstraint(FaultSystemRupSet rupSet, double weight, boolean inequality,
-			WeightingType weightingType, List<? extends MFD_InversionConstraint> mfds,
+			ConstraintWeightingType weightingType, List<? extends MFD_InversionConstraint> mfds,
 			List<? extends EvenlyDiscretizedFunc> mfdStdDevs, HashSet<Integer> excludeRupIndexes) {
-		super(inequality ? INEQ_NAME : EQ_NAME, inequality ? INEQ_SHORT_NAME : EQ_SHORT_NAME, weight, inequality);
+		super(weightingType.applyNamePrefix("MFD "+(inequality ? "Inequality" : "Equality")),
+				weightingType.applyShortNamePrefix("MFD"+(inequality ? "Inequality" : "Equality")),
+				weight, inequality, weightingType);
 		this.rupSet = rupSet;
-		this.weightingType = weightingType;
 		this.mfds = mfds;
-		if (weightingType == WeightingType.NORMALIZED_BY_UNCERTAINTY)
+		if (weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY)
 			Preconditions.checkNotNull(mfdStdDevs,
 					"MFD Standard Deviation functions must be supplied for uncertainty weighting");
 		if (mfdStdDevs != null) {
@@ -193,25 +171,9 @@ public class MFDInversionConstraint extends InversionConstraint {
 					targets[j] = 0d;
 					scales[j] = 0d;
 				} else {
-					switch (weightingType) {
-					case NORMALIZED:
-						targets[j] = 1d;
-						scales[j] = 1d/rate;
-						break;
-					case UNNORMALIZED:
-						targets[j] = rate;
-						scales[j] = 1d;
-						break;
-					case NORMALIZED_BY_UNCERTAINTY:
-						Preconditions.checkNotNull(mfdStdDevs);
-						double stdDev = mfdStdDevs.get(i).getY(j);
-						targets[j] = rate/stdDev;
-						scales[j] = 1d/stdDev;
-						break;
-
-					default:
-						throw new IllegalStateException();
-					}
+					double stdDev = mfdStdDevs == null ? 0d : mfdStdDevs.get(i).getY(j);
+					scales[j] = weightingType.getA_Scalar(rate, stdDev);
+					targets[j] = weightingType.getD(rate, stdDev);
 				}
 			}
 			

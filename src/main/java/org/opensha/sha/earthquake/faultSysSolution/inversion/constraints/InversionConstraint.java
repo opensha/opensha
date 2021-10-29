@@ -43,6 +43,20 @@ public abstract class InversionConstraint implements ShortNamed {
 	private transient String shortName;
 	protected transient double weight;
 	protected transient boolean inequality;
+	protected transient ConstraintWeightingType weightingType;
+	
+	/**
+	 * Constructor that sets the names, weight, and inequality flag. These values will be serialized externally and should
+	 * not be stored separately in the subclass. Constraint weighting type is set to {@link ConstraintWeightingType.UNNORMALIZED}.
+	 * 
+	 * @param name
+	 * @param shortName
+	 * @param weight
+	 * @param inequality
+	 */
+	protected InversionConstraint(String name, String shortName, double weight, boolean inequality) {
+		this(name, shortName, weight, inequality, ConstraintWeightingType.UNNORMALIZED);
+	}
 	
 	/**
 	 * Constructor that sets the names, weight, and inequality flag. These values will be serialized externally and should
@@ -52,12 +66,14 @@ public abstract class InversionConstraint implements ShortNamed {
 	 * @param shortName
 	 * @param weight
 	 * @param inequality
+	 * @param weightingType;
 	 */
-	protected InversionConstraint(String name, String shortName, double weight, boolean inequality) {
+	protected InversionConstraint(String name, String shortName, double weight, boolean inequality, ConstraintWeightingType weightingType) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
 		this.inequality = inequality;
+		this.weightingType = weightingType;
 	}
 	
 	/**
@@ -87,6 +103,13 @@ public abstract class InversionConstraint implements ShortNamed {
 	 */
 	public final double getWeight() {
 		return weight;
+	}
+	
+	/**
+	 * @return constraint weighting type, used for interpreting misfits
+	 */
+	public final ConstraintWeightingType getWeightingType() {
+		return weightingType;
 	}
 	
 	@Override
@@ -193,13 +216,14 @@ public abstract class InversionConstraint implements ShortNamed {
 
 		@Override
 		public void write(JsonWriter out, InversionConstraint value) throws IOException {
-			// TODO add stub capabilities and recover if serialization fails
 			out.beginObject();
 			out.name("type").value(value.getClass().getName());
 			out.name("name").value(value.getName());
 			out.name("shortName").value(value.getShortName());
 			out.name("inequality").value(value.isInequality());
 			out.name("weight").value(value.getWeight());
+			if (value.weightingType != null)
+				out.name("weightingType").value(value.weightingType.name());
 			out.name("data");
 //			System.out.println("Writing "+value.getName()+" ("+value.getClass().getName()+")");
 			gson.toJson(value, value.getClass(), out);
@@ -214,6 +238,7 @@ public abstract class InversionConstraint implements ShortNamed {
 			String shortName = null;
 			Boolean inequality = null;
 			Double weight = null;
+			ConstraintWeightingType weightingType = null;
 			InversionConstraint constraint = null;
 			
 			in.beginObject();
@@ -240,6 +265,9 @@ public abstract class InversionConstraint implements ShortNamed {
 				case "weight":
 					weight = in.nextDouble();
 					break;
+				case "weightingType":
+					weightingType = ConstraintWeightingType.valueOf(in.nextString());
+					break;
 				case "data":
 					if (type == null) {
 						in.skipValue();
@@ -261,13 +289,15 @@ public abstract class InversionConstraint implements ShortNamed {
 			
 			if (constraint == null) {
 				// configure stub
-				constraint = new ConstraintStub(name, shortName, weight, inequality); 
+				constraint = new ConstraintStub(name, shortName, weight, inequality, weightingType); 
 			} else {
 				// set transient properties, exactly as existed when this was created
 				constraint.weight = weight;
 				constraint.inequality = inequality;
 				constraint.name = name;
 				constraint.shortName = shortName;
+				if (weightingType != null)
+					constraint.weightingType = weightingType;
 			}
 			
 			in.endObject();
@@ -296,8 +326,9 @@ public abstract class InversionConstraint implements ShortNamed {
 	
 	private static class ConstraintStub extends InversionConstraint {
 
-		protected ConstraintStub(String name, String shortName, double weight, boolean inequality) {
-			super(name, shortName, weight, inequality);
+		protected ConstraintStub(String name, String shortName, double weight, boolean inequality,
+				ConstraintWeightingType weightingType) {
+			super(name, shortName, weight, inequality, weightingType);
 		}
 
 		@Override

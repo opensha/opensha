@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -27,7 +28,7 @@ public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 
 	public MFDSubSectNuclInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<SectionMFD_constraint> constraints) {
-		super(NAME, SHORT_NAME, weight, false);
+		super(NAME, SHORT_NAME, weight, false, ConstraintWeightingType.NORMALIZED);
 		this.rupSet = rupSet;
 		this.constraints = constraints;
 	}

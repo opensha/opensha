@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 
@@ -27,10 +28,16 @@ public class PaleoRateInversionConstraint extends InversionConstraint {
 
 	public PaleoRateInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel) {
-		super(NAME, SHORT_NAME, weight, false);
+		this(rupSet, weight, ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, paleoRateConstraints, paleoProbModel);
+	}
+
+	public PaleoRateInversionConstraint(FaultSystemRupSet rupSet, double weight, ConstraintWeightingType weightingType,
+			List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel) {
+		super(NAME, SHORT_NAME, weight, false, weightingType);
 		this.rupSet = rupSet;
 		this.paleoRateConstraints = paleoRateConstraints;
 		this.paleoProbModel = paleoProbModel;
+		this.weightingType = weightingType;
 	}
 
 	@Override
@@ -45,13 +52,14 @@ public class PaleoRateInversionConstraint extends InversionConstraint {
 		for (int i=0; i<paleoRateConstraints.size(); i++) {
 			SectMappedUncertainDataConstraint constraint = paleoRateConstraints.get(i);
 			int row = startRow + i;
-			d[row] = weight * constraint.bestEstimate / constraint.getPreferredStdDev();
+			d[row] = weight * weightingType.getD(constraint.bestEstimate, constraint.getPreferredStdDev());
+			double scalar = weightingType.getA_Scalar(constraint.bestEstimate, constraint.getPreferredStdDev());
 			List<Integer> rupsForSect = rupSet.getRupturesForSection(constraint.sectionIndex);
 			for (int rupIndex=0; rupIndex<rupsForSect.size(); rupIndex++) {
 				int rup = rupsForSect.get(rupIndex);
 				double probPaleoVisible = paleoProbModel.getProbPaleoVisible(
 						rupSet, rup, constraint.sectionIndex);	
-				setA(A, row, rup, weight * probPaleoVisible / constraint.getPreferredStdDev());
+				setA(A, row, rup, weight * probPaleoVisible * scalar);
 				numNonZeroElements++;			
 			}
 		}

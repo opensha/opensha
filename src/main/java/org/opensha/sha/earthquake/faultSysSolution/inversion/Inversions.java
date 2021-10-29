@@ -14,13 +14,13 @@ import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RelativeBValueConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
@@ -319,13 +319,13 @@ public class Inversions {
 			
 			if (regWeight > 0d)
 				constraints.add(new SlipRateInversionConstraint(regWeight,
-						SlipRateInversionConstraint.WeightingType.UNNORMALIZED, rupSet));
+						ConstraintWeightingType.UNNORMALIZED, rupSet));
 			if (normWeight > 0d)
 				constraints.add(new SlipRateInversionConstraint(normWeight,
-						SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE, rupSet));
+						ConstraintWeightingType.NORMALIZED, rupSet));
 			if (uncertWeight > 0d)
 				constraints.add(new SlipRateInversionConstraint(uncertWeight,
-						SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY, rupSet));
+						ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, rupSet));
 		}
 		
 		if (cmd.hasOption("mfd-constraint")) {

@@ -15,8 +15,8 @@ import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.SegmentationModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
@@ -114,7 +114,7 @@ public class InversionConstraintImplTests {
 		List<MFD_WeightedInversionConstraint> mfdConstraints = new ArrayList<>();
 		mfdConstraints.add(new MFD_WeightedInversionConstraint(mfd, region, weight));
 		
-		MFDUncertaintyWeightedInversionConstraint constr = new MFDUncertaintyWeightedInversionConstraint(rupSet, 1000, mfdConstraints);
+		NZ_MFDUncertaintyWeightedInversionConstraint constr = new NZ_MFDUncertaintyWeightedInversionConstraint(rupSet, 1000, mfdConstraints);
 	
 		testConstraint(constr);
 	}
@@ -129,7 +129,7 @@ public class InversionConstraintImplTests {
 		int weight = 100;
 		int weightScalingOrderOfMagnitude = 2;
 		
-		SlipRateUncertaintyInversionConstraint constr = new SlipRateUncertaintyInversionConstraint(
+		NZ_SlipRateUncertaintyInversionConstraint constr = new NZ_SlipRateUncertaintyInversionConstraint(
 				weight, weightScalingOrderOfMagnitude, rupSet, slipRates, stdDevs);
 		
 		testConstraint(constr);
@@ -164,9 +164,9 @@ public class InversionConstraintImplTests {
 		for (MFD_InversionConstraint mfd : eqConstr)
 			mfd.setMagFreqDist(testMFD);
 		
-		for (MFDInversionConstraint.WeightingType weight : MFDInversionConstraint.WeightingType.values()) {
+		for (ConstraintWeightingType weight : ConstraintWeightingType.values()) {
 			List<EvenlyDiscretizedFunc> stdDevs = null;
-			if (weight == MFDInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY)
+			if (weight == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY)
 				stdDevs = MFDInversionConstraint.calcStdDevsFromRelativeFunc(eqConstr, M->0.1);
 			MFDInversionConstraint constr = new MFDInversionConstraint(
 					rupSet, 1d, false, weight, eqConstr, stdDevs, null);
@@ -300,17 +300,17 @@ public class InversionConstraintImplTests {
 	public void testSlipRate() throws IOException {
 		
 		SlipRateInversionConstraint constr = new SlipRateInversionConstraint(
-				1d, SlipRateInversionConstraint.WeightingType.UNNORMALIZED, rupSet);
+				1d, ConstraintWeightingType.UNNORMALIZED, rupSet);
 		
 		testConstraint(constr);
 		
 		constr = new SlipRateInversionConstraint(
-				1d, SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_SLIP_RATE, rupSet);
+				1d, ConstraintWeightingType.NORMALIZED, rupSet);
 		
 		testConstraint(constr);
 		
 		constr = new SlipRateInversionConstraint(
-				1d, SlipRateInversionConstraint.WeightingType.NORMALIZED_BY_UNCERTAINTY, rupSet);
+				1d, ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, rupSet);
 		
 		testConstraint(constr);
 	}

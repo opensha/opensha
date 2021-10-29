@@ -14,9 +14,9 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint.WeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
@@ -119,7 +119,7 @@ class DemoFileCreator {
 		U3FaultSystemIO.writeRupSet(oldRupSet, new File(outputDir, "demo_old_rup_set.zip"));
 		
 		List<InversionConstraint> constraints = new ArrayList<>();
-		constraints.add(new SlipRateInversionConstraint(1d, SlipRateInversionConstraint.WeightingType.UNNORMALIZED, rupSet,
+		constraints.add(new SlipRateInversionConstraint(1d, ConstraintWeightingType.UNNORMALIZED, rupSet,
 				rupSet.requireModule(AveSlipModule.class), rupSet.requireModule(SlipAlongRuptureModel.class),
 				rupSet.requireModule(SectSlipRates.class)));
 		InversionInputGenerator invGen = new InversionInputGenerator(rupSet, constraints);

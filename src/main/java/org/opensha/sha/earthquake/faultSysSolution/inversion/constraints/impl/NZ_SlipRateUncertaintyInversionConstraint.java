@@ -19,10 +19,13 @@ import org.opensha.commons.data.CSVFile;
  * Constrain section slip rates to match the given target, with the weighting for
  * each section scaled by its CoefficientOfVariance (rate/stddev).
  * 
+ * Kevin: Renamed to NZ_... to avoid confusion, as it's only sort of uncertainty weighted and should probably be removed
+ * in favor of choosing standard deviations and then using the regular version.
+ * 
  * @author chrisbc
  *
  */
-public class SlipRateUncertaintyInversionConstraint extends InversionConstraint {
+public class NZ_SlipRateUncertaintyInversionConstraint extends InversionConstraint {
 
 	public static final String NAME = "Slip Rate with weighting adjusted for uncertainty";
 	public static final String SHORT_NAME = "SlipRateUncertaintyAdjusted";
@@ -51,9 +54,9 @@ public class SlipRateUncertaintyInversionConstraint extends InversionConstraint 
 	 * @param targetSlipRates from deformation model
 	 * @param targetSlipRateStdDevs from deformation model
 	 */
-	public SlipRateUncertaintyInversionConstraint(int weight, int weightScalingOrderOfMagnitude,
+	public NZ_SlipRateUncertaintyInversionConstraint(int weight, int weightScalingOrderOfMagnitude,
 			SlipEnabledRupSet rupSet, double[] targetSlipRates, double[] targetSlipRateStdDevs) {
-		super(NAME, SHORT_NAME, weight, false);
+		super(NAME, SHORT_NAME, weight, false, null); // unclear what the actual weighting typ is of this constraint
 		this.rupSet = rupSet;
 		this.targetSlipRates = targetSlipRates;
 		this.targetNormalisedWeights = new double[targetSlipRates.length];
