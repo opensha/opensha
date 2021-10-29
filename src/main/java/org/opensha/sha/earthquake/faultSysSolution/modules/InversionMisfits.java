@@ -118,7 +118,7 @@ public class InversionMisfits implements ArchivableModule {
 		if (constraintRanges != null && !constraintRanges.isEmpty()) {
 			CSVFile<String> rangesCSV = new CSVFile<>(true);
 			rangesCSV.addLine("Name", "Short Name", "Start Row (inclusive)", "End Row (exclusive)",
-					"Inequality", "Weight");
+					"Inequality", "Weight", "Weighting Type");
 			for (ConstraintRange range : constraintRanges)
 				rangesCSV.addLine(range.name, range.shortName, range.startRow+"", range.endRow+"",
 						range.inequality+"", range.weight+"",
