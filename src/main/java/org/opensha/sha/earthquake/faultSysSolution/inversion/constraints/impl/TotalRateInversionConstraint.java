@@ -1,38 +1,57 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
-import org.opensha.commons.eq.MagUtils;
+import java.text.DecimalFormat;
+
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+
+import com.google.common.base.Preconditions;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 
 /**
- * Constraint solution total rate.
+ * Constrain solution total rate. Misfits are in rate space (not normalized).
  * 
  * @author Morgan Page & Kevin Milner
  *
  */
 public class TotalRateInversionConstraint extends InversionConstraint {
-	
-	private FaultSystemRupSet rupSet;
-	private double weight;
+
+	private transient FaultSystemRupSet rupSet;
 	private double totalRateTarget;
+	private double minMag;
+	private double totalRateStdDev;
 
-	public TotalRateInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			double totalRateTarget) {
-		this.rupSet = rupSet;
-		this.weight = weight;
+	public TotalRateInversionConstraint(double weight, double totalRateTarget) {
+		this(weight, totalRateTarget, ConstraintWeightingType.UNNORMALIZED, 0d);
+	}
+
+	public TotalRateInversionConstraint(double weight, double totalRateTarget, ConstraintWeightingType weightingType,
+			double totalRateStdDev) {
+		this(weight, totalRateTarget, null, 0d, weightingType, totalRateStdDev);
+	}
+
+	public TotalRateInversionConstraint(double weight, double totalRateTarget, FaultSystemRupSet rupSet, double minMag,
+			 ConstraintWeightingType weightingType, double totalRateStdDev) {
+		super(weightingType.applyNamePrefix(name(minMag)), weightingType.applyShortNamePrefix(shortName(minMag)),
+				weight, false, weightingType);
 		this.totalRateTarget = totalRateTarget;
+		this.rupSet = rupSet;
+		this.minMag = minMag;
+		this.totalRateStdDev = totalRateStdDev;
 	}
-
-	@Override
-	public String getShortName() {
-		return "TotRate";
-	}
-
-	@Override
-	public String getName() {
+	
+	private static String name(double minMag) {
+		if (minMag > 0d)
+			return "M>"+new DecimalFormat("0.#").format(minMag)+" Rate";
 		return "Total Rate";
+	}
+	
+	private static String shortName(double minMag) {
+		if (minMag > 0d)
+			return "M"+new DecimalFormat("0.#").format(minMag)+"Rate";
+		return "TotRate";
 	}
 
 	@Override
@@ -41,20 +60,27 @@ public class TotalRateInversionConstraint extends InversionConstraint {
 	}
 
 	@Override
-	public boolean isInequality() {
-		return false;
+	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
+		long numNonZeroElements = 0;
+		int numRuptures = A.columns();
+		if (rupSet != null)
+			Preconditions.checkState(rupSet.getNumRuptures() == numRuptures);
+		if (minMag > 0d)
+			Preconditions.checkNotNull(rupSet, "Minimum magnitude supplied but not rupture set");
+		double scale = weightingType.getA_Scalar(totalRateTarget, totalRateStdDev);
+		for (int rup=0; rup<numRuptures; rup++)  {
+			if (minMag > 0d && rupSet.getMagForRup(rup) < minMag)
+				continue;
+			setA(A, startRow, rup, weight*scale);
+			numNonZeroElements++;
+		}
+		d[startRow] = weight * weightingType.getD(totalRateTarget, totalRateStdDev);
+		return numNonZeroElements;
 	}
 
 	@Override
-	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
-		long numNonZeroElements = 0;
-		int numRuptures = rupSet.getNumRuptures();
-		for (int rup=0; rup<numRuptures; rup++)  {
-			setA(A, startRow, rup, weight);
-			numNonZeroElements++;
-		}
-		d[startRow] = weight * totalRateTarget;
-		return numNonZeroElements;
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

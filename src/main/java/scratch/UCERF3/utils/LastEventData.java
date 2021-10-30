@@ -22,11 +22,11 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 import com.google.common.base.Joiner;

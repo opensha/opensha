@@ -77,9 +77,27 @@ import scratch.UCERF3.utils.U3FaultSystemIO;
 public class RuptureSets {
 	
 	public static List<? extends FaultSection> getU3SubSects(FaultModels fm) {
-		DeformationModels dm = fm.getFilterBasis();
+		return getU3SubSects(fm, fm.getFilterBasis());
+	}
+	
+	public static List<? extends FaultSection> getU3SubSects(FaultModels fm, DeformationModels dm) {
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
-		return dmFetch.getSubSectionList();
+		List<? extends FaultSection> sects = dmFetch.getSubSectionList();
+		
+		// infer standard deviations from geologic bounds so we can use newer slip rate constraints
+		// assume bounds are +/- 2 sigma
+		System.out.println("Inferring slip-rate standard deviations from geologic bounds...");
+		List<? extends FaultSection> lowerSects = new DeformationModelFetcher(
+				fm, DeformationModels.GEOLOGIC_LOWER, null, 0.1).getSubSectionList();
+		List<? extends FaultSection> upperSects = new DeformationModelFetcher(
+				fm, DeformationModels.GEOLOGIC_UPPER, null, 0.1).getSubSectionList();
+		for (int s=0; s<sects.size(); s++) {
+			double upper = upperSects.get(s).getOrigAveSlipRate();
+			double lower = lowerSects.get(s).getOrigAveSlipRate();
+			sects.get(s).setSlipRateStdDev((upper-lower)/4d);
+		}
+		
+		return sects;
 	}
 	
 	public static List<? extends FaultSection> getNSHM23SubSects(String state) throws IOException {
@@ -91,8 +109,9 @@ public class RuptureSets {
 		private List<? extends FaultSection> subSects;
 		private FaultModels fm;
 		private RupSetScalingRelationship scale;
-		@Expose
-		private double maxJumpDist = 5d;
+		@Expose private double maxJumpDist = 5d;
+		// if nonzero, apply thinning to growing strategy
+		@Expose	private float adaptiveSectFract = 0f;
 
 		public U3RupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
@@ -135,7 +154,14 @@ public class RuptureSets {
 
 		@Override
 		public RuptureGrowingStrategy getGrowingStrategy() {
-			return new ExhaustiveUnilateralRuptureGrowingStrategy();
+			RuptureGrowingStrategy strat = new ExhaustiveUnilateralRuptureGrowingStrategy();
+			if (adaptiveSectFract > 0f)
+				strat = new SectCountAdaptiveRuptureGrowingStrategy(strat, adaptiveSectFract, true, 2);
+			return strat;
+		}
+
+		public void setAdaptiveSectFract(float adaptiveSectFract) {
+			this.adaptiveSectFract = adaptiveSectFract;
 		}
 
 		@Override
@@ -145,7 +171,10 @@ public class RuptureSets {
 				str = subSects.size()+"sects";
 			else
 				str = fm.encodeChoiceString().toLowerCase();
-			return str+"_reproduce_ucerf3.zip";
+			str += "_reproduce_ucerf3";
+			if (adaptiveSectFract > 0f)
+				str += "_fractGrow"+adaptiveSectFract;
+			return str+".zip";
 		}
 
 		@Override
@@ -244,6 +273,8 @@ public class RuptureSets {
 				elements.add("cmlRake"+(int)cumulativeRakeChange);
 			if (minSectsPerParent > 0)
 				elements.add(minSectsPerParent+"sectsPerParent");
+			if (adaptiveSectFract > 0f)
+				elements.add("fractGrow"+adaptiveSectFract);
 			return Joiner.on("_").join(elements)+".zip";
 		}
 

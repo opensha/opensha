@@ -7,6 +7,14 @@ import java.util.Map;
 
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -19,19 +27,11 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.simulatedAnnealing.SerialSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.IterationCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF2_PaleoRateConstraintFetcher;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -91,7 +91,7 @@ public class RunInversion {
 		File precomputedDataDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
 		
 		// get the paleo rate constraints
-		List<PaleoRateConstraint> paleoRateConstraints = null;
+		List<U3PaleoRateConstraint> paleoRateConstraints = null;
 		try {
 			paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
 					rupSet.getFaultModel(), rupSet);
@@ -115,9 +115,9 @@ public class RunInversion {
 			System.exit(1);
 		}
 		
-		List<AveSlipConstraint> aveSlipConstraints = null;
+		List<U3AveSlipConstraint> aveSlipConstraints = null;
 		try {
-			aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+			aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 		} catch (IOException e) {
 			e.printStackTrace();
 			System.exit(1);

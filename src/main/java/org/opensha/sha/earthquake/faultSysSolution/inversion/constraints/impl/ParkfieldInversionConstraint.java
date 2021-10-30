@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -16,28 +17,24 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  */
 public class ParkfieldInversionConstraint extends InversionConstraint {
 	
-	public static final String NAME = "Parkfield";
-	public static final String SHORT_NAME = "Parkfield";
-	
-	private double weight;
 	private double targetRate;
 	private List<Integer> parkfieldRups;
+	
+	private double targetWeightStdDev;
 
 	public ParkfieldInversionConstraint(double weight, double targetRate,
 			List<Integer> parkfieldRups) {
-		this.weight = weight;
+		this(weight, targetRate, parkfieldRups, ConstraintWeightingType.UNNORMALIZED, 0d);
+	}
+
+	public ParkfieldInversionConstraint(double weight, double targetRate,
+			List<Integer> parkfieldRups, ConstraintWeightingType weightingType, double targetWeightStdDev) {
+		super(weightingType.applyNamePrefix("Parkfield"), weightingType.applyShortNamePrefix("Parkfield"),
+				weight, false, weightingType);
 		this.targetRate = targetRate;
 		this.parkfieldRups = parkfieldRups;
-	}
-
-	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
+		this.weightingType = weightingType;
+		this.targetWeightStdDev = targetWeightStdDev;
 	}
 
 	@Override
@@ -46,19 +43,17 @@ public class ParkfieldInversionConstraint extends InversionConstraint {
 	}
 
 	@Override
-	public boolean isInequality() {
-		return false;
-	}
-
-	@Override
 	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
 		long numNonZeroElements = 0;
+		
+		double scalar = weightingType.getA_Scalar(targetRate, targetWeightStdDev);
+		double target = weightingType.getD(targetRate, targetWeightStdDev);
 		for (int r=0; r<parkfieldRups.size(); r++)  {
 			int rup = parkfieldRups.get(r);
-			setA(A, startRow, rup, weight);
+			setA(A, startRow, rup, weight*scalar);
 			numNonZeroElements++;
 		}
-		d[startRow] = weight * targetRate;
+		d[startRow] = weight * target;
 		return numNonZeroElements;
 	}
 

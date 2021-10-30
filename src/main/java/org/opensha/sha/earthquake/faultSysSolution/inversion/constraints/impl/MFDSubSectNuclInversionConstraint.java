@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -22,25 +23,14 @@ public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 	public static final String NAME = "MFD Subsection Nucleation";
 	public static final String SHORT_NAME = "MFDSubSectNucl";
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
+	private transient FaultSystemRupSet rupSet;
 	private List<SectionMFD_constraint> constraints;
 
 	public MFDSubSectNuclInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			List<SectionMFD_constraint> constraints) {
+		super(NAME, SHORT_NAME, weight, false, ConstraintWeightingType.NORMALIZED);
 		this.rupSet = rupSet;
-		this.weight = weight;
 		this.constraints = constraints;
-	}
-
-	@Override
-	public String getShortName() {
-		return "MFDSubSectNucl";
-	}
-
-	@Override
-	public String getName() {
-		return "MFD Subsection Nucleation";
 	}
 
 	@Override
@@ -52,11 +42,6 @@ public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 					if (constraint.getRate(i) > 0)
 						numRows++;
 		return numRows;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -100,6 +85,11 @@ public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 			}
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

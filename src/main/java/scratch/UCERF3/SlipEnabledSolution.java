@@ -10,7 +10,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 public abstract class SlipEnabledSolution extends U3FaultSystemSolution {
 	
@@ -110,7 +110,7 @@ public abstract class SlipEnabledSolution extends U3FaultSystemSolution {
 			double[] slips = getRupSet().getSlipOnSectionsForRup(r);
 			for(int s=0; s<sectIndices.size(); s++) {
 				if(sectIndices.get(s) == sectIndex) {
-					slipPDF.set(slips[s], getRateForRup(r)*AveSlipConstraint.getProbabilityOfObservedSlip(slips[s]));
+					slipPDF.set(slips[s], getRateForRup(r)*U3AveSlipConstraint.getProbabilityOfObservedSlip(slips[s]));
 					break;
 				}
 			}

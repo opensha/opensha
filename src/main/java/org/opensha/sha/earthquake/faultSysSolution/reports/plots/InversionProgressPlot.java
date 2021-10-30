@@ -1,43 +1,23 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
-import java.awt.Color;
-import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.jfree.chart.ui.RectangleEdge;
-import org.jfree.data.Range;
-import org.opensha.commons.data.function.DefaultXY_DataSet;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.XY_DataSet;
-import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
-import org.opensha.commons.gui.plot.HeadlessGraphPanel;
-import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
-import org.opensha.commons.gui.plot.PlotLineType;
-import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.gui.plot.PlotSymbol;
-import org.opensha.commons.gui.plot.PlotUtils;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
-import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.Interpolate;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
-import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
-
-import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.completion.AnnealingProgress;
 
 public class InversionProgressPlot extends AbstractSolutionPlot {
 
@@ -50,6 +30,9 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
 			String topLink) throws IOException {
 		AnnealingProgress progress = sol.requireModule(AnnealingProgress.class);
+		AnnealingProgress compProgress = null;
+		if (meta.hasComparisonSol())
+			compProgress = meta.comparison.sol.getModule(AnnealingProgress.class);
 		
 		List<String> lines = new ArrayList<>();
 		
@@ -63,15 +46,48 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 
 		int ips = (int)((double)iters/secs + 0.5);
 		
-		lines.add("* Iterations: "+countDF.format(iters)+" ("+countDF.format(ips)+" /sec)");
-		lines.add("* Time: "+ThreadedSimulatedAnnealing.timeStr(millis));
-		lines.add("* Perturbations: "+countDF.format(perturbs));
-		lines.add("* Total energy: "+(float)totalEnergy);
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		
+		// will invert this table, so rows = columns here
+		table.initNewLine();
+		if (compProgress != null)
+			table.addColumn("");
+		table.addColumn("**Iterations**").addColumn("**Time**").addColumn("**Perturbations**").addColumn("**Total Energy**");
+		table.finalizeLine().initNewLine();
+		if (compProgress != null)
+			table.addColumn("Primary");
+		
+		table.addColumn(countDF.format(iters)+" ("+countDF.format(ips)+" /sec)");
+		table.addColumn(ThreadedSimulatedAnnealing.timeStr(millis));
+		table.addColumn(countDF.format(perturbs));
+		table.addColumn((float)totalEnergy);
+		table.finalizeLine();
+		
+		long cperturbs = -1;
+		if (compProgress != null) {
+			long cmillis = compProgress.getTime(compProgress.size()-1);
+			double csecs = cmillis/1000d;
+			cperturbs = compProgress.getNumPerturbations(compProgress.size()-1);
+			long citers = compProgress.getIterations(compProgress.size()-1);
+			double ctotalEnergy = compProgress.getEnergies(compProgress.size()-1)[0];
+
+			int cips = (int)((double)citers/csecs + 0.5);
+			
+			table.initNewLine().addColumn("Comparison");
+			table.addColumn(countDF.format(citers)+" ("+countDF.format(cips)+" /sec)");
+			table.addColumn(ThreadedSimulatedAnnealing.timeStr(cmillis));
+			table.addColumn(countDF.format(cperturbs));
+			table.addColumn((float)ctotalEnergy);
+			table.finalizeLine();
+		}
+		
+		lines.addAll(table.invert().build());
+		lines.add("");
 		
 		lines.add(getSubHeading()+" Final Energies");
 		lines.add(topLink); lines.add("");
 		
-		TableBuilder table = MarkdownUtils.tableBuilder();
+		table = MarkdownUtils.tableBuilder();
 		long deltaEachMillis;
 		if (hours > 20)
 			deltaEachMillis = 1000l*60l*60l*5l; // 5 hours
@@ -150,7 +166,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		
 		// now plots
 		String prefix = "sa_progress";
-		SimulatedAnnealing.writeProgressPlots(progress, resourcesDir, prefix, sol.getRupSet().getNumRuptures());
+		SimulatedAnnealing.writeProgressPlots(progress, resourcesDir, prefix, sol.getRupSet().getNumRuptures(), compProgress);
 		
 		lines.add("");
 		lines.add(getSubHeading()+" Energy Progress");
@@ -163,41 +179,6 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		lines.add("");
 		
 		lines.add("![Perturbations]("+relPathToResources+"/"+prefix+"_perturb_vs_iters.png)");
-		
-		lines.add("");
-		lines.add(getSubHeading()+" Rate Distribution");
-		lines.add(topLink); lines.add("");
-		
-		double[] rates = sol.getRateForAllRups();
-		double[] ratesNoMin;
-		if (sol.hasModule(WaterLevelRates.class))
-			ratesNoMin = sol.getModule(WaterLevelRates.class).subtractFrom(rates);
-		else
-			ratesNoMin = rates;
-		double[] initial = sol.hasModule(InitialSolution.class) ?
-				sol.getModule(InitialSolution.class).get() : new double[rates.length];
-		
-		int numNonZero = 0;
-		int numAboveWaterlevel = 0;
-		for (int r=0; r<rates.length; r++) {
-			if (rates[r] > 0) {
-				numNonZero++;
-				if (ratesNoMin[r] > 0)
-					numAboveWaterlevel++;
-			}
-		}
-		lines.add("* Non-zero ruptures: "+countDF.format(numNonZero)
-			+" ("+percentDF.format((double)numNonZero/(double)rates.length)+")");
-		if (ratesNoMin != rates)
-			lines.add("* Ruptures above water-level: "+countDF.format(numAboveWaterlevel)
-				+" ("+percentDF.format((double)numAboveWaterlevel/(double)rates.length)+")");
-		lines.add("* Avg. # perturbations per rupture: "+(float)(perturbs/(double)rates.length));
-		lines.add("* Avg. # perturbations per perturbed rupture: "+(float)(perturbs/(double)numAboveWaterlevel));
-		
-		SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, prefix+"_rate_dist", ratesNoMin, rates, initial);
-		lines.add("![Rate Distribution]("+relPathToResources+"/"+prefix+"_rate_dist.png)");
-		lines.add("");
-		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/"+prefix+"_rate_dist_cumulative.png)");
 		
 		return lines;
 	}

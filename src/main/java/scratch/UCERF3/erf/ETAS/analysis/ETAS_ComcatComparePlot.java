@@ -35,9 +35,9 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
@@ -1005,12 +1005,12 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			dataFunc.set(i, percentile);
 		}
 
-		UncertainArbDiscDataset bounds95 = new UncertainArbDiscDataset(middle, lower95, upper95);
+		UncertainArbDiscFunc bounds95 = new UncertainArbDiscFunc(middle, lower95, upper95);
 		bounds95.setName("95% Confidence");
 		funcs.add(bounds95);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 20)));
 		
-		UncertainArbDiscDataset bounds68 = new UncertainArbDiscDataset(middle, lower68, upper68);
+		UncertainArbDiscFunc bounds68 = new UncertainArbDiscFunc(middle, lower68, upper68);
 		bounds68.setName("68% Confidence");
 		funcs.add(bounds68);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 40)));

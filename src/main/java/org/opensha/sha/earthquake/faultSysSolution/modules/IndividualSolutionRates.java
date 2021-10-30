@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
@@ -10,24 +11,24 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.base.Preconditions;
 
-public class IndividualSolutionRates implements CSV_BackedModule, SubModule<FaultSystemSolution> {
+public class IndividualSolutionRates implements SubModule<FaultSystemSolution>, CSV_BackedModule {
 	
 	private FaultSystemSolution sol;
-	private double[] averageRates;
-	private List<double[]> individualRates;
+	private List<double[]> ratesList;
 	
 	@SuppressWarnings("unused") // for serialization
 	private IndividualSolutionRates() {
 		
 	}
-	
-	public IndividualSolutionRates(FaultSystemSolution sol, List<double[]> individualRates) {
-		this(sol, averageRates(individualRates), individualRates);
+
+	public IndividualSolutionRates(FaultSystemSolution sol, List<double[]> ratesList) {
+		init(sol, ratesList);
 	}
 	
-	private IndividualSolutionRates(FaultSystemSolution sol, double[] averageRates, List<double[]> individualRates) {
+	private void init(FaultSystemSolution sol, List<double[]> ratesList) {
+		validate(sol, ratesList);
 		this.sol = sol;
-		init(averageRates, individualRates);
+		this.ratesList = ratesList;
 	}
 
 	@Override
@@ -42,39 +43,25 @@ public class IndividualSolutionRates implements CSV_BackedModule, SubModule<Faul
 
 	@Override
 	public void setParent(FaultSystemSolution parent) throws IllegalStateException {
-		if (this.sol != null && parent != null)
-			Preconditions.checkState(sol.getRupSet().isEquivalentTo(parent.getRupSet()));
-		if (parent != null && averageRates != null)
-			checkRatesSame(parent.getRateForAllRups(), averageRates);
+		if (this.sol != null)
+			Preconditions.checkState(this.sol.getRupSet().isEquivalentTo(parent.getRupSet()));
+		if (this.ratesList != null)
+			validate(parent, ratesList);
 		this.sol = parent;
 	}
 	
-	private void init(double[] averageRates, List<double[]> individualRates) {
-		Preconditions.checkNotNull(this.sol, "Solution not yet set?");
-		checkRatesSame(sol.getRateForAllRups(), averageRates);
-		this.averageRates = averageRates;
-		this.individualRates = individualRates;
-	}
-	
-	private static double[] averageRates(List<double[]> individualRates) {
-		double[] ret = new double[individualRates.get(0).length];
-		double scalar = 1d/individualRates.size();
-		for (int i=0; i<individualRates.size(); i++)
-			Preconditions.checkState(individualRates.get(i).length == ret.length);
-		for (int r=0; r<ret.length; r++) {
-			for (double[] indv : individualRates)
-				ret[r] += indv[r];
-			ret[r] *= scalar;
+	private static void validate(FaultSystemSolution sol, List<double[]> ratesList) {
+		int numRups = sol.getRupSet().getNumRuptures();
+		double origSum = sol.getTotalRateForAllFaultSystemRups();
+		double indvSum = 0d;
+		for (double[] rates : ratesList) {
+			Preconditions.checkState(rates.length == numRups);
+			indvSum += StatUtils.sum(rates);
 		}
-		return ret;
-	}
-	
-	private static void checkRatesSame(double[] solRates, double[] myAvgRates) {
-		Preconditions.checkState(solRates.length == myAvgRates.length);
-		for (int r=0; r<solRates.length; r++)
-			Preconditions.checkState((float)solRates[r] == (float)myAvgRates[r],
-					"Average rate for rupture %s does not match that from solution: %s != %s",
-					r, myAvgRates[r], solRates[r]);
+		indvSum /= ratesList.size();
+		Preconditions.checkState((float)origSum == (float)indvSum,
+				"Sum of averaged rates doesn't match that from supplied solution: %s != %s",
+				(float)origSum, (float)indvSum);
 	}
 
 	@Override
@@ -84,7 +71,9 @@ public class IndividualSolutionRates implements CSV_BackedModule, SubModule<Faul
 
 	@Override
 	public SubModule<FaultSystemSolution> copy(FaultSystemSolution newParent) throws IllegalStateException {
-		return new IndividualSolutionRates(newParent, averageRates, individualRates);
+		if (this.sol != null)
+			Preconditions.checkState(this.sol.getRupSet().isEquivalentTo(newParent.getRupSet()));
+		return new IndividualSolutionRates(newParent, ratesList);
 	}
 
 	@Override
@@ -92,7 +81,7 @@ public class IndividualSolutionRates implements CSV_BackedModule, SubModule<Faul
 		CSVFile<String> csv = new CSVFile<>(true);
 		List<String> header = new ArrayList<>();
 		header.add("Rupture Index");
-		for (int i=0; i<individualRates.size(); i++)
+		for (int i=0; i<ratesList.size(); i++)
 			header.add("Solution "+(i+1));
 		csv.addLine(header);
 		
@@ -100,7 +89,7 @@ public class IndividualSolutionRates implements CSV_BackedModule, SubModule<Faul
 		for (int r=0; r<numRups; r++) {
 			List<String> line = new ArrayList<>(csv.getNumCols());
 			line.add(r+"");
-			for (double[] rates : individualRates)
+			for (double[] rates : ratesList)
 				line.add(rates[r]+"");
 			csv.addLine(line);
 		}
@@ -124,7 +113,7 @@ public class IndividualSolutionRates implements CSV_BackedModule, SubModule<Faul
 			for (int s=0; s<numSols; s++)
 				individualRates.get(s)[r] = csv.getDouble(row, s+1);
 		}
-		init(averageRates(individualRates), individualRates);
+		init(sol, individualRates);
 	}
 
 }

@@ -15,32 +15,19 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  */
 public class RupRateMinimizationConstraint extends InversionConstraint {
 	
-	private double weight;
+	public static final String NAME = "Rupture Rate Minimization";
+	public static final String SHORT_NAME = "RateMinimize";
+	
 	private List<Integer> rupIndexes;
 
 	public RupRateMinimizationConstraint(double weight, List<Integer> rupIndexes) {
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupIndexes = rupIndexes;
-	}
-
-	@Override
-	public String getShortName() {
-		return "RateMinimize";
-	}
-
-	@Override
-	public String getName() {
-		return "Rupture Rate Minimization";
 	}
 
 	@Override
 	public int getNumRows() {
 		return rupIndexes.size();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override

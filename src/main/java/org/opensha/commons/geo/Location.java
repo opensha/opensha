@@ -18,10 +18,16 @@
 
 package org.opensha.commons.geo;
 
+import java.io.IOException;
 import java.io.Serializable;
 
 import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
+
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * A <code>Location</code> represents a point with reference to the earth's
@@ -41,6 +47,7 @@ import org.opensha.commons.metadata.XMLSaveable;
  * @author Steven W. Rock
  * @version $Id: Location.java 8034 2011-07-07 15:35:54Z pmpowers $
  */
+@JsonAdapter(Location.Adapter.class)
 public class Location implements 
 		Serializable, XMLSaveable, Cloneable, Comparable<Location> {
 
@@ -272,6 +279,47 @@ public class Location implements
 		double depth = Double.parseDouble(
 				root.attribute(Location.XML_METADATA_DEPTH).getValue());
 		return new Location(lat, lon, depth);
+	}
+	
+	public static class Adapter extends TypeAdapter<Location> {
+
+		@Override
+		public void write(JsonWriter out, Location value) throws IOException {
+			out.beginArray();
+			
+			out.value(value.lat).value(value.lon);
+			if (value.depth != 0d)
+				out.value(value.depth);
+			
+			out.endArray();
+		}
+
+		@Override
+		public Location read(JsonReader in) throws IOException {
+			int ind = 0;
+			double lat = Double.NaN;
+			double lon = Double.NaN;
+			double depth = 0d;
+			
+			in.beginArray();
+			
+			while (in.hasNext()) {
+				double val = in.nextDouble();
+				if (ind == 0)
+					lat = val;
+				else if (ind == 1)
+					lon = val;
+				else if (ind == 2)
+					depth = val;
+				else
+					throw new IllegalStateException("Location JSON must have 2 or 3 values");
+				ind++;
+			}
+			
+			in.endArray();
+			return new Location(lat, lon, depth);
+		}
+		
 	}
 
 }

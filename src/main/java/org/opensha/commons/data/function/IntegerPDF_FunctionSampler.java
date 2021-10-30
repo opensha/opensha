@@ -12,6 +12,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
+import com.google.gson.annotations.JsonAdapter;
 
 /**
  * This class stores integer values in the X axis and the relative probability associated with each integer
@@ -22,6 +23,7 @@ import com.google.common.primitives.Ints;
  * @author field
  *
  */
+@JsonAdapter(IntegerPDF_FunctionSampler.Adapter.class)
 public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	
 	/**
@@ -330,6 +332,16 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 //		System.out.println("0.99: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.99)));
 //		System.out.println("0.999: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.999)));
 //		System.out.println("1.0: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(1d)));
+	}
+	
+	public static class Adapter extends DiscretizedFunc.AbstractAdapter<IntegerPDF_FunctionSampler> {
+
+		@Override
+		protected IntegerPDF_FunctionSampler instance(Double minX, Double maxX, Integer size) {
+			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize IntegerPDF_FunctionSampler");
+			return new IntegerPDF_FunctionSampler(size);
+		}
+		
 	}
 
 }

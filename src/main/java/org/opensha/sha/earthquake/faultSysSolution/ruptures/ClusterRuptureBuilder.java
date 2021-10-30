@@ -29,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.U3RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -963,10 +964,11 @@ public class ClusterRuptureBuilder {
 //		int threads = 62;
 		
 //		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
-		String state = null;
-		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(RuptureSets.getNSHM23SubSects(state),
-				"nshm23_geo_dm_v1_"+(state == null ? "all" : state.toLowerCase()), ScalingRelationships.MEAN_UCERF3);
-//		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
+//		String state = null;
+//		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(RuptureSets.getNSHM23SubSects(state),
+//				"nshm23_geo_dm_v1_"+(state == null ? "all" : state.toLowerCase()), ScalingRelationships.MEAN_UCERF3);
+		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
+		((U3RupSetConfig)rsConfig).setAdaptiveSectFract(0.1f);
 		FaultSystemRupSet rupSet = rsConfig.build(threads);
 		
 		if (writeRupSet) {

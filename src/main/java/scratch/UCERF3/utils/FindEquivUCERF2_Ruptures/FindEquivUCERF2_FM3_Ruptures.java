@@ -278,7 +278,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 				else
 					info_fw = new FileWriter(new File(scratchDir, INFO_FILE_PATH_PREFIX+"_2_"+NUM_SECTIONS+"_"+NUM_INVERSION_RUPTURES+".txt"));
 			} catch (IOException e) {
-				e.printStackTrace();
+//				e.printStackTrace();
 				// it's ok to fail here actually
 				info_fw = null;
 			}

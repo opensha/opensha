@@ -25,6 +25,8 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -42,15 +44,13 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 public class BatchPlotGen {
@@ -480,12 +480,12 @@ public class BatchPlotGen {
 				e.printStackTrace();
 			}
 		}
-		ArrayList<PaleoRateConstraint> paleoRateConstraints = null;
-		List<AveSlipConstraint> aveSlipConstraints = null;
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints = null;
+		List<U3AveSlipConstraint> aveSlipConstraints = null;
 		if (!hasPaleoPlots || !hasPaleoFaultBasedPlots) {
 			paleoRateConstraints =
 					CommandLineInversionRunner.getPaleoConstraints(sol.getRupSet().getFaultModel(), sol.getRupSet());
-			aveSlipConstraints = AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
+			aveSlipConstraints = U3AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
 		}
 		if (!hasPaleoPlots) {
 			CommandLineInversionRunner.writePaleoPlots(paleoRateConstraints, aveSlipConstraints, sol, dir, prefix);

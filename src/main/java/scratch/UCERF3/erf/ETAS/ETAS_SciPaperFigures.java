@@ -13,9 +13,9 @@ import org.opensha.commons.calc.FractileCurveCalculator;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -338,10 +338,10 @@ public class ETAS_SciPaperFigures {
 //		System.out.println("Full TD");
 //		System.out.println(fullTDmean);
 		
-		UncertainArbDiscDataset meanConf = new UncertainArbDiscDataset(meanFunc, totLowerFunc, totUpperFunc);
+		UncertainArbDiscFunc meanConf = new UncertainArbDiscFunc(meanFunc, totLowerFunc, totUpperFunc);
 		meanConf.setName("Uncertainties");
 		
-		UncertainArbDiscDataset meanRange = new UncertainArbDiscDataset(meanFunc, fullTDmean, noERTmean);
+		UncertainArbDiscFunc meanRange = new UncertainArbDiscFunc(meanFunc, fullTDmean, noERTmean);
 //		meanRange.setName("Uncertainties");
 		
 		funcs.add(meanConf);

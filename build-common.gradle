@@ -62,6 +62,19 @@ ext.getGitLongHash = { ->
     }
 }
 
+ext.getGitBranch = { ->
+    try {
+        def stdout = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'
+            standardOutput = stdout
+        }
+        return stdout.toString().trim()
+    } catch (Exception e) {
+        return ""
+    }
+}
+
 void writeBuildFiles() {
     logger.info("Writing build.date file")
     new File(projectDir, "build.date").text = new Date().toString()+"\n"+System.currentTimeMillis()+"\n"
@@ -69,6 +82,11 @@ void writeBuildFiles() {
     if (hash?.trim()) {
         logger.info("Writing build.githash file: "+hash)
         new File(projectDir, "build.githash").text = hash+"\n"
+    }
+    String branch = getGitBranch()
+    if (branch?.trim()) {
+        logger.info("Writing build.gitbranch file: "+branch)
+        new File(projectDir, "build.gitbranch").text = branch+"\n"
     }
 }
 
@@ -87,6 +105,7 @@ if (project.parentProject != null) {
         }
         from(project.projectDir) {
             include 'build.githash'
+            include 'build.gitbranch'
             include 'build.date'
         }
     }
@@ -107,6 +126,7 @@ if (project.parentProject != null) {
         // include upstream project fat jar
         from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
             exclude 'build.githash'
+            exclude 'build.gitbranch'
             exclude 'build.date'
         }
     
@@ -119,6 +139,7 @@ if (project.parentProject != null) {
         from(project.projectDir) {
             include 'build.version'
             include 'build.githash'
+            include 'build.gitbranch'
             include 'build.date'
         }
     }
@@ -159,6 +180,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
             // include upstream project fat jar
             from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
                 exclude 'build.githash'
+                exclude 'build.gitbranch'
                 exclude 'build.date'
                 exclude { it.path.contains('META-INF') }
             }
@@ -168,6 +190,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
             }
             from(project.projectDir) {
                 include 'build.githash'
+                include 'build.gitbranch'
                 include 'build.date'
             }
             manifest {
@@ -199,6 +222,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
             }
             from(project.projectDir) {
                 include 'build.githash'
+                include 'build.gitbranch'
                 include 'build.date'
             }
             manifest {

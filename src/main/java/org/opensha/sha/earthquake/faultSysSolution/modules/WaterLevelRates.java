@@ -23,8 +23,18 @@ public class WaterLevelRates implements CSV_BackedModule {
 	public double[] subtractFrom(double[] rates) {
 		Preconditions.checkState(rates.length == waterlevelRates.length);
 		double[] ret = new double[rates.length];
-		for (int i=0; i<rates.length; i++)
+		for (int i=0; i<rates.length; i++) {
 			ret[i] = rates[i] - waterlevelRates[i];
+			
+			// deal with floating point precision issues
+			if (ret[i] < 0) {
+				// can happen if post-water-level rates are averaged
+				Preconditions.checkState(ret[i] > -1e-20);
+				ret[i] = 0d;
+			} else if (ret[i] < 1e-20 || (float)rates[i] == (float)waterlevelRates[i]) {
+				ret[i] = 0d;
+			}
+		}
 		return ret;
 	}
 

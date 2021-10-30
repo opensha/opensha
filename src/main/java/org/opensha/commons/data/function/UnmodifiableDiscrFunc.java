@@ -11,7 +11,7 @@ public class UnmodifiableDiscrFunc extends AbstractDiscretizedFunc {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	private DiscretizedFunc func;
+	protected DiscretizedFunc func;
 	
 	public UnmodifiableDiscrFunc(DiscretizedFunc func) {
 		this.func = func.deepClone();

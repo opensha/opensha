@@ -7,6 +7,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.ArchivableModule;
@@ -142,7 +143,7 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 	IncrementalMagFreqDist noCalTargetSupraMFD, soCalTargetSupraMFD;
 
 	
-	List<MFD_InversionConstraint> mfdConstraintsForNoAndSoCal;
+	List<IncrementalMagFreqDist> mfdConstraintsForNoAndSoCal;
 
 	// discretization parameters for MFDs
 	public final static double MIN_MAG = 0.05;
@@ -229,8 +230,14 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 		onFaultRegionRateMgt5 = totalRegionRateMgt5*fractionSeisOnFault;
 		offFaultRegionRateMgt5 = totalRegionRateMgt5-onFaultRegionRateMgt5;
 		origOnFltDefModMoRate = DeformationModelsCalc.calculateTotalMomentRate(faultSectionData,true);
-		offFltDefModMoRate = DeformationModelsCalc.calcMoRateOffFaultsForDefModel(
-				logicTreeBranch.getValue(FaultModels.class), logicTreeBranch.getValue(DeformationModels.class));
+		FaultModels fm = logicTreeBranch.getValue(FaultModels.class);
+		if (fm == null || dm == null) {
+			System.err.println("ERR: non-UCERF3 deformation model encountered, can't get DM off fault moment rate. Setting to zero.");
+			offFltDefModMoRate = 0d;
+		} else {
+			offFltDefModMoRate = DeformationModelsCalc.calcMoRateOffFaultsForDefModel(
+					logicTreeBranch.getValue(FaultModels.class), logicTreeBranch.getValue(DeformationModels.class));
+		}
 
 		// make the total target GR for region
 		totalTargetGR = new GutenbergRichterMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
@@ -423,9 +430,11 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 		soCalTargetSupraMFD.setName("InversionTargetMFDs.soCalTargetSupraMFD");
 
 		
-		mfdConstraintsForNoAndSoCal = new ArrayList<MFD_InversionConstraint>();
-		mfdConstraintsForNoAndSoCal.add(new MFD_InversionConstraint(noCalTargetSupraMFD, noCalGrid));
-		mfdConstraintsForNoAndSoCal.add(new MFD_InversionConstraint(soCalTargetSupraMFD, soCalGrid));
+		mfdConstraintsForNoAndSoCal = new ArrayList<IncrementalMagFreqDist>();
+		noCalTargetSupraMFD.setRegion(new Region(noCalGrid));
+		mfdConstraintsForNoAndSoCal.add(noCalTargetSupraMFD);
+		soCalTargetSupraMFD.setRegion(new Region(soCalGrid));
+		mfdConstraintsForNoAndSoCal.add(soCalTargetSupraMFD);
 
 	}
 
@@ -495,7 +504,7 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 	 * @return
 	 */
 	@Override
-	public List<MFD_InversionConstraint> getMFD_Constraints() { return mfdConstraintsForNoAndSoCal; }
+	public List<IncrementalMagFreqDist> getMFD_Constraints() { return mfdConstraintsForNoAndSoCal; }
 	
 	public String getPreInversionAnalysisData() {
 		String str = (float)fractionSeisOnFault+"\t" +

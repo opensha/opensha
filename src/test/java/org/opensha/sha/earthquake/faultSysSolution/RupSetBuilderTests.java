@@ -90,11 +90,6 @@ public class RupSetBuilderTests {
 		testExactlyEqual(u3Default.getSlipRateForAllSections(), reproduced.getSlipRateForAllSections(), "Section Slip Rates");
 	}
 	
-	@Test
-	public void testReproduceU3SlipStdDevs() {
-		testExactlyEqual(u3Default.getSlipRateStdDevForAllSections(), reproduced.getSlipRateStdDevForAllSections(), "Section Slip Rates");
-	}
-	
 	private static void testExactlyEqual(double[] expected, double[] actual, String name) {
 		if (expected == null) {
 			assertNull(name+": null was expected but we have values", actual);

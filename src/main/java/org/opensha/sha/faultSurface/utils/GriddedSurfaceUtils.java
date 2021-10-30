@@ -235,12 +235,22 @@ public class GriddedSurfaceUtils {
 	}
 	
 	/**
-	 * This computes Ry0
+	 * This computes Ry0, the absolute value of Ry
 	 * @param surface
 	 * @param siteLoc
 	 * @return
 	 */
 	public static double getDistanceY0(FaultTrace trace, Location siteLoc) {
+		return Math.abs(getDistanceY(trace, siteLoc));
+	}
+	
+	/**
+	 * This computes Ry
+	 * @param surface
+	 * @param siteLoc
+	 * @return
+	 */
+	public static double getDistanceY(FaultTrace trace, Location siteLoc) {
 		// set to zero if it's a point source
 		if(trace.size() == 1)
 			return 0d;
@@ -314,7 +324,7 @@ public class GriddedSurfaceUtils {
 		Location perpP1 = LocationUtils.location(p1, abovePoint);
 		Location perpP2 = LocationUtils.location(p1, belowPoint);
 		
-		return Math.abs(LocationUtils.distanceToLine(perpP1, perpP2, siteLoc));
+		return LocationUtils.distanceToLine(perpP1, perpP2, siteLoc);
 	}
 	
 	

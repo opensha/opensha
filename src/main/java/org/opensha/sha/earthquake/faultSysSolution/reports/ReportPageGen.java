@@ -38,15 +38,23 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InfoStringPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionConfigurationPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionMisfitsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgressPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpAzimuthsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverDistancePlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.LogicTreeBranchPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ModulesPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NamedFaultPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PaleoDataComparisonPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ParticipationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
-import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RateVsRateScatter;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RateDistributionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SegmentationPlot;
@@ -93,6 +101,8 @@ public class ReportPageGen {
 	
 	private List<PlausibilityFilter> altFilters = null;
 	
+	private boolean replot = false;
+	
 	public static PlotLevel PLOT_LEVEL_DEFAULT = PlotLevel.DEFAULT;
 	
 	public enum PlotLevel {
@@ -105,10 +115,12 @@ public class ReportPageGen {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
 		plots.add(new InfoStringPlot());
+		plots.add(new LogicTreeBranchPlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
 			plots.add(new PlausibilityFilterPlot());
+			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new JumpCountsOverDistancePlot());
 		}
@@ -127,21 +139,33 @@ public class ReportPageGen {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
 		plots.add(new InfoStringPlot());
+		plots.add(new LogicTreeBranchPlot());
 		plots.add(new SolMFDPlot());
+		plots.add(new InversionConfigurationPlot());
 		plots.add(new InversionProgressPlot());
-		plots.add(new RateVsRateScatter());
+		plots.add(new RateDistributionPlot());
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+			plots.add(new InversionMisfitsPlot());
 		plots.add(new ParticipationRatePlot());
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+			plots.add(new SectBValuePlot());
 		plots.add(new PlausibilityConfigurationReport());
 		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new SlipRatePlots());
+			plots.add(new PaleoDataComparisonPlot());
 			plots.add(new JumpCountsOverDistancePlot());
 		}
 		if (level == PlotLevel.FULL) {
+			plots.add(new HazardMapPlot());
 			plots.add(new SegmentationPlot());
-			plots.add(new SectBySectDetailPlots());
 		}
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+			plots.add(new NamedFaultPlot());
+		if (level == PlotLevel.FULL)
+			plots.add(new SectBySectDetailPlots());
 		
 		return plots;
 	}
@@ -278,6 +302,8 @@ public class ReportPageGen {
 		
 		cacheDir = FaultSysTools.getCacheDir(cmd);
 		
+		replot = cmd.hasOption("replot");
+		
 		init(meta, outputDir, plots);
 	}
 	
@@ -295,6 +321,10 @@ public class ReportPageGen {
 
 	public void setPlots(List<? extends AbstractRupSetPlot> plots) {
 		this.plots = plots;
+	}
+	
+	public void setReplot(boolean replot) {
+		this.replot = replot;
 	}
 
 	public File getOutputDir() {
@@ -597,12 +627,12 @@ public class ReportPageGen {
 			if (primary.sol == null)
 				table.addColumn("_N/A_");
 			else
-				table.addColumn((float)primary.sol.getTotalFaultSolutionMomentRate()+" N-m/yr");
+				table.addColumn(momentRateStr(primary.sol.getTotalFaultSolutionMomentRate()));
 			if (comparison != null) {
 				if (comparison.sol == null)
 					table.addColumn("_N/A_");
 				else
-					table.addColumn((float)comparison.sol.getTotalFaultSolutionMomentRate()+" N-m/yr");
+					table.addColumn(momentRateStr(comparison.sol.getTotalFaultSolutionMomentRate()));
 			}
 			table.finalizeLine();
 		}
@@ -610,9 +640,9 @@ public class ReportPageGen {
 		if (primary.rupSet != null) {
 			table.initNewLine();
 			table.addColumn("**Deformation Model Total Moment Rate**");
-			table.addColumn((float)primary.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()+" N-m/yr");
+			table.addColumn(momentRateStr(primary.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()));
 			if (comparison != null)
-				table.addColumn((float)comparison.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()+" N-m/yr");
+				table.addColumn(momentRateStr(comparison.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()));
 			table.finalizeLine();
 			
 			table.initNewLine();
@@ -637,6 +667,12 @@ public class ReportPageGen {
 			table.finalizeLine();
 		}
 		return table;
+	}
+	
+	private static String momentRateStr(double moRate) {
+		String str = (float)moRate+"";
+		str = str.toLowerCase(); // lower case 'e' in exponential to make it easier to see
+		return str+" N-m/yr";
 	}
 	
 	public void generatePage() throws IOException {
@@ -664,12 +700,27 @@ public class ReportPageGen {
 		
 		String topLink = "_[(top)](#table-of-contents)_";
 		
-		boolean firstTime = !new File(outputDir, META_FILE_NAME).exists();
+		File plotMetaFile = new File(outputDir, PLOT_META_FILE_NAME);
+		boolean firstTime = !plotMetaFile.exists();
+		
+		PlotsMetadata prevMeta = null;
+		if (!firstTime && !replot)
+			prevMeta = loadPlotMetadata(plotMetaFile);
 		
 		List<PlotMetadata> plotMetas = new ArrayList<>();
 		PlotsMetadata plotMeta = new PlotsMetadata(headerLines, plotMetas);
 		
 		for (AbstractRupSetPlot plot : plots) {
+			if (prevMeta != null) { 
+				// see if we already have it and can skip regeneration
+				PlotMetadata prev = prevMeta.getPlot(plot.getClass());
+				if (prev != null) {
+					System.out.println("Already have plot '"+plot.getName()+"', won't regenerate. "
+							+ "Force regeneration with --replot option.");
+					plotMetas.add(prev);
+					continue;
+				}
+			}
 			String plotName = ClassUtils.getClassNameWithoutPackage(plot.getClass());
 			
 			if (!solution && plot instanceof AbstractSolutionPlot) {
@@ -877,6 +928,17 @@ public class ReportPageGen {
 			this.headerLines = headerLines;
 			this.plots = plots;
 		}
+		
+		public boolean hasPlot(Class<? extends AbstractRupSetPlot> clazz) {
+			return getPlot(clazz) != null;
+		}
+		
+		public PlotMetadata getPlot(Class<? extends AbstractRupSetPlot> clazz) {
+			for (PlotMetadata plot : plots)
+				if (plot.plotClassName.equals(clazz.getName()))
+					return plot;
+			return null;
+		}
 	}
 	
 	static class PlotMetadata {
@@ -1052,6 +1114,11 @@ public class ReportPageGen {
 						+FaultSysTools.enumOptions(PlotLevel.class)+". Default: "+PLOT_LEVEL_DEFAULT.name());
 		plotLevelOption.setRequired(false);
 		ops.addOption(plotLevelOption);
+		
+		Option replotOption = new Option("rp", "replot", false,
+				"If supplied, existing plots will be re-generated when re-running a report");
+		replotOption.setRequired(false);
+		ops.addOption(replotOption);
 		
 		return ops;
 	}

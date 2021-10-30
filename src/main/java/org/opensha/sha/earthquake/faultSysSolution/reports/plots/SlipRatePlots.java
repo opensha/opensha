@@ -166,7 +166,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					
 					if (log) {
 						diffCPT = null;
-						ratioCPT = new CPT(-2d, 2d,
+						ratioCPT = new CPT(-1d, 1d,
 								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
 								Color.WHITE,
 								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));

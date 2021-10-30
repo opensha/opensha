@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.jfree.data.Range;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -118,6 +119,8 @@ public abstract class AbstractRupSetPlot implements Named {
 		countDF.setGroupingSize(3);
 	}
 	
+	protected static final String na = "_(N/A)_";
+	
 	protected static final Color MAIN_COLOR = Color.RED;
 	protected static final Color COMP_COLOR = Color.BLUE;
 	protected static final Color COMMON_COLOR = Color.GREEN;
@@ -152,6 +155,19 @@ public abstract class AbstractRupSetPlot implements Named {
 		if (safe.endsWith("_"))
 			safe = safe.substring(0, safe.length()-1);
 		return safe;
+	}
+	
+	protected static Range calcEncompassingLog10Range(double min, double max) {
+		Preconditions.checkState(min > 0, "Min must be positive for log plot! %s", min);
+		Preconditions.checkState(min < max, "Min must be < max: %s >= %s", min, max);
+		double logMin = Math.floor(Math.log10(min));
+		if (Math.log10(min) - logMin > 0.8)
+			logMin += 0.8;
+		double logMax = Math.ceil(Math.log10(max));
+		if (logMax - Math.log10(max) > 0.8)
+			logMax -= 0.8;
+		
+		return new Range(Math.pow(10, logMin), Math.pow(10, logMax));
 	}
 
 }

@@ -75,7 +75,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 	 * 
 	 * @return MFD constraints
 	 */
-	public abstract List<? extends MFD_InversionConstraint> getMFD_Constraints();
+	public abstract List<? extends IncrementalMagFreqDist> getMFD_Constraints();
 	
 	/**
 	 * This returns target sub-seismogenic MFDs for each fault section, and it's contents are implementation-dependent
@@ -145,7 +145,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 		private IncrementalMagFreqDist onFaultSupraSeisMFD;
 		private IncrementalMagFreqDist onFaultSubSeisMFD;
 		private IncrementalMagFreqDist trulyOffFaultMFD;
-		private ImmutableList<? extends MFD_InversionConstraint> mfdConstraints;
+		private ImmutableList<? extends IncrementalMagFreqDist> mfdConstraints;
 		private SubSeismoOnFaultMFDs subSeismoOnFaultMFDs;
 		
 		private Precomputed() {
@@ -160,7 +160,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 
 		public Precomputed(FaultSystemRupSet rupSet, IncrementalMagFreqDist totalRegionalMFD,
 				IncrementalMagFreqDist onFaultSupraSeisMFD, IncrementalMagFreqDist onFaultSubSeisMFD,
-				IncrementalMagFreqDist trulyOffFaultMFD, List<? extends MFD_InversionConstraint> mfdConstraints,
+				IncrementalMagFreqDist trulyOffFaultMFD, List<? extends IncrementalMagFreqDist> mfdConstraints,
 				SubSeismoOnFaultMFDs subSeismoOnFaultMFDs) {
 			super(rupSet);
 			this.totalRegionalMFD = totalRegionalMFD;
@@ -199,13 +199,14 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 			out.name("trulyOffFaultMFD");
 			mfdAdapter.write(out, trulyOffFaultMFD);
 			
-			out.name("mfdConstraints");
+//			out.name("mfdConstraints"); // old name
+			out.name("constraints"); // old name
 			if (mfdConstraints == null) {
 				out.nullValue();
 			} else {
 				out.beginArray();
-				for (MFD_InversionConstraint constraint : mfdConstraints)
-					mfdConstraintAdapter.write(out, constraint);
+				for (IncrementalMagFreqDist constraint : mfdConstraints)
+					mfdAdapter.write(out, constraint);
 				out.endArray();
 			}
 			
@@ -230,14 +231,32 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 					trulyOffFaultMFD = mfdAdapter.read(in);
 					break;
 				case "mfdConstraints":
+					// old version
 					if (in.peek() == JsonToken.NULL) {
 						in.nextNull();
 						mfdConstraints = null;
 					} else {
-						ImmutableList.Builder<MFD_InversionConstraint> builder = ImmutableList.builder();
+						ImmutableList.Builder<IncrementalMagFreqDist> builder = ImmutableList.builder();
+						in.beginArray();
+						while (in.hasNext()) {
+							MFD_InversionConstraint oldConstr = mfdConstraintAdapter.read(in);
+							IncrementalMagFreqDist mfd = oldConstr.getMagFreqDist();
+							mfd.setRegion(oldConstr.getRegion());
+							builder.add(mfd);
+						}
+						in.endArray();
+						mfdConstraints = builder.build();
+					}
+					break;
+				case "constraints":
+					if (in.peek() == JsonToken.NULL) {
+						in.nextNull();
+						mfdConstraints = null;
+					} else {
+						ImmutableList.Builder<IncrementalMagFreqDist> builder = ImmutableList.builder();
 						in.beginArray();
 						while (in.hasNext())
-							builder.add(mfdConstraintAdapter.read(in));
+							builder.add(mfdAdapter.read(in));
 						in.endArray();
 						mfdConstraints = builder.build();
 					}
@@ -303,7 +322,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 		}
 
 		@Override
-		public final List<? extends MFD_InversionConstraint> getMFD_Constraints() {
+		public final List<? extends IncrementalMagFreqDist> getMFD_Constraints() {
 			return mfdConstraints;
 		}
 		

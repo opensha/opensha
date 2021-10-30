@@ -994,7 +994,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		},
 		CLUSTER_COUNT("Cluster Count", "# Clusters",
 				"Total number of clusters (of contiguous subsections on the same parent fault section) "
-				+ "a rupture.") {
+				+ "in a rupture.") {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
 				return new HistogramFunction(1, (int)Math.max(2, scalarTrack.getMax()), 1d);
@@ -1261,7 +1261,8 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			}
 		},
 		MAX_SLIP_DIFF("Max Slip Rate Difference", "Section Max - Min Slip Rate in Rupture (mm/yr)",
-				"The difference between the slip rate with the highest and lowest slip rate in the rupture.") {
+				"The difference between the slip rate of the sections with the highest and lowest "
+				+ "slip rate in the rupture.") {
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
 				double max = Math.max(5d, scalarTrack.getMax());

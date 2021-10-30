@@ -1,7 +1,11 @@
 package org.opensha.sha.earthquake.faultSysSolution.util;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -12,11 +16,22 @@ import java.util.List;
 import javax.swing.text.DateFormatter;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
@@ -29,6 +44,8 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
@@ -43,26 +60,17 @@ import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.SerialSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.TimeCompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.params.GenerationFunctionType;
-import scratch.UCERF3.simulatedAnnealing.params.NonnegativityConstraintType;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 
 class FullPipelineDemo {
 
 	public static void main(String[] args) throws Exception {
-		System.out.println("Yawn...");
-		long minute = 1000l*60l;
-		long hour = minute*60l;
-		Thread.sleep(11l*hour + 0l*minute);
-		System.out.println("Im awake! "+new Date());
+//		System.out.println("Yawn...");
+//		long minute = 1000l*60l;
+//		long hour = minute*60l;
+//		Thread.sleep(11l*hour + 0l*minute);
+//		System.out.println("Im awake! "+new Date());
 		
 		File markdownDirDir = new File("/home/kevin/markdown/inversions");
 		Preconditions.checkState(markdownDirDir.exists() || markdownDirDir.mkdir());
@@ -77,13 +85,13 @@ class FullPipelineDemo {
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 //		String dirName = "2021_08_18";
 		
-		String newName = "Coulomb Rups, U3 Ref Branch";
-		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm , scale);
-		dirName += "-coulomb";
+//		String newName = "Coulomb Rups, U3 Ref Branch";
+//		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm , scale);
+//		dirName += "-coulomb";
 		
-//		String newName = "U3 Rups, U3 Ref Branch";
-//		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(fm , scale);
-//		dirName += "-u3_rups";
+		String newName = "U3 Rups, U3 Ref Branch";
+		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(fm , scale);
+		dirName += "-u3_rups";
 		
 		dirName += "-u3_ref";
 		FaultSystemSolution compSol;
@@ -217,7 +225,7 @@ class FullPipelineDemo {
 				}
 				
 				// get the paleo rate constraints
-				List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+				List<U3PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
 						fm, rupSet);
 
 				// get the improbability constraints
@@ -226,10 +234,23 @@ class FullPipelineDemo {
 				// paleo probability model
 				PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 
-				List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+				List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 
 				UCERF3InversionInputGenerator inputGen = new UCERF3InversionInputGenerator(
 						rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
+				Gson gson = new GsonBuilder().setPrettyPrinting().registerTypeHierarchyAdapter(
+						InversionConstraint.class, new InversionConstraint.Adapter(rupSet)).create();
+				File constraintsFile = new File(outputDir, "constraints.json");
+				Writer constrWrite = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(constraintsFile)));
+				gson.toJson(inputGen.getConstraints(), constrWrite);
+				constrWrite.close();
+				int ind = 0;
+				for (InversionConstraint constr : inputGen.getConstraints()) {
+					constraintsFile = new File(outputDir, (ind++)+"_"+ClassUtils.getClassNameWithoutPackage(constr.getClass())+".json");
+					constrWrite = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(constraintsFile)));
+					gson.toJson(constr, constrWrite);
+					constrWrite.close();
+				}
 				
 				System.out.println("Generating inputs");
 				inputGen.generateInputs();

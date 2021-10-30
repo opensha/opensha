@@ -33,6 +33,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
@@ -42,7 +43,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -263,7 +264,7 @@ public class PaleoSiteCorrelationData implements Serializable {
 				HSSFCell parentOverrideCell = theRow.getCell(3);
 				List<Integer> parentOverrides = null;
 				if (parentOverrideCell != null) {
-					parentOverrides = AveSlipConstraint.loadParentIDs(parentOverrideCell);
+					parentOverrides = U3AveSlipConstraint.loadParentIDs(parentOverrideCell);
 					if (parentOverrides.isEmpty())
 						parentOverrides = null;
 				}

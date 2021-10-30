@@ -51,6 +51,8 @@ import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -65,8 +67,6 @@ import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.SimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;

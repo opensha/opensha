@@ -4,6 +4,7 @@ import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,9 +23,12 @@ import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -36,7 +40,6 @@ import com.google.common.collect.Maps;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.utils.U3FaultSystemIO;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 
 /**
  * This class represents an Earthquake Rate Model solution for a fault system, possibly coming from an Inversion
@@ -63,6 +66,13 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public FaultSystemSolution(FaultSystemRupSet rupSet, double[] rates) {
 		super();
 		init(rupSet, rates);
+		
+		// track the version of OpenSHA this was generated with
+		if (!hasModule(BuildInfoModule.class)) {
+			try {
+				addModule(BuildInfoModule.detect());
+			} catch (Exception e) {}
+		}
 	}
 	
 	protected void init(FaultSystemRupSet rupSet, double[] rates) {
@@ -668,10 +678,23 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return IncrementalMagFreqDist
 	 */
 	public IncrementalMagFreqDist calcParticipationMFD_forParentSect(int parentSectionID, double minMag, double maxMag, int numMag) {
+		return calcParticipationMFD_forRups(rupSet.getRupturesForParentSection(parentSectionID), minMag, maxMag, numMag);
+	}
+	
+	
+	/**
+	 * This give a Participation Mag Freq Dist for the specified set of ruptures.
+	 * This preserves rates rather than moRates (can't have both).
+	 * @param sectIndex
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcParticipationMFD_forRups(Collection<Integer> rupIndexes, double minMag, double maxMag, int numMag) {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
-		List<Integer> rups = rupSet.getRupturesForParentSection(parentSectionID);
-		if (rups != null) {
-			for (int r : rups) {
+		if (rupIndexes != null) {
+			for (int r : rupIndexes) {
 				DiscretizedFunc rupMagDist = getRupMagDist(r);
 				if (rupMagDist == null)
 					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);

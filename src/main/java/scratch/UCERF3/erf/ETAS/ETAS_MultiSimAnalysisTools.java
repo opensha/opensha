@@ -39,10 +39,10 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.data.xyz.GeoDataSetMath;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
@@ -2982,7 +2982,7 @@ public class ETAS_MultiSimAnalysisTools {
 			momRateLower.set(i, lower);
 			momRateUpper.set(i, upper);
 		}
-		UncertainArbDiscDataset momRateDataset = new UncertainArbDiscDataset(momRateMean, momRateLower, momRateUpper);
+		UncertainArbDiscFunc momRateDataset = new UncertainArbDiscFunc(momRateMean, momRateLower, momRateUpper);
 
 		EvenlyDiscretizedFunc m5RateMean = new EvenlyDiscretizedFunc(xVals.getMinX(), xVals.getMaxX(), xVals.size());
 		EvenlyDiscretizedFunc m5RateLower = new EvenlyDiscretizedFunc(xVals.getMinX(), xVals.getMaxX(), xVals.size());
@@ -2996,7 +2996,7 @@ public class ETAS_MultiSimAnalysisTools {
 			m5RateLower.set(i, lower);
 			m5RateUpper.set(i, upper);
 		}
-		UncertainArbDiscDataset m5RateDataset = new UncertainArbDiscDataset(m5RateMean, m5RateLower, m5RateUpper);
+		UncertainArbDiscFunc m5RateDataset = new UncertainArbDiscFunc(m5RateMean, m5RateLower, m5RateUpper);
 
 		List<DiscretizedFunc> funcs = Lists.newArrayList();
 		List<PlotCurveCharacterstics> chars = Lists.newArrayList();
@@ -4149,8 +4149,8 @@ public class ETAS_MultiSimAnalysisTools {
 
 						// System.out.println(etasMFD.getX(i)+"\t"+mean+"\t"+etasLower.getY(i)+"\t"+etasUpper.getY(i));
 					}
-					UncertainArbDiscDataset confBounds = new UncertainArbDiscDataset(etasMean, etasLower, etasUpper);
-					UncertainArbDiscDataset meanRange = new UncertainArbDiscDataset(etasMean, etasMeanLower,
+					UncertainArbDiscFunc confBounds = new UncertainArbDiscFunc(etasMean, etasLower, etasUpper);
+					UncertainArbDiscFunc meanRange = new UncertainArbDiscFunc(etasMean, etasMeanLower,
 							etasMeanUpper);
 
 					Color confColor = new Color(255, 120, 120);
@@ -4526,8 +4526,8 @@ public class ETAS_MultiSimAnalysisTools {
 
 				// System.out.println(etasMFD.getX(i)+"\t"+mean+"\t"+etasLower.getY(i)+"\t"+etasUpper.getY(i));
 			}
-			UncertainArbDiscDataset confBounds = new UncertainArbDiscDataset(etasMean, etasLower, etasUpper);
-			UncertainArbDiscDataset meanRange = new UncertainArbDiscDataset(etasMean, etasMeanLower, etasMeanUpper);
+			UncertainArbDiscFunc confBounds = new UncertainArbDiscFunc(etasMean, etasLower, etasUpper);
+			UncertainArbDiscFunc meanRange = new UncertainArbDiscFunc(etasMean, etasMeanLower, etasMeanUpper);
 
 			Color confColor = new Color(255, 120, 120);
 			funcs.add(0, confBounds);

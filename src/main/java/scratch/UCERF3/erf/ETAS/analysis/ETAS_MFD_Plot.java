@@ -20,9 +20,9 @@ import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -499,7 +499,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 					probUpper.set(i, conf[1]);
 				}
 			}
-			UncertainArbDiscDataset confFunc = new UncertainArbDiscDataset(probFunc, probLower, probUpper);
+			UncertainArbDiscFunc confFunc = new UncertainArbDiscFunc(probFunc, probLower, probUpper);
 			confFunc.setName("95% Conf");
 			funcs.add(confFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,

@@ -8,6 +8,15 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import org.jfree.data.Range;
+import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
+import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
@@ -118,8 +127,6 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			} else {
 				table.addColumn("");
 			}
-			if (ratioCPT != null)
-				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+" Comparison Ratio"));
 			table.finalizeLine();
 			
 			List<String> prefixes = new ArrayList<>();
@@ -155,20 +162,6 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 				prefixes.add(null);
 			}
 			
-			if (ratioCPT != null) {
-				double[] compRates = meta.comparison.sol.calcParticRateForAllSects(myMinMag, Double.POSITIVE_INFINITY);
-				double[] ratios = new double[compRates.length];
-				for (int i=0; i<ratios.length; i++)
-					ratios[i] = rates[i]/compRates[i];
-				
-				String compPrefix = "sol_partic_compare_"+magPrefix;
-				mapMaker.plotSectScalars(ratios, ratioCPT, myLabel+" Primary/Comparison Participation Ratio");
-				mapMaker.plot(resourcesDir, compPrefix, " ");
-
-				table.addColumn("![Map]("+relPathToResources+"/"+compPrefix+".png)");
-				prefixes.add(compPrefix);
-			}
-			
 			table.finalizeLine();
 			
 			table.initNewLine();
@@ -180,6 +173,29 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 							+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
 			}
 			table.finalizeLine();
+			
+			if (ratioCPT != null) {
+				table.addLine(MarkdownUtils.boldCentered(markdownLabel+" Comparison Ratio"),
+						MarkdownUtils.boldCentered(markdownLabel+" Comparison Scatter"));
+				table.initNewLine();
+				
+				double[] compRates = meta.comparison.sol.calcParticRateForAllSects(myMinMag, Double.POSITIVE_INFINITY);
+				double[] ratios = new double[compRates.length];
+				for (int i=0; i<ratios.length; i++)
+					ratios[i] = rates[i]/compRates[i];
+				
+				String compPrefix = "sol_partic_compare_"+magPrefix;
+				mapMaker.plotSectScalars(ratios, ratioCPT, myLabel+" Primary/Comparison Participation Ratio");
+				mapMaker.plot(resourcesDir, compPrefix, " ");
+
+				table.addColumn("![Map]("+relPathToResources+"/"+compPrefix+".png)");
+				prefixes.add(compPrefix);
+				
+				File scatter = compScatterPlot(resourcesDir, compPrefix+"_scatter", rates, compRates, myLabel);
+				table.addColumn("![Map]("+relPathToResources+"/"+scatter.getName()+")");
+				
+				table.finalizeLine();
+			}
 		}
 		
 		return table.build();
@@ -203,6 +219,44 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			}
 		}
 		return values;
+	}
+	
+	private static double withinRange(Range range, double val) {
+		if (val < range.getLowerBound())
+			return range.getLowerBound();
+		if (val > range.getUpperBound())
+			return range.getUpperBound();
+		return val;
+	}
+	
+	private static File compScatterPlot(File outputDir, String prefix, double[] values1, double[] values2,
+			String label) throws IOException {
+		XY_DataSet scatter = new DefaultXY_DataSet();
+		
+		Range range = new Range(1e-8, 1e0);
+		
+		for (int i=0; i<values1.length; i++)
+			scatter.set(withinRange(range, values1[i]), withinRange(range, values2[i]));
+		
+		List<XY_DataSet> funcs = new ArrayList<>();
+		funcs.add(scatter);
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
+		
+		DefaultXY_DataSet line = new DefaultXY_DataSet();
+		line.set(range.getLowerBound(), range.getLowerBound());
+		line.set(range.getUpperBound(), range.getUpperBound());
+		funcs.add(line);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Primary "+label, "Comparison "+label);
+		
+		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		
+		gp.drawGraphPanel(spec, true, true, range, range);
+		
+		PlotUtils.writePlots(outputDir, prefix, gp, 800, -1, true, false, false);
+		return new File(outputDir, prefix+".png");
 	}
 
 	@Override

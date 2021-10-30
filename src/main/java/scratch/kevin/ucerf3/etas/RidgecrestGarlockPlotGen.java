@@ -25,8 +25,8 @@ import org.opensha.commons.data.comcat.ComcatRegion;
 import org.opensha.commons.data.comcat.ComcatRegionAdapter;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -324,7 +324,7 @@ public class RidgecrestGarlockPlotGen {
 					upperFunc.set(pt.getX(), conf[1]);
 				}
 				
-				UncertainArbDiscDataset confFunc = new UncertainArbDiscDataset(combFunc, lowerFunc, upperFunc);
+				UncertainArbDiscFunc confFunc = new UncertainArbDiscFunc(combFunc, lowerFunc, upperFunc);
 				funcs.add(0, confFunc);
 				chars.add(0, new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 35)));
 				

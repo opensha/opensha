@@ -9,7 +9,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import org.opensha.sha.faultSurface.FaultSection;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
 
 /**
  * This constrains paleoseismically-visible event rates along parent sections to be smooth.
@@ -24,25 +23,17 @@ import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
  */
 public class PaleoVisibleEventRateSmoothnessInversionConstraint extends InversionConstraint {
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
+	public static final String NAME = "Paleo-Visible Event Rate Smoothness";
+	public static final String SHORT_NAME = "PaleoRateSmooth";
+	
+	private transient FaultSystemRupSet rupSet;
 	private PaleoProbabilityModel paleoProbabilityModel;
 
 	public PaleoVisibleEventRateSmoothnessInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			PaleoProbabilityModel paleoProbabilityModel) {
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
-		this.weight = weight;
 		this.paleoProbabilityModel = paleoProbabilityModel;
-	}
-
-	@Override
-	public String getShortName() {
-		return "PaleoRateSmooth";
-	}
-
-	@Override
-	public String getName() {
-		return "Paleo-Visible Event Rate Smoothness";
 	}
 
 	@Override
@@ -55,11 +46,6 @@ public class PaleoVisibleEventRateSmoothnessInversionConstraint extends Inversio
 		int numParentSections=parentIDs.size();
 		// one constraint for each section, except minus 1 section on each parent
 		return rupSet.getNumSections()-numParentSections;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -122,6 +108,11 @@ public class PaleoVisibleEventRateSmoothnessInversionConstraint extends Inversio
 			}
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

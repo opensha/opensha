@@ -18,6 +18,8 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -25,6 +27,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
@@ -41,10 +44,10 @@ public class UCERF2_PaleoRateConstraintFetcher {
 
 	protected final static boolean D = true;  // for debugging
 
-	public static ArrayList<PaleoRateConstraint> getConstraints(List<? extends FaultSection> faultSectionData)
+	public static ArrayList<U3PaleoRateConstraint> getConstraints(List<? extends FaultSection> faultSectionData)
 	throws IOException {
 
-		ArrayList<PaleoRateConstraint> paleoRateConstraints   = new ArrayList<PaleoRateConstraint>();
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints   = new ArrayList<U3PaleoRateConstraint>();
 		if(D) System.out.println("Reading Paleo Seg Rate Data from "+PALEO_DATA_FILE_NAME);
 		InputStream is =
 			UCERF3_DataUtils.locateResourceAsStream(PALEO_DATA_SUB_DIR, PALEO_DATA_FILE_NAME);
@@ -82,8 +85,11 @@ public class UCERF2_PaleoRateConstraintFetcher {
 
 			// add to Seg Rate Constraint list
 			String name = faultSectionData.get(closestFaultSectionIndex).getSectionName();
-			PaleoRateConstraint paleoRateConstraint = new PaleoRateConstraint(name, loc, closestFaultSectionIndex, 
-					rate, sigma, lower95Conf, upper95Conf);
+//			U3PaleoRateConstraint paleoRateConstraint = new U3PaleoRateConstraint(name, loc, closestFaultSectionIndex, 
+//					rate, sigma, lower95Conf, upper95Conf);
+			U3PaleoRateConstraint paleoRateConstraint = new U3PaleoRateConstraint(
+					name, closestFaultSectionIndex, name, loc, rate,
+					new BoundedUncertainty(UncertaintyBoundType.CONF_95, lower95Conf, upper95Conf, sigma));
 			if(D) System.out.println("\t"+siteName+" (lat="+lat+", lon="+lon+") associated with "+name+
 					" (section index = "+closestFaultSectionIndex+")\tdist="+(float)minDist+"\trate="+(float)rate+
 					"\tsigma="+(float)sigma+"\tlower95="+(float)lower95Conf+"\tupper95="+(float)upper95Conf);
@@ -92,7 +98,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 		return paleoRateConstraints;
 	}
 
-	public static void showSegRateComparison(ArrayList<PaleoRateConstraint> paleoRateConstraint,
+	public static void showSegRateComparison(ArrayList<U3PaleoRateConstraint> paleoRateConstraint,
 			ArrayList<U3FaultSystemSolution> solutions) {
 		
 		PaleoProbabilityModel paleoProbModel = new UCERF2_PaleoProbabilityModel();
@@ -132,7 +138,7 @@ public class UCERF2_PaleoRateConstraintFetcher {
 
 		HashMap<Integer, Integer> xIndForParentMap = new HashMap<Integer, Integer>();
 
-		for (PaleoRateConstraint constr : paleoRateConstraint) {
+		for (U3PaleoRateConstraint constr : paleoRateConstraint) {
 			int sectID = constr.getSectionIndex();
 			int parentID = -1;
 			String name = null;

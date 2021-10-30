@@ -26,30 +26,29 @@ import scratch.UCERF3.utils.SectionMFD_constraint;
  */
 public class MFDLaplacianSmoothingInversionConstraint extends InversionConstraint {
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
+	public static final String NAME = "MFD Laplacian Smoothing";
+	public static final String SHORT_NAME = "LaplaceSmooth";
+	
+	private transient FaultSystemRupSet rupSet;
+	private double weightForAll;
 	private double weightForPaleoParents;
 	private HashSet<Integer> paleoParentIDs;
 	private List<SectionMFD_constraint> constraints;
 
 	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
+			double weight, List<SectionMFD_constraint> constraints) {
+		this(rupSet, weight, 0d, null, constraints);
+	}
+
+	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
 			double weight, double weightForPaleoParents, HashSet<Integer> paleoParentIDs,
 			List<SectionMFD_constraint> constraints) {
+		super(NAME, SHORT_NAME, Math.max(weight, weightForPaleoParents), false);
 		this.rupSet = rupSet;
-		this.weight = weight;
+		this.weightForAll = weight;
 		this.weightForPaleoParents = weightForPaleoParents;
 		this.paleoParentIDs = paleoParentIDs;
 		this.constraints = constraints;
-	}
-
-	@Override
-	public String getShortName() {
-		return "LaplaceSmooth";
-	}
-
-	@Override
-	public String getName() {
-		return "MFD Laplacian Smoothing";
 	}
 
 	@Override
@@ -78,17 +77,12 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 				int numMagBins = sectMFDConstraint.getNumMags();
 				// Only add rows if this parent section will be included; it won't if it's not a paleo parent sect & MFDSmoothnessConstraintWt = 0
 				// CASE WHERE MFDSmoothnessConstraintWt != 0 & MFDSmoothnessConstraintWtForPaleoParents 0 IS NOT SUPPORTED
-				if (weight > 0d || (weightForPaleoParents > 0d && paleoParentIDs.contains(parentID))) {
+				if (weightForAll > 0d || (weightForPaleoParents > 0d && paleoParentIDs.contains(parentID))) {
 					totalNumMFDSmoothnessConstraints+=numMagBins;
 				}
 			}
 		}
 		return totalNumMFDSmoothnessConstraints;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -118,7 +112,7 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 			int parentID = rupSet.getFaultSectionDataList().get(sectsForParent.get(0).getSectionId()).getParentSectionId();
 			
 			// weight for this parent section depending whether it has paleo constraint or not
-			double constraintWeight = weight;
+			double constraintWeight = weightForAll;
 			if (paleoParentIDs != null && paleoParentIDs.contains(parentID))
 				constraintWeight = weightForPaleoParents;
 			
@@ -205,6 +199,11 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 			}
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

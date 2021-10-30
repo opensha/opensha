@@ -14,13 +14,14 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.utils.UCERF3_DataUtils;
-
 import com.google.common.base.Preconditions;
+import com.google.gson.annotations.JsonAdapter;
+
+import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class UCERF3_PaleoProbabilityModel extends PaleoProbabilityModel {
 	

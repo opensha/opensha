@@ -83,7 +83,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
 
 
@@ -3196,10 +3196,10 @@ public class ProbabilityModelsCalc {
 			e1.printStackTrace();
 		}
 		
-		ArrayList<PaleoRateConstraint> paleoConstraints = UCERF3_PaleoRateConstraintFetcher.getConstraints(fltSysRupSet.getFaultSectionDataList());
+		ArrayList<U3PaleoRateConstraint> paleoConstraints = UCERF3_PaleoRateConstraintFetcher.getConstraints(fltSysRupSet.getFaultSectionDataList());
 		ArrayList<Integer> paleoConstrainSections = new ArrayList<Integer>();
 		info_fr.write("\n"+paleoConstraints.size()+" Paleo Sites (site, sectID, sectName):\n");
-		for(PaleoRateConstraint constr : paleoConstraints) {
+		for(U3PaleoRateConstraint constr : paleoConstraints) {
 			paleoConstrainSections.add(constr.getSectionIndex());
 			info_fr.write("\t"+constr.getPaleoSiteName()+"\t"+constr.getSectionIndex()+"\t"+constr.getFaultSectionName()+"\n");
 		}

@@ -37,9 +37,12 @@ import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -61,6 +64,7 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
+import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
@@ -127,6 +131,13 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			double[] rupAreas,
 			@Nullable double[] rupLengths) {
 		init(faultSectionData, sectionForRups, mags, rakes, rupAreas, rupLengths);
+		
+		// track the version of OpenSHA this was generated with
+		if (!hasModule(BuildInfoModule.class)) {
+			try {
+				addModule(BuildInfoModule.detect());
+			} catch (Exception e) {}
+		}
 	}
 	
 	/**
@@ -952,7 +963,13 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return getAreaForRup(rupIndex)/getLengthForRup(rupIndex);
 	}
 	
-	private SectSlipRates getSectSlipRates() {
+	/**
+	 * This returns section slip rates. If no custom slip rates (e.g., after adjustment for sub-seismogenic ruptures)
+	 * have been loaded, then slip rates will be calculated from fault section data.
+	 * 
+	 * @return section slip rates
+	 */
+	public SectSlipRates getSectSlipRates() {
 		if (!hasModule(SectSlipRates.class))
 			addModule(SectSlipRates.fromFaultSectData(this));
 		return requireModule(SectSlipRates.class);
@@ -1201,17 +1218,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public boolean isEquivalentTo(FaultSystemRupSet other) {
 		// check sections
-		if (getNumSections() != other.getNumSections())
+		if (!areSectionsEquivalentTo(other))
 			return false;
-//		System.out.println("sect count equal");
-		for (int s=0; s<getNumSections(); s++) {
-			FaultSection mySect = getFaultSectionData(s);
-			FaultSection oSect = other.getFaultSectionData(s);
-			if (mySect.getParentSectionId() != oSect.getParentSectionId())
-				return false;
-			if (!mySect.getSectionName().equals(oSect.getSectionName()))
-				return false;
-		}
 //		System.out.println("sects equal");
 		
 		// check ruptures
@@ -1229,6 +1237,34 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 		}
 //		System.out.println("rupture sects equal");
+		return true;
+	}
+	
+	/**
+	 * Returns true if the given rupture set uses the same set of fault sections. Equivalence is determined by the
+	 * following criteria:
+	 * 
+	 * * Same number of sections
+	 * * Each section has the same name & parent section ID
+	 * 
+	 * @param other
+	 * @return true if the fault sections in the given rupture set are equivalent to this one (same sections in same order,
+	 *  maybe different properties)
+	 */
+	public boolean areSectionsEquivalentTo(FaultSystemRupSet other) {
+		// check sections
+		if (getNumSections() != other.getNumSections())
+			return false;
+//		System.out.println("sect count equal");
+		for (int s=0; s<getNumSections(); s++) {
+			FaultSection mySect = getFaultSectionData(s);
+			FaultSection oSect = other.getFaultSectionData(s);
+			if (mySect.getParentSectionId() != oSect.getParentSectionId())
+				return false;
+			if (!mySect.getSectionName().equals(oSect.getSectionName()))
+				return false;
+		}
+		
 		return true;
 	}
 	
@@ -1412,6 +1448,18 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		public Builder forU3Branch(U3LogicTreeBranch branch) {
+			FaultModels fm = branch.getValue(FaultModels.class);
+			DeformationModels dm = branch.getValue(DeformationModels.class);
+			if (fm != null && dm != null) {
+				// override slip rates to the correct deformation model
+				List<? extends FaultSection> newSects = RuptureSets.getU3SubSects(fm, dm);
+				Preconditions.checkState(newSects.size() == faultSectionData.size());
+				this.faultSectionData = newSects;
+				this.rupAreas = null;
+			} else if (dm != null && fm == null) {
+				System.err.println("WARNING: can't override deformation model in rupture set because fault model is null");
+			}
+			
 			// build magnitudes from the scaling relationship and add ave slip module
 			forScalingRelationship(branch.getValue(ScalingRelationships.class));
 			return u3BranchModules(branch);
@@ -1483,6 +1531,38 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				@Override
 				public Class<? extends OpenSHA_Module> getType() {
 					return SectSlipRates.class;
+				}
+			});
+			// add named fault mappings
+			if (fm != null) {
+				addModule(new ModuleBuilder() {
+					
+					@Override
+					public Class<? extends OpenSHA_Module> getType() {
+						return NamedFaults.class;
+					}
+					
+					@Override
+					public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+						return new NamedFaults(rupSet, fm.getNamedFaultsMapAlt());
+					}
+				});
+			}
+			// add paleoseismic data
+			addModule(new ModuleBuilder() {
+				
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return PaleoseismicConstraintData.class;
+				}
+				
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					try {
+						return PaleoseismicConstraintData.loadUCERF3(rupSet);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
 				}
 			});
 			return this;

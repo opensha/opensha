@@ -68,7 +68,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -97,7 +97,7 @@ public class TablesAndPlotsGen {
 		dms.add(DeformationModels.NEOKINEMA);
 		dms.add(DeformationModels.ZENGBB);
 		
-		Map<FaultModels, List<AveSlipConstraint>> aveSlipConstraints = Maps.newHashMap();
+		Map<FaultModels, List<U3AveSlipConstraint>> aveSlipConstraints = Maps.newHashMap();
 		Map<FaultModels, List<? extends FaultSection>> subSectDatasMap = Maps.newHashMap();
 		
 		List<double[]> dmReducedSlipRates = Lists.newArrayList();
@@ -113,7 +113,7 @@ public class TablesAndPlotsGen {
 					InversionModels.CHAR_CONSTRAINED, fm, dm);
 			dmReducedSlipRates.add(rupSet.getSlipRateForAllSections());
 			if (!aveSlipConstraints.containsKey(fm))
-				aveSlipConstraints.put(fm, AveSlipConstraint.load(rupSet.getFaultSectionDataList()));
+				aveSlipConstraints.put(fm, U3AveSlipConstraint.load(rupSet.getFaultSectionDataList()));
 			if (!subSectDatasMap.containsKey(fm))
 				subSectDatasMap.put(fm, rupSet.getFaultSectionDataList());
 			
@@ -124,10 +124,10 @@ public class TablesAndPlotsGen {
 		CSVFile<String> csv = new CSVFile<String>(true);
 		csv.addLine(header);
 		
-		List<AveSlipConstraint> fm2Constraints = aveSlipConstraints.get(FaultModels.FM2_1);
-		List<AveSlipConstraint> fm3Constraints = aveSlipConstraints.get(FaultModels.FM3_1);
+		List<U3AveSlipConstraint> fm2Constraints = aveSlipConstraints.get(FaultModels.FM2_1);
+		List<U3AveSlipConstraint> fm3Constraints = aveSlipConstraints.get(FaultModels.FM3_1);
 		
-		for (AveSlipConstraint constr : fm3Constraints) {
+		for (U3AveSlipConstraint constr : fm3Constraints) {
 			List<String> line = Lists.newArrayList();
 			
 			String subSectName = subSectDatasMap.get(FaultModels.FM3_1).get(constr.getSubSectionIndex()).getSectionName();
@@ -138,11 +138,11 @@ public class TablesAndPlotsGen {
 			for (int i=0; i<dms.size(); i++) {
 				DeformationModels dm = dms.get(i);
 				
-				AveSlipConstraint myConstr = null;
+				U3AveSlipConstraint myConstr = null;
 				if (dm == DeformationModels.UCERF2_ALL) {
 					// find the equivelant ave slip constraint by comparing locations as the list may be of different
 					// size (such as with Compton not existing in FM2.1)
-					for (AveSlipConstraint u2Constr : fm2Constraints) {
+					for (U3AveSlipConstraint u2Constr : fm2Constraints) {
 						if (u2Constr.getSiteLocation().equals(constr.getSiteLocation())) {
 							myConstr = u2Constr;
 							break;

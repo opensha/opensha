@@ -58,8 +58,8 @@ import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 
 public class RSQSimUtils {
 
@@ -423,9 +423,9 @@ public class RSQSimUtils {
 //		}
 		
 		System.out.println("Loading paleo/slip constraints");
-		ArrayList<PaleoRateConstraint> paleoRateConstraints =
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints =
 				CommandLineInversionRunner.getPaleoConstraints(fm, sol.getRupSet());
-		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
+		List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
 //		CommandLineInversionRunner.writePaleoPlots(paleoRateConstraints, aveSlipConstraints, sol, dir, prefix);
 		System.out.println("Writing SAF Seg plots");
 		CommandLineInversionRunner.writeSAFSegPlots(sol, fm, dir, prefix);
