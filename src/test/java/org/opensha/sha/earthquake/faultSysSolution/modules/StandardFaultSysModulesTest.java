@@ -145,9 +145,12 @@ public class StandardFaultSysModulesTest {
 
 	@Test
 	public void testInvTargetMFDs() throws IOException {
-		List<MFD_InversionConstraint> constrs = new ArrayList<>();
-		for (Region reg : new Region[] {null, new CaliforniaRegions.LA_BOX(), new CaliforniaRegions.RELM_NOCAL_GRIDDED()})
-			constrs.add(new MFD_InversionConstraint(fakeMFD(), reg));
+		List<IncrementalMagFreqDist> constrs = new ArrayList<>();
+		for (Region reg : new Region[] {null, new CaliforniaRegions.LA_BOX(), new CaliforniaRegions.RELM_NOCAL_GRIDDED()}) {
+			IncrementalMagFreqDist mfd = fakeMFD();
+			mfd.setRegion(reg);
+			constrs.add(mfd);
+		}
 		InversionTargetMFDs.Precomputed module = new InversionTargetMFDs.Precomputed(demoRupSet, fakeMFD(), fakeMFD(),
 				fakeMFD(), fakeMFD(), constrs, fakeSubSeismoMFDs());
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, InversionTargetMFDs.class);

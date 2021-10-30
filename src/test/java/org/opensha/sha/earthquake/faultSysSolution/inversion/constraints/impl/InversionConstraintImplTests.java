@@ -12,6 +12,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -160,21 +161,26 @@ public class InversionConstraintImplTests {
 
 	@Test
 	public void testMFD() {
-		List<MFD_InversionConstraint> eqConstr = config.getMfdEqualityConstraints();
-		for (MFD_InversionConstraint mfd : eqConstr)
-			mfd.setMagFreqDist(testMFD);
+		List<IncrementalMagFreqDist> mfds = new ArrayList<>();
+		for (IncrementalMagFreqDist origMFD : config.getMfdEqualityConstraints()) {
+			mfds.add(testMFD.deepClone());
+			IncrementalMagFreqDist mfd = testMFD.deepClone();
+			mfd.setRegion(origMFD.getRegion());
+			mfds.add(mfd);
+		}
 		
 		for (ConstraintWeightingType weight : ConstraintWeightingType.values()) {
-			List<EvenlyDiscretizedFunc> stdDevs = null;
+			List<IncrementalMagFreqDist> myMFDs = new ArrayList<>(mfds);
 			if (weight == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY)
-				stdDevs = MFDInversionConstraint.calcStdDevsFromRelativeFunc(eqConstr, M->0.1);
+				for (int i=0; i<myMFDs.size(); i++)
+					myMFDs.set(i, UncertainIncrMagFreqDist.relStdDev(mfds.get(i), M->0.1));
 			MFDInversionConstraint constr = new MFDInversionConstraint(
-					rupSet, 1d, false, weight, eqConstr, stdDevs, null);
+					rupSet, 1d, false, weight, myMFDs, null);
 			
 			testConstraint(constr);
 			
 			constr = new MFDInversionConstraint(
-					rupSet, 1d, true, weight, eqConstr, stdDevs, null);
+					rupSet, 1d, true, weight, myMFDs, null);
 			
 			testConstraint(constr);
 		}
@@ -400,9 +406,13 @@ public class InversionConstraintImplTests {
 		
 		// now test serialization
 		String json = gson.toJson(constraint);
-//		System.out.println(json);
 		InversionConstraint deserialized = gson.fromJson(json, constraint.getClass());
 		String json2 = gson.toJson(deserialized);
+//		System.out.println("=========== ORIG");
+//		System.out.println(json);
+//		System.out.println("=========== DESERIALIZED");
+//		System.out.println(json2);
+//		System.out.println("===========");
 		assertTrue("re-seraialization JSON isn't idential", json.equals(json2));
 		
 		assertEquals("post-serialization numRows mismatch", numRows, deserialized.getNumRows());

@@ -91,8 +91,7 @@ public class Inversions {
 		return gr;
 	}
 	
-	public static MFD_InversionConstraint restrictMFDRange(MFD_InversionConstraint constr, double minMag, double maxMag) {
-		IncrementalMagFreqDist orig = constr.getMagFreqDist();
+	public static IncrementalMagFreqDist restrictMFDRange(IncrementalMagFreqDist orig, double minMag, double maxMag) {
 		int minIndex = -1;
 		int maxIndex = 0;
 		for (int i=0; i<orig.size(); i++) {
@@ -111,7 +110,8 @@ public class Inversions {
 			Preconditions.checkState((float)trimmed.getX(i) == (float)orig.getX(refIndex));
 			trimmed.set(i, orig.getY(refIndex));
 		}
-		return new MFD_InversionConstraint(trimmed, constr.getRegion());
+		trimmed.setRegion(orig.getRegion());
+		return trimmed;
 	}
 	
 	private static Options createOptions() {
@@ -343,7 +343,7 @@ public class Inversions {
 			if (cmd.hasOption("infer-target-gr")) {
 				IncrementalMagFreqDist targetMFD = inferTargetGRFromSlipRates(rupSet, bValue);
 				
-				List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetMFD, null));
+				List<IncrementalMagFreqDist> mfdConstraints = List.of(targetMFD);
 				
 				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetMFD, null, null, mfdConstraints, null);
 			} else if (cmd.hasOption("mfd-total-rate")) {
@@ -363,7 +363,7 @@ public class Inversions {
 						tempHist.getMinX(), tempHist.getMaxX(), tempHist.size());
 				targetGR.scaleToCumRate(minTargetMag, totRate);
 				
-				List<MFD_InversionConstraint> mfdConstraints = List.of(new MFD_InversionConstraint(targetGR, null));
+				List<IncrementalMagFreqDist> mfdConstraints = List.of(targetGR);
 				
 				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetGR, null, null, mfdConstraints, null);
 			} else {
@@ -375,12 +375,12 @@ public class Inversions {
 			
 			rupSet.addModule(targetMFDs);
 			
-			List<? extends MFD_InversionConstraint> mfdConstraints = targetMFDs.getMFD_Constraints();
+			List<? extends IncrementalMagFreqDist> mfdConstraints = targetMFDs.getMFD_Constraints();
 			
-			for (MFD_InversionConstraint constr : mfdConstraints)
+			for (IncrementalMagFreqDist constr : mfdConstraints)
 				System.out.println("MFD Constraint for region "
 						+(constr.getRegion() == null ? "null" : constr.getRegion().getName())
-						+":\n"+constr.getMagFreqDist());
+						+":\n"+constr);
 			
 			if (cmd.hasOption("mfd-ineq")) {
 				Preconditions.checkArgument(!cmd.hasOption("mfd-transition-mag"),
@@ -388,9 +388,9 @@ public class Inversions {
 				constraints.add(new MFDInversionConstraint(rupSet, weight, true, mfdConstraints));
 			} else if (cmd.hasOption("mfd-transition-mag")) {
 				double transMag = Double.parseDouble(cmd.getOptionValue("mfd-transition-mag"));
-				List<MFD_InversionConstraint> eqConstrs = new ArrayList<>();
-				List<MFD_InversionConstraint> ieqConstrs = new ArrayList<>();
-				for (MFD_InversionConstraint constr : mfdConstraints) {
+				List<IncrementalMagFreqDist> eqConstrs = new ArrayList<>();
+				List<IncrementalMagFreqDist> ieqConstrs = new ArrayList<>();
+				for (IncrementalMagFreqDist constr : mfdConstraints) {
 					eqConstrs.add(restrictMFDRange(constr, Double.NEGATIVE_INFINITY, transMag));
 					ieqConstrs.add(restrictMFDRange(constr, transMag, Double.POSITIVE_INFINITY));
 				}

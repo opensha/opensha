@@ -1432,10 +1432,10 @@ public class FaultSystemRupSetCalc {
 
 		
 		if(plotNvsScalTargets) {
-			IncrementalMagFreqDist noCalTargetFaultMFD  =inversionMFDs.getMFD_Constraints().get(0).getMagFreqDist();
+			IncrementalMagFreqDist noCalTargetFaultMFD  =inversionMFDs.getMFD_Constraints().get(0);
 			noCalTargetFaultMFD.setName("noCalTargetFaultMFD");
 			noCalTargetFaultMFD.setInfo("Rate(M>=5)="+(float)noCalTargetFaultMFD.getCumRate(5.05)+"\tMoRate="+(float)noCalTargetFaultMFD.getTotalMomentRate());
-			IncrementalMagFreqDist soCalTargetFaultMFD  =inversionMFDs.getMFD_Constraints().get(1).getMagFreqDist();
+			IncrementalMagFreqDist soCalTargetFaultMFD  =inversionMFDs.getMFD_Constraints().get(1);
 			soCalTargetFaultMFD.setName("soCalTargetFaultMFD");
 			soCalTargetFaultMFD.setInfo("Rate(M>=5)="+(float)soCalTargetFaultMFD.getCumRate(5.05)+"\tMoRate="+(float)soCalTargetFaultMFD.getTotalMomentRate());
 			mfds.add(noCalTargetFaultMFD);

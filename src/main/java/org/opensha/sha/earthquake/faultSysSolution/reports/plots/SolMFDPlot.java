@@ -60,8 +60,8 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 			totalPlot.addComp(targetMFDs.getTotalOnFaultSupraSeisMFD(), SUPRA_SEIS_TARGET_COLOR, "Target Supra-Seis");
 			plots.add(totalPlot);
 			
-			List<? extends MFD_InversionConstraint> constraints = targetMFDs.getMFD_Constraints();
-			for (MFD_InversionConstraint constraint : constraints) {
+			List<? extends IncrementalMagFreqDist> constraints = targetMFDs.getMFD_Constraints();
+			for (IncrementalMagFreqDist constraint : constraints) {
 				Region region = constraint.getRegion();
 				String name;
 				if (region == null || region.getName() == null || region.getName().isBlank()) {
@@ -72,19 +72,19 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 				} else {
 					name = region.getName();
 				}
-				if (constraint.getMagFreqDist().equals(targetMFDs.getTotalOnFaultSupraSeisMFD())) {
+				if (constraint.equals(targetMFDs.getTotalOnFaultSupraSeisMFD())) {
 					// skip it, but set region if applicable
 					totalPlot.region = region;
 				} else {
 					MFD_Plot plot = new MFD_Plot(name, region);
-					plot.addComp(constraint.getMagFreqDist(), SUPRA_SEIS_TARGET_COLOR, "Target");
+					plot.addComp(constraint, SUPRA_SEIS_TARGET_COLOR, "Target");
 					plots.add(plot);
 				}
 				// make sure to include the whole constraint in the plot
-				for (Point2D pt : constraint.getMagFreqDist())
+				for (Point2D pt : constraint)
 					if (pt.getY() > 1e-10)
 						minY = Math.min(minY, Math.pow(10, Math.floor(Math.log10(pt.getY())+0.1)));
-				for (Point2D pt : constraint.getMagFreqDist().getCumRateDistWithOffset())
+				for (Point2D pt : constraint.getCumRateDistWithOffset())
 					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(pt.getY())-0.1)));
 			}
 		} else {

@@ -116,13 +116,13 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 	@Override
 	public UnmodifiableDiscrFunc getStdDevs() {
 		if (stdDevs == null) {
-			Preconditions.checkState(boundType != null,
-					"Standard deviations not supplied and can't estimate as bound type not specified");
+			if (boundType == null)
+				return null;
 			synchronized (this) {
 				if (stdDevs == null) {
 					DiscretizedFunc stdDevs = new ArbitrarilyDiscretizedFunc();
 					for (int i=0; i<size(); i++)
-						stdDevs.set(i, boundType.estimateStdDev(getY(i), getLowerY(i), getUpperY(i)));
+						stdDevs.set(getX(i), boundType.estimateStdDev(getY(i), getLowerY(i), getUpperY(i)));
 					this.stdDevs = new UnmodifiableDiscrFunc(stdDevs);
 				}
 			}

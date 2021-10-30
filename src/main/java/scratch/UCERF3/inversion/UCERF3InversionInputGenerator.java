@@ -190,13 +190,13 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					}
 			}
 			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(), false,
-					ConstraintWeightingType.NORMALIZED, config.getMfdEqualityConstraints(), null, excludeRupIndexes));
+					ConstraintWeightingType.NORMALIZED, config.getMfdEqualityConstraints(), excludeRupIndexes));
 		}
 		
 		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0)	
 			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(), true,
-					ConstraintWeightingType.NORMALIZED, config.getMfdInequalityConstraints(), null, null));
+					ConstraintWeightingType.NORMALIZED, config.getMfdInequalityConstraints(), null));
 		
 		// MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0)
@@ -421,8 +421,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		IncrementalMagFreqDist targetMagFreqDist=null;
 		if (config.getMagnitudeEqualityConstraintWt() > 0.0) {
 			int totalNumMagFreqConstraints = 0;
-			for (MFD_InversionConstraint constr : config.getMfdEqualityConstraints()) {
-				targetMagFreqDist=constr.getMagFreqDist();
+			for (IncrementalMagFreqDist constr : config.getMfdEqualityConstraints()) {
+				targetMagFreqDist=constr;
 				// Find number of rows used for MFD equality constraint - only include mag bins between minimum and maximum magnitudes in rupture set
 				totalNumMagFreqConstraints += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())-targetMagFreqDist.getClosestXIndex(rupSet.getMinMag())+1;
 			}
@@ -569,8 +569,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// to be passed to SA algorithm
 		int numMFDRows=0;
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0) {
-			for (MFD_InversionConstraint constr : config.getMfdInequalityConstraints()) {
-				targetMagFreqDist=constr.getMagFreqDist();
+			for (IncrementalMagFreqDist constr : config.getMfdInequalityConstraints()) {
+				targetMagFreqDist=constr;
 				// Add number of rows used for magnitude distribution constraint - only include mag bins between minimum and maximum magnitudes in rupture set				
 				numMFDRows += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())-targetMagFreqDist.getClosestXIndex(rupSet.getMinMag())+1;
 			}
@@ -850,7 +850,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// encoded into the A_ineq matrix instead since they are nonlinear
 		if (config.getMagnitudeEqualityConstraintWt() > 0.0) {
 			double magnitudeEqualityConstraintWt = config.getMagnitudeEqualityConstraintWt();
-			List<MFD_InversionConstraint> mfdEqualityConstraints = config.getMfdEqualityConstraints();
+			List<? extends IncrementalMagFreqDist> mfdEqualityConstraints = config.getMfdEqualityConstraints();
 			numNonZeroElements = 0;
 			if(D) System.out.println("\nAdding " + mfdEqualityConstraints.size()
 					+ " magnitude distribution equality constraints to A matrix ...");	
@@ -879,7 +879,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// Loop over all MFD constraints in different regions
 			for (int i=0; i < mfdEqualityConstraints.size(); i++) {
 				double[] fractRupsInside = rupSet.getFractRupsInsideRegion(mfdEqualityConstraints.get(i).getRegion(), false);
-				targetMagFreqDist=mfdEqualityConstraints.get(i).getMagFreqDist();	
+				targetMagFreqDist=mfdEqualityConstraints.get(i);	
 				for(int rup=0; rup<numRuptures; rup++) {
 					double mag = rupMeanMag[rup];
 					double fractRupInside = fractRupsInside[rup];
@@ -916,7 +916,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0) {	
 			double magnitudeInequalityConstraintWt = config.getMagnitudeInequalityConstraintWt();
-			List<MFD_InversionConstraint> mfdInequalityConstraints = config.getMfdInequalityConstraints();
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints = config.getMfdInequalityConstraints();
 			int rowIndex_ineq = 0; 
 			if(D) System.out.println("\nPreparing " + mfdInequalityConstraints.size()
 					+ " magnitude inequality constraints ...");	
@@ -924,7 +924,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// Loop over all MFD constraints in different regions
 			for (int i=0; i < mfdInequalityConstraints.size(); i++) {
 				double[] fractRupsInside = rupSet.getFractRupsInsideRegion(mfdInequalityConstraints.get(i).getRegion(), false);
-				targetMagFreqDist=mfdInequalityConstraints.get(i).getMagFreqDist();	
+				targetMagFreqDist=mfdInequalityConstraints.get(i);	
 				for(int rup=0; rup<numRuptures; rup++) {
 					double mag = rupMeanMag[rup];
 					double fractRupInside = fractRupsInside[rup];
@@ -1628,14 +1628,14 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
 		
 		System.out.println("Validating target MFD constraints");
-		List<? extends MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
-		List<? extends MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
+		List<? extends IncrementalMagFreqDist> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<? extends IncrementalMagFreqDist> newConstrs = newTargetMFDs.getMFD_Constraints();
 		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
 		for (int i=0; i<origConstrs.size(); i++) {
-			MFD_InversionConstraint origConstr = origConstrs.get(i);
-			MFD_InversionConstraint newConstr = newConstrs.get(i);
+			IncrementalMagFreqDist origConstr = origConstrs.get(i);
+			IncrementalMagFreqDist newConstr = newConstrs.get(i);
 			Preconditions.checkState(origConstr.getRegion().equals(newConstr.getRegion()), "Region mismatch");
-			validateMFD(origConstr.getMagFreqDist(), newConstr.getMagFreqDist());
+			validateMFD(origConstr, newConstr);
 		}
 		
 		System.out.println("Generating mod inputs");
@@ -1679,14 +1679,14 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
 		
 		System.out.println("Validating target MFD constraints");
-		List<? extends MFD_InversionConstraint> origConstrs = origTargetMFDs.getMFD_Constraints();
-		List<? extends MFD_InversionConstraint> newConstrs = newTargetMFDs.getMFD_Constraints();
+		List<? extends IncrementalMagFreqDist> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<? extends IncrementalMagFreqDist> newConstrs = newTargetMFDs.getMFD_Constraints();
 		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
 		for (int i=0; i<origConstrs.size(); i++) {
-			MFD_InversionConstraint origConstr = origConstrs.get(i);
-			MFD_InversionConstraint newConstr = newConstrs.get(i);
+			IncrementalMagFreqDist origConstr = origConstrs.get(i);
+			IncrementalMagFreqDist newConstr = newConstrs.get(i);
 			Preconditions.checkState(origConstr.getRegion().equals(newConstr.getRegion()), "Region mismatch");
-			validateMFD(origConstr.getMagFreqDist(), newConstr.getMagFreqDist());
+			validateMFD(origConstr, newConstr);
 		}
 		
 		System.out.println("Generating mod inputs");

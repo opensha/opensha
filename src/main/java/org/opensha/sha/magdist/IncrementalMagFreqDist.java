@@ -29,6 +29,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.exceptions.InvalidRangeException;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.Feature.FeatureAdapter;
@@ -58,7 +59,24 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	protected String defaultInfo;
 	protected String defaultName;
 	
-	private Region region;
+	protected Region region;
+
+	/**
+	 * todo constructors
+	 * @param min
+	 * @param num
+	 * @param delta
+	 * using the parameters we call the parent class constructors to initialise the parent class variables
+	 */
+	public IncrementalMagFreqDist (IncrementalMagFreqDist other) {
+		super(other.minX, other.maxX, other.size());
+		region = other.region;
+		setName(other.getName());
+		setInfo(other.getInfo());
+		setTolerance(other.getTolerance());
+		for (int i=0; i<other.size(); i++)
+			set(i, other.getY(i));
+	}
 
 	/**
 	 * todo constructors
@@ -592,9 +610,7 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 		return compute_bValue(Double.NaN, Double.NaN);
 	}
 
-	public static class Adapter extends DiscretizedFunc.AbstractAdapter<IncrementalMagFreqDist> {
-		
-		private FeatureAdapter regionAdapter = new FeatureAdapter();
+	public static class Adapter extends GenericAdapter<IncrementalMagFreqDist> {
 
 		@Override
 		protected IncrementalMagFreqDist instance(Double minX, Double maxX, Integer size) {
@@ -603,24 +619,33 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize EvenlyDiscretizedFunc");
 			return new IncrementalMagFreqDist(minX, maxX, size);
 		}
+		
+	}
+
+	public static abstract class GenericAdapter<E extends IncrementalMagFreqDist> extends DiscretizedFunc.AbstractAdapter<E> {
+		
+		private FeatureAdapter regionAdapter = new FeatureAdapter();
 
 		@Override
-		protected void serializeExtras(JsonWriter out, IncrementalMagFreqDist xy) throws IOException {
+		protected void serializeExtras(JsonWriter out, E xy) throws IOException {
 			super.serializeExtras(out, xy);
 			
 			if (xy.region != null) {
 				out.name("region");
-				regionAdapter.write(out, xy.region.toFeature());
+				Region region = xy.region;
+				if (region instanceof GriddedRegion)
+					region = new Region(region);
+				regionAdapter.write(out, region.toFeature());
 			}
 		}
 
 		@Override
-		protected Consumer<IncrementalMagFreqDist> deserializeExtra(JsonReader in, String name) throws IOException {
+		protected Consumer<E> deserializeExtra(JsonReader in, String name) throws IOException {
 			if (name.equals("region")) {
 				if (in.peek() == JsonToken.NULL)
 					return null;
 				Region region = Region.fromFeature(regionAdapter.read(in));
-				return new Consumer<IncrementalMagFreqDist>() {
+				return new Consumer<E>() {
 
 					@Override
 					public void accept(IncrementalMagFreqDist t) {

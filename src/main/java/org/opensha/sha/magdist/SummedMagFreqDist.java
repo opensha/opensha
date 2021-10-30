@@ -385,7 +385,7 @@ public class SummedMagFreqDist extends IncrementalMagFreqDist {
 
   }*/
 
-	public static class Adapter extends DiscretizedFunc.AbstractAdapter<SummedMagFreqDist> {
+	public static class Adapter extends IncrementalMagFreqDist.GenericAdapter<SummedMagFreqDist> {
 
 		@Override
 		protected SummedMagFreqDist instance(Double minX, Double maxX, Integer size) {

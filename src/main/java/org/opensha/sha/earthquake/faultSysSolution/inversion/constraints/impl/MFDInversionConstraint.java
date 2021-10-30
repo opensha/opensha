@@ -1,12 +1,12 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.function.DoubleBinaryOperator;
-import java.util.function.DoubleUnaryOperator;
 
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
+import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
@@ -14,8 +14,12 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.utils.MFD_InversionConstraint;
 
 /**
  * Constraints the solution to match the given MFD constraints, which can be region specific.
@@ -32,94 +36,32 @@ import scratch.UCERF3.utils.MFD_InversionConstraint;
 public class MFDInversionConstraint extends InversionConstraint {
 	
 	private transient FaultSystemRupSet rupSet;
-	private List<? extends MFD_InversionConstraint> mfds;
-	private List<? extends EvenlyDiscretizedFunc> mfdStdDevs;
+	@JsonAdapter(MFDsAdapter.class) private List<? extends IncrementalMagFreqDist> mfds;
 	private HashSet<Integer> excludeRupIndexes;
 	
-	/**
-	 * This computes standard deviations for the given MFDs as a fraction of their rate, where that fraction is
-	 * function of their magnitude, passed in through a functional operator.
-	 * @param mfds
-	 * @param relStdDevFunc
-	 * @return absolute standard deviations scaled to MFD y values, set according to the given function)
-	 */
-	public static List<EvenlyDiscretizedFunc> calcStdDevsFromRelativeFunc(List<? extends MFD_InversionConstraint> mfds,
-			DoubleUnaryOperator relStdDevFunc) {
-		List<EvenlyDiscretizedFunc> stdDevs = new ArrayList<>();
-		for (MFD_InversionConstraint constr : mfds) {
-			IncrementalMagFreqDist mfd = constr.getMagFreqDist();
-			EvenlyDiscretizedFunc stdDev = new EvenlyDiscretizedFunc(mfd.getMinX(), mfd.getMaxX(), mfd.size());
-			// now relative values
-			stdDev.setYofX(relStdDevFunc);
-			for (int i=0; i<mfd.size(); i++) {
-				// scale by the rate for the actual std dev
-				double rate = mfd.getY(i);
-				double relSD = stdDev.getY(i);
-				double sd = relSD*rate;
-				stdDev.set(i, sd);
-				System.out.println("M="+(float)mfd.getX(i)+"\trate="+(float)rate+"\trelSD="+(float)relSD+"\tsd="+(float)sd);
-			}
-			stdDevs.add(stdDev);
-		}
-		return stdDevs;
-	}
-	
-	/**
-	 * This computes absolute standard deviations for the given MFDs as a function of their magnitude and rate, passed
-	 * in through a functional operator.
-	 * @param mfds
-	 * @param relStdDevFunc
-	 * @return absolute standard deviations, set according to the given function
-	 */
-	public static List<EvenlyDiscretizedFunc> calcStdDevsFromRateFunc(List<? extends MFD_InversionConstraint> mfds,
-			DoubleBinaryOperator absStdDevFunc) {
-		List<EvenlyDiscretizedFunc> stdDevs = new ArrayList<>();
-		for (MFD_InversionConstraint constr : mfds) {
-			IncrementalMagFreqDist mfd = constr.getMagFreqDist();
-			EvenlyDiscretizedFunc stdDev = new EvenlyDiscretizedFunc(mfd.getMinX(), mfd.getMaxX(), mfd.size());
-			// set std dev from given function of mag and/or rate
-			stdDev.setYofX(absStdDevFunc);
-			stdDevs.add(stdDev);
-		}
-		return stdDevs;
-	}
-	
 	public MFDInversionConstraint(FaultSystemRupSet rupSet, double weight, boolean inequality,
-			List<? extends MFD_InversionConstraint> mfds) {
-		this(rupSet, weight, inequality, ConstraintWeightingType.NORMALIZED, mfds, null, null);
+			List<? extends IncrementalMagFreqDist> mfds) {
+		this(rupSet, weight, inequality, ConstraintWeightingType.NORMALIZED, mfds);
 	}
 
 	public MFDInversionConstraint(FaultSystemRupSet rupSet, double weight, boolean inequality,
-			ConstraintWeightingType weightingType, List<? extends MFD_InversionConstraint> mfds,
-			List<? extends EvenlyDiscretizedFunc> mfdStdDevs) {
-		this(rupSet, weight, inequality, weightingType, mfds, mfdStdDevs, null);
+			ConstraintWeightingType weightingType, List<? extends IncrementalMagFreqDist> mfds) {
+		this(rupSet, weight, inequality, weightingType, mfds, null);
 	}
 
 	public MFDInversionConstraint(FaultSystemRupSet rupSet, double weight, boolean inequality,
-			ConstraintWeightingType weightingType, List<? extends MFD_InversionConstraint> mfds,
-			List<? extends EvenlyDiscretizedFunc> mfdStdDevs, HashSet<Integer> excludeRupIndexes) {
+			ConstraintWeightingType weightingType, List<? extends IncrementalMagFreqDist> mfds,
+			HashSet<Integer> excludeRupIndexes) {
 		super(weightingType.applyNamePrefix("MFD "+(inequality ? "Inequality" : "Equality")),
 				weightingType.applyShortNamePrefix("MFD"+(inequality ? "Inequality" : "Equality")),
 				weight, inequality, weightingType);
 		this.rupSet = rupSet;
 		this.mfds = mfds;
-		if (weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY)
-			Preconditions.checkNotNull(mfdStdDevs,
-					"MFD Standard Deviation functions must be supplied for uncertainty weighting");
-		if (mfdStdDevs != null) {
-			Preconditions.checkArgument(mfdStdDevs.size() == mfds.size(),
-					"Supplied different count of MFDs and Standard Deviations");
-			for (int i=0; i<mfds.size(); i++) {
-				IncrementalMagFreqDist mfd = mfds.get(i).getMagFreqDist();
-				Preconditions.checkState(mfd.size() == mfdStdDevs.get(i).size(),
-						"MFDs and std. dev. size mismatch");
-				Preconditions.checkState((float)mfd.getMinX() == (float)mfdStdDevs.get(i).getMinX(),
-						"MFDs and std. dev. x mismatch");
-				Preconditions.checkState((float)mfd.getDelta() == (float)mfdStdDevs.get(i).getDelta(),
-						"MFDs and std. dev. x mismatch");
-			}
+		if (weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
+			for (IncrementalMagFreqDist mfd : mfds)
+				Preconditions.checkNotNull(mfd instanceof UncertainIncrMagFreqDist,
+						"Uncertain MFD instances (with standard deviations) must be supplied for uncertainty weighting");
 		}
-		this.mfdStdDevs = mfdStdDevs;
 		this.excludeRupIndexes = excludeRupIndexes;
 	}
 	
@@ -131,11 +73,10 @@ public class MFDInversionConstraint extends InversionConstraint {
 	 * @param rupSet
 	 * @return number of rows needed
 	 */
-	static int getNumRows(List<? extends MFD_InversionConstraint> mfds, FaultSystemRupSet rupSet) {
+	static int getNumRows(List<? extends IncrementalMagFreqDist> mfds, FaultSystemRupSet rupSet) {
 		int totalNumMagFreqConstraints = 0;
-		for (MFD_InversionConstraint constr : mfds) {
-			IncrementalMagFreqDist mfd = constr.getMagFreqDist();
-			// Find number of rows used for MFD equality constraint
+		for (IncrementalMagFreqDist mfd : mfds) {
+			// Find number of rows used for MFD constraint
 			// only include mag bins between minimum and maximum magnitudes in rupture set
 			totalNumMagFreqConstraints += mfd.getClosestXIndex(rupSet.getMaxMag())
 					- mfd.getClosestXIndex(rupSet.getMinMag()) + 1;
@@ -154,9 +95,8 @@ public class MFDInversionConstraint extends InversionConstraint {
 		// Loop over all MFD constraints in different regions
 		int numRuptures = rupSet.getNumRuptures();
 		for (int i=0; i < mfds.size(); i++) {
-			MFD_InversionConstraint constr = mfds.get(i);
-			Region region = constr.getRegion();
-			IncrementalMagFreqDist mfd = constr.getMagFreqDist();
+			IncrementalMagFreqDist mfd = mfds.get(i);
+			Region region = mfd.getRegion();
 //			Region region = mfd.getRegion(); // TODO Switch to useing MFD region, abandon wrapper
 			double[] fractRupsInside = rupSet.getFractRupsInsideRegion(region, false);
 			int minMagIndex = mfd.getClosestXIndex(rupSet.getMinMag());
@@ -171,7 +111,8 @@ public class MFDInversionConstraint extends InversionConstraint {
 					targets[j] = 0d;
 					scales[j] = 0d;
 				} else {
-					double stdDev = mfdStdDevs == null ? 0d : mfdStdDevs.get(i).getY(j);
+					double stdDev = mfd instanceof UncertainIncrMagFreqDist ?
+							((UncertainIncrMagFreqDist)mfd).getStdDev(j) : 0d;
 					scales[j] = weightingType.getA_Scalar(rate, stdDev);
 					targets[j] = weightingType.getD(rate, stdDev);
 				}
@@ -208,6 +149,56 @@ public class MFDInversionConstraint extends InversionConstraint {
 	@Override
 	public void setRuptureSet(FaultSystemRupSet rupSet) {
 		this.rupSet = rupSet;
+	}
+	
+	private static IncrementalMagFreqDist.Adapter regularAdapter = new IncrementalMagFreqDist.Adapter();
+	private static UncertainIncrMagFreqDist.Adapter uncertAdapter = new UncertainIncrMagFreqDist.Adapter();
+	private static UncertainBoundedIncrMagFreqDist.Adapter uncertBoundAdapter = new UncertainBoundedIncrMagFreqDist.Adapter();
+	private static class MFDsAdapter extends TypeAdapter<List<? extends IncrementalMagFreqDist>> {
+
+		@Override
+		public void write(JsonWriter out, List<? extends IncrementalMagFreqDist> list) throws IOException {
+			out.beginArray();
+			for (IncrementalMagFreqDist mfd : list) {
+				if (mfd instanceof UncertainBoundedIncrMagFreqDist)
+					uncertBoundAdapter.write(out, (UncertainBoundedIncrMagFreqDist)mfd);
+				else if (mfd instanceof UncertainIncrMagFreqDist)
+					uncertAdapter.write(out, (UncertainIncrMagFreqDist)mfd);
+				else
+					regularAdapter.write(out, mfd);
+			}
+			out.endArray();
+		}
+
+		@Override
+		public List<? extends IncrementalMagFreqDist> read(JsonReader in) throws IOException {
+			List<IncrementalMagFreqDist> ret = new ArrayList<>();
+
+			in.beginArray();
+			while (in.hasNext())
+				ret.add(readAsApplicable(in));
+			in.endArray();
+			
+			return ret;
+		}
+		
+		private IncrementalMagFreqDist readAsApplicable(JsonReader in) throws IOException {
+			// this will work even if it's not uncertainty bounded
+			UncertainBoundedIncrMagFreqDist func = uncertBoundAdapter.read(in);
+
+			// see if it's actually uncertain
+			if (func.getStdDevs() == null)
+				// not uncertain
+				return new IncrementalMagFreqDist(func);
+			// see if it's really bounded
+			if (func.getLower() == null) {
+				// not bounded
+				return new UncertainIncrMagFreqDist(func, func.getStdDevs());
+			}
+			// it's really uncertainty bounded
+			return func;
+		}
+		
 	}
 
 }

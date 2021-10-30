@@ -24,6 +24,7 @@ import scratch.UCERF3.utils.MFD_WeightedInversionConstraint;
  * @author chrisbc
  *
  */
+@Deprecated
 public class NZ_MFDUncertaintyWeightedInversionConstraint extends InversionConstraint {
 	
 	public static final String NAME = "Uncertainty-Weighted MFD";
@@ -42,7 +43,15 @@ public class NZ_MFDUncertaintyWeightedInversionConstraint extends InversionConst
 
 	@Override
 	public int getNumRows() {
-		return MFDInversionConstraint.getNumRows(mfdWeightedConstraints, rupSet);
+		int totalNumMagFreqConstraints = 0;
+		for (MFD_InversionConstraint constr : mfdWeightedConstraints) {
+			IncrementalMagFreqDist mfd = constr.getMagFreqDist();
+			// Find number of rows used for MFD equality constraint
+			// only include mag bins between minimum and maximum magnitudes in rupture set
+			totalNumMagFreqConstraints += mfd.getClosestXIndex(rupSet.getMaxMag())
+					- mfd.getClosestXIndex(rupSet.getMinMag()) + 1;
+		}
+		return totalNumMagFreqConstraints;
 	}
 
 	@Override

@@ -35,10 +35,19 @@ public class MFD_InversionConstraint implements XMLSaveable {
 	IncrementalMagFreqDist mfd;
 	Region region;
 	
-	
+
 	public MFD_InversionConstraint(IncrementalMagFreqDist mfd, Region region) {
 		this.mfd=mfd;
 		this.region=region;
+		if (region != mfd.getRegion()) {
+			mfd = mfd.deepClone();
+			mfd.setRegion(region);;
+		}
+	}
+	
+	public MFD_InversionConstraint(IncrementalMagFreqDist mfd) {
+		this.mfd = mfd;
+		this.region = mfd.getRegion();
 	}
 	
 	

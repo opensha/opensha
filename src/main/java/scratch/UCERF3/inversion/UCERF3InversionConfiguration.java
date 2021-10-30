@@ -60,8 +60,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	// often be set equal to initial rup model or a priori rup constraint
 	private double[] minimumRuptureRateBasis;
 	private double MFDTransitionMag;
-	private List<MFD_InversionConstraint> mfdEqualityConstraints;
-	private List<MFD_InversionConstraint> mfdInequalityConstraints;
+	private List<? extends IncrementalMagFreqDist> mfdEqualityConstraints;
+	private List<? extends IncrementalMagFreqDist> mfdInequalityConstraints;
 	private double minimumRuptureRateFraction;
 
 	private double smoothnessWt; // rupture rate smoothness (entropy)
@@ -100,8 +100,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			double smoothnessWt,
 			double eventRateSmoothnessWt,
 			double MFDTransitionMag,
-			List<MFD_InversionConstraint> mfdEqualityConstraints,
-			List<MFD_InversionConstraint> mfdInequalityConstraints,
+			List<? extends IncrementalMagFreqDist> mfdEqualityConstraints,
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints,
 			double minimumRuptureRateFraction,
 			String metadata) {
 		if (metadata == null || metadata.isEmpty())
@@ -258,7 +258,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double parkfieldConstraintWt = 1000;
 		
 		// get MFD constraints
-		List<MFD_InversionConstraint> mfdConstraints = (List<MFD_InversionConstraint>) targetMFDs.getMFD_Constraints();
+		List<? extends IncrementalMagFreqDist> mfdConstraints = targetMFDs.getMFD_Constraints();
 		
 		double MFDTransitionMag = 7.85; // magnitude to switch from MFD equality to MFD inequality
 		
@@ -429,21 +429,25 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
 		}
 		
-		List<MFD_InversionConstraint> mfdInequalityConstraints = new ArrayList<MFD_InversionConstraint>();
-		List<MFD_InversionConstraint> mfdEqualityConstraints = new ArrayList<MFD_InversionConstraint>();
+		List<? extends IncrementalMagFreqDist> mfdInequalityConstraints;
+		List<? extends IncrementalMagFreqDist> mfdEqualityConstraints;
 		
 		if (mfdEqualityConstraintWt>0.0 && mfdInequalityConstraintWt>0.0) {
 			// we have both MFD constraints, apply a transition mag from equality to inequality
 			
 			metadata += "\nMFDTransitionMag: "+MFDTransitionMag;
-			mfdEqualityConstraints = restrictMFDConstraintMagRange(mfdConstraints, mfdConstraints.get(0).getMagFreqDist().getMinX(), MFDTransitionMag);
-			mfdInequalityConstraints = restrictMFDConstraintMagRange(mfdConstraints, MFDTransitionMag, mfdConstraints.get(0).getMagFreqDist().getMaxX());
+			mfdEqualityConstraints = restrictMFDConstraintMagRange(mfdConstraints, mfdConstraints.get(0).getMinX(), MFDTransitionMag);
+			mfdInequalityConstraints = restrictMFDConstraintMagRange(mfdConstraints, MFDTransitionMag, mfdConstraints.get(0).getMaxX());
 		} else if (mfdEqualityConstraintWt>0.0) {
 			mfdEqualityConstraints = mfdConstraints;
+			mfdInequalityConstraints = new ArrayList<>();
 		} else if (mfdInequalityConstraintWt>0.0) {
+			mfdEqualityConstraints = new ArrayList<>();
 			mfdInequalityConstraints = mfdConstraints;
 		} else {
 			// no MFD constraints, do nothing
+			mfdEqualityConstraints = new ArrayList<>();
+			mfdInequalityConstraints = new ArrayList<>();
 		}
 		
 		return new UCERF3InversionConfiguration(
@@ -526,12 +530,12 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param maxMag
 	 * @return newMFDConstraints
 	 */
-	private static List<MFD_InversionConstraint> restrictMFDConstraintMagRange(List<MFD_InversionConstraint> mfdConstraints, double minMag, double maxMag) {
+	private static List<IncrementalMagFreqDist> restrictMFDConstraintMagRange(List<? extends IncrementalMagFreqDist> mfdConstraints, double minMag, double maxMag) {
 		
-		List<MFD_InversionConstraint> newMFDConstraints = new ArrayList<MFD_InversionConstraint>();
+		List<IncrementalMagFreqDist> newMFDConstraints = new ArrayList<>();
 		
 		for (int i=0; i<mfdConstraints.size(); i++) {
-			IncrementalMagFreqDist originalMFD = mfdConstraints.get(i).getMagFreqDist();
+			IncrementalMagFreqDist originalMFD = mfdConstraints.get(i);
 			double delta = originalMFD.getDelta();
 			IncrementalMagFreqDist newMFD = new IncrementalMagFreqDist(minMag, maxMag, (int) Math.round((maxMag-minMag)/delta + 1.0)); 
 			newMFD.setTolerance(delta/2.0);
@@ -539,7 +543,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				// WARNING!  This doesn't interpolate.  For best results, set minMag & maxMag to points along original MFD constraint (i.e. 7.05, 7.15, etc)
 				newMFD.set(m, originalMFD.getClosestYtoX(m));
 			}
-			newMFDConstraints.add(i,new MFD_InversionConstraint(newMFD, mfdConstraints.get(i).getRegion()));	
+			newMFD.setRegion(originalMFD.getRegion());
+			newMFDConstraints.add(i, newMFD);	
 		}
 		
 		return newMFDConstraints;
@@ -637,14 +642,14 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * It will uniformly reduce the rates of ruptures in any magnitude bins that need adjusting.
 	 */
 	private static double[] adjustStartingModel(double[] initialRupModel,
-			List<MFD_InversionConstraint> mfdInequalityConstraints, FaultSystemRupSet rupSet, boolean adjustOnlyIfOverMFD) {
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints, FaultSystemRupSet rupSet, boolean adjustOnlyIfOverMFD) {
 		
 		double[] rupMeanMag = rupSet.getMagForAllRups();
 		
 		
 		for (int i=0; i<mfdInequalityConstraints.size(); i++) {
 			double[] fractRupsInside = rupSet.getFractRupsInsideRegion(mfdInequalityConstraints.get(i).getRegion(), false);
-			IncrementalMagFreqDist targetMagFreqDist = mfdInequalityConstraints.get(i).getMagFreqDist();
+			IncrementalMagFreqDist targetMagFreqDist = mfdInequalityConstraints.get(i);
 			IncrementalMagFreqDist startingModelMagFreqDist = new IncrementalMagFreqDist(targetMagFreqDist.getMinX(), targetMagFreqDist.size(), targetMagFreqDist.getDelta());
 			startingModelMagFreqDist.setTolerance(0.1);
 			
@@ -1066,21 +1071,21 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		this.mfdSmoothnessConstraintWtForPaleoParents = relativeMFDSmoothnessConstraintWtForPaleoParents;
 	}
 	
-	public List<MFD_InversionConstraint> getMfdEqualityConstraints() {
+	public List<? extends IncrementalMagFreqDist> getMfdEqualityConstraints() {
 		return mfdEqualityConstraints;
 	}
 
 	public void setMfdEqualityConstraints(
-			List<MFD_InversionConstraint> mfdEqualityConstraints) {
+			List<? extends IncrementalMagFreqDist> mfdEqualityConstraints) {
 		this.mfdEqualityConstraints = mfdEqualityConstraints;
 	}
 
-	public List<MFD_InversionConstraint> getMfdInequalityConstraints() {
+	public List<? extends IncrementalMagFreqDist> getMfdInequalityConstraints() {
 		return mfdInequalityConstraints;
 	}
 
 	public void setMfdInequalityConstraints(
-			List<MFD_InversionConstraint> mfdInequalityConstraints) {
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints) {
 		this.mfdInequalityConstraints = mfdInequalityConstraints;
 	}
 
@@ -1186,9 +1191,9 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		return null;
 	}
 	
-	private static void mfdsToXML(Element el, List<MFD_InversionConstraint> constraints) {
+	private static void mfdsToXML(Element el, List<? extends IncrementalMagFreqDist> constraints) {
 		for (int i=0; i<constraints.size(); i++) {
-			MFD_InversionConstraint constr = constraints.get(i);
+			MFD_InversionConstraint constr = new MFD_InversionConstraint(constraints.get(i));
 			
 			constr.toXMLMetadata(el);
 		}
@@ -1220,8 +1225,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double smoothnessWt = Double.parseDouble(confEl.attributeValue("smoothnessWt"));
 		double eventRateSmoothnessWt = Double.parseDouble(confEl.attributeValue("eventRateSmoothnessWt"));
 		
-		List<MFD_InversionConstraint> mfdEqualityConstraints = mfdsFromXML(confEl.element("MFD_EqualityConstraints"));
-		List<MFD_InversionConstraint> mfdInequalityConstraints = mfdsFromXML(confEl.element("MFD_InequalityConstraints"));
+		List<? extends IncrementalMagFreqDist> mfdEqualityConstraints = mfdsFromXML(confEl.element("MFD_EqualityConstraints"));
+		List<? extends IncrementalMagFreqDist> mfdInequalityConstraints = mfdsFromXML(confEl.element("MFD_InequalityConstraints"));
 		
 		return new UCERF3InversionConfiguration(slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, paleoRateConstraintWt,
 				paleoSlipConstraintWt, magnitudeEqualityConstraintWt, magnitudeInequalityConstraintWt, rupRateConstraintWt,
@@ -1231,14 +1236,14 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				eventRateSmoothnessWt, MFDTransitionMag, mfdEqualityConstraints, mfdInequalityConstraints, minimumRuptureRateFraction, null);
 	}
 	
-	private static List<MFD_InversionConstraint> mfdsFromXML(Element mfdsEl) {
+	private static List<IncrementalMagFreqDist> mfdsFromXML(Element mfdsEl) {
 		List<Element> mfdElList = XMLUtils.getSortedChildElements(mfdsEl, null, "index");
 		
-		List<MFD_InversionConstraint> mfds = Lists.newArrayList();
+		List<IncrementalMagFreqDist> mfds = Lists.newArrayList();
 		
 		for (Element mfdEl : mfdElList) {
 			MFD_InversionConstraint constr = MFD_InversionConstraint.fromXMLMetadata(mfdEl);
-			mfds.add(constr);
+			mfds.add(constr.getMagFreqDist());
 		}
 		
 		return mfds;
