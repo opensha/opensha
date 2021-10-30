@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -50,6 +51,38 @@ public class UncertainIncrMagFreqDist extends IncrementalMagFreqDist implements 
 		EvenlyDiscretizedFunc stdDevs = new EvenlyDiscretizedFunc(mfd.getMinX(), mfd.getMaxX(), mfd.size());
 		
 		stdDevs.setYofX((M,R)->relStdDev*R);
+		
+		return new UncertainIncrMagFreqDist(mfd, stdDevs);
+	}
+	
+	/**
+	 * Creates a new {@link UncertainIncrMagFreqDist} from the given MFD with a mapping from magnitude to absolute
+	 * (i.e., not relative to the rate) standard deviation.
+	 * 
+	 * @param mfd
+	 * @param absStdDevFunc
+	 * @return uncertain MFD with the standard deviations set
+	 */
+	public static UncertainIncrMagFreqDist absStdDev(IncrementalMagFreqDist mfd, DoubleUnaryOperator absStdDevFunc) {
+		EvenlyDiscretizedFunc stdDevs = new EvenlyDiscretizedFunc(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+		
+		stdDevs.setYofX(absStdDevFunc);
+		
+		return new UncertainIncrMagFreqDist(mfd, stdDevs);
+	}
+	
+	/**
+	 * Creates a new {@link UncertainIncrMagFreqDist} from the given MFD with a mapping from magnitude and rate to
+	 * standard deviation.
+	 * 
+	 * @param mfd
+	 * @param absStdDevFunc
+	 * @return uncertain MFD with the standard deviations set
+	 */
+	public static UncertainIncrMagFreqDist absStdDev(IncrementalMagFreqDist mfd, DoubleBinaryOperator absStdDevFunc) {
+		EvenlyDiscretizedFunc stdDevs = new EvenlyDiscretizedFunc(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+		
+		stdDevs.setYofX(absStdDevFunc);
 		
 		return new UncertainIncrMagFreqDist(mfd, stdDevs);
 	}
