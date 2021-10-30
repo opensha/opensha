@@ -12,7 +12,7 @@ public enum ConstraintWeightingType {
 	/**
 	 * Constraints are normalized by the target value, so that constraints for low values are fit equally well
 	 * as constraints for high values. Values in the A matrix will be divided by the target rate, and the d vector
-	 * will contain 1's (before accounting for global constraint weights).
+	 * will contain 1's (before accounting for global constraint weights). Misfits are in units of fractional difference.
 	 */
 	NORMALIZED("Normalized", "Norm", "Misfit (Fractional)") {
 		@Override
