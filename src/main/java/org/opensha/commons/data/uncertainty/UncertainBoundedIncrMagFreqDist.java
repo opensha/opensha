@@ -168,6 +168,11 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 			}
 			return super.deserializeExtra(in, name);
 		}
+
+		@Override
+		protected Class<UncertainBoundedIncrMagFreqDist> getType() {
+			return UncertainBoundedIncrMagFreqDist.class;
+		}
 		
 	}
 

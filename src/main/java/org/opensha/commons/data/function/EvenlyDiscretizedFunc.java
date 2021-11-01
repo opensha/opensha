@@ -619,6 +619,11 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize EvenlyDiscretizedFunc");
 			return new EvenlyDiscretizedFunc(minX, maxX, size);
 		}
+
+		@Override
+		protected Class<EvenlyDiscretizedFunc> getType() {
+			return EvenlyDiscretizedFunc.class;
+		}
 		
 	}
 

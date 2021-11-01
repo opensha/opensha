@@ -403,6 +403,11 @@ public class SummedMagFreqDist extends IncrementalMagFreqDist {
 			};
 		}
 
+		@Override
+		protected Class<SummedMagFreqDist> getType() {
+			return SummedMagFreqDist.class;
+		}
+
 	}
 
 }

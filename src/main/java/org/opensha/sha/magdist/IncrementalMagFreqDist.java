@@ -619,6 +619,11 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize EvenlyDiscretizedFunc");
 			return new IncrementalMagFreqDist(minX, maxX, size);
 		}
+
+		@Override
+		protected Class<IncrementalMagFreqDist> getType() {
+			return IncrementalMagFreqDist.class;
+		}
 		
 	}
 

@@ -255,6 +255,11 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 		protected XY_DataSet instance(Double minX, Double maxX, Integer size) {
 			return new DefaultXY_DataSet();
 		}
+
+		@Override
+		protected Class<XY_DataSet> getType() {
+			return XY_DataSet.class;
+		}
 		
 	}
 	
@@ -267,6 +272,10 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 				return;
 			}
 			out.beginObject();
+			
+			Class<E> serType = getType();
+			Preconditions.checkState(serType.isAssignableFrom(xy.getClass()));
+			out.name("type").value(serType.getName());
 			
 			String name = xy.getName();
 			if (name != null && !name.isEmpty())
@@ -310,6 +319,8 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 		
 		protected abstract E instance(Double minX, Double maxX, Integer size);
 		
+		protected abstract Class<E> getType();
+		
 		protected Consumer<E> deserializeExtra(JsonReader in, String name) throws IOException {
 			in.skipValue();
 			return null;
@@ -323,6 +334,14 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 			}
 			in.beginObject();
 			
+			E xy = innerRead(in);
+			
+			in.endObject();
+			
+			return xy;
+		}
+		
+		protected E innerRead(JsonReader in) throws IOException {
 			String xyName = null;
 			String info = null;
 			String xName = null;
@@ -335,10 +354,28 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 			
 			List<Consumer<E>> consumers = new ArrayList<>();
 			
+			boolean first = true;
+			
 			while (in.hasNext()) {
 				String name = in.nextName();
 				
 				switch (name) {
+				case "type":
+					String type = in.nextString();
+					if (first) {
+						// see if we should use a different type
+						try {
+							Class<? extends E> clazz = (Class<? extends E>) Class.forName(type);
+							JsonAdapter adapterAnn = clazz.getAnnotation(JsonAdapter.class);
+							Class<?> adapterClass = adapterAnn.value();
+							if (AbstractAdapter.class.isAssignableFrom(adapterClass)) {
+								AbstractAdapter<? extends E> adapter = (AbstractAdapter<? extends E>)
+										adapterClass.getConstructor().newInstance();
+								return adapter.innerRead(in);
+							}
+						} catch (Exception e) {}
+					}
+					break;
 				case "name":
 					xyName = in.nextString();
 					break;
@@ -382,6 +419,7 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 						consumers.add(consumer);
 					break;
 				}
+				first = false;
 			}
 			
 			Preconditions.checkNotNull(xy, "missing 'values'");
@@ -392,8 +430,6 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 			
 			for (Consumer<E> consumer : consumers)
 				consumer.accept(xy);
-			
-			in.endObject();
 			
 			return xy;
 		}

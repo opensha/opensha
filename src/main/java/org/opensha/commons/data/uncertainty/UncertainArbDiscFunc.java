@@ -237,6 +237,11 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 			return super.deserializeExtra(in, name);
 		}
 
+		@Override
+		protected Class<UncertainArbDiscFunc> getType() {
+			return UncertainArbDiscFunc.class;
+		}
+
 	}
 	
 }

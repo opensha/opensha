@@ -152,6 +152,11 @@ public class UncertainIncrMagFreqDist extends IncrementalMagFreqDist implements 
 			return super.deserializeExtra(in, name);
 		}
 
+		@Override
+		protected Class<UncertainIncrMagFreqDist> getType() {
+			return UncertainIncrMagFreqDist.class;
+		}
+
 	}
 	
 	

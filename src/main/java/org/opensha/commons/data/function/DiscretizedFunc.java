@@ -181,6 +181,11 @@ public interface DiscretizedFunc extends XY_DataSet {
 		protected DiscretizedFunc instance(Double minX, Double maxX, Integer size) {
 			return new ArbitrarilyDiscretizedFunc();
 		}
+
+		@Override
+		protected Class<DiscretizedFunc> getType() {
+			return DiscretizedFunc.class;
+		}
 	}
 	
 	public static abstract class AbstractAdapter<E extends DiscretizedFunc> extends XY_DataSet.AbstractAdapter<E> {

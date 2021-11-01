@@ -341,6 +341,11 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize IntegerPDF_FunctionSampler");
 			return new IntegerPDF_FunctionSampler(size);
 		}
+
+		@Override
+		protected Class<IntegerPDF_FunctionSampler> getType() {
+			return IntegerPDF_FunctionSampler.class;
+		}
 		
 	}
 
