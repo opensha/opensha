@@ -36,7 +36,7 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 public class MFDInversionConstraint extends InversionConstraint {
 	
 	private transient FaultSystemRupSet rupSet;
-	@JsonAdapter(MFDsAdapter.class) private List<? extends IncrementalMagFreqDist> mfds;
+	private List<? extends IncrementalMagFreqDist> mfds;
 	private HashSet<Integer> excludeRupIndexes;
 	
 	public MFDInversionConstraint(FaultSystemRupSet rupSet, double weight, boolean inequality,
@@ -149,56 +149,6 @@ public class MFDInversionConstraint extends InversionConstraint {
 	@Override
 	public void setRuptureSet(FaultSystemRupSet rupSet) {
 		this.rupSet = rupSet;
-	}
-	
-	private static IncrementalMagFreqDist.Adapter regularAdapter = new IncrementalMagFreqDist.Adapter();
-	private static UncertainIncrMagFreqDist.Adapter uncertAdapter = new UncertainIncrMagFreqDist.Adapter();
-	private static UncertainBoundedIncrMagFreqDist.Adapter uncertBoundAdapter = new UncertainBoundedIncrMagFreqDist.Adapter();
-	private static class MFDsAdapter extends TypeAdapter<List<? extends IncrementalMagFreqDist>> {
-
-		@Override
-		public void write(JsonWriter out, List<? extends IncrementalMagFreqDist> list) throws IOException {
-			out.beginArray();
-			for (IncrementalMagFreqDist mfd : list) {
-				if (mfd instanceof UncertainBoundedIncrMagFreqDist)
-					uncertBoundAdapter.write(out, (UncertainBoundedIncrMagFreqDist)mfd);
-				else if (mfd instanceof UncertainIncrMagFreqDist)
-					uncertAdapter.write(out, (UncertainIncrMagFreqDist)mfd);
-				else
-					regularAdapter.write(out, mfd);
-			}
-			out.endArray();
-		}
-
-		@Override
-		public List<? extends IncrementalMagFreqDist> read(JsonReader in) throws IOException {
-			List<IncrementalMagFreqDist> ret = new ArrayList<>();
-
-			in.beginArray();
-			while (in.hasNext())
-				ret.add(readAsApplicable(in));
-			in.endArray();
-			
-			return ret;
-		}
-		
-		private IncrementalMagFreqDist readAsApplicable(JsonReader in) throws IOException {
-			// this will work even if it's not uncertainty bounded
-			UncertainBoundedIncrMagFreqDist func = uncertBoundAdapter.read(in);
-
-			// see if it's actually uncertain
-			if (func.getStdDevs() == null)
-				// not uncertain
-				return new IncrementalMagFreqDist(func);
-			// see if it's really bounded
-			if (func.getLower() == null) {
-				// not bounded
-				return new UncertainIncrMagFreqDist(func, func.getStdDevs());
-			}
-			// it's really uncertainty bounded
-			return func;
-		}
-		
 	}
 
 }

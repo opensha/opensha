@@ -273,6 +273,19 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 			}
 			out.beginObject();
 			
+			AbstractAdapter<E> adapter = null;
+			try {
+				adapter = getSubclassAdapter((Class<E>) xy.getClass());
+			} catch (Exception e) {}
+			if (adapter != null)
+				adapter.innerWrite(out, xy);
+			else
+				innerWrite(out, xy);
+			
+			out.endObject();
+		}
+		
+		protected void innerWrite(JsonWriter out, E xy) throws IOException {
 			Class<E> serType = getType();
 			Preconditions.checkState(serType.isAssignableFrom(xy.getClass()));
 			out.name("type").value(serType.getName());
@@ -309,8 +322,6 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 			}
 			
 			out.endArray();
-			
-			out.endObject();
 		}
 		
 		protected void serializeExtras(JsonWriter out, E xy) throws IOException {
@@ -323,6 +334,21 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 		
 		protected Consumer<E> deserializeExtra(JsonReader in, String name) throws IOException {
 			in.skipValue();
+			return null;
+		}
+		
+		@SuppressWarnings("unchecked")
+		private AbstractAdapter<E> getSubclassAdapter(String type) throws Exception {
+			Class<? extends E> clazz = (Class<? extends E>) Class.forName(type);
+			return getSubclassAdapter(clazz);
+		}
+		
+		@SuppressWarnings("unchecked")
+		private AbstractAdapter<E> getSubclassAdapter(Class<? extends E> clazz) throws Exception {
+			JsonAdapter adapterAnn = clazz.getAnnotation(JsonAdapter.class);
+			Class<?> adapterClass = adapterAnn.value();
+			if (AbstractAdapter.class.isAssignableFrom(adapterClass))
+				return (AbstractAdapter<E>)adapterClass.getConstructor().newInstance();
 			return null;
 		}
 
@@ -365,14 +391,9 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 					if (first) {
 						// see if we should use a different type
 						try {
-							Class<? extends E> clazz = (Class<? extends E>) Class.forName(type);
-							JsonAdapter adapterAnn = clazz.getAnnotation(JsonAdapter.class);
-							Class<?> adapterClass = adapterAnn.value();
-							if (AbstractAdapter.class.isAssignableFrom(adapterClass)) {
-								AbstractAdapter<? extends E> adapter = (AbstractAdapter<? extends E>)
-										adapterClass.getConstructor().newInstance();
+							AbstractAdapter<? extends E> adapter = getSubclassAdapter(type);
+							if (adapter != null)
 								return adapter.innerRead(in);
-							}
 						} catch (Exception e) {}
 					}
 					break;
