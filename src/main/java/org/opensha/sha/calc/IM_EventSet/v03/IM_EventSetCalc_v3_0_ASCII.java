@@ -33,6 +33,7 @@ import org.opensha.commons.data.siteData.OrderedSiteDataProviderList;
 import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
+import org.opensha.commons.data.siteData.impl.WillsMap2006;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -41,6 +42,7 @@ import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.param.impl.StringParameter;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.IM_EventSet.v03.outputImpl.HAZ01Writer;
@@ -183,7 +185,14 @@ implements ParameterChangeWarningListener {
 		dirName = outDir ;
 		outputDir = new File(dirName);
 		
-		providers = OrderedSiteDataProviderList.createCompatibilityProviders(false);
+//		providers = OrderedSiteDataProviderList.createCompatibilityProviders(false);
+		ArrayList<SiteData<?>> p = new ArrayList<>();
+		try {
+			p.add(new WillsMap2006());
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		providers = new OrderedSiteDataProviderList(p);
 		// disable non-Vs30 providers
 		for (int i=0; i<providers.size(); i++) {
 			if (!providers.getProvider(i).getDataType().equals(SiteData.TYPE_VS30))
