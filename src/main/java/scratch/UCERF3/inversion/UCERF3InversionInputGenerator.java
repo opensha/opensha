@@ -230,8 +230,22 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				}
 			}
 			
-			constraints.add(new MFDLaplacianSmoothingInversionConstraint(rupSet, config.getMFDSmoothnessConstraintWt(),
-					config.getMFDSmoothnessConstraintWtForPaleoParents(), paleoParentIDs, MFDConstraints));
+			if (config.getMFDSmoothnessConstraintWt() > 0) {
+				HashSet<Integer> nonPaleoParentIDs = null;
+				if (config.getMFDSmoothnessConstraintWtForPaleoParents() > 0) {
+					// need to apply it only to non-paleo parents
+					for (FaultSection sect : rupSet.getFaultSectionDataList())
+						if (!paleoParentIDs.contains(sect.getParentSectionId()))
+							nonPaleoParentIDs.add(sect.getParentSectionId());
+				}
+				constraints.add(new MFDLaplacianSmoothingInversionConstraint(rupSet,
+						config.getMFDSmoothnessConstraintWt(), nonPaleoParentIDs, MFDConstraints));
+			}
+			
+			if (config.getMFDSmoothnessConstraintWtForPaleoParents() > 0d) {
+				constraints.add(new MFDLaplacianSmoothingInversionConstraint(rupSet,
+						config.getMFDSmoothnessConstraintWtForPaleoParents(), paleoParentIDs, MFDConstraints));
+			}
 		}
 		
 		// Constraint solution moment to equal deformation-model moment

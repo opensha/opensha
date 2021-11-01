@@ -413,7 +413,8 @@ public class Inversions {
 			
 			boolean ineq = cmd.hasOption("mfd-ineq");
 			
-			constraints.add(new RelativeBValueConstraint(rupSet, bValue, weight, ineq));
+			constraints.add(new RelativeBValueConstraint(rupSet, bValue, weight,
+					ConstraintWeightingType.NORMALIZED, null, ineq));
 		}
 		
 		// doesn't work well, and slip rate constraint handles moment anyway

@@ -191,17 +191,15 @@ public class InversionConstraintImplTests {
 		ArrayList<SectionMFD_constraint> constraints =
 				FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
 		MFDLaplacianSmoothingInversionConstraint constr = new MFDLaplacianSmoothingInversionConstraint(
-				rupSet, 1d, 0d, null, constraints);
+				rupSet, 1d, null, constraints);
 		
 		testConstraint(constr);
 		
-		constr = new MFDLaplacianSmoothingInversionConstraint(
-				rupSet, 0d, 1d, allParents, constraints);
-		
-		testConstraint(constr);
+		HashSet<Integer> oneParent = new HashSet<>();
+		oneParent.add(allParents.iterator().next());
 		
 		constr = new MFDLaplacianSmoothingInversionConstraint(
-				rupSet, 1d, 1d, allParents, constraints);
+				rupSet, 1d, oneParent, constraints);
 		
 		testConstraint(constr);
 	}
@@ -348,7 +346,7 @@ public class InversionConstraintImplTests {
 
 	@Test
 	public void testRelBValue() throws IOException {
-		RelativeBValueConstraint constr = new RelativeBValueConstraint(rupSet, 1d);
+		RelativeBValueConstraint constr = new RelativeBValueConstraint(rupSet, 1d, 1d);
 		
 		testConstraint(constr);
 	}
