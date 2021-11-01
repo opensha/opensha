@@ -99,14 +99,27 @@ public abstract class InversionConstraint implements ShortNamed {
 	}
 	
 	/**
-	 * @return weight multiplier for this constraint
+	 * Sets the weight, by which data fit misfits are multiplied, for this constraint
+	 * 
+	 * @param weight
+	 */
+	public void setWeight(double weight) {
+		this.weight = weight;
+	}
+	
+	/**
+	 * Gets the weight, by which data fit misfits are multiplied, for this constraint
+	 * 
+	 * @return weight
 	 */
 	public final double getWeight() {
 		return weight;
 	}
 	
 	/**
-	 * @return constraint weighting type, used for interpreting misfits
+	 * Gets the constraint weighting type, usefult for interpreting misfits, for this constraint
+	 * 
+	 * @return constraint weighting type
 	 */
 	public final ConstraintWeightingType getWeightingType() {
 		return weightingType;
