@@ -233,7 +233,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if (config.getMFDSmoothnessConstraintWt() > 0) {
 				HashSet<Integer> nonPaleoParentIDs = null;
 				if (config.getMFDSmoothnessConstraintWtForPaleoParents() > 0) {
-					// need to apply it only to non-paleo parents
+					// we have both, need to apply it only to non-paleo parents here
+					nonPaleoParentIDs = new HashSet<>();
 					for (FaultSection sect : rupSet.getFaultSectionDataList())
 						if (!paleoParentIDs.contains(sect.getParentSectionId()))
 							nonPaleoParentIDs.add(sect.getParentSectionId());

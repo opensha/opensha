@@ -10,6 +10,8 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * This allows you to strongly minimize the rate of certain ruptures. We used this
  * in UCERF3 to zero out rates for ruptures which were below the section minimum magnitude
  * 
+ * TODO: this could easily be a single row constraint, should we change it to be?
+ * 
  * @author Morgan Page & Kevin Milner
  *
  */
