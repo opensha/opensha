@@ -1,6 +1,10 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -44,16 +48,11 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
-import com.google.common.base.Joiner;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 

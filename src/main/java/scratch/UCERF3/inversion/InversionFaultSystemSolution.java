@@ -23,6 +23,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -43,7 +44,6 @@ import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
@@ -791,7 +791,8 @@ public class InversionFaultSystemSolution extends SlipEnabledSolution {
 	 * 
 	 * @return
 	 */
-	public static IncrementalMagFreqDist getFinalTrulyOffFaultMFD(InversionTargetMFDs inversionTargetMFDs,
+	public static IncrementalMagFreqDist getFinalTrulyOffFaultMFD(
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs inversionTargetMFDs,
 			MomentRateFixes momRateFixes, double mMaxOffFault, IncrementalMagFreqDist totalSubSeismoMFD,
 			IncrementalMagFreqDist totalSupraSeismoRegionalMFD) {
 		if(momRateFixes == MomentRateFixes.NONE || momRateFixes == MomentRateFixes.APPLY_IMPLIED_CC ) {

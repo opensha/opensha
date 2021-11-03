@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
@@ -90,7 +91,6 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_TemporalDecayParam_p;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools.EpicenterMapThread;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
 /**

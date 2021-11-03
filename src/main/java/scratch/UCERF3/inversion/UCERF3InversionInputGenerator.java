@@ -1601,7 +1601,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 //		FaultSystemIO.writeRupSet((InversionFaultSystemRupSet)origRupSet, tempIVFRS);
 //		origRupSet = FaultSystemIO.loadInvRupSet(tempIVFRS);
 		
-		InversionTargetMFDs origTargetMFDs = origRupSet.getModule(InversionTargetMFDs.class);
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs origTargetMFDs =
+				origRupSet.getModule(org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs.class);
 		ModSectMinMags origMinMags = origRupSet.requireModule(ModSectMinMags.class);
 		
 		UCERF3InversionInputGenerator origGen = getTestConfig(origRupSet, origBranch.getValue(FaultModels.class), origTargetMFDs);
@@ -1635,7 +1636,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		U3LogicTreeBranch newBranch = rupSet.requireModule(U3LogicTreeBranch.class);
 		Preconditions.checkState(newBranch.equals(origBranch));
-		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs newTargetMFDs =
+				rupSet.requireModule(org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs.class);
 		
 		System.out.println("Validating modified min mags");
 		validateMinMags(origMinMags, rupSet.requireModule(ModSectMinMags.class));
@@ -1673,7 +1675,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		U3LogicTreeBranch origBranch = U3LogicTreeBranch.DEFAULT;
 		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
 		
-		InversionTargetMFDs origTargetMFDs = origRupSet.getModule(U3InversionTargetMFDs.class);
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs origTargetMFDs = origRupSet.getModule(U3InversionTargetMFDs.class);
 		ModSectMinMags origMinMags = origRupSet.requireModule(ModSectMinMags.class);
 		
 		UCERF3InversionInputGenerator origGen = getTestConfig(origRupSet, origBranch.getValue(FaultModels.class), origTargetMFDs);
@@ -1686,7 +1688,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		
 		U3LogicTreeBranch newBranch = rupSet.requireModule(U3LogicTreeBranch.class);
 		Preconditions.checkState(newBranch.equals(origBranch));
-		InversionTargetMFDs newTargetMFDs = rupSet.requireModule(U3InversionTargetMFDs.class);
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs newTargetMFDs = rupSet.requireModule(U3InversionTargetMFDs.class);
 		
 		System.out.println("Validating modified min mags");
 		validateMinMags(origMinMags, rupSet.requireModule(ModSectMinMags.class));
@@ -1721,7 +1723,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	private static boolean test_double_percision = true; // true: test to double precision, false: float precision
 	
 	private static UCERF3InversionInputGenerator getTestConfig(FaultSystemRupSet rupSet, FaultModels fm,
-			InversionTargetMFDs targetMFDs) throws IOException {
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs) throws IOException {
 		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
 				branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);

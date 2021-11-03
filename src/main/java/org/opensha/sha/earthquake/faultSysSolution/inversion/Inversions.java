@@ -24,22 +24,16 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -52,9 +46,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
-import scratch.UCERF3.utils.MFD_InversionConstraint;
 
 public class Inversions {
 

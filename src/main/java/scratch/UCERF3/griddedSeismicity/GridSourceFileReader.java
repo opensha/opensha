@@ -23,6 +23,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;

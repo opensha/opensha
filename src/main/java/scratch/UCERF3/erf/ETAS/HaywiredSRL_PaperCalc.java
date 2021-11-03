@@ -26,6 +26,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -36,7 +37,6 @@ import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.erf.FSSRupsInRegionCache;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class HaywiredSRL_PaperCalc {

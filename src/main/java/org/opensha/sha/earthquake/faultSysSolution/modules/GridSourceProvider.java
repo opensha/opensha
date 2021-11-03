@@ -1,10 +1,12 @@
-package scratch.UCERF3.griddedSeismicity;
+package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+
+import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 
 /**
  * Interface implemented by providers of gridded (sometimes referred to as
@@ -58,16 +60,6 @@ public interface GridSourceProvider extends OpenSHA_Module {
 	 */
 	public ProbEqkSource getSourceTrulyOffOnly(int index, double duration,
 			boolean filterAftershocks, BackgroundRupType bgRupType);
-
-	
-	
-//	/**
-//	 * Set whether all sources should just be treated as point sources, not just
-//	 * those with M&leq;6.0
-//	 * 
-//	 * @param usePoints
-//	 */
-//	public void setAsPointSources(boolean usePoints);
 
 	/**
 	 * Returns the unassociated MFD of a grid node.

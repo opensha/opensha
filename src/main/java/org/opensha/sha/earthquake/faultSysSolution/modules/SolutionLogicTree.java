@@ -36,9 +36,7 @@ import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
