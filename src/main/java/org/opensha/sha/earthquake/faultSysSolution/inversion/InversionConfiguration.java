@@ -156,15 +156,17 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 					config.completion = new CompoundCompletionCriteria(List.of(config.completion, completion));
 			}
 			
-			if (cmd.hasOption("avg-threads")) {
+			if (cmd.hasOption("avg-threads"))
 				config.avgThreads = Integer.parseInt(cmd.getOptionValue("avg-threads"));
-			}
-			if (config.avgThreads > 0) {
-				Preconditions.checkArgument(cmd.hasOption("avg-completion") || config.avgCompletion != null,
-						"Averaging enabled but --avg-completion <value> not specified");
+			
+			if (config.avgThreads != null && config.avgThreads > 0) {
 				if (cmd.hasOption("avg-completion"))
 					config.avgCompletion = parseCompletionArg(cmd.getOptionValue("avg-completion"));
+				else
+					Preconditions.checkArgument(config.avgCompletion != null,
+							"Averaging enabled but --avg-completion <value> not specified");
 			}
+			
 			if (cmd.hasOption("sub-completion"))
 				config.subCompletion = parseCompletionArg(cmd.getOptionValue("sub-completion"));
 			
