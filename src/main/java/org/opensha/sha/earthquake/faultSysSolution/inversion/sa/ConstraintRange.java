@@ -1,6 +1,8 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 
@@ -35,6 +37,14 @@ public class ConstraintRange {
 	 * Weighting type of this constraint, useful for interpreting misfits
 	 */
 	public final ConstraintWeightingType weightingType;
+	
+	public static List<ConstraintRange> filterByType(List<ConstraintRange> ranges, ConstraintWeightingType type) {
+		return ranges.stream().filter(R -> R.weightingType == type).collect(Collectors.toList());
+	}
+	
+	public static List<ConstraintRange> filterByInequality(List<ConstraintRange> ranges, boolean inequality) {
+		return ranges.stream().filter(R -> R.inequality == inequality).collect(Collectors.toList());
+	}
 	
 	public ConstraintRange(String name, String shortName,
 			int startRow, int endRow, boolean inequality, double weight, ConstraintWeightingType weightingType) {

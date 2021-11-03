@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -356,13 +357,13 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		int rounds = 0;
 		long iter = startIter;
 		double[] prevBestE = null;
-		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs, numNonZero)) {
+		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs, numNonZero, misfit, misfit_ineq, constraintRanges)) {
 			if (subCompletionCriteria instanceof VariableSubTimeCompletionCriteria)
 				((VariableSubTimeCompletionCriteria)subCompletionCriteria).setGlobalState(watch, iter, Ebest, perturbs);
 			
 			// write checkpoint information if applicable
 			if (checkPointCriteria != null &&
-					checkPointCriteria.isSatisfied(checkPointWatch, iter, Ebest, perturbs, 0)) {
+					checkPointCriteria.isSatisfied(checkPointWatch, iter, Ebest, perturbs, 0, misfit, misfit_ineq, constraintRanges)) {
 				numCheckPoints++;
 				System.out.println("Writing checkpoint after "+iter+" iterations. Ebest: "
 						+Doubles.join(", ", Ebest));
@@ -696,6 +697,17 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public void setConstraintRanges(List<ConstraintRange> constraintRanges) {
 		// don't set it in downstream ones, we'll calculate range-specific values if needed at the end of each sub-iteration
 		this.constraintRanges = constraintRanges;
+		if (constraintRanges == null) {
+			if (Ebest.length > 4)
+				Ebest = Arrays.copyOf(Ebest, 4);
+		} else {
+			if (Ebest.length < constraintRanges.size()+4) {
+				int curLen = Ebest.length;
+				Ebest = Arrays.copyOf(Ebest, 4+constraintRanges.size());
+				for (int i=curLen; i<Ebest.length; i++)
+					Ebest[i] = Double.POSITIVE_INFINITY;
+			}
+		}
 	}
 	
 	public List<ConstraintRange> getConstraintRanges() {

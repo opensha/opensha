@@ -469,7 +469,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		}
 
 		// we do iter-1 because iter here is 1-based, not 0-based
-		while (!criteria.isSatisfied(watch, iter-1, Ebest, perturbs, numNonZero)) {
+		while (!criteria.isSatisfied(watch, iter-1, Ebest, perturbs, numNonZero, misfit_best, misfit_ineq_best, constraintRanges)) {
 
 			// Find current simulated annealing "temperature" based on chosen cooling schedule
 //			double coolIter = (double)iter / coolingFuncSlowdown;

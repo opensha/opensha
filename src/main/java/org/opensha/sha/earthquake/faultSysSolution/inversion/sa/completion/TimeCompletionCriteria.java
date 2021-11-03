@@ -1,6 +1,9 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
+import java.util.List;
+
 import org.apache.commons.lang3.time.StopWatch;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
 public class TimeCompletionCriteria implements CompletionCriteria {
 	
@@ -16,7 +19,7 @@ public class TimeCompletionCriteria implements CompletionCriteria {
 	}
 
 	@Override
-	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept, int numNonZero) {
+	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept, int numNonZero, double[] misfits, double[] misfits_ineq, List<ConstraintRange> constraintRanges) {
 		return watch.getTime() >= millis;
 	}
 	
