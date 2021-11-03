@@ -115,7 +115,7 @@ public class Inversions {
 	}
 	
 	private static Options createOptions() {
-		Options ops = InversionConfiguration.createSAOptions(false);
+		Options ops = InversionConfiguration.createSAOptions();
 
 		Option rupSetOption = new Option("rs", "rupture-set", true,
 				"Path to Rupture Set zip file.");

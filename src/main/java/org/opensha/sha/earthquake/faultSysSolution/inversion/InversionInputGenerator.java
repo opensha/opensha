@@ -72,6 +72,25 @@ public class InversionInputGenerator {
 		generateInputs(null, verbose);
 	}
 	
+	public static List<ConstraintRange> buildConstraintRanges(List<InversionConstraint> constraints, boolean verbose) {
+		int numRows = 0;
+		int numIneqRows = 0;
+		List<ConstraintRange> constraintRowRanges = new ArrayList<>();
+		for (InversionConstraint constraint : constraints) {
+			constraint.setQuickGetSets(!verbose);
+			ConstraintRange range;
+			if (constraint.isInequality()) {
+				range = calcRowRange(numIneqRows, constraint, verbose);
+				numIneqRows = range.endRow;
+			} else {
+				range = calcRowRange(numRows, constraint, verbose);
+				numRows = range.endRow;
+			}
+			constraintRowRanges.add(range);
+		}
+		return constraintRowRanges;
+	}
+	
 	public void generateInputs(Class<? extends DoubleMatrix2D> clazz, final boolean verbose) {
 		if (verbose)
 			System.out.println("Generating inversion inputs with "+numRuptures+" ruptures "
@@ -90,7 +109,6 @@ public class InversionInputGenerator {
 			Preconditions.checkState(waterLevelRates.length == numRuptures,
 					"Water level rates are wrong size: %s != %s", waterLevelRates.length, numRuptures);
 		
-		constraintRowRanges = new ArrayList<>();
 		
 		if (verbose)
 			System.out.println("Calculating constraint row counts");
@@ -98,19 +116,14 @@ public class InversionInputGenerator {
 		Stopwatch watch = verbose ? Stopwatch.createStarted() : null;
 		Stopwatch watchTotal = verbose ? Stopwatch.createStarted() : null;
 
+		constraintRowRanges = buildConstraintRanges(constraints, verbose);
 		int numRows = 0;
 		int numIneqRows = 0;
-		for (InversionConstraint constraint : constraints) {
-			constraint.setQuickGetSets(!verbose);
-			ConstraintRange range;
-			if (constraint.isInequality()) {
-				range = calcRowRange(numIneqRows, constraint, verbose);
+		for (ConstraintRange range : constraintRowRanges) {
+			if (range.inequality)
 				numIneqRows = range.endRow;
-			} else {
-				range = calcRowRange(numRows, constraint, verbose);
+			else
 				numRows = range.endRow;
-			}
-			constraintRowRanges.add(range);
 		}
 		
 		if (verbose) {
@@ -235,7 +248,7 @@ public class InversionInputGenerator {
 		
 	}
 	
-	private ConstraintRange calcRowRange(int startIndex, InversionConstraint constraint, boolean verbose) {
+	static ConstraintRange calcRowRange(int startIndex, InversionConstraint constraint, boolean verbose) {
 		Stopwatch watch = verbose ? Stopwatch.createStarted() : null;
 		ConstraintRange range = constraint.getRange(startIndex);
 		if (verbose) {
@@ -247,7 +260,7 @@ public class InversionInputGenerator {
 	
 	private static final DecimalFormat oneDigit = new DecimalFormat("0.0");
 	
-	protected String getTimeStr(Stopwatch watch) {
+	protected static String getTimeStr(Stopwatch watch) {
 		long millis = watch.elapsed(TimeUnit.MILLISECONDS);
 		if (millis < 1000)
 			return millis+" ms";

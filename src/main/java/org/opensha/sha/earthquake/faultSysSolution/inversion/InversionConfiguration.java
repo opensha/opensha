@@ -21,13 +21,17 @@ import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint.Adapter;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompoundCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.EnergyCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.MisfitStdDevCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
@@ -137,14 +141,29 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			if (cmd.hasOption("completion"))
 				config.completion = parseCompletionArg(cmd.getOptionValue("completion"));
 			
+			if (cmd.hasOption("completion-sd")) {
+				if (config.completion != null && !cmd.hasOption("completion"))
+					// we're overriding one that wasn't just supplied, clear out the old one
+					config.completion = null;
+				double sd = Double.parseDouble(cmd.getOptionValue("completion-sd"));
+				ConstraintWeightingType type = null;
+				if (cmd.hasOption("completion-sd-type"))
+					type = ConstraintWeightingType.valueOf(cmd.getOptionValue("completion-sd-type"));
+				MisfitStdDevCompletionCriteria completion = new MisfitStdDevCompletionCriteria(type, sd);
+				if (config.completion == null)
+					config.completion = completion;
+				else
+					config.completion = new CompoundCompletionCriteria(List.of(config.completion, completion));
+			}
+			
 			if (cmd.hasOption("avg-threads")) {
 				config.avgThreads = Integer.parseInt(cmd.getOptionValue("avg-threads"));
-				if (config.avgThreads > 0) {
-					Preconditions.checkArgument(cmd.hasOption("avg-completion") || config.avgCompletion != null,
-							"Averaging enabled but --avg-completion <value> not specified");
-					if (cmd.hasOption("avg-completion"))
-						config.avgCompletion = parseCompletionArg(cmd.getOptionValue("avg-completion"));
-				}
+			}
+			if (config.avgThreads > 0) {
+				Preconditions.checkArgument(cmd.hasOption("avg-completion") || config.avgCompletion != null,
+						"Averaging enabled but --avg-completion <value> not specified");
+				if (cmd.hasOption("avg-completion"))
+					config.avgCompletion = parseCompletionArg(cmd.getOptionValue("avg-completion"));
 			}
 			if (cmd.hasOption("sub-completion"))
 				config.subCompletion = parseCompletionArg(cmd.getOptionValue("sub-completion"));
@@ -204,6 +223,33 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return this;
 		}
 		
+		/**
+		 * This normalizes the weights of all constraints by their row counts. This effectively weights each constraint
+		 * type equally, despite varying numbers of rows.
+		 * 
+		 * @return
+		 */
+		public Builder normalizeConstraintWeightsByRowCount() {
+			return normalizeConstraintWeightsByRowCount(null);
+		}
+		
+		/**
+		 * This normalizes the weights of all constraints with the given weighting type by their row counts.
+		 * This effectively weights each constraint type equally, despite varying numbers of rows.
+		 * 
+		 * @param weightingType
+		 * @return
+		 */
+		public Builder normalizeConstraintWeightsByRowCount(ConstraintWeightingType weightingType) {
+			for (InversionConstraint constraint : config.getConstraints()) {
+				if (weightingType == null || constraint.getWeightingType() == weightingType) {
+					int rows = constraint.getNumRows();
+					constraint.setWeight(constraint.getWeight()/(double)rows);
+				}
+			}
+			return this;
+		}
+		
 		public Builder subCompletion(CompletionCriteria subCompletion) {
 			config.subCompletion = subCompletion;
 			return this;
@@ -247,12 +293,14 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return TimeCompletionCriteria.getInMinutes(Long.parseLong(value.substring(0, value.length()-1)));
 		if (value.endsWith("s"))
 			return TimeCompletionCriteria.getInSeconds(Long.parseLong(value.substring(0, value.length()-1)));
+		if (value.endsWith("e")) // TODO add to docs
+			return new EnergyCompletionCriteria(Double.parseDouble(value.substring(0, value.length()-1)));
 		if (value.endsWith("i"))
 			value = value.substring(0, value.length()-1);
 		return new IterationCompletionCriteria(Long.parseLong(value));
 	}
 	
-	public static Options createSAOptions(boolean requireCompletion) {
+	public static Options createSAOptions() {
 		Options ops = new Options();
 
 		ops.addOption(FaultSysTools.threadsOption());
@@ -262,11 +310,26 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		 */
 
 		String complText = "If either no suffix or 'i' is appended, then it is assumed to be an iteration count. "
-				+ "Specify times in hours, minutes, or seconds by appending 'h', 'm', or 's' respecively. Fractions are not allowed.";
+				+ "Specify times in hours, minutes, or seconds by appending 'h', 'm', or 's' respecively. Specify total "
+				+ "energy by appending 'e'. Fractions are not allowed.";
 
 		Option completionOption = new Option("c", "completion", true, "Total inversion completion criteria. "+complText);
-		completionOption.setRequired(requireCompletion);
+		completionOption.setRequired(false);
 		ops.addOption(completionOption);
+		
+		// TODO add to docs
+		Option completionSDOption = new Option("csd", "completion-sd", true, "Total inversion completion criteria where "
+				+ "misfits for each constraint must have no more than the given standard deviation. This can apply "
+				+ "to only a given constraint weighting type if you supply the --completion-sd-type <type> argument.");
+		completionSDOption.setRequired(false);
+		ops.addOption(completionSDOption);
+		
+		// TODO add to docs
+		Option completionSDTypeOption = new Option("csd", "completion-sd-type", true, "Constraint wieghting type for the"
+				+ " --completion-sd option. Default is all constraints, options are: "
+				+FaultSysTools.enumOptions(ConstraintWeightingType.class));
+		completionSDTypeOption.setRequired(false);
+		ops.addOption(completionSDTypeOption);
 
 		Option avgOption = new Option("at", "avg-threads", true, "Enables a top layer of threads that average results "
 				+ "of worker threads at fixed intervals. Supply the number of averaging threads, which must be < threads. "
@@ -537,7 +600,9 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	public static InversionConfiguration readJSON(File jsonFile, FaultSystemRupSet rupSet) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
 		Gson gson = new GsonBuilder().registerTypeAdapter(InversionConstraint.class, new Adapter(rupSet)).create();
-		return gson.fromJson(reader, InversionConfiguration.class);
+		InversionConfiguration config = gson.fromJson(reader, InversionConfiguration.class);
+//		System.out.println("Read configuration. Completion: "+config.completion);
+		return config;
 	}
 
 }

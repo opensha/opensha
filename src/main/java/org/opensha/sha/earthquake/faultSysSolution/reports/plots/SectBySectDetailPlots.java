@@ -879,7 +879,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		cmlFuncs.add(nuclMFD.getCumRateDistWithOffset());
 		cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, MAIN_COLOR));
 		
-		Range yRange = yRange(cmlFuncs, MFD_DEFAULT_Y_RANGE, MFD_MAX_Y_RANGE);
+		Range yRange = yRange(cmlFuncs, MFD_DEFAULT_Y_RANGE, MFD_MAX_Y_RANGE, MFD_MAX_Y_RANGE_ORDERS_MAG);
 		if (yRange == null)
 			return new ArrayList<>();
 		
@@ -971,8 +971,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
 	private static Range MFD_DEFAULT_Y_RANGE = new Range(1e-10, 1e-2);
 	private static Range MFD_MAX_Y_RANGE = new Range(1e-10, 1e1);
+	private static double MFD_MAX_Y_RANGE_ORDERS_MAG = 8d;
 	
-	private static Range yRange(List<? extends XY_DataSet> funcs, Range defaultRange, Range maxRange) {
+	private static Range yRange(List<? extends XY_DataSet> funcs, Range defaultRange, Range maxRange, double maxOrdersMag) {
 		double minNonZero = defaultRange.getLowerBound();
 		double max = defaultRange.getUpperBound();
 		int numNonZero = 0;
@@ -993,6 +994,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (maxRange != null) {
 			minNonZero = Math.max(minNonZero, maxRange.getLowerBound());
 			max = Math.min(max, maxRange.getUpperBound());
+		}
+		double maxLog = Math.log10(max);
+		double minLog = Math.log10(minNonZero);
+		if (maxLog - minLog > maxOrdersMag) {
+			minLog = maxLog - maxOrdersMag;
+			minNonZero = Math.pow(10, minLog);
 		}
 		return new Range(minNonZero, max);
 	}
@@ -1146,7 +1153,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		specs.add(magRateSpec);
 		funcLists.add(funcs);
 		charLists.add(chars);
-		yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1)));
+		yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1), 5));
 		yLogs.add(true);
 		
 		List<SectMappedUncertainDataConstraint> paleoConstraints = null;
@@ -1304,7 +1311,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			specs.add(paleoSpec);
 			funcLists.add(funcs);
 			charLists.add(chars);
-			yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1)));
+			yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1), 5));
 			yLogs.add(true);
 		}
 		
@@ -1354,7 +1361,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			specs.add(slipRateSpec);
 			funcLists.add(funcs);
 			charLists.add(chars);
-			yRanges.add(yRange(funcs, new Range(1e0, 1e1), new Range(1e-3, 1e3)));
+			yRanges.add(yRange(funcs, new Range(1e0, 1e1), new Range(1e-3, 1e3), 3));
 			yLogs.add(true);
 		}
 		
