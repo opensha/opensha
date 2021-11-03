@@ -96,7 +96,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		System.out.println("------------ LOADING ARCHIVE ------------");
 		System.out.println("Archive: "+zip.getName());
 		loadModules(this, zip, getPrefix(null, getNestingPrefix()), preloadClass, new HashSet<>());
-		List<E> modules = getModules();
+		List<E> modules = getModules(false);
 		if (!modules.isEmpty())
 			System.out.println("Loaded "+modules.size()+" top-level modules");
 		List<Callable<E>> availableModules = getAvailableModules();
