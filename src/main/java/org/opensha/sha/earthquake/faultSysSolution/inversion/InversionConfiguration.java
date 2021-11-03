@@ -210,6 +210,10 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		}
 		
 		public Builder sampler(double[] samplerBasis) {
+			if (samplerBasis == null) {
+				config.sampler = null;
+				return this;
+			}
 			return sampler(new IntegerPDF_FunctionSampler(samplerBasis));
 		}
 		

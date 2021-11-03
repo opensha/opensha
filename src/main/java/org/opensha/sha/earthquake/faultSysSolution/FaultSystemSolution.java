@@ -130,6 +130,19 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public static FaultSystemSolution load(File file) throws IOException {
 		return load(new ZipFile(file));
 	}
+	
+	/**
+	 * Loads a FaultSystemSolution from a zip file, using the existing rupture set instead of the attached rupture set.
+	 * This can be useful for quickly loading many solutions based on the same rupture set.
+	 * 
+	 * @param file
+	 * @param rupSet
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution load(File file, FaultSystemRupSet rupSet) throws IOException {
+		return load(new ZipFile(file), rupSet);
+	}
 
 	/**
 	 * Loads a FaultSystemSolution from a zip file
@@ -139,7 +152,26 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemSolution load(ZipFile zip) throws IOException {
-		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(zip, FaultSystemSolution.class);
+		return load(zip, null);
+	}
+
+	/**
+	 * Loads a FaultSystemSolution from a zip file, using the existing rupture set instead of the attached rupture set.
+	 * This can be useful for quickly loading many solutions based on the same rupture set.
+	 * 
+	 * @param zip
+	 * @param rupSet
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution load(ZipFile zip, FaultSystemRupSet rupSet) throws IOException {
+		ModuleArchive<OpenSHA_Module> archive;
+		if (rupSet == null) {
+			archive = new ModuleArchive<>(zip, FaultSystemSolution.class);
+		} else {
+			archive = new ModuleArchive<>(zip);
+			archive.addModule(rupSet);
+		}
 		
 		FaultSystemSolution sol = archive.getModule(FaultSystemSolution.class);
 		if (sol == null) {

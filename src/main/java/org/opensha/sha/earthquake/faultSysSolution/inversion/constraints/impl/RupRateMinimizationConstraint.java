@@ -26,6 +26,10 @@ public class RupRateMinimizationConstraint extends InversionConstraint {
 		super(NAME, SHORT_NAME, weight, false);
 		this.rupIndexes = rupIndexes;
 	}
+	
+	public List<Integer> getRupIndexes() {
+		return rupIndexes;
+	}
 
 	@Override
 	public int getNumRows() {
