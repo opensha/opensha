@@ -160,16 +160,16 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 				subModule = getAsSubModule(module);
 		}
 		
-		List<Class<?>> assignableClasses = getAssignableClasses(module.getClass());
+		List<Class<? extends OpenSHA_Module>> assignableClasses = getAssignableClasses(module.getClass());
 		
 		// fully remove any duplicate associations
 		// this removes any module that is assignable from any class we are about to map
-		for (Class<?> clazz : assignableClasses)
+		for (Class<? extends OpenSHA_Module> clazz : assignableClasses)
 			removeModuleInstances(clazz);
 		
 		modules.add(module);
 		
-		for (Class<?> clazz : assignableClasses)
+		for (Class<? extends OpenSHA_Module> clazz : assignableClasses)
 			mapModule(module, clazz);
 		
 		if (subModule != null && subModule.getParent() == null)
@@ -202,17 +202,18 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param moduleClass
 	 * @return list of all valid classes that can map to the given module class
 	 */
-	private static List<Class<?>> getAssignableClasses(Class<? extends OpenSHA_Module> moduleClass) {
-		List<Class<?>> assignableClasses = new ArrayList<>();
+	@SuppressWarnings("unchecked") // is actually checked
+	private static List<Class<? extends OpenSHA_Module>> getAssignableClasses(Class<? extends OpenSHA_Module> moduleClass) {
+		List<Class<? extends OpenSHA_Module>> assignableClasses = new ArrayList<>();
 		assignableClasses.add(moduleClass);
 		for (Class<?> clazz : ClassUtils.getAllSuperclasses(moduleClass))
 			if (isValidModuleSubclass(clazz))
 				// this is a super-class
-				assignableClasses.add(clazz);
+				assignableClasses.add((Class<OpenSHA_Module>)clazz);
 		for (Class<?> clazz : ClassUtils.getAllInterfaces(moduleClass))
 			if (isValidModuleSubclass(clazz))
 				// this is a super-interface
-				assignableClasses.add(clazz);
+				assignableClasses.add((Class<OpenSHA_Module>)clazz);
 		return assignableClasses;
 	}
 	
@@ -238,7 +239,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clazz
 	 */
 	@SuppressWarnings("unchecked")
-	private void mapModule(E module, Class<?> clazz) {
+	private void mapModule(E module, Class<? extends OpenSHA_Module> clazz) {
 		Preconditions.checkState(clazz.getAnnotation(ModuleHelper.class) == null,
 				"Cannot map a class that implements @ModuleHelper: %s", clazz.getName());
 		if (mappings.containsKey(clazz))
@@ -268,7 +269,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clazz module class to unload
 	 * @return true if any mappings were removed
 	 */
-	public boolean removeModuleInstances(Class<?> clazz) {
+	public boolean removeModuleInstances(Class<? extends OpenSHA_Module> clazz) {
 		boolean ret = false;
 		for (int m=modules.size(); --m>=0;) {
 			E module = modules.get(m);
@@ -321,16 +322,16 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 */
 	@SuppressWarnings("unchecked")
 	public <M extends E> void addAvailableModule(Callable<? extends OpenSHA_Module> call, Class<M> moduleClass) {
-		List<Class<?>> assignableClasses = getAssignableClasses(moduleClass);
+		List<Class<? extends OpenSHA_Module>> assignableClasses = getAssignableClasses(moduleClass);
 		
 		// fully remove any duplicate associations
 		// this removes any available module that is assignable from any class we are about to map
-		for (Class<?> clazz : assignableClasses)
+		for (Class<? extends OpenSHA_Module> clazz : assignableClasses)
 			removeAvailableModuleInstances(clazz);
 		
 		availableModules.add((Callable<E>)call);
 		
-		for (Class<?> clazz : assignableClasses)
+		for (Class<? extends OpenSHA_Module> clazz : assignableClasses)
 			mapAvailableModule(call, clazz);
 	}
 	
@@ -420,7 +421,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private void mapAvailableModule(Callable<? extends OpenSHA_Module> call, Class<?> clazz) {
+	private void mapAvailableModule(Callable<? extends OpenSHA_Module> call, Class<? extends OpenSHA_Module> clazz) {
 		Preconditions.checkState(clazz.getAnnotation(ModuleHelper.class) == null,
 				"Cannot map a class that implements @ModuleHelper: %s", clazz.getName());
 		if (availableMappings.containsKey(clazz))
@@ -437,7 +438,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clazz
 	 * @return true if an available module was removed
 	 */
-	public boolean removeAvailableModuleInstances(Class<?> clazz) {
+	public boolean removeAvailableModuleInstances(Class<? extends OpenSHA_Module> clazz) {
 		boolean ret = false;
 		
 		HashSet<Callable<E>> removeCalls = new HashSet<>();
