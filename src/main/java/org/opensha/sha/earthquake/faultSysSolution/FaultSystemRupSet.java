@@ -170,8 +170,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 
 	@Override
 	public void setParent(ModuleArchive<OpenSHA_Module> parent) throws IllegalStateException {
-		FaultSystemRupSet oRupSet = parent.getModule(FaultSystemRupSet.class, false);
-		Preconditions.checkState(oRupSet == null || oRupSet == this);
+		if (parent != null) {
+			FaultSystemRupSet oRupSet = parent.getModule(FaultSystemRupSet.class, false);
+			Preconditions.checkState(oRupSet == null || oRupSet == this);
+		}
 		this.archive = parent;
 	}
 
@@ -183,6 +185,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	@Override
 	public SubModule<ModuleArchive<OpenSHA_Module>> copy(ModuleArchive<OpenSHA_Module> newArchive)
 			throws IllegalStateException {
+		if (this.archive == null) {
+			// just set the archive and return this
+			this.archive = newArchive;
+			return this;
+		}
+		// copy it to a new archive
 		FaultSystemRupSet copy = new FaultSystemRupSet();
 		copy.init(this);
 		newArchive.addModule(copy);

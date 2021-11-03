@@ -36,11 +36,20 @@ public class AverageSolutionCreator {
 			File file = new File(args[i+1]);
 			Preconditions.checkArgument(file.exists(), "Input solution doesn't exist: %s", file.getAbsolutePath());
 			
-			if (i > 10)
+			if (i >= 10) {
 				// don't bother reloading the rupture set, assume equivalence
+				if (i == 10) {
+					// clear the parent archive of the reference rup set so that it's not duplicated each time
+					
+					// first load all available modules
+					refRupSet.loadAllAvailableModules();
+					
+					refRupSet.setParent(null);
+				}
 				inputs[i] = FaultSystemSolution.load(file, refRupSet);
-			else
+			} else {
 				inputs[i] = FaultSystemSolution.load(file);
+			}
 			if (i == 0) {
 				refRupSet = inputs[i].getRupSet();
 			} else {
