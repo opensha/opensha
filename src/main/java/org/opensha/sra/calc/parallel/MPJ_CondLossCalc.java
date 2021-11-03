@@ -42,6 +42,7 @@ import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -62,7 +63,6 @@ import mpi.MPI;
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 import edu.usc.kmilner.mpj.taskDispatch.PostBatchHook;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 
 public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationExceptionHandler, PostBatchHook {
 	

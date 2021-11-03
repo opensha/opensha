@@ -166,8 +166,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param rupSet
 	 * @return
 	 */
-	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet,
-			FaultModels fm, InversionTargetMFDs targetMFDs) {
+	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm, 
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs) {
 		double mfdEqualityConstraintWt = DEFAULT_MFD_EQUALITY_WT;
 		double mfdInequalityConstraintWt = DEFAULT_MFD_INEQUALITY_WT;
 		
@@ -186,7 +186,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @return
 	 */
 	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm,
-			InversionTargetMFDs targetMFDs,	double mfdEqualityConstraintWt, double mfdInequalityConstraintWt) {
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs,
+			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt) {
 		return forModel(model, rupSet, fm, targetMFDs, mfdEqualityConstraintWt, mfdInequalityConstraintWt, null);
 	}
 	
@@ -205,7 +206,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @return
 	 */
 	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm,
-			InversionTargetMFDs targetMFDs, double mfdEqualityConstraintWt, double mfdInequalityConstraintWt,
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs,
+			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt,
 			CommandLine modifiers) {
 		
 		

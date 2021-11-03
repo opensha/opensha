@@ -39,13 +39,11 @@ public class AverageSolutionCreator {
 			if (i >= 10) {
 				// don't bother reloading the rupture set, assume equivalence
 				if (i == 10) {
-					// clear the parent archive of the reference rup set so that it's not duplicated each time
-					
 					// first load all available modules
 					refRupSet.loadAllAvailableModules();
-					
-					refRupSet.setParent(null);
 				}
+				// clear the parent archive of the reference rup set so that it's not duplicated each time
+				refRupSet.setParent(null);
 				inputs[i] = FaultSystemSolution.load(file, refRupSet);
 			} else {
 				inputs[i] = FaultSystemSolution.load(file);

@@ -451,7 +451,8 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return target slip rates
 	 */
 	public static SectSlipRates computeTargetSlipRates(FaultSystemRupSet rupSet,
-			InversionModels inversionModel, MomentRateFixes momentRateFixes, InversionTargetMFDs inversionMFDs) {
+			InversionModels inversionModel, MomentRateFixes momentRateFixes,
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs inversionMFDs) {
 		return computeTargetSlipRates(rupSet, inversionModel.isCharacteristic(), momentRateFixes.isApplyCC(), inversionMFDs);
 	}
 	
@@ -474,7 +475,8 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	 * @return target slip rates
 	 */
 	public static SectSlipRates computeTargetSlipRates(FaultSystemRupSet rupSet,
-			boolean characteristic, boolean applyImpliedCouplingCoeff, InversionTargetMFDs inversionMFDs) {
+			boolean characteristic, boolean applyImpliedCouplingCoeff,
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs inversionMFDs) {
 		int numSections = rupSet.getNumSections();
 		// compute target slip rate and stdDev (reduced for subseismo ruptures)
 		double[] targetSlipRate = new double[numSections];

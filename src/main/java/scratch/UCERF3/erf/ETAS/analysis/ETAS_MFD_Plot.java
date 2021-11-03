@@ -31,6 +31,7 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Joiner;
@@ -43,7 +44,6 @@ import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 
 public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	

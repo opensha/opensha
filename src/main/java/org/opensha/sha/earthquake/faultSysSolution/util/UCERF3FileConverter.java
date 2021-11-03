@@ -16,6 +16,10 @@ import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -38,10 +42,9 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider.Precomputed;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
+import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -61,13 +64,15 @@ class UCERF3FileConverter {
 		for (FaultModels fm : fms) {
 			U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(true, fm);
 			System.out.println("Ref branch: "+branch);
-			InversionFaultSystemSolution ivfss = cfss.getSolution(branch); 
+			InversionFaultSystemSolution ivfss = cfss.getSolution(branch);
 			ivfss.setGridSourceProvider(exactGridProv(ivfss.getGridSourceProvider()));
+			attachExtraIVFSRSModules(ivfss.getRupSet());
 			ivfss.write(new File(outputDir, branch.buildFileName()+".zip"));
 			branch.setValue(SlipAlongRuptureModels.UNIFORM);
 			System.out.println("Ref (UNIFORM) branch: "+branch);
 			ivfss = cfss.getSolution(branch); 
 			ivfss.setGridSourceProvider(exactGridProv(ivfss.getGridSourceProvider()));
+			attachExtraIVFSRSModules(ivfss.getRupSet());
 			ivfss.write(new File(outputDir, branch.buildFileName()+".zip"));
 		}
 		
@@ -286,6 +291,15 @@ class UCERF3FileConverter {
 		AbstractGridSourceProvider.Precomputed precomputed = new AbstractGridSourceProvider.Precomputed(prov);
 		precomputed.setRound(false);
 		return precomputed;
+	}
+	
+	private static void attachExtraIVFSRSModules(InversionFaultSystemRupSet ivfsrs) throws IOException {
+		U3LogicTreeBranch branch = ivfsrs.getLogicTreeBranch();
+		FaultModels fm = branch.getValue(FaultModels.class);
+		if (fm != null) {
+			ivfsrs.addModule(new NamedFaults(ivfsrs, fm.getNamedFaultsMapAlt()));
+			ivfsrs.addModule(PaleoseismicConstraintData.loadUCERF3(ivfsrs));
+		}
 	}
 
 }

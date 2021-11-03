@@ -110,7 +110,7 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
  * @author field
  *
  */
-public class U3InversionTargetMFDs extends InversionTargetMFDs implements ArchivableModule, SubModule<FaultSystemRupSet> {
+public class U3InversionTargetMFDs extends org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs implements ArchivableModule, SubModule<FaultSystemRupSet> {
 	
 	// debugging flag
 	protected final static boolean D = false;
@@ -627,7 +627,7 @@ public class U3InversionTargetMFDs extends InversionTargetMFDs implements Archiv
 
 	@Override
 	public Class<? extends ArchivableModule> getLoadingClass() {
-		return InversionTargetMFDs.Precomputed.class;
+		return org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs.Precomputed.class;
 	}
 
 	@Override

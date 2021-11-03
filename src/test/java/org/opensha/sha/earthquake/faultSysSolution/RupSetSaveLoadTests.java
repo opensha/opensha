@@ -16,6 +16,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 
@@ -23,7 +24,6 @@ import com.google.common.io.Files;
 
 import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.U3FaultSystemSolution;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 
 public class RupSetSaveLoadTests {
 

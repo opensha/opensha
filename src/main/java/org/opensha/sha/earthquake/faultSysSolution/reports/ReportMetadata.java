@@ -5,13 +5,12 @@ import java.util.HashSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 
 import com.google.common.base.Preconditions;
-
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 
 public class ReportMetadata {
 	
