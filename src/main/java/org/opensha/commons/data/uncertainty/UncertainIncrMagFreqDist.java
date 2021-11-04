@@ -50,7 +50,9 @@ public class UncertainIncrMagFreqDist extends IncrementalMagFreqDist implements 
 	public static UncertainIncrMagFreqDist constantRelStdDev(IncrementalMagFreqDist mfd, double relStdDev) {
 		EvenlyDiscretizedFunc stdDevs = new EvenlyDiscretizedFunc(mfd.getMinX(), mfd.getMaxX(), mfd.size());
 		
-		stdDevs.setYofX((M,R)->relStdDev*R);
+		stdDevs.setYofX(M->relStdDev);
+		for (int i=0; i<stdDevs.size(); i++)
+			stdDevs.set(i, stdDevs.getY(i)*mfd.getY(i));
 		
 		return new UncertainIncrMagFreqDist(mfd, stdDevs);
 	}
