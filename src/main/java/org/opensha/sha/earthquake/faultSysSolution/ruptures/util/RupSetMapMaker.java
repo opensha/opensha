@@ -638,7 +638,8 @@ public class RupSetMapMaker {
 	}
 	
 	public static void main(String[] args) {
-		System.out.println(getGeoJSONViewerRelativeLink("My Link", "map.geojson"));
+//		System.out.println(getGeoJSONViewerRelativeLink("My Link", "map.geojson"));
+		System.out.println(getGeoJSONViewerLink("http://opensha.usc.edu/ftp/kmilner/markdown/rupture-sets/rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5/comp_fm3_1_ucerf3/resources/conn_rates_m6.5.geojson"));
 	}
 
 }

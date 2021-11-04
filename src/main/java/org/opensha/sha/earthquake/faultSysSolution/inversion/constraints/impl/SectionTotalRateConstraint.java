@@ -34,6 +34,18 @@ public class SectionTotalRateConstraint extends InversionConstraint {
 		}
 	}
 
+	public double[] getSectRates() {
+		return sectRates;
+	}
+
+	public double[] getSectRateStdDevs() {
+		return sectRateStdDevs;
+	}
+
+	public boolean isNucleation() {
+		return nucleation;
+	}
+
 	@Override
 	public int getNumRows() {
 		return sectRates.length;

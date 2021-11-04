@@ -366,18 +366,24 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		File solFile = new File("/home/kevin/markdown/inversions/2021_10_25-u3rs-u3_std_dev_tests-10m/solution.zip");
+//		File solFile = new File("/home/kevin/markdown/inversions/2021_10_25-u3rs-u3_std_dev_tests-10m/solution.zip");
+		File solFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2021_11_03-reproduce-ucerf3-ref_branch-uniform-nshm23_draft-supra_b_0.8-2h/mean_solution.zip");
 		FaultSystemSolution sol1 = FaultSystemSolution.load(solFile);
-		FaultSystemSolution sol2 = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
-				+ "FM3_1_ZENGBB_Shaw09Mod_DsrUni_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
+		FaultSystemSolution sol2 = null;
+//		FaultSystemSolution sol2 = sol1;
+//		FaultSystemSolution sol2 = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
+//				+ "FM3_1_ZENGBB_Shaw09Mod_DsrUni_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
 		
-		File outputDir = new File(solFile.getParentFile(), "temp_report");
+//		File outputDir = new File(solFile.getParentFile(), "temp_report");
+		File outputDir = new File("/tmp/temp_report");
 		
 		PaleoDataComparisonPlot plot = new PaleoDataComparisonPlot();
 		
 //		ReportPageGen report = new ReportPageGen(sol.getRupSet(), sol, "Solution", outputDir, List.of(plot));
-		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("Sol 1", sol1), new RupSetMetadata("Sol 2", sol2));
-		ReportPageGen report = new ReportPageGen(meta, outputDir, List.of(plot, new NamedFaultPlot()));
+		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("Sol 1", sol1),
+				sol2 == null ? null : new RupSetMetadata("Sol 2", sol2));
+		ReportPageGen report = new ReportPageGen(meta, outputDir, List.of(plot, new ModulesPlot(), new NamedFaultPlot()));
 		
 		report.setReplot(true);
 		report.generatePage();

@@ -46,8 +46,11 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -979,11 +982,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		int numNonZero = 0;
 		for (XY_DataSet func : funcs) {
 			for (Point2D pt : func) {
-				if (pt.getY() > 0) {
-					minNonZero = Double.min(minNonZero, pt.getY());
+				if (pt.getY() > maxRange.getLowerBound()) {
+					minNonZero = Double.min(minNonZero, pt.getY()*0.95);
 					numNonZero++;
 				}
-				max = Double.max(max, pt.getY());
+				max = Double.max(max, pt.getY()*1.05);
 			}
 		}
 		if (numNonZero == 0)
@@ -1093,10 +1096,27 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			if (myMinMag > 0d)
 				magLabels.add("M≥"+optionalDigitDF.format(myMinMag));
 			else
-				magLabels.add("Supra-Seismogenic");
+				magLabels.add("Supra-Seis");
 		}
 		
 		Map<Integer, List<FaultSection>> parentsMap = faultSects.stream().collect(Collectors.groupingBy(s->s.getParentSectionId()));
+		
+		double[] targetSectRates = null;
+		boolean targetNucleation = false;
+		InversionConfiguration invConfig = meta.primary.sol.getModule(InversionConfiguration.class);
+		if (invConfig != null && invConfig.getConstraints() != null) {
+			// see if we constrained this with target section rates
+			for (InversionConstraint constraint : invConfig.getConstraints()) {
+				if (constraint instanceof SectionTotalRateConstraint) {
+					SectionTotalRateConstraint sectConstr = (SectionTotalRateConstraint)constraint;
+					targetSectRates = sectConstr.getSectRates();
+					targetNucleation = sectConstr.isNucleation();
+					break;
+				}
+			}
+		}
+		
+		Color targetColor = Color.CYAN.darker();
 		
 		boolean comp = meta.comparison != null && meta.comparison.sol != null;
 		float primaryThickness = 3f;
@@ -1105,6 +1125,17 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		for (int s=0; s<faultSects.size(); s++) {
 			FaultSection sect = faultSects.get(s);
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
+			
+			if (targetSectRates != null && !targetNucleation) {
+				// we have target participation rates
+				XY_DataSet rateFunc = copyAtY(emptyFunc, targetSectRates[sect.getSectionId()]);
+				
+				if (first)
+					rateFunc.setName("Target Supra-Seis");
+				
+				funcs.add(rateFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, compThickness, targetColor));
+			}
 			
 			if (comp) {
 				for (int m=0; m<minMags.size(); m++) {
@@ -1153,7 +1184,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		specs.add(magRateSpec);
 		funcLists.add(funcs);
 		charLists.add(chars);
-		yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1), 5));
+		yRanges.add(yRange(funcs, new Range(1e-4, 1e-2), new Range(1e-8, 1e1), 5));
 		yLogs.add(true);
 		
 		List<SectMappedUncertainDataConstraint> paleoConstraints = null;
@@ -1311,7 +1342,59 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			specs.add(paleoSpec);
 			funcLists.add(funcs);
 			charLists.add(chars);
-			yRanges.add(yRange(funcs, new Range(1e-6, 1e-2), new Range(1e-8, 1e1), 5));
+			yRanges.add(yRange(funcs, new Range(1e-4, 1e-2), new Range(1e-8, 1e1), 5));
+			yLogs.add(true);
+		}
+		
+		if (targetSectRates != null && targetNucleation) {
+			// add nucleation rate plot
+			
+			funcs = new ArrayList<>();
+			chars = new ArrayList<>();
+			first = true;
+			for (int s=0; s<faultSects.size(); s++) {
+				FaultSection sect = faultSects.get(s);
+				XY_DataSet emptyFunc = emptySectFuncs.get(s);
+				
+				// we have target participation rates
+				XY_DataSet rateFunc = copyAtY(emptyFunc, targetSectRates[sect.getSectionId()]);
+				
+				if (first)
+					rateFunc.setName("Target Supra-Seis Nucleation");
+				
+				funcs.add(rateFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, compThickness, targetColor));
+				
+				if (comp) {
+					double rate = nuclRateAbove(0d, sect.getSectionId(), meta.comparison.sol);
+					rateFunc = copyAtY(emptyFunc, rate);
+					if (first)
+						rateFunc.setName("Comparison");
+					
+					funcs.add(rateFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, compThickness, COMP_COLOR));
+				}
+				
+				double rate = nuclRateAbove(0d, sect.getSectionId(), meta.primary.sol);
+				rateFunc = copyAtY(emptyFunc, rate);
+				if (first) {
+					if (comp)
+						rateFunc.setName("Primary Nucleation");
+					else
+						rateFunc.setName("Solution Nucleation");
+				}
+				
+				funcs.add(rateFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, primaryThickness, MAIN_COLOR));
+				
+				first = false;
+			}
+			PlotSpec nuclRateSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Nucleation Rate (per year)");
+			nuclRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
+			specs.add(nuclRateSpec);
+			funcLists.add(funcs);
+			charLists.add(chars);
+			yRanges.add(yRange(funcs, new Range(1e-5, 1e-3), new Range(1e-9, 1e0), 5));
 			yLogs.add(true);
 		}
 		
@@ -1334,7 +1417,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 						targetFunc.setName("Target");
 					
 					funcs.add(targetFunc);
-					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.CYAN.darker()));
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, targetColor));
 				}
 				
 				if (comp) {
@@ -1526,6 +1609,16 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		for (int rupIndex : rupSet.getRupturesForSection(sectIndex))
 			if (rupSet.getMagForRup(rupIndex) >= minMag)
 				rate += sol.getRateForRup(rupIndex);
+		return rate;
+	}
+	
+	private static double nuclRateAbove(double minMag, int sectIndex, FaultSystemSolution sol) {
+		double rate = 0d;
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		double sectArea = rupSet.getAreaForSection(sectIndex);
+		for (int rupIndex : rupSet.getRupturesForSection(sectIndex))
+			if (rupSet.getMagForRup(rupIndex) >= minMag)
+				rate += sol.getRateForRup(rupIndex)*sectArea/rupSet.getAreaForRup(rupIndex);
 		return rate;
 	}
 	
