@@ -1038,6 +1038,28 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
+	
+	public double[] getFractSectsInsideRegion(Region region, boolean traceOnly) {
+		return getFractSectsInsideRegion(region, traceOnly, new int[getNumSections()]);
+	}
+	
+	private double[] getFractSectsInsideRegion(Region region, boolean traceOnly, int[] numPtsInSection) {
+		double[] fractSectsInside = new double[getNumSections()];
+		double gridSpacing=1;
+		for(int s=0;s<getNumSections(); s++) {
+			RuptureSurface surf = getFaultSectionData(s).getFaultSurface(gridSpacing, false, true);
+			if (traceOnly) {
+				FaultTrace trace = surf.getEvenlyDiscritizedUpperEdge();
+				numPtsInSection[s] = trace.size();
+				fractSectsInside[s] = RegionUtils.getFractionInside(region, trace);
+			} else {
+				LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+				numPtsInSection[s] = surfLocs.size();
+				fractSectsInside[s] = RegionUtils.getFractionInside(region, surfLocs);
+			}
+		}
+		return fractSectsInside;
+	}
 
 	/**
 	 * 
@@ -1057,23 +1079,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				Set<Cell<Region, Boolean, double[]>> cells = fractRupsInsideRegions.cellSet();
 				cells.remove(cells.iterator().next());
 			}
-			double[] fractSectsInside = new double[getNumSections()];
-			double gridSpacing=1;
 			int[] numPtsInSection = new int[getNumSections()];
+			double[] fractSectsInside = getFractSectsInsideRegion(region, traceOnly, numPtsInSection);
 			int numRuptures = getNumRuptures();
-
-			for(int s=0;s<getNumSections(); s++) {
-				RuptureSurface surf = getFaultSectionData(s).getFaultSurface(gridSpacing, false, true);
-				if (traceOnly) {
-					FaultTrace trace = surf.getEvenlyDiscritizedUpperEdge();
-					numPtsInSection[s] = trace.size();
-					fractSectsInside[s] = RegionUtils.getFractionInside(region, trace);
-				} else {
-					LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
-					numPtsInSection[s] = surfLocs.size();
-					fractSectsInside[s] = RegionUtils.getFractionInside(region, surfLocs);
-				}
-			}
 
 			double[] fractRupsInside = new double[numRuptures];
 
