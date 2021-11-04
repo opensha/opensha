@@ -88,6 +88,8 @@ public class MFDInversionConstraint extends InversionConstraint {
 	public int getNumRows() {
 		return getNumRows(mfds, rupSet);
 	}
+	
+	public static final boolean MFD_FRACT_IN_REGION_TRACE_ONLY = false;
 
 	@Override
 	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
@@ -97,8 +99,7 @@ public class MFDInversionConstraint extends InversionConstraint {
 		for (int i=0; i < mfds.size(); i++) {
 			IncrementalMagFreqDist mfd = mfds.get(i);
 			Region region = mfd.getRegion();
-//			Region region = mfd.getRegion(); // TODO Switch to useing MFD region, abandon wrapper
-			double[] fractRupsInside = rupSet.getFractRupsInsideRegion(region, false);
+			double[] fractRupsInside = rupSet.getFractRupsInsideRegion(region, MFD_FRACT_IN_REGION_TRACE_ONLY);
 			int minMagIndex = mfd.getClosestXIndex(rupSet.getMinMag());
 			int maxMagIndex = mfd.getClosestXIndex(rupSet.getMaxMag());
 			
