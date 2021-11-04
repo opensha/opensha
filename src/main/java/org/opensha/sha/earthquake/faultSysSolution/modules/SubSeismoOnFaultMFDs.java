@@ -98,14 +98,29 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 		double min = Double.parseDouble(header.get(1));
 		double max = Double.parseDouble(header.get(header.size()-1));
 		int num = header.size()-1;
+		IncrementalMagFreqDist refMFD = new IncrementalMagFreqDist(min, max, num);
+		for (int i=0; i<num; i++) {
+			double myX = refMFD.getX(i);
+			double csvX = Double.parseDouble(header.get(i+1));
+			Preconditions.checkState((float)myX == (float)csvX, "Expected M=%s as value %s in the MFD x-values, got %s",
+					(float)myX, i, (float)csvX);
+		}
 		
 		List<IncrementalMagFreqDist> mfds = new ArrayList<>();
 		for (int row=1; row<csv.getNumRows(); row++) {
 			List<String> line = csv.getLine(row);
 			Preconditions.checkState(Integer.parseInt(line.get(0)) == row-1, "File out of order or not 0-based");
-			IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(min, max, num);
-			for (int i=0; i<mfd.size(); i++)
+			int myNum = 0;
+			for (int i=1; i<line.size(); i++) {
+				if (line.get(i).isBlank())
+					break;
+				myNum++;
+			}
+			IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(min, refMFD.getX(myNum-1), myNum);
+			for (int i=0; i<mfd.size(); i++) {
+				Preconditions.checkState((float)mfd.getX(i) == (float)refMFD.getX(i));
 				mfd.set(i, Double.parseDouble(line.get(i+1)));
+			}
 			mfds.add(mfd);
 		}
 		this.subSeismoOnFaultMFDs = ImmutableList.copyOf(mfds);

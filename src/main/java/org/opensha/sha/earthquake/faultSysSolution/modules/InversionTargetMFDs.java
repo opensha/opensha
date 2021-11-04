@@ -52,7 +52,7 @@ public abstract class InversionTargetMFDs implements ArchivableModule, SubModule
 	public abstract IncrementalMagFreqDist getTotalRegionalMFD();
 
 	/**
-	 * Total MFD for on-fault supra-seismogenic ruptures (i.e., those represented by the {@link FaultSystemRupSet}
+	 * Total MFD for on-fault supra-seismogenic ruptures (i.e., those represented by the {@link FaultSystemRupSet})
 	 * 
 	 * @return total on-fault supra-seismogenic MFD
 	 */
