@@ -350,6 +350,25 @@ public class InversionConstraintImplTests {
 		
 		testConstraint(constr);
 	}
+
+	@Test
+	public void testSectTotalRate() throws IOException {
+		double[] targetRates = new double[rupSet.getNumSections()];
+		double[] targetRateStdDevs = new double[rupSet.getNumSections()];
+		for (int s=0; s<targetRates.length; s++) {
+			targetRates[s] = Math.random();
+			targetRateStdDevs[s] = 0.1*targetRates[s];
+		}
+		
+		for (boolean nucleation : new boolean[] { false, true} ) {
+			for (ConstraintWeightingType weightType : ConstraintWeightingType.values()) {
+				SectionTotalRateConstraint constr = new SectionTotalRateConstraint(rupSet, 1d, weightType,
+						targetRates, targetRateStdDevs, nucleation);
+				
+				testConstraint(constr);
+			}
+		}
+	}
 	
 	
 	private void testConstraint(InversionConstraint constraint) {

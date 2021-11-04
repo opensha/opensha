@@ -1,0 +1,77 @@
+package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
+
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+
+import com.google.common.base.Preconditions;
+
+import cern.colt.matrix.tdouble.DoubleMatrix2D;
+
+public class SectionTotalRateConstraint extends InversionConstraint {
+	
+	private transient FaultSystemRupSet rupSet;
+	private double[] sectRates;
+	private double[] sectRateStdDevs;
+	private boolean nucleation;
+
+	public SectionTotalRateConstraint(FaultSystemRupSet rupSet, double weight, double[] sectRates, boolean nucleation) {
+		this(rupSet, weight, ConstraintWeightingType.NORMALIZED, sectRates, null, nucleation);
+	}
+	
+	public SectionTotalRateConstraint(FaultSystemRupSet rupSet, double weight, ConstraintWeightingType weightType,
+			double[] sectRates, double[] sectRateStdDevs, boolean nucleation) {
+		super(weightType.applyNamePrefix("Subsection Total Rates"),
+				weightType.applyShortNamePrefix("SubSectRates"), weight, false, weightType);
+		this.rupSet = rupSet;
+		this.nucleation = nucleation;
+		Preconditions.checkState(rupSet.getNumSections() == sectRates.length, "section rates array isn't the right length");
+		this.sectRates = sectRates;
+		if (weightType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
+			Preconditions.checkState(sectRateStdDevs != null, "Must supply standard deviations to weight by uncertainty");
+			Preconditions.checkState(sectRateStdDevs.length == sectRates.length, "Standard deviations array isn't the right length");
+			this.sectRateStdDevs = sectRateStdDevs;
+		}
+	}
+
+	@Override
+	public int getNumRows() {
+		return sectRates.length;
+	}
+
+	@Override
+	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
+		long numNonZero = 0l;
+		
+		for (int s=0; s<sectRates.length; s++) {
+			double stdDev = sectRateStdDevs == null ? 0d : sectRateStdDevs[s];
+			
+			double scale = weightingType.getA_Scalar(sectRates[s], stdDev);
+			double target = weightingType.getD(sectRates[s], stdDev);
+			
+			int row = startRow+s;
+			d[row] = target*weight;
+			
+			double sectArea = rupSet.getAreaForSection(s);
+			
+			for (int rup : rupSet.getRupturesForSection(s)) {
+				double val = scale*weight;
+				if (nucleation) {
+					// these are nucleation rates
+					double rupArea = rupSet.getAreaForRup(rup);
+					val *= sectArea / rupArea;
+				}
+				setA(A, row, rup, val);
+				numNonZero++;
+			}
+		}
+		return numNonZero;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		Preconditions.checkState(rupSet.getNumSections() == sectRates.length);
+		this.rupSet = rupSet;
+	}
+
+}
