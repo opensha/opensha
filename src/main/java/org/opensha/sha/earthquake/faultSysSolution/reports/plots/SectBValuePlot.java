@@ -40,6 +40,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectIDRange;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 
@@ -78,7 +79,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		lines.add(getSubHeading()+" Subsection b-values");
 		lines.add(topLink); lines.add("");
 		
-		lines.add("These plots estimate a Gutenberg-Richter b-value for each subsection and parent section participation"
+		lines.add("These plots estimate a Gutenberg-Richter b-value for each subsection and parent section nucleation"
 				+ " MFD. This is a rough approximation, and is intended primarily for model comparisons.");
 		lines.add("");
 		
@@ -184,7 +185,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			double minMag = modMinMags == null ? rupSet.getMinMagForSection(s) : modMinMags.getMinMagForSection(s);
 			double maxMag = rupSet.getMaxMagForSection(s);
 			
-			ret[s] = estBValue(minMag, maxMag, sol, rupSet.getRupturesForSection(s), rupMoRates);
+			ret[s] = estBValue(minMag, maxMag, sol, rupSet.getRupturesForSection(s), rupMoRates, SectIDRange.build(s, s));
 		}
 		
 		return ret;
@@ -203,29 +204,44 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			double minMag = Double.POSITIVE_INFINITY;
 			double maxMag = Double.NEGATIVE_INFINITY;
 			
-			for (FaultSection sect : sectsByParent.get(p)) {
+			int minID = Integer.MAX_VALUE;
+			int maxID = -1;
+			List<FaultSection> sects = sectsByParent.get(p);
+			for (FaultSection sect : sects) {
 				int s = sect.getSectionId();
 				minMag = Math.min(minMag, modMinMags == null ? rupSet.getMinMagForSection(s) : modMinMags.getMinMagForSection(s));
 				maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(s));
+				minID = Integer.min(minID, s);
+				maxID = Integer.max(maxID, s);
 			}
 			
-			ret.put(p, estBValue(minMag, maxMag, sol, rupSet.getRupturesForParentSection(p), rupMoRates));
+			Preconditions.checkState(1+maxID-minID == sects.size());
+			
+			ret.put(p, estBValue(minMag, maxMag, sol, rupSet.getRupturesForParentSection(p), rupMoRates,
+					SectIDRange.build(minID, maxID)));
 		}
 		
 		return ret;
 	}
 	
 	private static double estBValue(double minMag, double maxMag, FaultSystemSolution sol,
-			Collection<Integer> rupIndexes, double[] rupMoRates) {
+			Collection<Integer> rupIndexes, double[] rupMoRates, SectIDRange sectIndexes) {
 		double supraRate = 0d;
 		double moRate = 0d;
 		FaultSystemRupSet rupSet = sol.getRupSet();
+		
 		for (int r : rupIndexes) {
 			double mag = rupSet.getMagForRup(r);
 			if (mag < minMag)
 				continue;
-			supraRate += sol.getRateForRup(r);
-			moRate += rupMoRates[r];
+			double rupArea = rupSet.getAreaForRup(r);
+			double sectArea = 0d;
+			for (int s : rupSet.getSectionsIndicesForRup(r))
+				if (sectIndexes.contains(s))
+					sectArea += rupSet.getAreaForSection(s);
+			double fract = sectArea/rupArea;
+			supraRate += sol.getRateForRup(r)*fract;
+			moRate += rupMoRates[r]*fract;
 		}
 		return estBValue(minMag, maxMag, supraRate, moRate);
 	}
