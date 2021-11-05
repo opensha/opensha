@@ -33,6 +33,26 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 	private UncertaintyBoundType boundType;
 	private UnmodifiableDiscrFunc stdDevs;
 	
+	public static UncertainArbDiscFunc forStdDev(DiscretizedFunc meanFunc, double stdDev, UncertaintyBoundType boundType,
+			boolean allowNegative) {
+		Preconditions.checkState(stdDev >= 0d);
+		DiscretizedFunc upperFunc = new ArbitrarilyDiscretizedFunc();
+		DiscretizedFunc lowerFunc = new ArbitrarilyDiscretizedFunc();
+		DiscretizedFunc stdDevsFunc = new ArbitrarilyDiscretizedFunc();
+		for (int i=0; i<meanFunc.size(); i++) {
+			double x = meanFunc.getX(i);
+			double y = meanFunc.getY(i);
+			BoundedUncertainty bounds = boundType.estimate(y, stdDev);
+			if (!allowNegative && bounds.lowerBound < 0)
+				bounds = new BoundedUncertainty(boundType, 0d, bounds.upperBound, stdDev);
+			upperFunc.set(x, bounds.upperBound);
+			lowerFunc.set(x, bounds.lowerBound);
+			stdDevsFunc.set(x, stdDev);
+//			System.out.println("x="+x+"\ty="+y+"\tsd="+stdDev+"\tbounds="+bounds);
+		}
+		return new UncertainArbDiscFunc(meanFunc, lowerFunc, upperFunc, boundType, stdDevsFunc);
+	}
+	
 	// used for deserialization
 	private UncertainArbDiscFunc() {
 		super(new ArbitrarilyDiscretizedFunc());

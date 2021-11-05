@@ -67,8 +67,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		if (compSol != null && !sol.getRupSet().areSectionsEquivalentTo(compSol.getRupSet()))
 			compSol = null;
 		
-		double[] rupMoRates = calcMomentRates(sol);
-		double[] compRupMoRates = compSol == null ? null : calcMomentRates(compSol);
+		double[] rupMoRates = calcRupMomentRates(sol);
+		double[] compRupMoRates = compSol == null ? null : calcRupMomentRates(compSol);
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		
@@ -165,13 +165,32 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		}
 	}
 	
-	private static double[] calcMomentRates(FaultSystemSolution sol) {
+	static double[] calcRupMomentRates(FaultSystemSolution sol) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
 		
 		double[] ret = new double[rupSet.getNumRuptures()];
 		for (int r=0; r<ret.length; r++)
 			ret[r] = sol.getRateForRup(r)*FaultMomentCalc.getMoment(rupSet.getAreaForRup(r), aveSlips.getAveSlip(r));
+		return ret;
+	}
+	
+	static double calcSectMomentRate(FaultSystemRupSet rupSet, double[] rupMoRates, boolean nucleation, int sectIndex) {
+		double sectArea = rupSet.getAreaForSection(sectIndex);
+		double ret = 0d;
+		for (int r : rupSet.getRupturesForSection(sectIndex)) {
+			if (nucleation)
+				ret += rupMoRates[r]*sectArea/rupSet.getAreaForRup(r);
+			else
+				ret += rupMoRates[r];
+		}
+		return ret;
+	}
+	
+	static double[] calcSectMomentRates(FaultSystemRupSet rupSet, double[] rupMoRates, boolean nucleation) {
+		double[] ret = new double[rupSet.getNumSections()];
+		for (int s=0; s<ret.length; s++)
+			ret[s] = calcSectMomentRate(rupSet, rupMoRates, nucleation, s);
 		return ret;
 	}
 	
@@ -224,7 +243,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	private static double estBValue(double minMag, double maxMag, FaultSystemSolution sol,
+	static double estBValue(double minMag, double maxMag, FaultSystemSolution sol,
 			Collection<Integer> rupIndexes, double[] rupMoRates, SectIDRange sectIndexes) {
 		double supraRate = 0d;
 		double moRate = 0d;

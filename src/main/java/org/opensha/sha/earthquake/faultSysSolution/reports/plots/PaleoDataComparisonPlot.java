@@ -370,10 +370,10 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		File solFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 				+ "2021_11_03-reproduce-ucerf3-ref_branch-uniform-nshm23_draft-supra_b_0.8-2h/mean_solution.zip");
 		FaultSystemSolution sol1 = FaultSystemSolution.load(solFile);
-		FaultSystemSolution sol2 = null;
+//		FaultSystemSolution sol2 = null;
 //		FaultSystemSolution sol2 = sol1;
-//		FaultSystemSolution sol2 = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
-//				+ "FM3_1_ZENGBB_Shaw09Mod_DsrUni_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip"));
+		FaultSystemSolution sol2 = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2021_11_03-reproduce-ucerf3-ref_branch-uniform-nshm23_draft-supra_b_0.8-no_sect_rate-2h/mean_solution.zip"));
 		
 //		File outputDir = new File(solFile.getParentFile(), "temp_report");
 		File outputDir = new File("/tmp/temp_report");
