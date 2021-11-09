@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.jfree.data.Range;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
@@ -43,35 +44,56 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		InversionMisfits misfits = sol.requireModule(InversionMisfits.class);
 		
 		List<ConstraintRange> ranges = getRanges(misfits);
+		List<MisfitStats> rangeStats = new ArrayList<>();
+		List<double[]> rangeMisfitVals = new ArrayList<>();
+		
+		for (ConstraintRange range : ranges) {
+			double[] misfitVals = misfits.getMisfits(range, true);
+			rangeMisfitVals.add(misfitVals);
+			rangeStats.add(new MisfitStats(misfitVals, range));
+		}
 		
 		InversionMisfits compMisfits = null;
 		List<ConstraintRange> compRanges = null;
+		List<MisfitStats> compRangeStats = null;
+		List<double[]> compRangeMisfitVals = null;
 		
 		if (meta.comparison != null && meta.comparison.sol != null && meta.comparison.sol.hasModule(InversionMisfits.class)) {
 			compMisfits = meta.comparison.sol.requireModule(InversionMisfits.class);
 			compRanges = getRanges(compMisfits);
+			compRangeStats = new ArrayList<>();
+			compRangeMisfitVals = new ArrayList<>();
+			
+			for (ConstraintRange range : compRanges) {
+				double[] misfitVals = compMisfits.getMisfits(range, true);
+				compRangeMisfitVals.add(misfitVals);
+				compRangeStats.add(new MisfitStats(misfitVals, range));
+			}
 		}
 		
 		List<String> lines = new ArrayList<>();
+		lines.add("");
 		
-		for (ConstraintRange range : ranges) {
+		for (int r=0; r<ranges.size(); r++) {
+			ConstraintRange range = ranges.get(r);
 			String prefix = "misfits_"+range.shortName.replaceAll("\\W+", "_");
 			
 			lines.add(getSubHeading()+" "+range.name+" Misfits");
 			lines.add(topLink); lines.add("");
 			
-			double[] normMisfits = misfits.getMisfits(range, true);
-			MisfitStats stats = new MisfitStats(normMisfits, range.inequality);
+			double[] misfitVals = rangeMisfitVals.get(r);
+			MisfitStats stats = rangeStats.get(r);
 			
 			ConstraintRange compRange = null;
-			double[] compNormMisfits = null;
+			double[] compMisfitVals = null;
 			MisfitStats compStats = null;
 			if (compRanges != null) {
-				for (ConstraintRange comp : compRanges) {
+				for (int r2=0; r2<compRanges.size(); r2++) {
+					ConstraintRange comp = compRanges.get(r2);
 					if (comp.name.equals(range.name) && comp.inequality == range.inequality) {
 						compRange = comp;
-						compNormMisfits = compMisfits.getMisfits(comp, true);
-						compStats = new MisfitStats(compNormMisfits, comp.inequality);
+						compMisfitVals = compRangeMisfitVals.get(r2);
+						compStats = compRangeStats.get(r2);
 						break;
 					}
 				}
@@ -135,28 +157,28 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			// now for plots
 			
 			HistogramFunction refHist = refHist(stats, compStats);
-			File histPlot = buildHistPlot(refHist, normMisfits,
+			File histPlot = buildHistPlot(refHist, misfitVals,
 					stats, range, resourcesDir, prefix+"_hist", range.name+" Misfits",
 					range.weightingType == null ? "Misfit" : range.weightingType.getMisfitLabel(), MAIN_COLOR);
 			
-			if (compNormMisfits == null) {
+			if (compMisfitVals == null) {
 				lines.add("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
 			} else {
 				table = MarkdownUtils.tableBuilder();
 				table.addLine("Primary", "Comparison");
 				table.initNewLine().addColumn("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
-				File compPlot = buildHistPlot(refHist, compNormMisfits,
+				File compPlot = buildHistPlot(refHist, compMisfitVals,
 						compStats, compRange, resourcesDir, prefix+"_hist_comp", compRange.name+" Misfits",
 						compRange.weightingType == null ? "Misfit" : compRange.weightingType.getMisfitLabel(), COMP_COLOR);
 				table.addColumn("![Misfit Plot]("+relPathToResources+"/"+compPlot.getName()+")");
 				table.finalizeLine();
 				
-				if (normMisfits.length == compNormMisfits.length) {
-					double[] diffs = new double[normMisfits.length];
+				if (misfitVals.length == compMisfitVals.length) {
+					double[] diffs = new double[misfitVals.length];
 					XY_DataSet scatter = new DefaultXY_DataSet();
 					for (int i=0; i<diffs.length; i++) {
-						double n = normMisfits[i];
-						double c = compNormMisfits[i];
+						double n = misfitVals[i];
+						double c = compMisfitVals[i];
 						if (compRange.inequality) {
 							n = Math.max(n, 0d);
 							c = Math.max(c, 0d);
@@ -165,8 +187,8 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 						scatter.set(n, c);
 					}
 					
-					refHist = refHist(new MisfitStats(diffs, false), null);
-					File histDiffPlot = buildHistPlot(refHist, normMisfits,
+					refHist = refHist(new MisfitStats(diffs, false, Double.NaN), null);
+					File histDiffPlot = buildHistPlot(refHist, misfitVals,
 							null, range, resourcesDir, prefix+"_diff", range.name+" Misfit Difference",
 							"Misfit Difference: Primary - Comparison", COMMON_COLOR);
 					table.initNewLine().addColumn("![Diff Plot]("+relPathToResources+"/"+histDiffPlot.getName()+")");
@@ -208,6 +230,30 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			lines.add("");
 		}
 		
+		List<String> summaryLines = new ArrayList<>();
+		
+		CSVFile<String> summaryCSV = getMisfitsTable(ranges, rangeStats);
+		
+		summaryCSV.writeToFile(new File(resourcesDir, "misfits_summary.csv"));
+		
+		if (compMisfits == null) {
+			summaryLines.addAll(MarkdownUtils.tableFromCSV(summaryCSV, true).build());
+		} else {
+			summaryLines.add("**"+meta.primary.name+" Misfits**");
+			summaryLines.add("");
+			summaryLines.addAll(MarkdownUtils.tableFromCSV(summaryCSV, true).build());
+			
+			CSVFile<String> compSummaryCSV = getMisfitsTable(compRanges, compRangeStats);
+			compSummaryCSV.writeToFile(new File(resourcesDir, "misfits_summary_comp.csv"));
+			
+			summaryLines.add("");
+			summaryLines.add("**"+meta.comparison.name+" Misfits**");
+			summaryLines.add("");
+			summaryLines.addAll(MarkdownUtils.tableFromCSV(compSummaryCSV, true).build());
+		}
+		summaryLines.add("");
+		lines.addAll(0, summaryLines);
+		
 		return lines;
 	}
 	
@@ -243,6 +289,23 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		return ranges;
 	}
 	
+	private static CSVFile<String> getMisfitsTable(List<ConstraintRange> ranges, List<MisfitStats> rangeStats) {
+		Preconditions.checkState(ranges.size() == rangeStats.size());
+		CSVFile<String> summaryCSV = new CSVFile<>(true);
+		
+		summaryCSV.addLine("Constraint Name", "Weight", "Rows", "Mean", "Std. Dev.", "L2 Norm", "Energy", "Weighting Type");
+		
+		for (int r=0; r<ranges.size(); r++) {
+			ConstraintRange range = ranges.get(r);
+			MisfitStats stats = rangeStats.get(r);
+			summaryCSV.addLine(range.name, (float)range.weight+"", (range.endRow-range.startRow)+"",
+					(float)stats.mean+"", (float)stats.std+"", (float)stats.l2Norm+"", (float)stats.energy+"",
+					range.weightingType+"");
+		}
+		
+		return summaryCSV;
+	}
+	
 	private static class MisfitStats {
 		private int numRows;
 		private double mean;
@@ -250,9 +313,14 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		private double min;
 		private double max;
 		private double l2Norm;
+		private double energy;
 		private double std;
 		
-		public MisfitStats(double[] misfits, boolean inequality) {
+		public MisfitStats(double[] misfits, ConstraintRange range) {
+			this(misfits, range.inequality, range.weight);
+		}
+		
+		public MisfitStats(double[] misfits, boolean inequality, double weight) {
 			min = Double.POSITIVE_INFINITY;
 			max = Double.NEGATIVE_INFINITY;
 			numRows = misfits.length;
@@ -265,6 +333,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 				min = Math.min(val, min);
 				max = Math.max(val, max);
 				l2Norm += val*val;
+				energy += (val*weight)*(val*weight);
 				std.increment(val);
 			}
 			mean /= (double)numRows;
