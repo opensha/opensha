@@ -30,6 +30,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
+import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -985,12 +986,21 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		double max = defaultRange.getUpperBound();
 		int numNonZero = 0;
 		for (XY_DataSet func : funcs) {
-			for (Point2D pt : func) {
-				if (pt.getY() > maxRange.getLowerBound()) {
-					minNonZero = Double.min(minNonZero, pt.getY()*0.95);
-					numNonZero++;
+			XY_DataSet[] subFuncs;
+			if (func instanceof UncertainBoundedDiscretizedFunc) {
+				UncertainBoundedDiscretizedFunc bounded = (UncertainBoundedDiscretizedFunc)func;
+				subFuncs = new XY_DataSet[] { bounded.getLower(), bounded.getUpper() };
+			} else {
+				subFuncs = new XY_DataSet[] { func };
+			}
+			for (XY_DataSet subFunc : subFuncs) {
+				for (Point2D pt : subFunc) {
+					if (pt.getY() > maxRange.getLowerBound()) {
+						minNonZero = Double.min(minNonZero, pt.getY()*0.95);
+						numNonZero++;
+					}
+					max = Double.max(max, pt.getY()*1.05);
 				}
-				max = Double.max(max, pt.getY()*1.05);
 			}
 		}
 		if (numNonZero == 0)
