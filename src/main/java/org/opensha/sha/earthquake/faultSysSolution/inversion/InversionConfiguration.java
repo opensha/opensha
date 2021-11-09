@@ -65,12 +65,12 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	private double[] initial;
 	
 	// annealing params
+	private double[] variablePertubationBasis;
+	private IntegerPDF_FunctionSampler sampler;
 	private GenerationFunctionType perturb = PERTURB_DEFAULT;
 	private NonnegativityConstraintType nonneg = NON_NEG_DEFAULT;
 	private CoolingScheduleType cool = COOL_DEFAULT;
 	private CompletionCriteria completion;
-	private double[] variablePertubationBasis;
-	private IntegerPDF_FunctionSampler sampler;
 	
 	// for threaded inversions
 	private int threads = 1;
