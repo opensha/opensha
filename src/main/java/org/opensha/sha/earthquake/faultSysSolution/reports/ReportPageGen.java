@@ -117,12 +117,14 @@ public class ReportPageGen {
 		plots.add(new InfoStringPlot());
 		plots.add(new LogicTreeBranchPlot());
 		plots.add(new PlausibilityConfigurationReport());
-		plots.add(new RupHistogramPlots());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_SCALARS));
 			plots.add(new PlausibilityFilterPlot());
 			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new JumpCountsOverDistancePlot());
+		} else {
+			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_LIGHT_SCALARS));
 		}
 		plots.add(new SectMaxValuesPlot());
 		if (level == PlotLevel.FULL) {
@@ -150,7 +152,7 @@ public class ReportPageGen {
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new SectBValuePlot());
 		plots.add(new PlausibilityConfigurationReport());
-		plots.add(new RupHistogramPlots());
+		plots.add(new RupHistogramPlots(RupHistogramPlots.SOL_SCALARS));
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
 			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());

@@ -62,14 +62,35 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGenerator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 
 public class RupHistogramPlots extends AbstractRupSetPlot {
 	
 	private HistScalar[] scalars;
+	
+	public static final HistScalar[] RUP_SET_LIGHT_SCALARS = {
+			HistScalar.LENGTH,
+			HistScalar.MAG,
+			HistScalar.SECT_COUNT,
+			HistScalar.CLUSTER_COUNT,
+			HistScalar.AREA,
+			HistScalar.MAX_JUMP_DIST,
+			HistScalar.CUM_JUMP_DIST,
+			HistScalar.RAKE,
+			HistScalar.CUM_RAKE_CHANGE
+	};
+	
+	public static final HistScalar[] RUP_SET_SCALARS = HistScalar.values();
+	
+	public static final HistScalar[] SOL_SCALARS = {
+			HistScalar.LENGTH,
+			HistScalar.MAG,
+			HistScalar.MAX_JUMP_DIST,
+			HistScalar.CUM_JUMP_DIST,
+			HistScalar.CUM_RAKE_CHANGE,
+			HistScalar.MAX_SLIP_DIFF
+	};
 
 	public RupHistogramPlots() {
 		this(HistScalar.values());
