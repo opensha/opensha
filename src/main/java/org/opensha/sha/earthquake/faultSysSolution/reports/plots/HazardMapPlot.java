@@ -41,6 +41,20 @@ import com.google.common.base.Preconditions;
 
 public class HazardMapPlot extends AbstractSolutionPlot {
 	
+	private static double SPACING_DEFAULT = 1d;
+	
+	static {
+		String spacingEnv = System.getenv("FST_HAZARD_SPACING");
+		if (spacingEnv != null && !spacingEnv.isBlank()) {
+			try {
+				SPACING_DEFAULT = Double.parseDouble(spacingEnv);
+			} catch (NumberFormatException e) {
+				System.err.println("Couldn't parse FST_HAZARD_SPACING environmental variable as a double: "+spacingEnv);
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	private AttenRelRef gmpeRef;
 	private double spacing;
 	private double[] periods;
@@ -48,7 +62,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 	private boolean writePDFs = false;
 	
 	public HazardMapPlot() {
-		this(AttenRelRef.ASK_2014, 0.5, 0d, 1d);
+		this(AttenRelRef.ASK_2014, SPACING_DEFAULT, 0d, 1d);
 	}
 	
 	public HazardMapPlot(AttenRelRef gmpeRef, double spacing, double... periods) {
