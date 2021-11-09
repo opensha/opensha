@@ -369,6 +369,9 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 					// get the rupture probability
 					qkProb = ((ProbEqkRupture)rupture).getProbability();
 					
+					if (qkProb == 0d)
+						continue;
+					
 					// skip small magnitudes
 					if(rupture.getMag() < minMagnitudeParam.getValue()) {
 						numRupRejected += 1;
