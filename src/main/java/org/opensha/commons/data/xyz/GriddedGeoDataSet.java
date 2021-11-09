@@ -22,7 +22,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
 /**
- * This is a Geohgraphic Dataset on a regular grid, as defined by a GriddedRegion. Points
+ * This is a Geographic dataset on a regular grid, as defined by a GriddedRegion. Points
  * not in the given GriddedRegion cannot be set.
  * 
  * @author kevin

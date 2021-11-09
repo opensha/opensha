@@ -74,7 +74,19 @@ class UCERF3FileConverter {
 			ivfss.setGridSourceProvider(exactGridProv(ivfss.getGridSourceProvider()));
 			attachExtraIVFSRSModules(ivfss.getRupSet());
 			ivfss.write(new File(outputDir, branch.buildFileName()+".zip"));
+			DeformationModels refDM = branch.getValue(DeformationModels.class);
+			for (DeformationModels dm : DeformationModels.values()) {
+				if (dm == refDM || dm.getNodeWeight(branch) == 0d)
+					continue;
+				branch.setValue(dm);
+				System.out.println("Alt DM (UNIFORM) branch: "+branch);
+				ivfss = cfss.getSolution(branch); 
+				ivfss.setGridSourceProvider(exactGridProv(ivfss.getGridSourceProvider()));
+				attachExtraIVFSRSModules(ivfss.getRupSet());
+				ivfss.write(new File(outputDir, branch.buildFileName()+".zip"));
+			}
 		}
+		System.exit(0);
 		
 //		cfss = FaultSystemSolutionFetcher.getSubset(cfss,
 //				ScalingRelationships.SHAW_2009_MOD,

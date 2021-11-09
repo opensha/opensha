@@ -9,11 +9,38 @@ import java.util.List;
 
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.Region;
 
 public class PoliticalBoundariesData {
 
 	private static XY_DataSet[] caOutlines;
 	private static XY_DataSet[] nzOutlines;
+	
+	/**
+	 * 
+	 * @param region
+	 * @return default political boundaries for the given region, or null if none available
+	 */
+	public static XY_DataSet[] loadDefaultOutlines(Region region) {
+		// political boundary special cases
+		if (region.contains(new Location(34, -118)) || region.contains(new Location(38, -122))) {
+			// CA
+			try {
+				return loadCAOutlines();
+			} catch (IOException e) {
+				System.err.println("WARNING: couldn't load CA outline data: "+e.getMessage());
+			}
+		} else if (region.contains(new Location(-42.4, 172.3)) || region.contains(new Location(-38.8, 175.9))) {
+			// NZ
+			try {
+				return loadNZOutlines();
+			} catch (IOException e) {
+				System.err.println("WARNING: couldn't load NZ outline data: "+e.getMessage());
+			}
+		}
+		return null;
+	}
 	
 	/**
 	 * @return array of XY_DataSets that represent California boundaries (plural/array because of islands). X values are longitude

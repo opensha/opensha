@@ -118,21 +118,7 @@ public class RupSetMapMaker {
 			Preconditions.checkState(subSects.get(s).getSectionId() == s, "Subsection IDs must match index in list");
 		
 		// political boundary special cases
-		if (region.contains(new Location(34, -118))) {
-			// CA
-			try {
-				politicalBoundaries = PoliticalBoundariesData.loadCAOutlines();
-			} catch (IOException e) {
-				System.err.println("WARNING: couldn't load CA outline data: "+e.getMessage());
-			}
-		} else if (region.contains(new Location(-42.4, 172.3)) || region.contains(new Location(-38.8, 175.9))) {
-			// NZ
-			try {
-				politicalBoundaries = PoliticalBoundariesData.loadNZOutlines();
-			} catch (IOException e) {
-				System.err.println("WARNING: couldn't load NZ outline data: "+e.getMessage());
-			}
-		}
+		politicalBoundaries = PoliticalBoundariesData.loadDefaultOutlines(region);
 	}
 	
 	public static Region buildBufferedRegion(List<? extends FaultSection> subSects) {

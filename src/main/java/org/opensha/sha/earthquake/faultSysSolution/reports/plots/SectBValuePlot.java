@@ -165,7 +165,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		}
 	}
 	
-	static double[] calcRupMomentRates(FaultSystemSolution sol) {
+	public static double[] calcRupMomentRates(FaultSystemSolution sol) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
 		
@@ -265,7 +265,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return estBValue(minMag, maxMag, supraRate, moRate);
 	}
 	
-	private static double estBValue(double minMag, double maxMag, double supraRate, double moRate) {
+	public static double estBValue(double minMag, double maxMag, double supraRate, double moRate) {
 		Preconditions.checkState(minMag >= refFunc.getMinX()-0.5);
 		Preconditions.checkState(maxMag <= refFunc.getMaxX()+0.5);
 		
