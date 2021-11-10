@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +9,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.commons.math3.stat.StatUtils;
+import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
@@ -23,6 +27,7 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -292,6 +297,12 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		// re-center it so that we have a center bin
 		hist = new HistogramFunction(hist.getMinX()-0.5*hist.getDelta(), hist.size()+1, hist.getDelta());
 		
+		int numBelow10percent = 0;
+		int numAbove10percent = 0;
+		int numWithin10percent = 0;
+		
+		double[] ratios = new double[xyz1.size()];
+		
 		for (int i=0; i<xyz1.size(); i++) {
 			double v1 = xyz1.get(i);
 			double v2 = xyz2.get(i);
@@ -304,12 +315,59 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 				ratio = xRange.getUpperBound();
 			else
 				ratio = v1/v2;
+			ratios[i] = ratio;
+			if (ratio > 1.1)
+				numAbove10percent++;
+			else if (ratio < 0.9)
+				numBelow10percent++;
+			else
+				numWithin10percent++;
 			if (logRatio)
 				ratio = Math.log10(ratio);
 			hist.add(hist.getClosestXIndex(ratio), 1d);
 		}
 		hist.normalizeBySumOfY_Vals();
 //		System.out.println("Ratio hist:\n"+hist);
+		
+		Range yRange = new Range(0d, hist.getMaxY() < 0.35 ? 0.5 : 1d);
+		
+		double annY1 = yRange.getUpperBound()*0.95;
+		double annY2 = yRange.getUpperBound()*0.88;
+		double annY3 = yRange.getUpperBound()*0.81;
+		double annLeftX, annRightX;
+		annLeftX = 0.05*xRange.getLength() + xRange.getLowerBound();
+		annRightX = 0.95*xRange.getLength() + xRange.getLowerBound();
+		if (logRatio) {
+			annLeftX = Math.pow(10, annLeftX);
+			annRightX = Math.pow(10, annRightX);
+		}
+		
+		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 20);
+		List<XYTextAnnotation> anns = new ArrayList<>();
+		XYTextAnnotation ann = new XYTextAnnotation("Mean: "+twoDigits.format(StatUtils.mean(ratios)), annLeftX, annY1);
+		ann.setFont(annFont);
+		ann.setTextAnchor(TextAnchor.TOP_LEFT);
+		anns.add(ann);
+		
+		ann = new XYTextAnnotation("Median: "+twoDigits.format(DataUtils.median(ratios)), annLeftX, annY2);
+		ann.setFont(annFont);
+		ann.setTextAnchor(TextAnchor.TOP_LEFT);
+		anns.add(ann);
+		
+		ann = new XYTextAnnotation("Within 10%: "+percentDF.format((double)numWithin10percent/(double)ratios.length), annRightX, annY1);
+		ann.setFont(annFont);
+		ann.setTextAnchor(TextAnchor.TOP_RIGHT);
+		anns.add(ann);
+		
+		ann = new XYTextAnnotation("Below 0.9: "+percentDF.format((double)numBelow10percent/(double)ratios.length), annRightX, annY2);
+		ann.setFont(annFont);
+		ann.setTextAnchor(TextAnchor.TOP_RIGHT);
+		anns.add(ann);
+		
+		ann = new XYTextAnnotation("Above 1.1: "+percentDF.format((double)numAbove10percent/(double)ratios.length), annRightX, annY3);
+		ann.setFont(annFont);
+		ann.setTextAnchor(TextAnchor.TOP_RIGHT);
+		anns.add(ann);
 		
 		List<XY_DataSet> funcs = new ArrayList<>();
 		if (logRatio) {
@@ -328,10 +386,11 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		label = label.replace(" (cm/s)", "");
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, " ", label, "Fraction");
+		spec.setPlotAnnotations(anns);
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		
-		gp.drawGraphPanel(spec, logRatio, false, xRange, null);
+		gp.drawGraphPanel(spec, logRatio, false, xRange, yRange);
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, 800, 550, true, false, false);
 		return new File(outputDir, prefix+".png");
