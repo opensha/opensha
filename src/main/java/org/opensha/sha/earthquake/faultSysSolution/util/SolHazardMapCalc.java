@@ -109,22 +109,24 @@ public class SolHazardMapCalc {
 			Preconditions.checkState(period == -1d || period >= 0d,
 					"supplied map calculation periods must be -1 (PGV), 0 (PGA), or a positive value");
 		
-		sites = new ArrayList<>();
-		ScalarIMR gmpe = gmpeRef.instance(null);
-		gmpe.setParamDefaults();
-		for (Location loc : region.getNodeList()) {
-			Site site = new Site(loc);
-			for (Parameter<?> param : gmpe.getSiteParams())
-				site.addParameter((Parameter<?>) param.clone());
-			sites.add(site);
+		if (gmpeRef != null) {
+			sites = new ArrayList<>();
+			ScalarIMR gmpe = gmpeRef.instance(null);
+			gmpe.setParamDefaults();
+			for (Location loc : region.getNodeList()) {
+				Site site = new Site(loc);
+				for (Parameter<?> param : gmpe.getSiteParams())
+					site.addParameter((Parameter<?>) param.clone());
+				sites.add(site);
+			}
+			
+			fssERF = new FaultSystemSolutionERF(sol);
+			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
+			fssERF.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.EXCLUDE);
+			fssERF.getTimeSpan().setDuration(1d);
+			
+			fssERF.updateForecast();
 		}
-		
-		fssERF = new FaultSystemSolutionERF(sol);
-		fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
-		fssERF.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.EXCLUDE);
-		fssERF.getTimeSpan().setDuration(1d);
-		
-		fssERF.updateForecast();
 	}
 	
 	public void setXVals(DiscretizedFunc xVals) {
@@ -536,6 +538,10 @@ public class SolHazardMapCalc {
 		gridSpacingOption.setRequired(true);
 		ops.addOption(gridSpacingOption);
 		
+		Option recalcOption = new Option("rc", "recalc", false, "Flag to force recalculation (ignore existing curves files)");
+		recalcOption.setRequired(false);
+		ops.addOption(recalcOption);
+		
 		Option periodsOption = new Option("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		periodsOption.setRequired(true);
 		ops.addOption(periodsOption);
@@ -581,28 +587,54 @@ public class SolHazardMapCalc {
 		}
 		double[] periods = Doubles.toArray(periodsList);
 		
-		SolHazardMapCalc calc = new SolHazardMapCalc(sol, gmpe, gridReg, periods);
+		SolHazardMapCalc calc = null;
 		
-		if (cmd.hasOption("max-distance"))
-			calc.setMaxSourceSiteDist(Double.parseDouble(cmd.getOptionValue("max-distance")));
+		boolean recalc = cmd.hasOption("recalc");
 		
-		calc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
-		
-		calc.writeCurvesCSVs(outputDir, "curves", gridSpacing < 0.1d);
+		if (!recalc) {
+			// see if we already have curves
+			try {
+				calc = loadCurves(sol, gridReg, periods, outputDir, "curves");
+				System.out.println("Loaded existing curves!");
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		if (calc == null) {
+			// need to calculate
+			calc = new SolHazardMapCalc(sol, gmpe, gridReg, periods);
+			
+			if (cmd.hasOption("max-distance"))
+				calc.setMaxSourceSiteDist(Double.parseDouble(cmd.getOptionValue("max-distance")));
+			
+			calc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
+			
+			calc.writeCurvesCSVs(outputDir, "curves", gridSpacing < 0.1d);
+		}
 		
 		SolHazardMapCalc compCalc = null;
 		if (cmd.hasOption("comp-file")) {
 			System.out.println("Calculating comparison...");
 			FaultSystemSolution compSol = FaultSystemSolution.load(new File(cmd.getOptionValue("comp-file")));
 			
-			compCalc = new SolHazardMapCalc(compSol, gmpe, gridReg, periods);
-			
-			if (cmd.hasOption("max-distance"))
-				compCalc.setMaxSourceSiteDist(Double.parseDouble(cmd.getOptionValue("max-distance")));
-			
-			compCalc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
-			
-			compCalc.writeCurvesCSVs(outputDir, "comp_curves", gridSpacing < 0.1d);
+			if (!recalc) {
+				// see if we already have curves
+				try {
+					compCalc = loadCurves(compSol, gridReg, periods, outputDir, "comp_curves");
+					System.out.println("Loaded existing curves!");
+				} catch (Exception e) {}
+			}
+			if (compCalc == null) {
+				// need to calculate
+				compCalc = new SolHazardMapCalc(compSol, gmpe, gridReg, periods);
+				
+				if (cmd.hasOption("max-distance"))
+					compCalc.setMaxSourceSiteDist(Double.parseDouble(cmd.getOptionValue("max-distance")));
+				
+				compCalc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
+				
+				compCalc.writeCurvesCSVs(outputDir, "comp_curves", gridSpacing < 0.1d);
+			}
 		}
 		
 		HazardMapPlot plot = new HazardMapPlot(gmpe, gridSpacing, periods);

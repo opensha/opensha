@@ -63,8 +63,6 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 	private AttenRelRef gmpeRef;
 	private double spacing;
 	private double[] periods;
-
-	private boolean writePDFs = false;
 	
 	public HazardMapPlot() {
 		this(AttenRelRef.ASK_2014, SPACING_DEFAULT, 0d, 1d);
@@ -142,6 +140,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		
 		CPT logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-3d, 1d);
 		CPT logRatioCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
+		CPT pDiffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-100d, 100d);
 		logRatioCPT.setNanColor(Color.GRAY);
 		
 		for (int p=0; p<periods.length; p++) {
@@ -192,15 +191,17 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 					table.addLine(MarkdownUtils.boldCentered("Primary"), MarkdownUtils.boldCentered("Comparison"));
 					table.addLine("![Hazard Map]("+relPathToResources+"/"+map.getName()+")",
 							"![Hazard Map]("+relPathToResources+"/"+compMap.getName()+")");
-					table.addLine(MarkdownUtils.boldCentered("Log10 Ratio (Primary/Comparison)"),
-							MarkdownUtils.boldCentered("Scatter"));
+//					table.addLine(MarkdownUtils.boldCentered("Log10 Ratio (Primary/Comparison)"),
+//							MarkdownUtils.boldCentered("Scatter"));
+					table.addLine(MarkdownUtils.boldCentered("Log10 Ratio, Primary/Comparison"),
+							MarkdownUtils.boldCentered("% Difference, 100*(Primary-Comparison)/Comparison"));
 					
 					GriddedGeoDataSet ratioXYZ = (GriddedGeoDataSet)GeoDataSetMath.divide(xyz, compXYZ);
 					ratioXYZ.log10();
 					for (int i=0; i<xyz.size(); i++) {
 						if (!Double.isFinite(ratioXYZ.get(i))) {
 							double z1 = xyz.get(i);
-							double z2 = xyz.get(i);
+							double z2 = compXYZ.get(i);
 							if ((float)z1 == 0f && (float)z2 == 0f)
 								ratioXYZ.set(i, 0d);
 							else if ((float)z1 == 0f && (float)z2 > 0f)
@@ -219,18 +220,48 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 					table.initNewLine();
 					table.addColumn("![Ratio Map]("+relPathToResources+"/"+ratioMap.getName()+")");
 					
-					// plot scatter
-					File scatter = compScatterPlot(resourcesDir, prefix+"_scatter", xyz, compXYZ, zLabel);
-					table.addColumn("![Scatter Plot]("+relPathToResources+"/"+scatter.getName()+")");
+					GriddedGeoDataSet pDiffXYZ = new GriddedGeoDataSet(gridReg, false);
+					for (int i=0; i<xyz.size(); i++) {
+						double z1 = xyz.get(i);
+						double z2 = compXYZ.get(i);
+						double val;
+						if (z1 == 0d && z2 == 0d)
+							val = 0d;
+						else if (z2 == 0d)
+							val = Double.POSITIVE_INFINITY;
+						else
+							val = 100d*(z1-z2)/z2;
+						pDiffXYZ.set(i, val);
+					}
+					
+					String pDiffLabel = ratioLabel;
+					File pDiffMap = calc.plotMap(resourcesDir, prefix+"_pDiff", pDiffXYZ, pDiffCPT, " ",
+							pDiffLabel+", % Difference");
+					table.addColumn("![Percent Difference Map]("+relPathToResources+"/"+pDiffMap.getName()+")");
 					table.finalizeLine();
 					
+					// plot scatter
 					table.initNewLine();
-					File linearRatioHist = compRatioHist(resourcesDir, prefix+"_ratio_hist", xyz, compXYZ,
-							ratioLabel+", Comparison Ratio", false);
-					table.addColumn("![Hist Plot]("+relPathToResources+"/"+linearRatioHist.getName()+")");
+					File scatter = compScatterPlot(resourcesDir, prefix+"_scatter", xyz, compXYZ, zLabel);
+					table.addColumn("![Scatter Plot]("+relPathToResources+"/"+scatter.getName()+")");
+					File pDiffHist = compRatioHist(resourcesDir, prefix+"_pDiff_hist", xyz, compXYZ,
+							pDiffLabel+", % Difference", HistType.PERCENT_DIFF);
+					table.addColumn("![Hist Plot]("+relPathToResources+"/"+pDiffHist.getName()+")");
+					table.finalizeLine();
+					
+//					File linearRatioHist = compRatioHist(resourcesDir, prefix+"_ratio_hist", xyz, compXYZ,
+//							ratioLabel+", Comparison Ratio", false);
+//					table.addColumn("![Hist Plot]("+relPathToResources+"/"+linearRatioHist.getName()+")");
+//					File logRatioHist = compRatioHist(resourcesDir, prefix+"_ratio_hist_log", xyz, compXYZ,
+//							ratioLabel+", Comparison Ratio", true);
+//					table.addColumn("![Hist Plot]("+relPathToResources+"/"+logRatioHist.getName()+")");
+					table.initNewLine();
 					File logRatioHist = compRatioHist(resourcesDir, prefix+"_ratio_hist_log", xyz, compXYZ,
-							ratioLabel+", Comparison Ratio", true);
+							ratioLabel+", Comparison Ratio", HistType.LOG_RATIO);
 					table.addColumn("![Hist Plot]("+relPathToResources+"/"+logRatioHist.getName()+")");
+					File linearRatioHist = compRatioHist(resourcesDir, prefix+"_ratio_hist", xyz, compXYZ,
+							ratioLabel+", Comparison Ratio", HistType.RATIO);
+					table.addColumn("![Hist Plot]("+relPathToResources+"/"+linearRatioHist.getName()+")");
 					table.finalizeLine();
 					
 					lines.addAll(table.build());
@@ -259,6 +290,18 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		for (int i=0; i<xyz1.size(); i++)
 			scatter.set(withinRange(range, xyz1.get(i)), withinRange(range, xyz2.get(i)));
 		
+		double min = Math.min(scatter.getMinX(), scatter.getMinY());
+		double max = Math.max(scatter.getMaxX(), scatter.getMaxY());
+		if (min > 2e-2)
+			range = new Range(1e-2, range.getUpperBound());
+		else if (min > 2e-3)
+			range = new Range(1e-3, range.getUpperBound());
+		
+		if (max < 7e-2)
+			range = new Range(range.getLowerBound(), 1e-1);
+		else if (max < 7e-1)
+			range = new Range(range.getLowerBound(), 1e0);
+		
 		List<XY_DataSet> funcs = new ArrayList<>();
 		funcs.add(scatter);
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -280,16 +323,36 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		return new File(outputDir, prefix+".png");
 	}
 	
+	private enum HistType {
+		RATIO,
+		LOG_RATIO,
+		PERCENT_DIFF
+	}
+	
 	private static File compRatioHist(File outputDir, String prefix, GriddedGeoDataSet xyz1, GriddedGeoDataSet xyz2,
-			String label, boolean logRatio) throws IOException {
+			String label, HistType type) throws IOException {
 		Range xRange;
 		double delta;
-		if (logRatio) {
-			xRange = new Range(-1d, 1d);
-			delta = 0.05;
-		} else {
+		boolean xLog;
+		switch (type) {
+		case RATIO:
 			xRange = new Range(0d, 2d);
+			xLog = false;
 			delta = 0.05;
+			break;
+		case LOG_RATIO:
+			xRange = new Range(-1d, 1d);
+			xLog = true;
+			delta = 0.05;
+			break;
+		case PERCENT_DIFF:
+			xRange = new Range(-100d, 100d);
+			xLog = false;
+			delta = 5;
+			break;
+
+		default:
+			throw new IllegalStateException();
 		}
 		HistogramFunction hist = HistogramFunction.getEncompassingHistogram(
 				xRange.getLowerBound()+0.1*delta, xRange.getUpperBound()-0.1*delta, delta);
@@ -297,34 +360,38 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		// re-center it so that we have a center bin
 		hist = new HistogramFunction(hist.getMinX()-0.5*hist.getDelta(), hist.size()+1, hist.getDelta());
 		
-		int numBelow10percent = 0;
-		int numAbove10percent = 0;
-		int numWithin10percent = 0;
-		
-		double[] ratios = new double[xyz1.size()];
+		double[] vals = new double[xyz1.size()];
 		
 		for (int i=0; i<xyz1.size(); i++) {
 			double v1 = xyz1.get(i);
 			double v2 = xyz2.get(i);
-			double ratio;
-			if (v1 == 0d && v2 == 0d)
-				ratio = 1d;
-			else if (v1 == 0d)
-				ratio = xRange.getLowerBound();
-			else if (v2 == 0d)
-				ratio = xRange.getUpperBound();
-			else
-				ratio = v1/v2;
-			ratios[i] = ratio;
-			if (ratio > 1.1)
-				numAbove10percent++;
-			else if (ratio < 0.9)
-				numBelow10percent++;
-			else
-				numWithin10percent++;
-			if (logRatio)
-				ratio = Math.log10(ratio);
-			hist.add(hist.getClosestXIndex(ratio), 1d);
+			double val;
+			if (type == HistType.LOG_RATIO || type == HistType.RATIO) {
+				if (v1 == 0d && v2 == 0d)
+					val = 1d;
+				else if (v2 == 0d)
+					val = Double.POSITIVE_INFINITY;
+				else
+					val = v1/v2;
+			} else {
+				if (v1 == 0d && v2 == 0d)
+					val = 0d;
+				else if (v2 == 0d)
+					val = Double.POSITIVE_INFINITY;
+				else
+					val = 100d*(v1-v2)/v2;
+			}
+			vals[i] = val;
+			if (Double.isInfinite(val)) {
+				if (val > 0)
+					hist.add(hist.size()-1, 1d);
+				else
+					hist.add(0, 1d);
+			} else {
+				if (xLog)
+					val = Math.log10(val);
+				hist.add(hist.getClosestXIndex(val), 1d);
+			}
 		}
 		hist.normalizeBySumOfY_Vals();
 //		System.out.println("Ratio hist:\n"+hist);
@@ -337,40 +404,80 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		double annLeftX, annRightX;
 		annLeftX = 0.05*xRange.getLength() + xRange.getLowerBound();
 		annRightX = 0.95*xRange.getLength() + xRange.getLowerBound();
-		if (logRatio) {
+		if (xLog) {
 			annLeftX = Math.pow(10, annLeftX);
 			annRightX = Math.pow(10, annRightX);
 		}
 		
 		Font annFont = new Font(Font.SANS_SERIF, Font.BOLD, 20);
 		List<XYTextAnnotation> anns = new ArrayList<>();
-		XYTextAnnotation ann = new XYTextAnnotation("Mean: "+twoDigits.format(StatUtils.mean(ratios)), annLeftX, annY1);
+		XYTextAnnotation ann = new XYTextAnnotation("Mean: "+twoDigits.format(StatUtils.mean(vals)), annLeftX, annY1);
 		ann.setFont(annFont);
 		ann.setTextAnchor(TextAnchor.TOP_LEFT);
 		anns.add(ann);
 		
-		ann = new XYTextAnnotation("Median: "+twoDigits.format(DataUtils.median(ratios)), annLeftX, annY2);
+		ann = new XYTextAnnotation("Median: "+twoDigits.format(DataUtils.median(vals)), annLeftX, annY2);
 		ann.setFont(annFont);
 		ann.setTextAnchor(TextAnchor.TOP_LEFT);
 		anns.add(ann);
 		
-		ann = new XYTextAnnotation("Within 10%: "+percentDF.format((double)numWithin10percent/(double)ratios.length), annRightX, annY1);
+		ann = new XYTextAnnotation("Range: ["+twoDigits.format(StatUtils.min(vals))
+			+","+twoDigits.format(StatUtils.max(vals))+"]", annLeftX, annY3);
+		ann.setFont(annFont);
+		ann.setTextAnchor(TextAnchor.TOP_LEFT);
+		anns.add(ann);
+		
+		int numBelow = 0;
+		int numAbove = 0;
+		int numWithin = 0;
+		
+		String withinLabel, belowLabel, aboveLabel;
+		if (type == HistType.LOG_RATIO || type == HistType.RATIO) {
+			withinLabel = "Within [0.9,1.1]";
+			belowLabel = "< 0.9";
+			aboveLabel = "> 1.1";
+			for (double val : vals) {
+				if (val > 1.1d)
+					numAbove++;
+				else if (val < 0.9d)
+					numBelow++;
+				else
+					numWithin++;
+			}
+		} else {
+			withinLabel = "Within ±10%";
+			belowLabel = "< 10%";
+			aboveLabel = "> 10%";
+			for (double val : vals) {
+				if (val > 10d)
+					numAbove++;
+				else if (val < -10d)
+					numBelow++;
+				else
+					numWithin++;
+			}
+		}
+		
+		ann = new XYTextAnnotation(withinLabel+": "+percentDF.format((double)numWithin/(double)vals.length),
+				annRightX, annY1);
 		ann.setFont(annFont);
 		ann.setTextAnchor(TextAnchor.TOP_RIGHT);
 		anns.add(ann);
 		
-		ann = new XYTextAnnotation("Below 0.9: "+percentDF.format((double)numBelow10percent/(double)ratios.length), annRightX, annY2);
+		ann = new XYTextAnnotation(belowLabel+": "+percentDF.format((double)numBelow/(double)vals.length),
+				annRightX, annY2);
 		ann.setFont(annFont);
 		ann.setTextAnchor(TextAnchor.TOP_RIGHT);
 		anns.add(ann);
 		
-		ann = new XYTextAnnotation("Above 1.1: "+percentDF.format((double)numAbove10percent/(double)ratios.length), annRightX, annY3);
+		ann = new XYTextAnnotation(aboveLabel+": "+percentDF.format((double)numAbove/(double)vals.length),
+				annRightX, annY3);
 		ann.setFont(annFont);
 		ann.setTextAnchor(TextAnchor.TOP_RIGHT);
 		anns.add(ann);
 		
 		List<XY_DataSet> funcs = new ArrayList<>();
-		if (logRatio) {
+		if (xLog) {
 			ArbitrarilyDiscretizedFunc logHist = new ArbitrarilyDiscretizedFunc();
 			for (Point2D pt : hist)
 				logHist.set(Math.pow(10, pt.getX()), pt.getY());
@@ -390,7 +497,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		
-		gp.drawGraphPanel(spec, logRatio, false, xRange, yRange);
+		gp.drawGraphPanel(spec, xLog, false, xRange, yRange);
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, 800, 550, true, false, false);
 		return new File(outputDir, prefix+".png");
