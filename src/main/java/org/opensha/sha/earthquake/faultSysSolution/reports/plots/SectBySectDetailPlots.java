@@ -1747,7 +1747,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 			
 			if (comp) {
-				double particRate = SectBValuePlot.calcSectMomentRate(meta.primary.rupSet, compRupMoRates, false, sectIndex);
+				double particRate = SectBValuePlot.calcSectMomentRate(meta.comparison.rupSet, compRupMoRates, false, sectIndex);
 				
 				XY_DataSet solFunc = copyAtY(emptyFunc, particRate);
 				if (s == 0)
