@@ -592,12 +592,13 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 
 	@Override
 	public void registerTypeAdapters(GsonBuilder builder) {
-		// do nothing (default serialization works fine)
+		builder.serializeSpecialFloatingPointValues();
+		// no extra adapters, (default serialization works fine)
 	}
 	
 	public static void writeJSON(InversionConfiguration config, File jsonFile) throws IOException {
 		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
-		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		Gson gson = new GsonBuilder().setPrettyPrinting().serializeSpecialFloatingPointValues().create();
 		gson.toJson(config, InversionConfiguration.class, writer);
 		writer.flush();
 		writer.close();
@@ -605,7 +606,8 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	
 	public static InversionConfiguration readJSON(File jsonFile, FaultSystemRupSet rupSet) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(jsonFile));
-		Gson gson = new GsonBuilder().registerTypeAdapter(InversionConstraint.class, new Adapter(rupSet)).create();
+		Gson gson = new GsonBuilder().setPrettyPrinting().serializeSpecialFloatingPointValues()
+				.registerTypeAdapter(InversionConstraint.class, new Adapter(rupSet)).create();
 		InversionConfiguration config = gson.fromJson(reader, InversionConfiguration.class);
 //		System.out.println("Read configuration. Completion: "+config.completion);
 		return config;

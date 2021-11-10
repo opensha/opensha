@@ -56,6 +56,8 @@ public class SectionTotalRateConstraint extends InversionConstraint {
 		long numNonZero = 0l;
 		
 		for (int s=0; s<sectRates.length; s++) {
+			if (Double.isNaN(sectRates[s]))
+				continue;
 			double stdDev = sectRateStdDevs == null ? 0d : sectRateStdDevs[s];
 			
 			double scale = weightingType.getA_Scalar(sectRates[s], stdDev);

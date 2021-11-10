@@ -224,7 +224,7 @@ public abstract class InversionConstraint implements ShortNamed {
 			this.rupSet = rupSet;
 			gson = new GsonBuilder().registerTypeHierarchyAdapter(
 					FaultSystemRupSet.class, new RupSetInterceptorAdaptor())
-					.create();
+					.serializeSpecialFloatingPointValues().create();
 		}
 
 		@Override
