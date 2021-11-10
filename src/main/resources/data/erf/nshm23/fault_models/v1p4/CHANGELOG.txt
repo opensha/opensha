@@ -1,0 +1,4859 @@
+NSHM2023_FaultSections Change log between v1.3 and v1.4
+09-Nov-2021 16:58:41
+
+
+__________________
+Fault deleted from v1.3-->v1.4 listed by fault ID: 35
+Fault deleted from v1.3-->v1.4 listed by fault ID: 227
+Fault deleted from v1.3-->v1.4 listed by fault ID: 304
+
+__________________
+Fault added from v1.3-->v1.4 listed by fault ID: 36
+Fault added from v1.3-->v1.4 listed by fault ID: 228
+Fault added from v1.3-->v1.4 listed by fault ID: 305
+
+__________________
+
+
+__________________
+
+
+Total number of faults edited:
+114
+
+Total number of geometry/node issues fixed:
+3
+
+Fault IDs with geometry/node issues fixed:
+28; 108; 2581; 
+__________________
+
+Total number of inconsistent lines fixed:
+0
+
+Fault IDs with inconsistent lines fixed:
+
+__________________
+
+Total changes by attribute
+Total changes in X coordinates:
+       6
+Total changes in Y coordinates:
+       6
+Total changes in Fault ID:
+       0
+Total changes in Fault Name:
+       3
+Total changes in Primary State:
+       0
+Total changes in Secondary State:
+       0
+Total changes in Dip Direction:
+       29
+Total changes in Dip Degree:
+       70
+Total changes in Lower Depth:
+       70
+Total changes in Upper Depth:
+       13
+Total changes in Proxy:
+       0
+
+__________________
+Airport Lake	; FaultID 	1	
+     >>>No changes made
+
+__________________
+Almanor	; FaultID 	2	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 90
+ Rake change
+  v1.3 value = 135
+  v1.4 value = -135
+
+__________________
+Anacapa - Dume	; FaultID 	3	
+ Dip Degree change
+  v1.3 value = 41
+  v1.4 value = 45
+ Lower Seismogenic Depth change
+  v1.3 value = 11.4
+  v1.4 value = 15.5
+ Upper Seismogenic Depth change
+  v1.3 value = 1.2
+  v1.4 value = 0
+
+__________________
+Anaheim	; FaultID 	5	
+     >>>No changes made
+
+__________________
+Ash Hill	; FaultID 	6	
+     >>>No changes made
+
+__________________
+Baker	; FaultID 	7	
+     >>>No changes made
+
+__________________
+Bartlett Springs	; FaultID 	8	
+     >>>No changes made
+
+__________________
+Battle Creek	; FaultID 	9	
+     >>>No changes made
+
+__________________
+Bear River	; FaultID 	10	
+     >>>No changes made
+
+__________________
+Bennett Valley	; FaultID 	11	
+     >>>No changes made
+
+__________________
+Bicycle Lake	; FaultID 	12	
+     >>>No changes made
+
+__________________
+Big Lagoon	; FaultID 	13	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13
+
+__________________
+Big Pine (center)	; FaultID 	14	
+ Rake change
+  v1.3 value = 30
+  v1.4 value = 90
+
+__________________
+Big Pine (east)	; FaultID 	15	
+ Rake change
+  v1.3 value = 30
+  v1.4 value = 60
+
+__________________
+Big Pine (west)	; FaultID 	16	
+ Rake change
+  v1.3 value = 30
+  v1.4 value = 90
+
+__________________
+Blackwater	; FaultID 	17	
+     >>>No changes made
+
+__________________
+Blue Cut	; FaultID 	18	
+     >>>No changes made
+
+__________________
+Brawley	; FaultID 	19	
+     >>>No changes made
+
+__________________
+Breckenridge	; FaultID 	21	
+     >>>No changes made
+
+__________________
+Bullion Mountains	; FaultID 	22	
+     >>>No changes made
+
+__________________
+Burnt Mountain	; FaultID 	23	
+     >>>No changes made
+
+__________________
+Cady	; FaultID 	25	
+     >>>No changes made
+
+__________________
+Calico - Hidalgo	; FaultID 	26	
+     >>>No changes made
+
+__________________
+Camp Rock	; FaultID 	27	
+     >>>No changes made
+
+__________________
+Canada David	; FaultID 	28	
+ X change
+  v1.3 number of nodes:  7
+  v1.4 number of nodes:  7
+  v1.3 nodes: 
+       -115.41869
+       -115.46810
+       -115.47518
+       -115.46876
+       -115.36081
+       -115.34343
+       -115.33186
+  v1.4 nodes: 
+       -115.42532
+       -115.46810
+       -115.47518
+       -115.46876
+       -115.36081
+       -115.34343
+       -115.33186
+ Y change
+  v1.3 number of nodes:  7
+  v1.4 number of nodes:  7
+  v1.3 nodes: 
+        32.31572
+        32.27840
+        32.24155
+        32.20404
+        32.13531
+        32.09116
+        32.05008
+  v1.4 nodes: 
+        32.30892
+        32.27840
+        32.24155
+        32.20404
+        32.13531
+        32.09116
+        32.05008
+ Rake change
+  v1.3 value = 90
+  v1.4 value = -90
+
+__________________
+Carlsbad	; FaultID 	29	
+     >>>No changes made
+
+__________________
+Casmalia	; FaultID 	30	
+     >>>No changes made
+
+__________________
+Cedar Mountain - Mahogany Mountain	; FaultID 	31	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 60
+
+__________________
+Cerro Prieto	; FaultID 	32	
+     >>>No changes made
+
+__________________
+Channel Islands	; FaultID 	33	
+     >>>No changes made
+
+__________________
+Channel Islands (ramp)	; FaultID 	34	
+     >>>No changes made
+
+__________________
+Chino	; FaultID 	36	
+     >>>No changes made
+
+__________________
+Clamshell - Sawpit	; FaultID 	37	
+     >>>No changes made
+
+__________________
+Clayton	; FaultID 	38	
+     >>>No changes made
+
+__________________
+Cleghorn	; FaultID 	39	
+     >>>No changes made
+
+__________________
+Cleghorn Lake	; FaultID 	40	
+     >>>No changes made
+
+__________________
+Cleghorn Pass	; FaultID 	41	
+     >>>No changes made
+
+__________________
+Collayomi	; FaultID 	42	
+     >>>No changes made
+
+__________________
+Compton	; FaultID 	43	
+ Dip Degree change
+  v1.3 value = 41
+  v1.4 value = 20
+ Rake change
+  v1.3 value = 60
+  v1.4 value = 90
+ Lower Seismogenic Depth change
+  v1.3 value = 11.4
+  v1.4 value = 15.6
+ Upper Seismogenic Depth change
+  v1.3 value = 1.2
+  v1.4 value = 5.2
+
+__________________
+Concord	; FaultID 	44	
+     >>>No changes made
+
+__________________
+Coronado Bank	; FaultID 	55	
+     >>>No changes made
+
+__________________
+Coyote Canyon	; FaultID 	57	
+     >>>No changes made
+
+__________________
+Coyote Lake	; FaultID 	58	
+     >>>No changes made
+
+__________________
+Cucamonga	; FaultID 	59	
+     >>>No changes made
+
+__________________
+Cuyama (south)	; FaultID 	60	
+     >>>No changes made
+
+__________________
+Davis Creek	; FaultID 	61	
+     >>>No changes made
+
+__________________
+Death Valley (Black Mountains)	; FaultID 	62	
+     >>>No changes made
+
+__________________
+Death Valley (Fish Lake Valley)	; FaultID 	63	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13
+
+__________________
+Death Valley (north)	; FaultID 	64	
+ Dip Degree change
+  v1.3 value = 60
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = W
+  v1.4 value = Vertical
+
+__________________
+Death Valley (south)	; FaultID 	65	
+ Dip Degree change
+  v1.3 value = 85
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = W
+  v1.4 value = Vertical
+
+__________________
+Deep Springs	; FaultID 	66	
+     >>>No changes made
+
+__________________
+Del Valle	; FaultID 	67	
+     >>>No changes made
+
+__________________
+Dog Valley	; FaultID 	68	
+     >>>No changes made
+
+__________________
+Dry Mountain	; FaultID 	69	
+     >>>No changes made
+
+__________________
+Earthquake Valley (center)	; FaultID 	70	
+     >>>No changes made
+
+__________________
+Earthquake Valley (north)	; FaultID 	71	
+     >>>No changes made
+
+__________________
+Earthquake Valley (south)	; FaultID 	72	
+     >>>No changes made
+
+__________________
+East Huasna	; FaultID 	73	
+     >>>No changes made
+
+__________________
+Eaton Roughs	; FaultID 	74	
+     >>>No changes made
+
+__________________
+Elmore Ranch	; FaultID 	75	
+     >>>No changes made
+
+__________________
+Elysian Park (lower)	; FaultID 	76	
+     >>>No changes made
+
+__________________
+Elysian Park (upper)	; FaultID 	77	
+     >>>No changes made
+
+__________________
+Emerson - Copper Mountain	; FaultID 	78	
+ Lower Seismogenic Depth change
+  v1.3 value = 15.1
+  v1.4 value = 14.1
+
+__________________
+Eureka Peak	; FaultID 	79	
+     >>>No changes made
+
+__________________
+Fickle Hill	; FaultID 	80	
+     >>>No changes made
+
+__________________
+Fish Slough	; FaultID 	81	
+     >>>No changes made
+
+__________________
+Fitzhugh Creek	; FaultID 	82	
+     >>>No changes made
+
+__________________
+Fontana (seismicity)	; FaultID 	83	
+     >>>No changes made
+
+__________________
+Franklin	; FaultID 	84	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13.2
+
+__________________
+Garberville - Briceland	; FaultID 	85	
+     >>>No changes made
+
+__________________
+Garlic Springs	; FaultID 	86	
+     >>>No changes made
+
+__________________
+Gillem - Big Crack	; FaultID 	87	
+     >>>No changes made
+
+__________________
+Goldstone Lake	; FaultID 	88	
+     >>>No changes made
+
+__________________
+Gravel Hills - Harper Lake	; FaultID 	89	
+     >>>No changes made
+
+__________________
+Great Valley 1	; FaultID 	90	
+     >>>No changes made
+
+__________________
+Great Valley 10 (Panoche)	; FaultID 	91	
+     >>>No changes made
+
+__________________
+Great Valley 11	; FaultID 	92	
+     >>>No changes made
+
+__________________
+Great Valley 12	; FaultID 	93	
+     >>>No changes made
+
+__________________
+Great Valley 13 (Coalinga)	; FaultID 	94	
+     >>>No changes made
+
+__________________
+Great Valley 14 (Kettleman Hills)	; FaultID 	95	
+     >>>No changes made
+
+__________________
+Great Valley 2	; FaultID 	96	
+     >>>No changes made
+
+__________________
+Great Valley 3 (Mysterious Ridge)	; FaultID 	97	
+     >>>No changes made
+
+__________________
+Great Valley 3a (Dunnigan Hills)	; FaultID 	98	
+     >>>No changes made
+
+__________________
+Great Valley 4a (Trout Creek)	; FaultID 	99	
+     >>>No changes made
+
+__________________
+Great Valley 4b (Gordon Valley)	; FaultID 	100	
+     >>>No changes made
+
+__________________
+Great Valley 5 (Pittsburg - Kirby Hills)	; FaultID 	101	
+     >>>No changes made
+
+__________________
+Great Valley 6 (Midland)	; FaultID 	103	
+     >>>No changes made
+
+__________________
+Great Valley 7 (Orestimba)	; FaultID 	105	
+     >>>No changes made
+
+__________________
+Great Valley 8 (Quinto)	; FaultID 	106	
+     >>>No changes made
+
+__________________
+Great Valley 9 (Laguna Seca)	; FaultID 	107	
+     >>>No changes made
+
+__________________
+Green Valley	; FaultID 	108	
+ X change
+  v1.3 number of nodes:  6
+  v1.4 number of nodes:  6
+  v1.3 nodes: 
+       -122.22314
+       -122.19216
+       -122.16127
+       -122.13282
+       -122.11043
+       -122.08900
+  v1.4 nodes: 
+       -122.08900
+       -122.11043
+       -122.13282
+       -122.16127
+       -122.19216
+       -122.22314
+ Y change
+  v1.3 number of nodes:  6
+  v1.4 number of nodes:  6
+  v1.3 nodes: 
+        38.41540
+        38.32422
+        38.23303
+        38.15394
+        38.10879
+        38.04365
+  v1.4 nodes: 
+        38.04365
+        38.10879
+        38.15394
+        38.23303
+        38.32422
+        38.41540
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 84
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = E
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 14
+
+__________________
+Greenville (north)	; FaultID 	109	
+ X change
+  v1.3 number of nodes:  5
+  v1.4 number of nodes:  7
+  v1.3 nodes: 
+       -121.46941
+       -121.47493
+       -121.50159
+       -121.51915
+       -121.54175
+  v1.4 nodes: 
+       -121.54175
+       -121.61777
+       -121.66320
+       -121.71828
+       -121.77345
+       -121.80174
+       -121.87529
+ Y change
+  v1.3 number of nodes:  5
+  v1.4 number of nodes:  7
+  v1.3 nodes: 
+        37.25440
+        37.30207
+        37.38182
+        37.46308
+        37.50736
+  v1.4 nodes: 
+        37.50736
+        37.62192
+        37.67132
+        37.72971
+        37.78807
+        37.82729
+        37.87150
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 84
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = E
+
+__________________
+Greenville (south)	; FaultID 	110	
+ X change
+  v1.3 number of nodes:  7
+  v1.4 number of nodes:  5
+  v1.3 nodes: 
+       -121.54175
+       -121.61777
+       -121.66320
+       -121.71828
+       -121.77345
+       -121.80174
+       -121.87529
+  v1.4 nodes: 
+       -121.46941
+       -121.47493
+       -121.50159
+       -121.51915
+       -121.54175
+ Y change
+  v1.3 number of nodes:  7
+  v1.4 number of nodes:  5
+  v1.3 nodes: 
+        37.50736
+        37.62192
+        37.67132
+        37.72971
+        37.78807
+        37.82729
+        37.87150
+  v1.4 nodes: 
+        37.25440
+        37.30207
+        37.38182
+        37.46308
+        37.50736
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 87
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = E
+ Lower Seismogenic Depth change
+  v1.3 value = 14.9
+  v1.4 value = 10.6
+
+__________________
+Hartley Springs	; FaultID 	111	
+     >>>No changes made
+
+__________________
+Hat Creek	; FaultID 	112	
+ Dip Degree change
+  v1.3 value = 75
+  v1.4 value = 60
+
+__________________
+Hector Mine	; FaultID 	113	
+     >>>No changes made
+
+__________________
+Helendale - Lockhart (south)	; FaultID 	114	
+     >>>No changes made
+
+__________________
+Hilton Creek	; FaultID 	115	
+     >>>No changes made
+
+__________________
+Hollywood	; FaultID 	116	
+     >>>No changes made
+
+__________________
+Holser	; FaultID 	117	
+     >>>No changes made
+
+__________________
+Holser - San Gabriel (connector)	; FaultID 	118	
+     >>>No changes made
+
+__________________
+Homestead Valley	; FaultID 	119	
+     >>>No changes made
+
+__________________
+Honey Lake	; FaultID 	120	
+ Lower Seismogenic Depth change
+  v1.3 value = 9.715
+  v1.4 value = 9.7
+
+__________________
+Hosgri	; FaultID 	121	
+     >>>No changes made
+
+__________________
+Hosgri (extension)	; FaultID 	122	
+ Lower Seismogenic Depth change
+  v1.3 value = 12.2
+  v1.4 value = 7.5
+
+__________________
+Hunter Mountain - Saline Valley	; FaultID 	123	
+ Dip Degree change
+  v1.3 value = 75
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = E
+  v1.4 value = Vertical
+
+__________________
+Hunting Creek - Bartlett Springs (connector)	; FaultID 	124	
+     >>>No changes made
+
+__________________
+Hunting Creek - Berryessa	; FaultID 	125	
+ Lower Seismogenic Depth change
+  v1.3 value = 14
+  v1.4 value = 10.6
+
+__________________
+Imperial	; FaultID 	126	
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 82
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = E
+
+__________________
+Independence	; FaultID 	127	
+     >>>No changes made
+
+__________________
+Jess Valley	; FaultID 	128	
+     >>>No changes made
+
+__________________
+Johnson Valley (north)	; FaultID 	129	
+     >>>No changes made
+
+__________________
+Joshua Tree (seismicity)	; FaultID 	130	
+     >>>No changes made
+
+__________________
+Keddie Ridge	; FaultID 	131	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = W
+  v1.4 value = Vertical
+ Rake change
+  v1.3 value = 135
+  v1.4 value = -135
+
+__________________
+Kern Canyon (Lake Isabella)	; FaultID 	132	
+     >>>No changes made
+
+__________________
+Kern Canyon (north)	; FaultID 	133	
+     >>>No changes made
+
+__________________
+Kern Canyon (south)	; FaultID 	134	
+     >>>No changes made
+
+__________________
+Kickapoo	; FaultID 	135	
+ Lower Seismogenic Depth change
+  v1.3 value = 15.9
+  v1.4 value = 15.1
+
+__________________
+King Range	; FaultID 	136	
+     >>>No changes made
+
+__________________
+La Panza	; FaultID 	137	
+     >>>No changes made
+
+__________________
+Laguna Salada	; FaultID 	138	
+ Dip Degree change
+  v1.3 value = 37
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = SW
+  v1.4 value = Vertical
+ Rake change
+  v1.3 value = -90
+  v1.4 value = 180
+ Lower Seismogenic Depth change
+  v1.3 value = 15.3
+  v1.4 value = 13.3
+
+__________________
+Lake Isabella (seismicity)	; FaultID 	139	
+     >>>No changes made
+
+__________________
+Las Positas	; FaultID 	140	
+ Dip Degree change
+  v1.3 value = 60
+  v1.4 value = 90
+
+__________________
+Last Chance	; FaultID 	141	
+     >>>No changes made
+
+__________________
+Lenwood - Lockhart - Old Woman Springs	; FaultID 	142	
+     >>>No changes made
+
+__________________
+Likely	; FaultID 	143	
+     >>>No changes made
+
+__________________
+Lions Head	; FaultID 	144	
+     >>>No changes made
+
+__________________
+Little Lake	; FaultID 	145	
+     >>>No changes made
+
+__________________
+Little Salmon (offshore)	; FaultID 	146	
+     >>>No changes made
+
+__________________
+Little Salmon (onshore)	; FaultID 	147	
+     >>>No changes made
+
+__________________
+Los Alamos	; FaultID 	148	
+     >>>No changes made
+
+__________________
+Los Alamos (extension)	; FaultID 	149	
+     >>>No changes made
+
+__________________
+Los Medanos - Roe Island	; FaultID 	150	
+     >>>No changes made
+
+__________________
+Los Osos	; FaultID 	151	
+     >>>No changes made
+
+__________________
+Lost Hills	; FaultID 	152	
+     >>>No changes made
+
+__________________
+Ludlow	; FaultID 	153	
+     >>>No changes made
+
+__________________
+Lytle Creek (San Jacinto, connector)	; FaultID 	154	
+ Dip Degree change
+  v1.3 value = 45
+  v1.4 value = 90
+ Rake change
+  v1.3 value = 135
+  v1.4 value = 180
+ Lower Seismogenic Depth change
+  v1.3 value = 13
+  v1.4 value = 16.1
+
+__________________
+Maacama	; FaultID 	155	
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 63
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = E
+
+__________________
+Mad River	; FaultID 	157	
+     >>>No changes made
+
+__________________
+Malibu Coast (extension)	; FaultID 	158	
+     >>>No changes made
+
+__________________
+Malibu Coast	; FaultID 	160	
+     >>>No changes made
+
+__________________
+Manix - Afton Hills	; FaultID 	162	
+     >>>No changes made
+
+__________________
+McKinleyville	; FaultID 	163	
+     >>>No changes made
+
+__________________
+McLean Lake	; FaultID 	164	
+     >>>No changes made
+
+__________________
+Mendocino	; FaultID 	165	
+     >>>No changes made
+
+__________________
+Mill Creek (San Andreas, north branch)	; FaultID 	166	
+     >>>No changes made
+
+__________________
+Mission (connected)	; FaultID 	167	
+ Dip Degree change
+  v1.3 value = 77
+  v1.4 value = 90
+ Lower Seismogenic Depth change
+  v1.3 value = 11
+  v1.4 value = 5.1
+
+__________________
+Mission Creek	; FaultID 	168	
+     >>>No changes made
+
+__________________
+Mission Hills	; FaultID 	169	
+     >>>No changes made
+
+__________________
+Mission Ridge - Arroyo Parida - Santa Ana	; FaultID 	170	
+     >>>No changes made
+
+__________________
+Mohawk Valley	; FaultID 	171	
+     >>>No changes made
+
+__________________
+Mono Lake	; FaultID 	172	
+     >>>No changes made
+
+__________________
+Monte Vista - Shannon	; FaultID 	173	
+     >>>No changes made
+
+__________________
+Monterey Bay - Tularcitos	; FaultID 	174	
+ Rake change
+  v1.3 value = 180
+  v1.4 value = 150
+
+__________________
+Morales (east)	; FaultID 	175	
+     >>>No changes made
+
+__________________
+Morales (west)	; FaultID 	176	
+     >>>No changes made
+
+__________________
+Mount Diablo (north)	; FaultID 	177	
+ Dip Degree change
+  v1.3 value = 38
+  v1.4 value = 40
+ Lower Seismogenic Depth change
+  v1.3 value = 16
+  v1.4 value = 13.5
+ Upper Seismogenic Depth change
+  v1.3 value = 8
+  v1.4 value = 1
+
+__________________
+Mount Diablo (south)	; FaultID 	178	
+     >>>No changes made
+
+__________________
+Nelson Lake	; FaultID 	180	
+ Rake change
+  v1.3 value = 180
+  v1.4 value = 0
+ Lower Seismogenic Depth change
+  v1.3 value = 12.4
+  v1.4 value = 11.7
+
+__________________
+Newport - Inglewood (offshore)	; FaultID 	181	
+     >>>No changes made
+
+__________________
+Newport - Inglewood	; FaultID 	183	
+ Dip Degree change
+  v1.3 value = 88
+  v1.4 value = 90
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 15.1
+
+__________________
+North Channel	; FaultID 	184	
+     >>>No changes made
+
+__________________
+North Frontal (east)	; FaultID 	185	
+     >>>No changes made
+
+__________________
+North Frontal (west)	; FaultID 	186	
+ Dip Degree change
+  v1.3 value = 30
+  v1.4 value = 49
+ Lower Seismogenic Depth change
+  v1.3 value = 12.8
+  v1.4 value = 15.7
+
+__________________
+North Salt Lake	; FaultID 	187	
+     >>>No changes made
+
+__________________
+North Tahoe	; FaultID 	188	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13
+
+__________________
+Northridge	; FaultID 	189	
+     >>>No changes made
+
+__________________
+Northridge Hills	; FaultID 	190	
+     >>>No changes made
+
+__________________
+Oak Ridge (offshore)	; FaultID 	191	
+ Dip Degree change
+  v1.3 value = 67
+  v1.4 value = 65
+ Lower Seismogenic Depth change
+  v1.3 value = 3.1
+  v1.4 value = 7.9
+
+__________________
+Oak Ridge (offshore, extension)	; FaultID 	192	
+     >>>No changes made
+
+__________________
+Oak Ridge (onshore)	; FaultID 	193	
+     >>>No changes made
+
+__________________
+Oceanic - West Huasna	; FaultID 	194	
+ Dip Degree change
+  v1.3 value = 45
+  v1.4 value = 58
+ Rake change
+  v1.3 value = 90
+  v1.4 value = 135
+ Lower Seismogenic Depth change
+  v1.3 value = 12
+  v1.4 value = 7
+
+__________________
+Oceanside	; FaultID 	195	
+ Dip Degree change
+  v1.3 value = 28
+  v1.4 value = 23
+ Lower Seismogenic Depth change
+  v1.3 value = 8
+  v1.4 value = 8.3
+ Upper Seismogenic Depth change
+  v1.3 value = 3
+  v1.4 value = 1
+
+__________________
+Ortigalita (north)	; FaultID 	197	
+     >>>No changes made
+
+__________________
+Ortigalita (south)	; FaultID 	198	
+     >>>No changes made
+
+__________________
+Owens Valley	; FaultID 	199	
+     >>>No changes made
+
+__________________
+Owens Valley (Keough Hot Springs)	; FaultID 	200	
+     >>>No changes made
+
+__________________
+Owl Lake	; FaultID 	201	
+     >>>No changes made
+
+__________________
+Ozena	; FaultID 	202	
+     >>>No changes made
+
+__________________
+Palos Verdes	; FaultID 	203	
+ Dip Degree change
+  v1.3 value = 20
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = NE
+  v1.4 value = Vertical
+ Rake change
+  v1.3 value = 90
+  v1.4 value = 180
+ Lower Seismogenic Depth change
+  v1.3 value = 15.6
+  v1.4 value = 13.6
+ Upper Seismogenic Depth change
+  v1.3 value = 5.2
+  v1.4 value = 0
+
+__________________
+Panamint Valley	; FaultID 	204	
+     >>>No changes made
+
+__________________
+Paradise	; FaultID 	205	
+     >>>No changes made
+
+__________________
+Peralta Hills	; FaultID 	206	
+     >>>No changes made
+
+__________________
+Pilarcitos	; FaultID 	207	
+     >>>No changes made
+
+__________________
+Pine Mountain	; FaultID 	208	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 45
+ Lower Seismogenic Depth change
+  v1.3 value = 11
+  v1.4 value = 16.3
+
+__________________
+Pinto Mountain	; FaultID 	209	
+     >>>No changes made
+
+__________________
+Pisgah - Bullion Mountain - Mesquite Lake	; FaultID 	210	
+ Lower Seismogenic Depth change
+  v1.3 value = 14.6
+  v1.4 value = 13.1
+
+__________________
+Pitas Point (lower, Montalvo)	; FaultID 	211	
+ Dip Degree change
+  v1.3 value = 21
+  v1.4 value = 16
+ Dip Direction change
+  v1.3 value = SW
+  v1.4 value = N
+ Lower Seismogenic Depth change
+  v1.3 value = 12.5
+  v1.4 value = 12.7
+ Upper Seismogenic Depth change
+  v1.3 value = 4.8
+  v1.4 value = 0.4
+
+__________________
+Pitas Point (lower, west)	; FaultID 	212	
+     >>>No changes made
+
+__________________
+Pitas Point (upper)	; FaultID 	213	
+ Dip Degree change
+  v1.3 value = 26
+  v1.4 value = 42
+ Lower Seismogenic Depth change
+  v1.3 value = 4.5
+  v1.4 value = 10
+ Upper Seismogenic Depth change
+  v1.3 value = 1.1
+  v1.4 value = 1.4
+
+__________________
+Pittville	; FaultID 	214	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 60
+
+__________________
+Pleito	; FaultID 	215	
+     >>>No changes made
+
+__________________
+Point Reyes	; FaultID 	216	
+     >>>No changes made
+
+__________________
+Point Reyes (connector)	; FaultID 	217	
+     >>>No changes made
+
+__________________
+Polaris	; FaultID 	218	
+ X change
+  v1.3 number of nodes:  5
+  v1.4 number of nodes:  6
+  v1.3 nodes: 
+       -120.24502
+       -120.23168
+       -120.20324
+       -120.14412
+       -120.10358
+  v1.4 nodes: 
+       -120.10360
+       -120.14489
+       -120.19197
+       -120.20328
+       -120.23172
+       -120.24506
+ Y change
+  v1.3 number of nodes:  5
+  v1.4 number of nodes:  6
+  v1.3 nodes: 
+        39.51327
+        39.46700
+        39.41875
+        39.34710
+        39.28390
+  v1.4 nodes: 
+        39.28378
+        39.34740
+        39.40481
+        39.41877
+        39.46701
+        39.51345
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 81
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = E
+ Rake change
+  v1.3 value = 0
+  v1.4 value = 180
+
+__________________
+Puente Hills (Coyote Hills)	; FaultID 	219	
+ Dip Degree change
+  v1.3 value = 22
+  v1.4 value = 26
+ Lower Seismogenic Depth change
+  v1.3 value = 14.7
+  v1.4 value = 14.6
+ Upper Seismogenic Depth change
+  v1.3 value = 10
+  v1.4 value = 2.8
+
+__________________
+Puente Hills (Los Angeles)	; FaultID 	220	
+ Dip Degree change
+  v1.3 value = 22
+  v1.4 value = 27
+ Lower Seismogenic Depth change
+  v1.3 value = 14.7
+  v1.4 value = 15
+ Upper Seismogenic Depth change
+  v1.3 value = 10
+  v1.4 value = 2.1
+
+__________________
+Puente Hills (Santa Fe Springs)	; FaultID 	221	
+ Dip Degree change
+  v1.3 value = 22
+  v1.4 value = 29
+ Lower Seismogenic Depth change
+  v1.3 value = 14.7
+  v1.4 value = 15
+ Upper Seismogenic Depth change
+  v1.3 value = 10
+  v1.4 value = 2.8
+
+__________________
+Quien Sabe	; FaultID 	223	
+     >>>No changes made
+
+__________________
+Raymond	; FaultID 	224	
+ Dip Degree change
+  v1.3 value = 70
+  v1.4 value = 79
+ Rake change
+  v1.3 value = 30
+  v1.4 value = 60
+ Lower Seismogenic Depth change
+  v1.3 value = 17.3
+  v1.4 value = 15.6
+
+__________________
+Red Mountain	; FaultID 	225	
+     >>>No changes made
+
+__________________
+Red Pass	; FaultID 	226	
+     >>>No changes made
+
+__________________
+Redondo Canyon	; FaultID 	228	
+     >>>No changes made
+
+__________________
+Reliz	; FaultID 	229	
+     >>>No changes made
+
+__________________
+Richfield	; FaultID 	230	
+     >>>No changes made
+
+__________________
+Rinconada	; FaultID 	231	
+ Dip Degree change
+  v1.3 value = 58
+  v1.4 value = 82
+ Dip Direction change
+  v1.3 value = S
+  v1.4 value = E
+ Lower Seismogenic Depth change
+  v1.3 value = 10.9
+  v1.4 value = 8.5
+
+__________________
+Robinson Creek	; FaultID 	232	
+     >>>No changes made
+
+__________________
+Rocky Ledge	; FaultID 	233	
+     >>>No changes made
+
+__________________
+Rose Canyon	; FaultID 	234	
+     >>>No changes made
+
+__________________
+Round Valley	; FaultID 	235	
+     >>>No changes made
+
+__________________
+Russ	; FaultID 	236	
+     >>>No changes made
+
+__________________
+San Cayetano	; FaultID 	237	
+     >>>No changes made
+
+__________________
+San Clemente	; FaultID 	238	
+     >>>No changes made
+
+__________________
+San Diego Trough (north)	; FaultID 	239	
+     >>>No changes made
+
+__________________
+San Diego Trough (south)	; FaultID 	241	
+     >>>No changes made
+
+__________________
+San Gabriel	; FaultID 	242	
+     >>>No changes made
+
+__________________
+San Gabriel (extension)	; FaultID 	243	
+ Rake change
+  v1.3 value = 145
+  v1.4 value = 180
+
+__________________
+San Gorgonio Pass	; FaultID 	244	
+     >>>No changes made
+
+__________________
+San Gregorio (north)	; FaultID 	245	
+ Dip Degree change
+  v1.3 value = 58
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = S
+  v1.4 value = Vertical
+ Lower Seismogenic Depth change
+  v1.3 value = 10.9
+  v1.4 value = 11.6
+
+__________________
+San Gregorio (south)	; FaultID 	246	
+     >>>No changes made
+
+__________________
+San Joaquin Hills	; FaultID 	247	
+     >>>No changes made
+
+__________________
+San Jose	; FaultID 	248	
+     >>>No changes made
+
+__________________
+San Juan	; FaultID 	249	
+     >>>No changes made
+
+__________________
+San Luis Bay	; FaultID 	250	
+ Dip Degree change
+  v1.3 value = 45
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = N
+  v1.4 value = Vertical
+
+__________________
+San Luis Range (Oceano)	; FaultID 	251	
+     >>>No changes made
+
+__________________
+San Luis Range (Pecho)	; FaultID 	252	
+ Dip Degree change
+  v1.3 value = 45
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = N
+  v1.4 value = Vertical
+
+__________________
+San Luis Range (extended)	; FaultID 	253	
+ Lower Seismogenic Depth change
+  v1.3 value = 10
+  v1.4 value = 12
+
+__________________
+San Pedro Basin	; FaultID 	255	
+     >>>No changes made
+
+__________________
+San Pedro Escarpment	; FaultID 	256	
+     >>>No changes made
+
+__________________
+San Vicente	; FaultID 	257	
+     >>>No changes made
+
+__________________
+Santa Cruz Island	; FaultID 	260	
+ Dip Degree change
+  v1.3 value = 20
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = N
+  v1.4 value = Vertical
+ Rake change
+  v1.3 value = 90
+  v1.4 value = 30
+ Lower Seismogenic Depth change
+  v1.3 value = 12.3
+  v1.4 value = 13.3
+ Upper Seismogenic Depth change
+  v1.3 value = 5
+  v1.4 value = 0
+
+__________________
+Santa Monica Bay	; FaultID 	261	
+     >>>No changes made
+
+__________________
+Santa Monica	; FaultID 	262	
+     >>>No changes made
+
+__________________
+Santa Rosa Island	; FaultID 	264	
+ Dip Degree change
+  v1.3 value = 85
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = S
+  v1.4 value = Vertical
+
+__________________
+Santa Susana (east, connector)	; FaultID 	265	
+ Dip Degree change
+  v1.3 value = 53
+  v1.4 value = 55
+ Lower Seismogenic Depth change
+  v1.3 value = 10.6
+  v1.4 value = 16.3
+
+__________________
+Santa Susana	; FaultID 	266	
+ Dip Degree change
+  v1.3 value = 35
+  v1.4 value = 55
+ Lower Seismogenic Depth change
+  v1.3 value = 16.8
+  v1.4 value = 16.3
+ Upper Seismogenic Depth change
+  v1.3 value = 7.4
+  v1.4 value = 0
+
+__________________
+Santa Ynez (east)	; FaultID 	268	
+     >>>No changes made
+
+__________________
+Santa Ynez (west)	; FaultID 	269	
+     >>>No changes made
+
+__________________
+Santa Ynez River	; FaultID 	270	
+     >>>No changes made
+
+__________________
+Sargent	; FaultID 	271	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 12
+
+__________________
+Scodie Lineament (seismicity)	; FaultID 	272	
+     >>>No changes made
+
+__________________
+Sheephole	; FaultID 	273	
+     >>>No changes made
+
+__________________
+Shoreline	; FaultID 	274	
+ Lower Seismogenic Depth change
+  v1.3 value = 10
+  v1.4 value = 12
+
+__________________
+Sierra Madre	; FaultID 	275	
+     >>>No changes made
+
+__________________
+Sierra Madre (San Fernando)	; FaultID 	276	
+ Dip Degree change
+  v1.3 value = 55
+  v1.4 value = 45
+ Lower Seismogenic Depth change
+  v1.3 value = 16.3
+  v1.4 value = 13
+
+__________________
+Sierra Nevada (north)	; FaultID 	277	
+ Lower Seismogenic Depth change
+  v1.3 value = 14.6
+  v1.4 value = 13.8
+
+__________________
+Sierra Nevada (south)	; FaultID 	278	
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 50
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = E
+ Rake change
+  v1.3 value = 180
+  v1.4 value = -90
+ Lower Seismogenic Depth change
+  v1.3 value = 13
+  v1.4 value = 13.6
+
+__________________
+Silver Creek	; FaultID 	279	
+     >>>No changes made
+
+__________________
+Simi - Santa Rosa	; FaultID 	280	
+ Dip Degree change
+  v1.3 value = 31
+  v1.4 value = 60
+ Rake change
+  v1.3 value = 90
+  v1.4 value = 30
+ Lower Seismogenic Depth change
+  v1.3 value = 14.9
+  v1.4 value = 12.1
+ Upper Seismogenic Depth change
+  v1.3 value = 0
+  v1.4 value = 1
+
+__________________
+Sisar	; FaultID 	281	
+ Dip Degree change
+  v1.3 value = 42
+  v1.4 value = 29
+ Lower Seismogenic Depth change
+  v1.3 value = 16
+  v1.4 value = 17.4
+
+__________________
+Skinner Flat	; FaultID 	282	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = E
+  v1.4 value = Vertical
+ Rake change
+  v1.3 value = 135
+  v1.4 value = -135
+
+__________________
+Superstition Hills	; FaultID 	283	
+     >>>No changes made
+
+__________________
+Surprise Valley	; FaultID 	284	
+ Dip Degree change
+  v1.3 value = 58
+  v1.4 value = 50
+
+__________________
+Swain Ravine - Spenceville	; FaultID 	285	
+     >>>No changes made
+
+__________________
+Table Bluff	; FaultID 	286	
+     >>>No changes made
+
+__________________
+Tank Canyon	; FaultID 	287	
+     >>>No changes made
+
+__________________
+Tin Mountain	; FaultID 	289	
+     >>>No changes made
+
+__________________
+Towne Pass	; FaultID 	290	
+     >>>No changes made
+
+__________________
+Trinidad	; FaultID 	291	
+     >>>No changes made
+
+__________________
+Verdugo	; FaultID 	293	
+     >>>No changes made
+
+__________________
+Walker Spring	; FaultID 	294	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = E
+  v1.4 value = Vertical
+
+__________________
+West Napa	; FaultID 	295	
+     >>>No changes made
+
+__________________
+West Tahoe	; FaultID 	296	
+     >>>No changes made
+
+__________________
+White Mountains	; FaultID 	297	
+ Rake change
+  v1.3 value = 180
+  v1.4 value = -135
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13
+
+__________________
+White Wolf	; FaultID 	298	
+     >>>No changes made
+
+__________________
+White Wolf (extension)	; FaultID 	299	
+     >>>No changes made
+
+__________________
+Whittier	; FaultID 	300	
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 70
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = N
+ Rake change
+  v1.3 value = 180
+  v1.4 value = 150
+ Lower Seismogenic Depth change
+  v1.3 value = 13.2
+  v1.4 value = 12.4
+
+__________________
+Yorba Linda	; FaultID 	303	
+ Dip Degree change
+  v1.3 value = 75
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = N
+  v1.4 value = Vertical
+ Lower Seismogenic Depth change
+  v1.3 value = 14.1
+  v1.4 value = 13.3
+
+__________________
+Zayante - Vergeles	; FaultID 	305	
+     >>>No changes made
+
+__________________
+Airport Lake (south)	; FaultID 	310	
+     >>>No changes made
+
+__________________
+Bear Creek	; FaultID 	311	
+     >>>No changes made
+
+__________________
+Catalina	; FaultID 	312	
+ Dip Degree change
+  v1.3 value = 85
+  v1.4 value = 90
+
+__________________
+Chico Monocline	; FaultID 	313	
+     >>>No changes made
+
+__________________
+Cohasset Ridge	; FaultID 	314	
+     >>>No changes made
+
+__________________
+Corning	; FaultID 	315	
+     >>>No changes made
+
+__________________
+Crafton Hills	; FaultID 	316	
+     >>>No changes made
+
+__________________
+Extra	; FaultID 	317	
+     >>>No changes made
+
+__________________
+Grizzly Valley	; FaultID 	318	
+     >>>No changes made
+
+__________________
+Grogan fault	; FaultID 	319	
+     >>>No changes made
+
+__________________
+Independence (north)	; FaultID 	320	
+     >>>No changes made
+
+__________________
+Inks Creek - Hooker Dome	; FaultID 	321	
+     >>>No changes made
+
+__________________
+Lake Peak	; FaultID 	322	
+     >>>No changes made
+
+__________________
+Lausuen Knoll	; FaultID 	323	
+     >>>No changes made
+
+__________________
+Lost Man	; FaultID 	324	
+     >>>No changes made
+
+__________________
+Mayfield	; FaultID 	325	
+ Dip Degree change
+  v1.3 value = 75
+  v1.4 value = 60
+
+__________________
+McArthur	; FaultID 	326	
+ Dip Degree change
+  v1.3 value = 75
+  v1.4 value = 60
+
+__________________
+Mid Channel	; FaultID 	327	
+     >>>No changes made
+
+__________________
+Midway	; FaultID 	328	
+     >>>No changes made
+
+__________________
+Murrieta Hot Springs	; FaultID 	329	
+     >>>No changes made
+
+__________________
+Noyo Basin	; FaultID 	330	
+     >>>No changes made
+
+__________________
+Paxton Ranch	; FaultID 	331	
+     >>>No changes made
+
+__________________
+Pfieffer Point	; FaultID 	332	
+     >>>No changes made
+
+__________________
+Pitas Point	; FaultID 	333	
+ Dip Degree change
+  v1.3 value = 26
+  v1.4 value = 64
+ Rake change
+  v1.3 value = 90
+  v1.4 value = 60
+
+__________________
+Red Bluff	; FaultID 	334	
+     >>>No changes made
+
+__________________
+Red Hill	; FaultID 	335	
+     >>>No changes made
+
+__________________
+Reservoir Canyon	; FaultID 	336	
+     >>>No changes made
+
+__________________
+Robinson Creek (south)	; FaultID 	337	
+     >>>No changes made
+
+__________________
+Salt Wells Valley	; FaultID 	338	
+     >>>No changes made
+
+__________________
+San Felipe	; FaultID 	339	
+     >>>No changes made
+
+__________________
+San Mateo	; FaultID 	340	
+     >>>No changes made
+
+__________________
+Santa Cruz - San Clemente	; FaultID 	341	
+     >>>No changes made
+
+__________________
+Silver Lake	; FaultID 	342	
+     >>>No changes made
+
+__________________
+Slinkard Valley	; FaultID 	343	
+     >>>No changes made
+
+__________________
+Sonora Basin	; FaultID 	344	
+     >>>No changes made
+
+__________________
+Southampton	; FaultID 	346	
+     >>>No changes made
+
+__________________
+Surpur Creek	; FaultID 	347	
+     >>>No changes made
+
+__________________
+Big Valley (unnamed, proxy)	; FaultID 	348	
+     >>>No changes made
+
+__________________
+Pondosa (proxy)	; FaultID 	349	
+     >>>No changes made
+
+__________________
+South Mono (proxy)	; FaultID 	350	
+     >>>No changes made
+
+__________________
+Susanville - Eagle Lake (unnamed, proxy)	; FaultID 	351	
+     >>>No changes made
+
+__________________
+Walnut Creek	; FaultID 	352	
+     >>>No changes made
+
+__________________
+West Tracy	; FaultID 	353	
+     >>>No changes made
+
+__________________
+South Napa	; FaultID 	354	
+     >>>No changes made
+
+__________________
+Cox Ranch	; FaultID 	355	
+     >>>No changes made
+
+__________________
+Morongo Valley	; FaultID 	356	
+     >>>No changes made
+
+__________________
+Carlsbad Ridge	; FaultID 	357	
+     >>>No changes made
+
+__________________
+San Andreas (Coachella)	; FaultID 	700	
+ Lower Seismogenic Depth change
+  v1.3 value = 18.2
+  v1.4 value = 11.1
+
+__________________
+San Andreas (San Gorgonio Pass - Garnet Hill)	; FaultID 	701	
+ Rake change
+  v1.3 value = 180
+  v1.4 value = 65
+ Lower Seismogenic Depth change
+  v1.3 value = 18.2
+  v1.4 value = 12.8
+
+__________________
+San Andreas (San Bernardino, south)	; FaultID 	702	
+ Lower Seismogenic Depth change
+  v1.3 value = 18.2
+  v1.4 value = 12.8
+
+__________________
+San Andreas (San Bernardino, north)	; FaultID 	703	
+ Lower Seismogenic Depth change
+  v1.3 value = 18.2
+  v1.4 value = 12.8
+
+__________________
+San Andreas (Mojave,  south)	; FaultID 	704	
+ Fault Name change
+  v1.3 value = San Andreas (Mojave, south)
+  v1.4 value = San Andreas (Mojave,  south)
+ Lower Seismogenic Depth change
+  v1.3 value = 15.1
+  v1.4 value = 13.1
+
+__________________
+San Andreas (Mojave,  north)	; FaultID 	705	
+ Fault Name change
+  v1.3 value = San Andreas (Mojave, north)
+  v1.4 value = San Andreas (Mojave,  north)
+
+__________________
+San Andreas (Big Bend)	; FaultID 	706	
+     >>>No changes made
+
+__________________
+San Andreas (Carrizo)	; FaultID 	707	
+     >>>No changes made
+
+__________________
+San Andreas (Cholame)	; FaultID 	708	
+     >>>No changes made
+
+__________________
+San Andreas (Parkfield)	; FaultID 	709	
+ Lower Seismogenic Depth change
+  v1.3 value = 12
+  v1.4 value = 10.2
+
+__________________
+San Andreas (Creeping)	; FaultID 	710	
+     >>>No changes made
+
+__________________
+San Andreas (Santa Cruz Mountains)	; FaultID 	711	
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 79
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = SW
+ Lower Seismogenic Depth change
+  v1.3 value = 12
+  v1.4 value = 15
+
+__________________
+San Andreas (Peninsula)	; FaultID 	712	
+ Lower Seismogenic Depth change
+  v1.3 value = 11
+  v1.4 value = 13
+
+__________________
+San Andreas (North Coast)	; FaultID 	713	
+     >>>No changes made
+
+__________________
+San Andreas (Offshore)	; FaultID 	714	
+ Lower Seismogenic Depth change
+  v1.3 value = 10
+  v1.4 value = 11
+
+__________________
+San Andreas (Banning)	; FaultID 	715	
+     >>>No changes made
+
+__________________
+San Jacinto (Superstition Mountain)	; FaultID 	800	
+ Lower Seismogenic Depth change
+  v1.3 value = 13.1
+  v1.4 value = 12.4
+
+__________________
+San Jacinto (Borrego)	; FaultID 	801	
+     >>>No changes made
+
+__________________
+San Jacinto (Coyote Creek)	; FaultID 	802	
+ Lower Seismogenic Depth change
+  v1.3 value = 13.1
+  v1.4 value = 15.9
+
+__________________
+San Jacinto (Clark)	; FaultID 	803	
+     >>>No changes made
+
+__________________
+San Jacinto (Anza)	; FaultID 	804	
+     >>>No changes made
+
+__________________
+San Jacinto (stepover)	; FaultID 	805	
+ Lower Seismogenic Depth change
+  v1.3 value = 16.8
+  v1.4 value = 16.5
+
+__________________
+San Jacinto (San Jacinto Valley)	; FaultID 	806	
+     >>>No changes made
+
+__________________
+San Jacinto (San Bernardino)	; FaultID 	807	
+     >>>No changes made
+
+__________________
+Elsinore (Coyote Mountains)	; FaultID 	840	
+     >>>No changes made
+
+__________________
+Elsinore (Julian)	; FaultID 	841	
+     >>>No changes made
+
+__________________
+Elsinore (Temecula)	; FaultID 	842	
+ Lower Seismogenic Depth change
+  v1.3 value = 13.7
+  v1.4 value = 14.2
+
+__________________
+Elsinore (stepover)	; FaultID 	843	
+ Lower Seismogenic Depth change
+  v1.3 value = 13.2
+  v1.4 value = 13.7
+
+__________________
+Elsinore (Glen Ivy)	; FaultID 	844	
+     >>>No changes made
+
+__________________
+Garlock (west)	; FaultID 	880	
+     >>>No changes made
+
+__________________
+Garlock (center)	; FaultID 	881	
+     >>>No changes made
+
+__________________
+Garlock (east)	; FaultID 	882	
+     >>>No changes made
+
+__________________
+Hayward (south, extension)	; FaultID 	900	
+     >>>No changes made
+
+__________________
+Hayward (south)	; FaultID 	901	
+ Rake change
+  v1.3 value = 135
+  v1.4 value = 180
+ Lower Seismogenic Depth change
+  v1.3 value = 5.1
+  v1.4 value = 13.4
+
+__________________
+Hayward (north)	; FaultID 	902	
+     >>>No changes made
+
+__________________
+Rodgers Creek - Healdsburg	; FaultID 	903	
+ Dip Degree change
+  v1.3 value = 82
+  v1.4 value = 77
+ Lower Seismogenic Depth change
+  v1.3 value = 11.1
+  v1.4 value = 12
+
+__________________
+Calaveras (south, Paicines)	; FaultID 	920	
+     >>>No changes made
+
+__________________
+Calaveras (south)	; FaultID 	921	
+ Dip Degree change
+  v1.3 value = 80
+  v1.4 value = 85
+ Lower Seismogenic Depth change
+  v1.3 value = 11
+  v1.4 value = 9.5
+
+__________________
+Calaveras (center)	; FaultID 	922	
+ Dip Degree change
+  v1.3 value = 80
+  v1.4 value = 77
+
+__________________
+Calaveras (north)	; FaultID 	923	
+ Lower Seismogenic Depth change
+  v1.3 value = 11
+  v1.4 value = 14
+
+__________________
+Antelope Valley	; FaultID 	1000	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13
+
+__________________
+Genoa (south)	; FaultID 	1001	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13
+
+__________________
+Incline Village	; FaultID 	1002	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 11.4
+
+__________________
+Antelope Range - Kingsley Mountains	; FaultID 	1003	
+     >>>No changes made
+
+__________________
+Bare Mountain	; FaultID 	1004	
+     >>>No changes made
+
+__________________
+Battle Mountain	; FaultID 	1005	
+     >>>No changes made
+
+__________________
+Benton Spring (south)	; FaultID 	1006	
+     >>>No changes made
+
+__________________
+Beowawe	; FaultID 	1007	
+     >>>No changes made
+
+__________________
+Bettles Well - Petrified Springs	; FaultID 	1008	
+     >>>No changes made
+
+__________________
+Black Hills	; FaultID 	1009	
+     >>>No changes made
+
+__________________
+Black Rock	; FaultID 	1010	
+     >>>No changes made
+
+__________________
+Bloody Run Hills	; FaultID 	1011	
+     >>>No changes made
+
+__________________
+Bonham Ranch	; FaultID 	1012	
+     >>>No changes made
+
+__________________
+Buena Vista Valley	; FaultID 	1013	
+     >>>No changes made
+
+__________________
+Buffalo Creek	; FaultID 	1014	
+     >>>No changes made
+
+__________________
+Buffalo Mountain	; FaultID 	1015	
+     >>>No changes made
+
+__________________
+Buffalo Valley	; FaultID 	1016	
+     >>>No changes made
+
+__________________
+Butte Mountains	; FaultID 	1017	
+     >>>No changes made
+
+__________________
+California Wash	; FaultID 	1018	
+     >>>No changes made
+
+__________________
+Carico Lake Valley	; FaultID 	1019	
+     >>>No changes made
+
+__________________
+Carson City	; FaultID 	1020	
+     >>>No changes made
+
+__________________
+Clan Alpine	; FaultID 	1023	
+     >>>No changes made
+
+__________________
+Coaldale	; FaultID 	1024	
+     >>>No changes made
+
+__________________
+Cortez Mountain	; FaultID 	1026	
+ Fault Name change
+  v1.3 value = Cortez Mountains
+  v1.4 value = Cortez Mountain
+
+__________________
+Coyote Spring	; FaultID 	1027	
+     >>>No changes made
+
+__________________
+Crescent Dunes	; FaultID 	1028	
+     >>>No changes made
+
+__________________
+Desatoya Mountains (south)	; FaultID 	1029	
+     >>>No changes made
+
+__________________
+Diamond Mountains	; FaultID 	1030	
+     >>>No changes made
+
+__________________
+Dixie Valley	; FaultID 	1032	
+     >>>No changes made
+
+__________________
+Dry Lake	; FaultID 	1033	
+     >>>No changes made
+
+__________________
+Dry Valley - Smoke Creek Ranch	; FaultID 	1034	
+     >>>No changes made
+
+__________________
+Duck Flat	; FaultID 	1035	
+     >>>No changes made
+
+__________________
+Dunn Glenn	; FaultID 	1036	
+     >>>No changes made
+
+__________________
+Eastern Bilk Creek Mountains	; FaultID 	1037	
+     >>>No changes made
+
+__________________
+Eastern Edwards Creek Valley	; FaultID 	1038	
+     >>>No changes made
+
+__________________
+Eastern Granite Range	; FaultID 	1039	
+     >>>No changes made
+
+__________________
+Eastern Independence Valley	; FaultID 	1040	
+     >>>No changes made
+
+__________________
+Eastern Monitor Range (north)	; FaultID 	1041	
+     >>>No changes made
+
+__________________
+Eastern Osgood Mountains	; FaultID 	1043	
+     >>>No changes made
+
+__________________
+Eastern Pine Forest Range	; FaultID 	1044	
+     >>>No changes made
+
+__________________
+Lake Range	; FaultID 	1045	
+     >>>No changes made
+
+__________________
+Edna Mountain	; FaultID 	1047	
+     >>>No changes made
+
+__________________
+Eglington	; FaultID 	1048	
+     >>>No changes made
+
+__________________
+Emigrant Peak	; FaultID 	1049	
+     >>>No changes made
+
+__________________
+Eugene Mountains	; FaultID 	1050	
+     >>>No changes made
+
+__________________
+Fairview	; FaultID 	1051	
+     >>>No changes made
+
+__________________
+Excelsior Mountains (unnamed)	; FaultID 	1052	
+     >>>No changes made
+
+__________________
+Fox Range	; FaultID 	1053	
+     >>>No changes made
+
+__________________
+Freds Mountain	; FaultID 	1054	
+     >>>No changes made
+
+__________________
+Frenchman Mountain	; FaultID 	1055	
+     >>>No changes made
+
+__________________
+Granite Springs Valley	; FaultID 	1057	
+     >>>No changes made
+
+__________________
+Grass Valley	; FaultID 	1058	
+     >>>No changes made
+
+__________________
+Hiko	; FaultID 	1059	
+     >>>No changes made
+
+__________________
+Hoppins Peak	; FaultID 	1060	
+     >>>No changes made
+
+__________________
+Hot Springs	; FaultID 	1061	
+     >>>No changes made
+
+__________________
+Huntoon Valley (north)	; FaultID 	1062	
+     >>>No changes made
+
+__________________
+Independence Valley	; FaultID 	1063	
+     >>>No changes made
+
+__________________
+Indian Head	; FaultID 	1064	
+     >>>No changes made
+
+__________________
+Indian Hill	; FaultID 	1065	
+     >>>No changes made
+
+__________________
+Ione Valley	; FaultID 	1066	
+     >>>No changes made
+
+__________________
+Jackson Mountains	; FaultID 	1067	
+     >>>No changes made
+
+__________________
+Jakes Valley	; FaultID 	1068	
+     >>>No changes made
+
+__________________
+Jersey Valley	; FaultID 	1069	
+     >>>No changes made
+
+__________________
+Kane Spring Wash	; FaultID 	1070	
+     >>>No changes made
+
+__________________
+Kawich Range - Hot Creek Ranges	; FaultID 	1071	
+     >>>No changes made
+
+__________________
+Kings Canyon	; FaultID 	1072	
+     >>>No changes made
+
+__________________
+Little Fish Lake Valley	; FaultID 	1073	
+     >>>No changes made
+
+__________________
+Little Valley	; FaultID 	1074	
+     >>>No changes made
+
+__________________
+Lone Mountain	; FaultID 	1075	
+     >>>No changes made
+
+__________________
+Middlegate	; FaultID 	1078	
+     >>>No changes made
+
+__________________
+Montana Mountains - Desert Valley	; FaultID 	1079	
+     >>>No changes made
+
+__________________
+Monte Cristo Valley	; FaultID 	1080	
+     >>>No changes made
+
+__________________
+Mount Rose	; FaultID 	1082	
+     >>>No changes made
+
+__________________
+Northern Butte Valley	; FaultID 	1084	
+     >>>No changes made
+
+__________________
+Northern Huntington Valley	; FaultID 	1085	
+     >>>No changes made
+
+__________________
+Northern Roberts Mountains	; FaultID 	1086	
+     >>>No changes made
+
+__________________
+Northern Simpson Park Mountains	; FaultID 	1087	
+     >>>No changes made
+
+__________________
+Paradise Range	; FaultID 	1088	
+     >>>No changes made
+
+__________________
+Peavine Peak	; FaultID 	1089	
+     >>>No changes made
+
+__________________
+Penoyer	; FaultID 	1090	
+     >>>No changes made
+
+__________________
+Petersen Mountain (west)	; FaultID 	1091	
+     >>>No changes made
+
+__________________
+Petersen Mountain (east)	; FaultID 	1092	
+     >>>No changes made
+
+__________________
+Pyramid Lake	; FaultID 	1094	
+     >>>No changes made
+
+__________________
+Railroad Valley	; FaultID 	1095	
+     >>>No changes made
+
+__________________
+Rainbow Mountain	; FaultID 	1096	
+     >>>No changes made
+
+__________________
+Rattlesnake Flat	; FaultID 	1097	
+     >>>No changes made
+
+__________________
+Ruby Mountains (north)	; FaultID 	1098	
+     >>>No changes made
+
+__________________
+Ruby Mountains (south)	; FaultID 	1099	
+     >>>No changes made
+
+__________________
+Ruby Valley	; FaultID 	1100	
+     >>>No changes made
+
+__________________
+Sand Springs Range	; FaultID 	1101	
+     >>>No changes made
+
+__________________
+San Emidio	; FaultID 	1102	
+     >>>No changes made
+
+__________________
+Schell Creek Range	; FaultID 	1103	
+     >>>No changes made
+
+__________________
+Selenite Range	; FaultID 	1104	
+     >>>No changes made
+
+__________________
+Seven Troughs Range	; FaultID 	1105	
+     >>>No changes made
+
+__________________
+Sheep Basin	; FaultID 	1106	
+     >>>No changes made
+
+__________________
+Sheep Creek Range (west)	; FaultID 	1107	
+     >>>No changes made
+
+__________________
+Shoshone Range	; FaultID 	1108	
+     >>>No changes made
+
+__________________
+Simpson Park Mountains	; FaultID 	1109	
+     >>>No changes made
+
+__________________
+Singatse Range	; FaultID 	1110	
+     >>>No changes made
+
+__________________
+Smith Valley (north)	; FaultID 	1111	
+     >>>No changes made
+
+__________________
+Southwest Reese River Valley	; FaultID 	1112	
+     >>>No changes made
+
+__________________
+Spanish Springs Peak	; FaultID 	1113	
+     >>>No changes made
+
+__________________
+Spanish Springs Valley	; FaultID 	1114	
+     >>>No changes made
+
+__________________
+Spruce Mountain Ridge	; FaultID 	1115	
+     >>>No changes made
+
+__________________
+The Lava Beds (east)	; FaultID 	1116	
+     >>>No changes made
+
+__________________
+Toiyabe Range	; FaultID 	1117	
+     >>>No changes made
+
+__________________
+Teels Marsh (unnamed)	; FaultID 	1118	
+     >>>No changes made
+
+__________________
+Warm Springs Valley	; FaultID 	1119	
+     >>>No changes made
+
+__________________
+Wassuk Range	; FaultID 	1120	
+     >>>No changes made
+
+__________________
+Western Granite Range	; FaultID 	1122	
+     >>>No changes made
+
+__________________
+Western Humboldt Range	; FaultID 	1123	
+     >>>No changes made
+
+__________________
+Western Toiyabe Range	; FaultID 	1125	
+     >>>No changes made
+
+__________________
+West Gate	; FaultID 	1126	
+     >>>No changes made
+
+__________________
+West Spring Mountains	; FaultID 	1127	
+     >>>No changes made
+
+__________________
+White River Valley	; FaultID 	1128	
+     >>>No changes made
+
+__________________
+Agai Pah Hills	; FaultID 	1138	
+     >>>No changes made
+
+__________________
+Antelope Peak	; FaultID 	1139	
+     >>>No changes made
+
+__________________
+Antelope Range	; FaultID 	1140	
+     >>>No changes made
+
+__________________
+Arrow Canyon Range	; FaultID 	1141	
+     >>>No changes made
+
+__________________
+Belted Range	; FaultID 	1142	
+     >>>No changes made
+
+__________________
+Big Sand Springs Valley	; FaultID 	1143	
+     >>>No changes made
+
+__________________
+Carson Lineament	; FaultID 	1144	
+     >>>No changes made
+
+__________________
+Big Sand Springs (center)	; FaultID 	1145	
+     >>>No changes made
+
+__________________
+Steptoe (center)	; FaultID 	1146	
+     >>>No changes made
+
+__________________
+Stone Cabin Valley (center)	; FaultID 	1147	
+     >>>No changes made
+
+__________________
+Cherry Creek	; FaultID 	1148	
+     >>>No changes made
+
+__________________
+Clayton Valley	; FaultID 	1149	
+     >>>No changes made
+
+__________________
+Coal Mine Canyon	; FaultID 	1150	
+     >>>No changes made
+
+__________________
+Contact (north)	; FaultID 	1151	
+     >>>No changes made
+
+__________________
+Contact (south)	; FaultID 	1152	
+     >>>No changes made
+
+__________________
+Desatoya Mountains (north)	; FaultID 	1153	
+     >>>No changes made
+
+__________________
+Double Spring Flat	; FaultID 	1154	
+     >>>No changes made
+
+__________________
+Dry Hills	; FaultID 	1155	
+     >>>No changes made
+
+__________________
+Steptoe Valley (east)	; FaultID 	1156	
+     >>>No changes made
+
+__________________
+Stone Cabin Valley (east)	; FaultID 	1157	
+     >>>No changes made
+
+__________________
+Eastern Carson Sink	; FaultID 	1158	
+     >>>No changes made
+
+__________________
+Eastern Columbus Salt Marsh	; FaultID 	1159	
+     >>>No changes made
+
+__________________
+Eastern Dixie Valley (north)	; FaultID 	1160	
+     >>>No changes made
+
+__________________
+Eastern Dixie Valley (south)	; FaultID 	1161	
+     >>>No changes made
+
+__________________
+Eastern Humboldt Range	; FaultID 	1162	
+     >>>No changes made
+
+__________________
+Eastern Jackson Mountains	; FaultID 	1163	
+     >>>No changes made
+
+__________________
+Eastern Little Smoky Valley	; FaultID 	1164	
+     >>>No changes made
+
+__________________
+Eastern Monitor Range (south)	; FaultID 	1165	
+     >>>No changes made
+
+__________________
+Eastern Reveille Range	; FaultID 	1166	
+     >>>No changes made
+
+__________________
+Eastgate	; FaultID 	1167	
+     >>>No changes made
+
+__________________
+Echo Canyon	; FaultID 	1168	
+     >>>No changes made
+
+__________________
+Fish Creek Range	; FaultID 	1169	
+     >>>No changes made
+
+__________________
+Fish Lake Valley	; FaultID 	1170	
+     >>>No changes made
+
+__________________
+Gabbs Valley	; FaultID 	1171	
+     >>>No changes made
+
+__________________
+Genoa (north)	; FaultID 	1172	
+ Lower Seismogenic Depth change
+  v1.3 value = 15
+  v1.4 value = 13
+
+__________________
+Gold King	; FaultID 	1173	
+     >>>No changes made
+
+__________________
+Gumdrop Hills	; FaultID 	1174	
+     >>>No changes made
+
+__________________
+Hickison Summit	; FaultID 	1175	
+     >>>No changes made
+
+__________________
+Hot Springs Mountains	; FaultID 	1177	
+     >>>No changes made
+
+__________________
+Huntoon Valley (south)	; FaultID 	1178	
+     >>>No changes made
+
+__________________
+Iron Mountain	; FaultID 	1180	
+     >>>No changes made
+
+__________________
+Louderback Mountains	; FaultID 	1182	
+     >>>No changes made
+
+__________________
+Maverick Springs Range (north)	; FaultID 	1183	
+     >>>No changes made
+
+__________________
+Maverick Springs Range (south)	; FaultID 	1184	
+     >>>No changes made
+
+__________________
+McAfee Canyon	; FaultID 	1185	
+     >>>No changes made
+
+__________________
+Mexican Butte	; FaultID 	1186	
+     >>>No changes made
+
+__________________
+Midway Hills	; FaultID 	1187	
+     >>>No changes made
+
+__________________
+Mount Callaghan	; FaultID 	1188	
+     >>>No changes made
+
+__________________
+Murphy Meadows	; FaultID 	1189	
+     >>>No changes made
+
+__________________
+Newark Valley	; FaultID 	1190	
+     >>>No changes made
+
+__________________
+Big Sand Springs (north)	; FaultID 	1191	
+     >>>No changes made
+
+__________________
+Northern Monitor Valley	; FaultID 	1193	
+     >>>No changes made
+
+__________________
+Northern Snake Mountains	; FaultID 	1194	
+     >>>No changes made
+
+__________________
+Olinghouse	; FaultID 	1195	
+     >>>No changes made
+
+__________________
+Oneil Basin (east)	; FaultID 	1196	
+     >>>No changes made
+
+__________________
+Oneil Basin (west)	; FaultID 	1197	
+     >>>No changes made
+
+__________________
+Pahrump	; FaultID 	1198	
+     >>>No changes made
+
+__________________
+Palisade Mesa	; FaultID 	1199	
+     >>>No changes made
+
+__________________
+Park Range	; FaultID 	1200	
+     >>>No changes made
+
+__________________
+Peko Peak	; FaultID 	1201	
+     >>>No changes made
+
+__________________
+Pilot Creek Valley	; FaultID 	1204	
+     >>>No changes made
+
+__________________
+Pilot Range	; FaultID 	1205	
+     >>>No changes made
+
+__________________
+Pleasant Valley (China Mountain)	; FaultID 	1206	
+     >>>No changes made
+
+__________________
+Pleasant Valley (Pearce)	; FaultID 	1207	
+     >>>No changes made
+
+__________________
+Pleasant Valley (Sou Hills)	; FaultID 	1208	
+     >>>No changes made
+
+__________________
+Pleasant Valley (Tobin)	; FaultID 	1209	
+     >>>No changes made
+
+__________________
+Preston	; FaultID 	1210	
+     >>>No changes made
+
+__________________
+Ravenswood	; FaultID 	1211	
+     >>>No changes made
+
+__________________
+Red Buttes	; FaultID 	1212	
+     >>>No changes made
+
+__________________
+Ruby Mountains (center)	; FaultID 	1213	
+     >>>No changes made
+
+__________________
+Rock Valley	; FaultID 	1214	
+     >>>No changes made
+
+__________________
+Sagouse	; FaultID 	1215	
+     >>>No changes made
+
+__________________
+Sheep Range	; FaultID 	1219	
+     >>>No changes made
+
+__________________
+Sheep Range - East Desert Range	; FaultID 	1220	
+     >>>No changes made
+
+__________________
+Silver King Pass	; FaultID 	1221	
+     >>>No changes made
+
+__________________
+Six-mile Flat	; FaultID 	1222	
+     >>>No changes made
+
+__________________
+Smith Valley (south)	; FaultID 	1223	
+     >>>No changes made
+
+__________________
+Snake Valley (south)	; FaultID 	1224	
+     >>>No changes made
+
+__________________
+Southeast Fish Creek Mountains	; FaultID 	1225	
+     >>>No changes made
+
+__________________
+Sheep Creek Range (southeast)	; FaultID 	1226	
+     >>>No changes made
+
+__________________
+Southern Huntington Valley	; FaultID 	1227	
+     >>>No changes made
+
+__________________
+Southern Snake Range	; FaultID 	1228	
+     >>>No changes made
+
+__________________
+Southern Spring Valley	; FaultID 	1229	
+     >>>No changes made
+
+__________________
+Spotted Range	; FaultID 	1230	
+     >>>No changes made
+
+__________________
+Steptoe Valley (west)	; FaultID 	1232	
+     >>>No changes made
+
+__________________
+Terraced Hills	; FaultID 	1233	
+     >>>No changes made
+
+__________________
+The Cove	; FaultID 	1234	
+     >>>No changes made
+
+__________________
+Thousand Springs Valley	; FaultID 	1235	
+     >>>No changes made
+
+__________________
+Tikaboo	; FaultID 	1236	
+     >>>No changes made
+
+__________________
+Toquima Range	; FaultID 	1237	
+     >>>No changes made
+
+__________________
+Tuscarora	; FaultID 	1238	
+     >>>No changes made
+
+__________________
+Paradise Range (unnamed)	; FaultID 	1239	
+     >>>No changes made
+
+__________________
+Andesite Ridge (unnamed)	; FaultID 	1240	
+     >>>No changes made
+
+__________________
+Pilot Mountains (unnamed)	; FaultID 	1241	
+     >>>No changes made
+
+__________________
+Bluewing Mountains (unnamed)	; FaultID 	1242	
+     >>>No changes made
+
+__________________
+Reno (unnamed)	; FaultID 	1243	
+     >>>No changes made
+
+__________________
+Dead Camel Mountain (unnamed)	; FaultID 	1244	
+     >>>No changes made
+
+__________________
+Desert Mountains (center, unnamed)	; FaultID 	1245	
+     >>>No changes made
+
+__________________
+Desert Mountains (east, unnamed)	; FaultID 	1246	
+     >>>No changes made
+
+__________________
+Desert Mountains (west, unnamed)	; FaultID 	1247	
+     >>>No changes made
+
+__________________
+Long Valley (center, unnamed)	; FaultID 	1248	
+     >>>No changes made
+
+__________________
+Long Valley (north, unnamed)	; FaultID 	1249	
+     >>>No changes made
+
+__________________
+Long Valley (south, unnamed)	; FaultID 	1250	
+     >>>No changes made
+
+__________________
+Pine Mountains (unnamed)	; FaultID 	1251	
+     >>>No changes made
+
+__________________
+Little Valley (unnamed)	; FaultID 	1252	
+     >>>No changes made
+
+__________________
+The Lava Beds (west)	; FaultID 	1253	
+     >>>No changes made
+
+__________________
+Garden Valley (unnamed)	; FaultID 	1254	
+     >>>No changes made
+
+__________________
+Luning (unnamed)	; FaultID 	1255	
+     >>>No changes made
+
+__________________
+Sahwave Mountains (unnamed)	; FaultID 	1256	
+     >>>No changes made
+
+__________________
+Cedar Mountains (unnamed)	; FaultID 	1257	
+     >>>No changes made
+
+__________________
+Fourmile Flat (unnamed)	; FaultID 	1259	
+     >>>No changes made
+
+__________________
+Gabbs Valley (unnamed)	; FaultID 	1260	
+     >>>No changes made
+
+__________________
+Pine Valley (unnamed)	; FaultID 	1261	
+     >>>No changes made
+
+__________________
+Trinity Range (unnamed)	; FaultID 	1262	
+     >>>No changes made
+
+__________________
+Volcanic Hills (unnamed)	; FaultID 	1263	
+     >>>No changes made
+
+__________________
+White River Valley (unnamed)	; FaultID 	1264	
+     >>>No changes made
+
+__________________
+Candelaria Hills (unnamed)	; FaultID 	1265	
+     >>>No changes made
+
+__________________
+Packard Flat (unnamed)	; FaultID 	1266	
+     >>>No changes made
+
+__________________
+Ione Valley (unnamed)	; FaultID 	1268	
+     >>>No changes made
+
+__________________
+Clan Alpine Mountains (unnamed)	; FaultID 	1269	
+     >>>No changes made
+
+__________________
+Pahranagat Valley (unnamed)	; FaultID 	1270	
+     >>>No changes made
+
+__________________
+Antelope Range (unnamed)	; FaultID 	1271	
+     >>>No changes made
+
+__________________
+Wellington Hills (unnamed)	; FaultID 	1272	
+     >>>No changes made
+
+__________________
+Wahmonie	; FaultID 	1273	
+     >>>No changes made
+
+__________________
+Warner Valley (east, Coleman Valley)	; FaultID 	1274	
+     >>>No changes made
+
+__________________
+Warner Valley (west, Coleman Valley)	; FaultID 	1275	
+     >>>No changes made
+
+__________________
+West Dry Lake	; FaultID 	1276	
+     >>>No changes made
+
+__________________
+West Specter Range	; FaultID 	1278	
+     >>>No changes made
+
+__________________
+Western Bull Run Mountains	; FaultID 	1280	
+     >>>No changes made
+
+__________________
+Western Fairview Peak	; FaultID 	1281	
+     >>>No changes made
+
+__________________
+Western Reveille Range	; FaultID 	1282	
+     >>>No changes made
+
+__________________
+Western Roberts Mountains	; FaultID 	1283	
+     >>>No changes made
+
+__________________
+Western Tecoma Valley	; FaultID 	1284	
+     >>>No changes made
+
+__________________
+Wheeler Peak	; FaultID 	1285	
+     >>>No changes made
+
+__________________
+Wildcat Wash	; FaultID 	1287	
+     >>>No changes made
+
+__________________
+Yucca - Boundary	; FaultID 	1288	
+     >>>No changes made
+
+__________________
+Yucca Mountains (east)	; FaultID 	1289	
+     >>>No changes made
+
+__________________
+Yucca Mountains (west)	; FaultID 	1290	
+     >>>No changes made
+
+__________________
+East Carson Valley (proxy)	; FaultID 	1291	
+     >>>No changes made
+
+__________________
+Algodones	; FaultID 	2000	
+     >>>No changes made
+
+__________________
+Aubrey	; FaultID 	2001	
+     >>>No changes made
+
+__________________
+Big Chino - Little Chino	; FaultID 	2002	
+     >>>No changes made
+
+__________________
+Dutchman Draw	; FaultID 	2003	
+     >>>No changes made
+
+__________________
+Hurricane (center)	; FaultID 	2004	
+     >>>No changes made
+
+__________________
+Hurricane (south)	; FaultID 	2005	
+     >>>No changes made
+
+__________________
+Sevier - Toroweap	; FaultID 	2006	
+     >>>No changes made
+
+__________________
+Arrowhead - Citadel Ruins	; FaultID 	2016	
+     >>>No changes made
+
+__________________
+Babbitt Lake	; FaultID 	2017	
+     >>>No changes made
+
+__________________
+Bellemont	; FaultID 	2018	
+     >>>No changes made
+
+__________________
+Bill Williams	; FaultID 	2019	
+     >>>No changes made
+
+__________________
+Black Point - Doney Mountain (center)	; FaultID 	2020	
+     >>>No changes made
+
+__________________
+Black Point - Doney Mountain (north)	; FaultID 	2021	
+     >>>No changes made
+
+__________________
+Black Point - Doney Mountain (south)	; FaultID 	2022	
+     >>>No changes made
+
+__________________
+Cactus Flats	; FaultID 	2023	
+     >>>No changes made
+
+__________________
+Cameron Graben	; FaultID 	2024	
+     >>>No changes made
+
+__________________
+Campbell Francis - Large Whiskers - Rimmy Jim	; FaultID 	2025	
+     >>>No changes made
+
+__________________
+Carefree	; FaultID 	2026	
+     >>>No changes made
+
+__________________
+Casner Cabin	; FaultID 	2027	
+     >>>No changes made
+
+__________________
+Cataract Creek	; FaultID 	2028	
+     >>>No changes made
+
+__________________
+Cedar Ranch	; FaultID 	2029	
+     >>>No changes made
+
+__________________
+Cedar Wash	; FaultID 	2030	
+     >>>No changes made
+
+__________________
+Concho	; FaultID 	2031	
+     >>>No changes made
+
+__________________
+Coyote Wash	; FaultID 	2032	
+     >>>No changes made
+
+__________________
+Detrital Valley	; FaultID 	2033	
+     >>>No changes made
+
+__________________
+Grand Wash	; FaultID 	2034	
+     >>>No changes made
+
+__________________
+Horseshoe	; FaultID 	2035	
+     >>>No changes made
+
+__________________
+Huachuca	; FaultID 	2036	
+     >>>No changes made
+
+__________________
+Leupps	; FaultID 	2037	
+     >>>No changes made
+
+__________________
+Littlefield Mesa	; FaultID 	2038	
+     >>>No changes made
+
+__________________
+Main Street	; FaultID 	2039	
+     >>>No changes made
+
+__________________
+Mead Slope	; FaultID 	2040	
+     >>>No changes made
+
+__________________
+Mesquite	; FaultID 	2041	
+     >>>No changes made
+
+__________________
+Metz Tank	; FaultID 	2042	
+     >>>No changes made
+
+__________________
+Needles Graben	; FaultID 	2043	
+     >>>No changes made
+
+__________________
+Swisshelm (north)	; FaultID 	2044	
+     >>>No changes made
+
+__________________
+Pedrogosa	; FaultID 	2045	
+     >>>No changes made
+
+__________________
+Pearl Harbor	; FaultID 	2046	
+     >>>No changes made
+
+__________________
+Prescott Valley Grabens	; FaultID 	2047	
+     >>>No changes made
+
+__________________
+Rock House (northeast)	; FaultID 	2048	
+     >>>No changes made
+
+__________________
+Rock House (northwest)	; FaultID 	2049	
+     >>>No changes made
+
+__________________
+Rock House (south)	; FaultID 	2050	
+     >>>No changes made
+
+__________________
+Safford	; FaultID 	2051	
+     >>>No changes made
+
+__________________
+Santa Rita (north)	; FaultID 	2052	
+     >>>No changes made
+
+__________________
+Santa Rita (south)	; FaultID 	2053	
+     >>>No changes made
+
+__________________
+Seligman	; FaultID 	2054	
+     >>>No changes made
+
+__________________
+Swisshelm (south)	; FaultID 	2055	
+     >>>No changes made
+
+__________________
+SP Crater	; FaultID 	2056	
+     >>>No changes made
+
+__________________
+Sugarloaf	; FaultID 	2057	
+     >>>No changes made
+
+__________________
+Sunshine	; FaultID 	2058	
+     >>>No changes made
+
+__________________
+Uinkaret volcanic field	; FaultID 	2059	
+     >>>No changes made
+
+__________________
+Verde	; FaultID 	2060	
+     >>>No changes made
+
+__________________
+Vernon	; FaultID 	2061	
+     >>>No changes made
+
+__________________
+Pitaycachi (north)	; FaultID 	2062	
+     >>>No changes made
+
+__________________
+Pitaycachi (south)	; FaultID 	2063	
+     >>>No changes made
+
+__________________
+Gore Range	; FaultID 	2100	
+     >>>No changes made
+
+__________________
+Sangre de Cristo (Crestone, Blanca, Zapata, San Luis)	; FaultID 	2101	
+     >>>No changes made
+
+__________________
+Sawatch (south)	; FaultID 	2102	
+     >>>No changes made
+
+__________________
+Williams Fork Mountains	; FaultID 	2103	
+     >>>No changes made
+
+__________________
+Cheraw	; FaultID 	2180	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 60
+
+__________________
+Busted Boiler	; FaultID 	2190	
+     >>>No changes made
+
+__________________
+East-Side Chase Gulch	; FaultID 	2191	
+     >>>No changes made
+
+__________________
+Mesita	; FaultID 	2192	
+     >>>No changes made
+
+__________________
+Sangre de Cristo (San Luis)	; FaultID 	2194	
+     >>>No changes made
+
+__________________
+Roubideau Creek	; FaultID 	2195	
+     >>>No changes made
+
+__________________
+Villa Grove	; FaultID 	2196	
+     >>>No changes made
+
+__________________
+Big Flat	; FaultID 	2201	
+     >>>No changes made
+
+__________________
+Cuddy Mountain	; FaultID 	2202	
+     >>>No changes made
+
+__________________
+Eastern Bear Lake	; FaultID 	2203	
+     >>>No changes made
+
+__________________
+Lost River	; FaultID 	2205	
+     >>>No changes made
+
+__________________
+Rush Peak	; FaultID 	2206	
+     >>>No changes made
+
+__________________
+Sawtooth	; FaultID 	2207	
+     >>>No changes made
+
+__________________
+Squaw Creek	; FaultID 	2208	
+     >>>No changes made
+
+__________________
+Beaverhead (Blue Dome)	; FaultID 	2218	
+     >>>No changes made
+
+__________________
+Beaverhead (north)	; FaultID 	2219	
+     >>>No changes made
+
+__________________
+Boulder front	; FaultID 	2220	
+     >>>No changes made
+
+__________________
+Curlew Valley	; FaultID 	2221	
+     >>>No changes made
+
+__________________
+East Gem Valley	; FaultID 	2222	
+     >>>No changes made
+
+__________________
+Lemhi (Big Gulch, Warm Creek)	; FaultID 	2223	
+     >>>No changes made
+
+__________________
+Lemhi (Ellis, May, Big Gulch)	; FaultID 	2224	
+     >>>No changes made
+
+__________________
+Lemhi (Fallert Springs, Howe)	; FaultID 	2225	
+     >>>No changes made
+
+__________________
+Lone Pine	; FaultID 	2226	
+     >>>No changes made
+
+__________________
+Owyhee Mountains - Halfway Gulch	; FaultID 	2227	
+     >>>No changes made
+
+__________________
+Shirt Creek	; FaultID 	2228	
+     >>>No changes made
+
+__________________
+Wasatch (Malad City)	; FaultID 	2229	
+     >>>No changes made
+
+__________________
+West Pocatello Valley	; FaultID 	2230	
+     >>>No changes made
+
+__________________
+Western Bear Lake	; FaultID 	2231	
+     >>>No changes made
+
+__________________
+Blacktail	; FaultID 	2300	
+     >>>No changes made
+
+__________________
+Canyon Ferry	; FaultID 	2301	
+     >>>No changes made
+
+__________________
+Centennial (east)	; FaultID 	2302	
+     >>>No changes made
+
+__________________
+Emigrant	; FaultID 	2303	
+     >>>No changes made
+
+__________________
+Georgia Gulch	; FaultID 	2304	
+     >>>No changes made
+
+__________________
+Hebgen	; FaultID 	2305	
+     >>>No changes made
+
+__________________
+Helena Valley	; FaultID 	2306	
+     >>>No changes made
+
+__________________
+Jocko	; FaultID 	2307	
+     >>>No changes made
+
+__________________
+Madison	; FaultID 	2308	
+     >>>No changes made
+
+__________________
+Mission	; FaultID 	2309	
+     >>>No changes made
+
+__________________
+Red Rock	; FaultID 	2310	
+     >>>No changes made
+
+__________________
+Red Rock Hills	; FaultID 	2311	
+     >>>No changes made
+
+__________________
+Sweetwater	; FaultID 	2312	
+     >>>No changes made
+
+__________________
+Thompson Valley	; FaultID 	2313	
+     >>>No changes made
+
+__________________
+Beaver Creek	; FaultID 	2323	
+     >>>No changes made
+
+__________________
+Bitterroot	; FaultID 	2324	
+     >>>No changes made
+
+__________________
+Boulder River valley western border	; FaultID 	2325	
+     >>>No changes made
+
+__________________
+Canyon Ferry (Toston)	; FaultID 	2326	
+     >>>No changes made
+
+__________________
+Hilger	; FaultID 	2327	
+     >>>No changes made
+
+__________________
+Lima Reservoir	; FaultID 	2328	
+     >>>No changes made
+
+__________________
+Red Canyon	; FaultID 	2329	
+     >>>No changes made
+
+__________________
+Spokane Hills	; FaultID 	2330	
+     >>>No changes made
+
+__________________
+Vendome	; FaultID 	2331	
+     >>>No changes made
+
+__________________
+Polaris	; FaultID 	2332	
+     >>>No changes made
+
+__________________
+Centennial (west)	; FaultID 	2333	
+     >>>No changes made
+
+__________________
+Alamogordo	; FaultID 	2400	
+     >>>No changes made
+
+__________________
+Caballo	; FaultID 	2402	
+     >>>No changes made
+
+__________________
+Jemez - San Ysidro (Calabacillas)	; FaultID 	2403	
+     >>>No changes made
+
+__________________
+Canones	; FaultID 	2404	
+     >>>No changes made
+
+__________________
+County Dump	; FaultID 	2405	
+     >>>No changes made
+
+__________________
+East Paradise	; FaultID 	2406	
+     >>>No changes made
+
+__________________
+Embudo	; FaultID 	2407	
+     >>>No changes made
+
+__________________
+Gallina	; FaultID 	2408	
+     >>>No changes made
+
+__________________
+Hubbell Spring	; FaultID 	2409	
+ Rake change
+  v1.3 value = 0
+  v1.4 value = -90
+
+__________________
+Jemez - San Ysidro (Jemez)	; FaultID 	2410	
+ Dip Degree change
+  v1.3 value = 70
+  v1.4 value = 50
+
+__________________
+La Bajada	; FaultID 	2411	
+     >>>No changes made
+
+__________________
+La Canada del Amagre	; FaultID 	2412	
+     >>>No changes made
+
+__________________
+La Jencia	; FaultID 	2413	
+     >>>No changes made
+
+__________________
+Lobato Mesa	; FaultID 	2414	
+     >>>No changes made
+
+__________________
+Nacimiento	; FaultID 	2415	
+     >>>No changes made
+
+__________________
+Nambe	; FaultID 	2416	
+     >>>No changes made
+
+__________________
+Organ Mountains	; FaultID 	2417	
+     >>>No changes made
+
+__________________
+Pajarito	; FaultID 	2418	
+     >>>No changes made
+
+__________________
+Picuris - Pecos	; FaultID 	2419	
+     >>>No changes made
+
+__________________
+Puye	; FaultID 	2421	
+     >>>No changes made
+
+__________________
+San Andres Mountains	; FaultID 	2422	
+     >>>No changes made
+
+__________________
+San Felipe (proxy)	; FaultID 	2423	
+     >>>No changes made
+
+__________________
+San Francisco	; FaultID 	2424	
+     >>>No changes made
+
+__________________
+Sawyer Canyon	; FaultID 	2425	
+     >>>No changes made
+
+__________________
+Socorro Canyon	; FaultID 	2426	
+     >>>No changes made
+
+__________________
+Sangre de Cristo (south)	; FaultID 	2427	
+     >>>No changes made
+
+__________________
+Tijeras - Canoncito	; FaultID 	2428	
+     >>>No changes made
+
+__________________
+Zia	; FaultID 	2429	
+     >>>No changes made
+
+__________________
+Animas Valley	; FaultID 	2439	
+     >>>No changes made
+
+__________________
+Artillery Range	; FaultID 	2440	
+     >>>No changes made
+
+__________________
+Black Hill	; FaultID 	2441	
+     >>>No changes made
+
+__________________
+Blue Mountain	; FaultID 	2442	
+     >>>No changes made
+
+__________________
+Cebollita Mesa	; FaultID 	2443	
+     >>>No changes made
+
+__________________
+Cemetery	; FaultID 	2444	
+     >>>No changes made
+
+__________________
+Cliff	; FaultID 	2445	
+     >>>No changes made
+
+__________________
+Coyote Springs	; FaultID 	2446	
+     >>>No changes made
+
+__________________
+Derry Hills - Foothills	; FaultID 	2447	
+     >>>No changes made
+
+__________________
+East Potrillo	; FaultID 	2448	
+     >>>No changes made
+
+__________________
+East Rincon Hills	; FaultID 	2449	
+     >>>No changes made
+
+__________________
+East Robledo	; FaultID 	2450	
+     >>>No changes made
+
+__________________
+East Tonuco	; FaultID 	2451	
+     >>>No changes made
+
+__________________
+Cochiti Pueblo	; FaultID 	2452	
+     >>>No changes made
+
+__________________
+Faults north of Placitas	; FaultID 	2453	
+     >>>No changes made
+
+__________________
+Fitzgerald	; FaultID 	2454	
+     >>>No changes made
+
+__________________
+Gillespie Mountain	; FaultID 	2455	
+     >>>No changes made
+
+__________________
+Gold Hill (north)	; FaultID 	2456	
+     >>>No changes made
+
+__________________
+Gold Hill (south)	; FaultID 	2457	
+     >>>No changes made
+
+__________________
+Gray Ranch	; FaultID 	2458	
+     >>>No changes made
+
+__________________
+Guadalupe	; FaultID 	2459	
+     >>>No changes made
+
+__________________
+Hachita Valley	; FaultID 	2460	
+     >>>No changes made
+
+__________________
+Hickman	; FaultID 	2461	
+     >>>No changes made
+
+__________________
+Hueco	; FaultID 	2462	
+     >>>No changes made
+
+__________________
+Jemez - San Ysidro (San Ysidro)	; FaultID 	2465	
+     >>>No changes made
+
+__________________
+Jornada Draw (north, Engle Lake)	; FaultID 	2466	
+     >>>No changes made
+
+__________________
+Jornada Draw (south)	; FaultID 	2467	
+     >>>No changes made
+
+__________________
+Loma Blanca	; FaultID 	2470	
+     >>>No changes made
+
+__________________
+Loma Pelada	; FaultID 	2471	
+     >>>No changes made
+
+__________________
+Los Pinos	; FaultID 	2472	
+     >>>No changes made
+
+__________________
+Manzano	; FaultID 	2473	
+     >>>No changes made
+
+__________________
+Mastodon	; FaultID 	2474	
+     >>>No changes made
+
+__________________
+Mike Well - Bosque del Apache	; FaultID 	2475	
+     >>>No changes made
+
+__________________
+Mount Riley	; FaultID 	2476	
+     >>>No changes made
+
+__________________
+Quebraditas - El Oro	; FaultID 	2477	
+     >>>No changes made
+
+__________________
+Red Hills	; FaultID 	2478	
+     >>>No changes made
+
+__________________
+Rimrock	; FaultID 	2479	
+     >>>No changes made
+
+__________________
+Rincon	; FaultID 	2480	
+     >>>No changes made
+
+__________________
+Sandia	; FaultID 	2482	
+     >>>No changes made
+
+__________________
+Santa Clara	; FaultID 	2483	
+     >>>No changes made
+
+__________________
+Sierra de las Uvas	; FaultID 	2484	
+     >>>No changes made
+
+__________________
+Sierra Palomas	; FaultID 	2485	
+     >>>No changes made
+
+__________________
+Sunshine Valley	; FaultID 	2486	
+     >>>No changes made
+
+__________________
+San Mateo Mountains (unnamed)	; FaultID 	2487	
+     >>>No changes made
+
+__________________
+Datil (unnamed)	; FaultID 	2488	
+     >>>No changes made
+
+__________________
+Mountainair (unnamed)	; FaultID 	2489	
+     >>>No changes made
+
+__________________
+Pyramid Mountains (unnamed)	; FaultID 	2490	
+     >>>No changes made
+
+__________________
+Very Large Array (east)	; FaultID 	2491	
+     >>>No changes made
+
+__________________
+Very Large Array (west)	; FaultID 	2492	
+     >>>No changes made
+
+__________________
+Ward Tank - Sierro Kemado - Hackler Tank	; FaultID 	2493	
+     >>>No changes made
+
+__________________
+Washburn Ranch	; FaultID 	2494	
+     >>>No changes made
+
+__________________
+West Florida Mountains	; FaultID 	2495	
+     >>>No changes made
+
+__________________
+Llano de Albuquerque (proxy)	; FaultID 	2496	
+     >>>No changes made
+
+__________________
+Llano de Manzano (proxy)	; FaultID 	2497	
+     >>>No changes made
+
+__________________
+Goose Lake	; FaultID 	2500	
+     >>>No changes made
+
+__________________
+Klamath Graben (Klamath Lake)	; FaultID 	2502	
+ Dip Degree change
+  v1.3 value = 50
+  v1.4 value = 60
+
+__________________
+Abert Rim	; FaultID 	2503	
+     >>>No changes made
+
+__________________
+Alvin Canyon	; FaultID 	2504	
+     >>>No changes made
+
+__________________
+Battle Rock	; FaultID 	2505	
+     >>>No changes made
+
+__________________
+Beaver Creek	; FaultID 	2506	
+     >>>No changes made
+
+__________________
+Bolton	; FaultID 	2507	
+     >>>No changes made
+
+__________________
+Cape Blanco Anticline	; FaultID 	2508	
+     >>>No changes made
+
+__________________
+Chemult Graben (east)	; FaultID 	2509	
+     >>>No changes made
+
+__________________
+Chemult Graben (west)	; FaultID 	2510	
+     >>>No changes made
+
+__________________
+Coquille Anticline	; FaultID 	2511	
+     >>>No changes made
+
+__________________
+Cottonwood Mountain (east)	; FaultID 	2512	
+     >>>No changes made
+
+__________________
+Daisy Bank	; FaultID 	2513	
+     >>>No changes made
+
+__________________
+Gales Creek (Parsons Creek)	; FaultID 	2514	
+     >>>No changes made
+
+__________________
+Happy Camp	; FaultID 	2516	
+     >>>No changes made
+
+__________________
+Juniper Mountain	; FaultID 	2518	
+     >>>No changes made
+
+__________________
+Klamath Graben (east)	; FaultID 	2519	
+     >>>No changes made
+
+__________________
+Klamath Graben (west, south)	; FaultID 	2520	
+     >>>No changes made
+
+__________________
+Metolius	; FaultID 	2522	
+     >>>No changes made
+
+__________________
+Mount Angel	; FaultID 	2523	
+     >>>No changes made
+
+__________________
+Paulina Marsh	; FaultID 	2526	
+     >>>No changes made
+
+__________________
+Portland Hills (north)	; FaultID 	2529	
+     >>>No changes made
+
+__________________
+Santa Rosa Range (north)	; FaultID 	2531	
+     >>>No changes made
+
+__________________
+Sky Lakes	; FaultID 	2532	
+     >>>No changes made
+
+__________________
+Southeast Newberry	; FaultID 	2533	
+     >>>No changes made
+
+__________________
+South Slough	; FaultID 	2534	
+     >>>No changes made
+
+__________________
+Steens (center)	; FaultID 	2535	
+     >>>No changes made
+
+__________________
+Tule Springs Rims	; FaultID 	2536	
+     >>>No changes made
+
+__________________
+Turner - Mill Creek	; FaultID 	2537	
+     >>>No changes made
+
+__________________
+Waldport	; FaultID 	2538	
+     >>>No changes made
+
+__________________
+Warner Valley (west, north)	; FaultID 	2541	
+     >>>No changes made
+
+__________________
+Wecoma	; FaultID 	2542	
+     >>>No changes made
+
+__________________
+Whaleshead	; FaultID 	2543	
+     >>>No changes made
+
+__________________
+Winter Rim	; FaultID 	2544	
+     >>>No changes made
+
+__________________
+Yaquina	; FaultID 	2545	
+     >>>No changes made
+
+__________________
+Arlington - Shutler Butte	; FaultID 	2555	
+     >>>No changes made
+
+__________________
+Beaverton	; FaultID 	2556	
+     >>>No changes made
+
+__________________
+Blue Ridge - Gate Creek	; FaultID 	2557	
+     >>>No changes made
+
+__________________
+Canby	; FaultID 	2558	
+     >>>No changes made
+
+__________________
+East Grand Ronde Valley	; FaultID 	2560	
+     >>>No changes made
+
+__________________
+East Pueblo Valley	; FaultID 	2562	
+     >>>No changes made
+
+__________________
+Gales Creek (Chehalem Valley)	; FaultID 	2563	
+     >>>No changes made
+
+__________________
+Harney	; FaultID 	2564	
+     >>>No changes made
+
+__________________
+Klamath Graben (west, center)	; FaultID 	2565	
+     >>>No changes made
+
+__________________
+Klamath Graben (west, north)	; FaultID 	2566	
+     >>>No changes made
+
+__________________
+La Pine Graben	; FaultID 	2567	
+     >>>No changes made
+
+__________________
+Lava Butte	; FaultID 	2568	
+     >>>No changes made
+
+__________________
+Pioneer	; FaultID 	2569	
+     >>>No changes made
+
+__________________
+Portland Hills (south)	; FaultID 	2570	
+     >>>No changes made
+
+__________________
+Santa Rosa Range (center)	; FaultID 	2572	
+     >>>No changes made
+
+__________________
+Santa Rosa Range (south)	; FaultID 	2573	
+     >>>No changes made
+
+__________________
+Steens (north)	; FaultID 	2574	
+     >>>No changes made
+
+__________________
+Steens (south)	; FaultID 	2575	
+     >>>No changes made
+
+__________________
+Southwest Newberry	; FaultID 	2576	
+     >>>No changes made
+
+__________________
+Sumpter Valley	; FaultID 	2577	
+     >>>No changes made
+
+__________________
+Sylvain - Oatfield	; FaultID 	2578	
+     >>>No changes made
+
+__________________
+Twin Lakes - Multorpor Mountain Graben	; FaultID 	2579	
+     >>>No changes made
+
+__________________
+Wallula (southwest)	; FaultID 	2581	
+ X change
+  v1.3 number of nodes:  4
+  v1.4 number of nodes:  4
+  v1.3 nodes: 
+       -118.49763
+       -118.59648
+       -118.66998
+       -118.80854
+  v1.4 nodes: 
+       -118.80755
+       -118.67020
+       -118.59580
+       -118.49736
+ Y change
+  v1.3 number of nodes:  4
+  v1.4 number of nodes:  4
+  v1.3 nodes: 
+        45.90946
+        45.93208
+        45.94861
+        46.01977
+  v1.4 nodes: 
+        46.01914
+        45.94841
+        45.93183
+        45.90934
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 60
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = SW
+ Rake change
+  v1.3 value = 180
+  v1.4 value = 90
+
+__________________
+Warm Springs	; FaultID 	2582	
+     >>>No changes made
+
+__________________
+Warner Valley (east, north)	; FaultID 	2583	
+     >>>No changes made
+
+__________________
+Warner Valley (east, center)	; FaultID 	2584	
+     >>>No changes made
+
+__________________
+West Baker Valley (center)	; FaultID 	2586	
+     >>>No changes made
+
+__________________
+West Baker Valley (southeast)	; FaultID 	2587	
+     >>>No changes made
+
+__________________
+West Grand Ronde Valley	; FaultID 	2588	
+     >>>No changes made
+
+__________________
+White Branch	; FaultID 	2590	
+     >>>No changes made
+
+__________________
+Acala	; FaultID 	2600	
+     >>>No changes made
+
+__________________
+Amargosa	; FaultID 	2601	
+     >>>No changes made
+
+__________________
+Arroyo Diablo	; FaultID 	2602	
+     >>>No changes made
+
+__________________
+Caballo	; FaultID 	2603	
+     >>>No changes made
+
+__________________
+Campo Grande	; FaultID 	2604	
+     >>>No changes made
+
+__________________
+East Baylor Mountain - Carizzo Mountain	; FaultID 	2605	
+     >>>No changes made
+
+__________________
+East Franklin Mountains	; FaultID 	2606	
+     >>>No changes made
+
+__________________
+East Sierra Diablo	; FaultID 	2607	
+     >>>No changes made
+
+__________________
+West Delaware Mountains	; FaultID 	2608	
+     >>>No changes made
+
+__________________
+West Eagle Mountains - Red Hills	; FaultID 	2609	
+     >>>No changes made
+
+__________________
+West Indio Mountains	; FaultID 	2610	
+     >>>No changes made
+
+__________________
+West Lobo Valley	; FaultID 	2611	
+     >>>No changes made
+
+__________________
+East Cache	; FaultID 	2700	
+     >>>No changes made
+
+__________________
+Great Salt Lake (Antelope Island)	; FaultID 	2701	
+     >>>No changes made
+
+__________________
+Great Salt Lake (Fremont Island)	; FaultID 	2702	
+     >>>No changes made
+
+__________________
+Great Salt Lake (Promontory)	; FaultID 	2703	
+     >>>No changes made
+
+__________________
+Hansel Valley	; FaultID 	2704	
+     >>>No changes made
+
+__________________
+Hurricane (Ash Creek, Cedar City)	; FaultID 	2705	
+     >>>No changes made
+
+__________________
+Joes Valley	; FaultID 	2706	
+     >>>No changes made
+
+__________________
+Morgan	; FaultID 	2707	
+     >>>No changes made
+
+__________________
+North Promontory	; FaultID 	2708	
+     >>>No changes made
+
+__________________
+Oquirrh	; FaultID 	2709	
+     >>>No changes made
+
+__________________
+Paragonah	; FaultID 	2710	
+     >>>No changes made
+
+__________________
+Sevier - Toroweap (north)	; FaultID 	2711	
+     >>>No changes made
+
+__________________
+Stansbury	; FaultID 	2712	
+     >>>No changes made
+
+__________________
+Strawberry	; FaultID 	2713	
+     >>>No changes made
+
+__________________
+West Cache (Clarkston)	; FaultID 	2714	
+     >>>No changes made
+
+__________________
+West Cache (Wellsville)	; FaultID 	2715	
+     >>>No changes made
+
+__________________
+West Cache (Junction Hills)	; FaultID 	2716	
+     >>>No changes made
+
+__________________
+West Valley	; FaultID 	2717	
+     >>>No changes made
+
+__________________
+Annabella Graben	; FaultID 	2727	
+     >>>No changes made
+
+__________________
+Antelope Range	; FaultID 	2728	
+     >>>No changes made
+
+__________________
+Beaver Basin (east)	; FaultID 	2729	
+     >>>No changes made
+
+__________________
+Beaver Basin (intrabasin, central)	; FaultID 	2730	
+     >>>No changes made
+
+__________________
+Beaver Basin (intrabasin, east)	; FaultID 	2731	
+     >>>No changes made
+
+__________________
+Beaver Basin (intrabasin, west)	; FaultID 	2732	
+     >>>No changes made
+
+__________________
+Big Pass	; FaultID 	2733	
+     >>>No changes made
+
+__________________
+Black Mountains	; FaultID 	2734	
+     >>>No changes made
+
+__________________
+Broadmouth Canyon - James Peak	; FaultID 	2735	
+     >>>No changes made
+
+__________________
+Carrington	; FaultID 	2736	
+     >>>No changes made
+
+__________________
+Crater Bench	; FaultID 	2737	
+     >>>No changes made
+
+__________________
+Crawford Mountains - Saleratus Creek	; FaultID 	2738	
+     >>>No changes made
+
+__________________
+Cricket Mountains (west)	; FaultID 	2739	
+     >>>No changes made
+
+__________________
+Dover	; FaultID 	2740	
+     >>>No changes made
+
+__________________
+Drum Mountains (east)	; FaultID 	2741	
+     >>>No changes made
+
+__________________
+Drum Mountains (northwest)	; FaultID 	2742	
+     >>>No changes made
+
+__________________
+Drum Mountains (south)	; FaultID 	2743	
+     >>>No changes made
+
+__________________
+East Kamas	; FaultID 	2744	
+     >>>No changes made
+
+__________________
+East Tintic Mountains (northwest)	; FaultID 	2745	
+     >>>No changes made
+
+__________________
+East Tintic Mountains (southwest)	; FaultID 	2746	
+     >>>No changes made
+
+__________________
+East Tintic Mountains (southeast)	; FaultID 	2747	
+     >>>No changes made
+
+__________________
+Enoch Graben	; FaultID 	2748	
+     >>>No changes made
+
+__________________
+Fish Springs	; FaultID 	2749	
+     >>>No changes made
+
+__________________
+North Genola	; FaultID 	2750	
+     >>>No changes made
+
+__________________
+Gooseberry Graben	; FaultID 	2751	
+     >>>No changes made
+
+__________________
+Grouse Creek - Dove Creek Mountains (north)	; FaultID 	2752	
+     >>>No changes made
+
+__________________
+Goshen	; FaultID 	2753	
+     >>>No changes made
+
+__________________
+Grouse Creek - Dove Creek Mountains (south)	; FaultID 	2754	
+     >>>No changes made
+
+__________________
+Gunlock	; FaultID 	2755	
+     >>>No changes made
+
+__________________
+Gunnison	; FaultID 	2756	
+     >>>No changes made
+
+__________________
+Hansel Mountains (east side)	; FaultID 	2757	
+     >>>No changes made
+
+__________________
+House Range	; FaultID 	2758	
+     >>>No changes made
+
+__________________
+Little Valley (east)	; FaultID 	2759	
+     >>>No changes made
+
+__________________
+Little Valley (west)	; FaultID 	2760	
+     >>>No changes made
+
+__________________
+Main Canyon	; FaultID 	2761	
+     >>>No changes made
+
+__________________
+Maple Grove	; FaultID 	2762	
+     >>>No changes made
+
+__________________
+Mineral Mountains	; FaultID 	2763	
+     >>>No changes made
+
+__________________
+Ogden Valley North Fork	; FaultID 	2764	
+     >>>No changes made
+
+__________________
+Paunsaugunt	; FaultID 	2765	
+     >>>No changes made
+
+__________________
+Porcupine Mountains	; FaultID 	2766	
+     >>>No changes made
+
+__________________
+Red Hills	; FaultID 	2767	
+     >>>No changes made
+
+__________________
+San Francisco Mountains (west)	; FaultID 	2768	
+     >>>No changes made
+
+__________________
+Scipio - Maple Grove - Pavant Range - Red Canyon	; FaultID 	2769	
+     >>>No changes made
+
+__________________
+Sheeprock	; FaultID 	2770	
+     >>>No changes made
+
+__________________
+Snake Valley (north)	; FaultID 	2771	
+     >>>No changes made
+
+__________________
+Southern Oquirrh Mountains	; FaultID 	2772	
+     >>>No changes made
+
+__________________
+Thousand Lake	; FaultID 	2773	
+     >>>No changes made
+
+__________________
+Topliff Hill	; FaultID 	2774	
+     >>>No changes made
+
+__________________
+Utah Lakes	; FaultID 	2775	
+     >>>No changes made
+
+__________________
+Wah Wah Mountains (south)	; FaultID 	2776	
+     >>>No changes made
+
+__________________
+Washington (Fort Pearce)	; FaultID 	2777	
+     >>>No changes made
+
+__________________
+Wasatch (Clarkston Mountain)	; FaultID 	2778	
+     >>>No changes made
+
+__________________
+Wasatch (Brigham City)	; FaultID 	2780	
+     >>>No changes made
+
+__________________
+Wasatch (Weber)	; FaultID 	2781	
+     >>>No changes made
+
+__________________
+Wasatch (East Bench)	; FaultID 	2782	
+     >>>No changes made
+
+__________________
+Wasatch (Provo, north)	; FaultID 	2783	
+     >>>No changes made
+
+__________________
+Wasatch (Nephi, south)	; FaultID 	2784	
+     >>>No changes made
+
+__________________
+Wasatch (Levan)	; FaultID 	2785	
+     >>>No changes made
+
+__________________
+Wasatch (Fayette)	; FaultID 	2786	
+     >>>No changes made
+
+__________________
+Wasatch (Nephi, north)	; FaultID 	2787	
+     >>>No changes made
+
+__________________
+Wasatch (Virginia Street)	; FaultID 	2788	
+     >>>No changes made
+
+__________________
+Wasatch (Collinston)	; FaultID 	2789	
+     >>>No changes made
+
+__________________
+Wasatch (Provo, south)	; FaultID 	2790	
+     >>>No changes made
+
+__________________
+Wasatch (Foothills)	; FaultID 	2791	
+     >>>No changes made
+
+__________________
+Wasatch (Salt Lake City, north)	; FaultID 	2792	
+     >>>No changes made
+
+__________________
+Wasatch (Salt Lake City, south)	; FaultID 	2793	
+     >>>No changes made
+
+__________________
+Boulder Creek (Kendall)	; FaultID 	2800	
+     >>>No changes made
+
+__________________
+Devils Mountain	; FaultID 	2801	
+     >>>No changes made
+
+__________________
+Horse Heaven Hills	; FaultID 	2803	
+     >>>No changes made
+
+__________________
+Lake Creek - Boundary Creek - Sadie	; FaultID 	2804	
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 60
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = N
+ Rake change
+  v1.3 value = 0
+  v1.4 value = 90
+
+__________________
+Wallula (northeast)	; FaultID 	2806	
+     >>>No changes made
+
+__________________
+Saddle Mountains	; FaultID 	2807	
+     >>>No changes made
+
+__________________
+Stonewall Anticline	; FaultID 	2808	
+     >>>No changes made
+
+__________________
+Strawberry Point	; FaultID 	2809	
+     >>>No changes made
+
+__________________
+Tacoma	; FaultID 	2810	
+     >>>No changes made
+
+__________________
+Utsalady Point (east)	; FaultID 	2811	
+ Dip Degree change
+  v1.3 value = 60
+  v1.4 value = 90
+ Dip Direction change
+  v1.3 value = NE
+  v1.4 value = Vertical
+ Rake change
+  v1.3 value = 90
+  v1.4 value = 0
+
+__________________
+Birch Bay	; FaultID 	2827	
+     >>>No changes made
+
+__________________
+Canyon River	; FaultID 	2828	
+     >>>No changes made
+
+__________________
+Canyon River - Price Lake (northeast)	; FaultID 	2829	
+     >>>No changes made
+
+__________________
+Canyon River - Price Lake (southwest)	; FaultID 	2830	
+     >>>No changes made
+
+__________________
+Drayton Harbor	; FaultID 	2831	
+     >>>No changes made
+
+__________________
+Entiat	; FaultID 	2832	
+     >>>No changes made
+
+__________________
+Frigid Creek	; FaultID 	2833	
+     >>>No changes made
+
+__________________
+Horse Heaven Hills - Wallula	; FaultID 	2834	
+     >>>No changes made
+
+__________________
+Kittitas Valley	; FaultID 	2835	
+     >>>No changes made
+
+__________________
+Manastash Ridge	; FaultID 	2836	
+     >>>No changes made
+
+__________________
+Olympia	; FaultID 	2837	
+     >>>No changes made
+
+__________________
+Saddle Hill (Langley Hill)	; FaultID 	2838	
+     >>>No changes made
+
+__________________
+Sandy Point	; FaultID 	2839	
+     >>>No changes made
+
+__________________
+Seattle (east)	; FaultID 	2842	
+ Dip Degree change
+  v1.3 value = 60
+  v1.4 value = 45
+
+__________________
+Spencer Canyon	; FaultID 	2843	
+     >>>No changes made
+
+__________________
+Toppenish Ridge (Mill Creek thrust)	; FaultID 	2844	
+     >>>No changes made
+
+__________________
+Uhtanum Ridge - Gable Mountain	; FaultID 	2845	
+     >>>No changes made
+
+__________________
+Utsalady Point (west)	; FaultID 	2847	
+ Dip Degree change
+  v1.3 value = 90
+  v1.4 value = 60
+ Dip Direction change
+  v1.3 value = Vertical
+  v1.4 value = NE
+ Rake change
+  v1.3 value = 0
+  v1.4 value = 90
+
+__________________
+Warwick	; FaultID 	2848	
+     >>>No changes made
+
+__________________
+Willapa Bay (north)	; FaultID 	2849	
+     >>>No changes made
+
+__________________
+Willapa Bay (south)	; FaultID 	2850	
+     >>>No changes made
+
+__________________
+Seattle (south)	; FaultID 	2880	
+ Dip Degree change
+  v1.3 value = 60
+  v1.4 value = 45
+
+__________________
+Seattle (middle)	; FaultID 	2881	
+ Dip Degree change
+  v1.3 value = 60
+  v1.4 value = 45
+
+__________________
+Seattle (north)	; FaultID 	2882	
+ Dip Degree change
+  v1.3 value = 60
+  v1.4 value = 45
+
+__________________
+Southern Whidbey Island (south)	; FaultID 	2890	
+     >>>No changes made
+
+__________________
+Southern Whidbey Island (middle)	; FaultID 	2891	
+     >>>No changes made
+
+__________________
+Southern Whidbey Island (north)	; FaultID 	2892	
+     >>>No changes made
+
+__________________
+Bear River	; FaultID 	2900	
+     >>>No changes made
+
+__________________
+Eagle Bay	; FaultID 	2901	
+     >>>No changes made
+
+__________________
+East Mount Sheridan	; FaultID 	2902	
+     >>>No changes made
+
+__________________
+Grand Valley	; FaultID 	2903	
+     >>>No changes made
+
+__________________
+Greys River	; FaultID 	2904	
+     >>>No changes made
+
+__________________
+Hoback	; FaultID 	2905	
+     >>>No changes made
+
+__________________
+Rock Creek	; FaultID 	2906	
+     >>>No changes made
+
+__________________
+Teton	; FaultID 	2907	
+     >>>No changes made
+
+__________________
+Upper Yellowstone Valley (west)	; FaultID 	2908	
+     >>>No changes made
+
+__________________
+Buffalo Fork	; FaultID 	2918	
+     >>>No changes made
+
+__________________
+East Gallatin - Reese Creek	; FaultID 	2919	
+     >>>No changes made
+
+__________________
+Hogsback	; FaultID 	2921	
+     >>>No changes made
+
+__________________
+South Granite Mountains	; FaultID 	2922	
+     >>>No changes made
+
+__________________
+Stagner Creek	; FaultID 	2923	
+     >>>No changes made
+
+__________________
+Upper Yellowstone Valley (east)	; FaultID 	2924	
+     >>>No changes made
+
+__________________

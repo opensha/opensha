@@ -415,7 +415,7 @@ public class GeoJSONFaultReader {
 		return subSects;
 	}
 	
-	private static final String NSHM23_SECTS_CUR_VERSION = "v1p1";
+	private static final String NSHM23_SECTS_CUR_VERSION = "v1p4";
 	private static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
 	private static final String NSHM23_DM_CUR_VERSION = "v1";
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
