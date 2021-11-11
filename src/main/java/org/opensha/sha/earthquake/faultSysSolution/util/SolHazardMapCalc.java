@@ -172,7 +172,7 @@ public class SolHazardMapCalc {
 	
 	private int periodIndex(double period) {
 		for (int p=0; p<periods.length; p++)
-			if ((float)period == periods[p])
+			if ((float)period == (float)periods[p])
 				return p;
 		throw new IllegalStateException("Period not found: "+(float)period);
 	}
@@ -597,7 +597,7 @@ public class SolHazardMapCalc {
 				calc = loadCurves(sol, gridReg, periods, outputDir, "curves");
 				System.out.println("Loaded existing curves!");
 			} catch (Exception e) {
-				e.printStackTrace();
+//				e.printStackTrace();
 			}
 		}
 		if (calc == null) {
