@@ -1826,7 +1826,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				double maxMag = meta.comparison.rupSet.getMaxMagForSection(sectIndex);
 				double bVal = SectBValuePlot.estBValue(minMag, maxMag, meta.comparison.sol,
 						meta.comparison.rupSet.getRupturesForSection(sectIndex), compRupMoRates,
-						SectIDRange.build(sectIndex, sectIndex));
+						SectIDRange.build(sectIndex, sectIndex)).b;
 				
 				XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
 				if (s == 0)
@@ -1840,7 +1840,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			double maxMag = meta.primary.rupSet.getMaxMagForSection(sectIndex);
 			double bVal = SectBValuePlot.estBValue(minMag, maxMag, meta.primary.sol,
 					meta.primary.rupSet.getRupturesForSection(sectIndex), rupMoRates,
-					SectIDRange.build(sectIndex, sectIndex));
+					SectIDRange.build(sectIndex, sectIndex)).b;
 			
 			XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
 			if (s == 0) {
