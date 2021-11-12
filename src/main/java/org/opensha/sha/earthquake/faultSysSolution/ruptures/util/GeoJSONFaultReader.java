@@ -79,10 +79,25 @@ public class GeoJSONFaultReader {
 		
 		HashSet<Integer> prevIDs = new HashSet<>();
 		
+		HashMap<String, Integer> nameCounts = new HashMap<>();
+		
 		for (Feature feature : features.features) {
 			GeoJSONFaultSection sect = GeoJSONFaultSection.fromFeature(feature);
 			int id = sect.getSectionId();
 			Preconditions.checkState(!prevIDs.contains(id), "Duplicate fault ID detected: %s", id);
+			String sectName = sect.getSectionName();
+			Integer nameCount = nameCounts.get(sectName);
+			if (nameCount == null) {
+				nameCount = 1;
+			} else {
+				// duplicate name!
+				nameCount++;
+				String newSectName = sectName+" ("+nameCount+")";
+				System.err.println("WARNING: duplicate fault section name detected, changing '"+sectName+"' to '"+newSectName+"'");
+				sect.setSectionName(newSectName);
+			}
+			nameCounts.put(sectName, nameCount);
+			
 			ret.add(sect);
 			prevIDs.add(id);
 		}
@@ -125,29 +140,38 @@ public class GeoJSONFaultReader {
 		return ret;
 	}
 	
-	/*
-	 * Geologic Deformation Model CSV
-	 */
-
-	public static void attachGeoDefModel(List<GeoJSONFaultSection> sects, File csvFile) throws IOException {
-		attachGeoDefModel(sects, CSVFile.readFile(csvFile, true));
+	private static <E extends FaultSection> Map<Integer, E> idMappedSects(List<E> sects) {
+		return sects.stream().collect(Collectors.toMap(E::getSectionId, Function.identity()));
 	}
 	
-	public static void attachGeoDefModel(List<GeoJSONFaultSection> sects, CSVFile<String> csv) {
-		Map<Integer, GeoJSONFaultSection> idMapped =
-				sects.stream().collect(Collectors.toMap(GeoJSONFaultSection::getSectionId, Function.identity()));
+	/*
+	 * Geologic Deformation Model GeoJSON
+	 */
+
+	public static void attachGeoDefModel(List<GeoJSONFaultSection> sects, File dmGeoJSONFile) throws IOException {
+		attachGeoDefModel(sects, FeatureCollection.read(dmGeoJSONFile));
+	}
+	
+	public static void attachGeoDefModel(List<GeoJSONFaultSection> sects, FeatureCollection defModel) {
+		Map<Integer, GeoJSONFaultSection> idMapped = idMappedSects(sects);
 		Preconditions.checkState(sects.size() == idMapped.size(), "Duplicate fault ids in list?");
 		HashSet<Integer> processed = new HashSet<>();
-		for (int row=1; row<csv.getNumRows(); row++) {
-			int id = csv.getInt(row, 1);
-			double prefRate = csv.getDouble(row, 5);
-			double lowRate = csv.getDouble(row, 6);
-			double highRate = csv.getDouble(row, 7);
-			String treatment = csv.get(row, 4);
-			String rateType = csv.get(row, 8);
-			
-			Preconditions.checkState(idMapped.containsKey(id), "No fault found with id=%s", id);
+		
+		int numInferred = 0;
+		for (Feature dmSect : defModel.features) {
+			FeatureProperties props = dmSect.properties;
+			int id = props.getInt("FaultID", -1);
+			Preconditions.checkState(id >= 0, "Feature is missing FaultID field");
 			Preconditions.checkState(!processed.contains(id), "Duplicate id encountered: %s", id);
+			if (!idMapped.containsKey(id))
+				// no fault for this ID, might be filtered (e.g., by state)
+				continue;
+			double prefRate = props.getDouble("PrefRate", Double.NaN);
+			double lowRate = props.getDouble("LowRate", Double.NaN);
+			double highRate = props.getDouble("HighRate", Double.NaN);
+			String treatment = props.get("Treat", null);
+			String rateType = props.get("RateType", null);
+			double stdDev = props.getDouble("Stdev", Double.NaN);
 			
 			processed.add(id);
 			GeoJSONFaultSection sect = idMapped.get(id);
@@ -164,17 +188,35 @@ public class GeoJSONFaultReader {
 				continue;
 			}
 			
+			Preconditions.checkState(Double.isFinite(highRate) && highRate >= 0d && highRate >= prefRate,
+					"Bad HighRate for %s: %s", id, (Double)highRate);
+			Preconditions.checkState(Double.isFinite(lowRate) && lowRate >= 0d && lowRate <= prefRate,
+					"Bad LowRate for %s: %s", id, (Double)lowRate);
+			
 			sect.setAveSlipRate(prefRate);
 			sect.setProperty("HighRate", highRate);
 			sect.setProperty("LowRate", lowRate);
-			sect.setProperty("Treatment", treatment);
-			sect.setProperty("RateType", rateType);
+			if (treatment == null)
+				sect.setProperty("Treatment", null);
+			else
+				sect.setProperty("Treatment", treatment);
+			if (rateType == null)
+				sect.setProperty("RateType", null);
+			else
+				sect.setProperty("RateType", rateType);
 			
-			// infer std dev from bounds
-			// assume bounds are +/- 2 sigma (95% CI), and thus std dev is (high-low)/4
-			sect.setSlipRateStdDev((highRate-lowRate)/4d);
+			if (!Double.isFinite(stdDev)) {
+				numInferred++;
+				// infer std dev from bounds
+				// assume bounds are +/- 2 sigma (95% CI), and thus std dev is (high-low)/4
+				stdDev = (highRate-lowRate)/4d;
+			}
+			
+			sect.setSlipRateStdDev(stdDev);
 		}
 		System.out.println("Attached deformation model rates for "+processed.size()+" sections");
+		if (numInferred > 0)
+			System.err.println("WARNING: inferred "+numInferred+" slip rate values from bounds, assuming bounds are 2-sigma");
 		Preconditions.checkState(sects.size() == processed.size(),
 				"No mappings for %s sections", sects.size()-processed.size());
 	}
@@ -415,9 +457,9 @@ public class GeoJSONFaultReader {
 		return subSects;
 	}
 	
-	private static final String NSHM23_SECTS_CUR_VERSION = "v1p4";
+	public static final String NSHM23_SECTS_CUR_VERSION = "v1p4";
 	private static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
-	private static final String NSHM23_DM_CUR_VERSION = "v1";
+	public static final String NSHM23_DM_CUR_VERSION = "v1p1";
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
 	
 	public static List<FaultSection> buildNSHM23SubSects() throws IOException {
@@ -425,20 +467,22 @@ public class GeoJSONFaultReader {
 	}
 	
 	public static List<FaultSection> buildNSHM23SubSects(String state) throws IOException {
-		Reader sectsReader = new BufferedReader(new InputStreamReader(GeoJSONFaultReader.class.getResourceAsStream(
-				NSHM23_SECTS_PATH_PREFIX+NSHM23_SECTS_CUR_VERSION+"/NSHM23_FaultSections_"+NSHM23_SECTS_CUR_VERSION+".geojson")));
-//		Reader geoDBReader = new BufferedReader(new InputStreamReader(GeoJSONFaultReader.class.getResourceAsStream(
-//				NSHM23_SECTS_PATH_PREFIX+version+"/NSHM2023_EQGeoDB_"+version+".geojson")));
-//		return buildSubSects(sectsReader, geoDBReader, state);
+		String sectPath = NSHM23_SECTS_PATH_PREFIX+NSHM23_SECTS_CUR_VERSION
+				+"/NSHM23_FaultSections_"+NSHM23_SECTS_CUR_VERSION+".geojson";
+		Reader sectsReader = new BufferedReader(new InputStreamReader(
+				GeoJSONFaultReader.class.getResourceAsStream(sectPath)));
+		Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", sectPath);
 		List<GeoJSONFaultSection> sects = readFaultSections(sectsReader);
 		if (state != null)
 			sects = filterByState(sects, state, true);
 		// map deformation model
-		InputStream dmStream = GeoJSONFaultReader.class.getResourceAsStream(
-				NSHM23_DM_PATH_PREFIX+"geologic/"+NSHM23_DM_CUR_VERSION+"/NSHM23_GeolDefMod_"+NSHM23_DM_CUR_VERSION+".csv");
-		Preconditions.checkNotNull(dmStream, "Deformation model not found");
-		CSVFile<String> dmCSV = CSVFile.readStream(dmStream, true);
-		attachGeoDefModel(sects, dmCSV);
+		String dmPath = NSHM23_DM_PATH_PREFIX+"geologic/"+NSHM23_DM_CUR_VERSION
+				+"/NSHM23_GeolDefMod_"+NSHM23_DM_CUR_VERSION+".geojson";
+		Reader dmReader = new BufferedReader(new InputStreamReader(
+				GeoJSONFaultReader.class.getResourceAsStream(dmPath)));
+		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", dmPath);
+		FeatureCollection defModel = FeatureCollection.read(dmReader);
+		attachGeoDefModel(sects, defModel);
 		return buildSubSects(sects);
 	}
 	
@@ -469,32 +513,33 @@ public class GeoJSONFaultReader {
 	}
 
 	public static void main(String[] args) throws IOException {
-		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/");
-		
-		File fmFile = new File(baseDir, "NSHM23_FaultSections_v1p1/NSHM23_FaultSections_v1p1.geojson");
-		File dmFile = new File(baseDir, "NSHM23_GeolDefMod_v1/NSHM23_GeolDefMod_v1.csv");
-		
-		List<GeoJSONFaultSection> sects = readFaultSections(fmFile);
-		System.out.println("Loaded "+sects.size()+" sections");
-		
-		attachGeoDefModel(sects, dmFile);
-		
-		List<GeoJSONFaultSection> sjcSects = new ArrayList<>();
-		for (GeoJSONFaultSection sect : sects) {
-			if (sect.getName().contains("Jacinto")) {
-				System.out.println(sect.getName());
-				sect.getProperties().remove("DipDir");
-				sect.getProperties().remove("PrimState");
-				sect.getProperties().remove("SecState");
-				sect.getProperties().remove("Proxy");
-				sect.getProperties().remove("HighRate");
-				sect.getProperties().remove("LowRate");
-				sect.getProperties().remove("Treatment");
-				sect.getProperties().remove("RateType");
-				sjcSects.add(sect);
-			}
-		}
-		writeFaultSections(new File("/home/kevin/git/opensha-fault-sys-tools/data/san_jacinto.geojson"), sjcSects);
+		buildNSHM23SubSects();
+//		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/");
+//		
+//		File fmFile = new File(baseDir, "NSHM23_FaultSections_v1p1/NSHM23_FaultSections_v1p1.geojson");
+//		File dmFile = new File(baseDir, "NSHM23_GeolDefMod_v1/NSHM23_GeolDefMod_v1.geojson");
+//		
+//		List<GeoJSONFaultSection> sects = readFaultSections(fmFile);
+//		System.out.println("Loaded "+sects.size()+" sections");
+//		
+//		attachGeoDefModel(sects, dmFile);
+//		
+//		List<GeoJSONFaultSection> sjcSects = new ArrayList<>();
+//		for (GeoJSONFaultSection sect : sects) {
+//			if (sect.getName().contains("Jacinto")) {
+//				System.out.println(sect.getName());
+//				sect.getProperties().remove("DipDir");
+//				sect.getProperties().remove("PrimState");
+//				sect.getProperties().remove("SecState");
+//				sect.getProperties().remove("Proxy");
+//				sect.getProperties().remove("HighRate");
+//				sect.getProperties().remove("LowRate");
+//				sect.getProperties().remove("Treatment");
+//				sect.getProperties().remove("RateType");
+//				sjcSects.add(sect);
+//			}
+//		}
+//		writeFaultSections(new File("/home/kevin/git/opensha-fault-sys-tools/data/san_jacinto.geojson"), sjcSects);
 		
 //		buildNSHM23SubSects();
 		

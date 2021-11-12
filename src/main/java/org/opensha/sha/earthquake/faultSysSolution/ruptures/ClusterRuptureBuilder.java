@@ -964,11 +964,12 @@ public class ClusterRuptureBuilder {
 //		int threads = 62;
 		
 //		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
-//		String state = null;
-//		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(RuptureSets.getNSHM23SubSects(state),
-//				"nshm23_geo_dm_v1_"+(state == null ? "all" : state.toLowerCase()), ScalingRelationships.MEAN_UCERF3);
-		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
-		((U3RupSetConfig)rsConfig).setAdaptiveSectFract(0.1f);
+		String state = "CA";
+		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(RuptureSets.getNSHM23SubSects(state),
+				"nshm23_geo_dm_"+GeoJSONFaultReader.NSHM23_DM_CUR_VERSION+"_"
+						+(state == null ? "all" : state.toLowerCase()), ScalingRelationships.MEAN_UCERF3);
+//		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
+//		((U3RupSetConfig)rsConfig).setAdaptiveSectFract(0.1f);
 		FaultSystemRupSet rupSet = rsConfig.build(threads);
 		
 		if (writeRupSet) {
