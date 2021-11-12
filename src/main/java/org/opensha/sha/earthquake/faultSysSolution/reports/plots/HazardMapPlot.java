@@ -90,9 +90,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		int numSites = gridReg.getNodeCount();
 		System.out.println("Hazard gridded region with "+numSites+" sites, "+periods.length+" periods");
 		
-		int numThreads = Runtime.getRuntime().availableProcessors();
-		if (numThreads > 32)
-			numThreads = 32;
+		int numThreads = getNumThreads();
 		
 		// use longer maximum distance for comparisons to avoid high ratios in low rate regions at the cutoff boundary
 		double maxDist = meta.hasComparisonSol() ? 500d : 200d;

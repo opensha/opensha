@@ -306,6 +306,10 @@ public class ReportPageGen {
 		
 		replot = cmd.hasOption("replot");
 		
+		int threads = FaultSysTools.getNumThreads(cmd);
+		for (AbstractRupSetPlot plot : plots)
+			plot.setNumThreads(threads);
+		
 		init(meta, outputDir, plots);
 	}
 	
@@ -1056,6 +1060,9 @@ public class ReportPageGen {
 		Options ops = new Options();
 		
 		ops.addOption(FaultSysTools.cacheDirOption());
+		
+		// TODO add to docs
+		ops.addOption(FaultSysTools.threadsOption());
 
 		Option outDirOption = new Option("od", "output-dir", true,
 				"Output directory to write the report. Must supply either this or --reports-dir");

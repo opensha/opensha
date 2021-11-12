@@ -23,6 +23,8 @@ public abstract class AbstractRupSetPlot implements Named {
 	// default is level 3: top level for report name, 2nd level for plot name
 	private String subHeading = "###";
 	
+	private int numThreads = -1;
+	
 	public void writePlot(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name, File outputDir) throws IOException {
 		File resourcesDir = new File(outputDir, "resources");
 		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
@@ -69,6 +71,16 @@ public abstract class AbstractRupSetPlot implements Named {
 		this.subHeading = subHeading;
 	}
 	
+	public synchronized int getNumThreads() {
+		if (numThreads < 0)
+			numThreads = FaultSysTools.defaultNumThreads();
+		return numThreads;
+	}
+
+	public synchronized void setNumThreads(int numThreads) {
+		this.numThreads = numThreads;
+	}
+
 	/**
 	 * Called to generate plots for the given rupture set in the given output directory. Returns Markdown that will be
 	 * included in the report, not including the plot title (that will be added externally).
