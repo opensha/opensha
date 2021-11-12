@@ -78,7 +78,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clases
 	 * @return true if a module exists for each of the given classes, false otherwise
 	 */
-	public boolean hasAllModules(Collection<Class<? extends E>> classes) {
+	public synchronized boolean hasAllModules(Collection<Class<? extends E>> classes) {
 		boolean hasAll = true;
 		for (Class<? extends E> clazz : classes) {
 			if (!hasModule(clazz)) {
@@ -130,7 +130,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @return module mapping the given class, or null if no match
 	 */
 	@SuppressWarnings("unchecked")
-	public <M extends E> M getModule(Class<M> clazz, boolean loadAvailable) {
+	public synchronized <M extends E> M getModule(Class<M> clazz, boolean loadAvailable) {
 		E module = mappings.get(clazz);
 		if (loadAvailable && module == null && !availableMappings.isEmpty()) {
 			// see if we have it, and then load it lazily
@@ -147,7 +147,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * 
 	 * @param module
 	 */
-	public void addModule(E module) {
+	public synchronized void addModule(E module) {
 		Preconditions.checkState(module != this, "Cannot add a module to itself!");
 		SubModule<ModuleContainer<E>> subModule = null;
 		if (module instanceof SubModule<?>) {
@@ -256,7 +256,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param module
 	 * @return true if the module was present
 	 */
-	public boolean removeModule(E module) {
+	public synchronized boolean removeModule(E module) {
 		boolean ret = modules.remove(module);
 		if (ret)
 			Preconditions.checkState(removeMappings(module));
@@ -269,7 +269,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clazz module class to unload
 	 * @return true if any mappings were removed
 	 */
-	public boolean removeModuleInstances(Class<? extends OpenSHA_Module> clazz) {
+	public synchronized boolean removeModuleInstances(Class<? extends OpenSHA_Module> clazz) {
 		boolean ret = false;
 		for (int m=modules.size(); --m>=0;) {
 			E module = modules.get(m);
@@ -302,7 +302,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	/**
 	 * Removes all modules (including any available modules not yet loaded)
 	 */
-	public void clearModules() {
+	public synchronized void clearModules() {
 		modules.clear();
 		mappings.clear();
 		availableMappings.clear();
@@ -321,7 +321,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param moduleClass
 	 */
 	@SuppressWarnings("unchecked")
-	public <M extends E> void addAvailableModule(Callable<? extends OpenSHA_Module> call, Class<M> moduleClass) {
+	public synchronized <M extends E> void addAvailableModule(Callable<? extends OpenSHA_Module> call, Class<M> moduleClass) {
 		List<Class<? extends OpenSHA_Module>> assignableClasses = getAssignableClasses(moduleClass);
 		
 		// fully remove any duplicate associations
@@ -346,7 +346,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param call
 	 * @param moduleClass
 	 */
-	public <M extends E> void offerAvailableModule(Callable<M> call, Class<M> moduleClass) {
+	public synchronized <M extends E> void offerAvailableModule(Callable<M> call, Class<M> moduleClass) {
 		if (!hasAvailableModule(moduleClass))
 			addAvailableModule(call, moduleClass);
 	}
@@ -360,7 +360,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clazz
 	 * @return true if a module exists for the given class, false otherwise
 	 */
-	public boolean hasAvailableModule(Class<? extends E> clazz) {
+	public synchronized boolean hasAvailableModule(Class<? extends E> clazz) {
 		E module = mappings.get(clazz);
 		if (module != null)
 			return true;
@@ -377,7 +377,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * 
 	 * @see {@link #addAvailableModule(Callable, Class)}
 	 */
-	public void loadAllAvailableModules() {
+	public synchronized void loadAllAvailableModules() {
 		// wrap in new list, as the load method modifies this list
 		List<Callable<? extends E>> available = new ArrayList<>(availableModules);
 		for (Callable<? extends E> call : available)
@@ -391,7 +391,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @return true if loading succeeded, otherwise false
 	 * @throws IllegalStateException if call is not already registered as an available module
 	 */
-	public boolean loadAvailableModule(Callable<? extends E> call) {
+	public synchronized boolean loadAvailableModule(Callable<? extends E> call) {
 		Preconditions.checkState(availableModules.remove(call));
 		E module = null;
 		try {
@@ -438,7 +438,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clazz
 	 * @return true if an available module was removed
 	 */
-	public boolean removeAvailableModuleInstances(Class<? extends OpenSHA_Module> clazz) {
+	public synchronized boolean removeAvailableModuleInstances(Class<? extends OpenSHA_Module> clazz) {
 		boolean ret = false;
 		
 		HashSet<Callable<E>> removeCalls = new HashSet<>();
@@ -480,7 +480,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param loadAvailable if true, any available but not-yet loaded modules will be loaded first
 	 * @return unmodifiable view of the current modules
 	 */
-	public List<E> getModules(boolean loadAvailable) {
+	public synchronized List<E> getModules(boolean loadAvailable) {
 //		System.out.println("GET CALLED, loadAvailabe="+loadAvailable+", loaded="+modules.size()
 //				+", available="+availableModules.size());
 		if (loadAvailable)
@@ -492,7 +492,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * 
 	 * @return unmodifiable view of the current available module loaders
 	 */
-	public List<Callable<E>> getAvailableModules() {
+	public synchronized List<Callable<E>> getAvailableModules() {
 		return Collections.unmodifiableList(availableModules);
 	}
 	

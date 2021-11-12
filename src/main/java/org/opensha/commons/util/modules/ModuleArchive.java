@@ -224,7 +224,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <M extends E> M loadUnlistedModule(Class<? extends M> loadingClass, String entryPrefix,
+	public synchronized <M extends E> M loadUnlistedModule(Class<? extends M> loadingClass, String entryPrefix,
 			ModuleContainer<E> container) {
 		ModuleRecord record = new ModuleRecord("Unlisted Module", loadingClass.getName(), entryPrefix, null);
 		Preconditions.checkNotNull(zip, "Can only unlisted modules for an archives created from a zip file");
