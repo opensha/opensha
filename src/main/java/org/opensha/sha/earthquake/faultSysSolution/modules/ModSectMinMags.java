@@ -1,9 +1,15 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -24,6 +30,33 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 	public abstract double getMinMagForSection(int sectIndex);
 	
 	public abstract double[] getMinMagForSections();
+	
+	/**
+	 * Sets the section minimum magnitudes as the maximum value of the supplied system-wide minimum magnitude
+	 * and the rupture set section minimum magnitude. If useMaxForParent == true, then it will also ensure that
+	 * each section along a parent section has the same minimum magnitude (the maximum such for that parent).
+	 * 
+	 * @param rupSet
+	 * @param systemWideMinMag
+	 * @param useMaxForParent
+	 * @return
+	 */
+	public static ModSectMinMags above(FaultSystemRupSet rupSet, double systemWideMinMag, boolean useMaxForParent) {
+		double[] minMags = new double[rupSet.getNumSections()];
+		for (int s=0; s<minMags.length; s++)
+			minMags[s] = Math.max(systemWideMinMag, rupSet.getMinMagForSection(s));
+		if (useMaxForParent) {
+			for (List<? extends FaultSection> parentSects : rupSet.getFaultSectionDataList().stream().collect(
+					Collectors.groupingBy(S -> S.getParentSectionId())).values()) {
+				double maxMin = 0d;
+				for (FaultSection sect : parentSects)
+					maxMin = Math.max(maxMin, minMags[sect.getSectionId()]);
+				for (FaultSection sect : parentSects)
+					minMags[sect.getSectionId()] = Math.max(minMags[sect.getSectionId()], maxMin);
+			}
+		}
+		return new Precomputed(rupSet, minMags);
+	}
 	
 	public static ModSectMinMags instance(FaultSystemRupSet rupSet, double[] sectMinMags) {
 		return new Precomputed(rupSet, sectMinMags);

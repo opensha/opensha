@@ -1487,20 +1487,26 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			// add slip along rupture model information
 			slipAlongRupture(branch.getValue(SlipAlongRuptureModels.class));
 			// add modified section minimum magnitudes
-			addModule(new ModuleBuilder() {
-				
-				@Override
-				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					return ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
-							rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
-				}
-
-				@Override
-				public Class<? extends OpenSHA_Module> getType() {
-					return ModSectMinMags.class;
-				}
-			});
 			FaultModels fm = branch.getValue(FaultModels.class);
+			if (fm == FaultModels.FM2_1 || fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
+				// include the parkfield hack for modified section min mags
+				addModule(new ModuleBuilder() {
+					
+					@Override
+					public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+						return ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
+								rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
+					}
+
+					@Override
+					public Class<? extends OpenSHA_Module> getType() {
+						return ModSectMinMags.class;
+					}
+				});
+			} else {
+				// regular system-wide minimum magnitudes
+				modSectMinMagsAbove(InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
+			}
 			addModule(new ModuleBuilder() {
 				
 				@Override
@@ -1634,6 +1640,22 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				@Override
 				public Class<? extends OpenSHA_Module> getType() {
 					return SlipAlongRuptureModel.class;
+				}
+			});
+			return this;
+		}
+		
+		public Builder modSectMinMagsAbove(double systemWideMinMag, boolean useMaxForParent) {
+			addModule(new ModuleBuilder() {
+				
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					return ModSectMinMags.above(rupSet, systemWideMinMag, useMaxForParent);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return ModSectMinMags.class;
 				}
 			});
 			return this;
