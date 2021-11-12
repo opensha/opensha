@@ -13,9 +13,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.plot.XYPlot;
@@ -42,6 +48,7 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ComparablePairing;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
@@ -142,15 +149,48 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		for (HistScalar scalar : plotScalars)
 			scalarVals.add(new HistScalarValues(scalar, rupSet, sol, cRups, distAzCalc));
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
-		mapMaker.setWriteGeoJSON(doGeoJSON);
-		Map<String, String> linksMap = new HashMap<>();
+		Map<String, Callable<String>> linkCallsMap = new HashMap<>();
 		for (int parentID : sectsByParent.keySet()) {
 			String parentName = sectsByParent.get(parentID).get(0).getParentSectionName();
-			String subDirName = buildSectionPage(meta, parentID, parentName, parentsDir, distAzCalc,
-					sectsByParent, mapMaker, scalarVals);
 			
-			linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
+			linkCallsMap.put(parentName, new SectPageCallable(meta, parentID, parentName, parentsDir, distAzCalc,
+					sectsByParent, scalarVals));
+		}
+		
+		Map<String, String> linksMap = new HashMap<>();
+		
+		int threads = getNumThreads();
+		if (threads > 1) {
+			ExecutorService exec = Executors.newFixedThreadPool(threads);
+			
+			Map<String, Future<String>> futures = new HashMap<>();
+			
+			for (String parentName : linkCallsMap.keySet())
+				futures.put(parentName, exec.submit(linkCallsMap.get(parentName)));
+			
+			for (String parentName : futures.keySet()) {
+				String subDirName;
+				try {
+					subDirName = futures.get(parentName).get();
+				} catch (InterruptedException | ExecutionException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				
+				linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
+			}
+			
+			exec.shutdown();
+		} else {
+			for (String parentName : linkCallsMap.keySet()) {
+				String subDirName;
+				try {
+					subDirName = linkCallsMap.get(parentName).call();
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				
+				linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
+			}
 		}
 		
 		List<String> sortedNames = new ArrayList<>(linksMap.keySet());
@@ -202,9 +242,39 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
 	private static PlotCurveCharacterstics highlightChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, Color.BLACK);
 	
+	private class SectPageCallable implements Callable<String> {
+		
+		private ReportMetadata meta;
+		private int parentSectIndex;
+		private String parentName;
+		private File parentsDir;
+		private SectionDistanceAzimuthCalculator distAzCalc;
+		private Map<Integer, List<FaultSection>> sectsByParent;
+		private List<HistScalarValues> scalarVals;
+
+		public SectPageCallable(ReportMetadata meta, int parentSectIndex, String parentName, File parentsDir,
+				SectionDistanceAzimuthCalculator distAzCalc, Map<Integer, List<FaultSection>> sectsByParent,
+				List<HistScalarValues> scalarVals) {
+			this.meta = meta;
+			this.parentSectIndex = parentSectIndex;
+			this.parentName = parentName;
+			this.parentsDir = parentsDir;
+			this.distAzCalc = distAzCalc;
+			this.sectsByParent = sectsByParent;
+			this.scalarVals = scalarVals;
+		}
+
+		@Override
+		public String call() throws Exception {
+			return buildSectionPage(meta, parentSectIndex, parentName, parentsDir,
+					distAzCalc, sectsByParent, scalarVals);
+		}
+		
+	}
+	
 	private String buildSectionPage(ReportMetadata meta, int parentSectIndex, String parentName, File parentsDir,
 			SectionDistanceAzimuthCalculator distAzCalc, Map<Integer, List<FaultSection>> sectsByParent,
-			RupSetMapMaker mapMaker, List<HistScalarValues> scalarVals) throws IOException {
+			List<HistScalarValues> scalarVals) throws IOException {
 		System.out.println("Building page for: "+parentName);
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		String dirName = getFileSafe(parentName);
@@ -229,6 +299,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			return dirName;
 		}
 		
+		List<FaultSection> parentSects = sectsByParent.get(parentSectIndex);
+		
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = Double.NEGATIVE_INFINITY;
 		double minLen = Double.POSITIVE_INFINITY;
@@ -238,6 +310,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		double totRate = 0d;
 		double multiRate = 0d;
 		int rupCount = 0;
+		ModSectMinMags minMags = meta.primary.rupSet.getModule(ModSectMinMags.class);
+		double maxMin = minMags == null ? 0d : StatUtils.max(minMags.getMinMagForSections());
+		int rupCountNonZero = 0;
+		int rupCountBelowMin = 0;
 		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 		for (int r : allRups) {
 			rupCount++;
@@ -253,6 +329,19 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				totRate += rate;
 				if (rup.getTotalNumClusters() > 1)
 					multiRate += rate;
+				if (rate > 0d)
+					rupCountNonZero++;
+			}
+			if (minMags != null && mag < maxMin) {
+				boolean below = false;
+				for (int s : rupSet.getSectionsIndicesForRup(r)) {
+					if (mag < minMags.getMinMagForSection(s)) {
+						below = true;
+						break;
+					}
+				}
+				if (below)
+					rupCountBelowMin++;
 			}
 			if (rup.getTotalNumClusters() > 1) {
 				RuptureTreeNavigator nav = rup.getTreeNavigator();
@@ -273,6 +362,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.addLine("_Property_", "_Value_");
 		table.addLine("**Rupture Count**", countDF.format(rupCount));
+		if (minMags != null)
+			table.addLine("**Ruptures Above Sect Min Mag**", countDF.format(rupCount-rupCountBelowMin));
+		if (meta.primary.sol != null)
+			table.addLine("**Ruptures w/ Nonzero Rates**", countDF.format(rupCountNonZero));
 		table.addLine("**Magnitude Range**", "["+twoDigits.format(minMag)+", "+twoDigits.format(maxMag)+"]");
 		table.addLine("**Length Range**", "["+countDF.format(minLen)+", "+countDF.format(maxLen)+"] km");
 		if (meta.primary.sol != null) {
@@ -286,8 +379,6 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
-		
-		List<FaultSection> parentSects = sectsByParent.get(parentSectIndex);
 		
 		if (meta.primary.sol != null) {
 			// MFDs and such only for solutions
@@ -306,7 +397,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 		lines.add("");
 		lines.addAll(getConnectivityLines(meta, parentSectIndex, parentName, distAzCalc, sectsByParent,
-				mapMaker, rupSet, resourcesDir, topLink));
+				rupSet, resourcesDir, topLink));
 		
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 3));
@@ -403,7 +494,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 	private List<String> getConnectivityLines(ReportMetadata meta, int parentSectIndex, String parentName,
 			SectionDistanceAzimuthCalculator distAzCalc, Map<Integer, List<FaultSection>> sectsByParent,
-			RupSetMapMaker mapMaker, FaultSystemRupSet rupSet, File outputDir, String topLink) throws IOException {
+			FaultSystemRupSet rupSet, File outputDir, String topLink) throws IOException {
 		List<String> lines = new ArrayList<>();
 		
 		lines.add("## Connectivity");
@@ -426,13 +517,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				matchMinDists.put(parentID, minDist);
 			}
 		}
-		System.out.println("\t"+parentsIDsToConsider.size()+" parents are within "+(float)maxNeighborDistance+" km");
+//		System.out.println("\t"+parentsIDsToConsider.size()+" parents are within "+(float)maxNeighborDistance+" km");
 		
 		ClusterRuptures clusterRups = rupSet.requireModule(ClusterRuptures.class);
 
 		RupConnectionsData rupData = new RupConnectionsData(parentSectIndex, clusterRups, rupSet, meta.primary.sol);
-		System.out.println("\t"+rupData.parentCoruptureCounts.size()+" parents ("+rupData.sectCoruptureCounts.size()
-			+" sects) corupture with this parent");
+//		System.out.println("\t"+rupData.parentCoruptureCounts.size()+" parents ("+rupData.sectCoruptureCounts.size()
+//			+" sects) corupture with this parent");
 		
 		RupConnectionsData compRupData = null;
 		if (meta.comparison != null)
@@ -466,7 +557,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		Region plotRegion = new Region(new Location(latTrack.getMin()-0.1, lonTrack.getMin()-0.1),
 				new Location(latTrack.getMax()+0.1, lonTrack.getMax()+0.1));
 		
+		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		mapMaker.setWriteGeoJSON(doGeoJSON);
 		mapMaker.setRegion(plotRegion);
+		mapMaker.setWritePDFs(false);
+		mapMaker.setSkipNaNs(true);
+		mapMaker.highLightSections(mySects, highlightChar);
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
@@ -514,11 +610,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				max++;
 			CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(min, max);
 			cpt.setNanColor(Color.GRAY);
+			
 			mapMaker.clearSectScalars();
 			mapMaker.plotSectScalars(scalars, cpt, label);
-			mapMaker.highLightSections(mySects, highlightChar);
-			mapMaker.setWritePDFs(false);
-			mapMaker.setSkipNaNs(true);
 			mapMaker.plot(outputDir, prefix, parentName+" Connectivity");
 			table.addColumn("![Map]("+outputDir.getName()+"/"+prefix+".png)");
 			
@@ -628,10 +722,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				PlausibilityConfiguration pairConfig = new PlausibilityConfiguration(
 						List.of(new FullConnectionOneWayFilter(pairClusters.get(0), pairClusters.get(1))), 0, pairStrat, distAzCalc);
 				ClusterRuptureBuilder builder = new ClusterRuptureBuilder(pairConfig);
-				System.out.println("\tBuilding ruptures from "+parentName+" to "+name);
+//				System.out.println("\tBuilding ruptures from "+parentName+" to "+name);
 				List<ClusterRupture> possibleRups = builder.build(new ConnectionPointsRuptureGrowingStrategy());
 				
-				System.out.println("\tBuilt "+possibleRups.size()+" possible ruptures including "+name);
+//				System.out.println("\tBuilt "+possibleRups.size()+" possible ruptures including "+name);
 				
 				List<Boolean> passes = new ArrayList<>();
 				boolean hasPassAll = false;
@@ -1457,7 +1551,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		// legend at bottom
 		
 		magRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
-		return new AlongStrikePlot(magRateSpec, funcs, chars, yRange(funcs, new Range(1e-4, 1e-2), new Range(1e-8, 1e1), 5), true);
+		return new AlongStrikePlot(magRateSpec, funcs, chars, yRange(funcs, new Range(1e-4, 1e-3), new Range(1e-8, 1e1), 5), true);
 	}
 	
 	private static AlongStrikePlot buildPaleoRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
@@ -1588,7 +1682,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		PlotSpec paleoSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Paleo-Visible Participation Rate (per year)");
 		// legend at bottom
 		paleoSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
-		return new AlongStrikePlot(paleoSpec, funcs, chars, yRange(funcs, new Range(1e-4, 1e-2), new Range(1e-8, 1e1), 5), true);
+		return new AlongStrikePlot(paleoSpec, funcs, chars, yRange(funcs, new Range(1e-4, 1e-3), new Range(1e-8, 1e1), 5), true);
 	}
 	
 	private static AlongStrikePlot buildNuclRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
@@ -1651,7 +1745,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		PlotSpec nuclRateSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Nucleation Rate (per year)");
 		nuclRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
-		return new AlongStrikePlot(nuclRateSpec, funcs, chars, yRange(funcs, new Range(1e-5, 1e-3), new Range(1e-9, 1e0), 5), true);
+		return new AlongStrikePlot(nuclRateSpec, funcs, chars, yRange(funcs, new Range(1e-5, 1e-4), new Range(1e-9, 1e0), 5), true);
 	}
 	
 	private static AlongStrikePlot buildSlipRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
@@ -1667,6 +1761,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		double[] solSlipRates = sectSolSlipRates(meta.primary.sol, faultSects);
 		double[] compSolSlipRates = comp ? sectSolSlipRates(meta.comparison.sol, faultSects) : null;
+		
+		double avgTarget = 0d;
 		
 		for (int s=0; s<faultSects.size(); s++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
@@ -1691,6 +1787,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					funcs.add(uncertFunc);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, targetBoundsColor));
 				}
+				
+				avgTarget += targetSlip;
+			} else {
+				avgTarget += solSlipRates[s];
 			}
 			
 			if (comp) {
@@ -1709,12 +1809,20 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			funcs.add(solFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
 		}
+		avgTarget /= faultSects.size();
 		
 		PlotSpec slipRateSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Slip Rate (mm/yr)");
 		// legend at bottom
 		if (slipRates != null)
 			slipRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
-		return new AlongStrikePlot(slipRateSpec, funcs, chars, yRange(funcs, new Range(1e0, 1e1), new Range(1e-3, 1e3), 3), true);
+		Range defaultSlipRange;
+		if (avgTarget > 1d)
+			defaultSlipRange = new Range(1e0, 1e1);
+		else if (avgTarget > 0.1)
+			defaultSlipRange = new Range(1e-1, 1e0);
+		else
+			defaultSlipRange = new Range(1e-2, 1e-1);
+		return new AlongStrikePlot(slipRateSpec, funcs, chars, yRange(funcs, defaultSlipRange, new Range(1e-5, 1e2), 3), true);
 	}
 	
 	private static AlongStrikePlot buildMoRatePlot(ReportMetadata meta, List<FaultSection> faultSects,

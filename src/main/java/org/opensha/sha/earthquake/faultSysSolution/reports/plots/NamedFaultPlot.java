@@ -80,16 +80,24 @@ public class NamedFaultPlot extends AbstractSolutionPlot {
 		double totRate = 0d;
 		for (FaultSection sect : faultSects)
 			allRups.addAll(meta.primary.rupSet.getRupturesForSection(sect.getSectionId()));
+		int rupCountNonZero = 0;
 		for (int rupIndex : allRups) {
 			double mag = meta.primary.rupSet.getMagForRup(rupIndex);
 			minMag = Math.min(minMag, mag);
 			maxMag = Math.max(maxMag, mag);
-			totRate += meta.primary.sol.getRateForRup(rupIndex);
+			if (meta.primary.sol != null) {
+				double rate = meta.primary.sol.getRateForRup(rupIndex);
+				totRate += rate;
+				if (rate > 0)
+					rupCountNonZero++;
+			}
 		}
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.addLine("_Property_", "_Value_");
 		table.addLine("**Rupture Count**", countDF.format(allRups.size()));
+		if (meta.primary.sol != null)
+			table.addLine("**Ruptures w/ Nonzero Rates**", countDF.format(rupCountNonZero));
 		table.addLine("**Magnitude Range**", "["+twoDigits.format(minMag)+", "+twoDigits.format(maxMag)+"]");
 		table.addLine("**Total Rate**", (float)totRate+" /yr");
 		lines.addAll(table.build());
