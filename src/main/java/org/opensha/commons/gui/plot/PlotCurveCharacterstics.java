@@ -47,9 +47,6 @@ public class PlotCurveCharacterstics implements Named, Cloneable, Serializable {
 
 	//name of selected curve
 	private String name = "Data";
-
-	//num of continuous curves with same characterstics as above
-	private int numCurvesWithSamePlottingFeatures = 1;
 	
 	/**
 	 * New <code>PlotCurveCharacteristics</code> instance with only a line type, and no symbols
@@ -84,22 +81,7 @@ public class PlotCurveCharacterstics implements Named, Cloneable, Serializable {
 	 */
 	public PlotCurveCharacterstics(PlotLineType lineType, float lineWidth, PlotSymbol symbol,
 			float symbolWidth, Color color) {
-		this("Data", lineType, lineWidth, symbol, symbolWidth, color, 1);
-	}
-	
-	/**
-	 * New <code>PlotCurveCharacteristics</code> instance.
-	 * 
-	 * @param lineType
-	 * @param lineWidth
-	 * @param symbol
-	 * @param symbolWidth
-	 * @param color
-	 * @param numCurvesWithSamePlottingFeatures
-	 */
-	public PlotCurveCharacterstics(PlotLineType lineType, float lineWidth, PlotSymbol symbol,
-			float symbolWidth, Color color, int numCurvesWithSamePlottingFeatures) {
-		this("Data", lineType, lineWidth, symbol, symbolWidth, color, numCurvesWithSamePlottingFeatures);
+		this("Data", lineType, lineWidth, symbol, symbolWidth, color);
 	}
 
 	/**
@@ -111,11 +93,10 @@ public class PlotCurveCharacterstics implements Named, Cloneable, Serializable {
 	 * @param symbol symbol type, or null
 	 * @param symbolWidth width of the symbol
 	 * @param color color of the curve
-	 * @param numCurvesWithSamePlottingFeatures number of continuous curves with same plotting characteristics.
 	 */
 	public PlotCurveCharacterstics(String name, PlotLineType lineType, float lineWidth, PlotSymbol symbol,
-			float symbolWidth, Color color, int numCurvesWithSamePlottingFeatures) {
-		set(name, lineType, lineWidth, symbol, symbolWidth, color, numCurvesWithSamePlottingFeatures);
+			float symbolWidth, Color color) {
+		set(name, lineType, lineWidth, symbol, symbolWidth, color);
 	}
 
 	/**
@@ -197,36 +178,17 @@ public class PlotCurveCharacterstics implements Named, Cloneable, Serializable {
 	
 	public void set(PlotLineType lineType, float lineWidth, PlotSymbol symbol,
 			float symbolWidth, Color color) {
-		set(name, lineType, lineWidth, symbol, symbolWidth, color, numCurvesWithSamePlottingFeatures);
+		set(name, lineType, lineWidth, symbol, symbolWidth, color);
 	}
 	
 	public void set(String name, PlotLineType lineType, float lineWidth, PlotSymbol symbol,
-			float symbolWidth, Color color, int numCurvesWithSamePlottingFeatures) {
+			float symbolWidth, Color color) {
 		this.name = name;
 		this.lineType = lineType;
 		this.lineWidth = lineWidth;
 		this.symbol = symbol;
 		this.symbolWidth = symbolWidth;
 		this.color = color;
-		this.numCurvesWithSamePlottingFeatures = numCurvesWithSamePlottingFeatures;
-	}
-
-	/**
-	 * Set the number of continuous curves with same number of plotting characterstics.
-	 * eg: can be of weighted functionlist in which all the individual curves
-	 * have same plotting characterstics.
-	 * @param num
-	 */
-	public void setNumContinuousCurvesWithSameCharaceterstics(int num){
-		numCurvesWithSamePlottingFeatures = num;
-	}
-
-	/**
-	 *
-	 * @return the number of curves with same number curve plotting characterstics
-	 */
-	public int getNumContinuousCurvesWithSameCharacterstics(){
-		return numCurvesWithSamePlottingFeatures;
 	}
 	
 	public void setName(String name) {
@@ -240,8 +202,7 @@ public class PlotCurveCharacterstics implements Named, Cloneable, Serializable {
 
 	@Override
 	public Object clone() {
-		return new PlotCurveCharacterstics(name, lineType, lineWidth, symbol, symbolWidth,
-				color, numCurvesWithSamePlottingFeatures);
+		return new PlotCurveCharacterstics(name, lineType, lineWidth, symbol, symbolWidth, color);
 	}
 
 	@Override

@@ -27,12 +27,12 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry.LineString;
 import org.opensha.commons.geo.json.Geometry.Polygon;
+import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotUtils;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.ExceptionUtils;
@@ -546,7 +546,7 @@ public class RupSetMapMaker {
 			cptTick = .1;
 		else
 			cptTick = cptLen / 10d;
-		return XYZGraphPanel.getLegendForCPT(cpt, label, 24, 18, cptTick, RectangleEdge.BOTTOM);
+		return GraphPanel.getLegendForCPT(cpt, label, 24, 18, cptTick, RectangleEdge.BOTTOM);
 	}
 	
 	public void plot(File outputDir, String prefix, String title) throws IOException {

@@ -16,11 +16,11 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
+import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
@@ -89,11 +89,11 @@ public class CoulombCartoonGenerator {
 ////		CPT cpt = SubSectStiffnessCalculator.getPreferredPosNegCPT(100);
 //		CPT cpt = new CPT(-200d, 200d, Color.BLUE.darker().darker(), Color.BLUE,
 //				Color.WHITE, Color.RED, Color.RED.darker().darker());
-//		PaintScaleLegend cptLegend = XYZGraphPanel.getLegendForCPT(cpt, mainType.toString(),
+//		PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(cpt, mainType.toString(),
 //				22, 18, 10d, RectangleEdge.BOTTOM);
 //		PaintScaleLegend[] compLegends = new PaintScaleLegend[compTypes.length];
 //		for (int c=0; c<compLegends.length; c++)
-//			compLegends[c] = XYZGraphPanel.getLegendForCPT(cpt, compTypes[c].toString(),
+//			compLegends[c] = GraphPanel.getLegendForCPT(cpt, compTypes[c].toString(),
 //					22, 18, 10d, RectangleEdge.BOTTOM);
 		
 		double maxX = 0d;
@@ -336,7 +336,7 @@ public class CoulombCartoonGenerator {
 			cptDelta = 5d;
 		else
 			cptDelta = 2d;
-		PaintScaleLegend cptLegend = XYZGraphPanel.getLegendForCPT(cpt, type.toString(),
+		PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(cpt, type.toString(),
 				22, 18, cptDelta, RectangleEdge.BOTTOM);
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "X (km)", "Y (km)");

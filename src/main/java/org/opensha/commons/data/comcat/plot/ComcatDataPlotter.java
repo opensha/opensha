@@ -36,7 +36,6 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
@@ -998,9 +997,9 @@ public class ComcatDataPlotter {
 			spec.setXYChars(chars);
 			
 			spec.setCPTPosition(RectangleEdge.BOTTOM);
-			XYZGraphPanel gp = new XYZGraphPanel(buildGraphPanel().getPlotPrefs());
+			HeadlessGraphPanel gp = buildGraphPanel();
 			
-			gp.drawPlot(spec, false, false, xRange, yRange);
+			gp.drawGraphPanel(spec, false, false, xRange, yRange);
 //				gp.getChartPanel().getChart().addSubtitle(slipCPTbar);
 			gp.getYAxis().setStandardTickUnits(tus);
 			gp.getChartPanel().setSize(800, 650);

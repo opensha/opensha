@@ -104,6 +104,10 @@ public class GraphWindow extends JFrame {
 		this(new GraphWidget(spec), display);
 	}
 	
+	public GraphWindow(PlotSpec plotSpec, Range xRange, Range yRange) {
+		this(plotSpec, null, false, false, xRange, yRange);
+	}
+	
 	public GraphWindow(PlotSpec plotSpec, PlotPreferences plotPrefs, boolean xLog, boolean yLog, Range xRange, Range yRange) {
 		this(new GraphWidget(plotSpec, plotPrefs, xLog, yLog, xRange, yRange));
 	}

@@ -68,6 +68,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
@@ -114,7 +115,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -2348,8 +2348,8 @@ public class FaultSysSolutionERF_Calc {
 		Range xRange = new Range(xyz.getMinX()-0.5*xyz.getGridSpacingX(), xyz.getMaxX()+0.5*xyz.getGridSpacingX());
 		Range yRange = new Range(xyz.getMinY()-0.5*xyz.getGridSpacingY(), xyz.getMaxY()+0.5*xyz.getGridSpacingY());
 		
-		XYZGraphPanel gp = new XYZGraphPanel();
-		gp.drawPlot(spec, false, false, xRange, yRange);
+		HeadlessGraphPanel gp = new PlotUtils().initHeadless();
+		gp.drawGraphPanel(spec, false, false, xRange, yRange);
 		
 		File file = new File(saveDir, prefix);
 		

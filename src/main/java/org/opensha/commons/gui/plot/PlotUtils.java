@@ -18,7 +18,6 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 
 import com.google.common.base.Preconditions;
 
@@ -65,17 +64,6 @@ public class PlotUtils {
 	public static void fixAspectRatio(GraphPanel gp, int width, double aspectRatio) {
 		int height = calcHeight(gp.getChartPanel(), width, aspectRatio);
 		gp.getChartPanel().setSize(width, height);
-	}
-	
-	public static void fixAspectRatio(XYZGraphPanel xyzGP, int width, boolean isLatLon) {
-		double aspectRatio = calcAspectRatio(xyzGP.getX_AxisRange(), xyzGP.getY_AxisRange(), isLatLon);
-		int height = calcHeight(xyzGP.getChartPanel(), width, aspectRatio);
-		xyzGP.getChartPanel().setSize(width, height);
-	}
-	
-	public static void fixAspectRatio(XYZGraphPanel xyzGP, int width, double aspectRatio) {
-		int height = calcHeight(xyzGP.getChartPanel(), width, aspectRatio);
-		xyzGP.getChartPanel().setSize(width, height);
 	}
 	
 	private static double calcAspectRatio(Range xRange, Range yRange,  boolean isLatLon) {

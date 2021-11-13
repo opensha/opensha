@@ -19,12 +19,12 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.gui.plot.GraphWidget;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotWindow;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
@@ -307,7 +307,7 @@ public class TestQuadSurface {
 		Range yRange = new Range(grid_reg.getMinLat()-0.1, grid_reg.getMaxLat()+0.1);
 		List<Range> xRanges = Lists.newArrayList(xRange);
 		List<Range> yRanges = Lists.newArrayList(yRange, yRange);
-		XYZPlotWindow gw = new XYZPlotWindow(specs, xRanges, yRanges);
+		GraphWindow gw = new GraphWindow(new GraphWidget(specs, null, false, false, xRanges, yRanges));
 		
 		if (GRAPHICAL_DEBUG_ACT_DISTS) {
 			title = "Dist"+dist+" actual dists. Quad: "
@@ -333,7 +333,7 @@ public class TestQuadSurface {
 			specs = Lists.newArrayList();
 			specs.add(quadSpec);
 			specs.add(gridSpec);
-			gw = new XYZPlotWindow(specs, xRanges, yRanges);
+			gw = new GraphWindow(new GraphWidget(specs, null, false, false, xRanges, yRanges));
 		}
 		
 		while (GRAPHICAL_DEBUG_WAIT && gw.isVisible()) {

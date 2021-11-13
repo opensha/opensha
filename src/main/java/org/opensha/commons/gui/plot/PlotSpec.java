@@ -39,8 +39,8 @@ public class PlotSpec implements Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	private List<? extends PlotElement> elems;
-	private List<PlotCurveCharacterstics> chars;
+	protected List<? extends PlotElement> elems;
+	protected List<PlotCurveCharacterstics> chars;
 	private String title, xAxisLabel, yAxisLabel;
 	private List<XYAnnotation> annotations;
 	private List<Title> subtitles;

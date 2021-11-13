@@ -39,13 +39,13 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.AnimatedGIFRenderer;
+import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -366,7 +366,7 @@ public class RupturePlotGenerator {
 		
 		PlotPreferences prefs = gp.getPlotPrefs();
 		
-		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
+		PaintScaleLegend slipCPTbar = GraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
 		double timeInc;
 		if (endTime > 20)
@@ -376,7 +376,7 @@ public class RupturePlotGenerator {
 		else
 			timeInc = 1;
 		String timeLabel = includeLast ? "Time (s)" : "Time First Slip (s)";
-		PaintScaleLegend timeCPTbar = XYZGraphPanel.getLegendForCPT(timeCPT, timeLabel,
+		PaintScaleLegend timeCPTbar = GraphPanel.getLegendForCPT(timeCPT, timeLabel,
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), timeInc, RectangleEdge.BOTTOM);
 		slipSpec.addSubtitle(slipCPTbar);
 		firstSpec.addSubtitle(timeCPTbar);
@@ -471,11 +471,11 @@ public class RupturePlotGenerator {
 		
 		PlotPreferences prefs = gp.getPlotPrefs();
 		
-		PaintScaleLegend slipCPTbar = XYZGraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
+		PaintScaleLegend slipCPTbar = GraphPanel.getLegendForCPT(slipCPT, "Cumulative Slip (m)",
 				prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 1d, RectangleEdge.TOP);
 		PaintScaleLegend velCPTbar = null;
 		if (func.getMaxSlipVel() != func.getMinSlipVel())
-			velCPTbar = XYZGraphPanel.getLegendForCPT(velCPT, "SLip Velocity (m/s)",
+			velCPTbar = GraphPanel.getLegendForCPT(velCPT, "SLip Velocity (m/s)",
 					prefs.getAxisLabelFontSize(), prefs.getTickLabelFontSize(), 0.5, RectangleEdge.BOTTOM);
 		
 		double minDAS = Double.POSITIVE_INFINITY;
@@ -832,7 +832,7 @@ public class RupturePlotGenerator {
 			gp.drawGraphPanel(spec, false, false, xRange, yRange);
 			
 			if (customElemScalars != null) {
-				PaintScaleLegend cptLegend = XYZGraphPanel.getLegendForCPT(elemCPT, scalarLabel, 24, 18, -1, RectangleEdge.BOTTOM);
+				PaintScaleLegend cptLegend = GraphPanel.getLegendForCPT(elemCPT, scalarLabel, 24, 18, -1, RectangleEdge.BOTTOM);
 				gp.getChartPanel().getChart().addSubtitle(cptLegend);
 			}
 			
