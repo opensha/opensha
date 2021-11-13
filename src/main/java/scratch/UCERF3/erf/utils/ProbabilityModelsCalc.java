@@ -40,7 +40,6 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotWindow;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
@@ -900,9 +899,9 @@ public class ProbabilityModelsCalc {
 			e.printStackTrace();
 		}
 		XYZPlotSpec spec_prob = new XYZPlotSpec(xyzDataCondProbForUnknown, cpt_prob, "CondProbForUnknownLast; aper="+(float)aperiodicity, "LogNormDuration", "LogNormHistOpenInt", "Probability");
-		XYZPlotWindow window_prob = new XYZPlotWindow(spec_prob);
+		GraphWindow window_prob = new GraphWindow(spec_prob);
 		XYZPlotSpec spec_probGain = new XYZPlotSpec(xyzDataProbGain, cpt_probGain, "Log10 Prob Gain (vs Poisson); aper="+(float)aperiodicity, "LogNormDuration", "LogNormHistOpenInt", "Log10 Prob Gain");
-		XYZPlotWindow window_probGain = new XYZPlotWindow(spec_probGain);
+		GraphWindow window_probGain = new GraphWindow(spec_probGain);
 
 	}
 	
@@ -964,9 +963,9 @@ public class ProbabilityModelsCalc {
 			e.printStackTrace();
 		}
 		XYZPlotSpec spec_prob = new XYZPlotSpec(xyzDataCondProb, cpt_prob, "Log10 BPT Cond Prob; aper="+(float)aperiodicity, "LogNormTimeSinceLast", "LogNormDuration", "Probability");
-		XYZPlotWindow window_prob = new XYZPlotWindow(spec_prob);
+		GraphWindow window_prob = new GraphWindow(spec_prob);
 		XYZPlotSpec spec_probGain = new XYZPlotSpec(xyzDataProbGain, cpt_probGain, "Log10 Prob Gain (vs Poisson); aper="+(float)aperiodicity, "LogNormTimeSinceLast", "LogNormDuration", "Log10 Prob Gain");
-		XYZPlotWindow window_probGain = new XYZPlotWindow(spec_probGain);
+		GraphWindow window_probGain = new GraphWindow(spec_probGain);
 
 	}
 

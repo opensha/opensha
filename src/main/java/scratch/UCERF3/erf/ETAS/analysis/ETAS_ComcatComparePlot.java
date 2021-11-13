@@ -48,7 +48,6 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
@@ -1288,7 +1287,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				spec.setXYChars(chars);
 				
 				spec.setCPTPosition(RectangleEdge.BOTTOM);
-				XYZGraphPanel gp = new XYZGraphPanel(buildGraphPanel().getPlotPrefs());
+				HeadlessGraphPanel gp = buildGraphPanel();
 				
 				int width = 800;
 				
@@ -1296,7 +1295,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				TickUnit tu = new NumberTickUnit(tickUnit);
 				tus.add(tu);
 				
-				gp.drawPlot(spec, false, false, new Range(mapRegion.getMinLon(), mapRegion.getMaxLon()),
+				gp.drawGraphPanel(spec, false, false, new Range(mapRegion.getMinLon(), mapRegion.getMaxLon()),
 						new Range(mapRegion.getMinLat(), mapRegion.getMaxLat()));
 //					gp.getChartPanel().getChart().addSubtitle(slipCPTbar);
 				gp.getYAxis().setStandardTickUnits(tus);

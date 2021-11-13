@@ -1225,7 +1225,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	public void addCurve(ArbitrarilyDiscretizedFunc function){
 		functionList.add(function);
 		List<PlotCurveCharacterstics> plotFeaturesList = graphWidget.getPlottingFeatures();
-		plotFeaturesList.add(new PlotCurveCharacterstics(null, 1f, PlotSymbol.CROSS, 4f, Color.BLACK, 1));
+		plotFeaturesList.add(new PlotCurveCharacterstics(null, 1f, PlotSymbol.CROSS, 4f, Color.BLACK));
 		addGraphPanel();
 	}
 

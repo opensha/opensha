@@ -2055,7 +2055,7 @@ ScalarIMRChangeListener {
 		functionList.add(function);
 		enableMenuButtons();
 		List<PlotCurveCharacterstics> plotFeaturesList = getPlottingFeatures();
-		plotFeaturesList.add(new PlotCurveCharacterstics(null, 1f, PlotSymbol.CROSS, 4f, Color.BLACK, 1));
+		plotFeaturesList.add(new PlotCurveCharacterstics(null, 1f, PlotSymbol.CROSS, 4f, Color.BLACK));
 		addGraphPanel();
 	}
 
@@ -2395,7 +2395,7 @@ ScalarIMRChangeListener {
 		functionList.add(function);
 		List<PlotCurveCharacterstics> plotFeaturesList = getPlottingFeatures();
 		plotFeaturesList.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f,
-				PlotSymbol.FILLED_CIRCLE, 4f, Color.BLACK, 1));
+				PlotSymbol.FILLED_CIRCLE, 4f, Color.BLACK));
 		addGraphPanel();
 	}
 

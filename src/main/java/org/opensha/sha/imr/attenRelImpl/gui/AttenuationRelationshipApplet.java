@@ -1314,7 +1314,7 @@ implements ParameterChangeFailListener, ParameterChangeWarningListener, ItemList
 			functionList.add(function);
 			List<PlotCurveCharacterstics> plotFeaturesList = graphWidget.getPlottingFeatures();
 			plotFeaturesList.add(new PlotCurveCharacterstics(null, 1f, PlotSymbol.CROSS, 4f,
-					Color.BLACK,1));
+					Color.BLACK));
 			addGraphPanel();
 		}
 		else

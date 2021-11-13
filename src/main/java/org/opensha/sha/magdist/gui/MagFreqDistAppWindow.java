@@ -608,11 +608,11 @@ extends JFrame implements ParameterChangeListener {
 		List<PlotCurveCharacterstics> cumPlotFeaturesList = cumRateGraphPanel.getPlottingFeatures();
 		List<PlotCurveCharacterstics> momentPlotFeaturesList = momentRateGraphPanel.getPlottingFeatures();
 		incrPlotFeaturesList.set(incrPlotFeaturesList.size() -1,new PlotCurveCharacterstics(PlotLineType.SOLID,
-				1f, null, 4f, Color.BLACK, 1));
+				1f, null, 4f, Color.BLACK));
 		cumPlotFeaturesList.set(incrPlotFeaturesList.size() -1,new PlotCurveCharacterstics(PlotLineType.SOLID,
-				1f, null, 4f, Color.BLACK, 1));
+				1f, null, 4f, Color.BLACK));
 		momentPlotFeaturesList.set(incrPlotFeaturesList.size() -1,new PlotCurveCharacterstics(PlotLineType.SOLID,
-				1f, null, 4f, Color.BLACK, 1));
+				1f, null, 4f, Color.BLACK));
 		addGraphPanel();
 	}
 

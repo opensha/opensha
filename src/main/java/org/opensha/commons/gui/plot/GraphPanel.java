@@ -29,6 +29,7 @@ import java.awt.Paint;
 import java.awt.Shape;
 import java.awt.Stroke;
 import java.awt.geom.Line2D;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.PrinterException;
@@ -70,8 +71,10 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYBlockRenderer;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.title.LegendTitle;
+import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.title.Title;
 import org.jfree.data.Range;
 import org.jfree.chart.ui.RectangleAnchor;
@@ -83,13 +86,20 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.WeightedFuncListforPlotting;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
+import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
+import org.opensha.commons.data.xyz.XYZ_DataSet;
 import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.CustomOffsetNumberAxis;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
 import org.opensha.commons.gui.plot.jfreechart.MyTickUnits;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.PaintScaleWrapper;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZDatasetWrapper;
 import org.opensha.commons.gui.plot.pdf.PDF_UTF8_FontMapper;
 import org.opensha.commons.util.CustomFileFilter;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.cpt.CPT;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -253,35 +263,6 @@ public class GraphPanel extends JSplitPane {
 
 	}
 
-
-	/**
-	 * For each function in the list it sets the plotting characeterstics of the curve
-	 * so that when that list is given to JFreechart , it creates it with these characterstics.
-	 * @param lineType : Plotting style
-	 * @param color : Plotting cure color
-	 * @param curveWidth : size of each plot
-	 * @param functionIndex : secondary datset index.
-	 * This method creates a new renderer for each dataset based on user's selected
-	 * plotting style.If index is zero then set primary renderer else set secondary renderer
-	 */
-	public static void drawCurvesUsingPlottingFeatures(
-			XYPlot plot,
-			PlotLineType lineType, float lineWidth,
-			PlotSymbol symbol, float symbolWidth,
-			Color color, int functionIndex){
-		XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth);
-		setRendererInPlot(plot, color, functionIndex, renderer);
-	}
-
-
-	private static void setRendererInPlot(XYPlot plot, Color color, int functionIndex,
-			XYItemRenderer xyItemRenderer) {
-		plot.setRenderer(functionIndex,xyItemRenderer);
-//		xyItemRenderer.setPaint(color);
-		xyItemRenderer.setSeriesPaint(0, color);
-//		xyItemRenderer.setDefaultPaint(color);
-	}
-
 	private boolean isBlankCurve(PlotCurveCharacterstics chars) {
 		return (chars.getLineType() == null || chars.getLineWidth() <= 0f)
 				&& (chars.getSymbol() == null || chars.getSymbolWidth() <= 0f);
@@ -370,7 +351,7 @@ public class GraphPanel extends JSplitPane {
 	 * @param xRanges	X axis ranges for each subplot. If non null size > 1, combined plots will share a Y axis
 	 * @param yRanges	X axis ranges for each subplot. If non null size > 1, combined plots will share an X axis
 	 */
-	public void drawGraphPanel(List<PlotSpec> specs, boolean xLog, boolean yLog,
+	public void drawGraphPanel(List<? extends PlotSpec> specs, boolean xLog, boolean yLog,
 			List<Range> xRanges, List<Range> yRanges) {
 		drawGraphPanel(specs, Lists.newArrayList(xLog), Lists.newArrayList(yLog), xRanges, yRanges);
 	}
@@ -384,7 +365,7 @@ public class GraphPanel extends JSplitPane {
 	 * @param xRanges	X axis ranges for each subplot. If non null size > 1, combined plots will share a Y axis
 	 * @param yRanges	X axis ranges for each subplot. If non null size > 1, combined plots will share an X axis
 	 */
-	public void drawGraphPanel(List<PlotSpec> specs, List<Boolean> xLogs, List<Boolean> yLogs,
+	public void drawGraphPanel(List<? extends PlotSpec> specs, List<Boolean> xLogs, List<Boolean> yLogs,
 			List<Range> xRanges, List<Range> yRanges) {
 		// Starting
 		String S = "drawGraphPanel(): ";
@@ -583,23 +564,16 @@ public class GraphPanel extends JSplitPane {
 		// location set by FIRST spec with a legend
 		RectangleEdge legendLocation = null;
 		
+		// legend items. will be set to non null if at least one sub plot has a legend
+		List<PaintScaleLegend> cptSubtitles = null;
+		RectangleEdge cptLocation = null;
+		
 		for (int p=0; p<specs.size(); p++) {
 			PlotSpec plotSpec = specs.get(p);
 			
 			//index of dataset from total prob functionlist (list containing each curve as
 			//individual discretized function).
 			int datasetIndex = 0;
-			
-			List<? extends PlotElement> elems = plotSpec.getPlotElems();
-			plottedElems.addAll(elems);
-			List<PlotCurveCharacterstics> plotChars = plotSpec.getChars();
-			
-			XY_DataSetList myPlottedFuncs = createColorSchemeAndFunctionList(elems, plotChars);
-			//total number of funtions that need to be plotted differently using different characterstics
-			int numFuncs = plotChars.size();
-			
-			plottedFuncs.addAll(myPlottedFuncs);
-			plottedChars.addAll(plotChars);
 			
 			ValueAxis myXAxis, myYAxis;
 			XYPlot subPlot;
@@ -626,52 +600,158 @@ public class GraphPanel extends JSplitPane {
 			boolean xLog = xLogs.size() > 1 ? xLogs.get(p) : xLogs.get(0);
 			boolean yLog = yLogs.size() > 1 ? yLogs.get(p) : yLogs.get(0);
 			
-			//secondary dataset index keeps track where do we have to add the secondary data set in plot
-			for(int j=0,dataIndex=0; j < numFuncs; ++j,++dataIndex){
-				PlotCurveCharacterstics curveCharaceterstic = plotChars.get(j);
-				//getting the number of consecutive curves that have same plotting characterstics.
-				int numCurves = curveCharaceterstic.getNumContinuousCurvesWithSameCharacterstics();
-				if (isBlankCurve(curveCharaceterstic)) {
-					//adding the number of consecutive curves with same plotting characterstics to dataset index.
-					datasetIndex +=numCurves;
-					//decrement the secondary dataset index so that we secondary dataset is added to correct place.
-					--dataIndex;
-					continue;
+			if (plotSpec instanceof XYZPlotSpec) {
+				XYZPlotSpec xyzSpec = (XYZPlotSpec)plotSpec;
+				XYZ_DataSet xyz = xyzSpec.getXYZ_Data();
+				Double thicknessX = xyzSpec.getThickness();
+				Double thicknessY = thicknessX;
+				if (thicknessX == null) {
+					if (xyz instanceof EvenlyDiscrXYZ_DataSet) {
+						thicknessX = ((EvenlyDiscrXYZ_DataSet)xyz).getGridSpacingX();
+						thicknessY = ((EvenlyDiscrXYZ_DataSet)xyz).getGridSpacingY();
+					} else {
+						// detect from data - use median of differences
+						int numToCheck = xyz.size();
+						if (numToCheck > 1000)
+							numToCheck = 1000;
+						if (numToCheck > 0) {
+							double[] diffs = new double[numToCheck];
+							Point2D prevPt = xyz.getPoint(0);
+							for (int i=1; i<numToCheck; i++) {
+								Point2D pt = xyz.getPoint(i);
+								
+								double diffX = Math.abs(pt.getX() - prevPt.getX());
+								double diffY = Math.abs(pt.getY() - prevPt.getY());
+								
+								if (diffX > diffY)
+									diffs[i] = diffX;
+								else
+									diffs[i] = diffY;
+								
+								prevPt = pt;
+							}
+							thicknessX = DataUtils.median(diffs);
+							thicknessY = DataUtils.median(diffs);
+						}
+					}
 				}
-				Color color = curveCharaceterstic.getColor();
-				float lineWidth = curveCharaceterstic.getLineWidth();
-				PlotLineType lineType = curveCharaceterstic.getLineType();
-				float symbolWidth = curveCharaceterstic.getSymbolWidth();
-				PlotSymbol symbol = curveCharaceterstic.getSymbol();
+				XYZDatasetWrapper dataset = new XYZDatasetWrapper(xyzSpec);
+				XYBlockRenderer renderer = new XYBlockRenderer();
+				renderer.setBlockHeight(thicknessY);
+				renderer.setBlockWidth(thicknessX);
+				PaintScaleWrapper scale = new PaintScaleWrapper(xyzSpec.getCPT());
+		        renderer.setPaintScale(scale);
+				subPlot.setRenderer(datasetIndex, renderer);
+				subPlot.setDataset(datasetIndex, dataset);
+				datasetIndex++;
 				
-				//creating dataset for each curve and its consecutive curves which have same plotting
-				//characterstics. Eg: can be weighted functions in weighted functionlist  have same
-				//plotting characterstics, also fractiles in weighted function list share same
-				//plotting characterstics. So creating dataset for each list of curves with
-				//same plotting characterstics.
-				XY_DataSetList dataFunctions = new XY_DataSetList();
-				DiscretizedFunctionXYDataSet dataset = new DiscretizedFunctionXYDataSet();
-				dataset.setXLog(xLog);
-				dataset.setYLog(yLog);
-				//converting the zero in Y-axis to some minimum value.
-				dataset.setConvertZeroToMin(true,LOG_Y_MIN_VAL);
-				dataset.setFunctions(dataFunctions);
-
-
-				//creating the secondary dataset to show it in different color and shapes
-				for(int i=datasetIndex;i<(datasetIndex+numCurves);++i){
-					if (i >= myPlottedFuncs.size())
-						break;
-					dataFunctions.add(myPlottedFuncs.get(i));
+				if (xyzSpec.isCPTVisible()) {
+					if (cptSubtitles == null) {
+						cptSubtitles = new ArrayList<>();
+						cptLocation = xyzSpec.getCPTPosition();
+					}
+					cptSubtitles.add(getLegendForCPT(scale, xyzSpec.getZAxisLabel(), axisFontSize, tickFontSize,
+							xyzSpec.getCPTTickUnit(), xyzSpec.getCPTPosition()));
 				}
-				datasetIndex +=numCurves;
+			}
+			
+			List<? extends PlotElement> elems = plotSpec.getPlotElems();
+			plottedElems.addAll(elems);
+			List<PlotCurveCharacterstics> plotChars = plotSpec.getChars();
+			// wrap in new list in case we modify it, which can be the case for weighted function lists
+			if (plotChars == null)  {
+				plotChars = new ArrayList<>();
+				plotSpec.setChars(plotChars);;
+			}
+			
+			int charIndex = 0;
+			int defaultColorIndex = 0;
 
-				//adding the dataset to the plot
-				subPlot.setDataset(dataIndex, dataset);
+			for(PlotElement elem : elems) {
+				
+				XY_DataSetList elemDatasets = elem.getDatasetsToPlot();
+				List<Integer> elemPlotNumbs = elem.getPlotNumColorList();
+				
+				int totNumDatasets = elemDatasets.size();
+				
+				int datasetInElemIndex = 0;
+				for (int numShared : elemPlotNumbs) {
+					// this is one or more curves with the same plot curve characteristics
+					
+					PlotCurveCharacterstics chars;
+					if (charIndex < plotChars.size()) {
+						// use the passed in plot curve characteristic
+						chars = plotChars.get(charIndex);
+					} else {
+						// we've gone beyond that passed in, use a default color
+						XY_DataSet func = elemDatasets.get(datasetInElemIndex);
+						PlotLineType lineType;
+						PlotSymbol symbol;
+						if (func instanceof DiscretizedFunc) {
+							lineType = PlotLineType.SOLID;
+							symbol = null;
+						} else {
+							lineType = null;
+							symbol = PlotSymbol.DIAMOND;
+						}
+						chars = new PlotCurveCharacterstics(lineType, 1f, symbol, 4f,
+								defaultColor[defaultColorIndex % defaultColor.length]);
+						plotChars.add(chars);
+					}
+					defaultColorIndex++;
+					Preconditions.checkState(datasetInElemIndex+numShared <= totNumDatasets,
+							"elem.getDatasetsToPlot() and elem.getPlotNumColorList() are inconsistent");
+					
+					XY_DataSetList dataFunctions = new XY_DataSetList();
+					for (int i=0; i<numShared; i++) {
+						// now add a copy of our curve characteristic for every line that shares it
+						XY_DataSet func = elemDatasets.get(datasetInElemIndex++);
+						dataFunctions.add(func);
+						plottedFuncs.add(func);
+						plottedChars.add(chars);
+					}
+					charIndex++;
+					
+					// now actually plot it
+					if (isBlankCurve(chars))
+						continue;
+					
+					Color color = chars.getColor();
+					float lineWidth = chars.getLineWidth();
+					PlotLineType lineType = chars.getLineType();
+					float symbolWidth = chars.getSymbolWidth();
+					PlotSymbol symbol = chars.getSymbol();
+					
+					//creating dataset for each curve and its consecutive curves which have same plotting
+					//characterstics. Eg: can be weighted functions in weighted functionlist  have same
+					//plotting characterstics, also fractiles in weighted function list share same
+					//plotting characterstics. So creating dataset for each list of curves with
+					//same plotting characterstics.
+					DiscretizedFunctionXYDataSet dataset = new DiscretizedFunctionXYDataSet();
+//					System.out.println("Plotting "+dataFunctions.size()+" funcs bundled, color="+color);
+					dataset.setXLog(xLog);
+					dataset.setYLog(yLog);
+					//converting the zero in Y-axis to some minimum value.
+					dataset.setConvertZeroToMin(true,LOG_Y_MIN_VAL);
+					dataset.setFunctions(dataFunctions);
 
-				//based on plotting characteristics for each curve sending configuring plot object
-				//to be send to JFreechart for plotting.
-				drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
+					//adding the dataset to the plot
+					subPlot.setDataset(datasetIndex, dataset);
+
+					//based on plotting characteristics for each curve sending configuring plot object
+					//to be send to JFreechart for plotting.
+//					drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
+					
+					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth);
+					subPlot.setRenderer(datasetIndex, renderer);
+//					xyItemRenderer.setPaint(color);
+					for (int i=0; i<numShared; i++)
+						renderer.setSeriesPaint(i, color);
+//					xyItemRenderer.setDefaultPaint(color);
+					datasetIndex++;
+				}
+				Preconditions.checkState(datasetInElemIndex == totNumDatasets,
+						"elem.getDatasetsToPlot() and elem.getPlotNumColorList() are inconsistent");
 			}
 			
 			// now add any annotations
@@ -737,6 +817,28 @@ public class GraphPanel extends JSplitPane {
 			if (spec.getSubtitles() != null)
 				for (Title subtitle : spec.getSubtitles())
 					chart.addSubtitle(subtitle);
+		
+		if (cptSubtitles != null) {
+			// add CPT subtitles
+			if (cptSubtitles.size() > 1) {
+				CPT cpt = null;
+				boolean allSame = true;
+				for (PaintScaleLegend legend : cptSubtitles) {
+					CPT myCPT = ((PaintScaleWrapper)legend.getScale()).getCPT();
+					if (cpt == null) {
+						myCPT = cpt;
+					} else if (cpt != myCPT) {
+						allSame = false;
+						break;
+					}
+				}
+				if (allSame)
+					cptSubtitles = cptSubtitles.subList(0, 1);
+			}
+			for (PaintScaleLegend cptSubtitle : cptSubtitles)
+				if (cptSubtitle != null)
+					chart.addSubtitle(cptSubtitle);
+		}
 
 		// Put into a panel
 		chartPanel = new ChartPanel(chart, true, true, true, true, false);
@@ -772,7 +874,7 @@ public class GraphPanel extends JSplitPane {
 			//total number of elements in the list containing individual functions and
 			//weighted function list.
 			int totalNumofFunctions = plottedElems.size();
-			legendString = new ArrayList();
+			legendString = new ArrayList<>();
 			//getting the metadata associated with each function in the list
 			for(int i=0,plotPrefIndex=0;i<totalNumofFunctions;++i){
 				String legend=null;
@@ -790,7 +892,7 @@ public class GraphPanel extends JSplitPane {
 					String listInfo = weightedList.getInfo();
 
 					legend = new String(datasetName+" ("+chars+")"+"\n"+
-							listInfo+SystemUtils.LINE_SEPARATOR);
+							listInfo+System.lineSeparator());
 					legendString.add(legend);
 					StyleConstants.setForeground(setLegend,Color.black);
 					doc.insertString(doc.getLength(),legend,setLegend);
@@ -803,7 +905,7 @@ public class GraphPanel extends JSplitPane {
 						//getting the metadata for each individual curves and creating the legend string
 						String listFunctionsInfo = weightedList.getFunctionTraceInfo();
 
-						legend = new String(listFunctionsInfo+SystemUtils.LINE_SEPARATOR);
+						legend = new String(listFunctionsInfo+System.lineSeparator());
 						legendString.add(legend);
 						Color color = (plottedChars.get(plotPrefIndex)).getColor();
 						StyleConstants.setForeground(setLegend,color);
@@ -817,7 +919,7 @@ public class GraphPanel extends JSplitPane {
 						//getting the fractile info for the weighted function list and adding that to the legend
 						String fractileListInfo = weightedList.getFractileInfo();
 
-						legend = new String(fractileListInfo+SystemUtils.LINE_SEPARATOR);
+						legend = new String(fractileListInfo+System.lineSeparator());
 						legendString.add(legend);
 						Color color = (plottedChars.get(plotPrefIndex)).getColor();
 						StyleConstants.setForeground(setLegend,color);
@@ -830,7 +932,7 @@ public class GraphPanel extends JSplitPane {
 						//getting the fractileinfo and showing it as legend
 						String meanInfo = weightedList.getMeanFunctionInfo();
 
-						legend = new String(meanInfo+SystemUtils.LINE_SEPARATOR);
+						legend = new String(meanInfo+System.lineSeparator());
 						legendString.add(legend);
 						Color color = plottedChars.get(plotPrefIndex).getColor();
 						StyleConstants.setForeground(setLegend,color);
@@ -1110,66 +1212,6 @@ public class GraphPanel extends JSplitPane {
 	 */
 	public ValueAxis getYAxis() {
 		return yAxis;
-	}
-
-	/**
-	 * This method extracts all the functions from the ArrayList and add that
-	 * to the DiscretizedFunction List. This method also creates the color scheme
-	 * depending on the different types of DiscretizedFunc added to the list.
-	 * @param elems
-	 * @param chars
-	 */
-	private static XY_DataSetList createColorSchemeAndFunctionList(List<? extends PlotElement> elems,
-			List<PlotCurveCharacterstics> plotChars) {
-
-		if (plotChars == null)
-			plotChars = Lists.newArrayList();
-		int numElems  = elems.size();
-		ArrayList<Integer> numColorArray = new ArrayList<Integer>();
-
-		XY_DataSetList plottedFuncs = new XY_DataSetList();
-
-		for(int i=0;i<numElems;++i){
-			PlotElement elem = elems.get(i);
-			
-			plottedFuncs.addAll(elem.getDatasetsToPlot());
-			numColorArray.addAll(elem.getPlotNumColorList());
-		}
-
-
-		//number of different curves with different plotting characterstics.
-		int existingCurvesWithPlotPrefs = plotChars.size();
-
-		int numDiffColors = numColorArray.size();
-
-		//looping over all the default colors to add those to the color array
-		for(int i=0,defaultColorIndex =0;i<numDiffColors;++i,++defaultColorIndex){
-			//if the number of curves to be drawn are more in number then default colors then start from first again
-			if(defaultColorIndex == defaultColor.length)
-				defaultColorIndex = 0;
-			int val = ((Integer)numColorArray.get(i)).intValue();
-			//adding the new curves to the list for plot preferences.
-			if(i>=existingCurvesWithPlotPrefs) {
-				XY_DataSet func = plottedFuncs.get(i);
-				PlotLineType lineType;
-				PlotSymbol symbol;
-				if (func instanceof DiscretizedFunc) {
-					lineType = PlotLineType.SOLID;
-					symbol = null;
-				} else {
-					lineType = null;
-					symbol = PlotSymbol.DIAMOND;
-				}
-				plotChars.add(new PlotCurveCharacterstics(lineType, 1f, symbol, 4f,
-						defaultColor[defaultColorIndex],val));
-			} else {
-				PlotCurveCharacterstics chars = (PlotCurveCharacterstics)plotChars.get(i).clone();
-				chars.setNumContinuousCurvesWithSameCharaceterstics(val);
-				plotChars.set(i, chars);
-			}
-		}
-		
-		return plottedFuncs;
 	}
 
 	/**
@@ -1678,5 +1720,36 @@ public class GraphPanel extends JSplitPane {
 	
 	public void setGriddedFuncAxesTicks(boolean histogramAxesTicks) {
 		this.griddedFuncAxesTicks = histogramAxesTicks;
+	}
+	
+	public static PaintScaleLegend getLegendForCPT(CPT cpt, String zAxisLabel,
+			int axisFontSize, int tickFontSize, double tickUnit, RectangleEdge position) {
+		return getLegendForCPT(new PaintScaleWrapper(cpt), zAxisLabel, axisFontSize, tickFontSize, tickUnit, position);
+	}
+	
+	private static PaintScaleLegend getLegendForCPT(PaintScaleWrapper scale, String zAxisLabel,
+			int axisFontSize, int tickFontSize, double tickUnit, RectangleEdge position) {
+		NumberAxis fakeZAxis = new NumberAxis();
+		fakeZAxis.setLowerBound(scale.getLowerBound());
+		fakeZAxis.setUpperBound(scale.getUpperBound());
+		fakeZAxis.setLabel(zAxisLabel);
+		Font axisLabelFont = fakeZAxis.getLabelFont();
+		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(),axisLabelFont.getStyle(),axisFontSize));
+		Font axisTickFont = fakeZAxis.getTickLabelFont();
+		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(),axisTickFont.getStyle(),tickFontSize));
+		if (tickUnit > 0)
+			fakeZAxis.setTickUnit(new NumberTickUnit(tickUnit));
+		PaintScaleLegend legend = new PaintScaleLegend(scale, fakeZAxis);
+		legend.setSubdivisionCount(500);
+		if (position != null)
+			legend.setPosition(position);
+		if (legend.getPosition() == RectangleEdge.BOTTOM || legend.getPosition() == RectangleEdge.TOP)
+			legend.setPadding(5d, 50d, 5d, 50d);
+		else if (legend.getPosition() == RectangleEdge.LEFT)
+			legend.setPadding(15d, 20d, 15d, 5d);
+		else
+			// right
+			legend.setPadding(15d, 5d, 15d, 20d);
+		return legend;
 	}
 }

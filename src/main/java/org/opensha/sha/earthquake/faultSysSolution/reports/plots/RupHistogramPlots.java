@@ -30,7 +30,6 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ComparablePairing;
@@ -369,11 +368,10 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				xyzSpec.setCPTPosition(RectangleEdge.BOTTOM);
 				xyzSpec.setXYElems(funcs);
 				xyzSpec.setXYChars(chars);
-				XYZGraphPanel xyzGP = new XYZGraphPanel(gp.getPlotPrefs());
-				xyzGP.drawPlot(xyzSpec, false, false, xRange, logYRange);
+				gp.drawGraphPanel(xyzSpec, false, false, xRange, logYRange);
 				
-				xyzGP.getChartPanel().setSize(1000, 850);
-				xyzGP.saveAsPNG(new File(resourcesDir, prefix+"_hist2D.png").getAbsolutePath());
+				gp.getChartPanel().setSize(1000, 850);
+				gp.saveAsPNG(new File(resourcesDir, prefix+"_hist2D.png").getAbsolutePath());
 				
 				table = MarkdownUtils.tableBuilder();
 				table.initNewLine();

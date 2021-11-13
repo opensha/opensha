@@ -25,13 +25,12 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotUtils;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
-import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
@@ -382,7 +381,7 @@ public class SolHazardMapCalc {
 				this.extraFuncs = extraFuncs;
 			}
 		}
-		XYZGraphPanel gp = new XYZGraphPanel(PlotUtils.getDefaultFigurePrefs());
+		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		
 		XYZPlotSpec spec = new XYZPlotSpec(xyz, cpt, title, "Longitude", "Latitude", zLabel);
 		spec.setCPTPosition(RectangleEdge.BOTTOM);
@@ -397,7 +396,7 @@ public class SolHazardMapCalc {
 		Range latRange = new Range(
 				Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
 				Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
-		gp.drawPlot(spec, false, false, lonRange, latRange);
+		gp.drawGraphPanel(spec, false, false, lonRange, latRange);
 		
 		double maxSpan = Math.max(lonRange.getLength(), latRange.getLength());
 		double tick;

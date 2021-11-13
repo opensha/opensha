@@ -35,6 +35,7 @@ import javax.swing.border.LineBorder;
 
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 
 import com.google.common.collect.Lists;
 
@@ -78,7 +79,7 @@ public class GraphWidget extends JPanel {
 	/**
 	 * List of ArbitrarilyDiscretized functions and Weighted funstions
 	 */
-	protected List<PlotSpec> plotSpecs;
+	protected List<? extends PlotSpec> plotSpecs;
 
 	/**
 	 * for Y-log, 0 values will be converted to this small value
@@ -111,17 +112,32 @@ public class GraphWidget extends JPanel {
 	 * @param yRange
 	 */
 	public GraphWidget(PlotSpec plotSpec, PlotPreferences plotPrefs, boolean xLog, boolean yLog, Range xRange, Range yRange) {
+		this(List.of(plotSpec), plotPrefs, xLog, yLog, xRange == null ? null : List.of(xRange), yRange == null ? null : List.of(yRange));
+	}
+
+	/**
+	 * Constructor for widget displaying the given plot data with preferences and all other options exposed.
+	 * 
+	 * @param plotSpec
+	 * @param plotPrefs
+	 * @param xLog
+	 * @param yLog
+	 * @param xRange
+	 * @param yRange
+	 */
+	public GraphWidget(List<? extends PlotSpec> plotSpecs, PlotPreferences plotPrefs, boolean xLog, boolean yLog,
+			List<Range> xRanges, List<Range> yRanges) {
 		if (plotPrefs == null)
 			plotPrefs = PlotPreferences.getDefault();
 		this.plotPrefs = plotPrefs;
-		this.plotSpecs = Lists.newArrayList(plotSpec);
+		this.plotSpecs = plotSpecs;
 		graphPanel = new GraphPanel(plotPrefs);
 		this.xLog = xLog;
 		this.yLog = yLog;
-		if (xRange != null)
-			this.xRanges = Lists.newArrayList(xRange);
-		if (yRange != null)
-			this.yRanges = Lists.newArrayList(yRange);
+		if (xRanges != null)
+			this.xRanges = xRanges;
+		if (yRanges != null)
+			this.yRanges = yRanges;
 		
 		try {
 			jbInit();
@@ -353,7 +369,12 @@ public class GraphWidget extends JPanel {
 	}
 	
 	private boolean isPlotEmpty() {
-		return plotSpecs == null || plotSpecs.isEmpty() || plotSpecs.get(0).getPlotElems().isEmpty();
+		if (plotSpecs == null || plotSpecs.isEmpty())
+			return true;
+		PlotSpec spec = plotSpecs.get(0);
+		if (spec instanceof XYZPlotSpec && ((XYZPlotSpec)spec).getXYZ_Data() != null)
+			return false;
+		return spec.getPlotElems().isEmpty();
 	}
 	
 	/* (non-Javadoc)
