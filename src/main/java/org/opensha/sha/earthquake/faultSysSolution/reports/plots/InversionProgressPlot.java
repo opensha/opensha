@@ -45,6 +45,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		double totalEnergy = progress.getEnergies(progress.size()-1)[0];
 
 		int ips = (int)((double)iters/secs + 0.5);
+		double ipp = (double)iters/(double)perturbs;
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		
@@ -52,14 +53,18 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		table.initNewLine();
 		if (compProgress != null)
 			table.addColumn("");
-		table.addColumn("**Iterations**").addColumn("**Time**").addColumn("**Perturbations**").addColumn("**Total Energy**");
+		table.addColumn("**Iterations**").addColumn("**Time**").addColumn("**Iterations Per Sec.**")
+			.addColumn("**Perturbations**").addColumn("**Iterations Per Perturb.**").addColumn("**Total Energy**");
 		table.finalizeLine().initNewLine();
 		if (compProgress != null)
 			table.addColumn("Primary");
 		
-		table.addColumn(countDF.format(iters)+" ("+countDF.format(ips)+" /sec)");
+		table.addColumn(countDF.format(iters));
 		table.addColumn(ThreadedSimulatedAnnealing.timeStr(millis));
+		table.addColumn(countDF.format(ips));
 		table.addColumn(countDF.format(perturbs));
+		table.addColumn(ipp > 100d ? countDF.format((int)(ipp+0.5)) : twoDigits.format(ipp));
+		
 		table.addColumn((float)totalEnergy);
 		table.finalizeLine();
 		
@@ -72,11 +77,14 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 			double ctotalEnergy = compProgress.getEnergies(compProgress.size()-1)[0];
 
 			int cips = (int)((double)citers/csecs + 0.5);
+			int cipp = (int)((double)citers/(double)cperturbs + 0.5);
 			
 			table.initNewLine().addColumn("Comparison");
-			table.addColumn(countDF.format(citers)+" ("+countDF.format(cips)+" /sec)");
+			table.addColumn(countDF.format(citers));
 			table.addColumn(ThreadedSimulatedAnnealing.timeStr(cmillis));
+			table.addColumn(countDF.format(cips));
 			table.addColumn(countDF.format(cperturbs));
+			table.addColumn(ipp > 100d ? countDF.format((int)(cipp+0.5)) : twoDigits.format(cipp));
 			table.addColumn((float)ctotalEnergy);
 			table.finalizeLine();
 		}
