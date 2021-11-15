@@ -31,7 +31,6 @@ import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
@@ -502,7 +501,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				// already cached or we just downloaded it
 				if (D) System.out.println("already cached: "+solFile.getName());
 				try {
-					FaultSystemSolution sol = U3FaultSystemIO.loadSol(solFile);
+					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
 					checkCombineMags(sol);
 					setSolution(sol);
 					return;
@@ -519,7 +518,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			File meanSolFile = checkDownload(prefix+TRUE_MEAN_FILE_NAME, false);
 			
 			try {
-				setTrueMeanSol(U3FaultSystemIO.loadSol(meanSolFile));
+				setTrueMeanSol(FaultSystemSolution.load(meanSolFile));
 			} catch (Exception e) {
 				ExceptionUtils.throwAsRuntimeException(e);
 			}
@@ -685,7 +684,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		File solFile = new File(getStoreDir(), "mean_ucerf3_sol.zip");
 		FaultSystemSolution sol;
 		try {
-			sol = U3FaultSystemIO.loadSol(solFile);
+			sol = FaultSystemSolution.load(solFile);
 		} catch (Exception e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
