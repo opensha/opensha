@@ -10,6 +10,8 @@ import java.util.List;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
@@ -26,14 +28,14 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
-import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.utils.MFD_InversionConstraint;
+import com.google.common.base.Preconditions;
 
-public class SolMFDPlot extends AbstractSolutionPlot {
+public class SolMFDPlot extends AbstractRupSetPlot {
 
 	@Override
 	public String getName() {
@@ -43,9 +45,11 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 	private static final Color SUPRA_SEIS_TARGET_COLOR = Color.CYAN.darker();
 
 	@Override
-	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
-			String topLink) throws IOException {
-		FaultSystemRupSet rupSet = sol.getRupSet();
+	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta,
+			File resourcesDir, String relPathToResources, String topLink) throws IOException {
+		if (sol == null && !rupSet.hasModule(InversionTargetMFDs.class))
+			// need a solution or targets
+			return null;
 		List<MFD_Plot> plots = new ArrayList<>();
 		
 		double minY = 1e-6;
@@ -88,6 +92,7 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(pt.getY())-0.1)));
 			}
 		} else {
+			Preconditions.checkState(sol != null);
 			// generic plot
 			Region region = null;
 			// see if we have a region
@@ -109,26 +114,45 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		for (MFD_Plot plot : plots) {
 			List<IncrementalMagFreqDist> incrFuncs = new ArrayList<>();
 			List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
-			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			List<PlotCurveCharacterstics> incrChars = new ArrayList<>();
+			List<PlotCurveCharacterstics> cmlChars = new ArrayList<>();
 			
 			for (int c=0; c<plot.comps.size(); c++) {
 				IncrementalMagFreqDist comp = plot.comps.get(c);
 				if (comp == null)
 					continue;
+				
+				Color color = plot.compColors.get(c);
+				
 				comp.setName(plot.compNames.get(c));
 				incrFuncs.add(comp);
 				cmlFuncs.add(comp.getCumRateDistWithOffset());
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, plot.compColors.get(c)));
+				PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color);
+				incrChars.add(pChar);
+				cmlChars.add(pChar);
+				
+				if (comp instanceof UncertainIncrMagFreqDist) {
+					UncertainIncrMagFreqDist sigmaIncrBounds =
+							((UncertainIncrMagFreqDist)comp).estimateBounds(UncertaintyBoundType.ONE_SIGMA);
+					sigmaIncrBounds.setName("± σ");
+					
+					incrFuncs.add(sigmaIncrBounds);
+					incrChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
+							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
+				}
 			}
 			
 			if (meta.comparison != null && meta.comparison.sol != null)
 				addSolMFDs(meta.comparison.sol, "Comparison", COMP_COLOR, plot.region,
-						incrFuncs, cmlFuncs, chars, defaultMFD);
-			double myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region, incrFuncs, cmlFuncs, chars, defaultMFD);
-			maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
+						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD);
+			if (sol != null) {
+				double myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
+						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD);
+				maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
+			}
 			
-			PlotSpec incrSpec = new PlotSpec(incrFuncs, chars, plot.name, "Magnitude", "Incremental Rate (per yr)");
-			PlotSpec cmlSpec = new PlotSpec(cmlFuncs, chars, plot.name, "Magnitude", "Cumulative Rate (per yr)");
+			PlotSpec incrSpec = new PlotSpec(incrFuncs, incrChars, plot.name, "Magnitude", "Incremental Rate (per yr)");
+			PlotSpec cmlSpec = new PlotSpec(cmlFuncs, cmlChars, plot.name, "Magnitude", "Cumulative Rate (per yr)");
 			incrSpec.setLegendInset(true);
 			cmlSpec.setLegendInset(true);
 			
@@ -242,7 +266,8 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 	
 	private static double addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
 			List<IncrementalMagFreqDist> incrFuncs, List<EvenlyDiscretizedFunc> cmlFuncs,
-			List<PlotCurveCharacterstics> chars, IncrementalMagFreqDist defaultMFD) {
+			List<PlotCurveCharacterstics> incrChars, List<PlotCurveCharacterstics> cmlChars,
+			IncrementalMagFreqDist defaultMFD) {
 		IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forRegion(
 				region, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size(), false);
 		if (sol.hasModule(GridSourceProvider.class)) {
@@ -265,7 +290,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 					gridMFD.setName(name+" Gridded");
 					incrFuncs.add(gridMFD);
 					cmlFuncs.add(gridMFD.getCumRateDistWithOffset());
-					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, avg(color, Color.WHITE)));
+					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, avg(color, Color.WHITE));
+					incrChars.add(pChar);
+					cmlChars.add(pChar);
 //					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.brighter()));
 				}
 				SummedMagFreqDist totalMFD = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
@@ -274,7 +301,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 				totalMFD.setName(name+" Total");
 				incrFuncs.add(totalMFD);
 				cmlFuncs.add(totalMFD.getCumRateDistWithOffset());
-				chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.darker()));
+				PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.darker());
+				incrChars.add(pChar);
+				cmlChars.add(pChar);
 				name = name+" Supra-Seis";
 			}
 		}
@@ -282,7 +311,9 @@ public class SolMFDPlot extends AbstractSolutionPlot {
 		incrFuncs.add(mfd);
 		EvenlyDiscretizedFunc cmlFunc = mfd.getCumRateDistWithOffset();
 		cmlFuncs.add(cmlFunc);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color));
+		PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color);
+		incrChars.add(pChar);
+		cmlChars.add(pChar);
 		return cmlFunc.getMaxY();
 	}
 

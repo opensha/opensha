@@ -116,6 +116,7 @@ public class ReportPageGen {
 		
 		plots.add(new InfoStringPlot());
 		plots.add(new LogicTreeBranchPlot());
+		plots.add(new SolMFDPlot());
 		plots.add(new PlausibilityConfigurationReport());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
 			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_SCALARS));

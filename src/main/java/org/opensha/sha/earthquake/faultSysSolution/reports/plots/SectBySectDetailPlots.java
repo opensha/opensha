@@ -1500,7 +1500,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 							targetRateStdDevs[sect.getSectionId()]);
 
 					if (first)
-						uncertFunc.setName("+/- σ");
+						uncertFunc.setName("± σ");
 					
 					funcs.add(uncertFunc);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, targetBoundsColor));

@@ -28,8 +28,6 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * an inequality constraint, and used separate constraints for northern and southern CA. If inequality
  * is set to true, then it will be constrained not to exceed the given MFD(s).
  * 
- * TODO: just use MFDs, not the useless wrapper class
- * 
  * @author Morgan Page & Kevin Milner
  *
  */
