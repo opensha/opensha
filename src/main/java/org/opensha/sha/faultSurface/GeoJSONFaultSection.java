@@ -93,7 +93,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		FaultUtils.assertValidDip(dip);
 		
 		rake = properties.getDouble(RAKE, Double.NaN);
-		checkPropFinite(RAKE, rake);
+//		checkPropFinite(RAKE, rake); // allow rakes to be attached later, don't enforce that it's specified now
 		
 		upperDepth = properties.getDouble(UPPER_DEPTH, Double.NaN);
 		checkPropFinite(UPPER_DEPTH, dip);
