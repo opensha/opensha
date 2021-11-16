@@ -96,5 +96,10 @@ public class UncertainDataConstraint implements Named {
 			this.dataLocation = dataLocation;
 		}
 	}
+	
+	@Override
+	public String toString() {
+		return "["+name+", μ="+(float)bestEstimate+", σ="+getPreferredStdDev()+"]";
+	}
 
 }
