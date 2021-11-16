@@ -127,6 +127,12 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			// try to parse string
 			try {
 				String str = (String)val;
+				if (str.equalsIgnoreCase(Double.NaN+""))
+					return Double.NaN;
+				if (str.equalsIgnoreCase(Double.POSITIVE_INFINITY+""))
+					return Double.POSITIVE_INFINITY;
+				if (str.equalsIgnoreCase(Double.NEGATIVE_INFINITY+""))
+					return Double.NEGATIVE_INFINITY;
 				if (str.contains(".") || str.toLowerCase().contains("e"))
 					return Double.parseDouble(str);
 				return Long.parseLong(str);
