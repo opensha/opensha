@@ -637,7 +637,7 @@ extends HazardCurveApplication {
 	}
 
 	/**
-	 * set x values in log space for Hazard Function to be passed to IMR as IMT is
+	 * set x values in linear space for Hazard Function to be passed to IMR as IMT is
 	 * always SA
 	 * It accepts 1 parameters
 	 *
