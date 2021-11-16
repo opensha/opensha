@@ -277,7 +277,7 @@ public class ReportPageGen {
 				if (plots.get(i) instanceof PlausibilityFilterPlot)
 					plots.remove(i);
 		} else if (cmd.hasOption("alt-plausibility")) {
-			this.attachDefaultModules(primaryMeta);
+			this.attachDefaultModules(primaryMeta, true);
 			File altPlausibilityCompareFile = new File(cmd.getOptionValue("alt-plausibility"));
 			Preconditions.checkState(altPlausibilityCompareFile.exists(),
 					"Alt-plausibility file doesn't exist: %s", altPlausibilityCompareFile.getAbsolutePath());
@@ -297,6 +297,8 @@ public class ReportPageGen {
 			if (insertionIndex < 0)
 				insertionIndex = plots.size();
 			
+			
+			// TODO restore
 //			plots.add(new PlausibilityFilterPlot(altFilters, "Alternative Filters", false));
 		}
 		
@@ -370,10 +372,10 @@ public class ReportPageGen {
 		return meta;
 	}
 	
-	private void attachDefaultModules(RupSetMetadata meta) throws IOException {
+	private void attachDefaultModules(RupSetMetadata meta, boolean loadCoulomb) throws IOException {
 		attachDefaultModules(meta, cacheDir, defaultMaxDist);
 		
-		if (cacheDir != null && cacheDir.exists())
+		if (cacheDir != null && cacheDir.exists() && loadCoulomb)
 			loadCoulombCache(cacheDir);
 	}
 
@@ -683,9 +685,13 @@ public class ReportPageGen {
 	}
 	
 	public void generatePage() throws IOException {
-		attachDefaultModules(meta.primary);
+		boolean loadCoulomb = false;
+		for (AbstractRupSetPlot plot : plots)
+			if (plot instanceof PlausibilityFilterPlot)
+				loadCoulomb = true;
+		attachDefaultModules(meta.primary, loadCoulomb);
 		if (meta.comparison != null)
-			attachDefaultModules(meta.comparison);
+			attachDefaultModules(meta.comparison, loadCoulomb);
 		
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir(),
 				"Could not create output directory: %s", outputDir.getAbsolutePath());

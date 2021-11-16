@@ -513,7 +513,42 @@ public class GeoJSONFaultReader {
 	}
 
 	public static void main(String[] args) throws IOException {
-		buildNSHM23SubSects();
+		String sectPath = NSHM23_SECTS_PATH_PREFIX+NSHM23_SECTS_CUR_VERSION
+				+"/NSHM23_FaultSections_"+NSHM23_SECTS_CUR_VERSION+".geojson";
+		Reader sectsReader = new BufferedReader(new InputStreamReader(
+				GeoJSONFaultReader.class.getResourceAsStream(sectPath)));
+		Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", sectPath);
+		List<GeoJSONFaultSection> sects = readFaultSections(sectsReader);
+		// map deformation model
+		String dmPath = NSHM23_DM_PATH_PREFIX+"geologic/"+NSHM23_DM_CUR_VERSION
+				+"/NSHM23_GeolDefMod_"+NSHM23_DM_CUR_VERSION+".geojson";
+		Reader dmReader = new BufferedReader(new InputStreamReader(
+				GeoJSONFaultReader.class.getResourceAsStream(dmPath)));
+		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", dmPath);
+		FeatureCollection defModel = FeatureCollection.read(dmReader);
+		attachGeoDefModel(sects, defModel);
+		
+		for (GeoJSONFaultSection sect : sects) {
+			FeatureProperties props = sect.getProperties();
+			double high = props.getDouble("HighRate", Double.NaN);
+			double low = props.getDouble("LowRate", Double.NaN);
+			double stdDev = sect.getOrigSlipRateStdDev();
+			String treat = props.get("Treatment", null);
+			if (treat.equals("tribox")) {
+				double calc = (high-low)/4d;
+				System.out.println(sect.getSectionName()+" is "+treat+". high="+(float)high+"\tlow="+(float)low
+						+"\tsd="+(float)stdDev+"\tcalc="+(float)calc);
+			} else {
+				double calc = (high-low)/2d;
+				System.out.println(sect.getSectionName()+" is "+treat+". high="+(float)high+"\tlow="+(float)low
+						+"\tsd="+(float)stdDev+"\tcalc="+(float)calc);
+			}
+//			if (treatment == null)
+//				sect.setProperty("Treatment", null);
+//			else
+//				sect.setProperty("Treatment", treatment);
+		}
+		
 //		File baseDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/");
 //		
 //		File fmFile = new File(baseDir, "NSHM23_FaultSections_v1p1/NSHM23_FaultSections_v1p1.geojson");
