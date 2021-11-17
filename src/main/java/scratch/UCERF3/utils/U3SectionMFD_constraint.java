@@ -64,7 +64,7 @@ import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
  * @author field
  *
  */
-public class SectionMFD_constraint {
+public class U3SectionMFD_constraint {
 	
 	final static boolean D = false; // for debugging
 	
@@ -119,7 +119,7 @@ public class SectionMFD_constraint {
 	 * @param fltSysSol
 	 * @param subSectIndex
 	 */
-	public SectionMFD_constraint(FaultSystemSolution fltSysSol, int subSectIndex) {
+	public U3SectionMFD_constraint(FaultSystemSolution fltSysSol, int subSectIndex) {
 		FaultSystemRupSet rupSet = fltSysSol.getRupSet();
 		origMinMag = 100;
 		maxMag = 0;
@@ -209,7 +209,7 @@ public class SectionMFD_constraint {
 	 * @param subSectIndex
 	 */
 
-	public SectionMFD_constraint(double minMag, FaultSystemSolution fltSysSol, int subSectIndex) {
+	public U3SectionMFD_constraint(double minMag, FaultSystemSolution fltSysSol, int subSectIndex) {
 		FaultSystemRupSet rupSet = fltSysSol.getRupSet();
 		this.origMinMag=minMag;
 		this.maxMag=0; // computed below
@@ -305,7 +305,7 @@ public class SectionMFD_constraint {
 	 * @param totMoRate
 	 * @param fractGR - fraction moment rate put into GR (vs Char) MFD
 	 */
-	public SectionMFD_constraint(double minMag, double maxMag, double totMoRate, double fractGR) {
+	public U3SectionMFD_constraint(double minMag, double maxMag, double totMoRate, double fractGR) {
 		this.origMinMag=minMag;
 		this.maxMag=maxMag;
 		makeMagBinArrays();

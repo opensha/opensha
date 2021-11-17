@@ -21,7 +21,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.AP
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDLaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDParticipationSmoothnessInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.U3MFDSubSectNuclInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
@@ -51,7 +51,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
-import scratch.UCERF3.utils.SectionMFD_constraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
@@ -204,10 +204,10 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					config.getParticipationSmoothnessConstraintWt(), config.getParticipationConstraintMagBinSize()));
 		
 		// MFD Subsection nucleation MFD constraint
-		ArrayList<SectionMFD_constraint> MFDConstraints = null;
+		ArrayList<U3SectionMFD_constraint> MFDConstraints = null;
 		if (config.getNucleationMFDConstraintWt() > 0.0) {
 			MFDConstraints = FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
-			constraints.add(new MFDSubSectNuclInversionConstraint(rupSet, config.getNucleationMFDConstraintWt(), MFDConstraints));
+			constraints.add(new U3MFDSubSectNuclInversionConstraint(rupSet, config.getNucleationMFDConstraintWt(), MFDConstraints));
 		}
 		
 		// MFD Smoothing constraint - MFDs spatially smooth along adjacent subsections on a parent section (Laplacian smoothing)
@@ -478,12 +478,12 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			constraintRowRanges.add(new ConstraintRange("MFD Participation", "MFD Participation",
 					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
-		ArrayList<SectionMFD_constraint> MFDConstraints = null;
+		ArrayList<U3SectionMFD_constraint> MFDConstraints = null;
 		if (config.getNucleationMFDConstraintWt() > 0.0) {
 			int totalNumNucleationMFDConstraints = 0;
 			MFDConstraints = FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
 			for (int sect=0; sect<numSections; sect++) { 
-				SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
+				U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
 				if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				for (int i=0; i<sectMFDConstraint.getNumMags(); i++) {
 					if (sectMFDConstraint.getRate(i) > 0) {
@@ -532,7 +532,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				// For each beginning section of subsection-pair, there will be numMagBins # of constraints
 				for (int j=1; j<sectsForParent.size()-2; j++) {
 					int sect2 = sectsForParent.get(j);
-					SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
+					U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
 					if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 					int numMagBins = sectMFDConstraint.getNumMags();
 					// Only add rows if this parent section will be included; it won't if it's not a paleo parent sect & MFDSmoothnessConstraintWt = 0
@@ -1055,7 +1055,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// Loop over all subsections
 			for (int sect=0; sect<numSections; sect++) {
 				
-				SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
+				U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
 				if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				int numMagBins = sectMFDConstraint.getNumMags();
 				List<Integer> rupturesForSect = rupSet.getRupturesForSection(sect);
@@ -1184,7 +1184,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					}
 					
 					// Get section MFD constraint -- we will use the irregular mag binning for the constraint (but not the rates)
-					SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
+					U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
 					if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 					int numMagBins = sectMFDConstraint.getNumMags();
 					// Loop over MFD constraints for this subsection

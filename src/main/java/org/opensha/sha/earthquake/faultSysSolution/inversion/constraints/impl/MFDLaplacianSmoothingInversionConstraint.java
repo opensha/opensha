@@ -13,7 +13,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.utils.SectionMFD_constraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
 
 /**
  * MFDs spatially smooth along adjacent subsections on a parent section (Laplacian smoothing).
@@ -31,16 +31,16 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 	
 	private transient FaultSystemRupSet rupSet;
 	private HashSet<Integer> parentIDs;
-	private List<SectionMFD_constraint> constraints;
+	private List<U3SectionMFD_constraint> constraints;
 
 	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
-			double weight, List<SectionMFD_constraint> constraints) {
+			double weight, List<U3SectionMFD_constraint> constraints) {
 		this(rupSet, weight, null, constraints);
 	}
 
 	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
 			double weight, HashSet<Integer> parentIDs,
-			List<SectionMFD_constraint> constraints) {
+			List<U3SectionMFD_constraint> constraints) {
 		super(NAME, SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
 		this.parentIDs = parentIDs;
@@ -69,7 +69,7 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 			// For each beginning section of subsection-pair, there will be numMagBins # of constraints
 			for (int j=1; j<sectsForParent.size()-2; j++) {
 				int sect2 = sectsForParent.get(j);
-				SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
+				U3SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
 				if (sectMFDConstraint == null)
 					continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				int numMagBins = sectMFDConstraint.getNumMags();
@@ -142,7 +142,7 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 				}
 				
 				// Get section MFD constraint -- we will use the irregular mag binning for the constraint (but not the rates)
-				SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
+				U3SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
 				if (sectMFDConstraint == null)
 					continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				int numMagBins = sectMFDConstraint.getNumMags();

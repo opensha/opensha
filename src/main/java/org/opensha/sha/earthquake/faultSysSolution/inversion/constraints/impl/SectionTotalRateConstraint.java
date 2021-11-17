@@ -21,8 +21,8 @@ public class SectionTotalRateConstraint extends InversionConstraint {
 	
 	public SectionTotalRateConstraint(FaultSystemRupSet rupSet, double weight, ConstraintWeightingType weightType,
 			double[] sectRates, double[] sectRateStdDevs, boolean nucleation) {
-		super(weightType.applyNamePrefix("Subsection Total Rates"),
-				weightType.applyShortNamePrefix("SubSectRates"), weight, false, weightType);
+		super(weightType.applyNamePrefix("Subsection Total "+(nucleation?"Nucleation":"Participation")+" Rates"),
+				weightType.applyShortNamePrefix("SubSect"+(nucleation?"Nucl":"Part")+"Rates"), weight, false, weightType);
 		this.rupSet = rupSet;
 		this.nucleation = nucleation;
 		Preconditions.checkState(rupSet.getNumSections() == sectRates.length, "section rates array isn't the right length");

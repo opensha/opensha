@@ -50,7 +50,7 @@ import scratch.UCERF3.inversion.laughTest.OldPlausibilityConfiguration;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.FaultSectionDataWriter;
-import scratch.UCERF3.utils.SectionMFD_constraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
 
 /**
  * This class represents a FaultSystemRupSet for the Grand Inversion.
@@ -819,7 +819,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 	}
 	
 	public static double getUpperMagForSubseismoRuptures(double finalMinMag) {
-		return SectionMFD_constraint.getLowerEdgeOfFirstBin(finalMinMag) - U3InversionTargetMFDs.DELTA_MAG/2;
+		return U3SectionMFD_constraint.getLowerEdgeOfFirstBin(finalMinMag) - U3InversionTargetMFDs.DELTA_MAG/2;
 	}
 
 
