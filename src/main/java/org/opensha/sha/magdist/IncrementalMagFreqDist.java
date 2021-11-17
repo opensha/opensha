@@ -521,11 +521,13 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	 * This gives the b-value for a GR distribution that has the same Mmin, Mmax, total rate, and moment rate 
 	 * (solving for the associated b-value).  This case handles zero-rate bins.  See the method 
 	 * GutenbergRichterMagFreqDist.setAllButBvalue(*) for accuracy information.
+	 * @param minMag
+	 * @param maxMag
 	 * @return
 	 */
-	public double compute_bValueAlt() {
-		int firstIndex = getClosestXIndex(getMinMagWithNonZeroRate());
-		int lastIndex = getClosestXIndex(getMaxMagWithNonZeroRate());
+	public double compute_bValueAlt(double minMag, double maxMag) {
+		int firstIndex = getClosestXIndex(minMag);
+		int lastIndex = getClosestXIndex(maxMag);
 		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(this.getMinX(), this.size(), this.getDelta());
 		gr.setAllButBvalue(this.getX(firstIndex), this.getX(lastIndex), this.getTotalMomentRate(), this.getTotalIncrRate());
 		return gr.get_bValue();
@@ -535,11 +537,13 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	 * This returns a GR distribution with the same Mmin, Mmax, total rate, and moment rate 
 	 * (solving for the associated b-value).  Note that this is not "fit" in a least squares sense.
 	 * This approach was adopted in order to handle zero-rate bins.
+	 * @param minMag
+	 * @param maxMag
 	 * @return
 	 */
-	public GutenbergRichterMagFreqDist getGR_fit() {
-		int firstIndex = getClosestXIndex(getMinMagWithNonZeroRate());
-		int lastIndex = getClosestXIndex(getMaxMagWithNonZeroRate());
+	public GutenbergRichterMagFreqDist getGR_fit(double minMag, double maxMag) {
+		int firstIndex = getClosestXIndex(minMag);
+		int lastIndex = getClosestXIndex(maxMag);
 		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(this.getMinX(), this.size(), this.getDelta());
 		gr.setAllButBvalue(this.getX(firstIndex), this.getX(lastIndex), this.getTotalMomentRate(), this.getTotalIncrRate());
 		return gr;
