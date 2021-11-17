@@ -48,7 +48,7 @@ public enum ConstraintWeightingType {
 	 * units of standard deviations, so a misfit of +1 means that the solution value is 1 standard deviation above
 	 * the target value.
 	 */
-	NORMALIZED_BY_UNCERTAINTY("Uncertainty-Weighted", "UncertWt", "Misfit (Standard Deviations)") {
+	NORMALIZED_BY_UNCERTAINTY("Uncertain", "Uncert", "Misfit (Standard Deviations)") {
 		@Override
 		public double getA_Scalar(double targetRate, double targetStdDev) {
 			Preconditions.checkState(targetStdDev > 0d);
