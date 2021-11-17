@@ -449,7 +449,7 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 		IncrementalMagFreqDist f = new IncrementalMagFreqDist(
 				minX, num, delta
 				);
-
+		f.setRegion(region);
 		f.tolerance = tolerance;
 		f.setInfo(this.getInfo());
 		f.setName(this.getName());

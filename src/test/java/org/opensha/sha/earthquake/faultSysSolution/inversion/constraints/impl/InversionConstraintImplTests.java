@@ -10,6 +10,7 @@ import java.util.Random;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
@@ -42,7 +43,7 @@ import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
 import scratch.UCERF3.utils.MFD_WeightedInversionConstraint;
-import scratch.UCERF3.utils.SectionMFD_constraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
@@ -188,7 +189,7 @@ public class InversionConstraintImplTests {
 
 	@Test
 	public void testMFDLaplace() {
-		ArrayList<SectionMFD_constraint> constraints =
+		ArrayList<U3SectionMFD_constraint> constraints =
 				FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
 		MFDLaplacianSmoothingInversionConstraint constr = new MFDLaplacianSmoothingInversionConstraint(
 				rupSet, 1d, null, constraints);
@@ -228,13 +229,33 @@ public class InversionConstraintImplTests {
 	}
 
 	@Test
-	public void testMFDSubSectNucl() {
-		ArrayList<SectionMFD_constraint> constraints =
+	public void testU3MFDSubSectNucl() {
+		ArrayList<U3SectionMFD_constraint> constraints =
 				FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
-		MFDSubSectNuclInversionConstraint constr = new MFDSubSectNuclInversionConstraint(
+		U3MFDSubSectNuclInversionConstraint constr = new U3MFDSubSectNuclInversionConstraint(
 				rupSet, 1d, constraints);
 		
 		testConstraint(constr);
+	}
+
+	@Test
+	public void testMFDSubSect() {
+		ArrayList<IncrementalMagFreqDist> constraints = new ArrayList<>();
+		
+		for (int s=0; s<numSections; s++) {
+			double minMag = rupSet.getMinMagForSection(s);
+			double maxMag = rupSet.getMaxMagForSection(s);
+			GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(testMFD.getMinX(), testMFD.size(), testMFD.getDelta(),
+					testMFD.getX(testMFD.getClosestXIndex(minMag)), testMFD.getX(testMFD.getClosestXIndex(maxMag)),
+					FaultMomentCalc.getMoment(rupSet.getAreaForSection(s), rupSet.getFaultSectionData(s).getOrigAveSlipRate()*1e3), 1d);
+			constraints.add(UncertainIncrMagFreqDist.constantRelStdDev(gr, 0.1));
+		}
+		for (ConstraintWeightingType weightType : ConstraintWeightingType.values()) {
+			SubSectMFDInversionConstraint constr = new SubSectMFDInversionConstraint(
+					rupSet, 1d, weightType, constraints, true);
+			
+			testConstraint(constr);
+		}
 	}
 	
 	@Test

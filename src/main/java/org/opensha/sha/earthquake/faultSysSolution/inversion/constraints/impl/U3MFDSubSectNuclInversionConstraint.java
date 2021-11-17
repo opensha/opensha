@@ -8,26 +8,26 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Constra
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.utils.SectionMFD_constraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
 
 /**
- * MFD Subsection nucleation MFD constraint - constraints MFDs to conform to
- * an a priori section MFD. In UCERF3, we weakly constrained section MFDs to match
- * UCERF2.
+ * MFD Subsection nucleation constraint used in UCERF3 - constraints MFDs to conform to
+ * an a priori section MFD. In UCERF3, we weakly constrained section MFDs to match UCERF2. Those
+ * MFDs were irregularly spaced in an attempt to deal with empty magnitude bins.
  * 
  * @author Morgan Page & Kevin Milner
  *
  */
-public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
+public class U3MFDSubSectNuclInversionConstraint extends InversionConstraint {
 	
-	public static final String NAME = "MFD Subsection Nucleation";
-	public static final String SHORT_NAME = "MFDSubSectNucl";
+	public static final String NAME = "U3 Subsection Nucleation MFD";
+	public static final String SHORT_NAME = "U3SectNuclMFD";
 	
 	private transient FaultSystemRupSet rupSet;
-	private List<SectionMFD_constraint> constraints;
+	private List<U3SectionMFD_constraint> constraints;
 
-	public MFDSubSectNuclInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<SectionMFD_constraint> constraints) {
+	public U3MFDSubSectNuclInversionConstraint(FaultSystemRupSet rupSet, double weight,
+			List<U3SectionMFD_constraint> constraints) {
 		super(NAME, SHORT_NAME, weight, false, ConstraintWeightingType.NORMALIZED);
 		this.rupSet = rupSet;
 		this.constraints = constraints;
@@ -36,7 +36,7 @@ public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 	@Override
 	public int getNumRows() {
 		int numRows = 0;
-		for (SectionMFD_constraint constraint : constraints)
+		for (U3SectionMFD_constraint constraint : constraints)
 			if (constraint != null)
 				for (int i=0; i<constraint.getNumMags(); i++)
 					if (constraint.getRate(i) > 0)
@@ -53,7 +53,7 @@ public class MFDSubSectNuclInversionConstraint extends InversionConstraint {
 		int rowIndex = startRow;
 		for (int sect=0; sect<numSections; sect++) {
 			
-			SectionMFD_constraint sectMFDConstraint = constraints.get(sect);
+			U3SectionMFD_constraint sectMFDConstraint = constraints.get(sect);
 			if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 			int numMagBins = sectMFDConstraint.getNumMags();
 			List<Integer> rupturesForSect = rupSet.getRupturesForSection(sect);

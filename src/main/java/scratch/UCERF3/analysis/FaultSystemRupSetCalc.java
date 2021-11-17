@@ -64,7 +64,7 @@ import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelOffFaultMoRateData;
 import scratch.UCERF3.utils.RELM_RegionUtils;
-import scratch.UCERF3.utils.SectionMFD_constraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
 import scratch.UCERF3.utils.UCERF2_A_FaultMapper;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.UCERF2_Section_MFDs.UCERF2_Section_MFDsCalc;
@@ -2023,7 +2023,7 @@ public class FaultSystemRupSetCalc {
 		boolean magTooSmall = false;
 		for(int s:indicesForRup) {
 			// lower bin edge for this min mag
-			double lowerBinEdge = SectionMFD_constraint.getLowerEdgeOfFirstBin(modMinMags.getMinMagForSection(s));
+			double lowerBinEdge = U3SectionMFD_constraint.getLowerEdgeOfFirstBin(modMinMags.getMinMagForSection(s));
 			if(rupMag < lowerBinEdge) {	// equal ones would be kept
 				magTooSmall = true;
 			}
@@ -2043,12 +2043,12 @@ public class FaultSystemRupSetCalc {
 	 * @param fltSystRupSet
 	 * @return
 	 */
-	public static ArrayList<SectionMFD_constraint> getGR_InversionSectMFD_Constraints(InversionFaultSystemRupSet fltSystRupSet) {
+	public static ArrayList<U3SectionMFD_constraint> getGR_InversionSectMFD_Constraints(InversionFaultSystemRupSet fltSystRupSet) {
 		
 //		System.out.println("Working on getGR_InversionSectMFD_Constraints(*)");
 
 		double fractGR = 1.0;
-		ArrayList<SectionMFD_constraint> mfdConstraintList = new ArrayList<SectionMFD_constraint>();
+		ArrayList<U3SectionMFD_constraint> mfdConstraintList = new ArrayList<U3SectionMFD_constraint>();
 				
 		
 		for(int s=0;s <fltSystRupSet.getNumSections(); s++) {
@@ -2056,11 +2056,11 @@ public class FaultSystemRupSetCalc {
 			double minMag = fltSystRupSet.getFinalMinMagForSection(s);
 			double maxMag = fltSystRupSet.getMaxMagForSection(s);
 			double moRate = fltSystRupSet.getReducedMomentRate(s); 	// reduced for creep and subseismo ruptures
-			double lowerEdgeOfFirstBin = SectionMFD_constraint.getLowerEdgeOfFirstBin(minMag);
+			double lowerEdgeOfFirstBin = U3SectionMFD_constraint.getLowerEdgeOfFirstBin(minMag);
 				
 			// check for too low maxMag
 			if(maxMag>lowerEdgeOfFirstBin) {
-				mfdConstraintList.add(new SectionMFD_constraint(minMag, maxMag, moRate, fractGR));					
+				mfdConstraintList.add(new U3SectionMFD_constraint(minMag, maxMag, moRate, fractGR));					
 			}
 			else {
 				mfdConstraintList.add(null);
@@ -2074,7 +2074,7 @@ public class FaultSystemRupSetCalc {
 		// test to make sure there are no bins with zero ruptures
 		int[] numCases = new int[10];
 		for(int s=0;s <fltSystRupSet.getNumSections(); s++) {
-			SectionMFD_constraint constr =mfdConstraintList.get(s);
+			U3SectionMFD_constraint constr =mfdConstraintList.get(s);
 			ArrayList<Integer> ithMags = new ArrayList<Integer>();
 			for(int i=0;i<constr.getNumMags();i++)
 				ithMags.add(i);
@@ -2117,7 +2117,7 @@ public class FaultSystemRupSetCalc {
 	 * @param fltSystRupSet
 	 * @return
 	 */
-	public static ArrayList<SectionMFD_constraint> getCharInversionSectMFD_Constraints(FaultSystemRupSet fltSystRupSet) {
+	public static ArrayList<U3SectionMFD_constraint> getCharInversionSectMFD_Constraints(FaultSystemRupSet fltSystRupSet) {
 		U3LogicTreeBranch branch = fltSystRupSet.requireModule(U3LogicTreeBranch.class);
 		AveSlipModule aveSlipModule = fltSystRupSet.requireModule(AveSlipModule.class);
 		ModSectMinMags finalMinMags = fltSystRupSet.requireModule(ModSectMinMags.class);
@@ -2129,7 +2129,7 @@ public class FaultSystemRupSetCalc {
 		HashMap<Integer,Double> totLengthMap = new HashMap<Integer,Double>();
 //		HashMap<Integer,String> parName = new HashMap<Integer,String>();
 
-		ArrayList<SectionMFD_constraint> mfdConstraintList = new ArrayList<SectionMFD_constraint>();
+		ArrayList<U3SectionMFD_constraint> mfdConstraintList = new ArrayList<U3SectionMFD_constraint>();
 				
 		FaultSystemSolution UCERF2_FltSysSol =
 				UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(fltSystRupSet, branch.getValue(FaultModels.class), aveSlipModule);
@@ -2190,10 +2190,10 @@ public class FaultSystemRupSetCalc {
 			
 			double minMag = finalMinMags.getMinMagForSection(s);
 			
-			double lowerEdgeOfFirstBin = SectionMFD_constraint.getLowerEdgeOfFirstBin(minMag);
+			double lowerEdgeOfFirstBin = U3SectionMFD_constraint.getLowerEdgeOfFirstBin(minMag);
 
 			if(UCERF2_A_FaultMapper.wasUCERF2_TypeAFault(data.getParentSectionId())) {
-				 mfdConstraintList.add(new SectionMFD_constraint(minMag, UCERF2_FltSysSol, s));
+				 mfdConstraintList.add(new U3SectionMFD_constraint(minMag, UCERF2_FltSysSol, s));
 //				 mfdConstraintList.add(new SectionMFD_constraint(UCERF2_FltSysSol, s));
 			}
 			else {
@@ -2208,7 +2208,7 @@ public class FaultSystemRupSetCalc {
 					// each subsection gets the same moment rate to keep rates constant along the section
 					// note that we could save memory by creating only one SectionMFD_constraint per parent section
 					double moRate = moRateMap.get(data.getParentSectionId()) / (double)numSectMap.get(data.getParentSectionId());
-					mfdConstraintList.add(new SectionMFD_constraint(minMag, maxMag, moRate, fractGR));					
+					mfdConstraintList.add(new U3SectionMFD_constraint(minMag, maxMag, moRate, fractGR));					
 				}
 				else {
 					mfdConstraintList.add(null);
@@ -2368,9 +2368,9 @@ public class FaultSystemRupSetCalc {
 		double minMag = 5.05;
 		int numMag = 40;
 		double deltaMag =0.1;
-		ArrayList<SectionMFD_constraint> constraints = getCharInversionSectMFD_Constraints(fltSystRupSet);
+		ArrayList<U3SectionMFD_constraint> constraints = getCharInversionSectMFD_Constraints(fltSystRupSet);
 		SummedMagFreqDist summedMFD = new SummedMagFreqDist(minMag, numMag, deltaMag);
-		for(SectionMFD_constraint mfdConstr : constraints) {
+		for(U3SectionMFD_constraint mfdConstr : constraints) {
 			if(mfdConstr != null)
 				summedMFD.addIncrementalMagFreqDist(mfdConstr.getResampledToEventlyDiscrMFD(minMag, numMag, deltaMag));
 		}
@@ -2638,10 +2638,10 @@ public class FaultSystemRupSetCalc {
 						InversionModels.CHAR_CONSTRAINED, sr, SlipAlongRuptureModels.TAPERED, 
 						TotalMag5Rate.RATE_7p9, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3);
 				SummedMagFreqDist mfd = new SummedMagFreqDist(minMag, numMag, deltaMag);
-				ArrayList<SectionMFD_constraint> constraints = getCharInversionSectMFD_Constraints(fltSystRupSet);
+				ArrayList<U3SectionMFD_constraint> constraints = getCharInversionSectMFD_Constraints(fltSystRupSet);
 				for(int i=0; i<constraints.size(); i++) {
 					String parName = fltSystRupSet.getFaultSectionData(i).getParentSectionName();
-					SectionMFD_constraint constr =constraints.get(i);
+					U3SectionMFD_constraint constr =constraints.get(i);
 					if(parName.equals(targetName) && constr != null) {
 						mfd.addIncrementalMagFreqDist(constr.getResampledToEventlyDiscrMFD(minMag, numMag, deltaMag));
 					}
@@ -2714,8 +2714,8 @@ public class FaultSystemRupSetCalc {
 						InversionModels.CHAR_CONSTRAINED, sr, SlipAlongRuptureModels.TAPERED, 
 						TotalMag5Rate.RATE_7p9, MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3);
 				// sum all the char MFD constraints
-				ArrayList<SectionMFD_constraint> constraints = getCharInversionSectMFD_Constraints(fltSystRupSet);
-				for(SectionMFD_constraint mfdConstr : constraints) {
+				ArrayList<U3SectionMFD_constraint> constraints = getCharInversionSectMFD_Constraints(fltSystRupSet);
+				for(U3SectionMFD_constraint mfdConstr : constraints) {
 					if(mfdConstr != null) {
 						ArbIncrementalMagFreqDist resampMFD = mfdConstr.getResampledToEventlyDiscrMFD(minMag, numMag, deltaMag);
 						if(!Double.isNaN(resampMFD.getTotalIncrRate()))
@@ -2807,9 +2807,9 @@ public class FaultSystemRupSetCalc {
 		double minMag = 5.05;
 		int numMag = 40;
 		double deltaMag =0.1;
-		ArrayList<SectionMFD_constraint> constraints = getGR_InversionSectMFD_Constraints(fltSystRupSet);
+		ArrayList<U3SectionMFD_constraint> constraints = getGR_InversionSectMFD_Constraints(fltSystRupSet);
 		SummedMagFreqDist summedMFD = new SummedMagFreqDist(minMag, numMag, deltaMag);
-		for(SectionMFD_constraint mfdConstr : constraints) {
+		for(U3SectionMFD_constraint mfdConstr : constraints) {
 			if(mfdConstr != null)
 				summedMFD.addIncrementalMagFreqDist(mfdConstr.getResampledToEventlyDiscrMFD(minMag, numMag, deltaMag));
 		}

@@ -20,6 +20,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Nonnegati
 import cern.colt.matrix.tdouble.DoubleMatrix1D;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
+import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 
 import com.google.common.base.Preconditions;
@@ -138,7 +139,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		Preconditions.checkArgument(d.length == nRow, "d matrix must be same lenth as nRow of A");
 		Preconditions.checkArgument(initialState.length == nCol, "initial state must be same lenth as nCol of A");
 		
-		if (!(A instanceof SparseCCDoubleMatrix2D))
+		if (!(A instanceof SparseCCDoubleMatrix2D) && !(A instanceof DenseDoubleMatrix2D))
 			System.err.println("WARNING: A matrix is not column-compressed, annealing will be SLOW!");
 		
 		this.A = A;
