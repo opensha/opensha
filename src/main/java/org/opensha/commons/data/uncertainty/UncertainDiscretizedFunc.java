@@ -24,4 +24,9 @@ public interface UncertainDiscretizedFunc extends DiscretizedFunc {
 	
 	UncertainBoundedDiscretizedFunc estimateBounds(UncertaintyBoundType boundType);
 
+	@Override
+	default void scale(double scale) {
+		throw new UnsupportedOperationException("scale not supported by underlying UncertainDiscretizedFunc implementation");
+	}
+
 }
