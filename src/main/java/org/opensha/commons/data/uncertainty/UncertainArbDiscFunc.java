@@ -1,6 +1,9 @@
 package org.opensha.commons.data.uncertainty;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.jfree.data.Range;
@@ -193,19 +196,43 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 		protected void serializeExtras(JsonWriter out, UncertainArbDiscFunc xy) throws IOException {
 			super.serializeExtras(out, xy);
 			
-			out.name("lowerFunc");
-			funcAdapter.write(out, xy.lowerFunc);
+			out.name("lowerBounds");
+			writeDoubleArray(out, xy.lowerFunc);
 			
-			out.name("upperFunc");
-			funcAdapter.write(out, xy.upperFunc);
+			out.name("upperBounds");
+			writeDoubleArray(out, xy.upperFunc);
 			
 			if (xy.boundType != null)
 				out.name("boundType").value(xy.boundType.name());
 			
 			if (xy.stdDevs != null) {
 				out.name("stdDevs");
-				funcAdapter.write(out, xy.stdDevs);
+				writeDoubleArray(out, xy.stdDevs);
 			}
+		}
+		
+		private static void writeDoubleArray(JsonWriter out, DiscretizedFunc func) throws IOException {
+			out.beginArray();
+			for (Point2D pt : func)
+				out.value(pt.getY());
+			out.endArray();
+		}
+		
+		private static List<Double> readDoubleArray(JsonReader in) throws IOException {
+			in.beginArray();
+			List<Double> ret = new ArrayList<>();
+			while (in.hasNext())
+				ret.add(in.nextDouble());
+			in.endArray();
+			return ret;
+		}
+		
+		private static DiscretizedFunc buildFunc(DiscretizedFunc xVals, List<Double> yVals) {
+			Preconditions.checkState(xVals.size() == yVals.size());
+			DiscretizedFunc ret = new ArbitrarilyDiscretizedFunc();
+			for (int i=0; i<yVals.size(); i++)
+				ret.set(xVals.getX(i), yVals.get(i));
+			return ret;
 		}
 
 		@Override
@@ -213,16 +240,29 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 			if (name.equals("stdDevs")) {
 				if (in.peek() == JsonToken.NULL)
 					return null;
-				DiscretizedFunc stdDevs = funcAdapter.read(in);
-				return new Consumer<UncertainArbDiscFunc>() {
+				if (in.peek() == JsonToken.BEGIN_OBJECT) {
+					// deprecated
+					DiscretizedFunc stdDevs = funcAdapter.read(in);
+					return new Consumer<UncertainArbDiscFunc>() {
 
-					@Override
-					public void accept(UncertainArbDiscFunc t) {
-						t.stdDevs = new UnmodifiableDiscrFunc(stdDevs);
-					}
-				};
+						@Override
+						public void accept(UncertainArbDiscFunc t) {
+							t.stdDevs = new UnmodifiableDiscrFunc(stdDevs);
+						}
+					};
+				} else {
+					List<Double> stdDevs = readDoubleArray(in);
+					return new Consumer<UncertainArbDiscFunc>() {
+
+						@Override
+						public void accept(UncertainArbDiscFunc t) {
+							t.stdDevs = new UnmodifiableDiscrFunc(buildFunc(t, stdDevs));
+						}
+					};
+				}
 			}
 			if (name.equals("lowerFunc")) {
+				// deprecated
 				DiscretizedFunc lowerFunc = funcAdapter.read(in);
 				return new Consumer<UncertainArbDiscFunc>() {
 
@@ -233,12 +273,33 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 				};
 			}
 			if (name.equals("upperFunc")) {
+				// deprecated
 				DiscretizedFunc upperFunc = funcAdapter.read(in);
 				return new Consumer<UncertainArbDiscFunc>() {
 
 					@Override
 					public void accept(UncertainArbDiscFunc t) {
 						t.upperFunc = new UnmodifiableDiscrFunc(upperFunc);
+					}
+				};
+			}
+			if (name.equals("lowerBounds")) {
+				List<Double> lowers = readDoubleArray(in);
+				return new Consumer<UncertainArbDiscFunc>() {
+
+					@Override
+					public void accept(UncertainArbDiscFunc t) {
+						t.lowerFunc = new UnmodifiableDiscrFunc(buildFunc(t, lowers));
+					}
+				};
+			}
+			if (name.equals("upperBounds")) {
+				List<Double> uppers = readDoubleArray(in);
+				return new Consumer<UncertainArbDiscFunc>() {
+
+					@Override
+					public void accept(UncertainArbDiscFunc t) {
+						t.upperFunc = new UnmodifiableDiscrFunc(buildFunc(t, uppers));
 					}
 				};
 			}

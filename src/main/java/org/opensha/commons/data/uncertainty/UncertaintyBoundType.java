@@ -78,6 +78,34 @@ public enum UncertaintyBoundType {
 		public BoundedUncertainty estimate(double bestEstimate, double stdDev) {
 			return new BoundedUncertainty(this, bestEstimate-0.5*stdDev, bestEstimate+0.5*stdDev, stdDev);
 		}
+	},
+	/**
+	 * sigma-squared bounds
+	 */
+	SIGMA_SQUARED {
+		@Override
+		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
+			return Math.sqrt(ONE_SIGMA.estimateStdDev(bestEstimate, lowerBound, upperBound));
+		}
+
+		@Override
+		public BoundedUncertainty estimate(double bestEstimate, double stdDev) {
+			return new BoundedUncertainty(this, bestEstimate-stdDev*stdDev, bestEstimate+stdDev*stdDev, stdDev);
+		}
+	},
+	/**
+	 * sigma-squared bounds
+	 */
+	SQRT_SIGMA {
+		@Override
+		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
+			return Math.pow(ONE_SIGMA.estimateStdDev(bestEstimate, lowerBound, upperBound), 2);
+		}
+
+		@Override
+		public BoundedUncertainty estimate(double bestEstimate, double stdDev) {
+			return new BoundedUncertainty(this, bestEstimate-Math.sqrt(stdDev), bestEstimate+Math.sqrt(stdDev), stdDev);
+		}
 	};
 	
 	/**

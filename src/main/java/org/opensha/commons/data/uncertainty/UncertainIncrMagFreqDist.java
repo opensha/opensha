@@ -1,5 +1,6 @@
 package org.opensha.commons.data.uncertainty;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -7,13 +8,16 @@ import java.util.function.Consumer;
 import java.util.function.DoubleBinaryOperator;
 import java.util.function.DoubleUnaryOperator;
 
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.UnmodifiableDiscrFunc;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 @JsonAdapter(UncertainIncrMagFreqDist.Adapter.class)
@@ -134,22 +138,62 @@ public class UncertainIncrMagFreqDist extends IncrementalMagFreqDist implements 
 		protected void serializeExtras(JsonWriter out, UncertainIncrMagFreqDist xy) throws IOException {
 			super.serializeExtras(out, xy);
 			
-			out.name("stdDevs");
-			funcAdapter.write(out, xy.stdDevs);
+			if (xy.stdDevs != null) {
+				out.name("stdDevs");
+				writeDoubleArray(out, xy.stdDevs);
+			}
+		}
+		
+		static void writeDoubleArray(JsonWriter out, DiscretizedFunc func) throws IOException {
+			out.beginArray();
+			for (Point2D pt : func)
+				out.value(pt.getY());
+			out.endArray();
+		}
+		
+		static List<Double> readDoubleArray(JsonReader in) throws IOException {
+			in.beginArray();
+			List<Double> ret = new ArrayList<>();
+			while (in.hasNext())
+				ret.add(in.nextDouble());
+			in.endArray();
+			return ret;
+		}
+		
+		private static EvenlyDiscretizedFunc buildFunc(EvenlyDiscretizedFunc xVals, List<Double> yVals) {
+			Preconditions.checkState(xVals.size() == yVals.size());
+			EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(xVals.getMinX(), xVals.size(), xVals.getDelta());
+			for (int i=0; i<yVals.size(); i++)
+				ret.set(i, yVals.get(i));
+			return ret;
 		}
 
 		@Override
 		protected Consumer<UncertainIncrMagFreqDist> deserializeExtra(JsonReader in, String name) throws IOException {
 			if (name.equals("stdDevs")) {
-				EvenlyDiscretizedFunc stdDevs = funcAdapter.read(in);
-				return new Consumer<UncertainIncrMagFreqDist>() {
+				if (in.peek() == JsonToken.NULL)
+					return null;
+				if (in.peek() == JsonToken.BEGIN_OBJECT) {
+					// deprecated
+					EvenlyDiscretizedFunc stdDevs = funcAdapter.read(in);
+					return new Consumer<UncertainIncrMagFreqDist>() {
 
-					@Override
-					public void accept(UncertainIncrMagFreqDist t) {
-						Preconditions.checkState(t.size() == stdDevs.size());
-						t.stdDevs = stdDevs;
-					}
-				};
+						@Override
+						public void accept(UncertainIncrMagFreqDist t) {
+							Preconditions.checkState(t.size() == stdDevs.size());
+							t.stdDevs = stdDevs;
+						}
+					};
+				} else {
+					List<Double> stdDevs = readDoubleArray(in);
+					return new Consumer<UncertainIncrMagFreqDist>() {
+
+						@Override
+						public void accept(UncertainIncrMagFreqDist t) {
+							t.stdDevs = buildFunc(t, stdDevs);
+						}
+					};
+				}
 			}
 			return super.deserializeExtra(in, name);
 		}

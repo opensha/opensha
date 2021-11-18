@@ -1,6 +1,9 @@
 package org.opensha.commons.data.uncertainty;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.jfree.data.Range;
@@ -10,10 +13,12 @@ import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
+@JsonAdapter(UncertainBoundedIncrMagFreqDist.Adapter.class)
 public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist implements UncertainBoundedDiscretizedFunc {
 
 	private IncrementalMagFreqDist lowerBound;
@@ -106,33 +111,82 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 		protected void serializeExtras(JsonWriter out, UncertainBoundedIncrMagFreqDist xy) throws IOException {
 			super.serializeExtras(out, xy);
 			
-			out.name("stdDevs");
-			funcAdapter.write(out, xy.stdDevs);
+			if (xy.stdDevs != null) {
+				out.name("stdDevs");
+				writeDoubleArray(out, xy.stdDevs);
+			}
 			
-			out.name("lowerFunc");
-			mfdAdapter.write(out, xy.lowerBound);
+			out.name("lowerBounds");
+			writeDoubleArray(out, xy.lowerBound);
 			
-			out.name("upperFunc");
-			mfdAdapter.write(out, xy.upperBound);
+			out.name("upperBounds");
+			writeDoubleArray(out, xy.upperBound);
 			
 			if (xy.boundType != null)
 				out.name("boundType").value(xy.boundType.name());
+		}
+		
+		static void writeDoubleArray(JsonWriter out, DiscretizedFunc func) throws IOException {
+			out.beginArray();
+			for (Point2D pt : func)
+				out.value(pt.getY());
+			out.endArray();
+		}
+		
+		static List<Double> readDoubleArray(JsonReader in) throws IOException {
+			in.beginArray();
+			List<Double> ret = new ArrayList<>();
+			while (in.hasNext())
+				ret.add(in.nextDouble());
+			in.endArray();
+			return ret;
+		}
+		
+		private static IncrementalMagFreqDist buildIncrFunc(IncrementalMagFreqDist xVals, List<Double> yVals) {
+			Preconditions.checkState(xVals.size() == yVals.size());
+			IncrementalMagFreqDist ret = new IncrementalMagFreqDist(xVals.getMinX(), xVals.size(), xVals.getDelta());
+			for (int i=0; i<yVals.size(); i++)
+				ret.set(i, yVals.get(i));
+			return ret;
+		}
+		
+		private static EvenlyDiscretizedFunc buildFunc(EvenlyDiscretizedFunc xVals, List<Double> yVals) {
+			Preconditions.checkState(xVals.size() == yVals.size());
+			EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(xVals.getMinX(), xVals.size(), xVals.getDelta());
+			for (int i=0; i<yVals.size(); i++)
+				ret.set(i, yVals.get(i));
+			return ret;
 		}
 
 		@Override
 		protected Consumer<UncertainBoundedIncrMagFreqDist> deserializeExtra(JsonReader in, String name) throws IOException {
 			if (name.equals("stdDevs")) {
-				EvenlyDiscretizedFunc stdDevs = funcAdapter.read(in);
-				return new Consumer<UncertainBoundedIncrMagFreqDist>() {
+				if (in.peek() == JsonToken.NULL)
+					return null;
+				if (in.peek() == JsonToken.BEGIN_OBJECT) {
+					// deprecated
+					EvenlyDiscretizedFunc stdDevs = funcAdapter.read(in);
+					return new Consumer<UncertainBoundedIncrMagFreqDist>() {
 
-					@Override
-					public void accept(UncertainBoundedIncrMagFreqDist t) {
-						Preconditions.checkState(t.size() == stdDevs.size());
-						t.stdDevs = stdDevs;
-					}
-				};
+						@Override
+						public void accept(UncertainBoundedIncrMagFreqDist t) {
+							Preconditions.checkState(t.size() == stdDevs.size());
+							t.stdDevs = stdDevs;
+						}
+					};
+				} else {
+					List<Double> stdDevs = readDoubleArray(in);
+					return new Consumer<UncertainBoundedIncrMagFreqDist>() {
+
+						@Override
+						public void accept(UncertainBoundedIncrMagFreqDist t) {
+							t.stdDevs = buildFunc(t, stdDevs);
+						}
+					};
+				}
 			}
 			if (name.equals("lowerFunc")) {
+				// deprecated
 				IncrementalMagFreqDist lowerFunc = mfdAdapter.read(in);
 				return new Consumer<UncertainBoundedIncrMagFreqDist>() {
 
@@ -144,6 +198,7 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 				};
 			}
 			if (name.equals("upperFunc")) {
+				// deprecated
 				IncrementalMagFreqDist upperFunc = mfdAdapter.read(in);
 				return new Consumer<UncertainBoundedIncrMagFreqDist>() {
 
@@ -151,6 +206,26 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 					public void accept(UncertainBoundedIncrMagFreqDist t) {
 						Preconditions.checkState(t.size() == upperFunc.size());
 						t.upperBound = upperFunc;
+					}
+				};
+			}
+			if (name.equals("lowerBounds")) {
+				List<Double> lowers = readDoubleArray(in);
+				return new Consumer<UncertainBoundedIncrMagFreqDist>() {
+
+					@Override
+					public void accept(UncertainBoundedIncrMagFreqDist t) {
+						t.lowerBound = buildIncrFunc(t, lowers);
+					}
+				};
+			}
+			if (name.equals("upperBounds")) {
+				List<Double> uppers = readDoubleArray(in);
+				return new Consumer<UncertainBoundedIncrMagFreqDist>() {
+
+					@Override
+					public void accept(UncertainBoundedIncrMagFreqDist t) {
+						t.upperBound = buildIncrFunc(t, uppers);
 					}
 				};
 			}
