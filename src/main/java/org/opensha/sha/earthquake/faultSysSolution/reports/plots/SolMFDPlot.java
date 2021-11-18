@@ -9,7 +9,10 @@ import java.util.Collection;
 import java.util.List;
 
 import org.jfree.data.Range;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
+import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.GriddedRegion;
@@ -113,7 +116,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		
 		for (MFD_Plot plot : plots) {
 			List<IncrementalMagFreqDist> incrFuncs = new ArrayList<>();
-			List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
+			List<DiscretizedFunc> cmlFuncs = new ArrayList<>();
 			List<PlotCurveCharacterstics> incrChars = new ArrayList<>();
 			List<PlotCurveCharacterstics> cmlChars = new ArrayList<>();
 			
@@ -126,18 +129,33 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 				
 				comp.setName(plot.compNames.get(c));
 				incrFuncs.add(comp);
-				cmlFuncs.add(comp.getCumRateDistWithOffset());
+				EvenlyDiscretizedFunc cumulative = comp.getCumRateDistWithOffset();
+				cmlFuncs.add(cumulative);
 				PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, color);
 				incrChars.add(pChar);
 				cmlChars.add(pChar);
 				
 				if (comp instanceof UncertainIncrMagFreqDist) {
-					UncertainIncrMagFreqDist sigmaIncrBounds =
+					UncertainBoundedIncrMagFreqDist sigmaIncrBounds =
 							((UncertainIncrMagFreqDist)comp).estimateBounds(UncertaintyBoundType.ONE_SIGMA);
 					sigmaIncrBounds.setName("± σ");
 					
 					incrFuncs.add(sigmaIncrBounds);
 					incrChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
+							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
+					
+					EvenlyDiscretizedFunc upperCumulative = sigmaIncrBounds.getUpper().getCumRateDistWithOffset();
+					EvenlyDiscretizedFunc lowerCumulative = sigmaIncrBounds.getLower().getCumRateDistWithOffset();
+					Preconditions.checkState(cumulative.size() == upperCumulative.size());
+					for (int i=0; i<cumulative.size(); i++) {
+						upperCumulative.set(i, Math.max(cumulative.getY(i), upperCumulative.getY(i)));
+						lowerCumulative.set(i, Math.max(0, Math.min(cumulative.getY(i), lowerCumulative.getY(i))));
+					}
+					
+					UncertainArbDiscFunc cmlBounded = new UncertainArbDiscFunc(cumulative, lowerCumulative, upperCumulative);
+					cmlBounded.setName("± σ");
+					cmlFuncs.add(cmlBounded);
+					cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
 							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
 				}
 			}
@@ -265,7 +283,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	}
 	
 	private static double addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
-			List<IncrementalMagFreqDist> incrFuncs, List<EvenlyDiscretizedFunc> cmlFuncs,
+			List<IncrementalMagFreqDist> incrFuncs, List<DiscretizedFunc> cmlFuncs,
 			List<PlotCurveCharacterstics> incrChars, List<PlotCurveCharacterstics> cmlChars,
 			IncrementalMagFreqDist defaultMFD) {
 		IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forRegion(
