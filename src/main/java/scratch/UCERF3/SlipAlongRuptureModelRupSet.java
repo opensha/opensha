@@ -80,19 +80,17 @@ public abstract class SlipAlongRuptureModelRupSet extends SlipEnabledRupSet {
 
 		// compute rupture area
 		double[] sectArea = new double[numSects];
-		double[] sectMoRate = new double[numSects];
 		int index=0;
 		for(Integer sectID: sectionIndices) {	
 			//				FaultSectionPrefData sectData = getFaultSectionData(sectID);
 			//				sectArea[index] = sectData.getTraceLength()*sectData.getReducedDownDipWidth()*1e6;	// aseismicity reduces area; 1e6 for sq-km --> sq-m
 			sectArea[index] = getAreaForSection(sectID);
-			sectMoRate[index] = FaultMomentCalc.getMoment(sectArea[index], getSlipRateForSection(sectID));
 			index += 1;
 		}
 
 		double aveSlip = getAveSlipForRup(rthRup); // in meters
 		
-		return SlipAlongRuptureModels.calcSlipOnSectionsForRup(this, rthRup, slipAlongModel, sectArea, sectMoRate, aveSlip);
+		return SlipAlongRuptureModels.calcSlipOnSectionsForRup(this, rthRup, slipAlongModel, sectArea, aveSlip);
 	}
 
 }

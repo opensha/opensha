@@ -51,7 +51,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 			index += 1;
 		}
 		
-		return calcSlipOnSectionsForRup(rupSet, rthRup, sectArea, sectMoRate, aveSlip);
+		return calcSlipOnSectionsForRup(rupSet, rthRup, sectArea, aveSlip);
 	}
 	
 	/**
@@ -115,7 +115,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 	 * @return slip (SI untis: m) on each section for the rth rupture
 	 */
 	public abstract double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet,
-			int rthRup, double[] sectArea, double[] sectMoRate, double aveSlip);
+			int rthRup, double[] sectArea, double aveSlip);
 	
 	private static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule {
 		
@@ -141,8 +141,13 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 		}
 
 		@Override
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup, double aveSlip) {
+			return calcUniformSlipAlong(rupSet.getSectionsIndicesForRup(rthRup).size(), aveSlip);
+		}
+
+		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
-				double[] sectArea, double[] sectMoRate, double aveSlip) {
+				double[] sectArea, double aveSlip) {
 			return calcUniformSlipAlong(sectArea.length, aveSlip);
 		}
 		
@@ -172,8 +177,13 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 		}
 
 		@Override
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup, double aveSlip) {
+			return calcUniformSlipAlong(rupSet.getSectionsIndicesForRup(rthRup).size(), aveSlip);
+		}
+
+		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
-				double[] sectArea, double[] sectMoRate, double aveSlip) {
+				double[] sectArea, double aveSlip) {
 			return calcUniformSlipAlong(sectArea.length, aveSlip);
 		}
 	}
@@ -191,7 +201,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 
 		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
-				double[] sectArea, double[] sectMoRate, double aveSlip) {
+				double[] sectArea, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			// note that the ave slip is partitioned by area, not length; this is so the final model is moment balanced.
@@ -253,8 +263,16 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 
 		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
-				double[] sectArea, double[] sectMoRate, double aveSlip) {
+				double[] sectArea, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
+			
+			// compute rupture area
+			double[] sectMoRate = new double[sectArea.length];
+			int index=0;
+			for(Integer sectID : rupSet.getSectionsIndicesForRup(rthRup)) {	
+				sectMoRate[index] = FaultMomentCalc.getMoment(sectArea[index], rupSet.getSlipRateForSection(sectID));
+				index += 1;
+			}
 			
 			List<Integer> sectsInRup = rupSet.getSectionsIndicesForRup(rthRup);
 			double totMoRateForRup = 0;
@@ -282,7 +300,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 
 		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
-				double[] sectArea, double[] sectMoRate, double aveSlip) {
+				double[] sectArea, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			// get mean weights
@@ -307,7 +325,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 			for (int i=0; i<meanSALs.size(); i++) {
 				double weight = meanWeights.get(i);
 				double[] subSlips = meanSALs.get(i).getModel().calcSlipOnSectionsForRup(
-						rupSet, rthRup, sectArea, sectMoRate, aveSlip);
+						rupSet, rthRup, sectArea, aveSlip);
 
 				for (int j=0; j<slipsForRup.length; j++)
 					slipsForRup[j] += weight*subSlips[j];

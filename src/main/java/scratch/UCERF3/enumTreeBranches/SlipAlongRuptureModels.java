@@ -65,8 +65,7 @@ public enum SlipAlongRuptureModels implements U3LogicTreeBranchNode<SlipAlongRup
 	}
 
 	public static double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
-			SlipAlongRuptureModels slipModelType,
-			double[] sectArea, double[] sectMoRate, double aveSlip) {
-		return slipModelType.getModel().calcSlipOnSectionsForRup(rupSet, rthRup, sectArea, sectMoRate, aveSlip);
+			SlipAlongRuptureModels slipModelType, double[] sectArea, double aveSlip) {
+		return slipModelType.getModel().calcSlipOnSectionsForRup(rupSet, rthRup, sectArea, aveSlip);
 	}
 }
