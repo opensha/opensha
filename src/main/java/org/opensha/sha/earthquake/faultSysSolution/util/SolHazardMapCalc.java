@@ -526,7 +526,7 @@ public class SolHazardMapCalc {
 		ops.addOption(inputOption);
 		
 		Option compOption = new Option("cf", "comp-file", true, "Comparison solution file");
-		compOption.setRequired(true);
+		compOption.setRequired(false);
 		ops.addOption(compOption);
 		
 		Option outputOption = new Option("od", "output-dir", true, "Output directory");
@@ -534,7 +534,7 @@ public class SolHazardMapCalc {
 		ops.addOption(outputOption);
 		
 		Option gridSpacingOption = new Option("gs", "grid-spacing", true, "Grid spacing in degrees");
-		gridSpacingOption.setRequired(true);
+		gridSpacingOption.setRequired(false);
 		ops.addOption(gridSpacingOption);
 		
 		Option recalcOption = new Option("rc", "recalc", false, "Flag to force recalculation (ignore existing curves files)");
@@ -542,7 +542,7 @@ public class SolHazardMapCalc {
 		ops.addOption(recalcOption);
 		
 		Option periodsOption = new Option("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
-		periodsOption.setRequired(true);
+		periodsOption.setRequired(false);
 		ops.addOption(periodsOption);
 		
 		Option gmpeOption = new Option("g", "gmpe", true, "GMPE name. Default is "+AttenRelRef.ASK_2014.name());
