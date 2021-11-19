@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.lang3.ClassUtils;
 import org.opensha.commons.data.Named;
@@ -52,7 +53,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	
 	public ModuleContainer() {
 		modules = new ArrayList<>();
-		mappings = new HashMap<>();
+		mappings = new ConcurrentHashMap<>();
 		availableModules = new ArrayList<>();
 		availableMappings = new HashMap<>();
 	}
@@ -78,7 +79,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @param clases
 	 * @return true if a module exists for each of the given classes, false otherwise
 	 */
-	public synchronized boolean hasAllModules(Collection<Class<? extends E>> classes) {
+	public boolean hasAllModules(Collection<Class<? extends E>> classes) {
 		boolean hasAll = true;
 		for (Class<? extends E> clazz : classes) {
 			if (!hasModule(clazz)) {
@@ -130,13 +131,18 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @return module mapping the given class, or null if no match
 	 */
 	@SuppressWarnings("unchecked")
-	public synchronized <M extends E> M getModule(Class<M> clazz, boolean loadAvailable) {
+	public <M extends E> M getModule(Class<M> clazz, boolean loadAvailable) {
 		E module = mappings.get(clazz);
-		if (loadAvailable && module == null && !availableMappings.isEmpty()) {
-			// see if we have it, and then load it lazily
-			Callable<E> call = availableMappings.get(clazz);
-			if (call != null && loadAvailableModule(call))
-				return getModule(clazz);
+		if (loadAvailable && module == null) {
+			// need to synchronize here as another thread could otherwise try to lead in this module
+			synchronized (this) {
+				if (!availableMappings.isEmpty()) {
+					// see if we have it, and then load it lazily
+					Callable<E> call = availableMappings.get(clazz);
+					if (call != null && loadAvailableModule(call))
+						return getModule(clazz);
+				}
+			}
 		}
 		return (M)module;
 	}
