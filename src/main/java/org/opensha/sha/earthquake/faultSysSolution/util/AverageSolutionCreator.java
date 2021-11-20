@@ -163,6 +163,8 @@ public class AverageSolutionCreator {
 		avgSol.addModule(new IndividualSolutionRates(avgSol, ratesList));
 		
 		String info = "Average of "+inputs.length+" solutions, generated with 'fst_solution_averager.sh'";
+		if (inputs[0].hasModule(InfoModule.class))
+			info += "\n\nInfo from first input solution:\n\n"+inputs[0].getModule(InfoModule.class).getText();
 		avgSol.addModule(new InfoModule(info));
 		
 		avgSol.write(outputFile);
