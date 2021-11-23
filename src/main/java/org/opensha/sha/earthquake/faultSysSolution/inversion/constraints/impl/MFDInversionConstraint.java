@@ -63,6 +63,14 @@ public class MFDInversionConstraint extends InversionConstraint {
 		this.excludeRupIndexes = excludeRupIndexes;
 	}
 	
+	public List<? extends IncrementalMagFreqDist> getMFDs() {
+		return mfds;
+	}
+
+	public HashSet<Integer> getExcludeRupIndexes() {
+		return excludeRupIndexes;
+	}
+
 	/**
 	 * Calculates the number of rows needed for MFD constraints, ignoring any bins that are above or below the
 	 * magnitude range of the rupture set.
