@@ -1590,6 +1590,42 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			return this;
 		}
 		
+		private void checkBuildRakesAndAreas() {
+			if (this.rakes == null || this.rupAreas == null) {
+				double[] rakes = this.rakes;
+				double[] rupAreas = this.rupAreas;
+				int numRups = sectionForRups.size();
+				if (rakes == null) {
+					rakes = new double[numRups];
+					for (int r=0; r<numRups; r++)
+						rakes[r] = Double.NaN;
+				}
+				if (rupAreas == null) {
+					rupAreas =new double[numRups];
+					for (int r=0; r<numRups; r++)
+						rupAreas[r] = Double.NaN;
+				}
+				for (int r=0; r<numRups; r++) {
+					List<Double> mySectAreas = new ArrayList<>();
+					List<Double> mySectRakes = new ArrayList<>();
+					double totArea = 0d;
+					for (int s : sectionForRups.get(r)) {
+						FaultSection sect = faultSectionData.get(s);
+						double area = sect.getArea(true);	// sq-m
+						totArea += area;
+						mySectAreas.add(area);
+						mySectRakes.add(sect.getAveRake());
+					}
+					if (Double.isNaN(rupAreas[r]))
+						rupAreas[r] = totArea;
+					if (Double.isNaN(rakes[r]))
+						rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(mySectAreas, mySectRakes));
+				}
+				this.rakes = rakes;
+				this.rupAreas = rupAreas;
+			}
+		}
+		
 		/**
 		 * Sets magnitudes from the given UCERF3 scaling relationships enum
 		 * @param scale
@@ -1597,6 +1633,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		 */
 		public Builder forScalingRelationship(RupSetScalingRelationship scale) {
 			this.mags = new double[sectionForRups.size()];
+			checkBuildRakesAndAreas();
 			for (int r=0; r<mags.length; r++) {
 				double totArea = 0d;
 				double totOrigArea = 0;
@@ -1608,7 +1645,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					totLength += sect.getTraceLength()*1e3;	// km --> m
 				}
 				double origDDW = totOrigArea/totLength;
-				mags[r] = scale.getMag(totArea, origDDW);
+				mags[r] = scale.getMag(totArea, origDDW, rakes[r]);
 			}
 			modules.add(new ModuleBuilder() {
 				
@@ -1725,43 +1762,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			return this;
 		}
 		
+//		private 
+		
 		public FaultSystemRupSet build() {
 			return build(false);
 		}
 		
 		public FaultSystemRupSet build(boolean round) {
 			Preconditions.checkNotNull(mags, "Must set magnitudes");
-			int numRups = sectionForRups.size();
-			double[] rakes = this.rakes;
-			double[] rupAreas = this.rupAreas;
-			if (rakes == null || rupAreas == null) {
-				if (rakes == null) {
-					rakes = new double[numRups];
-					for (int r=0; r<numRups; r++)
-						rakes[r] = Double.NaN;
-				}
-				if (rupAreas == null) {
-					rupAreas =new double[numRups];
-					for (int r=0; r<numRups; r++)
-						rupAreas[r] = Double.NaN;
-				}
-				for (int r=0; r<numRups; r++) {
-					List<Double> mySectAreas = new ArrayList<>();
-					List<Double> mySectRakes = new ArrayList<>();
-					double totArea = 0d;
-					for (int s : sectionForRups.get(r)) {
-						FaultSection sect = faultSectionData.get(s);
-						double area = sect.getArea(true);	// sq-m
-						totArea += area;
-						mySectAreas.add(area);
-						mySectRakes.add(sect.getAveRake());
-					}
-					if (Double.isNaN(rupAreas[r]))
-						rupAreas[r] = totArea;
-					if (Double.isNaN(rakes[r]))
-						rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(mySectAreas, mySectRakes));
-				}
-			}
+			checkBuildRakesAndAreas();
 			
 			double[] rupLengths = this.rupLengths;
 			if (rupLengths == null)

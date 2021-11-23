@@ -411,7 +411,7 @@ public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
 				rupLength[rupIndex] = totLength;
 				rupRake[rupIndex] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(areas, rakes));
 				double origDDW = totOrigArea/totLength;
-				double mag = scalingRelationship.getMag(totArea, origDDW);
+				double mag = scalingRelationship.getMag(totArea, origDDW, rupRake[rupIndex]);
 				rupMeanMag[rupIndex] = mag;
 				rupMeanMoment[rupIndex] = MagUtils.magToMoment(rupMeanMag[rupIndex]);
 				// the above is meanMoment in case we add aleatory uncertainty later (aveMoment needed elsewhere); 

@@ -1859,7 +1859,7 @@ public class FaultSystemRupSetCalc {
 				if(areaDiff>0.01)
 					throw new RuntimeException("Areas differ: "+firstArea+"\t"+area+"; widths are:  "+firstWidth+"\t"+width);
 				cumSectArea += area;
-				double mag = scalingRel.getMag(cumSectArea*1e6, width*1e3);
+				double mag = scalingRel.getMag(cumSectArea*1e6, width*1e3, sectDataList.get(s).getAveRake());
 				System.out.print("\t"+(float)mag+"\t"+(float)(cumSectArea*1e6));
 				prevParSectName = parSectName;				
 			}
@@ -2201,7 +2201,7 @@ public class FaultSystemRupSetCalc {
 				double area = totAreaMap.get(data.getParentSectionId());	// km-sq
 				double length = totLengthMap.get(data.getParentSectionId());
 				double width = area/length;	// km
-				double maxMag = scalingRel.getMag(area*1e6, width*1e3);
+				double maxMag = scalingRel.getMag(area*1e6, width*1e3, data.getAveRake());
 				
 				// check for too low maxMag
 				if(maxMag>lowerEdgeOfFirstBin) {
