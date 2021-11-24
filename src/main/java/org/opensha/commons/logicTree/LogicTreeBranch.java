@@ -101,6 +101,21 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	}
 	
 	/**
+	 * Throws an {@link IllegalStateException} if a value matching the type is not present, otherwise returns that value
+	 * 
+	 * @param <T>
+	 * @param clazz
+	 * @return
+	 */
+	@SuppressWarnings("unchecked") // it is checked through isAssignableFrom
+	public <T extends LogicTreeNode> T requireValue(Class<? extends T> clazz) {
+		for (LogicTreeNode node : values)
+			if (node != null && clazz.isAssignableFrom(node.getClass()))
+				return (T)node;
+		throw new IllegalStateException("Missing required type: "+clazz.getName());
+	}
+	
+	/**
 	 * Gets the branch value matching the given type, or null if none exist
 	 * 
 	 * @param <T>
