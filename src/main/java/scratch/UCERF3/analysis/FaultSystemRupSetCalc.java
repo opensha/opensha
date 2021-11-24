@@ -26,6 +26,7 @@ import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -2118,7 +2119,7 @@ public class FaultSystemRupSetCalc {
 	 * @return
 	 */
 	public static ArrayList<U3SectionMFD_constraint> getCharInversionSectMFD_Constraints(FaultSystemRupSet fltSystRupSet) {
-		U3LogicTreeBranch branch = fltSystRupSet.requireModule(U3LogicTreeBranch.class);
+		LogicTreeBranch<?> branch = fltSystRupSet.requireModule(LogicTreeBranch.class);
 		AveSlipModule aveSlipModule = fltSystRupSet.requireModule(AveSlipModule.class);
 		ModSectMinMags finalMinMags = fltSystRupSet.requireModule(ModSectMinMags.class);
 		double fractGR = 0.33333;
