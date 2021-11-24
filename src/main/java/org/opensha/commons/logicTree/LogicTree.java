@@ -1,6 +1,12 @@
 package org.opensha.commons.logicTree;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,8 +19,10 @@ import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
@@ -213,6 +221,19 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		LogicTree<E> tree = adapter.read(in);
 		this.levels = tree.levels;
 		this.branches = tree.branches;
+	}
+	
+	public void write(File jsonFile) throws IOException {
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		gson.toJson(this, LogicTree.class, writer);
+		writer.close();
+	}
+	
+	public static LogicTree<LogicTreeNode> read(File jsonFile) throws IOException {
+		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		return gson.fromJson(reader, TypeToken.getParameterized(LogicTree.class, LogicTreeNode.class).getType());
 	}
 	
 	public LogicTree<E> sorted(Comparator<? super LogicTreeBranch<E>> comparator) {
