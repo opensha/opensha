@@ -298,8 +298,8 @@ public class FaultPolyMgr implements Iterable<Area>, PolygonFaultGridAssociation
 		for (Integer nodeIdx : nodeIdxs) {
 			Area nodeArea = region.areaForIndex(nodeIdx); // should be singular
 			nodeArea.intersect(ssArea);
-			if (nodeArea.isEmpty()) continue; // no overlap; eliminate
 			nodeArea = SectionPolygons.cleanBorder(nodeArea);
+			if (nodeArea.isEmpty()) continue; // no overlap; eliminate
 			double faultExtent = SectionPolygons.getExtent(nodeArea);
 			double ratio = faultExtent / nodeExtents.get(nodeIdx);
 			newNodeIdxs.add(nodeIdx);
