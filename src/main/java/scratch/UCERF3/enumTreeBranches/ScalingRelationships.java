@@ -263,12 +263,14 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 
 		// units of the input dimensions are in m or m^2
 		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+			tmg_sub_magArea.setRake(aveRake);
 			double mag = tmg_sub_magArea.getMedianMag(area * 1e-6);
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 
 		public double getMag(double area, double origWidth, double aveRake) {
+			tmg_sub_magArea.setRake(aveRake);
 			return tmg_sub_magArea.getMedianMag(area * 1e-6);
 		}
 
@@ -290,12 +292,14 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 
 		// units of the input dimensions are in m or m^2
 		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+			tmg_cru_magArea.setRake(aveRake);
 			double mag = tmg_cru_magArea.getMedianMag(area * 1e-6);
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 
 		public double getMag(double area, double origWidth, double aveRake) {
+			tmg_cru_magArea.setRake(aveRake);
 			return tmg_cru_magArea.getMedianMag(area * 1e-6);
 		}
 
