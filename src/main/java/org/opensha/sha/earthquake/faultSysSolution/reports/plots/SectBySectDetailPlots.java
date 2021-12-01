@@ -173,6 +173,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				try {
 					subDirName = futures.get(parentName).get();
 				} catch (InterruptedException | ExecutionException e) {
+					try {
+						exec.shutdown();
+					} catch (Exception e2) {}
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 				
