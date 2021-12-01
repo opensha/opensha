@@ -43,7 +43,6 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private ImmutableList<LogicTreeBranch<E>> branches;
 	
-	@SuppressWarnings("unused")
 	private LogicTree() {
 		// for serialization
 	}
@@ -111,11 +110,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * @return a subset of this logic tree where each branch contains all of the given values
 	 */
 	@SafeVarargs
-	public final LogicTree<E> matchingAll(E... values) {
+	public final LogicTree<E> matchingAll(LogicTreeNode... values) {
 		ImmutableList.Builder<LogicTreeBranch<E>> matching = ImmutableList.builder();
 		for (LogicTreeBranch<E> branch : branches) {
 			boolean matches = true;
-			for (E value : values) {
+			for (LogicTreeNode value : values) {
 				if (!branch.hasValue(value)) {
 					matches = false;
 					break;
@@ -136,11 +135,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * @return a subset of this logic tree where each branch contains at least one of the given values
 	 */
 	@SafeVarargs
-	public final LogicTree<E> matchingAny(E... values) {
+	public final LogicTree<E> matchingAny(LogicTreeNode... values) {
 		ImmutableList.Builder<LogicTreeBranch<E>> matching = ImmutableList.builder();
 		for (LogicTreeBranch<E> branch : branches) {
 			boolean matches = false;
-			for (E value : values) {
+			for (LogicTreeNode value : values) {
 				if (branch.hasValue(value)) {
 					matches = true;
 					break;
