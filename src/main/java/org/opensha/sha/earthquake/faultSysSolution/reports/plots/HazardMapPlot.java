@@ -234,7 +234,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 					
 					String pDiffLabel = ratioLabel;
 					File pDiffMap = calc.plotMap(resourcesDir, prefix+"_pDiff", pDiffXYZ, pDiffCPT, " ",
-							pDiffLabel+", % Difference");
+							pDiffLabel+", % Difference", true);
 					table.addColumn("![Percent Difference Map]("+relPathToResources+"/"+pDiffMap.getName()+")");
 					table.finalizeLine();
 					

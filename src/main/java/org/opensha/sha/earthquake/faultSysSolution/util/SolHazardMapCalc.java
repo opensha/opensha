@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.util;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
@@ -12,7 +13,9 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
@@ -341,6 +344,11 @@ public class SolHazardMapCalc {
 	
 	public File plotMap(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel) throws IOException {
+		return plotMap(outputDir, prefix, xyz, cpt, title, zLabel, false);
+	}
+	
+	public File plotMap(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
+			String title, String zLabel, boolean diffStats) throws IOException {
 		synchronized (this) {
 			if (extraFuncs == null) {
 				List<XY_DataSet> extraFuncs = new ArrayList<>();
@@ -396,6 +404,49 @@ public class SolHazardMapCalc {
 		Range latRange = new Range(
 				Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
 				Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		
+		if (diffStats) {
+			// these are percent differences, add stats
+			double min = Double.POSITIVE_INFINITY;
+			double max = Double.NEGATIVE_INFINITY;
+			int numWithin5 = 0;
+			int numWithin10 = 0;
+			
+			for (int i=0; i<xyz.size(); i++) {
+				double val = xyz.get(i);
+				if (Double.isFinite(val)) {
+					min = Math.min(min, val);
+					max = Math.max(max, val);
+				}
+				if (val >= -5d && val <= 5d)
+					numWithin5++;
+				if (val >= -10d && val <= 10d)
+					numWithin10++;
+			}
+			
+			String[] labels = {
+					"Range: ["+oDF.format(min)+"%,"+oDF.format(max)+"%]",
+					"Within 5%: "+percentDF.format((double)numWithin5/(double)xyz.size()),
+					"Within 10%: "+percentDF.format((double)numWithin10/(double)xyz.size())
+			};
+			double yDiff = latRange.getLength();
+			if (yDiff > 10)
+				yDiff /= 30d;
+			else if (yDiff > 5d)
+				yDiff /= 15d;
+			else
+				yDiff /= 10d;
+			double y = latRange.getUpperBound() - 0.5*yDiff;
+			for (String label : labels) {
+				double x = lonRange.getUpperBound();
+				XYTextAnnotation ann = new XYTextAnnotation(label+"  ", x, y);
+				ann.setTextAnchor(TextAnchor.TOP_RIGHT);
+				ann.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+				y -= yDiff;
+				spec.addPlotAnnotation(ann);
+			}
+		}
+		
 		gp.drawGraphPanel(spec, false, false, lonRange, latRange);
 		
 		double maxSpan = Math.max(lonRange.getLength(), latRange.getLength());
