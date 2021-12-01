@@ -146,7 +146,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 * @param clazz
 	 * @return
 	 */
-	public boolean hasValue(E value) {
+	public boolean hasValue(LogicTreeNode value) {
 		for (LogicTreeNode node : values)
 			if (node != null && node.equals(value))
 				return true;
@@ -182,6 +182,13 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 */
 	public E getValue(int index) {
 		return values.get(index);
+	}
+	
+	/**
+	 * @return immutable list of levels for this branch (including any that are unpopulated)
+	 */
+	public ImmutableList<LogicTreeLevel<? extends E>> getLevels() {
+		return levels;
 	}
 	
 	/**
