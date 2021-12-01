@@ -46,10 +46,17 @@ public class AnnealingProgress implements CSV_BackedModule {
 		energies = new ArrayList<>();
 		numNonZeros = new ArrayList<>();
 	}
+	
+	public AnnealingProgress(CSVFile<String> csv) {
+		this();
+		initFromCSV(csv);
+	}
+	
+	public static final String PROGRESS_FILE_NAME = "annealing_progress.csv";
 
 	@Override
 	public String getFileName() {
-		return "annealing_progress.csv";
+		return PROGRESS_FILE_NAME;
 	}
 
 	@Override

@@ -101,12 +101,10 @@ class UCERF3FileConverter {
 		// write full branch model
 		System.out.println("Writing full model files with "+cfss.getBranches().size()+" branches");
 		SolutionLogicTree solTreeModule = new SolutionLogicTree.UCERF3(cfss);
-		ModuleArchive<OpenSHA_Module> compoundArchive = new ModuleArchive<>();
-		compoundArchive.addModule(solTreeModule);
 		solTreeModule.setSerializeGridded(false);
-		compoundArchive.write(new File(outputDir, "full_logic_tree.zip"));
+		solTreeModule.write(new File(outputDir, "full_logic_tree.zip"));
 		solTreeModule.setSerializeGridded(true);
-		compoundArchive.write(new File(outputDir, "full_logic_tree_with_gridded.zip"));
+		solTreeModule.write(new File(outputDir, "full_logic_tree_with_gridded.zip"));
 //		ModuleArchive<OpenSHA_Module> compoundArchive = new ModuleArchive<>(
 //				new File(outputDir, "full_modular_compound_sol.zip"), SolutionLogicTree.class);
 //		SolutionLogicTree solTreeModule = compoundArchive.getModule(SolutionLogicTree.class);

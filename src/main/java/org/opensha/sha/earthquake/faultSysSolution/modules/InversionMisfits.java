@@ -13,6 +13,7 @@ import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 
 import com.google.common.base.Preconditions;
 
@@ -88,6 +89,26 @@ public class InversionMisfits implements ArchivableModule {
 				ret[i] /= range.weight;
 		}
 		return ret;
+	}
+	
+	public InversionMisfitStats getMisfitStats() {
+		List<MisfitStats> stats = new ArrayList<>();
+		if (constraintRanges == null) {
+			if (misfits != null)
+				stats.add(getMisfitStats(new ConstraintRange("Equality", "Eq", 0, misfits.length, false, Double.NaN, null)));
+			if (misfits_ineq != null)
+				stats.add(getMisfitStats(new ConstraintRange("Inequality", "Ineq", 0, misfits_ineq.length, true, Double.NaN, null)));
+		} else {
+			for (ConstraintRange range : constraintRanges)
+				stats.add(getMisfitStats(range));
+		}
+		return new InversionMisfitStats(stats);
+	}
+	
+	public MisfitStats getMisfitStats(ConstraintRange range) {
+		double[] misfits = getMisfits(range, true);
+		
+		return new MisfitStats(misfits, range);
 	}
 	
 	private double[] getInRange(ConstraintRange range, double[] array) {

@@ -224,6 +224,17 @@ public class StandardFaultSysModulesTest {
 
 	@Test
 	public void testInversionMisfits() throws IOException {
+		InversionMisfits misfits = fakeMisfits();
+		testModuleSerialization(demoSol.getArchive(), demoSol, misfits, InversionMisfits.class);
+	}
+
+	@Test
+	public void testInversionMisfitStatss() throws IOException {
+		InversionMisfitStats misfits = fakeMisfits().getMisfitStats();
+		testModuleSerialization(demoSol.getArchive(), demoSol, misfits, InversionMisfitStats.class);
+	}
+	
+	private static InversionMisfits fakeMisfits() {
 		int rows = 1000;
 		List<ConstraintRange> ranges = new ArrayList<>();
 		double[] d=null, d_ineq=null, misfit=null, misfit_ineq=null;
@@ -254,8 +265,7 @@ public class StandardFaultSysModulesTest {
 				myMisfit[i] = r.nextGaussian();
 			}
 		}
-		InversionMisfits misfits = new InversionMisfits(ranges, misfit, d, misfit_ineq, d_ineq);
-		testModuleSerialization(demoSol.getArchive(), demoSol, misfits, InversionMisfits.class);
+		return new InversionMisfits(ranges, misfit, d, misfit_ineq, d_ineq);
 	}
 	
 	@Test

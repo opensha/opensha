@@ -618,7 +618,9 @@ public class Inversions {
 		if (inputs.hasInitialSolution())
 			sol.addModule(new InitialSolution(inputs.getInitialSolution()));
 		sol.addModule(config);
-		sol.addModule(new InversionMisfits(sa));
+		InversionMisfits misfits = new InversionMisfits(sa);
+		sol.addModule(misfits);
+		sol.addModule(misfits.getMisfitStats());
 		if (info != null)
 			sol.setInfoString(info);
 		

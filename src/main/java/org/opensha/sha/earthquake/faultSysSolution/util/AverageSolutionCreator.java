@@ -29,11 +29,22 @@ public class AverageSolutionCreator {
 		
 		File outputFile = new File(args[0]);
 		
-		FaultSystemSolution[] inputs = new FaultSystemSolution[args.length-1];
+		List<File> inputFiles = new ArrayList<>();
+		for (int i=1; i<args.length; i++) {
+			File file = new File(args[i]);
+			Preconditions.checkArgument(file.exists(), "Input solution doesn't exist: %s", file.getAbsolutePath());
+			inputFiles.add(file);
+		}
+		
+		average(outputFile, inputFiles);
+	}
+	
+	public static void average(File outputFile, List<File> inputFiles) throws IOException {
+		FaultSystemSolution[] inputs = new FaultSystemSolution[inputFiles.size()];
 		
 		FaultSystemRupSet refRupSet = null;
 		for (int i=0; i<inputs.length; i++) {
-			File file = new File(args[i+1]);
+			File file = inputFiles.get(i);
 			Preconditions.checkArgument(file.exists(), "Input solution doesn't exist: %s", file.getAbsolutePath());
 			
 			if (i >= 10) {
@@ -48,6 +59,23 @@ public class AverageSolutionCreator {
 			} else {
 				inputs[i] = FaultSystemSolution.load(file);
 			}
+			if (i == 0) {
+				refRupSet = inputs[i].getRupSet();
+			} else {
+				Preconditions.checkState(refRupSet.isEquivalentTo(inputs[i].getRupSet()),
+						"Solutions don't all use the same ruptures, cannot average");
+			}
+		}
+		
+		FaultSystemSolution avgSol = buildAverage(inputs);
+		
+		avgSol.write(outputFile);
+	}
+	
+	public static FaultSystemSolution buildAverage(FaultSystemSolution... inputs) {
+		Preconditions.checkState(inputs.length > 1);
+		FaultSystemRupSet refRupSet = null;
+		for (int i=0; i<inputs.length; i++) {
 			if (i == 0) {
 				refRupSet = inputs[i].getRupSet();
 			} else {
@@ -167,7 +195,7 @@ public class AverageSolutionCreator {
 			info += "\n\nInfo from first input solution:\n\n"+inputs[0].getModule(InfoModule.class).getText();
 		avgSol.addModule(new InfoModule(info));
 		
-		avgSol.write(outputFile);
+		return avgSol;
 	}
 	
 	private static boolean equivalent(double[] vals1, double[] vals2) {

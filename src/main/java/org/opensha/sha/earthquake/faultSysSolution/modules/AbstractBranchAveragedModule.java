@@ -68,9 +68,14 @@ public abstract class AbstractBranchAveragedModule implements ArchivableModule {
 	protected String getBranchFileName(LogicTreeBranch<?> branch, String prefix, String fileName) {
 		List<? extends LogicTreeLevel<?>> mappingLevels;
 		synchronized (levelsCache) {
-			mappingLevels = levelsCache.get(fileName);
-			if (mappingLevels == null) {
+			if (levelsCache.containsKey(fileName)) {
+				mappingLevels = levelsCache.get(fileName);
+			} else {
 				mappingLevels = getLevelsAffectingFile(fileName);
+				if (mappingLevels == null) {
+					System.out.println("no levels specified for file '"+fileName+"', assuming it's affected by all levels");
+					mappingLevels = logicTree.getLevels();
+				}
 				levelsCache.put(fileName, mappingLevels);
 			}
 		}
