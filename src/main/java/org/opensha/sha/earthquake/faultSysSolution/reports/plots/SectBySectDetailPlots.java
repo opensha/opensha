@@ -169,30 +169,42 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				futures.put(parentName, exec.submit(linkCallsMap.get(parentName)));
 			
 			for (String parentName : futures.keySet()) {
-				String subDirName;
+				String link;
 				try {
-					subDirName = futures.get(parentName).get();
-				} catch (InterruptedException | ExecutionException e) {
+					String subDirName = futures.get(parentName).get();
+					link = relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName;
+				} catch (ExecutionException | RuntimeException e) { 
+					System.err.println("Error processing SectBySectDetailPlots plot for parent fault: " +parentName);
+					e.printStackTrace();
+					link = null;
+					System.err.flush();
+				} catch (InterruptedException e) {
 					try {
 						exec.shutdown();
 					} catch (Exception e2) {}
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 				
-				linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
+				linksMap.put(parentName, link);
 			}
 			
 			exec.shutdown();
 		} else {
 			for (String parentName : linkCallsMap.keySet()) {
-				String subDirName;
+				String link;
 				try {
-					subDirName = linkCallsMap.get(parentName).call();
+					String subDirName = linkCallsMap.get(parentName).call();
+					link = relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName;
+				} catch (RuntimeException e) { 
+					System.err.println("Error processing SectBySectDetailPlots plot for parent fault: " +parentName);
+					e.printStackTrace();
+					link = null;
+					System.err.flush();
 				} catch (Exception e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 				
-				linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
+				linksMap.put(parentName, link);
 			}
 		}
 		
@@ -232,10 +244,17 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					table.addColumn("");
 				} else {
 					String name = sortedNames.get(index);
-					if (highlights != null && highlights.get(name))
-						table.addColumn("[**"+name+"**]("+linksMap.get(name)+")");
-					else
-						table.addColumn("["+name+"]("+linksMap.get(name)+")");
+					String link = linksMap.get(name);
+					if (link == null) {
+						// there was en exception with that section, still list it so that we know there was an issue
+						// to investigate
+						table.addColumn("_"+name+"_");
+					} else {
+						if (highlights != null && highlights.get(name))
+							table.addColumn("[**"+name+"**]("+linksMap.get(name)+")");
+						else
+							table.addColumn("["+name+"]("+linksMap.get(name)+")");
+					}
 				}
 			}
 			table.finalizeLine();

@@ -44,9 +44,16 @@ public class NamedFaultPlot extends AbstractSolutionPlot {
 		
 		Map<String, String> linksMap = new HashMap<>();
 		for (String faultName : faults.getFaultNames()) {
-			String subDirName = writeFaultPage(meta, faults, faultName, faultsDir);
-			
-			linksMap.put(faultName, relPathToResources+"/../"+faultsDir.getName()+"/"+subDirName);
+			try {
+				String subDirName = writeFaultPage(meta, faults, faultName, faultsDir);
+				
+				linksMap.put(faultName, relPathToResources+"/../"+faultsDir.getName()+"/"+subDirName);
+			} catch (RuntimeException e) {
+				System.err.println("Error processing SectBySectDetailPlots plot for fault: " +faultName);
+				e.printStackTrace();
+				linksMap.put(faultName, null);
+				System.err.flush();
+			}
 		}
 		
 		List<String> sortedNames = new ArrayList<>(linksMap.keySet());
