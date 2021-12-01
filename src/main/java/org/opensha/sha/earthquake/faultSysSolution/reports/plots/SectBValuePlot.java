@@ -398,6 +398,9 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		int binnedMaxIndex = refFunc.getClosestXIndex(maxMag);
 		if (binnedMinIndex == binnedMaxIndex)
 			return 0d;
+		if (binnedMinIndex > binnedMaxIndex)
+			// binnedMinIndex can be < binnedMaxIndex if max mag is less than global section minimum magnitude
+			return Double.NaN;
 		Preconditions.checkState(binnedMaxIndex > binnedMinIndex);
 		minMag = refFunc.getX(binnedMinIndex);
 		maxMag = refFunc.getX(binnedMaxIndex);
