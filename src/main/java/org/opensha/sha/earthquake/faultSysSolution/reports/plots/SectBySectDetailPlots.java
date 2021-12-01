@@ -115,7 +115,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
-			String relPathToResources, String topLink) throws IOException {
+			String relPathToResources, String topLink) throws IOException, RuntimeException {
 		SectionDistanceAzimuthCalculator distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
 		if (distAzCalc == null) {
 			distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
@@ -172,24 +172,29 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				String subDirName;
 				try {
 					subDirName = futures.get(parentName).get();
-				} catch (InterruptedException | ExecutionException e) {
+					linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
+				} catch (ExecutionException | RuntimeException e) { 
+					System.err.println("Error processing SectBySectDetailPlots plot for parent fault: " +parentName);
+					e.printStackTrace();
+					System.err.flush();
+				} catch (InterruptedException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				
-				linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
 			}
-			
 			exec.shutdown();
 		} else {
 			for (String parentName : linkCallsMap.keySet()) {
 				String subDirName;
 				try {
 					subDirName = linkCallsMap.get(parentName).call();
+					linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
+				} catch (RuntimeException e) {
+					System.err.println("Error processing SectBySectDetailPlots plot for parent fault: " +parentName);
+					e.printStackTrace();
+					System.err.flush();
 				} catch (Exception e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				
-				linksMap.put(parentName, relPathToResources+"/../"+parentsDir.getName()+"/"+subDirName);
 			}
 		}
 		
