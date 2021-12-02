@@ -409,6 +409,8 @@ public class SolHazardMapCalc {
 			// these are percent differences, add stats
 			double min = Double.POSITIVE_INFINITY;
 			double max = Double.NEGATIVE_INFINITY;
+			int exactly0 = 0;
+			int numWithin1 = 0;
 			int numWithin5 = 0;
 			int numWithin10 = 0;
 			
@@ -418,17 +420,23 @@ public class SolHazardMapCalc {
 					min = Math.min(min, val);
 					max = Math.max(max, val);
 				}
+				if ((float)val == 0f)
+					exactly0++;
+				if (val >= -1d && val <= 1d)
+					numWithin1++;
 				if (val >= -5d && val <= 5d)
 					numWithin5++;
 				if (val >= -10d && val <= 10d)
 					numWithin10++;
 			}
 			
-			String[] labels = {
-					"Range: ["+oDF.format(min)+"%,"+oDF.format(max)+"%]",
-					"Within 5%: "+percentDF.format((double)numWithin5/(double)xyz.size()),
-					"Within 10%: "+percentDF.format((double)numWithin10/(double)xyz.size())
-			};
+			List<String> labels = new ArrayList<>();
+			labels.add("Range: ["+oDF.format(min)+"%,"+oDF.format(max)+"%]");
+			if (exactly0 >= xyz.size()/2)
+				labels.add("Exactly 0%: "+percentDF.format((double)exactly0/(double)xyz.size()));
+			labels.add("Within 1%: "+percentDF.format((double)numWithin1/(double)xyz.size()));
+			labels.add("Within 5%: "+percentDF.format((double)numWithin5/(double)xyz.size()));
+			labels.add("Within 10%: "+percentDF.format((double)numWithin10/(double)xyz.size()));
 			double yDiff = latRange.getLength();
 			if (yDiff > 10)
 				yDiff /= 30d;
