@@ -267,6 +267,24 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return this;
 		}
 		
+		public Builder except(Class<? extends InversionConstraint> type) {
+			List<InversionConstraint> constraints = new ArrayList<>(config.constraints);
+			for (int i=constraints.size(); --i>=0;)
+				if (type.isAssignableFrom(constraints.get(i).getClass()))
+					constraints.remove(i);
+			Preconditions.checkState(!constraints.isEmpty(), "No constraints left!");
+			Preconditions.checkState(constraints.size() < config.constraints.size(), "No constraints removed!");
+			config.constraints = constraints;
+			return this;
+		}
+		
+		public Builder add(InversionConstraint constraint) {
+			List<InversionConstraint> constraints = new ArrayList<>(config.constraints);
+			constraints.add(constraint);
+			config.constraints = constraints;
+			return this;
+		}
+		
 		public InversionConfiguration build() {
 			Preconditions.checkNotNull(config.completion, "No completion criteria specified");
 			Preconditions.checkNotNull(config.constraints, "No comstraints supplied");
