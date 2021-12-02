@@ -554,6 +554,8 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		
 		PaleoseismicConstraintData paleoData = null;
 		
+		NamedFaults namedFaults = null;
+		
 		Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
 		
 		for (LogicTreeBranch<?> branch : branches) {
@@ -609,6 +611,8 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 					rupMFDs.add(new ArbitrarilyDiscretizedFunc());
 				
 				paleoData = rupSet.getModule(PaleoseismicConstraintData.class);
+				
+				namedFaults = rupSet.getModule(NamedFaults.class);
 			} else {
 				Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 				if (refGridProv != null)
@@ -811,6 +815,8 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 			avgRupSet.addModule(AveSlipModule.precomputed(avgRupSet, avgSlips));
 		if (paleoData != null)
 			avgRupSet.addModule(paleoData);
+		if (namedFaults != null)
+			avgRupSet.addModule(namedFaults);
 		
 		FaultSystemSolution sol = new FaultSystemSolution(avgRupSet, avgRates);
 		sol.addModule(combBranch);
