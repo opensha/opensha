@@ -31,6 +31,7 @@ import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.RuptureProperties;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
@@ -48,6 +49,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
@@ -546,9 +548,13 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		
 		List<? extends LogicTreeBranch<?>> branches = getLogicTree().getBranches();
 		
-		LogicTreeBranch<?> combBranch = null;
+		LogicTreeBranch<LogicTreeNode> combBranch = null;
 		
 		List<Double> weights = new ArrayList<>();
+		
+		PaleoseismicConstraintData paleoData = null;
+		
+		Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
 		
 		for (LogicTreeBranch<?> branch : branches) {
 			double weight = branch.getBranchWeight();
@@ -558,7 +564,7 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 			FaultSystemSolution sol = forBranch(branch);
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			GridSourceProvider gridProv = sol.getGridSourceProvider();
-			SubSeismoOnFaultMFDs ssMFDs = sol.requireModule(SubSeismoOnFaultMFDs.class);
+			SubSeismoOnFaultMFDs ssMFDs = sol.getModule(SubSeismoOnFaultMFDs.class);
 			
 			if (avgRates == null) {
 				// first time
@@ -585,6 +591,9 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 					gridReg = gridProv.getGriddedRegion();
 					nodeSubSeisMFDs = new HashMap<>();
 					nodeUnassociatedMFDs = new HashMap<>();
+				}
+				
+				if (ssMFDs != null) {
 					sectSubSeisMFDs = new ArrayList<>();
 					for (int s=0; s<rupSet.getNumSections(); s++)
 						sectSubSeisMFDs.add(null);
@@ -593,15 +602,37 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 				if (rupSet.hasModule(AveSlipModule.class))
 					avgSlips = new double[avgRates.length];
 				
-				combBranch = branch.copy();
+				combBranch = (LogicTreeBranch<LogicTreeNode>)branch.copy();
 				sectIndices = rupSet.getSectionIndicesForAllRups();
 				rupMFDs = new ArrayList<>();
 				for (int r=0; r<avgRates.length; r++)
 					rupMFDs.add(new ArbitrarilyDiscretizedFunc());
+				
+				paleoData = rupSet.getModule(PaleoseismicConstraintData.class);
 			} else {
 				Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 				if (refGridProv != null)
 					Preconditions.checkNotNull(gridProv, "Some solutions have grid source providers and others don't");
+				
+				if (paleoData != null) {
+					// see if it's the same
+					PaleoseismicConstraintData myPaleoData = rupSet.getModule(PaleoseismicConstraintData.class);
+					if (myPaleoData != null) {
+						boolean same = paleoConstraintsSame(paleoData.getPaleoRateConstraints(),
+								myPaleoData.getPaleoRateConstraints());
+						same = same && paleoConstraintsSame(paleoData.getPaleoSlipConstraints(),
+								myPaleoData.getPaleoSlipConstraints());
+						if (same && paleoData.getPaleoProbModel() != null)
+							same = paleoData.getPaleoProbModel().getClass().equals(myPaleoData.getPaleoProbModel().getClass());
+						if (same && paleoData.getPaleoSlipProbModel() != null)
+							same = paleoData.getPaleoSlipProbModel().getClass().equals(myPaleoData.getPaleoSlipProbModel().getClass());
+						if (!same)
+							paleoData = null;
+					} else {
+						// not all branches have it
+						paleoData = null;
+					}
+				}
 			}
 			
 			for (int i=0; i<combBranch.size(); i++) {
@@ -609,6 +640,8 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 				LogicTreeNode branchVal = branch.getValue(i);
 				if (combVal != null && !combVal.equals(branchVal))
 					combBranch.clearValue(i);
+				int prevCount = nodeCounts.containsKey(branchVal) ? nodeCounts.get(branchVal) : 0;
+				nodeCounts.put(branchVal, prevCount+1);
 			}
 			
 			AveSlipModule slipModule = rupSet.getModule(AveSlipModule.class);
@@ -647,6 +680,11 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 					addWeighted(nodeSubSeisMFDs, i, gridProv.getNodeSubSeisMFD(i), weight);
 					addWeighted(nodeUnassociatedMFDs, i, gridProv.getNodeUnassociatedMFD(i), weight);
 				}
+			}
+			if (ssMFDs == null) {
+				Preconditions.checkState(sectSubSeisMFDs == null, "Some solutions have sub seismo MFDs and others don't");
+			} else {
+				Preconditions.checkNotNull(sectSubSeisMFDs, "Some solutions have sub seismo MFDs and others don't");
 				for (int s=0; s<rupSet.getNumSections(); s++) {
 					IncrementalMagFreqDist subSeisMFD = ssMFDs.get(s);
 					Preconditions.checkNotNull(subSeisMFD);
@@ -700,12 +738,14 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 				fractR[i] = refGridProv.getFracReverse(i);
 				fractN[i] = refGridProv.getFracNormal(i);
 			}
-			for (int s=0; s<sectSubSeisMFDs.size(); s++)
-				sectSubSeisMFDs.get(s).scale(1d/totWeight);
+			
 			
 			combGridProv = new AbstractGridSourceProvider.Precomputed(refGridProv.getGriddedRegion(),
 					nodeSubSeisMFDs, nodeUnassociatedMFDs, fractSS, fractN, fractR);
 		}
+		if (sectSubSeisMFDs != null)
+			for (int s=0; s<sectSubSeisMFDs.size(); s++)
+				sectSubSeisMFDs.get(s).scale(1d/totWeight);
 		
 		List<FaultSection> subSects = new ArrayList<>();
 		for (int s=0; s<refRupSet.getNumSections(); s++) {
@@ -729,26 +769,90 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		FaultSystemRupSet avgRupSet = FaultSystemRupSet.builder(subSects, sectIndices).rupRakes(rakes)
 				.rupAreas(avgAreas).rupLengths(avgLengths).rupMags(avgMags).build();
 		int numNonNull = 0;
+		boolean haveSlipAlong = false;
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeNode value = combBranch.getValue(i);
 			if (value != null) {
 				numNonNull++;
-				if (value instanceof SlipAlongRuptureModel)
+				if (value instanceof SlipAlongRuptureModel) {
 					avgRupSet.addModule((SlipAlongRuptureModel)value);
+					haveSlipAlong = true;
+				} else if (value instanceof SlipAlongRuptureModels) {
+					avgRupSet.addModule(((SlipAlongRuptureModels)value).getModel());
+					haveSlipAlong = true;
+				}
 			}
 		}
-		if (numNonNull > 0)
+		// special cases for UCERF3 branches
+		if (!haveSlipAlong && hasAllEqually(nodeCounts, SlipAlongRuptureModels.UNIFORM, SlipAlongRuptureModels.TAPERED)) {
+			combBranch.setValue(SlipAlongRuptureModels.MEAN_UCERF3);
+			avgRupSet.addModule(SlipAlongRuptureModels.MEAN_UCERF3.getModel());
+			numNonNull++;
+		}
+		if (combBranch.getValue(ScalingRelationships.class) == null && hasAllEqually(nodeCounts, ScalingRelationships.ELLB_SQRT_LENGTH,
+				ScalingRelationships.ELLSWORTH_B, ScalingRelationships.HANKS_BAKUN_08,
+				ScalingRelationships.SHAW_2009_MOD, ScalingRelationships.SHAW_CONST_STRESS_DROP)) {
+			combBranch.setValue(ScalingRelationships.MEAN_UCERF3);
+			if (avgSlips == null)
+				avgRupSet.addModule(AveSlipModule.forModel(avgRupSet, ScalingRelationships.MEAN_UCERF3));
+			numNonNull++;
+		}
+		if (combBranch.getValue(DeformationModels.class) == null && hasAllEqually(nodeCounts, DeformationModels.GEOLOGIC,
+				DeformationModels.ABM, DeformationModels.NEOKINEMA, DeformationModels.ZENGBB)) {
+			combBranch.setValue(DeformationModels.MEAN_UCERF3);
+			numNonNull++;
+		}
+		
+		if (numNonNull > 0) {
 			avgRupSet.addModule(combBranch);
+			System.out.println("Combined logic tre branch: "+combBranch);
+		}
 		if (avgSlips != null)
 			avgRupSet.addModule(AveSlipModule.precomputed(avgRupSet, avgSlips));
+		if (paleoData != null)
+			avgRupSet.addModule(paleoData);
 		
 		FaultSystemSolution sol = new FaultSystemSolution(avgRupSet, avgRates);
 		sol.addModule(combBranch);
 		if (combGridProv != null)
 			sol.setGridSourceProvider(combGridProv);
-		sol.addModule(new SubSeismoOnFaultMFDs(sectSubSeisMFDs));
+		if (sectSubSeisMFDs != null)
+			sol.addModule(new SubSeismoOnFaultMFDs(sectSubSeisMFDs));
 		sol.addModule(new RupMFDsModule(sol, rupMFDs.toArray(new DiscretizedFunc[0])));
 		return sol;
+	}
+	
+	private boolean hasAllEqually(Map<LogicTreeNode, Integer> nodeCounts, LogicTreeNode... nodes) {
+		Integer commonCount = null;
+		for (LogicTreeNode node : nodes) {
+			Integer count = nodeCounts.get(node);
+			if (count == null)
+				return false;
+			if (commonCount == null)
+				commonCount = count;
+			else if (commonCount.intValue() != count.intValue())
+				return false;
+		}
+		return true;
+	}
+	
+	private static boolean paleoConstraintsSame(List<? extends SectMappedUncertainDataConstraint> constr1,
+			List<? extends SectMappedUncertainDataConstraint> constr2) {
+		if ((constr1 == null) != (constr2 == null))
+			return false;
+		if (constr1 == null && constr2 == null)
+			return true;
+		if (constr1.size() != constr2.size())
+			return false;
+		for (int i=0; i<constr1.size(); i++) {
+			SectMappedUncertainDataConstraint c1 = constr1.get(i);
+			SectMappedUncertainDataConstraint c2 = constr2.get(i);
+			if (c1.sectionIndex != c2.sectionIndex)
+				return false;
+			if ((float)c1.bestEstimate != (float)c2.bestEstimate)
+				return false;
+		}
+		return true;
 	}
 	
 	private class AvgFaultSection implements FaultSection {
@@ -983,6 +1087,16 @@ public abstract class SolutionLogicTree extends AbstractBranchAveragedModule {
 		Preconditions.checkState(running.length == vals.length);
 		for (int i=0; i<running.length; i++)
 			running[i] += vals[i]*weight;
+	}
+	
+	public static void main(String[] args) throws IOException {
+		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2021_11_23-u3_branches-FM3_1-5h/");
+		SolutionLogicTree tree = SolutionLogicTree.load(new File(dir, "results.zip"));
+		
+		FaultSystemSolution ba = tree.calcBranchAveraged();
+		
+		ba.write(new File(dir, "branch_averaged.zip"));
 	}
 
 }
