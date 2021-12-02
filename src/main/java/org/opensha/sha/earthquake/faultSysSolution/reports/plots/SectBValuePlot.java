@@ -351,8 +351,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 				}
 			}
 			this.numBins = 1+maxIndex-minIndex;
-			this.minMagBin = refFunc.getX(minIndex);
-			this.maxMagBin = refFunc.getX(maxIndex);
+			this.minMagBin = minIndex >= 0 ? refFunc.getX(minIndex) : Double.NaN;
+			this.maxMagBin = maxIndex >= 0 ? refFunc.getX(maxIndex) : Double.NaN;
 			this.numBinsAvailable = numBinsAvailable;
 			this.numBinsUsed = numBinsUsed;
 		}
