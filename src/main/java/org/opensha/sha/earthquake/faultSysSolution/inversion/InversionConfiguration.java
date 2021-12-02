@@ -135,6 +135,8 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		}
 		
 		public Builder forCommandLine(CommandLine cmd) {
+			if (cmd == null)
+				return this;
 			if (cmd.hasOption("threads"))
 				config.threads = FaultSysTools.getNumThreads(cmd);
 			
