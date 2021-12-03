@@ -13,6 +13,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class TestLogicTreeBranch {
@@ -151,6 +152,16 @@ public class TestLogicTreeBranch {
             public TestAdapterBackedLevel() {
                 super("test adapter backed", "test adapter backed", TestAdapterBackedNode.class);
             }
+
+			@Override
+			protected Collection<String> getAffected() {
+				return List.of();
+			}
+
+			@Override
+			protected Collection<String> getNotAffected() {
+				return List.of();
+			}
         }
     }
 

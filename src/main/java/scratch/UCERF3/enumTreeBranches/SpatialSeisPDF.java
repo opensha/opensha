@@ -7,6 +7,10 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
@@ -25,6 +29,10 @@ import scratch.UCERF3.utils.SmoothSeismicitySpatialPDF_Fetcher;
  * @version $Id:$
  */
 @SuppressWarnings("javadoc")
+@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum SpatialSeisPDF implements U3LogicTreeBranchNode<SpatialSeisPDF> {
 	
 	UCERF2("UCERF2",												"U2",		0.5d,	0.25d) {
