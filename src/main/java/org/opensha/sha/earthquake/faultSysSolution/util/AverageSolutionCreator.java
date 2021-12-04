@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.commons.util.modules.AverageableModule;
+import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
@@ -98,6 +101,17 @@ public class AverageSolutionCreator {
 		}
 		
 		FaultSystemSolution avgSol = new FaultSystemSolution(refRupSet, rates);
+		
+		// now build average modules
+		for (OpenSHA_Module module : inputs[0].getModules()) {
+			if (module instanceof AverageableModule<?>) {
+				// TODO
+//				AveragingAccumulator<?> accumulator = ((AverageableModule<?>)module).averagingAccumulator();
+//				
+//				for (FaultSystemSolution sol : inputs)
+//					accumulator.process(sol.getModule(accumulator.getType()), scale);
+			}
+		}
 		
 		// TODO average grid source provider
 		
