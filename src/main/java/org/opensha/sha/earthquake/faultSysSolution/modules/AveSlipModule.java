@@ -17,7 +17,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
-public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, AverageableModule<AveSlipModule> {
+public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, BranchAverageableModule<AveSlipModule> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -41,7 +41,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Ave
 	 */
 	public abstract double getAveSlip(int rupIndex);
 
-	public static class ModelBased extends AveSlipModule implements ArchivableModule {
+	public static class ModelBased extends AveSlipModule implements ArchivableModule, ConstantAverageable<AveSlipModule> {
 
 		private RupSetScalingRelationship scale;
 
@@ -84,22 +84,6 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Ave
 			Preconditions.checkState(rupSet.getNumRuptures() == newParent.getNumRuptures());
 			
 			return new ModelBased(newParent, scale);
-		}
-
-		@Override
-		public AveragingAccumulator<AveSlipModule> averagingAccumulator(int num) {
-			return new AveragingAccumulator<AveSlipModule>() {
-
-				@Override
-				public void process(AveSlipModule module) {
-					// do nothing
-				}
-
-				@Override
-				public AveSlipModule getAverage() {
-					return ModelBased.this;
-				}
-			};
 		}
 
 	}
@@ -166,8 +150,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Ave
 		}
 
 		@Override
-		public AveragingAccumulator<AveSlipModule> averagingAccumulator(int num) {
-			final double scalar = 1d/(double)num;
+		public AveragingAccumulator<AveSlipModule> averagingAccumulator() {
 			return new AveragingAccumulator<AveSlipModule>() {
 				
 				private boolean allSame;
@@ -175,8 +158,10 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Ave
 				private double[] refValues;
 				private double[] values;
 				
+				private double sumWeight = 0d;
+				
 				@Override
-				public void process(AveSlipModule module) {
+				public void process(AveSlipModule module, double relWeight) {
 					if (refValues == null) {
 						allSame = true;
 						ref = module;
@@ -184,22 +169,24 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Ave
 						refValues = new double[values.length];
 						for (int r=0; r<values.length; r++) {
 							refValues[r] = module.getAveSlip(r);
-							values[r] = refValues[r]*scalar;
+							values[r] = refValues[r]*relWeight;
 						}
 					} else {
 						Preconditions.checkState(module.rupSet.getNumRuptures() == values.length);
 						for (int r=0; r<values.length; r++) {
 							double val = module.getAveSlip(r);
-							values[r] += val*scalar;
+							values[r] += val*relWeight;
 							allSame = allSame && val == refValues[r];
 						}
 					}
+					sumWeight += relWeight;
 				}
 				
 				@Override
 				public AveSlipModule getAverage() {
 					if (allSame)
 						return ref;
+					AverageableModule.scaleToTotalWeight(values, sumWeight);
 					return new Precomputed(null, values);
 				}
 			};

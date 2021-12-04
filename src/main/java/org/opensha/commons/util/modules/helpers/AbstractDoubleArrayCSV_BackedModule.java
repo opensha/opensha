@@ -77,26 +77,28 @@ public abstract class AbstractDoubleArrayCSV_BackedModule implements CSV_BackedM
 		}
 
 		@Override
-		public AveragingAccumulator<E> averagingAccumulator(int num) {
+		public AveragingAccumulator<E> averagingAccumulator() {
 			// TODO Auto-generated method stub
-			final double rateEach = 1d/num;
 			return new AveragingAccumulator<>() {
 				
 				private double[] avgValues = null;
+				private double sumWeight = 0d;
 
 				@Override
-				public void process(E module) {
+				public void process(E module, double relWeight) {
 					if (avgValues == null)
 						avgValues = new double[module.values.length];
 					else
 						Preconditions.checkState(module.values.length == avgValues.length);
 					
 					for (int i=0; i< avgValues.length; i++)
-						avgValues[i] += module.values[i]*rateEach;
+						avgValues[i] += module.values[i]*relWeight;
+					sumWeight += relWeight;
 				}
 
 				@Override
 				public E getAverage() {
+					AverageableModule.scaleToTotalWeight(avgValues, sumWeight);
 					return averageInstance(avgValues);
 				}
 				

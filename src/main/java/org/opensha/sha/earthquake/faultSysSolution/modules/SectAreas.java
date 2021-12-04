@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.util.modules.AverageableModule.ConstantAverageable;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -92,7 +93,7 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 	
 	public static final String DATA_FILE_NAME = "sect_areas.csv";
 	
-	public static class Precomputed extends SectAreas implements CSV_BackedModule {
+	public static class Precomputed extends SectAreas implements CSV_BackedModule, ConstantAverageable<SectAreas> {
 		
 		private double[] sectAreas;
 

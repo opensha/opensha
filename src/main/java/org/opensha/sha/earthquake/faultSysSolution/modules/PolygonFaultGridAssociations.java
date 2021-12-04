@@ -26,6 +26,12 @@ import com.google.common.collect.ImmutableMap;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 
+/**
+ * TODO: averaging support?
+ * 
+ * @author kevin
+ *
+ */
 public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 	
 	/**

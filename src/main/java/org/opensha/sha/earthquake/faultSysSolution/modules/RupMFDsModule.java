@@ -16,6 +16,8 @@ import com.google.common.base.Preconditions;
  * distribution rather than the average magnitude returned by the rupture set. This is mostly useful for branch-averaged
  * solutions.
  * 
+ * TODO support averaging?
+ * 
  * @author kevin
  *
  */

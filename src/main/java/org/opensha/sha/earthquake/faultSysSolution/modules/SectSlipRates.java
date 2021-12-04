@@ -2,13 +2,14 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 import com.google.common.base.Preconditions;
 
-public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
+public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, BranchAverageableModule<SectSlipRates> {
 	
 	protected FaultSystemRupSet parent;
 
@@ -128,6 +129,11 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 		public double getSlipRateStdDev(int sectIndex) {
 			return parent.getFaultSectionData(sectIndex).getReducedSlipRateStdDev()*1e-3; // mm/yr => m/yr
 		}
+
+		@Override
+		public AveragingAccumulator<SectSlipRates> averagingAccumulator() {
+			return new Precomputed(parent, getSlipRates(), getSlipRateStdDevs()).averagingAccumulator();
+		}
 		
 	}
 	
@@ -217,6 +223,41 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet> {
 			
 			this.slipRates = slipRates;
 			this.slipRateStdDevs = slipRateStdDevs;
+		}
+
+		@Override
+		public AveragingAccumulator<SectSlipRates> averagingAccumulator() {
+			
+			return new AveragingAccumulator<SectSlipRates>() {
+				
+				private double[] slipRates = null;
+				private double[] slipRateStdDevs = null;
+				private double totWeight = 0d;
+
+				@Override
+				public void process(SectSlipRates module, double relWeight) {
+					if (slipRates == null) {
+						slipRates = new double[module.getSlipRates().length];
+						slipRateStdDevs = new double[slipRates.length];
+					}
+					for (int i=0; i<slipRates.length; i++) {
+						slipRates[i] += module.getSlipRate(i)*relWeight;
+						slipRateStdDevs[i] += module.getSlipRateStdDev(i)*relWeight;
+					}
+					totWeight += relWeight;
+				}
+
+				@Override
+				public SectSlipRates getAverage() {
+					AverageableModule.scaleToTotalWeight(slipRates, totWeight);
+					AverageableModule.scaleToTotalWeight(slipRateStdDevs, totWeight);
+					// rup set will be set when added to one
+					Precomputed ret = new Precomputed();
+					ret.slipRates = slipRates;
+					ret.slipRateStdDevs = slipRateStdDevs;
+					return ret;
+				}
+			};
 		}
 
 	}

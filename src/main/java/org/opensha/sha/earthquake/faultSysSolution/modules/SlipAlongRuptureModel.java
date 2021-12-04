@@ -9,6 +9,7 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.AverageableModule.ConstantAverageable;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -17,7 +18,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 
-public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
+public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantAverageable<SlipAlongRuptureModel> {
 
 	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModels slipAlong) {
 		return slipAlong.getModel();

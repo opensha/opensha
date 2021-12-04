@@ -1,8 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.data.CSVFile;
@@ -14,7 +12,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
-public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
+public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet>, BranchAverageableModule<ModSectMinMags> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -192,6 +190,32 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 			Preconditions.checkState(rupSet.getNumSections() == newParent.getNumSections());
 			
 			return new Precomputed(newParent, sectMinMags);
+		}
+
+		@Override
+		public AveragingAccumulator<ModSectMinMags> averagingAccumulator() {
+			return new AveragingAccumulator<>() {
+				
+				private double[] minMags = null;
+
+				@Override
+				public void process(ModSectMinMags module, double relWeight) {
+					if (minMags == null) {
+						minMags = module.getMinMagForSections();
+					} else {
+						for (int s=0; s<minMags.length; s++)
+							minMags[s] = Math.min(minMags[s], module.getMinMagForSection(s));
+					}
+				}
+
+				@Override
+				public ModSectMinMags getAverage() {
+					// rupture set will be attached when it's added to one later
+					Precomputed ret = new Precomputed();
+					ret.sectMinMags = minMags;
+					return ret;
+				}}
+			;
 		}
 
 	}

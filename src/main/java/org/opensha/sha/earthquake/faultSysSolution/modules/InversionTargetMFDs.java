@@ -33,6 +33,8 @@ import scratch.UCERF3.utils.MFD_InversionConstraint;
  * Module for magnitude frequency distribution used to constrain an inversion, and to facilitate building
  * a gridded seismicity module.
  * 
+ * TODO averaging support
+ * 
  * @author kevin
  *
  */

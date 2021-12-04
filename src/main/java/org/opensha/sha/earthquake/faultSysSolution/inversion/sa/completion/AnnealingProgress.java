@@ -267,13 +267,13 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 	}
 
 	@Override
-	public AveragingAccumulator<AnnealingProgress> averagingAccumulator(int num) {
+	public AveragingAccumulator<AnnealingProgress> averagingAccumulator() {
 		return new AveragingAccumulator<AnnealingProgress>() {
 			
 			List<AnnealingProgress> progresses = new ArrayList<>();
 
 			@Override
-			public void process(AnnealingProgress module) {
+			public void process(AnnealingProgress module, double weight) {
 				progresses.add(module);
 			}
 

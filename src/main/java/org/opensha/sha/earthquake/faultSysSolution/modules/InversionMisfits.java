@@ -245,9 +245,9 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 		private List<ConstraintRange> ranges;
 		private int numEQ, numINEQ;
 		private double[] misfits, data, misfits_ineq, data_ineq;
-		private double scalarEach;
+		private double sumWeight = 0d;
 		
-		public MisfitsAccumulator(InversionMisfits ref, int num) {
+		public MisfitsAccumulator(InversionMisfits ref) {
 			ranges = ref.constraintRanges;
 			numEQ = ref.misfits == null ? 0 : ref.misfits.length;
 			numINEQ = ref.misfits_ineq == null ? 0 : ref.misfits_ineq.length;
@@ -255,32 +255,39 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 			data = numEQ > 0 ? new double[numEQ] : null;
 			misfits_ineq = numINEQ > 0 ? new double[numINEQ] : null;
 			data_ineq = numINEQ > 0 ? new double[numINEQ] : null;
-			
-			scalarEach = 1d/(double)num;
 		}
 
 		@Override
-		public void process(InversionMisfits module) {
+		public void process(InversionMisfits module, double relWeight) {
 			if (numEQ > 0) {
-				averageIn(scalarEach, misfits, module.misfits);
-				averageIn(scalarEach, data, module.data);
+				averageIn(relWeight, misfits, module.misfits);
+				averageIn(relWeight, data, module.data);
 			}
 			if (numINEQ > 0) {
-				averageIn(scalarEach, misfits_ineq, module.misfits_ineq);
-				averageIn(scalarEach, data_ineq, module.data_ineq);
+				averageIn(relWeight, misfits_ineq, module.misfits_ineq);
+				averageIn(relWeight, data_ineq, module.data_ineq);
 			}
+			sumWeight += relWeight;
 		}
 
 		@Override
 		public InversionMisfits getAverage() {
+			if (numEQ > 0) {
+				AverageableModule.scaleToTotalWeight(misfits, sumWeight);
+				AverageableModule.scaleToTotalWeight(data, sumWeight);
+			}
+			if (numINEQ > 0) {
+				AverageableModule.scaleToTotalWeight(misfits_ineq, sumWeight);
+				AverageableModule.scaleToTotalWeight(data_ineq, sumWeight);
+			}
 			return new InversionMisfits(ranges, misfits, data, misfits_ineq, data_ineq);
 		}
 		
 	}
 
 	@Override
-	public AveragingAccumulator<InversionMisfits> averagingAccumulator(int num) {
-		return new MisfitsAccumulator(this, num);
+	public AveragingAccumulator<InversionMisfits> averagingAccumulator() {
+		return new MisfitsAccumulator(this);
 	}
 
 }
