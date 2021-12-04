@@ -410,6 +410,8 @@ public class SolHazardMapCalc {
 			double min = Double.POSITIVE_INFINITY;
 			double max = Double.NEGATIVE_INFINITY;
 			int exactly0 = 0;
+			int numBelow = 0;
+			int numAbove = 0;
 			int numWithin1 = 0;
 			int numWithin5 = 0;
 			int numWithin10 = 0;
@@ -428,12 +430,18 @@ public class SolHazardMapCalc {
 					numWithin5++;
 				if (val >= -10d && val <= 10d)
 					numWithin10++;
+				if ((float)val < 0f)
+					numBelow++;
+				if ((float)val > 0f)
+					numAbove++;
 			}
 			
 			List<String> labels = new ArrayList<>();
 			labels.add("Range: ["+oDF.format(min)+"%,"+oDF.format(max)+"%]");
 			if (exactly0 >= xyz.size()/2)
 				labels.add("Exactly 0%: "+percentDF.format((double)exactly0/(double)xyz.size()));
+			labels.add(percentDF.format((double)numBelow/(double)xyz.size())
+					+" < 0, "+percentDF.format((double)numAbove/(double)xyz.size())+" > 0");
 			labels.add("Within 1%: "+percentDF.format((double)numWithin1/(double)xyz.size()));
 			labels.add("Within 5%: "+percentDF.format((double)numWithin5/(double)xyz.size()));
 			labels.add("Within 10%: "+percentDF.format((double)numWithin10/(double)xyz.size()));

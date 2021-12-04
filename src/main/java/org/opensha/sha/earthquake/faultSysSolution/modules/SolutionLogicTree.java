@@ -58,7 +58,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
  * @author kevin
  *
  */
-public class SolutionLogicTree extends AbstractBranchAveragedModule {
+public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
 	private boolean serializeGridded = true;
 	private SolutionProcessor processor;

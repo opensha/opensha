@@ -32,19 +32,19 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 /**
- * Abstract base class for a branch-averaged module. Work in progress
+ * Abstract base class for a module that spans multiple logic tree branches.
  * 
  * @author kevin
  *
  */
 @ModuleHelper
-public abstract class AbstractBranchAveragedModule implements ArchivableModule {
+public abstract class AbstractLogicTreeModule implements ArchivableModule {
 
 	private ZipFile zip;
 	private String prefix;
 	private LogicTree<?> logicTree;
 
-	protected AbstractBranchAveragedModule(ZipFile zip, String prefix, LogicTree<?> logicTree) {
+	protected AbstractLogicTreeModule(ZipFile zip, String prefix, LogicTree<?> logicTree) {
 		this.zip = zip;
 		this.prefix = prefix;
 		this.logicTree = logicTree;

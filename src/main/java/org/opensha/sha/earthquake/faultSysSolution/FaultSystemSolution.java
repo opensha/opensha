@@ -814,10 +814,16 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			double fractInside = 1;
 			if (region != null)
 				fractInside = fractRupsInside[r];
-			double rateInside=getRateForRup(r)*fractInside;
 //			if (fractInside < 1)
 //				System.out.println("inside: "+fractInside+"\trate: "+rateInside+"\tID: "+r);
-			mfd.addResampledMagRate(rupSet.getMagForRup(r), rateInside, true);
+			if (fractInside > 0d) {
+				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				if (rupMagDist == null)
+					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r)*fractInside, true);
+				else
+					for (Point2D pt : rupMagDist)
+						mfd.addResampledMagRate(pt.getX(), pt.getY()*fractInside, true);
+			}
 		}
 		return mfd;
 	}

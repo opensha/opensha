@@ -8,6 +8,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
@@ -17,7 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.
 
 import com.google.common.base.Preconditions;
 
-public class InversionMisfits implements ArchivableModule {
+public class InversionMisfits implements ArchivableModule, AverageableModule<InversionMisfits> {
 	
 	private List<ConstraintRange> constraintRanges;
 	private double[] misfits;
@@ -237,6 +238,49 @@ public class InversionMisfits implements ArchivableModule {
 	private static void averageIn(double scalar, double[] avgVals, double[] myVals) {
 		for (int i=0; i<avgVals.length; i++)
 			avgVals[i] += scalar*myVals[i];
+	}
+	
+	private static class MisfitsAccumulator implements AveragingAccumulator<InversionMisfits> {
+		
+		private List<ConstraintRange> ranges;
+		private int numEQ, numINEQ;
+		private double[] misfits, data, misfits_ineq, data_ineq;
+		private double scalarEach;
+		
+		public MisfitsAccumulator(InversionMisfits ref, int num) {
+			ranges = ref.constraintRanges;
+			numEQ = ref.misfits == null ? 0 : ref.misfits.length;
+			numINEQ = ref.misfits_ineq == null ? 0 : ref.misfits_ineq.length;
+			misfits = numEQ > 0 ? new double[numEQ] : null;
+			data = numEQ > 0 ? new double[numEQ] : null;
+			misfits_ineq = numINEQ > 0 ? new double[numINEQ] : null;
+			data_ineq = numINEQ > 0 ? new double[numINEQ] : null;
+			
+			scalarEach = 1d/(double)num;
+		}
+
+		@Override
+		public void process(InversionMisfits module) {
+			if (numEQ > 0) {
+				averageIn(scalarEach, misfits, module.misfits);
+				averageIn(scalarEach, data, module.data);
+			}
+			if (numINEQ > 0) {
+				averageIn(scalarEach, misfits_ineq, module.misfits_ineq);
+				averageIn(scalarEach, data_ineq, module.data_ineq);
+			}
+		}
+
+		@Override
+		public InversionMisfits getAverage() {
+			return new InversionMisfits(ranges, misfits, data, misfits_ineq, data_ineq);
+		}
+		
+	}
+
+	@Override
+	public AveragingAccumulator<InversionMisfits> averagingAccumulator(int num) {
+		return new MisfitsAccumulator(this, num);
 	}
 
 }

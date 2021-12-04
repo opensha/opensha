@@ -20,6 +20,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
@@ -82,10 +83,18 @@ public class BranchAverageSolutionCreator {
 	
 	private Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
 	
+	private double[] globalSectMinMags;
+	
+	private boolean skipRupturesBelowSectMin = true;
+	
 	public BranchAverageSolutionCreator() {
 		
 	}
 	
+	public void setSkipRupturesBelowSectMin(boolean skipRupturesBelowSectMin) {
+		this.skipRupturesBelowSectMin = skipRupturesBelowSectMin;
+	}
+
 	public void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
 		double weight = branch.getBranchWeight();
 		weights.add(weight);
@@ -93,6 +102,8 @@ public class BranchAverageSolutionCreator {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		GridSourceProvider gridProv = sol.getGridSourceProvider();
 		SubSeismoOnFaultMFDs ssMFDs = sol.getModule(SubSeismoOnFaultMFDs.class);
+		
+		ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
 		
 		if (avgRates == null) {
 			// first time
@@ -130,6 +141,12 @@ public class BranchAverageSolutionCreator {
 			if (rupSet.hasModule(AveSlipModule.class))
 				avgSlips = new double[avgRates.length];
 			
+			if (modMinMags != null) {
+				globalSectMinMags = new double[rupSet.getNumSections()];
+				for (int s=0; s<globalSectMinMags.length; s++)
+					globalSectMinMags[s] = Double.POSITIVE_INFINITY;
+			}
+			
 			combBranch = (LogicTreeBranch<LogicTreeNode>)branch.copy();
 			sectIndices = rupSet.getSectionIndicesForAllRups();
 			rupMFDs = new ArrayList<>();
@@ -143,6 +160,9 @@ public class BranchAverageSolutionCreator {
 			Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 			if (refGridProv != null)
 				Preconditions.checkNotNull(gridProv, "Some solutions have grid source providers and others don't");
+			
+			if (modMinMags == null)
+				globalSectMinMags = null;
 			
 			if (paleoData != null) {
 				// see if it's the same
@@ -181,15 +201,19 @@ public class BranchAverageSolutionCreator {
 		for (int r=0; r<avgRates.length; r++) {
 			double rate = sol.getRateForRup(r);
 			double mag = rupSet.getMagForRup(r);
+			
+			if (avgSlips != null)
+				avgSlips[r] += weight*slipModule.getAveSlip(r);
+			
+			if (skipRupturesBelowSectMin && modMinMags != null && modMinMags.isRupBelowSectMinMag(r))
+				// skip
+				continue;
 			DiscretizedFunc rupMFD = rupMFDs.get(r);
 			double y = rate*weight;
 			if (rupMFD.hasX(mag))
 				y += rupMFD.getY(mag);
 			rupMFD.set(mag, y);
 			avgRakes.get(r).add(rupSet.getAveRakeForRup(r));
-			
-			if (avgSlips != null)
-				avgSlips[r] += weight*slipModule.getAveSlip(r);
 		}
 		addWeighted(avgMags, rupSet.getMagForAllRups(), weight);
 		addWeighted(avgAreas, rupSet.getAreaForAllRups(), weight);
@@ -248,9 +272,15 @@ public class BranchAverageSolutionCreator {
 			avgMags[r] /= totWeight;
 			avgAreas[r] /= totWeight;
 			avgLengths[r] /= totWeight;
-			DiscretizedFunc rupMFD = rupMFDs.get(r);
-			rupMFD.scale(1d/totWeight);
-			Preconditions.checkState((float)rupMFD.calcSumOfY_Vals() == (float)avgRates[r]);
+			if (avgRates[r] == 0d) {
+				// clear the empty MFD
+				Preconditions.checkState(rupMFDs.get(r).size() == 0);
+				rupMFDs.set(r, null);
+			} else {
+				DiscretizedFunc rupMFD = rupMFDs.get(r);
+				rupMFD.scale(1d/totWeight);
+				Preconditions.checkState((float)rupMFD.calcSumOfY_Vals() == (float)avgRates[r]);
+			}
 			rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(avgRakes.get(r), weights));
 			if (avgSlips != null)
 				avgSlips[r] /= totWeight;
