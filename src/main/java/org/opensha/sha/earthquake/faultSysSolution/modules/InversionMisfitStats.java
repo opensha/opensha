@@ -194,7 +194,6 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 
 	@Override
 	public AveragingAccumulator<InversionMisfitStats> averagingAccumulator() {
-		// TODO Auto-generated method stub
 		return new AveragingAccumulator<InversionMisfitStats>() {
 			
 			private List<List<MisfitStats>> stats = new ArrayList<>();
@@ -248,6 +247,11 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 							max, l2Norm, energy, std));
 				}
 				return new InversionMisfitStats(avgStats);
+			}
+
+			@Override
+			public Class<InversionMisfitStats> getType() {
+				return InversionMisfitStats.class;
 			}
 		};
 	}

@@ -214,6 +214,11 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet>, Br
 					Precomputed ret = new Precomputed();
 					ret.sectMinMags = minMags;
 					return ret;
+				}
+
+				@Override
+				public Class<ModSectMinMags> getType() {
+					return ModSectMinMags.class;
 				}}
 			;
 		}

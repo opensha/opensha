@@ -267,6 +267,11 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData>, BranchAverageableModul
 			public PaleoseismicConstraintData getAverage() {
 				return paleoData;
 			}
+
+			@Override
+			public Class<PaleoseismicConstraintData> getType() {
+				return PaleoseismicConstraintData.class;
+			}
 		};
 	}
 	

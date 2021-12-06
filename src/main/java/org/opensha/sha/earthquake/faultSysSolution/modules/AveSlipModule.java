@@ -189,6 +189,11 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 					AverageableModule.scaleToTotalWeight(values, sumWeight);
 					return new Precomputed(null, values);
 				}
+
+				@Override
+				public Class<AveSlipModule> getType() {
+					return AveSlipModule.class;
+				}
 			};
 		}
 

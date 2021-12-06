@@ -51,8 +51,36 @@ public interface AverageableModule<E extends OpenSHA_Module> extends OpenSHA_Mod
 	 */
 	public interface AveragingAccumulator<E extends OpenSHA_Module> {
 		
+		/**
+		 * @return the module class that this accumulator is applicable to
+		 */
+		public Class<E> getType();
+		
+		/**
+		 * Convenience method to fetch and process a module of the correct type from the given container
+		 * 
+		 * @param container
+		 * @param relWeight
+		 * @throws IllegalStateException if the container doesn't contain a module of the correct type
+		 */
+		public default void processContainer(ModuleContainer<? super E> container, double relWeight)
+				throws IllegalStateException {
+			process(container.requireModule(getType()), relWeight);
+		}
+		
+		/**
+		 * Process the given instance of this module type, with the given weight
+		 * 
+		 * @param module
+		 * @param relWeight
+		 */
 		public void process(E module, double relWeight);
 		
+		/**
+		 * Builds an average version of this module from all previously processed instances
+		 * 
+		 * @return
+		 */
 		public E getAverage();
 	}
 	
@@ -82,6 +110,11 @@ public interface AverageableModule<E extends OpenSHA_Module> extends OpenSHA_Mod
 				public E getAverage() {
 					Preconditions.checkNotNull(module);
 					return module;
+				}
+
+				@Override
+				public Class<E> getType() {
+					return (Class<E>)ConstantAverageable.this.getClass();
 				}
 				
 			};

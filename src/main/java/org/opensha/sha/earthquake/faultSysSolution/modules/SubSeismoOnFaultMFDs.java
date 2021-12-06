@@ -181,6 +181,11 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule, BranchAverageable
 				}
 				return new SubSeismoOnFaultMFDs(avgMFDs);
 			}
+
+			@Override
+			public Class<SubSeismoOnFaultMFDs> getType() {
+				return SubSeismoOnFaultMFDs.class;
+			}
 		};
 	}
 

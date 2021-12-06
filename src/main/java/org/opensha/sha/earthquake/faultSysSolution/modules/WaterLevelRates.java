@@ -4,7 +4,8 @@ import org.opensha.commons.util.modules.helpers.AbstractDoubleArrayCSV_BackedMod
 
 import com.google.common.base.Preconditions;
 
-public class WaterLevelRates extends AbstractDoubleArrayCSV_BackedModule.Averageable<WaterLevelRates> {
+public class WaterLevelRates extends AbstractDoubleArrayCSV_BackedModule.Averageable<WaterLevelRates>
+implements BranchAverageableModule<WaterLevelRates> {
 	
 	@SuppressWarnings("unused") // used in deserialization
 	private WaterLevelRates() {

@@ -11,16 +11,10 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.IndividualSolutionRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
-import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 
 public class AverageSolutionCreator {
 
@@ -105,86 +99,30 @@ public class AverageSolutionCreator {
 		// now build average modules
 		for (OpenSHA_Module module : inputs[0].getModules()) {
 			if (module instanceof AverageableModule<?>) {
-				// TODO
-//				AveragingAccumulator<?> accumulator = ((AverageableModule<?>)module).averagingAccumulator();
-//				
-//				for (FaultSystemSolution sol : inputs)
-//					accumulator.process(sol.getModule(accumulator.getType()), scale);
+				System.out.println("Building average instance of "+module.getName());
+				try {
+					AveragingAccumulator<?> accumulator = ((AverageableModule<?>)module).averagingAccumulator();
+					
+					for (FaultSystemSolution sol : inputs)
+						accumulator.processContainer(sol, scale);
+					
+					OpenSHA_Module avgModule = accumulator.getAverage();
+					
+					if (avgModule == null)
+						System.err.println("Averaging returned null for "+module.getName()+", skipping");
+					else
+						avgSol.addModule(avgModule);
+				} catch (Exception e) {
+					System.err.println("Error averaging module: "+module.getName());
+					e.printStackTrace();
+					System.err.flush();
+				}
 			}
 		}
 		
 		// TODO average grid source provider
 		
-		if (inputs[0].hasModule(InversionMisfits.class)) {
-			List<InversionMisfits> misfits = new ArrayList<>();
-			
-			System.out.println("Trying to average misfits...");
-			for (FaultSystemSolution sol : inputs) {
-				InversionMisfits misfit = sol.getModule(InversionMisfits.class);
-				if (misfit == null || misfits.size() > 0 && !misfit.getConstraintRanges().equals(misfits.get(0).getConstraintRanges())) {
-					misfits = null;
-					System.out.println("Can't average misfits!");
-					break;
-				}
-				misfits.add(misfit);
-			}
-			
-			if (misfits != null)
-				avgSol.addModule(InversionMisfits.average(misfits));
-		}
-		
-		if (inputs[0].hasModule(AnnealingProgress.class)) {
-			List<AnnealingProgress> progresses = new ArrayList<>();
-
-			System.out.println("Trying to average misfits...");
-			for (FaultSystemSolution sol : inputs) {
-				AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
-				if (progress == null || progresses.size() > 0 && !progress.getEnergyTypes().equals(progresses.get(0).getEnergyTypes())) {
-					progresses = null;
-					System.out.println("Can't average progress!");
-					break;
-				}
-				progresses.add(progress);
-			}
-			
-			if (progresses != null)
-				avgSol.addModule(AnnealingProgress.average(progresses));
-		}
-		
-		if (inputs[0].hasModule(WaterLevelRates.class)) {
-			WaterLevelRates wl = inputs[0].getModule(WaterLevelRates.class);
-			for (int i=1; i<inputs.length; i++) {
-				if (!inputs[i].hasModule(WaterLevelRates.class)) {
-					wl = null;
-					break;
-				}
-				WaterLevelRates oWL = inputs[i].getModule(WaterLevelRates.class);
-				if (!equivalent(wl.get(), oWL.get())) {
-					wl = null;
-					break;
-				}
-			}
-			if (wl != null)
-				avgSol.addModule(wl);
-		}
-		
-		if (inputs[0].hasModule(InitialSolution.class)) {
-			InitialSolution initial = inputs[0].getModule(InitialSolution.class);
-			for (int i=1; i<inputs.length; i++) {
-				if (!inputs[i].hasModule(InitialSolution.class)) {
-					initial = null;
-					break;
-				}
-				InitialSolution oInitial = inputs[i].getModule(InitialSolution.class);
-				if (!equivalent(initial.get(), oInitial.get())) {
-					initial = null;
-					break;
-				}
-			}
-			if (initial != null)
-				avgSol.addModule(initial);
-		}
-		
+		// special case, see if inversion config is the same for each, and if so attach to final
 		if (inputs[0].hasModule(InversionConfiguration.class)) {
 			InversionConfiguration config = inputs[0].getModule(InversionConfiguration.class);
 			for (int i=1; i<inputs.length; i++) {

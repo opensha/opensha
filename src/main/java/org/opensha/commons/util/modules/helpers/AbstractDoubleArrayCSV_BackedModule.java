@@ -101,6 +101,12 @@ public abstract class AbstractDoubleArrayCSV_BackedModule implements CSV_BackedM
 					AverageableModule.scaleToTotalWeight(avgValues, sumWeight);
 					return averageInstance(avgValues);
 				}
+
+				@SuppressWarnings("unchecked") // it's guaranteed by generics to be the correct type at runtime
+				@Override
+				public Class<E> getType() {
+					return (Class<E>)Averageable.this.getClass();
+				}
 				
 			};
 		}

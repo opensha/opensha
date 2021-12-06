@@ -282,6 +282,11 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 			}
 			return new InversionMisfits(ranges, misfits, data, misfits_ineq, data_ineq);
 		}
+
+		@Override
+		public Class<InversionMisfits> getType() {
+			return InversionMisfits.class;
+		}
 		
 	}
 

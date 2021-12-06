@@ -281,6 +281,11 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 			public AnnealingProgress getAverage() {
 				return average(progresses);
 			}
+
+			@Override
+			public Class<AnnealingProgress> getType() {
+				return AnnealingProgress.class;
+			}
 		};
 	}
 

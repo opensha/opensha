@@ -257,6 +257,11 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, Bra
 					ret.slipRateStdDevs = slipRateStdDevs;
 					return ret;
 				}
+
+				@Override
+				public Class<SectSlipRates> getType() {
+					return SectSlipRates.class;
+				}
 			};
 		}
 
