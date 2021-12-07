@@ -351,18 +351,23 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 							}
 						} else {
 							// single
-							DoesNotAffect doesnt = type.getAnnotation(DoesNotAffect.class);
-							if (doesnt != null)
-								notAffected.add(doesnt.value());
+							DoesNotAffect doesNot = type.getAnnotation(DoesNotAffect.class);
+							if (doesNot != null) {
+								String name = doesNot.value();
+								Preconditions.checkState(!affected.contains(name),
+										"EnumBackedLevel type %s annotates '%s' as both affected and not affected!",
+										type.getName(), name);
+								notAffected.add(name);
+							}
 						}
 						
-						System.out.println(getName()+" affected:");
-						for (String name : affected)
-							System.out.println("\t"+name);
-						System.out.println(getName()+" unaffected:");
-						for (String name : notAffected)
-							System.out.println("\t"+name);
-						System.out.println();
+//						System.out.println(getName()+" affected:");
+//						for (String name : affected)
+//							System.out.println("\t"+name);
+//						System.out.println(getName()+" unaffected:");
+//						for (String name : notAffected)
+//							System.out.println("\t"+name);
+//						System.out.println();
 						
 						this.notAffected = notAffected;
 						this.affected = affected;
