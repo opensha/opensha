@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.junit.Test;
+import org.opensha.commons.data.Named;
 
 import com.google.common.base.Preconditions;
 
@@ -179,6 +180,50 @@ public class ModuleContainerTest {
 		assertTrue("Module should still have C", containsInstance(container, Module_C.class));
 
 		System.out.println("*** END testAddMultipleSameHelper() ***");
+	}
+	
+	@Test
+	public void testGetAssignableTo() {
+		System.out.println("*** testGetAssignableTo() ***");
+		System.out.println("Testing that we can fetch modules by classes they are assignable to");
+		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
+		
+		Module_A aInst = new Module_A_B(); // does not implement Helper
+		
+		Module_C cInst = new Module_C(); // does implement Helper
+		
+		Module_D dInst = new Module_D(); // does implement Helper
+		
+		container.addModule(aInst);
+		
+		assertEquals("Shouldn't have any modules assignable to Helper class yet",
+				container.getModulesAssignableTo(Helper.class, false).size(), 0);
+		
+		container.addModule(cInst);
+		
+		assertEquals("Should have 1 module assignable to Helper class",
+				container.getModulesAssignableTo(Helper.class, false).size(), 1);
+		
+		// now add d as an available module
+		
+		container.addAvailableModule(new Loader<>(dInst), Module_D.class);
+		
+		// should still be 1 if we don't tell it to load available
+		assertEquals("Should have 1 module assignable to Helper class",
+				container.getModulesAssignableTo(Helper.class, false).size(), 1);
+		
+		// should now be 2
+		assertEquals("Should have 2 modules assignable to Helper class",
+				container.getModulesAssignableTo(Helper.class, true).size(), 2);
+		
+		// should still be 2 even if we don't load available now
+		assertEquals("Should have 2 modules assignable to Helper class",
+				container.getModulesAssignableTo(Helper.class, false).size(), 2);
+		
+		assertEquals("All modules should be assignable to Named",
+				container.getModulesAssignableTo(Named.class, true).size(), container.getModules().size());
+
+		System.out.println("*** END testGetAssignableTo() ***");
 	}
 	
 	/**
