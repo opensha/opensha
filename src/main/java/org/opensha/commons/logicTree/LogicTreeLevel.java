@@ -54,8 +54,26 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		return affectedByDefault;
 	}
 	
+	/**
+	 * Gets list of things (e.g., a file name or some sort of property key) that are explicitly affected by
+	 * the choice at this branching level.
+	 * <b>
+	 * This is originally designed for use for efficient storage of {@link SolutionLogicTree}'s, but other
+	 * use cases may exist.
+	 * 
+	 * @return collection of affected things, or empty collection if none (should never return null)
+	 */
 	protected abstract Collection<String> getAffected();
 	
+	/**
+	 * Gets list of things (e.g., a file name or some sort of property key) that are explicitly not affected by
+	 * the choice at this branching level.
+	 * <b>
+	 * This is originally designed for use for efficient storage of {@link SolutionLogicTree}'s, but other
+	 * use cases may exist.
+	 * 
+	 * @return collection of not affected things, or empty collection if none (should never return null)
+	 */
 	protected abstract Collection<String> getNotAffected();
 	
 	public String toString() {
@@ -202,7 +220,20 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 
 		@Override
 		public List<? extends LogicTreeNode> getNodes() {
+			// TODO why not force child class to implement this method?
 			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		protected Collection<String> getAffected() {
+			// TODO force child class to implement?
+			return List.of();
+		}
+
+		@Override
+		protected Collection<String> getNotAffected() {
+			// TODO force child class to implement?
+			return List.of();
 		}
 
 		@Override
