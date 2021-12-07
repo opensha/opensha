@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -196,31 +197,36 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet>, Br
 		public AveragingAccumulator<ModSectMinMags> averagingAccumulator() {
 			return new AveragingAccumulator<>() {
 				
-				private double[] minMags = null;
+				private double[] avgValues = null;
+				private double sumWeight = 0d;
 
 				@Override
 				public void process(ModSectMinMags module, double relWeight) {
-					if (minMags == null) {
-						minMags = module.getMinMagForSections();
-					} else {
-						for (int s=0; s<minMags.length; s++)
-							minMags[s] = Math.min(minMags[s], module.getMinMagForSection(s));
-					}
+					double[] modVals = module.getMinMagForSections();
+					if (avgValues == null)
+						avgValues = new double[modVals.length];
+					else
+						Preconditions.checkState(modVals.length == avgValues.length);
+					
+					for (int i=0; i< avgValues.length; i++)
+						avgValues[i] += modVals[i]*relWeight;
+					sumWeight += relWeight;
 				}
 
 				@Override
 				public ModSectMinMags getAverage() {
+					AverageableModule.scaleToTotalWeight(avgValues, sumWeight);
 					// rupture set will be attached when it's added to one later
 					Precomputed ret = new Precomputed();
-					ret.sectMinMags = minMags;
+					ret.sectMinMags = avgValues;
 					return ret;
 				}
 
 				@Override
 				public Class<ModSectMinMags> getType() {
 					return ModSectMinMags.class;
-				}}
-			;
+				}
+			};
 		}
 
 	}

@@ -78,7 +78,6 @@ public abstract class AbstractDoubleArrayCSV_BackedModule implements CSV_BackedM
 
 		@Override
 		public AveragingAccumulator<E> averagingAccumulator() {
-			// TODO Auto-generated method stub
 			return new AveragingAccumulator<>() {
 				
 				private double[] avgValues = null;
