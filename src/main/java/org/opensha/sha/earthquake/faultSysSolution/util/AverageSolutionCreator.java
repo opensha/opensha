@@ -97,26 +97,25 @@ public class AverageSolutionCreator {
 		FaultSystemSolution avgSol = new FaultSystemSolution(refRupSet, rates);
 		
 		// now build average modules
-		for (OpenSHA_Module module : inputs[0].getModules()) {
-			if (module instanceof AverageableModule<?>) {
-				System.out.println("Building average instance of "+module.getName());
-				try {
-					AveragingAccumulator<?> accumulator = ((AverageableModule<?>)module).averagingAccumulator();
-					
-					for (FaultSystemSolution sol : inputs)
-						accumulator.processContainer(sol, scale);
-					
-					OpenSHA_Module avgModule = accumulator.getAverage();
-					
-					if (avgModule == null)
-						System.err.println("Averaging returned null for "+module.getName()+", skipping");
-					else
-						avgSol.addModule(avgModule);
-				} catch (Exception e) {
-					System.err.println("Error averaging module: "+module.getName());
-					e.printStackTrace();
-					System.err.flush();
-				}
+		for (OpenSHA_Module module : inputs[0].getModulesAssignableTo(AverageableModule.class, true)) {
+			Preconditions.checkState(module instanceof AverageableModule<?>);
+			System.out.println("Building average instance of "+module.getName());
+			try {
+				AveragingAccumulator<?> accumulator = ((AverageableModule<?>)module).averagingAccumulator();
+				
+				for (FaultSystemSolution sol : inputs)
+					accumulator.processContainer(sol, scale);
+				
+				OpenSHA_Module avgModule = accumulator.getAverage();
+				
+				if (avgModule == null)
+					System.err.println("Averaging returned null for "+module.getName()+", skipping");
+				else
+					avgSol.addModule(avgModule);
+			} catch (Exception e) {
+				System.err.println("Error averaging module: "+module.getName());
+				e.printStackTrace();
+				System.err.flush();
 			}
 		}
 		

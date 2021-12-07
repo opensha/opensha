@@ -110,13 +110,15 @@ public class BranchAverageSolutionCreator {
 			
 			// initialize accumulators
 			rupSetAvgAccumulators = new ArrayList<>();
-			for (OpenSHA_Module module : rupSet.getModules())
-				if (module instanceof BranchAverageableModule<?>)
-					rupSetAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
+			for (OpenSHA_Module module : rupSet.getModulesAssignableTo(BranchAverageableModule.class, true)) {
+				Preconditions.checkState(module instanceof BranchAverageableModule<?>);
+				rupSetAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
+			}
 			solAvgAccumulators = new ArrayList<>();
-			for (OpenSHA_Module module : sol.getModules())
-				if (module instanceof BranchAverageableModule<?>)
-					solAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
+			for (OpenSHA_Module module : sol.getModulesAssignableTo(BranchAverageableModule.class, true)) {
+				Preconditions.checkState(module instanceof BranchAverageableModule<?>);
+				solAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
+			}
 			
 			combBranch = (LogicTreeBranch<LogicTreeNode>)branch.copy();
 			sectIndices = rupSet.getSectionIndicesForAllRups();
