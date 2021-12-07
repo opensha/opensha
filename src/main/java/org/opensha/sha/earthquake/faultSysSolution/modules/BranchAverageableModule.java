@@ -14,6 +14,6 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
  * @param <E>
  */
 @ModuleHelper
-public interface BranchAverageableModule<E extends OpenSHA_Module> extends AverageableModule<E> {
+public interface BranchAverageableModule<E extends BranchAverageableModule<E>> extends AverageableModule<E> {
 
 }

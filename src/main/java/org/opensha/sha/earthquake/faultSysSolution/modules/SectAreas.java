@@ -93,7 +93,7 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 	
 	public static final String DATA_FILE_NAME = "sect_areas.csv";
 	
-	public static class Precomputed extends SectAreas implements CSV_BackedModule, ConstantAverageable<SectAreas> {
+	public static class Precomputed extends SectAreas implements CSV_BackedModule, ConstantAverageable<Precomputed> {
 		
 		private double[] sectAreas;
 

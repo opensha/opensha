@@ -43,7 +43,9 @@ import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import scratch.UCERF3.AverageFaultSystemSolution;
 import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
@@ -723,26 +725,34 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 
 	public static void main(String[] args) throws IOException {
-//		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
-//				+ "2021_11_23-u3_branches-FM3_1-5h/");
-//		SolutionLogicTree tree = SolutionLogicTree.load(new File(dir, "results.zip"));
+		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2021_11_23-u3_branches-FM3_1-5h/");
+		SolutionLogicTree tree = SolutionLogicTree.load(new File(dir, "results.zip"));
 //		
 //		FaultSystemSolution ba = tree.calcBranchAveraged();
 //		
 //		ba.write(new File(dir, "branch_averaged.zip"));
 		
-		SolutionLogicTree tree = SolutionLogicTree.load(new File("/tmp/results.zip"));
+//		SolutionLogicTree tree = SolutionLogicTree.load(new File("/tmp/results.zip"));
 		if (tree.processor == null)
 			System.out.println("No solution processor");
 		else
 			System.out.println("Solution processor type: "+tree.processor.getClass().getName());
 		
 		FileBuilder builder = new FileBuilder(tree.processor, new File("/tmp/sol_tree_test.zip"));
-		for (LogicTreeBranch<?> branch : tree.getLogicTree())
-			if (Math.random() < 0.01)
-				builder.solution(tree.forBranch(branch), branch);
+		BranchAverageSolutionCreator avgBuilder = new BranchAverageSolutionCreator();
+		for (LogicTreeBranch<?> branch : tree.getLogicTree()) {
+			if (Math.random() < 0.05) {
+				FaultSystemSolution sol = tree.forBranch(branch);
+				builder.solution(sol, branch);
+				if (branch.getValue(FaultModels.class) == FaultModels.FM3_1)
+					avgBuilder.addSolution(sol, branch);
+			}
+		}
 		
 		builder.build();
+		FaultSystemSolution avgSol = avgBuilder.build();
+		avgSol.write(new File("/tmp/sol_tree_test_ba.zip"));
 	}
 
 }

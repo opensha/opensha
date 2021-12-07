@@ -1,11 +1,18 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import com.google.common.base.Preconditions;
+
+import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 
 /**
@@ -15,7 +22,7 @@ import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
  * @author Peter Powers
  * @version $Id:$
  */
-public interface GridSourceProvider extends OpenSHA_Module {
+public interface GridSourceProvider extends BranchAverageableModule<GridSourceProvider> {
 
 	/**
 	 * Returns the number of sources in the provider.
@@ -130,5 +137,90 @@ public interface GridSourceProvider extends OpenSHA_Module {
 	 * @param valuesArray
 	 */
 	public void scaleAllNodeMFDs(double[] valuesArray);
+
+	@Override
+	default AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
+		return new AveragingAccumulator<GridSourceProvider>() {
+			
+			private GridSourceProvider refGridProv = null;
+			private GriddedRegion gridReg = null;
+			private Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = null;
+			private Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = null;
+			
+			private double totWeight = 0;
+			
+			private double[] fractSS, fractR, fractN;
+
+			@Override
+			public Class<GridSourceProvider> getType() {
+				return GridSourceProvider.class;
+			}
+
+			@Override
+			public void process(GridSourceProvider module, double relWeight) {
+				if (refGridProv == null) {
+					refGridProv = module;
+					gridReg = module.getGriddedRegion();
+					nodeSubSeisMFDs = new HashMap<>();
+					nodeUnassociatedMFDs = new HashMap<>();
+					
+					fractSS = new double[refGridProv.size()];
+					fractR = new double[fractSS.length];
+					fractN = new double[fractSS.length];
+				} else {
+					Preconditions.checkState(gridReg.equalsRegion(module.getGriddedRegion()));
+				}
+				totWeight += relWeight;
+				for (int i=0; i<gridReg.getNodeCount(); i++) {
+					addWeighted(nodeSubSeisMFDs, i, module.getNodeSubSeisMFD(i), relWeight);
+					addWeighted(nodeUnassociatedMFDs, i, module.getNodeUnassociatedMFD(i), relWeight);
+					fractSS[i] += module.getFracStrikeSlip(i)*relWeight;
+					fractR[i] += module.getFracReverse(i)*relWeight;
+					fractN[i] += module.getFracNormal(i)*relWeight;
+				}
+			}
+
+			@Override
+			public GridSourceProvider getAverage() {
+				double scale = 1d/totWeight;
+				for (int i=0; i<fractSS.length; i++) {
+					IncrementalMagFreqDist subSeisMFD = nodeSubSeisMFDs.get(i);
+					if (subSeisMFD != null)
+						subSeisMFD.scale(scale);
+					IncrementalMagFreqDist nodeUnassociatedMFD = nodeUnassociatedMFDs.get(i);
+					if (nodeUnassociatedMFD != null)
+						nodeUnassociatedMFD.scale(scale);
+					fractSS[i] *= scale;
+					fractR[i] *= scale;
+					fractN[i] *= scale;
+				}
+				
+				return new AbstractGridSourceProvider.Precomputed(refGridProv.getGriddedRegion(),
+						nodeSubSeisMFDs, nodeUnassociatedMFDs, fractSS, fractN, fractR);
+			}
+		};
+	}
+	
+	public static void addWeighted(Map<Integer, IncrementalMagFreqDist> mfdMap, int index,
+			IncrementalMagFreqDist newMFD, double weight) {
+		if (newMFD == null)
+			// simple case
+			return;
+		IncrementalMagFreqDist runningMFD = mfdMap.get(index);
+		if (runningMFD == null) {
+			runningMFD = new IncrementalMagFreqDist(newMFD.getMinX(), newMFD.size(), newMFD.getDelta());
+			mfdMap.put(index, runningMFD);
+		}
+		addWeighted(runningMFD, newMFD, weight);
+	}
+	
+	public static void addWeighted(IncrementalMagFreqDist runningMFD,
+			IncrementalMagFreqDist newMFD, double weight) {
+		Preconditions.checkState(runningMFD.size() == newMFD.size(), "MFD sizes inconsistent");
+		Preconditions.checkState((float)runningMFD.getMinX() == (float)newMFD.getMinX(), "MFD min x inconsistent");
+		Preconditions.checkState((float)runningMFD.getDelta() == (float)newMFD.getDelta(), "MFD delta inconsistent");
+		for (int i=0; i<runningMFD.size(); i++)
+			runningMFD.add(i, newMFD.getY(i)*weight);
+	}
 
 }

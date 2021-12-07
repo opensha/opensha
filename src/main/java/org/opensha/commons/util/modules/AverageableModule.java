@@ -14,7 +14,7 @@ import com.google.common.base.Preconditions;
  * @param <E>
  */
 @ModuleHelper
-public interface AverageableModule<E extends OpenSHA_Module> extends OpenSHA_Module {
+public interface AverageableModule<E extends AverageableModule<E>> extends OpenSHA_Module {
 	
 	/**
 	 * Creates an accumulator that can build an average of multiple instances of this module
@@ -92,7 +92,7 @@ public interface AverageableModule<E extends OpenSHA_Module> extends OpenSHA_Mod
 	 * @param <E>
 	 */
 	@ModuleHelper
-	public interface ConstantAverageable<E extends OpenSHA_Module> extends AverageableModule<E> {
+	public interface ConstantAverageable<E extends AverageableModule<E>> extends AverageableModule<E> {
 
 		@Override
 		default AveragingAccumulator<E> averagingAccumulator() {
@@ -112,6 +112,7 @@ public interface AverageableModule<E extends OpenSHA_Module> extends OpenSHA_Mod
 					return module;
 				}
 
+				@SuppressWarnings("unchecked") // guaranteed by generics to be the correct type
 				@Override
 				public Class<E> getType() {
 					return (Class<E>)ConstantAverageable.this.getClass();

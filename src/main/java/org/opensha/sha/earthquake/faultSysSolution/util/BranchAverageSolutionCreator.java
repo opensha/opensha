@@ -8,36 +8,32 @@ import java.util.Map;
 import org.dom4j.Element;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
+import org.opensha.commons.util.modules.ModuleContainer;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
-import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
-import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 
 /**
  * Utility for building branch averaged solutions
@@ -52,7 +48,6 @@ public class BranchAverageSolutionCreator {
 	private double[] avgMags = null;
 	private double[] avgAreas = null;
 	private double[] avgLengths = null;
-	private double[] avgSlips = null;
 	private List<List<Double>> avgRakes = null;
 	private List<List<Integer>> sectIndices = null;
 	private List<DiscretizedFunc> rupMFDs = null;
@@ -64,28 +59,18 @@ public class BranchAverageSolutionCreator {
 	private double[] avgSectSlipRateStdDevs = null;
 	private List<List<Double>> avgSectRakes = null;
 	
-	// related to gridded seismicity
-	private GridSourceProvider refGridProv = null;
-	private GriddedRegion gridReg = null;
-	private Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = null;
-	private Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = null;
-	private List<IncrementalMagFreqDist> sectSubSeisMFDs = null;
-	
 //	private List<? extends LogicTreeBranch<?>> branches = getLogicTree().getBranches();
 	
 	private LogicTreeBranch<LogicTreeNode> combBranch = null;
 	
 	private List<Double> weights = new ArrayList<>();
 	
-	private PaleoseismicConstraintData paleoData = null;
-	
-	private NamedFaults namedFaults = null;
-	
 	private Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
 	
-	private double[] globalSectMinMags;
-	
 	private boolean skipRupturesBelowSectMin = true;
+	
+	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> rupSetAvgAccumulators;
+	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> solAvgAccumulators;
 	
 	public BranchAverageSolutionCreator() {
 		
@@ -100,8 +85,6 @@ public class BranchAverageSolutionCreator {
 		weights.add(weight);
 		totWeight += weight;
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		GridSourceProvider gridProv = sol.getGridSourceProvider();
-		SubSeismoOnFaultMFDs ssMFDs = sol.getModule(SubSeismoOnFaultMFDs.class);
 		
 		ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
 		
@@ -125,64 +108,23 @@ public class BranchAverageSolutionCreator {
 			for (int s=0; s<rupSet.getNumSections(); s++)
 				avgSectRakes.add(new ArrayList<>());
 			
-			if (gridProv != null) {
-				refGridProv = gridProv;
-				gridReg = gridProv.getGriddedRegion();
-				nodeSubSeisMFDs = new HashMap<>();
-				nodeUnassociatedMFDs = new HashMap<>();
-			}
-			
-			if (ssMFDs != null) {
-				sectSubSeisMFDs = new ArrayList<>();
-				for (int s=0; s<rupSet.getNumSections(); s++)
-					sectSubSeisMFDs.add(null);
-			}
-			
-			if (rupSet.hasModule(AveSlipModule.class))
-				avgSlips = new double[avgRates.length];
-			
-			if (modMinMags != null) {
-				globalSectMinMags = new double[rupSet.getNumSections()];
-				for (int s=0; s<globalSectMinMags.length; s++)
-					globalSectMinMags[s] = Double.POSITIVE_INFINITY;
-			}
+			// initialize accumulators
+			rupSetAvgAccumulators = new ArrayList<>();
+			for (OpenSHA_Module module : rupSet.getModules())
+				if (module instanceof BranchAverageableModule<?>)
+					rupSetAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
+			solAvgAccumulators = new ArrayList<>();
+			for (OpenSHA_Module module : sol.getModules())
+				if (module instanceof BranchAverageableModule<?>)
+					solAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
 			
 			combBranch = (LogicTreeBranch<LogicTreeNode>)branch.copy();
 			sectIndices = rupSet.getSectionIndicesForAllRups();
 			rupMFDs = new ArrayList<>();
 			for (int r=0; r<avgRates.length; r++)
 				rupMFDs.add(new ArbitrarilyDiscretizedFunc());
-			
-			paleoData = rupSet.getModule(PaleoseismicConstraintData.class);
-			
-			namedFaults = rupSet.getModule(NamedFaults.class);
 		} else {
 			Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
-			if (refGridProv != null)
-				Preconditions.checkNotNull(gridProv, "Some solutions have grid source providers and others don't");
-			
-			if (modMinMags == null)
-				globalSectMinMags = null;
-			
-			if (paleoData != null) {
-				// see if it's the same
-				PaleoseismicConstraintData myPaleoData = rupSet.getModule(PaleoseismicConstraintData.class);
-				if (myPaleoData != null) {
-					boolean same = paleoConstraintsSame(paleoData.getPaleoRateConstraints(),
-							myPaleoData.getPaleoRateConstraints());
-					same = same && paleoConstraintsSame(paleoData.getPaleoSlipConstraints(),
-							myPaleoData.getPaleoSlipConstraints());
-					if (same && paleoData.getPaleoProbModel() != null)
-						same = paleoData.getPaleoProbModel().getClass().equals(myPaleoData.getPaleoProbModel().getClass());
-					if (same && paleoData.getPaleoSlipProbModel() != null)
-						same = paleoData.getPaleoSlipProbModel().getClass().equals(myPaleoData.getPaleoSlipProbModel().getClass());
-					if (!same)
-						paleoData = null;
-				} else {
-					// not all branches have it
-					paleoData = null;
-				}
-			}
 		}
 		
 		for (int i=0; i<combBranch.size(); i++) {
@@ -194,26 +136,22 @@ public class BranchAverageSolutionCreator {
 			nodeCounts.put(branchVal, prevCount+1);
 		}
 		
-		AveSlipModule slipModule = rupSet.getModule(AveSlipModule.class);
-		if (avgSlips != null)
-			Preconditions.checkNotNull(slipModule);
-		addWeighted(avgRates, sol.getRateForAllRups(), weight);
 		for (int r=0; r<avgRates.length; r++) {
+			avgRakes.get(r).add(rupSet.getAveRakeForRup(r));
 			double rate = sol.getRateForRup(r);
+			if (rate == 0d)
+				continue;
 			double mag = rupSet.getMagForRup(r);
-			
-			if (avgSlips != null)
-				avgSlips[r] += weight*slipModule.getAveSlip(r);
 			
 			if (skipRupturesBelowSectMin && modMinMags != null && modMinMags.isRupBelowSectMinMag(r))
 				// skip
 				continue;
+			avgRates[r] += rate*weight;
 			DiscretizedFunc rupMFD = rupMFDs.get(r);
 			double y = rate*weight;
 			if (rupMFD.hasX(mag))
 				y += rupMFD.getY(mag);
 			rupMFD.set(mag, y);
-			avgRakes.get(r).add(rupSet.getAveRakeForRup(r));
 		}
 		addWeighted(avgMags, rupSet.getMagForAllRups(), weight);
 		addWeighted(avgAreas, rupSet.getAreaForAllRups(), weight);
@@ -228,26 +166,35 @@ public class BranchAverageSolutionCreator {
 			avgSectRakes.get(s).add(sect.getAveRake());
 		}
 		
-		if (gridProv != null) {
-			Preconditions.checkNotNull(refGridProv, "Some solutions have grid source providers and others don't");
-			for (int i=0; i<gridReg.getNodeCount(); i++) {
-				addWeighted(nodeSubSeisMFDs, i, gridProv.getNodeSubSeisMFD(i), weight);
-				addWeighted(nodeUnassociatedMFDs, i, gridProv.getNodeUnassociatedMFD(i), weight);
+		// now work on modules
+		processAccumulators(rupSetAvgAccumulators, rupSet, weight);
+		processAccumulators(solAvgAccumulators, sol, weight);
+	}
+	
+	private static void processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
+			ModuleContainer<OpenSHA_Module> container, double weight) {
+		for (int i=accumulators.size(); --i>=0;) {
+			AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator = accumulators.get(i);
+			try {
+				accumulator.processContainer(container, weight);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("Error processing accumulator, will no longer average "+accumulator.getType().getName());
+				System.err.flush();
+				accumulators.remove(i);
 			}
 		}
-		if (ssMFDs == null) {
-			Preconditions.checkState(sectSubSeisMFDs == null, "Some solutions have sub seismo MFDs and others don't");
-		} else {
-			Preconditions.checkNotNull(sectSubSeisMFDs, "Some solutions have sub seismo MFDs and others don't");
-			for (int s=0; s<rupSet.getNumSections(); s++) {
-				IncrementalMagFreqDist subSeisMFD = ssMFDs.get(s);
-				Preconditions.checkNotNull(subSeisMFD);
-				IncrementalMagFreqDist avgMFD = sectSubSeisMFDs.get(s);
-				if (avgMFD == null) {
-					avgMFD = new IncrementalMagFreqDist(subSeisMFD.getMinX(), subSeisMFD.getMaxX(), subSeisMFD.size());
-					sectSubSeisMFDs.set(s, avgMFD);
-				}
-				addWeighted(avgMFD, subSeisMFD, weight);
+	}
+	
+	private static void buildAverageModules(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
+			ModuleContainer<OpenSHA_Module> container) {
+		for (AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator : accumulators) {
+			try {
+				container.addModule(accumulator.getAverage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("Error building average module of type "+accumulator.getType().getName());
+				System.err.flush();
 			}
 		}
 	}
@@ -279,37 +226,12 @@ public class BranchAverageSolutionCreator {
 			} else {
 				DiscretizedFunc rupMFD = rupMFDs.get(r);
 				rupMFD.scale(1d/totWeight);
-				Preconditions.checkState((float)rupMFD.calcSumOfY_Vals() == (float)avgRates[r]);
+				double calcRate = rupMFD.calcSumOfY_Vals();
+				Preconditions.checkState((float)calcRate == (float)avgRates[r],
+						"Rupture MFD rate=%s, avgRate=%s", calcRate, avgRates[r]);
 			}
 			rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(avgRakes.get(r), weights));
-			if (avgSlips != null)
-				avgSlips[r] /= totWeight;
 		}
-		
-		GridSourceProvider combGridProv = null;
-		if (refGridProv != null) {
-			double[] fractSS = new double[refGridProv.size()];
-			double[] fractR = new double[fractSS.length];
-			double[] fractN = new double[fractSS.length];
-			for (int i=0; i<fractSS.length; i++) {
-				IncrementalMagFreqDist subSeisMFD = nodeSubSeisMFDs.get(i);
-				if (subSeisMFD != null)
-					subSeisMFD.scale(1d/totWeight);
-				IncrementalMagFreqDist nodeUnassociatedMFD = nodeUnassociatedMFDs.get(i);
-				if (nodeUnassociatedMFD != null)
-					nodeUnassociatedMFD.scale(1d/totWeight);
-				fractSS[i] = refGridProv.getFracStrikeSlip(i);
-				fractR[i] = refGridProv.getFracReverse(i);
-				fractN[i] = refGridProv.getFracNormal(i);
-			}
-			
-			
-			combGridProv = new AbstractGridSourceProvider.Precomputed(refGridProv.getGriddedRegion(),
-					nodeSubSeisMFDs, nodeUnassociatedMFDs, fractSS, fractN, fractR);
-		}
-		if (sectSubSeisMFDs != null)
-			for (int s=0; s<sectSubSeisMFDs.size(); s++)
-				sectSubSeisMFDs.get(s).scale(1d/totWeight);
 		
 		List<FaultSection> subSects = new ArrayList<>();
 		for (int s=0; s<refRupSet.getNumSections(); s++) {
@@ -332,6 +254,10 @@ public class BranchAverageSolutionCreator {
 //		avgRupSet.removeModuleInstances(SectSlipRates.class);
 		FaultSystemRupSet avgRupSet = FaultSystemRupSet.builder(subSects, sectIndices).rupRakes(rakes)
 				.rupAreas(avgAreas).rupLengths(avgLengths).rupMags(avgMags).build();
+		
+		// now build averaged modules
+		buildAverageModules(rupSetAvgAccumulators, avgRupSet);
+		
 		int numNonNull = 0;
 		boolean haveSlipAlong = false;
 		for (int i=0; i<combBranch.size(); i++) {
@@ -357,7 +283,7 @@ public class BranchAverageSolutionCreator {
 				ScalingRelationships.ELLSWORTH_B, ScalingRelationships.HANKS_BAKUN_08,
 				ScalingRelationships.SHAW_2009_MOD, ScalingRelationships.SHAW_CONST_STRESS_DROP)) {
 			combBranch.setValue(ScalingRelationships.MEAN_UCERF3);
-			if (avgSlips == null)
+			if (!avgRupSet.hasModule(AveSlipModule.class))
 				avgRupSet.addModule(AveSlipModule.forModel(avgRupSet, ScalingRelationships.MEAN_UCERF3));
 			numNonNull++;
 		}
@@ -369,21 +295,15 @@ public class BranchAverageSolutionCreator {
 		
 		if (numNonNull > 0) {
 			avgRupSet.addModule(combBranch);
-			System.out.println("Combined logic tre branch: "+combBranch);
+			System.out.println("Combined logic tree branch: "+combBranch);
 		}
-		if (avgSlips != null)
-			avgRupSet.addModule(AveSlipModule.precomputed(avgRupSet, avgSlips));
-		if (paleoData != null)
-			avgRupSet.addModule(paleoData);
-		if (namedFaults != null)
-			avgRupSet.addModule(namedFaults);
 		
 		FaultSystemSolution sol = new FaultSystemSolution(avgRupSet, avgRates);
+		
+		// now build averaged modules
+		buildAverageModules(solAvgAccumulators, sol);
+		
 		sol.addModule(combBranch);
-		if (combGridProv != null)
-			sol.setGridSourceProvider(combGridProv);
-		if (sectSubSeisMFDs != null)
-			sol.addModule(new SubSeismoOnFaultMFDs(sectSubSeisMFDs));
 		sol.addModule(new RupMFDsModule(sol, rupMFDs.toArray(new DiscretizedFunc[0])));
 		
 		String info = "Branch Averaged Fault System Solution, across "+weights.size()
@@ -402,7 +322,7 @@ public class BranchAverageSolutionCreator {
 		
 		sol.addModule(new InfoModule(info));
 		return sol;
-	}
+		}
 	
 	private boolean hasAllEqually(Map<LogicTreeNode, Integer> nodeCounts, LogicTreeNode... nodes) {
 		Integer commonCount = null;
@@ -413,25 +333,6 @@ public class BranchAverageSolutionCreator {
 			if (commonCount == null)
 				commonCount = count;
 			else if (commonCount.intValue() != count.intValue())
-				return false;
-		}
-		return true;
-	}
-	
-	private static boolean paleoConstraintsSame(List<? extends SectMappedUncertainDataConstraint> constr1,
-			List<? extends SectMappedUncertainDataConstraint> constr2) {
-		if ((constr1 == null) != (constr2 == null))
-			return false;
-		if (constr1 == null && constr2 == null)
-			return true;
-		if (constr1.size() != constr2.size())
-			return false;
-		for (int i=0; i<constr1.size(); i++) {
-			SectMappedUncertainDataConstraint c1 = constr1.get(i);
-			SectMappedUncertainDataConstraint c2 = constr2.get(i);
-			if (c1.sectionIndex != c2.sectionIndex)
-				return false;
-			if ((float)c1.bestEstimate != (float)c2.bestEstimate)
 				return false;
 		}
 		return true;
@@ -641,28 +542,6 @@ public class BranchAverageSolutionCreator {
 			throw new UnsupportedOperationException();
 		}
 		
-	}
-	
-	public static void addWeighted(Map<Integer, IncrementalMagFreqDist> mfdMap, int index,
-			IncrementalMagFreqDist newMFD, double weight) {
-		if (newMFD == null)
-			// simple case
-			return;
-		IncrementalMagFreqDist runningMFD = mfdMap.get(index);
-		if (runningMFD == null) {
-			runningMFD = new IncrementalMagFreqDist(newMFD.getMinX(), newMFD.size(), newMFD.getDelta());
-			mfdMap.put(index, runningMFD);
-		}
-		addWeighted(runningMFD, newMFD, weight);
-	}
-	
-	public static void addWeighted(IncrementalMagFreqDist runningMFD,
-			IncrementalMagFreqDist newMFD, double weight) {
-		Preconditions.checkState(runningMFD.size() == newMFD.size(), "MFD sizes inconsistent");
-		Preconditions.checkState((float)runningMFD.getMinX() == (float)newMFD.getMinX(), "MFD min x inconsistent");
-		Preconditions.checkState((float)runningMFD.getDelta() == (float)newMFD.getDelta(), "MFD delta inconsistent");
-		for (int i=0; i<runningMFD.size(); i++)
-			runningMFD.add(i, newMFD.getY(i)*weight);
 	}
 	
 	private static void addWeighted(double[] running, double[] vals, double weight) {
