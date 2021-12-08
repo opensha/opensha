@@ -387,7 +387,8 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		// wrap in new list, as the load method modifies this list
 		List<Callable<? extends E>> available = new ArrayList<>(availableModules);
 		for (Callable<? extends E> call : available)
-			loadAvailableModule(call);
+			if (availableModules.contains(call))
+				loadAvailableModule(call);
 	}
 	
 	/**

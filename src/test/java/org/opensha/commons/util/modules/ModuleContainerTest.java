@@ -498,8 +498,36 @@ public class ModuleContainerTest {
 		private ModuleContainer<?> parent;
 		
 		public String getName() {
-			return "Module E";
+			return "Module F";
 		}
+	}
+
+	private static class Module_G implements OpenSHA_Module {
+		Module_A_B a_b;
+
+		public Module_G(Module_A_B a_b) {
+			this.a_b = a_b;
+		}
+
+		public String getName() {
+			return "Module G";
+		}
+	}
+
+	@Test
+	public void testLoadAvailableModules() {
+		ModuleContainer<OpenSHA_Module> container = new ModuleContainer<>();
+
+		// Module_G depends on Module_A_B, which is made available after
+		container.addAvailableModule(
+				(Callable<Module_G>) () -> new Module_G(container.getModule(Module_A_B.class)),
+				Module_G.class);
+		container.addAvailableModule((Callable<Module_A_B>) Module_A_B::new, Module_A_B.class);
+
+		container.loadAllAvailableModules();
+
+		Module_A_B a_b = container.getModule(Module_A_B.class);
+		assertEquals(a_b, container.getModule(Module_G.class).a_b);
 	}
 
 }
