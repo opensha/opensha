@@ -244,7 +244,7 @@ public class SolHazardMapCalc {
 	}
 	
 	protected static DecimalFormat percentDF = new DecimalFormat("0.00%");
-	
+	protected static DecimalFormat twoDigitsDF = new DecimalFormat("0.00");
 	protected static DecimalFormat oDF = new DecimalFormat("0.#");
 	
 	private class CalcThread extends Thread {
@@ -415,6 +415,8 @@ public class SolHazardMapCalc {
 			int numWithin1 = 0;
 			int numWithin5 = 0;
 			int numWithin10 = 0;
+			double mean = 0d;
+			double meanAbs = 0d;
 			
 			for (int i=0; i<xyz.size(); i++) {
 				double val = xyz.get(i);
@@ -434,10 +436,17 @@ public class SolHazardMapCalc {
 					numBelow++;
 				if ((float)val > 0f)
 					numAbove++;
+				if (Double.isFinite(val)) {
+					mean += val;
+					meanAbs += Math.abs(val);
+				}
 			}
+			mean /= (double)xyz.size();
+			meanAbs /= (double)xyz.size();
 			
 			List<String> labels = new ArrayList<>();
 			labels.add("Range: ["+oDF.format(min)+"%,"+oDF.format(max)+"%]");
+			labels.add("Mean: "+twoDigitsDF.format(mean)+"%, Abs: "+twoDigitsDF.format(meanAbs)+"%");
 			if (exactly0 >= xyz.size()/2)
 				labels.add("Exactly 0%: "+percentDF.format((double)exactly0/(double)xyz.size()));
 			labels.add(percentDF.format((double)numBelow/(double)xyz.size())
