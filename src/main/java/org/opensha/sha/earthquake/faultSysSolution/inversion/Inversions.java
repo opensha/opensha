@@ -460,13 +460,13 @@ public class Inversions {
 			
 			if (doNet)
 				constraints.add(new SlipRateSegmentationConstraint(
-						rupSet, segModel, combiner, weight, true, inequality, true));
+						rupSet, segModel, combiner, weight, true, inequality, true, true));
 			if (doNormalized)
 				constraints.add(new SlipRateSegmentationConstraint(
-						rupSet, segModel, combiner, weight, true, inequality, false));
+						rupSet, segModel, combiner, weight, true, inequality));
 			if (doRegular)
 				constraints.add(new SlipRateSegmentationConstraint(
-						rupSet, segModel, combiner, weight, false, inequality, false));
+						rupSet, segModel, combiner, weight, false, inequality));
 		}
 		
 		if (cmd.hasOption("minimize-below-sect-min")) {
