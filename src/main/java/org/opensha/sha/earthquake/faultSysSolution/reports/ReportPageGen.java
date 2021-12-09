@@ -272,6 +272,12 @@ public class ReportPageGen {
 		else
 			plots = getDefaultRupSetPlots(level);
 		
+		if (cmd.hasOption("skip-sect-by-sect")) {
+			for (int i=plots.size(); --i>=0;)
+				if (plots.get(i) instanceof SectBySectDetailPlots)
+					plots.remove(i);
+		}
+		
 		if (cmd.hasOption("skip-plausibility")) {
 			for (int i=plots.size(); --i>=0;)
 				if (plots.get(i) instanceof PlausibilityFilterPlot)
@@ -1113,6 +1119,11 @@ public class ReportPageGen {
 				"Flag to skip plausibility calculations");
 		skipPlausibilityOption.setRequired(false);
 		ops.addOption(skipPlausibilityOption);
+		
+		Option skipSectBySectOption = new Option("ssbs", "skip-sect-by-sect", false,
+				"Flag to skip section-by-section plots, regardless of selected plot level");
+		skipSectBySectOption.setRequired(false);
+		ops.addOption(skipSectBySectOption);
 		
 		Option distAzCacheOption = new Option("cd", "cache-dir", true,
 				"Path to cache files to speed up calculations");
