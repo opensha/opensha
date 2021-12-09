@@ -222,7 +222,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		if (rupSet == null) {
 			// see if it's an old rupture set
 			if (zip.getEntry("rup_sections.bin") != null) {
-				System.err.println("WARNING: this is a legacy fault sytem rupture set, that file format is deprecated. "
+				System.err.println("WARNING: this is a legacy fault system rupture set, that file format is deprecated. "
 						+ "Will attempt to load it using the legacy file loader. "
 						+ "See https://opensha.org/File-Formats for more information.");
 				try {
@@ -1625,27 +1625,30 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				this.rupAreas = rupAreas;
 			}
 		}
+
+		private void checkBuildLengths() {
+			if (rupLengths == null) {
+				rupLengths(rupLengthsDefault(faultSectionData, sectionForRups));
+			}
+		}
 		
 		/**
-		 * Sets magnitudes from the given UCERF3 scaling relationships enum
+		 * Sets magnitudes from the given scaling relationship
 		 * @param scale
 		 * @return
 		 */
 		public Builder forScalingRelationship(RupSetScalingRelationship scale) {
 			this.mags = new double[sectionForRups.size()];
 			checkBuildRakesAndAreas();
+			checkBuildLengths();
 			for (int r=0; r<mags.length; r++) {
-				double totArea = 0d;
 				double totOrigArea = 0;
-				double totLength = 0;
 				for (int s : sectionForRups.get(r)) {
 					FaultSection sect = faultSectionData.get(s);
-					totArea += sect.getArea(true);	// sq-m
 					totOrigArea += sect.getArea(false);	// sq-m
-					totLength += sect.getTraceLength()*1e3;	// km --> m
 				}
-				double origDDW = totOrigArea/totLength;
-				mags[r] = scale.getMag(totArea, origDDW, rakes[r]);
+				double origDDW = totOrigArea / rupLengths[r];
+				mags[r] = scale.getMag(rupAreas[r], origDDW, rakes[r]);
 			}
 			modules.add(new ModuleBuilder() {
 				
@@ -1771,10 +1774,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		public FaultSystemRupSet build(boolean round) {
 			Preconditions.checkNotNull(mags, "Must set magnitudes");
 			checkBuildRakesAndAreas();
-			
-			double[] rupLengths = this.rupLengths;
-			if (rupLengths == null)
-				rupLengths = rupLengthsDefault(faultSectionData, sectionForRups);
+			checkBuildLengths();
 			
 			if (round) {
 				mags = roundFixed(mags, 3);
