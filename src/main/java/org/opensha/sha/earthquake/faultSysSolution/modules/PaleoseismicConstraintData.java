@@ -34,7 +34,7 @@ import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetch
  *
  */
 public class PaleoseismicConstraintData implements SubModule<FaultSystemRupSet>,
-JSON_TypeAdapterBackedModule<PaleoseismicConstraintData> {
+JSON_TypeAdapterBackedModule<PaleoseismicConstraintData>, BranchAverageableModule<PaleoseismicConstraintData> {
 	
 	private transient FaultSystemRupSet rupSet;
 	private List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints;
@@ -235,6 +235,63 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData> {
 		
 		PaleoseismicConstraintData data = loadUCERF3(rupSet);
 		data.inferRatesFromSlipConstraints(true);
+	}
+
+	@Override
+	public AveragingAccumulator<PaleoseismicConstraintData> averagingAccumulator() {
+		// TODO Auto-generated method stub
+		return new AveragingAccumulator<PaleoseismicConstraintData>() {
+			
+			PaleoseismicConstraintData paleoData;
+
+			@Override
+			public void process(PaleoseismicConstraintData module, double relWeight) {
+				if (paleoData == null) {
+					paleoData = module;
+				} else {
+					// make sure it's the same
+					boolean same = paleoConstraintsSame(paleoData.getPaleoRateConstraints(),
+							module.getPaleoRateConstraints());
+					same = same && paleoConstraintsSame(paleoData.getPaleoSlipConstraints(),
+							module.getPaleoSlipConstraints());
+					if (same && paleoData.getPaleoProbModel() != null)
+						same = paleoData.getPaleoProbModel().getClass().equals(module.getPaleoProbModel().getClass());
+					if (same && paleoData.getPaleoSlipProbModel() != null)
+						same = paleoData.getPaleoSlipProbModel().getClass().equals(module.getPaleoSlipProbModel().getClass());
+					if (!same)
+						throw new IllegalStateException("Paleo-seismic data varies by branch, averaging not (yet) supported");
+				}
+			}
+
+			@Override
+			public PaleoseismicConstraintData getAverage() {
+				return paleoData;
+			}
+
+			@Override
+			public Class<PaleoseismicConstraintData> getType() {
+				return PaleoseismicConstraintData.class;
+			}
+		};
+	}
+	
+	private static boolean paleoConstraintsSame(List<? extends SectMappedUncertainDataConstraint> constr1,
+			List<? extends SectMappedUncertainDataConstraint> constr2) {
+		if ((constr1 == null) != (constr2 == null))
+			return false;
+		if (constr1 == null && constr2 == null)
+			return true;
+		if (constr1.size() != constr2.size())
+			return false;
+		for (int i=0; i<constr1.size(); i++) {
+			SectMappedUncertainDataConstraint c1 = constr1.get(i);
+			SectMappedUncertainDataConstraint c2 = constr2.get(i);
+			if (c1.sectionIndex != c2.sectionIndex)
+				return false;
+			if ((float)c1.bestEstimate != (float)c2.bestEstimate)
+				return false;
+		}
+		return true;
 	}
 
 }

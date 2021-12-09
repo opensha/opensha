@@ -503,6 +503,51 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	/**
+	 * Returns all modules that are assignable to the given type. For example, if you wanted to retrieve the
+	 * set of modules that implement {@link ArchivableModule}, call this method with that type. The given
+	 * type can be any interface or abstract class.
+	 * 
+	 * @param type
+	 * @param loadAvailable if true, any available matching but not-yet loaded modules will be loaded first
+	 * @return list of matching modules (will be empty if no matches)
+	 */
+	public synchronized List<E> getModulesAssignableTo(Class<?> type, boolean loadAvailable) {
+		List<E> ret = new ArrayList<>();
+		
+		// check loaded modules
+//		System.out.println("Looking for modules assignable to "+type.getName());
+		for (E module : getModules(false)) {
+//			System.out.println("\tTesting module "+module.getName()+" of type "+module.getClass());
+			if (type.isAssignableFrom(module.getClass())) {
+//				System.out.println("\t\tMATCH!");
+				ret.add(module);
+//			} else {
+//				System.out.println("\t\tnot a match");
+			}
+		}
+		
+		if (loadAvailable) {
+			// check available modules
+			Map<Callable<E>, Class<? extends E>> matchingCalls = new HashMap<>();
+			for (Class<? extends E> moduleClass : availableMappings.keySet()) {
+				Callable<E> call = availableMappings.get(moduleClass);
+				if (!matchingCalls.containsKey(call) && type.isAssignableFrom(moduleClass))
+					matchingCalls.put(call, moduleClass);
+			}
+			
+			for (Callable<E> call : matchingCalls.keySet()) {
+				if (loadAvailableModule(call)) {
+					E module = getModule(matchingCalls.get(call));
+					Preconditions.checkNotNull(module);
+					ret.add(module);
+				}
+			}
+		}
+		
+		return ret;
+	}
+	
+	/**
 	 * This returns a unique prefix to be used if this container also a {@link OpenSHA_Module} and is written as member
 	 * of a {@link ModuleArchive}. This allows nested file structures within an archive. Default implementation returns
 	 * null, and must be overridden to supply a non-empty prefix if this is ever included as a module within a parent

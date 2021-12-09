@@ -11,7 +11,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
-public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
+public class SubSeismoOnFaultMFDs implements CSV_BackedModule, BranchAverageableModule<SubSeismoOnFaultMFDs> {
 	
 	private ImmutableList<IncrementalMagFreqDist> subSeismoOnFaultMFDs;
 	
@@ -130,6 +130,63 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule {
 		SubSeismoOnFaultMFDs mfds = new SubSeismoOnFaultMFDs();
 		mfds.initFromCSV(csv);
 		return mfds;
+	}
+
+	@Override
+	public AveragingAccumulator<SubSeismoOnFaultMFDs> averagingAccumulator() {
+		return new AveragingAccumulator<SubSeismoOnFaultMFDs>() {
+			
+			private List<IncrementalMagFreqDist> avgMFDs;
+			private double totWeight = 0d;
+
+			@Override
+			public void process(SubSeismoOnFaultMFDs module, double relWeight) {
+				if (avgMFDs == null) {
+					avgMFDs = new ArrayList<>();
+					for (int i=0; i<module.size(); i++)
+						avgMFDs.add(null);
+				}
+				for (int i=0; i<module.size(); i++) {
+					IncrementalMagFreqDist avg = avgMFDs.get(i);
+					IncrementalMagFreqDist mine = module.get(i);
+					if (mine == null)
+						continue;
+					if (avg == null) {
+						avg = new IncrementalMagFreqDist(mine.getMinX(), mine.size(), mine.getDelta());
+						avgMFDs.set(i, avg);
+					}
+					Preconditions.checkState((float)mine.getMinX() == (float)avg.getMinX());
+					Preconditions.checkState((float)mine.getDelta() == (float)avg.getDelta());
+					if (mine.size() > avg.size()) {
+						// need to grow it
+						IncrementalMagFreqDist larger = new IncrementalMagFreqDist(mine.getMinX(), mine.size(), mine.getDelta());
+						for (int j=0; j<avg.size(); j++)
+							larger.set(j, avg.getY(j));
+						avg = larger;
+						avgMFDs.set(i, larger);
+					}
+					for (int j=0; j<mine.size(); j++)
+						avg.add(j, mine.getY(j));
+				}
+				totWeight += relWeight;
+			}
+
+			@Override
+			public SubSeismoOnFaultMFDs getAverage() {
+				if (totWeight != 1d) {
+					double scale = 1d/totWeight;
+					for (IncrementalMagFreqDist mfd : avgMFDs)
+						if (mfd != null)
+							mfd.scale(scale);
+				}
+				return new SubSeismoOnFaultMFDs(avgMFDs);
+			}
+
+			@Override
+			public Class<SubSeismoOnFaultMFDs> getType() {
+				return SubSeismoOnFaultMFDs.class;
+			}
+		};
 	}
 
 }

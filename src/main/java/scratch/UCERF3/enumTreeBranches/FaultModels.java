@@ -13,6 +13,7 @@ import java.util.Map;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
+import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.dao.db.DB_AccessAPI;
@@ -20,6 +21,8 @@ import org.opensha.refFaultParamDb.dao.db.DB_ConnectionPool;
 import org.opensha.refFaultParamDb.dao.db.FaultModelDB_DAO;
 import org.opensha.refFaultParamDb.dao.db.PrefFaultSectionDataDB_DAO;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -31,6 +34,10 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
+@Affects(FaultSystemRupSet.SECTS_FILE_NAME)
+@Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum FaultModels implements U3LogicTreeBranchNode<FaultModels> {
 
 	FM2_1(	"Fault Model 2.1",	41,		0d),

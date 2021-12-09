@@ -1,11 +1,11 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -13,7 +13,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
-public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
+public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet>, BranchAverageableModule<ModSectMinMags> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -30,6 +30,75 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 	public abstract double getMinMagForSection(int sectIndex);
 	
 	public abstract double[] getMinMagForSections();
+	
+	/**
+	 * Checks if the given magnitude is below the section minimum magnitude, to 4-byte floating point precision.
+	 * 
+	 * @param sectIndex
+	 * @param mag
+	 * @return
+	 */
+	public boolean isBelowSectMinMag(int sectIndex, double mag) {
+		return isBelowSectMinMag(sectIndex, mag, null);
+	}
+	
+	/**
+	 * Checks if the given magnitude is below the section minimum magnitude, to 4-byte floating point precision.
+	 * If a reference gridding is supplied, then this will only return true if the given magnitude maps to a bin index
+	 * that is lower than the bin index that contains the minimum magnitude.
+	 * 
+	 * @param sectIndex
+	 * @param mag
+	 * @param referenceGridding
+	 * @return true if the magnitude is below the section minimum magnitude
+	 */
+	public boolean isBelowSectMinMag(int sectIndex, double mag, EvenlyDiscretizedFunc referenceGridding) {
+		double minMag = getMinMagForSection(sectIndex);
+		if ((float)mag >= (float)minMag)
+			// it's above, simple
+			return false;
+		
+		if (referenceGridding != null) {
+			// only return true if it's mapped to a lower bin
+			
+			// add a tiny but in case it's perfectly on a bin edge
+			int minIndex = referenceGridding.getClosestXIndex(minMag+1e-4);
+			
+			int magIndex = referenceGridding.getClosestXIndex(mag);
+			
+			return magIndex < minIndex;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Checks if the given rupture is below the minimum magnitude of any participation sections, according to
+	 * {@link ModSectMinMags#isBelowSectMinMag(int, double)}. 
+	 * 
+	 * @param rupIndex
+	 * @return
+	 */
+	public boolean isRupBelowSectMinMag(int rupIndex) {
+		return isRupBelowSectMinMag(rupIndex, null);
+	}
+	
+	/**
+	 * Checks if the given rupture is below the minimum magnitude of any participation sections, according to
+	 * {@link ModSectMinMags#isBelowSectMinMag(int, double, EvenlyDiscretizedFunc)}. 
+	 * 
+	 * @param rupIndex
+	 * @param referenceGridding
+	 * @return
+	 */
+	public boolean isRupBelowSectMinMag(int rupIndex, EvenlyDiscretizedFunc referenceGridding) {
+		double mag = rupSet.getMagForRup(rupIndex);
+		for (int sectIndex : rupSet.getSectionsIndicesForRup(rupIndex))
+			if (isBelowSectMinMag(sectIndex, mag, referenceGridding))
+				return true;
+		
+		return false;
+	}
 	
 	/**
 	 * Sets the section minimum magnitudes as the maximum value of the supplied system-wide minimum magnitude
@@ -122,6 +191,42 @@ public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet> {
 			Preconditions.checkState(rupSet.getNumSections() == newParent.getNumSections());
 			
 			return new Precomputed(newParent, sectMinMags);
+		}
+
+		@Override
+		public AveragingAccumulator<ModSectMinMags> averagingAccumulator() {
+			return new AveragingAccumulator<>() {
+				
+				private double[] avgValues = null;
+				private double sumWeight = 0d;
+
+				@Override
+				public void process(ModSectMinMags module, double relWeight) {
+					double[] modVals = module.getMinMagForSections();
+					if (avgValues == null)
+						avgValues = new double[modVals.length];
+					else
+						Preconditions.checkState(modVals.length == avgValues.length);
+					
+					for (int i=0; i< avgValues.length; i++)
+						avgValues[i] += modVals[i]*relWeight;
+					sumWeight += relWeight;
+				}
+
+				@Override
+				public ModSectMinMags getAverage() {
+					AverageableModule.scaleToTotalWeight(avgValues, sumWeight);
+					// rupture set will be attached when it's added to one later
+					Precomputed ret = new Precomputed();
+					ret.sectMinMags = avgValues;
+					return ret;
+				}
+
+				@Override
+				public Class<ModSectMinMags> getType() {
+					return ModSectMinMags.class;
+				}
+			};
 		}
 
 	}

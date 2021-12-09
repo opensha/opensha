@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.opensha.commons.util.modules.SubModule;
+import org.opensha.commons.util.modules.AverageableModule.ConstantAverageable;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -27,7 +28,8 @@ import com.google.gson.reflect.TypeToken;
  * @author kevin
  *
  */
-public class NamedFaults implements SubModule<FaultSystemRupSet>, JSON_TypeAdapterBackedModule<Map<String, List<Integer>>> {
+public class NamedFaults implements SubModule<FaultSystemRupSet>, BranchAverageableModule<NamedFaults>,
+ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<Integer>>> {
 	
 	private FaultSystemRupSet rupSet;
 	private Map<String, List<Integer>> namedFaults;

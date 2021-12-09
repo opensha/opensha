@@ -6,6 +6,7 @@ import java.util.List;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
@@ -18,7 +19,7 @@ import com.google.common.base.Preconditions;
  * @author kevin
  *
  */
-public class InversionMisfitStats implements CSV_BackedModule {
+public class InversionMisfitStats implements CSV_BackedModule, AverageableModule<InversionMisfitStats> {
 	
 	public static class MisfitStats {
 		public final ConstraintRange range;
@@ -100,6 +101,21 @@ public class InversionMisfitStats implements CSV_BackedModule {
 			this.std = Double.parseDouble(csvLine.get(index++));
 		}
 		
+		private MisfitStats(ConstraintRange range, int numRows, double mean, double absMean, double median, double min,
+				double max, double l2Norm, double energy, double std) {
+			super();
+			this.range = range;
+			this.numRows = numRows;
+			this.mean = mean;
+			this.absMean = absMean;
+			this.median = median;
+			this.min = min;
+			this.max = max;
+			this.l2Norm = l2Norm;
+			this.energy = energy;
+			this.std = std;
+		}
+
 		public List<String> buildCSVLine() {
 			return List.of(
 					range.name, range.shortName, range.weight+"", range.weightingType+"", range.inequality+"",
@@ -174,6 +190,70 @@ public class InversionMisfitStats implements CSV_BackedModule {
 		misfitStats = new ArrayList<>();
 		for (int row=1; row<csv.getNumRows(); row++)
 			misfitStats.add(new MisfitStats(csv.getLine(row)));
+	}
+
+	@Override
+	public AveragingAccumulator<InversionMisfitStats> averagingAccumulator() {
+		return new AveragingAccumulator<InversionMisfitStats>() {
+			
+			private List<List<MisfitStats>> stats = new ArrayList<>();
+			private List<Double> weights = new ArrayList<>();
+			private double totWeight = 0d;
+			
+			@Override
+			public void process(InversionMisfitStats module, double relWeight) {
+				stats.add(module.misfitStats);
+				weights.add(relWeight);
+				totWeight += relWeight;
+			}
+			
+			@Override
+			public InversionMisfitStats getAverage() {
+				List<MisfitStats> avgStats = new ArrayList<>();
+				
+				int num = stats.get(0).size();
+				for (int i=0; i<num; i++) {
+					ConstraintRange range = null;
+					int numRows = -1;
+					double mean = 0d;
+					double absMean = 0d;
+					double median = 0d;
+					double min = 0d;
+					double max = 0d;
+					double l2Norm = 0d;
+					double energy = 0d;
+					double std = 0d;
+					for (int j=0; j<stats.size(); j++) {
+						double weight = weights.get(j)/totWeight;
+						MisfitStats myStats = stats.get(j).get(i);
+						if (range == null) {
+							range = myStats.range;
+							numRows = myStats.numRows;
+						} else {
+							Preconditions.checkState(range.name.equals(myStats.range.name));
+							Preconditions.checkState(numRows == myStats.numRows);
+						}
+						mean += weight*myStats.mean;
+						absMean += weight*myStats.absMean;
+						median += weight*myStats.median;
+						min = weight*myStats.min;
+						max = weight*myStats.max;
+						l2Norm = weight*myStats.l2Norm;
+						energy = weight*myStats.energy;
+						std = weight*myStats.std;
+					}
+					
+					avgStats.add(new MisfitStats(range, numRows, mean, absMean, median, min,
+							max, l2Norm, energy, std));
+				}
+				return new InversionMisfitStats(avgStats);
+			}
+
+			@Override
+			public Class<InversionMisfitStats> getType() {
+				return InversionMisfitStats.class;
+			}
+		};
 	}
 
 }

@@ -15,6 +15,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
@@ -643,7 +644,9 @@ public class U3InversionTargetMFDs extends org.opensha.sha.earthquake.faultSysSo
 		return new U3InversionTargetMFDs(newParent, logicTreeBranch, finalMinMags, polygons);
 	}
 
-
-
+	@Override
+	public AveragingAccumulator<InversionTargetMFDs> averagingAccumulator() {
+		return new Precomputed(this).averagingAccumulator();
+	}
 
 }

@@ -7,6 +7,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
@@ -14,7 +15,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 
-public class AnnealingProgress implements CSV_BackedModule {
+public class AnnealingProgress implements CSV_BackedModule, AverageableModule<AnnealingProgress> {
 	
 	private ImmutableList<String> energyTypes;
 	
@@ -263,6 +264,29 @@ public class AnnealingProgress implements CSV_BackedModule {
 		for (int i=0; i<size; i++)
 			ret.add((long)func.getX(i));
 		return ret;
+	}
+
+	@Override
+	public AveragingAccumulator<AnnealingProgress> averagingAccumulator() {
+		return new AveragingAccumulator<AnnealingProgress>() {
+			
+			List<AnnealingProgress> progresses = new ArrayList<>();
+
+			@Override
+			public void process(AnnealingProgress module, double weight) {
+				progresses.add(module);
+			}
+
+			@Override
+			public AnnealingProgress getAverage() {
+				return average(progresses);
+			}
+
+			@Override
+			public Class<AnnealingProgress> getType() {
+				return AnnealingProgress.class;
+			}
+		};
 	}
 
 }

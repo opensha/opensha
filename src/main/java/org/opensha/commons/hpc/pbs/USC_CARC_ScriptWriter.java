@@ -6,7 +6,8 @@ import java.util.List;
 
 
 public class USC_CARC_ScriptWriter extends BatchScriptWriter {
-	
+
+	public static final File FMPJ_HOME = new File("/project/scec_608/kmilner/mpj/FastMPJ");
 	public static final File MPJ_HOME = new File("/project/scec_608/kmilner/mpj/mpj-current");
 	public static final File JAVA_BIN = new File("java");
 	

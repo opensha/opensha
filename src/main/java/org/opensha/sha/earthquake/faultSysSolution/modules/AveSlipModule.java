@@ -6,6 +6,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -16,7 +17,7 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
-public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
+public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, BranchAverageableModule<AveSlipModule> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -40,7 +41,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
 	 */
 	public abstract double getAveSlip(int rupIndex);
 
-	public static class ModelBased extends AveSlipModule implements ArchivableModule {
+	public static class ModelBased extends AveSlipModule implements ArchivableModule, ConstantAverageable<AveSlipModule> {
 
 		private RupSetScalingRelationship scale;
 
@@ -146,6 +147,54 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet> {
 			Preconditions.checkState(rupSet.getNumRuptures() == newParent.getNumRuptures());
 			
 			return new Precomputed(newParent, aveSlips);
+		}
+
+		@Override
+		public AveragingAccumulator<AveSlipModule> averagingAccumulator() {
+			return new AveragingAccumulator<AveSlipModule>() {
+				
+				private boolean allSame;
+				private AveSlipModule ref;
+				private double[] refValues;
+				private double[] values;
+				
+				private double sumWeight = 0d;
+				
+				@Override
+				public void process(AveSlipModule module, double relWeight) {
+					if (refValues == null) {
+						allSame = true;
+						ref = module;
+						values = new double[module.rupSet.getNumRuptures()];
+						refValues = new double[values.length];
+						for (int r=0; r<values.length; r++) {
+							refValues[r] = module.getAveSlip(r);
+							values[r] = refValues[r]*relWeight;
+						}
+					} else {
+						Preconditions.checkState(module.rupSet.getNumRuptures() == values.length);
+						for (int r=0; r<values.length; r++) {
+							double val = module.getAveSlip(r);
+							values[r] += val*relWeight;
+							allSame = allSame && val == refValues[r];
+						}
+					}
+					sumWeight += relWeight;
+				}
+				
+				@Override
+				public AveSlipModule getAverage() {
+					if (allSame)
+						return ref;
+					AverageableModule.scaleToTotalWeight(values, sumWeight);
+					return new Precomputed(null, values);
+				}
+
+				@Override
+				public Class<AveSlipModule> getType() {
+					return AveSlipModule.class;
+				}
+			};
 		}
 
 	}

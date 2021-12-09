@@ -8,6 +8,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
@@ -17,7 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.
 
 import com.google.common.base.Preconditions;
 
-public class InversionMisfits implements ArchivableModule {
+public class InversionMisfits implements ArchivableModule, AverageableModule<InversionMisfits> {
 	
 	private List<ConstraintRange> constraintRanges;
 	private double[] misfits;
@@ -237,6 +238,61 @@ public class InversionMisfits implements ArchivableModule {
 	private static void averageIn(double scalar, double[] avgVals, double[] myVals) {
 		for (int i=0; i<avgVals.length; i++)
 			avgVals[i] += scalar*myVals[i];
+	}
+	
+	private static class MisfitsAccumulator implements AveragingAccumulator<InversionMisfits> {
+		
+		private List<ConstraintRange> ranges;
+		private int numEQ, numINEQ;
+		private double[] misfits, data, misfits_ineq, data_ineq;
+		private double sumWeight = 0d;
+		
+		public MisfitsAccumulator(InversionMisfits ref) {
+			ranges = ref.constraintRanges;
+			numEQ = ref.misfits == null ? 0 : ref.misfits.length;
+			numINEQ = ref.misfits_ineq == null ? 0 : ref.misfits_ineq.length;
+			misfits = numEQ > 0 ? new double[numEQ] : null;
+			data = numEQ > 0 ? new double[numEQ] : null;
+			misfits_ineq = numINEQ > 0 ? new double[numINEQ] : null;
+			data_ineq = numINEQ > 0 ? new double[numINEQ] : null;
+		}
+
+		@Override
+		public void process(InversionMisfits module, double relWeight) {
+			if (numEQ > 0) {
+				averageIn(relWeight, misfits, module.misfits);
+				averageIn(relWeight, data, module.data);
+			}
+			if (numINEQ > 0) {
+				averageIn(relWeight, misfits_ineq, module.misfits_ineq);
+				averageIn(relWeight, data_ineq, module.data_ineq);
+			}
+			sumWeight += relWeight;
+		}
+
+		@Override
+		public InversionMisfits getAverage() {
+			if (numEQ > 0) {
+				AverageableModule.scaleToTotalWeight(misfits, sumWeight);
+				AverageableModule.scaleToTotalWeight(data, sumWeight);
+			}
+			if (numINEQ > 0) {
+				AverageableModule.scaleToTotalWeight(misfits_ineq, sumWeight);
+				AverageableModule.scaleToTotalWeight(data_ineq, sumWeight);
+			}
+			return new InversionMisfits(ranges, misfits, data, misfits_ineq, data_ineq);
+		}
+
+		@Override
+		public Class<InversionMisfits> getType() {
+			return InversionMisfits.class;
+		}
+		
+	}
+
+	@Override
+	public AveragingAccumulator<InversionMisfits> averagingAccumulator() {
+		return new MisfitsAccumulator(this);
 	}
 
 }

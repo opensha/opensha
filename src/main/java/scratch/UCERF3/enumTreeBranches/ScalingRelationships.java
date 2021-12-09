@@ -18,6 +18,10 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.commons.gui.plot.GraphWindow;
 
@@ -29,6 +33,10 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
  * @author field
  *
  */
+@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelationships>, RupSetScalingRelationship {
 		
 	
