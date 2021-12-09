@@ -41,6 +41,7 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -101,40 +102,6 @@ public class SegmentationCalculator {
 	private final Table<IDPairing, Jump, JumpRates> parentJumpRateTable;
 	// if true, there are multiple jumps between a given parent section pair
 	private final boolean multipleJumpsPerParent;
-	
-	public enum RateCombiner {
-		MIN("Min Rate") {
-			@Override
-			public double combine(double rate1, double rate2) {
-				return Math.min(rate1, rate2);
-			}
-		},
-		MAX("Max Rate") {
-			@Override
-			public double combine(double rate1, double rate2) {
-				return Math.max(rate1, rate2);
-			}
-		},
-		AVERAGE("Avg Rate") {
-			@Override
-			public double combine(double rate1, double rate2) {
-				return 0.5*(rate1 + rate2);
-			}
-		};
-		
-		private String label;
-
-		private RateCombiner(String label) {
-			this.label = label;
-		}
-	
-		@Override
-		public String toString() {
-			return label;
-		}
-		
-		public abstract double combine(double rate1, double rate2);
-	}
 	
 	public enum Scalars {
 		JUMP_DIST("Jump Distance", "km") {

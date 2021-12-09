@@ -264,13 +264,15 @@ public class SlipRateSegmentationConstraint extends InversionConstraint {
 				if (netConstraint) {
 					double prev = getA(A, row, rup);
 					setA(A, row, rup, prev + weight*avgSlip/combRate);
+					if (prev == 0d)
+						count++;
 				} else {
 					if (normalized)
 						setA(A, row, rup, weight*avgSlip/combRate);
 					else
 						setA(A, row, rup, weight*avgSlip);
+					count++;
 				}
-				count++;
 			}
 			
 			if (netConstraint) {
