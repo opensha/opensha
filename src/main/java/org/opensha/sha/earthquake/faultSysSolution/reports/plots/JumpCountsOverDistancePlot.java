@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import org.jfree.chart.axis.TickUnits;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -61,8 +63,6 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 			compName = meta.comparison.name;
 		}
 		
-		SectionDistanceAzimuthCalculator distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
-		
 		boolean hasSols = sol != null || compSol != null;
 		
 		List<String> lines = new ArrayList<>();
@@ -72,13 +72,11 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 			if (hasSols)
 				table.addLine("As Discretized", "Rate Weighted");
 			
-			if (minMags.size() > 1) {
-				if (minMag > 0d)
-					lines.add(getSubHeading()+" M&ge;"+optionalDigitDF.format(minMag)+" Jump Counts");
-				else
-					lines.add(getSubHeading()+" Supra-seismogenic Jump Counts");
-				lines.add(topLink); lines.add("");
-			}
+			if (minMag > 0d)
+				lines.add(getSubHeading()+" M&ge;"+optionalDigitDF.format(minMag)+" Jump Counts");
+			else
+				lines.add(getSubHeading()+" Supra-seismogenic Jump Counts");
+			lines.add(topLink); lines.add("");
 			
 			List<ClusterRupture> inputRups = rupSet.getModule(ClusterRuptures.class).getAll();
 			List<ClusterRupture> compRups = compRupSet == null ? null : compRupSet.getModule(ClusterRuptures.class).getAll();
@@ -86,13 +84,13 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 				System.out.println("Plotting num jumps");
 				table.initNewLine();
 				File plotFile = plotFixedJumpDist(rupSet, null, inputRups, getTruncatedTitle(meta.primary.name),
-						compRupSet, null, compRups, getTruncatedTitle(compName), distAzCalc, minMag, jumpDist, resourcesDir);
+						compRupSet, null, compRups, getTruncatedTitle(compName), minMag, jumpDist, resourcesDir);
 				table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
 				if (hasSols) {
 					plotFile = plotFixedJumpDist(
 							sol == null ? null : rupSet, sol, inputRups, getTruncatedTitle(meta.primary.name),
 							compSol == null ? null : compRupSet, compSol, compRups, getTruncatedTitle(compName),
-							distAzCalc, minMag, jumpDist, resourcesDir);
+							minMag, jumpDist, resourcesDir);
 					table.addColumn("![Plausibility Filter]("+resourcesDir.getName()+"/"+plotFile.getName()+")");
 				}
 				table.finalizeLine();
@@ -100,6 +98,24 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 			lines.addAll(table.build());
 			lines.add("");
 		}
+		
+		// now do cumulative plot
+		if (sol != null) {
+			lines.add(getSubHeading()+" Max Jump Distance Distribution");
+			lines.add(topLink); lines.add("");
+			
+			File plot = plotJumpDistRates(rupSet, sol, meta.primary.name, compRupSet, compSol, compName, resourcesDir, false);
+			
+			lines.add("![Max Jump Dist Plot]("+relPathToResources+"/"+plot.getName()+")");
+			
+			lines.add(getSubHeading()+" Cumulative Jump Distance Distribution");
+			lines.add(topLink); lines.add("");
+			
+			plot = plotJumpDistRates(rupSet, sol, meta.primary.name, compRupSet, compSol, compName, resourcesDir, true);
+			
+			lines.add("![Cumulative Jump Dist Plot]("+relPathToResources+"/"+plot.getName()+")");
+		}
+		
 		return lines;
 	}
 
@@ -111,8 +127,7 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 	public static File plotFixedJumpDist(FaultSystemRupSet inputRupSet, FaultSystemSolution inputSol,
 			List<ClusterRupture> inputClusterRups, String inputName, FaultSystemRupSet compRupSet,
 			FaultSystemSolution compSol, List<ClusterRupture> compClusterRups, String compName,
-			SectionDistanceAzimuthCalculator distAzCalc, double minMag, float jumpDist, File outputDir)
-					throws IOException {
+			double minMag, float jumpDist, File outputDir) throws IOException {
 		
 		List<DiscretizedFunc> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -203,6 +218,126 @@ public class JumpCountsOverDistancePlot extends AbstractRupSetPlot {
 		}
 		
 		return solFunc;
+	}
+	
+	public static File plotJumpDistRates(FaultSystemRupSet inputRupSet, FaultSystemSolution inputSol,
+			String inputName, FaultSystemRupSet compRupSet, FaultSystemSolution compSol, String compName,
+			File outputDir, boolean cumulative) throws IOException {
+		
+		double maxDist = 0d;
+		List<Double> inputDists = new ArrayList<>();
+		for (ClusterRupture rup : inputRupSet.requireModule(ClusterRuptures.class).getAll()) {
+			double dist = 0d;
+			for (Jump jump : rup.getJumpsIterable()) {
+				if (cumulative)
+					dist += jump.distance;
+				else
+					dist = Math.max(dist, jump.distance);
+			}
+			maxDist = Math.max(maxDist, dist);
+			inputDists.add(dist);
+		}
+		
+		List<Double> compDists = null;
+		if (compSol != null) {
+			compDists = new ArrayList<>();
+			for (ClusterRupture rup : compRupSet.requireModule(ClusterRuptures.class).getAll()) {
+				double dist = 0d;
+				for (Jump jump : rup.getJumpsIterable()) {
+					if (cumulative)
+						dist += jump.distance;
+					else
+						dist = Math.max(dist, jump.distance);
+				}
+				maxDist = Math.max(maxDist, dist);
+				compDists.add(dist);
+			}
+		}
+		
+		EvenlyDiscretizedFunc refFunc = HistogramFunction.getEncompassingHistogram(0.01, Math.max(4.9d, maxDist), 1d);
+		
+		List<DiscretizedFunc> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		DiscretizedFunc inputRateFunc = rupDistRateFunc(refFunc, inputDists, inputSol);
+		funcs.add(inputRateFunc);
+		
+		inputRateFunc.setName(inputName);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, MAIN_COLOR));
+		
+		DiscretizedFunc inputDiscrFunc = rupDistRateFunc(refFunc, inputDists, null);
+		inputDiscrFunc.scale(inputRateFunc.calcSumOfY_Vals()/inputDiscrFunc.calcSumOfY_Vals());
+		inputDiscrFunc.setName("(as discretized)");
+		
+		funcs.add(inputDiscrFunc);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, MAIN_COLOR));
+		
+		if (compSol != null) {
+			DiscretizedFunc func = rupDistRateFunc(refFunc, compDists, compSol);
+			funcs.add(func);
+			
+			func.setName(compName);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, COMP_COLOR));
+		}
+		
+		double maxY = 0d;
+		double minY = Double.POSITIVE_INFINITY;
+		for (DiscretizedFunc func : funcs) {
+			for (Point2D pt : func) {
+				if (pt.getY() > 0) {
+					maxY = Math.max(maxY, pt.getY());
+					minY = Math.min(minY, pt.getY());
+				}
+			}
+		}
+		maxY = Math.pow(10, Math.ceil(Math.log10(maxY)));
+		minY = Math.pow(10, Math.floor(Math.log10(minY)));
+		if (maxY <= minY)
+			maxY = minY + 10;
+		
+		String title = " ";
+		String xAxisLabel, prefix;
+		if (cumulative) {
+			xAxisLabel = "Rupture Cumulative Jump Distance (km)";
+			prefix = "jump_rate_cumulative";
+		} else {
+			xAxisLabel = "Rupture Maximum Jump Distance (km)";
+			prefix = "jump_rate_max";
+		}
+		String yAxisLabel = "Incremental Rate (1/yr)";
+		Range yRange = new Range(minY, maxY);
+		PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
+//				"Num Jumps ≥"+(float)jumpDist+"km", "Fraction (Rate-Weighted)");
+		spec.setLegendVisible(true);
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel();
+		gp.setBackgroundColor(Color.WHITE);
+		gp.setTickLabelFontSize(18);
+		gp.setAxisLabelFontSize(20);
+		gp.setPlotLabelFontSize(21);
+		
+		prefix = new File(outputDir, prefix).getAbsolutePath();
+		
+		gp.drawGraphPanel(spec, false, true, null, yRange);
+		gp.getChartPanel().setSize(1000, 850);
+		gp.saveAsPNG(prefix+".png");
+		gp.saveAsPDF(prefix+".pdf");
+		gp.saveAsTXT(prefix+".txt");
+		return new File(prefix+".png");
+	}
+	
+	private static EvenlyDiscretizedFunc rupDistRateFunc(EvenlyDiscretizedFunc refVals, List<Double> dists, FaultSystemSolution sol) {
+		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(refVals.getMinX(), refVals.size(), refVals.getDelta());
+		
+		for (int r=0; r<dists.size(); r++) {
+			int ind = ret.getClosestXIndex(dists.get(r));
+			if (sol == null)
+				ret.add(ind, 1d);
+			else
+				ret.add(ind, sol.getRateForRup(r));
+		}
+		
+		return ret;
 	}
 
 }
