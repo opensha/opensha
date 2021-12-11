@@ -331,7 +331,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				count++;
 			}
 			
-			d[row] = weightType.getD(relTargetSlip, Double.NaN);
+			d[row] = weight*weightType.getD(relTargetSlip, Double.NaN);
 			
 			return count;
 		}
