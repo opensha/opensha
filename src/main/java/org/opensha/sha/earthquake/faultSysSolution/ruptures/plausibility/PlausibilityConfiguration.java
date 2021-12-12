@@ -19,6 +19,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
@@ -63,7 +64,8 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 
-public class PlausibilityConfiguration implements SubModule<ModuleContainer<OpenSHA_Module>>, JSON_BackedModule {
+public class PlausibilityConfiguration implements SubModule<ModuleContainer<OpenSHA_Module>>, JSON_BackedModule,
+BranchAverageableModule<PlausibilityConfiguration> {
 	
 	public static PlausibilityConfiguration getUCERF3(
 			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
@@ -1084,6 +1086,41 @@ public class PlausibilityConfiguration implements SubModule<ModuleContainer<Open
 		}
 		
 		return new PlausibilityConfiguration(filters, maxNumSplays, connectionStrategy, distAzCalc);
+	}
+
+	@Override
+	public AveragingAccumulator<PlausibilityConfiguration> averagingAccumulator() {
+		
+		return new AveragingAccumulator<>() {
+
+			private PlausibilityConfiguration module;
+			private FaultSystemRupSet rupSet;
+
+			@Override
+			public void process(PlausibilityConfiguration module, double relWeight) {
+				if (this.module == null) {
+					this.module = module;
+					if (module.getParent() instanceof FaultSystemRupSet)
+						rupSet = (FaultSystemRupSet)module.getParent();
+				} else {
+					if (rupSet != null) {
+						Preconditions.checkState(rupSet.isEquivalentTo((FaultSystemRupSet)module.getParent()));
+					}
+				}
+			}
+
+			@Override
+			public PlausibilityConfiguration getAverage() {
+				Preconditions.checkNotNull(module);
+				return module;
+			}
+
+			@Override
+			public Class<PlausibilityConfiguration> getType() {
+				return PlausibilityConfiguration.class;
+			}
+			
+		};
 	}
 	
 	public static void main(String[] args) throws IOException {

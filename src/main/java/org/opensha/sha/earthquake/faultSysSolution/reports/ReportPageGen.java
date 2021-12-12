@@ -24,6 +24,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -397,7 +398,7 @@ public class ReportPageGen {
 			
 			// see if it happens to be a legacy UCERF3 rupture set
 			FaultModels fm = getUCERF3FM(rupSet);
-			if (fm != null) {
+			if (fm != null && (rupSet.getNumRuptures() == 253706 || rupSet.getNumRuptures() == 305709)) {
 				try {
 					config = PlausibilityConfiguration.getUCERF3(rupSet.getFaultSectionDataList(), distAzCalc, fm);
 					rupSet.addModule(config);
@@ -450,6 +451,11 @@ public class ReportPageGen {
 			return FaultModels.FM3_1;
 		if (rupSet.getNumRuptures() == 305709)
 			return FaultModels.FM3_2;
+		if (rupSet.hasModule(LogicTreeBranch.class)) {
+			LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
+			// null if doesn't have FaultModels
+			return branch.getValue(FaultModels.class);
+		}
 		return null;
 	}
 	
@@ -1161,8 +1167,8 @@ public class ReportPageGen {
 			
 			PlotLevel level = PlotLevel.FULL;
 			
-//			String inputName = "RSQSim 4983, SectArea=0.5";
-//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+			String inputName = "RSQSim 4983, SectArea=0.5";
+			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 //			String inputName = "RSQSim 5212, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
 //			String inputName = "RSQSim 498a3, SectArea=0.5, Uniques";
@@ -1178,11 +1184,12 @@ public class ReportPageGen {
 //			String inputName = "FM3.1 U3 Ref Branch";
 //			File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
 			
-			String inputName = "UCERF4 Proposed (NSHM23 1.2 Faults)";
-			File inputFile = new File(rupSetsDir, "nshm23_geo_dm_v1p1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+//			String inputName = "UCERF4 Proposed (NSHM23 1.2 Faults)";
+//			File inputFile = new File(rupSetsDir, "nshm23_geo_dm_v1p1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 			
 			// common comparisons
-			boolean skipPlausibility = false;
+//			boolean skipPlausibility = false;
+			boolean skipPlausibility = true;
 //			String compName = "UCERF3";
 //			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			File altPlausibilityCompareFile = null;
