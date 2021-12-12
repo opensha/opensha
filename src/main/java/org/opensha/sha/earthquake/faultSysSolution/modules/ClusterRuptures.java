@@ -15,6 +15,7 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -31,7 +32,8 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
-public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet>, Iterable<ClusterRupture> {
+public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet>, Iterable<ClusterRupture>,
+BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<ClusterRuptures> {
 	
 	protected FaultSystemRupSet rupSet;
 
