@@ -22,6 +22,7 @@ import javax.annotation.Nullable;
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
@@ -46,6 +47,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -1501,6 +1503,22 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					@Override
 					public Class<? extends OpenSHA_Module> getType() {
 						return ModSectMinMags.class;
+					}
+				});
+				addModule(new ModuleBuilder() {
+					
+					@Override
+					public Class<? extends OpenSHA_Module> getType() {
+						return RegionsOfInterest.class;
+					}
+					
+					@Override
+					public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+						return new RegionsOfInterest(
+								new CaliforniaRegions.RELM_NOCAL(),
+								new CaliforniaRegions.RELM_SOCAL(),
+								new CaliforniaRegions.SF_BOX(),
+								new CaliforniaRegions.LA_BOX());
 					}
 				});
 			} else {

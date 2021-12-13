@@ -31,6 +31,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -104,6 +105,29 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			else if (rupSet.hasModule(FaultGridAssociations.class))
 				region = rupSet.getModule(FaultGridAssociations.class).getRegion();
 			plots.add(new MFD_Plot("Total MFD", region));
+		}
+		
+		if (rupSet.hasModule(RegionsOfInterest.class)) {
+			RegionsOfInterest roi = rupSet.getModule(RegionsOfInterest.class);
+			List<Region> regions = roi.getRegions();
+			for (int i=0; i<regions.size(); i++) {
+				Region region = regions.get(i);
+				String name = region.getName();
+				if (name == null || name.isBlank())
+					name = "Region Of Interest "+i;
+				// see if it's a duplicate
+				boolean duplicate = false;
+				for (MFD_Plot plot : plots) {
+					if (plot.region != null && plot.region.equalsRegion(region)) {
+						duplicate = true;
+						break;
+					}
+				}
+				if (duplicate)
+					System.out.println("Skipping duplicate region from ROI list: "+name);
+				else
+					plots.add(new MFD_Plot(name, region));
+			}
 		}
 
 		MinMaxAveTracker magTrack = rupSetMagTrack(rupSet, meta);

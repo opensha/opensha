@@ -11,9 +11,11 @@ import org.opensha.commons.geo.json.FeatureCollection.FeatureCollectionAdapter;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.gson.GsonBuilder;
 
 /**
+ * Regions of interest, useful to view things like MFDs in particular regions that aren't explicitly constrained.
  * 
  * @author kevin
  *
@@ -68,6 +70,14 @@ public class RegionsOfInterest implements JSON_TypeAdapterBackedModule<FeatureCo
 	@Override
 	public void registerTypeAdapters(GsonBuilder builder) {
 		builder.registerTypeAdapter(getType(), new FeatureCollectionAdapter());
+	}
+	
+	/**
+	 * 
+	 * @return immutable view of regions
+	 */
+	public List<Region> getRegions() {
+		return ImmutableList.copyOf(regions);
 	}
 
 }
