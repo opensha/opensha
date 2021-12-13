@@ -337,7 +337,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 							String shortName = in.nextString();
 							E node = null;
 							for (E possible : level.getNodes()) {
-								if (possible.getShortName().equals(shortName)) {
+								if (possible.getShortName().equals(shortName) || possible.getFilePrefix().equals(shortName)) {
 									node = possible;
 									break;
 								}
