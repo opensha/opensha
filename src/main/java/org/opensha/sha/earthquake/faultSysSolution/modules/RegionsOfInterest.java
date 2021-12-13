@@ -1,0 +1,73 @@
+package org.opensha.sha.earthquake.faultSysSolution.modules;
+
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.geo.json.FeatureCollection.FeatureCollectionAdapter;
+import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
+
+import com.google.common.base.Preconditions;
+import com.google.gson.GsonBuilder;
+
+/**
+ * 
+ * @author kevin
+ *
+ */
+public class RegionsOfInterest implements JSON_TypeAdapterBackedModule<FeatureCollection> {
+	
+	private List<Region> regions;
+
+	@SuppressWarnings("unused") // for deserialization
+	private RegionsOfInterest() {}
+	
+	public RegionsOfInterest(Region... regions) {
+		this(List.of(regions));
+	}
+	
+	public RegionsOfInterest(List<Region> regions) {
+		Preconditions.checkState(!regions.isEmpty(), "Must supply at least 1 region");
+		this.regions = regions;
+	}
+
+	@Override
+	public String getFileName() {
+		return "regions_of_interest.json";
+	}
+
+	@Override
+	public String getName() {
+		return "Regions of Interest";
+	}
+
+	@Override
+	public Type getType() {
+		return FeatureCollection.class;
+	}
+
+	@Override
+	public FeatureCollection get() {
+		List<Feature> features = new ArrayList<>();
+		for (Region region : regions)
+			features.add(region.toFeature());
+		return new FeatureCollection(features);
+	}
+
+	@Override
+	public void set(FeatureCollection features) {
+		Preconditions.checkState(!features.features.isEmpty(), "Must supply at least 1 region");
+		regions = new ArrayList<>();
+		for (Feature feature : features)
+			regions.add(Region.fromFeature(feature));
+	}
+
+	@Override
+	public void registerTypeAdapters(GsonBuilder builder) {
+		builder.registerTypeAdapter(getType(), new FeatureCollectionAdapter());
+	}
+
+}

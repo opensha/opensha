@@ -295,6 +295,13 @@ public class StandardFaultSysModulesTest {
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, PaleoseismicConstraintData.class);
 	}
 	
+	@Test
+	public void testRegionsOfInterest() throws IOException {
+		RegionsOfInterest module = new RegionsOfInterest(new CaliforniaRegions.LA_BOX(), new CaliforniaRegions.SF_BOX());
+		
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, RegionsOfInterest.class);
+	}
+	
 	private static double[] randArray(int len) {
 		double[] ret = new double[len];
 		for (int i=0; i<len; i++)
