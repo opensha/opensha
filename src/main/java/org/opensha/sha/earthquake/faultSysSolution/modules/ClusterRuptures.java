@@ -210,8 +210,11 @@ BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<
 					if (clusterRuptures == null) {
 						// build them
 						SectionDistanceAzimuthCalculator distAzCalc = null;
-						if (rupSet.hasModule(PlausibilityConfiguration.class))
-							distAzCalc = rupSet.getModule(PlausibilityConfiguration.class).getDistAzCalc();
+						// try to get plausibility config, but don't load if available but not loaded as that could potentially
+						// take a long time
+						PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class, false);
+						if (plausibility != null)
+							distAzCalc = plausibility.getDistAzCalc();
 						else if (rupSet.hasModule(SectionDistanceAzimuthCalculator.class))
 							distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
 						if (distAzCalc == null)
