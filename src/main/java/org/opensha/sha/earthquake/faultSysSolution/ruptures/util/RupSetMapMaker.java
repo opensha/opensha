@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
@@ -223,6 +224,16 @@ public class RupSetMapMaker {
 		jumpLists = null;
 		jumpColors = null;
 		jumpLabels = null;
+	}
+	
+	public void plotJumpScalars(Map<Jump, Double> jumpVals, CPT cpt, String label) {
+		List<Jump> jumps = new ArrayList<>();
+		List<Double> values = new ArrayList<>();
+		for (Jump jump : jumpVals.keySet()) {
+			jumps.add(jump);
+			values.add(jumpVals.get(jump));
+		}
+		plotJumpScalars(jumps, values, cpt, label);
 	}
 	
 	public void plotJumpScalars(List<Jump> jumps, List<Double> values, CPT cpt, String label) {

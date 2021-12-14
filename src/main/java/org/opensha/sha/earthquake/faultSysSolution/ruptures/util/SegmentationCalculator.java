@@ -891,6 +891,14 @@ public class SegmentationCalculator {
 		return GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
 	}
 	
+	private static CPT getConnectionDiffCPT() throws IOException {
+		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-0.5d, 0.5d);
+	}
+	
+	private static CPT getConnectionLogRatioCPT() throws IOException {
+		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
+	}
+	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width, RateCombiner combiner) throws IOException {
 		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
@@ -902,25 +910,106 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			List<Jump> jumps = new ArrayList<>();
-			List<Double> values = new ArrayList<>();
-			for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
-				JumpRates rates = cell.getValue();
-				double jumpRate = rates.magJumpRates[m];
-				double fromVal = rates.fromRates.sectRates[m];
-				double toVal = rates.toRates.sectRates[m];
-				double fract = jumpRate/combiner.combine(fromVal, toVal);
-				if (fract > 0d) {
-					jumps.add(cell.getColumnKey());
-					values.add(fract);
-				}
-			}
 			String label = getMagLabel(minMags[m])+" Passthrough Rate (Rel. "+combiner+")";
-			plotter.plotJumpScalars(jumps, values, cpt, label);
+			plotter.plotJumpScalars(calcJumpPassthroughs(m, combiner), cpt, label);
 			
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, width);
+		}
+		
+		return ret;
+	}
+	
+	private Map<Jump, Double> calcJumpPassthroughs(int magIndex, RateCombiner combiner) {
+		Map<Jump, Double> ret = new HashMap<>();
+		for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
+			JumpRates rates = cell.getValue();
+			double jumpRate = rates.magJumpRates[magIndex];
+			double fromVal = rates.fromRates.sectRates[magIndex];
+			double toVal = rates.toRates.sectRates[magIndex];
+			double fract = jumpRate/combiner.combine(fromVal, toVal);
+			if (fract > 0d)
+				ret.put(cell.getColumnKey(), fract);
+		}
+		return ret;
+	}
+	
+	public File[] plotConnectionDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
+			SegmentationCalculator compCalc) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionDiffCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = getMagLabel(minMags[m])+" Passthrough Rate Difference";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			Map<Jump, Double> comp = compCalc.calcJumpPassthroughs(m, combiner);
+			HashSet<Jump> allJumps = new HashSet<>();
+			allJumps.addAll(primary.keySet());
+			allJumps.addAll(comp.keySet());
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : allJumps) {
+				Double val1 = primary.get(jump);
+				Double val2 = comp.get(jump);
+				if (val1 == null)
+					val1 = 0d;
+				if (val2 == null)
+					val2 = 0d;
+				jumps.add(jump);
+				values.add(val1 - val2);
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
+		}
+		
+		return ret;
+	}
+	
+	public File[] plotConnectionLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
+			SegmentationCalculator compCalc) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionLogRatioCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = "Log10 "+getMagLabel(minMags[m])+" Passthrough Rate Ratio";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			Map<Jump, Double> comp = compCalc.calcJumpPassthroughs(m, combiner);
+			HashSet<Jump> allJumps = new HashSet<>();
+			allJumps.addAll(primary.keySet());
+			allJumps.addAll(comp.keySet());
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : allJumps) {
+				Double val1 = primary.get(jump);
+				Double val2 = comp.get(jump);
+				if (val1 == null)
+					val1 = 0d;
+				if (val2 == null)
+					val2 = 0d;
+				jumps.add(jump);
+				values.add(Math.log10(val1/val2));
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
 		}
 		
 		return ret;

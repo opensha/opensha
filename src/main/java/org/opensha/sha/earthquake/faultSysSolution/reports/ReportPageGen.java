@@ -1194,12 +1194,15 @@ public class ReportPageGen {
 //			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			File altPlausibilityCompareFile = null;
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
-			String compName = null;
-			File compareFile = null;
-			File altPlausibilityCompareFile = null;
+//			String compName = null;
+//			File compareFile = null;
+//			File altPlausibilityCompareFile = null;
 //			String compName = "Current Preferred";
 //			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 //			File altPlausibilityCompareFile = null;
+			String compName = "Test Model Branch-Avg With Seg";
+			File compareFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/2021_12_12-nshm23_draft_branches-coulomb-FM3_1-ZENGBB-Shaw09Mod-FaultSpec/results_FM3_1_branch_averaged.zip");
+			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
@@ -1221,6 +1224,7 @@ public class ReportPageGen {
 				argz.add("--plot-level"); argz.add(level.name());
 			}
 			argz.add("--default-max-dist"); argz.add("15");
+//			argz.add("--skip-sect-by-sect");
 			argz.add("--replot");
 			args = argz.toArray(new String[0]);
 		}
