@@ -49,7 +49,11 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * possible jumps. These probabilities don't take into account other possible options, they are just the probability
  * of taking the given jump relative to doing nothing.
  * <p>
- * Then, for each jump, we normalize that conditional probability into a relative probability of taking that particular
+ * If this constraint is configured as an inequality constraint, then we just use that conditional jump probability
+ * as the constrained rate. The inversion is then free to choose other options, and is just constrained not to exceed it.
+ * <p>
+ * If, instead, we choose to exactly match the given model, we must take into account all available options. First,
+ * for each jump, we normalize that conditional probability into a relative probability of taking that particular
  * jump relative to all other options. We first sum the conditional probabilities of all jumps from that same departing
  * subsection (including the jump we're evaluating). Then, if the departing subsection is in the middle of a parent
  * section, we add '1' to that sum to account for the probability of continuing down on that section without taking any
@@ -186,32 +190,42 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 			Preconditions.checkState(Double.isFinite(myJumpProb) && myJumpProb >= 0d && myJumpProb <= 1d,
 					"Bad jumpProb=%s for jump %s", myJumpProb, jump);
 			
-			double sumAllProbs = 0d;
-			for (double jumpProb : departingSectJumpProbs.row(fromID).values())
-				// add all jumps, including the one in question to the denominator
-				sumAllProbs += jumpProb;
-			
-			List<FaultSection> parentSects = parentSectsMap.get(jump.fromSection.getParentSectionId());
-			int indexInParent = parentSects.indexOf(jump.fromSection);
-			Preconditions.checkState(indexInParent >= 0);
-			if (indexInParent > 0 && indexInParent < parentSects.size()-1) {
-				// departing section is in the middle of a fault, add alternative of continuing on the same fault,
-				// which is here just assumed to be 1 (TODO)
-				sumAllProbs += 1d;
+			double jumpCondProb;
+			if (inequality) {
+				// don't adjust for other alternatives, the inversion can choose to take them instead without penalty
+				// because this in an inequality constraint
+				jumpCondProb = myJumpProb;
+				
+				System.out.println("Jump probability for "+jump+"\tfrom "+jump.fromSection.getName()
+						+"\tto "+jump.toSection.getName()+"\n\tP <= "+(float)jumpCondProb);
 			} else {
-				// this is at an end, assume that any leftover probability in the denominator is the probability of
-				// terminating without taking any jump
-				sumAllProbs = Math.max(sumAllProbs, 1d);
+				double sumAllProbs = 0d;
+				for (double jumpProb : departingSectJumpProbs.row(fromID).values())
+					// add all jumps, including the one in question to the denominator
+					sumAllProbs += jumpProb;
+				
+				List<FaultSection> parentSects = parentSectsMap.get(jump.fromSection.getParentSectionId());
+				int indexInParent = parentSects.indexOf(jump.fromSection);
+				Preconditions.checkState(indexInParent >= 0);
+				if (indexInParent > 0 && indexInParent < parentSects.size()-1) {
+					// departing section is in the middle of a fault, add alternative of continuing on the same fault,
+					// which is here just assumed to be 1 (TODO)
+					sumAllProbs += 1d;
+				} else {
+					// this is at an end, assume that any leftover probability in the denominator is the probability of
+					// terminating without taking any jump
+					sumAllProbs = Math.max(sumAllProbs, 1d);
+				}
+				
+				Preconditions.checkState(Double.isFinite(sumAllProbs) && sumAllProbs >= 0d,
+						"Bad sumAllProb=%s for jump %s", myJumpProb, jump);
+				
+				jumpCondProb = myJumpProb / sumAllProbs;
+				
+				System.out.println("Jump probability for "+jump+"\tfrom "+jump.fromSection.getName()
+						+"\tto "+jump.toSection.getName()+"\n\tP = "
+						+(float)myJumpProb+" / "+(float)sumAllProbs+" = "+(float)jumpCondProb);
 			}
-			
-			Preconditions.checkState(Double.isFinite(sumAllProbs) && sumAllProbs >= 0d,
-					"Bad sumAllProb=%s for jump %s", myJumpProb, jump);
-			
-			double jumpCondProb = myJumpProb / sumAllProbs;
-			
-			System.out.println("Jump probability for "+jump+"\tfrom "+jump.fromSection.getName()
-					+"\tto "+jump.toSection.getName()+"\n\tP = "
-					+(float)myJumpProb+" / "+(float)sumAllProbs+" = "+(float)jumpCondProb);
 			
 			count += encodeRow(A, d, row++, jump, jumpCondProb, rupsUsingJump, allJumpsForDepartingSect);
 		}
@@ -227,7 +241,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 	 * @param row row that we are encoding
 	 * @param jump jump corresponding to that row
 	 * @param jumpCondProb the conditional probability of taking that jump (conditioned on rupturing up to the
-	 * departing subsection)
+	 * departing subsection, possibly considering all other options)
 	 * @param rupsUsingJump all ruptures that use that jump (in either direction)
 	 * @param allJumpsForDepartingSect all ruptures that use the departing subsection
 	 * @return number of A matrix cells encoded
