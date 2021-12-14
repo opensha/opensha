@@ -1479,7 +1479,7 @@ public class SegmentationCalculator {
 		
 		Scalars scalar = Scalars.JUMP_DIST;
 		
-		double[] r0s = { 2d, 3d, 4d, 6d };
+		double[] r0s = { 1d, 2d, 3d, 4d, 6d };
 		Color[] r0cs = new Color[r0s.length];
 		CPT r0cpt = new CPT(0d, r0s.length-1, Color.RED, Color.BLUE);
 		for (int c=0; c<r0cs.length; c++)
