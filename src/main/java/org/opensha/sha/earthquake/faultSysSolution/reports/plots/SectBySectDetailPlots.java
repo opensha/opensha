@@ -1777,7 +1777,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		
-		boolean comp = meta.hasComparisonSol();
+		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class)
+				&& meta.comparison.rupSet.hasModule(SlipAlongRuptureModel.class);
 		
 		SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
 		
@@ -1998,7 +1999,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		double[] solSlipRates = new double[parentSects.size()];
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		SlipAlongRuptureModel slipAlongs = rupSet.getModule(SlipAlongRuptureModel.class);
-		AveSlipModule aveSlips = rupSet.getModule(AveSlipModule.class);
+		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
 		
 		for (int s=0; s<solSlipRates.length; s++)
 			solSlipRates[s] = slipAlongs.calcSlipRateForSect(sol, aveSlips, parentSects.get(s).getSectionId());
