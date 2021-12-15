@@ -32,7 +32,11 @@ public interface FileBackedModule extends ArchivableModule {
 
 	@Override
 	public default void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		initEntry(zout, entryPrefix, getFileName());
+		writeToArchive(zout, entryPrefix, getFileName());
+	}
+
+	public default void writeToArchive(ZipOutputStream zout, String entryPrefix, String fileName) throws IOException {
+		initEntry(zout, entryPrefix, fileName);
 		
 		BufferedOutputStream out = new BufferedOutputStream(zout);
 		writeToStream(out);

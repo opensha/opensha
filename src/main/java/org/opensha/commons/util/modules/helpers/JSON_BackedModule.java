@@ -11,7 +11,10 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.reflect.Constructor;
+import java.util.zip.ZipFile;
 
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleHelper;
 
@@ -101,5 +104,34 @@ public interface JSON_BackedModule extends FileBackedModule {
 		
 		JsonReader jin = gson.newJsonReader(reader);
 		initFromJSON(jin, gson);
+	}
+	
+	public static <E extends JSON_BackedModule> E loadFromArchive(ZipFile zip, String entryPrefix, String fileName,
+			Class<E> type) throws IOException {
+		BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, fileName);
+		
+		Constructor<E> constructor;
+		try {
+			constructor = type.getDeclaredConstructor();
+		} catch (Exception e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		
+		try {
+			constructor.setAccessible(true);
+		} catch (Exception e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		
+		try {
+			System.out.println("Building instance: "+type.getName());
+			E module = constructor.newInstance();
+			
+			module.initFromStream(zin);
+			
+			return (E)module;
+		} catch (Exception e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 	}
 }
