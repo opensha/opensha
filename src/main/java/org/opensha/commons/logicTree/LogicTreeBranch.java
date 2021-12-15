@@ -454,7 +454,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		@Override
 		public void write(JsonWriter out, LogicTreeBranch<?> branch) throws IOException {
 			NodeTypeAdapter nodeAdapter = new NodeTypeAdapter(branch);
-			LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<>();
+			LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<>(false);
 			
 			out.beginArray();
 			
@@ -539,7 +539,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		
 	}
 
-	private static class NodeTypeAdapter extends TypeAdapter<LogicTreeNode> {
+	static class NodeTypeAdapter extends TypeAdapter<LogicTreeNode> {
 		
 		private LogicTreeBranch<?> branch;
 
