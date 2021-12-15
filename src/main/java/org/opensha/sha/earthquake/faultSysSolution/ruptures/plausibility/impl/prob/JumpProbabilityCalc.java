@@ -38,4 +38,31 @@ public abstract class JumpProbabilityCalc implements RuptureProbabilityCalc {
 		return prob;
 	}
 	
+	public static abstract class DistDependentJumpProbabilityCalc extends JumpProbabilityCalc {
+		
+		/**
+		 * This computes the probability of this jump occurring conditioned on the rupture
+		 * up to that point having occurred, and relative to the rupture arresting rather
+		 * than taking that jump.
+		 * 
+		 * @param fullRupture
+		 * @param jump
+		 * @param verbose
+		 * @return conditional jump probability
+		 */
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			return calcJumpProbability(jump.distance);
+		}
+		
+		/**
+		 * This computes the probability of this jump occurring conditioned on the rupture
+		 * up to that point having occurred, and relative to the rupture arresting rather
+		 * than taking that jump, as a function of jump distance only
+		 * 
+		 * @param distance
+		 * @return conditional jump probability
+		 */
+		public abstract double calcJumpProbability(double distance);
+	}
+	
 }

@@ -1,7 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob;
 
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 
 /**
  * Jump distance probability proposed in Shaw and Dieterich (2007)
@@ -9,7 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
  * @author kevin
  *
  */
-public class Shaw07JumpDistProb extends JumpProbabilityCalc {
+public class Shaw07JumpDistProb extends DistDependentJumpProbabilityCalc {
 	
 	private double a;
 	private double r0;
@@ -31,11 +30,6 @@ public class Shaw07JumpDistProb extends JumpProbabilityCalc {
 		if ((float)a != 1f)
 			return "Shaw07 [A="+CumulativeProbabilityFilter.optionalDigitDF.format(a)+", R₀="+CumulativeProbabilityFilter.optionalDigitDF.format(r0)+"]";
 		return "Shaw07 [R₀="+CumulativeProbabilityFilter.optionalDigitDF.format(r0)+"]";
-	}
-
-	@Override
-	public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
-		return calcJumpProbability(jump.distance);
 	}
 	
 	public double calcJumpProbability(double distance) {

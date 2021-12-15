@@ -492,7 +492,7 @@ public class ReportPageGen {
 			checkLoadCoulombCache(altFilters, cacheDir, loadedCoulombCaches);
 	}
 	
-	static void checkLoadCoulombCache(List<PlausibilityFilter> filters,
+	public static void checkLoadCoulombCache(List<PlausibilityFilter> filters,
 			File cacheDir, Map<String, List<AggregatedStiffnessCache>> loadedCoulombCaches) throws IOException {
 		if (filters == null)
 			return;

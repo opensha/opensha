@@ -1,10 +1,14 @@
 package org.opensha.sha.earthquake.faultSysSolution.util;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
 import org.dom4j.Element;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -24,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -551,10 +556,92 @@ public class BranchAverageSolutionCreator {
 		for (int i=0; i<running.length; i++)
 			running[i] += vals[i]*weight;
 	}
+	
+	private static Options createOptions() {
+		Options ops = new Options();
+		
+		// TODO add documentation
+		
+		ops.addRequiredOption("if", "input-file", true, "Input solution logic tree zip file.");
+		ops.addRequiredOption("of", "output-file", true, "Output branch averaged solution file.");
+		ops.addOption("rt", "restrict-tree", true, "Restrict the logic tree to the given value. Specify values by either "
+				+ "their short name or file prefix. If such a name is ambiguous (applies to multiple branch levels), "
+				+ "excplicitly set the level as <level-short-name>=<value>. Repeat this argument to specify multiple "
+				+ "values.");
+		
+		
+		return ops;
+	}
 
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+	public static void main(String[] args) throws IOException {
+		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, BranchAverageSolutionCreator.class);
+		
+		File inputFile = new File(cmd.getOptionValue("input-file"));
+		File outputFile = new File(cmd.getOptionValue("output-file"));
+		
+		SolutionLogicTree slt = SolutionLogicTree.load(inputFile);
+		
+		BranchAverageSolutionCreator ba = new BranchAverageSolutionCreator();
+		
+		List<LogicTreeNode> restrictTo = new ArrayList<>();
+		
+		String[] restrictNames = cmd.getOptionValues("restrict-tree");
+		if (restrictNames != null) {
+			for (String op : restrictNames) {
+				String valName = op;
+				String levelName = null;
+				if (op.contains("=")) {
+					levelName = op.substring(0, op.indexOf('=')).trim();
+					valName = op.substring(op.indexOf('=')+1).trim();
+					System.out.println("Looking for logic tree level with name '"+levelName+"', value of '"+valName+"'");
+				} else {
+					System.out.println("Looking for logic tree value of '"+valName+"'");
+				}
+				LogicTreeNode match = null;
+				for (LogicTreeLevel<?> level : slt.getLogicTree().getLevels()) {
+					if (levelName != null && !level.getShortName().equals(levelName))
+						continue;
+					for (LogicTreeNode value : level.getNodes()) {
+						if (value.getShortName().equals(valName) || value.getFilePrefix().equals(valName)) {
+							if (match == null) {
+								System.out.println("Found matching node: "+value);
+								match = value;
+							} else {
+								throw new IllegalStateException("Logic tree value '"+valName+"' is ambiguous (matches "
+										+ "multiple values across multiple levels). Specify the appropriate level as "
+										+ "--restrict-tree <level-short-name>=<value>.");
+							}
+						}
+					}
+				}
+				Preconditions.checkNotNull(match, "Didn't find matching logic tree value='%s' (level='%s')",
+						valName, levelName);
+				restrictTo.add(match);
+			}
+		}
+		
+		for (LogicTreeBranch<?> branch : slt.getLogicTree()) {
+			if (!restrictTo.isEmpty()) {
+				boolean hasAll = true;
+				for (LogicTreeNode restrict : restrictTo) {
+					if (!branch.hasValue(restrict)) {
+						hasAll = false;
+						break;
+					}
+				}
+				if (!hasAll) {
+					System.out.println("Skipping branch: "+branch);
+					continue;
+				}
+			}
+			FaultSystemSolution sol = slt.forBranch(branch);
+			
+			ba.addSolution(sol, branch);
+		}
+		
+		System.out.println("Building final branch-averaged solution.");
+		FaultSystemSolution baSol = ba.build();
+		baSol.write(outputFile);
 	}
 
 }
