@@ -65,13 +65,18 @@ import com.google.common.base.Preconditions;
 public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 	
 	private List<PlausibilityFilter> externalFilters;
+	private String externalName;
+	private boolean externalToComparison;
 
 	public PlausibilityFilterPlot() {
-		this(null);
+		this(null, null, false);
 	}
 	
-	public PlausibilityFilterPlot(List<PlausibilityFilter> externalFilters) {
+	public PlausibilityFilterPlot(List<PlausibilityFilter> externalFilters, String externalName,
+			boolean externalToComparison) {
 		this.externalFilters = externalFilters;
+		this.externalName = externalName;
+		this.externalToComparison = externalToComparison;
 	}
 
 	@Override
@@ -135,10 +140,20 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 				lines.add("");
 			}
 		} else {
-			lines.add(getSubHeading()+" Comparisons with Alternative Filters");
-			lines.add(topLink); lines.add("");
-			lines.addAll(doPlot(externalFilters, meta.primary, resourcesDir, relPathToResources, "alt_main_filter_",
-						"Comparison with Alternative Filters Filters", topLink));
+			if (externalName == null)
+				externalName = "Alternative Filters";
+			if (externalToComparison) {
+				Preconditions.checkState(canDoComparison, "External filters are applied to comparison, but can't do a comparison.");
+				lines.add(getSubHeading()+" "+meta.comparison.name+" Comparisons with "+externalName);
+				lines.add(topLink); lines.add("");
+				lines.addAll(doPlot(externalFilters, meta.comparison, resourcesDir, relPathToResources, "alt_comp_filter_",
+							"Comparison with "+externalName, topLink));
+			} else {
+				lines.add(getSubHeading()+" Comparisons with "+externalName);
+				lines.add(topLink); lines.add("");
+				lines.addAll(doPlot(externalFilters, meta.primary, resourcesDir, relPathToResources, "alt_main_filter_",
+							"Comparison with "+externalName, topLink));
+			}
 			lines.add("");
 		}
 		return lines;
