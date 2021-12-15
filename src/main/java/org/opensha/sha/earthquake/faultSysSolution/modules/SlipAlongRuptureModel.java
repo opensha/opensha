@@ -23,6 +23,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModels slipAlong) {
 		return slipAlong.getModel();
 	}
+
+	@Override
+	public Class<SlipAlongRuptureModel> getAveragingType() {
+		return SlipAlongRuptureModel.class;
+	}
 	
 	/**
 	 * This gives the slip (SI units: m) on each section for the rth rupture

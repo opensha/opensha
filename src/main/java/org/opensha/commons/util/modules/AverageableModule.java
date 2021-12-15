@@ -93,6 +93,8 @@ public interface AverageableModule<E extends AverageableModule<E>> extends OpenS
 	 */
 	@ModuleHelper
 	public interface ConstantAverageable<E extends AverageableModule<E>> extends AverageableModule<E> {
+		
+		public Class<E> getAveragingType();
 
 		@Override
 		default AveragingAccumulator<E> averagingAccumulator() {
@@ -112,10 +114,9 @@ public interface AverageableModule<E extends AverageableModule<E>> extends OpenS
 					return module;
 				}
 
-				@SuppressWarnings("unchecked") // guaranteed by generics to be the correct type
 				@Override
 				public Class<E> getType() {
-					return (Class<E>)ConstantAverageable.this.getClass();
+					return getAveragingType();
 				}
 				
 			};

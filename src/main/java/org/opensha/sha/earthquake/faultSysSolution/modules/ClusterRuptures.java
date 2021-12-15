@@ -61,6 +61,11 @@ BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<
 		return getAll().size();
 	}
 	
+	@Override
+	public Class<ClusterRuptures> getAveragingType() {
+		return ClusterRuptures.class;
+	}
+
 	/**
 	 * Builds cluster ruptures for this RuptureSet. If the plausibility configuration has been set
 	 * and no splays are allowed, then they will be built assuming an ordered single strand rupture.

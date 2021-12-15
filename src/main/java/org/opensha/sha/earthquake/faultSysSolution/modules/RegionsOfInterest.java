@@ -8,6 +8,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.geo.json.FeatureCollection.FeatureCollectionAdapter;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 
 import com.google.common.base.Preconditions;
@@ -20,7 +21,8 @@ import com.google.gson.GsonBuilder;
  * @author kevin
  *
  */
-public class RegionsOfInterest implements JSON_TypeAdapterBackedModule<FeatureCollection> {
+public class RegionsOfInterest implements JSON_TypeAdapterBackedModule<FeatureCollection>,
+AverageableModule.ConstantAverageable<RegionsOfInterest>, BranchAverageableModule<RegionsOfInterest> {
 	
 	private List<Region> regions;
 
@@ -78,6 +80,11 @@ public class RegionsOfInterest implements JSON_TypeAdapterBackedModule<FeatureCo
 	 */
 	public List<Region> getRegions() {
 		return ImmutableList.copyOf(regions);
+	}
+
+	@Override
+	public Class<RegionsOfInterest> getAveragingType() {
+		return RegionsOfInterest.class;
 	}
 
 }

@@ -72,6 +72,10 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		return getBranchFileName(branch, prefix, fileName, affectedByDefault);
 	}
 	
+	protected String getBranchFileName(LogicTreeBranch<?> branch, String fileName, List<? extends LogicTreeLevel<?>> mappingLevels) {
+		return getBranchFileName(branch, prefix, fileName, mappingLevels);
+	}
+	
 	protected String getBranchFileName(LogicTreeBranch<?> branch, String prefix, String fileName,
 			boolean affectedByDefault) {
 		List<? extends LogicTreeLevel<?>> mappingLevels;
@@ -87,6 +91,11 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 				levelsCache.put(fileName, mappingLevels);
 			}
 		}
+		return getBranchFileName(branch, prefix, fileName, mappingLevels);
+	}
+
+	protected String getBranchFileName(LogicTreeBranch<?> branch, String prefix, String fileName,
+			List<? extends LogicTreeLevel<?>> mappingLevels) {
 		StringBuilder ret = new StringBuilder(prefix);
 		Preconditions.checkNotNull(mappingLevels, "No mappings available for %", fileName);
 		for (LogicTreeLevel<?> level : mappingLevels) {

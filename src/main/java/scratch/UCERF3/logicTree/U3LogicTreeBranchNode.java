@@ -43,7 +43,7 @@ public interface U3LogicTreeBranchNode<E extends Enum<E>> extends LogicTreeNode,
 
 	@Override
 	public default double getNodeWeight(LogicTreeBranch<?> fullBranch) {
-		InversionModels im = fullBranch.getValue(InversionModels.class);
+		InversionModels im = fullBranch == null ? InversionModels.CHAR_CONSTRAINED : fullBranch.getValue(InversionModels.class);
 		return getRelativeWeight(im);
 	}
 

@@ -86,6 +86,11 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 			return new ModelBased(newParent, scale);
 		}
 
+		@Override
+		public Class<AveSlipModule> getAveragingType() {
+			return AveSlipModule.class;
+		}
+
 	}
 
 	public static class Precomputed extends AveSlipModule implements CSV_BackedModule {

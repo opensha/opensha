@@ -159,6 +159,11 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet> {
 			this.sectAreas = sectAreas;
 		}
 
+		@Override
+		public Class<Precomputed> getAveragingType() {
+			return Precomputed.class;
+		}
+
 	}
 
 }

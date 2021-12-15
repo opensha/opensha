@@ -181,4 +181,9 @@ ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<
 		return sectName;
 	}
 
+	@Override
+	public Class<NamedFaults> getAveragingType() {
+		return NamedFaults.class;
+	}
+
 }
