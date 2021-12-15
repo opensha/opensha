@@ -1016,10 +1016,12 @@ BranchAverageableModule<PlausibilityConfiguration> {
 	public String getName() {
 		return "Plausibility Configuration";
 	}
+	
+	public static final String JSON_FILE_NAME = "plausibility.json";
 
 	@Override
 	public String getFileName() {
-		return "plausibility.json";
+		return JSON_FILE_NAME;
 	}
 
 	@Override
