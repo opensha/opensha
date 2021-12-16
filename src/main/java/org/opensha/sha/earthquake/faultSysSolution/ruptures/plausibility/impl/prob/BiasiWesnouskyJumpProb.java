@@ -40,7 +40,7 @@ public class BiasiWesnouskyJumpProb {
 		};
 	}
 	
-	private static class HardcodedMechDistIndepJumpProb extends DistDependentJumpProbabilityCalc {
+	private static class HardcodedMechDistIndepJumpProb implements DistDependentJumpProbabilityCalc {
 		
 		private double minJumpDist;
 		private RakeType type;
@@ -69,7 +69,7 @@ public class BiasiWesnouskyJumpProb {
 		
 	}
 	
-	public static class BiasiWesnouskyDistIndepJumpProb extends JumpProbabilityCalc {
+	public static class BiasiWesnouskyDistIndepJumpProb implements JumpProbabilityCalc {
 		
 		private double minJumpDist;
 
@@ -110,7 +110,7 @@ public class BiasiWesnouskyJumpProb {
 		
 	}
 
-	public static class BiasiWesnousky2016CombJumpDistProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2016CombJumpDistProb implements JumpProbabilityCalc {
 
 		private double minJumpDist;
 		private BiasiWesnousky2016SSJumpProb ssJumpProb;
@@ -157,7 +157,7 @@ public class BiasiWesnouskyJumpProb {
 		return -prob/(prob-1d);
 	}
 
-	public static class BiasiWesnousky2016SSJumpProb extends DistDependentJumpProbabilityCalc{
+	public static class BiasiWesnousky2016SSJumpProb implements DistDependentJumpProbabilityCalc{
 
 		private double minJumpDist;
 
@@ -209,7 +209,7 @@ public class BiasiWesnouskyJumpProb {
 		bw2017_ss_passRatio.set(45d,	0.08d);
 	}
 
-	public static class BiasiWesnousky2017JumpAzChangeProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2017JumpAzChangeProb implements JumpProbabilityCalc {
 
 		private SectionDistanceAzimuthCalculator distAzCalc;
 
@@ -268,7 +268,7 @@ public class BiasiWesnouskyJumpProb {
 
 	}
 
-	public static class BiasiWesnousky2017_SSJumpAzChangeProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2017_SSJumpAzChangeProb implements JumpProbabilityCalc {
 
 		private SectionDistanceAzimuthCalculator distAzCalc;
 
@@ -321,7 +321,7 @@ public class BiasiWesnouskyJumpProb {
 
 	public static final double bw2017_mech_change_prob = 4d/75d;
 
-	public static class BiasiWesnousky2017MechChangeProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2017MechChangeProb implements JumpProbabilityCalc {
 
 		public BiasiWesnousky2017MechChangeProb() {
 		}

@@ -9,7 +9,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
  * @author kevin
  *
  */
-public abstract class JumpProbabilityCalc implements RuptureProbabilityCalc {
+public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 	
 	/**
 	 * This computes the probability of this jump occurring conditioned on the rupture
@@ -24,7 +24,7 @@ public abstract class JumpProbabilityCalc implements RuptureProbabilityCalc {
 	public abstract double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose);
 
 	@Override
-	public double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
+	public default double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
 		double prob = 1d;
 		for (Jump jump : rupture.getJumpsIterable()) {
 			double jumpProb = calcJumpProbability(rupture, jump, verbose);
@@ -38,7 +38,7 @@ public abstract class JumpProbabilityCalc implements RuptureProbabilityCalc {
 		return prob;
 	}
 	
-	public static abstract class DistDependentJumpProbabilityCalc extends JumpProbabilityCalc {
+	public static interface DistDependentJumpProbabilityCalc extends JumpProbabilityCalc {
 		
 		/**
 		 * This computes the probability of this jump occurring conditioned on the rupture
@@ -50,7 +50,7 @@ public abstract class JumpProbabilityCalc implements RuptureProbabilityCalc {
 		 * @param verbose
 		 * @return conditional jump probability
 		 */
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+		public default double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 			return calcJumpProbability(jump.distance);
 		}
 		
@@ -63,6 +63,18 @@ public abstract class JumpProbabilityCalc implements RuptureProbabilityCalc {
 		 * @return conditional jump probability
 		 */
 		public abstract double calcJumpProbability(double distance);
+	}
+	
+	public static interface BinaryJumpProbabilityCalc extends JumpProbabilityCalc {
+		
+		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose);
+
+		@Override
+		default double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			if (isJumpAllowed(fullRupture, jump, verbose))
+				return 1d;
+			return 0d;
+		}
 	}
 	
 }

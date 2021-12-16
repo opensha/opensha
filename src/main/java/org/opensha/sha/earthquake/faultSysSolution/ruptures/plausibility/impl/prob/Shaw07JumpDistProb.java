@@ -8,7 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
  * @author kevin
  *
  */
-public class Shaw07JumpDistProb extends DistDependentJumpProbabilityCalc {
+public class Shaw07JumpDistProb implements DistDependentJumpProbabilityCalc {
 	
 	private double a;
 	private double r0;
