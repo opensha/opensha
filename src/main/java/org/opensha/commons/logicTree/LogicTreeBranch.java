@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
@@ -20,6 +21,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -32,6 +34,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	
 	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private List<E> values;
+	private Double originalWeight;
 	
 	@SuppressWarnings("unused") // used by Gson
 	protected LogicTreeBranch() {
@@ -212,6 +215,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		for (int i=0; i<size(); i++) {
 			LogicTreeNode value = values.get(i);
 			if (clazz.isAssignableFrom(levels.get(i).getType())) {
+				if (values.get(i) != null)
+					originalWeight = null;
 				values.set(i, null);
 				classFound = true;
 				cleared = cleared || value != null;
@@ -227,6 +232,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	 * @param index
 	 */
 	public void clearValue(int index) {
+		if (values.get(index) != null)
+			originalWeight = null;
 		values.set(index, null);
 	}
 	
@@ -238,6 +245,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		for (int i=0; i<levels.size(); i++) {
 			LogicTreeLevel<? extends E> level = levels.get(i);
 			if (level.getType().isAssignableFrom(value.getClass()) && level.isMember(value)) {
+				if (Objects.equals(value, values.get(i)))
+					originalWeight = null;
 				values.set(i, value);
 				return;
 			}
@@ -249,6 +258,8 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	public void setValue(int index, E value) {
 		LogicTreeLevel<? extends E> level = levels.get(index);
 		Preconditions.checkState(level.getType().isAssignableFrom(value.getClass()) && level.isMember(value));
+		if (Objects.equals(value, values.get(index)))
+			originalWeight = null;
 		values.set(index, value);
 	}
 	
@@ -392,8 +403,39 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 	}
 	
 	/**
+	 * This returns the original weight assigned to this branch, useful if branch weights change over time. For example,
+	 * an early calculation might use a branch that is later assigned zero weight. This value allows you to retrieve
+	 * the original weight.
+	 * <p>
+	 * This value is set when first retrieved or serialized to JSON, and is also cleared whenever a branch value
+	 * is changed.
 	 * 
-	 * @return relative branch weight of all non-null values, should be normalized externally
+	 * @return original (relative) weight assigned to this branch when it was first instantiated.
+	 */
+	public double getOrigBranchWeight() {
+		if (originalWeight == null) {
+			synchronized (this) {
+				if (originalWeight == null)
+					originalWeight = getBranchWeight();
+			}
+		}
+		return originalWeight;
+	}
+	
+	void setOrigBranchWeight(double originalWeight) {
+		this.originalWeight = originalWeight;
+	}
+	
+	/**
+	 * This calculates the branch weight as the product of the weight reported by each non-null branch node choice.
+	 * <p>
+	 * Node weights can change over time, which will be reflected here. If you want the original weight assigned to
+	 * this branch when the object was first created (or serialized to a file), use
+	 * {@link LogicTreeBranch#getOrigBranchWeight()} instead.
+	 * <p>
+	 * Weights should be normalized externally by the sum of all weights in a {@link LogicTree}  
+	 * 
+	 * @return relative branch weight of all non-null values
 	 */
 	public double getBranchWeight() {
 		double wt = 1;
@@ -456,7 +498,13 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			NodeTypeAdapter nodeAdapter = new NodeTypeAdapter(branch);
 			LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<>(false);
 			
-			out.beginArray();
+			out.beginObject();
+			
+			double origWeight = branch.getOrigBranchWeight();
+			if (Double.isFinite(origWeight))
+				out.name("origWeight").value(origWeight);
+			
+			out.name("values").beginArray();
 			
 			for (int i=0; i<branch.size(); i++) {
 				out.beginObject();
@@ -479,16 +527,57 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			}
 			
 			out.endArray();
+			
+			out.endObject();
 		}
 
 		@Override
 		public LogicTreeBranch<?> read(JsonReader in) throws IOException {
-			NodeTypeAdapter nodeAdapter = new NodeTypeAdapter(null);
-			LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<>();
 			
 			List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 			List<LogicTreeNode> values = new ArrayList<>();
 			
+			if (in.peek() == JsonToken.BEGIN_OBJECT) {
+				// annotated version
+				in.beginObject();
+				
+				Double origWeight = null;
+				
+				while (in.hasNext()) {
+					switch (in.nextName()) {
+					case "origWeight":
+						origWeight = in.nextDouble();
+						break;
+					case "values":
+						loadValueArray(in, levels, values);
+						break;
+
+					default:
+						in.skipValue();
+						break;
+					}
+				}
+				
+				in.endObject();
+				
+				LogicTreeBranch<? extends LogicTreeNode> branch = new LogicTreeBranch<>(levels, values);
+				branch.originalWeight = origWeight;
+				return branch;
+			} else if (in.peek() == JsonToken.BEGIN_ARRAY) {
+				// raw array
+				loadValueArray(in, levels, values);
+				
+				return new LogicTreeBranch<>(levels, values);
+			} else {
+				Preconditions.checkState(in.peek() == JsonToken.NULL);
+				return null;
+			}
+		}
+
+		public void loadValueArray(JsonReader in, List<LogicTreeLevel<? extends LogicTreeNode>> levels,
+				List<LogicTreeNode> values) throws IOException {
+			NodeTypeAdapter nodeAdapter = new NodeTypeAdapter(null);
+			LogicTreeLevel.Adapter<LogicTreeNode> levelAdapter = new LogicTreeLevel.Adapter<>();
 			in.beginArray();
 			
 			while (in.hasNext()) {
@@ -533,8 +622,6 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 			}
 			
 			in.endArray();
-			
-			return new LogicTreeBranch<>(levels, values);
 		}
 		
 	}

@@ -281,6 +281,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			}
 			out.endArray();
 			
+			out.name("origWeights").beginArray();
+			for (LogicTreeBranch<E> branch : value.branches)
+				out.value(branch.getOrigBranchWeight());
+			out.endArray();
+			
 			out.endObject();
 		}
 
@@ -292,6 +297,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			Class<? extends LogicTreeBranch<E>> type = null;
 			List<LogicTreeLevel<? extends E>> levels = null;
 			List<LogicTreeBranch<E>> branches = null;
+			List<Double> origWeights = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -352,6 +358,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					}
 					in.endArray();
 					break;
+				case "origWeights":
+					origWeights = new ArrayList<>();
+					in.beginArray();
+					while (in.hasNext())
+						origWeights.add(in.nextDouble());
+					in.endArray();
+					break;
 
 				default:
 					in.skipValue();
@@ -360,6 +373,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			}
 			
 			in.endObject();
+			
+			if (origWeights != null) {
+				Preconditions.checkState(origWeights.size() == branches.size(),
+						"branch orig weights size does not match branch count");
+				for (int i=0; i<branches.size(); i++)
+					branches.get(i).setOrigBranchWeight(origWeights.get(i));
+			}
 			return new LogicTree<>(levels, branches);
 		}
 		

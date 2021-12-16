@@ -1,5 +1,6 @@
 package scratch.UCERF3.logicTree;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -343,7 +344,7 @@ implements XMLSaveable {
 	}
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 //		String str = "FM3_1_GLpABM_MaEllB_DsrTap_DrEllB_Char";
 		String str = DEFAULT.buildFileName();
 		System.out.println("PARSING: "+str);
@@ -363,6 +364,10 @@ implements XMLSaveable {
 		br2.setValue(FaultModels.FM3_2);
 		System.out.println(br2);
 		System.out.println("Num away? "+br.getNumAwayFrom(br2));
+		
+		String json = br.getJSON();
+		System.out.println(json);
+//		load
 	}
 
 	@Override
