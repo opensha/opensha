@@ -462,7 +462,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(progressFile);
 		}
 		
-		PlausibilityConfiguration plausibility = sol.getModule(PlausibilityConfiguration.class);
+		PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 		
 		if (plausibility != null) {
 			// use rupture-sections file to figure out which things affect plausibility
