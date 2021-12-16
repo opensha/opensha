@@ -37,6 +37,11 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot.RupSetPlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -45,7 +50,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.RupSetPlausibilityResult;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.NucleationClusterEvaluator;
@@ -72,10 +76,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RupSetFilterComparePageGen {
 
@@ -122,7 +124,7 @@ public class RupSetFilterComparePageGen {
 		List<Float> prefVals = new ArrayList<>();
 		List<String> names = new ArrayList<>();
 		
-		U3FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(inputFile);
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(inputFile);
 		
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 		if (distAzCache != null && distAzCache.exists()) {
@@ -130,17 +132,15 @@ public class RupSetFilterComparePageGen {
 			distAzCalc.loadCacheFile(distAzCache);
 		}
 		
-		List<ClusterRupture> rups = rupSet.getClusterRuptures();
 		RuptureConnectionSearch connSearch;
-		if (rupSet.getPlausibilityConfiguration() == null)
-			connSearch = new RuptureConnectionSearch(rupSet, distAzCalc, 100d, false);
-		else
+		if (rupSet.hasModule(PlausibilityConfiguration.class))
 			connSearch = new RuptureConnectionSearch(rupSet, distAzCalc,
-					rupSet.getPlausibilityConfiguration().getConnectionStrategy().getMaxJumpDist(), false);
-		if (rups == null) {
-			rupSet.buildClusterRups(connSearch);
-			rups = rupSet.getClusterRuptures();
-		}
+					rupSet.getModule(PlausibilityConfiguration.class).getConnectionStrategy().getMaxJumpDist(), false);
+		else
+			connSearch = new RuptureConnectionSearch(rupSet, distAzCalc, 100d, false);
+		if (!rupSet.hasModule(ClusterRuptures.class))
+			rupSet.addModule(ClusterRuptures.instance(rupSet, connSearch));
+		List<ClusterRupture> rups = rupSet.requireModule(ClusterRuptures.class).getAll();
 		HashSet<Jump> allJumps = new HashSet<>();
 		double minRupMag = rupSet.getMinMag();
 		for (ClusterRupture rup : rups) {
@@ -183,10 +183,11 @@ public class RupSetFilterComparePageGen {
 		CPT magIndexCPT = new CPT(0, minMags.length-1, Color.BLUE, Color.RED, Color.BLACK);
 		
 		ClusterConnectionStrategy connStrat;
-		if (rupSet.getPlausibilityConfiguration() == null)
-			connStrat = RupSetDiagnosticsPageGen.buildDefaultConnStrat(null, distAzCalc, allJumps, maxDist);
+		if (rupSet.hasModule(PlausibilityConfiguration.class))
+			connStrat = rupSet.getModule(PlausibilityConfiguration.class).getConnectionStrategy();
 		else
-			connStrat = rupSet.getPlausibilityConfiguration().getConnectionStrategy();
+			connStrat = ReportPageGen.buildDefaultConnStrat(distAzCalc, allJumps, maxDist);
+			
 		
 		List<PlausibilityFilter> altFilters = PlausibilityConfiguration.readFiltersJSON(altFiltersFile, connStrat, distAzCalc);
 
@@ -380,8 +381,8 @@ public class RupSetFilterComparePageGen {
 				}
 				if (!pathEvals.isEmpty())
 					finalFilters.add(new PathPlausibilityFilter(pathEvals.toArray(new NucleationClusterEvaluator[0])));
-				combResults.add(RupSetDiagnosticsPageGen.testRupSetPlausibility(
-						rups, finalFilters, rupSet.getPlausibilityConfiguration(), connSearch, exec));
+				combResults.add(PlausibilityFilterPlot.testRupSetPlausibility(
+						rups, finalFilters, rupSet.getModule(PlausibilityConfiguration.class), connSearch, exec));
 				if (isMax == null) {
 					combNames.add("Proposed Model");
 					combinedPrefFilters = new ArrayList<>(filters);
@@ -565,8 +566,8 @@ public class RupSetFilterComparePageGen {
 		RupSetPlausibilityResult altResult = null;
 		if (altFilters != null) {
 			System.out.println("Calculating alt plausibility...");
-			altResult = RupSetDiagnosticsPageGen.testRupSetPlausibility(
-					rups, altFilters, rupSet.getPlausibilityConfiguration(), connSearch, exec);
+			altResult = PlausibilityFilterPlot.testRupSetPlausibility(
+					rups, altFilters, rupSet.getModule(PlausibilityConfiguration.class), connSearch, exec);
 			System.out.println("done");
 		}
 		
@@ -587,7 +588,7 @@ public class RupSetFilterComparePageGen {
 				lines.add("* "+filter.getName());
 			lines.add("");
 			String prefix = "plausibility_"+r;
-			File plot = RupSetDiagnosticsPageGen.plotRupSetPlausibility(result, resourcesDir, prefix, "Plausibility");
+			File plot = PlausibilityFilterPlot.plotRupSetPlausibility(result, resourcesDir, prefix, "Plausibility");
 			
 			lines.add("![plot](resources/"+plot.getName()+")");
 			lines.add("");
@@ -598,7 +599,7 @@ public class RupSetFilterComparePageGen {
 					continue;
 				String magPrefix = prefix+"_m"+(float)minMag;
 				String title = "M≥"+(float)minMag+" Comparison";
-				File file = RupSetDiagnosticsPageGen.plotRupSetPlausibility(magResult, resourcesDir, magPrefix, title);
+				File file = PlausibilityFilterPlot.plotRupSetPlausibility(magResult, resourcesDir, magPrefix, title);
 				table.addColumn("![M>="+(float)minMag+"]("+resourcesDir.getName()+"/"+file.getName()+")");
 			}
 			lines.addAll(table.wrap(2, 0).build());
@@ -609,7 +610,7 @@ public class RupSetFilterComparePageGen {
 				lines.add(topLink); lines.add("");
 
 				String altPrefix = "alt_plausibility";
-				plot = RupSetDiagnosticsPageGen.plotRupSetPlausibility(altResult, resourcesDir, altPrefix, altName+" Plausibility");
+				plot = PlausibilityFilterPlot.plotRupSetPlausibility(altResult, resourcesDir, altPrefix, altName+" Plausibility");
 
 				lines.add("![plot](resources/"+plot.getName()+")");
 				lines.add("");
@@ -620,7 +621,7 @@ public class RupSetFilterComparePageGen {
 						continue;
 					String magPrefix = altPrefix+"_m"+(float)minMag;
 					String title = "M≥"+(float)minMag+" Comparison";
-					File file = RupSetDiagnosticsPageGen.plotRupSetPlausibility(magResult, resourcesDir, magPrefix, title);
+					File file = PlausibilityFilterPlot.plotRupSetPlausibility(magResult, resourcesDir, magPrefix, title);
 					table.addColumn("![M>="+(float)minMag+"]("+resourcesDir.getName()+"/"+file.getName()+")");
 				}
 				lines.addAll(table.wrap(2, 0).build());
@@ -1018,7 +1019,7 @@ public class RupSetFilterComparePageGen {
 				lines.add("* "+filter.getName());
 			lines.add("");
 			String prefix = "plausibility_sans_faults";
-			File plot = RupSetDiagnosticsPageGen.plotRupSetPlausibility(result.filterByRups(retainedRups), resourcesDir, prefix, "Plausibility");
+			File plot = PlausibilityFilterPlot.plotRupSetPlausibility(result.filterByRups(retainedRups), resourcesDir, prefix, "Plausibility");
 			
 			lines.add("![plot](resources/"+plot.getName()+")");
 			lines.add("");
@@ -1490,7 +1491,7 @@ public class RupSetFilterComparePageGen {
 		
 	}
 	
-	private static EvenlyDiscretizedFunc getSubsetFailsFunc(List<ClusterRupture> rups, U3FaultSystemRupSet rupSet,
+	private static EvenlyDiscretizedFunc getSubsetFailsFunc(List<ClusterRupture> rups, FaultSystemRupSet rupSet,
 			RupSetPlausibilityResult results, int numToRemove, Map<Integer, Future<SubsetCallable>> failsRemovedMap,
 			EvenlyDiscretizedFunc refMagFunc, boolean isPrimary) {
 		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(refMagFunc.getMinX(), refMagFunc.getMaxX(), refMagFunc.size());

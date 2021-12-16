@@ -92,7 +92,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 public class ReportPageGen {
 	
 	private ReportMetadata meta;
-	private List<? extends AbstractRupSetPlot> plots;
+	private List<AbstractRupSetPlot> plots;
 	private File outputDir;
 	private File indexDir;
 	
@@ -175,11 +175,11 @@ public class ReportPageGen {
 	}
 
 	public ReportPageGen(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name, File outputDir,
-			List<? extends AbstractRupSetPlot> plots) {
+			List<AbstractRupSetPlot> plots) {
 		this(new ReportMetadata(new RupSetMetadata(name, rupSet, sol)), outputDir, plots);
 	}
 
-	public ReportPageGen(ReportMetadata meta, File outputDir, List<? extends AbstractRupSetPlot> plots) {
+	public ReportPageGen(ReportMetadata meta, File outputDir, List<AbstractRupSetPlot> plots) {
 		init(meta, outputDir, plots);
 	}
 	
@@ -279,10 +279,21 @@ public class ReportPageGen {
 					plots.remove(i);
 		}
 		
+		if (cmd.hasOption("default-max-dist"))
+			this.defaultMaxDist = Double.parseDouble(cmd.getOptionValue("default-max-dist"));
+		
+		cacheDir = FaultSysTools.getCacheDir(cmd);
+		
+		replot = cmd.hasOption("replot");
+		
+		int threads = FaultSysTools.getNumThreads(cmd);
+		for (AbstractRupSetPlot plot : plots)
+			plot.setNumThreads(threads);
+		
+		init(meta, outputDir, plots);
+		
 		if (cmd.hasOption("skip-plausibility")) {
-			for (int i=plots.size(); --i>=0;)
-				if (plots.get(i) instanceof PlausibilityFilterPlot)
-					plots.remove(i);
+			skipPlausibility();
 		} else if (cmd.hasOption("alt-plausibility")) {
 			this.attachDefaultModules(primaryMeta, true);
 			File altPlausibilityCompareFile = new File(cmd.getOptionValue("alt-plausibility"));
@@ -296,34 +307,29 @@ public class ReportPageGen {
 					altPlausibilityCompareFile, primaryStrat,
 					primaryMeta.rupSet.getModule(SectionDistanceAzimuthCalculator.class));
 			
-			// try to insert just after regular filters
-			int insertionIndex = -1;
-			for (int i=0; i<plots.size(); i++)
-				if (plots.get(i) instanceof PlausibilityFilterPlot)
-					insertionIndex = i+1;
-			if (insertionIndex < 0)
-				insertionIndex = plots.size();
-			
-			
-			// TODO restore
-//			plots.add(new PlausibilityFilterPlot(altFilters, "Alternative Filters", false));
+			setAltPlausibility(altFilters, null, false);
 		}
-		
-		if (cmd.hasOption("default-max-dist"))
-			this.defaultMaxDist = Double.parseDouble(cmd.getOptionValue("default-max-dist"));
-		
-		cacheDir = FaultSysTools.getCacheDir(cmd);
-		
-		replot = cmd.hasOption("replot");
-		
-		int threads = FaultSysTools.getNumThreads(cmd);
-		for (AbstractRupSetPlot plot : plots)
-			plot.setNumThreads(threads);
-		
-		init(meta, outputDir, plots);
 	}
 	
-	private void init(ReportMetadata meta, File outputDir, List<? extends AbstractRupSetPlot> plots) {
+	public void setAltPlausibility(List<PlausibilityFilter> altFilters, String altName, boolean applyToComparison) {
+		// try to insert just after regular filters
+		int insertionIndex = -1;
+		for (int i=0; i<plots.size(); i++)
+			if (plots.get(i) instanceof PlausibilityFilterPlot)
+				insertionIndex = i+1;
+		if (insertionIndex < 0)
+			insertionIndex = plots.size();
+
+		plots.add(new PlausibilityFilterPlot(altFilters, altName, applyToComparison));
+	}
+	
+	public void skipPlausibility() {
+		for (int i=plots.size(); --i>=0;)
+			if (plots.get(i) instanceof PlausibilityFilterPlot)
+				plots.remove(i);
+	}
+	
+	private void init(ReportMetadata meta, File outputDir, List<AbstractRupSetPlot> plots) {
 		this.meta = meta;
 		this.outputDir = outputDir;
 		this.plots = plots;
@@ -335,7 +341,7 @@ public class ReportPageGen {
 		return plots;
 	}
 
-	public void setPlots(List<? extends AbstractRupSetPlot> plots) {
+	public void setPlots(List<AbstractRupSetPlot> plots) {
 		this.plots = plots;
 	}
 	
@@ -469,7 +475,7 @@ public class ReportPageGen {
 		return 100d;
 	}
 	
-	static ClusterConnectionStrategy buildDefaultConnStrat(
+	public static ClusterConnectionStrategy buildDefaultConnStrat(
 			SectionDistanceAzimuthCalculator distAzCalc, Set<Jump> jumps, double defaultMaxDist) {
 		System.err.println("WARNING: primary rupture set doesn't have a connection strategy, using actual "
 				+ "connections, plus any up to the fallback maxDist="+(float)defaultMaxDist+" km. This may be used "

@@ -13,10 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.zip.ZipException;
 
-import org.dom4j.DocumentException;
-import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -29,9 +27,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pa
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CoulombSectRatioProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RelativeCoulombProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy.CandidateJump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy.JumpSelector;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -43,13 +38,11 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlig
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Comparators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * This connection strategy uses one or more plausibility filters to determine the best jumping point between each pair
@@ -996,9 +989,9 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		System.out.println(cffUniqueJumps.size()+" unique to "+newName);
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, RupSetMapMaker.buildBufferedRegion(subSects));
-		mapMaker.plotJumps(commonJumps, RupSetDiagnosticsPageGen.darkerTrans(Color.GREEN), "Common Jumps");
-		mapMaker.plotJumps(origUniqueJumps, RupSetDiagnosticsPageGen.darkerTrans(Color.BLUE), origName);
-		mapMaker.plotJumps(cffUniqueJumps, RupSetDiagnosticsPageGen.darkerTrans(Color.RED), newName);
+		mapMaker.plotJumps(commonJumps, FaultSectionConnectionsPlot.darkerTrans(Color.GREEN), "Common Jumps");
+		mapMaker.plotJumps(origUniqueJumps, FaultSectionConnectionsPlot.darkerTrans(Color.BLUE), origName);
+		mapMaker.plotJumps(cffUniqueJumps, FaultSectionConnectionsPlot.darkerTrans(Color.RED), newName);
 		mapMaker.plot(new File("/tmp"), "cff_jumps_compare", "CFF Jump Comparison", 5000);
 	}
 	
