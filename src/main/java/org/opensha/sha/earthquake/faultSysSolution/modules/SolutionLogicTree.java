@@ -251,6 +251,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 					}
 					
 				};
+				solTree.setLogicTreeLevels(levels);
 				archive.addModule(solTree);
 				// begin asynchronous module archive write
 				endArchiveWriteFuture = CompletableFuture.runAsync(new Runnable() {

@@ -49,7 +49,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	protected AbstractLogicTreeModule(ZipFile zip, String prefix, LogicTree<?> logicTree) {
 		this.zip = zip;
 		this.prefix = prefix;
-		setLogicTree(logicTree);;
+		setLogicTree(logicTree);
 	}
 	
 	/**
@@ -126,6 +126,13 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		if (logicTree == null)
 			return;
 		this.logicTree = logicTree;
+		setLogicTreeLevels(logicTree.getLevels());
+	}
+	
+	protected void setLogicTreeLevels(List<? extends LogicTreeLevel<?>> levels) {
+		Preconditions.checkState(this.levels == null, "Logic Tree levels should only be set once");
+		if (levels == null)
+			return;
 		this.levels = new ArrayList<>(logicTree.getLevels());
 		this.levelIndexes = new HashMap<>();
 		for (int i=0; i<levels.size(); i++)
