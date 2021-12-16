@@ -13,6 +13,7 @@ import org.dom4j.Element;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -567,7 +568,7 @@ public class BranchAverageSolutionCreator {
 		ops.addOption("rt", "restrict-tree", true, "Restrict the logic tree to the given value. Specify values by either "
 				+ "their short name or file prefix. If such a name is ambiguous (applies to multiple branch levels), "
 				+ "excplicitly set the level as <level-short-name>=<value>. Repeat this argument to specify multiple "
-				+ "values.");
+				+ "values (within a single level and/or across multiple levels).");
 		
 		
 		return ops;
@@ -580,13 +581,18 @@ public class BranchAverageSolutionCreator {
 		File outputFile = new File(cmd.getOptionValue("output-file"));
 		
 		SolutionLogicTree slt = SolutionLogicTree.load(inputFile);
+		LogicTree<?> tree = slt.getLogicTree();
 		
 		BranchAverageSolutionCreator ba = new BranchAverageSolutionCreator();
 		
-		List<LogicTreeNode> restrictTo = new ArrayList<>();
+//		List<LogicTreeNode> restrictTo = new ArrayList<>();
+		List<List<LogicTreeNode>> restrictTos = null;
 		
 		String[] restrictNames = cmd.getOptionValues("restrict-tree");
-		if (restrictNames != null) {
+		if (restrictNames != null && restrictNames.length > 0) {
+			restrictTos = new ArrayList<>();
+			for (int i=0; i<tree.getLevels().size(); i++)
+				restrictTos.add(new ArrayList<>());
 			for (String op : restrictNames) {
 				String valName = op;
 				String levelName = null;
@@ -598,14 +604,17 @@ public class BranchAverageSolutionCreator {
 					System.out.println("Looking for logic tree value of '"+valName+"'");
 				}
 				LogicTreeNode match = null;
-				for (LogicTreeLevel<?> level : slt.getLogicTree().getLevels()) {
+				for (int i=0; i<tree.getLevels().size(); i++) {
+					LogicTreeLevel<?> level = tree.getLevels().get(i);
 					if (levelName != null && !level.getShortName().equals(levelName))
 						continue;
 					for (LogicTreeNode value : level.getNodes()) {
+//						System.out.println("Testing value="+value+" with prefix="+value.getFilePrefix());
 						if (value.getShortName().equals(valName) || value.getFilePrefix().equals(valName)) {
 							if (match == null) {
 								System.out.println("Found matching node: "+value);
 								match = value;
+								restrictTos.get(i).add(value);
 							} else {
 								throw new IllegalStateException("Logic tree value '"+valName+"' is ambiguous (matches "
 										+ "multiple values across multiple levels). Specify the appropriate level as "
@@ -616,15 +625,22 @@ public class BranchAverageSolutionCreator {
 				}
 				Preconditions.checkNotNull(match, "Didn't find matching logic tree value='%s' (level='%s')",
 						valName, levelName);
-				restrictTo.add(match);
 			}
 		}
 		
 		for (LogicTreeBranch<?> branch : slt.getLogicTree()) {
-			if (!restrictTo.isEmpty()) {
+			if (restrictTos != null) {
+				Preconditions.checkState(branch.size() == tree.getLevels().size());
 				boolean hasAll = true;
-				for (LogicTreeNode restrict : restrictTo) {
-					if (!branch.hasValue(restrict)) {
+				for (int i=0; i<branch.size(); i++) {
+					List<LogicTreeNode> restrictTo = restrictTos.get(i);
+					if (restrictTo.isEmpty())
+						continue;
+					boolean match = false;
+					for (LogicTreeNode restrict : restrictTo)
+						if (branch.hasValue(restrict))
+							match = true;
+					if (!match) {
 						hasAll = false;
 						break;
 					}

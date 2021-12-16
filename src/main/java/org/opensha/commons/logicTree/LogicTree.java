@@ -344,7 +344,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 							}
 							Preconditions.checkNotNull(node, "No matching node found with shortName=%s for level %s",
 									shortName, level.getName());
-							branch.setValue(node);
+							branch.setValue(index, node);
 							index++;
 						}
 						in.endArray();

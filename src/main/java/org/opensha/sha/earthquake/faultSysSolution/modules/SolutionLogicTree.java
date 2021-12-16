@@ -467,7 +467,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (plausibility != null) {
 			// use rupture-sections file to figure out which things affect plausibility
 			List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
-					FaultSystemRupSet.RUP_SECTS_FILE_NAME, true, branch);
+					FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 			String plausibilityFile = getBranchFileName(branch, prefix,
 					PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 			if (!writtenFiles.contains(plausibilityFile))
@@ -620,7 +620,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		// use rupture-sections file to figure out which things affect plausibility
 		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
-				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true, branch);
+				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 		String plausibilityFile = getBranchFileName(branch, PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 		if (plausibilityFile != null && zip.getEntry(plausibilityFile) != null) {
 			PlausibilityConfiguration plausibility = JSON_BackedModule.loadFromArchive(

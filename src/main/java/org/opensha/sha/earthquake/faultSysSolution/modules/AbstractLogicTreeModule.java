@@ -43,11 +43,13 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	private ZipFile zip;
 	private String prefix;
 	private LogicTree<?> logicTree;
+	private List<LogicTreeLevel<?>> levels;
+	private Map<LogicTreeLevel<?>, Integer> levelIndexes;
 
 	protected AbstractLogicTreeModule(ZipFile zip, String prefix, LogicTree<?> logicTree) {
 		this.zip = zip;
 		this.prefix = prefix;
-		this.logicTree = logicTree;
+		setLogicTree(logicTree);;
 	}
 	
 	/**
@@ -57,12 +59,16 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	 */
 	protected abstract String getSubDirectoryName();
 	
-	protected List<? extends LogicTreeLevel<?>> getLevelsAffectingFile(String fileName,
-			boolean affectedByDefault, LogicTreeBranch<?> branch) {
+	protected List<? extends LogicTreeLevel<?>> getLevelsAffectingFile(String fileName, boolean affectedByDefault) {
 		List<LogicTreeLevel<?>> levels = new ArrayList<>();
-		for (LogicTreeLevel<?> level : branch.getLevels())
-			if (level.affects(fileName, affectedByDefault))
+//		System.out.println("levels affecting "+fileName);
+		for (LogicTreeLevel<?> level : this.levels) {
+//			System.out.println(level);
+			if (level.affects(fileName, affectedByDefault)) {
 				levels.add(level);
+//				System.out.println("Affects!");
+			}
+		}
 		return levels;
 	}
 	
@@ -83,7 +89,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 			if (levelsCache.containsKey(fileName)) {
 				mappingLevels = levelsCache.get(fileName);
 			} else {
-				mappingLevels = getLevelsAffectingFile(fileName, affectedByDefault, branch);
+				mappingLevels = getLevelsAffectingFile(fileName, affectedByDefault);
 				if (mappingLevels == null) {
 					System.out.println("no levels specified for file '"+fileName+"', assuming it's affected by all levels");
 					mappingLevels = logicTree.getLevels();
@@ -99,7 +105,8 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		StringBuilder ret = new StringBuilder(prefix);
 		Preconditions.checkNotNull(mappingLevels, "No mappings available for %", fileName);
 		for (LogicTreeLevel<?> level : mappingLevels) {
-			LogicTreeNode value = branch.getValue(level.getType());
+			int levelIndex = levelIndexes.get(level);
+			LogicTreeNode value = branch.getValue(levelIndex);
 			Preconditions.checkNotNull(value,
 					"Branch does not have value for %s, needed to retrieve %s", level.getName(), fileName);
 			ret.append(value.getFilePrefix()).append("/");
@@ -112,6 +119,18 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		if (upstreamPrefix == null)
 			upstreamPrefix = "";
 		return upstreamPrefix+getSubDirectoryName()+"/";
+	}
+	
+	protected void setLogicTree(LogicTree<?> logicTree) {
+		Preconditions.checkState(this.logicTree == null, "Logic Tree should only be set once");
+		if (logicTree == null)
+			return;
+		this.logicTree = logicTree;
+		this.levels = new ArrayList<>(logicTree.getLevels());
+		this.levelIndexes = new HashMap<>();
+		for (int i=0; i<levels.size(); i++)
+			levelIndexes.put(levels.get(i), i);
+		Preconditions.checkState(levelIndexes.size() == levels.size());
 	}
 	
 	public LogicTree<?> getLogicTree() {
@@ -180,7 +199,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		BufferedInputStream logicTreeIS = FileBackedModule.getInputStream(zip, prefix, "logic_tree.json");
 		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		InputStreamReader reader = new InputStreamReader(logicTreeIS);
-		logicTree = gson.fromJson(reader, LogicTree.class);
+		setLogicTree(gson.fromJson(reader, LogicTree.class));
 	}
 	
 	protected LogicTreeLevel<?> getLevelForType(Class<? extends LogicTreeNode> type) {
