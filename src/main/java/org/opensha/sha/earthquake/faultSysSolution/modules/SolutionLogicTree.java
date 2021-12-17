@@ -625,9 +625,12 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 		String plausibilityFile = getBranchFileName(branch, PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 		if (plausibilityFile != null && zip.getEntry(plausibilityFile) != null) {
-			PlausibilityConfiguration plausibility = JSON_BackedModule.loadFromArchive(
-					zip, entryPrefix, plausibilityFile, PlausibilityConfiguration.class);
-			sol.addModule(plausibility);
+			BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, plausibilityFile);
+			InputStreamReader reader = new InputStreamReader(zin);
+			PlausibilityConfiguration plausibility = PlausibilityConfiguration.readJSON(
+					reader, rupSet.getFaultSectionDataList());
+			reader.close();
+			rupSet.addModule(plausibility);
 		}
 		
 		return sol;
