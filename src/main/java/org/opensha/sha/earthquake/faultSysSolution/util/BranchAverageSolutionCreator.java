@@ -36,6 +36,7 @@ import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.common.math.DoubleMath;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
@@ -235,7 +236,7 @@ public class BranchAverageSolutionCreator {
 				DiscretizedFunc rupMFD = rupMFDs.get(r);
 				rupMFD.scale(1d/totWeight);
 				double calcRate = rupMFD.calcSumOfY_Vals();
-				Preconditions.checkState((float)calcRate == (float)avgRates[r],
+				Preconditions.checkState(DoubleMath.fuzzyEquals(calcRate, avgRates[r], 1e-15),
 						"Rupture MFD rate=%s, avgRate=%s", calcRate, avgRates[r]);
 			}
 			rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(avgRakes.get(r), weights));
