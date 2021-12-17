@@ -133,7 +133,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		Preconditions.checkState(this.levels == null, "Logic Tree levels should only be set once");
 		if (levels == null)
 			return;
-		this.levels = new ArrayList<>(logicTree.getLevels());
+		this.levels = new ArrayList<>(levels);
 		this.levelIndexes = new HashMap<>();
 		for (int i=0; i<levels.size(); i++)
 			levelIndexes.put(levels.get(i), i);
