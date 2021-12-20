@@ -3,12 +3,11 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -28,9 +27,10 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DraftModelConstraintBuilder;
@@ -194,6 +194,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		List<InversionConstraint> constraints = constrBuilder.build();
 		
 		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
+		System.out.println("Segmentation model: "+segModel);
 		if (segModel != null && segModel != SegmentationModels.NONE) {
 			constraints = new ArrayList<>(constraints);
 			
@@ -207,6 +208,24 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 			
 			constraints.add(new JumpProbabilityConstraint.RelativeRate(
 					weight, ineq, rupSet, segModel.getModel(rupSet), rateEst));
+		}
+		
+		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
+		System.out.println("Max distance model: "+distModel);
+		if (distModel != null) {
+			JumpProbabilityCalc model = distModel.getModel(rupSet);
+			int numSkipped = 0;
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			System.out.println("Zeroing out sampler probabilities for "+model);
+			for (int r=0; r<cRups.size(); r++) {
+//				if (r % 1000 == 0)
+//					System.out.println("Prob for r="+r+": "+model.calcRuptureProb(cRups.get(r), false));
+				if ((float)model.calcRuptureProb(cRups.get(r), false) == 0f) {
+					sampler.set(r, 0d);
+					numSkipped++;
+				}
+			}
+			System.out.println("\tSkipped "+numSkipped+" ruptures");
 		}
 		
 		int avgThreads = threads / 4;
@@ -242,15 +261,30 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
-				+ "2021_11_24-nshm23_draft_branches-FM3_1/");
-//				+ "2021_11_30-nshm23_draft_branches-FM3_1-FaultSpec");
-		File ltFile = new File(dir, "results.zip");
-		SolutionLogicTree tree = SolutionLogicTree.load(ltFile);
+//		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+//				+ "2021_11_24-nshm23_draft_branches-FM3_1/");
+////				+ "2021_11_30-nshm23_draft_branches-FM3_1-FaultSpec");
+//		File ltFile = new File(dir, "results.zip");
+//		SolutionLogicTree tree = SolutionLogicTree.load(ltFile);
+//		
+//		FaultSystemSolution ba = tree.calcBranchAveraged();
+//		
+//		ba.write(new File(dir, "branch_averaged.zip"));
 		
-		FaultSystemSolution ba = tree.calcBranchAveraged();
+		LogicTree<?> tree = LogicTree.read(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2021_12_16-nshm23_draft_branches-max_dist-FM3_1-CoulombRupSet-ZENGBB-Shaw09Mod-DsrUni-TotNuclRate-SubB1/"
+				+ "logic_tree.json"));
+		LogicTreeBranch<LogicTreeNode> branch0 = (LogicTreeBranch<LogicTreeNode>)tree.getBranch(0);
+		branch0.setValue(RupturePlausibilityModels.UCERF3);
+		branch0.setValue(MaxJumpDistModels.TWO);
 		
-		ba.write(new File(dir, "branch_averaged.zip"));
+		System.out.println(branch0);
+		
+		NSHM23InvConfigFactory factory = new NSHM23InvConfigFactory();
+		
+		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch0, 32);
+		
+		factory.buildInversionConfig(rupSet, branch0, 32);
 	}
 
 }
