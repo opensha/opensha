@@ -365,6 +365,46 @@ public final class FaultUtils {
 
 		return getScaledAngleAverage(lengths, angles);
 	}
+	
+	/**
+	 * Class for calculating the average of angles weighted by scalar values without storing them all in memory at once.
+	 * Note that this expects angles in degrees, and will return angles from 0 to 360 degrees.
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class AngleAverager {
+		double xdir=0; double ydir=0;
+		
+		public synchronized void add(double angle, double weight) {
+			xdir+=weight*Math.cos(Math.toRadians(angle));
+			ydir+=weight*Math.sin(Math.toRadians(angle));
+		}
+		
+		public double getAverage() {
+			double avg;
+
+			if (xdir>0 & ydir>=0)
+				avg = Math.toDegrees(Math.atan(ydir/xdir));
+			else if (xdir>0 & ydir<0)
+				avg =  Math.toDegrees(Math.atan(ydir/xdir))+360;
+			else if (xdir<0)
+				avg =  Math.toDegrees(Math.atan(ydir/xdir))+180;
+			else if (xdir==0 & ydir>0)
+				avg = 90;
+			else if (xdir==0 & ydir<0)
+				avg = 270;
+			else
+				avg = 0; // if both xdir==0 & ydir=0
+
+			while (avg > 360)
+				avg -= 360;
+			while (avg < 0)
+				avg += 360;
+
+			return avg;
+		}
+	}
 
 	/**
 	 * Returns an average of the given angles scaled by the given scalars. Note that this
@@ -393,36 +433,16 @@ public final class FaultUtils {
 		}
 		if (equal)
 			return angles.get(0);
-
-		double xdir=0; double ydir=0;
+		
+		AngleAverager avg = new AngleAverager();
+		
 		for (int i=0; i<scalars.size(); i++) {
 			double scalar = scalars.get(i);
 			double angle = angles.get(i);
-			xdir+=scalar*Math.cos(Math.toRadians(angle));
-			ydir+=scalar*Math.sin(Math.toRadians(angle));
+			avg.add(angle, scalar);
 		}
 
-		double avg;
-
-		if (xdir>0 & ydir>=0)
-			avg = Math.toDegrees(Math.atan(ydir/xdir));
-		else if (xdir>0 & ydir<0)
-			avg =  Math.toDegrees(Math.atan(ydir/xdir))+360;
-		else if (xdir<0)
-			avg =  Math.toDegrees(Math.atan(ydir/xdir))+180;
-		else if (xdir==0 & ydir>0)
-			avg = 90;
-		else if (xdir==0 & ydir<0)
-			avg = 270;
-		else
-			avg = 0; // if both xdir==0 & ydir=0
-
-		while (avg > 360)
-			avg -= 360;
-		while (avg < 0)
-			avg += 360;
-
-		return avg;
+		return avg.getAverage();
 	}
 	
 	/**

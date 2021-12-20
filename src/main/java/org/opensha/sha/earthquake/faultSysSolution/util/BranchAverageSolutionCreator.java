@@ -18,6 +18,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.FaultUtils.AngleAverager;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -55,7 +56,7 @@ public class BranchAverageSolutionCreator {
 	private double[] avgMags = null;
 	private double[] avgAreas = null;
 	private double[] avgLengths = null;
-	private List<List<Double>> avgRakes = null;
+	private List<AngleAverager> avgRakes = null;
 	private List<List<Integer>> sectIndices = null;
 	private List<DiscretizedFunc> rupMFDs = null;
 	
@@ -64,7 +65,7 @@ public class BranchAverageSolutionCreator {
 	private double[] avgSectCoupling = null;
 	private double[] avgSectSlipRates = null;
 	private double[] avgSectSlipRateStdDevs = null;
-	private List<List<Double>> avgSectRakes = null;
+	private List<AngleAverager> avgSectRakes = null;
 	
 //	private List<? extends LogicTreeBranch<?>> branches = getLogicTree().getBranches();
 	
@@ -103,7 +104,7 @@ public class BranchAverageSolutionCreator {
 			avgLengths = new double[avgRates.length];
 			avgRakes = new ArrayList<>();
 			for (int r=0; r<rupSet.getNumRuptures(); r++)
-				avgRakes.add(new ArrayList<>());
+				avgRakes.add(new AngleAverager());
 			
 			refRupSet = rupSet;
 			
@@ -113,17 +114,19 @@ public class BranchAverageSolutionCreator {
 			avgSectCoupling = new double[rupSet.getNumSections()];
 			avgSectRakes = new ArrayList<>();
 			for (int s=0; s<rupSet.getNumSections(); s++)
-				avgSectRakes.add(new ArrayList<>());
+				avgSectRakes.add(new AngleAverager());
 			
 			// initialize accumulators
 			rupSetAvgAccumulators = new ArrayList<>();
 			for (OpenSHA_Module module : rupSet.getModulesAssignableTo(BranchAverageableModule.class, true)) {
 				Preconditions.checkState(module instanceof BranchAverageableModule<?>);
+				System.out.println("Building branch-averaging accumulator for: "+module.getName());
 				rupSetAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
 			}
 			solAvgAccumulators = new ArrayList<>();
 			for (OpenSHA_Module module : sol.getModulesAssignableTo(BranchAverageableModule.class, true)) {
 				Preconditions.checkState(module instanceof BranchAverageableModule<?>);
+				System.out.println("Building branch-averaging accumulator for: "+module.getName());
 				solAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
 			}
 			
@@ -146,7 +149,7 @@ public class BranchAverageSolutionCreator {
 		}
 		
 		for (int r=0; r<avgRates.length; r++) {
-			avgRakes.get(r).add(rupSet.getAveRakeForRup(r));
+			avgRakes.get(r).add(rupSet.getAveRakeForRup(r), weight);
 			double rate = sol.getRateForRup(r);
 			if (rate == 0d)
 				continue;
@@ -172,7 +175,7 @@ public class BranchAverageSolutionCreator {
 			avgSectSlipRates[s] += sect.getOrigAveSlipRate()*weight;
 			avgSectSlipRateStdDevs[s] += sect.getOrigSlipRateStdDev()*weight;
 			avgSectCoupling[s] += sect.getCouplingCoeff()*weight;
-			avgSectRakes.get(s).add(sect.getAveRake());
+			avgSectRakes.get(s).add(sect.getAveRake(), weight);
 		}
 		
 		// now work on modules
@@ -239,7 +242,7 @@ public class BranchAverageSolutionCreator {
 				Preconditions.checkState(DoubleMath.fuzzyEquals(calcRate, avgRates[r], 1e-15),
 						"Rupture MFD rate=%s, avgRate=%s", calcRate, avgRates[r]);
 			}
-			rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(avgRakes.get(r), weights));
+			rakes[r] = FaultUtils.getInRakeRange(avgRakes.get(r).getAverage());
 		}
 		
 		List<FaultSection> subSects = new ArrayList<>();
@@ -250,7 +253,7 @@ public class BranchAverageSolutionCreator {
 			avgSectCoupling[s] /= totWeight;
 			avgSectSlipRates[s] /= totWeight;
 			avgSectSlipRateStdDevs[s] /= totWeight;
-			double avgRake = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(avgSectRakes.get(s), weights));
+			double avgRake = FaultUtils.getInRakeRange(avgSectRakes.get(s).getAverage());
 			
 			GeoJSONFaultSection avgSect = new GeoJSONFaultSection(new AvgFaultSection(refSect, avgSectAseis[s],
 					avgSectCoupling[s], avgRake, avgSectSlipRates[s], avgSectSlipRateStdDevs[s]));
