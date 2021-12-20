@@ -463,17 +463,18 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(progressFile);
 		}
 		
-		PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
-		
-		if (plausibility != null) {
-			// use rupture-sections file to figure out which things affect plausibility
-			List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
-					FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
-			String plausibilityFile = getBranchFileName(branch, prefix,
-					PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
-			if (!writtenFiles.contains(plausibilityFile)) {
+		// use rupture-sections file to figure out which things affect plausibility
+		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
+				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
+		String plausibilityFile = getBranchFileName(branch, prefix,
+				PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
+		if (!writtenFiles.contains(plausibilityFile)) {
+			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+			
+			if (plausibility != null) {
 				plausibility.writeToArchive(zout, entryPrefix, plausibilityFile);
-				writtenFiles.add(plausibilityFile);			}
+				writtenFiles.add(plausibilityFile);
+			}
 		}
 	}
 	
