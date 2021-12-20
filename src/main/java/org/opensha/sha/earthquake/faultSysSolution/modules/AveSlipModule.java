@@ -183,6 +183,8 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 							values[r] += val*relWeight;
 							allSame = allSame && val == refValues[r];
 						}
+						if (!allSame)
+							ref = null;
 					}
 					sumWeight += relWeight;
 				}
