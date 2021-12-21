@@ -235,13 +235,13 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 		}
 		
 		if (compSol == null)
-			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "rate_dist", ratesNoMin, rates, initial);
+			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "sa_progress_rate_dist", ratesNoMin, rates, initial);
 		else
-			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "rate_dist", ratesNoMin, rates, initial,
+			SimulatedAnnealing.writeRateVsRankPlot(resourcesDir, "sa_progress_rate_dist", ratesNoMin, rates, initial,
 					crates, cratesNoMin);
-		lines.add("![Rate Distribution]("+relPathToResources+"/rate_dist.png)");
+		lines.add("![Rate Distribution]("+relPathToResources+"/sa_progress_rate_dist.png)");
 		lines.add("");
-		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/rate_dist_cumulative.png)");
+		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/sa_progress_rate_dist_cumulative.png)");
 		
 		if (compSol == null)
 			return lines;
