@@ -80,12 +80,18 @@ public class BranchAverageSolutionCreator {
 	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> rupSetAvgAccumulators;
 	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> solAvgAccumulators;
 	
+	private List<Class<? extends OpenSHA_Module>> skipModules = new ArrayList<>();
+	
 	public BranchAverageSolutionCreator() {
 		
 	}
 	
 	public void setSkipRupturesBelowSectMin(boolean skipRupturesBelowSectMin) {
 		this.skipRupturesBelowSectMin = skipRupturesBelowSectMin;
+	}
+	
+	public void skipModule(Class<? extends BranchAverageableModule<?>> clazz) {
+		skipModules.add(clazz);
 	}
 
 	public void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
@@ -117,18 +123,8 @@ public class BranchAverageSolutionCreator {
 				avgSectRakes.add(new AngleAverager());
 			
 			// initialize accumulators
-			rupSetAvgAccumulators = new ArrayList<>();
-			for (OpenSHA_Module module : rupSet.getModulesAssignableTo(BranchAverageableModule.class, true)) {
-				Preconditions.checkState(module instanceof BranchAverageableModule<?>);
-				System.out.println("Building branch-averaging accumulator for: "+module.getName());
-				rupSetAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
-			}
-			solAvgAccumulators = new ArrayList<>();
-			for (OpenSHA_Module module : sol.getModulesAssignableTo(BranchAverageableModule.class, true)) {
-				Preconditions.checkState(module instanceof BranchAverageableModule<?>);
-				System.out.println("Building branch-averaging accumulator for: "+module.getName());
-				solAvgAccumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
-			}
+			rupSetAvgAccumulators = initAccumulators(rupSet);
+			solAvgAccumulators = initAccumulators(sol);
 			
 			combBranch = (LogicTreeBranch<LogicTreeNode>)branch.copy();
 			sectIndices = rupSet.getSectionIndicesForAllRups();
@@ -181,6 +177,17 @@ public class BranchAverageSolutionCreator {
 		// now work on modules
 		processAccumulators(rupSetAvgAccumulators, rupSet, weight);
 		processAccumulators(solAvgAccumulators, sol, weight);
+	}
+	
+	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> initAccumulators(
+			ModuleContainer<OpenSHA_Module> container) {
+		List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators = new ArrayList<>();
+		for (OpenSHA_Module module : container.getModulesAssignableTo(BranchAverageableModule.class, true, skipModules)) {
+			Preconditions.checkState(module instanceof BranchAverageableModule<?>);
+			System.out.println("Building branch-averaging accumulator for: "+module.getName());
+			accumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
+		}
+		return accumulators;
 	}
 	
 	private static void processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
@@ -334,7 +341,7 @@ public class BranchAverageSolutionCreator {
 		
 		sol.addModule(new InfoModule(info));
 		return sol;
-		}
+	}
 	
 	private boolean hasAllEqually(Map<LogicTreeNode, Integer> nodeCounts, LogicTreeNode... nodes) {
 		Integer commonCount = null;
