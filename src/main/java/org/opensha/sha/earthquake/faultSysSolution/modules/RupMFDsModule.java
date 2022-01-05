@@ -55,7 +55,10 @@ public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSol
 		CSVFile<String> csv = new CSVFile<>(true);
 		csv.addLine("Rupture Index", "Magnitude", "Rate");
 		for (int r=0; r<rupMFDs.length; r++) {
-			if (rupMFDs[r] == null || rupMFDs[r].size() == 1)
+			// we now serialize single-valued rup MFDs as the x-value for that rupture will likely not equal the
+			// 'mean' magnitude for branch averaged solutions, i.e., it will be from a single branch choice and will
+			// not be me branch-averaged magnitude
+			if (rupMFDs[r] == null || rupMFDs[r].size() == 0)
 				continue;
 			for (Point2D pt : rupMFDs[r])
 				csv.addLine(r+"", pt.getX()+"", pt.getY()+"");
