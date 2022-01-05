@@ -1470,10 +1470,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			DeformationModels dm = branch.getValue(DeformationModels.class);
 			if (fm != null && dm != null) {
 				// override slip rates to the correct deformation model
-				List<? extends FaultSection> newSects = RuptureSets.getU3SubSects(fm, dm);
-				Preconditions.checkState(newSects.size() == faultSectionData.size());
-				this.faultSectionData = newSects;
-				this.rupAreas = null;
+				replaceFaultSections(RuptureSets.getU3SubSects(fm, dm));
 			} else if (dm != null && fm == null) {
 				System.err.println("WARNING: can't override deformation model in rupture set because fault model is null");
 			}
@@ -1481,6 +1478,13 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			// build magnitudes from the scaling relationship and add ave slip module
 			forScalingRelationship(branch.getValue(ScalingRelationships.class));
 			return u3BranchModules(branch);
+		}
+		
+		public Builder replaceFaultSections(List<? extends FaultSection> newSects) {
+			Preconditions.checkState(newSects.size() == faultSectionData.size());
+			this.faultSectionData = newSects;
+			this.rupAreas = null;
+			return this;
 		}
 		
 		public Builder u3BranchModules(U3LogicTreeBranch branch) {
