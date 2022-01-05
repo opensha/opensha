@@ -1,12 +1,12 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.DataUtils;
-import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
@@ -19,7 +19,7 @@ import com.google.common.base.Preconditions;
  * @author kevin
  *
  */
-public class InversionMisfitStats implements CSV_BackedModule, AverageableModule<InversionMisfitStats> {
+public class InversionMisfitStats implements CSV_BackedModule, BranchAverageableModule<InversionMisfitStats> {
 	
 	public static class MisfitStats {
 		public final ConstraintRange range;
@@ -32,6 +32,7 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 		public final double l2Norm;
 		public final double energy;
 		public final double std;
+		public final double rmse;
 		
 		public MisfitStats(double[] misfits, boolean inequality, double weight) {
 			this(misfits, new ConstraintRange(inequality ? "Inequality" : "Equality",
@@ -74,10 +75,12 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 			this.l2Norm = l2Norm;
 			this.energy = energy;
 			this.std = std.getResult();
+			double mse = l2Norm/(double)numRows;
+			this.rmse = Math.sqrt(mse);
 		}
 		
 		private MisfitStats(List<String> csvLine) {
-			Preconditions.checkState(csvLine.size() == csvHeader.size());
+			Preconditions.checkState(csvLine.size() == csvHeader.size() || csvLine.size() == csvHeader.size()-1);
 			int index = 0;
 			String name = csvLine.get(index++);
 			String shortName = csvLine.get(index++);
@@ -99,10 +102,17 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 			this.l2Norm = Double.parseDouble(csvLine.get(index++));
 			this.energy = Double.parseDouble(csvLine.get(index++));
 			this.std = Double.parseDouble(csvLine.get(index++));
+			if (csvLine.size() == index) {
+				// old
+				double mse = l2Norm/(double)numRows;
+				this.rmse = Math.sqrt(mse);
+			} else {
+				this.rmse = Double.parseDouble(csvLine.get(index++));
+			}
 		}
 		
 		private MisfitStats(ConstraintRange range, int numRows, double mean, double absMean, double median, double min,
-				double max, double l2Norm, double energy, double std) {
+				double max, double l2Norm, double energy, double std, double rmse) {
 			super();
 			this.range = range;
 			this.numRows = numRows;
@@ -114,18 +124,19 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 			this.l2Norm = l2Norm;
 			this.energy = energy;
 			this.std = std;
+			this.rmse = rmse;
 		}
 
 		public List<String> buildCSVLine() {
 			return List.of(
 					range.name, range.shortName, range.weight+"", range.weightingType+"", range.inequality+"",
-					numRows+"", mean+"", absMean+"", median+"", min+"", max+"", l2Norm+"", energy+"", std+"");
+					numRows+"", mean+"", absMean+"", median+"", min+"", max+"", l2Norm+"", energy+"", std+"", rmse+"");
 		}
 	}
 	
 	public static final List<String> csvHeader = List.of(
 			"Constraint Name", "Short Name", "Weight", "Weight Type", "Inequality", "Rows", "Mean", "Mean Absolute",
-			"Median", "Minimum", "Maximum", "L2 Norm", "Energy", "Standard Deviation");
+			"Median", "Minimum", "Maximum", "L2 Norm", "Energy", "Standard Deviation", "Root Mean Squared Error");
 	
 	private List<MisfitStats> misfitStats;
 	
@@ -198,23 +209,44 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 			
 			private List<List<MisfitStats>> stats = new ArrayList<>();
 			private List<Double> weights = new ArrayList<>();
-			private double totWeight = 0d;
 			
 			@Override
 			public void process(InversionMisfitStats module, double relWeight) {
 				stats.add(module.misfitStats);
 				weights.add(relWeight);
-				totWeight += relWeight;
 			}
 			
 			@Override
 			public InversionMisfitStats getAverage() {
+				HashMap<String, List<MisfitStats>> nameMatchesMap = new HashMap<>();
+				HashMap<String, List<Double>> nameWeightsMap = new HashMap<>();
+				
+				List<ConstraintRange> ranges = new ArrayList<>();
+				
+				for (int i=0; i<stats.size(); i++) {
+					List<MisfitStats> myStats = stats.get(i);
+					double weight = weights.get(i);
+					for (int j=0; j<myStats.size(); j++) {
+						MisfitStats stat = myStats.get(j);
+						String name = stat.range.name;
+						Preconditions.checkState(name != null && !name.isBlank());
+						if (!nameMatchesMap.containsKey(name)) {
+							// first time we've encountered this constraint
+							nameMatchesMap.put(name, new ArrayList<>());
+							nameWeightsMap.put(name, new ArrayList<>());
+							ranges.add(stat.range);
+						}
+						
+						nameMatchesMap.get(name).add(stat);
+						nameWeightsMap.get(name).add(weight);
+					}
+				}
+				
+				
 				List<MisfitStats> avgStats = new ArrayList<>();
 				
-				int num = stats.get(0).size();
-				for (int i=0; i<num; i++) {
-					ConstraintRange range = null;
-					int numRows = -1;
+				for (ConstraintRange range : ranges) {
+					int numRows = 0; // could vary by constraint, we'll keep the max
 					double mean = 0d;
 					double absMean = 0d;
 					double median = 0d;
@@ -223,28 +255,33 @@ public class InversionMisfitStats implements CSV_BackedModule, AverageableModule
 					double l2Norm = 0d;
 					double energy = 0d;
 					double std = 0d;
-					for (int j=0; j<stats.size(); j++) {
-						double weight = weights.get(j)/totWeight;
-						MisfitStats myStats = stats.get(j).get(i);
-						if (range == null) {
-							range = myStats.range;
-							numRows = myStats.numRows;
-						} else {
-							Preconditions.checkState(range.name.equals(myStats.range.name));
-							Preconditions.checkState(numRows == myStats.numRows);
-						}
+					double rmse = 0d;
+					
+					List<MisfitStats> matchingStats = nameMatchesMap.get(range.name);
+					List<Double> matchingWeights = nameWeightsMap.get(range.name);
+					
+					double myTotWeight = 0d;
+					for (Double weight : matchingWeights)
+						myTotWeight += weight;
+					
+					for (int i=0; i<matchingStats.size(); i++) {
+						double weight = matchingWeights.get(i)/myTotWeight;
+						MisfitStats myStats = matchingStats.get(i);
+						Preconditions.checkState(range.name.equals(myStats.range.name));
+						numRows = Integer.max(numRows, myStats.numRows);
 						mean += weight*myStats.mean;
 						absMean += weight*myStats.absMean;
 						median += weight*myStats.median;
-						min = weight*myStats.min;
-						max = weight*myStats.max;
-						l2Norm = weight*myStats.l2Norm;
-						energy = weight*myStats.energy;
-						std = weight*myStats.std;
+						min += weight*myStats.min;
+						max += weight*myStats.max;
+						l2Norm += weight*myStats.l2Norm;
+						energy += weight*myStats.energy;
+						std += weight*myStats.std;
+						rmse += weight*myStats.rmse;
 					}
 					
 					avgStats.add(new MisfitStats(range, numRows, mean, absMean, median, min,
-							max, l2Norm, energy, std));
+							max, l2Norm, energy, std, rmse));
 				}
 				return new InversionMisfitStats(avgStats);
 			}

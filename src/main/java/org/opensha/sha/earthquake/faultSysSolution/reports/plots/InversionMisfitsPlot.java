@@ -25,6 +25,8 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -41,16 +43,26 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 	@Override
 	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
 			String topLink) throws IOException {
-		InversionMisfits misfits = sol.requireModule(InversionMisfits.class);
+		InversionMisfits misfits = sol.getModule(InversionMisfits.class);
+		InversionMisfitStats misfitStats = sol.getModule(InversionMisfitStats.class);
+		if (misfits == null && misfitStats == null)
+			return null;
 		
-		List<ConstraintRange> ranges = getRanges(misfits);
-		List<MisfitStats> rangeStats = new ArrayList<>();
-		List<double[]> rangeMisfitVals = new ArrayList<>();
+		List<ConstraintRange> ranges = getRanges(misfits, misfitStats);
+		List<MisfitStats> rangeStats;
+		List<double[]> rangeMisfitVals;
 		
-		for (ConstraintRange range : ranges) {
-			double[] misfitVals = misfits.getMisfits(range, true);
-			rangeMisfitVals.add(misfitVals);
-			rangeStats.add(new MisfitStats(misfitVals, range));
+		if (misfits == null) {
+			rangeStats = misfitStats.getStats();
+			rangeMisfitVals = null;
+		} else {
+			rangeStats = new ArrayList<>();
+			rangeMisfitVals = new ArrayList<>();
+			for (ConstraintRange range : ranges) {
+				double[] misfitVals = misfits.getMisfits(range, true);
+				rangeMisfitVals.add(misfitVals);
+				rangeStats.add(new MisfitStats(misfitVals, range));
+			}
 		}
 		
 		InversionMisfits compMisfits = null;
@@ -58,16 +70,23 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		List<MisfitStats> compRangeStats = null;
 		List<double[]> compRangeMisfitVals = null;
 		
-		if (meta.comparison != null && meta.comparison.sol != null && meta.comparison.sol.hasModule(InversionMisfits.class)) {
-			compMisfits = meta.comparison.sol.requireModule(InversionMisfits.class);
-			compRanges = getRanges(compMisfits);
-			compRangeStats = new ArrayList<>();
-			compRangeMisfitVals = new ArrayList<>();
+		if (meta.comparison != null && meta.comparison.sol != null &&
+				(meta.comparison.sol.hasModule(InversionMisfits.class) || meta.comparison.sol.hasModule(InversionMisfitStats.class))) {
+			compMisfits = meta.comparison.sol.getModule(InversionMisfits.class);
+			InversionMisfitStats compMisfitStats = meta.comparison.sol.getModule(InversionMisfitStats.class);
+			compRanges = getRanges(compMisfits, compMisfitStats);
 			
-			for (ConstraintRange range : compRanges) {
-				double[] misfitVals = compMisfits.getMisfits(range, true);
-				compRangeMisfitVals.add(misfitVals);
-				compRangeStats.add(new MisfitStats(misfitVals, range));
+			if (compMisfits == null) {
+				compRangeStats = compMisfitStats.getStats();
+			} else {
+				compRangeStats = new ArrayList<>();
+				compRangeMisfitVals = new ArrayList<>();
+				
+				for (ConstraintRange range : compRanges) {
+					double[] misfitVals = compMisfits.getMisfits(range, true);
+					compRangeMisfitVals.add(misfitVals);
+					compRangeStats.add(new MisfitStats(misfitVals, range));
+				}
 			}
 		}
 		
@@ -81,7 +100,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			lines.add(getSubHeading()+" "+range.name+" Misfits");
 			lines.add(topLink); lines.add("");
 			
-			double[] misfitVals = rangeMisfitVals.get(r);
+			double[] misfitVals = rangeMisfitVals == null ? null : rangeMisfitVals.get(r);
 			MisfitStats stats = rangeStats.get(r);
 			
 			ConstraintRange compRange = null;
@@ -92,7 +111,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 					ConstraintRange comp = compRanges.get(r2);
 					if (comp.name.equals(range.name) && comp.inequality == range.inequality) {
 						compRange = comp;
-						compMisfitVals = compRangeMisfitVals.get(r2);
+						compMisfitVals = compRangeMisfitVals == null ? null : compRangeMisfitVals.get(r2);
 						compStats = compRangeStats.get(r2);
 						break;
 					}
@@ -121,7 +140,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 				table.addColumn((float)compStats.mean);
 			table.finalizeLine();
 			
-			table.initNewLine().addColumn("Mean Abs. Misfit").addColumn((float)stats.absMean);
+			table.initNewLine().addColumn("MAD").addColumn((float)stats.absMean);
 			if (compStats != null)
 				table.addColumn((float)compStats.absMean);
 			table.finalizeLine();
@@ -134,6 +153,11 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			table.initNewLine().addColumn("Standard Deviation").addColumn((float)stats.std);
 			if (compStats != null)
 				table.addColumn((float)compStats.std);
+			table.finalizeLine();
+			
+			table.initNewLine().addColumn("RMSE").addColumn((float)stats.rmse);
+			if (compStats != null)
+				table.addColumn((float)compStats.rmse);
 			table.finalizeLine();
 			
 			table.initNewLine().addColumn("L2 Norm").addColumn((float)stats.l2Norm);
@@ -155,79 +179,80 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			lines.add("");
 			
 			// now for plots
-			
-			HistogramFunction refHist = refHist(stats, compStats);
-			File histPlot = buildHistPlot(refHist, misfitVals,
-					stats, range, resourcesDir, prefix+"_hist", range.name+" Misfits",
-					range.weightingType == null ? "Misfit" : range.weightingType.getMisfitLabel(), MAIN_COLOR);
-			
-			if (compMisfitVals == null) {
-				lines.add("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
-			} else {
-				table = MarkdownUtils.tableBuilder();
-				table.addLine("Primary", "Comparison");
-				table.initNewLine().addColumn("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
-				File compPlot = buildHistPlot(refHist, compMisfitVals,
-						compStats, compRange, resourcesDir, prefix+"_hist_comp", compRange.name+" Misfits",
-						compRange.weightingType == null ? "Misfit" : compRange.weightingType.getMisfitLabel(), COMP_COLOR);
-				table.addColumn("![Misfit Plot]("+relPathToResources+"/"+compPlot.getName()+")");
-				table.finalizeLine();
+			if (misfitVals != null) {
+				HistogramFunction refHist = refHist(stats, compStats);
+				File histPlot = buildHistPlot(refHist, misfitVals,
+						stats, range, resourcesDir, prefix+"_hist", range.name+" Misfits",
+						range.weightingType == null ? "Misfit" : range.weightingType.getMisfitLabel(), MAIN_COLOR);
 				
-				if (misfitVals.length == compMisfitVals.length) {
-					double[] diffs = new double[misfitVals.length];
-					XY_DataSet scatter = new DefaultXY_DataSet();
-					for (int i=0; i<diffs.length; i++) {
-						double n = misfitVals[i];
-						double c = compMisfitVals[i];
-						if (compRange.inequality) {
-							n = Math.max(n, 0d);
-							c = Math.max(c, 0d);
-						}
-						diffs[i] = n - c;
-						scatter.set(n, c);
-					}
-					
-					refHist = refHist(new MisfitStats(diffs, false, Double.NaN), null);
-					File histDiffPlot = buildHistPlot(refHist, misfitVals,
-							null, range, resourcesDir, prefix+"_diff", range.name+" Misfit Difference",
-							"Misfit Difference: Primary - Comparison", COMMON_COLOR);
-					table.initNewLine().addColumn("![Diff Plot]("+relPathToResources+"/"+histDiffPlot.getName()+")");
-					List<XY_DataSet> funcs = new ArrayList<>();
-					List<PlotCurveCharacterstics> chars = new ArrayList<>();
-					double min = Math.min(scatter.getMinX(), scatter.getMinY());
-					double max = Math.max(scatter.getMaxX(), scatter.getMaxY());
-					if (min == max) {
-						if (min == 0d)
-							max = 1d;
-						else if (min > 0)
-							max = min*2;
-						else
-							max = min*0.5d;
-					}
-					Range scatterRange = new Range(min, max);
-					DefaultXY_DataSet oneToOne = new DefaultXY_DataSet();
-					oneToOne.set(scatterRange.getLowerBound(), scatterRange.getLowerBound());
-					oneToOne.set(scatterRange.getUpperBound(), scatterRange.getUpperBound());
-					funcs.add(oneToOne);
-					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
-					funcs.add(scatter);
-					chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
-					PlotSpec scatterSpec = new PlotSpec(funcs, chars, "Primary vs Comparison",
-							"Primary Misfit", "Comparison Misfit");
-
-					GraphPanel gp = PlotUtils.initHeadless();
-					
-					gp.drawGraphPanel(scatterSpec, false, false, scatterRange, scatterRange);
-					
-					String scatterPrefix = prefix+"_scatter";
-					PlotUtils.writePlots(resourcesDir, scatterPrefix, gp, 800, 650, true, true, false);
-					table.addColumn("![Scatter Plot]("+relPathToResources+"/"+scatterPrefix+".png)");
-					
+				if (compMisfitVals == null) {
+					lines.add("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
+				} else {
+					table = MarkdownUtils.tableBuilder();
+					table.addLine("Primary", "Comparison");
+					table.initNewLine().addColumn("![Misfit Plot]("+relPathToResources+"/"+histPlot.getName()+")");
+					File compPlot = buildHistPlot(refHist, compMisfitVals,
+							compStats, compRange, resourcesDir, prefix+"_hist_comp", compRange.name+" Misfits",
+							compRange.weightingType == null ? "Misfit" : compRange.weightingType.getMisfitLabel(), COMP_COLOR);
+					table.addColumn("![Misfit Plot]("+relPathToResources+"/"+compPlot.getName()+")");
 					table.finalizeLine();
+					
+					if (misfitVals.length == compMisfitVals.length) {
+						double[] diffs = new double[misfitVals.length];
+						XY_DataSet scatter = new DefaultXY_DataSet();
+						for (int i=0; i<diffs.length; i++) {
+							double n = misfitVals[i];
+							double c = compMisfitVals[i];
+							if (compRange.inequality) {
+								n = Math.max(n, 0d);
+								c = Math.max(c, 0d);
+							}
+							diffs[i] = n - c;
+							scatter.set(n, c);
+						}
+						
+						refHist = refHist(new MisfitStats(diffs, false, Double.NaN), null);
+						File histDiffPlot = buildHistPlot(refHist, misfitVals,
+								null, range, resourcesDir, prefix+"_diff", range.name+" Misfit Difference",
+								"Misfit Difference: Primary - Comparison", COMMON_COLOR);
+						table.initNewLine().addColumn("![Diff Plot]("+relPathToResources+"/"+histDiffPlot.getName()+")");
+						List<XY_DataSet> funcs = new ArrayList<>();
+						List<PlotCurveCharacterstics> chars = new ArrayList<>();
+						double min = Math.min(scatter.getMinX(), scatter.getMinY());
+						double max = Math.max(scatter.getMaxX(), scatter.getMaxY());
+						if (min == max) {
+							if (min == 0d)
+								max = 1d;
+							else if (min > 0)
+								max = min*2;
+							else
+								max = min*0.5d;
+						}
+						Range scatterRange = new Range(min, max);
+						DefaultXY_DataSet oneToOne = new DefaultXY_DataSet();
+						oneToOne.set(scatterRange.getLowerBound(), scatterRange.getLowerBound());
+						oneToOne.set(scatterRange.getUpperBound(), scatterRange.getUpperBound());
+						funcs.add(oneToOne);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
+						funcs.add(scatter);
+						chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
+						PlotSpec scatterSpec = new PlotSpec(funcs, chars, "Primary vs Comparison",
+								"Primary Misfit", "Comparison Misfit");
+
+						GraphPanel gp = PlotUtils.initHeadless();
+						
+						gp.drawGraphPanel(scatterSpec, false, false, scatterRange, scatterRange);
+						
+						String scatterPrefix = prefix+"_scatter";
+						PlotUtils.writePlots(resourcesDir, scatterPrefix, gp, 800, 650, true, true, false);
+						table.addColumn("![Scatter Plot]("+relPathToResources+"/"+scatterPrefix+".png)");
+						
+						table.finalizeLine();
+					}
+					lines.addAll(table.build());
 				}
-				lines.addAll(table.build());
+				lines.add("");
 			}
-			lines.add("");
 		}
 		
 		List<String> summaryLines = new ArrayList<>();
@@ -274,7 +299,14 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		return HistogramFunction.getEncompassingHistogram(min, max, histDelta);
 	}
 	
-	private static List<ConstraintRange> getRanges(InversionMisfits misfits) {
+	private static List<ConstraintRange> getRanges(InversionMisfits misfits, InversionMisfitStats stats) {
+		if (misfits == null) {
+			// use stats
+			List<ConstraintRange> ranges = new ArrayList<>();
+			for (MisfitStats myStats : stats.getStats())
+				ranges.add(myStats.range);
+			return ranges;
+		}
 		List<ConstraintRange> ranges = misfits.getConstraintRanges();
 		if (ranges == null || ranges.isEmpty()) {
 			double[] eqMisfits = misfits.getMisfits();
@@ -293,53 +325,17 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		Preconditions.checkState(ranges.size() == rangeStats.size());
 		CSVFile<String> summaryCSV = new CSVFile<>(true);
 		
-		summaryCSV.addLine("Constraint Name", "Weight", "Rows", "Mean", "Std. Dev.", "L2 Norm", "Energy", "Weighting Type");
+		summaryCSV.addLine("Constraint Name", "Weight", "Rows", "Mean", "Std. Dev.", "MAD", "RMSE", "L2 Norm", "Energy", "Weighting Type");
 		
 		for (int r=0; r<ranges.size(); r++) {
 			ConstraintRange range = ranges.get(r);
 			MisfitStats stats = rangeStats.get(r);
 			summaryCSV.addLine(range.name, (float)range.weight+"", (range.endRow-range.startRow)+"",
-					(float)stats.mean+"", (float)stats.std+"", (float)stats.l2Norm+"", (float)stats.energy+"",
-					range.weightingType+"");
+					(float)stats.mean+"", (float)stats.std+"", (float)stats.absMean+"", (float)stats.rmse+"",
+					(float)stats.l2Norm+"", (float)stats.energy+"", range.weightingType+"");
 		}
 		
 		return summaryCSV;
-	}
-	
-	private static class MisfitStats {
-		private int numRows;
-		private double mean;
-		private double absMean;
-		private double min;
-		private double max;
-		private double l2Norm;
-		private double energy;
-		private double std;
-		
-		public MisfitStats(double[] misfits, ConstraintRange range) {
-			this(misfits, range.inequality, range.weight);
-		}
-		
-		public MisfitStats(double[] misfits, boolean inequality, double weight) {
-			min = Double.POSITIVE_INFINITY;
-			max = Double.NEGATIVE_INFINITY;
-			numRows = misfits.length;
-			StandardDeviation std = new StandardDeviation();
-			for (double val : misfits) {
-				if (inequality && val < 0d)
-					val = 0d;
-				mean += val;
-				absMean += Math.abs(val);
-				min = Math.min(val, min);
-				max = Math.max(val, max);
-				l2Norm += val*val;
-				energy += (val*weight)*(val*weight);
-				std.increment(val);
-			}
-			mean /= (double)numRows;
-			absMean /= (double)numRows;
-			this.std = std.getResult();
-		}
 	}
 	
 	private static File buildHistPlot(HistogramFunction refHist, double[] data, MisfitStats stats,
@@ -399,7 +395,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 
 	@Override
 	public Collection<Class<? extends OpenSHA_Module>> getRequiredModules() {
-		return Collections.singleton(InversionMisfits.class);
+		return List.of();
 	}
 
 }
