@@ -281,7 +281,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		return constraintRanges;
 	}
 	
-	private static void calculateMisfit(DoubleMatrix2D mat, double[] data, double[] prev_misfit,
+	public static void calculateMisfit(DoubleMatrix2D mat, double[] data, double[] prev_misfit,
 			double[] solution, int perturbCol, double perturbation, double[] misfit) {
 		if (mat instanceof SparseCCDoubleMatrix2D && perturbCol >= 0 && prev_misfit != null) {
 //			misfit = Arrays.copyOf(prev_misfit, prev_misfit.length);
@@ -330,7 +330,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		return calculateEnergy(solution, misfit, misfit_ineq, nRow, nCol, ineqRows, constraintRanges, relativeSmoothnessWt);
 	}
 	
-	static double[] calculateEnergy(final double[] solution, final double[] misfit, final double[] misfit_ineq,
+	public static double[] calculateEnergy(final double[] solution, final double[] misfit, final double[] misfit_ineq,
 			final int nRow, final int nCol, final int ineqRows, final List<ConstraintRange> constraintRanges,
 			final double relativeSmoothnessWt) {
 		
@@ -822,6 +822,25 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	@Override
 	public double[] getD_ineq() {
 		return d_ineq;
+	}
+
+	@Override
+	public void setInputs(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq) {
+		this.A = A;
+		this.d = d;
+		this.A_ineq = A_ineq;
+		this.d_ineq = d_ineq;
+		setup(A_ineq, d, xbest);
+	}
+
+	@Override
+	public void setAll(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq, double[] Ebest,
+			double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero) {
+		this.A = A;
+		this.d = d;
+		this.A_ineq = A_ineq;
+		this.d_ineq = d_ineq;
+		setResults(Ebest, xbest, misfit, misfit_ineq, numNonZero);
 	}
 
 }

@@ -144,6 +144,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		this.average = average;
 	}
 	
+	public List<? extends SimulatedAnnealing> getSAs() {
+		return sas;
+	}
+	
 	public void setSubCompletionCriteria(CompletionCriteria subCompletionCriteria) {
 		this.subCompletionCriteria = subCompletionCriteria;
 	}
@@ -323,6 +327,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public long iterate(CompletionCriteria completion) {
 		return iterate(0l, 0l, completion)[0];
 	}
+	
+	protected void beforeRound(long curIter, int round) {
+		// do nothing (can be extended)
+	}
 
 	@Override
 	public long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria) {
@@ -358,6 +366,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		long iter = startIter;
 		double[] prevBestE = null;
 		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs, numNonZero, misfit, misfit_ineq, constraintRanges)) {
+			beforeRound(iter, rounds);
+			
 			if (subCompletionCriteria instanceof VariableSubTimeCompletionCriteria)
 				((VariableSubTimeCompletionCriteria)subCompletionCriteria).setGlobalState(watch, iter, Ebest, perturbs);
 			
@@ -1238,6 +1248,24 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public double[] calculateEnergy(double[] solution, double[] misfit, double[] misfit_ineq,
 			List<ConstraintRange> constraintRanges) {
 		return sas.get(0).calculateEnergy(solution, misfit, misfit_ineq, constraintRanges);
+	}
+
+	@Override
+	public void setInputs(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq) {
+		for (SimulatedAnnealing sa : sas)
+			sa.setInputs(A, d, A_ineq, d_ineq);
+	}
+
+	@Override
+	public void setAll(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq, double[] Ebest,
+			double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero) {
+		for (SimulatedAnnealing sa : sas)
+			sa.setAll(A, d, A_ineq, d_ineq, Ebest, xbest, misfit, misfit_ineq, numNonZero);
+		this.Ebest = Ebest;
+		this.xbest = xbest;
+		this.misfit = misfit;
+		this.misfit_ineq = misfit_ineq;
+		this.numNonZero = numNonZero;
 	}
 
 }

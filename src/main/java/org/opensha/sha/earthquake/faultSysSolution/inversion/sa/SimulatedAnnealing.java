@@ -88,6 +88,11 @@ public interface SimulatedAnnealing {
 	public double[] getD();
 	
 	public double[] getD_ineq();
+	
+	public void setInputs(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq);
+	
+	public void setAll(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq, double[] Ebest,
+			double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero);
 
 	public void setResults(double[] Ebest, double[] xbest);
 	
