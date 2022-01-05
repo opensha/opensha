@@ -154,8 +154,12 @@ public class DraftModelConstraintBuilder {
 	private static UncertainDataConstraint parkfieldRate = 
 		new UncertainDataConstraint("Parkfield", 1d/25d, new Uncertainty(0.1d/25d));
 	
+	public SupraSeisBValInversionTargetMFDs getTargetMFDs() {
+		return getTargetMFDs(supraBVal);
+	}
+	
 	private SupraSeisBValInversionTargetMFDs getTargetMFDs(double supraBVal) {
-		SupraSeisBValInversionTargetMFDs target = rupSet.getModule(SupraSeisBValInversionTargetMFDs.class);
+		SupraSeisBValInversionTargetMFDs target = rupSet.getModule(SupraSeisBValInversionTargetMFDs.class, false);
 		if (target == null || target.getSupraSeisBValue() != supraBVal) {
 			SupraSeisBValInversionTargetMFDs.Builder builder = new SupraSeisBValInversionTargetMFDs.Builder(
 					rupSet, supraBVal);
@@ -168,7 +172,14 @@ public class DraftModelConstraintBuilder {
 				List<DataSectNucleationRateEstimator> dataConstraints = new ArrayList<>();
 				dataConstraints.add(new APrioriSectNuclEstimator(rupSet,
 						UCERF3InversionInputGenerator.findParkfieldRups(rupSet), parkfieldRate));
-				dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
+				if (rupSet.hasModule(PaleoseismicConstraintData.class)) {
+					PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
+					if (paleoData.getPaleoSlipConstraints() != null) {
+						// use updated slip rate
+						rupSet.addModule(builder.buildSlipRatesOnly());
+					}
+					dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
+				}
 				builder.expandUncertaintiesForData(dataConstraints, dataWithinType);
 			}
 			target = builder.build();

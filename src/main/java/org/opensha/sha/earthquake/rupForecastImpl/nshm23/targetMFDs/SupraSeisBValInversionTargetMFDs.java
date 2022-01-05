@@ -259,11 +259,29 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		}
 		
 		/**
+		 * Build target slip rates only
+		 * 
+		 * @return
+		 */
+		public SectSlipRates buildSlipRatesOnly() {
+			return build(true).sectSlipRates;
+		}
+		
+		/**
 		 * Build target MFDs with the supplied settings
 		 * 
 		 * @return
 		 */
 		public SupraSeisBValInversionTargetMFDs build() {
+			return build(false);
+		}
+		
+		/**
+		 * Build target MFDs with the supplied settings
+		 * 
+		 * @return
+		 */
+		private SupraSeisBValInversionTargetMFDs build(boolean slipOnly) {
 			EvenlyDiscretizedFunc refMFD = buildRefXValues(rupSet);
 			int NUM_MAG = refMFD.size();
 			System.out.println("SupraSeisBValInversionTargetMFDs total MFD range: ["
@@ -497,6 +515,19 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				}
 			}
 			
+			SectSlipRates sectSlipRates;
+			if (subSeisMoRateReduction == SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES) {
+				sectSlipRates = rupSet.requireModule(SectSlipRates.class);
+			} else {
+				sectSlipRates = SectSlipRates.precomputed(rupSet, slipRates, slipRateStdDevs);
+				// give the newly computed target slip rates to the rupture set for use in inversions
+				rupSet.addModule(sectSlipRates);
+			}
+			if (slipOnly)
+				// shortcut for if we only need slip rates
+				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, null,
+						null, null, null, null, sectSlipRates);
+			
 			List<EvenlyDiscretizedFunc> defModMFDStdDevs = null;
 			if (applyDefModelUncertainties) {
 				defModMFDStdDevs = new ArrayList<>();
@@ -576,11 +607,6 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				exec.shutdown();
 			}
 			
-			if (subSeisMoRateReduction != SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES) {
-				// give the newly computed target slip rates to the rupture set for use in inversions
-				rupSet.addModule(SectSlipRates.precomputed(rupSet, slipRates, slipRateStdDevs));
-			}
-			
 			UncertainIncrMagFreqDist totalOnFaultSupra = calcRegionalSupraTarget(refMFD, null, sectSupraSeisMFDs,
 					defModMFDStdDevs, dataImpliedSectSupraSeisMFDs);
 			
@@ -649,7 +675,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			 */
 			
 			return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, totalOnFaultSupra,
-					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs);
+					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs, sectSlipRates);
 		}
 		
 		private class DataEstCallable implements Callable<DataEstCallable> {
@@ -957,14 +983,22 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	private double supraSeisBValue;
 	private List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs;
 
+	private SectSlipRates sectSlipRates;
+
 	private SupraSeisBValInversionTargetMFDs(FaultSystemRupSet rupSet, double supraSeisBValue,
 			IncrementalMagFreqDist totalRegionalMFD, UncertainIncrMagFreqDist onFaultSupraSeisMFD,
 			IncrementalMagFreqDist onFaultSubSeisMFD, List<UncertainIncrMagFreqDist> mfdConstraints,
-			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs, List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs) {
+			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs, List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs,
+			SectSlipRates sectSlipRates) {
 		super(rupSet, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, null, mfdConstraints,
 				subSeismoOnFaultMFDs);
 		this.supraSeisBValue = supraSeisBValue;
 		this.supraSeismoOnFaultMFDs = supraSeismoOnFaultMFDs;
+		this.sectSlipRates = sectSlipRates;
+	}
+
+	public SectSlipRates getSectSlipRates() {
+		return sectSlipRates;
 	}
 
 	public double getSupraSeisBValue() {
