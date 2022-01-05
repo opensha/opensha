@@ -48,6 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
@@ -108,6 +109,11 @@ public class SegmentationCalculator {
 			@Override
 			public double calc(Jump jump, JumpRates rates, SectionDistanceAzimuthCalculator distAzCalc,
 					SubSectStiffnessCalculator stiffnessCalc) {
+				double rateAvgDist = rates.getRateWeightedDistance();
+				if (Double.isFinite(rateAvgDist))
+					// a jump can have different distances depending on what other sections are involved, use the
+					// rate-weighted distance
+					return rateAvgDist;
 				return jump.distance;
 			}
 
@@ -602,7 +608,7 @@ public class SegmentationCalculator {
 					parentJumpRateTable.put(pair, fullJump, jumpRates);
 				}
 				jumpRates.addAzimuiths(jump, fullFrom, fullTo, rates[r]);
-				jumpRates.addRate(mags[r], rates[r]);
+				jumpRates.addRate(mags[r], rates[r], jump.distance);
 			}
 		}
 		System.out.println("Processed "+ruptures.size()+" ruptures. Found "+parentJumpRateTable.size()
@@ -697,6 +703,9 @@ public class SegmentationCalculator {
 		public final JumpingPointRates toRates;
 		public final double[] magJumpRates;
 		
+		private double sumRate;
+		private double sumRateDist;
+		
 		public final AzTracker fromAzTrack;
 		public final AzTracker toAzTrack;
 		
@@ -714,8 +723,14 @@ public class SegmentationCalculator {
 			this.magJumpRates = magJumpRates;
 		}
 		
-		public void addRate(double mag, double rate) {
+		public void addRate(double mag, double rate, double distance) {
+			sumRate += rate;
+			sumRateDist += rate*distance;
 			addMagRate(magJumpRates, mag, rate);
+		}
+		
+		public double getRateWeightedDistance() {
+			return sumRateDist/sumRate;
 		}
 		
 		public void addAzimuiths(Jump jump, FaultSubsectionCluster fullFrom, FaultSubsectionCluster fullTo, double rate) {
@@ -801,6 +816,8 @@ public class SegmentationCalculator {
 				double combToRupSetSlipRate = 0d;
 				double combFromSolSlipRate = 0d;
 				double combToSolSlipRate = 0d;
+				double sumRateDist = 0d;
+				double sumRate = 0d;
 				for (Jump jump : jumpMap.keySet()) {
 					// average everything, weighted by the rate that jump is used
 					JumpRates jumpRates = jumpMap.get(jump);
@@ -816,6 +833,9 @@ public class SegmentationCalculator {
 					combToRupSetSlipRate += jumpRates.toRates.rupSetSlipRate*weight;
 					combFromSolSlipRate += jumpRates.fromRates.solSlipRate*weight;
 					combToSolSlipRate += jumpRates.toRates.solSlipRate*weight;
+					
+					sumRateDist += jumpRates.sumRateDist;
+					sumRate += jumpRates.sumRate;
 				}
 				FaultSection fromSect = bestJump.fromSection;
 				JumpingPointRates combFromRates = new JumpingPointRates(fromSect, parentParticRates.get(fromSect.getParentSectionId()),
@@ -824,6 +844,8 @@ public class SegmentationCalculator {
 				JumpingPointRates combToRates = new JumpingPointRates(toSect, parentParticRates.get(toSect.getParentSectionId()),
 						combToSectRates, combToRupSetSlipRate, combToSolSlipRate);
 				JumpRates combJumpRates = new JumpRates(combFromRates, bestJumpRates.fromAzTrack, combToRates, bestJumpRates.toAzTrack, totRates);
+				combJumpRates.sumRateDist = sumRateDist;
+				combJumpRates.sumRate = sumRate;
 				combinedTable.put(pair, bestJump, combJumpRates);
 			}
 		}
@@ -1636,35 +1658,47 @@ public class SegmentationCalculator {
 	}
 	
 	public static void main(String[] args) throws IOException, DocumentException {
-		File rupSetDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
-		FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(
-				rupSetDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
-		double jumpDist = 15d;
-		File distCacheFile = new File(rupSetDir, "fm3_1_dist_az_cache.csv");
-		FaultSystemRupSet rupSet = sol.getRupSet();
-		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
-		distAzCalc.loadCacheFile(distCacheFile);
-//		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist);
-		ClusterConnectionStrategy connStrat = new InputJumpsOrDistClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist, new ArrayList<>());
-		RuptureConnectionSearch rsConnSearch = new RuptureConnectionSearch(rupSet, distAzCalc,
-				1000d, RuptureConnectionSearch.CUMULATIVE_JUMPS_DEFAULT);
-		rupSet.addModule(ClusterRuptures.instance(rupSet, rsConnSearch));
-		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
-		
-		SegmentationCalculator calc = new SegmentationCalculator(sol, rups, connStrat, distAzCalc, new double[] {6.5d, 7.5d});
+//		File rupSetDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+//		FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(
+//				rupSetDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
+//		double jumpDist = 15d;
+//		File distCacheFile = new File(rupSetDir, "fm3_1_dist_az_cache.csv");
+//		FaultSystemRupSet rupSet = sol.getRupSet();
+//		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+//		distAzCalc.loadCacheFile(distCacheFile);
+////		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist);
+//		ClusterConnectionStrategy connStrat = new InputJumpsOrDistClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist, new ArrayList<>());
+//		RuptureConnectionSearch rsConnSearch = new RuptureConnectionSearch(rupSet, distAzCalc,
+//				1000d, RuptureConnectionSearch.CUMULATIVE_JUMPS_DEFAULT);
+//		rupSet.addModule(ClusterRuptures.instance(rupSet, rsConnSearch));
+//		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
+//		
+//		SegmentationCalculator calc = new SegmentationCalculator(sol, rups, connStrat, distAzCalc, new double[] {6.5d, 7.5d});
+//		calc = calc.combineMultiJumps(true);
+//		
+//		File outputDir = new File("/tmp/test_seg");
+//		calc.plotConnectionRates(outputDir, "conn_rates", "Connection Rates", 800);
+//		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_min", "Relative Connection Passthrough Rates", 800, RateCombiner.MIN);
+//		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_max", "Relative Connection Passthrough Rates", 800, RateCombiner.MAX);
+//		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_avg", "Relative Connection Passthrough Rates", 800, RateCombiner.AVERAGE);
+//		
+//		for (Scalars scalar : Scalars.values()) {
+//			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name(), scalar, false, RateCombiner.values());
+//			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name()+"_log", scalar, true, RateCombiner.values());
+//		}
+		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2021_12_16-nshm23_draft_branches-max_dist-FM3_1-CoulombRupSet-ZENGBB-Shaw09Mod-DsrUni-TotNuclRate-SubB1/"
+				+ "node_branch_averaged/MaxDist_MaxDist3km.zip");
+		FaultSystemSolution sol = FaultSystemSolution.load(inputFile);
+		ClusterRuptures cRups = ClusterRuptures.singleStranged(sol.getRupSet());
+		PlausibilityConfiguration config = sol.getRupSet().getModule(PlausibilityConfiguration.class);
+		ClusterConnectionStrategy connStrat = config.getConnectionStrategy();
+		SegmentationCalculator calc = new SegmentationCalculator(sol, cRups.getAll(),
+				connStrat, config.getDistAzCalc(), new double[] {6.5d, 7.5d});
 		calc = calc.combineMultiJumps(true);
 		
-		File outputDir = new File("/tmp/test_seg");
-		calc.plotConnectionRates(outputDir, "conn_rates", "Connection Rates", 800);
-		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_min", "Relative Connection Passthrough Rates", 800, RateCombiner.MIN);
-		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_max", "Relative Connection Passthrough Rates", 800, RateCombiner.MAX);
-		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_avg", "Relative Connection Passthrough Rates", 800, RateCombiner.AVERAGE);
-		
-		for (Scalars scalar : Scalars.values()) {
-			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name(), scalar, false, RateCombiner.values());
-			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name()+"_log", scalar, true, RateCombiner.values());
-		}
-		
+		File outputDir = new File("/tmp/");
+		calc.plotShaw07Comparison(outputDir, "shaw_test", true, RateCombiner.MIN);
 	}
 
 }
