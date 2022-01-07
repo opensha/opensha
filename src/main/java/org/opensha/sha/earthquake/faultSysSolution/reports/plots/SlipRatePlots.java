@@ -280,6 +280,114 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			lines.addAll(table.build());
 		}
 		
+		// see if we have std devs
+		boolean hasStdDev = false;
+		if (rupSet.hasModule(SectSlipRates.class)) {
+			SectSlipRates slips = rupSet.requireModule(SectSlipRates.class);
+			double[] stdDevs = slips.getSlipRateStdDevs();
+			for (int s=0; s<slips.size(); s++)
+				if (stdDevs[s] > 0d)
+					hasStdDev = true;
+			if (hasStdDev) {
+				CPT relStdDevCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+				relStdDevCPT.setNanColor(Color.GRAY);
+				
+				CPT misfitCPT = new CPT(-3d, 3d,
+						new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+						Color.WHITE,
+						new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+				misfitCPT.setNanColor(Color.GRAY);
+				
+				double[] relStdDevs = new double[stdDevs.length];
+				for (int s=0; s<stdDevs.length; s++)
+					relStdDevs[s] = stdDevs[s]/slips.getSlipRate(s);
+				
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				
+				table.initNewLine();
+				
+				String relPrefix = rawPrefix+"_rel_std_dev";
+				String misfitPrefix = rawPrefix+"_std_dev_misfit";
+				
+				mapMaker.plotSectScalars(relStdDevs, relStdDevCPT, "Relative Standard Deviations"); 
+				mapMaker.plot(resourcesDir, relPrefix, " ");
+				table.addColumn("![Map]("+relPathToResources+"/"+relPrefix+".png)");
+				
+				if (sol != null) {
+					// plot misfit z-scores
+					double[] solSlips = solution(sol); // these are in mm/yr
+					double[] misfits = new double[stdDevs.length];
+					
+					for (int s=0; s<misfits.length; s++) {
+						double target = slips.getSlipRate(s);
+						double solSlip = solSlips[s]*1e-3;
+						double stdDev = stdDevs[s];
+						
+						misfits[s] = (solSlip - target)/stdDev;
+					}
+					
+					mapMaker.plotSectScalars(misfits, misfitCPT, "Solution Misfit (Standard Deviations)"); 
+					mapMaker.plot(resourcesDir, misfitPrefix, " ");
+					table.addColumn("![Map]("+relPathToResources+"/"+misfitPrefix+".png)");
+				}
+				
+				table.finalizeLine().initNewLine();
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+relPrefix+".geojson")
+						+" "+"[Download GeoJSON]("+relPathToResources+"/"+relPrefix+"_sol_diff.geojson)");
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+misfitPrefix+".geojson")
+						+" "+"[Download GeoJSON]("+relPathToResources+"/"+misfitPrefix+"_sol_ratio.geojson)");
+				table.finalizeLine();
+				
+				if (meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(SectSlipRates.class)
+						&& meta.comparison.rupSet.hasModule(SlipAlongRuptureModel.class)
+						&& meta.comparison.rupSet.hasModule(AveSlipModule.class)) {
+					relPrefix += "_comp";
+					misfitPrefix += "_comp";
+					
+					slips = meta.comparison.rupSet.requireModule(SectSlipRates.class);
+					stdDevs = slips.getSlipRateStdDevs();
+					
+					relStdDevs = new double[stdDevs.length];
+					for (int s=0; s<stdDevs.length; s++)
+						relStdDevs[s] = stdDevs[s]/slips.getSlipRate(s);
+					
+					table.initNewLine();
+					mapMaker.plotSectScalars(relStdDevs, relStdDevCPT, "Comparison Relative Standard Deviations"); 
+					mapMaker.plot(resourcesDir, relPrefix, " ");
+					table.addColumn("![Map]("+relPathToResources+"/"+relPrefix+".png)");
+					
+					// plot misfit z-scores
+					double[] solSlips = solution(meta.comparison.sol); // these are in mm/yr
+					double[] misfits = new double[stdDevs.length];
+					
+					for (int s=0; s<misfits.length; s++) {
+						double target = slips.getSlipRate(s);
+						double solSlip = solSlips[s]*1e-3;
+						double stdDev = stdDevs[s];
+						
+						misfits[s] = (solSlip - target)/stdDev;
+					}
+					
+					mapMaker.plotSectScalars(misfits, misfitCPT, "Comparison Solution Misfit (Standard Deviations)"); 
+					mapMaker.plot(resourcesDir, misfitPrefix, " ");
+					table.addColumn("![Map]("+relPathToResources+"/"+misfitPrefix+".png)");
+					
+					table.finalizeLine().initNewLine();
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+relPrefix+".geojson")
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+relPrefix+"_sol_diff.geojson)");
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+misfitPrefix+".geojson")
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+misfitPrefix+"_sol_ratio.geojson)");
+					table.finalizeLine();
+				}
+				
+				lines.add("");
+				lines.add(getSubHeading()+" Slip Rate Std Dev Plots");
+				lines.add(topLink); lines.add("");
+				lines.addAll(table.build());
+			}
+//			for (Fault)
+		}
+		
 		return lines;
 	}
 	
