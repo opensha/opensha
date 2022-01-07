@@ -21,6 +21,76 @@ import com.google.common.base.Preconditions;
  */
 public class InversionMisfitStats implements CSV_BackedModule, BranchAverageableModule<InversionMisfitStats> {
 	
+	public enum Quantity {
+		MEAN("Mean") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.mean;
+			}
+		},
+		MAD("Mean Absolute Deviation") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.absMean;
+			}
+		},
+		MEDIAN("Median") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.median;
+			}
+		},
+		MIN("Minimum") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.min;
+			}
+		},
+		MAX("Maximum") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.max;
+			}
+		},
+		L2_NORM("L2 Norm") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.l2Norm;
+			}
+		},
+		ENERGY("Energy") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.energy;
+			}
+		},
+		STD_DEV("Standard Deviation") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.std;
+			}
+		},
+		RMSE("RMSE") {
+			@Override
+			public double get(MisfitStats stats) {
+				return stats.rmse;
+			}
+		};
+		
+		private String name;
+
+		private Quantity(String name) {
+			this.name = name;
+		}
+		
+		public abstract double get(MisfitStats stats);
+		
+		@Override
+		public String toString() {
+			return name;
+		}
+	}
+	
 	public static class MisfitStats {
 		public final ConstraintRange range;
 		public final int numRows;
@@ -74,7 +144,11 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 			this.max = max;
 			this.l2Norm = l2Norm;
 			this.energy = energy;
-			this.std = std.getResult();
+			if (numRows == 1 && range.weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY)
+				// we have one value and it's a std dev, use use that val
+				this.std = Math.abs(misfits[0]);
+			else
+				this.std = std.getResult();
 			double mse = l2Norm/(double)numRows;
 			this.rmse = Math.sqrt(mse);
 		}
@@ -101,7 +175,12 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 			this.max = Double.parseDouble(csvLine.get(index++));
 			this.l2Norm = Double.parseDouble(csvLine.get(index++));
 			this.energy = Double.parseDouble(csvLine.get(index++));
-			this.std = Double.parseDouble(csvLine.get(index++));
+			if (numRows == 1 && range.weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY
+					&& Double.parseDouble(csvLine.get(index)) == 0d)
+				// we have one value and it's a std dev, use use that val
+				this.std = this.absMean;
+			else
+				this.std = Double.parseDouble(csvLine.get(index++));
 			if (csvLine.size() == index) {
 				// old
 				double mse = l2Norm/(double)numRows;
@@ -125,6 +204,10 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 			this.energy = energy;
 			this.std = std;
 			this.rmse = rmse;
+		}
+		
+		public double get(Quantity quantity) {
+			return quantity.get(this);
 		}
 
 		public List<String> buildCSVLine() {
