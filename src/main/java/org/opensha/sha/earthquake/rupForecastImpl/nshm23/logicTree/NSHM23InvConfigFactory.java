@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint.InitialModelParticipationRateEstimator;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint.SectParticipationRateEstimator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
@@ -330,13 +331,16 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 		List<InversionConstraint> constraints = constrBuilder.build();
 		
+		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+		
 		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
 		System.out.println("Segmentation model: "+segModel);
 		if (segModel != null && segModel != SegmentationModels.NONE) {
 			constraints = new ArrayList<>(constraints);
 			
-			InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
-					rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
+//			InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
+//					rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
+			SectParticipationRateEstimator rateEst = new GRParticRateEstimator(rupSet, bVal);
 
 //			double weight = 0.5d;
 //			boolean ineq = false;
@@ -373,7 +377,6 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		else
 			completion = TimeCompletionCriteria.getInHours(2l);
 		
-		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
 		InversionConfiguration.Builder builder = InversionConfiguration.builder(constraints, completion)
 				.threads(threads)
 				.avgThreads(avgThreads, TimeCompletionCriteria.getInMinutes(5l))
