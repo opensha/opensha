@@ -459,7 +459,7 @@ public class GeoJSONFaultReader {
 	
 	public static final String NSHM23_SECTS_CUR_VERSION = "v1p4";
 	private static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
-	public static final String NSHM23_DM_CUR_VERSION = "v1p1";
+	public static final String NSHM23_DM_CUR_VERSION = "v1p2";
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
 	
 	public static List<FaultSection> buildNSHM23SubSects() throws IOException {
