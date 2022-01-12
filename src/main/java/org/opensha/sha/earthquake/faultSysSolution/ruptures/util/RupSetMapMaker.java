@@ -86,6 +86,9 @@ public class RupSetMapMaker {
 	private String scalarLabel;
 	private boolean skipNaNs = false;
 	
+	// section colors
+	private List<Color> sectColors = null;
+	
 	// jumps (solid color)
 	private List<Collection<Jump>> jumpLists;
 	private List<Color> jumpColors;
@@ -201,6 +204,15 @@ public class RupSetMapMaker {
 		this.scalars = scalars;
 		this.scalarCPT = cpt;
 		this.scalarLabel = label;
+		this.sectColors = null;
+	}
+	
+	public void plotSectColors(List<Color> sectColors) {
+		if (sectColors != null) {
+			clearSectScalars();
+			Preconditions.checkState(sectColors.size() == subSects.size());
+		}
+		this.sectColors = sectColors;
 	}
 	
 	public void clearSectScalars() {
@@ -352,7 +364,7 @@ public class RupSetMapMaker {
 				trace.setName("Fault Sections");
 			
 			// we'll plot fault traces if we don't have scalar values
-			boolean doTraces = scalars == null;
+			boolean doTraces = scalars == null && sectColors == null;
 			if (!doTraces && skipNaNs && Double.isNaN(scalars[s]))
 				doTraces = true;
 			
@@ -424,6 +436,40 @@ public class RupSetMapMaker {
 			}
 			
 			cptLegend.add(buildCPTLegend(scalarCPT, scalarLabel));
+		} else if (sectColors != null) {
+			Preconditions.checkState(sectColors.size() == subSects.size());
+			for (int s=0; s<sectColors.size(); s++) {
+				Color color = sectColors.get(s);
+				if (color == null)
+					continue;
+				FaultSection sect = subSects.get(s);
+				
+				RuptureSurface surf = getSectSurface(sect);
+
+				if (fillSurfaces && sect.getAveDip() != 90d) {
+					XY_DataSet outline = new DefaultXY_DataSet();
+					LocationList perimeter = surf.getPerimeter();
+					for (Location loc : perimeter)
+						outline.set(loc.getLongitude(), loc.getLatitude());
+
+					PlotCurveCharacterstics fillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 0.5f, color);
+
+					funcs.add(0, outline);
+					chars.add(0, fillChar);
+				}
+
+				XY_DataSet trace = new DefaultXY_DataSet();
+				for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
+					trace.set(loc.getLongitude(), loc.getLatitude());
+				
+				funcs.add(trace);
+				PlotCurveCharacterstics scalarChar = new PlotCurveCharacterstics(PlotLineType.SOLID, scalarThickness, color);
+				chars.add(scalarChar);
+				if (writeGeoJSON) {
+					Feature feature = traceFeature(sect, scalarChar);
+					sectFeatures.add(feature);
+				}
+			}
 		}
 		
 		if (highlightSections != null && highlightTraceChar != null) {
