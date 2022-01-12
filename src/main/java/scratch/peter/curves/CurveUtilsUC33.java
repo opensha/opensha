@@ -80,7 +80,7 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.ProbOfExceed;
@@ -390,7 +390,7 @@ public class CurveUtilsUC33 {
 //			System.out.println(i + " " + branchDirs[i].getName());
 //		}
 
-		APrioriBranchWeightProvider wtProvider = new APrioriBranchWeightProvider();
+		U3APrioriBranchWeightProvider wtProvider = new U3APrioriBranchWeightProvider();
 		int index = 0;
 		for (File branch : branchDirs) {
 			if (!branch.isDirectory()) continue;

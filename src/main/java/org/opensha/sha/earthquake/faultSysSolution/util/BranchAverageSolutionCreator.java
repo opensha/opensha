@@ -13,6 +13,7 @@ import org.dom4j.Element;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -82,8 +83,10 @@ public class BranchAverageSolutionCreator {
 	
 	private List<Class<? extends OpenSHA_Module>> skipModules = new ArrayList<>();
 	
-	public BranchAverageSolutionCreator() {
-		
+	private BranchWeightProvider weightProv;
+	
+	public BranchAverageSolutionCreator(BranchWeightProvider weightProv) {
+		this.weightProv = weightProv;
 	}
 	
 	public void setSkipRupturesBelowSectMin(boolean skipRupturesBelowSectMin) {
@@ -95,7 +98,7 @@ public class BranchAverageSolutionCreator {
 	}
 
 	public void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
-		double weight = branch.getBranchWeight();
+		double weight = weightProv.getWeight(branch);
 		weights.add(weight);
 		totWeight += weight;
 		FaultSystemRupSet rupSet = sol.getRupSet();
@@ -594,7 +597,7 @@ public class BranchAverageSolutionCreator {
 		SolutionLogicTree slt = SolutionLogicTree.load(inputFile);
 		LogicTree<?> tree = slt.getLogicTree();
 		
-		BranchAverageSolutionCreator ba = new BranchAverageSolutionCreator();
+		BranchAverageSolutionCreator ba = new BranchAverageSolutionCreator(tree.getWeightProvider());
 		
 //		List<LogicTreeNode> restrictTo = new ArrayList<>();
 		List<List<LogicTreeNode>> restrictTos = null;

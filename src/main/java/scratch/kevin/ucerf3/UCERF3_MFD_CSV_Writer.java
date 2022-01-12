@@ -20,7 +20,7 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 class UCERF3_MFD_CSV_Writer {
@@ -41,7 +41,7 @@ class UCERF3_MFD_CSV_Writer {
 		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/mfd_csv_files/nocal");
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
-		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
+		U3APrioriBranchWeightProvider weightProv = new U3APrioriBranchWeightProvider();
 		
 		List<IncrementalMagFreqDist> offMFDs = new ArrayList<>();
 		List<IncrementalMagFreqDist> subMFDs = new ArrayList<>();

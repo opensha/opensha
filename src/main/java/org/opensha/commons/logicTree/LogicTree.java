@@ -11,9 +11,14 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
@@ -42,16 +47,23 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private ImmutableList<LogicTreeBranch<E>> branches;
+
+	// default to using original weights when this logic tree was instantiated
+	private static final BranchWeightProvider DEFAULT_WEIGHTS = new BranchWeightProvider.OriginalWeights();
 	
-	private LogicTree() {
-		// for serialization
+	private BranchWeightProvider weightProvider = DEFAULT_WEIGHTS;
+	
+	private LogicTree(BranchWeightProvider weightProvider) {
+		this.weightProvider = weightProvider;
 	}
 	
-	protected LogicTree(List<LogicTreeLevel<? extends E>> levels, Collection<? extends LogicTreeBranch<E>> branches) {
+	protected LogicTree(List<LogicTreeLevel<? extends E>> levels, Collection<? extends LogicTreeBranch<E>> branches,
+			BranchWeightProvider weightProvider) {
 		Preconditions.checkState(levels != null);
 		Preconditions.checkState(branches != null);
 		this.levels = ImmutableList.copyOf(levels);
 		this.branches = ImmutableList.copyOf(branches);
+		this.weightProvider = weightProvider;
 		for (LogicTreeBranch<E> branch : branches) {
 			Preconditions.checkState(branch.size() == levels.size(),
 					"Branch has %s levels but expected %s", branch.size(), levels.size());
@@ -74,6 +86,37 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	public LogicTreeBranch<E> getBranch(int index) {
 		return branches.get(index);
+	}
+	
+	/**
+	 * Uses the selected {@link BranchWeightProvider} to fetch/calculate the weight for the given branch. Shortcut to
+	 * getWeightProvider().getWeight(getBranch(index)).
+	 * 
+	 * @param index
+	 * @return weight
+	 */
+	public double getBranchWeight(int index) {
+		return weightProvider.getWeight(getBranch(index));
+	}
+	
+	/**
+	 * Uses the selected {@link BranchWeightProvider} to fetch/calculate the weight for the given branch. Shortcut to
+	 * getWeightProvider().getWeight(branch).
+	 * 
+	 * @param branch
+	 * @return weight
+	 */
+	public double getBranchWeight(LogicTreeBranch<?> branch) {
+		return weightProvider.getWeight(branch);
+	}
+	
+	public BranchWeightProvider getWeightProvider() {
+		return weightProvider;
+	}
+	
+	public void setWeightProvider(BranchWeightProvider weightProvider) {
+		Preconditions.checkNotNull(weightProvider);
+		this.weightProvider = weightProvider;
 	}
 
 	@Override
@@ -124,7 +167,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				matching.add(branch);
 		}
 		// do it this way to skip consistency checks
-		LogicTree<E> ret = new LogicTree<>();
+		LogicTree<E> ret = new LogicTree<>(weightProvider);
 		ret.branches = matching.build();
 		ret.levels = levels;
 		return ret;
@@ -149,9 +192,102 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				matching.add(branch);
 		}
 		// do it this way to skip consistency checks
-		LogicTree<E> ret = new LogicTree<>();
+		LogicTree<E> ret = new LogicTree<>(weightProvider);
 		ret.branches = matching.build();
 		ret.levels = levels;
+		return ret;
+	}
+	
+	/**
+	 * @param numSamples number of random samples
+	 * @param redrawDuplicates if true, each branch will be unique, redrawing a branch if an already sampled branch
+	 * has been selected, otherwise duplicate branches will be given additional weight and the returned branch count
+	 * may be less than the input number of samples
+	 * @return a randomly sampled subset of this logic tree, according to their weights. The returned logic tree will
+	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
+	 */
+	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates) {
+		System.out.println("Resampling logic tree of size="+size()+" to "+numSamples+" samples...");
+		Preconditions.checkArgument(numSamples > 0);
+		Preconditions.checkState(!redrawDuplicates || numSamples <= size(),
+				"Cannot randomly sample %s branches from %s values without any duplicates!", numSamples, size());
+		double[] weights = new double[size()];
+		for (int i=0; i<weights.length; i++)
+			weights[i] = getBranchWeight(i);
+		IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(weights);
+		HashMap<Integer, Integer> indexCounts = new HashMap<>();
+		for (int i=0; i<numSamples; i++) {
+			int index = sampler.getRandomInt();
+			int prevCount = indexCounts.containsKey(index) ? indexCounts.get(index) : 0;
+			while (redrawDuplicates && prevCount > 0)
+				index = sampler.getRandomInt();
+			indexCounts.put(index, prevCount+1);
+		}
+		double weightEach = 1d/numSamples;
+		ImmutableList.Builder<LogicTreeBranch<E>> samples = ImmutableList.builder();
+		Map<LogicTreeNode, Integer> sampledNodeCounts = new HashMap<>();
+		int mostSamples = 0;
+		for (int index : indexCounts.keySet()) {
+			int count = indexCounts.get(index);
+			mostSamples = Integer.max(mostSamples, count);
+			LogicTreeBranch<E> branch = getBranch(index).copy();
+			branch.setOrigBranchWeight((double)count*weightEach);
+			samples.add(branch);
+			for (LogicTreeNode node : branch) {
+				if (sampledNodeCounts.containsKey(node))
+					sampledNodeCounts.put(node, sampledNodeCounts.get(node)+count);
+				else
+					sampledNodeCounts.put(node, count);
+			}
+		}
+		// if we don't have any duplicates we can just set it to constant values
+		// otherwise, we'll use the 'original weights' which we have just overridden
+		BranchWeightProvider weightProv = indexCounts.size() == numSamples ?
+				new BranchWeightProvider.ConstantWeights(weightEach) : new BranchWeightProvider.OriginalWeights();
+		// do it this way to skip consistency checks
+		LogicTree<E> ret = new LogicTree<>(weightProv);
+		ret.branches = samples.build();
+		ret.levels = levels;
+		
+		System.out.println("\tSampled "+indexCounts.size()+" unique branches. The most any single "
+				+ "branch was sampled is "+mostSamples+" time(s).");
+		System.out.println("Sampled Logic Tree:");
+		for (LogicTreeBranch<?> branch : ret.branches) {
+			
+		}
+		Map<LogicTreeNode, Integer> origNodeCounts = new HashMap<>();
+		Map<LogicTreeNode, Double> origNodeWeights = new HashMap<>();
+		double totWeight = 0d;
+		for (LogicTreeBranch<?> branch : branches) {
+			double weight = getBranchWeight(branch);
+			totWeight += weight;
+			for (LogicTreeNode node : branch) {
+				if (origNodeCounts.containsKey(node)) {
+					origNodeCounts.put(node, origNodeCounts.get(node) + 1);
+					origNodeWeights.put(node, origNodeWeights.get(node) + weight);
+				} else {
+					origNodeCounts.put(node, 1);
+					origNodeWeights.put(node, weight);
+				}
+			}
+		}
+		for (LogicTreeLevel<? extends E> level : levels) {
+			List<LogicTreeNode> origNodes = new ArrayList<>();
+			for (E node : level.getNodes())
+				if (origNodeCounts.containsKey(node))
+					origNodes.add(node);
+			if (origNodes.size() < 2)
+				continue;
+			System.out.println("\t"+level.getName());
+			for (LogicTreeNode node : origNodes) {
+				int origCount = origNodeCounts.get(node);
+				double origWeight = origNodeWeights.get(node)/totWeight;
+				int sampleCount = sampledNodeCounts.get(node);
+				double sampledWeight = sampleCount*weightEach;
+				System.out.println("\t\t"+node.getShortName()+": ORIG count="+origCount+", weight="+(float)origWeight
+						+";\tSAMPLED count="+sampleCount+", weight="+(double)sampledWeight);
+			}
+		}
 		return ret;
 	}
 	
@@ -163,7 +299,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		
 		buildBranchesRecursive(levels, branches, emptyBranch, 0, onlyNonZeroWeight);
 		
-		return new LogicTree<>(levels, branches);
+		return new LogicTree<>(levels, branches, DEFAULT_WEIGHTS);
 	}
 	
 	private static <E extends LogicTreeNode> void buildBranchesRecursive(List<LogicTreeLevel<? extends E>> levels,
@@ -188,7 +324,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	public static <E extends LogicTreeNode> LogicTree<E> fromExisting(List<LogicTreeLevel<? extends E>> levels,
 			Collection<? extends LogicTreeBranch<E>> branches) {
-		return new LogicTree<>(levels, branches);
+		return new LogicTree<>(levels, branches, DEFAULT_WEIGHTS);
 	}
 	
 	public static void main(String[] args) {
@@ -238,12 +374,13 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	public LogicTree<E> sorted(Comparator<? super LogicTreeBranch<E>> comparator) {
 		List<LogicTreeBranch<E>> sorted = new ArrayList<>(branches);
 		sorted.sort(comparator);
-		return new LogicTree<>(levels, sorted);
+		return new LogicTree<>(levels, sorted, weightProvider);
 	}
 	
 	public static class Adapter<E extends LogicTreeNode> extends TypeAdapter<LogicTree<E>> {
-		
+
 		private final LogicTreeLevel.Adapter<E> levelAdapter = new LogicTreeLevel.Adapter<>();
+		private final BranchWeightProvider.Adapter weightAdapter = new BranchWeightProvider.Adapter();
 
 		@Override
 		public void write(JsonWriter out, LogicTree<E> value) throws IOException {
@@ -266,6 +403,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			for (LogicTreeLevel<? extends E> level : value.levels)
 				levelAdapter.write(out, level);
 			out.endArray();
+			
+			out.name("weightProvider");
+			weightAdapter.write(out, value.weightProvider);
 			
 			out.name("branches").beginArray();
 			for (LogicTreeBranch<E> branch : value.branches) {
@@ -298,6 +438,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			List<LogicTreeLevel<? extends E>> levels = null;
 			List<LogicTreeBranch<E>> branches = null;
 			List<Double> origWeights = null;
+			BranchWeightProvider weightProvider = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
@@ -314,6 +455,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					while (in.hasNext())
 						levels.add(levelAdapter.read(in));
 					in.endArray();
+					break;
+				case "weightProvider":
+					weightProvider = weightAdapter.read(in);
 					break;
 				case "branches":
 					Preconditions.checkNotNull(levels, "levels must be supplied before branches");
@@ -374,13 +518,16 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			
 			in.endObject();
 			
+			if (weightProvider == null)
+				weightProvider = DEFAULT_WEIGHTS;
+			
 			if (origWeights != null) {
 				Preconditions.checkState(origWeights.size() == branches.size(),
 						"branch orig weights size does not match branch count");
 				for (int i=0; i<branches.size(); i++)
 					branches.get(i).setOrigBranchWeight(origWeights.get(i));
 			}
-			return new LogicTree<>(levels, branches);
+			return new LogicTree<>(levels, branches, weightProvider);
 		}
 		
 	}

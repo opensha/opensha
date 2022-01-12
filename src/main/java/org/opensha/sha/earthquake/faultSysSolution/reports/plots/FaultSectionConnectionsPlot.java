@@ -8,11 +8,14 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.NumberTickUnit;
@@ -24,13 +27,16 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -40,12 +46,15 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 
@@ -244,6 +253,44 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			else
 				lines.addAll(table.build());
 			lines.add("");
+		}
+		
+		// add clusters
+		lines.add(getSubHeading()+" Connected Clusters");
+		lines.add(topLink); lines.add("");
+		
+		lines.add("Connected clusters of fault sections, where all sections plotted in a given color connect with all "
+				+ "other sections of the same color through ruptures. There may not be any single rupture that connects "
+				+ "all such sections, but rather, chains of ruptures connect the sections. Only the first "
+				+ MAX_PLOT_CLUSTERS+" clusters are plotted, with smaller clusters plotted in gray, and fully isolated "
+				+ "faults plotted in black.");
+		lines.add("");
+		if (meta.comparison != null) {
+			table = MarkdownUtils.tableBuilder();
+			table.addLine(meta.primary.name, meta.comparison.name);
+			
+			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
+					getTruncatedTitle(meta.primary.name)+" Clusters");
+			File compClusters = plotConnectedClusters(meta.comparison.rupSet, meta.region, resourcesDir,
+					"conn_clusters_comp", getTruncatedTitle(meta.comparison.name)+" Clusters");
+			
+			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")",
+					"![Comparison clusters]("+relPathToResources+"/"+compClusters.getName()+")");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", "conn_clusters.geojson")
+					+" [Download GeoJSON](conn_clusters.geojson)",
+					RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", "conn_clusters_comp.geojson")
+					+" [Download GeoJSON](conn_clusters_comp.geojson)");
+			lines.addAll(table.build());
+		} else {
+			table = MarkdownUtils.tableBuilder();
+			
+			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
+					"Connected Section Clusters");
+			
+			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", "conn_clusters.geojson")
+					+" [Download GeoJSON](conn_clusters.geojson)");
+			lines.addAll(table.build());
 		}
 		return lines;
 	}
@@ -608,6 +655,127 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		}
 		table.finalizeLine();
 		return table.wrap(maxCols, 0);
+	}
+	
+	private static int MAX_PLOT_CLUSTERS = 10;
+	
+	public static File plotConnectedClusters(FaultSystemRupSet rupSet, Region region, File outputDir, String prefix,
+			String title) throws IOException {
+		System.out.println("Calculating connection clusters");
+		
+		Stopwatch watch = Stopwatch.createStarted();
+		
+		List<HashSet<Integer>> clusters = calcClusters(rupSet);
+		
+		watch.stop();
+		
+		System.out.println("Found "+clusters.size()+" connectivity clusters in "+optionalDigitDF.format(
+				watch.elapsed(TimeUnit.MILLISECONDS)/1000)+" s");
+		
+		// sort by size, decreasing
+		clusters.sort(new Comparator<HashSet<Integer>>() {
+
+			@Override
+			public int compare(HashSet<Integer> o1, HashSet<Integer> o2) {
+				return Integer.compare(o2.size(), o1.size());
+			}
+		});
+		System.out.println("Largest has "+clusters.get(0).size()+" sections");
+		
+		Color isolatedColor = Color.BLACK;
+		Color otherClusterColor = Color.GRAY;
+		CPT clusterCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(0d, MAX_PLOT_CLUSTERS-1d);
+		
+		List<Color> sectColors = new ArrayList<>();
+		for (int s=0; s<rupSet.getNumSections(); s++)
+			sectColors.add(null);
+		
+		for (int i=0; i<clusters.size(); i++) {
+			HashSet<Integer> cluster = clusters.get(i);
+			
+			boolean allSameParent = true;
+			Integer commonParent = null;
+			for (int s : cluster) {
+				int parent = rupSet.getFaultSectionData(s).getParentSectionId();
+				if (commonParent == null) {
+					commonParent = parent;
+				} else if (parent != commonParent) {
+					allSameParent = false;
+					commonParent = null;
+					break;
+				}
+			}
+			
+			Color color;
+			if (allSameParent)
+				color = isolatedColor;
+			else if (i < MAX_PLOT_CLUSTERS)
+				color = clusterCPT.getColor((float)i);
+			else
+				color = otherClusterColor;
+			
+			for (int s : cluster) {
+				Preconditions.checkState(sectColors.get(s) == null);
+				sectColors.set(s, color);
+			}
+		}
+		
+		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, region);
+		plotter.setWriteGeoJSON(true);
+		
+		plotter.plotSectColors(sectColors);
+		
+		plotter.plot(outputDir, prefix, title);
+		
+		return new File(outputDir, prefix+".png");
+	}
+	
+	private static List<HashSet<Integer>> calcClusters(FaultSystemRupSet rupSet) {
+		List<HashSet<Integer>> clusters = new ArrayList<>();
+		boolean[] sectsAssigned = new boolean[rupSet.getNumSections()];
+		
+		boolean[][] sectCorups = new boolean[rupSet.getNumSections()][rupSet.getNumSections()];
+		
+		for (int r=0; r<rupSet.getNumRuptures(); r++) {
+			List<Integer> sects = rupSet.getSectionsIndicesForRup(r);
+			for (int i=0; i<sects.size(); i++) {
+				int s1 = sects.get(i);
+				for (int j=i; j<sects.size(); j++) {
+					int s2 = sects.get(j);
+					sectCorups[s1][s2] = true;
+					sectCorups[s2][s1] = true;
+				}
+			}
+		}
+		
+		for (int s=0; s<sectCorups.length; s++)
+			if (!sectsAssigned[s])
+				processClusterRecursive(rupSet, s, clusters.size(), clusters, sectsAssigned, sectCorups);
+		
+		return clusters;
+	}
+	
+	private static void processClusterRecursive(FaultSystemRupSet rupSet, int sect, int clusterIndex,
+			List<HashSet<Integer>> clusters, boolean[] sectsAssigned, boolean[][] sectCorups) {
+		if (sectsAssigned[sect])
+			// we've already done this one
+			return;
+		if (clusters.size() == clusterIndex)
+			clusters.add(new HashSet<>());
+		clusters.get(clusterIndex).add(sect);
+		sectsAssigned[sect] = true;
+
+		for (int sect2=0; sect2<sectCorups.length; sect2++)
+			if (sectCorups[sect][sect2])
+				processClusterRecursive(rupSet, sect2, clusterIndex, clusters, sectsAssigned, sectCorups);
+	}
+	
+	public static void main(String[] args) throws IOException {
+//		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
+//				+ "nshm23_geo_dm_v1p1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_"
+//				+ "slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip"));
+		plotConnectedClusters(rupSet, new CaliforniaRegions.RELM_TESTING(), new File("/tmp"), "conn_cluster_test", " ");
 	}
 
 }

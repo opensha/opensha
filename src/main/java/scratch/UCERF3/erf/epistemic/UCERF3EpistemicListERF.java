@@ -292,7 +292,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	@Override
 	public double getERF_RelativeWeight(int index) {
 		updateBranches();
-		return branches.get(index).getBranchWeight();
+		return tree.getBranchWeight(branches.get(index));
 	}
 
 	@Override
@@ -300,7 +300,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		updateBranches();
 		ArrayList<Double> weights = new ArrayList<>();
 		for (LogicTreeBranch<?> branch : branches)
-			weights.add(branch.getBranchWeight());
+			weights.add(tree.getBranchWeight(branch));
 		return weights;
 	}
 

@@ -652,7 +652,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	public FaultSystemSolution calcBranchAveraged() throws IOException {
-		BranchAverageSolutionCreator baCreator = new BranchAverageSolutionCreator();
+		BranchAverageSolutionCreator baCreator = new BranchAverageSolutionCreator(getLogicTree().getWeightProvider());
 		
 		for (LogicTreeBranch<?> branch : getLogicTree().getBranches()) {
 			FaultSystemSolution sol = forBranch(branch);
@@ -770,7 +770,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			System.out.println("Solution processor type: "+tree.processor.getClass().getName());
 		
 		FileBuilder builder = new FileBuilder(tree.processor, new File("/tmp/sol_tree_test.zip"));
-		BranchAverageSolutionCreator avgBuilder = new BranchAverageSolutionCreator();
+		BranchAverageSolutionCreator avgBuilder = new BranchAverageSolutionCreator(tree.getLogicTree().getWeightProvider());
 		for (LogicTreeBranch<?> branch : tree.getLogicTree()) {
 			if (Math.random() < 0.05) {
 				FaultSystemSolution sol = tree.forBranch(branch);

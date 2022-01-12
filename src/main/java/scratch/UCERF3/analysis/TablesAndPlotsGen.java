@@ -62,7 +62,7 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
@@ -300,7 +300,7 @@ public class TablesAndPlotsGen {
 		
 		Splitter sp = Splitter.on("\n");
 		
-		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
+		U3APrioriBranchWeightProvider weightProv = new U3APrioriBranchWeightProvider();
 		Map<DeformationModels, List<Double>> dmWeightsMap = Maps.newHashMap();
 		double totWt = 0;
 		for (U3LogicTreeBranch branch : branches) {
@@ -634,7 +634,7 @@ public class TablesAndPlotsGen {
 		for (HistogramFunction hist : hists) {
 			xyList.add(hist);
 		}
-		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
+		U3APrioriBranchWeightProvider weightProv = new U3APrioriBranchWeightProvider();
 		List<Double> weights = Lists.newArrayList();
 		for (U3LogicTreeBranch branch : cfss.getBranches())
 			weights.add(weightProv.getWeight(branch));

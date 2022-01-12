@@ -42,11 +42,11 @@ import scratch.UCERF3.analysis.CompoundFSSPlots.SubSectRITable;
 import scratch.UCERF3.analysis.CompoundFSSPlots.TimeDepGriddedParticipationProbPlot;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.BranchWeightProvider;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.UCERF3p2BranchWeightProvider;
-import scratch.UCERF3.logicTree.UniformBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3UniformBranchWeightProvider;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 import com.google.common.base.Preconditions;
@@ -490,11 +490,11 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 				}
 			}
 			
-			BranchWeightProvider weightProvider = new APrioriBranchWeightProvider();
+			U3BranchWeightProvider weightProvider = new U3APrioriBranchWeightProvider();
 			if (cmd.hasOption("ucerf3p2-weights"))
 				weightProvider = new UCERF3p2BranchWeightProvider();
 			if (cmd.hasOption("uniform-weights"))
-				weightProvider = new UniformBranchWeightProvider();
+				weightProvider = new U3UniformBranchWeightProvider();
 			
 			List<CompoundFSSPlots> plots = Lists.newArrayList();
 			

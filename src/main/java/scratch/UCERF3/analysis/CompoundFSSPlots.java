@@ -139,8 +139,8 @@ import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.BranchWeightProvider;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3BranchWeightProvider;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
@@ -226,7 +226,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * @throws IOException
 	 */
 	public static void writeRegionalMFDPlots(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, List<Region> regions,
+			U3BranchWeightProvider weightProvider, List<Region> regions,
 			File dir, String prefix) throws IOException {
 		
 		RegionalMFDPlot plot = new RegionalMFDPlot(weightProvider, regions);
@@ -319,7 +319,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			return regions;
 		}
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 		private List<Region> regions;
 		private List<Double> weights;
 
@@ -340,12 +340,12 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		private static final boolean[] cumulatives = { false, true };
 
-		public RegionalMFDPlot(BranchWeightProvider weightProvider,
+		public RegionalMFDPlot(U3BranchWeightProvider weightProvider,
 				List<Region> regions) {
 			this(weightProvider, regions, new double[0]);
 		}
 
-		public RegionalMFDPlot(BranchWeightProvider weightProvider,
+		public RegionalMFDPlot(U3BranchWeightProvider weightProvider,
 				List<Region> regions, double[] fractiles) {
 			this.weightProvider = weightProvider;
 			this.regions = regions;
@@ -588,7 +588,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	
 	public static List<PlotSpec> getERFBasedRegionalMFDPlotSpecs(
 			FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, List<Region> regions) {
+			U3BranchWeightProvider weightProvider, List<Region> regions) {
 		ERFBasedRegionalMFDPlot plot = new ERFBasedRegionalMFDPlot(
 				weightProvider, regions,
 				ERFBasedRegionalMFDPlot.getDefaultFractiles());
@@ -600,7 +600,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	
 	public static void writeERFBasedRegionalMFDPlots(
 			FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, List<Region> regions,
+			U3BranchWeightProvider weightProvider, List<Region> regions,
 			File dir, String prefix) throws IOException {
 		List<PlotSpec> specs = getERFBasedRegionalMFDPlotSpecs(fetch,
 				weightProvider, regions);
@@ -674,7 +674,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private static final boolean infer_off_fault = false;
 		private static final boolean INCLUDE_AFTERSHOCKS = true;
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 		private List<Region> regions;
 		private List<Double> weights;
 		private double[] ucerf2Weights;
@@ -712,16 +712,16 @@ public abstract class CompoundFSSPlots implements Serializable {
 			return ret;
 		}
 
-		public ERFBasedRegionalMFDPlot(BranchWeightProvider weightProvider) {
+		public ERFBasedRegionalMFDPlot(U3BranchWeightProvider weightProvider) {
 			this(weightProvider, getDefaultRegions());
 		}
 
-		public ERFBasedRegionalMFDPlot(BranchWeightProvider weightProvider,
+		public ERFBasedRegionalMFDPlot(U3BranchWeightProvider weightProvider,
 				List<Region> regions) {
 			this(weightProvider, regions, getDefaultFractiles());
 		}
 
-		public ERFBasedRegionalMFDPlot(BranchWeightProvider weightProvider,
+		public ERFBasedRegionalMFDPlot(U3BranchWeightProvider weightProvider,
 				List<Region> regions, double[] fractiles) {
 			this.weightProvider = weightProvider;
 			this.regions = regions;
@@ -1487,7 +1487,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private static double[] durations = time_dep_durations;
 //		private static double[] durations = {30d};
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 		private List<Region> regions;
 		private Map<Double, List<Double>> weights;
 		private Map<Double, Map<FaultModels, List<Double>>> fmWeights;
@@ -1589,16 +1589,16 @@ public abstract class CompoundFSSPlots implements Serializable {
 			return ret;
 		}
 
-		public ERFBasedRegionalMagProbPlot(BranchWeightProvider weightProvider) {
+		public ERFBasedRegionalMagProbPlot(U3BranchWeightProvider weightProvider) {
 			this(weightProvider, getDefaultRegions());
 		}
 
-		public ERFBasedRegionalMagProbPlot(BranchWeightProvider weightProvider,
+		public ERFBasedRegionalMagProbPlot(U3BranchWeightProvider weightProvider,
 				List<Region> regions) {
 			this(weightProvider, regions, getDefaultFractiles());
 		}
 
-		public ERFBasedRegionalMagProbPlot(BranchWeightProvider weightProvider,
+		public ERFBasedRegionalMagProbPlot(U3BranchWeightProvider weightProvider,
 				List<Region> regions, double[] fractiles) {
 			this.weightProvider = weightProvider;
 			this.regions = regions;
@@ -2450,7 +2450,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		static BranchSensitivityHistogram buildHist(
 				Map<U3LogicTreeBranch, Map<MagDependentAperiodicityOptions, Double>> map,
-				BranchWeightProvider weightProv) {
+				U3BranchWeightProvider weightProv) {
 			BranchSensitivityHistogram hist = new BranchSensitivityHistogram("Prob M>=6.7");
 			for (U3LogicTreeBranch branch : map.keySet()) {
 				double branchWeight = weightProv.getWeight(branch);
@@ -3308,7 +3308,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			MagDependentAperiodicityOptions.MID_VALUES, MagDependentAperiodicityOptions.HIGH_VALUES, null};
 //		private static MagDependentAperiodicityOptions[] covs = {MagDependentAperiodicityOptions.MID_VALUES, null};
 		
-		private BranchWeightProvider weightProv;
+		private U3BranchWeightProvider weightProv;
 		
 		private List<Site> sites;
 		private Map<AttenRelRef, Double> imrs;
@@ -3327,7 +3327,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private static final double duration = 50d;
 		private static final double[] probLevels = { 0.02, 0.1 };
 		
-		public ERFBasedSiteHazardHistPlot(BranchWeightProvider weightProv, File curveDir, int numBranches) {
+		public ERFBasedSiteHazardHistPlot(U3BranchWeightProvider weightProv, File curveDir, int numBranches) {
 			debug(-1, "ERFBasedSiteHazardHistPlot START constructor");
 			this.weightProv = weightProv;
 			this.curveDir = curveDir;
@@ -3576,8 +3576,8 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 		
 		private static void writeMetadataFileForAllBranches(
-				List<U3LogicTreeBranch> branches, BranchWeightProvider prov, File curveDir) {
-			BranchWeightProvider weightProv = new APrioriBranchWeightProvider();
+				List<U3LogicTreeBranch> branches, U3BranchWeightProvider prov, File curveDir) {
+			U3BranchWeightProvider weightProv = new U3APrioriBranchWeightProvider();
 			
 			U3LogicTreeBranch[] branchArray = new U3LogicTreeBranch[branches.size()];
 			double[] branchWeights = new double[branches.size()];
@@ -3964,7 +3964,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 */
 	
 	public static void writePaleoFaultPlots(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir) throws IOException {
+			U3BranchWeightProvider weightProvider, File dir) throws IOException {
 		PaleoFaultPlot plot = new PaleoFaultPlot(weightProvider);
 		plot.buildPlot(fetch);
 
@@ -4000,7 +4000,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	public static class PaleoFaultPlot extends CompoundFSSPlots {
 
 		private transient PaleoProbabilityModel paleoProbModel;
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		// on demand
 		private Map<FaultModels, Map<String, List<Integer>>> namedFaultsMaps = Maps
@@ -4025,7 +4025,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private Map<FaultModels, Map<String, PlotSpec[]>> plotsMap = Maps
 				.newHashMap();
 
-		public PaleoFaultPlot(BranchWeightProvider weightProvider) {
+		public PaleoFaultPlot(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 
 			try {
@@ -4239,7 +4239,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 	public static void writePaleoCorrelationPlots(
 			FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir) throws IOException {
+			U3BranchWeightProvider weightProvider, File dir) throws IOException {
 		PaleoSiteCorrelationPlot plot = new PaleoSiteCorrelationPlot(
 				weightProvider);
 		plot.buildPlot(fetch);
@@ -4266,7 +4266,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	public static class PaleoSiteCorrelationPlot extends CompoundFSSPlots {
 
 		private transient PaleoProbabilityModel paleoProbModel;
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		private Map<FaultModels, Map<String, List<PaleoSiteCorrelationData>>> corrsListsMap = Maps
 				.newHashMap();
@@ -4277,7 +4277,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private Map<String, PlotSpec> plotsMap = Maps.newHashMap();
 
-		public PaleoSiteCorrelationPlot(BranchWeightProvider weightProvider) {
+		public PaleoSiteCorrelationPlot(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 
 			try {
@@ -4431,7 +4431,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 	public static void writeParentSectionMFDPlots(
 			FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir) throws IOException {
+			U3BranchWeightProvider weightProvider, File dir) throws IOException {
 		ParentSectMFDsPlot plot = new ParentSectMFDsPlot(weightProvider);
 		plot.buildPlot(fetch);
 
@@ -4661,7 +4661,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 */
 	public static class ParentSectMFDsPlot extends CompoundFSSPlots {
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		// none (except min/mean/max which are always included)
 		private double[] fractiles;
@@ -4701,11 +4701,11 @@ public abstract class CompoundFSSPlots implements Serializable {
 			return ret;
 		}
 
-		public ParentSectMFDsPlot(BranchWeightProvider weightProvider) {
+		public ParentSectMFDsPlot(U3BranchWeightProvider weightProvider) {
 			this(weightProvider, getDefaultFractiles());
 		}
 
-		public ParentSectMFDsPlot(BranchWeightProvider weightProvider,
+		public ParentSectMFDsPlot(U3BranchWeightProvider weightProvider,
 				double[] fractiles) {
 			this.weightProvider = weightProvider;
 			this.fractiles = fractiles;
@@ -4958,7 +4958,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 
 	public static void writeJumpPlots(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir, String prefix)
+			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		RupJumpPlot plot = new RupJumpPlot(weightProvider);
 		plot.buildPlot(fetch);
@@ -5002,7 +5002,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private static final double jumpDist = 1d;
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 		private transient PaleoProbabilityModel paleoProbModel;
 
 		private transient ConcurrentMap<FaultModels, Map<IDPairing, Double>> distancesCache = Maps
@@ -5015,11 +5015,11 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private List<DiscretizedFunc[]> plotSolFuncs = Lists.newArrayList();
 		private List<DiscretizedFunc[]> plotRupSetFuncs = Lists.newArrayList();
 
-		public RupJumpPlot(BranchWeightProvider weightProvider) {
+		public RupJumpPlot(U3BranchWeightProvider weightProvider) {
 			this(weightProvider, new double[0]);
 		}
 
-		public RupJumpPlot(BranchWeightProvider weightProvider,
+		public RupJumpPlot(U3BranchWeightProvider weightProvider,
 				double[] fractiles) {
 			this.weightProvider = weightProvider;
 			this.fractiles = fractiles;
@@ -5117,7 +5117,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 	
 	public static void writeSubSectRITables(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir, String prefix)
+			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		SubSectRITable plot = new SubSectRITable(weightProvider);
 		plot.buildPlot(fetch);
@@ -5166,7 +5166,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		private double[] fractiles = {0.025, 0.16, 0.84, 0.975};
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 		
 		// FM, minMag, results by solution
 		private Table<FaultModels, Double, List<double[]>> results;
@@ -5183,7 +5183,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private static final double delta = 0.1d;
 		private static final int num = (int) ((maxX - minX) / delta + 1);
 		
-		public SubSectRITable(BranchWeightProvider weightProvider) {
+		public SubSectRITable(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 			
 			results = HashBasedTable.create();
@@ -5333,7 +5333,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 
 	public static void writeMiniSectRITables(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir, String prefix)
+			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		MiniSectRIPlot plot = new MiniSectRIPlot(weightProvider);
 		plot.buildPlot(fetch);
@@ -5371,7 +5371,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private double[] minMags = { 6.7d };
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		private transient ConcurrentMap<FaultModels, Map<Integer, List<List<Integer>>>> fmMappingsMap = Maps
 				.newConcurrentMap();
@@ -5383,7 +5383,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private Map<FaultModels, List<Map<Integer, List<Double>>>> avgRatesMap = Maps
 				.newHashMap();
 
-		public MiniSectRIPlot(BranchWeightProvider weightProvider) {
+		public MiniSectRIPlot(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 		}
 
@@ -5522,7 +5522,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 
 	public static void writeMisfitTables(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir, String prefix)
+			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		MisfitTable plot = new MisfitTable();
 		plot.buildPlot(fetch);
@@ -5587,7 +5587,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 
 	public static void writePaleoRatesTables(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir, String prefix)
+			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		PaleoRatesTable plot = new PaleoRatesTable(weightProvider);
 		plot.buildPlot(fetch);
@@ -5623,7 +5623,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 */
 	public static class PaleoRatesTable extends CompoundFSSPlots {
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 		private transient PaleoProbabilityModel paleoProbModel;
 
 		private ConcurrentMap<FaultModels, List<U3PaleoRateConstraint>> paleoConstraintsMap = Maps
@@ -5654,7 +5654,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				.newHashMap();
 		private transient CSVFile<String> carrizoCSV;
 
-		public PaleoRatesTable(BranchWeightProvider weightProvider) {
+		public PaleoRatesTable(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 
 			try {
@@ -6018,7 +6018,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 
 	public static void writeMeanSolutions(FaultSystemSolutionFetcher fetch,
-			BranchWeightProvider weightProvider, File dir, String prefix)
+			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		BranchAvgFSSBuilder plot = new BranchAvgFSSBuilder(weightProvider);
 		plot.buildPlot(fetch);
@@ -6133,7 +6133,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 */
 	public static class BranchAvgFSSBuilder extends CompoundFSSPlots {
 		
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 		
 		private GriddedRegion region;
 		private Map<FaultModels, Map<Integer, IncrementalMagFreqDist>> nodeSubSeisMFDsMap = Maps.newHashMap();
@@ -6155,7 +6155,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		// in an AFSS
 		private int solIndex = -1;
 		
-		public BranchAvgFSSBuilder(BranchWeightProvider weightProvider) {
+		public BranchAvgFSSBuilder(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 		}
 
@@ -6390,7 +6390,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		public static final String PLOT_DATA_FILE_NAME = "slip_misfit_plots.xml";
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		private ConcurrentMap<FaultModels, List<? extends FaultSection>> sectDatasMap = Maps
 				.newConcurrentMap();
@@ -6406,7 +6406,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private Map<FaultModels, CSVFile<String>> subSectCSVs = Maps.newHashMap();
 		private Map<FaultModels, CSVFile<String>> parentSectCSVs = Maps.newHashMap();
 
-		public SlipRatePlots(BranchWeightProvider weightProvider) {
+		public SlipRatePlots(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 
 			cnt = 0;
@@ -6688,7 +6688,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		public static final String PLOT_DATA_FILE_NAME = "ave_slip_plots.xml";
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		private ConcurrentMap<FaultModels, List<LocationList>> faultsMap = Maps
 				.newConcurrentMap();
@@ -6702,7 +6702,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private static int cnt;
 
-		public AveSlipMapPlot(BranchWeightProvider weightProvider) {
+		public AveSlipMapPlot(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 
 			cnt = 0;
@@ -6859,7 +6859,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private static final double minMag = 6.7;
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		private ConcurrentMap<FaultModels, List<LocationList>> faultsMap = Maps
 				.newConcurrentMap();
@@ -6879,7 +6879,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private static int cnt;
 
-		public MultiFaultParticPlot(BranchWeightProvider weightProvider) {
+		public MultiFaultParticPlot(U3BranchWeightProvider weightProvider) {
 			this.weightProvider = weightProvider;
 
 			cnt = 0;
@@ -7187,7 +7187,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 			return vals;
 		}
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
 		private ConcurrentMap<FaultModels, List<LocationList>> faultsMap = Maps
 				.newConcurrentMap();
@@ -7197,11 +7197,11 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 		private List<MapPlotData> plots;
 
-		public ParticipationMapPlot(BranchWeightProvider weightProvider) {
+		public ParticipationMapPlot(U3BranchWeightProvider weightProvider) {
 			this(weightProvider, getDefaultRanges());
 		}
 
-		public ParticipationMapPlot(BranchWeightProvider weightProvider,
+		public ParticipationMapPlot(U3BranchWeightProvider weightProvider,
 				List<double[]> ranges) {
 			this.weightProvider = weightProvider;
 			this.ranges = ranges;
@@ -7450,18 +7450,18 @@ public abstract class CompoundFSSPlots implements Serializable {
 			return vals;
 		}
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
-		public TimeDepGriddedParticipationProbPlot(BranchWeightProvider weightProvider) {
+		public TimeDepGriddedParticipationProbPlot(U3BranchWeightProvider weightProvider) {
 			this(weightProvider, 0.1d);
 		}
 
-		public TimeDepGriddedParticipationProbPlot(BranchWeightProvider weightProvider,
+		public TimeDepGriddedParticipationProbPlot(U3BranchWeightProvider weightProvider,
 				double spacing) {
 			this(weightProvider, getDefaultRanges(), spacing);
 		}
 
-		public TimeDepGriddedParticipationProbPlot(BranchWeightProvider weightProvider,
+		public TimeDepGriddedParticipationProbPlot(U3BranchWeightProvider weightProvider,
 				List<double[]> ranges, double spacing) {
 			this.weightProvider = weightProvider;
 			this.ranges = ranges;
@@ -8100,18 +8100,18 @@ public abstract class CompoundFSSPlots implements Serializable {
 			return vals;
 		}
 
-		private transient BranchWeightProvider weightProvider;
+		private transient U3BranchWeightProvider weightProvider;
 
-		public GriddedParticipationMapPlot(BranchWeightProvider weightProvider) {
+		public GriddedParticipationMapPlot(U3BranchWeightProvider weightProvider) {
 			this(weightProvider, 0.1d);
 		}
 
-		public GriddedParticipationMapPlot(BranchWeightProvider weightProvider,
+		public GriddedParticipationMapPlot(U3BranchWeightProvider weightProvider,
 				double spacing) {
 			this(weightProvider, getDefaultRanges(), spacing);
 		}
 
-		public GriddedParticipationMapPlot(BranchWeightProvider weightProvider,
+		public GriddedParticipationMapPlot(U3BranchWeightProvider weightProvider,
 				List<double[]> ranges, double spacing) {
 			this.weightProvider = weightProvider;
 			this.ranges = ranges;
@@ -9445,7 +9445,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		FaultSystemSolutionFetcher fetch = CompoundFaultSystemSolution
 				.fromZipFile(compoundFile);
-		BranchWeightProvider weightProvider = new APrioriBranchWeightProvider();
+		U3BranchWeightProvider weightProvider = new U3APrioriBranchWeightProvider();
 		int threads = 3;
 		
 		// we only need UCERF3 to get the ball rolling, won't be using it
@@ -9561,7 +9561,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 //		ucerf2_erf_list.getTimeSpan().setDuration(1d);
 //		ucerf2_erf_list.updateForecast();
 
-		BranchWeightProvider weightProvider = new APrioriBranchWeightProvider();
+		U3BranchWeightProvider weightProvider = new U3APrioriBranchWeightProvider();
 		// File dir = new
 		// File("/tmp/2012_10_12-fm3-ref-branch-weight-vars-zengfix_COMPOUND_SOL");
 		// File file = new File(dir,

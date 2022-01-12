@@ -422,7 +422,14 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule {
 		return originalWeight;
 	}
 	
-	void setOrigBranchWeight(double originalWeight) {
+	/**
+	 * This sets the original weight assigned to the branch, useful if branch weights change over time. This will
+	 * be se automatically as the value of getBranchWeight() upon serialization if not previously set, but can be
+	 * called explicitly in order to assign a specific a priori weight to this branch
+	 * 
+	 * @param originalWeight
+	 */
+	public void setOrigBranchWeight(double originalWeight) {
 		this.originalWeight = originalWeight;
 	}
 	
