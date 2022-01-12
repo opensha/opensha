@@ -401,6 +401,17 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
+	public static class ReweightedEvenFit extends NSHM23InvConfigFactory {
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			return InversionConfiguration.builder(config).reweight().build();
+		}
+		
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 //				+ "2021_11_24-nshm23_draft_branches-FM3_1/");

@@ -261,7 +261,7 @@ public class DraftModelConstraintBuilder {
 		return supraPaleoSmooth().weight(10000);
 	}
 	
-	private List<Integer> getRupIndexesBelowMinMag() {
+	public List<Integer> getRupIndexesBelowMinMag() {
 		ModSectMinMags modMinMags = rupSet.requireModule(ModSectMinMags.class);
 		Preconditions.checkNotNull(modMinMags, "Rupture set must supply ModSectMinMags if minimization constraint is enabled");
 		

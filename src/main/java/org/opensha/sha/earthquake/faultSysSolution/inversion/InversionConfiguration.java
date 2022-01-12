@@ -24,6 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint.Adapter;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ReweightEvenFitSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
@@ -36,6 +37,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeC
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 
 import com.google.common.base.Preconditions;
@@ -71,6 +73,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	private NonnegativityConstraintType nonneg = NON_NEG_DEFAULT;
 	private CoolingScheduleType cool = COOL_DEFAULT;
 	private CompletionCriteria completion;
+	private Quantity reweightTargetQuantity = null;
 	
 	// for threaded inversions
 	private int threads = 1;
@@ -178,6 +181,11 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			if (cmd.hasOption("non-negativity"))
 				config.nonneg = NonnegativityConstraintType.valueOf(cmd.getOptionValue("non-negativity"));
 			
+			if (cmd.hasOption("reweight-quantity"))
+				config.reweightTargetQuantity = Quantity.valueOf(cmd.getOptionValue("reweight-quantity"));
+			else if (cmd.hasOption("reweight"))
+				config.reweightTargetQuantity = ReweightEvenFitSimulatedAnnealing.QUANTITY_DEFAULT;
+			
 			return this;
 		}
 		
@@ -269,6 +277,15 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return this;
 		}
 		
+		public Builder reweight() {
+			return reweight(ReweightEvenFitSimulatedAnnealing.QUANTITY_DEFAULT);
+		}
+		
+		public Builder reweight(Quantity reweightTargetQuantity) {
+			config.reweightTargetQuantity = reweightTargetQuantity;
+			return this;
+		}
+		
 		public Builder except(Class<? extends InversionConstraint> type) {
 			List<InversionConstraint> constraints = new ArrayList<>(config.constraints);
 			for (int i=constraints.size(); --i>=0;)
@@ -293,7 +310,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			Preconditions.checkState(!config.constraints.isEmpty(), "No comstraints supplied");
 			
 			Preconditions.checkState(config.threads >= 1, "Threads must be positive, supplied: %s", config.threads);
-			if (config.threads > 1 && config.subCompletion == null)
+			if (config.subCompletion == null && (config.threads > 1	|| config.reweightTargetQuantity != null))
 				config.subCompletion = SUB_COMPLETION_DEFAULT;
 			
 			if (config.avgThreads != null) {
@@ -382,6 +399,20 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 				+FaultSysTools.enumOptions(NonnegativityConstraintType.class)+". Default: "+NON_NEG_DEFAULT.name());
 		nonNegOption.setRequired(false);
 		ops.addOption(nonNegOption);
+
+		Option reweightQuantity = new Option("rwq", "reweight-quantity", true, "Enables dynamic constraint reweighting, "
+				+ "targeting the given quantity. Note that this only applies to uncertainty-weighted constraints. "
+				+ "If you simply want enable re-weighting using the default quantity ("
+				+ReweightEvenFitSimulatedAnnealing.QUANTITY_DEFAULT.name()+"), use --reweight instead.");
+		reweightQuantity.setRequired(false);
+		ops.addOption(reweightQuantity);
+
+		Option reweight = new Option("rw", "reweight", true, "Enables dynamic constraint reweighting, "
+				+ "targeting "+ReweightEvenFitSimulatedAnnealing.QUANTITY_DEFAULT.name()+". Note that this only applies "
+				+ "to uncertainty-weighted constraints. If you want to target a different quantity, use "
+				+ "--reweight-quantity <quantity> instead.");
+		reweight.setRequired(false);
+		ops.addOption(reweight);
 		
 		return ops;
 	}
@@ -426,6 +457,15 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 					inputs.getA_ineq(), inputs.getD_ineq());
 		}
 		sa.setConstraintRanges(inputs.getConstraintRowRanges());
+		if (reweightTargetQuantity != null) {
+			if (sa instanceof ThreadedSimulatedAnnealing) {
+				sa = new ReweightEvenFitSimulatedAnnealing((ThreadedSimulatedAnnealing)sa, reweightTargetQuantity);
+			} else {
+				sa.setConstraintRanges(null);
+				sa = new ReweightEvenFitSimulatedAnnealing(sa, subCompletion, reweightTargetQuantity);
+				sa.setConstraintRanges(inputs.getConstraintRowRanges());
+			}
+		}
 		
 		if (perturb.isVariable()) {
 			double[] basis = variablePertubationBasis;
@@ -561,6 +601,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		subCompletion = source.subCompletion;
 		avgThreads = source.avgThreads;
 		avgCompletion = source.avgCompletion;
+		reweightTargetQuantity = source.reweightTargetQuantity;
 	}
 
 	@Override

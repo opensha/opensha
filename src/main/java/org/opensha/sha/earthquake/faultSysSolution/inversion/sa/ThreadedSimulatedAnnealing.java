@@ -673,7 +673,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		cDF.setGroupingUsed(true);
 		cDF.setGroupingSize(3);
 	}
-	private static DecimalFormat pDF = new DecimalFormat("0.00%");
+	protected static DecimalFormat pDF = new DecimalFormat("0.00%");
 	
 	/**
 	 * Sets the random number generator used - helpful for reproducing results for testing purposes
