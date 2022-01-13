@@ -561,7 +561,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			if (misfit_ineq_best != null) {
 				misfit_ineq = Arrays.copyOf(misfit_ineq_best, misfit_ineq_best.length);
 			}
-			misfit_ineq_buffers = new double[num_buffers][nRow];
+			misfit_ineq_buffers = new double[num_buffers][d_ineq.length];
 			misfit_ineq_cur_purtub = misfit_ineq_buffers[cur_buffer];
 		}
 		
