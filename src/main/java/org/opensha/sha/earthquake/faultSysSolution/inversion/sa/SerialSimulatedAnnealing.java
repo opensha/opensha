@@ -40,6 +40,13 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	protected static final String XML_METADATA_NAME = "SimulatedAnnealing";
 
 	protected final static boolean D = false;  // for debugging
+	
+	// if true, energy change will be calculated during misfit calculation rather than recalculating the full energy
+	// this can lead to tiny floating point drift errors relative to recalculating each time, but it's not clear that
+	// it's actually less accurate. In fact, the full energy calculation will likely ignore any tiny energy changes.
+	public final static boolean ENERGY_SHORTCUT = true;
+	
+	private final static boolean ENERGY_SHORTCUT_DEBUG = true;
 	private final static boolean COLUMN_MULT_SPEEDUP_DEBUG = false;
 	private final static boolean XBEST_ACCURACY_CHECK = false;
 	private double[] xbest_check_storage;
@@ -155,10 +162,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		perturb = new double[nCol]; // perturbation to current model
 		
 		misfit_best = new double[nRow];
-		calculateMisfit(A, d, null, xbest, -1, Double.NaN, misfit_best);
+		calculateMisfit(A, d, xbest, misfit_best);
 		if (hasInequalityConstraint) {
 			misfit_ineq_best = new double[d_ineq.length];
-			calculateMisfit(A_ineq, d_ineq, null, xbest, -1, Double.NaN, misfit_ineq_best);
+			calculateMisfit(A_ineq, d_ineq, xbest, misfit_ineq_best);
 		}
 		
 		Ebest = calculateEnergy(xbest, misfit_best, misfit_ineq_best);
@@ -281,22 +288,89 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		return constraintRanges;
 	}
 	
-	public static void calculateMisfit(DoubleMatrix2D mat, double[] data, double[] prev_misfit,
-			double[] solution, int perturbCol, double perturbation, double[] misfit) {
+	/**
+	 * Calculates misfits (synthetics - date) for the given solution
+	 * 
+	 * @param mat A matrix
+	 * @param data data
+	 * @param solution solution
+	 * @param misfit array where misfits will be stored
+	 */
+	public static void calculateMisfit(DoubleMatrix2D mat, double[] data, double[] solution, double[] misfit) {
+		calculateMisfit(mat, data, null, solution, -1, Double.NaN, misfit, false);
+	}
+	
+	/**
+	 * Calculates misfits (synthetics - date) for the given solution, with optional efficiencies
+	 * 
+	 * @param mat A matrix
+	 * @param data data
+	 * @param prev_misfit previous misfits
+	 * @param solution solution
+	 * @param perturbCol column in the A matrix where the corresoponding solution value was perturbed
+	 * @param perturbation perturbation amount
+	 * @param misfit array where misfits will be stored
+	 * @param ineq true if an inequality constraint
+	 * @return if {@link SerialSimulatedAnnealing#ENERGY_SHORTCUT} is enabled, energy change due to this perturbation
+	 * will be returned, else NaN
+	 */
+	private static double calculateMisfit(DoubleMatrix2D mat, double[] data, double[] prev_misfit,
+			double[] solution, int perturbCol, double perturbation, double[] misfit, boolean ineq) {
 		if (mat instanceof SparseCCDoubleMatrix2D && perturbCol >= 0 && prev_misfit != null) {
-//			misfit = Arrays.copyOf(prev_misfit, prev_misfit.length);
-			System.arraycopy(prev_misfit, 0, misfit, 0, prev_misfit.length);
+			// we have previous misfits and a column-compressed A matrix, don't redo the whole matrix multiplication,
+			// only update misfut changes due to the perturbed column
+			
+			if (prev_misfit != misfit)
+				// copy over previous misfits to output, which we will update
+				System.arraycopy(prev_misfit, 0, misfit, 0, prev_misfit.length);
+			
 			Dcs dcs = ((SparseCCDoubleMatrix2D)mat).elements();
+			// for each non-zero value, gives the row index
 			final int[] rowIndexesA = dcs.i;
+			// tells us where the rows associated with this column are in the above array
 			final int[] columnPointersA = dcs.p;
+			// values array
 			final double[] valuesA = dcs.x;
 			
 			int low = columnPointersA[perturbCol];
-			for (int k = columnPointersA[perturbCol + 1]; --k >= low;) {
-				int row = rowIndexesA[k];
-				double value = valuesA[k];
-				misfit[row] += value * perturbation;
+			
+			// if ENERGY_SHORTCUT is true, we'll calculate energy change which can be used instead of recalculating
+			// full energy
+			double deltaE = ENERGY_SHORTCUT ? 0d : Double.NaN;
+			
+			int row;
+			double value;
+			double prevRowMisfit;
+			if (ineq) {
+				for (int k = columnPointersA[perturbCol + 1]; --k >= low;) {
+					row = rowIndexesA[k];
+					value = valuesA[k];
+					// store it separately as misfit and prev_misfit can be the same array
+					prevRowMisfit = prev_misfit[row];
+					misfit[row] += value * perturbation;
+					if (ENERGY_SHORTCUT) {
+						if (prevRowMisfit > 0)
+							// we were previously >0, thus we need to remove the old energy
+							deltaE -= prevRowMisfit*prevRowMisfit;
+						if (misfit[row] > 0)
+							// we're now >0, add new energy
+							deltaE += misfit[row]*misfit[row];
+					}
+				}
+			} else {
+				for (int k = columnPointersA[perturbCol + 1]; --k >= low;) {
+					row = rowIndexesA[k];
+					value = valuesA[k];
+					// store it separately as misfit and prev_misfit can be the same array
+					prevRowMisfit = prev_misfit[row];
+					misfit[row] += value * perturbation;
+					if (ENERGY_SHORTCUT)
+						// calculate energy difference due to this perturbation
+						deltaE += misfit[row]*misfit[row] - prevRowMisfit*prevRowMisfit;
+				}
 			}
+//			System.out.println("deltaE = "+deltaE);
+			return deltaE;
 		} else {
 			DoubleMatrix1D sol_clone = new DenseDoubleMatrix1D(solution);
 			
@@ -306,16 +380,18 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			for (int i = 0; i < mat.rows(); i++) {
 				misfit[i] = syn.get(i) - data[i];  // misfit between synthetics and data
 			}
+			
+			return Double.NaN;
 		}
 	}
 	
 	public double[] calculateEnergy(double[] solution) {
 		double[] misfit = new double[d.length];
-		calculateMisfit(A, d, null, solution, -1, Double.NaN, misfit);
+		calculateMisfit(A, d, solution, misfit);
 		double[] misfit_ineq = null;
 		if (hasInequalityConstraint) {
 			misfit_ineq = new double[d_ineq.length];
-			calculateMisfit(A_ineq, d_ineq, null, solution, -1, Double.NaN, misfit_ineq);
+			calculateMisfit(A_ineq, d_ineq, solution, misfit_ineq);
 		}
 		return calculateEnergy(solution, misfit, misfit_ineq);
 	}
@@ -337,20 +413,29 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		// Do forward problem for new perturbed model (calculate synthetics)
 		
 		double Eequality = 0;
-		double[] ret = constraintRanges == null ? new double[4] : new double[4+constraintRanges.size()];
-		for (int i = 0; i < nRow; i++) {
-			// NOTE: it is important that we loop over nRow and not the actual misfit array
-			// as it may be larger than nRow (for efficiency and fewer array copies)
+		double[] ret;
+		if (constraintRanges == null) {
+			ret = new double[4];
 			
-			double val = misfit[i]*misfit[i];  // L2 norm of misfit vector
-			
-			if (constraintRanges != null) {
+			for (int i = 0; i < nRow; i++) {
+				// NOTE: it is important that we loop over nRow and not the actual misfit array
+				// as it may be larger than nRow (for efficiency and fewer array copies)
+				
+				Eequality += misfit[i]*misfit[i];  // L2 norm of misfit vector
+			}
+		} else {
+			ret = new double[4+constraintRanges.size()];
+			double val;
+			for (int i = 0; i < nRow; i++) {
+				// NOTE: it is important that we loop over nRow and not the actual misfit array
+				// as it may be larger than nRow (for efficiency and fewer array copies)
+				
+				val = misfit[i]*misfit[i];
+				Eequality += val;  // L2 norm of misfit vector
 				for (int j=0; j<constraintRanges.size(); j++)
 					if (constraintRanges.get(j).contains(i, false))
 						ret[j+4] += val;
 			}
-			
-			Eequality += val;
 		}
 		ret[1] = Eequality;
 		Preconditions.checkState(!Double.isNaN(Eequality), "energy from equality constraints is NaN!");
@@ -380,21 +465,27 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		// Add MFD inequality constraint misfit (nonlinear) to energy 
 		double Einequality = 0;
 		if (ineqRows > 0) {
-			for (int i = 0; i < ineqRows; i++) {
-				// NOTE: it is important that we loop over d_ineq.length and not the actual misfit array
-				// as it may be larger than nRow (for efficiency and fewer array copies)
-				
-				if (misfit_ineq[i] > 0.0) {
-					// This makes it an INEQUALITY constraint (Target MFD is an UPPER bound)
-					double val = misfit_ineq[i]*misfit_ineq[i];  // L2 norm of misfit vector
+			if (constraintRanges == null) {
+				for (int i = 0; i < ineqRows; i++) {
+					// NOTE: it is important that we loop over nRow and not the actual misfit array
+					// as it may be larger than nRow (for efficiency and fewer array copies)
 					
-					if (constraintRanges != null) {
+					if (misfit_ineq[i] > 0d)
+						Einequality += misfit_ineq[i]*misfit_ineq[i];  // L2 norm of misfit vector
+				}
+			} else {
+				double val;
+				for (int i = 0; i < ineqRows; i++) {
+					// NOTE: it is important that we loop over nRow and not the actual misfit array
+					// as it may be larger than nRow (for efficiency and fewer array copies)
+					
+					if (misfit_ineq[i] > 0d) {
+						val = misfit_ineq[i]*misfit_ineq[i];
+						Einequality += val;  // L2 norm of misfit vector
 						for (int j=0; j<constraintRanges.size(); j++)
 							if (constraintRanges.get(j).contains(i, true))
 								ret[j+4] += val;
 					}
-					
-					Einequality += val;
 				}
 			}
 			Preconditions.checkState(!Double.isNaN(Einequality), "energy from inequality constraints is NaN!");
@@ -409,23 +500,29 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	@Override
-	public synchronized long iterate(long numIterations) {
+	public synchronized InversionState iterate(long numIterations) {
 		return iterate(new IterationCompletionCriteria(numIterations));
 	}
 	
 	@Override
-	public synchronized long iterate(CompletionCriteria completion) {
-		return iterate(0, 0, completion)[0];
+	public synchronized InversionState iterate(CompletionCriteria completion) {
+		return iterate(null, completion);
 	}
+	
+	private static final int num_buffers = 3;
 
 	@Override
-	public synchronized long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria) {
+	public synchronized InversionState iterate(InversionState startingState, CompletionCriteria criteria) {
 		StopWatch watch = new StopWatch();
 		watch.start();
 		
 		boolean rangeTrack = constraintRanges != null && !constraintRanges.isEmpty();
 		if (rangeTrack && criteria instanceof ProgressTrackingCompletionCriteria)
 			((ProgressTrackingCompletionCriteria)criteria).setConstraintRanges(constraintRanges);
+		
+		long startIter = startingState == null ? 0 : startingState.iterations;
+		long startPerturbs = startingState == null ? 0 : startingState.numPerturbsKept;
+		long startWorseKept = startingState == null ? 0 : startingState.numWorseValuesKept;
 		
 		if (rangeTrack && startIter == 0l && Ebest.length == 4)
 			// constraint ranges were set after we called setup before, recalc
@@ -437,10 +534,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		if(D) System.out.println("Nonnegativity Constraint: " + nonnegativityConstraintAlgorithm.name());
 		if(D) System.out.println("Completion Criteria: " + criteria);
 		
-		double[] Enew;
 		double P;
 		long iter=startIter+1;
 		long perturbs = startPerturbs;
+		long worseKept = startWorseKept;
 		int index;
 		double[] x = Arrays.copyOf(xbest, xbest.length);
 		int curNumNonZero = numNonZero;
@@ -448,29 +545,33 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		double T;
 		// this is where we store previous misfits
 		double[] misfit;
-		if (misfit_best == null)
+		if (misfit_best == null) {
 			misfit = null;
-		else
+		} else {
 			misfit = Arrays.copyOf(misfit_best, misfit_best.length);
+		}
 		// this is where we store new candidate misfits
-		double[] misfit_new1 = new double[nRow];
-		double[] misfit_new2 = new double[nRow];
-		double[] misfit_cur_purtub = misfit_new1;
+		int cur_buffer = 0;
+		double[][] misfit_buffers = new double[num_buffers][nRow];
+		double[] misfit_cur_purtub = misfit_buffers[cur_buffer];
 		double[] misfit_ineq = null;
-		double[] misfit_ineq_new1 = null;
-		double[] misfit_ineq_new2 = null;
+		double[][] misfit_ineq_buffers = null;
 		double[] misfit_ineq_cur_purtub = null;
 		if (hasInequalityConstraint) {
 			if (misfit_ineq_best != null) {
 				misfit_ineq = Arrays.copyOf(misfit_ineq_best, misfit_ineq_best.length);
 			}
-			misfit_ineq_new1 = new double[A_ineq.rows()];
-			misfit_ineq_new2 = new double[A_ineq.rows()];
-			misfit_ineq_cur_purtub = misfit_ineq_new1;
+			misfit_ineq_buffers = new double[num_buffers][nRow];
+			misfit_ineq_cur_purtub = misfit_ineq_buffers[cur_buffer];
 		}
+		
+		long worseValsNotYetSaved = 0l;
 
 		// we do iter-1 because iter here is 1-based, not 0-based
-		while (!criteria.isSatisfied(watch, iter-1, Ebest, perturbs, numNonZero, misfit_best, misfit_ineq_best, constraintRanges)) {
+		InversionState state = null;
+//		while (!criteria.isSatisfied(watch, iter-1, Ebest, perturbs, numNonZero, misfit_best, misfit_ineq_best, constraintRanges)) {
+		while (!criteria.isSatisfied(state = new InversionState(watch.getTime(), iter-1, Ebest, perturbs, worseKept,
+				numNonZero, xbest, misfit_best, misfit_ineq_best, constraintRanges))) {
 
 			// Find current simulated annealing "temperature" based on chosen cooling schedule
 //			double coolIter = (double)iter / coolingFuncSlowdown;
@@ -508,7 +609,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			if(rupSampler == null)
 				index = (int)(r.nextDouble() * (double)nCol); // casting as int takes the floor
 			else
-				index = rupSampler.getRandomInt();
+				index = rupSampler.getRandomInt(r.nextDouble());
 
 
 			// How much to perturb index (some perturbation functions are a function of T)	
@@ -552,13 +653,62 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			x[index] += perturb[index];
 			
 			// calculate new misfit vectors
-			calculateMisfit(A, d, misfit, x, index, perturb[index], misfit_cur_purtub);
+			double deltaE = calculateMisfit(A, d, misfit, x, index,
+					perturb[index], misfit_cur_purtub, false);
+			double deltaE_ineq = Double.NaN;
 			if (hasInequalityConstraint)
-				calculateMisfit(A_ineq, d_ineq, misfit_ineq, x, index, perturb[index], misfit_ineq_cur_purtub);
+				deltaE_ineq = calculateMisfit(A_ineq, d_ineq, misfit_ineq, x, index,
+						perturb[index], misfit_ineq_cur_purtub, true);
 
 			// Calculate "energy" of new model (high misfit -> high energy)
-//			Enew = calculateMisfit(xnew);
-			Enew = calculateEnergy(x, misfit_cur_purtub, misfit_ineq_cur_purtub);
+			double[] Enew;
+			if (ENERGY_SHORTCUT && relativeSmoothnessWt == 0d && Double.isFinite(deltaE) &&
+					constraintRanges == null && E != null) {
+				// shortcut
+				Enew = new double[4];
+				Enew[0] = E[0] + deltaE;
+				Enew[1] = E[1] + deltaE;
+				if (hasInequalityConstraint) {
+					Preconditions.checkState(Double.isFinite(deltaE_ineq));
+					Enew[0] += deltaE_ineq;
+					Enew[3] = E[3] + deltaE_ineq;
+				}
+				if (D) {
+					double[] Etest2 = calculateEnergy(x, misfit_cur_purtub, misfit_ineq_cur_purtub);
+					double cDelt = Etest2[0] - E[0];
+					System.out.println("Energy shortcut with deltaE="+deltaE+", calcDelta="+cDelt+", diff="+(float)(deltaE - cDelt));
+				}
+				if (ENERGY_SHORTCUT_DEBUG && (iter-1) % 1000 == 0 && iter > 1) {
+					// calculate it manually as well
+					double[] Etest = calculateEnergy(x, misfit_cur_purtub, misfit_ineq_cur_purtub);
+					if (D) System.out.println("ENERGY SHORTCUT DEBUG");
+					for (int i=0; i<Enew.length; i++) {
+						double myDelta = Enew[i]-E[i];
+						double calcDelta = Etest[i]-E[i];
+						double diff = myDelta-calcDelta;
+						double error = Math.abs(Enew[i]-Etest[i]);
+						double fractError = error/Etest[i];
+						if (D) System.out.println("\tEtest["+i+"]="+Etest[i]+"\tEnew["+i+"]="
+								+Enew[i]+"\tE["+i+"]="+E[i]+"\tmyDelta="+myDelta+"\tcalcDelta="+calcDelta
+								+"\tdiff="+diff+"\tfractError="+fractError);
+//						Preconditions.checkState((float)Etest[i] == (float)Enew[i],
+						Preconditions.checkState((float)Etest[i] == (float)Enew[i] || fractError < 1e-5,
+								"Energy[%s] shortcut fail! %s != %s, oldE=%s, deltaE=%s, deltaE_ineq=%s, myDelta=%s, "
+								+ "calcDelta=%s, diff=%s, fractError=%s",
+								i, Enew[i], Etest[i], E[i], deltaE, deltaE_ineq, myDelta, calcDelta, diff, fractError);
+						// disabling the sign test, as it's not clear that energy changes are actually less accurate
+						// they may be more accurate as we're accumulating small value changes separately rather than
+						// accumulating them in large (energy) space where some small changes may be ignored if small
+						// relative to energy
+//						if (i == 0)
+//							Preconditions.checkState(Enew[i] > E[i] == Etest[i] > E[i],
+//								"Energy[%s] shortcut fail sign test for! prevE=%s, shortcutDelta=%s, trueDelta=%s, "
+//										+ "fractError=%s", i, E[i], myDelta, calcDelta, fractError);
+					}
+				}
+			} else {
+				Enew = calculateEnergy(x, misfit_cur_purtub, misfit_ineq_cur_purtub);
+			}
 			
 			if (D) {
 				if (COLUMN_MULT_SPEEDUP_DEBUG && (iter-1) % 10000 == 0 && iter > 1) {
@@ -567,11 +717,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					
 					// calculate it the "slow" way
 					double[] comp_misfit_new = new double[misfit.length];
-					calculateMisfit(A, d, null, x, -1, Double.NaN, comp_misfit_new);
+					calculateMisfit(A, d, x, comp_misfit_new);
 					double[] comp_misfit_ineq_new = null;
 					if (hasInequalityConstraint) {
 						comp_misfit_ineq_new = new double[misfit_ineq.length];
-						calculateMisfit(A_ineq, d_ineq, null, x, -1, Double.NaN, comp_misfit_ineq_new);
+						calculateMisfit(A_ineq, d_ineq, x, comp_misfit_ineq_new);
 					}
 					double[] Enew_temp = calculateEnergy(x, comp_misfit_new, comp_misfit_ineq_new);
 					double pDiff = DataUtils.getPercentDiff(Enew[0], Enew_temp[0]);
@@ -614,14 +764,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			// Use transition probability to determine (via random number draw) if solution is kept
 			if (P == 1 || P > r.nextDouble()) {
 				/* 
-				 * I know this is confusing...let me explain what I'm doing here. The most costly operation
-				 * in this inner loop are the array copies. I now use multiple buffers to store perturbations
-				 * and misfits such that I only have to do an array copy in the worst case scenarios.
-				 * 
-				 * The only scenario now where an array copy needs to happen is if we're keeping a solution
-				 * that is not in fact a new best for the 2nd time. I'll spare the details, but it works (and
-				 * is tested).
-				 * * 
+				 * The buffers are a bit confusing, let me explain. Arrays.copyOf(...) calls are costly in this inner
+				 * loop, so we avoid them by reusing various misfit buffers. With buffers in use, we only need to
+				 * do an array copy in the worst case scenario, where there are num_buffers consecutive kept
+				 * perturbations that do not lead to a lower energy. With num_buffers >= 3, this should be exceedingly
+				 * rare
 				 */
 				E = Enew;
 				misfit = misfit_cur_purtub;
@@ -631,9 +778,9 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				
 				// Is this a new best?
 				if (Enew[0] < Ebest[0] || keepCurrentAsBest) {
-					// we don't want to array copy as it's slow. instead we fix special cases only when
-					// needed with an array copy (see below)
-					xbest = x;
+					// update xbest with this perturbation
+					// we now keep xbest isolated so we never have to do an array copy
+					xbest[index] = x[index];
 					if (XBEST_ACCURACY_CHECK) xbest_check_storage = Arrays.copyOf(x, x.length);
 					misfit_best = misfit;
 					if (hasInequalityConstraint) {
@@ -641,31 +788,25 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					}
 					Ebest = Enew;
 					numNonZero = curNumNonZero;
+					worseKept += worseValsNotYetSaved;
+					worseValsNotYetSaved = 0;
 				} else {
-					if (xbest == x) {
-						// in this case we're keeping an x that is not in fact best. we need
-						// to permanently store xbest
-						xbest = Arrays.copyOf(x, nCol);
-						// now roll back xbest
-						xbest[index] -= perturb[index];
-					}
+					worseValsNotYetSaved++;
 				}
 				
 				// now switch buffers so that we're not overwriting a kept solution
-				if (misfit_cur_purtub == misfit_new1) {
-					misfit_cur_purtub = misfit_new2;
-					misfit_ineq_cur_purtub = misfit_ineq_new2;
-				} else {
-					misfit_cur_purtub = misfit_new1;
-					misfit_ineq_cur_purtub = misfit_ineq_new1;
-				}
+				int next_buf = (cur_buffer + 1) % num_buffers;
+				misfit_cur_purtub = misfit_buffers[next_buf];
+				if (hasInequalityConstraint)
+					misfit_ineq_cur_purtub = misfit_ineq_buffers[next_buf];
 				if (misfit_best == misfit_cur_purtub) {
-					// this one is being kept randomly even though it's not the best. make sure to
-					// save the best as we may now purtub what was previously set to misfit_best
+					// worst case scenario - we've kept num_buffers non-ideal values in a row, and need to store
+					// current best misfits so as to not overwrite them
 					misfit_best = Arrays.copyOf(misfit_best, misfit_best.length);
 					if (hasInequalityConstraint)
 						misfit_ineq_best = Arrays.copyOf(misfit_ineq_best, misfit_ineq_best.length);
 				}
+				cur_buffer = next_buf;
 			} else {
 				// undo the perturbation
 				x[index] -= perturb[index];
@@ -689,11 +830,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					
 					// calculate it the "slow" way
 					double[] comp_misfit_new = new double[misfit.length];
-					calculateMisfit(A, d, null, xbest, -1, Double.NaN, comp_misfit_new);
+					calculateMisfit(A, d, xbest, comp_misfit_new);
 					double[] comp_misfit_ineq_new = null;
 					if (hasInequalityConstraint) {
 						comp_misfit_ineq_new = new double[misfit_ineq.length];
-						calculateMisfit(A_ineq, d_ineq, null, xbest, -1, Double.NaN, comp_misfit_ineq_new);
+						calculateMisfit(A_ineq, d_ineq, xbest, comp_misfit_ineq_new);
 					}
 					double[] Ebest_temp = calculateEnergy(xbest, comp_misfit_new, comp_misfit_ineq_new);
 					double pDiff = DataUtils.getPercentDiff(Ebest[0], Ebest_temp[0]);
@@ -716,10 +857,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			double runSecs = watch.getTime() / 1000d;
 			System.out.println("Done with Inversion after " + runSecs + " seconds.");
 		}
-		
-		// we added one to it before, remove it to make it zero-based
-		long[] ret = { iter-1, perturbs };
-		return ret;
+		return state;
 	}
 	
 	private static String enumOptionsStr(Enum<?>[] values) {
@@ -841,6 +979,33 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		this.A_ineq = A_ineq;
 		this.d_ineq = d_ineq;
 		setResults(Ebest, xbest, misfit, misfit_ineq, numNonZero);
+	}
+	
+	public static void main(String[] args) {
+		int rups = 1;
+		int rows = 1;
+		double[] initial = new double[rups];
+//		DoubleMatrix2D A = new DenseDoubleMatrix2D(rows, rups);
+		SparseCCDoubleMatrix2D A = new SparseCCDoubleMatrix2D(rows, rups);
+		for (int row=0; row<rows; row++)
+			for (int col=0; col<rups; col++)
+				A.set(row, col, 1d);
+		double[] d = new double[rows];
+		for (int row=0; row<rows; row++)
+			d[row] = 100;
+		
+		SerialSimulatedAnnealing sa = new SerialSimulatedAnnealing(A, d, initial);
+		
+		sa.setRandom(new Random(1234l));
+		sa.setPerturbationFunc(GenerationFunctionType.FIXED_DEBUG);
+		
+		InversionState state = sa.iterate(1000);
+		
+		System.out.println("Iters: "+state.iterations+"\tperturbs: "+state.numPerturbsKept+"\tworse: "+state.numWorseValuesKept);
+		System.out.println("Energy: "+state.energy[0]);
+		
+		double[] sol = sa.getBestSolution();
+		System.out.println(sol[0]);
 	}
 
 }

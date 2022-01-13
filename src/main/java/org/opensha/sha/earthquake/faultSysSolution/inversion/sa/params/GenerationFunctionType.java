@@ -72,6 +72,12 @@ public enum GenerationFunctionType { // how rates are perturbed each SA algorith
 			double scale = Math.pow(10, r2);
 			return (r.nextDouble()-0.5)*scale;
 		}
+	},
+	FIXED_DEBUG {
+		@Override
+		public double getPerturbation(Random r, double temperature, int index, double[] variablePerturbationBasis) {
+			return 0.01;
+		}
 	};
 	
 	public boolean isVariable() {

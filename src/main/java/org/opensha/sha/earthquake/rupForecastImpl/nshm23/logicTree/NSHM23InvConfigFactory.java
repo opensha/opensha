@@ -91,8 +91,10 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 	@Override
 	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) {
 		// build empty-ish rup set without modules attached
-		FaultSystemRupSet rupSet = buildGenericRupSet(branch, threads);
-		
+		return buildRuptureSet(branch, buildGenericRupSet(branch, threads));
+	}
+
+	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, FaultSystemRupSet rupSet) {
 		FaultModels fm = branch.getValue(FaultModels.class);
 		DeformationModels dm = branch.getValue(DeformationModels.class);
 		if (fm != null && dm != null) {

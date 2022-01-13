@@ -40,7 +40,7 @@ public class NSHM23LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	}
 	
 	@SuppressWarnings("unused") // used for deserialization
-	private NSHM23LogicTreeBranch() {
+	public NSHM23LogicTreeBranch() {
 		super(levels);
 	}
 	

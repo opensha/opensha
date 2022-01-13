@@ -271,9 +271,20 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return this;
 		}
 		
+		public Builder completion(CompletionCriteria completion) {
+			config.completion = completion;
+			return this;
+		}
+		
 		public Builder avgThreads(int avgThreads, CompletionCriteria avgCompletion) {
 			config.avgThreads = avgThreads;
 			config.avgCompletion = avgCompletion;
+			return this;
+		}
+		
+		public Builder noAvg() {
+			config.avgThreads = null;
+			config.avgCompletion = null;
 			return this;
 		}
 		

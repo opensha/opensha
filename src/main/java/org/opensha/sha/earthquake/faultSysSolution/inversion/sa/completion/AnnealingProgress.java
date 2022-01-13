@@ -10,6 +10,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.InversionState;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -22,6 +23,7 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 	private List<Long> times;
 	private List<Long> iterations;
 	private List<Long> perturbs;
+	private List<Long> worseKepts;
 	private List<double[]> energies;
 	private List<Integer> numNonZeros;
 	
@@ -44,6 +46,7 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 		times = new ArrayList<>();
 		iterations = new ArrayList<>();
 		perturbs = new ArrayList<>();
+		worseKepts = new ArrayList<>();
 		energies = new ArrayList<>();
 		numNonZeros = new ArrayList<>();
 	}
@@ -72,6 +75,8 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 		header.add("Iteration");
 		header.add("Time (ms)");
 		header.add("# Perturbations");
+		if (worseKepts != null)
+			header.add("# Worse Values Kept");
 		header.add("# Non-Zero");
 		for (String energyType : energyTypes)
 			header.add(energyType);
@@ -81,6 +86,8 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 			line.add(iterations.get(i)+"");
 			line.add(times.get(i)+"");
 			line.add(perturbs.get(i)+"");
+			if (worseKepts != null)
+				line.add(worseKepts.get(i)+"");
 			line.add(numNonZeros.get(i)+"");
 			for (double energy : energies.get(i))
 				line.add((float)energy+"");
@@ -95,11 +102,19 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 		times = new ArrayList<>();
 		iterations = new ArrayList<>();
 		perturbs = new ArrayList<>();
+		int typeStartIndex;
+		if ( csv.get(0, 3).contains("Worse")) {
+			typeStartIndex = 5;
+			worseKepts = new ArrayList<>();
+		} else {
+			typeStartIndex = 4;
+			worseKepts = null;
+		}
 		numNonZeros = new ArrayList<>();
 		energies = new ArrayList<>();
 		
 		List<String> header = csv.getLine(0);
-		for (int i=4; i<header.size(); i++)
+		for (int i=typeStartIndex; i<header.size(); i++)
 			energyTypeBuilder.add(header.get(i));
 		this.energyTypes = energyTypeBuilder.build();
 		
@@ -108,6 +123,8 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 			iterations.add(csv.getLong(row, col++));
 			times.add(csv.getLong(row, col++));
 			perturbs.add(csv.getLong(row, col++));
+			if (worseKepts != null)
+				worseKepts.add(csv.getLong(row, col++));
 			numNonZeros.add(csv.getInt(row, col++));
 			double[] energies = new double[energyTypes.size()];
 			for (int i=0; i<energyTypes.size(); i++)
@@ -116,14 +133,15 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 		}
 	}
 	
-	public void addProgress(long numIterations, long time, long perturbations, double[] energies, int numNonZero) {
-		Preconditions.checkState(energies.length == energyTypes.size(),
-				"Expected %s energies, have %s", energyTypes.size(), energies.length);
-		this.times.add(time);
-		this.iterations.add(numIterations);
-		this.perturbs.add(perturbations);
-		this.numNonZeros.add(numNonZero);
-		this.energies.add(energies);
+	public void addProgress(InversionState state) {
+		Preconditions.checkState(state.energy.length == energyTypes.size(),
+				"Expected %s energies, have %s", energyTypes.size(), state.energy.length);
+		this.times.add(state.elapsedTimeMillis);
+		this.iterations.add(state.iterations);
+		this.perturbs.add(state.numPerturbsKept);
+		this.worseKepts.add(state.numWorseValuesKept);
+		this.numNonZeros.add(state.numNonZero);
+		this.energies.add(state.energy);
 
 	}
 	
@@ -141,6 +159,14 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 	
 	public long getNumPerturbations(int index) {
 		return perturbs.get(index);
+	}
+	
+	public boolean hasWorseKepts() {
+		return worseKepts != null;
+	}
+	
+	public long getNumWorseKept(int index) {
+		return worseKepts.get(index);
 	}
 	
 	public int getNumNonZero(int index) {
@@ -188,8 +214,9 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 			finalSize = 2;
 		List<Long> times = evenlyDiscr(avgMinTime, avgMaxTime, finalSize);
 		List<Long> iters = evenlyDiscr(avgMinIters, avgMaxIters, finalSize);
-		
+
 		List<Double> avgPerturbs = new ArrayList<>();
+		List<Double> avgWorseKepts = new ArrayList<>();
 		List<Double> avgNonZeros = new ArrayList<>();
 		List<double[]> avgEnergies = new ArrayList<>();
 		
@@ -207,7 +234,10 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 				relEnergyTimeFuncs[i] = new ArbitrarilyDiscretizedFunc();
 				relEnergyIterFuncs[i] = new ArbitrarilyDiscretizedFunc();
 			}
+			if (!progress.hasWorseKepts())
+				avgWorseKepts = null;
 			DiscretizedFunc relPerturbs = new ArbitrarilyDiscretizedFunc();
+			DiscretizedFunc relWorseKepts = new ArbitrarilyDiscretizedFunc();
 			DiscretizedFunc relNonZeros = new ArbitrarilyDiscretizedFunc();
 			long myMinTime = progress.times.get(0);
 			long myMinIters = progress.iterations.get(0);
@@ -227,6 +257,8 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 				}
 				relPerturbs.set(relIters, progress.perturbs.get(i));
 				relNonZeros.set(relIters, progress.numNonZeros.get(i));
+				if (avgWorseKepts != null)
+					relWorseKepts.set(relIters, progress.worseKepts.get(i));
 			}
 			
 			// now map to our times/iterations to the global time/iteration scale
@@ -239,20 +271,26 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 				}
 				avgPerturbs.set(i, avgPerturbs.get(i) + scalarEach*relPerturbs.getInterpolatedY(relX));
 				avgNonZeros.set(i, avgNonZeros.get(i) + scalarEach*relNonZeros.getInterpolatedY(relX));
+				if (avgWorseKepts != null)
+					avgWorseKepts.set(i, avgWorseKepts.get(i) + scalarEach*relWorseKepts.getInterpolatedY(relX));
 			}
 		}
 		// convert to longs
 		List<Long> perturbs = new ArrayList<>();
+		List<Long> worseKepts = avgWorseKepts == null ? null : new ArrayList<>();
 		List<Integer> numNonZeros = new ArrayList<>();
 		for (int i=0; i<finalSize; i++) {
 			perturbs.add((long)Math.round(avgPerturbs.get(i)));
 			numNonZeros.add((int)Math.round(avgNonZeros.get(i)));
+			if (worseKepts != null)
+				worseKepts.add((long)Math.round(avgWorseKepts.get(i)));
 		}
 		AnnealingProgress ret = new AnnealingProgress();
 		ret.energyTypes = types;
 		ret.times = times;
 		ret.iterations = iters;
 		ret.perturbs = perturbs;
+		ret.worseKepts = worseKepts;
 		ret.energies = avgEnergies;
 		ret.numNonZeros = numNonZeros;
 		return ret;

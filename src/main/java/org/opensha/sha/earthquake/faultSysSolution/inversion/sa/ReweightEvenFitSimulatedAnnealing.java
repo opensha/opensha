@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.util.ExceptionUtils;
@@ -24,6 +25,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Se
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
@@ -80,27 +83,23 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	 * DEFAULT VALUES
 	 */
 
-//	// individual adjustments can never be this many times greater or lower than the previous weight
-//	public static final double MAX_INDV_ADJUSTMENT_FACTOR = 1.5d;
-//	// can never be this many times greater/less than original weight
-//	public static final double MAX_ADJUSTMENT_FACTOR = 20d;
 	// individual adjustments can never be this many times greater or lower than the previous weight
 	public static final double MAX_INDV_ADJUSTMENT_FACTOR = 2d;
 	// can never be this many times greater/less than original weight
-	public static final double MAX_ADJUSTMENT_FACTOR = 50d;
+	public static final double MAX_ADJUSTMENT_FACTOR = 100d;
 	
 	public static final Quantity QUANTITY_DEFAULT = Quantity.MAD;
 //	public static final double AVG_TARGET_TRANSITION_UPPER_DEFAULT = 5d;
 //	public static final double AVG_TARGET_TRANSITION_LOWER_DEFAULT = 1d;
 	public static final double AVG_TARGET_TRANSITION_UPPER_DEFAULT = Double.POSITIVE_INFINITY;
 	public static final double AVG_TARGET_TRANSITION_LOWER_DEFAULT = Double.POSITIVE_INFINITY;
-	public static final boolean CONSERVE_TOT_WEIGHT_DEFAULT = true;
+	public static final boolean CONSERVE_TOT_WEIGHT_DEFAULT = false;
 	public static final boolean USE_SQRT_FOR_TARGET_RATIOS_DEFAULT = true;
 	public static final boolean USE_VALUE_WEIGHTED_AVERAGE_DEFAULT = false;
 	
 	// every x rounds, recompute A/d values as scalars from the original values to correct for any floating point error
 	// propagated through repeated multiplications
-	private static final int floatingPointDriftMod = 10;
+	private static final int floatingPointDriftMod = 100;
 	
 	/*
 	 * RE-WEIGHT PARAMETERS
@@ -135,6 +134,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	
 	private double prevAvgQuantity = Double.NaN;
 	private double[] prevConstraintVals = null;
+	
+	private List<Long> iters;
+	private List<Long> times;
+	private List<InversionMisfitStats> iterStats;
 
 	public ReweightEvenFitSimulatedAnnealing(SimulatedAnnealing sa, CompletionCriteria subCompetionCriteria) {
 		this(List.of(sa), subCompetionCriteria, false, QUANTITY_DEFAULT);
@@ -172,9 +175,25 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		this.quantity = quantity;
 		this.targetName = quantity.name();
 	}
+	
+	private List<MisfitStats> calcUncertWtStats(List<ConstraintRange> ranges, double[] misfits, double[] misfits_ineq) {
+		List<MisfitStats> stats = new ArrayList<>();
+		for (ConstraintRange range : ranges) {
+			MisfitStats myStats = null;
+			if (range.weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
+				double[] myMisfits = range.inequality ? misfits_ineq : misfits;
+				myMisfits = Arrays.copyOfRange(myMisfits, range.startRow, range.endRow);
+				for (int i=0; i<myMisfits.length; i++)
+					myMisfits[i] /= range.weight;
+				myStats = new MisfitStats(myMisfits, range);
+			}
+			stats.add(myStats);
+		}
+		return stats;
+	}
 
 	@Override
-	protected void beforeRound(long curIter, int round) {
+	protected void beforeRound(InversionState state, int round) {
 		if (round > 0) {
 			Stopwatch watch = Stopwatch.createStarted();
 			List<ConstraintRange> ranges = getConstraintRanges();
@@ -193,27 +212,21 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			double[] misfits = getBestMisfit();
 			double[] misfits_ineq = getBestInequalityMisfit();
 			
-			List<MisfitStats> stats = new ArrayList<>();
+			List<MisfitStats> stats = calcUncertWtStats(ranges, misfits, misfits_ineq);
 			double avgConstraintQuantity = 0d;
 			double avgValueQuantity = 0d;
 			int numConstraints = 0;
 			int numValues = 0;
-			for (ConstraintRange range : ranges) {
-				if (range.weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
-					double[] myMisfits = range.inequality ? misfits_ineq : misfits;
-					myMisfits = Arrays.copyOfRange(myMisfits, range.startRow, range.endRow);
-					for (int i=0; i<myMisfits.length; i++)
-						myMisfits[i] /= range.weight;
-					MisfitStats myStats = new MisfitStats(myMisfits, range);
+			for (int r=0; r<ranges.size(); r++) {
+				ConstraintRange range = ranges.get(r);
+				MisfitStats myStats = stats.get(r);
+				if (myStats != null) {
 					double myVal = myStats.get(quantity);
-					stats.add(myStats);
 					numConstraints++;
 					avgConstraintQuantity += myVal;
 					int myNumVals = range.endRow - range.startRow;
 					numValues += myNumVals;
 					avgValueQuantity += myVal * (double)myNumVals;
-				} else {
-					stats.add(null);
 				}
 			}
 			avgConstraintQuantity /= (double)numConstraints;
@@ -368,7 +381,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			System.out.println("Re-calculating misfits");
 			double[] xbest = getBestSolution();
 			double[] misfit = new double[modD.length];
-			SerialSimulatedAnnealing.calculateMisfit(modA, modD, null, xbest, -1, Double.NaN, misfit);
+			SerialSimulatedAnnealing.calculateMisfit(modA, modD, xbest, misfit);
 			double[] misfit_ineq = null;
 			int nRow = modA.rows();
 			int nCol = modA.columns();
@@ -376,7 +389,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			if (modA_ineq != null) {
 				misfit_ineq = new double[modD_ineq.length];
 				ineqRows = misfit_ineq.length;
-				SerialSimulatedAnnealing.calculateMisfit(modA_ineq, modD_ineq, null, xbest, -1, Double.NaN, misfit_ineq);
+				SerialSimulatedAnnealing.calculateMisfit(modA_ineq, modD_ineq, xbest, misfit_ineq);
 			}
 
 			System.out.println("Re-calculating energies");
@@ -397,9 +410,25 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			
 			watch.stop();
 			
+			Preconditions.checkNotNull(iters);
+			Preconditions.checkNotNull(times);
+			Preconditions.checkNotNull(iterStats);
+			List<MisfitStats> uncertMisfits = new ArrayList<>();
+			for (MisfitStats mstats : stats)
+				if (mstats != null)
+					uncertMisfits.add(mstats);
+			iters.add(state.iterations);
+			times.add(state.elapsedTimeMillis);
+			iterStats.add(new InversionMisfitStats(uncertMisfits));
+			
 			System.out.println("Took "+timeStr(watch.elapsed(TimeUnit.MILLISECONDS))+" to re-weight");
 		}
-		super.beforeRound(curIter, round);
+		super.beforeRound(state, round);
+	}
+	
+	public InversionMisfitProgress getMisfitProgress() {
+		Preconditions.checkNotNull(iters);
+		return new InversionMisfitProgress(iters, times, iterStats);
 	}
 	
 	private static void reweight(double[] scalars, boolean scaleToOrig, DoubleMatrix2D origA, DoubleMatrix2D modA,
@@ -422,7 +451,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	}
 
 	@Override
-	public long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria) {
+	public InversionState iterate(InversionState startState, CompletionCriteria criteria) {
 		this.origA = getA();
 		this.origA_ineq = getA_ineq();
 		this.origD = getD();
@@ -441,16 +470,36 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		}
 		Preconditions.checkState(found, "Must supply at least 1 uncertainty-weighted constraint for re-weighted inversion");
 		
-		long[] ret = super.iterate(startIter, startPerturbs, criteria);
+		iters = new ArrayList<>();
+		times = new ArrayList<>();
+		iterStats = new ArrayList<>();
 		
-		System.out.println("Final constraint weights:");
+		InversionState ret = super.iterate(startState, criteria);
+		
+		List<MisfitStats> stats = calcUncertWtStats(getConstraintRanges(), getBestMisfit(), getBestInequalityMisfit());
+		List<MisfitStats> uncertMisfits = new ArrayList<>();
+		
+		double avgMisfit = 0;
+		for (MisfitStats mstats : stats) {
+			if (mstats != null) {
+				uncertMisfits.add(mstats);
+				avgMisfit += mstats.get(quantity);
+			}
+		}
+		avgMisfit /= uncertMisfits.size();
+		iters.add(ret.iterations);
+		times.add(ret.elapsedTimeMillis);
+		iterStats.add(new InversionMisfitStats(uncertMisfits));
+		
+		System.out.println("Final constraint weights with average misfit "+targetName+": "+(float)avgMisfit);
 		List<ConstraintRange> modRanges = getConstraintRanges();
 		for (int i=0; i<modRanges.size(); i++) {
 			ConstraintRange orig = origRanges.get(i);
 			ConstraintRange mod = modRanges.get(i);
 			if (orig.weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
 				double ratio = mod.weight/orig.weight;
-				System.out.println("\t"+orig.shortName+":\t"+(float)orig.weight+" x "+(float)ratio+" = "+(float)mod.weight);
+				System.out.println("\t"+orig.shortName+"\t"+targetName+": "+(float)stats.get(i).get(quantity)
+					+";\tWeight = "+(float)orig.weight+" x "+(float)ratio+" = "+(float)mod.weight);
 			}
 		}
 		
@@ -485,7 +534,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(branch).build();
 //		dirName += "-abm-hb08";
 		
-		double supraBVal = 0.0;
+		double supraBVal = 0.8;
 		dirName += "-nshm23_draft-supra_b_"+oDF.format(supraBVal);
 		
 		boolean applyDefModelUncertaintiesToNucl = true;
@@ -500,6 +549,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		constrBuilder.sectSupraNuclMFDs().weight(0.1d);
 		dirName += "-nucl_mfd";
 		
+//		boolean reweight = false;
+		
 		boolean reweight = true;
 		dirName += "-reweight_"+QUANTITY_DEFAULT.name();
 		
@@ -507,9 +558,12 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			dirName += "-conserve";
 		
 //		boolean reweight = false;
-
-//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m-x1m";
+		
+//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(10); dirName += "-10m-x1m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(1);
+
+		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m-x1m";
+		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(1);
 
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m-x5m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
@@ -523,8 +577,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		CompletionCriteria completion = TimeCompletionCriteria.getInHours(2); dirName += "-2h-x1m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(1);
 		
-		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5); dirName += "-5h-x5m";
-		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
+//		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5); dirName += "-5h-x5m";
+//		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
 		
 		Builder builder = InversionConfiguration.builder(constrBuilder.build(), completion);
 		builder.sampler(constrBuilder.getSkipBelowMinSampler());
@@ -537,6 +591,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		builder.except(SectionTotalRateConstraint.class);
 //		dirName += "-no_sect";
 		
+//		builder.threads(1).noAvg();
+		
 		InversionConfiguration config = builder.build();
 		
 		InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
@@ -546,9 +602,13 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
 		
 		SimulatedAnnealing sa = config.buildSA(inputs);
-		Preconditions.checkState(sa instanceof ThreadedSimulatedAnnealing);
-		if (reweight)
+		if (reweight) {
+			Preconditions.checkState(sa instanceof ThreadedSimulatedAnnealing);
 			sa = new ReweightEvenFitSimulatedAnnealing((ThreadedSimulatedAnnealing)sa);
+		} else if (sa instanceof SerialSimulatedAnnealing) {
+			sa.setConstraintRanges(null);
+		}
+		sa.setRandom(new Random(1234l));
 		
 		System.out.println("SA Parameters:");
 		System.out.println("\tImplementation: "+sa.getClass().getName());
@@ -577,6 +637,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		InversionMisfits misfits = new InversionMisfits(sa);
 		sol.addModule(misfits);
 		sol.addModule(misfits.getMisfitStats());
+		if (reweight)
+			sol.addModule(((ReweightEvenFitSimulatedAnnealing)sa).getMisfitProgress());
 		
 		File outputDir = new File(parentDir, dirName);
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
