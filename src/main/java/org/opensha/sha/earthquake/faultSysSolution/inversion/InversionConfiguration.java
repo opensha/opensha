@@ -32,6 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompoundCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.EnergyCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.MisfitStdDevCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
@@ -349,6 +350,8 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return TimeCompletionCriteria.getInSeconds(Long.parseLong(value.substring(0, value.length()-1)));
 		if (value.endsWith("e")) // TODO add to docs
 			return new EnergyCompletionCriteria(Double.parseDouble(value.substring(0, value.length()-1)));
+		if (value.endsWith("ip")) // TODO add to docs
+			return new IterationsPerVariableCompletionCriteria(Double.parseDouble(value.substring(value.length()-2)));
 		if (value.endsWith("i"))
 			value = value.substring(0, value.length()-1);
 		return new IterationCompletionCriteria(Long.parseLong(value));
