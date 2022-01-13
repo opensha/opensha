@@ -46,7 +46,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	// it's actually less accurate. In fact, the full energy calculation will likely ignore any tiny energy changes.
 	public final static boolean ENERGY_SHORTCUT = true;
 	
-	private final static boolean ENERGY_SHORTCUT_DEBUG = true;
+	private final static boolean ENERGY_SHORTCUT_DEBUG = false;
 	private final static boolean COLUMN_MULT_SPEEDUP_DEBUG = false;
 	private final static boolean XBEST_ACCURACY_CHECK = false;
 	private double[] xbest_check_storage;
@@ -692,7 +692,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 								+Enew[i]+"\tE["+i+"]="+E[i]+"\tmyDelta="+myDelta+"\tcalcDelta="+calcDelta
 								+"\tdiff="+diff+"\tfractError="+fractError);
 //						Preconditions.checkState((float)Etest[i] == (float)Enew[i],
-						Preconditions.checkState((float)Etest[i] == (float)Enew[i] || fractError < 1e-5,
+						Preconditions.checkState((float)Etest[i] == (float)Enew[i] || fractError < 1e-5 || error < 1e-10,
 								"Energy[%s] shortcut fail! %s != %s, oldE=%s, deltaE=%s, deltaE_ineq=%s, myDelta=%s, "
 								+ "calcDelta=%s, diff=%s, fractError=%s",
 								i, Enew[i], Etest[i], E[i], deltaE, deltaE_ineq, myDelta, calcDelta, diff, fractError);
