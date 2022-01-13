@@ -51,7 +51,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranch;
  * sensitive to outliers and doesn't account for net bias; if you want to control the total standard deviation (noting
  * that it may be outlier-dominated), use RMSE instead.
  * <p>
- * After each annealing round, the an average misfit quantity is calculated across all uncertainty-weighted constraints.
+ * After each annealing round, the average misfit quantity is calculated across all uncertainty-weighted constraints.
  * Then, each uncertainty-weighted constraint is re-weighted such that:
  * <p>
  * newWeight = prevRate * constrMisfit / avgMisfit
@@ -69,7 +69,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranch;
  * poorly fit on average, above {@link #AVG_TARGET_TRANSITION_UPPER_DEFAULT}. If the average fit is between
  * {@link #AVG_TARGET_TRANSITION_UPPER_DEFAULT} and {@link #AVG_TARGET_TRANSITION_LOWER_DEFAULT}, then calculated
  * weights are blended with original weights. This allows the inversion to slowly transition to even fitting as data
- * fits may very wildly (and change quickly) early on.
+ * fits may very wildly (and change quickly) early on. This feature is currently unused.
  * <p>
  * Setting {@link #USE_SQRT_FOR_TARGET_RATIOS_DEFAULT} to true will more conservatively (slowly) adjust weights, which
  * can also prevent wild swings in weighting.
