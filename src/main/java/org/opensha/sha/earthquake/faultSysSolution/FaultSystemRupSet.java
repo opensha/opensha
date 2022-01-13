@@ -1162,7 +1162,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					p = new CalcProgressBar("Calculating Ruptures for each Parent Section", "Calculating Ruptures for each Parent Section");
 				}
 				// note this assumes that sections are in order
-				rupturesForParentSectionCache = Maps.newConcurrentMap();
+				Map<Integer, List<Integer>> rupturesForParentSectionCache = Maps.newConcurrentMap();
 
 				int numRups = getNumRuptures();
 				for (int rupID=0; rupID<numRups; rupID++) {
@@ -1189,6 +1189,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				for (Integer key : rupturesForParentSectionCache.keySet())
 					rupturesForParentSectionCache.put(key, Collections.unmodifiableList(rupturesForParentSectionCache.get(key)));
 				if (p != null) p.dispose();
+				this.rupturesForParentSectionCache = rupturesForParentSectionCache;
 			}
 		}
 
