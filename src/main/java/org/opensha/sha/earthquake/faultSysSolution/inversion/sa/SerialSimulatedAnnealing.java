@@ -763,6 +763,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			
 			// Use transition probability to determine (via random number draw) if solution is kept
 			if (P == 1 || P > r.nextDouble()) {
+				if (Enew[0] > E[0])
+					// we're keeping one that made energy worse
+					worseValsNotYetSaved++;
+				
 				/* 
 				 * The buffers are a bit confusing, let me explain. Arrays.copyOf(...) calls are costly in this inner
 				 * loop, so we avoid them by reusing various misfit buffers. With buffers in use, we only need to
@@ -790,8 +794,6 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					numNonZero = curNumNonZero;
 					worseKept += worseValsNotYetSaved;
 					worseValsNotYetSaved = 0;
-				} else {
-					worseValsNotYetSaved++;
 				}
 				
 				// now switch buffers so that we're not overwriting a kept solution
