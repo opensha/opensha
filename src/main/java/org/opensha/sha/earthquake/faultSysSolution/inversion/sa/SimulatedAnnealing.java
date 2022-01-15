@@ -80,19 +80,23 @@ public interface SimulatedAnnealing {
 	public double[] getBestMisfit();
 	
 	public double[] getBestInequalityMisfit();
-	
-	public DoubleMatrix2D getA_ineq();
+
+	public ColumnOrganizedAnnealingData getEqualityData();
 	
 	public DoubleMatrix2D getA();
 	
 	public double[] getD();
 	
+	public ColumnOrganizedAnnealingData getInequalityData();
+	
+	public DoubleMatrix2D getA_ineq();
+	
 	public double[] getD_ineq();
 	
-	public void setInputs(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq);
+	public void setInputs(ColumnOrganizedAnnealingData equalityData, ColumnOrganizedAnnealingData inequalityData);
 	
-	public void setAll(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq, double[] Ebest,
-			double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero);
+	public void setAll(ColumnOrganizedAnnealingData equalityData, ColumnOrganizedAnnealingData inequalityData,
+			double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero);
 
 	public void setResults(double[] Ebest, double[] xbest);
 	

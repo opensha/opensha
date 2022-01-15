@@ -83,14 +83,15 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
 	private List<ConstraintRange> constraintRanges;
 	
-	private DoubleMatrix2D A;
-	private DoubleMatrix2D A_ineq;
-	
 	private boolean average = false;
 	
 	private boolean verbose = D;
 
 	private double relativeSmoothnessWt;
+
+	private ColumnOrganizedAnnealingData equalityData;
+
+	private ColumnOrganizedAnnealingData inequalityData;
 	
 	public ThreadedSimulatedAnnealing(
 			DoubleMatrix2D A, double[] d, double[] initialState,
@@ -101,13 +102,20 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	public ThreadedSimulatedAnnealing(
 			DoubleMatrix2D A, double[] d, double[] initialState, double relativeSmoothnessWt, 
 			DoubleMatrix2D A_ineq,  double[] d_ineq, int numThreads, CompletionCriteria subCompetionCriteria) {
+		this(new ColumnOrganizedAnnealingData(A, d), A_ineq == null ? null : new ColumnOrganizedAnnealingData(A_ineq, d_ineq),
+				initialState, relativeSmoothnessWt, numThreads, subCompetionCriteria);
+	}
+	
+	public ThreadedSimulatedAnnealing(
+			ColumnOrganizedAnnealingData equalityData, ColumnOrganizedAnnealingData inequalityData,
+			double[] initialState, double relativeSmoothnessWt, int numThreads, CompletionCriteria subCompetionCriteria) {
 		this.relativeSmoothnessWt = relativeSmoothnessWt;
 		Preconditions.checkState(numThreads > 0, "Must have at least 1 thread");
 		
 		// list of serial SA instances for each thread
 		List<SerialSimulatedAnnealing> sas = new ArrayList<SerialSimulatedAnnealing>();
 		for (int i=0; i<numThreads; i++)
-			sas.add(new SerialSimulatedAnnealing(A, d, initialState, relativeSmoothnessWt, A_ineq, d_ineq));
+			sas.add(new SerialSimulatedAnnealing(equalityData, inequalityData, initialState, relativeSmoothnessWt));
 		init(sas, subCompetionCriteria, false);
 	}
 	
@@ -140,8 +148,8 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		xbest = sa0.getBestSolution();
 		numNonZero = sa0.getNumNonZero();
 		
-		this.A = sa0.getA();
-		this.A_ineq = sa0.getA_ineq();
+		this.equalityData = sa0.getEqualityData();
+		this.inequalityData = sa0.getInequalityData();
 		this.average = average;
 	}
 	
@@ -597,7 +605,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	private void printEnergies(double[] Ebest, double[] prev, List<ConstraintRange> constraintRanges) {
-		int numIneq = A_ineq == null ? 0 : A_ineq.rows();
+		int numIneq = inequalityData == null ? 0 : inequalityData.nRows;
 		printEnergies(Ebest, prev, constraintRanges, relativeSmoothnessWt, numIneq);
 	}
 	
@@ -1136,11 +1144,11 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		builder.append("Threads per node: "+getNumThreads()+"\n");
 		builder.append(""+"\n");
 		builder.append("Solution size: "+getBestSolution().length+"\n");
-		builder.append("A matrix size: "+A.rows()+"x"+A.columns()+"\n");
-		if (A_ineq == null)
+		builder.append("A matrix size: "+equalityData.nRows+"x"+equalityData.nCols+"\n");
+		if (inequalityData == null)
 			builder.append("A_ineq matrix size: (null)\n");
 		else
-			builder.append("A_ineq matrix size: "+A_ineq.rows()+"x"+A_ineq.columns()+"\n");
+			builder.append("A_ineq matrix size: "+inequalityData.nRows+"x"+inequalityData.nCols+"\n");
 		double[] e = getBestEnergy();
 		builder.append("Best energy: "+Doubles.join(", ", e)+"\n");
 		if (constraintRanges != null) {
@@ -1222,23 +1230,33 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	}
 
 	@Override
-	public DoubleMatrix2D getA_ineq() {
-		return A_ineq;
+	public ColumnOrganizedAnnealingData getEqualityData() {
+		return equalityData;
 	}
 
 	@Override
 	public DoubleMatrix2D getA() {
-		return A;
+		return equalityData.A;
 	}
 
 	@Override
 	public double[] getD() {
-		return sas.get(0).getD();
+		return equalityData.d;
+	}
+
+	@Override
+	public ColumnOrganizedAnnealingData getInequalityData() {
+		return inequalityData;
+	}
+
+	@Override
+	public DoubleMatrix2D getA_ineq() {
+		return inequalityData == null ? null : inequalityData.A;
 	}
 
 	@Override
 	public double[] getD_ineq() {
-		return sas.get(0).getD_ineq();
+		return inequalityData == null ? null : inequalityData.d;
 	}
 
 	@Override
@@ -1258,16 +1276,16 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	}
 
 	@Override
-	public void setInputs(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq) {
+	public void setInputs(ColumnOrganizedAnnealingData equalityData, ColumnOrganizedAnnealingData inequalityData) {
 		for (SimulatedAnnealing sa : sas)
-			sa.setInputs(A, d, A_ineq, d_ineq);
+			sa.setInputs(equalityData, inequalityData);
 	}
 
 	@Override
-	public void setAll(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq, double[] Ebest,
-			double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero) {
+	public void setAll(ColumnOrganizedAnnealingData equalityData, ColumnOrganizedAnnealingData inequalityData,
+			double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero) {
 		for (SimulatedAnnealing sa : sas)
-			sa.setAll(A, d, A_ineq, d_ineq, Ebest, xbest, misfit, misfit_ineq, numNonZero);
+			sa.setAll(equalityData, inequalityData, Ebest, xbest, misfit, misfit_ineq, numNonZero);
 		this.Ebest = Ebest;
 		this.xbest = xbest;
 		this.misfit = misfit;

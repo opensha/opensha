@@ -94,7 +94,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	public static final double AVG_TARGET_TRANSITION_UPPER_DEFAULT = Double.POSITIVE_INFINITY;
 	public static final double AVG_TARGET_TRANSITION_LOWER_DEFAULT = Double.POSITIVE_INFINITY;
 	public static final boolean CONSERVE_TOT_WEIGHT_DEFAULT = false;
-	public static final boolean USE_SQRT_FOR_TARGET_RATIOS_DEFAULT = true;
+	public static final boolean USE_SQRT_FOR_TARGET_RATIOS_DEFAULT = false;
 	public static final boolean USE_VALUE_WEIGHTED_AVERAGE_DEFAULT = false;
 	
 	// every x rounds, recompute A/d values as scalars from the original values to correct for any floating point error
@@ -386,7 +386,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			int nRow = modA.rows();
 			int nCol = modA.columns();
 			int ineqRows = 0;
+			ColumnOrganizedAnnealingData modEqualityData = new ColumnOrganizedAnnealingData(modA, modD);
+			ColumnOrganizedAnnealingData modInqualityData = null;
 			if (modA_ineq != null) {
+				modInqualityData = new ColumnOrganizedAnnealingData(modA_ineq, modD_ineq);
 				misfit_ineq = new double[modD_ineq.length];
 				ineqRows = misfit_ineq.length;
 				SerialSimulatedAnnealing.calculateMisfit(modA_ineq, modD_ineq, xbest, misfit_ineq);
@@ -405,7 +408,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			eStr += pDF.format(diffE/prevE)+")";
 			System.out.println(eStr);
 			
-			setAll(modA, modD, modA_ineq, modD_ineq, Ebest, xbest, misfit, misfit_ineq, getNumNonZero());
+			setAll(modEqualityData, modInqualityData, Ebest, xbest, misfit, misfit_ineq, getNumNonZero());
 			setConstraintRanges(modRanges);
 			
 			watch.stop();
@@ -549,10 +552,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		constrBuilder.sectSupraNuclMFDs().weight(0.1d);
 		dirName += "-nucl_mfd";
 		
-//		boolean reweight = false;
+		boolean reweight = false;
 		
-		boolean reweight = true;
-		dirName += "-reweight_"+QUANTITY_DEFAULT.name();
+//		boolean reweight = true;
+//		dirName += "-reweight_"+QUANTITY_DEFAULT.name();
 		
 		if (reweight && CONSERVE_TOT_WEIGHT_DEFAULT)
 			dirName += "-conserve";
@@ -591,7 +594,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		builder.except(SectionTotalRateConstraint.class);
 //		dirName += "-no_sect";
 		
-//		builder.threads(1).noAvg();
+		builder.threads(2).noAvg();
 		
 		InversionConfiguration config = builder.build();
 		
