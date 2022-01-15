@@ -753,5 +753,21 @@ public class DraftModelConstraintBuilder {
 		}
 		return new IntegerPDF_FunctionSampler(weights);
 	}
+	
+	public double[] getParkfieldInitial(boolean ensureNotSkipped) {
+		List<Integer> parkRups = new ArrayList<>(UCERF3InversionInputGenerator.findParkfieldRups(rupSet));
+		double[] initial = new double[rupSet.getNumRuptures()];
+		if (ensureNotSkipped) {
+			HashSet<Integer> skips = new HashSet<Integer>(getRupIndexesBelowMinMag());
+			for (int r=parkRups.size(); --r>=0;)
+				if (skips.contains(parkRups.get(r)))
+					parkRups.remove(r);
+			Preconditions.checkState(!skips.isEmpty(), "All parkfield rups are skipped!");
+		}
+		double rateEach = parkfieldRate.bestEstimate/(double)parkRups.size();
+		for (int rup : parkRups)
+			initial[rup] = rateEach;
+		return initial;
+	}
 
 }
