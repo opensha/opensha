@@ -19,6 +19,9 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 
@@ -131,31 +134,87 @@ public class InversionConfigurationPlot extends AbstractSolutionPlot {
 			constraintsMap.put(constraint.getName(), constraint);
 		}
 		
+		Map<String, Double> finalWeights = getFinalWeights(sol, constraintsMap);
+		Map<String, Double> compFinalWeights = null;
+		if (sol.hasModule(InversionMisfitProgress.class)) {
+			// see if we have variable weights
+			InversionMisfitProgress progress = sol.getModule(InversionMisfitProgress.class);
+			List<InversionMisfitStats> allStats = progress.getStats();
+			if (!allStats.isEmpty()) {
+				boolean anyDifferent = false;
+				finalWeights = new HashMap<>();
+				InversionMisfitStats last = allStats.get(allStats.size()-1);
+				for (MisfitStats misfits : last.getStats()) {
+					if (constraintNames.contains(misfits.range.name)) {
+						double finalWeight = misfits.range.weight;
+						anyDifferent = anyDifferent ||
+								(float)finalWeight != (float)constraintsMap.get(misfits.range.name).getWeight();
+						finalWeights.put(misfits.range.name, finalWeight);
+					}
+				}
+				if (!anyDifferent)
+					finalWeights = null;
+			}
+		}
+		
+		table.initNewLine().addColumn("Constraint");
 		if (compConfig == null) {
-			table.addLine("Constraint", "Weight");
+			if (finalWeights == null)
+				table.addColumn("Weight");
+			else
+				table.addColumn("Initial Weight").addColumn("Final Weight");
 		} else {
-			table.addLine("Constraint", "Primary Weight", "Comparison Weight");
+			if (finalWeights == null)
+				table.addColumn("Primary Weight");
+			else
+				table.addColumn("Primary Initial Weight").addColumn("Final");
 			for (InversionConstraint constraint : compConfig.getConstraints()) {
 				String name = constraint.getName();
 				if (!constraintNames.contains(name))
 					constraintNames.add(name);
 				compConstraintsMap.put(name, constraint);
 			}
+			compFinalWeights = getFinalWeights(meta.comparison.sol, compConstraintsMap);
+			if (compFinalWeights == null)
+				table.addColumn("Comparison Weight");
+			else
+				table.addColumn("Comparison Initial Weight").addColumn("Final");
 		}
+		table.finalizeLine();
 		
 		for (String name : constraintNames) {
 			table.initNewLine().addColumn(name);
 			InversionConstraint constr = constraintsMap.get(name);
-			if (constr == null)
+			if (constr == null) {
 				table.addColumn(na);
-			else
+				if (finalWeights != null)
+					table.addColumn(na);
+			} else {
 				table.addColumn(optionalDigitDF.format(constr.getWeight()));
+				if (finalWeights != null) {
+					Double weight = finalWeights.get(name);
+					if (weight == null)
+						table.addColumn(optionalDigitDF.format(constr.getWeight()));
+					else
+						table.addColumn(optionalDigitDF.format(weight));
+				}
+			}
 			if (compConfig != null) {
 				InversionConstraint compConstr = compConstraintsMap.get(name);
-				if (compConstr == null)
+				if (compConstr == null) {
 					table.addColumn(na);
-				else
+					if (compFinalWeights != null)
+						table.addColumn(na);
+				} else {
 					table.addColumn(optionalDigitDF.format(compConstr.getWeight()));
+					if (compFinalWeights != null) {
+						Double weight = compFinalWeights.get(name);
+						if (weight == null)
+							table.addColumn(optionalDigitDF.format(compConstr.getWeight()));
+						else
+							table.addColumn(optionalDigitDF.format(weight));
+					}
+				}
 			}
 			table.finalizeLine();
 		}
@@ -163,6 +222,30 @@ public class InversionConfigurationPlot extends AbstractSolutionPlot {
 		lines.addAll(table.build());
 		
 		return lines;
+	}
+	
+	private static Map<String, Double> getFinalWeights(FaultSystemSolution sol, Map<String, InversionConstraint> constraintsMap) {
+		// see if we have variable weights
+		InversionMisfitProgress progress = sol.getModule(InversionMisfitProgress.class);
+		if (progress == null)
+			return null;
+		List<InversionMisfitStats> allStats = progress.getStats();
+		if (allStats.isEmpty())
+			return null;
+		boolean anyDifferent = false;
+		Map<String, Double> finalWeights = new HashMap<>();
+		InversionMisfitStats last = allStats.get(allStats.size()-1);
+		for (MisfitStats misfits : last.getStats()) {
+			if (constraintsMap.containsKey(misfits.range.name)) {
+				double finalWeight = misfits.range.weight;
+				anyDifferent = anyDifferent ||
+						(float)finalWeight != (float)constraintsMap.get(misfits.range.name).getWeight();
+				finalWeights.put(misfits.range.name, finalWeight);
+			}
+		}
+		if (!anyDifferent)
+			return null;
+		return finalWeights;
 	}
 	
 	private static boolean isAvg(InversionConfiguration config) {
