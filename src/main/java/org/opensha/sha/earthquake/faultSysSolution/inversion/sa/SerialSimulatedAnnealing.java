@@ -513,21 +513,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		// Add smoothness constraint misfit (nonlinear) to energy (this is the entropy-maximization constraint)
 		double Eentropy = 0;
 		if (relativeSmoothnessWt > 0.0) { 
-			double totalEntropy=0;
-			double entropyConstant=500;
-			for (int rup=0; rup<nCol; rup++) {
-				if (solution[rup]>0)
-					totalEntropy -= entropyConstant*solution[rup]*Math.log(entropyConstant*solution[rup]);
-			}
-			if (totalEntropy==0) {
-				System.out.println("ZERO ENTROPY!");
-				totalEntropy=0.0001;
-			}
-			if (totalEntropy<0) {
-				throw new IllegalStateException("NEGATIVE ENTROPY!");
-			}
-			Eentropy += relativeSmoothnessWt * (1 / totalEntropy); // High entropy => low misfit
-			Preconditions.checkState(!Double.isNaN(Eentropy), "energy from entropy constraint is NaN!");
+			Eentropy = calcEntropyEnergy(solution, relativeSmoothnessWt);
 			ret[2] = Eentropy;
 		}
 		
@@ -561,6 +547,26 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		
 		ret[0] = Enew;
 		return ret;
+	}
+
+	public static double calcEntropyEnergy(final double[] solution, final double relativeSmoothnessWt) {
+		double Eentropy = 0d;
+		double totalEntropy=0;
+		double entropyConstant=500;
+		for (int rup=0; rup<solution.length; rup++) {
+			if (solution[rup]>0)
+				totalEntropy -= entropyConstant*solution[rup]*Math.log(entropyConstant*solution[rup]);
+		}
+		if (totalEntropy==0) {
+			System.out.println("ZERO ENTROPY!");
+			totalEntropy=0.0001;
+		}
+		if (totalEntropy<0) {
+			throw new IllegalStateException("NEGATIVE ENTROPY!");
+		}
+		Eentropy += relativeSmoothnessWt * (1 / totalEntropy); // High entropy => low misfit
+		Preconditions.checkState(!Double.isNaN(Eentropy), "energy from entropy constraint is NaN!");
+		return Eentropy;
 	}
 	
 	@Override
@@ -718,7 +724,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				throw new IllegalStateException("You missed a Nonnegativity Constraint Algorithm type.");
 			}
 			
-			if (ENERGY_SHORTCUT && relativeSmoothnessWt == 0d && iter % ENERGY_SHORTCUT_DRIFT_MOD == 0) {
+			if (ENERGY_SHORTCUT && iter % ENERGY_SHORTCUT_DRIFT_MOD == 0) {
 				// recalculate full energy every once in a while to prevent slow accumulation of floating point errors
 				// we'll do this based on the original energy (before this perturbation) as the energy delta calculation
 				// is actually more accurate than the full one for determining if we should change states
@@ -737,11 +743,14 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 						perturb, true, scratch);
 
 			// Calculate "energy" of new model (high misfit -> high energy)
+			double energyChange;
 			double[] Enew;
 			
-			if (ENERGY_SHORTCUT && relativeSmoothnessWt == 0d) {
+			if (ENERGY_SHORTCUT) {
 				// use the energy shortcut: add change to previous energy
-				// shortcut
+				// calculated change will be more accurate than comparing full energy sums, so we'll use that when
+				// calculating the transition probability as well
+				energyChange = deltaE;
 				Enew = new double[4];
 				Enew[0] = E[0] + deltaE;
 				Enew[1] = E[1] + deltaE;
@@ -749,6 +758,12 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					Preconditions.checkState(Double.isFinite(deltaE_ineq));
 					Enew[0] += deltaE_ineq;
 					Enew[3] = E[3] + deltaE_ineq;
+					energyChange += deltaE_ineq;
+				}
+				if (relativeSmoothnessWt != 0d) {
+					Enew[2] = calcEntropyEnergy(x, relativeSmoothnessWt);
+					Enew[0] += Enew[2];
+					energyChange += Enew[2]-E[2];
 				}
 //				if (D) {
 //					double[] Etest2 = calculateEnergy(x, misfit_perturbed, misfit_perturbed_ineq);
@@ -789,6 +804,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			} else {
 				// if we're here, we probably have the entropy constraint enabled, which will be slower
 				Enew = calculateEnergy(x, misfit_perturbed, misfit_perturbed_ineq);
+				energyChange = Enew[0]-E[0];
 			}
 			
 			if (D) {
@@ -817,19 +833,19 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			// Change state? Calculate transition probability P
 			switch (nonnegativityConstraintAlgorithm) {
 			case PREVENT_ZERO_RATES:  
-				if (Enew[0] < E[0] || x[index]==0) {
+				if (energyChange < 0d || x[index]==0) {
 					P = 1; // Always keep new model if better OR if element was originally zero
 				} else {
 					// Sometimes keep new model if worse (depends on T)
-					P = Math.exp(((E[0] - Enew[0])*energyScaleFactor) / (double) T); 
+					P = Math.exp(((-energyChange)*energyScaleFactor) / (double) T); 
 				}
 			break;
 			default:
-				if (Enew[0] < E[0]) {
+				if (energyChange < 0d) {
 					P = 1; // Always keep new model if better
 				} else {
 					// Sometimes keep new model if worse (depends on T)
-					P = Math.exp(((E[0] - Enew[0])*energyScaleFactor) / (double) T); 
+					P = Math.exp(((-energyChange)*energyScaleFactor) / (double) T); 
 				}
 			}
 			
@@ -844,7 +860,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			
 			// Use transition probability to determine (via random number draw) if solution is kept
 			if (P == 1 || P > r.nextDouble()) {
-				if (Enew[0] > E[0])
+				if (energyChange > 0d)
 					// we're keeping one that made energy worse
 					worseValsNotYetSaved++;
 				
