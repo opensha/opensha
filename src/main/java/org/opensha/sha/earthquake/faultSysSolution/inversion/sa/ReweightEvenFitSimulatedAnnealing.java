@@ -6,12 +6,16 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import org.opensha.commons.util.ComparablePairing;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.Interpolate;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
@@ -23,6 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
@@ -30,10 +35,12 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DraftModelConstraintBuilder;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
+import com.google.common.primitives.Doubles;
 
 import cern.colt.function.tdouble.IntIntDoubleFunction;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
@@ -83,18 +90,41 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	 * DEFAULT VALUES
 	 */
 
-	// individual adjustments can never be this many times greater or lower than the previous weight
+	/**
+	 *  individual adjustments can never be this many times greater or lower than the previous weight
+	 */
 	public static final double MAX_INDV_ADJUSTMENT_FACTOR = 2d;
-	// can never be this many times greater/less than original weight
+	/**
+	 *  can never be this many times greater/less than original weight
+	 */
 	public static final double MAX_ADJUSTMENT_FACTOR = 100d;
+	/**
+	 *  if true, the adjustment factor only applies on the high and and constraints phase out when their weight is
+	 *  below the origWeight/MAX_ADJUSTMENT_FACTOR. A phase out constraint means that it is weighted so low that the
+	 *  constraint is fit better than others even when disabled, and thus should not be considered anymore when
+	 *  computing relative weight changes. This should help with pathological branches where some constraints just
+	 *  cannot be fit. 
+	 */
+	public static final boolean PHASE_OUT_BELOW_LOWER_BOUND = true;
+	/**
+	 * if {@link #PHASE_OUT_BELOW_LOWER_BOUND} is true, then a constraint is phased out linearly as it's weight
+	 * transitions between origWeight/MAX_ADJUSTMENT_FACTOR and origWeight/(PHASE_OUT_FACTOR*MAX_ADJUSTMENT_FACTOR).
+	 */
+	public static final double PHASE_OUT_FACTOR = 10d;
 	
 	public static final Quantity QUANTITY_DEFAULT = Quantity.MAD;
 //	public static final double AVG_TARGET_TRANSITION_UPPER_DEFAULT = 5d;
 //	public static final double AVG_TARGET_TRANSITION_LOWER_DEFAULT = 1d;
 	public static final double AVG_TARGET_TRANSITION_UPPER_DEFAULT = Double.POSITIVE_INFINITY;
 	public static final double AVG_TARGET_TRANSITION_LOWER_DEFAULT = Double.POSITIVE_INFINITY;
-	public static final boolean CONSERVE_TOT_WEIGHT_DEFAULT = false;
-	public static final boolean USE_SQRT_FOR_TARGET_RATIOS_DEFAULT = false;
+	public static final boolean CONSERVE_TOT_WEIGHT_DEFAULT = true;
+	// if true, then the algorithm doesn't know about or use the 'conserved' weights and actual weights can exceed
+	// the initial bounds. if false, bounds will be applied to the real weights
+	public static final boolean CONSERVE_SEPARATELY = false;
+	public static final boolean TARGET_MEDIAN_DEFAULT = false;
+	// SQRT seems better, at least for fitting MAD. otherwise, average misfit will appear to oscillate with many
+	// small overcorrections
+	public static final boolean USE_SQRT_FOR_TARGET_RATIOS_DEFAULT = true;
 	public static final boolean USE_VALUE_WEIGHTED_AVERAGE_DEFAULT = false;
 	
 	// every x rounds, recompute A/d values as scalars from the original values to correct for any floating point error
@@ -113,6 +143,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	private boolean conserveTotalWeight = CONSERVE_TOT_WEIGHT_DEFAULT;
 	// if true, weight every row equally when computing average values. if false, weight each constraint equally
 	private boolean useValueWeightedAverage = USE_VALUE_WEIGHTED_AVERAGE_DEFAULT;
+	// if true, target each constraint to the median across all constraints rather than the mean
+	private boolean targetMedian = TARGET_MEDIAN_DEFAULT;
 	
 	// if true, calculate ratios as sqrt(misfit)/sqrt(avgMisfit)
 	private boolean useSqrtForTargetRatios = USE_SQRT_FOR_TARGET_RATIOS_DEFAULT;
@@ -132,8 +164,9 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	private double[] origD, origD_ineq, modD, modD_ineq;
 	private List<ConstraintRange> origRanges;
 	
-	private double prevAvgQuantity = Double.NaN;
+	private double prevTarget = Double.NaN;
 	private double[] prevConstraintVals = null;
+	private double prevWeightConservationScalar = 1d;
 	
 	private List<Long> iters;
 	private List<Long> times;
@@ -200,6 +233,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			Preconditions.checkNotNull(ranges, "Constraint ranges must be set for re-weight inversion");
 			Preconditions.checkState(ranges.size() == origRanges.size());
 			
+			Preconditions.checkState(!targetMedian || !useValueWeightedAverage, "Can't have both value weighting and median enabled");
+			
 			if (modA == null) {
 				modA = origA.copy();
 				modD = Arrays.copyOf(origD, origD.length);
@@ -213,42 +248,123 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			double[] misfits_ineq = getBestInequalityMisfit();
 			
 			List<MisfitStats> stats = calcUncertWtStats(ranges, misfits, misfits_ineq);
-			double avgConstraintQuantity = 0d;
-			double avgValueQuantity = 0d;
+			double avgValue = 0d;
 			int numConstraints = 0;
 			int numValues = 0;
+			double avgDenominator = 0d;
+			List<Double> constraintTargetVals = new ArrayList<>();
+			List<Double> phaseOutStatuses = PHASE_OUT_BELOW_LOWER_BOUND ? new ArrayList<>() : null;
+			boolean hasPhaseOut = false;
 			for (int r=0; r<ranges.size(); r++) {
 				ConstraintRange range = ranges.get(r);
 				MisfitStats myStats = stats.get(r);
 				if (myStats != null) {
 					double myVal = myStats.get(quantity);
+					constraintTargetVals.add(myVal);
 					numConstraints++;
-					avgConstraintQuantity += myVal;
 					int myNumVals = range.endRow - range.startRow;
 					numValues += myNumVals;
-					avgValueQuantity += myVal * (double)myNumVals;
+					if (PHASE_OUT_BELOW_LOWER_BOUND) {
+						// see if we're phasing/ed out
+						double origWeight = origRanges.get(r).weight;
+						double phaseUpperTarget = origWeight/MAX_ADJUSTMENT_FACTOR;
+						double phaseLowerTarget = phaseUpperTarget/PHASE_OUT_FACTOR;
+						double status;
+						if (range.weight < phaseLowerTarget)
+							// fully phased out
+							status = 0d;
+						else if (range.weight < phaseUpperTarget)
+							// partially phased out
+							status = (range.weight - phaseLowerTarget)/(phaseUpperTarget - phaseLowerTarget);
+						else
+							// not phased out
+							status = 1;
+						hasPhaseOut = hasPhaseOut && status != 1d;
+						phaseOutStatuses.add(status);
+						if (useValueWeightedAverage) {
+							avgValue += myVal * (double)myNumVals * status;
+							avgDenominator += myNumVals * status;
+						} else {
+							avgValue += myVal * status;
+							avgDenominator += status;
+						}
+					} else {
+						if (useValueWeightedAverage) {
+							avgValue += myVal * (double)myNumVals;
+							avgDenominator += myNumVals;
+						} else {
+							avgValue += myVal;
+							avgDenominator ++;
+						}
+					}
 				}
 			}
-			avgConstraintQuantity /= (double)numConstraints;
-			avgValueQuantity /= (double)numValues;
+			avgValue /= avgDenominator;
 			
-			double avgQuantity = useValueWeightedAverage ? avgValueQuantity : avgConstraintQuantity;
+			double target;
+			if (PHASE_OUT_BELOW_LOWER_BOUND && hasPhaseOut) {
+				if (targetMedian) {
+					// need to compute a weighted median, more complicated
+					
+					// sort by value, increasing, keeping track of associated weights
+					List<ComparablePairing<Double, Double>> pairings = ComparablePairing.build(constraintTargetVals, phaseOutStatuses);
+					Collections.sort(pairings);
+					
+					// here 'weight' refers to the degree a constraint is phased in and should contribute to the target,
+					// not the constraint weights themselves
+					double sumWeights = 0d;
+					for (double status : phaseOutStatuses)
+						sumWeights += status;
+					
+					Preconditions.checkState(sumWeights >= 1d, "All constraints phased out?");
+					
+					double weightBelow = 0d;
+					// this will store the first index where the weight of all values before it is > half
+					int indexAbove = -1;
+					for (int i=0; i<pairings.size(); i++) {
+						ComparablePairing<Double, Double> pairing = pairings.get(i);
+						
+						if (weightBelow >= 0.5*sumWeights) {
+							indexAbove = i;
+							break;
+						}
+						
+						weightBelow += pairing.getData();
+					}
+					Preconditions.checkState(indexAbove > 0);
+					double val1 = pairings.get(indexAbove-1).getComparable();
+					double weight1 = weightBelow;
+					double val2 = pairings.get(indexAbove).getComparable();
+					double weight2 = weightBelow+pairings.get(indexAbove).getData();
+					Preconditions.checkState(weight1 <= 0.5d && weight2 >= 0.5d);
+					target = Interpolate.findY(weight1, val1, weight2, val2, 0.5d);
+				} else {
+					// phase out already handled in averaging
+					target = avgValue;
+				}
+			} else {
+				if (targetMedian)
+					target = DataUtils.median(Doubles.toArray(constraintTargetVals));
+				else
+					target = avgValue;
+			}
 			
 			String qStr = "Readjusting weights for "+numValues+" values across "+numConstraints
-					+" uncertainty-weighted constraints with average misfit "+targetName+":\t"+(float)avgQuantity;
+					+" uncertainty-weighted constraints with "+(targetMedian?"median":"average")
+					+" misfit "+targetName+":\t"+(float)target;
 			if (round > 1) {
-				double diff = avgQuantity-prevAvgQuantity;
+				double diff = target-prevTarget;
 				qStr += " (";
 				if (diff > 0)
 					qStr += "+";
-				qStr += pDF.format(diff/prevAvgQuantity)+")";
+				qStr += pDF.format(diff/prevTarget)+")";
 			}
-			prevAvgQuantity = avgQuantity;
+			prevTarget = target;
 			System.out.println(qStr);
 			Preconditions.checkState(numConstraints > 0,
 					"Can't use re-weighted inversion without any uncertainty-weighted constraints!");
-			Preconditions.checkState(avgQuantity > 0d && Double.isFinite(avgQuantity),
-					"Bad avg "+targetName+": %s", avgQuantity);
+			Preconditions.checkState(target > 0d && Double.isFinite(target),
+					"Bad avg "+targetName+": %s", target);
 //			if (avgTarget > minTargetForPenalty) {
 //				System.out.println("\tAverage is above threshold, resetting to: "+(float)minTargetForPenalty);
 //				avgTarget = minTargetForPenalty;
@@ -259,8 +375,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			
 			double origTotalWeight = 0d;
 			double newTotalWeight = 0d;
-			
+
 			double[] newWeights = new double[ranges.size()];
+			double conservableTotalWeight = 0d;
+			boolean[] conservableWeights = new boolean[ranges.size()];
 			
 			boolean scaleToOrig = round > 0 && round % floatingPointDriftMod == 0 && floatingPointDriftMod > 0;
 			
@@ -272,6 +390,11 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 				MisfitStats myStats = stats.get(i);
 				double prevWeight = range.weight;
 				double origWeight = origRanges.get(i).weight;
+				
+				if (conserveTotalWeight && CONSERVE_SEPARATELY)
+					// do weight calculations units of the "original" weights
+					// but we'll apply them in a conserved way
+					prevWeight /= prevWeightConservationScalar;
 				
 				double newWeight, scalar;
 				if (myStats == null) {
@@ -285,17 +408,50 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 					
 					double misfitRatio;
 					if (useSqrtForTargetRatios)
-						misfitRatio = Math.sqrt(myTarget)/Math.sqrt(avgQuantity);
+						misfitRatio = Math.sqrt(myTarget)/Math.sqrt(target);
 					else
-						misfitRatio = myTarget/avgQuantity;
+						misfitRatio = myTarget/target;
 					// bound ratio
 					misfitRatio = Math.max(misfitRatio, 1d/MAX_INDV_ADJUSTMENT_FACTOR);
 					misfitRatio = Math.min(misfitRatio, MAX_INDV_ADJUSTMENT_FACTOR);
 					
 					double calcWeight = misfitRatio * prevWeight;
 					// bound weight
-					newWeight = Math.max(calcWeight, origWeight/MAX_ADJUSTMENT_FACTOR);
-					newWeight = Math.min(newWeight, origWeight*MAX_ADJUSTMENT_FACTOR);
+					boolean bounded = false;
+					boolean phased = false;
+					String phaseStr = null;
+					if (PHASE_OUT_BELOW_LOWER_BOUND && calcWeight < origWeight) {
+						// see if this calculated weight is in/beyond the phase out range
+						double phaseUpperTarget = origWeight/MAX_ADJUSTMENT_FACTOR;
+						double phaseLowerTarget = phaseUpperTarget/PHASE_OUT_FACTOR;
+						double status;
+						if ((float)calcWeight <= (float)phaseLowerTarget) {
+							// fully phased out
+							status = 0d;
+							newWeight = phaseLowerTarget;
+						} else if ((float)calcWeight < (float)phaseUpperTarget) {
+							// partially phased out
+							status = (calcWeight - phaseLowerTarget)/(phaseUpperTarget - phaseLowerTarget);
+							newWeight = calcWeight;
+						} else {
+							// not phased out
+							status = 1;
+							newWeight = calcWeight;
+						}
+						phased = status != 1d;
+						if (phased) {
+							if (status == 0d)
+								phaseStr = "FULLY PHASED OUT: "+(float)phaseLowerTarget;
+							else
+								phaseStr = "partially phasing out (f="+oDF.format(status)+")";
+						}
+					} else {
+						// apply bounds if applicable
+						newWeight = Math.max(calcWeight, origWeight/MAX_ADJUSTMENT_FACTOR);
+						newWeight = Math.min(newWeight, origWeight*MAX_ADJUSTMENT_FACTOR);
+						bounded = newWeight != calcWeight;
+					}
+					conservableWeights[i] = !bounded && !phased;
 					
 					String targetStr = (float)myTarget+"";
 					if (round > 1) {
@@ -307,25 +463,31 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 					}
 					
 					System.out.println("\t"+range.shortName+":\t"+targetName+": "+targetStr
-							+";\tcalcWeight = "+(float)prevWeight+" x "+(float)misfitRatio+" = "+(float)calcWeight
-							+";\tboundedWeight: "+(float)newWeight);
+							+";\tcalcWeight = "+fiveDigits.format(prevWeight)+" x "+fiveDigits.format(misfitRatio)
+							+" = "+fiveDigits.format(calcWeight)
+							+(bounded ? ";\tbounded: "+(float)newWeight : "")
+							+(phased ? ";\t"+phaseStr : ""));
 					
-					if (avgQuantity > avgTargetWeight2) {
+					if (target > avgTargetWeight2) {
 						newWeight = origWeight;
-						System.out.println("\t\tAbove max avg target, reverting to original weight: "+(float)origWeight);
-					} else if (avgQuantity > avgTargetWeight1) {
-						double fract = (avgQuantity - avgTargetWeight1)/(avgTargetWeight2 - avgTargetWeight1);
+						System.out.println("\t\tAbove max target, reverting to original weight: "+(float)origWeight);
+					} else if (target > avgTargetWeight1) {
+						double fract = (target - avgTargetWeight1)/(avgTargetWeight2 - avgTargetWeight1);
 						Preconditions.checkState(fract >= 0d && fract <= 1d);
 						newWeight = origWeight*fract + newWeight*(1-fract);
-						System.out.println("\t\tAvg value is poorly fit, linearly blending (fract="+(float)fract
+						System.out.println("\t\tTarget value is poorly fit, linearly blending (fract="+(float)fract
 								+") calculated weight with orig: "+(float)newWeight);
 					}
 					
 					prevConstraintVals[i] = myTarget;
 					
 					newTotalWeight += rangeRows*newWeight;
+					if (conservableWeights[i])
+						conservableTotalWeight += rangeRows*newWeight;
 					if (scaleToOrig)
 						scalar = newWeight / origWeight;
+					else if (conserveTotalWeight && CONSERVE_SEPARATELY)
+						scalar = newWeight / (prevWeight*prevWeightConservationScalar);
 					else
 						scalar = newWeight / prevWeight;
 				}
@@ -338,25 +500,39 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			
 			if (conserveTotalWeight) {
 				// rescale weights
-				double weightScalar = origTotalWeight/newTotalWeight;
-				System.out.println("Re-scaling weights by "+(float)origTotalWeight+" / "+(float)newTotalWeight
-						+" = "+(float)weightScalar+" to conserve original total weight");
-				String weightsStr = null;
-				for (int i=0; i<newWeights.length; i++) {
-					newWeights[i] *= weightScalar;
-					if (Double.isFinite(newWeights[i])) {
-						if (weightsStr == null)
-							weightsStr = (float)newWeights[i]+"";
-						else
-							weightsStr += ", "+(float)newWeights[i];
+				if (!CONSERVE_SEPARATELY && conservableTotalWeight == 0d) {
+					System.out.println("Conservable total weight is zero, "
+							+ "everything is bounded or phased, skipping conserve step");
+					prevWeightConservationScalar = 1d;
+				} else {
+					double fixedWeight = newTotalWeight-conservableTotalWeight;
+					double weightScalar;
+					if (CONSERVE_SEPARATELY)
+						weightScalar = weightScalar = origTotalWeight/newTotalWeight;
+					else
+						weightScalar = (origTotalWeight - fixedWeight)/conservableTotalWeight;
+					System.out.println("Re-scaling weights by "+(float)origTotalWeight+" / "+(float)newTotalWeight
+							+" = "+(float)weightScalar+" to conserve original total weight");
+					String weightsStr = null;
+					for (int i=0; i<newWeights.length; i++) {
+						if (Double.isFinite(newWeights[i])) {
+							if (CONSERVE_SEPARATELY || conservableWeights[i]) {
+								newWeights[i] *= weightScalar;
+								ConstraintRange range = ranges.get(i);
+								double[] myScalars = range.inequality ? origValScalars_ineq : origValScalars;
+								for (int r=range.startRow; r<range.endRow; r++)
+									myScalars[r] *= weightScalar;
+							}
+							if (weightsStr == null)
+								weightsStr = (float)newWeights[i]+"";
+							else
+								weightsStr += ", "+(float)newWeights[i];
+						}
 					}
+					System.out.println("\tAdjusted weights: "+weightsStr);
+					
+					prevWeightConservationScalar = weightScalar;
 				}
-				System.out.println("\tAdjusted weights: "+weightsStr);
-				for (int r=0; r<origValScalars.length; r++)
-					origValScalars[r] *= weightScalar;
-				if (origValScalars_ineq != null)
-					for (int r=0; r<origValScalars_ineq.length; r++)
-						origValScalars_ineq[r] *= weightScalar;
 			}
 			
 			System.out.println("Updating matrices");
@@ -461,6 +637,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		this.origD_ineq = getD_ineq();
 		
 		this.origRanges = getConstraintRanges();
+		this.prevWeightConservationScalar = 1d;
 		Preconditions.checkNotNull(origRanges, "Re-weigted inversion needs constraint ranges");
 		this.origRanges = new ArrayList<>(origRanges);
 		// make sure at least one uncert weighted
@@ -531,13 +708,16 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
 //				.u3BranchModules(rupSet.getModule(U3LogicTreeBranch.class)).build();
 		
-//		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT.copy();
+		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT.copy();
 //		branch.setValue(DeformationModels.ABM);
 //		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
-//		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(branch).build();
 //		dirName += "-abm-hb08";
+		branch.setValue(DeformationModels.NEOKINEMA);
+		branch.setValue(ScalingRelationships.ELLSWORTH_B);
+		dirName += "-neok-ellb";
+		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(branch).build();
 		
-		double supraBVal = 0.8;
+		double supraBVal = 0.0;
 		dirName += "-nshm23_draft-supra_b_"+oDF.format(supraBVal);
 		
 		boolean applyDefModelUncertaintiesToNucl = true;
@@ -546,16 +726,13 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 		DraftModelConstraintBuilder constrBuilder = new DraftModelConstraintBuilder(rupSet, supraBVal,
 				applyDefModelUncertaintiesToNucl, addSectCountUncertaintiesToMFD, adjustForIncompatibleData);
-		constrBuilder.defaultConstraints();
+//		constrBuilder.defaultConstraints(SubSectConstraintModels.TOT_NUCL_RATE);
+		constrBuilder.defaultConstraints(SubSectConstraintModels.NUCL_MFD); dirName += "-nucl_mfd";
 		
-		constrBuilder.except(SectionTotalRateConstraint.class);
-		constrBuilder.sectSupraNuclMFDs().weight(0.1d);
-		dirName += "-nucl_mfd";
+//		boolean reweight = false;
 		
-		boolean reweight = false;
-		
-//		boolean reweight = true;
-//		dirName += "-reweight_"+QUANTITY_DEFAULT.name();
+		boolean reweight = true;
+		dirName += "-reweight_"+QUANTITY_DEFAULT.name();
 		
 		if (reweight && CONSERVE_TOT_WEIGHT_DEFAULT)
 			dirName += "-conserve";
@@ -565,8 +742,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(10); dirName += "-10m-x1m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(1);
 
-		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m-x1m";
-		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(1);
+		CompletionCriteria completion = TimeCompletionCriteria.getInHours(2); dirName += "-2h";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m";
+//		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(20);
+		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(10);
 
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m-x5m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
@@ -594,7 +773,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		builder.except(SectionTotalRateConstraint.class);
 //		dirName += "-no_sect";
 		
-		builder.threads(2).noAvg();
+//		builder.threads(2).noAvg();
+
+		builder.subCompletion(new IterationsPerVariableCompletionCriteria(0.5));
+		builder.initialSolution(constrBuilder.getParkfieldInitial(true));
 		
 		InversionConfiguration config = builder.build();
 		
@@ -652,6 +834,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		}
 	}
 
+	private static final DecimalFormat fiveDigits = new DecimalFormat("0.00000");
 	private static final DecimalFormat oDF = new DecimalFormat("0.##");
 
 }
