@@ -666,6 +666,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		Preconditions.checkArgument(sectionForRups.size() == numRups, "array sizes inconsistent!");
 		this.sectionForRups = sectionForRups;
 		
+		// add default model implementations, but only if not already set
 		if (!hasAvailableModule(SectAreas.class)) {
 			addAvailableModule(new Callable<SectAreas>() {
 

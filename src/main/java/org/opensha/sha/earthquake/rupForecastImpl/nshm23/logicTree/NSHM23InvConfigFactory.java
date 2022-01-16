@@ -121,24 +121,21 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		public synchronized FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			rupSet.addModule(branch);
 			
-			if (!rupSet.hasModule(AveSlipModule.class)) {
-				rupSet.addAvailableModule(new Callable<AveSlipModule>() {
+			// replace branch-specific modules
+			rupSet.addAvailableModule(new Callable<AveSlipModule>() {
 
-					@Override
-					public AveSlipModule call() throws Exception {
-						return AveSlipModule.forModel(rupSet, branch.requireValue(ScalingRelationships.class));
-					}
-				}, AveSlipModule.class);
-			}
-			if (!rupSet.hasModule(SlipAlongRuptureModel.class)) {
-				rupSet.addAvailableModule(new Callable<SlipAlongRuptureModel>() {
+				@Override
+				public AveSlipModule call() throws Exception {
+					return AveSlipModule.forModel(rupSet, branch.requireValue(ScalingRelationships.class));
+				}
+			}, AveSlipModule.class);
+			rupSet.addAvailableModule(new Callable<SlipAlongRuptureModel>() {
 
-					@Override
-					public SlipAlongRuptureModel call() throws Exception {
-						return branch.requireValue(SlipAlongRuptureModels.class).getModel();
-					}
-				}, SlipAlongRuptureModel.class);
-			}
+				@Override
+				public SlipAlongRuptureModel call() throws Exception {
+					return branch.requireValue(SlipAlongRuptureModels.class).getModel();
+				}
+			}, SlipAlongRuptureModel.class);
 			
 			// add modified section minimum magnitudes
 			FaultModels fm = branch.getValue(FaultModels.class);
@@ -233,38 +230,39 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 				}
 			}, PaleoseismicConstraintData.class);
 			
-			if (!rupSet.hasModule(PlausibilityConfiguration.class)) {
-				// mostly for branch averaging
-				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
-				rupSet.addAvailableModule(new Callable<PlausibilityConfiguration>() {
+			// don't override existing plausibility configuration, offer it instead
+			// mostly for branch averaging
+			List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+			rupSet.offerAvailableModule(new Callable<PlausibilityConfiguration>() {
 
-					@Override
-					public PlausibilityConfiguration call() throws Exception {
-						RupturePlausibilityModels model = branch.requireValue(RupturePlausibilityModels.class);
-						if (model == null)
-							model = RUP_SET_MODEL_DEFAULT; // for now
-						FaultModels fm = branch.requireValue(FaultModels.class); // for now
-						PlausibilityConfiguration config;
-						synchronized (configCache) {
-							config = configCache.get(fm, model);
-							if (config == null) {
-								config = model.getConfig(subSects,
-										branch.requireValue(ScalingRelationships.class)).getPlausibilityConfig();
-								configCache.put(fm, model, config);
-							}
+				@Override
+				public PlausibilityConfiguration call() throws Exception {
+					RupturePlausibilityModels model = branch.requireValue(RupturePlausibilityModels.class);
+					if (model == null)
+						model = RUP_SET_MODEL_DEFAULT; // for now
+					FaultModels fm = branch.requireValue(FaultModels.class); // for now
+					PlausibilityConfiguration config;
+					synchronized (configCache) {
+						config = configCache.get(fm, model);
+						if (config == null) {
+							config = model.getConfig(subSects,
+									branch.requireValue(ScalingRelationships.class)).getPlausibilityConfig();
+							configCache.put(fm, model, config);
 						}
-						return config;
 					}
-				}, PlausibilityConfiguration.class);
-			}
-			if (!rupSet.hasModule(ClusterRuptures.class))
-				rupSet.addAvailableModule(new Callable<ClusterRuptures>() {
+					return config;
+				}
+			}, PlausibilityConfiguration.class);
+			
+			// offer cluster ruptures
+			// should always be single stranged
+			rupSet.offerAvailableModule(new Callable<ClusterRuptures>() {
 
-					@Override
-					public ClusterRuptures call() throws Exception {
-						return ClusterRuptures.singleStranged(rupSet);
-					}
-				}, ClusterRuptures.class);
+				@Override
+				public ClusterRuptures call() throws Exception {
+					return ClusterRuptures.singleStranged(rupSet);
+				}
+			}, ClusterRuptures.class);
 			return rupSet;
 		}
 
@@ -300,10 +298,10 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 		double slipWeight = 1d;
 		double paleoWeight = 5;
-		double parkWeight = 100;
-		double mfdWeight = 10;
+		double parkWeight = 50;
+		double mfdWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 1 : 10;
 		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
-		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.1 : 0d;
+		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
 		double paleoSmoothWeight = paleoWeight > 0 ? 10000 : 0;
 		
 		if (slipWeight > 0d)
@@ -386,6 +384,9 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 				.nonNegativity(NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN)
 				.sampler(sampler)
 				.variablePertubationBasis(new GRParticRateEstimator(rupSet, bVal).estimateRuptureRates());
+		
+		if (parkWeight > 0d)
+			builder.initialSolution(constrBuilder.getParkfieldInitial(true));
 		
 		return builder.build();
 	}
