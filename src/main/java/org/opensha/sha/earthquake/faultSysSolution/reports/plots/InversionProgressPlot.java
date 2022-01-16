@@ -19,6 +19,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.Interpolate;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
@@ -38,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
+import com.google.common.primitives.Doubles;
 
 public class InversionProgressPlot extends AbstractSolutionPlot {
 
@@ -235,11 +237,14 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				Table<String, Quantity, ArbitrarilyDiscretizedFunc> constrValIterFuncs = HashBasedTable.create();
 				Map<String, ArbitrarilyDiscretizedFunc> constrWeightIterFuncs = new HashMap<>();
 				Map<Quantity, ArbitrarilyDiscretizedFunc> avgValIterFuncs = new HashMap<>();
+				Map<Quantity, ArbitrarilyDiscretizedFunc> medValIterFuncs = new HashMap<>();
 				
 				Quantity[] quantities = { Quantity.MAD, Quantity.STD_DEV };
 				
-				for (Quantity q : quantities)
+				for (Quantity q : quantities) {
 					avgValIterFuncs.put(q, new ArbitrarilyDiscretizedFunc("Average"));
+					medValIterFuncs.put(q, new ArbitrarilyDiscretizedFunc("Median"));
+				}
 				
 				for (int i=0; i<iterations.size(); i++) {
 					long iter = iterations.get(i);
@@ -247,6 +252,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 					
 					for (Quantity q : quantities) {
 						double avgVal = 0d;
+						List<Double> vals = new ArrayList<>();
 						
 						for (MisfitStats misfits : stats.getStats()) {
 							String name = misfits.range.name;
@@ -256,6 +262,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 							double val = misfits.get(q);
 							constrValIterFuncs.get(name, q).set((double)iter, val);
 							avgVal += val;
+							vals.add(val);
 							
 							if (q == quantities[0]) {
 								// track weight
@@ -267,6 +274,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						
 						avgVal /= stats.getStats().size();
 						avgValIterFuncs.get(q).set((double)iter, avgVal);
+						medValIterFuncs.get(q).set((double)iter, DataUtils.median(Doubles.toArray(vals)));
 					}
 				}
 				
@@ -280,6 +288,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				for (Quantity quantity : plotQ) {
 					Map<String, ArbitrarilyDiscretizedFunc> constrFuncs;
 					ArbitrarilyDiscretizedFunc avgFunc;
+					ArbitrarilyDiscretizedFunc medFunc;
 					String myPrefix, yAxisLabel;
 					boolean yLog;
 					if (quantity == null) {
@@ -287,6 +296,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						myPrefix = "misift_progress_weights";
 						constrFuncs = constrWeightIterFuncs;
 						avgFunc = null;
+						medFunc = null;
 						yLog = true;
 						
 						// see if we actually have variable weights
@@ -304,15 +314,21 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						myPrefix = "misift_progress_"+quantity.name();
 						constrFuncs = constrValIterFuncs.column(quantity);
 						avgFunc = avgValIterFuncs.get(quantity);
+						medFunc = medValIterFuncs.get(quantity);
 						yLog = false;
 					}
 					
 					List<DiscretizedFunc> funcs = new ArrayList<>();
 					List<PlotCurveCharacterstics> chars = new ArrayList<>();
 					
+					if (medFunc != null) {
+						funcs.add(medFunc);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
+					}
+					
 					if (avgFunc != null) {
 						funcs.add(avgFunc);
-						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
 					}
 					
 					for (int i=0; i<constraintNames.size(); i++) {
