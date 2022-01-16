@@ -41,6 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
@@ -96,7 +97,11 @@ public class DraftModelConstraintBuilder {
 	}
 	
 	public DraftModelConstraintBuilder defaultConstraints() {
-		return defaultDataConstraints().defaultMetaConstraints();
+		return defaultConstraints(SubSectConstraintModels.TOT_NUCL_RATE);
+	}
+	
+	public DraftModelConstraintBuilder defaultConstraints(SubSectConstraintModels subSectConstrModel) {
+		return defaultDataConstraints(subSectConstrModel).defaultMetaConstraints();
 	}
 	
 	public DraftModelConstraintBuilder except(Class<? extends InversionConstraint> clazz) {
@@ -112,12 +117,23 @@ public class DraftModelConstraintBuilder {
 	}
 	
 	public DraftModelConstraintBuilder defaultDataConstraints() {
-		return magDepRelStdDev(M->0.1*Math.pow(10, supraBVal*0.5*(M-6)))
+		return defaultDataConstraints(SubSectConstraintModels.TOT_NUCL_RATE);
+	}
+	
+	public DraftModelConstraintBuilder defaultDataConstraints(SubSectConstraintModels subSectConstrModel) {
+		magDepRelStdDev(M->0.1*Math.pow(10, supraBVal*0.5*(M-6)))
 				.slipRates().weight(1d)
 				.paleoRates().weight(5d).paleoSlips().weight(5d)
-				.parkfield().weight(100d)
-				.supraBValMFDs().weight(10)
-				.sectSupraRates().weight(0.5);
+				.parkfield().weight(50d);
+		if (subSectConstrModel == SubSectConstraintModels.TOT_NUCL_RATE) {
+			supraBValMFDs().weight(10).sectSupraRates().weight(0.5);
+		} else if (subSectConstrModel == SubSectConstraintModels.NUCL_MFD) {
+			supraBValMFDs().weight(1).sectSupraNuclMFDs().weight(0.5);
+		} else if (subSectConstrModel == null || subSectConstrModel == SubSectConstraintModels.NONE) {
+			supraBValMFDs().weight(1);
+		}
+		
+		return this;
 	}
 	
 	public DraftModelConstraintBuilder slipRates() {
