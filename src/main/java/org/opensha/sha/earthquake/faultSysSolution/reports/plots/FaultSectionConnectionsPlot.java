@@ -276,10 +276,10 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")",
 					"![Comparison clusters]("+relPathToResources+"/"+compClusters.getName()+")");
-			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", "conn_clusters.geojson")
-					+" [Download GeoJSON](conn_clusters.geojson)",
-					RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", "conn_clusters_comp.geojson")
-					+" [Download GeoJSON](conn_clusters_comp.geojson)");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters.geojson")
+					+" [Download GeoJSON]("+relPathToResources+"/conn_clusters.geojson)",
+					RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters_comp.geojson")
+					+" [Download GeoJSON]("+relPathToResources+"/conn_clusters_comp.geojson)");
 			lines.addAll(table.build());
 		} else {
 			table = MarkdownUtils.tableBuilder();
@@ -288,8 +288,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 					"Connected Section Clusters");
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")");
-			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", "conn_clusters.geojson")
-					+" [Download GeoJSON](conn_clusters.geojson)");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters.geojson")
+					+" [Download GeoJSON]("+relPathToResources+"/conn_clusters.geojson)");
 			lines.addAll(table.build());
 		}
 		return lines;

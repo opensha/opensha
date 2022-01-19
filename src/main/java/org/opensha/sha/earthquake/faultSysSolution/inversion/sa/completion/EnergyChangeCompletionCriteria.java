@@ -1,12 +1,10 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
 import java.util.Iterator;
-import java.util.List;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.util.DataUtils;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.InversionState;
 
 import com.google.common.base.Splitter;
 
@@ -30,10 +28,9 @@ public class EnergyChangeCompletionCriteria implements CompletionCriteria {
 	}
 
 	@Override
-	public boolean isSatisfied(StopWatch watch, long iter, double[] energy,
-			long numPerturbsKept, int numNonZero, double[] misfits, double[] misfits_ineq, List<ConstraintRange> constraintRanges) {
-		double mins = watch.getTime()/1000d/60d;
-		double e = energy[0];
+	public boolean isSatisfied(InversionState state) {
+		double mins = state.elapsedTimeMillis/1000d/60d;
+		double e = state.energy[0];
 		energyVsTime.set(mins, e);
 		if (lookBackStart <= 0)
 			lookBackStart = energyVsTime.getMinX() + lookBackMins;

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.InversionState;
 
 public class VariableSubTimeCompletionCriteria implements VariableSubCompletionCriteria {
 	
@@ -19,9 +20,8 @@ public class VariableSubTimeCompletionCriteria implements VariableSubCompletionC
 	}
 
 	@Override
-	public boolean isSatisfied(StopWatch watch, long iter, double[] energy,
-			long numPerturbsKept, int numNonZero, double[] misfits, double[] misfits_ineq, List<ConstraintRange> constraintRanges) {
-		return watch.getTime() >= cur;
+	public boolean isSatisfied(InversionState state) {
+		return state.elapsedTimeMillis >= cur;
 	}
 
 	@Override

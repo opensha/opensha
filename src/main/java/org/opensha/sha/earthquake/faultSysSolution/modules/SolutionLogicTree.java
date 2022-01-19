@@ -463,6 +463,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(progressFile);
 		}
 		
+		InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
+		
+		if (misfitProgress != null) {
+			String progressFile = getBranchFileName(branch, prefix,
+					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true);
+			Preconditions.checkState(!writtenFiles.contains(progressFile));
+			CSV_BackedModule.writeToArchive(misfitProgress.getCSV(), zout, entryPrefix, progressFile);
+			writtenFiles.add(progressFile);
+		}
+		
 		// use rupture-sections file to figure out which things affect plausibility
 		List<? extends LogicTreeLevel<?>> rupSectLevels = getLevelsAffectingFile(
 				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
@@ -618,6 +628,13 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (progressFile != null && zip.getEntry(progressFile) != null) {
 			CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, progressFile);
 			AnnealingProgress progress = new AnnealingProgress(progressCSV);
+			sol.addModule(progress);
+		}
+		
+		String misfitProgressFile = getBranchFileName(branch, InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true);
+		if (misfitProgressFile != null && zip.getEntry(misfitProgressFile) != null) {
+			CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, misfitProgressFile);
+			InversionMisfitProgress progress = new InversionMisfitProgress(progressCSV);
 			sol.addModule(progress);
 		}
 		

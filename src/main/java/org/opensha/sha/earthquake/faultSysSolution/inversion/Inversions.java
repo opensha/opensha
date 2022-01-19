@@ -25,6 +25,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ReweightEvenFitSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
@@ -623,6 +624,8 @@ public class Inversions {
 		sol.addModule(misfits.getMisfitStats());
 		if (info != null)
 			sol.setInfoString(info);
+		if (sa instanceof ReweightEvenFitSimulatedAnnealing)
+			sol.addModule(((ReweightEvenFitSimulatedAnnealing)sa).getMisfitProgress());
 		
 		return sol;
 	}

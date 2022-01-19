@@ -80,19 +80,23 @@ public interface SimulatedAnnealing {
 	public double[] getBestMisfit();
 	
 	public double[] getBestInequalityMisfit();
-	
-	public DoubleMatrix2D getA_ineq();
+
+	public ColumnOrganizedAnnealingData getEqualityData();
 	
 	public DoubleMatrix2D getA();
 	
 	public double[] getD();
 	
+	public ColumnOrganizedAnnealingData getInequalityData();
+	
+	public DoubleMatrix2D getA_ineq();
+	
 	public double[] getD_ineq();
 	
-	public void setInputs(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq);
+	public void setInputs(ColumnOrganizedAnnealingData equalityData, ColumnOrganizedAnnealingData inequalityData);
 	
-	public void setAll(DoubleMatrix2D A, double[] d, DoubleMatrix2D A_ineq, double[] d_ineq, double[] Ebest,
-			double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero);
+	public void setAll(ColumnOrganizedAnnealingData equalityData, ColumnOrganizedAnnealingData inequalityData,
+			double[] Ebest, double[] xbest, double[] misfit, double[] misfit_ineq, int numNonZero);
 
 	public void setResults(double[] Ebest, double[] xbest);
 	
@@ -105,16 +109,16 @@ public interface SimulatedAnnealing {
 	/**
 	 * Iterate for the given number of iterations
 	 * @param numIterations
-	 * @return
+	 * @return inversion state
 	 */
-	public long iterate(long numIterations);
+	public InversionState iterate(long numIterations);
 
 	/**
 	 * Iterate until the given CompletionCriteria is satisfied
 	 * @param completion
-	 * @return
+	 * @return inversion state
 	 */
-	public long iterate(CompletionCriteria completion);
+	public InversionState iterate(CompletionCriteria completion);
 	
 	/**
 	 * Sets the random number generator used - helpful for reproducing results for testing purposes
@@ -122,7 +126,15 @@ public interface SimulatedAnnealing {
 	 */
 	public void setRandom(Random r);
 
-	public long[] iterate(long startIter, long startPerturbs, CompletionCriteria criteria);
+	/**
+	 * Iterate with the given starting iteration count, perturbation count, and completion criteria
+	 * 
+	 * @param startIter
+	 * @param startPerturbs
+	 * @param criteria
+	 * @return inversion state
+	 */
+	public InversionState iterate(InversionState startingState, CompletionCriteria criteria);
 	
 	public default void writeRateVsRankPlot(File outputDir, String prefix, double[] minimumRuptureRates) throws IOException {
 		double[] solutionRates = getBestSolution();
@@ -322,6 +334,7 @@ public interface SimulatedAnnealing {
 	public static void writeProgressPlots(AnnealingProgress track, File outputDir, String prefix, int numRuptures,
 			AnnealingProgress compTrack) throws IOException {
 		ArbitrarilyDiscretizedFunc perturbsVsIters = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc worseKeptsVsIters = track.hasWorseKepts() ? new ArbitrarilyDiscretizedFunc() : null;
 		ArbitrarilyDiscretizedFunc nonZerosVsIters = new ArbitrarilyDiscretizedFunc();
 		ArbitrarilyDiscretizedFunc percentNonZerosVsIters = new ArbitrarilyDiscretizedFunc();
 		
@@ -385,6 +398,8 @@ public interface SimulatedAnnealing {
 					hasNonZeros[j] = true;
 			}
 			perturbsVsIters.set((double)iter, (double)perturb);
+			if (worseKeptsVsIters != null)
+				worseKeptsVsIters.set((double)iter, (double)track.getNumWorseKept(i));
 			nonZerosVsIters.set((double)iter, (double)nonZeros);
 			if (numRuptures > 0)
 				percentNonZerosVsIters.set((double)iter, 100d*(double)nonZeros/(double)numRuptures);
@@ -425,7 +440,7 @@ public interface SimulatedAnnealing {
 			new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.CYAN.darker());
 		PlotCurveCharacterstics nzChar =
 				new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.ORANGE.darker());
-		PlotCurveCharacterstics pnzChar =
+		PlotCurveCharacterstics worseChar =
 			new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.RED.darker());
 		
 		String timeLabel = "Time (minutes)";
@@ -488,7 +503,10 @@ public interface SimulatedAnnealing {
 		perturbChars.add(perturbChar);
 		List<ArbitrarilyDiscretizedFunc> nzFuncs = new ArrayList<ArbitrarilyDiscretizedFunc>();
 		List<PlotCurveCharacterstics> nzChars = new ArrayList<>();
-		nzFuncs.add(nonZerosVsIters);
+		if (numRuptures > 0)
+			nzFuncs.add(percentNonZerosVsIters);
+		else
+			nzFuncs.add(nonZerosVsIters);
 		nzChars.add(nzChar);
 		
 		if (compTrack != null) {
@@ -503,20 +521,16 @@ public interface SimulatedAnnealing {
 		PlotSpec pSpec = new PlotSpec(perturbFuncs, perturbChars,
 				combTitle, iterationsLabel, "# Perturbations");
 		PlotSpec nzSpec = new PlotSpec(nzFuncs, nzChars,
-				combTitle, iterationsLabel, "# Non-Zero Rates");
+				combTitle, iterationsLabel, numRuptures > 0 ? "% Non-Zero Rates" : "# Non-Zero Rates");
 		List<PlotSpec> combSpecs;
-		if (numRuptures > 0) {
-			List<ArbitrarilyDiscretizedFunc> pnzFuncs = new ArrayList<ArbitrarilyDiscretizedFunc>();
-			List<PlotCurveCharacterstics> pnzChars = new ArrayList<>();
-			pnzFuncs.add(percentNonZerosVsIters);
-			pnzChars.add(pnzChar);
-			if (compPercentNonZeros != null) {
-				pnzFuncs.add(compPercentNonZeros);
-				pnzChars.add(compChar);
-			}
-			PlotSpec pnzSpec = new PlotSpec(pnzFuncs, pnzChars,
-					combTitle, iterationsLabel, "% Non-Zero Rates");
-			combSpecs = List.of(pnzSpec, nzSpec, pSpec);
+		if (worseKeptsVsIters != null) {
+			List<ArbitrarilyDiscretizedFunc> worseFuncs = new ArrayList<ArbitrarilyDiscretizedFunc>();
+			List<PlotCurveCharacterstics> worseChars = new ArrayList<>();
+			worseFuncs.add(worseKeptsVsIters);
+			worseChars.add(worseChar);
+			PlotSpec worseSpec = new PlotSpec(worseFuncs, worseChars,
+					combTitle, iterationsLabel, "# Worse Pertubs Kept");
+			combSpecs = List.of(nzSpec, worseSpec, pSpec);
 		} else {
 			combSpecs = List.of(nzSpec, pSpec);
 		}
@@ -524,7 +538,7 @@ public interface SimulatedAnnealing {
 		List<Range> combXRanges = List.of(new Range(0d, iterMax));
 		gp.drawGraphPanel(combSpecs, false, false, combXRanges, null);
 		gp.saveAsPNG(new File(outputDir, prefix+"_perturb_vs_iters.png").getAbsolutePath(),
-				plot_width, numRuptures > 0 ? (int)(plot_height*1.4) : plot_height);
+				plot_width, worseKeptsVsIters != null ? (int)(plot_height*1.4) : plot_height);
 		
 //		ArrayList<PlotCurveCharacterstics> normChars = new ArrayList<PlotCurveCharacterstics>();
 //		normChars.addAll(energyChars);

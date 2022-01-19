@@ -1,10 +1,8 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
-import java.util.List;
-
-import org.apache.commons.lang3.time.StopWatch;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.InversionState;
 
 public class MisfitStdDevCompletionCriteria implements CompletionCriteria {
 	
@@ -23,13 +21,12 @@ public class MisfitStdDevCompletionCriteria implements CompletionCriteria {
 	private static boolean D = true;
 
 	@Override
-	public boolean isSatisfied(StopWatch watch, long iter, double[] energy, long numPerturbsKept, int numNonZero,
-			double[] misfits, double[] misfits_ineq, List<ConstraintRange> constraintRanges) {
+	public boolean isSatisfied(InversionState state) {
 		if (D) System.out.println("Evaluating Misfit Std. Dev. criteria, target="
 			+(float)targetStdDev+", type="+weightingType);
 		boolean pass = true;
-		for (int c=0; c<constraintRanges.size(); c++) {
-			ConstraintRange range = constraintRanges.get(c);
+		for (int c=0; c<state.constraintRanges.size(); c++) {
+			ConstraintRange range = state.constraintRanges.get(c);
 			if (this.weightingType != null && range.weightingType != weightingType)
 				continue;
 			
@@ -41,12 +38,12 @@ public class MisfitStdDevCompletionCriteria implements CompletionCriteria {
 			// so if follows that:
 			// sd = sqrt((1/N)*E)
 			
-			double e = energy[c+4];
+			double e = state.energy[c+4];
 			if (range.weight != 1d)
 				// remove weighting
 				e /= range.weight*range.weight;
 			double stdDev = Math.sqrt(e/(range.endRow-range.startRow));
-			if (D) System.out.println("\t"+range.shortName+"\tE="+(float)energy[c+4]
+			if (D) System.out.println("\t"+range.shortName+"\tE="+(float)state.energy[c+4]
 					+"\tunWtE="+(float)e+"\tstdDev="+(float)stdDev);
 			if (stdDev > targetStdDev) {
 				if (!D)

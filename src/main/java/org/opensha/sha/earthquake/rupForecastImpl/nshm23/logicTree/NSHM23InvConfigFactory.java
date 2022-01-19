@@ -13,6 +13,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
@@ -27,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
@@ -40,6 +42,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
@@ -91,18 +94,29 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 	@Override
 	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) {
 		// build empty-ish rup set without modules attached
-		FaultSystemRupSet rupSet = buildGenericRupSet(branch, threads);
+		return buildRuptureSet(branch, buildGenericRupSet(branch, threads));
+	}
+
+	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, FaultSystemRupSet rupSet) {
+		// we don't trust any modules attached to this rupture set as it could have been used for another calculation
+		// that could have attached anything. Instead, lets only keep the ruptures themselves
 		
-		FaultModels fm = branch.getValue(FaultModels.class);
-		DeformationModels dm = branch.getValue(DeformationModels.class);
-		if (fm != null && dm != null) {
-			// override slip rates to the correct deformation model
-			rupSet = FaultSystemRupSet.buildFromExisting(rupSet).replaceFaultSections(
-					RuptureSets.getU3SubSects(fm, dm)).build();
-		} else if (dm != null && fm == null) {
-			System.err.println("WARNING: can't override deformation model in rupture set because fault model is null");
-		}
+		FaultModels fm = branch.requireValue(FaultModels.class);
+		DeformationModels dm = branch.requireValue(DeformationModels.class);
+		// override slip rates for the given deformation model
+		List<? extends FaultSection> subSects = RuptureSets.getU3SubSects(fm, dm);
 		
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		
+		PlausibilityConfiguration plausibility = rupSet.requireModule(PlausibilityConfiguration.class);
+		ScalingRelationships scale = branch.requireValue(ScalingRelationships.class);
+		
+		rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
+		
+		SlipAlongRuptureModels slipAlong = branch.requireValue(SlipAlongRuptureModels.class);
+		rupSet.addModule(slipAlong.getModel());
+		
+		// add other modules
 		return getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
 	}
 
@@ -119,24 +133,21 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		public synchronized FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			rupSet.addModule(branch);
 			
-			if (!rupSet.hasModule(AveSlipModule.class)) {
-				rupSet.addAvailableModule(new Callable<AveSlipModule>() {
+			// replace branch-specific modules
+			rupSet.addAvailableModule(new Callable<AveSlipModule>() {
 
-					@Override
-					public AveSlipModule call() throws Exception {
-						return AveSlipModule.forModel(rupSet, branch.requireValue(ScalingRelationships.class));
-					}
-				}, AveSlipModule.class);
-			}
-			if (!rupSet.hasModule(SlipAlongRuptureModel.class)) {
-				rupSet.addAvailableModule(new Callable<SlipAlongRuptureModel>() {
+				@Override
+				public AveSlipModule call() throws Exception {
+					return AveSlipModule.forModel(rupSet, branch.requireValue(ScalingRelationships.class));
+				}
+			}, AveSlipModule.class);
+			rupSet.addAvailableModule(new Callable<SlipAlongRuptureModel>() {
 
-					@Override
-					public SlipAlongRuptureModel call() throws Exception {
-						return branch.requireValue(SlipAlongRuptureModels.class).getModel();
-					}
-				}, SlipAlongRuptureModel.class);
-			}
+				@Override
+				public SlipAlongRuptureModel call() throws Exception {
+					return branch.requireValue(SlipAlongRuptureModels.class).getModel();
+				}
+			}, SlipAlongRuptureModel.class);
 			
 			// add modified section minimum magnitudes
 			FaultModels fm = branch.getValue(FaultModels.class);
@@ -231,38 +242,39 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 				}
 			}, PaleoseismicConstraintData.class);
 			
-			if (!rupSet.hasModule(PlausibilityConfiguration.class)) {
-				// mostly for branch averaging
-				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
-				rupSet.addAvailableModule(new Callable<PlausibilityConfiguration>() {
+			// don't override existing plausibility configuration, offer it instead
+			// mostly for branch averaging
+			List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+			rupSet.offerAvailableModule(new Callable<PlausibilityConfiguration>() {
 
-					@Override
-					public PlausibilityConfiguration call() throws Exception {
-						RupturePlausibilityModels model = branch.requireValue(RupturePlausibilityModels.class);
-						if (model == null)
-							model = RUP_SET_MODEL_DEFAULT; // for now
-						FaultModels fm = branch.requireValue(FaultModels.class); // for now
-						PlausibilityConfiguration config;
-						synchronized (configCache) {
-							config = configCache.get(fm, model);
-							if (config == null) {
-								config = model.getConfig(subSects,
-										branch.requireValue(ScalingRelationships.class)).getPlausibilityConfig();
-								configCache.put(fm, model, config);
-							}
+				@Override
+				public PlausibilityConfiguration call() throws Exception {
+					RupturePlausibilityModels model = branch.requireValue(RupturePlausibilityModels.class);
+					if (model == null)
+						model = RUP_SET_MODEL_DEFAULT; // for now
+					FaultModels fm = branch.requireValue(FaultModels.class); // for now
+					PlausibilityConfiguration config;
+					synchronized (configCache) {
+						config = configCache.get(fm, model);
+						if (config == null) {
+							config = model.getConfig(subSects,
+									branch.requireValue(ScalingRelationships.class)).getPlausibilityConfig();
+							configCache.put(fm, model, config);
 						}
-						return config;
 					}
-				}, PlausibilityConfiguration.class);
-			}
-			if (!rupSet.hasModule(ClusterRuptures.class))
-				rupSet.addAvailableModule(new Callable<ClusterRuptures>() {
+					return config;
+				}
+			}, PlausibilityConfiguration.class);
+			
+			// offer cluster ruptures
+			// should always be single stranded
+			rupSet.offerAvailableModule(new Callable<ClusterRuptures>() {
 
-					@Override
-					public ClusterRuptures call() throws Exception {
-						return ClusterRuptures.singleStranged(rupSet);
-					}
-				}, ClusterRuptures.class);
+				@Override
+				public ClusterRuptures call() throws Exception {
+					return ClusterRuptures.singleStranged(rupSet);
+				}
+			}, ClusterRuptures.class);
 			return rupSet;
 		}
 
@@ -298,10 +310,10 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 		double slipWeight = 1d;
 		double paleoWeight = 5;
-		double parkWeight = 100;
-		double mfdWeight = 10;
+		double parkWeight = 10;
+		double mfdWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 1 : 10;
 		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
-		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.1 : 0d;
+		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
 		double paleoSmoothWeight = paleoWeight > 0 ? 10000 : 0;
 		
 		if (slipWeight > 0d)
@@ -333,6 +345,8 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
 		
+		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, bVal);
+		
 		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
 		System.out.println("Segmentation model: "+segModel);
 		if (segModel != null && segModel != SegmentationModels.NONE) {
@@ -340,7 +354,6 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 			
 //			InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
 //					rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
-			SectParticipationRateEstimator rateEst = new GRParticRateEstimator(rupSet, bVal);
 
 //			double weight = 0.5d;
 //			boolean ineq = false;
@@ -371,19 +384,20 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 		int avgThreads = threads / 4;
 		
-		CompletionCriteria completion;
-		if (constrModel == SubSectConstraintModels.NUCL_MFD)
-			completion = TimeCompletionCriteria.getInHours(5l);
-		else
-			completion = TimeCompletionCriteria.getInHours(2l);
+		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
 		
 		InversionConfiguration.Builder builder = InversionConfiguration.builder(constraints, completion)
 				.threads(threads)
-				.avgThreads(avgThreads, TimeCompletionCriteria.getInMinutes(5l))
+				.subCompletion(new IterationsPerVariableCompletionCriteria(1d))
+//				.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(100d))
+				.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(50d))
 				.perturbation(GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE)
 				.nonNegativity(NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN)
 				.sampler(sampler)
-				.variablePertubationBasis(new GRParticRateEstimator(rupSet, bVal).estimateRuptureRates());
+				.variablePertubationBasis(rateEst.estimateRuptureRates());
+		
+		if (parkWeight > 0d)
+			builder.initialSolution(constrBuilder.getParkfieldInitial(true));
 		
 		return builder.build();
 	}

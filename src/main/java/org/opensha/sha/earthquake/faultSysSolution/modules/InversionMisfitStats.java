@@ -153,7 +153,7 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 			this.rmse = Math.sqrt(mse);
 		}
 		
-		private MisfitStats(List<String> csvLine) {
+		MisfitStats(List<String> csvLine) {
 			Preconditions.checkState(csvLine.size() == csvHeader.size() || csvLine.size() == csvHeader.size()-1);
 			int index = 0;
 			String name = csvLine.get(index++);

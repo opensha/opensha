@@ -152,7 +152,7 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	private static void writeData(double[] misfits, double[] data,
 			String entryPrefix, String fileName, ZipOutputStream zout) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
-		Preconditions.checkState(misfits.length == data.length);
+		Preconditions.checkState(misfits.length == data.length, "%s != %s");
 		csv.addLine("Row", "Data", "Misfit");
 		for (int i=0; i<misfits.length; i++)
 			csv.addLine(i+"", data[i]+"", misfits[i]+"");

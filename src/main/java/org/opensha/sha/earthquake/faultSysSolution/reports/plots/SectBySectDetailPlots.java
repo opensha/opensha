@@ -1940,8 +1940,6 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
-		FaultSystemRupSet rupSet = meta.primary.rupSet;
-		
 		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class);
 		
 		double[] rupMoRates = SectBValuePlot.calcRupMomentRates(meta.primary.sol);

@@ -322,15 +322,40 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	/**
 	 * Adds an available module that will be lazily loaded when {@link ModuleContainer#getModule(Class)} or
 	 * {@link ModuleContainer#hasModule(Class)} is called and no module is presently loaded that matches the given class.
+	 * <p>
+	 * This will also remove any already loaded modules that map to the given class, otherwise this available module
+	 * could be shadowed. If you want to attach an available module anyway even if a match is already loaded, use
+	 * {@link #addAvailableModule(Callable, Class, boolean)}, but note that the available module will only ever be loaded
+	 * if the the loaded module is first removed. If you simply want to offer an available module that is only kept if
+	 * no match yet exists, such as a default implementation, use {@link #offerAvailableModule(Callable, Class)}.
 	 * 
 	 * @param call
 	 * @param moduleClass
 	 */
 	@SuppressWarnings("unchecked")
 	public synchronized <M extends E> void addAvailableModule(Callable<? extends OpenSHA_Module> call, Class<M> moduleClass) {
+		addAvailableModule(call, moduleClass, true);
+	}
+	
+	/**
+	 * Adds an available module that will be lazily loaded when {@link ModuleContainer#getModule(Class)} or
+	 * {@link ModuleContainer#hasModule(Class)} is called and no module is presently loaded that matches the given class.
+	 * 
+	 * @param call
+	 * @param moduleClass
+	 * @param removeMatchingLoaded if true, any already loaded classes that map to the given class will be removed,
+	 * otherwise this module will not replace any already loaded modules.
+	 */
+	@SuppressWarnings("unchecked")
+	public synchronized <M extends E> void addAvailableModule(Callable<? extends OpenSHA_Module> call,
+			Class<M> moduleClass, boolean removeMatchingLoaded) {
 		List<Class<? extends OpenSHA_Module>> assignableClasses = getAssignableClasses(moduleClass);
 		
 		// fully remove any duplicate associations
+		if (removeMatchingLoaded)
+			// this removes any already loaded module that is assignable from any class we are about to map
+			for (Class<? extends OpenSHA_Module> clazz : assignableClasses)
+				removeModuleInstances(clazz);
 		// this removes any available module that is assignable from any class we are about to map
 		for (Class<? extends OpenSHA_Module> clazz : assignableClasses)
 			removeAvailableModuleInstances(clazz);

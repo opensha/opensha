@@ -24,6 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint.Adapter;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ColumnOrganizedAnnealingData;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ReweightEvenFitSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
@@ -32,6 +33,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompoundCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.EnergyCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.MisfitStdDevCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
@@ -271,9 +273,20 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return this;
 		}
 		
+		public Builder completion(CompletionCriteria completion) {
+			config.completion = completion;
+			return this;
+		}
+		
 		public Builder avgThreads(int avgThreads, CompletionCriteria avgCompletion) {
 			config.avgThreads = avgThreads;
 			config.avgCompletion = avgCompletion;
+			return this;
+		}
+		
+		public Builder noAvg() {
+			config.avgThreads = null;
+			config.avgCompletion = null;
 			return this;
 		}
 		
@@ -338,6 +351,8 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return TimeCompletionCriteria.getInSeconds(Long.parseLong(value.substring(0, value.length()-1)));
 		if (value.endsWith("e")) // TODO add to docs
 			return new EnergyCompletionCriteria(Double.parseDouble(value.substring(0, value.length()-1)));
+		if (value.endsWith("ip")) // TODO add to docs
+			return new IterationsPerVariableCompletionCriteria(Double.parseDouble(value.substring(0, value.length()-2)));
 		if (value.endsWith("i"))
 			value = value.substring(0, value.length()-1);
 		return new IterationCompletionCriteria(Long.parseLong(value));
@@ -425,6 +440,10 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	}
 	
 	public SimulatedAnnealing buildSA(InversionInputGenerator inputs) {
+		ColumnOrganizedAnnealingData equalityData = new ColumnOrganizedAnnealingData(inputs.getA(), inputs.getD());
+		ColumnOrganizedAnnealingData inequalityData = null;
+		if (inputs.getA_ineq() != null)
+			inequalityData = new ColumnOrganizedAnnealingData(inputs.getA_ineq(), inputs.getD_ineq());
 		SimulatedAnnealing sa;
 		if (threads > 1) {
 			if (avgThreads != null && avgThreads > 0) {
@@ -439,22 +458,20 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 				while (threadsLeft > 0) {
 					int myThreads = Integer.min(threadsLeft, threadsPerAvg);
 					if (myThreads > 1)
-						tsas.add(new ThreadedSimulatedAnnealing(inputs.getA(), inputs.getD(),
-								inputs.getInitialSolution(), 0d, inputs.getA_ineq(), inputs.getD_ineq(),
-								myThreads, subCompletion));
+						tsas.add(new ThreadedSimulatedAnnealing(equalityData, inequalityData,
+								inputs.getInitialSolution(), 0d, myThreads, subCompletion));
 					else
-						tsas.add(new SerialSimulatedAnnealing(inputs.getA(), inputs.getD(),
-								inputs.getInitialSolution(), 0d, inputs.getA_ineq(), inputs.getD_ineq()));
+						tsas.add(new SerialSimulatedAnnealing(equalityData, inequalityData,
+								inputs.getInitialSolution(), 0d));
 					threadsLeft -= myThreads;
 				}
 				sa = new ThreadedSimulatedAnnealing(tsas, avgCompletion, true);
 			} else {
-				sa = new ThreadedSimulatedAnnealing(inputs.getA(), inputs.getD(),
-						inputs.getInitialSolution(), 0d, inputs.getA_ineq(), inputs.getD_ineq(), threads, subCompletion);
+				sa = new ThreadedSimulatedAnnealing(equalityData, inequalityData,
+						inputs.getInitialSolution(), 0d, threads, subCompletion);
 			}
 		} else {
-			sa = new SerialSimulatedAnnealing(inputs.getA(), inputs.getD(), inputs.getInitialSolution(), 0d,
-					inputs.getA_ineq(), inputs.getD_ineq());
+			sa = new SerialSimulatedAnnealing(equalityData, inequalityData, inputs.getInitialSolution(), 0d);
 		}
 		sa.setConstraintRanges(inputs.getConstraintRowRanges());
 		if (reweightTargetQuantity != null) {
