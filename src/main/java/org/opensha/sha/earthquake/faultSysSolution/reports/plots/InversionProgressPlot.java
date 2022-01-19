@@ -222,7 +222,8 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 			InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
 			
 			List<Long> iterations = misfitProgress.getIterations();
-			List<Long> times = misfitProgress.getTimes();
+			Quantity targetQuantity = misfitProgress.getTargetQuantity();
+			List<Double> targetVals = misfitProgress.getTargetVals();
 			List<InversionMisfitStats> statsList = misfitProgress.getStats();
 			
 			if (!iterations.isEmpty()) {
@@ -237,13 +238,13 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				Table<String, Quantity, ArbitrarilyDiscretizedFunc> constrValIterFuncs = HashBasedTable.create();
 				Map<String, ArbitrarilyDiscretizedFunc> constrWeightIterFuncs = new HashMap<>();
 				Map<Quantity, ArbitrarilyDiscretizedFunc> avgValIterFuncs = new HashMap<>();
-				Map<Quantity, ArbitrarilyDiscretizedFunc> medValIterFuncs = new HashMap<>();
+				ArbitrarilyDiscretizedFunc targetValIterFunc = targetQuantity != null && targetVals != null ?
+						new ArbitrarilyDiscretizedFunc("Target") : null;
 				
 				Quantity[] quantities = { Quantity.MAD, Quantity.STD_DEV };
 				
 				for (Quantity q : quantities) {
 					avgValIterFuncs.put(q, new ArbitrarilyDiscretizedFunc("Average"));
-					medValIterFuncs.put(q, new ArbitrarilyDiscretizedFunc("Median"));
 				}
 				
 				for (int i=0; i<iterations.size(); i++) {
@@ -274,7 +275,8 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						
 						avgVal /= stats.getStats().size();
 						avgValIterFuncs.get(q).set((double)iter, avgVal);
-						medValIterFuncs.get(q).set((double)iter, DataUtils.median(Doubles.toArray(vals)));
+						if (targetValIterFunc != null && q == targetQuantity)
+							targetValIterFunc.set((double)iter, targetVals.get(i));
 					}
 				}
 				
@@ -288,7 +290,6 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				for (Quantity quantity : plotQ) {
 					Map<String, ArbitrarilyDiscretizedFunc> constrFuncs;
 					ArbitrarilyDiscretizedFunc avgFunc;
-					ArbitrarilyDiscretizedFunc medFunc;
 					String myPrefix, yAxisLabel;
 					boolean yLog;
 					if (quantity == null) {
@@ -296,7 +297,6 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						myPrefix = "misift_progress_weights";
 						constrFuncs = constrWeightIterFuncs;
 						avgFunc = null;
-						medFunc = null;
 						yLog = true;
 						
 						// see if we actually have variable weights
@@ -314,15 +314,14 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						myPrefix = "misift_progress_"+quantity.name();
 						constrFuncs = constrValIterFuncs.column(quantity);
 						avgFunc = avgValIterFuncs.get(quantity);
-						medFunc = medValIterFuncs.get(quantity);
 						yLog = false;
 					}
 					
 					List<DiscretizedFunc> funcs = new ArrayList<>();
 					List<PlotCurveCharacterstics> chars = new ArrayList<>();
 					
-					if (medFunc != null) {
-						funcs.add(medFunc);
+					if (targetValIterFunc != null && quantity == targetQuantity) {
+						funcs.add(targetValIterFunc);
 						chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
 					}
 					

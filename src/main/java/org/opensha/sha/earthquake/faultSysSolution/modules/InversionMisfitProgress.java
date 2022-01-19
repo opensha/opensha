@@ -7,6 +7,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 
 import com.google.common.base.Preconditions;
 
@@ -15,6 +16,8 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 	private List<Long> iterations;
 	private List<Long> times;
 	private List<InversionMisfitStats> stats;
+	private Quantity targetQuantity;
+	private List<Double> targetVals;
 	
 	@SuppressWarnings("unused") // used for deserialization
 	private InversionMisfitProgress() {}
@@ -24,11 +27,24 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 	}
 
 	public InversionMisfitProgress(List<Long> iterations, List<Long> times, List<InversionMisfitStats> stats) {
+		this(iterations, times, stats, null, null);
+	}
+
+	public InversionMisfitProgress(List<Long> iterations, List<Long> times, List<InversionMisfitStats> stats,
+			Quantity targetQuantity, List<Double> targetVals) {
 		Preconditions.checkState(iterations.size() == times.size());
 		Preconditions.checkState(iterations.size() == stats.size());
 		this.iterations = iterations;
 		this.times = times;
 		this.stats = stats;
+		if (targetQuantity == null || targetVals == null) {
+			Preconditions.checkState(targetVals == null && targetQuantity == null,
+					"Should specify both target quantity and values, or neither");
+		} else {
+			Preconditions.checkState(targetVals.size() == iterations.size());
+			this.targetQuantity = targetQuantity;
+			this.targetVals = targetVals;
+		}
 	}
 	
 	public static final String MISFIT_PROGRESS_FILE_NAME = "inversion_misfit_progress.csv";
@@ -54,6 +70,14 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 	public List<InversionMisfitStats> getStats() {
 		return stats;
 	}
+	
+	public Quantity getTargetQuantity() {
+		return targetQuantity;
+	}
+
+	public List<Double> getTargetVals() {
+		return targetVals;
+	}
 
 	@Override
 	public CSVFile<?> getCSV() {
@@ -61,16 +85,22 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 		List<String> header = new ArrayList<>();
 		header.add("Iteration");
 		header.add("Time (ms)");
+		boolean targets = targetQuantity != null && targetVals != null;
+		if (targets)
+			header.add("Target "+targetQuantity);
 		header.addAll(InversionMisfitStats.csvHeader);
 		csv.addLine(header);
 		
 		for (int i=0; i<iterations.size(); i++) {
 			String iters = iterations.get(i)+"";
 			String time = times.get(i)+"";
+			String target = targets ? targetVals.get(i)+"" : null;
 			for (MisfitStats stat : stats.get(i).getStats()) {
 				List<String> line = new ArrayList<>(header.size());
 				line.add(iters);
 				line.add(time);
+				if (targets)
+					line.add(target);
 				line.addAll(stat.buildCSVLine());
 				csv.addLine(line);
 			}
@@ -84,14 +114,33 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 		times = new ArrayList<>();
 		stats = new ArrayList<>();
 		
+		boolean targets = csv.get(0, 2).trim().startsWith("Target");
+		if (targets) {
+			targetQuantity = null;
+			String header = csv.get(0, 2).trim();
+			for (Quantity quantity : Quantity.values()) {
+				if (header.equals("Target "+quantity)) {
+					Preconditions.checkState(targetQuantity == null);
+					targetQuantity = quantity;
+				}
+			}
+			Preconditions.checkNotNull(targetQuantity);
+			targetVals = new ArrayList<>();
+		}
+		
 		long curIteration = -1l;
 		long curTime = -1l;
+		Double curTarget = null;
 		List<MisfitStats> curStats = null;
 		for (int row=1; row<csv.getNumRows(); row++) {
-			long iteration = csv.getLong(row, 0);
-			long time = csv.getLong(row, 1);
+			int col = 0;
+			long iteration = csv.getLong(row, col++);
+			long time = csv.getLong(row, col++);
+			Double targetVal = null;
+			if (targets)
+				targetVal = csv.getDouble(row, col++);
 			List<String> misfitLine = csv.getLine(row);
-			misfitLine = misfitLine.subList(2, misfitLine.size());
+			misfitLine = misfitLine.subList(col, misfitLine.size());
 			MisfitStats stats = new MisfitStats(misfitLine);
 
 			Preconditions.checkState(iteration >= 0l);
@@ -106,11 +155,15 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 					Preconditions.checkState(!curStats.isEmpty());
 					iterations.add(curIteration);
 					times.add(curTime);
+					if (targets)
+						targetVals.add(curTarget);
+						
 					this.stats.add(new InversionMisfitStats(curStats));
 				}
 				curStats = new ArrayList<>();
 				curIteration = iteration;
 				curTime = time;
+				curTarget = targetVal;
 			}
 			Preconditions.checkState(time == curTime);
 			// additional constraint for the same iteration
@@ -122,6 +175,8 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 		Preconditions.checkState(!curStats.isEmpty());
 		iterations.add(curIteration);
 		times.add(curTime);
+		if (targets)
+			targetVals.add(curTarget);
 		this.stats.add(new InversionMisfitStats(curStats));
 	}
 
