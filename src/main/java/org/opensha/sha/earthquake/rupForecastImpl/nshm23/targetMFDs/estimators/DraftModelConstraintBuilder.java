@@ -124,7 +124,7 @@ public class DraftModelConstraintBuilder {
 		magDepRelStdDev(M->0.1*Math.pow(10, supraBVal*0.5*(M-6)))
 				.slipRates().weight(1d)
 				.paleoRates().weight(5d).paleoSlips().weight(5d)
-				.parkfield().weight(50d);
+				.parkfield().weight(10d);
 		if (subSectConstrModel == SubSectConstraintModels.TOT_NUCL_RATE) {
 			supraBValMFDs().weight(10).sectSupraRates().weight(0.5);
 		} else if (subSectConstrModel == SubSectConstraintModels.NUCL_MFD) {
