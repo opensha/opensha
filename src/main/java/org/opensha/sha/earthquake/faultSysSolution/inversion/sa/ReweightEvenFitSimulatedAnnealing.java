@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.math3.stat.StatUtils;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
@@ -35,7 +38,13 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DraftModelConstraintBuilder;
 
 import com.google.common.base.Preconditions;
@@ -45,7 +54,9 @@ import com.google.common.primitives.Doubles;
 import cern.colt.function.tdouble.IntIntDoubleFunction;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 /**
@@ -108,9 +119,14 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	public static final boolean PHASE_OUT_BELOW_LOWER_BOUND = true;
 	/**
 	 * if {@link #PHASE_OUT_BELOW_LOWER_BOUND} is true, then a constraint is phased out linearly as it's weight
-	 * transitions between origWeight/MAX_ADJUSTMENT_FACTOR and origWeight/(PHASE_OUT_FACTOR*MAX_ADJUSTMENT_FACTOR).
+	 * transitions between origWeight/{@link #PHASE_OUT_START_FACTOR} and origWeight/{@link #PHASE_OUT_END_FACTOR}.
 	 */
-	public static final double PHASE_OUT_FACTOR = 10d;
+	public static final double PHASE_OUT_START_FACTOR = 50d;
+	/**
+	 * if {@link #PHASE_OUT_BELOW_LOWER_BOUND} is true, then a constraint is phased out linearly as it's weight
+	 * transitions between origWeight/{@link #PHASE_OUT_START_FACTOR} and origWeight/{@link #PHASE_OUT_END_FACTOR}.
+	 */
+	public static final double PHASE_OUT_END_FACTOR = 100d;
 	
 	public static final Quantity QUANTITY_DEFAULT = Quantity.MAD;
 //	public static final double AVG_TARGET_TRANSITION_UPPER_DEFAULT = 5d;
@@ -170,6 +186,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	
 	private List<Long> iters;
 	private List<Long> times;
+	private List<Double> targetVals;
 	private List<InversionMisfitStats> iterStats;
 
 	public ReweightEvenFitSimulatedAnnealing(SimulatedAnnealing sa, CompletionCriteria subCompetionCriteria) {
@@ -227,6 +244,11 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 	@Override
 	protected void beforeRound(InversionState state, int round) {
+		beforeRound(state, round, false);
+	}
+
+	protected double beforeRound(InversionState state, int round, boolean targetOnly) {
+		double target;
 		if (round > 0) {
 			Stopwatch watch = Stopwatch.createStarted();
 			List<ConstraintRange> ranges = getConstraintRanges();
@@ -248,10 +270,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			double[] misfits_ineq = getBestInequalityMisfit();
 			
 			List<MisfitStats> stats = calcUncertWtStats(ranges, misfits, misfits_ineq);
-			double avgValue = 0d;
 			int numConstraints = 0;
 			int numValues = 0;
-			double avgDenominator = 0d;
 			List<Double> constraintTargetVals = new ArrayList<>();
 			List<Double> phaseOutStatuses = PHASE_OUT_BELOW_LOWER_BOUND ? new ArrayList<>() : null;
 			boolean hasPhaseOut = false;
@@ -267,8 +287,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 					if (PHASE_OUT_BELOW_LOWER_BOUND) {
 						// see if we're phasing/ed out
 						double origWeight = origRanges.get(r).weight;
-						double phaseUpperTarget = origWeight/MAX_ADJUSTMENT_FACTOR;
-						double phaseLowerTarget = phaseUpperTarget/PHASE_OUT_FACTOR;
+						double phaseUpperTarget = origWeight/PHASE_OUT_START_FACTOR;
+						double phaseLowerTarget = origWeight/PHASE_OUT_END_FACTOR;
 						double status;
 						if (range.weight < phaseLowerTarget)
 							// fully phased out
@@ -279,74 +299,86 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 						else
 							// not phased out
 							status = 1;
-						hasPhaseOut = hasPhaseOut && status != 1d;
+						hasPhaseOut = hasPhaseOut || status != 1d;
 						phaseOutStatuses.add(status);
-						if (useValueWeightedAverage) {
-							avgValue += myVal * (double)myNumVals * status;
-							avgDenominator += myNumVals * status;
-						} else {
-							avgValue += myVal * status;
-							avgDenominator += status;
-						}
-					} else {
-						if (useValueWeightedAverage) {
-							avgValue += myVal * (double)myNumVals;
-							avgDenominator += myNumVals;
-						} else {
-							avgValue += myVal;
-							avgDenominator ++;
-						}
 					}
 				}
 			}
-			avgValue /= avgDenominator;
 			
-			double target;
 			if (PHASE_OUT_BELOW_LOWER_BOUND && hasPhaseOut) {
-				if (targetMedian) {
-					// need to compute a weighted median, more complicated
-					
-					// sort by value, increasing, keeping track of associated weights
-					List<ComparablePairing<Double, Double>> pairings = ComparablePairing.build(constraintTargetVals, phaseOutStatuses);
-					Collections.sort(pairings);
-					
-					// here 'weight' refers to the degree a constraint is phased in and should contribute to the target,
-					// not the constraint weights themselves
-					double sumWeights = 0d;
-					for (double status : phaseOutStatuses)
-						sumWeights += status;
-					
-					Preconditions.checkState(sumWeights >= 1d, "All constraints phased out?");
-					
-					double weightBelow = 0d;
-					// this will store the first index where the weight of all values before it is > half
-					int indexAbove = -1;
-					for (int i=0; i<pairings.size(); i++) {
-						ComparablePairing<Double, Double> pairing = pairings.get(i);
+				// do this in a loop to ensure that nothing is both 'phased out' and above average
+				while (true) {
+					if (targetMedian) {
+						// need to compute a weighted median, more complicated
 						
-						if (weightBelow >= 0.5*sumWeights) {
-							indexAbove = i;
-							break;
+						// sort by value, increasing, keeping track of associated weights
+						List<ComparablePairing<Double, Double>> pairings = ComparablePairing.build(constraintTargetVals, phaseOutStatuses);
+						Collections.sort(pairings);
+						
+						// here 'weight' refers to the degree a constraint is phased in and should contribute to the target,
+						// not the constraint weights themselves
+						double sumWeights = 0d;
+						for (double status : phaseOutStatuses)
+							sumWeights += status;
+						
+						Preconditions.checkState(sumWeights >= 1d, "All constraints phased out?");
+						
+						double weightBelow = 0d;
+						// this will store the first index where the weight of all values before it is > half
+						int indexAbove = -1;
+						for (int i=0; i<pairings.size(); i++) {
+							ComparablePairing<Double, Double> pairing = pairings.get(i);
+							
+							if (weightBelow >= 0.5*sumWeights) {
+								indexAbove = i;
+								break;
+							}
+							
+							weightBelow += pairing.getData();
 						}
-						
-						weightBelow += pairing.getData();
+						Preconditions.checkState(indexAbove > 0);
+						double val1 = pairings.get(indexAbove-1).getComparable();
+						double weight1 = weightBelow;
+						double val2 = pairings.get(indexAbove).getComparable();
+						double weight2 = weightBelow+pairings.get(indexAbove).getData();
+						Preconditions.checkState(weight1 <= 0.5d && weight2 >= 0.5d);
+						target = Interpolate.findY(weight1, val1, weight2, val2, 0.5d);
+					} else {
+						double numerator = 0d;
+						double denominator = 0d;
+						for (int i=0; i<constraintTargetVals.size(); i++) {
+							double val = constraintTargetVals.get(i);
+							double status = phaseOutStatuses.get(i);
+							numerator += val*status;
+							denominator += status;
+						}
+						target = numerator/denominator;
 					}
-					Preconditions.checkState(indexAbove > 0);
-					double val1 = pairings.get(indexAbove-1).getComparable();
-					double weight1 = weightBelow;
-					double val2 = pairings.get(indexAbove).getComparable();
-					double weight2 = weightBelow+pairings.get(indexAbove).getData();
-					Preconditions.checkState(weight1 <= 0.5d && weight2 >= 0.5d);
-					target = Interpolate.findY(weight1, val1, weight2, val2, 0.5d);
-				} else {
-					// phase out already handled in averaging
-					target = avgValue;
+					// check that everything currently phased out is actually below this target, otherwise un-phase it
+					boolean allPhasedBelow = true;
+					for (int i=0; i<constraintTargetVals.size(); i++) {
+						double val = constraintTargetVals.get(i);
+						double status = phaseOutStatuses.get(i);
+						if (status < 1d && val > target) {
+							System.out.println("Un-phasing a constraint with status="+(float)status
+									+" but "+targetName+"="+(float)val+" > "+target);
+							allPhasedBelow = false;
+							phaseOutStatuses.set(i, 1d);
+						}
+					}
+					if (allPhasedBelow)
+						break;
 				}
 			} else {
 				if (targetMedian)
 					target = DataUtils.median(Doubles.toArray(constraintTargetVals));
 				else
-					target = avgValue;
+					target = StatUtils.mean(Doubles.toArray(constraintTargetVals));;
+			}
+			
+			if (targetOnly) {
+				System.out.println("Final target value: "+(float)target);
+				return target;
 			}
 			
 			String qStr = "Readjusting weights for "+numValues+" values across "+numConstraints
@@ -422,8 +454,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 					String phaseStr = null;
 					if (PHASE_OUT_BELOW_LOWER_BOUND && calcWeight < origWeight) {
 						// see if this calculated weight is in/beyond the phase out range
-						double phaseUpperTarget = origWeight/MAX_ADJUSTMENT_FACTOR;
-						double phaseLowerTarget = phaseUpperTarget/PHASE_OUT_FACTOR;
+						double phaseUpperTarget = origWeight/PHASE_OUT_START_FACTOR;
+						double phaseLowerTarget = origWeight/PHASE_OUT_END_FACTOR;
 						double status;
 						if ((float)calcWeight <= (float)phaseLowerTarget) {
 							// fully phased out
@@ -443,7 +475,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 							if (status == 0d)
 								phaseStr = "FULLY PHASED OUT: "+(float)phaseLowerTarget;
 							else
-								phaseStr = "partially phasing out (f="+oDF.format(status)+")";
+								phaseStr = "phasing out (f="+oDF.format(status)+")";
 						}
 					} else {
 						// apply bounds if applicable
@@ -453,7 +485,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 					}
 					conservableWeights[i] = !bounded && !phased;
 					
-					String targetStr = (float)myTarget+"";
+					String targetStr = fiveDigits.format(myTarget)+"";
 					if (round > 1) {
 						double diff = myTarget-prevConstraintVals[i];
 						targetStr += " (";
@@ -507,12 +539,15 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 				} else {
 					double fixedWeight = newTotalWeight-conservableTotalWeight;
 					double weightScalar;
-					if (CONSERVE_SEPARATELY)
-						weightScalar = weightScalar = origTotalWeight/newTotalWeight;
-					else
+					if (CONSERVE_SEPARATELY) {
+						weightScalar = origTotalWeight/newTotalWeight;
+						System.out.println("Re-scaling weights by "+(float)origTotalWeight+" / "+(float)newTotalWeight
+								+" = "+(float)weightScalar+" to conserve original total weight");
+					} else {
 						weightScalar = (origTotalWeight - fixedWeight)/conservableTotalWeight;
-					System.out.println("Re-scaling weights by "+(float)origTotalWeight+" / "+(float)newTotalWeight
-							+" = "+(float)weightScalar+" to conserve original total weight");
+						System.out.println("Re-scaling weights by "+(float)(origTotalWeight - fixedWeight)+" / "+(float)newTotalWeight
+								+" = "+(float)weightScalar+" to conserve original total weight");
+					}
 					String weightsStr = null;
 					for (int i=0; i<newWeights.length; i++) {
 						if (Double.isFinite(newWeights[i])) {
@@ -598,16 +633,20 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 					uncertMisfits.add(mstats);
 			iters.add(state.iterations);
 			times.add(state.elapsedTimeMillis);
+			targetVals.add(target);
 			iterStats.add(new InversionMisfitStats(uncertMisfits));
 			
 			System.out.println("Took "+timeStr(watch.elapsed(TimeUnit.MILLISECONDS))+" to re-weight");
+		} else {
+			target = Double.NaN;
 		}
 		super.beforeRound(state, round);
+		return target;
 	}
 	
 	public InversionMisfitProgress getMisfitProgress() {
 		Preconditions.checkNotNull(iters);
-		return new InversionMisfitProgress(iters, times, iterStats);
+		return new InversionMisfitProgress(iters, times, iterStats, quantity, targetVals);
 	}
 	
 	private static void reweight(double[] scalars, boolean scaleToOrig, DoubleMatrix2D origA, DoubleMatrix2D modA,
@@ -652,6 +691,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		
 		iters = new ArrayList<>();
 		times = new ArrayList<>();
+		targetVals = new ArrayList<>();
 		iterStats = new ArrayList<>();
 		
 		InversionState ret = super.iterate(startState, criteria);
@@ -669,6 +709,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		avgMisfit /= uncertMisfits.size();
 		iters.add(ret.iterations);
 		times.add(ret.elapsedTimeMillis);
+		targetVals.add(beforeRound(ret, iters.size()+1, true));
 		iterStats.add(new InversionMisfitStats(uncertMisfits));
 		
 		System.out.println("Final constraint weights with average misfit "+targetName+": "+(float)avgMisfit);
@@ -695,39 +736,45 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 
-		dirName += "-coulomb-u3";
-		File origRupSetFile = new File(parentDir, "fm3_1_u3ref_uniform_coulomb.zip");
+		NSHM23InvConfigFactory factory = new NSHM23InvConfigFactory();
+		LogicTreeBranch<LogicTreeNode> branch = new NSHM23LogicTreeBranch();
+		branch.setValue(FaultModels.FM3_1);
+//		branch.setValue(RupturePlausibilityModels.COULOMB);
+		branch.setValue(RupturePlausibilityModels.UCERF3);
 		
-		FaultSystemRupSet rupSet;
-		try {
-			rupSet = FaultSystemRupSet.load(origRupSetFile);
-		} catch (IOException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
+		// good fitting
+//		branch.setValue(DeformationModels.ZENGBB);
+//		branch.setValue(ScalingRelationships.SHAW_2009_MOD);
+//		branch.setValue(SupraSeisBValues.B_1p0);
+//		branch.setValue(SlipAlongRuptureModels.UNIFORM);
 		
-//		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
-//				.u3BranchModules(rupSet.getModule(U3LogicTreeBranch.class)).build();
-		
-		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT.copy();
-//		branch.setValue(DeformationModels.ABM);
-//		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
-//		dirName += "-abm-hb08";
+		// poor fitting
 		branch.setValue(DeformationModels.NEOKINEMA);
-		branch.setValue(ScalingRelationships.ELLSWORTH_B);
-		dirName += "-neok-ellb";
-		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(branch).build();
+		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
+		branch.setValue(SupraSeisBValues.B_0p0);
+		branch.setValue(SlipAlongRuptureModels.TAPERED);
+		
+		// constant
+		branch.setValue(SubSeisMoRateReductions.SUB_B_1);
+		
+		// inv model
+//		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
+		branch.setValue(SubSectConstraintModels.NUCL_MFD);
+		
+		dirName += "-"+branch.getValue(DeformationModels.class).getFilePrefix();
+		dirName += "-"+branch.getValue(ScalingRelationships.class).getFilePrefix();
+		dirName += "-"+branch.getValue(SlipAlongRuptureModels.class).getFilePrefix();
+		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
+		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
+		
+		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, 32);
+		
+		System.out.println("Slip along: "+rupSet.getModule(SlipAlongRuptureModel.class).getName());
 		
 		double supraBVal = 0.0;
-		dirName += "-nshm23_draft-supra_b_"+oDF.format(supraBVal);
+//		dirName += "-nshm23_draft-supra_b_"+oDF.format(supraBVal);
 		
-		boolean applyDefModelUncertaintiesToNucl = true;
-		boolean addSectCountUncertaintiesToMFD = false;
-		boolean adjustForIncompatibleData = true;
-
-		DraftModelConstraintBuilder constrBuilder = new DraftModelConstraintBuilder(rupSet, supraBVal,
-				applyDefModelUncertaintiesToNucl, addSectCountUncertaintiesToMFD, adjustForIncompatibleData);
-//		constrBuilder.defaultConstraints(SubSectConstraintModels.TOT_NUCL_RATE);
-		constrBuilder.defaultConstraints(SubSectConstraintModels.NUCL_MFD); dirName += "-nucl_mfd";
+		InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, 16);
 		
 //		boolean reweight = false;
 		
@@ -742,10 +789,12 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(10); dirName += "-10m-x1m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(1);
 
-		CompletionCriteria completion = TimeCompletionCriteria.getInHours(2); dirName += "-2h";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(5); dirName += "-5m";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInHours(2); dirName += "-2h";
+		CompletionCriteria completion = TimeCompletionCriteria.getInHours(1); dirName += "-1h";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m";
 //		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(20);
-		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(10);
+		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(50);
 
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m-x5m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
@@ -762,9 +811,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		CompletionCriteria completion = TimeCompletionCriteria.getInHours(5); dirName += "-5h-x5m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
 		
-		Builder builder = InversionConfiguration.builder(constrBuilder.build(), completion);
-		builder.sampler(constrBuilder.getSkipBelowMinSampler());
-		builder.avgThreads(4, avgCompletion).threads(16);
+		Builder builder = InversionConfiguration.builder(config);
+		builder.completion(completion);
+		if (avgCompletion != null)
+			builder.avgThreads(4, avgCompletion);
 		
 //		builder.except(PaleoSlipInversionConstraint.class).except(PaleoRateInversionConstraint.class)
 //			.except(ParkfieldInversionConstraint.class);
@@ -773,12 +823,11 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		builder.except(SectionTotalRateConstraint.class);
 //		dirName += "-no_sect";
 		
-//		builder.threads(2).noAvg();
+//		builder.threads(6).noAvg();
 
-		builder.subCompletion(new IterationsPerVariableCompletionCriteria(0.5));
-		builder.initialSolution(constrBuilder.getParkfieldInitial(true));
+//		builder.subCompletion(new IterationsPerVariableCompletionCriteria(1d));
 		
-		InversionConfiguration config = builder.build();
+		config = builder.build();
 		
 		InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
 		inputs.generateInputs(true);
