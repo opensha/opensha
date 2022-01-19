@@ -352,7 +352,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		if (value.endsWith("e")) // TODO add to docs
 			return new EnergyCompletionCriteria(Double.parseDouble(value.substring(0, value.length()-1)));
 		if (value.endsWith("ip")) // TODO add to docs
-			return new IterationsPerVariableCompletionCriteria(Double.parseDouble(value.substring(value.length()-2)));
+			return new IterationsPerVariableCompletionCriteria(Double.parseDouble(value.substring(0, value.length()-2)));
 		if (value.endsWith("i"))
 			value = value.substring(0, value.length()-1);
 		return new IterationCompletionCriteria(Long.parseLong(value));
