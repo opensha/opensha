@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion;
 
 import java.io.File;
+import java.io.IOException;
 
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -23,7 +24,17 @@ public interface InversionConfigurationFactory {
 	 * @param threads number of threads to use when building
 	 * @return rupture set for this branch
 	 */
-	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads);
+	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) throws IOException;
+	
+	/**
+	 * Updates a {@link FaultSystemRupSet} for the given {@link LogicTreeBranch}, which may involve swapping out
+	 * modules and/or updating fault section data/slip rates. The passed in rupture set should not be modified.
+	 * 
+	 * @param branch
+	 * @return
+	 * @throws IOException
+	 */
+	public FaultSystemRupSet updateRuptureSetForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) throws IOException;
 	
 	/**
 	 * Configures an inversion for the given rupture set and logic tree branch
@@ -34,7 +45,7 @@ public interface InversionConfigurationFactory {
 	 * @return
 	 */
 	public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
-			int threads);
+			int threads) throws IOException;
 	
 	/**
 	 * This can be used to supply a custom {@link SolutionProcessor} instance that will be used when building

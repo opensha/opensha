@@ -125,12 +125,14 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 	}
 
 	@Override
-	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) {
+	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) throws IOException {
 		// build empty-ish rup set without modules attached
-		return buildRuptureSet(branch, buildGenericRupSet(branch, threads));
+		return updateRuptureSetForBranch(buildGenericRupSet(branch, threads), branch);
 	}
 
-	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, FaultSystemRupSet rupSet) {
+	@Override
+	public FaultSystemRupSet updateRuptureSetForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch)
+			throws IOException {
 		// we don't trust any modules attached to this rupture set as it could have been used for another calculation
 		// that could have attached anything. Instead, lets only keep the ruptures themselves
 		
@@ -147,12 +149,20 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		}
 		Preconditions.checkState(subSects.size() == rupSet.getNumSections());
 		
-		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
 		
-		PlausibilityConfiguration plausibility = rupSet.requireModule(PlausibilityConfiguration.class);
+		PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 		RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
 		
-		rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
+		if (cRups == null) {
+			rupSet = FaultSystemRupSet.builder(subSects, rupSet.getSectionIndicesForAllRups())
+					.forScalingRelationship(scale).build();
+			if (plausibility != null)
+				rupSet.addModule(plausibility);
+			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+		} else {
+			rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
+		}
 		
 		SlipAlongRuptureModels slipAlong = branch.requireValue(SlipAlongRuptureModels.class);
 		rupSet.addModule(slipAlong.getModel());
@@ -192,6 +202,11 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 			
 			// add modified section minimum magnitudes
 			RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
+			
+			// named faults, regions of interest
+			if (fm != null)
+				fm.attachDefaultModules(rupSet);
+				
 			if (fm == FaultModels.FM2_1 || fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
 				// include the UERF3 parkfield hack for modified section min mags
 				// TODO will need a similar parkfield hack for NSHM23 fault models?
@@ -203,17 +218,6 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 								rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
 					}
 				}, ModSectMinMags.class);
-				rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
-
-					@Override
-					public RegionsOfInterest call() throws Exception {
-						return new RegionsOfInterest(
-								new CaliforniaRegions.RELM_NOCAL(),
-								new CaliforniaRegions.RELM_SOCAL(),
-								new CaliforniaRegions.SF_BOX(),
-								new CaliforniaRegions.LA_BOX());
-					}
-				}, RegionsOfInterest.class);
 				rupSet.addAvailableModule(new Callable<PolygonFaultGridAssociations>() {
 
 					@Override
@@ -272,12 +276,6 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 							.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
 				}
 			}, SectSlipRates.class);
-			// add named fault mappings
-			if (fm != null) {
-				NamedFaults namedFaults = fm.getNamedFaults(rupSet);
-				if (namedFaults != null)
-					rupSet.addModule(namedFaults);
-			}
 			
 			// don't override existing plausibility configuration, offer it instead
 			// mostly for branch averaging

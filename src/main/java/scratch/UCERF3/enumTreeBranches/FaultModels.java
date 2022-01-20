@@ -9,10 +9,12 @@ import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
@@ -26,6 +28,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -33,6 +37,8 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
@@ -326,8 +332,44 @@ public enum FaultModels implements U3LogicTreeBranchNode<FaultModels>, RupSetFau
 	}
 	
 	@Override
-	public NamedFaults getNamedFaults(FaultSystemRupSet rupSet) {
-		return new NamedFaults(rupSet, getNamedFaultsMapAlt());
+	public void attachDefaultModules(FaultSystemRupSet rupSet) {
+		Map<String, List<Integer>> namedFaultsMap = getNamedFaultsMapAlt();
+		if (namedFaultsMap != null) {
+			rupSet.addAvailableModule(new Callable<NamedFaults>() {
+
+				@Override
+				public NamedFaults call() throws Exception {
+					return new NamedFaults(rupSet, getNamedFaultsMapAlt());
+				}
+			}, NamedFaults.class);
+		}
+		
+		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
+
+			@Override
+			public RegionsOfInterest call() throws Exception {
+				return new RegionsOfInterest(
+						new CaliforniaRegions.RELM_NOCAL(),
+						new CaliforniaRegions.RELM_SOCAL(),
+						new CaliforniaRegions.SF_BOX(),
+						new CaliforniaRegions.LA_BOX());
+			}
+		}, RegionsOfInterest.class);
+		
+		rupSet.addAvailableModule(new Callable<PolygonFaultGridAssociations>() {
+
+			@Override
+			public PolygonFaultGridAssociations call() throws Exception {
+				if (FaultModels.this == FaultModels.FM3_1 || FaultModels.this == FaultModels.FM3_2) {
+					try {
+						return FaultPolyMgr.loadSerializedUCERF3(FaultModels.this);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+				return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
+			}
+		}, PolygonFaultGridAssociations.class);
 	}
 	
 }

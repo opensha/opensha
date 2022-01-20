@@ -76,30 +76,6 @@ import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RuptureSets {
 	
-	public static List<? extends FaultSection> getU3SubSects(FaultModels fm) {
-		return getU3SubSects(fm, fm.getFilterBasis());
-	}
-	
-	public static List<? extends FaultSection> getU3SubSects(FaultModels fm, DeformationModels dm) {
-		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
-		List<? extends FaultSection> sects = dmFetch.getSubSectionList();
-		
-		// infer standard deviations from geologic bounds so we can use newer slip rate constraints
-		// assume bounds are +/- 2 sigma
-		System.out.println("Inferring slip-rate standard deviations from geologic bounds...");
-		List<? extends FaultSection> lowerSects = new DeformationModelFetcher(
-				fm, DeformationModels.GEOLOGIC_LOWER, null, 0.1).getSubSectionList();
-		List<? extends FaultSection> upperSects = new DeformationModelFetcher(
-				fm, DeformationModels.GEOLOGIC_UPPER, null, 0.1).getSubSectionList();
-		for (int s=0; s<sects.size(); s++) {
-			double upper = upperSects.get(s).getOrigAveSlipRate();
-			double lower = lowerSects.get(s).getOrigAveSlipRate();
-			sects.get(s).setSlipRateStdDev((upper-lower)/4d);
-		}
-		
-		return sects;
-	}
-	
 	public static List<? extends FaultSection> getNSHM23SubSects(String state) throws IOException {
 		return GeoJSONFaultReader.buildNSHM23SubSects(state);
 	}
@@ -129,9 +105,9 @@ public class RuptureSets {
 			}
 		}
 
-		public U3RupSetConfig(FaultModels fm, RupSetScalingRelationship scale) {
+		public U3RupSetConfig(FaultModels fm, RupSetScalingRelationship scale) throws IOException {
 			this.fm = fm;
-			this.subSects = getU3SubSects(fm);
+			this.subSects = fm.getDefaultDeformationModel().build(fm);
 			this.scale = scale;
 		}
 
@@ -343,8 +319,8 @@ public class RuptureSets {
 		// coefficient of friction for coulomb calculations
 		@Expose	private double coeffOfFriction = 0.5;
 
-		public CoulombRupSetConfig(FaultModels fm, RupSetScalingRelationship scale) {
-			this(getU3SubSects(fm), fm.encodeChoiceString().toLowerCase(), scale);
+		public CoulombRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
+			this(fm.getDefaultDeformationModel().build(fm), fm.getFilePrefix().toLowerCase(), scale);
 		}
 
 		public CoulombRupSetConfig(List<? extends FaultSection> subSects, String fmPrefix, RupSetScalingRelationship scale) {
@@ -1128,7 +1104,7 @@ public class RuptureSets {
 				String fmStr = cmd.getOptionValue("fault-model");
 				FaultModels fm = FaultModels.valueOf(fmStr.trim().toUpperCase());
 				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
-				sects = getU3SubSects(fm);
+				sects = fm.getDefaultDeformationModel().build(fm);
 			}
 			System.out.println("Loaded "+sects.size()+" sub-sections");
 			for (int i=0; i<sects.size(); i++) {

@@ -25,10 +25,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurat
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
@@ -45,7 +41,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausi
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DraftModelConstraintBuilder;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -57,7 +52,6 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 /**
  * Extension of {@link ThreadedSimulatedAnnealing} that dynamically re-weights uncertainty-weighted inversion
@@ -767,7 +761,12 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
 		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
 		
-		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, 32);
+		FaultSystemRupSet rupSet;
+		try {
+			rupSet = factory.buildRuptureSet(branch, 32);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 		
 		System.out.println("Slip along: "+rupSet.getModule(SlipAlongRuptureModel.class).getName());
 		

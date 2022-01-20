@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.faultSurface.FaultSection;
 
 /**
@@ -34,14 +35,12 @@ public interface RupSetFaultModel extends LogicTreeNode {
 	}
 	
 	/**
-	 * Returns {@link NamedFaults} module for this fault model, if available, otherwise null. Default implementation
-	 * returns null.
+	 * Attaches any default modules related to this fault model, often {@link NamedFaults} and/or {@link RegionsOfInterest}.
 	 * 
-	 * @param rupSet rupture set
-	 * @return named faults or null
+	 * @param rupSet
 	 */
-	public default NamedFaults getNamedFaults(FaultSystemRupSet rupSet) {
-		return null;
+	public default void attachDefaultModules(FaultSystemRupSet rupSet) {
+		// do nothing
 	}
 	
 	/**

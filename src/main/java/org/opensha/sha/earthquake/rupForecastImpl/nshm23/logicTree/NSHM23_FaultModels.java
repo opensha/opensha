@@ -77,4 +77,10 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 		return defaultDM;
 	}
 
+	@Override
+	public void attachDefaultModules(FaultSystemRupSet rupSet) {
+		// TODO NamedFaults
+		// TODO RegionsOfInterest
+	}
+
 }
