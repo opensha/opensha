@@ -57,7 +57,7 @@ public class MFDInversionConstraint extends InversionConstraint {
 		this.mfds = mfds;
 		if (weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
 			for (IncrementalMagFreqDist mfd : mfds)
-				Preconditions.checkNotNull(mfd instanceof UncertainIncrMagFreqDist,
+				Preconditions.checkArgument(mfd instanceof UncertainIncrMagFreqDist,
 						"Uncertain MFD instances (with standard deviations) must be supplied for uncertainty weighting");
 		}
 		this.excludeRupIndexes = excludeRupIndexes;
